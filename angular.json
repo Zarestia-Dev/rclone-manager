@@ -20,7 +20,12 @@
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
-            "assets": ["src/assets"]
+            "assets": [
+              "src/assets"
+            ],
+            "styles": [
+              "@angular/material/prebuilt-themes/indigo-pink.css"
+            ]
           },
           "configurations": {
             "production": {

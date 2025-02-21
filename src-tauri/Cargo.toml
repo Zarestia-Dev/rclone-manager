@@ -1,8 +1,8 @@
 [package]
 name = "rclone-manager"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "A simple GUI application for managing rclone remotes, mount options and configurations."
+authors = ["Hakan İSMAİL"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

@@ -1,7 +1,4 @@
-# Tauri + Angular
+<h1 align="center">RClone Manager</h1>
 
-This template should help get you started developing with Tauri and Angular.
+RClone Manager is a simple tauri application that allows you to manage your rclone remotes and mount them with ease. It is a simple GUI for rclone that allows you to add, remove, and mount remotes. It also allows you to unmount remotes and view the logs of the rclone mount.
 
-## Recommended IDE Setup
-
-[VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer) + [Angular Language Service](https://marketplace.visualstudio.com/items?itemName=Angular.ng-template).

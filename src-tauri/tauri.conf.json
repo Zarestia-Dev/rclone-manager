@@ -12,9 +12,10 @@
   "app": {
     "windows": [
       {
-        "title": "rclone-manager",
+        "title": "RClone Manager",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "decorations": false
       }
     ],
     "security": {
