@@ -1,0 +1,95 @@
+// Custom Theming for Angular Material
+// For more information: https://material.angular.io/guide/theming
+@use "@angular/material" as mat;
+// Plus imports for other components in your app.
+
+// Include the common styles for Angular Material. We include this here so that you only
+// have to load a single css file for Angular Material in your app.
+// Be sure that you only ever include this mixin once!
+@include mat.core();
+
+// Define the palettes for your theme using the Material Design palettes available in palette.scss
+// (imported above). For each palette, you can optionally specify a default, lighter, and darker
+// hue. Available color palettes: https://material.io/design/color/
+$rclone-manager-primary: mat.define-palette(mat.$indigo-palette);
+$rclone-manager-accent: mat.define-palette(mat.$pink-palette, A200, A100, A400);
+
+// The warn palette is optional (defaults to red).
+$rclone-manager-warn: mat.define-palette(mat.$red-palette);
+
+// Create the theme object. A theme consists of configurations for individual
+// theming systems such as "color" or "typography".
+$rclone-manager-theme: mat.define-light-theme(
+  (
+    color: (
+      primary: $rclone-manager-primary,
+      accent: $rclone-manager-accent,
+      warn: $rclone-manager-warn,
+    ),
+    typography: mat.define-typography-config(),
+    density: 0,
+  )
+);
+
+// Include theme styles for core and each component used in your app.
+// Alternatively, you can import and @include the theme mixins for each component
+// that you are using.
+@include mat.all-component-themes($rclone-manager-theme);
+
+.light {
+
+  /* Define custom colors for light mode */
+  --titlebar-background: #ffffff;
+  --titlebar-text-color: #000000;
+  --border-color: #dbdbdb;
+  --button-background: #f5f5f5;
+  --button-text: #000000;
+  --button-hover: #dddddd;
+  --add-button-background: #dbdbdb;
+  --add-button-hover: #939090;
+  --theme-border: #dbdbdb;
+  --theme-border-hover: #777;
+  --selected-border: #007bff;
+  --light-theme-color: white;
+  --dark-theme-color: black;
+  --logo-url: url("./assets/rclone_symbolic_light.svg");
+}
+
+/* 🌙 Dark Theme */
+.dark {
+
+  /* Define custom colors for dark mode */
+  --titlebar-background: #1e1e1e;
+  --titlebar-text-color: #ffffff;
+  --border-color: #333;
+  --button-background: #333;
+  --button-text: #ffffff;
+  --button-hover: #444;
+  --add-button-background: #444;
+  --add-button-hover: #666;
+  --theme-border: #555;
+  --theme-border-hover: #888;
+  --selected-border: #007bff;
+  --light-theme-color: white;
+  --dark-theme-color: black;
+  --logo-url: url("./assets/rclone_symbolic_dark.svg");
+}
+
+html,
+body {
+  height: 100%;
+  --mat-menu-container-shape: 16px;
+}
+body {
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+}
+.mat-mdc-menu-item-text {
+  display: flex;
+  justify-content: space-between;
+  --mat-menu-item-label-text-size: 16px;
+}
+.mat-mdc-menu-panel {
+  min-width: 252px !important;
+  min-height: 230px;
+}

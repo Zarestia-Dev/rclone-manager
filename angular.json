@@ -5,6 +5,11 @@
   "cli": {
     "analytics": false
   },
+  "schematics": {
+    "@schematics/angular:component": {
+      "style": "scss"
+    }
+  },
   "projects": {
     "rclone-manager": {
       "projectType": "application",
@@ -24,7 +29,7 @@
               "src/assets"
             ],
             "styles": [
-              "@angular/material/prebuilt-themes/indigo-pink.css"
+              "src/custom-theme.scss"
             ]
           },
           "configurations": {

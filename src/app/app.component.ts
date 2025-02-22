@@ -9,7 +9,7 @@ import { TitlebarComponent } from './components/titlebar/titlebar.component';
   standalone: true,
   imports: [CommonModule, RouterOutlet, TitlebarComponent],
   templateUrl: './app.component.html',
-  styleUrl: './app.component.css'
+  styleUrl: './app.component.scss'
 })
 export class AppComponent {
   greetingMessage = "";
@@ -17,7 +17,6 @@ export class AppComponent {
   greet(event: SubmitEvent, name: string): void {
     event.preventDefault();
 
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
     invoke<string>("greet", { name }).then((text) => {
       this.greetingMessage = text;
     });

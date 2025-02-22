@@ -1,42 +1,75 @@
 <div class="title-bar" data-tauri-drag-region>
-    <div class="left-section">
-      <button mat-icon-button class="add-button"><mat-icon>add</mat-icon></button>
-      <img src="assets/rclone_symbolic.svg" alt="RClone Manager Logo" class="logo" />
-      <span class="title">RClone Manager</span>
-    </div>
-    
-    <div class="right-section">
-      <button mat-icon-button>
-        <mat-icon>search</mat-icon>
-      </button>
-      <button mat-icon-button [matMenuTriggerFor]="menu">
-        <mat-icon>menu</mat-icon>
-      </button>
-      <button mat-icon-button (click)="minimizeWindow()">
-        <mat-icon>remove</mat-icon>
-      </button>
-      <button mat-icon-button (click)="maximizeWindow()">
-        <mat-icon>crop_square</mat-icon>
-      </button>
-      <button mat-icon-button (click)="closeWindow()">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-  
-    <mat-menu #menu="matMenu">
-      <button mat-menu-item>
-        <span>Import</span>
-        <span class="shortcut">Ctrl + I</span>
-      </button>
-      <button mat-menu-item>
-        <span>Preferences</span>
-        <span class="shortcut">Ctrl + S</span>
-      </button>
-      <button mat-menu-item>
-        <span>Keyboard Shortcuts</span>
-        <span class="shortcut">Ctrl + ?</span>
-      </button>
-      <button mat-menu-item>About RClone Manager</button>
-    </mat-menu>
+  <div class="left-section">
+    <button mat-icon-button class="add-button"><mat-icon>add</mat-icon></button>
+    <img [src]="logoUrl" alt="RClone Manager Logo" class="logo" />
+    <span class="title">RClone Manager</span>
   </div>
-  
+
+  <div class="right-section">
+    <button mat-icon-button>
+      <mat-icon>search</mat-icon>
+    </button>
+    <button mat-icon-button [matMenuTriggerFor]="menu">
+      <mat-icon>menu</mat-icon>
+    </button>
+    <button mat-icon-button (click)="minimizeWindow()">
+      <mat-icon>remove</mat-icon>
+    </button>
+    <button mat-icon-button (click)="maximizeWindow()">
+      <mat-icon>crop_square</mat-icon>
+    </button>
+    <button mat-icon-button (click)="closeWindow()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-menu #menu="matMenu">
+    <div class="theme-selector">
+      <button
+        mat-icon-button
+        class="theme-button system"
+        [class.selected]="selectedTheme === 'system'"
+        (click)="$event.stopPropagation(); setTheme('system')"
+      >
+        <mat-icon *ngIf="selectedTheme === 'system'" class="checkmark">done</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        class="theme-button light"
+        [class.selected]="selectedTheme === 'light'"
+        (click)="$event.stopPropagation(); setTheme('light')"
+      >
+        <mat-icon *ngIf="selectedTheme === 'light'" class="checkmark">done</mat-icon>
+      </button>
+
+      <button
+        mat-icon-button
+        class="theme-button dark"
+        [class.selected]="selectedTheme === 'dark'"
+        (click)="$event.stopPropagation(); setTheme('dark')"
+      >
+        <mat-icon *ngIf="selectedTheme === 'dark'" class="checkmark">done</mat-icon>
+      </button>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <button mat-menu-item>
+      <span>Import</span>
+      <span class="shortcut">Ctrl + I</span>
+    </button>
+
+    <mat-divider></mat-divider>
+
+    <button mat-menu-item>
+      <span>Preferences</span>
+      <span class="shortcut">Ctrl + S</span>
+    </button>
+    <button mat-menu-item>
+      <span>Keyboard Shortcuts</span>
+      <span class="shortcut">Ctrl + ?</span>
+    </button>
+    <button mat-menu-item>About RClone Manager</button>
+  </mat-menu>
+</div>
