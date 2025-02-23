@@ -1,0 +1,15 @@
+<div class="home-container">
+    <app-sidebar
+      [remotes]="remotes"
+      (remoteSelected)="selectRemote($event)"
+    ></app-sidebar>
+  
+    <div class="main-content">
+      <div class="overview">
+        <img src="../../assets/rclone-2.svg" alt="">
+        <h2>RClone Manager</h2>
+        <p *ngIf="remotes.length === 0">Press the “Add New Remote” the adding a new remote</p>
+        <button (click)="addRemote()" class="addRemote"><mat-icon>add</mat-icon> Add Remote</button>
+      </div>
+    </div>
+  </div>

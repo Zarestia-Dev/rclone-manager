@@ -2,12 +2,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 40px;
-  background: var(--titlebar-background);
-  color: var(--titlebar-text-color);
-  padding: 4px 8px;
+  height: var(--titlebar-height);
+  background: var(--app-background);
+  color: var(--app-text-color);
+  padding: 4px var(--title-bar-padding);
   border-radius: 8px 8px 0 0;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: var(--titlebar-border) solid var(--border-color);
 
   // Smooth transition for theme changes
   transition: background 0.3s ease-in-out, color 0.3s ease-in-out,
@@ -45,10 +45,18 @@
       }
     }
 
-    .logo {
+    .logo-light {
       width: 32px;
       height: 32px;
       transition: filter 0.3s ease-in-out;
+      filter: invert(0); // Default image color
+    }
+    
+    .logo-dark {
+      width: 32px;
+      height: 32px;
+      transition: filter 0.3s ease-in-out;
+      filter: invert(1); // Inverts colors for dark mode (if the image is dark by default)
     }
 
     .title {

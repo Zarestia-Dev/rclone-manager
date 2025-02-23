@@ -1,0 +1,41 @@
+.home-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: var(--app-height);
+  background-color: var(--app-background);
+  color: var(--app-text-color);
+
+  .overview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    
+    h2 {
+      margin-bottom: 12px;
+    }
+
+    p {
+      font-size: 20px;
+      margin-bottom: 20px;
+      margin-top: 0;
+    }
+
+    .addRemote {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background-color: #2196f3;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+
+      &:hover {
+        background: #0b7dda;
+      }
+    }
+  }
+}

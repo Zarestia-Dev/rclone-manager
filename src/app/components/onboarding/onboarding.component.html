@@ -1,0 +1,47 @@
+<div class="onboarding-container">
+  <div class="card-container">
+    <mat-card class="onboarding-card"
+      *ngFor="let card of cards; let i = index"
+      [@slideAnimation]="i === currentCardIndex ? animationState : 'void'"
+      class="card"
+      [ngClass]="{ active: i === currentCardIndex }"
+    >
+      <img mat-card-avatar src="{{ card.image }}"/>
+
+      <mat-divider></mat-divider>
+
+      <mat-card-title>{{ card.title }}</mat-card-title>
+      <mat-card-subtitle>{{ card.content }}</mat-card-subtitle>
+    </mat-card>
+    <div class="navigation">
+      <button
+        mat-icon-button
+        (click)="previousCard()"
+        [disabled]="currentCardIndex === 0"
+        aria-label="Previous"
+      >
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+    
+      <button
+        *ngIf="currentCardIndex !== cards.length - 1"
+        mat-icon-button
+        (click)="nextCard()"
+        [disabled]="currentCardIndex === cards.length - 1"
+        aria-label="Next"
+      >
+        <mat-icon>arrow_forward</mat-icon>
+      </button>
+    
+      <button
+        *ngIf="currentCardIndex === cards.length - 1"
+        mat-raised-button
+        color="primary"
+        (click)="completeOnboarding()"
+        aria-label="Finish"
+      >
+        Finish
+      </button>
+    </div>
+  </div>
+</div>

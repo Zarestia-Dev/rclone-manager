@@ -16,7 +16,6 @@ const appWindow = getCurrentWindow();
   styleUrl: "./titlebar.component.scss",
 })
 export class TitlebarComponent implements OnInit, OnDestroy {
-  logoUrl: string = '../assets/rclone_symbolic_light.svg';
 
   closeWindow() {
     appWindow.close();
@@ -38,13 +37,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     this.selectedTheme = theme;
     localStorage.setItem("app-theme", theme);
 
-    if (theme === "dark") {
-      this.logoUrl = '../assets/rclone_symbolic_dark.svg';
-    }
-    else {
-      this.logoUrl = '../assets/rclone_symbolic_light.svg';
-    }
-
     // Apply the theme to the app
     if (theme === "system") {
       const systemTheme = this.getSystemTheme();
@@ -59,13 +51,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.selectedTheme = localStorage.getItem("app-theme") || "system";
     this.setTheme(this.selectedTheme);
-
-    if (this.selectedTheme === "dark") {
-      this.logoUrl = '../assets/rclone_symbolic_dark.svg';
-    }
-    else {
-      this.logoUrl = '../assets/rclone_symbolic_light.svg';
-    }
 
     // Listen for system theme changes
     this.darkModeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
@@ -86,7 +71,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     }
   }
 
-  private getSystemTheme(): "light" | "dark" {
+  public getSystemTheme(): "light" | "dark" {
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
 }

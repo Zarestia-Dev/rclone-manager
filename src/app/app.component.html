@@ -1,2 +1,4 @@
 <router-outlet></router-outlet>
-<app-titlebar></app-titlebar>
+<app-titlebar class="title-bar"></app-titlebar>
+<app-onboarding *ngIf="showOnboarding" (completed)="finishOnboarding()" class="onboarding"></app-onboarding>
+<app-home></app-home>
