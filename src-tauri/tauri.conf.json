@@ -15,8 +15,12 @@
         "title": "RClone Manager",
         "width": 800,
         "height": 600,
+        "resizable": true,
+        "fullscreen": false,
         "decorations": false,
-        "transparent": true
+        "transparent": true,
+        "minHeight": 360,
+        "minWidth": 360
       }
     ],
     "security": {

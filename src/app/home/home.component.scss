@@ -1,41 +1,304 @@
 .home-container {
   display: flex;
-  justify-content: center;
-  align-items: center;
   height: var(--app-height);
   background-color: var(--app-background);
   color: var(--app-text-color);
 
-  .overview {
+  p {
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  mat-sidenav-container {
+    width: 100%;
+    height: 100%;
+  }
+
+  mat-sidenav {
+    width: var(--sidebar-width);
+    background-color: var(--sidebar-background, #f5f5f5);
+    color: var(--sidebar-text, #333);
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+  }
+
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+
+    h3 {
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      flex-direction: row;
+      justify-content: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      background-color: var(--sidebar-background, #f5f5f5);
+      z-index: 10;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      margin-block-start: 0;
+      padding-block: 10px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .remote-card {
+      display: flex;
+      align-items: start;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      border-radius: 8px;
+      margin-inline: 16px;
+
+      .card-content {
+        padding-top: 10px;
+        padding-bottom: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        h4 {
+          font-size: 1.3rem;
+        }
+
+        p,
+        h4 {
+          display: flex;
+          align-items: center;
+          margin-block-end: 2px;
+          margin-block-start: 2px;
+        }
+      }
+
+      .mounted {
+        color: var(--green);
+        fill: var(--green);
+      }
+
+      .not-mounted {
+        color: var(--orange);
+      }
+
+      .error {
+        color: var(--red);
+      }
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+      }
+
+      mat-icon {
+        margin-right: 10px;
+      }
+    }
+
+    .no-remotes {
+      font-size: 14px;
+      color: var(--secodary-text-color);
+      text-align: center;
+    }
+  }
+
+  .remote-details {
     display: flex;
     flex-direction: column;
     align-items: center;
-    
-    h2 {
-      margin-bottom: 12px;
+    gap: 20px;
+    flex: 1;
+
+    .remote-header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
 
-    p {
-      font-size: 20px;
-      margin-bottom: 20px;
-      margin-top: 0;
+    .info-card {
+      display: flex;
+      flex-direction: column;
+      align-items: baseline;
+      border-radius: 8px;
+      width: 84%;
+      // max-width: 1000px;
+
+      h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+
+      .info-card-content {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        width: 100%;
+        padding-block: 10px;
+        border-radius: 8px;
+        background-color: white;
+        box-shadow: 0 0 14px rgba(0, 0, 0, 0.25);
+
+        .disk-usage {
+          display: flex;
+          align-items: center;
+          flex-direction: column;
+          padding-inline: 10px;
+          gap: 10px;
+
+          .custom-progress-bar {
+            width: 100%;
+            height: 48px;
+            border-radius: 18px;
+            border: 3px solid #70CAF2; /* Blue border */
+            background-color: #CECECE; /* Free space color */
+            position: relative;
+            overflow: hidden;
+          }
+          
+          .usage {
+            height: 100%;
+            background-color: #F89F24; /* Used space color */
+            transition: width 0.5s ease-in-out;
+          }
+          
+          .legend {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+          }
+          
+          .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 14px;
+          }
+          
+          .color-box {
+            width: 20px;
+            height: 20px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-right: 5px;
+          }
+          
+          .used {
+            background-color: #F89F24;
+          }
+          
+          .free {
+            background-color: #CECECE;
+          }
+          
+          .border {
+            background-color: #70CAF2;
+          }
+          
+        }
+
+
+        .button-container {
+          display: flex;
+          justify-content: space-evenly;
+          gap: 10px;
+        }
+  
+        button {
+          min-width: 120px;
+          height: 40px;
+          font-size: 14px;
+          font-weight: bold;
+        }
+      }
     }
 
-    .addRemote {
+      h2 {
+        margin-bottom: 12px;
+      }
+
+      p {
+        color: var(--secodary-text-color);
+        font-size: 20px;
+        margin-bottom: 20px;
+        margin-top: 0;
+      }
+    }
+
+    .toggle-sidebar {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
-      gap: 10px;
-      background-color: #2196f3;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 16px;
-      cursor: pointer;
+      justify-content: center;
       transition: background 0.3s ease;
+      color: var(--app-text-color);
 
       &:hover {
-        background: #0b7dda;
+        background: rgba(0, 0, 0, 0.1);
+      }
+
+      mat-icon {
+        font-size: 24px;
+      }
+    }
+
+    mat-sidenav-content {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: start;
+    }
+
+    .overview {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+      h2 {
+        margin-bottom: 12px;
+      }
+
+      p {
+        font-size: 20px;
+        margin-bottom: 20px;
+        margin-top: 0;
+      }
+
+      .addRemote {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background-color: #2196f3;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 16px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+
+        &:hover {
+          background: #0b7dda;
+        }
       }
     }
   }
-}
