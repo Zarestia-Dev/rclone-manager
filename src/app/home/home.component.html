@@ -2,13 +2,9 @@
   <!-- Sidebar -->
   <mat-sidenav [(opened)]="isSidebarOpen" [mode]="sidebarMode">
     <div class="sidebar">
-      <h3>Remotes <img src="assets/icons/remotes.svg" class="icon" /></h3>
+      <h3>Remotes <img src="assets/icons/remotes.svg" class="icon icon-bw" /></h3>
       <ul *ngIf="remotes.length > 0">
-        <mat-card
-          class="remote-card"
-          *ngFor="let remote of remotes"
-          (click)="selectRemote(remote)"
-        >
+        <mat-card class="remote-card" *ngFor="let remote of remotes" (click)="selectRemote(remote)">
           <mat-card-content class="card-content">
             <h4>{{ remote.name }}</h4>
             <p>
@@ -22,18 +18,12 @@
             </ng-container>
             <ng-container *ngIf="remote.mounted === 'false'">
               <p class="not-mounted">
-                <img
-                  src="assets/icons/circle-xmark-orange.svg"
-                  class="icon"
-                />Not Mounted
+                <img src="assets/icons/circle-xmark-orange.svg" class="icon" />Not Mounted
               </p>
             </ng-container>
             <ng-container *ngIf="remote.mounted === 'error'">
               <p class="error">
-                <img
-                  src="assets/icons/circle-exclamation-red.svg"
-                  class="icon"
-                />Error
+                <img src="assets/icons/circle-exclamation-red.svg" class="icon" />Error
               </p>
             </ng-container>
           </mat-card-content>
@@ -48,21 +38,126 @@
   <!-- Main Content -->
   <mat-sidenav-content class="main-content" position="start">
     <button class="toggle-sidebar" (click)="toggleSidebar()">
-      <mat-icon>menu</mat-icon>
+      <img src="assets/icons/menu-bar.svg" class="icon icon-bw" />
     </button>
-    <div class="overview" *ngIf="remotes.length === 0">
+
+    <!-- Add Remote Dialog -->
+    <div class="add-remote" *ngIf="remotes.length === 0">
       <img src="../../assets/rclone-2.svg" alt="" />
       <h2>RClone Manager</h2>
-      <p>Press the “Add New Remote” the adding a new remote</p>
-      <button (click)="addRemote()" class="addRemote">
-        <mat-icon>add</mat-icon> Add Remote
+      <p>Press the “Add New Remote” to add a new remote</p>
+      <button (click)="addRemote()" class="new-remote">
+        <img src="assets/icons/add-white.svg" class="icon" /> Add Remote
       </button>
     </div>
 
-    <!-- Overview (Show When Remotes are Available) -->
+    <!-- Overview -->
     <div class="overview" *ngIf="remotes.length > 0 && !selectedRemote">
-      <h2>Overview</h2>
-      <p>Select a remote from the sidebar to view more details</p>
+      <div class="remote-header">
+        <h2>Overview</h2>
+      </div>
+
+      <div class="info-card overview-card">
+        <h3>
+          <img src="assets/icons/remotes.svg" class="icon icon-bw" /> Overview Remotes
+        </h3>
+        <mat-card class="info-card-content">
+          <mat-card-content class="overview-content">
+            <strong>Remotes Status</strong>
+            <div class="full-bar remotes-bar">
+              <div class="bar mounted-bar" [style.width.%]="(getMountedCount() / remotes.length) * 100"></div>
+              <div class="bar unmounted-bar" [style.width.%]="(getUnmountedCount() / remotes.length) * 100"></div>
+              <div class="bar error-bar" [style.width.%]="(getErrorCount() / remotes.length) * 100"></div>
+            </div>
+
+            <!-- Legend (Hide when Not Mounted or Error) -->
+            <div class="legend" *ngIf="
+            getMountedCount() > 0 ||
+            getUnmountedCount() > 0 ||
+            getErrorCount() > 0
+          ">
+              <div class="legend-item" *ngIf="getMountedCount() > 0">
+                <span class="color-box mounted"></span>Mounted: {{ getMountedCount() }}
+              </div>
+              <div class="legend-item" *ngIf="getUnmountedCount() > 0">
+                <span class="color-box unmounted">
+                </span>Unmounted: {{ getUnmountedCount() }}
+              </div>
+              <div class="legend-item" *ngIf="getErrorCount() > 0">
+                <span class="color-box error">
+                </span>Error: {{ getErrorCount() }}
+              </div>
+            </div>
+          </mat-card-content>
+
+          <mat-divider *ngIf="getMountedCount() > 0 || getUnmountedCount() > 0 || getErrorCount() > 0"></mat-divider>
+
+          <!-- Mounted Remotes -->
+          <mat-card-content class="mounted-remotes" *ngIf="getMountedCount() > 0">
+            <h3>
+              <img src="assets/icons/mount.svg" class="icon icon-bw" /> Mounted Remotes
+            </h3>
+            <div class="remote-list">
+              <div *ngFor="let remote of getMountedRemotes()" class="remote-card">
+                <div class="remote-content">
+                  <h4>{{ remote.name }}</h4>
+                  <p>
+                    <img src="assets/icons/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
+                  </p>
+                </div>
+                <button class="open-files">
+                  <img src="assets/icons/folder-white.svg" class="icon" />
+                  Open Files
+                </button>
+              </div>
+            </div>
+          </mat-card-content>
+
+          <mat-divider *ngIf="getMountedCount() > 0 && getUnmountedCount() > 0"></mat-divider>
+
+          <!-- Unmounted Remotes -->
+          <mat-card-content class="unmounted-remotes" *ngIf="getUnmountedCount() > 0">
+            <h3>
+              <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" /> Unmounted Remotes
+            </h3>
+            <div class="remote-list">
+              <div *ngFor="let remote of getUnmountedRemotes()" class="remote-card">
+                <div class="remote-content">
+                  <h4>{{ remote.name }}</h4>
+                  <p>
+                    <img src="assets/icons/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
+                  </p>
+                </div>
+                <button class="mount">
+                  <img src="assets/icons/mount.svg" class="icon" style="filter: invert(1)" />
+                  Mount</button>
+              </div>
+            </div>
+          </mat-card-content>
+
+          <mat-divider *ngIf="getUnmountedCount() > 0 && getErrorCount() > 0"></mat-divider>
+
+          <!-- Remotes with Problems -->
+          <mat-card-content *ngIf="getErrorCount() > 0">
+            <h3>
+              <img src="assets/icons/circle-exclamation.svg" class="icon icon-bw" /> Remotes with Problems
+            </h3>
+            <div class="remote-list">
+              <div *ngFor="let remote of getErrorRemotes()" class="remote-card">
+                <div class="remote-content">
+                  <h4>{{ remote.name }}</h4>
+                  <p>
+                    <img src="assets/icons/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
+                  </p>
+                </div>
+                <button class="fix">
+                  <img src="assets/icons/wrench.svg" class="icon" style="filter: invert(1)" />
+                  Fix</button>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
     </div>
 
     <!-- Remote Details (Show When a Remote is Selected) -->
@@ -70,30 +165,36 @@
       <div class="remote-header">
         <h2>{{ selectedRemote.name }}</h2>
         <p>
-          <img src="assets/icons/{{ selectedRemote.id }}.svg" class="icon" />{{
-            selectedRemote.id
-          }}
+          <img src="assets/icons/{{ selectedRemote.icon }}.svg" class="icon" />{{ selectedRemote.id }}
         </p>
       </div>
 
       <!-- Disk Info Card -->
       <div class="info-card disk-card">
         <h3>
-          <img src="assets/icons/hard-drive.svg" class="icon" /> Disk Info
+          <img src="assets/icons/hard-drive.svg" class="icon icon-bw" /> Disk
+          Info
         </h3>
         <mat-card class="info-card-content">
           <mat-card-content class="disk-usage">
             <strong>Space Allocation</strong>
             <!-- Progress Bar -->
-            <div class="custom-progress-bar">
-              <div
-                class="usage"
-                [ngStyle]="{ width: getUsagePercentage(selectedRemote) + '%' }"
-              ></div>
+            <div class="full-bar disk-usage-bar" [ngClass]="{
+                'not-mounted-bar': selectedRemote.mounted === 'false',
+                'error-bar': selectedRemote.mounted === 'error'
+              }">
+              <p *ngIf="selectedRemote.mounted === 'false'">Not Mounted</p>
+              <p *ngIf="selectedRemote.mounted === 'error'">Error</p>
+              <div *ngIf="selectedRemote.mounted === 'true'" class="usage" [ngStyle]="{
+                  width:
+                    selectedRemote.mounted === 'true'
+                      ? getUsagePercentage(selectedRemote) + '%'
+                      : '100%'
+                }"></div>
             </div>
 
-            <!-- Legend -->
-            <div class="legend">
+            <!-- Legend (Hide when Not Mounted or Error) -->
+            <div class="legend" *ngIf="selectedRemote.mounted === 'true'">
               <div class="legend-item">
                 <span class="color-box border"></span> Total Space:
                 {{ selectedRemote.info[0].remote_disk[0].value }}
@@ -113,12 +214,30 @@
 
           <!-- Buttons -->
           <mat-card-footer class="button-container">
-            <button mat-raised-button color="primary" (click)="openFiles()">
-              Open Files
-            </button>
-            <button mat-raised-button color="warn" (click)="unmountRemote()">
-              Unmount
-            </button>
+            <ng-container *ngIf="selectedRemote.mounted === 'true'">
+              <button class="open-files" (click)="openFiles()">
+                <img src="assets/icons/folder-white.svg" class="icon" />
+                Open Files
+              </button>
+              <button class="unmount" (click)="unmountRemote()">
+                <img src="assets/icons/circle-exclamation.svg" class="icon" style="filter: invert(1)" />
+                Unmount
+              </button>
+            </ng-container>
+
+            <ng-container *ngIf="selectedRemote.mounted === 'false'">
+              <button class="mount" (click)="mountRemote()">
+                <img src="assets/icons/mount.svg" class="icon" style="filter: invert(1)" />
+                Mount
+              </button>
+            </ng-container>
+
+            <ng-container *ngIf="selectedRemote.mounted === 'error'">
+              <button class="fix" (click)="fixRemote()">
+                <img src="assets/icons/wrench.svg" class="icon" style="filter: invert(1)" />
+                Fix
+              </button>
+            </ng-container>
           </mat-card-footer>
         </mat-card>
       </div>
@@ -126,27 +245,24 @@
       <!-- Remote Specs Card -->
       <div class="info-card spec-card">
         <h3>
-          <img src="assets/icons/wrench.svg" class="icon" /> Remote Specs
+          <img src="assets/icons/wrench.svg" class="icon icon-bw" /> Remote
+          Specs
         </h3>
         <mat-card class="info-card-content">
           <mat-card-content class="spec-content">
-            <mat-chip-grid class="specs-container">
-              <mat-chip
-                *ngFor="let spec of selectedRemote.info[1].remote_specs"
-                class="spec-pill"
-              >
+            <mat-chip-set class="specs-container">
+              <mat-chip *ngFor="let spec of selectedRemote.info[1].remote_specs" class="spec-pill">
                 <strong>{{ spec.name }}:</strong> {{ spec.value }}
               </mat-chip>
-            </mat-chip-grid>
-
+            </mat-chip-set>
           </mat-card-content>
           <mat-divider></mat-divider>
 
           <!-- Buttons -->
           <mat-card-footer class="button-container">
-            <button mat-raised-button color="primary" >
-              Edit
-            </button>
+            <button class="edit">
+              <img src="assets/icons/pen.svg" class="icon" style="filter: invert(1)" />
+              Edit</button>
           </mat-card-footer>
         </mat-card>
       </div>
@@ -154,26 +270,23 @@
       <!-- Mount Specs Card -->
       <div class="info-card mount-card">
         <h3>
-          <img src="assets/icons/mount.svg" class="icon" /> Mount Specs
+          <img src="assets/icons/mount.svg" class="icon icon-bw" /> Mount Specs
         </h3>
         <mat-card class="info-card-content">
           <mat-card-content class="mount-content">
-            <mat-chip-grid class="mount-container">
-              <mat-chip
-                *ngFor="let spec of selectedRemote.info[2].mount_specs"
-                class="spec-pill"
-              >
+            <mat-chip-set class="mount-container">
+              <mat-chip *ngFor="let spec of selectedRemote.info[2].mount_specs" class="spec-pill">
                 <strong>{{ spec.name }}:</strong> {{ spec.value }}
               </mat-chip>
-            </mat-chip-grid>
+            </mat-chip-set>
           </mat-card-content>
           <mat-divider></mat-divider>
 
           <!-- Buttons -->
           <mat-card-footer class="button-container">
-            <button mat-raised-button color="primary" >
-              Edit
-            </button>
+            <button class="edit">
+              <img src="assets/icons/pen.svg" class="icon" style="filter: invert(1)" />
+              Edit</button>
           </mat-card-footer>
         </mat-card>
       </div>

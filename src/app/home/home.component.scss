@@ -11,230 +11,367 @@
     gap: 5px;
   }
 
-  .icon {
-    width: 20px;
-    height: 20px;
+  .full-bar {
+    width: 100%;
+    height: 4.5vh;
+    min-height: 38px;
+    border-radius: 18px;
+    position: relative;
+    overflow: hidden;
   }
 
-  mat-sidenav-container {
-    width: 100%;
-    height: 100%;
+  .remote-header {
+    padding-top: 20px;
+    display: flex;
+    gap: 10px;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  mat-chip {
+    overflow: hidden;
+  }
+
+  .remote-card {
+    padding: 10px;
+    border-radius: 16px;
+    background: var(--app-background);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 0 8px var(--shadow-color);
+
+    &:hover {
+      background-color: var(--hover-color);
+    }
   }
 
   mat-sidenav {
     width: var(--sidebar-width);
-    background-color: var(--sidebar-background, #f5f5f5);
-    color: var(--sidebar-text, #333);
-    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
-  }
+    background-color: var(--app-background);
+    color: var(--app-text-color);
+    border-right-color: var(--border-color);
 
-  .sidebar {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-
-    h3 {
-      font-size: 1.2rem;
-      display: flex;
-      align-items: center;
-      flex-direction: row;
-      justify-content: center;
-      gap: 10px;
-      position: sticky;
-      top: 0;
-      background-color: var(--sidebar-background, #f5f5f5);
-      z-index: 10;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-      margin-block-start: 0;
-      padding-block: 10px;
-    }
-
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
+    .sidebar {
       display: flex;
       flex-direction: column;
-      gap: 20px;
-    }
-
-    .remote-card {
-      display: flex;
-      align-items: start;
-      cursor: pointer;
-      transition: background 0.3s ease;
-      border-radius: 8px;
-      margin-inline: 16px;
-
-      .card-content {
-        padding-top: 10px;
-        padding-bottom: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-
-        h4 {
-          font-size: 1.3rem;
-        }
-
-        p,
-        h4 {
-          display: flex;
-          align-items: center;
-          margin-block-end: 2px;
-          margin-block-start: 2px;
-        }
-      }
-
-      .mounted {
-        color: var(--green);
-        fill: var(--green);
-      }
-
-      .not-mounted {
-        color: var(--orange);
-      }
-
-      .error {
-        color: var(--red);
-      }
-
-      &:hover {
-        background-color: rgba(0, 0, 0, 0.1);
-      }
-
-      mat-icon {
-        margin-right: 10px;
-      }
-    }
-
-    .no-remotes {
-      font-size: 14px;
-      color: var(--secodary-text-color);
-      text-align: center;
-    }
-  }
-
-  .remote-details {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-    flex: 1;
-
-    .remote-header {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    .info-card {
-      display: flex;
-      flex-direction: column;
-      align-items: baseline;
-      border-radius: 8px;
-      width: 84%;
-      // max-width: 1000px;
+      height: 100%;
 
       h3 {
+        font-size: 1.2rem;
         display: flex;
         align-items: center;
+        flex-direction: row;
+        justify-content: center;
         gap: 10px;
-        margin-bottom: 10px;
+        position: sticky;
+        top: 0;
+        background-color: var(--app-background);
+        z-index: 10;
+        box-shadow: 0 2px 5px var(--shadow-color);
+        padding-block: 10px;
       }
 
-      .info-card-content {
+      ul {
+        list-style: none;
+        padding: 10px 0px;
+        margin: 0;
         display: flex;
         flex-direction: column;
         gap: 20px;
-        width: 100%;
-        padding-block: 10px;
-        border-radius: 8px;
-        background-color: white;
-        box-shadow: 0 0 14px rgba(0, 0, 0, 0.25);
+      }
 
-        .disk-usage {
+      .remote-card {
+        margin-inline: 16px;
+
+        .card-content {
+          padding-block: 0px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+
+          h4 {
+            font-size: 1.3rem;
+          }
+
+          .mounted {
+            color: var(--green);
+          }
+
+          .not-mounted {
+            color: var(--orange);
+          }
+
+          .error {
+            color: var(--red);
+          }
+        }
+      }
+
+      .no-remotes {
+        font-size: 20px;
+        color: var(--secodary-text-color);
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        padding-block: 20px;
+      }
+    }
+  }
+
+  mat-sidenav-content {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+
+    .add-remote {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 15px;
+      padding-top: 12vh;
+
+      p {
+        font-size: 20px;
+      }
+    }
+
+    .overview {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+
+      .info-card {
+        display: flex;
+        flex-direction: column;
+        align-items: baseline;
+        border-radius: 8px;
+        padding-block: 20px;
+        width: 84%;
+
+        h3 {
           display: flex;
           align-items: center;
-          flex-direction: column;
-          padding-inline: 10px;
           gap: 10px;
+          margin-bottom: 10px;
+        }
 
-          .custom-progress-bar {
-            width: 100%;
-            height: 48px;
-            border-radius: 18px;
-            border: 3px solid #70CAF2; /* Blue border */
-            background-color: #CECECE; /* Free space color */
-            position: relative;
-            overflow: hidden;
-          }
-          
-          .usage {
-            height: 100%;
-            background-color: #F89F24; /* Used space color */
-            transition: width 0.5s ease-in-out;
-          }
-          
-          .legend {
-            display: flex;
-            gap: 15px;
-            margin-top: 10px;
-          }
-          
-          .legend-item {
+        .info-card-content {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          width: 100%;
+          padding-block: 10px;
+          border-radius: 8px;
+          background-color: var(--app-background);
+          box-shadow: 0 0 14px var(--shadow-color);
+
+          .overview-content {
             display: flex;
             align-items: center;
-            font-size: 14px;
-          }
-          
-          .color-box {
-            width: 20px;
-            height: 20px;
-            border-radius: 5px;
-            display: inline-block;
-            margin-right: 5px;
-          }
-          
-          .used {
-            background-color: #F89F24;
-          }
-          
-          .free {
-            background-color: #CECECE;
-          }
-          
-          .border {
-            background-color: #70CAF2;
-          }
-          
-        }
+            flex-direction: column;
+            padding-inline: 10px;
+            gap: 10px;
 
+            .remotes-bar {
+              display: flex;
 
-        .button-container {
-          display: flex;
-          justify-content: space-evenly;
-          gap: 10px;
+              .bar {
+                height: 100%;
+
+                &.mounted-bar {
+                  background-color: var(--green);
+                }
+
+                &.unmounted-bar {
+                  background-color: var(--purple);
+                }
+
+                &.error-bar {
+                  background-color: var(--red);
+                }
+              }
+            }
+
+            .legend {
+              display: flex;
+              gap: 15px;
+              margin-top: 10px;
+
+              .legend-item {
+                display: flex;
+                align-items: center;
+                font-size: 14px;
+
+                .color-box {
+                  width: 20px;
+                  height: 20px;
+                  border-radius: 5px;
+                  display: inline-block;
+                  margin-right: 5px;
+                }
+              }
+
+              .mounted {
+                background-color: var(--green);
+              }
+
+              .unmounted {
+                background-color: var(--purple);
+              }
+
+              .error {
+                background-color: var(--red);
+              }
+            }
+          }
         }
-  
-        button {
-          min-width: 120px;
-          height: 40px;
-          font-size: 14px;
-          font-weight: bold;
+      }
+
+      .remote-list {
+        display: flex;
+        overflow-x: auto;
+        gap: 10px;
+        padding: 10px;
+        border-radius: 16px;
+        background-color: #e6e3e3;
+        box-shadow: 0 0 8px var(--shadow-color);
+
+        .remote-card {
+          align-items: center;
+
+          .remote-content {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            padding: 10px;
+
+            h4 {
+              font-size: 20px;
+            }
+          }
         }
       }
     }
 
-      h2 {
-        margin-bottom: 12px;
-      }
+    .remote-details {
+      display: flex;
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      flex: 1;
 
-      p {
-        color: var(--secodary-text-color);
-        font-size: 20px;
-        margin-bottom: 20px;
-        margin-top: 0;
+      .info-card {
+        display: flex;
+        flex-direction: column;
+        align-items: baseline;
+        border-radius: 8px;
+        padding-block: 20px;
+        width: 84%;
+
+        h3 {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 10px;
+        }
+
+        .info-card-content {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          width: 100%;
+          padding-block: 10px;
+          border-radius: 8px;
+          background-color: var(--app-background);
+          box-shadow: 0 0 14px var(--shadow-color);
+
+          .disk-usage {
+            display: flex;
+            align-items: center;
+            flex-direction: column;
+            padding-inline: 10px;
+            gap: 10px;
+
+            .disk-usage-bar {
+              border: 3px solid #70caf2; /* Blue border */
+              background-color: #cecece; /* Free space color */
+            }
+
+            .usage {
+              height: 100%;
+              background-color: var(--orange); /* Used space color */
+              transition: width 0.5s ease-in-out;
+            }
+
+            p {
+              background-color: var(--purple);
+              height: 100%;
+              width: 100%;
+              display: flex;
+              justify-content: center;
+
+              color: white; /* Unmounted bar text color */
+            }
+
+            .not-mounted-bar {
+              border: none !important;
+
+              p {
+                background-color: var(--purple);
+              }
+            }
+
+            /* When Remote has an Error */
+            .error-bar {
+              border: none !important;
+
+              p {
+                background-color: var(--red);
+              }
+            }
+
+            .legend {
+              display: flex;
+              gap: 15px;
+              margin-top: 10px;
+            }
+
+            .legend-item {
+              display: flex;
+              align-items: center;
+              font-size: 14px;
+            }
+
+            .color-box {
+              width: 20px;
+              height: 20px;
+              border-radius: 5px;
+              display: inline-block;
+              margin-right: 5px;
+            }
+
+            .used {
+              background-color: var(--orange);
+            }
+
+            .free {
+              background-color: #cecece;
+            }
+
+            .border {
+              background-color: #70caf2;
+            }
+          }
+
+          .button-container {
+            display: flex;
+            justify-content: space-evenly;
+            gap: 10px;
+          }
+        }
       }
     }
 
@@ -250,55 +387,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.3s ease;
-      color: var(--app-text-color);
 
       &:hover {
-        background: rgba(0, 0, 0, 0.1);
-      }
-
-      mat-icon {
-        font-size: 24px;
-      }
-    }
-
-    mat-sidenav-content {
-      flex: 1;
-      display: flex;
-      justify-content: center;
-      align-items: start;
-    }
-
-    .overview {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-
-      h2 {
-        margin-bottom: 12px;
-      }
-
-      p {
-        font-size: 20px;
-        margin-bottom: 20px;
-        margin-top: 0;
-      }
-
-      .addRemote {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background-color: #2196f3;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 16px;
-        cursor: pointer;
-        transition: background 0.3s ease;
-
-        &:hover {
-          background: #0b7dda;
-        }
+        background: var(--hover-color);
       }
     }
   }
+}
