@@ -1,16 +1,19 @@
 <div class="title-bar" data-tauri-drag-region>
   <div class="left-section">
-    <button mat-icon-button class="add-button"><mat-icon>add</mat-icon></button>
+    <button mat-icon-button class="add-button" (click)="openRemoteConfigModal()">
+      <mat-icon>add</mat-icon>
+    </button>
     <img 
-    src="assets/rclone_symbolic.svg" 
-    alt="RClone Manager Logo" 
-    [ngClass]="{
-      'logo-dark': selectedTheme === 'dark' || (selectedTheme === 'system' && getSystemTheme() === 'dark'),
-      'logo-light': selectedTheme === 'light' || (selectedTheme === 'system' && getSystemTheme() === 'light')
-    }"
-  />
-      <span class="title">RClone Manager</span>
+      src="assets/rclone_symbolic.svg" 
+      alt="RClone Manager Logo" 
+      [ngClass]="{
+        'logo-dark': selectedTheme === 'dark' || (selectedTheme === 'system' && getSystemTheme() === 'dark'),
+        'logo-light': selectedTheme === 'light' || (selectedTheme === 'system' && getSystemTheme() === 'light')
+      }"
+    />
+    <span class="title">RClone Manager</span>
   </div>
+  
 
   <div class="right-section">
     <button mat-icon-button>

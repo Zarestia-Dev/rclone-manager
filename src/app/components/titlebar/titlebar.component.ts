@@ -5,6 +5,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MatDividerModule } from "@angular/material/divider";
 import { CommonModule } from "@angular/common";
 import { invoke } from "@tauri-apps/api/core";
+import { MatDialog } from '@angular/material/dialog';
+import { RemoteConfigModalComponent } from "../../modals/remote-config-modal/remote-config-modal.component";
 
 const appWindow = getCurrentWindow();
 
@@ -16,6 +18,8 @@ const appWindow = getCurrentWindow();
   styleUrl: "./titlebar.component.scss",
 })
 export class TitlebarComponent implements OnInit, OnDestroy {
+
+  constructor(private dialog: MatDialog) {}
 
   closeWindow() {
     appWindow.close();
@@ -48,6 +52,26 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     }
   }
 
+  openRemoteConfigModal(remoteType?: string, remoteConfig?: any, mountConfig?: any): void {
+    const dialogRef = this.dialog.open(RemoteConfigModalComponent, {
+      width: '70vw',
+      height: '80vh',
+      data: {
+        mode: remoteConfig ? 'edit' : 'add', // Determine if it's 'add' or 'edit' mode
+        remoteType: remoteType, // Pass the remote type (e.g., 'Google Drive', 'AWS S3')
+        remote: remoteConfig, // Pass existing remote config for editing
+        mount: mountConfig, // Pass existing mount config for editing
+      },
+    });
+  
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        console.log('Remote Config Saved:', result);
+        // Handle the saved data here
+        // result will contain { remote: {...}, mount: {...} }
+      }
+    });
+  }
   ngOnInit() {
     this.selectedTheme = localStorage.getItem("app-theme") || "system";
     this.setTheme(this.selectedTheme);

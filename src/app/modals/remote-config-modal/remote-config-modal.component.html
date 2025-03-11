@@ -1,0 +1,91 @@
+<div class="modal-container">
+  <div class="modal-header" data-tauri-drag-region>
+    <div class="header-content">
+    <button><img src="assets/icons/question.svg" class="icon icon-bw" /></button>
+    <p><img src="assets/icons/hard-drive.svg" class="icon icon-bw" /> Add New Remote</p>
+    <button (click)="close()"><img src="assets/icons/circle-xmark.svg" class="icon icon-bw" /></button>
+    </div>
+    <mat-divider></mat-divider>
+  </div>
+
+  <div class="modal-content">
+    <div [@slideAnimation] *ngIf="currentStep === 1" class="step-container">
+      <form [formGroup]="remoteForm" (ngSubmit)="nextStep()">
+        <mat-form-field appearance="fill">
+          <mat-label>Remote Name</mat-label>
+          <input matInput formControlName="remoteName" id="remoteName" />
+          <mat-error *ngIf="remoteForm.get('remoteName')?.hasError('required')">
+            Remote Name is required.
+          </mat-error>
+        </mat-form-field>
+          <mat-form-field appearance="fill">
+            <mat-label>Select Remote Type</mat-label>
+            <mat-select formControlName="remoteType" id="remoteType"
+              (selectionChange)="onRemoteTypeChange(); $event.source.close()">
+              <mat-option *ngFor="let remote of remoteTypes" [value]="remote.value">
+                {{ remote.label }}
+              </mat-option>
+            </mat-select>
+            <mat-error *ngIf="remoteForm.get('remoteType')?.hasError('required')">
+              Remote Type is required.
+            </mat-error>
+          </mat-form-field>
+
+        <!-- Render dynamic remote-specific inputs -->
+        <ng-container *ngFor="let field of getDynamicFields('remote')">
+          <mat-form-field *ngIf="remoteForm.get(field)">
+            <mat-label>{{ field }}</mat-label>
+            <input matInput [formControlName]="field" />
+            <mat-error *ngIf="remoteForm.get(field)?.hasError('required')">
+              {{ field }} is required.
+            </mat-error>
+          </mat-form-field>
+        </ng-container>
+      </form>
+    </div>
+
+    <div [@slideAnimation] *ngIf="currentStep === 2" class="step-container">
+      <form [formGroup]="mountForm" (ngSubmit)="onSubmit()">
+        <mat-form-field appearance="fill">
+          <mat-label>Mount Type</mat-label>
+          <mat-select formControlName="mountType" id="mountType"
+            (selectionChange)="onMountTypeChange(); $event.source.close()">
+            <mat-option *ngFor="let mount of mountTypes" [value]="mount.value">
+              {{ mount.label }}
+            </mat-option>
+          </mat-select>
+          <mat-error *ngIf="mountForm.get('mountType')?.hasError('required')">
+            Mount Type is required.
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Render dynamic mount-specific inputs -->
+        <ng-container *ngFor="let field of getDynamicFields('mount')">
+          <mat-form-field *ngIf="mountForm.get(field)">
+            <mat-label>{{ field }}</mat-label>
+            <input matInput [formControlName]="field" />
+            <mat-error *ngIf="mountForm.get(field)?.hasError('required')">
+              {{ field }} is required.
+            </mat-error>
+          </mat-form-field>
+        </ng-container>
+      </form>
+    </div>
+
+  </div>
+
+
+  <div class="button-container">
+      <button *ngIf="currentStep === 2" class="blue" (click)="prevStep()">
+        Back
+      </button>
+      <button *ngIf="currentStep === 1" [disabled]="remoteForm.invalid"
+        (click)="nextStep()">
+        Next
+      </button>
+      <button *ngIf="currentStep === 2"  [disabled]="mountForm.invalid"
+        (click)="onSubmit()">
+        Add Remote
+      </button>
+  </div>
+</div>

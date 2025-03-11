@@ -1,0 +1,81 @@
+.modal-container {
+  height: 100%;
+  background: var(--app-background);
+  box-shadow: 0 4px 12px var(--shadow-color);
+  display: flex;
+  flex-direction: column;
+  position: relative; /* Ensure absolute positioning works for children */
+
+  .modal-header {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    background: var(--app-background);
+    color: var(--app-text-color);
+    z-index: 10;
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 10px 8px 10px;
+      align-items: center;
+      gap: 10px;
+
+      button {
+        background: none;
+        border: none;
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      p {
+        display: flex;
+        align-items: center;
+        flex-direction: row;
+        gap: 6px;
+        font-size: 20px;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .modal-content {
+    flex-grow: 1; /* Make the content take up remaining space */
+    padding: 10px;
+    overflow-y: auto; /* Allow scrolling for content */
+    
+    .step-container {
+      display: flex;
+      flex-direction: column;
+
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 10px;
+        border-radius: 5px;
+        margin-bottom: 10px;
+      }
+    }
+  }
+
+  .button-container {
+    border-top: 1px solid #939090;
+    display: flex;
+    padding: 10px 20px;
+    justify-content: space-between;
+    position: sticky; /* Stick to the bottom */
+    bottom: 0;
+    background: var(--app-background);
+    z-index: 10;
+
+    button {
+        &.disabled {
+        cursor: not-allowed;
+        background-color: #b0b0b0;
+        color: #ffffff;
+      }
+    }
+  }
+}

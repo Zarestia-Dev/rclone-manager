@@ -105,7 +105,7 @@
                     <img src="assets/icons/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
                   </p>
                 </div>
-                <button class="open-files">
+                <button class="blue">
                   <img src="assets/icons/folder-white.svg" class="icon" />
                   Open Files
                 </button>
@@ -215,7 +215,7 @@
           <!-- Buttons -->
           <mat-card-footer class="button-container">
             <ng-container *ngIf="selectedRemote.mounted === 'true'">
-              <button class="open-files" (click)="openFiles()">
+              <button class="blue" (click)="openFiles()">
                 <img src="assets/icons/folder-white.svg" class="icon" />
                 Open Files
               </button>
