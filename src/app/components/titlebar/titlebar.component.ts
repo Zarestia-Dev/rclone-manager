@@ -1,5 +1,4 @@
 import { Component, OnInit, OnDestroy } from "@angular/core";
-import { MatIconModule } from "@angular/material/icon";
 import { MatMenuModule } from "@angular/material/menu";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MatDividerModule } from "@angular/material/divider";
@@ -16,7 +15,7 @@ const appWindow = getCurrentWindow();
 @Component({
   selector: "app-titlebar",
   standalone: true,
-  imports: [MatIconModule, MatMenuModule, MatDividerModule, CommonModule],
+  imports: [MatMenuModule, MatDividerModule, CommonModule],
   templateUrl: "./titlebar.component.html",
   styleUrl: "./titlebar.component.scss",
 })

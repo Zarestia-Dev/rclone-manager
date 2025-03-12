@@ -3,12 +3,11 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-about-modal',
   standalone: true,
-  imports: [MatIconModule, CommonModule, MatDividerModule],
+  imports: [CommonModule, MatDividerModule],
   templateUrl: './about-modal.component.html',
   styleUrl: './about-modal.component.scss',
   animations: [

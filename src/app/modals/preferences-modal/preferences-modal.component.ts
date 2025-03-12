@@ -1,7 +1,6 @@
 import { animate, style, transition, trigger } from "@angular/animations";
 import { Component, HostListener } from "@angular/core";
 import { FormBuilder, FormGroup, FormsModule } from "@angular/forms";
-import { MatIconModule } from "@angular/material/icon";
 import { MatTabsModule } from "@angular/material/tabs";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { CommonModule } from "@angular/common";
@@ -15,7 +14,6 @@ import { MatDialogRef } from "@angular/material/dialog";
   standalone: true,
   imports: [
     MatTabsModule,
-    MatIconModule,
     MatSlideToggleModule,
     CommonModule,
     MatRadioModule,

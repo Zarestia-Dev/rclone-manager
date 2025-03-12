@@ -2,7 +2,6 @@ import { Component, HostListener } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { MatDrawerMode, MatSidenavModule } from "@angular/material/sidenav";
 import { MatCardModule } from "@angular/material/card";
-import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatChipsModule } from "@angular/material/chips";
 
@@ -15,7 +14,6 @@ import { MatChipsModule } from "@angular/material/chips";
     MatChipsModule,
     CommonModule,
     MatCardModule,
-    MatProgressBarModule,
   ],
   templateUrl: "./home.component.html",
   styleUrl: "./home.component.scss",

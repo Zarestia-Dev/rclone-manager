@@ -15,12 +15,13 @@
     </mat-card>
     <div class="navigation">
       <button
+        *ngIf="currentCardIndex !== 0"
         mat-icon-button
         (click)="previousCard()"
         [disabled]="currentCardIndex === 0"
         aria-label="Previous"
       >
-        <mat-icon>arrow_back</mat-icon>
+      <img src="assets/icons/circle-arrow-left.svg" class="icon" style="filter: invert(1);"/>
       </button>
     
       <button
@@ -30,7 +31,7 @@
         [disabled]="currentCardIndex === cards.length - 1"
         aria-label="Next"
       >
-        <mat-icon>arrow_forward</mat-icon>
+      <img src="assets/icons/circle-arrow-right.svg" class="icon" style="filter: invert(1);"/>
       </button>
     
       <button
@@ -40,6 +41,7 @@
         (click)="completeOnboarding()"
         aria-label="Finish"
       >
+      <img src="assets/icons/circle-check.svg" class="icon" style="filter: invert(1);"/>
         Finish
       </button>
     </div>

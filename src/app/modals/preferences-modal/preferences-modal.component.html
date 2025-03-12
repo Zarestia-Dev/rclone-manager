@@ -1,7 +1,7 @@
 <div class="preferences-modal">
 
   <div class="modal-header" data-tauri-drag-region>
-    <button><img src="assets/icons/search.svg" class="icon icon-bw" /></button>
+    <button><img src="assets/icons/titlebar/search.svg" class="icon icon-bw" /></button>
     <div class="tabs">
       <button *ngFor="let tab of tabs; let i = index" (click)="selectTab(i)" [class.active]="selectedTabIndex === i">
         <img src="assets/icons/{{tab.icon}}" class="icon icon-bw" />{{ tab.label }}

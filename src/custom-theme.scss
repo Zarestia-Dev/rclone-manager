@@ -200,6 +200,9 @@ button {
 .mat-mdc-menu-item {
   transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out !important;
   color: var(--app-text-color) !important;
+  min-height: 36px !important;
+  width: calc(100% - 12px) !important;
+  margin: 6px !important;
 
   &:hover {
     background-color: var(--button-hover) !important;

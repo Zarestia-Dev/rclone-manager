@@ -3,12 +3,11 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Output } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-onboarding',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatDividerModule, MatIconModule],
+  imports: [CommonModule, MatCardModule, MatDividerModule],
   animations: [
     trigger('slideAnimation', [
       state('void', style({ opacity: 0, transform: 'translateX(100%)' })),

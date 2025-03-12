@@ -8,7 +8,7 @@
           <mat-card-content class="card-content">
             <h4>{{ remote.name }}</h4>
             <p>
-              <img src="assets/icons/{{ remote.id }}.svg" class="icon" />
+              <img src="assets/icons/remotes/{{ remote.id }}.svg" class="icon" />
               {{ remote.id }}
             </p>
             <ng-container *ngIf="remote.mounted === 'true'">
@@ -38,7 +38,7 @@
   <!-- Main Content -->
   <mat-sidenav-content class="main-content" position="start">
     <button class="toggle-sidebar" (click)="toggleSidebar()">
-      <img src="assets/icons/menu-bar.svg" class="icon icon-bw" />
+      <img src="assets/icons/titlebar/menu-bar.svg" class="icons icon-bw" />
     </button>
 
     <!-- Add Remote Dialog -->
@@ -102,7 +102,7 @@
                 <div class="remote-content">
                   <h4>{{ remote.name }}</h4>
                   <p>
-                    <img src="assets/icons/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
+                    <img src="assets/icons/remotes/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
                   </p>
                 </div>
                 <button class="open">
@@ -125,7 +125,7 @@
                 <div class="remote-content">
                   <h4>{{ remote.name }}</h4>
                   <p>
-                    <img src="assets/icons/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
+                    <img src="assets/icons/remotes/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
                   </p>
                 </div>
                 <button class="mount">
@@ -147,7 +147,7 @@
                 <div class="remote-content">
                   <h4>{{ remote.name }}</h4>
                   <p>
-                    <img src="assets/icons/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
+                    <img src="assets/icons/remotes/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
                   </p>
                 </div>
                 <button class="fix">
@@ -165,7 +165,7 @@
       <div class="remote-header">
         <h2>{{ selectedRemote.name }}</h2>
         <p>
-          <img src="assets/icons/{{ selectedRemote.icon }}.svg" class="icon" />{{ selectedRemote.id }}
+          <img src="assets/icons/remotes/{{ selectedRemote.icon }}.svg" class="icon" />{{ selectedRemote.id }}
         </p>
       </div>
 
