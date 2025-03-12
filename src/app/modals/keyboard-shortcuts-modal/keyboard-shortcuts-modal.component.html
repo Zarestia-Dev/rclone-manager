@@ -1,0 +1,39 @@
+<div class="modal-container">
+    <div class="modal-header">
+        <button mat-icon-button (click)="close()">
+            <img src="assets/icons/search.svg" class="icon icon-bw" />
+        </button>
+        <p>Keyboard Shortcuts</p>
+        <button mat-button (click)="close()">
+            <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
+        </button>
+    </div>
+
+    <div class="modal-content">
+        <table mat-table [dataSource]="shortcuts" class="shortcut-table">
+      
+          <!-- Shortcut Keys Column -->
+          <ng-container matColumnDef="keys">
+            <th mat-header-cell *matHeaderCellDef> Shortcut </th>
+            <td mat-cell *matCellDef="let shortcut" class="shortcut-key"> 
+              {{ shortcut.keys }} 
+            </td>
+          </ng-container>
+      
+          <!-- Description Column -->
+          <ng-container matColumnDef="description">
+            <th mat-header-cell *matHeaderCellDef> Description </th>
+            <td mat-cell *matCellDef="let shortcut" class="shortcut-desc"> 
+              {{ shortcut.description }} 
+            </td>
+          </ng-container>
+      
+          <tr mat-header-row *matHeaderRowDef="['keys', 'description']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['keys', 'description'];"></tr>
+          
+        </table>
+      </div>
+      
+
+
+</div>

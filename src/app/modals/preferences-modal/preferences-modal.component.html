@@ -1,0 +1,35 @@
+<div class="preferences-modal">
+
+  <div class="modal-header" data-tauri-drag-region>
+    <button><img src="assets/icons/search.svg" class="icon icon-bw" /></button>
+    <div class="tabs">
+      <button *ngFor="let tab of tabs; let i = index" (click)="selectTab(i)" [class.active]="selectedTabIndex === i">
+        <img src="assets/icons/{{tab.icon}}" class="icon icon-bw" />{{ tab.label }}
+      </button>
+    </div>
+    <button (click)="close()"><img src="assets/icons/circle-xmark.svg" class="icon icon-bw" /></button>
+  </div>
+
+  <div class="modal-content">
+    <div *ngIf="selectedTabIndex === 0" class="tab-content">
+      <h3>General Settings</h3>
+      <mat-slide-toggle [(ngModel)]="settings.someGeneralOption">Enable feature</mat-slide-toggle>
+    </div>
+
+    <div *ngIf="selectedTabIndex === 1" class="tab-content">
+      <h3>Appearance Settings</h3>
+      <mat-radio-group [(ngModel)]="settings.theme">
+        <mat-radio-button value="light">Light Mode</mat-radio-button>
+        <mat-radio-button value="dark">Dark Mode</mat-radio-button>
+      </mat-radio-group>
+    </div>
+
+    <div *ngIf="selectedTabIndex === 2" class="tab-content">
+      <h3>Advanced Settings</h3>
+      <mat-form-field appearance="fill">
+        <mat-label>Custom Config</mat-label>
+        <input matInput [(ngModel)]="settings.customConfig">
+      </mat-form-field>
+    </div>
+  </div>
+</div>

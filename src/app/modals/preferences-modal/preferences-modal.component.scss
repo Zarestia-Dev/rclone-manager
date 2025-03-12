@@ -1,0 +1,56 @@
+.preferences-modal {
+  height: 100%;
+  background: var(--app-background);
+  box-shadow: 0 4px 12px var(--shadow-color);
+  display: flex;
+  flex-direction: column;
+  position: relative; /* Ensure absolute positioning works for children */
+
+  .modal-header {
+    display: flex;
+    flex-direction: row;
+    position: sticky;
+    top: 0;
+    background: var(--app-background);
+    color: var(--app-text-color);
+    border-bottom: 1px solid #ddd;
+    z-index: 10;
+    justify-content: space-between;
+    padding: 10px 10px 8px 10px;
+    min-height: 42px;
+    overflow-y: auto; /* Allow scrolling for content */
+
+      button {
+        color: var(--app-text-color);
+        background-color: transparent;
+
+        &.active {
+          background-color: #ddd;
+        }
+      }
+
+      .tabs {
+        display: flex;
+        gap: 2vw;
+        margin-inline: 16px;
+
+        button {
+          border-radius: 8px;
+        }
+      }
+    }
+  
+    .modal-content {
+      padding: 16px;
+      min-height: 200px;
+      overflow: hidden;
+      position: relative;
+  
+      .tab-content {
+        position: absolute;
+        width: 100%;
+        transition: transform 0.3s ease-in-out;
+      }
+    }
+  }
+  

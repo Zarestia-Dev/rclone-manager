@@ -1,0 +1,62 @@
+<div class="about-modal">
+    <!-- Main About Page -->
+    <div class="about-content" [class.blurred]="currentPage !== 'main'">
+        <button mat-icon-button class="close-btn" (click)="closeModal()">
+            <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
+        </button>
+        <img src="assets/rclone.svg" alt="App Icon" class="app-icon" />
+        <h2 class="app-name">RClone Manager</h2>
+        <p class="app-team">Hakan İSMAİL</p>
+        <span class="version-badge">{{ version }}</span>
+
+        <!-- Navigation List -->
+        <div class="about-list">
+            <button mat-button class="about-item" (click)="navigateTo('details')">
+                <span>Details</span> <img src="assets/icons/chevron-right.svg" class="icon icon-bw" />
+            </button>
+            <div class="stacked-buttons">
+                <button mat-button class="about-item" (click)="navigateTo('credits')" style="border-radius: 16px 16px 0px 0px !important;">
+                    <span>Credits</span> <img src="assets/icons/chevron-right.svg" class="icon icon-bw" />
+                </button>
+                <mat-divider></mat-divider>
+                <button mat-button class="about-item" (click)="navigateTo('legal')" style="border-radius: 0px 0px 16px 16px !important;">
+                    <span>Legal</span> <img src="assets/icons/chevron-right.svg" class="icon icon-bw" />
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay Pages -->
+    <div class="overlay" *ngIf="currentPage !== 'main'" [@slideOverlay]>
+        <div class="overlay-header">
+            <button mat-icon-button (click)="navigateTo('main')">
+                <img src="assets/icons/chevron-left.svg" class="icon icon-bw" />
+            </button>
+            <p><strong>{{ currentPage | titlecase }}</strong></p>
+            <button mat-button (click)="closeModal()">
+                <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
+            </button>
+        </div>
+
+
+        <div class="overlay-content" *ngIf="currentPage === 'details'">
+            <div class="stacked-buttons">
+                <button mat-button class="about-item" (click)="navigateTo('credits')" style="border-radius: 16px 16px 0px 0px !important;">
+                    <span>Credits</span> <img src="assets/icons/chevron-right.svg" class="icon icon-bw" />
+                </button>
+                <mat-divider></mat-divider>
+                <button mat-button class="about-item" (click)="navigateTo('legal')" style="border-radius: 0px 0px 16px 16px !important;">
+                    <span>Legal</span> <img src="assets/icons/chevron-right.svg" class="icon icon-bw" />
+                </button>
+            </div>
+        </div>
+
+        <div class="overlay-content" *ngIf="currentPage === 'credits'">
+            <p>Developed by Hakan İSMAİL.</p>
+        </div>
+
+        <div class="overlay-content" *ngIf="currentPage === 'legal'">
+            <p>Legal information about RClone Manager.</p>
+        </div>
+    </div>
+</div>

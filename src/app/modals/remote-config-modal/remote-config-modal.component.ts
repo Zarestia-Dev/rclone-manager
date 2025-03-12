@@ -1,4 +1,4 @@
-import { Component, Inject } from "@angular/core";
+import { Component, HostListener, Inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { animate, style, transition, trigger } from "@angular/animations";
 import {
@@ -101,7 +101,7 @@ export class RemoteConfigModalComponent {
     const remoteInstance = createRemoteInstance(remoteType);
     if (remoteInstance) {
       // Clear previously added fields to avoid duplicates
-      this.removeDynamicFields('remote');
+      this.removeDynamicFields("remote");
 
       // Dynamically add controls based on the remote instance
       const fields = Object.keys(remoteInstance).filter(
@@ -123,13 +123,11 @@ export class RemoteConfigModalComponent {
     const mountInstance = createMountInstance(mountType);
     if (mountInstance) {
       // Clear previously added fields to avoid duplicates
-      this.removeDynamicFields('mount');
+      this.removeDynamicFields("mount");
 
       // Dynamically add controls based on the mount instance
-      const fields = Object.keys(mountInstance).filter(
-        (key) => key !== "type"
-      );
-      
+      const fields = Object.keys(mountInstance).filter((key) => key !== "type");
+
       fields.forEach((field) => {
         this.mountForm.addControl(
           field,
@@ -175,6 +173,7 @@ export class RemoteConfigModalComponent {
     this.currentStep = 1;
   }
 
+  @HostListener("document:keydown.escape", ["$event"])
   close(): void {
     this.dialogRef.close();
   }

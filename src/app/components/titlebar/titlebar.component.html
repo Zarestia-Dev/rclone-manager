@@ -72,14 +72,14 @@
 
     <mat-divider></mat-divider>
 
-    <button mat-menu-item>
+    <button mat-menu-item (click)="openPreferencesModal()">
       <span>Preferences</span>
       <span class="shortcut">Ctrl + S</span>
     </button>
-    <button mat-menu-item>
+    <button mat-menu-item (click)="openKeyboardShortcutsModal()">
       <span>Keyboard Shortcuts</span>
       <span class="shortcut">Ctrl + ?</span>
     </button>
-    <button mat-menu-item>About RClone Manager</button>
+    <button mat-menu-item (click)="openAboutModal()">About RClone Manager</button>
   </mat-menu>
 </div>

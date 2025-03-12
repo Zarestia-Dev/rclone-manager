@@ -76,14 +76,14 @@
 
 
   <div class="button-container">
-      <button *ngIf="currentStep === 2" class="blue" (click)="prevStep()">
+      <button *ngIf="currentStep === 2" class="back" (click)="prevStep()">
         Back
       </button>
-      <button *ngIf="currentStep === 1" [disabled]="remoteForm.invalid"
+      <button *ngIf="currentStep === 1" class="next" [disabled]="remoteForm.invalid"
         (click)="nextStep()">
         Next
       </button>
-      <button *ngIf="currentStep === 2"  [disabled]="mountForm.invalid"
+      <button *ngIf="currentStep === 2" class="finish"  [disabled]="mountForm.invalid"
         (click)="onSubmit()">
         Add Remote
       </button>
