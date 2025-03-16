@@ -54,6 +54,117 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     }
   }
 
+  remotes: any[] = [
+        {
+          name: "Google Drive",
+          icon: "drive",
+          mounted: "true",
+          id: "drive",
+          info: [
+            {
+              remote_disk: [
+                { name: "Total Space", value: "15 GB" },
+                { name: "Used Space", value: "5 GB" },
+                { name: "Free Space", value: "10 GB" },
+              ],
+            },
+            {
+              remote_specs: [
+                { name: "client_id", value: "1234567890" },
+                { name: "client_secret", value: "1234567890" },
+                { name: "token", value: "1234567890" },
+                { name: "file_access", value: "full" },
+                {
+                  name: "service_account_file",
+                  value: "service_account_file.json",
+                },
+              ],
+            },
+            {
+              mount_specs: [
+                { name: "Mount Path", value: "/mnt/gdrive" },
+                { name: "Mount Type", value: "Service" },
+                { name: "Mount Options", value: "rw,uid=1000,gid=1000" },
+                {
+                  name: "spesific_mount_options",
+                  value:
+                    "--vfs-cache-max-size 20G --vfs-cache-max-age 24h --vfs-read-chunk-size 32M --vfs-read-chunk-size-limit 2G",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          name: "Dropbox",
+          icon: "dropbox",
+          mounted: "false",
+          id: "dropbox",
+          info: [
+            { remote_disk: [] },
+            {
+              remote_specs: [
+                { name: "client_id", value: "1234567890" },
+                { name: "client_secret", value: "1234567890" },
+                { name: "token", value: "1234567890" },
+                { name: "file_access", value: "full" },
+                {
+                  name: "service_account_file",
+                  value: "service_account_file.json",
+                },
+              ],
+            },
+            {
+              mount_specs: [
+                { name: "Mount Path", value: "/mnt/dropbox" },
+                { name: "Mount Type", value: "Native" },
+                { name: "Mount Options", value: "rw,uid=1000,gid=1000" },
+                {
+                  name: "spesific_mount_options",
+                  value:
+                    "--vfs-cache-max-size 20G --vfs-cache-max-age 24h --vfs-read-chunk-size 32M --vfs-read-chunk-size-limit 2G",
+                },
+              ],
+            },
+          ],
+        },
+        {
+          name: "OneDrive",
+          icon: "onedrive",
+          mounted: "error",
+          id: "onedrive",
+          info: [
+            {
+              remote_disk: [],
+            },
+            {
+              remote_specs: [
+                { name: "client_id", value: "1234567890" },
+                { name: "client_secret", value: "1234567890" },
+                { name: "token", value: "1234567890" },
+                { name: "file_access", value: "full" },
+                {
+                  name: "service_account_file",
+                  value: "service_account_file.json",
+                },
+              ],
+            },
+            {
+              mount_specs: [
+                { name: "Mount Path", value: "/mnt/onedrive" },
+                { name: "Mount Type", value: "Service" },
+                { name: "Mount Options", value: "rw,uid=1000,gid=1000" },
+                {
+                  name: "spesific_mount_options",
+                  value:
+                    "--vfs-cache-max-size 20G --vfs-cache-max-age 24h --vfs-read-chunk-size 32M --vfs-read-chunk-size-limit 2G",
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+
   openRemoteConfigModal(
     remoteType?: string,
     remoteConfig?: any,
@@ -78,8 +189,14 @@ export class TitlebarComponent implements OnInit, OnDestroy {
         console.log("Remote Config Saved:", result);
         // Handle the saved data here
         // result will contain { remote: {...}, mount: {...} }
+        this.remotes.push(result);
+        this.saveRemotes();
       }
     });
+  }
+
+  saveRemotes() {
+    localStorage.setItem("remotes", JSON.stringify(this.remotes));
   }
 
   openPreferencesModal() {

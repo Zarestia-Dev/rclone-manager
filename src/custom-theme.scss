@@ -39,7 +39,9 @@ $rclone-manager-theme: mat.define-light-theme(
 .light {
 
   /* Define custom colors for light mode */
-  --app-background: #ffffff;
+  --app-background: #fafafa;
+  --secondary-background: #ffffff;
+  --sidebar-background: #ebebeb;
   --semi-transparent-background: rgba(255, 255, 255, 0.8);
   --shadow-color: rgba(0, 0, 0, 0.32);
   --hover-color: rgb(200, 200, 200);
@@ -67,7 +69,9 @@ $rclone-manager-theme: mat.define-light-theme(
 .dark {
 
   /* Define custom colors for dark mode */
-  --app-background: #000000;
+  --app-background: #242424;
+  --secondary-background: #000000;
+  --sidebar-background: #303030;
   --semi-transparent-background: rgba(30, 30, 30, 0.8);
   --shadow-color: rgba(255, 255, 255, 0.32);
   --hover-color: rgb(55, 55, 55);
@@ -84,14 +88,18 @@ $rclone-manager-theme: mat.define-light-theme(
   --selected-border: #007bff;
   --light-theme-color: white;
   --dark-theme-color: black;
+
+}
+
+:root {
+  /* Default colors */
   --green: #5CB85C;
   --orange: #F89F24;
   --red: #FF0000;
   --blue: #2196F3;
   --purple: #9747FF;
-}
 
-:root {
+  /* Default values */
   --border-radius: 8px;
   --title-bar-padding: 8px;
   --titlebar-height: 40px; // Adjust this value to match your title bar height

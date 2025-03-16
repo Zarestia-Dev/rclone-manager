@@ -1,4 +1,4 @@
-import { Component, HostListener, Inject } from "@angular/core";
+import { Component, HostListener, Inject, Input } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { animate, style, transition, trigger } from "@angular/animations";
 import {
@@ -38,7 +38,7 @@ import {
   animations: [
     trigger("slideAnimation", [
       transition(":enter", [
-        style({ transform: "translateX(100%)", opacity: 0 }),
+        style({ transform: "translateX(100%)", opacity: 0, position: "absolute", width: "100%" }),
         animate(
           "300ms ease-in-out",
           style({ transform: "translateX(0)", opacity: 1 })
@@ -47,17 +47,23 @@ import {
       transition(":leave", [
         animate(
           "300ms ease-in-out",
-          style({ transform: "translateX(-100%)", opacity: 0 })
+          style({ transform: "translateX(-50%)", opacity: 0 })
         ),
       ]),
     ]),
-  ],
+  ],  
 })
 export class RemoteConfigModalComponent {
-  currentStep = 1;
+  @Input() editMode: boolean = false;
+  @Input() editTarget: 'remote' | 'mount' | null = null; // Determines what to edit
+  @Input() existingConfig: any = null;
+  
+  
+
   remoteForm: FormGroup;
   mountForm: FormGroup;
-
+  currentStep: number = 1;
+  
   remoteTypes = Object.keys(RemoteModels).map((key) => ({
     value: key,
     label: key,
@@ -73,6 +79,15 @@ export class RemoteConfigModalComponent {
     public dialogRef: MatDialogRef<RemoteConfigModalComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
+    this.editMode = data?.editMode || false;
+    this.editTarget = data?.editTarget || null;
+    this.existingConfig = data?.existingConfig || null;
+
+    console.log("Edit Mode:", this.editMode);
+    console.log("Edit Target:", this.editTarget);
+    console.log("Existing Config:", this.existingConfig);
+    
+
     this.remoteForm = this.fb.group({
       remoteName: ["", Validators.required],
       remoteType: ["", Validators.required],

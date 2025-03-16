@@ -215,7 +215,7 @@
           <!-- Buttons -->
           <mat-card-footer class="button-container">
             <ng-container *ngIf="selectedRemote.mounted === 'true'">
-              <button class="blue" (click)="openFiles()">
+              <button class="open" (click)="openFiles()">
                 <img src="assets/icons/folder-white.svg" class="icon" />
                 Open Files
               </button>
@@ -260,7 +260,7 @@
 
           <!-- Buttons -->
           <mat-card-footer class="button-container">
-            <button class="edit">
+            <button class="edit" (click)="openRemoteConfigModal(selectedRemote.info[1].remote_specs, 'remote')">
               <img src="assets/icons/pen.svg" class="icon" style="filter: invert(1)" />
               Edit</button>
           </mat-card-footer>
@@ -284,7 +284,7 @@
 
           <!-- Buttons -->
           <mat-card-footer class="button-container">
-            <button class="edit">
+            <button class="edit" (click)="openRemoteConfigModal(selectedRemote.info[2].mount_specs, 'mount')">
               <img src="assets/icons/pen.svg" class="icon" style="filter: invert(1)" />
               Edit</button>
           </mat-card-footer>

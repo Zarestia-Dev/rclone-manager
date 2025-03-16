@@ -35,7 +35,7 @@
   .remote-card {
     padding: 10px;
     border-radius: 16px;
-    background: var(--app-background);
+    background: var(--secondary-background);
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -48,7 +48,7 @@
 
   mat-sidenav {
     width: var(--sidebar-width);
-    background-color: var(--app-background);
+    background-color: var(--sidebar-background);
     color: var(--app-text-color);
     border-right-color: var(--border-color);
 
@@ -164,7 +164,7 @@
           width: 100%;
           padding-block: 10px;
           border-radius: 8px;
-          background-color: var(--app-background);
+          background-color: var(--secondary-background);
           box-shadow: 0 0 14px var(--shadow-color);
 
           .overview-content {

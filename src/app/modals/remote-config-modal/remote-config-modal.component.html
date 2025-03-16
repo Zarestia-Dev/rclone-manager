@@ -2,14 +2,17 @@
   <div class="modal-header" data-tauri-drag-region>
     <div class="header-content">
     <button><img src="assets/icons/question.svg" class="icon icon-bw" /></button>
-    <p><img src="assets/icons/hard-drive.svg" class="icon icon-bw" /> Add New Remote</p>
+    <p>
+      <img src="assets/icons/hard-drive.svg" class="icon icon-bw" />
+      {{ editMode ? (editTarget === 'remote' ? 'Edit Remote' : 'Edit Mount') : 'Add New Remote' }}
+    </p>    
     <button (click)="close()"><img src="assets/icons/circle-xmark.svg" class="icon icon-bw" /></button>
     </div>
     <mat-divider></mat-divider>
   </div>
 
   <div class="modal-content">
-    <div [@slideAnimation] *ngIf="currentStep === 1" class="step-container">
+    <div [@slideAnimation] *ngIf="currentStep === 1 && (!editMode || editTarget === 'remote')" class="step-container">
       <form [formGroup]="remoteForm" (ngSubmit)="nextStep()">
         <mat-form-field appearance="fill">
           <mat-label>Remote Name</mat-label>
@@ -44,7 +47,7 @@
       </form>
     </div>
 
-    <div [@slideAnimation] *ngIf="currentStep === 2" class="step-container">
+    <div [@slideAnimation] *ngIf="currentStep === 2 && (!editMode || editTarget === 'mount')" class="step-container">
       <form [formGroup]="mountForm" (ngSubmit)="onSubmit()">
         <mat-form-field appearance="fill">
           <mat-label>Mount Type</mat-label>
@@ -76,16 +79,11 @@
 
 
   <div class="button-container">
-      <button *ngIf="currentStep === 2" class="back" (click)="prevStep()">
-        Back
-      </button>
-      <button *ngIf="currentStep === 1" class="next" [disabled]="remoteForm.invalid"
-        (click)="nextStep()">
-        Next
-      </button>
-      <button *ngIf="currentStep === 2" class="finish"  [disabled]="mountForm.invalid"
-        (click)="onSubmit()">
-        Add Remote
-      </button>
+    <button *ngIf="currentStep === 2 && !editMode" class="back" (click)="prevStep()">Back</button>
+    <button *ngIf="currentStep === 1 && !editMode" class="next" [disabled]="remoteForm.invalid" (click)="nextStep()">Next</button>
+    <button class="finish" *ngIf="currentStep === 2 || editMode" [disabled]="(editTarget === 'remote' && remoteForm.invalid) || (editTarget === 'mount' && mountForm.invalid) || remoteForm.invalid" (click)="onSubmit()">
+      {{ editMode ? 'Update' : 'Add Remote' }}
+    </button>
   </div>
+  
 </div>
