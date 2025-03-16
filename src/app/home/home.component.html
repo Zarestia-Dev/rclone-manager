@@ -215,11 +215,11 @@
           <!-- Buttons -->
           <mat-card-footer class="button-container">
             <ng-container *ngIf="selectedRemote.mounted === 'true'">
-              <button class="open" (click)="openFiles()">
+              <button class="open">
                 <img src="assets/icons/folder-white.svg" class="icon" />
                 Open Files
               </button>
-              <button class="unmount" (click)="unmountRemote()">
+              <button class="unmount" (click)="unmountRemote('/mnt/{{ selectedRemote.remoteSpecs.name }}')">
                 <img src="assets/icons/circle-exclamation.svg" class="icon" style="filter: invert(1)" />
                 Unmount
               </button>
@@ -233,7 +233,7 @@
             </ng-container>
 
             <ng-container *ngIf="selectedRemote.mounted === 'error' || selectedRemote.mounted === null || selectedRemote.mounted === undefined">
-              <button class="fix" (click)="fixRemote()">
+              <button class="fix">
                 <img src="assets/icons/wrench.svg" class="icon" style="filter: invert(1)" />
                 Fix
               </button>

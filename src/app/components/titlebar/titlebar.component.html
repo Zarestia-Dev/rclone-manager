@@ -3,11 +3,10 @@
     <button mat-icon-button class="add-button" (click)="openRemoteConfigModal()">
       <img src="assets/icons/titlebar/add.svg" class="icon icon-bw" />
     </button>
-    <img src="assets/rclone_symbolic.svg" alt="RClone Manager Logo" [ngClass]="{
-        'logo-dark': selectedTheme === 'dark' || (selectedTheme === 'system' && getSystemTheme() === 'dark'),
-        'logo-light': selectedTheme === 'light' || (selectedTheme === 'system' && getSystemTheme() === 'light')
-      }" />
+    <button (click)="resetRemote()">
+      <img src="assets/rclone_symbolic.svg" alt="RClone Manager Logo" class="logo icon-bw" />
     <span class="title">RClone Manager</span>
+    </button>
   </div>
 
 

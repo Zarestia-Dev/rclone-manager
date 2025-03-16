@@ -24,15 +24,15 @@ export class AppComponent {
     });
   }
   showOnboarding = true;
-  
-  
+
+
   ngOnInit() {
     // localStorage.setItem('onboardingCompleted', 'false');
     const onboarded = localStorage.getItem('onboardingCompleted');
     this.showOnboarding = onboarded !== 'true';
-    
+
   }
-  
+
   finishOnboarding() {
     console.log(this.showOnboarding);
     localStorage.setItem('onboardingCompleted', 'true');

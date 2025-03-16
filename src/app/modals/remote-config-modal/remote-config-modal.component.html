@@ -1,52 +1,62 @@
 <div class="modal-container">
   <div class="modal-header" data-tauri-drag-region>
     <div class="header-content">
-    <button><img src="assets/icons/question.svg" class="icon icon-bw" /></button>
-    <p>
-      <img src="assets/icons/hard-drive.svg" class="icon icon-bw" />
-      {{ editMode ? (editTarget === 'remote' ? 'Edit Remote' : 'Edit Mount') : 'Add New Remote' }}
-    </p>    
-    <button (click)="close()"><img src="assets/icons/circle-xmark.svg" class="icon icon-bw" /></button>
+      <button><img src="assets/icons/question.svg" class="icon icon-bw" /></button>
+      <p>
+        <img src="assets/icons/hard-drive.svg" class="icon icon-bw" />
+        {{ editMode ? (editTarget === 'remote' ? 'Edit Remote' : 'Edit Mount') : 'Add New Remote' }}
+      </p>
+      <button (click)="close()"><img src="assets/icons/circle-xmark.svg" class="icon icon-bw" /></button>
     </div>
     <mat-divider></mat-divider>
   </div>
 
   <div class="modal-content">
+    <!-- Step 1: Remote Configuration -->
     <div [@slideAnimation] *ngIf="currentStep === 1 && (!editMode || editTarget === 'remote')" class="step-container">
       <form [formGroup]="remoteForm" (ngSubmit)="nextStep()">
         <mat-form-field appearance="fill">
           <mat-label>Remote Name</mat-label>
           <input matInput formControlName="name" id="remoteName" />
-          <mat-error *ngIf="remoteForm.get('remoteName')?.hasError('required')">
+          <mat-error *ngIf="remoteForm.get('name')?.hasError('required')">
             Remote Name is required.
           </mat-error>
         </mat-form-field>
-          <mat-form-field appearance="fill">
-            <mat-label>Select Remote Type</mat-label>
-            <mat-select formControlName="type" id="remoteType"
-              (selectionChange)="onRemoteTypeChange(); $event.source.close()">
-              <mat-option *ngFor="let remote of remoteTypes" [value]="remote.value">
-                {{ remote.label }}
-              </mat-option>
-            </mat-select>
-            <mat-error *ngIf="remoteForm.get('remoteType')?.hasError('required')">
-              Remote Type is required.
-            </mat-error>
-          </mat-form-field>
+
+        <mat-form-field appearance="fill">
+          <mat-label>Select Remote Type</mat-label>
+          <mat-select formControlName="type" id="remoteType"
+            (selectionChange)="onRemoteTypeChange(); $event.source.close()">
+            <mat-option *ngFor="let remote of remoteTypes" [value]="remote.value">
+              {{ remote.label }}
+            </mat-option>
+          </mat-select>
+          <mat-error *ngIf="remoteForm.get('type')?.hasError('required')">
+            Remote Type is required.
+          </mat-error>
+        </mat-form-field>
+
+        <!-- Show Loading State -->
+        <div *ngIf="isLoadingRemoteConfig" class="loading-container">
+          <mat-spinner diameter="30"></mat-spinner>
+          <p>Loading configuration options...</p>
+        </div>
 
         <!-- Render dynamic remote-specific inputs -->
-        <ng-container *ngFor="let field of getDynamicFields('remote')">
-          <mat-form-field *ngIf="remoteForm.get(field)">
-            <mat-label>{{ field }}</mat-label>
-            <input matInput [formControlName]="field" />
-            <mat-error *ngIf="remoteForm.get(field)?.hasError('required')">
-              {{ field }} is required.
+        <ng-container *ngFor="let field of dynamicRemoteFields">
+          <mat-label>{{ field.label }}</mat-label>
+          <mat-form-field appearance="fill">
+            <input matInput [formControlName]="field.name" />
+            <mat-error *ngIf="remoteForm.get(field.name)?.hasError('required')">
+              {{ field.label }} is required.
             </mat-error>
           </mat-form-field>
         </ng-container>
+
       </form>
     </div>
 
+    <!-- Step 2: Mount Configuration -->
     <div [@slideAnimation] *ngIf="currentStep === 2 && (!editMode || editTarget === 'mount')" class="step-container">
       <form [formGroup]="mountForm" (ngSubmit)="onSubmit()">
         <mat-form-field appearance="fill">
@@ -62,28 +72,33 @@
           </mat-error>
         </mat-form-field>
 
+        <!-- Show Loading State -->
+        <div *ngIf="isLoadingMountConfig" class="loading-container">
+          <mat-spinner diameter="30"></mat-spinner>
+          <p>Loading mount options...</p>
+        </div>
+
         <!-- Render dynamic mount-specific inputs -->
-        <ng-container *ngFor="let field of getDynamicFields('mount')">
-          <mat-form-field *ngIf="mountForm.get(field)">
-            <mat-label>{{ field }}</mat-label>
-            <input matInput [formControlName]="field" />
-            <mat-error *ngIf="mountForm.get(field)?.hasError('required')">
-              {{ field }} is required.
+        <ng-container *ngFor="let field of dynamicMountFields">
+          <mat-label>{{ field.label }}</mat-label>
+          <mat-form-field *ngIf="mountForm.get(field.name)">
+            <input matInput [formControlName]="field.name" />
+            <mat-error *ngIf="mountForm.get(field.name)?.hasError('required')">
+              {{ field.label }} is required.
             </mat-error>
           </mat-form-field>
         </ng-container>
       </form>
     </div>
-
   </div>
-
 
   <div class="button-container">
     <button *ngIf="currentStep === 2 && !editMode" class="back" (click)="prevStep()">Back</button>
     <button *ngIf="currentStep === 1 && !editMode" class="next" [disabled]="remoteForm.invalid" (click)="nextStep()">Next</button>
-    <button class="finish" *ngIf="currentStep === 2 || editMode" [disabled]="(editTarget === 'remote' && remoteForm.invalid) || (editTarget === 'mount' && mountForm.invalid) || remoteForm.invalid" (click)="onSubmit()">
+    <button class="finish" *ngIf="currentStep === 2 || editMode" 
+      [disabled]="(editTarget === 'remote' && remoteForm.invalid) || (editTarget === 'mount' && mountForm.invalid)" 
+      (click)="onSubmit()">
       {{ editMode ? 'Update' : 'Add Remote' }}
     </button>
   </div>
-  
 </div>

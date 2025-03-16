@@ -22,4 +22,12 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+tauri-plugin-dialog = "2"
+tokio = "1.44.1"
+tauri-plugin-http = "2"
+tauri-plugin-os = "2"
+zip = "2.2.3"
+reqwest = { version = "0.12.14", features = ["json"] }
+lazy_static = "1.5.0"
+dirs = "6.0.0"
 

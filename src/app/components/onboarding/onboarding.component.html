@@ -13,35 +13,46 @@
       <mat-card-title>{{ card.title }}</mat-card-title>
       <mat-card-subtitle>{{ card.content }}</mat-card-subtitle>
     </mat-card>
+
     <div class="navigation">
       <button
         *ngIf="currentCardIndex !== 0"
         mat-icon-button
         (click)="previousCard()"
-        [disabled]="currentCardIndex === 0"
         aria-label="Previous"
       >
-      <img src="assets/icons/circle-arrow-left.svg" class="icon" style="filter: invert(1);"/>
+        <img src="assets/icons/circle-arrow-left.svg" class="icon" style="filter: invert(1);"/>
       </button>
-    
+
       <button
         *ngIf="currentCardIndex !== cards.length - 1"
         mat-icon-button
         (click)="nextCard()"
-        [disabled]="currentCardIndex === cards.length - 1"
         aria-label="Next"
       >
-      <img src="assets/icons/circle-arrow-right.svg" class="icon" style="filter: invert(1);"/>
+        <img src="assets/icons/circle-arrow-right.svg" class="icon" style="filter: invert(1);"/>
       </button>
-    
+
       <button
-        *ngIf="currentCardIndex === cards.length - 1"
+        *ngIf="currentCardIndex === cards.length - 1 && !rcloneInstalled"
+        mat-raised-button
+        color="warn"
+        (click)="installRclone()"
+        [disabled]="installing"
+        aria-label="Install Rclone"
+      >
+        <img src="assets/icons/download.svg" class="icon" style="filter: invert(1);"/>
+        {{ installing ? 'Installing...' : 'Install Rclone' }}
+      </button>
+
+      <button
+        *ngIf="currentCardIndex === cards.length - 1 && rcloneInstalled"
         mat-raised-button
         color="primary"
         (click)="completeOnboarding()"
         aria-label="Finish"
       >
-      <img src="assets/icons/circle-check.svg" class="icon" style="filter: invert(1);"/>
+        <img src="assets/icons/circle-check.svg" class="icon" style="filter: invert(1);"/>
         Finish
       </button>
     </div>

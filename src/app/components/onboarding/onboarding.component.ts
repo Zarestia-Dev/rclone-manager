@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Output } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
+import { invoke } from '@tauri-apps/api/core';
 
 @Component({
   selector: 'app-onboarding',
@@ -24,6 +25,8 @@ import { MatDividerModule } from '@angular/material/divider';
 })
 export class OnboardingComponent {
   currentCardIndex = 0;
+  rcloneInstalled = false;
+  installing = false;
   @Output() completed = new EventEmitter<void>();
 
   cards = [
@@ -40,6 +43,30 @@ export class OnboardingComponent {
     this.animationState = 'forward';
     if (this.currentCardIndex < this.cards.length - 1) {
       this.currentCardIndex++;
+    }
+  }
+
+  ngOnInit(): void {
+    this.checkRclone();
+  }
+
+  async checkRclone() {
+    this.rcloneInstalled = await invoke<boolean>("check_rclone_installed");
+    if (!this.rcloneInstalled) {
+      this.cards.push({ image: "../assets/rclone.svg", title: 'Install Rclone', content: 'Rclone is not installed. Please install it to continue.' });
+    }
+  }
+
+  async installRclone() {
+    this.installing = true;
+    try {
+      const result = await invoke<string>("provision_rclone");
+      alert(result);
+      this.rcloneInstalled = true;
+    } catch (error) {
+      alert(`Installation failed: ${error}`);
+    } finally {
+      this.installing = false;
     }
   }
 

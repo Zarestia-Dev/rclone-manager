@@ -6,6 +6,8 @@ import { MatDividerModule } from "@angular/material/divider";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatDialog } from "@angular/material/dialog";
 import { RemoteConfigModalComponent } from "../modals/remote-config-modal/remote-config-modal.component";
+import { StateService } from "../services/state.service";
+import { RcloneService } from "../services/rclone.service";
 
 @Component({
   selector: "app-home",
@@ -25,130 +27,13 @@ export class HomeComponent {
   sidebarMode: MatDrawerMode = "side";
   selectedRemote: any = null;
   remotes: any[] = [];
+  mountTypes: any[] = [];
 
-  constructor(private dialog: MatDialog) {
-    this.loadRemotes();
-  }
-
-  // Load remotes from localStorage
-  loadRemotes() {
-    // // Clear remotes localStorage
-    // localStorage.removeItem("remotes");
-    const storedRemotes = localStorage.getItem("remotes");
-
-    if (storedRemotes) {
-      this.remotes = JSON.parse(storedRemotes);
-      console.log("Remotes loaded:", this.remotes);
-      
-    }
-     else {
-
-      // If no stored data, initialize with example remotes
-      this.remotes = [
-        {
-            "remote_disk": {
-              "total_space": "15 GB",
-              "used_space": "5 GB",
-              "free_space": "10 GB"
-            },
-          "remoteSpecs": {
-            "name": "Google Drive",
-            "type": "drive",
-            "client_id": "1234567890",
-            "client_secret": "1234567890",
-            "token": "1234567890",
-            "file_access": "full",
-            "service_account_file": "service_account_file.json"
-          },
-          "mountSpecs": {
-            "mount_path": "/mnt/gdrive",
-            "mount_type": "Service",
-            "mount_options": {
-              "rw": true,
-              "uid": 1000,
-              "gid": 1000
-            },
-            "specific_mount_options": {
-              "vfs-cache-max-size": "20G",
-              "vfs-cache-max-age": "24h",
-              "vfs-read-chunk-size": "32M",
-              "vfs-read-chunk-size-limit": "2G"
-            }
-          }
-        },
-
-  // {
-  //   name: "Dropbox",
-  //   icon: "dropbox",
-  //   mounted: "false",
-  //   id: "dropbox",
-  //   info: [
-  //     { remote_disk: [] },
-  //     {
-  //       remote_specs: [
-  //         { name: "client_id", value: "1234567890" },
-  //         { name: "client_secret", value: "1234567890" },
-  //         { name: "token", value: "1234567890" },
-  //         { name: "file_access", value: "full" },
-  //         {
-  //           name: "service_account_file",
-  //           value: "service_account_file.json",
-  //         },
-  //       ],
-  //     },
-  //     {
-  //       mount_specs: [
-  //         { name: "Mount Path", value: "/mnt/dropbox" },
-  //         { name: "Mount Type", value: "Native" },
-  //         { name: "Mount Options", value: "rw,uid=1000,gid=1000" },
-  //         {
-  //           name: "spesific_mount_options",
-  //           value:
-  //             "--vfs-cache-max-size 20G --vfs-cache-max-age 24h --vfs-read-chunk-size 32M --vfs-read-chunk-size-limit 2G",
-  //         },
-  //       ],
-  //     },
-  //   ],
-  // },
-  // {
-  //   name: "OneDrive",
-  //   icon: "onedrive",
-  //   mounted: "error",
-  //   id: "onedrive",
-  //   info: [
-  //     {
-  //       remote_disk: [],
-  //     },
-  //     {
-  //       remote_specs: [
-  //         { name: "client_id", value: "1234567890" },
-  //         { name: "client_secret", value: "1234567890" },
-  //         { name: "token", value: "1234567890" },
-  //         { name: "file_access", value: "full" },
-  //         {
-  //           name: "service_account_file",
-  //           value: "service_account_file.json",
-  //         },
-  //       ],
-  //     },
-  //     {
-  //       mount_specs: [
-  //         { name: "Mount Path", value: "/mnt/onedrive" },
-  //         { name: "Mount Type", value: "Service" },
-  //         { name: "Mount Options", value: "rw,uid=1000,gid=1000" },
-  //         {
-  //           name: "spesific_mount_options",
-  //           value:
-  //             "--vfs-cache-max-size 20G --vfs-cache-max-age 24h --vfs-read-chunk-size 32M --vfs-read-chunk-size-limit 2G",
-  //         },
-  //       ],
-  //     },
-  //   ],
-  // },
-];
-      this.saveRemotes(); // Save default remotes
-    }
-  }
+  constructor(
+    private dialog: MatDialog,
+    private stateService: StateService,
+    private rcloneService: RcloneService
+  ) {}
 
   // Save remotes to localStorage
   saveRemotes() {
@@ -221,12 +106,6 @@ export class HomeComponent {
     }
   }
 
-  ngOnInit(): void {
-    const savedState = localStorage.getItem("sidebarState");
-    this.isSidebarOpen = savedState === "true";
-    this.updateSidebarMode();
-  }
-
   ngOnDestroy(): void {
     localStorage.setItem("sidebarState", String(this.isSidebarOpen));
   }
@@ -244,31 +123,38 @@ export class HomeComponent {
       maxHeight: "600px",
       disableClose: true,
       data: {
-        editMode: true,
+        editMode: true, // Set editMode only if editing
         editTarget: type,
         existingConfig: existingConfig
-      }
+        ? { ...existingConfig, mountSpecs: existingConfig.mountSpecs || {} } // Ensure mountSpecs exists
+        : null,      },
     });
-
+  
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
-      console.log("Remote Config Saved:", result);
-      // Handle the saved data here
-      // result will contain { remote: {...}, mount: {...} }
-      const index = this.remotes.findIndex((remote) => remote.id === result.remote.id);
-      if (index !== -1) {
-        this.remotes[index] = result;
-      } else {
-        this.remotes.push(result);
-      }
-      this.saveRemotes();
+        console.log("Remote Config Saved:", result);
+  
+        // Find the existing remote by name (or other unique identifier)
+        const index = this.remotes.findIndex((remote) => 
+          remote.remoteSpecs.name === result.remoteSpecs.name
+        );
+  
+        if (index !== -1) {
+          this.remotes[index] = { ...result }; // Update existing remote
+        } else {
+          this.remotes.push(result); // Add as a new remote
+        }
+  
+        this.saveRemotes();
       }
     });
   }
+  
+  
 
   deleteRemote(remote: any) {
     console.log("Deleting remote:", remote);
-    
+
     const index = this.remotes.findIndex((r) => r.id === remote.id);
     if (index !== -1) {
       this.remotes.splice(index, 1);
@@ -276,23 +162,81 @@ export class HomeComponent {
     }
   }
 
-  fixRemote() {
-    // Fix remote
+  mountedRemotes: string[] = [];
+
+  async ngOnInit(): Promise<void> {
+    await this.refreshMounts();
+    const savedState = localStorage.getItem("sidebarState");
+    this.isSidebarOpen = savedState === "true";
+    this.updateSidebarMode();
+    this.stateService.selectedRemote$.subscribe((remote) => {
+      this.selectedRemote = remote;
+    });
+    await this.loadRemotes();
+    await this.refreshMounts();
+    await this.loadRemotes();
+    await this.loadMountTypes();
   }
 
-  unmountRemote() {
-    // Unmount remote
+/** Fetch mount types dynamically */
+async loadMountTypes(): Promise<void> {
+  try {
+    const response = await this.rcloneService.getMountTypes();
+    this.mountTypes = [
+      { value: "Native", label: "Native (Direct Mounting)" },
+      { value: "Systemd", label: "Systemd Service Mounting" },
+      ...response.map((type: string) => ({ value: type, label: type })),
+    ];
+  } catch (error) {
+    console.error("Error fetching mount types:", error);
+  }
+}
+
+  /** Fetch all remotes and their configs in one request */
+  async loadRemotes(): Promise<void> {
+    const remoteConfigs = await this.rcloneService.getAllRemoteConfigs(); // ✅ Fetch all at once
+    const remoteNames = Object.keys(remoteConfigs); // Extract remote names
+
+    this.remotes = remoteNames.map((name) => ({
+      remoteSpecs: {
+        name: name,
+        ...remoteConfigs[name], // Merge config details
+      },
+      mounted: this.mountedRemotes.includes(`/mnt/${name}`) ? "true" : "false",
+    }));
+
+    console.log("Loaded Remotes:", this.remotes);
   }
 
-  mountRemote() {
-    // Mount remote
+  /** Get list of mounted remotes */
+  async refreshMounts(): Promise<void> {
+    this.mountedRemotes = await this.rcloneService.listMounts();
   }
 
-  openFiles() {
-    // Open files
+
+  /** Add a mount */
+  async addMount(remote: any): Promise<void> {
+    const mountPoint = `/mnt/${remote.remoteSpecs.name}`;
+    await this.rcloneService.addMount(remote.remoteSpecs.name, mountPoint);
+    await this.loadMountTypes();
   }
 
-  addRemote() {
-    // Add remote
+  /** Remove a mount */
+  async removeMount(remote: any): Promise<void> {
+    await this.rcloneService.removeMount(remote.remoteSpecs.name);
+    await this.loadMountTypes();
+  }
+
+  async mountRemote(): Promise<void> {
+    const remoteName = "gdrive";
+    const mountPoint = "/mnt/gdrive";
+
+    await this.rcloneService.mountRemote(remoteName, mountPoint);
+    await this.refreshMounts();
+  }
+
+  async unmountRemote(mountPoint: string): Promise<void> {
+    await this.rcloneService.unmountRemote(mountPoint);
+    await this.refreshMounts();
   }
 }

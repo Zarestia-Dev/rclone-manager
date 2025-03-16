@@ -45,23 +45,21 @@
       }
     }
 
-    .logo-light {
-      width: 32px;
-      height: 32px;
-      transition: filter 0.3s ease-in-out;
-      filter: invert(0); // Default image color
-    }
-    
-    .logo-dark {
-      width: 32px;
-      height: 32px;
-      transition: filter 0.3s ease-in-out;
-      filter: invert(1); // Inverts colors for dark mode (if the image is dark by default)
-    }
+    button {
+      &:hover {
+        background: var(--secondary-background);
+      }
+      .logo {
+        cursor: pointer;
+        width: 32px;
+        height: 32px;
+      }
 
-    .title {
-      font-weight: bold;
-      transition: color 0.3s ease-in-out;
+      .title {
+        cursor: pointer;
+        font-weight: bold;
+        transition: color 0.3s ease-in-out;
+      }
     }
   }
 

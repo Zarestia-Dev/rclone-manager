@@ -9,6 +9,7 @@ import { RemoteConfigModalComponent } from "../../modals/remote-config-modal/rem
 import { PreferencesModalComponent } from "../../modals/preferences-modal/preferences-modal.component";
 import { KeyboardShortcutsModalComponent } from "../../modals/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component";
 import { AboutModalComponent } from "../../modals/about-modal/about-modal.component";
+import { StateService } from "../../services/state.service";
 
 const appWindow = getCurrentWindow();
 
@@ -20,7 +21,11 @@ const appWindow = getCurrentWindow();
   styleUrl: "./titlebar.component.scss",
 })
 export class TitlebarComponent implements OnInit, OnDestroy {
-  constructor(private dialog: MatDialog) {}
+  constructor(private dialog: MatDialog, private stateService: StateService) {}
+
+  resetRemote(): void {
+    this.stateService.resetSelectedRemote();
+  }
 
   closeWindow() {
     appWindow.close();
@@ -175,6 +180,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
       }
     });
   }
+
 
   saveRemotes() {
     localStorage.setItem("remotes", JSON.stringify(this.remotes));
