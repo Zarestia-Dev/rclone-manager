@@ -6,10 +6,10 @@
       <ul *ngIf="remotes.length > 0">
         <mat-card class="remote-card" *ngFor="let remote of remotes" (click)="selectRemote(remote)">
           <mat-card-content class="card-content">
-            <h4>{{ remote.name }}</h4>
+            <h4>{{ remote.remoteSpecs.name }}</h4>
             <p>
-              <img src="assets/icons/remotes/{{ remote.id }}.svg" class="icon" />
-              {{ remote.id }}
+              <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon" />
+              {{ remote.remoteSpecs.type }}
             </p>
             <ng-container *ngIf="remote.mounted === 'true'">
               <p class="mounted">
@@ -21,9 +21,9 @@
                 <img src="assets/icons/circle-xmark-orange.svg" class="icon" />Not Mounted
               </p>
             </ng-container>
-            <ng-container *ngIf="remote.mounted === 'error'">
+            <ng-container *ngIf="remote.mounted === 'error' || remote.mounted === null || remote.mounted === undefined">
               <p class="error">
-                <img src="assets/icons/circle-exclamation-red.svg" class="icon" />Error
+              <img src="assets/icons/circle-exclamation-red.svg" class="icon" />Error
               </p>
             </ng-container>
           </mat-card-content>
@@ -46,7 +46,7 @@
       <img src="../../assets/rclone-2.svg" alt="" />
       <h2>RClone Manager</h2>
       <p>Press the “Add New Remote” to add a new remote</p>
-      <button (click)="addRemote()" class="new-remote">
+      <button (click)="openRemoteConfigModal()" class="new-remote">
         <img src="assets/icons/add-white.svg" class="icon" /> Add Remote
       </button>
     </div>
@@ -163,9 +163,9 @@
     <!-- Remote Details (Show When a Remote is Selected) -->
     <div class="remote-details" *ngIf="selectedRemote">
       <div class="remote-header">
-        <h2>{{ selectedRemote.name }}</h2>
+        <h2>{{ selectedRemote.remoteSpecs.name }}</h2>
         <p>
-          <img src="assets/icons/remotes/{{ selectedRemote.icon }}.svg" class="icon" />{{ selectedRemote.id }}
+          <img src="assets/icons/remotes/{{ selectedRemote.remoteSpecs.type }}.svg" class="icon" />{{ selectedRemote.remoteSpecs.type }}
         </p>
       </div>
 
@@ -181,10 +181,10 @@
             <!-- Progress Bar -->
             <div class="full-bar disk-usage-bar" [ngClass]="{
                 'not-mounted-bar': selectedRemote.mounted === 'false',
-                'error-bar': selectedRemote.mounted === 'error'
+                'error-bar': selectedRemote.mounted === 'error' || selectedRemote.mounted === null || selectedRemote.mounted === undefined
               }">
               <p *ngIf="selectedRemote.mounted === 'false'">Not Mounted</p>
-              <p *ngIf="selectedRemote.mounted === 'error'">Error</p>
+              <p *ngIf="selectedRemote.mounted === 'error' || selectedRemote.mounted === null || selectedRemote.mounted === undefined ">Error</p>
               <div *ngIf="selectedRemote.mounted === 'true'" class="usage" [ngStyle]="{
                   width:
                     selectedRemote.mounted === 'true'
@@ -232,7 +232,7 @@
               </button>
             </ng-container>
 
-            <ng-container *ngIf="selectedRemote.mounted === 'error'">
+            <ng-container *ngIf="selectedRemote.mounted === 'error' || selectedRemote.mounted === null || selectedRemote.mounted === undefined">
               <button class="fix" (click)="fixRemote()">
                 <img src="assets/icons/wrench.svg" class="icon" style="filter: invert(1)" />
                 Fix
@@ -250,17 +250,21 @@
         </h3>
         <mat-card class="info-card-content">
           <mat-card-content class="spec-content">
-            <mat-chip-set class="specs-container">
-              <mat-chip *ngFor="let spec of selectedRemote.info[1].remote_specs" class="spec-pill">
-                <strong>{{ spec.name }}:</strong> {{ spec.value }}
+            <mat-chip class="not-found" *ngIf="!selectedRemote.remoteSpecs">
+              <strong>Remote Specs not found</strong>
+            </mat-chip>
+            <mat-chip-set class="specs-container" *ngIf="selectedRemote.remoteSpecs">
+              <mat-chip *ngFor="let spec of selectedRemote.remoteSpecs | keyvalue" class="spec-pill">
+                <strong>{{ spec.key }}:</strong> {{ spec.value }}
               </mat-chip>
             </mat-chip-set>
           </mat-card-content>
+
           <mat-divider></mat-divider>
 
           <!-- Buttons -->
           <mat-card-footer class="button-container">
-            <button class="edit" (click)="openRemoteConfigModal(selectedRemote.info[1].remote_specs, 'remote')">
+            <button class="edit" (click)="openRemoteConfigModal(selectedRemote.remoteSpecs, 'remote')">
               <img src="assets/icons/pen.svg" class="icon" style="filter: invert(1)" />
               Edit</button>
           </mat-card-footer>
@@ -274,22 +278,31 @@
         </h3>
         <mat-card class="info-card-content">
           <mat-card-content class="mount-content">
-            <mat-chip-set class="mount-container">
-              <mat-chip *ngFor="let spec of selectedRemote.info[2].mount_specs" class="spec-pill">
-                <strong>{{ spec.name }}:</strong> {{ spec.value }}
+            <mat-chip class="not-found" *ngIf="!selectedRemote.mountSpecs">
+              <strong>Mount Specs not found</strong>
+            </mat-chip>
+            <mat-chip-set class="mount-container" *ngIf="selectedRemote.mountSpecs">
+              <mat-chip *ngFor="let spec of selectedRemote.mountSpecs | keyvalue" class="spec-pill">
+                <strong>{{ spec.key }}:</strong> {{ spec.value }}
               </mat-chip>
             </mat-chip-set>
           </mat-card-content>
+
           <mat-divider></mat-divider>
 
           <!-- Buttons -->
           <mat-card-footer class="button-container">
-            <button class="edit" (click)="openRemoteConfigModal(selectedRemote.info[2].mount_specs, 'mount')">
+            <button class="edit" (click)="openRemoteConfigModal(selectedRemote.mountSpecs, 'mount')">
               <img src="assets/icons/pen.svg" class="icon" style="filter: invert(1)" />
               Edit</button>
           </mat-card-footer>
         </mat-card>
-      </div>
+        </div>
+        <button class="delete" (click)="deleteRemote(selectedRemote)">
+          <img src="assets/icons/trash.svg" class="icon" style="filter: invert(1)" />
+          Delete
+        </button>        
+
     </div>
   </mat-sidenav-content>
 </mat-sidenav-container>

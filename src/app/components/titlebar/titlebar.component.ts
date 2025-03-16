@@ -55,133 +55,114 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   }
 
   remotes: any[] = [
-        {
-          name: "Google Drive",
-          icon: "drive",
-          mounted: "true",
-          id: "drive",
-          info: [
-            {
-              remote_disk: [
-                { name: "Total Space", value: "15 GB" },
-                { name: "Used Space", value: "5 GB" },
-                { name: "Free Space", value: "10 GB" },
-              ],
-            },
-            {
-              remote_specs: [
-                { name: "client_id", value: "1234567890" },
-                { name: "client_secret", value: "1234567890" },
-                { name: "token", value: "1234567890" },
-                { name: "file_access", value: "full" },
-                {
-                  name: "service_account_file",
-                  value: "service_account_file.json",
-                },
-              ],
-            },
-            {
-              mount_specs: [
-                { name: "Mount Path", value: "/mnt/gdrive" },
-                { name: "Mount Type", value: "Service" },
-                { name: "Mount Options", value: "rw,uid=1000,gid=1000" },
-                {
-                  name: "spesific_mount_options",
-                  value:
-                    "--vfs-cache-max-size 20G --vfs-cache-max-age 24h --vfs-read-chunk-size 32M --vfs-read-chunk-size-limit 2G",
-                },
-              ],
-            },
-          ],
+    {
+        "remote_disk": {
+          "total_space": "15 GB",
+          "used_space": "5 GB",
+          "free_space": "10 GB"
         },
-        {
-          name: "Dropbox",
-          icon: "dropbox",
-          mounted: "false",
-          id: "dropbox",
-          info: [
-            { remote_disk: [] },
-            {
-              remote_specs: [
-                { name: "client_id", value: "1234567890" },
-                { name: "client_secret", value: "1234567890" },
-                { name: "token", value: "1234567890" },
-                { name: "file_access", value: "full" },
-                {
-                  name: "service_account_file",
-                  value: "service_account_file.json",
-                },
-              ],
-            },
-            {
-              mount_specs: [
-                { name: "Mount Path", value: "/mnt/dropbox" },
-                { name: "Mount Type", value: "Native" },
-                { name: "Mount Options", value: "rw,uid=1000,gid=1000" },
-                {
-                  name: "spesific_mount_options",
-                  value:
-                    "--vfs-cache-max-size 20G --vfs-cache-max-age 24h --vfs-read-chunk-size 32M --vfs-read-chunk-size-limit 2G",
-                },
-              ],
-            },
-          ],
+      "remoteSpecs": {
+        "name": "Google Drive",
+        "type": "drive",
+        "client_id": "1234567890",
+        "client_secret": "1234567890",
+        "token": "1234567890",
+        "file_access": "full",
+        "service_account_file": "service_account_file.json"
+      },
+      "mountSpecs": {
+        "mount_path": "/mnt/gdrive",
+        "mount_type": "Service",
+        "mount_options": {
+          "rw": true,
+          "uid": 1000,
+          "gid": 1000
         },
-        {
-          name: "OneDrive",
-          icon: "onedrive",
-          mounted: "error",
-          id: "onedrive",
-          info: [
-            {
-              remote_disk: [],
-            },
-            {
-              remote_specs: [
-                { name: "client_id", value: "1234567890" },
-                { name: "client_secret", value: "1234567890" },
-                { name: "token", value: "1234567890" },
-                { name: "file_access", value: "full" },
-                {
-                  name: "service_account_file",
-                  value: "service_account_file.json",
-                },
-              ],
-            },
-            {
-              mount_specs: [
-                { name: "Mount Path", value: "/mnt/onedrive" },
-                { name: "Mount Type", value: "Service" },
-                { name: "Mount Options", value: "rw,uid=1000,gid=1000" },
-                {
-                  name: "spesific_mount_options",
-                  value:
-                    "--vfs-cache-max-size 20G --vfs-cache-max-age 24h --vfs-read-chunk-size 32M --vfs-read-chunk-size-limit 2G",
-                },
-              ],
-            },
-          ],
-        },
-      ];
+        "specific_mount_options": {
+          "vfs-cache-max-size": "20G",
+          "vfs-cache-max-age": "24h",
+          "vfs-read-chunk-size": "32M",
+          "vfs-read-chunk-size-limit": "2G"
+        }
+      }
+    },
+    // {
+    //   name: "Dropbox",
+    //   icon: "dropbox",
+    //   mounted: "false",
+    //   id: "dropbox",
+    //   info: [
+    //     { remote_disk: [] },
+    //     {
+    //       remote_specs: [
+    //         { name: "client_id", value: "1234567890" },
+    //         { name: "client_secret", value: "1234567890" },
+    //         { name: "token", value: "1234567890" },
+    //         { name: "file_access", value: "full" },
+    //         {
+    //           name: "service_account_file",
+    //           value: "service_account_file.json",
+    //         },
+    //       ],
+    //     },
+    //     {
+    //       mount_specs: [
+    //         { name: "Mount Path", value: "/mnt/dropbox" },
+    //         { name: "Mount Type", value: "Native" },
+    //         { name: "Mount Options", value: "rw,uid=1000,gid=1000" },
+    //         {
+    //           name: "spesific_mount_options",
+    //           value:
+    //             "--vfs-cache-max-size 20G --vfs-cache-max-age 24h --vfs-read-chunk-size 32M --vfs-read-chunk-size-limit 2G",
+    //         },
+    //       ],
+    //     },
+    //   ],
+    // },
+    // {
+    //   name: "OneDrive",
+    //   icon: "onedrive",
+    //   mounted: "error",
+    //   id: "onedrive",
+    //   info: [
+    //     {
+    //       remote_disk: [],
+    //     },
+    //     {
+    //       remote_specs: [
+    //         { name: "client_id", value: "1234567890" },
+    //         { name: "client_secret", value: "1234567890" },
+    //         { name: "token", value: "1234567890" },
+    //         { name: "file_access", value: "full" },
+    //         {
+    //           name: "service_account_file",
+    //           value: "service_account_file.json",
+    //         },
+    //       ],
+    //     },
+    //     {
+    //       mount_specs: [
+    //         { name: "Mount Path", value: "/mnt/onedrive" },
+    //         { name: "Mount Type", value: "Service" },
+    //         { name: "Mount Options", value: "rw,uid=1000,gid=1000" },
+    //         {
+    //           name: "spesific_mount_options",
+    //           value:
+    //             "--vfs-cache-max-size 20G --vfs-cache-max-age 24h --vfs-read-chunk-size 32M --vfs-read-chunk-size-limit 2G",
+    //         },
+    //       ],
+    //     },
+    //   ],
+    // },
+  ];
 
-
-  openRemoteConfigModal(
-    remoteType?: string,
-    remoteConfig?: any,
-    mountConfig?: any
-  ): void {
+  openRemoteConfigModal(): void {
     const dialogRef = this.dialog.open(RemoteConfigModalComponent, {
       width: "70vw",
       maxWidth: "800px",
       height: "80vh",
       maxHeight: "600px",
       disableClose: true,
-      data: {
-        mode: remoteConfig ? "edit" : "add", // Determine if it's 'add' or 'edit' mode
-        remoteType: remoteType, // Pass the remote type (e.g., 'Google Drive', 'AWS S3')
-        remote: remoteConfig, // Pass existing remote config for editing
-        mount: mountConfig, // Pass existing mount config for editing
-      },
     });
 
     dialogRef.afterClosed().subscribe((result) => {

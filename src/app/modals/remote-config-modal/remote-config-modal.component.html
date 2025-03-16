@@ -16,14 +16,14 @@
       <form [formGroup]="remoteForm" (ngSubmit)="nextStep()">
         <mat-form-field appearance="fill">
           <mat-label>Remote Name</mat-label>
-          <input matInput formControlName="remoteName" id="remoteName" />
+          <input matInput formControlName="name" id="remoteName" />
           <mat-error *ngIf="remoteForm.get('remoteName')?.hasError('required')">
             Remote Name is required.
           </mat-error>
         </mat-form-field>
           <mat-form-field appearance="fill">
             <mat-label>Select Remote Type</mat-label>
-            <mat-select formControlName="remoteType" id="remoteType"
+            <mat-select formControlName="type" id="remoteType"
               (selectionChange)="onRemoteTypeChange(); $event.source.close()">
               <mat-option *ngFor="let remote of remoteTypes" [value]="remote.value">
                 {{ remote.label }}

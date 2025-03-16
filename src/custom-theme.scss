@@ -176,6 +176,7 @@ button {
     background-color: var(--blue);
   }
 
+  &.delete,
   &.unmount {
     background-color: var(--red);
   }

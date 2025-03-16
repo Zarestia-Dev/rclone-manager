@@ -89,8 +89,8 @@ export class RemoteConfigModalComponent {
     
 
     this.remoteForm = this.fb.group({
-      remoteName: ["", Validators.required],
-      remoteType: ["", Validators.required],
+      name: ["", Validators.required],
+      type: ["", Validators.required],
     });
 
     this.mountForm = this.fb.group({
@@ -99,7 +99,7 @@ export class RemoteConfigModalComponent {
   }
 
   onRemoteTypeChange(): void {
-    const selectedRemoteType = this.remoteForm.get("remoteType")?.value;
+    const selectedRemoteType = this.remoteForm.get("type")?.value;
     if (selectedRemoteType) {
       this.addRemoteSpecificFields(selectedRemoteType);
     }
@@ -161,7 +161,7 @@ export class RemoteConfigModalComponent {
       const fields = this.remoteForm.controls;
       for (const controlName in fields) {
         if (fields.hasOwnProperty(controlName)) {
-          if (controlName !== "remoteName" && controlName !== "remoteType") {
+          if (controlName !== "name" && controlName !== "type") {
             this.remoteForm.removeControl(controlName);
           }
         }
@@ -196,8 +196,8 @@ export class RemoteConfigModalComponent {
   onSubmit(): void {
     if (this.mountForm.valid) {
       const data = {
-        remoteConfig: this.remoteForm.value,
-        mountOptions: this.mountForm.value,
+        remoteSpecs: this.remoteForm.value,
+        mountSpecs: this.mountForm.value,
       };
       console.log("Submitted Data:", data);
       this.dialogRef.close(data); // Pass the data back when closing the modal
@@ -206,7 +206,7 @@ export class RemoteConfigModalComponent {
 
   getDynamicFields(type: string): string[] {
     if (type === "remote") {
-      const remoteType = this.remoteForm.get("remoteType")?.value;
+      const remoteType = this.remoteForm.get("type")?.value;
       const remoteInstance = createRemoteInstance(remoteType);
       if (remoteInstance) {
         return Object.keys(remoteInstance).filter(

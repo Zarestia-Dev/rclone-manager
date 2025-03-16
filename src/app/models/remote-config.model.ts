@@ -1,4 +1,3 @@
-// Define a base interface for remote configurations
 export interface RemoteConfig {
   name: string;
   type: string;
@@ -13,35 +12,39 @@ export class BaseRemote implements RemoteConfig {
 
 // Google Drive remote configuration
 export class GoogleDriveRemote extends BaseRemote {
-  clientId: string = '';
-  refreshToken: string = '';
+  client_id: string = '';
+  client_secret: string = '';
+  scope: Array<string> = [];
+  service_account_file: string = '';
+  token: string = '';
+  team_drive: string = '';
 }
 
 // AWS S3 remote configuration
 export class AwsS3Remote extends BaseRemote {
-  accessKey: string = '';
-  secretKey: string = '';
+  access_key: string = '';
+  secret_key: string = '';
   bucket: string = '';
 }
 
 // OneDrive remote configuration
 export class OneDriveRemote extends BaseRemote {
-  clientId: string = '';
-  clientSecret: string = '';
+  client_id: string = '';
+  client_secret: string = '';
 }
 
 // Dropbox remote configuration
 export class DropboxRemote extends BaseRemote {
-  clientId: string = '';
-  clientSecret: string = '';
+  client_id: string = '';
+  client_secret: string = '';
 }
 
 // Map remote types to their respective classes
 export const RemoteModels: { [key: string]: new () => BaseRemote } = {
-  'Google Drive': GoogleDriveRemote,
-  'AWS S3': AwsS3Remote,
-  'OneDrive': OneDriveRemote,
-  'Dropbox': DropboxRemote,
+  'drive': GoogleDriveRemote,
+  's3': AwsS3Remote,
+  'onedrive': OneDriveRemote,
+  'dropbox': DropboxRemote,
 };
 
 // Utility function to get an instance of a remote configuration
