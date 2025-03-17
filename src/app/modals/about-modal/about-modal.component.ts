@@ -1,8 +1,11 @@
 import { animate, style, transition, trigger } from "@angular/animations";
 import { CommonModule } from "@angular/common";
-import { Component, HostListener } from "@angular/core";
+import { Component, HostListener, inject } from "@angular/core";
 import { MatDialogRef } from "@angular/material/dialog";
 import { MatDividerModule } from "@angular/material/divider";
+import { openUrl } from '@tauri-apps/plugin-opener'
+import { MatSnackBar } from "@angular/material/snack-bar";
+
 
 @Component({
   selector: "app-about-modal",
@@ -23,6 +26,7 @@ import { MatDividerModule } from "@angular/material/divider";
   ],
 })
 export class AboutModalComponent {
+  private _snackBar = inject(MatSnackBar);
   currentPage = "main";
   version = "1.0.0";
 
@@ -33,8 +37,26 @@ export class AboutModalComponent {
     this.dialogRef.close();
   }
 
-  openGitHub() {
-    window.open("https://gitlab.com/Hakanbaban53/rclone-manager", "_blank");
+  openLink(link: string) {
+    openUrl(link);
+  }
+
+  openSnackBar(message: string, action: string) {
+    this._snackBar.open(message, action, {
+      duration: 2000,
+    });
+  }
+
+  copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text).then(
+      () => {
+        this.openSnackBar("Copied to clipboard", "Close");
+      },
+      (err) => {
+        console.error("Failed to copy to clipboard:", err);
+        this.openSnackBar("Failed to copy to clipboard", "Close");
+      }
+    );
   }
 
   closeModal() {

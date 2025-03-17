@@ -1,6 +1,6 @@
 .about-modal {
   position: relative;
-  background: var(--app-background);
+  background: var(--secondary-background);
   padding: 10px 10px 21px;
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
   text-align: center;
@@ -15,10 +15,12 @@
       filter: blur(4px);
     }
 
-    .close-btn {
+    .header {
       width: 100%;
       display: flex;
       justify-content: flex-end;
+      align-items: center;
+      gap: 10px;
     }
   }
 
@@ -48,6 +50,11 @@
     border-radius: 10px;
     font-weight: bold;
     font-size: 14px;
+
+    &:hover {
+      background: #d6e7f9;
+      color: #005b9f;
+    }
   }
 
   .about-list {
@@ -72,8 +79,6 @@
     &:hover {
       background: var(--hover-color);
     }
-
-    
   }
   .stacked-buttons {
     display: flex;
@@ -93,7 +98,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: var(--app-background);
+    background: var(--secondary-background);
     box-shadow: 0px 4px 10px var(--shadow-color);
     display: flex;
     flex-direction: column;
@@ -104,9 +109,19 @@
     .overlay-header {
       display: flex;
       justify-content: space-between;
-      width: 100%;
-      padding-block: 6px;
       align-items: center;
+      padding: 10px;
+      width: calc(100% - 20px);
+      
+    }
+
+    .credits {
+      color: var(--app-text-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: start;
+      align-items: baseline;
+      gap: 10px;
     }
 
     .overlay-content {
@@ -114,6 +129,12 @@
       flex-grow: 1;
       padding-block-start: 16px;
 
+      a {
+        color: var(--blue);
+        text-decoration: none;
+        font-weight: 500;
+        cursor: pointer;
+      }
     }
   }
 

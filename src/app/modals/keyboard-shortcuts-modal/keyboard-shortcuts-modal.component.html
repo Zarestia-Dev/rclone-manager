@@ -1,39 +1,36 @@
 <div class="modal-container">
-    <div class="modal-header">
-        <button mat-icon-button (click)="close()">
-            <img src="assets/icons/titlebar/search.svg" class="icon icon-bw" />
-        </button>
-        <p>Keyboard Shortcuts</p>
-        <button mat-button (click)="close()">
-            <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
-        </button>
-    </div>
+  <!-- Header -->
+  <div class="modal-header">
+    <button mat-icon-button (click)="toggleSearch()">
+      <img src="assets/icons/titlebar/search.svg" class="icon icon-bw" />
+    </button>
+    <p>Shortcuts</p>
+    <button mat-button (click)="close()">
+      <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
+    </button>
+  </div>
 
-    <div class="modal-content">
-        <table mat-table [dataSource]="shortcuts" class="shortcut-table">
-      
-          <!-- Shortcut Keys Column -->
-          <ng-container matColumnDef="keys">
-            <th mat-header-cell *matHeaderCellDef> Shortcut </th>
-            <td mat-cell *matCellDef="let shortcut" class="shortcut-key"> 
-              {{ shortcut.keys }} 
-            </td>
-          </ng-container>
-      
-          <!-- Description Column -->
-          <ng-container matColumnDef="description">
-            <th mat-header-cell *matHeaderCellDef> Description </th>
-            <td mat-cell *matCellDef="let shortcut" class="shortcut-desc"> 
-              {{ shortcut.description }} 
-            </td>
-          </ng-container>
-      
-          <tr mat-header-row *matHeaderRowDef="['keys', 'description']"></tr>
-          <tr mat-row *matRowDef="let row; columns: ['keys', 'description'];"></tr>
-          
-        </table>
-      </div>
-      
+  <!-- Search Box with Animation -->
+  <div class="search-container" [@slideToggle]="searchVisible ? 'visible' : 'hidden'">
+      <input matInput [(ngModel)]="searchText" (keyup)="filterShortcuts()" placeholder="Find a shortcut..." />
+  </div>
 
+  <!-- Shortcuts Table -->
+  <div class="modal-content">
+    <table mat-table [dataSource]="filteredShortcuts" class="shortcut-table">
+      <ng-container matColumnDef="keys">
+        <td mat-cell *matCellDef="let shortcut" class="shortcut-key">
+          <span *ngFor="let key of shortcut.keys.split('+')" class="key">{{ key }}</span>
+        </td>
+      </ng-container>
 
+      <ng-container matColumnDef="description">
+        <td mat-cell *matCellDef="let shortcut" class="shortcut-desc">
+          {{ shortcut.description }}
+        </td>
+      </ng-container>
+
+      <tr mat-row *matRowDef="let row; columns: ['keys', 'description'];"></tr>
+    </table>
+  </div>
 </div>

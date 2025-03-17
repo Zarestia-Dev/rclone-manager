@@ -2,58 +2,70 @@
   background: var(--app-background);
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  max-width: 450px;
   padding: 15px;
   display: flex;
   flex-direction: column;
-}
+  overflow: hidden;
+  height: 100%;
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: bold;
-  font-size: 18px;
-  padding-bottom: 10px;
-}
+  .search-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
 
-.modal-content {
-  padding: 10px 0;
-}
-
-.modal-content {
-  padding: 20px;
-  display: flex;
-  justify-content: center;
-
-  .shortcut-table {
-    width: 100%;
-    border-collapse: collapse;
-
-    th {
-      text-align: left;
+    input {
       padding: 8px;
+      border-radius: var(--border-radius);
+      border: 1px solid #ddd;
       font-size: 16px;
-      font-weight: bold;
-      background: #f5f5f5;
+      width: 100%;
     }
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    font-size: 18px;
+    padding-bottom: 10px;
+  }
 
-    td {
-      padding: 10px;
-      font-size: 14px;
-    }
+  .modal-content {
+    border-radius: calc(var(--border-radius) * 2);
+    display: flex;
+    justify-content: center;
+    overflow: auto;
 
-    .shortcut-key {
-      font-weight: bold;
-      font-family: monospace;
-      text-align: left;
-      padding-right: 20px;
-      width: 40%;
-    }
+    .shortcut-table {
+      width: 100%;
+      border-collapse: collapse;
 
-    .shortcut-desc {
-      text-align: left;
-      width: 60%;
+      th {
+        text-align: left;
+        padding: 6px;
+        font-size: 16px;
+        font-weight: bold;
+        background: #f5f5f5;
+      }
+
+      td {
+        padding: 8px;
+        font-size: 14px;
+      }
+
+      .shortcut-key {
+        font-weight: bold;
+        font-family: monospace;
+        text-align: left;
+        padding-right: 20px;
+        width: 40%;
+      }
+
+      .shortcut-desc {
+        text-align: left;
+        width: 60%;
+      }
     }
   }
 }

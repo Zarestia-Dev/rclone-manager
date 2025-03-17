@@ -1,7 +1,9 @@
 use dirs::home_dir;
+use reqwest::Client;
+use tokio::runtime::Runtime;
 use std::process::{Command, Stdio};
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use crate::api::{is_rc_api_running, list_mounts};
@@ -83,21 +85,37 @@ pub fn remove_mount(remote: String) -> Result<(), String> {
     save_mount_configs()
 }
 
-pub fn start_mount_tracker() {
-    thread::spawn(|| {
-        // Wait until RC API is available
-        while !tokio::runtime::Runtime::new().unwrap().block_on(is_rc_api_running()) {
+pub fn start_mount_tracker(stop_signal: Arc<Mutex<bool>>) {
+    let rt = Runtime::new().expect("Failed to create Tokio runtime");
+
+    std::thread::spawn(move || {
+        let _client = Client::new();
+
+        // Wait for RC API to be available (max 10 retries)
+        for _ in 0..10 {
+            if rt.block_on(is_rc_api_running()) {
+                println!("Rclone RC API is up.");
+                break;
+            }
             eprintln!("Waiting for Rclone RC API to start...");
-            thread::sleep(Duration::from_secs(5));
+            std::thread::sleep(Duration::from_secs(5));
         }
 
         loop {
-            match tokio::runtime::Runtime::new().unwrap().block_on(list_mounts()) {
+            {
+                let stop = stop_signal.lock().unwrap();
+                if *stop {
+                    println!("Stopping mount tracker...");
+                    break;
+                }
+            }
+
+            match rt.block_on(list_mounts()) {
                 Ok(mounts) => println!("Active Mounts: {:?}", mounts),
                 Err(e) => eprintln!("Error tracking mounts: {}", e),
             }
-            
-            thread::sleep(Duration::from_secs(10));
+
+            std::thread::sleep(Duration::from_secs(10));
         }
     });
 }

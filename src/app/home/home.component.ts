@@ -28,6 +28,7 @@ export class HomeComponent {
   selectedRemote: any = null;
   remotes: any[] = [];
   mountTypes: any[] = [];
+  mountedRemotes: { fs: string; mount_point: string }[] = [];
 
   constructor(
     private dialog: MatDialog,
@@ -35,28 +36,29 @@ export class HomeComponent {
     private rcloneService: RcloneService
   ) {}
 
-  // Save remotes to localStorage
-  saveRemotes() {
-    localStorage.setItem("remotes", JSON.stringify(this.remotes));
+  async ngOnInit(): Promise<void> {
+    const savedState = localStorage.getItem("sidebarState");
+    this.isSidebarOpen = savedState === "true";
+    this.updateSidebarMode();
+
+    this.stateService.selectedRemote$.subscribe((remote) => {
+      this.selectedRemote = remote;
+    });
+
+    await this.refreshMounts();
+    await this.loadRemotes();
+    await this.loadMountTypes();
   }
+
+  async openFiles(remoteName: any): Promise<void> {
+    const mountPoint = `/home/hakan/${remoteName}`;
+    await this.rcloneService.openInFiles(mountPoint);
+  }
+  
 
   // Select a remote for editing
   selectRemote(remote: any) {
     this.selectedRemote = { ...remote }; // Clone object to prevent direct modification
-  }
-
-  // Save the edited remote back to the array
-  saveEditedRemote() {
-    if (this.selectedRemote) {
-      const index = this.remotes.findIndex(
-        (remote) => remote.id === this.selectedRemote.id
-      );
-      if (index !== -1) {
-        this.remotes[index] = { ...this.selectedRemote }; // Update remote
-        this.saveRemotes(); // Save changes to localStorage
-      }
-    }
-    this.selectedRemote = null;
   }
 
   // Get only mounted remotes
@@ -88,8 +90,8 @@ export class HomeComponent {
   }
 
   getUsagePercentage(remote: any): number {
-    const used = parseFloat(remote.info[0]?.remote_disk?.[1]?.value) || 0;
-    const total = parseFloat(remote.info[0]?.remote_disk?.[0]?.value) || 1;
+    const used = parseFloat(remote.diskUsage.used_space) || 0;
+    const total = parseFloat(remote.diskUsage.total_space) || 1;
     return (used / total) * 100;
   }
 
@@ -132,20 +134,7 @@ export class HomeComponent {
   
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
-        console.log("Remote Config Saved:", result);
-  
-        // Find the existing remote by name (or other unique identifier)
-        const index = this.remotes.findIndex((remote) => 
-          remote.remoteSpecs.name === result.remoteSpecs.name
-        );
-  
-        if (index !== -1) {
-          this.remotes[index] = { ...result }; // Update existing remote
-        } else {
-          this.remotes.push(result); // Add as a new remote
-        }
-  
-        this.saveRemotes();
+        console.log("Modal Result:", result);
       }
     });
   }
@@ -153,70 +142,104 @@ export class HomeComponent {
   
 
   deleteRemote(remote: any) {
-    console.log("Deleting remote:", remote);
-
-    const index = this.remotes.findIndex((r) => r.id === remote.id);
-    if (index !== -1) {
-      this.remotes.splice(index, 1);
-      this.saveRemotes();
-    }
-  }
-
-  mountedRemotes: string[] = [];
-
-  async ngOnInit(): Promise<void> {
-    await this.refreshMounts();
-    const savedState = localStorage.getItem("sidebarState");
-    this.isSidebarOpen = savedState === "true";
-    this.updateSidebarMode();
-    this.stateService.selectedRemote$.subscribe((remote) => {
-      this.selectedRemote = remote;
+    this.rcloneService.deleteRemote(remote.remoteSpecs.name).then(() => {
+      this.remotes = this.remotes.filter(
+        (r) => r.remoteSpecs.name !== remote.remoteSpecs.name
+      );
     });
-    await this.loadRemotes();
-    await this.refreshMounts();
-    await this.loadRemotes();
-    await this.loadMountTypes();
   }
 
-/** Fetch mount types dynamically */
-async loadMountTypes(): Promise<void> {
-  try {
-    const response = await this.rcloneService.getMountTypes();
-    this.mountTypes = [
-      { value: "Native", label: "Native (Direct Mounting)" },
-      { value: "Systemd", label: "Systemd Service Mounting" },
-      ...response.map((type: string) => ({ value: type, label: type })),
-    ];
-  } catch (error) {
-    console.error("Error fetching mount types:", error);
-  }
-}
 
   /** Fetch all remotes and their configs in one request */
   async loadRemotes(): Promise<void> {
-    const remoteConfigs = await this.rcloneService.getAllRemoteConfigs(); // ✅ Fetch all at once
-    const remoteNames = Object.keys(remoteConfigs); // Extract remote names
+    const remoteConfigs = await this.rcloneService.getAllRemoteConfigs();
+    const remoteNames = Object.keys(remoteConfigs);
+    console.log(remoteNames);
+    
+  
+    this.remotes = await Promise.all(
+      remoteNames.map(async (name) => {
+        const mountPoint = `/home/hakan/${name}`;
+        const mounted = this.isRemoteMounted(name);
+                
+        let diskUsage = null;
+        if (mounted) {
+          try {
+            diskUsage = await this.rcloneService.getDiskUsage(mountPoint);
+            console.log("Disk Usage for", name, ":", diskUsage);
+            
+          } catch (error) {
+            console.error("Failed to fetch disk usage:", error);
+          }
+        }
+  
+        return {
+          remoteSpecs: { name, ...remoteConfigs[name] },
+          mounted: mounted ? "true" : "false",
+          diskUsage: diskUsage || { total_space: "N/A", used_space: "N/A", free_space: "N/A" }
+        };
+      })
+    );
+  
+    console.log("Loaded Remotes with Disk Info:", this.remotes);
+  }
+  
 
-    this.remotes = remoteNames.map((name) => ({
-      remoteSpecs: {
-        name: name,
-        ...remoteConfigs[name], // Merge config details
-      },
-      mounted: this.mountedRemotes.includes(`/mnt/${name}`) ? "true" : "false",
-    }));
-
-    console.log("Loaded Remotes:", this.remotes);
+  /** Fetch all mount types dynamically */
+  async loadMountTypes(): Promise<void> {
+    try {
+      const response = await this.rcloneService.getMountTypes();
+      this.mountTypes = [
+        { value: "Native", label: "Native (Direct Mounting)" },
+        { value: "Systemd", label: "Systemd Service Mounting" },
+        ...response.map((type: string) => ({ value: type, label: type })),
+      ];
+    } catch (error) {
+      console.error("Error fetching mount types:", error);
+    }
   }
 
   /** Get list of mounted remotes */
   async refreshMounts(): Promise<void> {
-    this.mountedRemotes = await this.rcloneService.listMounts();
+    this.mountedRemotes = await this.rcloneService.getMountedRemotes();
+    console.log("Mounted Remotes:", this.mountedRemotes);
+    
+  }
+
+  /** Check if a remote is mounted */
+  isRemoteMounted(remoteName: string): boolean {
+    return this.mountedRemotes.some((mount) => mount.fs === `${remoteName}:`);
+  }
+  
+
+  /** Mount a remote */
+  async mountRemote(remoteName: string): Promise<void> {
+    const mountPoint = `/home/hakan/${remoteName}`;
+    console.log("Mounting remote:", remoteName, "to:", mountPoint);
+
+    await this.rcloneService.mountRemote(remoteName, mountPoint);
+    await this.refreshMounts();
+    await this.loadRemotes();
+  }
+
+  /** Unmount a remote */
+  async unmountRemote(remoteName: string): Promise<void> {
+    const mountPoint = this.mountedRemotes.find((mount) => mount.fs === `${remoteName}:`)?.mount_point;
+    console.log("Unmounting remote:", remoteName, "from:", mountPoint);
+    if (!mountPoint) {
+      console.warn(`No mount point found for ${remoteName}`);
+      return;
+    }
+
+    await this.rcloneService.unmountRemote(mountPoint);
+    await this.refreshMounts();
+    await this.loadRemotes();
   }
 
 
   /** Add a mount */
   async addMount(remote: any): Promise<void> {
-    const mountPoint = `/mnt/${remote.remoteSpecs.name}`;
+    const mountPoint = `/home/hakan/${remote.remoteSpecs.name}`;
     await this.rcloneService.addMount(remote.remoteSpecs.name, mountPoint);
     await this.loadMountTypes();
   }
@@ -227,16 +250,5 @@ async loadMountTypes(): Promise<void> {
     await this.loadMountTypes();
   }
 
-  async mountRemote(): Promise<void> {
-    const remoteName = "gdrive";
-    const mountPoint = "/mnt/gdrive";
 
-    await this.rcloneService.mountRemote(remoteName, mountPoint);
-    await this.refreshMounts();
-  }
-
-  async unmountRemote(mountPoint: string): Promise<void> {
-    await this.rcloneService.unmountRemote(mountPoint);
-    await this.refreshMounts();
-  }
 }

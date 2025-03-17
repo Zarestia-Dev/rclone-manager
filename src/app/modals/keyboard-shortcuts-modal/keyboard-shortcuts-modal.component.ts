@@ -1,27 +1,40 @@
+import { animate, state, style, transition, trigger } from '@angular/animations';
 import { CommonModule } from '@angular/common';
 import { Component, HostListener } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
 
 @Component({
   selector: 'app-keyboard-shortcuts-modal',
   standalone: true,
-  imports: [CommonModule, MatTableModule],
+  imports: [CommonModule, MatTableModule, MatFormFieldModule, MatInputModule, FormsModule],
   templateUrl: './keyboard-shortcuts-modal.component.html',
-  styleUrl: './keyboard-shortcuts-modal.component.scss'
+  styleUrl: './keyboard-shortcuts-modal.component.scss',
+  animations: [
+    trigger("slideToggle", [
+      state("hidden", style({ height: "0px", opacity: 0 })),
+      state("visible", style({ height: "*", opacity: 1 })),
+      transition("hidden <=> visible", animate("300ms ease-in-out")),
+    ]),
+  ],
+
 })
 export class KeyboardShortcutsModalComponent {
+  searchText = "";
+  searchVisible = false; // Controls the visibility of search field
   shortcuts = [
-    { keys: 'Ctrl + N', description: 'New Remote' },
-    { keys: 'Ctrl + M', description: 'Manage Mounts' },
-    { keys: 'Ctrl + P', description: 'Preferences' },
-    { keys: 'Esc', description: 'Close Modal' },
-    { keys: 'Ctrl + S', description: 'Save Config' },
-    { keys: 'Ctrl + Q', description: 'Quit Application' },
-    { keys: 'Ctrl + R', description: 'Refresh' },
-    { keys: 'Ctrl + T', description: 'Open Terminal' }
+    { keys: "Ctrl + ,", description: "Preferences" },
+    { keys: "Ctrl + ?", description: "Show Shortcuts" },
+    { keys: "Ctrl + Q / Ctrl + W", description: "Quit" },
+    { keys: "Ctrl + F / F3", description: "Toggle Search Field" },
+    { keys: "Ctrl + N", description: "New Remote" },
+    { keys: "Ctrl + O", description: "Open Remote" },
+    { keys: "Ctrl + S", description: "Save" },
   ];
-  
+  filteredShortcuts = [...this.shortcuts];
 
   constructor(private dialogRef: MatDialogRef<KeyboardShortcutsModalComponent>) {}
 
@@ -33,4 +46,16 @@ export class KeyboardShortcutsModalComponent {
   close() {
     this.dialogRef.close();
   }
+
+  toggleSearch() {
+    this.searchVisible = !this.searchVisible;
+  }
+
+  filterShortcuts() {
+    this.filteredShortcuts = this.shortcuts.filter(shortcut =>
+      shortcut.description.toLowerCase().includes(this.searchText.toLowerCase()) ||
+      shortcut.keys.toLowerCase().includes(this.searchText.toLowerCase())
+    );
+  }
+
 }

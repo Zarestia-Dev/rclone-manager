@@ -8,7 +8,7 @@
           <mat-card-content class="card-content">
             <h4>{{ remote.remoteSpecs.name }}</h4>
             <p>
-              <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon" />
+                <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon" onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';" />
               {{ remote.remoteSpecs.type }}
             </p>
             <ng-container *ngIf="remote.mounted === 'true'">
@@ -23,7 +23,7 @@
             </ng-container>
             <ng-container *ngIf="remote.mounted === 'error' || remote.mounted === null || remote.mounted === undefined">
               <p class="error">
-              <img src="assets/icons/circle-exclamation-red.svg" class="icon" />Error
+                <img src="assets/icons/circle-exclamation-red.svg" class="icon" />Error
               </p>
             </ng-container>
           </mat-card-content>
@@ -98,14 +98,15 @@
               <img src="assets/icons/mount.svg" class="icon icon-bw" /> Mounted Remotes
             </h3>
             <div class="remote-list">
-              <div *ngFor="let remote of getMountedRemotes()" class="remote-card">
+              <div *ngFor="let remote of getMountedRemotes()" class="remote-card" (click)="selectRemote(remote)">
                 <div class="remote-content">
-                  <h4>{{ remote.name }}</h4>
+                  <h4>{{ remote.remoteSpecs.name }}</h4>
                   <p>
-                    <img src="assets/icons/remotes/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
+                    <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon" onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';"/>{{
+                    remote.remoteSpecs.type }}
                   </p>
                 </div>
-                <button class="open">
+                <button class="open" (click)="openFiles(remote.remoteSpecs.name); $event.stopPropagation()">
                   <img src="assets/icons/folder-white.svg" class="icon" />
                   Open Files
                 </button>
@@ -121,14 +122,15 @@
               <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" /> Unmounted Remotes
             </h3>
             <div class="remote-list">
-              <div *ngFor="let remote of getUnmountedRemotes()" class="remote-card">
+              <div *ngFor="let remote of getUnmountedRemotes()" class="remote-card" (click)="selectRemote(remote)">
                 <div class="remote-content">
-                  <h4>{{ remote.name }}</h4>
+                  <h4>{{ remote.remoteSpecs.name }}</h4>
                   <p>
-                    <img src="assets/icons/remotes/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
+                    <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon" onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';"/>{{
+                    remote.remoteSpecs.type }}
                   </p>
                 </div>
-                <button class="mount">
+                <button class="mount" (click)="mountRemote(remote.remoteSpecs.name)">
                   <img src="assets/icons/mount.svg" class="icon" style="filter: invert(1)" />
                   Mount</button>
               </div>
@@ -143,11 +145,12 @@
               <img src="assets/icons/circle-exclamation.svg" class="icon icon-bw" /> Remotes with Problems
             </h3>
             <div class="remote-list">
-              <div *ngFor="let remote of getErrorRemotes()" class="remote-card">
+              <div *ngFor="let remote of getErrorRemotes()" class="remote-card" (click)="selectRemote(remote)">
                 <div class="remote-content">
-                  <h4>{{ remote.name }}</h4>
+                  <h4>{{ remote.remoteSpecs.name }}</h4>
                   <p>
-                    <img src="assets/icons/remotes/{{ remote.icon }}.svg" class="icon" />{{ remote.id }}
+                    <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon" onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';"/>{{
+                    remote.remoteSpecs.type }}
                   </p>
                 </div>
                 <button class="fix">
@@ -165,7 +168,8 @@
       <div class="remote-header">
         <h2>{{ selectedRemote.remoteSpecs.name }}</h2>
         <p>
-          <img src="assets/icons/remotes/{{ selectedRemote.remoteSpecs.type }}.svg" class="icon" />{{ selectedRemote.remoteSpecs.type }}
+          <img src="assets/icons/remotes/{{ selectedRemote.remoteSpecs.type }}.svg" class="icon" onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';"/>{{
+          selectedRemote.remoteSpecs.type }}
         </p>
       </div>
 
@@ -184,7 +188,9 @@
                 'error-bar': selectedRemote.mounted === 'error' || selectedRemote.mounted === null || selectedRemote.mounted === undefined
               }">
               <p *ngIf="selectedRemote.mounted === 'false'">Not Mounted</p>
-              <p *ngIf="selectedRemote.mounted === 'error' || selectedRemote.mounted === null || selectedRemote.mounted === undefined ">Error</p>
+              <p
+                *ngIf="selectedRemote.mounted === 'error' || selectedRemote.mounted === null || selectedRemote.mounted === undefined ">
+                Error</p>
               <div *ngIf="selectedRemote.mounted === 'true'" class="usage" [ngStyle]="{
                   width:
                     selectedRemote.mounted === 'true'
@@ -197,15 +203,15 @@
             <div class="legend" *ngIf="selectedRemote.mounted === 'true'">
               <div class="legend-item">
                 <span class="color-box border"></span> Total Space:
-                {{ selectedRemote.info[0].remote_disk[0].value }}
+                {{ selectedRemote.diskUsage.total_space }}
               </div>
               <div class="legend-item">
                 <span class="color-box used"></span> Used Space:
-                {{ selectedRemote.info[0].remote_disk[1].value }}
+                {{ selectedRemote.diskUsage.used_space }}
               </div>
               <div class="legend-item">
                 <span class="color-box free"></span> Free Space:
-                {{ selectedRemote.info[0].remote_disk[2].value }}
+                {{ selectedRemote.diskUsage.free_space }}
               </div>
             </div>
           </mat-card-content>
@@ -215,24 +221,25 @@
           <!-- Buttons -->
           <mat-card-footer class="button-container">
             <ng-container *ngIf="selectedRemote.mounted === 'true'">
-              <button class="open">
+              <button class="open" (click)="openFiles(selectedRemote.remoteSpecs.name)">
                 <img src="assets/icons/folder-white.svg" class="icon" />
                 Open Files
               </button>
-              <button class="unmount" (click)="unmountRemote('/mnt/{{ selectedRemote.remoteSpecs.name }}')">
+              <button class="unmount" (click)="unmountRemote(selectedRemote.remoteSpecs.name)">
                 <img src="assets/icons/circle-exclamation.svg" class="icon" style="filter: invert(1)" />
                 Unmount
               </button>
             </ng-container>
 
             <ng-container *ngIf="selectedRemote.mounted === 'false'">
-              <button class="mount" (click)="mountRemote()">
+              <button class="mount" (click)="mountRemote(selectedRemote.remoteSpecs.name)">
                 <img src="assets/icons/mount.svg" class="icon" style="filter: invert(1)" />
                 Mount
               </button>
             </ng-container>
 
-            <ng-container *ngIf="selectedRemote.mounted === 'error' || selectedRemote.mounted === null || selectedRemote.mounted === undefined">
+            <ng-container
+              *ngIf="selectedRemote.mounted === 'error' || selectedRemote.mounted === null || selectedRemote.mounted === undefined">
               <button class="fix">
                 <img src="assets/icons/wrench.svg" class="icon" style="filter: invert(1)" />
                 Fix
@@ -297,11 +304,11 @@
               Edit</button>
           </mat-card-footer>
         </mat-card>
-        </div>
-        <button class="delete" (click)="deleteRemote(selectedRemote)">
-          <img src="assets/icons/trash.svg" class="icon" style="filter: invert(1)" />
-          Delete
-        </button>        
+      </div>
+      <button class="delete" (click)="deleteRemote(selectedRemote)">
+        <img src="assets/icons/trash.svg" class="icon" style="filter: invert(1)" />
+        Delete
+      </button>
 
     </div>
   </mat-sidenav-content>

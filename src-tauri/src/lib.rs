@@ -1,8 +1,9 @@
 use api::{
-    get_all_remote_configs, get_mount_options, get_mount_types, get_remote_config,
-    get_remote_config_fields,
+    create_remote, delete_remote, get_all_remote_configs, get_mount_options, get_mount_types, get_mounted_remotes, get_remote_config, get_remote_config_fields, get_saved_mount_configs, save_mount_config, update_remote
 };
 use api::{get_remotes, list_mounts, mount_remote, unmount_remote};
+use config::open_in_files;
+use disk_helper::get_disk_usage;
 use mount::{add_mount, get_mount_configs, remove_mount};
 use rclone_api::{get_remote_types, RcloneState};
 use reqwest::Client;
@@ -20,6 +21,7 @@ pub mod config;
 pub mod mount;
 pub mod rclone_api;
 pub mod tracker;
+pub  mod disk_helper;
 
 #[tauri::command]
 async fn check_rclone_installed() -> bool {
@@ -137,7 +139,7 @@ async fn provision_rclone(window: Window) -> Result<String, String> {
     }
 
     // Ask user for installation location
-    let folder_location = get_folder_location(&window)
+    let folder_location = get_folder_location(window)
         .await
         .ok_or("No installation folder selected.".to_string())?;
 
@@ -152,7 +154,8 @@ async fn provision_rclone(window: Window) -> Result<String, String> {
     ))
 }
 
-async fn get_folder_location(window: &Window) -> Option<String> {
+#[tauri::command]
+async fn get_folder_location(window: Window) -> Option<String> {
     window
         .dialog()
         .file()
@@ -195,7 +198,16 @@ pub fn run() {
             get_remote_types,
             get_mount_types,
             get_mount_options,
-            get_remote_config_fields
+            get_remote_config_fields,
+            create_remote,
+            update_remote,
+            delete_remote,
+            get_saved_mount_configs,
+            save_mount_config,
+            get_mounted_remotes,
+            get_disk_usage,
+            open_in_files,
+            get_folder_location
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

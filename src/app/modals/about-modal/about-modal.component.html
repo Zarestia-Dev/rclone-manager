@@ -1,13 +1,15 @@
 <div class="about-modal">
     <!-- Main About Page -->
     <div class="about-content" [class.blurred]="currentPage !== 'main'">
-        <button mat-icon-button class="close-btn" (click)="closeModal()">
-            <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
-        </button>
+        <div class="header" data-tauri-drag-region>
+            <button mat-icon-button class="close-btn" (click)="closeModal()">
+                <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
+            </button>
+        </div>
         <img src="assets/rclone.svg" alt="App Icon" class="app-icon" />
         <h2 class="app-name">RClone Manager</h2>
         <p class="app-team">Hakan İSMAİL</p>
-        <span class="version-badge">{{ version }}</span>
+        <span class="version-badge" (click)="copyToClipboard(version)">{{ version }}</span>
 
         <!-- Navigation List -->
         <div class="about-list">
@@ -41,22 +43,25 @@
 
         <div class="overlay-content" *ngIf="currentPage === 'details'">
             <div class="stacked-buttons">
-                <button mat-button class="about-item" (click)="navigateTo('credits')" style="border-radius: 16px 16px 0px 0px !important;">
-                    <span>Credits</span> <img src="assets/icons/chevron-right.svg" class="icon icon-bw" />
+                <button mat-button class="about-item" (click)="openLink('https://gitlab.com/Hakanbaban53/rclone-manager')" style="border-radius: 16px 16px 0px 0px !important;">
+                    <span>Website</span> <img src="assets/icons/arrow-up-right-from-square.svg" class="icon icon-bw" />
                 </button>
                 <mat-divider></mat-divider>
-                <button mat-button class="about-item" (click)="navigateTo('legal')" style="border-radius: 0px 0px 16px 16px !important;">
-                    <span>Legal</span> <img src="assets/icons/chevron-right.svg" class="icon icon-bw" />
+                <button mat-button class="about-item" (click)="openLink('https://gitlab.com/Hakanbaban53/rclone-manager/-/issues')" style="border-radius: 0px 0px 16px 16px !important;">
+                    <span>Report Issues</span> <img src="assets/icons/arrow-up-right-from-square.svg" class="icon icon-bw" />
                 </button>
             </div>
         </div>
 
-        <div class="overlay-content" *ngIf="currentPage === 'credits'">
-            <p>Developed by Hakan İSMAİL.</p>
+        <div class="overlay-content credits" *ngIf="currentPage === 'credits'">
+            <strong>Developed By</strong>
+            <button mat-button class="about-item">
+                <span>Hakan İSMAİL</span>
+            </button>
         </div>
 
         <div class="overlay-content" *ngIf="currentPage === 'legal'">
-            <p>Legal information about RClone Manager.</p>
+            <p>This application comes with absolutely no warranty. See the <a (click)="openLink('https://www.gnu.org/licenses/gpl-3.0.html')">GNU General Public License, version 3</a> or later for details.</p>
         </div>
     </div>
 </div>

@@ -1,4 +1,6 @@
 use serde::{Serialize, Deserialize};
+use tauri::command;
+use tauri_plugin_opener::OpenerExt;
 use std::fs;
 use std::path::Path;
 
@@ -21,4 +23,16 @@ pub fn load_config() -> Config {
 pub fn save_config(config: &Config) {
     let config_data = serde_json::to_string_pretty(config).expect("Failed to serialize config");
     fs::write(CONFIG_PATH, config_data).expect("Failed to save config");
+}
+
+#[command]
+pub async fn open_in_files(app: tauri::AppHandle, path: String) -> Result<String, String> {
+    if path.is_empty() {
+        return Err("Invalid path: Path cannot be empty.".to_string());
+    }
+
+    match app.opener().open_path(path.clone(), None::<&str>) {
+        Ok(_) => Ok(format!("Opened file manager at {}", path)),
+        Err(e) => Err(format!("Failed to open file manager: {}", e)),
+    }
 }

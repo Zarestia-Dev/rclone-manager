@@ -60,6 +60,16 @@
     <div [@slideAnimation] *ngIf="currentStep === 2 && (!editMode || editTarget === 'mount')" class="step-container">
       <form [formGroup]="mountForm" (ngSubmit)="onSubmit()">
         <mat-form-field appearance="fill">
+          <mat-label>Mount Path</mat-label>
+          <button mat-button matSuffix type="button" (click)="selectFolder()">
+          <img src="assets/icons/folder-white.svg" class="icon icon-bw" style="filter: invert(1);"/>
+        </button>
+          <input matInput formControlName="mountPath" id="mountPath" />
+          <mat-error *ngIf="mountForm.get('mountPath')?.hasError('required')">
+            Mount Path is required.
+          </mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="fill">
           <mat-label>Mount Type</mat-label>
           <mat-select formControlName="mountType" id="mountType"
             (selectionChange)="onMountTypeChange(); $event.source.close()">

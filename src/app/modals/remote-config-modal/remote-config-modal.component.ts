@@ -85,6 +85,7 @@ export class RemoteConfigModalComponent implements OnInit {
 
     this.mountForm = this.fb.group({
       mountType: ["", Validators.required],
+      mountPath: ["", Validators.required],
     });
   }
 
@@ -101,6 +102,12 @@ export class RemoteConfigModalComponent implements OnInit {
     }
     await this.loadRemoteTypes();
     await this.loadMountTypes();
+  }
+
+  selectFolder(): void {
+    this.rcloneService.selectFolder().then((selectedPath) => {
+      this.mountForm.get("mountPath")?.setValue(selectedPath);
+    });
   }
 
   async loadRemoteTypes(): Promise<void> {
@@ -257,14 +264,56 @@ export class RemoteConfigModalComponent implements OnInit {
     this.dialogRef.close();
   }
 
-  onSubmit(): void {
-    if (this.mountForm.valid) {
-      const data = {
-        remoteSpecs: this.remoteForm.value,
-        mountSpecs: this.mountForm.value,
-      };
-      console.log("Submitted Data:", data);
-      this.dialogRef.close(data);
+  async onSubmit(): Promise<void> {
+    if (this.editTarget === "remote" && !this.remoteForm.valid) { 
+      console.error("Remote form is invalid");
+      return;
+    }
+    if (this.editTarget === "mount" && !this.mountForm.valid) {
+      console.error("Mount form is invalid");
+      return;
+    }
+  
+    const remoteData = this.cleanFormData(this.remoteForm.value);
+    const mountData = this.cleanFormData(this.mountForm.value);
+  
+    try {
+      if (this.editMode) {
+        console.log("Editing mode detected");
+  
+        if (this.editTarget === "remote") {
+          console.log("Updating remote:", remoteData);
+          await this.rcloneService.updateRemote(remoteData.name, remoteData);
+        } else if (this.editTarget === "mount") {
+          console.log("Updating mount:", mountData);
+          if (remoteData.name) {
+            await this.rcloneService.saveMountConfig(remoteData.name, mountData.mountPath, mountData);
+          } else {
+            console.error("Remote name is undefined");
+          }
+        }
+      } else {
+        console.log("Adding new remote:", remoteData);
+        await this.rcloneService.createRemote(remoteData.name, remoteData);
+        
+        console.log("Saving mount configuration:", mountData);
+        await this.rcloneService.saveMountConfig(remoteData.name, mountData.mountPath, mountData);
+      }
+  
+      console.log("Configuration saved successfully!");
+      this.dialogRef.close({ remoteSpecs: remoteData, mountSpecs: mountData });
+    } catch (error) {
+      console.error("Failed to save configuration:", error);
     }
   }
+
+  private cleanFormData(formData: any): any {
+    return Object.keys(formData)
+      .filter(key => formData[key] !== null && formData[key] !== "")
+      .reduce((acc: { [key: string]: any }, key: string) => {
+        acc[key] = formData[key];
+        return acc;
+      }, {});
+  }
+  
 }

@@ -1,5 +1,8 @@
+use std::{collections::HashMap, fs, path::PathBuf};
+
 use reqwest::Client;
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use tauri::command;
 
 const RCLONE_API_URL: &str = "http://localhost:5572";
@@ -11,6 +14,96 @@ pub async fn is_rc_api_running() -> bool {
         Ok(response) => response.status().is_success(),
         Err(_) => false,
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct MountConfig {
+    remote: String,
+    mount_path: String,
+    options: HashMap<String, serde_json::Value>,
+}
+
+// Path for storing mount configurations
+fn mount_config_path() -> PathBuf {
+    dirs::config_dir()
+        .unwrap()
+        .join("rclone-manager/mounts.json")
+}
+
+/// Save mount configuration
+#[command]
+pub async fn save_mount_config(remote: String, mount_path: String, options: HashMap<String, serde_json::Value>) -> Result<(), String> {
+    let mut mounts: Vec<MountConfig> = match fs::read_to_string(mount_config_path()) {
+        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+        Err(_) => vec![],
+    };
+    print!("{:?}", dirs::config_dir().unwrap().join("rclone-manager/mounts.json"));
+    mounts.push(MountConfig {
+        remote,
+        mount_path,
+        options,
+    });
+
+    fs::write(mount_config_path(), serde_json::to_string_pretty(&mounts).unwrap())
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Get saved mount configurations
+#[command]
+pub async fn get_saved_mount_configs() -> Result<Vec<MountConfig>, String> {
+    let content = fs::read_to_string(mount_config_path()).unwrap_or_else(|_| "[]".to_string());
+    let mounts: Vec<MountConfig> = serde_json::from_str(&content).unwrap_or_default();
+    Ok(mounts)
+}
+
+#[command]
+pub async fn create_remote(name: String, parameters: HashMap<String, serde_json::Value>) -> Result<(), String> {
+    let client = Client::new();
+    let body = serde_json::json!({
+        "name": name,
+        "type": parameters.get("type").unwrap_or(&serde_json::Value::String("".to_string())),
+        "parameters": parameters
+    });
+
+    client
+        .post("http://localhost:5572/config/create")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Update an existing remote
+#[command]
+pub async fn update_remote(name: String, parameters: HashMap<String, serde_json::Value>) -> Result<(), String> {
+    let client = Client::new();
+    let body = serde_json::json!({ "name": name, "parameters": parameters });
+
+    client
+        .post("http://localhost:5572/config/update")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// Delete a remote
+#[command]
+pub async fn delete_remote(name: String) -> Result<(), String> {
+    let client = Client::new();
+    client
+        .post(format!("http://localhost:5572/config/delete?name={}", name))
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 
@@ -153,6 +246,51 @@ pub async fn list_mounts() -> Result<Vec<String>, String> {
     Ok(mount_points)
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct MountedRemote {
+    fs: String,
+    mount_point: String,
+}
+
+#[tauri::command]
+pub async fn get_mounted_remotes() -> Result<Vec<MountedRemote>, String> {
+    let client = Client::new();
+    let url = format!("{}/mount/listmounts", RCLONE_API_URL);
+
+    let response = client
+        .post(&url)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send request: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "Failed to fetch mounted remotes: {:?}",
+            response.text().await
+        ));
+    }
+
+    let json: Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+
+    let mounts = json["mountPoints"]
+        .as_array()
+        .unwrap_or(&vec![]) // Default to an empty list if not found
+        .iter()
+        .filter_map(|mp| {
+            Some(MountedRemote {
+                fs: mp["Fs"].as_str()?.to_string(),
+                mount_point: mp["MountPoint"].as_str()?.to_string(),
+            })
+        })
+        .collect();
+
+    Ok(mounts)
+}
+
+
 #[command]
 pub async fn get_remotes() -> Result<Vec<String>, String> {
     let client = reqwest::Client::new();
@@ -182,23 +320,39 @@ pub async fn get_remotes() -> Result<Vec<String>, String> {
 }
 
 #[command]
-pub async fn mount_remote(remote: String, mount_point: String) -> Result<String, String> {
+pub async fn mount_remote(remote_name: String, mount_point: String) -> Result<String, String> {
     let client = Client::new();
     let url = format!("{}/mount/mount", RCLONE_API_URL);
 
-    let params = serde_json::json!({ "fs": remote, "mountPoint": mount_point });
-
-    let response = client
-        .post(&url)
-        .json(&params)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to mount remote: {}", e))?;
-
-    if response.status().is_success() {
-        Ok(format!("Mounted {} to {}", remote, mount_point))
+    let formatted_remote = if remote_name.ends_with(':') {
+        remote_name.clone()
     } else {
-        Err(format!("Failed to mount: {:?}", response.text().await))
+        format!("{}:", remote_name)
+    };
+
+    let params = serde_json::json!({
+        "fs": formatted_remote,
+        "mountPoint": mount_point
+    });
+
+    print!("{:?}", params);
+
+    let response = client.post(&url).json(&params).send().await;
+
+    match response {
+        Ok(resp) => {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_else(|_| "No response body".to_string());
+
+            if status.is_success() {
+                Ok(format!("✅ Mounted '{}' to '{}'", remote_name, mount_point))
+            } else {
+                Err(format!("❌ Failed to mount '{}': {} (HTTP {})", remote_name, body, status))
+            }
+        }
+        Err(e) => {
+            Err(format!("🚨 Request Error: Failed to send mount request: {}", e))
+        }
     }
 }
 
