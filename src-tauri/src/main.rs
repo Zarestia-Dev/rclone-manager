@@ -5,8 +5,6 @@ use rclone_manager_lib::config::save_config;
 use rclone_manager_lib::mount::mount_remote_rust;
 use rclone_manager_lib::tracker::start_mount_tracker;
 use std::process::Command;
-use tauri::tray::TrayIconBuilder;
-// mod tray;
 
 #[tauri::command]
 async fn mount_remote_handler(remote: String, mount_point: String) -> Result<String, String> {
@@ -55,31 +53,6 @@ fn ensure_rc_api_running() {
 fn main() {
     ensure_rc_api_running(); // Start RC API if not running
     start_mount_tracker(); // Start monitoring thread
-
-    use tauri::{
-        Manager,
-        tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}
-    };
-    
-    TrayIconBuilder::<tauri::Wry>::new()
-      .on_tray_icon_event(|tray, event| match event {
-        TrayIconEvent::Click {
-          button: MouseButton::Left,
-          button_state: MouseButtonState::Up,
-          ..
-        } => {
-          println!("left click pressed and released");
-          // in this example, let's show and focus the main window when the tray is clicked
-          let app = tray.app_handle();
-          if let Some(window) = app.get_webview_window("main") {
-            let _ = window.show();
-            let _ = window.set_focus();
-          }
-        }
-        _ => {
-          println!("unhandled event {event:?}");
-        }
-      });
 
     rclone_manager_lib::run()
 }
