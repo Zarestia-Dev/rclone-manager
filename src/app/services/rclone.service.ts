@@ -224,4 +224,13 @@ export class RcloneService {
       return [];
     }
   }
+
+  async getSavedMountConfig(remoteName: string): Promise<any> {
+    try {
+      return await invoke<any>("get_saved_mount_config", { remote: remoteName });
+    } catch (error) {
+      console.error("Error fetching mount config for", remoteName, ":", error);
+      return null;
+    }
+  }
 }

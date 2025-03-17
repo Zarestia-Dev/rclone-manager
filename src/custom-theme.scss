@@ -155,6 +155,7 @@ button {
     }
   }
 
+  &.primary,
   &.mount,
   &.finish {
     background-color: var(--green);
@@ -196,7 +197,6 @@ button {
 .mat-mdc-menu-panel {
   transition: background-color 0.3s ease-in-out !important;
   min-width: 252px !important;
-  min-height: 230px;
   background-color: var(--app-background) !important;
 }
 

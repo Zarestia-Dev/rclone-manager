@@ -8,6 +8,10 @@ import { MatDialog } from "@angular/material/dialog";
 import { RemoteConfigModalComponent } from "../modals/remote-config-modal/remote-config-modal.component";
 import { StateService } from "../services/state.service";
 import { RcloneService } from "../services/rclone.service";
+import {
+  ConfirmDialogData,
+  ConfirmModalComponent,
+} from "../modals/confirm-modal/confirm-modal.component";
 
 @Component({
   selector: "app-home",
@@ -28,6 +32,7 @@ export class HomeComponent {
   selectedRemote: any = null;
   remotes: any[] = [];
   mountTypes: any[] = [];
+  savedMountConfigs: any[] = [];
   mountedRemotes: { fs: string; mount_point: string }[] = [];
 
   constructor(
@@ -48,13 +53,13 @@ export class HomeComponent {
     await this.refreshMounts();
     await this.loadRemotes();
     await this.loadMountTypes();
+    await this.loadSavedMountConfigs();
   }
 
   async openFiles(remoteName: any): Promise<void> {
-    const mountPoint = `/home/hakan/${remoteName}`;
+    const mountPoint = this.loadSavedMountConfig(remoteName)?.mount_path;
     await this.rcloneService.openInFiles(mountPoint);
   }
-  
 
   // Select a remote for editing
   selectRemote(remote: any) {
@@ -117,7 +122,18 @@ export class HomeComponent {
     localStorage.setItem("sidebarState", String(this.isSidebarOpen));
   }
 
-  openRemoteConfigModal(existingConfig?: any, type?: "remote" | "mount"): void {
+  async openRemoteConfigModal(existingConfig?: any, type?: "remote" | "mount"): Promise<void> {
+    let mountConfig = {};
+  
+    if (type === "mount" && this.selectedRemote) {
+      try {
+        mountConfig = await this.loadSavedMountConfig(this.selectedRemote.remoteSpecs.name);
+        console.log("Loaded saved mount config:", mountConfig);
+      } catch (error) {
+        console.error("Failed to load saved mount config:", error);
+      }
+    }
+  
     const dialogRef = this.dialog.open(RemoteConfigModalComponent, {
       width: "70vw",
       maxWidth: "800px",
@@ -125,11 +141,17 @@ export class HomeComponent {
       maxHeight: "600px",
       disableClose: true,
       data: {
-        editMode: true, // Set editMode only if editing
+        editMode: true,
         editTarget: type,
         existingConfig: existingConfig
-        ? { ...existingConfig, mountSpecs: existingConfig.mountSpecs || {} } // Ensure mountSpecs exists
-        : null,      },
+          ? { ...existingConfig, mountSpecs: existingConfig.mountSpecs || {} }
+          : {
+              remoteSpecs: {
+                name: this.selectedRemote?.remoteSpecs.name || "",
+              },
+              mountSpecs: mountConfig || {},
+            },
+      },
     });
   
     dialogRef.afterClosed().subscribe((result) => {
@@ -139,51 +161,69 @@ export class HomeComponent {
     });
   }
   
-  
 
   deleteRemote(remote: any) {
-    this.rcloneService.deleteRemote(remote.remoteSpecs.name).then(() => {
-      this.remotes = this.remotes.filter(
-        (r) => r.remoteSpecs.name !== remote.remoteSpecs.name
-      );
+    // Create the confirmation dialog data
+    const dialogData: ConfirmDialogData = {
+      title: "Delete Confirmation",
+      message: `Are you sure you want to delete '${remote.remoteSpecs.name}'? This action cannot be undone.`,
+      confirmText: "Yes, Delete",
+      cancelText: "Cancel",
+    };
+
+    // Open the confirmation dialog
+    const dialogRef = this.dialog.open(ConfirmModalComponent, {
+      width: "300px",
+      data: dialogData,
+    });
+
+    // Wait for user response
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (confirmed) {
+        this.rcloneService.deleteRemote(remote.remoteSpecs.name).then(() => {
+          this.remotes = this.remotes.filter(
+            (r) => r.remoteSpecs.name !== remote.remoteSpecs.name
+          );
+        });
+      }
     });
   }
-
 
   /** Fetch all remotes and their configs in one request */
   async loadRemotes(): Promise<void> {
     const remoteConfigs = await this.rcloneService.getAllRemoteConfigs();
     const remoteNames = Object.keys(remoteConfigs);
     console.log(remoteNames);
-    
-  
+
     this.remotes = await Promise.all(
       remoteNames.map(async (name) => {
-        const mountPoint = `/home/hakan/${name}`;
+        const mountPoint = this.loadSavedMountConfig(name)?.mount_path;
         const mounted = this.isRemoteMounted(name);
-                
+
         let diskUsage = null;
         if (mounted) {
           try {
             diskUsage = await this.rcloneService.getDiskUsage(mountPoint);
             console.log("Disk Usage for", name, ":", diskUsage);
-            
           } catch (error) {
             console.error("Failed to fetch disk usage:", error);
           }
         }
-  
+
         return {
           remoteSpecs: { name, ...remoteConfigs[name] },
           mounted: mounted ? "true" : "false",
-          diskUsage: diskUsage || { total_space: "N/A", used_space: "N/A", free_space: "N/A" }
+          diskUsage: diskUsage || {
+            total_space: "N/A",
+            used_space: "N/A",
+            free_space: "N/A",
+          },
         };
       })
     );
-  
+
     console.log("Loaded Remotes with Disk Info:", this.remotes);
   }
-  
 
   /** Fetch all mount types dynamically */
   async loadMountTypes(): Promise<void> {
@@ -203,18 +243,35 @@ export class HomeComponent {
   async refreshMounts(): Promise<void> {
     this.mountedRemotes = await this.rcloneService.getMountedRemotes();
     console.log("Mounted Remotes:", this.mountedRemotes);
-    
   }
 
   /** Check if a remote is mounted */
   isRemoteMounted(remoteName: string): boolean {
     return this.mountedRemotes.some((mount) => mount.fs === `${remoteName}:`);
   }
-  
+
+  async loadSavedMountConfigs(): Promise<void> {
+    this.savedMountConfigs = await this.rcloneService.getSavedMountConfigs();
+    console.log("Loaded Saved Mount Configs:", this.savedMountConfigs);
+  }
+
+  loadSavedMountConfig(remoteName: string): any {
+    console.log(this.savedMountConfigs.find(
+      (config) => config.remote === remoteName
+    ));
+    
+    return this.savedMountConfigs.find(
+      (config) => config.remote === remoteName
+    );
+  }
 
   /** Mount a remote */
   async mountRemote(remoteName: string): Promise<void> {
-    const mountPoint = `/home/hakan/${remoteName}`;
+    const mountPoint = this.loadSavedMountConfig(remoteName)?.mount_path;
+    if (!mountPoint) {
+      console.warn(`No mount point found for ${remoteName}`);
+      return;
+    }
     console.log("Mounting remote:", remoteName, "to:", mountPoint);
 
     await this.rcloneService.mountRemote(remoteName, mountPoint);
@@ -224,7 +281,9 @@ export class HomeComponent {
 
   /** Unmount a remote */
   async unmountRemote(remoteName: string): Promise<void> {
-    const mountPoint = this.mountedRemotes.find((mount) => mount.fs === `${remoteName}:`)?.mount_point;
+    const mountPoint = this.mountedRemotes.find(
+      (mount) => mount.fs === `${remoteName}:`
+    )?.mount_point;
     console.log("Unmounting remote:", remoteName, "from:", mountPoint);
     if (!mountPoint) {
       console.warn(`No mount point found for ${remoteName}`);
@@ -236,10 +295,9 @@ export class HomeComponent {
     await this.loadRemotes();
   }
 
-
   /** Add a mount */
   async addMount(remote: any): Promise<void> {
-    const mountPoint = `/home/hakan/${remote.remoteSpecs.name}`;
+    const mountPoint = this.loadSavedMountConfig(remote.remoteSpecs.name)?.mount_path;
     await this.rcloneService.addMount(remote.remoteSpecs.name, mountPoint);
     await this.loadMountTypes();
   }
@@ -250,5 +308,7 @@ export class HomeComponent {
     await this.loadMountTypes();
   }
 
-
+  isObject(value: any): boolean {
+    return value !== null && typeof value === 'object';
+  }
 }

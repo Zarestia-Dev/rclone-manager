@@ -8,7 +8,8 @@
           <mat-card-content class="card-content">
             <h4>{{ remote.remoteSpecs.name }}</h4>
             <p>
-                <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon" onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';" />
+              <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon"
+                onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';" />
               {{ remote.remoteSpecs.type }}
             </p>
             <ng-container *ngIf="remote.mounted === 'true'">
@@ -102,7 +103,8 @@
                 <div class="remote-content">
                   <h4>{{ remote.remoteSpecs.name }}</h4>
                   <p>
-                    <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon" onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';"/>{{
+                    <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon"
+                      onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';" />{{
                     remote.remoteSpecs.type }}
                   </p>
                 </div>
@@ -126,7 +128,8 @@
                 <div class="remote-content">
                   <h4>{{ remote.remoteSpecs.name }}</h4>
                   <p>
-                    <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon" onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';"/>{{
+                    <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon"
+                      onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';" />{{
                     remote.remoteSpecs.type }}
                   </p>
                 </div>
@@ -149,7 +152,8 @@
                 <div class="remote-content">
                   <h4>{{ remote.remoteSpecs.name }}</h4>
                   <p>
-                    <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon" onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';"/>{{
+                    <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon"
+                      onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';" />{{
                     remote.remoteSpecs.type }}
                   </p>
                 </div>
@@ -168,7 +172,8 @@
       <div class="remote-header">
         <h2>{{ selectedRemote.remoteSpecs.name }}</h2>
         <p>
-          <img src="assets/icons/remotes/{{ selectedRemote.remoteSpecs.type }}.svg" class="icon" onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';"/>{{
+          <img src="assets/icons/remotes/{{ selectedRemote.remoteSpecs.type }}.svg" class="icon"
+            onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';" />{{
           selectedRemote.remoteSpecs.type }}
         </p>
       </div>
@@ -285,7 +290,7 @@
         </h3>
         <mat-card class="info-card-content">
           <mat-card-content class="mount-content">
-            <mat-chip class="not-found" *ngIf="!selectedRemote.mountSpecs">
+            <mat-chip class="not-found" *ngIf="loadSavedMountConfig(selectedRemote.remoteSpecs.name) === undefined">
               <strong>Mount Specs not found</strong>
             </mat-chip>
             <mat-chip-set class="mount-container" *ngIf="selectedRemote.mountSpecs">
@@ -293,8 +298,19 @@
                 <strong>{{ spec.key }}:</strong> {{ spec.value }}
               </mat-chip>
             </mat-chip-set>
+            <div *ngIf="loadSavedMountConfig(selectedRemote.remoteSpecs.name)">
+              <h4>Saved Mount Config</h4>
+              <mat-chip-set class="saved-mount-container">
+                <mat-chip *ngFor="let spec of loadSavedMountConfig(selectedRemote.remoteSpecs.name) | keyvalue" class="spec-pill">
+                  <strong>{{ spec.key }}:</strong> 
+                  <ng-container *ngIf="isObject(spec.value); else plainText">
+                    {{ spec.value | json }}  <!-- Display as JSON string -->
+                  </ng-container>
+                  <ng-template #plainText>{{ spec.value }}</ng-template>
+                </mat-chip>                
+              </mat-chip-set>
+            </div>
           </mat-card-content>
-
           <mat-divider></mat-divider>
 
           <!-- Buttons -->

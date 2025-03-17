@@ -77,6 +77,7 @@ export class RemoteConfigModalComponent implements OnInit {
     this.editMode = data?.editMode || false;
     this.editTarget = data?.editTarget || null;
     this.existingConfig = data?.existingConfig || null;
+    console.log("Existing config:", this.existingConfig);
 
     this.remoteForm = this.fb.group({
       name: ["", Validators.required],
@@ -170,19 +171,6 @@ export class RemoteConfigModalComponent implements OnInit {
     });
   }
 
-  /** Populate form when editing an existing remote */
-  populateForm(config: any = {}): void {
-    Object.keys(config).forEach((key) => {
-      if (this.remoteForm.contains(key)) {
-        this.remoteForm.get(key)?.setValue(config[key]);
-      } else {
-        this.remoteForm.addControl(key, this.fb.control(config[key] || ""));
-      }
-    });
-
-    this.onRemoteTypeChange(); // Fetch dynamic fields if remote type changes
-  }
-
   /** Fetch mount configuration fields dynamically */
   async onMountTypeChange(): Promise<void> {
     const selectedMountType = this.mountForm.get("mountType")?.value;
@@ -223,31 +211,61 @@ export class RemoteConfigModalComponent implements OnInit {
     });
   }
 
-  /** Populate mount form when editing an existing mount */
-  populateMountForm(config: any = {}): void {
-    if (this.editTarget === "mount") {
-      this.currentStep = 2;
-    }
-    if (!config) {
-      this.mountForm = this.fb.group({
-        mountType: ["", Validators.required],
-      });
-
-      this.dynamicMountFields = []; // Clear any existing dynamic fields
-      this.generateMountFormControls(); // Generate default form controls
-
-      return;
-    }
+  /** Populate form when editing an existing remote */
+  populateForm(config: any = {}): void {
     Object.keys(config).forEach((key) => {
-      if (!this.mountForm.contains(key)) {
-        this.mountForm.addControl(key, this.fb.control(config[key] || ""));
+      if (this.remoteForm.contains(key)) {
+        this.remoteForm.get(key)?.setValue(config[key]);
       } else {
-        this.mountForm.get(key)?.setValue(config[key]);
+        this.remoteForm.addControl(key, this.fb.control(config[key] || ""));
       }
     });
 
-    this.onMountTypeChange(); // Fetch mount options dynamically
+    this.onRemoteTypeChange(); // Fetch dynamic fields if remote type changes
   }
+
+/** Populate mount form when editing an existing mount */
+populateMountForm(config: any = {}): void {
+  if (!config) {
+    this.mountForm = this.fb.group({
+      mountType: ["", Validators.required],
+      mountPath: ["", Validators.required],
+    });
+
+    this.dynamicMountFields = [];
+    this.generateMountFormControls();
+    return;
+  }
+
+  // Ensure we switch to the mount step
+  if (this.editTarget === "mount") {
+    this.currentStep = 2;
+  }
+
+  console.log("Populating Mount Form with config:", config);
+
+  // Ensure mountSpecs exists and extract data safely
+  const mountSpecs = config.mountSpecs || {};
+  const options = mountSpecs.options || {};
+
+  // Set static fields first
+  this.mountForm.patchValue({
+    mountType: mountSpecs.mountType || "Native",
+    mountPath: mountSpecs.mountPath || config.mount_path || "",
+  });
+
+  // Handle dynamic mount options
+  Object.keys(options).forEach((key) => {
+    if (!this.mountForm.contains(key)) {
+      this.mountForm.addControl(key, this.fb.control(options[key] || ""));
+    } else {
+      this.mountForm.get(key)?.setValue(options[key]);
+    }
+  });
+
+  this.onMountTypeChange(); // Fetch mount options dynamically
+}
+
 
   nextStep(): void {
     if (this.remoteForm.valid) {
@@ -286,8 +304,10 @@ export class RemoteConfigModalComponent implements OnInit {
           await this.rcloneService.updateRemote(remoteData.name, remoteData);
         } else if (this.editTarget === "mount") {
           console.log("Updating mount:", mountData);
-          if (remoteData.name) {
-            await this.rcloneService.saveMountConfig(remoteData.name, mountData.mountPath, mountData);
+          
+          const remoteName = remoteData.name || this.existingConfig?.remoteSpecs?.name;
+          if (remoteName) {
+            await this.rcloneService.saveMountConfig(remoteName, mountData.mountPath, mountData);
           } else {
             console.error("Remote name is undefined");
           }
@@ -306,6 +326,7 @@ export class RemoteConfigModalComponent implements OnInit {
       console.error("Failed to save configuration:", error);
     }
   }
+  
 
   private cleanFormData(formData: any): any {
     return Object.keys(formData)

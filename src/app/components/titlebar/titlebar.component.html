@@ -1,6 +1,16 @@
 <div class="title-bar" data-tauri-drag-region>
   <div class="left-section">
-    <button mat-icon-button class="add-button" (click)="openRemoteConfigModal()">
+    <mat-menu #addRemoteMenu="matMenu">
+      <button mat-menu-item>
+        <span>Quick Remote</span>
+        <span class="shortcut">Ctrl + R</span>
+      </button>
+      <button mat-menu-item (click)="openRemoteConfigModal()">
+        <span>Detailed Remote</span>
+        <span class="shortcut">Ctrl + N</span>
+      </button>
+    </mat-menu>
+    <button mat-icon-button class="add-button" [matMenuTriggerFor]="addRemoteMenu">
       <img src="assets/icons/titlebar/add.svg" class="icon icon-bw" />
     </button>
     <button (click)="resetRemote()">

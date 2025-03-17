@@ -2,7 +2,7 @@ use std::{collections::HashMap, fs, path::PathBuf};
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use tauri::command;
 
 const RCLONE_API_URL: &str = "http://localhost:5572";
@@ -32,23 +32,49 @@ fn mount_config_path() -> PathBuf {
 
 /// Save mount configuration
 #[command]
-pub async fn save_mount_config(remote: String, mount_path: String, options: HashMap<String, serde_json::Value>) -> Result<(), String> {
-    let mut mounts: Vec<MountConfig> = match fs::read_to_string(mount_config_path()) {
-        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
-        Err(_) => vec![],
-    };
-    print!("{:?}", dirs::config_dir().unwrap().join("rclone-manager/mounts.json"));
-    mounts.push(MountConfig {
-        remote,
-        mount_path,
-        options,
-    });
+pub async fn save_mount_config(
+    remote: String,
+    mount_path: String,
+    options: HashMap<String, serde_json::Value>,
+) -> Result<(), String> {
+    let path = mount_config_path();
+    let dir = path.parent().unwrap();
 
-    fs::write(mount_config_path(), serde_json::to_string_pretty(&mounts).unwrap())
-        .map_err(|e| e.to_string())?;
+    // Ensure the config directory exists
+    if !dir.exists() {
+        fs::create_dir_all(dir).map_err(|e| format!("Failed to create config directory: {}", e))?;
+    }
+
+    let mut mounts: Vec<MountConfig> = match fs::read_to_string(&path) {
+        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+        Err(_) => vec![], // If file doesn't exist, start with an empty list
+    };
+
+    // Check if the mount already exists
+    if let Some(existing) = mounts.iter_mut().find(|m| m.remote == remote) {
+        // Update existing mount configuration
+        existing.mount_path = mount_path.clone();
+        existing.options = options.clone();
+        println!("Updated existing mount config for: {}", remote);
+    } else {
+        // Add new mount configuration
+        mounts.push(MountConfig {
+            remote: remote.clone(),
+            mount_path: mount_path.clone(),
+            options: options.clone(),
+        });
+        println!("Added new mount config for: {}", remote);
+    }
+
+    // Save the updated mounts list back to the file
+    fs::write(&path, serde_json::to_string_pretty(&mounts).unwrap())
+        .map_err(|e| format!("Failed to write mount config: {}", e))?;
+
+    println!("Mount config saved at: {:?}", path); // Debug print
 
     Ok(())
 }
+
 
 /// Get saved mount configurations
 #[command]
@@ -57,6 +83,21 @@ pub async fn get_saved_mount_configs() -> Result<Vec<MountConfig>, String> {
     let mounts: Vec<MountConfig> = serde_json::from_str(&content).unwrap_or_default();
     Ok(mounts)
 }
+
+
+#[command]
+pub async fn get_saved_mount_config(remote: String) -> Result<Option<MountConfig>, String> {
+    let mounts: Vec<MountConfig> = match fs::read_to_string(mount_config_path()) {
+        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
+        Err(_) => vec![], // If file doesn't exist, return an empty vec
+    };
+
+    // Find the mount config that matches the given remote name
+    let mount_config = mounts.into_iter().find(|m| m.remote == remote);
+
+    Ok(mount_config)
+}
+
 
 #[command]
 pub async fn create_remote(name: String, parameters: HashMap<String, serde_json::Value>) -> Result<(), String> {
