@@ -178,7 +178,7 @@ export class RemoteConfigModalComponent implements OnInit {
 
     this.isLoadingMountConfig = true;
     try {
-      const mountOptions = await this.rcloneService.getMountOptions();
+      const mountOptions = await this.rcloneService.getMountFlags();
 
       // Process and store mount options dynamically
       this.dynamicMountFields = mountOptions
@@ -325,6 +325,12 @@ populateMountForm(config: any = {}): void {
     } catch (error) {
       console.error("Failed to save configuration:", error);
     }
+  }
+
+  ngOnDestroy(): void {
+    this.dialogRef.close();
+    this.remoteForm.reset();
+    this.mountForm.reset();
   }
   
 

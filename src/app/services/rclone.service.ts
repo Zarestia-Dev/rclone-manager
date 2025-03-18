@@ -31,6 +31,7 @@ export class RcloneService {
       const response = await invoke<{
         providers: { Name: string; Description: string }[];
       }>("get_remote_types");
+      console.log("Fetched remote types:", response.providers);
       return response.providers;
     } catch (error) {
       console.error("Failed to fetch remote types:", error);
@@ -59,12 +60,12 @@ export class RcloneService {
     }
   }
 
-  async getDiskUsage(mountPoint: string) {
+  async getDiskUsage(remoteName: string) {
     return await invoke<{
-      total_space: string;
-      used_space: string;
-      free_space: string;
-    }>("get_disk_usage", { mountPoint: mountPoint });
+      total: string;
+      used: string;
+      free: string;
+    }>("get_disk_usage", { remoteName: remoteName });
   }
 
   async getRemoteConfig(remoteName: string): Promise<any> {
@@ -84,6 +85,17 @@ export class RcloneService {
       return await invoke<Record<string, any>>("get_all_remote_configs");
     } catch (error) {
       console.error("Failed to fetch all remote configs:", error);
+      return {};
+    }
+  }
+
+  async getAllMountConfigs(): Promise<Record<string, any>> {
+    try {
+      console.log("Fetching all mount configs");
+      return await invoke<Record<string, any>>("get_all_mount_configs");
+    }
+    catch (error) {
+      console.error("Failed to fetch all mount configs:", error);
       return {};
     }
   }
@@ -164,19 +176,6 @@ export class RcloneService {
     }
   }
 
-  /** Fetch available mount options for a given mount type */
-  async getMountOptions(): Promise<any[]> {
-    try {
-      const response = await invoke("get_mount_options");
-      console.log("Mount options:", response);
-
-      return response as any[];
-    } catch (error) {
-      console.error("Error fetching mount options:", error);
-      return [];
-    }
-  }
-
   /** Add a new mount configuration */
   async addMount(
     remote: string,
@@ -215,21 +214,68 @@ export class RcloneService {
     );
   }
 
-  /** Get saved mount configurations */
-  async getSavedMountConfigs(): Promise<any[]> {
-    try {
-      return await invoke<any[]>("get_saved_mount_configs");
-    } catch (error) {
-      console.error("Error fetching saved mount configs:", error);
-      return [];
-    }
-  }
-
   async getSavedMountConfig(remoteName: string): Promise<any> {
     try {
       return await invoke<any>("get_saved_mount_config", { remote: remoteName });
     } catch (error) {
       console.error("Error fetching mount config for", remoteName, ":", error);
+      return null;
+    }
+  }
+
+
+  // Get Flags
+
+  async getGlobalFlags(): Promise<any> {
+    try {
+      return await invoke<any>("get_global_flags");
+    } catch (error) {
+      console.error("Error fetching global flags:", error);
+      return null;
+    }
+  }
+
+  async getCopyFlags(): Promise<any> {
+    try {
+      return await invoke<any>("get_copy_flags");
+    } catch (error) {
+      console.error("Error fetching copy flags:", error);
+      return null;
+    }
+  }
+
+  async getSyncFlags(): Promise<any> {
+    try {
+      return await invoke<any>("get_sync_flags");
+    } catch (error) {
+      console.error("Error fetching sync flags:", error);
+      return null;
+    }
+  }
+
+  async getFilterFlags(): Promise<any> {
+    try {
+      return await invoke<any>("get_filter_flags");
+    } catch (error) {
+      console.error("Error fetching filter flags:", error);
+      return null;
+    }
+  }
+
+  async getVfsFlags(): Promise<any> {
+    try {
+      return await invoke<any>("get_vfs_flags");
+    } catch (error) {
+      console.error("Error fetching vfs flags:", error);
+      return null;
+    }
+  }
+
+  async getMountFlags(): Promise<any> {
+    try {
+      return await invoke<any>("get_mount_flags");
+    } catch (error) {
+      console.error("Error fetching mount flags:", error);
       return null;
     }
   }

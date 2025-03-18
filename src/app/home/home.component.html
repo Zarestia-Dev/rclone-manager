@@ -12,17 +12,17 @@
                 onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';" />
               {{ remote.remoteSpecs.type }}
             </p>
-            <ng-container *ngIf="remote.mounted === 'true'">
+            <ng-container *ngIf="remote.mounted === true">
               <p class="mounted">
                 <img src="assets/icons/mounted-green.svg" class="icon" />Mounted
               </p>
             </ng-container>
-            <ng-container *ngIf="remote.mounted === 'false'">
+            <ng-container *ngIf="remote.mounted === false">
               <p class="not-mounted">
                 <img src="assets/icons/circle-xmark-orange.svg" class="icon" />Not Mounted
               </p>
             </ng-container>
-            <ng-container *ngIf="remote.mounted === 'error' || remote.mounted === null || remote.mounted === undefined">
+            <ng-container *ngIf="remote.mounted === null || remote.mounted === undefined">
               <p class="error">
                 <img src="assets/icons/circle-exclamation-red.svg" class="icon" />Error
               </p>
@@ -133,7 +133,7 @@
                     remote.remoteSpecs.type }}
                   </p>
                 </div>
-                <button class="mount" (click)="mountRemote(remote.remoteSpecs.name)">
+                <button class="mount" (click)="mountRemote(remote.remoteSpecs.name); $event.stopPropagation()" >
                   <img src="assets/icons/mount.svg" class="icon" style="filter: invert(1)" />
                   Mount</button>
               </div>
@@ -157,7 +157,7 @@
                     remote.remoteSpecs.type }}
                   </p>
                 </div>
-                <button class="fix">
+                <button class="fix" (click)="$event.stopPropagation()">
                   <img src="assets/icons/wrench.svg" class="icon" style="filter: invert(1)" />
                   Fix</button>
               </div>
@@ -168,7 +168,7 @@
     </div>
 
     <!-- Remote Details (Show When a Remote is Selected) -->
-    <div class="remote-details" *ngIf="selectedRemote">
+    <div class="remote-details" *ngIf="selectedRemote && selectedRemote.remoteSpecs">
       <div class="remote-header">
         <h2>{{ selectedRemote.remoteSpecs.name }}</h2>
         <p>
@@ -176,36 +176,30 @@
             onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';" />{{
           selectedRemote.remoteSpecs.type }}
         </p>
-      </div>
+      </div>    
 
       <!-- Disk Info Card -->
       <div class="info-card disk-card">
         <h3>
-          <img src="assets/icons/hard-drive.svg" class="icon icon-bw" /> Disk
-          Info
+          <img src="assets/icons/hard-drive.svg" class="icon icon-bw" /> Disk Info
         </h3>
         <mat-card class="info-card-content">
           <mat-card-content class="disk-usage">
             <strong>Space Allocation</strong>
             <!-- Progress Bar -->
             <div class="full-bar disk-usage-bar" [ngClass]="{
-                'not-mounted-bar': selectedRemote.mounted === 'false',
-                'error-bar': selectedRemote.mounted === 'error' || selectedRemote.mounted === null || selectedRemote.mounted === undefined
+                'not-mounted-bar': !selectedRemote.mounted,
+                'error-bar': selectedRemote.mounted === 'error'
               }">
-              <p *ngIf="selectedRemote.mounted === 'false'">Not Mounted</p>
-              <p
-                *ngIf="selectedRemote.mounted === 'error' || selectedRemote.mounted === null || selectedRemote.mounted === undefined ">
-                Error</p>
-              <div *ngIf="selectedRemote.mounted === 'true'" class="usage" [ngStyle]="{
-                  width:
-                    selectedRemote.mounted === 'true'
-                      ? getUsagePercentage(selectedRemote) + '%'
-                      : '100%'
+              <p *ngIf="!selectedRemote.mounted">Not Mounted</p>
+              <p *ngIf="selectedRemote.mounted === 'error'">Error</p>
+              <div *ngIf="selectedRemote.mounted" class="usage" [ngStyle]="{
+                  width: selectedRemote.mounted ? getUsagePercentage(selectedRemote) + '%' : '100%'
                 }"></div>
             </div>
-
+      
             <!-- Legend (Hide when Not Mounted or Error) -->
-            <div class="legend" *ngIf="selectedRemote.mounted === 'true'">
+            <div class="legend" *ngIf="selectedRemote.mounted">
               <div class="legend-item">
                 <span class="color-box border"></span> Total Space:
                 {{ selectedRemote.diskUsage.total_space }}
@@ -220,12 +214,12 @@
               </div>
             </div>
           </mat-card-content>
-
+      
           <mat-divider></mat-divider>
-
+      
           <!-- Buttons -->
           <mat-card-footer class="button-container">
-            <ng-container *ngIf="selectedRemote.mounted === 'true'">
+            <ng-container *ngIf="selectedRemote.mounted">
               <button class="open" (click)="openFiles(selectedRemote.remoteSpecs.name)">
                 <img src="assets/icons/folder-white.svg" class="icon" />
                 Open Files
@@ -235,16 +229,15 @@
                 Unmount
               </button>
             </ng-container>
-
-            <ng-container *ngIf="selectedRemote.mounted === 'false'">
+      
+            <ng-container *ngIf="!selectedRemote.mounted">
               <button class="mount" (click)="mountRemote(selectedRemote.remoteSpecs.name)">
                 <img src="assets/icons/mount.svg" class="icon" style="filter: invert(1)" />
                 Mount
               </button>
             </ng-container>
-
-            <ng-container
-              *ngIf="selectedRemote.mounted === 'error' || selectedRemote.mounted === null || selectedRemote.mounted === undefined">
+      
+            <ng-container *ngIf="selectedRemote.mounted === 'error'">
               <button class="fix">
                 <img src="assets/icons/wrench.svg" class="icon" style="filter: invert(1)" />
                 Fix
@@ -253,6 +246,7 @@
           </mat-card-footer>
         </mat-card>
       </div>
+      
 
       <!-- Remote Specs Card -->
       <div class="info-card spec-card">

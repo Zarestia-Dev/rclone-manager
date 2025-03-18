@@ -1,4 +1,15 @@
-<router-outlet></router-outlet>
-<app-titlebar class="title-bar"></app-titlebar>
-<app-onboarding *ngIf="showOnboarding" (completed)="finishOnboarding()" class="onboarding"></app-onboarding>
-<app-home></app-home>
+<!-- Custom Right-Click Menu -->
+<!-- <div id="custom-menu" class="menu" (mouseleave)="hideMenu()">
+    <ul>
+      <li (click)="onOptionClick('Option 1')">Option 1</li>
+      <li (click)="onOptionClick('Option 2')">Option 2</li>
+      <li (click)="onOptionClick('Option 3')">Option 3</li>
+    </ul>
+  </div> -->
+  
+  <!-- Main Layout -->
+  <router-outlet></router-outlet>
+  <app-titlebar class="title-bar"></app-titlebar>
+  <app-onboarding *ngIf="showOnboarding" (completed)="finishOnboarding()" class="onboarding"></app-onboarding>
+  <app-home appRightClick></app-home> <!-- Enable Right-Click on Home -->
+  

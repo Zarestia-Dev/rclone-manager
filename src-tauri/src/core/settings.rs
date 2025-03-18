@@ -9,7 +9,7 @@ pub struct Config {
     pub use_rc_api: bool,  // true = RC API, false = Rust threads
 }
 
-const CONFIG_PATH: &str = "config.json";
+const CONFIG_PATH: &str = "settings.json";
 
 pub fn load_config() -> Config {
     if Path::new(CONFIG_PATH).exists() {

@@ -1,48 +1,87 @@
 use tauri::{
-    menu::{Menu, MenuItem, Submenu}, tray::{TrayIconBuilder, TrayIconEvent}, AppHandle, Emitter, Manager, Runtime
+    menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
+    tray::{TrayIconBuilder, TrayIconEvent},
+    AppHandle, Emitter, Manager, Runtime,
 };
 
-use crate::api::get_remotes;
+use crate::rclone::api::{get_remotes, RcloneState};
 
 /// Function to create the system tray menu
 pub async fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let handle = app.clone();
+    let separator = PredefinedMenuItem::separator(&handle)?;
 
     // Base Menu Items
     let show_app_item = MenuItem::with_id(&handle, "show_app", "Show App", true, None::<&str>)?;
     let mount_all_item = MenuItem::with_id(&handle, "mount_all", "Mount All", true, None::<&str>)?;
-    let unmount_all_item = MenuItem::with_id(&handle, "unmount_all", "Unmount All", true, None::<&str>)?;
+    let unmount_all_item =
+        MenuItem::with_id(&handle, "unmount_all", "Unmount All", true, None::<&str>)?;
     let settings_item = MenuItem::with_id(&handle, "settings", "Settings", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(&handle, "quit", "Quit", true, None::<&str>)?;
 
-    // Separator
-    // let separator = MenuItem::separator(&handle)?;
-
     // Fetch dynamic remotes (you need a function for this)
-    let remotes = get_remotes().await; // Fetch from state or API
+    let rclone_state = app.state::<RcloneState>();
+    let remotes = get_remotes(rclone_state).await; // Fetch from state or API
 
     let mut remote_menus = vec![];
 
-    if let Ok(remote) = remotes {
-        let remote_str = remote.join(", ");
-        let mount_item = MenuItem::with_id(&handle, format!("mount-{}", remote_str), "Mount", true, None::<&str>)?;
-        let unmount_item = MenuItem::with_id(&handle, format!("unmount-{}", remote_str), "Unmount", true, None::<&str>)?;
-        let browse_item = MenuItem::with_id(&handle, format!("browse-{}", remote_str), "Browse", true, None::<&str>)?;
-        let remove_item = MenuItem::with_id(&handle, format!("remove-{}", remote_str), "Remove", true, None::<&str>)?;
+    // Iterate over each remote name
+    for remote in remotes.iter().flatten() {
+        // Flatten to get individual remotes
+        let mount_item = MenuItem::with_id(
+            &handle,
+            format!("mount-{}", remote),
+            "Mount",
+            true,
+            None::<&str>,
+        )?;
+        let unmount_item = MenuItem::with_id(
+            &handle,
+            format!("unmount-{}", remote),
+            "Unmount",
+            true,
+            None::<&str>,
+        )?;
+        let browse_item = MenuItem::with_id(
+            &handle,
+            format!("browse-{}", remote),
+            "Browse",
+            true,
+            None::<&str>,
+        )?;
+        let remove_item = MenuItem::with_id(
+            &handle,
+            format!("remove-{}", remote),
+            "Remove",
+            true,
+            None::<&str>,
+        )?;
 
-        let remote_submenu = Submenu::with_items(&handle, &remote_str, true, &[
-            &mount_item, &unmount_item, &browse_item, &remove_item
-        ])?;
+        let remote_submenu = Submenu::with_items(
+            &handle,
+            remote,
+            true,
+            &[&mount_item, &unmount_item, &browse_item, &remove_item],
+        )?;
 
         remote_menus.push(remote_submenu);
     }
-
     // Main Menu
-    let menu = Menu::with_items(&handle, &[
-        &show_app_item,
-        &mount_all_item, &unmount_all_item,
-        &settings_item, &quit_item,
-    ])?;
+    let mut menu_items: Vec<&dyn tauri::menu::IsMenuItem<R>> = remote_menus
+        .iter()
+        .map(|submenu| submenu as &dyn tauri::menu::IsMenuItem<R>)
+        .collect();
+
+    menu_items.push(&separator);
+
+    menu_items.push(&show_app_item);
+    menu_items.push(&mount_all_item);
+    menu_items.push(&unmount_all_item);
+    menu_items.push(&separator);
+    menu_items.push(&settings_item);
+    menu_items.push(&quit_item);
+
+    let menu = Menu::with_items(&handle, &menu_items)?;
 
     // Build Tray
     TrayIconBuilder::new()

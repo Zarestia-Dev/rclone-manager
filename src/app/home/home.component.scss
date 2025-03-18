@@ -179,6 +179,7 @@
 
               .bar {
                 height: 100%;
+                transition: width 0.5s ease-in-out;
 
                 &.mounted-bar {
                   background-color: var(--green);
@@ -318,6 +319,7 @@
 
             .not-mounted-bar {
               border: none !important;
+              transition: width 0.5s ease-in-out;
 
               p {
                 background-color: var(--purple);
@@ -327,6 +329,7 @@
             /* When Remote has an Error */
             .error-bar {
               border: none !important;
+              transition: width 0.5s ease-in-out;
 
               p {
                 background-color: var(--red);
