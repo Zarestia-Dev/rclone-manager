@@ -1,14 +1,16 @@
-use std::fs;
-use std::path::PathBuf;
-use tauri::{AppHandle, Manager};
 use reqwest::Client;
+use std::fs;
 use std::io::Write;
+use std::path::PathBuf;
 
 #[cfg(target_os = "macos")]
 fn needs_mount_plugin() -> bool {
     let has_fuse_t = PathBuf::from("/Library/Application Support/fuse-t").exists();
     let has_osx_fuse = PathBuf::from("/Library/Filesystems/macfuse.fs").exists();
-    println!("MacOS: hasFuseT: {}, hasOsxFuse: {}", has_fuse_t, has_osx_fuse);
+    println!(
+        "MacOS: hasFuseT: {}, hasOsxFuse: {}",
+        has_fuse_t, has_osx_fuse
+    );
     !has_fuse_t && !has_osx_fuse
 }
 
@@ -20,14 +22,9 @@ fn needs_mount_plugin() -> bool {
     !has_winfsp
 }
 
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
-fn needs_mount_plugin() -> bool {
-    false // No additional plugin required for Linux
-}
-
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 #[tauri::command]
 async fn download_mount_plugin(app: AppHandle) -> Result<(), String> {
-
     let client = Client::new();
     let download_path = app.path().app_data_dir().unwrap_or(PathBuf::from("/tmp"));
 
@@ -35,7 +32,7 @@ async fn download_mount_plugin(app: AppHandle) -> Result<(), String> {
     {
         let url = "https://github.com/macos-fuse-t/fuse-t/releases/download/1.0.44/fuse-t-macos-installer-1.0.44.pkg";
         let local_file = download_path.join("fuse-t-installer.pkg");
-        
+
         if let Err(e) = fetch_and_save(&client, url, &local_file).await {
             return Err(format!("Failed to download macOS plugin: {}", e));
         }
@@ -55,11 +52,20 @@ async fn download_mount_plugin(app: AppHandle) -> Result<(), String> {
 }
 
 async fn fetch_and_save(client: &Client, url: &str, file_path: &PathBuf) -> Result<(), String> {
-    let response = client.get(url).send().await.map_err(|e| format!("Request failed: {}", e))?;
-    let bytes = response.bytes().await.map_err(|e| format!("Failed to read bytes: {}", e))?;
+    let response = client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+    let bytes = response
+        .bytes()
+        .await
+        .map_err(|e| format!("Failed to read bytes: {}", e))?;
 
-    let mut file = fs::File::create(file_path).map_err(|e| format!("File creation error: {}", e))?;
-    file.write_all(&bytes).map_err(|e| format!("Failed to write file: {}", e))?;
+    let mut file =
+        fs::File::create(file_path).map_err(|e| format!("File creation error: {}", e))?;
+    file.write_all(&bytes)
+        .map_err(|e| format!("Failed to write file: {}", e))?;
 
     println!("Downloaded and saved at {:?}", file_path);
     Ok(())

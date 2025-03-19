@@ -29,6 +29,7 @@
     "core:tray:allow-set-title",
     "core:tray:allow-set-visible",
     "core:tray:allow-set-temp-dir-path",
-    "opener:allow-default-urls"
+    "opener:allow-default-urls",
+    "store:default"
   ]
 }

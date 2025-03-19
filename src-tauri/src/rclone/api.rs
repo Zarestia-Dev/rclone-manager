@@ -1,9 +1,18 @@
-use std::{collections::HashMap, error::Error, fs, path::PathBuf, process::{Child, Command}, sync::{Arc, Mutex}, thread, time::Duration};
-use tauri::State;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::{
+    collections::HashMap,
+    error::Error,
+    fs,
+    path::PathBuf,
+    process::{Child, Command},
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
 use tauri::command;
+use tauri::State;
 
 const RCLONE_API_URL: &str = "http://localhost:5572";
 
@@ -13,7 +22,10 @@ pub struct RcloneState {
 
 pub fn is_rc_api_running() -> bool {
     let client = reqwest::blocking::Client::new();
-    match client.post(format!("{}/config/listremotes", RCLONE_API_URL)).send() {
+    match client
+        .post(format!("{}/config/listremotes", RCLONE_API_URL))
+        .send()
+    {
         Ok(response) => response.status().is_success(),
         Err(_) => false,
     }
@@ -47,10 +59,13 @@ pub fn ensure_rc_api_running(rc_process: Arc<Mutex<Option<Child>>>) {
 }
 
 #[command]
-pub async fn get_all_remote_configs(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
+pub async fn get_all_remote_configs(
+    state: State<'_, RcloneState>,
+) -> Result<serde_json::Value, String> {
     let url = format!("{}/config/dump", RCLONE_API_URL);
 
-    let response = state.client
+    let response = state
+        .client
         .post(url)
         .send()
         .await
@@ -71,12 +86,12 @@ pub async fn get_all_mount_configs() -> Result<Vec<MountConfig>, String> {
     Ok(mounts)
 }
 
-
 #[command]
 pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
     let url = format!("{}/config/listremotes", RCLONE_API_URL);
 
-    let response = state.client
+    let response = state
+        .client
         .post(url)
         .send()
         .await
@@ -98,7 +113,6 @@ pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, S
 
     Ok(remotes)
 }
-
 
 #[derive(Serialize, Deserialize)]
 pub struct MountConfig {
@@ -159,10 +173,7 @@ pub async fn save_mount_config(
     Ok(())
 }
 
-
 /// Get saved mount configurations
-
-
 
 #[command]
 pub async fn get_saved_mount_config(remote: String) -> Result<Option<MountConfig>, String> {
@@ -177,16 +188,20 @@ pub async fn get_saved_mount_config(remote: String) -> Result<Option<MountConfig
     Ok(mount_config)
 }
 
-
 #[command]
-pub async fn create_remote(name: String, parameters: HashMap<String, serde_json::Value>, state: State<'_, RcloneState>) -> Result<(), String> {
+pub async fn create_remote(
+    name: String,
+    parameters: HashMap<String, serde_json::Value>,
+    state: State<'_, RcloneState>,
+) -> Result<(), String> {
     let body = serde_json::json!({
         "name": name,
         "type": parameters.get("type").unwrap_or(&serde_json::Value::String("".to_string())),
         "parameters": parameters
     });
 
-    state.client
+    state
+        .client
         .post("http://localhost:5572/config/create")
         .json(&body)
         .send()
@@ -198,10 +213,15 @@ pub async fn create_remote(name: String, parameters: HashMap<String, serde_json:
 
 /// Update an existing remote
 #[command]
-pub async fn update_remote(name: String, parameters: HashMap<String, serde_json::Value>, state: State<'_, RcloneState>) -> Result<(), String> {
+pub async fn update_remote(
+    name: String,
+    parameters: HashMap<String, serde_json::Value>,
+    state: State<'_, RcloneState>,
+) -> Result<(), String> {
     let body = serde_json::json!({ "name": name, "parameters": parameters });
 
-    state.client
+    state
+        .client
         .post("http://localhost:5572/config/update")
         .json(&body)
         .send()
@@ -214,7 +234,8 @@ pub async fn update_remote(name: String, parameters: HashMap<String, serde_json:
 /// Delete a remote
 #[command]
 pub async fn delete_remote(name: String, state: State<'_, RcloneState>) -> Result<(), String> {
-    state.client
+    state
+        .client
         .post(format!("http://localhost:5572/config/delete?name={}", name))
         .send()
         .await
@@ -223,22 +244,27 @@ pub async fn delete_remote(name: String, state: State<'_, RcloneState>) -> Resul
     Ok(())
 }
 
-
 #[command]
 pub async fn get_mount_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
     let url = format!("{}/mount/types", RCLONE_API_URL);
 
-    let response = state.client.post(&url)
+    let response = state
+        .client
+        .post(&url)
         .send()
         .await
         .map_err(|e| format!("Failed to request mount types: {}", e))?;
 
-    let json: Value = response.json()
+    let json: Value = response
+        .json()
         .await
         .map_err(|e| format!("Failed to parse response: {}", e))?;
 
     if let Some(types) = json.get("mountTypes").and_then(|t| t.as_array()) {
-        Ok(types.iter().filter_map(|t| t.as_str().map(String::from)).collect())
+        Ok(types
+            .iter()
+            .filter_map(|t| t.as_str().map(String::from))
+            .collect())
     } else {
         Err("Invalid response format".to_string())
     }
@@ -246,21 +272,27 @@ pub async fn get_mount_types(state: State<'_, RcloneState>) -> Result<Vec<String
 
 /// Fetch remote config fields dynamically
 #[command]
-pub async fn get_remote_config_fields(remote_type: String, state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-
+pub async fn get_remote_config_fields(
+    remote_type: String,
+    state: State<'_, RcloneState>,
+) -> Result<Vec<Value>, String> {
     let url = format!("{}/config/providers", RCLONE_API_URL);
 
-    let response = state.client.post(&url)
+    let response = state
+        .client
+        .post(&url)
         .send()
         .await
         .map_err(|e| format!("Failed to fetch remote config fields: {}", e))?;
 
-    let json: Value = response.json()
+    let json: Value = response
+        .json()
         .await
         .map_err(|e| format!("Failed to parse response: {}", e))?;
 
     if let Some(providers) = json.get("providers").and_then(|p| p.as_array()) {
-        let fields = providers.iter()
+        let fields = providers
+            .iter()
             .find(|provider| provider.get("Name") == Some(&Value::String(remote_type.clone())))
             .and_then(|provider| provider.get("Options").cloned());
 
@@ -274,10 +306,14 @@ pub async fn get_remote_config_fields(remote_type: String, state: State<'_, Rclo
 }
 
 #[command]
-pub async fn get_remote_config(remote_name: String, state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
+pub async fn get_remote_config(
+    remote_name: String,
+    state: State<'_, RcloneState>,
+) -> Result<serde_json::Value, String> {
     let url = format!("http://localhost:5572/config/get?name={}", remote_name);
 
-    let response = state.client
+    let response = state
+        .client
         .post(&url)
         .send()
         .await
@@ -291,12 +327,12 @@ pub async fn get_remote_config(remote_name: String, state: State<'_, RcloneState
     Ok(json)
 }
 
-
 #[command]
 pub async fn list_mounts(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
     let url = format!("{}/mount/listmounts", RCLONE_API_URL);
 
-    let response = state.client
+    let response = state
+        .client
         .post(&url)
         .send()
         .await
@@ -324,10 +360,13 @@ pub struct MountedRemote {
 }
 
 #[tauri::command]
-pub async fn get_mounted_remotes(state: State<'_, RcloneState>) -> Result<Vec<MountedRemote>, String> {
+pub async fn get_mounted_remotes(
+    state: State<'_, RcloneState>,
+) -> Result<Vec<MountedRemote>, String> {
     let url = format!("{}/mount/listmounts", RCLONE_API_URL);
 
-    let response = state.client
+    let response = state
+        .client
         .post(&url)
         .send()
         .await
@@ -361,7 +400,11 @@ pub async fn get_mounted_remotes(state: State<'_, RcloneState>) -> Result<Vec<Mo
 }
 
 #[command]
-pub async fn mount_remote(remote_name: String, mount_point: String, state: State<'_, RcloneState>) -> Result<String, String> {
+pub async fn mount_remote(
+    remote_name: String,
+    mount_point: String,
+    state: State<'_, RcloneState>,
+) -> Result<String, String> {
     let url = format!("{}/mount/mount", RCLONE_API_URL);
 
     let formatted_remote = if remote_name.ends_with(':') {
@@ -374,39 +417,54 @@ pub async fn mount_remote(remote_name: String, mount_point: String, state: State
         "fs": formatted_remote,
         "mountPoint": mount_point
     });
-    
+
     // Check if the mount point path exists, create it if it doesn't
     let mount_path = PathBuf::from(&mount_point);
     if !mount_path.exists() {
-        fs::create_dir_all(&mount_path)
-            .map_err(|e| format!("❌ Failed to create mount point path '{}': {}", mount_point, e))?;
+        fs::create_dir_all(&mount_path).map_err(|e| {
+            format!(
+                "❌ Failed to create mount point path '{}': {}",
+                mount_point, e
+            )
+        })?;
     }
     let response = state.client.post(&url).json(&params).send().await;
 
     match response {
         Ok(resp) => {
             let status = resp.status();
-            let body = resp.text().await.unwrap_or_else(|_| "No response body".to_string());
+            let body = resp
+                .text()
+                .await
+                .unwrap_or_else(|_| "No response body".to_string());
 
             if status.is_success() {
                 Ok(format!("✅ Mounted '{}' to '{}'", remote_name, mount_point))
             } else {
-                Err(format!("❌ Failed to mount '{}': {} (HTTP {})", remote_name, body, status))
+                Err(format!(
+                    "❌ Failed to mount '{}': {} (HTTP {})",
+                    remote_name, body, status
+                ))
             }
         }
-        Err(e) => {
-            Err(format!("🚨 Request Error: Failed to send mount request: {}", e))
-        }
+        Err(e) => Err(format!(
+            "🚨 Request Error: Failed to send mount request: {}",
+            e
+        )),
     }
 }
 
 #[command]
-pub async fn unmount_remote(mount_point: String, state: State<'_, RcloneState>) -> Result<String, String> {
+pub async fn unmount_remote(
+    mount_point: String,
+    state: State<'_, RcloneState>,
+) -> Result<String, String> {
     let url = format!("{}/mount/unmount", RCLONE_API_URL);
 
     let params = serde_json::json!({ "mountPoint": mount_point });
 
-    let response = state.client
+    let response = state
+        .client
         .post(&url)
         .json(&params)
         .send()
@@ -427,10 +485,14 @@ pub struct DiskUsage {
     total: String,
 }
 #[command]
-pub async fn get_disk_usage(remote_name: String, state: State<'_, RcloneState>) -> Result<DiskUsage, String> {
+pub async fn get_disk_usage(
+    remote_name: String,
+    state: State<'_, RcloneState>,
+) -> Result<DiskUsage, String> {
     let url = format!("{}/operations/about", RCLONE_API_URL);
 
-    let response = state.client
+    let response = state
+        .client
         .post(&url)
         .json(&json!({ "fs": format!("{}:", remote_name) }))
         .send()
@@ -438,7 +500,10 @@ pub async fn get_disk_usage(remote_name: String, state: State<'_, RcloneState>) 
         .map_err(|e| format!("Failed to send request: {}", e))?;
 
     if !response.status().is_success() {
-        let error_msg = response.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+        let error_msg = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown error".to_string());
         return Err(format!("Failed to fetch disk usage: {}", error_msg));
     }
 
@@ -472,7 +537,6 @@ fn format_size(bytes: u64) -> String {
     format!("{:.2} {}", size, sizes[i])
 }
 
-
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")] // ✅ Convert JSON PascalCase to Rust snake_case automatically
 pub struct RemoteProvider {
@@ -491,33 +555,41 @@ pub struct RemoteOption {
 /// State struct for managing HTTP client instance
 
 #[tauri::command]
-pub async fn get_remote_types(state: State<'_, RcloneState>) -> Result<HashMap<String, Vec<RemoteProvider>>, String> {
+pub async fn get_remote_types(
+    state: State<'_, RcloneState>,
+) -> Result<HashMap<String, Vec<RemoteProvider>>, String> {
     let url = format!("{}/config/providers", RCLONE_API_URL);
-    
-    let response = state.client.post(url)
+
+    let response = state
+        .client
+        .post(url)
         .send()
         .await
         .map_err(|e| format!("Failed to send request: {}", e))?;
-    
-    let providers: HashMap<String, Vec<RemoteProvider>> = response.json()
+
+    let providers: HashMap<String, Vec<RemoteProvider>> = response
+        .json()
         .await
         .map_err(|e| format!("Failed to parse response: {}", e))?;
 
     Ok(providers)
 }
 
-
 // FLAGS
 
-async fn fetch_rclone_options(endpoint: &str, state: State<'_, RcloneState>) -> Result<Value, Box<dyn Error>> {
+async fn fetch_rclone_options(
+    endpoint: &str,
+    state: State<'_, RcloneState>,
+) -> Result<Value, Box<dyn Error>> {
     let url = format!("{}/options/{}", RCLONE_API_URL, endpoint);
-    
-    let response = state.client
+
+    let response = state
+        .client
         .post(&url)
         .json(&json!({})) // Empty JSON body
         .send()
         .await?;
-    
+
     if response.status().is_success() {
         let json: Value = response.json().await?;
         Ok(json)
@@ -529,13 +601,17 @@ async fn fetch_rclone_options(endpoint: &str, state: State<'_, RcloneState>) -> 
 /// Fetch all global flags
 #[command]
 pub async fn get_global_flags(state: State<'_, RcloneState>) -> Result<Value, String> {
-    fetch_rclone_options("get", state).await.map_err(|e| e.to_string())
+    fetch_rclone_options("get", state)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// Fetch copy flags
 #[command]
 pub async fn get_copy_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let json = fetch_rclone_options("info", state).await.map_err(|e| e.to_string())?;
+    let json = fetch_rclone_options("info", state)
+        .await
+        .map_err(|e| e.to_string())?;
     let empty_vec = Vec::new();
     let main_flags = json["main"].as_array().unwrap_or(&empty_vec);
 
@@ -557,7 +633,9 @@ pub async fn get_copy_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>,
 /// Fetch sync flags
 #[command]
 pub async fn get_sync_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let json = fetch_rclone_options("info", state).await.map_err(|e| e.to_string())?;
+    let json = fetch_rclone_options("info", state)
+        .await
+        .map_err(|e| e.to_string())?;
     let empty_vec = Vec::new();
     let main_flags = json["main"].as_array().unwrap_or(&empty_vec);
 
@@ -576,11 +654,12 @@ pub async fn get_sync_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>,
     Ok(sync_flags)
 }
 
-
 /// Fetch filter flags (excluding metadata)
 #[command]
 pub async fn get_filter_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let json = fetch_rclone_options("info", state).await.map_err(|e| e.to_string())?;
+    let json = fetch_rclone_options("info", state)
+        .await
+        .map_err(|e| e.to_string())?;
     let empty_vec = vec![];
     let filter_flags = json["filter"].as_array().unwrap_or(&empty_vec);
 
@@ -600,7 +679,9 @@ pub async fn get_filter_flags(state: State<'_, RcloneState>) -> Result<Vec<Value
 /// Fetch VFS flags (excluding ignored flags)
 #[command]
 pub async fn get_vfs_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let json = fetch_rclone_options("info", state).await.map_err(|e| e.to_string())?;
+    let json = fetch_rclone_options("info", state)
+        .await
+        .map_err(|e| e.to_string())?;
     let empty_vec = vec![];
     let vfs_flags = json["vfs"].as_array().unwrap_or(&empty_vec);
 
@@ -620,7 +701,9 @@ pub async fn get_vfs_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, 
 /// Fetch mount flags (excluding specific ignored flags)
 #[command]
 pub async fn get_mount_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let json = fetch_rclone_options("info", state).await.map_err(|e| e.to_string())?;
+    let json = fetch_rclone_options("info", state)
+        .await
+        .map_err(|e| e.to_string())?;
     let empty_vec = vec![];
     let mount_flags = json["mount"].as_array().unwrap_or(&empty_vec);
 

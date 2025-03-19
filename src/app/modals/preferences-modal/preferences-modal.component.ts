@@ -8,6 +8,8 @@ import { MatRadioModule } from "@angular/material/radio";
 import { MatInputModule } from "@angular/material/input";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatDialogRef } from "@angular/material/dialog";
+import { MatOptionModule } from "@angular/material/core";
+import { AppSettings, SettingsService } from "../../services/settings.service";
 
 @Component({
   selector: "app-preferences-modal",
@@ -20,6 +22,7 @@ import { MatDialogRef } from "@angular/material/dialog";
     MatFormFieldModule,
     MatInputModule,
     FormsModule,
+    MatOptionModule,
   ],
   templateUrl: "./preferences-modal.component.html",
   styleUrl: "./preferences-modal.component.scss",
@@ -47,6 +50,16 @@ export class PreferencesModalComponent {
   appearanceForm: FormGroup;
   advancedForm: FormGroup;
 
+  settings: AppSettings = {
+    tray_enabled: true,
+    start_minimized: false,
+    auto_refresh: true,
+    notifications: true,
+    rclone_api_port: 5572,
+    default_mount_type: 'native',
+    debug_logging: false,
+    bandwidth_limit: ''
+  };
   selectTab(index: number) {
     this.selectedTabIndex = index;
   }
@@ -59,7 +72,8 @@ export class PreferencesModalComponent {
 
   constructor(
     private dialogRef: MatDialogRef<PreferencesModalComponent>,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private settingsService: SettingsService
   ) {
     this.generalForm = this.fb.group({
       enableNotifications: [true],
@@ -77,14 +91,18 @@ export class PreferencesModalComponent {
     });
   }
 
-  settings = {
-    someGeneralOption: true,
-    theme: "light",
-    customConfig: "",
-  };
+
+  async ngOnInit() {
+    this.settings = await this.settingsService.loadSettings();
+  }
+
+  async save() {
+    await this.settingsService.saveSettings(this.settings);
+  }
 
   @HostListener("document:keydown.escape", ["$event"])
   close() {
+    this.save()
     this.dialogRef.close();
   }
 

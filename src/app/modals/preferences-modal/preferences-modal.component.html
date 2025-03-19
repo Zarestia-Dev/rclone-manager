@@ -1,5 +1,4 @@
 <div class="preferences-modal">
-
   <div class="modal-header" data-tauri-drag-region>
     <button><img src="assets/icons/titlebar/search.svg" class="icon icon-bw" /></button>
     <div class="tabs">
@@ -11,24 +10,41 @@
   </div>
 
   <div class="modal-content">
+    <!-- General Settings -->
     <div *ngIf="selectedTabIndex === 0" class="tab-content">
       <h3>General Settings</h3>
-      <mat-slide-toggle [(ngModel)]="settings.someGeneralOption">Enable feature</mat-slide-toggle>
+      <mat-slide-toggle [(ngModel)]="settings.tray_enabled">Enable Tray Icon</mat-slide-toggle>
+      <mat-slide-toggle [(ngModel)]="settings.start_minimized">Start Minimized</mat-slide-toggle>
+      <mat-slide-toggle [(ngModel)]="settings.auto_refresh">Auto-Refresh Remotes</mat-slide-toggle>
+      <mat-slide-toggle [(ngModel)]="settings.notifications">Enable Notifications</mat-slide-toggle>
     </div>
 
+    <!-- Appearance Settings -->
     <div *ngIf="selectedTabIndex === 1" class="tab-content">
       <h3>Appearance Settings</h3>
-      <mat-radio-group [(ngModel)]="settings.theme">
-        <mat-radio-button value="light">Light Mode</mat-radio-button>
-        <mat-radio-button value="dark">Dark Mode</mat-radio-button>
-      </mat-radio-group>
     </div>
 
+    <!-- Advanced Settings -->
     <div *ngIf="selectedTabIndex === 2" class="tab-content">
       <h3>Advanced Settings</h3>
       <mat-form-field appearance="fill">
-        <mat-label>Custom Config</mat-label>
-        <input matInput [(ngModel)]="settings.customConfig">
+        <mat-label>Rclone API Port</mat-label>
+        <input matInput [(ngModel)]="settings.rclone_api_port" type="number">
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Default Mount Type</mat-label>
+        <mat-select [(ngModel)]="settings.default_mount_type">
+          <mat-option value="native">Native</mat-option>
+          <mat-option value="systemd">Systemd</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-slide-toggle [(ngModel)]="settings.debug_logging">Enable Debug Logging</mat-slide-toggle>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Bandwidth Limit</mat-label>
+        <input matInput [(ngModel)]="settings.bandwidth_limit" type="number">
       </mat-form-field>
     </div>
   </div>

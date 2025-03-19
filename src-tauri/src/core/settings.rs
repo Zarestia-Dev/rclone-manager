@@ -1,38 +1,46 @@
-use serde::{Serialize, Deserialize};
-use tauri::command;
-use tauri_plugin_opener::OpenerExt;
-use std::fs;
-use std::path::Path;
+use std::sync::{Arc, Mutex};
+use serde_json::json;
+use tauri::Runtime;
+use tauri_plugin_store::Store;
+use tauri::State;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Config {
-    pub use_rc_api: bool,  // true = RC API, false = Rust threads
+use super::settings_store::AppSettings;
+
+/// Global settings store
+pub struct SettingsState<R: Runtime> {
+    pub store: Arc<Mutex<Arc<Store<R>>>>,
 }
 
-const CONFIG_PATH: &str = "settings.json";
 
-pub fn load_config() -> Config {
-    if Path::new(CONFIG_PATH).exists() {
-        let config_data = fs::read_to_string(CONFIG_PATH).expect("Failed to read config");
-        serde_json::from_str(&config_data).expect("Failed to parse config")
+#[tauri::command]
+pub async fn save_settings<'a>(
+    state: State<'a, SettingsState<tauri::Wry>>, // ✅ Specify Wry as the Runtime
+    settings: AppSettings,
+) -> Result<(), String> {
+    let store = state.store.lock().unwrap();
+    
+    store.set("app_settings".to_string(), json!(settings));
+
+    // ✅ Save the store to disk
+    store.save().map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+/// ✅ Load settings from Tauri state
+#[tauri::command]
+pub async fn load_settings<'a>(state: State<'a, SettingsState<tauri::Wry>>) -> Result<AppSettings, String> {
+    let store = state.store.lock().unwrap();
+
+    // ✅ Reload store from disk (ensures latest data)
+    store.reload().map_err(|e: tauri_plugin_store::Error| e.to_string())?;
+
+    // ✅ Fetch existing settings or return default
+    if let Some(settings) = store.get("app_settings") {
+        let settings: AppSettings = serde_json::from_value(settings.clone()).map_err(|e| e.to_string())?;
+        println!("Loaded settings from load_settings: {:?}", settings);
+        Ok(settings)
     } else {
-        Config { use_rc_api: true }  // Default to RC API
-    }
-}
-
-pub fn save_config(config: &Config) {
-    let config_data = serde_json::to_string_pretty(config).expect("Failed to serialize config");
-    fs::write(CONFIG_PATH, config_data).expect("Failed to save config");
-}
-
-#[command]
-pub async fn open_in_files(app: tauri::AppHandle, path: String) -> Result<String, String> {
-    if path.is_empty() {
-        return Err("Invalid path: Path cannot be empty.".to_string());
-    }
-
-    match app.opener().open_path(path.clone(), None::<&str>) {
-        Ok(_) => Ok(format!("Opened file manager at {}", path)),
-        Err(e) => Err(format!("Failed to open file manager: {}", e)),
+        Ok(AppSettings::default()) // ✅ Return default if none found
     }
 }
