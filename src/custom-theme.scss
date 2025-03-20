@@ -11,22 +11,22 @@
 // Define the palettes for your theme using the Material Design palettes available in palette.scss
 // (imported above). For each palette, you can optionally specify a default, lighter, and darker
 // hue. Available color palettes: https://material.io/design/color/
-$rclone-manager-primary: mat.define-palette(mat.$indigo-palette);
-$rclone-manager-accent: mat.define-palette(mat.$blue-palette, A200, A100, A400);
+$rclone-manager-primary: mat.m2-define-palette(mat.$m2-indigo-palette);
+$rclone-manager-accent: mat.m2-define-palette(mat.$m2-blue-palette, A200, A100, A400);
 
 // The warn palette is optional (defaults to red).
-$rclone-manager-warn: mat.define-palette(mat.$red-palette);
+$rclone-manager-warn: mat.m2-define-palette(mat.$m2-red-palette);
 
 // Create the theme object. A theme consists of configurations for individual
 // theming systems such as "color" or "typography".
-$rclone-manager-theme: mat.define-light-theme(
+$rclone-manager-theme: mat.m2-define-light-theme(
   (
     color: (
       primary: $rclone-manager-primary,
       accent: $rclone-manager-accent,
       warn: $rclone-manager-warn,
     ),
-    typography: mat.define-typography-config(),
+    typography: mat.m2-define-typography-config(),
     density: 0,
   )
 );
