@@ -12,37 +12,30 @@ import { MatOptionModule } from "@angular/material/core";
 import { AppSettings, SettingsService } from "../../services/settings.service";
 
 @Component({
-  selector: "app-preferences-modal",
-  standalone: true,
-  imports: [
-    MatTabsModule,
-    MatSlideToggleModule,
-    CommonModule,
-    MatRadioModule,
-    MatFormFieldModule,
-    MatInputModule,
-    FormsModule,
-    MatOptionModule,
-  ],
-  templateUrl: "./preferences-modal.component.html",
-  styleUrl: "./preferences-modal.component.scss",
-  animations: [
-    trigger("slideAnimation", [
-      transition(":enter", [
-        style({ opacity: 0, transform: "translateX(100%)" }),
-        animate(
-          "300ms ease-out",
-          style({ opacity: 1, transform: "translateX(0)" })
-        ),
-      ]),
-      transition(":leave", [
-        animate(
-          "300ms ease-in",
-          style({ opacity: 0, transform: "translateX(-100%)" })
-        ),
-      ]),
-    ]),
-  ],
+    selector: "app-preferences-modal",
+    imports: [
+        MatTabsModule,
+        MatSlideToggleModule,
+        CommonModule,
+        MatRadioModule,
+        MatFormFieldModule,
+        MatInputModule,
+        FormsModule,
+        MatOptionModule,
+    ],
+    templateUrl: "./preferences-modal.component.html",
+    styleUrl: "./preferences-modal.component.scss",
+    animations: [
+        trigger("slideAnimation", [
+            transition(":enter", [
+                style({ opacity: 0, transform: "translateX(100%)" }),
+                animate("300ms ease-out", style({ opacity: 1, transform: "translateX(0)" })),
+            ]),
+            transition(":leave", [
+                animate("300ms ease-in", style({ opacity: 0, transform: "translateX(-100%)" })),
+            ]),
+        ]),
+    ]
 })
 export class PreferencesModalComponent {
   selectedTabIndex = 0;

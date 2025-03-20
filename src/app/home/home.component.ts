@@ -14,17 +14,16 @@ import {
 } from "../modals/confirm-modal/confirm-modal.component";
 
 @Component({
-  selector: "app-home",
-  standalone: true,
-  imports: [
-    MatSidenavModule,
-    MatDividerModule,
-    MatChipsModule,
-    CommonModule,
-    MatCardModule,
-  ],
-  templateUrl: "./home.component.html",
-  styleUrl: "./home.component.scss",
+    selector: "app-home",
+    imports: [
+        MatSidenavModule,
+        MatDividerModule,
+        MatChipsModule,
+        CommonModule,
+        MatCardModule,
+    ],
+    templateUrl: "./home.component.html",
+    styleUrl: "./home.component.scss"
 })
 export class HomeComponent {
   isSidebarOpen = true;

@@ -20,44 +20,37 @@ import { MatChipInputEvent, MatChipsModule } from "@angular/material/chips";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
 @Component({
-  selector: "app-remote-config-modal",
-  standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    CommonModule,
-    MatSelectModule,
-    MatFormFieldModule,
-    MatDividerModule,
-    MatProgressSpinnerModule,
-    MatInputModule,
-    MatSlideToggleModule,
-    MatChipsModule,
-    MatTooltipModule
-  ],
-  templateUrl: "./remote-config-modal.component.html",
-  styleUrl: "./remote-config-modal.component.scss",
-  animations: [
-    trigger("slideAnimation", [
-      transition(":enter", [
-        style({
-          transform: "translateX(100%)",
-          opacity: 0,
-          position: "absolute",
-          width: "100%",
-        }),
-        animate(
-          "300ms ease-in-out",
-          style({ transform: "translateX(0)", opacity: 1 })
-        ),
-      ]),
-      transition(":leave", [
-        animate(
-          "300ms ease-in-out",
-          style({ transform: "translateX(-50%)", opacity: 0 })
-        ),
-      ]),
-    ]),
-  ],
+    selector: "app-remote-config-modal",
+    imports: [
+        ReactiveFormsModule,
+        CommonModule,
+        MatSelectModule,
+        MatFormFieldModule,
+        MatDividerModule,
+        MatProgressSpinnerModule,
+        MatInputModule,
+        MatSlideToggleModule,
+        MatChipsModule,
+        MatTooltipModule
+    ],
+    templateUrl: "./remote-config-modal.component.html",
+    styleUrl: "./remote-config-modal.component.scss",
+    animations: [
+        trigger("slideAnimation", [
+            transition(":enter", [
+                style({
+                    transform: "translateX(100%)",
+                    opacity: 0,
+                    position: "absolute",
+                    width: "100%",
+                }),
+                animate("300ms ease-in-out", style({ transform: "translateX(0)", opacity: 1 })),
+            ]),
+            transition(":leave", [
+                animate("300ms ease-in-out", style({ transform: "translateX(-50%)", opacity: 0 })),
+            ]),
+        ]),
+    ]
 })
 export class RemoteConfigModalComponent implements OnInit {
   @Input() editMode: boolean = false;

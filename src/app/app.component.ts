@@ -8,11 +8,10 @@ import { HomeComponent } from './home/home.component';
 // import { RightClickDirective } from './directives/right-click.directive';
 
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [CommonModule, RouterOutlet, TitlebarComponent, OnboardingComponent, HomeComponent/*, RightClickDirective*/],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+    selector: 'app-root',
+    imports: [CommonModule, RouterOutlet, TitlebarComponent, OnboardingComponent, HomeComponent /*, RightClickDirective*/],
+    templateUrl: './app.component.html',
+    styleUrl: './app.component.scss'
 })
 export class AppComponent {
   greetingMessage = "";

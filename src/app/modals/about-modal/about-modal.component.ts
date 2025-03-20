@@ -8,22 +8,21 @@ import { MatSnackBar } from "@angular/material/snack-bar";
 
 
 @Component({
-  selector: "app-about-modal",
-  standalone: true,
-  imports: [CommonModule, MatDividerModule],
-  templateUrl: "./about-modal.component.html",
-  styleUrl: "./about-modal.component.scss",
-  animations: [
-    trigger("slideOverlay", [
-      transition(":enter", [
-        style({ transform: "translateX(100%)" }),
-        animate("300ms ease-out", style({ transform: "translateX(0%)" })),
-      ]),
-      transition(":leave", [
-        animate("300ms ease-in", style({ transform: "translateX(100%)" })),
-      ]),
-    ]),
-  ],
+    selector: "app-about-modal",
+    imports: [CommonModule, MatDividerModule],
+    templateUrl: "./about-modal.component.html",
+    styleUrl: "./about-modal.component.scss",
+    animations: [
+        trigger("slideOverlay", [
+            transition(":enter", [
+                style({ transform: "translateX(100%)" }),
+                animate("300ms ease-out", style({ transform: "translateX(0%)" })),
+            ]),
+            transition(":leave", [
+                animate("300ms ease-in", style({ transform: "translateX(100%)" })),
+            ]),
+        ]),
+    ]
 })
 export class AboutModalComponent {
   private _snackBar = inject(MatSnackBar);

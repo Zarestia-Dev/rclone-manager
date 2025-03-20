@@ -9,11 +9,10 @@ export interface ConfirmDialogData {
 }
 
 @Component({
-  selector: 'app-confirm-modal',
-  standalone: true,
-  imports: [MatDialogModule],
-  templateUrl: './confirm-modal.component.html',
-  styleUrl: './confirm-modal.component.scss'
+    selector: 'app-confirm-modal',
+    imports: [MatDialogModule],
+    templateUrl: './confirm-modal.component.html',
+    styleUrl: './confirm-modal.component.scss'
 })
 export class ConfirmModalComponent {
   constructor(

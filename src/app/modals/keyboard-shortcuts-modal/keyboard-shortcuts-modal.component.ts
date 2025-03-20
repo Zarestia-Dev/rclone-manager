@@ -8,19 +8,17 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
 
 @Component({
-  selector: 'app-keyboard-shortcuts-modal',
-  standalone: true,
-  imports: [CommonModule, MatTableModule, MatFormFieldModule, MatInputModule, FormsModule],
-  templateUrl: './keyboard-shortcuts-modal.component.html',
-  styleUrl: './keyboard-shortcuts-modal.component.scss',
-  animations: [
-    trigger("slideToggle", [
-      state("hidden", style({ height: "0px", opacity: 0 })),
-      state("visible", style({ height: "*", opacity: 1 })),
-      transition("hidden <=> visible", animate("300ms ease-in-out")),
-    ]),
-  ],
-
+    selector: 'app-keyboard-shortcuts-modal',
+    imports: [CommonModule, MatTableModule, MatFormFieldModule, MatInputModule, FormsModule],
+    templateUrl: './keyboard-shortcuts-modal.component.html',
+    styleUrl: './keyboard-shortcuts-modal.component.scss',
+    animations: [
+        trigger("slideToggle", [
+            state("hidden", style({ height: "0px", opacity: 0 })),
+            state("visible", style({ height: "*", opacity: 1 })),
+            transition("hidden <=> visible", animate("300ms ease-in-out")),
+        ]),
+    ]
 })
 export class KeyboardShortcutsModalComponent {
   searchText = "";

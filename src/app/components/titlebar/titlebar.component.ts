@@ -14,11 +14,10 @@ import { StateService } from "../../services/state.service";
 const appWindow = getCurrentWindow();
 
 @Component({
-  selector: "app-titlebar",
-  standalone: true,
-  imports: [MatMenuModule, MatDividerModule, CommonModule],
-  templateUrl: "./titlebar.component.html",
-  styleUrl: "./titlebar.component.scss",
+    selector: "app-titlebar",
+    imports: [MatMenuModule, MatDividerModule, CommonModule],
+    templateUrl: "./titlebar.component.html",
+    styleUrl: "./titlebar.component.scss"
 })
 export class TitlebarComponent implements OnInit, OnDestroy {
   constructor(private dialog: MatDialog, private stateService: StateService) {}

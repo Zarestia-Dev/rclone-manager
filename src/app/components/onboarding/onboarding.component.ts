@@ -6,22 +6,21 @@ import { MatDividerModule } from '@angular/material/divider';
 import { invoke } from '@tauri-apps/api/core';
 
 @Component({
-  selector: 'app-onboarding',
-  standalone: true,
-  imports: [CommonModule, MatCardModule, MatDividerModule],
-  animations: [
-    trigger('slideAnimation', [
-      state('void', style({ opacity: 0, transform: 'translateX(100%)' })),
-      state('forward', style({ opacity: 1, transform: 'translateX(0)' })),
-      state('backward', style({ opacity: 1, transform: 'translateX(0)' })),
-      transition('void => forward', [animate('300ms ease-out')]),
-      transition('forward => void', [animate('300ms ease-in', style({ opacity: 0, transform: 'translateX(-100%)' }))]),
-      transition('void => backward', [animate('300ms ease-out', style({ opacity: 0, transform: 'translateX(-100%)' }))]),
-      transition('backward => void', [animate('300ms ease-in', style({ opacity: 0, transform: 'translateX(100%)' }))]),
-    ]),
-  ],
-  templateUrl: './onboarding.component.html',
-  styleUrl: './onboarding.component.scss'
+    selector: 'app-onboarding',
+    imports: [CommonModule, MatCardModule, MatDividerModule],
+    animations: [
+        trigger('slideAnimation', [
+            state('void', style({ opacity: 0, transform: 'translateX(100%)' })),
+            state('forward', style({ opacity: 1, transform: 'translateX(0)' })),
+            state('backward', style({ opacity: 1, transform: 'translateX(0)' })),
+            transition('void => forward', [animate('300ms ease-out')]),
+            transition('forward => void', [animate('300ms ease-in', style({ opacity: 0, transform: 'translateX(-100%)' }))]),
+            transition('void => backward', [animate('300ms ease-out', style({ opacity: 0, transform: 'translateX(-100%)' }))]),
+            transition('backward => void', [animate('300ms ease-in', style({ opacity: 0, transform: 'translateX(100%)' }))]),
+        ]),
+    ],
+    templateUrl: './onboarding.component.html',
+    styleUrl: './onboarding.component.scss'
 })
 export class OnboardingComponent {
   currentCardIndex = 0;
