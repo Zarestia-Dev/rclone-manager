@@ -546,12 +546,15 @@ pub struct RemoteProvider {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")] // ✅ Works for nested structs too
+#[serde(rename_all = "PascalCase")] // ✅ Convert JSON PascalCase to Rust automatically
 pub struct RemoteOption {
-    pub name: String,
-    pub help: String,
-    pub required: bool,
+    pub name: String,       // "Name": "client_id"
+    pub help: String,       // "Help": "Google Application Client Id..."
+    pub required: bool,     // "Required": false
+    pub value: Option<String>,  // "Value": null or some default
+    pub r#type: Option<String>, // "Type": "string", "bool", etc.
 }
+
 /// State struct for managing HTTP client instance
 
 #[tauri::command]

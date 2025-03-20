@@ -29,12 +29,12 @@
       <h3>Advanced Settings</h3>
       <mat-form-field appearance="fill">
         <mat-label>Rclone API Port</mat-label>
-        <input matInput [(ngModel)]="settings.rclone_api_port" type="number">
+        <input matInput [(ngModel)]="settings.rclone_api_port" type="number" name="rcloneApiPort" required />
       </mat-form-field>
 
       <mat-form-field appearance="fill">
         <mat-label>Default Mount Type</mat-label>
-        <mat-select [(ngModel)]="settings.default_mount_type">
+        <mat-select [(ngModel)]="settings.default_mount_type" required>
           <mat-option value="native">Native</mat-option>
           <mat-option value="systemd">Systemd</mat-option>
         </mat-select>
@@ -43,8 +43,8 @@
       <mat-slide-toggle [(ngModel)]="settings.debug_logging">Enable Debug Logging</mat-slide-toggle>
 
       <mat-form-field appearance="fill">
-        <mat-label>Bandwidth Limit</mat-label>
-        <input matInput [(ngModel)]="settings.bandwidth_limit" type="number">
+      <mat-label>Bandwidth Limit</mat-label>
+      <input matInput [(ngModel)]="settings.bandwidth_limit" type="number" name="bandwidthLimit" required>
       </mat-form-field>
     </div>
   </div>

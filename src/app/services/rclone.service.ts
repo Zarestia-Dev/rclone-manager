@@ -25,19 +25,23 @@ export class RcloneService {
     }
   }
 
-  /** Get all available remote types */
-  async getRemoteTypes(): Promise<{ Name: string; Description: string }[]> {
-    try {
-      const response = await invoke<{
-        providers: { Name: string; Description: string }[];
-      }>("get_remote_types");
-      console.log("Fetched remote types:", response.providers);
-      return response.providers;
-    } catch (error) {
-      console.error("Failed to fetch remote types:", error);
-      return [];
-    }
+/** Get all available remote types */
+async getRemoteTypes(): Promise<{ Name: string; Description: string }[]> {
+  try {
+    const response = await invoke<{ [key: string]: { Name: string; Description: string }[] }>(
+      "get_remote_types"
+    );
+
+    // ✅ Extract values correctly
+    const providers = Object.values(response).flat();
+    
+    console.log("Fetched remote types:", providers);
+    return providers;
+  } catch (error) {
+    console.error("Failed to fetch remote types:", error);
+    return [];
   }
+}
 
   /** Get the configuration fields required for a specific remote type */
   async getRemoteConfigFields(type: string): Promise<any[]> {
