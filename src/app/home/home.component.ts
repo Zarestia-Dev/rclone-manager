@@ -12,21 +12,24 @@ import {
   ConfirmDialogData,
   ConfirmModalComponent,
 } from "../modals/confirm-modal/confirm-modal.component";
+import { SettingsService } from "../services/settings.service";
+import { MatTooltipModule } from "@angular/material/tooltip";
 
 @Component({
-    selector: "app-home",
-    imports: [
-        MatSidenavModule,
-        MatDividerModule,
-        MatChipsModule,
-        CommonModule,
-        MatCardModule,
-    ],
-    templateUrl: "./home.component.html",
-    styleUrl: "./home.component.scss"
+  selector: "app-home",
+  imports: [
+    MatSidenavModule,
+    MatDividerModule,
+    MatChipsModule,
+    CommonModule,
+    MatCardModule,
+    MatTooltipModule
+  ],
+  templateUrl: "./home.component.html",
+  styleUrl: "./home.component.scss",
 })
 export class HomeComponent {
-  isSidebarOpen = true;
+  isSidebarOpen = false;
   sidebarMode: MatDrawerMode = "side";
   selectedRemote: any = null;
   remotes: any[] = [];
@@ -37,30 +40,27 @@ export class HomeComponent {
   constructor(
     private dialog: MatDialog,
     private stateService: StateService,
-    private rcloneService: RcloneService
+    private rcloneService: RcloneService,
+    private settingservice: SettingsService
   ) {}
 
   async ngOnInit(): Promise<void> {
-    const savedState = localStorage.getItem("sidebarState");
-    this.isSidebarOpen = savedState === "true";
     this.updateSidebarMode();
 
     this.stateService.selectedRemote$.subscribe((remote) => {
       this.selectedRemote = remote;
     });
 
-    
     await this.refreshMounts();
-    await this.loadMounts();
     await this.loadRemotes();
     await this.loadMountTypes();
+    await this.getRemoteSettings();
     // console.log("Global Flags:", this.rcloneService.getGlobalFlags());
     // console.log("Copy Flags:", this.rcloneService.getCopyFlags());
     // console.log("Sync Flags:", this.rcloneService.getSyncFlags());
     // console.log("Filter Flags:", this.rcloneService.getFilterFlags());
     // console.log("VFS Flags:", this.rcloneService.getVfsFlags());
     // console.log("Mount Flags:", this.rcloneService.getMountFlags());
-    
   }
 
   @HostListener("window:resize", [])
@@ -78,7 +78,6 @@ export class HomeComponent {
 
   toggleSidebar(): void {
     this.isSidebarOpen = !this.isSidebarOpen;
-    localStorage.setItem("sidebarState", String(this.isSidebarOpen));
   }
 
   async openFiles(remoteName: any): Promise<void> {
@@ -158,12 +157,12 @@ export class HomeComponent {
   }
 
   // Select a remote for editing
-    selectRemote(remote: any) {
-      const updatedRemote = this.remotes.find(r => r.remoteSpecs.name === remote.remoteSpecs.name);
-      this.selectedRemote = updatedRemote ? { ...updatedRemote } : null;
-      
-    }
-
+  selectRemote(remote: any) {
+    const updatedRemote = this.remotes.find(
+      (r) => r.remoteSpecs.name === remote.remoteSpecs.name
+    );
+    this.selectedRemote = updatedRemote ? { ...updatedRemote } : null;
+  }
 
   // Get remotes based on their mount status
   getMountedRemotes() {
@@ -239,12 +238,11 @@ export class HomeComponent {
   }
 
   // Load all saved mount configurations
-  async loadMounts(): Promise<void> {
-    const mountConfigs = await this.rcloneService.getAllMountConfigs();
-    this.savedMountConfigs = Object.entries(mountConfigs).map(
-      ([remote, config]) => ({
-        remote,
-        ...config,
+  async getRemoteSettings(): Promise<void> {
+    const remoteNames = this.remotes.map((remote) => remote.remoteSpecs.name);
+    this.savedMountConfigs = await Promise.all(
+      remoteNames.map(async (name) => {
+        return await this.settingservice.getRemoteSettings(name);
       })
     );
     console.log("Saved Mount Configs:", this.savedMountConfigs);
@@ -276,9 +274,7 @@ export class HomeComponent {
 
   // Get saved mount configuration for a remote
   loadSavedMountConfig(remoteName: string): any {
-    return this.savedMountConfigs.find(
-      (config) => config.remote === remoteName
-    );
+    return this.savedMountConfigs.find((config) => config?.name === remoteName);
   }
 
   // Mount a remote
@@ -344,7 +340,7 @@ export class HomeComponent {
     return value !== null && typeof value === "object";
   }
 
-  ngOnDestroy(): void {
-    localStorage.setItem("sidebarState", String(this.isSidebarOpen));
+  isArray(value: any): boolean {
+    return Array.isArray(value);
   }
 }

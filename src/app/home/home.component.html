@@ -295,14 +295,20 @@
             <div *ngIf="loadSavedMountConfig(selectedRemote.remoteSpecs.name)">
               <h4>Saved Mount Config</h4>
               <mat-chip-set class="saved-mount-container">
-                <mat-chip *ngFor="let spec of loadSavedMountConfig(selectedRemote.remoteSpecs.name) | keyvalue" class="spec-pill">
+                <mat-chip 
+                  *ngFor="let spec of loadSavedMountConfig(selectedRemote.remoteSpecs.name) | keyvalue"
+                  class="spec-pill"
+                  matTooltip="{{ spec.value | json }}" 
+                  matTooltipPosition="above"
+                  [matTooltipHideDelay]="500">
+                  
                   <strong>{{ spec.key }}:</strong> 
-                  <ng-container *ngIf="isObject(spec.value); else plainText">
-                    {{ spec.value | json }}  <!-- Display as JSON string -->
+                  <ng-container *ngIf="isObject(spec.value) || isArray(spec.value); else plainText">
+                    {{ spec.value | json | slice:0:30 }}...
                   </ng-container>
                   <ng-template #plainText>{{ spec.value }}</ng-template>
-                </mat-chip>                
-              </mat-chip-set>
+                </mat-chip>
+              </mat-chip-set>              
             </div>
           </mat-card-content>
           <mat-divider></mat-divider>

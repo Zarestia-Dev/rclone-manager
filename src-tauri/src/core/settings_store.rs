@@ -13,6 +13,12 @@ pub struct AppSettings {
     pub bandwidth_limit: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct RemoteSettings {
+    pub key: String,
+    pub value: String,
+}
+
 // ✅ Default values
 impl Default for AppSettings {
     fn default() -> Self {

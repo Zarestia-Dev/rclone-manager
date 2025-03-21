@@ -10,6 +10,7 @@ import { PreferencesModalComponent } from "../../modals/preferences-modal/prefer
 import { KeyboardShortcutsModalComponent } from "../../modals/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component";
 import { AboutModalComponent } from "../../modals/about-modal/about-modal.component";
 import { StateService } from "../../services/state.service";
+import { QuickAddRemoteComponent } from "../../modals/quick-add-remote/quick-add-remote.component";
 
 const appWindow = getCurrentWindow();
 
@@ -45,7 +46,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
   async setTheme(theme: string) {
     this.selectedTheme = theme;
-    localStorage.setItem("app-theme", theme);
 
     // Apply the theme to the app
     if (theme === "system") {
@@ -56,6 +56,16 @@ export class TitlebarComponent implements OnInit, OnDestroy {
       document.documentElement.setAttribute("class", theme);
       await invoke("set_theme", { theme });
     }
+  }
+
+  openQuickAddRemoteModal(): void {
+    this.dialog.open(QuickAddRemoteComponent, {
+      width: "70vw",
+      maxWidth: "800px",
+      height: "80vh",
+      maxHeight: "600px",
+      disableClose: true,
+    });
   }
 
   openRemoteConfigModal(): void {
@@ -108,7 +118,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    this.selectedTheme = localStorage.getItem("app-theme") || "system";
     this.setTheme(this.selectedTheme);
 
     // Listen for system theme changes

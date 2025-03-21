@@ -1,12 +1,13 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use tokio::time::sleep;
 use std::{
     collections::HashMap,
     error::Error,
     fs,
     path::PathBuf,
-    process::{Child, Command},
+    process::{Child, Command, Stdio},
     sync::{Arc, Mutex},
     thread,
     time::Duration,
@@ -79,12 +80,7 @@ pub async fn get_all_remote_configs(
     Ok(json)
 }
 
-#[command]
-pub async fn get_all_mount_configs() -> Result<Vec<MountConfig>, String> {
-    let content = fs::read_to_string(mount_config_path()).unwrap_or_else(|_| "[]".to_string());
-    let mounts: Vec<MountConfig> = serde_json::from_str(&content).unwrap_or_default();
-    Ok(mounts)
-}
+
 
 #[command]
 pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
@@ -114,102 +110,117 @@ pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, S
     Ok(remotes)
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct MountConfig {
-    remote: String,
-    mount_path: String,
-    options: HashMap<String, serde_json::Value>,
+
+
+lazy_static::lazy_static! {
+    static ref OAUTH_PROCESS: Arc<tokio::sync::Mutex<Option<Child>>> = Arc::new(tokio::sync::Mutex::new(None));
 }
 
-// Path for storing mount configurations
-fn mount_config_path() -> PathBuf {
-    dirs::config_dir()
-        .unwrap()
-        .join("rclone-manager/mounts.json")
-}
-
-/// Save mount configuration
-#[command]
-pub async fn save_mount_config(
-    remote: String,
-    mount_path: String,
-    options: HashMap<String, serde_json::Value>,
-) -> Result<(), String> {
-    let path = mount_config_path();
-    let dir = path.parent().unwrap();
-
-    // Ensure the config directory exists
-    if !dir.exists() {
-        fs::create_dir_all(dir).map_err(|e| format!("Failed to create config directory: {}", e))?;
-    }
-
-    let mut mounts: Vec<MountConfig> = match fs::read_to_string(&path) {
-        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
-        Err(_) => vec![], // If file doesn't exist, start with an empty list
-    };
-
-    // Check if the mount already exists
-    if let Some(existing) = mounts.iter_mut().find(|m| m.remote == remote) {
-        // Update existing mount configuration
-        existing.mount_path = mount_path.clone();
-        existing.options = options.clone();
-        println!("Updated existing mount config for: {}", remote);
-    } else {
-        // Add new mount configuration
-        mounts.push(MountConfig {
-            remote: remote.clone(),
-            mount_path: mount_path.clone(),
-            options: options.clone(),
-        });
-        println!("Added new mount config for: {}", remote);
-    }
-
-    // Save the updated mounts list back to the file
-    fs::write(&path, serde_json::to_string_pretty(&mounts).unwrap())
-        .map_err(|e| format!("Failed to write mount config: {}", e))?;
-
-    println!("Mount config saved at: {:?}", path); // Debug print
-
-    Ok(())
-}
-
-/// Get saved mount configurations
-
-#[command]
-pub async fn get_saved_mount_config(remote: String) -> Result<Option<MountConfig>, String> {
-    let mounts: Vec<MountConfig> = match fs::read_to_string(mount_config_path()) {
-        Ok(content) => serde_json::from_str(&content).unwrap_or_default(),
-        Err(_) => vec![], // If file doesn't exist, return an empty vec
-    };
-
-    // Find the mount config that matches the given remote name
-    let mount_config = mounts.into_iter().find(|m| m.remote == remote);
-
-    Ok(mount_config)
-}
-
-#[command]
+#[tauri::command]
 pub async fn create_remote(
     name: String,
-    parameters: HashMap<String, serde_json::Value>,
+    parameters: serde_json::Value,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
+    let remote_type = parameters
+        .get("type")
+        .and_then(|v| v.as_str())
+        .ok_or("Missing remote type")?;
+
+    // ✅ Check if an OAuth process is already running
+    let mut guard = OAUTH_PROCESS.lock().await;
+    if guard.is_some() {
+        println!("🔴 Stopping existing OAuth authentication process...");
+        quit_rclone_oauth().await?;
+    }
+
+    // ✅ Start Rclone with a separate API port
+    let rclone_process = Command::new("rclone")
+        .args([
+            "rcd",
+            "--rc-no-auth",
+            "--rc-serve",
+            "--rc-addr", "localhost:5580", // ✅ Separate instance
+        ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("Failed to start separate Rclone instance: {}", e))?;
+
+    println!("✅ Started Rclone OAuth instance with PID: {:?}", rclone_process.id());
+
+    // ✅ Store the process in a global state
+    *guard = Some(rclone_process);
+
+    // ✅ Give Rclone a moment to start
+    sleep(Duration::from_secs(2)).await;
+
+    let client = &state.client;
     let body = serde_json::json!({
         "name": name,
-        "type": parameters.get("type").unwrap_or(&serde_json::Value::String("".to_string())),
+        "type": remote_type,
         "parameters": parameters
     });
 
-    state
-        .client
-        .post("http://localhost:5572/config/create")
+    // ✅ Send create request to the separate Rclone instance
+    let response = client
+        .post("http://localhost:5580/config/create") // ✅ Use new instance
         .json(&body)
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("Failed to send request: {}", e))?;
+
+    let response_text = response.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
+
+    // ✅ Detect OAuth errors
+    if response_text.contains("failed to get oauth token") {
+        return Err("OAuth authentication was not completed. Please authenticate in the browser.".to_string());
+    }
+    if response_text.contains("bind: address already in use") {
+        return Err("OAuth authentication failed because the port is already in use.".to_string());
+    }
+    if response_text.contains("couldn't find type field in config") {
+        return Err("Configuration update failed due to a missing type field.".to_string());
+    }
 
     Ok(())
 }
+
+
+#[tauri::command]
+pub async fn quit_rclone_oauth() -> Result<(), String> {
+    let mut guard = OAUTH_PROCESS.lock().await;
+    if guard.is_none() {
+        return Err("No active Rclone OAuth process found.".to_string());
+    }
+
+    let client = reqwest::Client::new();
+    let url = "http://localhost:5580/core/quit";
+
+    println!("🛑 Stopping Rclone OAuth instance...");
+
+    // ✅ Send graceful shutdown command
+    let response = client.post(url).send().await;
+
+    match response {
+        Ok(_) => println!("✅ Rclone OAuth instance exited cleanly."),
+        Err(e) => println!("⚠️ Failed to quit via RC API: {}", e),
+    }
+
+    // 🔴 Check if process is still running before killing
+    if let Some(mut process) = guard.take() {
+        if let Ok(Some(_)) = process.try_wait() {
+            println!("✅ Rclone OAuth process already exited.");
+        } else {
+            let _ = process.kill();
+            println!("💀 Force-killed Rclone OAuth process.");
+        }
+    }
+
+    Ok(())
+}
+
+
 
 /// Update an existing remote
 #[command]
@@ -538,45 +549,77 @@ fn format_size(bytes: u64) -> String {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")] // ✅ Convert JSON PascalCase to Rust snake_case automatically
-pub struct RemoteProvider {
-    pub name: String,
-    pub description: String,
-    pub options: Vec<RemoteOption>,
+#[serde(rename_all = "PascalCase")]
+pub struct RemoteExample {
+    pub value: String,
+    pub help: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")] // ✅ Convert JSON PascalCase to Rust automatically
+#[serde(rename_all = "PascalCase")]
 pub struct RemoteOption {
-    pub name: String,       // "Name": "client_id"
-    pub help: String,       // "Help": "Google Application Client Id..."
-    pub required: bool,     // "Required": false
-    pub value: Option<String>,  // "Value": null or some default
-    pub r#type: Option<String>, // "Type": "string", "bool", etc.
+    pub name: String,       
+    pub help: String,       
+    pub required: bool,     
+    pub value: Option<String>,  
+    pub r#type: Option<String>, 
+
+    #[serde(default)] // If missing, use default empty vector
+    pub examples: Vec<RemoteExample>,
 }
 
-/// State struct for managing HTTP client instance
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct RemoteProvider {
+    pub name: String,
+    pub description: String,
+    pub prefix: String,
+    pub options: Vec<RemoteOption>,
+}
 
-#[tauri::command]
-pub async fn get_remote_types(
-    state: State<'_, RcloneState>,
-) -> Result<HashMap<String, Vec<RemoteProvider>>, String> {
+/// ✅ Fetch remote providers (cached for reuse)
+async fn fetch_remote_providers(state: &State<'_, RcloneState>) -> Result<HashMap<String, Vec<RemoteProvider>>, String> {
     let url = format!("{}/config/providers", RCLONE_API_URL);
-
-    let response = state
-        .client
+    
+    let response = state.client
         .post(url)
         .send()
         .await
         .map_err(|e| format!("Failed to send request: {}", e))?;
-
-    let providers: HashMap<String, Vec<RemoteProvider>> = response
-        .json()
-        .await
+    
+    let body = response.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
+    let providers: HashMap<String, Vec<RemoteProvider>> = serde_json::from_str(&body)
         .map_err(|e| format!("Failed to parse response: {}", e))?;
 
     Ok(providers)
 }
+
+/// ✅ Fetch all remote types
+#[tauri::command]
+pub async fn get_remote_types(state: State<'_, RcloneState>) -> Result<HashMap<String, Vec<RemoteProvider>>, String> {
+    fetch_remote_providers(&state).await
+}
+
+/// ✅ Fetch only OAuth-supported remotes
+#[tauri::command]
+pub async fn get_oauth_supported_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
+    let providers = fetch_remote_providers(&state).await?;
+
+    // ✅ Extract OAuth-supported remotes
+    let oauth_remotes: Vec<String> = providers.into_values()
+        .flatten()
+        .filter(|remote| {
+            remote.options.iter().any(|opt| 
+                opt.name == "token" && opt.help.contains("OAuth Access Token as a JSON blob.")
+            )
+        })
+        .map(|remote| remote.name.clone()) // Clone the name string
+        .collect();
+
+    Ok(oauth_remotes)
+}
+
+
 
 // FLAGS
 

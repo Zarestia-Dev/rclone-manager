@@ -32,4 +32,25 @@ export class SettingsService {
     console.log("Saved settings", settings);
     await invoke("save_settings", { settings });
   }
+
+  async saveRemoteSettings(remoteName: string, settings: any) {
+    try {
+      await invoke("save_remote_settings", { remoteName, settings });
+    }
+    catch (error) {
+      console.error("Failed to save remote settings:", error);
+    }
+  }
+
+  async getRemoteSettings(remoteName: string): Promise<any> {
+    try {
+      const settings = await invoke("get_remote_settings", { remoteName });
+      console.log(`Loaded settings for ${remoteName}:`, settings);
+      return settings;
+    } catch (error) {
+      console.error(`Failed to load settings for ${remoteName}:`, error);
+      return null; // Return null if not found
+    }
+  }
+  
 }

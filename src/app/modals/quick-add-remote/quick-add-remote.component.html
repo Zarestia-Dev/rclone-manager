@@ -1,0 +1,58 @@
+<div class="quick-add-modal">
+  <div class="modal-header" data-tauri-drag-region>
+    <div class="header-content">
+      <button><img src="assets/icons/question.svg" class="icon icon-bw" /></button>
+      <p>
+        <img src="assets/icons/hard-drive.svg" class="icon icon-bw" />
+        Quick Add Remote
+      </p>
+      <button (click)="close()"><img src="assets/icons/circle-xmark.svg" class="icon icon-bw" /></button>
+    </div>
+    <mat-divider></mat-divider>
+  </div>
+
+  <form class="form-group" [formGroup]="quickAddForm" (ngSubmit)="onSubmit()">
+    <!-- Remote Type Selection -->
+    <mat-form-field>
+      <mat-label>Select Remote Type</mat-label>
+      <mat-select formControlName="remoteType" (selectionChange)="onRemoteTypeChange()">
+        <mat-option *ngFor="let remote of oauthSupportedRemotes" [value]="remote">
+          {{ remote }}
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Remote Name -->
+    <mat-form-field>
+      <mat-label>Remote Name</mat-label>
+      <input matInput formControlName="remoteName" />
+    </mat-form-field>
+
+    <!-- Auto-Mount Checkbox -->
+    <mat-slide-toggle formControlName="autoMount">Auto-Mount after creation</mat-slide-toggle>
+
+    <!-- Mount Path (shown if Auto-Mount is enabled) -->
+    <mat-form-field appearance="fill" *ngIf="quickAddForm.get('autoMount')?.value">
+      <mat-label>Mount Path</mat-label>
+      <button mat-button matSuffix type="button" (click)="selectFolder()">
+        <img src="assets/icons/folder-white.svg" class="icon icon-bw" style="filter: invert(1);" />
+      </button>
+      <input matInput formControlName="mountPath" id="mountPath" />
+      <mat-error *ngIf="quickAddForm.get('autoMount')?.value && quickAddForm.get('mountPath')?.hasError('required')">
+        Mount Path is required.
+      </mat-error>
+    </mat-form-field>
+
+
+    <!-- Submit Button -->
+    <button class="finish" mat-raised-button type="submit" [disabled]="isLoading || quickAddForm.invalid">
+      {{ isLoading ? 'Adding...' : 'Create Remote' }}
+    </button>
+
+    <!-- Additional Message -->
+    <p *ngIf="isLoading" class="loading-message">Browser may be opened for authentication</p>
+
+    <!-- Error Message -->
+    <mat-error *ngIf="errorMessage">{{ errorMessage }}</mat-error>
+  </form>
+  </div>

@@ -25,23 +25,41 @@ export class RcloneService {
     }
   }
 
-/** Get all available remote types */
-async getRemoteTypes(): Promise<{ Name: string; Description: string }[]> {
-  try {
-    const response = await invoke<{ [key: string]: { Name: string; Description: string }[] }>(
-      "get_remote_types"
-    );
+  /** Get all available remote types */
+  async getRemoteTypes(): Promise<{ name: string; description: string }[]> {
+    try {
+      const response = await invoke<{
+        [key: string]: { Name: string; Description: string }[];
+      }>("get_remote_types");
 
-    // ✅ Extract values correctly
-    const providers = Object.values(response).flat();
-    
-    console.log("Fetched remote types:", providers);
-    return providers;
-  } catch (error) {
-    console.error("Failed to fetch remote types:", error);
-    return [];
+      // Convert PascalCase keys to camelCase
+      const providers = Object.values(response)
+        .flat()
+        .map((provider) => ({
+          name: provider.Name,
+          description: provider.Description,
+        }));
+
+      console.log("Fetched remote types:", providers);
+      return providers;
+    } catch (error) {
+      console.error("Failed to fetch remote types:", error);
+      return [];
+    }
   }
-}
+
+  /** ✅ Get only OAuth-supported remote types */
+  async getOAuthSupportedRemotes(): Promise<string[]> {
+    try {
+      const response = await invoke<string[]>("get_oauth_supported_remotes");
+
+      console.log("Fetched OAuth-supported remotes:", response);
+      return response;
+    } catch (error) {
+      console.error("❌ Failed to fetch OAuth-supported remotes:", error);
+      return [];
+    }
+  }
 
   /** Get the configuration fields required for a specific remote type */
   async getRemoteConfigFields(type: string): Promise<any[]> {
@@ -93,17 +111,6 @@ async getRemoteTypes(): Promise<{ Name: string; Description: string }[]> {
     }
   }
 
-  async getAllMountConfigs(): Promise<Record<string, any>> {
-    try {
-      console.log("Fetching all mount configs");
-      return await invoke<Record<string, any>>("get_all_mount_configs");
-    }
-    catch (error) {
-      console.error("Failed to fetch all mount configs:", error);
-      return {};
-    }
-  }
-
   /** Create a new remote */
   async createRemote(
     name: string,
@@ -112,6 +119,15 @@ async getRemoteTypes(): Promise<{ Name: string; Description: string }[]> {
     await invoke("create_remote", { name, parameters }).catch((error) => {
       console.error(`Error creating remote ${name}:`, error);
     });
+  }
+
+    async quitOAuth() {
+    try {
+      await invoke("quit_rclone_oauth");
+      console.log("OAuth process cancelled.");
+    } catch (error) {
+      console.error("Failed to cancel OAuth:", error);
+    }
   }
 
   /** Update an existing remote */
@@ -209,24 +225,34 @@ async getRemoteTypes(): Promise<{ Name: string; Description: string }[]> {
     mountPath: string,
     options: Record<string, any>
   ): Promise<void> {
-    console.log("Saving mount config for", remote, "at", mountPath, "with options:", options);
-    
-    await invoke("save_mount_config", { remote: remote, mountPath: mountPath, options: options }).catch(
-      (error) => {
-        console.error(`Error saving mount config for ${remote}:`, error);
-      }
+    console.log(
+      "Saving mount config for",
+      remote,
+      "at",
+      mountPath,
+      "with options:",
+      options
     );
+
+    await invoke("save_mount_config", {
+      remote: remote,
+      mountPath: mountPath,
+      options: options,
+    }).catch((error) => {
+      console.error(`Error saving mount config for ${remote}:`, error);
+    });
   }
 
   async getSavedMountConfig(remoteName: string): Promise<any> {
     try {
-      return await invoke<any>("get_saved_mount_config", { remote: remoteName });
+      return await invoke<any>("get_saved_mount_config", {
+        remote: remoteName,
+      });
     } catch (error) {
       console.error("Error fetching mount config for", remoteName, ":", error);
       return null;
     }
   }
-
 
   // Get Flags
 

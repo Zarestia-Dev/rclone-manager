@@ -1,0 +1,53 @@
+.quick-add-modal {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--app-background);
+  color: var(--app-text-color);
+
+  .modal-header {
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    background: var(--app-background);
+    color: var(--app-text-color);
+    z-index: 10;
+
+    .header-content {
+      display: flex;
+      justify-content: space-between;
+      margin: 10px 10px 8px 10px;
+      align-items: center;
+      gap: 10px;
+
+      button {
+        background: none;
+        border: none;
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      p {
+        display: flex;
+        align-items: center;
+        flex-direction: row;
+        gap: 6px;
+        font-size: 20px;
+        font-weight: 600;
+      }
+    }
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    margin: 10px;
+    border-radius: 10px;
+    background: var(--app-background);
+    color: var(--app-text-color);
+  }
+}

@@ -1,14 +1,10 @@
 use core::{
-    settings::{load_settings, save_settings, SettingsState},
+    settings::{get_remote_settings, load_settings, save_remote_settings, save_settings, SettingsState},
     settings_store::AppSettings,
     tray::setup_tray,
 };
 use rclone::api::{
-    create_remote, delete_remote, ensure_rc_api_running, get_all_mount_configs,
-    get_all_remote_configs, get_copy_flags, get_disk_usage, get_filter_flags, get_global_flags,
-    get_mount_flags, get_mount_types, get_mounted_remotes, get_remote_config,
-    get_remote_config_fields, get_remote_types, get_remotes, get_sync_flags, get_vfs_flags,
-    list_mounts, mount_remote, save_mount_config, unmount_remote, update_remote, RcloneState,
+    create_remote, delete_remote, ensure_rc_api_running, get_all_remote_configs, get_copy_flags, get_disk_usage, get_filter_flags, get_global_flags, get_mount_flags, get_mount_types, get_mounted_remotes, get_oauth_supported_remotes, get_remote_config, get_remote_config_fields, get_remote_types, get_remotes, get_sync_flags, get_vfs_flags, list_mounts, mount_remote, quit_rclone_oauth, unmount_remote, update_remote, RcloneState
 };
 use reqwest::Client;
 use std::{
@@ -119,38 +115,43 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let app_handle = app.handle();
-
+        
             // ✅ Read command-line arguments
             let args: Vec<String> = std::env::args().collect();
             let start_with_tray = args.contains(&"--tray".to_string());
-
-            // ✅ Store settings in a proper directory
-            let store_path: PathBuf = app_handle
+        
+            // ✅ Get app's data directory
+            let config_dir = app_handle
                 .path()
                 .app_data_dir()
-                .expect("Failed to get app data directory")
-                .join("settings.json");
-
-            println!("Settings file path: {:?}", store_path); // ✅ Debugging log
-
-            // ✅ Ensure the parent directory exists
-            if let Some(parent) = store_path.parent() {
-                std::fs::create_dir_all(parent)
-                    .map_err(|e| format!("Failed to create settings directory: {}", e))?;
+                .expect("Failed to get app data directory");
+        
+            // ✅ Ensure `config_dir` is a directory
+            if config_dir.exists() && !config_dir.is_dir() {
+                std::fs::remove_file(&config_dir)
+                    .expect("Failed to remove file blocking directory creation");
             }
-
+            std::fs::create_dir_all(&config_dir)
+                .expect("Failed to create config directory");
+        
+            // ✅ Define the path for settings.json
+            let store_path = config_dir.join("settings.json");
+        
+            println!("Settings file path: {:?}", store_path);
+        
             // ✅ Create settings store
             let store = Arc::new(Mutex::new(
-                StoreBuilder::new(&app_handle.clone(), store_path.clone())
+                StoreBuilder::new(app_handle, store_path)
                     .build()
                     .expect("Failed to create settings store"),
             ));
-
-            // ✅ Register `SettingsState` before using it
+        
+            // ✅ Register `SettingsState`
             app.manage(SettingsState {
                 store: store.clone(),
+                config_dir: config_dir.clone(),  // ✅ Use correct directory
             });
-
+        
             // ✅ Load settings using `block_on()`
             let settings = tauri::async_runtime::block_on(load_settings(
                 app.state::<SettingsState<tauri::Wry>>(),
@@ -159,9 +160,9 @@ pub fn run() {
                 println!("⚠️ Failed to load settings: {}. Using defaults.", err);
                 AppSettings::default()
             });
-
+        
             println!("Loaded Settings: {:?}", settings);
-
+        
             // ✅ Handle start_minimized
             if settings.start_minimized {
                 println!("Hiding window");
@@ -169,7 +170,7 @@ pub fn run() {
                     let _ = win.hide();
                 }
             }
-
+        
             // ✅ Handle `--tray` argument OR `start_minimized` setting
             if start_with_tray || settings.start_minimized {
                 println!("Hiding window (start minimized or tray mode)");
@@ -177,7 +178,7 @@ pub fn run() {
                     let _ = win.hide();
                 }
             }
-
+        
             // ✅ Handle tray_enabled
             if settings.tray_enabled {
                 println!("Setting up tray");
@@ -190,7 +191,7 @@ pub fn run() {
             } else {
                 println!("Tray is disabled in settings");
             }
-
+        
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -198,7 +199,6 @@ pub fn run() {
             check_rclone_installed,
             provision_rclone,
             get_all_remote_configs,
-            get_all_mount_configs,
             get_disk_usage,
             list_mounts,
             mount_remote,
@@ -206,23 +206,26 @@ pub fn run() {
             get_remotes,
             get_remote_config,
             get_remote_types,
+            get_oauth_supported_remotes,
             get_mount_types,
             get_remote_config_fields,
             create_remote,
             update_remote,
             delete_remote,
+            quit_rclone_oauth,
             get_global_flags,
             get_copy_flags,
             get_sync_flags,
             get_filter_flags,
             get_vfs_flags,
             get_mount_flags,
-            save_mount_config,
             get_mounted_remotes,
             open_in_files,
             get_folder_location,
             load_settings,
-            save_settings
+            save_settings,
+            save_remote_settings,
+            get_remote_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

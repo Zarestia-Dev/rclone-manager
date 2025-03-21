@@ -3,7 +3,6 @@ import { CommonModule } from "@angular/common";
 import { animate, style, transition, trigger } from "@angular/animations";
 import {
   FormBuilder,
-  FormControl,
   FormGroup,
   ReactiveFormsModule,
   Validators,
@@ -16,7 +15,7 @@ import { MatInputModule } from "@angular/material/input";
 import { RcloneService } from "../../services/rclone.service";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
-import { MatChipInputEvent, MatChipsModule } from "@angular/material/chips";
+import { MatChipsModule } from "@angular/material/chips";
 import { MatTooltipModule } from "@angular/material/tooltip";
 
 @Component({
@@ -59,7 +58,7 @@ export class RemoteConfigModalComponent implements OnInit {
 
   remoteForm: FormGroup;
   mountForm: FormGroup;
-  currentStep: number = 2;
+  currentStep: number = 1;
 
   remoteTypes: any[] = [];
   mountTypes: any[] = [];
@@ -115,8 +114,8 @@ export class RemoteConfigModalComponent implements OnInit {
     try {
       const providers = await this.rcloneService.getRemoteTypes();
       this.remoteTypes = providers.map((provider: any) => ({
-        value: provider.Name,
-        label: provider.Name,
+        value: provider.name,
+        label: provider.name,
       }));
     } catch (error) {
       console.error("Failed to load remote types", error);

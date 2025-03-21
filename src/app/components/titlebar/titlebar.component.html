@@ -1,7 +1,7 @@
 <div class="title-bar" data-tauri-drag-region>
   <div class="left-section">
     <mat-menu #addRemoteMenu="matMenu">
-      <button mat-menu-item>
+      <button mat-menu-item (click)="openQuickAddRemoteModal()">
         <span>Quick Remote</span>
         <span class="shortcut">Ctrl + R</span>
       </button>
