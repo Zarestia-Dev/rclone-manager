@@ -1,36 +1,34 @@
 import { Injectable } from "@angular/core";
 import { invoke } from "@tauri-apps/api/core";
 
-export interface AppSettings {
-  tray_enabled: boolean;
-  start_minimized: boolean;
-  auto_refresh: boolean;
-  notifications: boolean;
-  rclone_api_port: number;
-  default_mount_type: string;
-  debug_logging: boolean;
-  bandwidth_limit: string;
-}
-
 @Injectable({
   providedIn: "root",
 })
 
 export class SettingsService {
-  private settings: AppSettings | null = null;
   
   constructor() {}
   
-  async loadSettings(): Promise<AppSettings> {
-    if (this.settings) return this.settings;
-    this.settings = await invoke<AppSettings>("load_settings");
-    return this.settings;
+  async loadSettings(): Promise<any> {
+    try {
+      const settings = await invoke("load_settings");
+      console.log("Loaded settings:", settings);
+      return settings;
+    }
+    catch (error) {
+      console.error("Failed to load settings:", error);
+      return null;
+    }
   }
 
-  async saveSettings(settings: AppSettings) {
-    this.settings = settings;
-    console.log("Saved settings", settings);
-    await invoke("save_settings", { settings });
+  /** ✅ Save only updated settings */
+  async saveSetting(category: string, key: string, value: any): Promise<void> {
+    try {
+      const updatedSetting = { [category]: { [key]: value } }; // ✅ Send only the updated key
+    await invoke("save_settings", { updatedSettings: updatedSetting });
+    } catch (error) {
+      console.log("Failed to save setting:", error)
+    }
   }
 
   async saveRemoteSettings(remoteName: string, settings: any) {

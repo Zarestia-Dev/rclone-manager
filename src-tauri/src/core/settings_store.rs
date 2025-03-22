@@ -1,36 +1,144 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-/// App settings structure
+/// 🛠️ Metadata for settings
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AppSettings {
+pub struct SettingMetadata {
+    pub display_name: String,
+    pub value_type: String, // "bool", "u16", "string"
+    pub help_text: String,
+}
+
+/// General settings
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GeneralSettings {
     pub tray_enabled: bool,
     pub start_minimized: bool,
     pub auto_refresh: bool,
     pub notifications: bool,
+}
+
+/// Core settings
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CoreSettings {
     pub rclone_api_port: u16,
     pub default_mount_type: String,
-    pub debug_logging: bool,
     pub bandwidth_limit: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct RemoteSettings {
-    pub key: String,
-    pub value: String,
+/// Experimental settings
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ExperimentalSettings {
+    pub debug_logging: bool,
 }
 
-// ✅ Default values
+/// The complete settings model
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AppSettings {
+    pub general: GeneralSettings,
+    pub core: CoreSettings,
+    pub experimental: ExperimentalSettings,
+}
+
+/// ✅ Default settings
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            tray_enabled: true,
-            start_minimized: false,
-            auto_refresh: true,
-            notifications: true,
-            rclone_api_port: 5572,
-            default_mount_type: "native".to_string(),
-            debug_logging: false,
-            bandwidth_limit: "".to_string(),
+            general: GeneralSettings {
+                tray_enabled: true,
+                start_minimized: false,
+                auto_refresh: true,
+                notifications: true,
+            },
+            core: CoreSettings {
+                rclone_api_port: 5572,
+                default_mount_type: "native".to_string(),
+                bandwidth_limit: "".to_string(),
+            },
+            experimental: ExperimentalSettings {
+                debug_logging: false,
+            },
         }
+    }
+}
+
+/// ✅ Get settings metadata (doesn't store this in the file)
+impl AppSettings {
+    pub fn get_metadata() -> HashMap<String, SettingMetadata> {
+        let mut metadata = HashMap::new();
+
+        metadata.insert(
+            "general.tray_enabled".to_string(),
+            SettingMetadata {
+                display_name: "Enable Tray Icon".to_string(),
+                value_type: "bool".to_string(),
+                help_text: "Show an icon in the system tray.".to_string(),
+            },
+        );
+
+        metadata.insert(
+            "general.start_minimized".to_string(),
+            SettingMetadata {
+                display_name: "Start Minimized".to_string(),
+                value_type: "bool".to_string(),
+                help_text: "Launch the app minimized to the tray.".to_string(),
+            },
+        );
+
+        metadata.insert(
+            "general.auto_refresh".to_string(),
+            SettingMetadata {
+                display_name: "Auto Refresh Remotes".to_string(),
+                value_type: "bool".to_string(),
+                help_text: "Automatically refresh the list of remotes.".to_string(),
+            },
+        );
+
+        metadata.insert(
+            "general.notifications".to_string(),
+            SettingMetadata {
+                display_name: "Enable Notifications".to_string(),
+                value_type: "bool".to_string(),
+                help_text: "Show notifications for mount events.".to_string(),
+            },
+        );
+
+        metadata.insert(
+            "core.rclone_api_port".to_string(),
+            SettingMetadata {
+                display_name: "Rclone API Port".to_string(),
+                value_type: "u16".to_string(),
+                help_text: "Port used for Rclone API communication.".to_string(),
+            },
+        );
+
+        metadata.insert(
+            "core.default_mount_type".to_string(),
+            SettingMetadata {
+                display_name: "Default Mount Type".to_string(),
+                value_type: "string".to_string(),
+                help_text: "Choose between 'native' or 'systemd' mount methods.".to_string(),
+            },
+        );
+
+        metadata.insert(
+            "core.bandwidth_limit".to_string(),
+            SettingMetadata {
+                display_name: "Bandwidth Limit".to_string(),
+                value_type: "string".to_string(),
+                help_text: "Limit the bandwidth used by Rclone transfers.".to_string(),
+            },
+        );
+
+        metadata.insert(
+            "experimental.debug_logging".to_string(),
+            SettingMetadata {
+                display_name: "Enable Debug Logging".to_string(),
+                value_type: "bool".to_string(),
+                help_text: "Enable detailed logging for debugging.".to_string(),
+            },
+        );
+
+        metadata
     }
 }

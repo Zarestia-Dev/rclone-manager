@@ -1,9 +1,11 @@
 use serde_json::{json, Value};
 use std::{
-    fs::{self, create_dir_all, File}, io::Write, path::PathBuf, sync::{Arc, Mutex}
+    fs::{self, create_dir_all, File}, 
+    io::Write, 
+    path::PathBuf, 
+    sync::{Arc, Mutex}
 };
-use tauri::Runtime;
-use tauri::State;
+use tauri::{Runtime, State};
 use tauri_plugin_store::Store;
 
 use super::settings_store::AppSettings;
@@ -11,42 +13,87 @@ use super::settings_store::AppSettings;
 /// Global settings store
 pub struct SettingsState<R: Runtime> {
     pub store: Arc<Mutex<Arc<Store<R>>>>,
-    pub config_dir: PathBuf, //
+    pub config_dir: PathBuf,
 }
 
+/// ✅ Load settings from store
+#[tauri::command]
+pub async fn load_settings<'a>(
+    state: State<'a, SettingsState<tauri::Wry>>,
+) -> Result<serde_json::Value, String> {
+    let store = state.store.lock().unwrap();
+
+    // ✅ Load stored settings
+    let stored_settings = store.get("app_settings").unwrap_or_else(|| json!({})).clone();
+
+    // ✅ Load default settings
+    let default_settings = AppSettings::default();
+    let metadata = AppSettings::get_metadata();
+
+    // ✅ Merge stored values into the structure while preserving metadata
+    let mut merged_settings = serde_json::to_value(default_settings).unwrap();
+    merged_settings
+        .as_object_mut()
+        .unwrap()
+        .iter_mut()
+        .for_each(|(category, values)| {
+            if let Some(stored_category) = stored_settings.get(category) {
+                values
+                    .as_object_mut()
+                    .unwrap()
+                    .iter_mut()
+                    .for_each(|(key, value)| {
+                        if let Some(stored_value) = stored_category.get(key) {
+                            *value = stored_value.clone();
+                        }
+                    });
+            }
+        });
+
+    // ✅ Attach metadata
+    let response = json!({
+        "settings": merged_settings,
+        "metadata": metadata
+    });
+
+    Ok(response)
+}
+
+
+
+/// ✅ Save only modified settings
 #[tauri::command]
 pub async fn save_settings(
-    state: State<'_, SettingsState<tauri::Wry>>,
-    settings: AppSettings,
+    state: State<'_, SettingsState<tauri::Wry>>, 
+    updated_settings: serde_json::Value
 ) -> Result<(), String> {
     let store = state.store.lock().unwrap();
-    store.set("app_settings".to_string(), json!(settings));
+
+    // ✅ Load stored settings
+    let mut stored_settings = store.get("app_settings").unwrap_or_else(|| json!({}));
+
+    // ✅ Merge only updated values
+    if let Some(settings_obj) = updated_settings.as_object() {
+        for (category, new_values) in settings_obj.iter() {
+            if let Some(stored_category) = stored_settings.get_mut(category) {
+                if let Some(stored_obj) = stored_category.as_object_mut() {
+                    for (key, value) in new_values.as_object().unwrap() {
+                        stored_obj.insert(key.clone(), value.clone());
+                    }
+                }
+            } else {
+                stored_settings.as_object_mut().unwrap().insert(category.clone(), new_values.clone());
+            }
+        }
+    }
+
+    // ✅ Save only the values
+    store.set("app_settings".to_string(), stored_settings);
     store.save().map_err(|e| e.to_string())?;
     Ok(())
 }
 
-/// ✅ Load settings from Tauri state
-#[tauri::command]
-pub async fn load_settings<'a>(
-    state: State<'a, SettingsState<tauri::Wry>>,
-) -> Result<AppSettings, String> {
-    let store = state.store.lock().unwrap();
 
-    // ✅ Reload store from disk (ensures latest data)
-    store
-        .reload()
-        .map_err(|e: tauri_plugin_store::Error| e.to_string())?;
-
-    // ✅ Fetch existing settings or return default
-    if let Some(settings) = store.get("app_settings") {
-        let settings: AppSettings =
-            serde_json::from_value(settings.clone()).map_err(|e| e.to_string())?;
-        println!("Loaded settings from load_settings: {:?}", settings);
-        Ok(settings)
-    } else {
-        Ok(AppSettings::default()) // ✅ Return default if none found
-    }
-}
 
 #[tauri::command]
 pub async fn save_remote_settings(
@@ -87,6 +134,27 @@ pub async fn save_remote_settings(
         .map_err(|e| format!("Failed to save remote settings: {}", e))?;
 
     println!("✅ Remote settings saved at {:?}", remote_config_path);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn delete_remote_settings(
+    remote_name: String,
+    state: State<'_, SettingsState<tauri::Wry>>,
+) -> Result<(), String> {
+    let remote_config_dir = state.config_dir.join("remotes");
+    let remote_config_path = remote_config_dir.join(format!("{}.json", remote_name));
+
+    // ✅ Check if the file exists
+    if !remote_config_path.exists() {
+        return Err(format!("Remote settings for '{}' not found.", remote_name));
+    }
+
+    // ✅ Delete the file
+    fs::remove_file(&remote_config_path)
+        .map_err(|e| format!("Failed to delete remote settings: {}", e))?;
+
+    println!("✅ Remote settings for '{}' deleted.", remote_name);
     Ok(())
 }
 

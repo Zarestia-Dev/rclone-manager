@@ -142,10 +142,17 @@ export class RcloneService {
 
   /** Delete a remote */
   async deleteRemote(name: string): Promise<void> {
+    await invoke("unmount_remote", { mountPoint: name }).catch((error) => {
+      console.error(`Error unmounting remote ${name}:`, error);
+    });
     await invoke("delete_remote", { name }).catch((error) => {
       console.error(`Error deleting remote ${name}:`, error);
     });
+    await invoke("delete_remote_settings", { remoteName: name }).catch((error) => {
+      console.error(`Error deleting saved mount config for ${name}:`, error);
+    });
   }
+  
 
   /** List all mounted remotes */
   async listMounts(): Promise<string[]> {

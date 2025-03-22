@@ -1,6 +1,7 @@
 .quick-add-modal {
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   height: 100%;
   width: 100%;
   background: var(--app-background);
@@ -22,13 +23,6 @@
       align-items: center;
       gap: 10px;
 
-      button {
-        background: none;
-        border: none;
-        font-size: 20px;
-        font-weight: 600;
-      }
-
       p {
         display: flex;
         align-items: center;
@@ -43,11 +37,24 @@
   .form-group {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 10px;
-    margin: 10px;
-    border-radius: 10px;
+    padding: 20px;
+    overflow: auto;
     background: var(--app-background);
-    color: var(--app-text-color);
+
+    .slide-toggle {
+      padding: 10px 0;
+    }
+
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    p {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--app-text-color);
+    }
   }
 }

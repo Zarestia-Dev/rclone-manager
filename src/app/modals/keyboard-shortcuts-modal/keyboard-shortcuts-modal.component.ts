@@ -28,20 +28,18 @@ export class KeyboardShortcutsModalComponent {
     { keys: "Ctrl + ?", description: "Show Shortcuts" },
     { keys: "Ctrl + Q / Ctrl + W", description: "Quit" },
     { keys: "Ctrl + F / F3", description: "Toggle Search Field" },
-    { keys: "Ctrl + N", description: "New Remote" },
+    { keys: "Ctrl + N", description: "New Detailed Remote" },
+    { keys: "Ctrl + R", description: "New Quick Remote" },
     { keys: "Ctrl + O", description: "Open Remote" },
     { keys: "Ctrl + S", description: "Save" },
   ];
+  
   filteredShortcuts = [...this.shortcuts];
 
   constructor(private dialogRef: MatDialogRef<KeyboardShortcutsModalComponent>) {}
 
   @HostListener('document:keydown.escape', ['$event'])
-  onEscKeyPress(event: KeyboardEvent) {
-    this.dialogRef.close();
-  }
-
-  close() {
+  close(event?: KeyboardEvent) {
     this.dialogRef.close();
   }
 

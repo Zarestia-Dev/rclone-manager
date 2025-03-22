@@ -14,6 +14,9 @@ import {
 } from "../modals/confirm-modal/confirm-modal.component";
 import { SettingsService } from "../services/settings.service";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { SidebarComponent } from "../components/sidebar/sidebar.component";
+import { OverviewComponent } from "../components/overview/overview.component";
+import { RemoteDetailComponent } from "../components/remote-detail/remote-detail.component";
 
 @Component({
   selector: "app-home",
@@ -23,7 +26,10 @@ import { MatTooltipModule } from "@angular/material/tooltip";
     MatChipsModule,
     CommonModule,
     MatCardModule,
-    MatTooltipModule
+    MatTooltipModule,
+    SidebarComponent,
+    OverviewComponent,
+    RemoteDetailComponent
   ],
   templateUrl: "./home.component.html",
   styleUrl: "./home.component.scss",
@@ -34,7 +40,7 @@ export class HomeComponent {
   selectedRemote: any = null;
   remotes: any[] = [];
   mountTypes: any[] = [];
-  savedMountConfigs: any[] = [];
+  remoteSettings: any[] = [];
   mountedRemotes: { fs: string; mount_point: string }[] = [];
 
   constructor(
@@ -76,18 +82,15 @@ export class HomeComponent {
     }
   }
 
-  toggleSidebar(): void {
-    this.isSidebarOpen = !this.isSidebarOpen;
-  }
-
-  async openFiles(remoteName: any): Promise<void> {
-    const mountPoint = this.loadSavedMountConfig(remoteName)?.mount_path;
+  async openRemoteInFiles(remoteName: any): Promise<void> {
+    const mountPoint = this.loadSavedMountConfig(remoteName)?.mount_point;
+    console.log("Opening Files at:", mountPoint);
     await this.rcloneService.openInFiles(mountPoint);
   }
 
   async openRemoteConfigModal(
     existingConfig?: any,
-    type?: "remote" | "mount"
+    type?: string
   ): Promise<void> {
     let mountConfig = {};
 
@@ -158,43 +161,11 @@ export class HomeComponent {
 
   // Select a remote for editing
   selectRemote(remote: any) {
+    console.log("Selected Remote:", remote);
     const updatedRemote = this.remotes.find(
       (r) => r.remoteSpecs.name === remote.remoteSpecs.name
     );
     this.selectedRemote = updatedRemote ? { ...updatedRemote } : null;
-  }
-
-  // Get remotes based on their mount status
-  getMountedRemotes() {
-    return this.remotes.filter((remote) => remote.mounted);
-  }
-
-  getUnmountedRemotes() {
-    return this.remotes.filter((remote) => !remote.mounted);
-  }
-
-  getErrorRemotes() {
-    return this.remotes.filter((remote) => remote.mounted === "error");
-  }
-
-  // Count different remote states
-  getMountedCount() {
-    return this.getMountedRemotes().length;
-  }
-
-  getUnmountedCount() {
-    return this.getUnmountedRemotes().length;
-  }
-
-  getErrorCount() {
-    return this.getErrorRemotes().length;
-  }
-
-  // Calculate disk usage percentage
-  getUsagePercentage(remote: any): number {
-    const used = parseFloat(remote.diskUsage?.used_space || "0");
-    const total = parseFloat(remote.diskUsage?.total_space || "1");
-    return (used / total) * 100;
   }
 
   // Load all remotes with their configurations & mount status
@@ -240,12 +211,12 @@ export class HomeComponent {
   // Load all saved mount configurations
   async getRemoteSettings(): Promise<void> {
     const remoteNames = this.remotes.map((remote) => remote.remoteSpecs.name);
-    this.savedMountConfigs = await Promise.all(
+    this.remoteSettings = await Promise.all(
       remoteNames.map(async (name) => {
         return await this.settingservice.getRemoteSettings(name);
       })
     );
-    console.log("Saved Mount Configs:", this.savedMountConfigs);
+    console.log("Saved Mount Configs:", this.remoteSettings);
   }
 
   // Load available mount types dynamically
@@ -274,12 +245,13 @@ export class HomeComponent {
 
   // Get saved mount configuration for a remote
   loadSavedMountConfig(remoteName: string): any {
-    return this.savedMountConfigs.find((config) => config?.name === remoteName);
+    const all_settings = this.remoteSettings.find((config) => config?.name === remoteName);
+    return all_settings?.mount_options;
   }
 
   // Mount a remote
   async mountRemote(remoteName: string): Promise<void> {
-    const mountPoint = this.loadSavedMountConfig(remoteName)?.mount_path;
+    const mountPoint = this.loadSavedMountConfig(remoteName)?.mount_point;
     if (!mountPoint) {
       console.warn(`No mount point found for ${remoteName}`);
       return;
@@ -336,11 +308,7 @@ export class HomeComponent {
     await this.loadMountTypes();
   }
 
-  isObject(value: any): boolean {
-    return value !== null && typeof value === "object";
-  }
-
-  isArray(value: any): boolean {
-    return Array.isArray(value);
+  ngOnDestroy(): void {
+    this.stateService.resetSelectedRemote();
   }
 }

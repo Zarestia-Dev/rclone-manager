@@ -23,6 +23,32 @@ const appWindow = getCurrentWindow();
 export class TitlebarComponent implements OnInit, OnDestroy {
   constructor(private dialog: MatDialog, private stateService: StateService) {}
 
+  ngAfterViewInit() {
+    // Add a keyboard shortcut for Ctrl + ,
+    window.addEventListener("keydown", (event) => {
+      if (event.ctrlKey && event.key === ",") {
+        event.preventDefault();
+        this.openPreferencesModal();
+      }
+      else if (event.ctrlKey && event.key === "r") {
+        event.preventDefault();
+        this.openQuickAddRemoteModal();
+      }
+      else if (event.ctrlKey && event.key === "n") {
+        event.preventDefault();
+        this.openRemoteConfigModal();
+      }
+      else if (event.ctrlKey && event.key === "?") {
+        event.preventDefault();
+        this.openKeyboardShortcutsModal();
+      }
+      else if (event.ctrlKey && ( event.key === "q" || event.key === "w" )) {
+        event.preventDefault();
+        this.closeWindow();
+      }
+    });
+  }
+
   resetRemote(): void {
     this.stateService.resetSelectedRemote();
   }
@@ -85,6 +111,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
       }
     });
   }
+
 
   openPreferencesModal() {
     const dialogRef = this.dialog.open(PreferencesModalComponent, {

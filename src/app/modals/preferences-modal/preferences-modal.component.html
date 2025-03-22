@@ -1,4 +1,5 @@
 <div class="preferences-modal">
+  <!-- 🔹 Modal Header -->
   <div class="modal-header" data-tauri-drag-region>
     <button><img src="assets/icons/titlebar/search.svg" class="icon icon-bw" /></button>
     <div class="tabs">
@@ -9,43 +10,51 @@
     <button (click)="close()"><img src="assets/icons/circle-xmark.svg" class="icon icon-bw" /></button>
   </div>
 
+  <!-- 🔹 Modal Content -->
   <div class="modal-content">
-    <!-- General Settings -->
-    <div *ngIf="selectedTabIndex === 0" class="tab-content">
-      <h3>General Settings</h3>
-      <mat-slide-toggle [(ngModel)]="settings.tray_enabled">Enable Tray Icon</mat-slide-toggle>
-      <mat-slide-toggle [(ngModel)]="settings.start_minimized">Start Minimized</mat-slide-toggle>
-      <mat-slide-toggle [(ngModel)]="settings.auto_refresh">Auto-Refresh Remotes</mat-slide-toggle>
-      <mat-slide-toggle [(ngModel)]="settings.notifications">Enable Notifications</mat-slide-toggle>
-    </div>
+    <ng-container *ngFor="let category of getObjectKeys(settings)">
+      <ng-container *ngIf="selectedTab === category">
+        <div class="tab-content">
+          <div class="settings-list">
+            <div class="setting-item" *ngFor="let key of getObjectKeys(settings[category])">
+              <!-- ✅ Fetch metadata -->
+              <ng-container *ngIf="getMetadata(category, key) as meta">
+                <div class="setting-info">
+                  <strong>{{ meta.display_name }}</strong>
+                  <p>{{ meta.help_text }}</p>
+                </div>
 
-    <!-- Appearance Settings -->
-    <div *ngIf="selectedTabIndex === 1" class="tab-content">
-      <h3>Appearance Settings</h3>
-    </div>
+                <div class="setting-control">
+                  <!-- ✅ Boolean Settings (Toggle) -->
+                  <mat-slide-toggle *ngIf="meta.value_type === 'bool'" [(ngModel)]="settings[category][key]"
+                    (change)="updateSetting(category, key, settings[category][key])">
+                  </mat-slide-toggle>
 
-    <!-- Advanced Settings -->
-    <div *ngIf="selectedTabIndex === 2" class="tab-content">
-      <h3>Advanced Settings</h3>
-      <mat-form-field appearance="fill">
-        <mat-label>Rclone API Port</mat-label>
-        <input matInput [(ngModel)]="settings.rclone_api_port" type="number" name="rcloneApiPort" required />
-      </mat-form-field>
+                  <!-- ✅ Number Settings -->
+                  <mat-form-field class="input-field" appearance="outline"
+                    *ngIf="meta.value_type === 'u16' || meta.value_type === 'number'">
+                    <input matInput type="number" [(ngModel)]="settings[category][key]"
+                      (input)="updateSetting(category, key, settings[category][key])" />
+                  </mat-form-field>
 
-      <mat-form-field appearance="fill">
-        <mat-label>Default Mount Type</mat-label>
-        <mat-select [(ngModel)]="settings.default_mount_type" required>
-          <mat-option value="native">Native</mat-option>
-          <mat-option value="systemd">Systemd</mat-option>
-        </mat-select>
-      </mat-form-field>
+                  <!-- ✅ String Settings -->
+                  <mat-form-field class="input-field" appearance="outline" *ngIf="meta.value_type === 'string'">
+                    <!-- Special Case for Default Mount Type -->
+                    <mat-select *ngIf="key === 'default_mount_type'" [(ngModel)]="settings[category][key]"
+                      (selectionChange)="updateSetting(category, key, settings[category][key])">
+                      <mat-option value="native">Native</mat-option>
+                      <mat-option value="systemd">Systemd</mat-option>
+                    </mat-select>
 
-      <mat-slide-toggle [(ngModel)]="settings.debug_logging">Enable Debug Logging</mat-slide-toggle>
-
-      <mat-form-field appearance="fill">
-      <mat-label>Bandwidth Limit</mat-label>
-      <input matInput [(ngModel)]="settings.bandwidth_limit" type="number" name="bandwidthLimit" required>
-      </mat-form-field>
-    </div>
+                    <input *ngIf="key !== 'default_mount_type'" matInput [(ngModel)]="settings[category][key]"
+                      (input)="updateSetting(category, key, settings[category][key])" />
+                  </mat-form-field>
+                </div>
+              </ng-container>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+    </ng-container>
   </div>
 </div>

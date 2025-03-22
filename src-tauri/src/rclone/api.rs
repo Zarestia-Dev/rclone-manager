@@ -127,20 +127,23 @@ pub async fn create_remote(
         .and_then(|v| v.as_str())
         .ok_or("Missing remote type")?;
 
-    // ✅ Check if an OAuth process is already running
-    let mut guard = OAUTH_PROCESS.lock().await;
-    if guard.is_some() {
-        println!("🔴 Stopping existing OAuth authentication process...");
-        quit_rclone_oauth().await?;
-    }
+    // ✅ Acquire the lock first
+    {
+        let guard = OAUTH_PROCESS.lock().await;
+        if guard.is_some() {
+            println!("🔴 Stopping existing OAuth authentication process...");
+            drop(guard); // ✅ Release the lock here
+            quit_rclone_oauth().await?; // ✅ Call quit AFTER releasing the lock
+        }
+    } // ✅ Guard is dropped when this scope ends
 
-    // ✅ Start Rclone with a separate API port
+    // ✅ Start a new Rclone instance
     let rclone_process = Command::new("rclone")
         .args([
             "rcd",
             "--rc-no-auth",
             "--rc-serve",
-            "--rc-addr", "localhost:5580", // ✅ Separate instance
+            "--rc-addr", "localhost:5580", 
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -149,8 +152,11 @@ pub async fn create_remote(
 
     println!("✅ Started Rclone OAuth instance with PID: {:?}", rclone_process.id());
 
-    // ✅ Store the process in a global state
-    *guard = Some(rclone_process);
+    // ✅ Lock again and store the new process
+    {
+        let mut guard = OAUTH_PROCESS.lock().await;
+        *guard = Some(rclone_process);
+    }
 
     // ✅ Give Rclone a moment to start
     sleep(Duration::from_secs(2)).await;
@@ -162,9 +168,8 @@ pub async fn create_remote(
         "parameters": parameters
     });
 
-    // ✅ Send create request to the separate Rclone instance
     let response = client
-        .post("http://localhost:5580/config/create") // ✅ Use new instance
+        .post("http://localhost:5580/config/create")
         .json(&body)
         .send()
         .await
@@ -189,8 +194,11 @@ pub async fn create_remote(
 
 #[tauri::command]
 pub async fn quit_rclone_oauth() -> Result<(), String> {
+    println!("🔒 Locking Rclone OAuth process...");
+
     let mut guard = OAUTH_PROCESS.lock().await;
     if guard.is_none() {
+        println!("⚠️ No active Rclone OAuth process found.");
         return Err("No active Rclone OAuth process found.".to_string());
     }
 
@@ -203,22 +211,34 @@ pub async fn quit_rclone_oauth() -> Result<(), String> {
     let response = client.post(url).send().await;
 
     match response {
-        Ok(_) => println!("✅ Rclone OAuth instance exited cleanly."),
+        Ok(_) => println!("✅ Rclone OAuth instance exited cleanly via API."),
         Err(e) => println!("⚠️ Failed to quit via RC API: {}", e),
     }
 
-    // 🔴 Check if process is still running before killing
+    // ✅ Wait for the process to exit or force kill it
     if let Some(mut process) = guard.take() {
-        if let Ok(Some(_)) = process.try_wait() {
-            println!("✅ Rclone OAuth process already exited.");
-        } else {
-            let _ = process.kill();
-            println!("💀 Force-killed Rclone OAuth process.");
+        println!("🔍 Checking Rclone process PID: {:?}", process.id());
+
+        match process.wait() {
+            Ok(status) => {
+                println!("✅ Rclone OAuth process exited with status: {:?}", status);
+            }
+            Err(_) => {
+                println!("⚠️ Rclone OAuth process still running. Killing...");
+                if let Err(e) = process.kill() {
+                    println!("💀 Failed to kill Rclone OAuth process: {}", e);
+                    return Err(format!("Failed to terminate Rclone OAuth process: {}", e));
+                } else {
+                    println!("💀 Force-killed Rclone OAuth process.");
+                }
+            }
         }
     }
 
+    println!("✅ Rclone OAuth shutdown complete.");
     Ok(())
 }
+
 
 
 
@@ -230,10 +250,11 @@ pub async fn update_remote(
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
     let body = serde_json::json!({ "name": name, "parameters": parameters });
+    let url = format!("{}/config/update", RCLONE_API_URL);
 
     state
         .client
-        .post("http://localhost:5572/config/update")
+        .post(&url)
         .json(&body)
         .send()
         .await
@@ -247,10 +268,11 @@ pub async fn update_remote(
 pub async fn delete_remote(name: String, state: State<'_, RcloneState>) -> Result<(), String> {
     state
         .client
-        .post(format!("http://localhost:5572/config/delete?name={}", name))
+        .post(format!("{}/config/delete?name={}", RCLONE_API_URL, name))
         .send()
         .await
         .map_err(|e| e.to_string())?;
+
 
     Ok(())
 }
@@ -321,7 +343,7 @@ pub async fn get_remote_config(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = format!("http://localhost:5572/config/get?name={}", remote_name);
+    let url = format!("{}/config/get?name={}", RCLONE_API_URL, remote_name);
 
     let response = state
         .client

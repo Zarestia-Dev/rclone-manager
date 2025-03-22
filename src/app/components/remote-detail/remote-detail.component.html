@@ -1,0 +1,86 @@
+<div class="remote-details" *ngIf="selectedRemote">
+    <div class="remote-header">
+        <h2>{{ selectedRemote.remoteSpecs.name }}</h2>
+        <p>
+            <img src="assets/icons/remotes/{{ selectedRemote.remoteSpecs.type }}.svg" class="icon"
+                onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';" />
+            {{ selectedRemote.remoteSpecs.type }}
+        </p>
+    </div>
+
+    <!-- Disk Info -->
+    <div class="info-card disk-card">
+        <h3><img src="assets/icons/hard-drive.svg" class="icon icon-bw" /> Disk Info</h3>
+        <mat-card class="info-card-content">
+            <mat-card-content class="disk-usage">
+                <strong>Space Allocation</strong>
+                <div class="full-bar disk-usage-bar"
+                    [ngClass]="{ 'not-mounted-bar': !selectedRemote.mounted, 'error-bar': selectedRemote.mounted === 'error' }">
+                    <p *ngIf="!selectedRemote.mounted">Not Mounted</p>
+                    <p *ngIf="selectedRemote.mounted === 'error'">Error</p>
+                    <div *ngIf="selectedRemote.mounted" class="usage" [ngStyle]="{ width: getUsagePercentage() + '%' }">
+                    </div>
+                </div>
+                <div class="legend" *ngIf="selectedRemote.mounted">
+                    <div class="legend-item"><span class="color-box border"></span> Total Space: {{
+                        selectedRemote.diskUsage.total_space }}</div>
+                    <div class="legend-item"><span class="color-box used"></span> Used Space: {{
+                        selectedRemote.diskUsage.used_space }}</div>
+                    <div class="legend-item"><span class="color-box free"></span> Free Space: {{
+                        selectedRemote.diskUsage.free_space }}</div>
+                </div>
+            </mat-card-content>
+
+            <mat-divider></mat-divider>
+
+            <mat-card-footer class="button-container">
+                <ng-container *ngIf="selectedRemote.mounted">
+                    <button class="open" (click)="openRemoteInFiles()">
+                        <img src="assets/icons/folder-white.svg" class="icon" /> Open Files
+                    </button>
+                    <button class="unmount" (click)="unmountRemoteByFs()">
+                        <img src="assets/icons/circle-exclamation.svg" class="icon" style="filter: invert(1)" /> Unmount
+                    </button>
+                </ng-container>
+                <ng-container *ngIf="!selectedRemote.mounted">
+                    <button class="mount" (click)="mountRemoteByFs()">
+                        <img src="assets/icons/mount.svg" class="icon" style="filter: invert(1)" /> Mount
+                    </button>
+                </ng-container>
+                <ng-container *ngIf="selectedRemote.mounted === 'error'">
+                    <button class="fix">
+                        <img src="assets/icons/wrench.svg" class="icon" style="filter: invert(1)" /> Fix
+                    </button>
+                </ng-container>
+            </mat-card-footer>
+        </mat-card>
+    </div>
+
+    <!-- Remote Specs -->
+    <div class="info-card spec-card">
+        <h3><img src="assets/icons/wrench.svg" class="icon icon-bw" /> Remote Specs</h3>
+        <mat-card class="info-card-content">
+            <mat-card-content class="spec-content">
+                <mat-chip-set class="specs-container">
+                    <mat-chip *ngFor="let spec of selectedRemote.remoteSpecs | keyvalue" class="spec-pill"
+                        matTooltip="{{ spec.value | json }}" matTooltipPosition="above" [matTooltipHideDelay]="500">
+                        <strong>{{ spec.key }}:</strong>
+                        <span>{{ truncateValue(spec.value, 30) }}</span>
+                    </mat-chip>
+                </mat-chip-set>
+            </mat-card-content>
+            <mat-divider></mat-divider>
+            <mat-card-footer class="button-container">
+                <button class="edit" (click)="openRemoteConfig('remote')">
+                    <img src="assets/icons/pen.svg" class="icon" style="filter: invert(1)" /> Edit
+                </button>
+            </mat-card-footer>
+        </mat-card>
+    </div>
+
+
+    <!-- Delete Button -->
+    <button class="delete" (click)="deleteRemoteByName()">
+        <img src="assets/icons/trash.svg" class="icon" style="filter: invert(1)" /> Delete
+    </button>
+</div>
