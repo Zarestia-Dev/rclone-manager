@@ -95,20 +95,12 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   }
 
   openRemoteConfigModal(): void {
-    const dialogRef = this.dialog.open(RemoteConfigModalComponent, {
+    this.dialog.open(RemoteConfigModalComponent, {
       width: "70vw",
       maxWidth: "800px",
       height: "80vh",
       maxHeight: "600px",
       disableClose: true,
-    });
-
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        console.log("Remote Config Saved:", result);
-        // Handle the saved data here
-        // result will contain { remote: {...}, mount: {...} }
-      }
     });
   }
 

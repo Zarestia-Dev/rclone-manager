@@ -17,6 +17,7 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { SidebarComponent } from "../components/sidebar/sidebar.component";
 import { OverviewComponent } from "../components/overview/overview.component";
 import { RemoteDetailComponent } from "../components/remote-detail/remote-detail.component";
+import { QuickAddRemoteComponent } from "../modals/quick-add-remote/quick-add-remote.component";
 
 @Component({
   selector: "app-home",
@@ -29,7 +30,7 @@ import { RemoteDetailComponent } from "../components/remote-detail/remote-detail
     MatTooltipModule,
     SidebarComponent,
     OverviewComponent,
-    RemoteDetailComponent
+    RemoteDetailComponent,
   ],
   templateUrl: "./home.component.html",
   styleUrl: "./home.component.scss",
@@ -59,14 +60,7 @@ export class HomeComponent {
 
     await this.refreshMounts();
     await this.loadRemotes();
-    await this.loadMountTypes();
     await this.getRemoteSettings();
-    // console.log("Global Flags:", this.rcloneService.getGlobalFlags());
-    // console.log("Copy Flags:", this.rcloneService.getCopyFlags());
-    // console.log("Sync Flags:", this.rcloneService.getSyncFlags());
-    // console.log("Filter Flags:", this.rcloneService.getFilterFlags());
-    // console.log("VFS Flags:", this.rcloneService.getVfsFlags());
-    // console.log("Mount Flags:", this.rcloneService.getMountFlags());
   }
 
   @HostListener("window:resize", [])
@@ -83,60 +77,37 @@ export class HomeComponent {
   }
 
   async openRemoteInFiles(remoteName: any): Promise<void> {
-    const mountPoint = this.loadSavedMountConfig(remoteName)?.mount_point;
+    const mountPoint =
+      this.loadRemoteSettings(remoteName)?.mount_options?.mount_point;
     console.log("Opening Files at:", mountPoint);
     await this.rcloneService.openInFiles(mountPoint);
   }
 
-  async openRemoteConfigModal(
-    existingConfig?: any,
-    type?: string
-  ): Promise<void> {
-    let mountConfig = {};
-
-    if (type === "mount" && this.selectedRemote) {
-      try {
-        mountConfig = await this.loadSavedMountConfig(
-          this.selectedRemote.remoteSpecs.name
-        );
-        console.log("Loaded saved mount config:", mountConfig);
-      } catch (error) {
-        console.error("Failed to load saved mount config:", error);
-      }
-    }
-
-    const dialogRef = this.dialog.open(RemoteConfigModalComponent, {
+  openQuickAddRemoteModal(): void {
+    this.dialog.open(QuickAddRemoteComponent, {
       width: "70vw",
       maxWidth: "800px",
       height: "80vh",
       maxHeight: "600px",
       disableClose: true,
-      data: {
-        editMode: true,
-        editTarget: type,
-        existingConfig: existingConfig
-          ? { ...existingConfig, mountSpecs: existingConfig.mountSpecs || {} }
-          : {
-              remoteSpecs: {
-                name: this.selectedRemote?.remoteSpecs.name || "",
-              },
-              mountSpecs: mountConfig || {},
-            },
-      },
-    });
-
-    dialogRef.afterClosed().subscribe((result) => {
-      if (result) {
-        console.log("Modal Result:", result);
-      }
     });
   }
 
-  deleteRemote(remote: any) {
+  openRemoteConfigModal(): void {
+    this.dialog.open(RemoteConfigModalComponent, {
+      width: "70vw",
+      maxWidth: "800px",
+      height: "80vh",
+      maxHeight: "600px",
+      disableClose: true,
+    });
+  }
+
+  deleteRemote(remoteName: any) {
     // Create the confirmation dialog data
     const dialogData: ConfirmDialogData = {
       title: "Delete Confirmation",
-      message: `Are you sure you want to delete '${remote.remoteSpecs.name}'? This action cannot be undone.`,
+      message: `Are you sure you want to delete '${remoteName}'? This action cannot be undone.`,
       confirmText: "Yes, Delete",
       cancelText: "Cancel",
     };
@@ -150,11 +121,17 @@ export class HomeComponent {
     // Wait for user response
     dialogRef.afterClosed().subscribe((confirmed) => {
       if (confirmed) {
-        this.rcloneService.deleteRemote(remote.remoteSpecs.name).then(() => {
-          this.remotes = this.remotes.filter(
-            (r) => r.remoteSpecs.name !== remote.remoteSpecs.name
-          );
-        });
+        try {
+          // Delete the remote
+          this.rcloneService.deleteRemote(remoteName).then(() => {
+            this.remotes = this.remotes.filter(
+              (r) => r.remoteSpecs.name !== remoteName
+            );
+          });
+          this.selectedRemote = null;
+        } catch (error) {
+          console.error(`Failed to delete remote: ${remoteName}`, error);
+        }
       }
     });
   }
@@ -219,20 +196,6 @@ export class HomeComponent {
     console.log("Saved Mount Configs:", this.remoteSettings);
   }
 
-  // Load available mount types dynamically
-  async loadMountTypes(): Promise<void> {
-    try {
-      const response = await this.rcloneService.getMountTypes();
-      this.mountTypes = [
-        { value: "Native", label: "Native (Direct Mounting)" },
-        { value: "Systemd", label: "Systemd Service Mounting" },
-        ...response.map((type: string) => ({ value: type, label: type })),
-      ];
-    } catch (error) {
-      console.error("Error fetching mount types:", error);
-    }
-  }
-
   // Refresh the list of mounted remotes
   async refreshMounts(): Promise<void> {
     this.mountedRemotes = await this.rcloneService.getMountedRemotes();
@@ -244,24 +207,31 @@ export class HomeComponent {
   }
 
   // Get saved mount configuration for a remote
-  loadSavedMountConfig(remoteName: string): any {
-    const all_settings = this.remoteSettings.find((config) => config?.name === remoteName);
-    return all_settings?.mount_options;
+  loadRemoteSettings(remoteName: string): any {
+    const all_settings = this.remoteSettings.find(
+      (config) => config?.name === remoteName
+    );
+    return all_settings;
   }
 
   // Mount a remote
   async mountRemote(remoteName: string): Promise<void> {
-    const mountPoint = this.loadSavedMountConfig(remoteName)?.mount_point;
-    if (!mountPoint) {
+    const remoteSettings = this.loadRemoteSettings(remoteName);
+    if (!remoteSettings.mount_options.mount_point) {
       console.warn(`No mount point found for ${remoteName}`);
       return;
     }
 
     try {
-      await this.rcloneService.mountRemote(remoteName, mountPoint);
+      await this.rcloneService.mountRemote(
+        remoteName,
+        remoteSettings.mount_options.mount_point,
+        remoteSettings.mount_options,
+        remoteSettings.vfs_options
+      );
       await this.refreshMounts();
       await this.loadRemotes();
-      console.log(`Mounted ${remoteName} at ${mountPoint}`);
+      console.log(`Mounted ${remoteName} at ${remoteSettings.mount_options.mount_point}`);
     } catch (error) {
       console.error(`Failed to mount ${remoteName}:`, error);
     }
@@ -290,22 +260,19 @@ export class HomeComponent {
 
   // Add a mount
   async addMount(remote: any): Promise<void> {
-    const mountPoint = this.loadSavedMountConfig(
-      remote.remoteSpecs.name
-    )?.mount_path;
+    const mountPoint = this.loadRemoteSettings(remote.remoteSpecs.name)
+      ?.mount_options?.mount_path;
     if (!mountPoint) {
       console.warn(`No mount point found for ${remote.remoteSpecs.name}`);
       return;
     }
 
     await this.rcloneService.addMount(remote.remoteSpecs.name, mountPoint);
-    await this.loadMountTypes();
   }
 
   // Remove a mount
   async removeMount(remote: any): Promise<void> {
     await this.rcloneService.removeMount(remote.remoteSpecs.name);
-    await this.loadMountTypes();
   }
 
   ngOnDestroy(): void {

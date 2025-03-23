@@ -21,8 +21,11 @@
       <img src="../../assets/rclone-2.svg" alt="RClone Manager Secondary Icon" />
       <h2>RClone Manager</h2>
       <p>Press the “Add New Remote” to add a new remote</p>
+      <button (click)="openQuickAddRemoteModal()" class="secondary">
+        <img src="assets/icons/add-white.svg" class="icon" /> Add Quick Remote
+      </button>
       <button (click)="openRemoteConfigModal()" class="secondary">
-        <img src="assets/icons/add-white.svg" class="icon" /> Add Remote
+        <img src="assets/icons/add-white.svg" class="icon" /> Add Detailed Remote
       </button>
     </div>
 
@@ -34,10 +37,10 @@
 
 
     <!-- Remote Details (Show When a Remote is Selected) -->
-    <app-remote-detail *ngIf="selectedRemote" [selectedRemote]="selectedRemote"
+    <app-remote-detail *ngIf="selectedRemote" [selectedRemote]="selectedRemote" [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
       (openInFiles)="openRemoteInFiles($event)" (mountRemote)="mountRemote($event)"
       (unmountRemote)="unmountRemote($event)" (deleteRemote)="deleteRemote($event)"
-      (openRemoteConfigModal)="openRemoteConfigModal($event.remoteName, $event.type)" style="width: 100%;">
+      (openRemoteConfigModal)="openRemoteConfigModal()" style="width: 100%;">
     </app-remote-detail>
 
 

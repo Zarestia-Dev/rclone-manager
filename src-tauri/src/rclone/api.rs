@@ -277,31 +277,31 @@ pub async fn delete_remote(name: String, state: State<'_, RcloneState>) -> Resul
     Ok(())
 }
 
-#[command]
-pub async fn get_mount_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let url = format!("{}/mount/types", RCLONE_API_URL);
+// #[command]
+// pub async fn get_mount_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
+//     let url = format!("{}/mount/types", RCLONE_API_URL);
 
-    let response = state
-        .client
-        .post(&url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to request mount types: {}", e))?;
+//     let response = state
+//         .client
+//         .post(&url)
+//         .send()
+//         .await
+//         .map_err(|e| format!("Failed to request mount types: {}", e))?;
 
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {}", e))?;
+//     let json: Value = response
+//         .json()
+//         .await
+//         .map_err(|e| format!("Failed to parse response: {}", e))?;
 
-    if let Some(types) = json.get("mountTypes").and_then(|t| t.as_array()) {
-        Ok(types
-            .iter()
-            .filter_map(|t| t.as_str().map(String::from))
-            .collect())
-    } else {
-        Err("Invalid response format".to_string())
-    }
-}
+//     if let Some(types) = json.get("mountTypes").and_then(|t| t.as_array()) {
+//         Ok(types
+//             .iter()
+//             .filter_map(|t| t.as_str().map(String::from))
+//             .collect())
+//     } else {
+//         Err("Invalid response format".to_string())
+//     }
+// }
 
 /// Fetch remote config fields dynamically
 #[command]
@@ -432,58 +432,65 @@ pub async fn get_mounted_remotes(
     Ok(mounts)
 }
 
+
+///  Operations (Mount/Unmount etc)
+
 #[command]
 pub async fn mount_remote(
     remote_name: String,
     mount_point: String,
+    mount_options: Option<HashMap<String, serde_json::Value>>,
+    vfs_options: Option<HashMap<String, serde_json::Value>>,
     state: State<'_, RcloneState>,
-) -> Result<String, String> {
+) -> Result<(), String> {
     let url = format!("{}/mount/mount", RCLONE_API_URL);
 
+    
     let formatted_remote = if remote_name.ends_with(':') {
         remote_name.clone()
     } else {
         format!("{}:", remote_name)
     };
 
-    let params = serde_json::json!({
+    // Build JSON payload
+    let mut payload = json!({
         "fs": formatted_remote,
-        "mountPoint": mount_point
+        "mountPoint": mount_point,
     });
 
-    // Check if the mount point path exists, create it if it doesn't
-    let mount_path = PathBuf::from(&mount_point);
-    if !mount_path.exists() {
-        fs::create_dir_all(&mount_path).map_err(|e| {
-            format!(
-                "❌ Failed to create mount point path '{}': {}",
-                mount_point, e
-            )
-        })?;
+    // Add mount options if provided
+    if let Some(mount_opts) = mount_options {
+        payload["mountOpt"] = json!(mount_opts);
     }
-    let response = state.client.post(&url).json(&params).send().await;
 
-    match response {
-        Ok(resp) => {
-            let status = resp.status();
-            let body = resp
-                .text()
-                .await
-                .unwrap_or_else(|_| "No response body".to_string());
+    // Add VFS options if provided
+    if let Some(vfs_opts) = vfs_options {
+        payload["vfsOpt"] = json!(vfs_opts);
+    }
 
-            if status.is_success() {
-                Ok(format!("✅ Mounted '{}' to '{}'", remote_name, mount_point))
-            } else {
-                Err(format!(
-                    "❌ Failed to mount '{}': {} (HTTP {})",
-                    remote_name, body, status
-                ))
-            }
-        }
-        Err(e) => Err(format!(
-            "🚨 Request Error: Failed to send mount request: {}",
-            e
-        )),
+    // Send HTTP POST request
+    let response = state.client
+        .post(url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send request: {}", e))?;
+
+    // Parse response
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .unwrap_or_else(|_| "No response body".to_string());
+
+    if status.is_success() {
+        println!("✅ Mount request successful: {}", body);
+        Ok(())
+    } else {
+        Err(format!(
+            "❌ Mount request failed: {} (HTTP {})",
+            body, status
+        ))
     }
 }
 

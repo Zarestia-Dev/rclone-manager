@@ -1,10 +1,19 @@
-import { Component, ElementRef, HostListener, Inject, Input, OnInit, ViewChild } from "@angular/core";
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  Inject,
+  OnInit,
+  ViewChild,
+} from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { animate, style, transition, trigger } from "@angular/animations";
 import {
+  AbstractControl,
   FormBuilder,
   FormGroup,
   ReactiveFormsModule,
+  ValidationErrors,
   Validators,
 } from "@angular/forms";
 import { MAT_DIALOG_DATA, MatDialogRef } from "@angular/material/dialog";
@@ -17,97 +26,131 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { SettingsService } from "../../services/settings.service";
 
 @Component({
-    selector: "app-remote-config-modal",
-    imports: [
-        ReactiveFormsModule,
-        CommonModule,
-        MatSelectModule,
-        MatFormFieldModule,
-        MatDividerModule,
-        MatProgressSpinnerModule,
-        MatInputModule,
-        MatSlideToggleModule,
-        MatChipsModule,
-        MatTooltipModule
-    ],
-    templateUrl: "./remote-config-modal.component.html",
-    styleUrl: "./remote-config-modal.component.scss",
-    animations: [
-        trigger("slideAnimation", [
-            transition(":enter", [
-                style({
-                    transform: "translateX(100%)",
-                    opacity: 0,
-                    position: "absolute",
-                    width: "100%",
-                }),
-                animate("300ms ease-in-out", style({ transform: "translateX(0)", opacity: 1 })),
-            ]),
-            transition(":leave", [
-                animate("300ms ease-in-out", style({ transform: "translateX(-50%)", opacity: 0 })),
-            ]),
-        ]),
-    ]
+  selector: "app-remote-config-modal",
+  imports: [
+    ReactiveFormsModule,
+    CommonModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatDividerModule,
+    MatProgressSpinnerModule,
+    MatInputModule,
+    MatSlideToggleModule,
+    MatChipsModule,
+    MatTooltipModule,
+  ],
+  templateUrl: "./remote-config-modal.component.html",
+  styleUrl: "./remote-config-modal.component.scss",
+  animations: [
+    trigger("slideAnimation", [
+      transition(":enter", [
+        style({ opacity: 0, transform: "translateX(100%)" }),
+        animate(
+          "500ms cubic-bezier(0.25, 0.8, 0.25, 1)",
+          style({ opacity: 1, transform: "translateX(0)" })
+        ),
+      ]),
+      transition(":leave", [
+        animate(
+          "500ms cubic-bezier(0.25, 0.8, 0.25, 1)",
+          style({ opacity: 0, transform: "translateX(-100%)" })
+        ),
+      ]),
+    ]),
+  ],
 })
 export class RemoteConfigModalComponent implements OnInit {
-  @Input() editMode: boolean = false;
-  @Input() editTarget: "remote" | "mount" | null = null;
-  @Input() existingConfig: any = null;
+  @ViewChild("jsonArea") jsonArea!: ElementRef<HTMLTextAreaElement>;
 
+  jsonError: string | null = null;
   remoteForm: FormGroup;
-  mountForm: FormGroup;
-  currentStep: number = 1;
+  remoteConfigForm: FormGroup;
+
+  currentStep: number = 1; // Step 1: Remote Config, Step 2: Mount Config, Step 3+: Flags
+  totalSteps: number = 6; // Update total steps (1: Remote, 2: Mount, 3: Copy, 4: Sync, 5: Filter, 6: VFS)
+
+  dynamicFlagFields: Record<string, any[]> = {
+    mount: [],
+    copy: [],
+    sync: [],
+    filter: [],
+    vfs: [],
+  };
 
   remoteTypes: any[] = [];
   mountTypes: any[] = [];
   dynamicRemoteFields: any[] = [];
-  dynamicMountFields: any[] = [];
-  isLoadingRemoteConfig = false;
-  isLoadingMountConfig = false;
+  existingRemotes: string[] = [];
+
+  isLoading = {
+    remoteConfig: false,
+    mountConfig: false,
+    saving: false,
+  };
+
+  flagTypes = ["mount", "copy", "sync", "filter", "vfs"];
 
   constructor(
     private fb: FormBuilder,
     private rcloneService: RcloneService,
+    private settingsService: SettingsService,
     public dialogRef: MatDialogRef<RemoteConfigModalComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
-    this.editMode = data?.editMode || false;
-    this.editTarget = data?.editTarget || null;
-    this.existingConfig = data?.existingConfig || null;
-    console.log("Existing config:", this.existingConfig);
-
     this.remoteForm = this.fb.group({
-      name: ["", Validators.required],
+      name: ["", [Validators.required, this.validateRemoteName.bind(this)]],
       type: ["", Validators.required],
     });
-    this.mountForm = this.fb.group({
+
+    this.remoteConfigForm = this.fb.group({
       mountType: ["", Validators.required],
       mountPath: ["", Validators.required],
-      jsonText: ["{}"], // Add jsonText control
+      autoMount: [false],
+      jsonConfigs: this.fb.group({
+        mount: ["{}"],
+        copy: ["{}"],
+        sync: ["{}"],
+        filter: ["{}"],
+        vfs: ["{}"],
+      }),
     });
   }
 
   async ngOnInit(): Promise<void> {
-    if (this.editMode && this.editTarget === "remote") {
-      console.log("Editing existing config:", this.existingConfig);
-
-      this.populateForm(this.existingConfig);
-    }
-    if (this.editMode && this.editTarget === "mount") {
-      console.log("Editing existing mount config:", this.existingConfig);
-
-      this.populateMountForm(this.existingConfig);
-    }
+    // ✅ Load existing remotes to prevent conflicts
+    this.existingRemotes = await this.rcloneService.getRemotes();
+    console.log("Loaded existing remotes:", this.existingRemotes);
     await this.loadRemoteTypes();
     await this.loadMountTypes();
+    await this.loadFlagFields(); // Load all flag fields
   }
 
   selectFolder(): void {
     this.rcloneService.selectFolder().then((selectedPath) => {
-      this.mountForm.get("mountPath")?.setValue(selectedPath);
+      this.remoteConfigForm.get("mountPath")?.setValue(selectedPath);
     });
+  }
+
+  /** ✅ Custom Validator: Prevent duplicate remote names */
+  validateRemoteName(control: AbstractControl): ValidationErrors | null {
+    const value = control.value?.trim();
+    if (!value) return null; // Skip empty validation
+    return this.existingRemotes.includes(value) ? { nameTaken: true } : null;
+  }
+
+  /** Helper function to map API fields */
+  private mapFlagFields(fields: any[]): any[] {
+    return fields.map((field) => ({
+      name: field.FieldName || field.Name,
+      default: field.Default || null,
+      help: field.Help || "No description available",
+      type: field.Type || "string",
+      required: field.Required || false,
+      examples: field.Examples || [],
+    }));
   }
 
   async loadRemoteTypes(): Promise<void> {
@@ -124,11 +167,9 @@ export class RemoteConfigModalComponent implements OnInit {
 
   async loadMountTypes(): Promise<void> {
     try {
-      const response = await this.rcloneService.getMountTypes();
       this.mountTypes = [
         { value: "Native", label: "Native (Direct Mounting)" },
         { value: "Systemd", label: "Systemd Service Mounting" },
-        ...response.map((type: string) => ({ value: type, label: type })),
       ];
     } catch (error) {
       console.error("Error fetching mount types:", error);
@@ -147,8 +188,9 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   async onRemoteTypeChange() {
-    this.isLoadingRemoteConfig = true;
+    this.isLoading.remoteConfig = true;
     try {
+      const remoteName = this.remoteForm.get("name")?.value;
       const remoteType = this.remoteForm.get("type")?.value;
       const response = await this.rcloneService.getRemoteConfigFields(
         remoteType
@@ -158,8 +200,11 @@ export class RemoteConfigModalComponent implements OnInit {
 
       // ✅ Reset form and ensure 'type' & 'name' fields exist
       this.remoteForm = this.fb.group({
-        name: this.fb.control("", [Validators.required]),
-        type: this.fb.control(remoteType, [Validators.required]),
+        name: [
+          remoteName,
+          [Validators.required, this.validateRemoteName.bind(this)],
+        ],
+        type: [remoteType, Validators.required],
       });
 
       // ✅ Map and store remote fields
@@ -176,7 +221,27 @@ export class RemoteConfigModalComponent implements OnInit {
     } catch (error) {
       console.error("Failed to fetch remote type config:", error);
     } finally {
-      this.isLoadingRemoteConfig = false;
+      this.isLoading.remoteConfig = false;
+    }
+  }
+
+  async loadFlagFields(): Promise<void> {
+    try {
+      await Promise.all(
+        this.flagTypes.map(async (type) => {
+          const methodName = `get${
+            type.charAt(0).toUpperCase() + type.slice(1)
+          }Flags` as keyof RcloneService;
+          if (typeof this.rcloneService[methodName] === "function") {
+            this.dynamicFlagFields[type] = this.mapFlagFields(
+              await (this.rcloneService[methodName] as () => Promise<any[]>)()
+            );
+          }
+        })
+      );
+      console.log("Flag Fields Loaded:", this.dynamicFlagFields);
+    } catch (error) {
+      console.error("Failed to load flag fields:", error);
     }
   }
 
@@ -185,80 +250,114 @@ export class RemoteConfigModalComponent implements OnInit {
     this.dynamicRemoteFields.forEach((field) => {
       this.remoteForm.addControl(
         field.name,
-        this.fb.control(
-          this.existingConfig?.[field.name] || "",
-          field.required ? Validators.required : []
-        )
+        this.fb.control(field.required ? Validators.required : [])
       );
     });
   }
 
   /** Fetch mount configuration fields dynamically */
   async onMountTypeChange(): Promise<void> {
-    const selectedMountType = this.mountForm.get("mountType")?.value;
+    const selectedMountType = this.remoteConfigForm.get("mountType")?.value;
     if (!selectedMountType) return;
-  
-    this.isLoadingMountConfig = true;
+
+    this.isLoading.mountConfig = true;
     try {
       const mountOptions = await this.rcloneService.getMountFlags();
-  
+
       // ✅ Filter and map mount options dynamically
-      this.dynamicMountFields = mountOptions
-        .filter((option: any) => option.Groups === "Mount") // Process only Mount options
-        .map((field: any) => ({
-          name: field.FieldName || field.Name, // Ensure field name
-          default: field.Default || null,
-          help: field.Help || "No description available",
-          type: field.Type || "string", // Default to "string" if no type
-          required: field.Required || false,
-          examples: field.Examples || [],
-        }));
-  
+      this.dynamicFlagFields["mount"] = this.mapFlagFields(mountOptions);
+
       this.generateMountFormControls();
     } catch (error) {
       console.error("Error fetching mount config fields:", error);
     } finally {
-      this.isLoadingMountConfig = false;
+      this.isLoading.mountConfig = false;
     }
   }
-  /** Object holding selected options */
-  selectedOptions: Record<string, any> = {};
-
-  /** Error message if JSON is invalid */
-  jsonError: string | null = null;
-
-  /** Reference to the textarea element */
-  @ViewChild('jsonArea') jsonArea!: ElementRef<HTMLTextAreaElement>;
+  /** Object holding selected options for each flag type */
+  selectedOptions: Record<string, Record<string, any>> = {
+    mount: {},
+    copy: {},
+    sync: {},
+    filter: {},
+    vfs: {},
+  };
 
   /** Add/remove option when a chip is selected */
-  addOption(field: any): void {
-    if (this.selectedOptions[field.name]) {
-      delete this.selectedOptions[field.name]; // Unselect on second click
-    } else {
-      this.selectedOptions[field.name] = field.default ?? ""; // Add with default value
+  toggleOption(flagType: keyof typeof this.selectedOptions, field: any): void {
+    const jsonConfigsGroup = this.remoteConfigForm.get("jsonConfigs") as FormGroup;
+    if (!jsonConfigsGroup || !jsonConfigsGroup.contains(flagType)) return;
+  
+    let parsedValue = {};
+    try {
+      parsedValue = JSON.parse(jsonConfigsGroup.get(flagType)?.value || "{}");
+    } catch (error) {
+      console.warn("Invalid JSON detected, keeping last valid input.");
     }
-
-    // Update JSON display & auto-resize
-    this.updateJsonDisplay();
+  
+    // ✅ Preserve manually added values
+    this.selectedOptions[flagType] = { ...parsedValue };
+  
+    if (this.selectedOptions[flagType][field.name] !== undefined) {
+      // ✅ Deselect: Remove from JSON
+      delete this.selectedOptions[flagType][field.name];
+    } else {
+      // ✅ Select: Add value
+      this.selectedOptions[flagType][field.name] = field.default ?? "";
+    }
+  
+    // ✅ Update JSON display
+    this.updateJsonDisplay(flagType);
   }
+  
 
-  /** Update JSON string */
-  updateJsonDisplay(): void {
-    const jsonStr = JSON.stringify(this.selectedOptions, null, 2);
-    this.mountForm.get('jsonText')?.setValue(jsonStr);
+  updateJsonDisplay(flagType: keyof typeof this.selectedOptions): void {
+    const jsonConfigsGroup = this.remoteConfigForm.get("jsonConfigs") as FormGroup;
+    if (!jsonConfigsGroup || !jsonConfigsGroup.contains(flagType)) return;
+  
+    const jsonStr = JSON.stringify(this.selectedOptions[flagType], null, 2);
+    jsonConfigsGroup.get(flagType)?.setValue(jsonStr);
+  
+    this.autoResize();
+    this.validateJson(flagType);
+  }
+  
+
+  validateJson(step: keyof typeof this.selectedOptions): void {
+    const jsonConfigsGroup = this.remoteConfigForm.get("jsonConfigs") as FormGroup;
+    if (!jsonConfigsGroup || !jsonConfigsGroup.contains(step)) return;
+  
+    const control = jsonConfigsGroup.get(step);
+    const jsonValue = control?.value || "{}";
+  
+    try {
+      const parsedValue = JSON.parse(jsonValue);
+      this.selectedOptions[step] = parsedValue;
+  
+      // ✅ Remove error if JSON is valid
+      control?.setErrors(null);
+    } catch (error) {
+      console.error("Invalid JSON detected:", error);
+      
+      // ❌ Set validation error
+      control?.setErrors({ invalidJson: true });
+    }
+  
     this.autoResize();
   }
-
-  /** Validate JSON input */
-  validateJson(): void {
-    try {
-      this.selectedOptions = JSON.parse(this.mountForm.get('jsonText')?.value || "{}");
-      this.jsonError = null;
-      this.autoResize();
-    } catch (error) {
-      this.jsonError = "Invalid JSON format!";
-    }
+  
+  /** ✅ Reset JSON Input */
+  resetJson(step: keyof typeof this.selectedOptions): void {
+    const jsonConfigsGroup = this.remoteConfigForm.get("jsonConfigs") as FormGroup;
+    if (!jsonConfigsGroup || !jsonConfigsGroup.contains(step)) return;
+  
+    // ✅ Reset value to an empty JSON object
+    jsonConfigsGroup.get(step)?.setValue("{}");
+    
+    // ✅ Clear selected options
+    this.selectedOptions[step] = {};
   }
+  
 
   /** Auto-adjust textarea height */
   autoResize(): void {
@@ -271,30 +370,33 @@ export class RemoteConfigModalComponent implements OnInit {
     }, 0);
   }
 
-/** Generate dynamic form controls */
-private generateMountFormControls(): void {
-  this.dynamicMountFields.forEach((field) => {
-    const validators = field.required ? [Validators.required] : [];
+  /** Generate dynamic form controls */
+  private generateMountFormControls(): void {
+    this.dynamicFlagFields["mount"].forEach((field) => {
+      const validators = field.required ? [Validators.required] : [];
 
-    let defaultValue: any = null;
-    
-    if (field.Type === "bool") {
-      defaultValue = field.Value !== null ? field.Value : field.Default;
-    } else if (field.Type === "stringArray") {
-      defaultValue = field.Value || field.Default || []; // Use array for multi-select
-    } else if (field.examples.length > 0) {
-      defaultValue = field.ValueStr || field.DefaultStr || field.examples[0].Value;
-    } else if (['int', 'SizeSuffix', 'bits'].includes(field.Type)) {
-      defaultValue = field.Value !== null ? field.Value : field.Default;
-    } else {
-      defaultValue = field.ValueStr || field.DefaultStr || "";
-    }
+      let defaultValue: any = null;
 
-    // ✅ Add control to form, keeping default values intact
-    this.mountForm.addControl(field.name, this.fb.control(defaultValue, validators));
-  });
-}
+      if (field.Type === "bool") {
+        defaultValue = field.Value !== null ? field.Value : field.Default;
+      } else if (field.Type === "stringArray") {
+        defaultValue = field.Value || field.Default || []; // Use array for multi-select
+      } else if (field.examples.length > 0) {
+        defaultValue =
+          field.ValueStr || field.DefaultStr || field.examples[0].Value;
+      } else if (["int", "SizeSuffix", "bits"].includes(field.Type)) {
+        defaultValue = field.Value !== null ? field.Value : field.Default;
+      } else {
+        defaultValue = field.ValueStr || field.DefaultStr || "";
+      }
 
+      // ✅ Add control to form, keeping default values intact
+      this.remoteConfigForm.addControl(
+        field.name,
+        this.fb.control(defaultValue, validators)
+      );
+    });
+  }
 
   /** Populate form when editing an existing remote */
   populateForm(config: any = {}): void {
@@ -309,56 +411,16 @@ private generateMountFormControls(): void {
     this.onRemoteTypeChange(); // Fetch dynamic fields if remote type changes
   }
 
-  /** Populate mount form when editing an existing mount */
-  populateMountForm(config: any = {}): void {
-    if (!config) {
-      this.mountForm = this.fb.group({
-        mountType: ["", Validators.required],
-        mountPath: ["", Validators.required],
-      });
-
-      this.dynamicMountFields = [];
-      this.generateMountFormControls();
-      return;
-    }
-
-    // Ensure we switch to the mount step
-    if (this.editTarget === "mount") {
-      this.currentStep = 2;
-    }
-
-    console.log("Populating Mount Form with config:", config);
-
-    // Ensure mountSpecs exists and extract data safely
-    const mountSpecs = config.mountSpecs || {};
-    const options = mountSpecs.options || {};
-
-    // Set static fields first
-    this.mountForm.patchValue({
-      mountType: mountSpecs.mountType || "Native",
-      mountPath: mountSpecs.mountPath || config.mount_path || "",
-    });
-
-    // Handle dynamic mount options
-    Object.keys(options).forEach((key) => {
-      if (!this.mountForm.contains(key)) {
-        this.mountForm.addControl(key, this.fb.control(options[key] || ""));
-      } else {
-        this.mountForm.get(key)?.setValue(options[key]);
-      }
-    });
-
-    this.onMountTypeChange(); // Fetch mount options dynamically
-  }
-
   nextStep(): void {
-    if (this.remoteForm.valid) {
-      this.currentStep = 2;
+    if (this.currentStep < this.totalSteps && this.remoteForm.valid) {
+      this.currentStep++;
     }
   }
 
   prevStep(): void {
-    this.currentStep = 1;
+    if (this.currentStep > 1) {
+      this.currentStep--;
+    }
   }
 
   @HostListener("document:keydown.escape", ["$event"])
@@ -367,63 +429,61 @@ private generateMountFormControls(): void {
   }
 
   async onSubmit(): Promise<void> {
-    if (this.editTarget === "remote" && !this.remoteForm.valid) {
-      console.error("Remote form is invalid");
-      return;
-    }
-    if (this.editTarget === "mount" && !this.mountForm.valid) {
-      console.error("Mount form is invalid");
-      return;
-    }
-
     const remoteData = this.cleanFormData(this.remoteForm.value);
-    const mountData = this.cleanFormData(this.mountForm.value);
+    const mountData = this.cleanFormData(this.remoteConfigForm.value);
+    this.isLoading.saving = true;
 
     try {
-      if (this.editMode) {
-        console.log("Editing mode detected");
 
-        if (this.editTarget === "remote") {
-          console.log("Updating remote:", remoteData);
-          await this.rcloneService.updateRemote(remoteData.name, remoteData);
-        } else if (this.editTarget === "mount") {
-          console.log("Updating mount:", mountData);
+      // ✅ Parse JSON string values into objects
+      const parsedMountOptions = this.parseJson(mountData.jsonConfigs?.mount);
+      const parsedCopyOptions = this.parseJson(mountData.jsonConfigs?.copy);
+      const parsedSyncOptions = this.parseJson(mountData.jsonConfigs?.sync);
+      const parsedFilterOptions = this.parseJson(mountData.jsonConfigs?.filter);
+      const parsedVfsOptions = this.parseJson(mountData.jsonConfigs?.vfs);
 
-          const remoteName =
-            remoteData.name || this.existingConfig?.remoteSpecs?.name;
-          if (remoteName) {
-            await this.rcloneService.saveMountConfig(
-              remoteName,
-              mountData.mountPath,
-              mountData
-            );
-          } else {
-            console.error("Remote name is undefined");
-          }
-        }
-      } else {
-        console.log("Adding new remote:", remoteData);
-        await this.rcloneService.createRemote(remoteData.name, remoteData);
+      // ✅ Construct the final object format
+      const finalConfig = {
+        name: remoteData.name,
+        custom_flags: [], // Add if needed
+        mount_options: {
+          auto_mount: mountData.autoMount,
+          mount_point: mountData.mountPath,
+          ...parsedMountOptions, // Spread parsedMountOptions into mount_options
+        },
+        vfs_options: parsedVfsOptions,
+        copy_options: parsedCopyOptions,
+        sync_options: parsedSyncOptions,
+        filter_options: parsedFilterOptions,
+      };
 
-        console.log("Saving mount configuration:", mountData);
-        await this.rcloneService.saveMountConfig(
-          remoteData.name,
-          mountData.mountPath,
-          mountData
-        );
-      }
+      await this.rcloneService.createRemote(remoteData.name, remoteData)
 
-      console.log("Configuration saved successfully!");
-      this.dialogRef.close({ remoteSpecs: remoteData, mountSpecs: mountData });
+      await this.settingsService.saveRemoteSettings(
+        remoteData.name,
+        finalConfig
+      );
+      console.log(
+        `✅ Saved settings for remote: ${remoteData.name} saved data: ${finalConfig}`
+      );
+      this.isLoading.saving = false;
+      this.dialogRef.close();
+
     } catch (error) {
+      this.isLoading.saving = false;
       console.error("Failed to save configuration:", error);
     }
   }
 
-  ngOnDestroy(): void {
-    this.dialogRef.close();
-    this.remoteForm.reset();
-    this.mountForm.reset();
+  /** Helper function to safely parse JSON strings */
+  private parseJson(data: any): any {
+    if (!data) return {};
+    try {
+      return typeof data === "string" ? JSON.parse(data) : data;
+    } catch (error) {
+      console.error("Failed to parse JSON:", data, error);
+      return {}; // Return an empty object on failure
+    }
   }
 
   private cleanFormData(formData: any): any {
@@ -435,17 +495,29 @@ private generateMountFormControls(): void {
       }, {});
   }
 
+  ngOnDestroy(): void {
+    this.dialogRef.close();
+    this.cancelAuth();
+    this.remoteForm.reset();
+    this.remoteConfigForm.reset();
+  }
+
+  cancelAuth() {
+    this.rcloneService.quitOAuth();
+    this.isLoading.saving = false;
+  }
+
   allowOnlyNumbers(event: KeyboardEvent) {
     const charCode = event.key ? event.key.charCodeAt(0) : 0;
     if (charCode < 48 || charCode > 57) {
       event.preventDefault(); // ❌ Block non-numeric characters
     }
   }
-  
+
   sanitizeNumberInput(fieldName: string) {
     const value = this.remoteForm.get(fieldName)?.value;
     if (value && isNaN(value)) {
-      this.remoteForm.get(fieldName)?.setValue('');
+      this.remoteForm.get(fieldName)?.setValue("");
     }
   }
 }

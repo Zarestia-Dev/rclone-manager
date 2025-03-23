@@ -169,7 +169,7 @@ export class QuickAddRemoteComponent implements OnInit {
 
       // ✅ Auto-mount if enabled
       if (autoMount && mountPath) {
-        await this.rcloneService.mountRemote(remoteName, mountPath);
+        // await this.rcloneService.mountRemote();
         console.log("Remote mounted successfully!");
       }
     } catch (error) {

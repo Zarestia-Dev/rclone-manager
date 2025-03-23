@@ -8,7 +8,7 @@ use core::{
 };
 use rclone::api::{
     create_remote, delete_remote, ensure_rc_api_running, get_all_remote_configs, get_copy_flags,
-    get_disk_usage, get_filter_flags, get_global_flags, get_mount_flags, get_mount_types,
+    get_disk_usage, get_filter_flags, get_global_flags, get_mount_flags,
     get_mounted_remotes, get_oauth_supported_remotes, get_remote_config, get_remote_config_fields,
     get_remote_types, get_remotes, get_sync_flags, get_vfs_flags, list_mounts, mount_remote,
     quit_rclone_oauth, unmount_remote, update_remote, RcloneState,
@@ -220,7 +220,6 @@ pub fn run() {
             get_remote_config,
             get_remote_types,
             get_oauth_supported_remotes,
-            get_mount_types,
             get_remote_config_fields,
             create_remote,
             update_remote,

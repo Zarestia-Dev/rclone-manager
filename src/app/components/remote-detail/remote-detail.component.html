@@ -78,6 +78,44 @@
         </mat-card>
     </div>
 
+    <!-- ✅ Dynamic Remote Settings Sections -->
+    <ng-container *ngFor="let section of remoteSettingsSections">
+        <div class="info-card spec-card">
+            <h3>
+                <img [src]="'assets/icons/' + section.icon" class="icon icon-bw" />
+                {{ section.title }}
+            </h3>
+            <mat-card class="info-card-content">
+                <mat-card-content class="spec-content">
+                    <mat-chip-set class="specs-container">
+                        <!-- ✅ Show normal settings if available -->
+                        <mat-chip *ngFor="let spec of getRemoteSettings(section.key) | keyvalue" class="spec-pill"
+                            matTooltip="{{ spec.value | json }}" matTooltipPosition="above" [matTooltipHideDelay]="500">
+                            <strong>{{ spec.key }}:</strong>
+                            <span>{{ truncateValue(spec.value, 30) }}</span>
+                        </mat-chip>
+
+                        <!-- ❌ Show "No Data" chip if section is empty -->
+                        <mat-chip *ngIf="!hasSettings(section.key)" class="spec-pill not-found">
+                            <strong>No data found</strong>
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-card-content>
+
+                <mat-divider></mat-divider>
+
+                <!-- ✅ Edit Button -->
+                <mat-card-footer class="button-container">
+                    <button class="edit" (click)="openRemoteConfig(section.key)">
+                        <img src="assets/icons/pen.svg" class="icon" style="filter: invert(1)" />
+                        Edit
+                    </button>
+                </mat-card-footer>
+            </mat-card>
+        </div>
+        <mat-divider></mat-divider>
+    </ng-container>
+
 
     <!-- Delete Button -->
     <button class="delete" (click)="deleteRemoteByName()">

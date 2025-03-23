@@ -76,6 +76,8 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --add-button-hover: #939090;
   --theme-border: #dbdbdb;
   --theme-border-hover: #777;
+  --faint-blue: #f0f8ff;
+  
 }
 
 /* 🌙 Dark Theme */
@@ -102,8 +104,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --add-button-hover: #666;
   --theme-border: #555;
   --theme-border-hover: #888;
-
-
+  --faint-blue: #464d50;
 
 }
 
@@ -278,7 +279,7 @@ input, textarea, [contenteditable="true"] {
 }
 
 .mdc-text-field--filled:not(.mdc-text-field--disabled) {
-  background-color: #ECF9FF !important;
+  background-color: var(--faint-blue) !important;
 }
 
 .cdk-overlay-dark-backdrop {

@@ -4,7 +4,7 @@
       <button><img src="assets/icons/question.svg" class="icon icon-bw" /></button>
       <p>
         <img src="assets/icons/hard-drive.svg" class="icon icon-bw" />
-        {{ editMode ? (editTarget === 'remote' ? 'Edit Remote' : 'Edit Mount') : 'Add New Remote' }}
+        Add New Remote
       </p>
       <button (click)="close()"><img src="assets/icons/circle-xmark.svg" class="icon icon-bw" /></button>
     </div>
@@ -13,13 +13,16 @@
 
   <div class="modal-content">
     <!-- Step 1: Remote Configuration -->
-    <div [@slideAnimation] *ngIf="currentStep === 1 && (!editMode || editTarget === 'remote')" class="step-container">
+    <div [@slideAnimation] *ngIf="currentStep === 1" class="step-container">
       <form [formGroup]="remoteForm" (ngSubmit)="nextStep()">
         <mat-form-field appearance="fill">
           <mat-label>Remote Name</mat-label>
           <input matInput formControlName="name" id="remoteName" />
           <mat-error *ngIf="remoteForm.get('name')?.hasError('required')">
             Remote Name is required.
+          </mat-error>
+          <mat-error *ngIf="remoteForm.get('name')?.hasError('nameTaken')">
+            This remote name already exists! Choose another name.
           </mat-error>
         </mat-form-field>
 
@@ -37,7 +40,7 @@
         </mat-form-field>
 
         <!-- Show Loading State -->
-        <div *ngIf="isLoadingRemoteConfig" class="loading-container">
+        <div *ngIf="isLoading.mountConfig" class="loading-container">
           <mat-spinner diameter="30"></mat-spinner>
           <p>Loading configuration options...</p>
         </div>
@@ -46,51 +49,49 @@
         <ng-container *ngFor="let field of dynamicRemoteFields">
           <mat-label>{{ field.Help }}</mat-label>
           <mat-form-field appearance="fill" *ngIf="field.Type !== 'bool'">
-            <mat-label>{{ field.Value }}</mat-label>
-            <!-- ✅ Numeric Input (Only Numbers Allowed) -->
+            <mat-label>{{ field.Value ? field.Value : 'No default value' }}</mat-label>
             <input *ngIf="['int', 'SizeSuffix', 'bits'].includes(field.Type)" matInput type="number"
               [formControlName]="field.Name" pattern="\d*" (keypress)="allowOnlyNumbers($event)"
               (input)="sanitizeNumberInput(field.Name)" />
 
-
-            <!-- ✅ Dropdown for Encodings or fields with Examples -->
             <mat-select *ngIf="field.Type === 'Encoding' || field.Examples.length > 0" [formControlName]="field.Name">
               <mat-option *ngFor="let example of field.Examples" [value]="example.Value">
                 {{ example.Help }}
               </mat-option>
             </mat-select>
 
-            <!-- ✅ Duration: Free Text Input -->
             <input *ngIf="field.Type === 'Duration'" matInput type="text" [formControlName]="field.Name" />
-
-            <!-- ✅ Default: Text Input -->
             <input
               *ngIf="!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration'].includes(field.Type) && field.Examples.length === 0"
               matInput type="text" [formControlName]="field.Name" />
           </mat-form-field>
 
-          <!-- ✅ Boolean: Checkbox -->
           <mat-slide-toggle *ngIf="field.Type === 'bool'" [formControlName]="field.Name">
             {{ field.Name }}
           </mat-slide-toggle>
         </ng-container>
-
       </form>
     </div>
 
     <!-- Step 2: Mount Configuration -->
-    <div [@slideAnimation] *ngIf="currentStep === 2 && (!editMode || editTarget === 'mount')" class="step-container">
-      <form [formGroup]="mountForm" (ngSubmit)="onSubmit()">
+    <div [@slideAnimation] *ngIf="currentStep === 2" class="step-container">
+      <form [formGroup]="remoteConfigForm" (ngSubmit)="onSubmit()">
         <mat-form-field appearance="fill">
           <mat-label>Mount Path</mat-label>
           <button mat-button matSuffix type="button" (click)="selectFolder()">
             <img src="assets/icons/folder-white.svg" class="icon icon-bw" style="filter: invert(1);" />
           </button>
           <input matInput formControlName="mountPath" id="mountPath" />
-          <mat-error *ngIf="mountForm.get('mountPath')?.hasError('required')">
+          <mat-error *ngIf="remoteConfigForm.get('mountPath')?.hasError('required')">
             Mount Path is required.
           </mat-error>
         </mat-form-field>
+
+        <mat-slide-toggle formControlName="autoMount" id="autoMount"
+          [checked]="remoteConfigForm.get('autoMount')?.value">
+          Auto Mount
+        </mat-slide-toggle>
+
         <mat-form-field appearance="fill">
           <mat-label>Mount Type</mat-label>
           <mat-select formControlName="mountType" id="mountType"
@@ -99,52 +100,82 @@
               {{ mount.label }}
             </mat-option>
           </mat-select>
-          <mat-error *ngIf="mountForm.get('mountType')?.hasError('required')">
+          <mat-error *ngIf="remoteConfigForm.get('mountType')?.hasError('required')">
             Mount Type is required.
           </mat-error>
         </mat-form-field>
 
         <!-- Show Loading State -->
-        <div *ngIf="isLoadingMountConfig" class="loading-container">
+        <div *ngIf="isLoading.mountConfig" class="loading-container">
           <mat-spinner diameter="30"></mat-spinner>
           <p>Loading mount options...</p>
         </div>
 
         <!-- Render dynamic mount-specific inputs -->
-        <ng-container *ngIf="mountForm.get('mountType')?.value">
-            <mat-form-field class="full-width">
-              <textarea matInput formControlName="jsonText" #jsonArea (input)="validateJson()"></textarea>
-              <mat-hint *ngIf="jsonError" class="error-text">{{ jsonError }}</mat-hint>
-            </mat-form-field>
-          
-          
-          <mat-chip-set>
-            <mat-chip-option 
-              *ngFor="let field of dynamicMountFields"
-              (click)="addOption(field)"
-              [selected]="selectedOptions.hasOwnProperty(field.name)"
-              [matTooltipShowDelay]="400"
-              [matTooltipHideDelay]="100"
-              [matTooltipPosition]="'above'"
-              matTooltip="{{ field.help }}"
-            >
+        <ng-container *ngIf="remoteConfigForm.get('mountType')?.value">
+          <mat-form-field class="full-width" formGroupName="jsonConfigs">
+            <button mat-button matSuffix *ngIf="remoteConfigForm.get('jsonConfigs')?.get('mount')?.value" matSuffix mat-icon-button
+            (click)="resetJson('mount')">
+            <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
+          </button>
+            <textarea matInput formControlName="mount" #jsonArea (input)="validateJson('mount')">
+            </textarea>
+            <mat-error *ngIf="remoteConfigForm.get('jsonConfigs')?.get('mount')?.hasError('invalidJson')">
+              Invalid JSON format in mount!
+            </mat-error>
+          </mat-form-field>
+
+
+          <mat-chip-set [disabled]="!remoteConfigForm.get('jsonConfigs')?.get('mount')?.valid">
+            <mat-chip-option *ngFor="let field of dynamicFlagFields['mount']" (click)="toggleOption('mount', field)"
+              [selected]="selectedOptions['mount'] && selectedOptions['mount'].hasOwnProperty(field.name)"
+              [matTooltipShowDelay]="400" [matTooltipHideDelay]="100" [matTooltipPosition]="'above'"
+              matTooltip="{{ field.help }}">
+              {{ field.name }}
+            </mat-chip-option>,
+          </mat-chip-set>
+        </ng-container>
+      </form>
+    </div>
+
+    <!-- Steps 3-6: Copy, Sync, Filter, VFS Flags -->
+    <ng-container *ngFor="let step of ['copy', 'sync', 'filter', 'vfs']; let i = index">
+      <div [@slideAnimation] *ngIf="currentStep === i + 3" class="step-container">
+        <h3>{{ step | titlecase }} Flags</h3>
+        <form [formGroup]="remoteConfigForm">
+          <mat-form-field class="full-width" formGroupName="jsonConfigs">
+            <button mat-button matSuffix *ngIf="remoteConfigForm.get('jsonConfigs')?.get(step)?.value" matSuffix mat-icon-button
+              (click)="resetJson(step)">
+              <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
+            </button>
+            <textarea matInput [formControlName]="step" #jsonArea (input)="validateJson(step)">
+            </textarea>
+            <mat-error *ngIf="remoteConfigForm.get('jsonConfigs')?.get(step)?.hasError('invalidJson')">
+              Invalid JSON format in {{ step }}!
+            </mat-error>
+          </mat-form-field>
+
+
+
+          <mat-chip-set [disabled]="!remoteConfigForm.get('jsonConfigs')?.get(step)?.valid">
+            <mat-chip-option *ngFor="let field of dynamicFlagFields[step]" (click)="toggleOption(step, field)"
+              [selected]="selectedOptions[step] && selectedOptions[step].hasOwnProperty(field.name)"
+              [matTooltipShowDelay]="400" [matTooltipHideDelay]="100" [matTooltipPosition]="'above'"
+              matTooltip="{{ field.help }}">
               {{ field.name }}
             </mat-chip-option>
           </mat-chip-set>
-        </ng-container>
-
-      </form>
-    </div>
+        </form>
+      </div>
+    </ng-container>
   </div>
 
-  <div class="button-container">
-    <button *ngIf="currentStep === 2 && !editMode" class="back" (click)="prevStep()">Back</button>
-    <button *ngIf="currentStep === 1 && !editMode" class="next" [disabled]="remoteForm.invalid"
-      (click)="nextStep()">Next</button>
-    <button class="finish" *ngIf="currentStep === 2 || editMode"
-      [disabled]="(editTarget === 'remote' && remoteForm.invalid) || (editTarget === 'mount' && mountForm.invalid)"
-      (click)="onSubmit()">
-      {{ editMode ? 'Update' : 'Add Remote' }}
+  <div class="button-container" >
+    <button *ngIf="currentStep > 1" class="back" (click)="prevStep()">Back</button>
+    <button *ngIf="currentStep < totalSteps" class="next" (click)="nextStep()"
+      [disabled]="!remoteForm.valid">Next</button>
+    <button *ngIf="currentStep === totalSteps" class="finish" (click)="onSubmit()" [disabled]="isLoading.saving">
+      {{ isLoading.saving ? 'Saving...' : 'Save' }}
     </button>
   </div>
 </div>

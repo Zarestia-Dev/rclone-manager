@@ -121,7 +121,7 @@ export class RcloneService {
     });
   }
 
-    async quitOAuth() {
+  async quitOAuth() {
     try {
       await invoke("quit_rclone_oauth");
       console.log("OAuth process cancelled.");
@@ -148,11 +148,12 @@ export class RcloneService {
     await invoke("delete_remote", { name }).catch((error) => {
       console.error(`Error deleting remote ${name}:`, error);
     });
-    await invoke("delete_remote_settings", { remoteName: name }).catch((error) => {
-      console.error(`Error deleting saved mount config for ${name}:`, error);
-    });
+    await invoke("delete_remote_settings", { remoteName: name }).catch(
+      (error) => {
+        console.error(`Error deleting saved mount config for ${name}:`, error);
+      }
+    );
   }
-  
 
   /** List all mounted remotes */
   async listMounts(): Promise<string[]> {
@@ -174,9 +175,19 @@ export class RcloneService {
   }
 
   /** Mount a remote */
-  async mountRemote(remoteName: string, mountPoint: string): Promise<void> {
+  async mountRemote(
+    remoteName: string,
+    mountPoint: string,
+    mount_options?: Record<string, string | number | boolean>,
+    vfs_options?: Record<string, string | number | boolean>
+  ): Promise<void> {
     try {
-      await invoke("mount_remote", { remoteName, mountPoint });
+      await invoke("mount_remote", {
+        remoteName,
+        mountPoint,
+        mount_options,
+        vfs_options,
+      });
       console.log("Mounted successfully");
     } catch (error) {
       console.error("Mount failed:", error);
@@ -193,15 +204,15 @@ export class RcloneService {
     }
   }
 
-  async getMountTypes(): Promise<string[]> {
-    try {
-      const response = await invoke("get_mount_types");
-      return response as string[];
-    } catch (error) {
-      console.error("Error fetching mount types:", error);
-      return [];
-    }
-  }
+  // async getMountTypes(): Promise<string[]> {
+  //   try {
+  //     const response = await invoke("get_mount_types");
+  //     return response as string[];
+  //   } catch (error) {
+  //     console.error("Error fetching mount types:", error);
+  //     return [];
+  //   }
+  // }
 
   /** Add a new mount configuration */
   async addMount(
