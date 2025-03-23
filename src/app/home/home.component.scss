@@ -21,7 +21,10 @@
       padding-top: 12vh;
 
       p {
+        display: flex;
         font-size: 20px;
+        text-align: center;
+        margin-inline: 40px;
       }
     }
 
