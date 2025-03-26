@@ -4,6 +4,8 @@ import { MatCardModule } from "@angular/material/card";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatMenuModule } from "@angular/material/menu";
+import { MatCheckboxModule } from "@angular/material/checkbox";
 
 @Component({
   selector: "app-remote-detail",
@@ -13,6 +15,8 @@ import { MatTooltipModule } from "@angular/material/tooltip";
     MatDividerModule,
     MatChipsModule,
     MatTooltipModule,
+    MatMenuModule,
+    MatCheckboxModule,
   ],
   templateUrl: "./remote-detail.component.html",
   styleUrl: "./remote-detail.component.scss",
@@ -25,17 +29,17 @@ export class RemoteDetailComponent {
   @Output() unmountRemote = new EventEmitter<string>();
   @Output() deleteRemote = new EventEmitter<string>();
   @Output() openRemoteConfigModal = new EventEmitter<{
-    remoteName: string;
-    type?: string;
+    editTarget?: string,
+    existingConfig?: any[]
   }>();
 
   remoteSettingsSections: Array<{ key: string; title: string; icon: string }> =
     [
-      { key: "mount_options", title: "Mount Options", icon: "mount.svg" },
-      { key: "vfs_options", title: "VFS Options", icon: "vfs.svg" },
-      { key: "copy_options", title: "Copy Options", icon: "copy.svg" },
-      { key: "sync_options", title: "Sync Options", icon: "folder-sync.svg" },
-      { key: "filter_options", title: "Filter Options", icon: "filter.svg" },
+      { key: "mount", title: "Mount Options", icon: "mount.svg" },
+      { key: "vfs", title: "VFS Options", icon: "vfs.svg" },
+      { key: "copy", title: "Copy Options", icon: "copy.svg" },
+      { key: "sync", title: "Sync Options", icon: "folder-sync.svg" },
+      { key: "filter", title: "Filter Options", icon: "filter.svg" },
     ];
 
   /** ✅ Safely get settings (returns empty object if missing) */
@@ -48,10 +52,11 @@ export class RemoteDetailComponent {
     return Object.keys(this.getRemoteSettings(sectionKey)).length > 0;
   }
 
-  openRemoteConfig(type?: string) {
+  openRemoteConfig(editTarget?: string, existingConfig?: any) {
+    console.log(existingConfig)
     this.openRemoteConfigModal.emit({
-      remoteName: this.selectedRemote.remoteSpecs.name,
-      type,
+      editTarget: editTarget,
+      existingConfig: existingConfig
     });
   }
 

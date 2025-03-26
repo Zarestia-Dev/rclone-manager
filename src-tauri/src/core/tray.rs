@@ -16,7 +16,6 @@ pub async fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     let mount_all_item = MenuItem::with_id(&handle, "mount_all", "Mount All", true, None::<&str>)?;
     let unmount_all_item =
         MenuItem::with_id(&handle, "unmount_all", "Unmount All", true, None::<&str>)?;
-    let settings_item = MenuItem::with_id(&handle, "settings", "Settings", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(&handle, "quit", "Quit", true, None::<&str>)?;
 
     // Fetch dynamic remotes (you need a function for this)
@@ -78,7 +77,6 @@ pub async fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     menu_items.push(&mount_all_item);
     menu_items.push(&unmount_all_item);
     menu_items.push(&separator);
-    menu_items.push(&settings_item);
     menu_items.push(&quit_item);
 
     let menu = Menu::with_items(&handle, &menu_items)?;
@@ -111,9 +109,6 @@ pub async fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
             }
             "unmount_all" => {
                 let _ = app.emit("unmount-all", ());
-            }
-            "settings" => {
-                let _ = app.emit("open-settings", ());
             }
             "quit" => {
                 app.exit(0);

@@ -69,8 +69,16 @@ export class PreferencesModalComponent {
 
   async updateSetting(category: string, key: string, value: any) {
     console.log(`Updated ${category}.${key}:`, value);
+  
+    // Convert to number if necessary
+    const metadata = this.getMetadata(category, key);
+    if (metadata.value_type === "u16" || metadata.value_type === "number") {
+      value = Number(value);
+    }
+  
     this.settingsService.saveSetting(category, key, value);
   }
+  
 
   @HostListener("document:keydown.escape", ["$event"])
   close() {

@@ -4,7 +4,7 @@
       <button><img src="assets/icons/question.svg" class="icon icon-bw" /></button>
       <p>
         <img src="assets/icons/hard-drive.svg" class="icon icon-bw" />
-        Add New Remote
+        {{ editTarget ? 'Edit ' + editTarget + ' Settings' : 'Add New Remote' }}
       </p>
       <button (click)="close()"><img src="assets/icons/circle-xmark.svg" class="icon icon-bw" /></button>
     </div>
@@ -13,7 +13,8 @@
 
   <div class="modal-content">
     <!-- Step 1: Remote Configuration -->
-    <div [@slideAnimation] *ngIf="currentStep === 1" class="step-container">
+    <div *ngIf="(editTarget === 'remote') || (!editTarget && currentStep === 1)" [@slideAnimation]
+      class="step-container">
       <form [formGroup]="remoteForm" (ngSubmit)="nextStep()">
         <mat-form-field appearance="fill">
           <mat-label>Remote Name</mat-label>
@@ -74,7 +75,8 @@
     </div>
 
     <!-- Step 2: Mount Configuration -->
-    <div [@slideAnimation] *ngIf="currentStep === 2" class="step-container">
+    <div *ngIf="(editTarget === 'mount') || (!editTarget && currentStep === 2)" [@slideAnimation]
+      class="step-container">
       <form [formGroup]="remoteConfigForm" (ngSubmit)="onSubmit()">
         <mat-form-field appearance="fill">
           <mat-label>Mount Path</mat-label>
@@ -114,10 +116,10 @@
         <!-- Render dynamic mount-specific inputs -->
         <ng-container *ngIf="remoteConfigForm.get('mountType')?.value">
           <mat-form-field class="full-width" formGroupName="jsonConfigs">
-            <button mat-button matSuffix *ngIf="remoteConfigForm.get('jsonConfigs')?.get('mount')?.value" matSuffix mat-icon-button
-            (click)="resetJson('mount')">
-            <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
-          </button>
+            <button mat-button matSuffix *ngIf="remoteConfigForm.get('jsonConfigs')?.get('mount')?.value" type="button"
+              (click)="resetJson('mount')">
+              <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
+            </button>
             <textarea matInput formControlName="mount" #jsonArea (input)="validateJson('mount')">
             </textarea>
             <mat-error *ngIf="remoteConfigForm.get('jsonConfigs')?.get('mount')?.hasError('invalidJson')">
@@ -132,7 +134,7 @@
               [matTooltipShowDelay]="400" [matTooltipHideDelay]="100" [matTooltipPosition]="'above'"
               matTooltip="{{ field.help }}">
               {{ field.name }}
-            </mat-chip-option>,
+            </mat-chip-option>
           </mat-chip-set>
         </ng-container>
       </form>
@@ -140,11 +142,12 @@
 
     <!-- Steps 3-6: Copy, Sync, Filter, VFS Flags -->
     <ng-container *ngFor="let step of ['copy', 'sync', 'filter', 'vfs']; let i = index">
-      <div [@slideAnimation] *ngIf="currentStep === i + 3" class="step-container">
+      <div *ngIf="(editTarget === step) || (!editTarget && currentStep === i + 3)"
+        [@slideAnimation] class="step-container">
         <h3>{{ step | titlecase }} Flags</h3>
         <form [formGroup]="remoteConfigForm">
           <mat-form-field class="full-width" formGroupName="jsonConfigs">
-            <button mat-button matSuffix *ngIf="remoteConfigForm.get('jsonConfigs')?.get(step)?.value" matSuffix mat-icon-button
+            <button mat-button matSuffix *ngIf="remoteConfigForm.get('jsonConfigs')?.get(step)?.value" type="button"
               (click)="resetJson(step)">
               <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
             </button>
@@ -170,11 +173,17 @@
     </ng-container>
   </div>
 
-  <div class="button-container" >
-    <button *ngIf="currentStep > 1" class="back" (click)="prevStep()">Back</button>
-    <button *ngIf="currentStep < totalSteps" class="next" (click)="nextStep()"
-      [disabled]="!remoteForm.valid">Next</button>
-    <button *ngIf="currentStep === totalSteps" class="finish" (click)="onSubmit()" [disabled]="isLoading.saving">
+  <div class="button-container">
+    <div class="button-container-inner">
+      <button *ngIf="currentStep < totalSteps && !editTarget" class="next" (click)="nextStep()"
+        [disabled]="!remoteForm.valid" [@fadeInOut]>
+        Next
+      </button>
+      <button *ngIf="currentStep > 1 && !editTarget" class="back" (click)="prevStep()" [@fadeInOut]>
+        Back
+      </button>
+    </div>
+    <button class="finish" (click)="onSubmit()" [disabled]="isLoading.saving" [@fadeInOut]>
       {{ isLoading.saving ? 'Saving...' : 'Save' }}
     </button>
   </div>

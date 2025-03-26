@@ -40,7 +40,7 @@
     <app-remote-detail *ngIf="selectedRemote" [selectedRemote]="selectedRemote" [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
       (openInFiles)="openRemoteInFiles($event)" (mountRemote)="mountRemote($event)"
       (unmountRemote)="unmountRemote($event)" (deleteRemote)="deleteRemote($event)"
-      (openRemoteConfigModal)="openRemoteConfigModal()" style="width: 100%;">
+      (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)" style="width: 100%;">
     </app-remote-detail>
 
 

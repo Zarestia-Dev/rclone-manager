@@ -5,8 +5,6 @@ use tokio::time::sleep;
 use std::{
     collections::HashMap,
     error::Error,
-    fs,
-    path::PathBuf,
     process::{Child, Command, Stdio},
     sync::{Arc, Mutex},
     thread,

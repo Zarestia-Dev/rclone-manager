@@ -27,7 +27,7 @@ import { MatSnackBar } from "@angular/material/snack-bar";
 export class AboutModalComponent {
   private _snackBar = inject(MatSnackBar);
   currentPage = "main";
-  version = "1.0.0";
+  version = "0.1.0";
 
   constructor(private dialogRef: MatDialogRef<AboutModalComponent>) {}
 

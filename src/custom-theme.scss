@@ -135,11 +135,10 @@ body {
 }
 body {
   margin: 0;
-  font-family: Roboto, "Helvetica Neue", sans-serif;
+  font-family: system-ui, Inter, sans-serif;
 }
 
 p, h1, h2, h3, h4, h5, h6 {
-  transition: color 0.3 ease;
   margin-bottom: 0;
   margin-top: 0;
 
@@ -219,16 +218,13 @@ button {
 .mat-mdc-menu-item-text {
   display: flex;
   justify-content: space-between;
-  --mat-menu-item-label-text-size: 16px;
+  gap: 12px;
 }
 .mat-mdc-menu-panel {
-  transition: background-color 0.3s ease-in-out !important;
-  min-width: 252px !important;
   background-color: var(--app-background) !important;
 }
 
 .mat-mdc-menu-item {
-  transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out !important;
   color: var(--app-text-color) !important;
   min-height: 36px !important;
   width: calc(100% - 12px) !important;
@@ -241,10 +237,6 @@ button {
 
 .mat-divider {
   border-color: var(--border-color) !important;
-}
-
-.mat-mdc-card-subtitle {
-  color: var(--titlebar-text-color) !important;
 }
 
 .icons {
@@ -261,8 +253,7 @@ button {
 * {
   user-select: none;
   cursor: default;
-  transition: background-color 0.3s ease;
-  // transition: color 100ms ease;
+  transition: background 0.5s ease, background-color 0.5s ease, color 0.05s ease;
   -webkit-user-drag: none; /* Disable image dragging in WebKit browsers */
 }
 

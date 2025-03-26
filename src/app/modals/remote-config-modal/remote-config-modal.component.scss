@@ -53,6 +53,13 @@
       top: 0;
       left: 0;
 
+      h3 {
+        margin: 10px;
+        display: flex;
+        align-content: center;
+        justify-content: center;
+      }
+
       form {
         display: flex;
         flex-direction: column;
@@ -81,5 +88,10 @@
         color: #ffffff;
       }
     }
+
+    .button-container-inner {
+      display: flex;
+      gap: 10px;
+    } 
   }
 }

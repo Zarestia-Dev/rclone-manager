@@ -93,13 +93,18 @@ export class HomeComponent {
     });
   }
 
-  openRemoteConfigModal(): void {
+  openRemoteConfigModal(editTarget?: string, existingConfig?: any[]): void {
     this.dialog.open(RemoteConfigModalComponent, {
       width: "70vw",
       maxWidth: "800px",
       height: "80vh",
       maxHeight: "600px",
       disableClose: true,
+
+      data: {
+        editTarget: editTarget,  // 🔹 Edit only mount settings
+        existingConfig: existingConfig,
+      },
     });
   }
 
