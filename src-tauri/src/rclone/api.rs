@@ -1,7 +1,8 @@
+use log::{debug, error, info, warn};
+use once_cell::sync::Lazy;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use tokio::time::sleep;
 use std::{
     collections::HashMap,
     error::Error,
@@ -12,8 +13,27 @@ use std::{
 };
 use tauri::command;
 use tauri::State;
+use tokio::time::sleep;
 
-const RCLONE_API_URL: &str = "http://localhost:5572";
+const DEFAULT_RCLONE_API_PORT: &str = "5572";
+
+static RCLONE_API_URL: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new(String::new()));
+
+fn get_rclone_api_url(port: u16) -> String {
+    if port == 0 {
+        return format!("http://localhost:{}", DEFAULT_RCLONE_API_PORT);
+    }
+    format!("http://localhost:{}", port)
+}
+
+pub fn set_rclone_api_url(port: u16) {
+    let mut url = RCLONE_API_URL.lock().unwrap();
+    *url = get_rclone_api_url(port);
+}
+
+pub fn get_rclone_api_url_global() -> String {
+    RCLONE_API_URL.lock().unwrap().clone()
+}
 
 pub struct RcloneState {
     pub client: Client,
@@ -21,38 +41,73 @@ pub struct RcloneState {
 
 pub fn is_rc_api_running() -> bool {
     let client = reqwest::blocking::Client::new();
-    match client
-        .post(format!("{}/config/listremotes", RCLONE_API_URL))
-        .send()
-    {
+    let url = format!("{}/config/listremotes", get_rclone_api_url_global());
+
+    match client.post(url).send() {
         Ok(response) => response.status().is_success(),
         Err(_) => false,
     }
 }
 
-pub fn start_rc_api() -> Child {
-    println!("Starting Rclone RC API...");
-    Command::new("rclone")
+pub fn start_rc_api(port: u16) -> Result<Child, Box<dyn Error>> {
+    info!("🚀 Starting Rclone RC API on port {}", port);
+
+    let child = Command::new("rclone")
         .args(&[
             "rcd",
             "--rc-no-auth",
             "--rc-serve",
-            "--rc-addr=localhost:5572",
+            &format!("--rc-addr=localhost:{}", port),
         ])
         .spawn()
-        .expect("Failed to start Rclone RC API")
+        .map_err(|e| {
+            error!("❌ Failed to start Rclone RC API: {}", e);
+            e
+        })?;
+
+    debug!("✅ Rclone RC API started with PID: {:?}", child.id());
+    Ok(child)
 }
 
-pub fn ensure_rc_api_running(rc_process: Arc<Mutex<Option<Child>>>) {
+
+pub fn stop_rc_api(rc_process: &mut Option<Child>) {
+    if let Some(mut child) = rc_process.take() {
+        if let Err(e) = child.kill() {
+            warn!("Failed to kill Rclone process: {}", e);
+        } else {
+            info!("Rclone process killed successfully.");
+        }
+    }
+}
+
+pub fn ensure_rc_api_running(rc_process: Arc<Mutex<Option<Child>>>, rc_port: u16) {
+    set_rclone_api_url(rc_port);
+    info!("🔧 Ensuring Rclone RC API is running on port {}", rc_port);
+
     thread::spawn(move || {
         loop {
-            if !is_rc_api_running() {
-                println!("Rclone RC API is down! Restarting...");
-                let child = start_rc_api();
+            {
                 let mut process_guard = rc_process.lock().unwrap();
-                *process_guard = Some(child);
+
+                if !is_rc_api_running() {
+                    warn!("⚠️ Rclone API is not running. Attempting to restart...");
+
+                    stop_rc_api(&mut process_guard);
+
+                    match start_rc_api(rc_port) {
+                        Ok(child) => {
+                            info!("✅ Rclone RC API started successfully on port {}", rc_port);
+                            *process_guard = Some(child);
+                        }
+                        Err(e) => {
+                            error!("🚨 Failed to start Rclone RC API: {}", e);
+                        }
+                    }
+                } else {
+                    debug!("✅ Rclone API is running on port {}", rc_port);
+                }
             }
-            thread::sleep(Duration::from_secs(10)); // Check every 10 seconds
+            thread::sleep(Duration::from_secs(10));
         }
     });
 }
@@ -61,7 +116,7 @@ pub fn ensure_rc_api_running(rc_process: Arc<Mutex<Option<Child>>>) {
 pub async fn get_all_remote_configs(
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = format!("{}/config/dump", RCLONE_API_URL);
+    let url = format!("{}/config/dump", get_rclone_api_url_global());
 
     let response = state
         .client
@@ -78,36 +133,33 @@ pub async fn get_all_remote_configs(
     Ok(json)
 }
 
-
-
 #[command]
 pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let url = format!("{}/config/listremotes", RCLONE_API_URL);
+    let url = format!("{}/config/listremotes", get_rclone_api_url_global());
+    debug!("📡 Fetching remotes from: {}", url);
 
-    let response = state
-        .client
-        .post(url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to fetch remotes: {}", e))?;
+    let response = state.client.post(url).send().await.map_err(|e| {
+        error!("❌ Failed to fetch remotes: {}", e);
+        format!("Failed to fetch remotes: {}", e)
+    })?;
 
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {}", e))?;
+    let json: Value = response.json().await.map_err(|e| {
+        error!("❌ Failed to parse remotes response: {}", e);
+        format!("Failed to parse response: {}", e)
+    })?;
 
-    let remotes = json["remotes"]
+    let remotes: Vec<String> = json["remotes"]
         .as_array()
         .unwrap_or(&vec![])
         .iter()
         .map(|v| v.as_str().unwrap_or("").to_string())
         .collect();
 
-    print!("{:?}", remotes);
+    info!("✅ Successfully fetched {} remotes", remotes.len());
+    debug!("📂 Remote List: {:?}", remotes);
 
     Ok(remotes)
 }
-
 
 
 lazy_static::lazy_static! {
@@ -129,7 +181,7 @@ pub async fn create_remote(
     {
         let guard = OAUTH_PROCESS.lock().await;
         if guard.is_some() {
-            println!("🔴 Stopping existing OAuth authentication process...");
+            info!("🔴 Stopping existing OAuth authentication process...");
             drop(guard); // ✅ Release the lock here
             quit_rclone_oauth().await?; // ✅ Call quit AFTER releasing the lock
         }
@@ -141,15 +193,15 @@ pub async fn create_remote(
             "rcd",
             "--rc-no-auth",
             "--rc-serve",
-            "--rc-addr", "localhost:5580", 
+            "--rc-addr",
+            "localhost:5580",
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
         .map_err(|e| format!("Failed to start separate Rclone instance: {}", e))?;
 
-    println!("✅ Started Rclone OAuth instance with PID: {:?}", rclone_process.id());
-
+    debug!("Started Rclone process with PID: {:?}", rclone_process.id());
     // ✅ Lock again and store the new process
     {
         let mut guard = OAUTH_PROCESS.lock().await;
@@ -173,11 +225,17 @@ pub async fn create_remote(
         .await
         .map_err(|e| format!("Failed to send request: {}", e))?;
 
-    let response_text = response.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
+    let response_text = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
 
     // ✅ Detect OAuth errors
     if response_text.contains("failed to get oauth token") {
-        return Err("OAuth authentication was not completed. Please authenticate in the browser.".to_string());
+        return Err(
+            "OAuth authentication was not completed. Please authenticate in the browser."
+                .to_string(),
+        );
     }
     if response_text.contains("bind: address already in use") {
         return Err("OAuth authentication failed because the port is already in use.".to_string());
@@ -189,55 +247,42 @@ pub async fn create_remote(
     Ok(())
 }
 
-
 #[tauri::command]
 pub async fn quit_rclone_oauth() -> Result<(), String> {
-    println!("🔒 Locking Rclone OAuth process...");
+    debug!("🔄 Attempting to quit Rclone OAuth process...");
 
     let mut guard = OAUTH_PROCESS.lock().await;
     if guard.is_none() {
-        println!("⚠️ No active Rclone OAuth process found.");
+        warn!("⚠️ No active Rclone OAuth process found.");
         return Err("No active Rclone OAuth process found.".to_string());
     }
 
     let client = reqwest::Client::new();
     let url = "http://localhost:5580/core/quit";
 
-    println!("🛑 Stopping Rclone OAuth instance...");
-
-    // ✅ Send graceful shutdown command
-    let response = client.post(url).send().await;
-
-    match response {
-        Ok(_) => println!("✅ Rclone OAuth instance exited cleanly via API."),
-        Err(e) => println!("⚠️ Failed to quit via RC API: {}", e),
+    info!("📡 Sending quit request to Rclone OAuth process...");
+    if let Err(e) = client.post(url).send().await {
+        error!("❌ Failed to send quit request: {}", e);
     }
 
-    // ✅ Wait for the process to exit or force kill it
     if let Some(mut process) = guard.take() {
-        println!("🔍 Checking Rclone process PID: {:?}", process.id());
-
         match process.wait() {
-            Ok(status) => {
-                println!("✅ Rclone OAuth process exited with status: {:?}", status);
-            }
-            Err(_) => {
-                println!("⚠️ Rclone OAuth process still running. Killing...");
-                if let Err(e) = process.kill() {
-                    println!("💀 Failed to kill Rclone OAuth process: {}", e);
-                    return Err(format!("Failed to terminate Rclone OAuth process: {}", e));
+            Ok(status) => info!("✅ Rclone OAuth process exited with status: {:?}", status),
+            Err(e) => {
+                warn!("⚠️ Rclone OAuth process still running. Attempting to kill...");
+                if let Err(kill_err) = process.kill() {
+                    error!("💀 Failed to force-kill process: {}", kill_err);
+                    return Err(format!("Failed to terminate Rclone OAuth process: {}", kill_err));
                 } else {
-                    println!("💀 Force-killed Rclone OAuth process.");
+                    info!("💀 Successfully killed Rclone OAuth process.");
                 }
             }
         }
     }
 
-    println!("✅ Rclone OAuth shutdown complete.");
+    debug!("✅ Rclone OAuth process cleanup complete.");
     Ok(())
 }
-
-
 
 
 /// Update an existing remote
@@ -248,7 +293,7 @@ pub async fn update_remote(
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
     let body = serde_json::json!({ "name": name, "parameters": parameters });
-    let url = format!("{}/config/update", RCLONE_API_URL);
+    let url = format!("{}/config/update", get_rclone_api_url_global());
 
     state
         .client
@@ -266,40 +311,13 @@ pub async fn update_remote(
 pub async fn delete_remote(name: String, state: State<'_, RcloneState>) -> Result<(), String> {
     state
         .client
-        .post(format!("{}/config/delete?name={}", RCLONE_API_URL, name))
+        .post(format!("{}/config/delete?name={}", get_rclone_api_url_global(), name))
         .send()
         .await
         .map_err(|e| e.to_string())?;
 
-
     Ok(())
 }
-
-// #[command]
-// pub async fn get_mount_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-//     let url = format!("{}/mount/types", RCLONE_API_URL);
-
-//     let response = state
-//         .client
-//         .post(&url)
-//         .send()
-//         .await
-//         .map_err(|e| format!("Failed to request mount types: {}", e))?;
-
-//     let json: Value = response
-//         .json()
-//         .await
-//         .map_err(|e| format!("Failed to parse response: {}", e))?;
-
-//     if let Some(types) = json.get("mountTypes").and_then(|t| t.as_array()) {
-//         Ok(types
-//             .iter()
-//             .filter_map(|t| t.as_str().map(String::from))
-//             .collect())
-//     } else {
-//         Err("Invalid response format".to_string())
-//     }
-// }
 
 /// Fetch remote config fields dynamically
 #[command]
@@ -307,7 +325,7 @@ pub async fn get_remote_config_fields(
     remote_type: String,
     state: State<'_, RcloneState>,
 ) -> Result<Vec<Value>, String> {
-    let url = format!("{}/config/providers", RCLONE_API_URL);
+    let url = format!("{}/config/providers", get_rclone_api_url_global());
 
     let response = state
         .client
@@ -341,7 +359,7 @@ pub async fn get_remote_config(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = format!("{}/config/get?name={}", RCLONE_API_URL, remote_name);
+    let url = format!("{}/config/get?name={}", get_rclone_api_url_global(), remote_name);
 
     let response = state
         .client
@@ -360,7 +378,7 @@ pub async fn get_remote_config(
 
 #[command]
 pub async fn list_mounts(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let url = format!("{}/mount/listmounts", RCLONE_API_URL);
+    let url = format!("{}/mount/listmounts", get_rclone_api_url_global());
 
     let response = state
         .client
@@ -394,7 +412,7 @@ pub struct MountedRemote {
 pub async fn get_mounted_remotes(
     state: State<'_, RcloneState>,
 ) -> Result<Vec<MountedRemote>, String> {
-    let url = format!("{}/mount/listmounts", RCLONE_API_URL);
+    let url = format!("{}/mount/listmounts", get_rclone_api_url_global());
 
     let response = state
         .client
@@ -430,7 +448,6 @@ pub async fn get_mounted_remotes(
     Ok(mounts)
 }
 
-
 ///  Operations (Mount/Unmount etc)
 
 #[command]
@@ -441,9 +458,8 @@ pub async fn mount_remote(
     vfs_options: Option<HashMap<String, serde_json::Value>>,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    let url = format!("{}/mount/mount", RCLONE_API_URL);
+    let url = format!("{}/mount/mount", get_rclone_api_url_global());
 
-    
     let formatted_remote = if remote_name.ends_with(':') {
         remote_name.clone()
     } else {
@@ -463,11 +479,20 @@ pub async fn mount_remote(
 
     // Add VFS options if provided
     if let Some(vfs_opts) = vfs_options {
-        payload["vfsOpt"] = json!(vfs_opts);
+        payload["vfsOpt"] = json!(vfs_opts
+            .into_iter()
+            .map(|(key, value)| {
+                match value {
+                    Value::String(s) if s.is_empty() => (key, Value::Bool(false)), // Convert empty strings to false
+                    other => (key, other),
+                }
+            })
+            .collect::<serde_json::Map<_, _>>());
     }
 
     // Send HTTP POST request
-    let response = state.client
+    let response = state
+        .client
         .post(url)
         .json(&payload)
         .send()
@@ -482,7 +507,7 @@ pub async fn mount_remote(
         .unwrap_or_else(|_| "No response body".to_string());
 
     if status.is_success() {
-        println!("✅ Mount request successful: {}", body);
+        debug!("✅ Mount request successful: {}", body);
         Ok(())
     } else {
         Err(format!(
@@ -497,7 +522,7 @@ pub async fn unmount_remote(
     mount_point: String,
     state: State<'_, RcloneState>,
 ) -> Result<String, String> {
-    let url = format!("{}/mount/unmount", RCLONE_API_URL);
+    let url = format!("{}/mount/unmount", get_rclone_api_url_global());
 
     let params = serde_json::json!({ "mountPoint": mount_point });
 
@@ -527,7 +552,7 @@ pub async fn get_disk_usage(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<DiskUsage, String> {
-    let url = format!("{}/operations/about", RCLONE_API_URL);
+    let url = format!("{}/operations/about", get_rclone_api_url_global());
 
     let response = state
         .client
@@ -585,11 +610,11 @@ pub struct RemoteExample {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct RemoteOption {
-    pub name: String,       
-    pub help: String,       
-    pub required: bool,     
-    pub value: Option<String>,  
-    pub r#type: Option<String>, 
+    pub name: String,
+    pub help: String,
+    pub required: bool,
+    pub value: Option<String>,
+    pub r#type: Option<String>,
 
     #[serde(default)] // If missing, use default empty vector
     pub examples: Vec<RemoteExample>,
@@ -605,40 +630,51 @@ pub struct RemoteProvider {
 }
 
 /// ✅ Fetch remote providers (cached for reuse)
-async fn fetch_remote_providers(state: &State<'_, RcloneState>) -> Result<HashMap<String, Vec<RemoteProvider>>, String> {
-    let url = format!("{}/config/providers", RCLONE_API_URL);
-    
-    let response = state.client
+async fn fetch_remote_providers(
+    state: &State<'_, RcloneState>,
+) -> Result<HashMap<String, Vec<RemoteProvider>>, String> {
+    let url = format!("{}/config/providers", get_rclone_api_url_global());
+
+    let response = state
+        .client
         .post(url)
         .send()
         .await
         .map_err(|e| format!("Failed to send request: {}", e))?;
-    
-    let body = response.text().await.map_err(|e| format!("Failed to read response: {}", e))?;
-    let providers: HashMap<String, Vec<RemoteProvider>> = serde_json::from_str(&body)
-        .map_err(|e| format!("Failed to parse response: {}", e))?;
+
+    let body = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
+    let providers: HashMap<String, Vec<RemoteProvider>> =
+        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
 
     Ok(providers)
 }
 
 /// ✅ Fetch all remote types
 #[tauri::command]
-pub async fn get_remote_types(state: State<'_, RcloneState>) -> Result<HashMap<String, Vec<RemoteProvider>>, String> {
+pub async fn get_remote_types(
+    state: State<'_, RcloneState>,
+) -> Result<HashMap<String, Vec<RemoteProvider>>, String> {
     fetch_remote_providers(&state).await
 }
 
 /// ✅ Fetch only OAuth-supported remotes
 #[tauri::command]
-pub async fn get_oauth_supported_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
+pub async fn get_oauth_supported_remotes(
+    state: State<'_, RcloneState>,
+) -> Result<Vec<String>, String> {
     let providers = fetch_remote_providers(&state).await?;
 
     // ✅ Extract OAuth-supported remotes
-    let oauth_remotes: Vec<String> = providers.into_values()
+    let oauth_remotes: Vec<String> = providers
+        .into_values()
         .flatten()
         .filter(|remote| {
-            remote.options.iter().any(|opt| 
+            remote.options.iter().any(|opt| {
                 opt.name == "token" && opt.help.contains("OAuth Access Token as a JSON blob.")
-            )
+            })
         })
         .map(|remote| remote.name.clone()) // Clone the name string
         .collect();
@@ -646,15 +682,13 @@ pub async fn get_oauth_supported_remotes(state: State<'_, RcloneState>) -> Resul
     Ok(oauth_remotes)
 }
 
-
-
 // FLAGS
 
 async fn fetch_rclone_options(
     endpoint: &str,
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error>> {
-    let url = format!("{}/options/{}", RCLONE_API_URL, endpoint);
+    let url = format!("{}/options/{}", get_rclone_api_url_global(), endpoint);
 
     let response = state
         .client

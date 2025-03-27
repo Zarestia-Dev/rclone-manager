@@ -183,7 +183,13 @@
         Back
       </button>
     </div>
-    <button class="finish" (click)="onSubmit()" [disabled]="isLoading.saving" [@fadeInOut]>
+    <button class="finish" (click)="onSubmit()" [disabled]="isLoading.saving || !remoteConfigForm.valid || !remoteForm.valid"
+     [@fadeInOut] *ngIf="currentStep > 1 && !editTarget">
+      {{ isLoading.saving ? 'Saving...' : 'Save' }}
+    </button>
+
+    <button class="finish" (click)="onSubmit()" [disabled]="isLoading.saving || (editTarget === 'remote' && !remoteForm.valid) || (editTarget === 'mount' && !remoteConfigForm.valid)"
+     [@fadeInOut] *ngIf="editTarget">
       {{ isLoading.saving ? 'Saving...' : 'Save' }}
     </button>
   </div>

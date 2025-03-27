@@ -3,7 +3,7 @@
         <h2>{{ selectedRemote.remoteSpecs.name }}</h2>
         <p>
             <img src="assets/icons/remotes/{{ selectedRemote.remoteSpecs.type }}.svg" class="icon"
-                onerror="this.onerror=null;this.src='assets/icons/hard-drive.svg';" />
+                onerror="this.onerror=null;this.src='assets/icons/remotes/hard-drive.svg';" />
             {{ selectedRemote.remoteSpecs.type }}
         </p>
     </div>
@@ -15,8 +15,10 @@
         </button>
         <mat-menu #remoteOptionsMenu="matMenu">
             <!-- ✅ Show in Tray Menu (Toggle) -->
-            <button mat-menu-item (click)="$event.stopPropagation();">
-                <mat-checkbox>
+            <button mat-menu-item (click)="$event.stopPropagation()">
+                <mat-checkbox 
+                    [checked]="getRemoteSettingsKeys('show_in_tray_menu')"
+                    (change)="saveRemoteSetting({ show_in_tray_menu: $event.checked })">
                     Show in Tray Menu
                 </mat-checkbox>
             </button>

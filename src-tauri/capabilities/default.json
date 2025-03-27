@@ -30,6 +30,7 @@
     "core:tray:allow-set-visible",
     "core:tray:allow-set-temp-dir-path",
     "opener:allow-default-urls",
-    "store:default"
+    "store:default",
+    "notification:default"
   ]
 }

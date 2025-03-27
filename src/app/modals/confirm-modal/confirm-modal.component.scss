@@ -1,10 +1,14 @@
-mat-dialog-content {
-    font-size: 16px;
-  }
-  
-  mat-dialog-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-  }
-  
+p {
+  font-size: 16px !important;
+  font-weight: 400 !important;
+  color: var(--app-text-color) !important;
+}
+
+h1 {
+  font-size: 20px !important;
+  font-weight: 800 !important;
+}
+
+mat-dialog-actions {
+  gap: 10px;
+}

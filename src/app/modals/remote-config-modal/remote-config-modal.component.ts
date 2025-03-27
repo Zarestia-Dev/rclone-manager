@@ -126,11 +126,7 @@ export class RemoteConfigModalComponent implements OnInit {
     public dialogRef: MatDialogRef<RemoteConfigModalComponent>,
     @Inject(MAT_DIALOG_DATA) public data: any
   ) {
-    console.log(data?.editTarget);
     this.editTarget = data?.editTarget || null; // Determine edit mode
-
-    console.log("Editing:", this.editTarget);
-    console.log("Existing Config:", data?.existingConfig);
 
     this.remoteForm = this.fb.group({
       name: ["", [Validators.required, this.validateRemoteName.bind(this)]],
@@ -508,9 +504,9 @@ export class RemoteConfigModalComponent implements OnInit {
             await this.handleGenericUpdate(updatedConfig);
             break;
         }
-
+        console.log("📌 Updated config for:", this.data.name)
         await this.settingsService.saveRemoteSettings(
-          this.data.existingConfig.name,
+          this.data.name,
           updatedConfig
         );
         console.log(`✅ Successfully updated ${this.editTarget} settings!`);
@@ -531,7 +527,7 @@ export class RemoteConfigModalComponent implements OnInit {
     updatedConfig.type = remoteData.type;
 
     console.log("📌 Updating remote settings:", updatedConfig);
-    await this.rcloneService.createRemote(remoteData.name, remoteData);
+    await this.rcloneService.updateRemote(remoteData.name, remoteData);
   }
 
   private async handleMountUpdate(updatedConfig: any): Promise<void> {
@@ -569,7 +565,6 @@ export class RemoteConfigModalComponent implements OnInit {
     const mountData = this.cleanFormData(this.remoteConfigForm.value);
 
     const finalConfig = {
-      name: remoteData.name,
       custom_flags: [],
       mount_options: {
         auto_mount: mountData.autoMount,

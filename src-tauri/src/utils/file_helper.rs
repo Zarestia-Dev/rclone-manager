@@ -22,4 +22,3 @@ pub async fn open_in_files(app: tauri::AppHandle, path: String) -> Result<String
         Err(e) => Err(format!("Failed to open file manager: {}", e)),
     }
 }
-

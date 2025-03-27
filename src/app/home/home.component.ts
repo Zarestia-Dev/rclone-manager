@@ -18,6 +18,11 @@ import { SidebarComponent } from "../components/sidebar/sidebar.component";
 import { OverviewComponent } from "../components/overview/overview.component";
 import { RemoteDetailComponent } from "../components/remote-detail/remote-detail.component";
 import { QuickAddRemoteComponent } from "../modals/quick-add-remote/quick-add-remote.component";
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from "@tauri-apps/plugin-notification";
 
 @Component({
   selector: "app-home",
@@ -49,7 +54,37 @@ export class HomeComponent {
     private stateService: StateService,
     private rcloneService: RcloneService,
     private settingservice: SettingsService
-  ) {}
+  ) {
+    this.testNotification();
+  }
+
+  async testNotification() {
+        // when using `"withGlobalTauri": true`, you may use
+    // const { isPermissionGranted, requestPermission, sendNotification, } = window.__TAURI__.notification;
+
+    // Do you have permission to send a notification?
+    let permissionGranted = await isPermissionGranted();
+
+    // If not we need to request it
+    if (!permissionGranted) {
+      const permission = await requestPermission();
+      permissionGranted = permission === "granted";
+    }
+    console.log("Permission granted:", permissionGranted);
+
+    // Once permission has been granted we can send the notification
+    if (permissionGranted) {
+      try {
+        await sendNotification({
+          title: "Tauri",
+          body: "Tauri is awesome!",
+        });
+      }
+      catch (error) {
+        console.error("Error sending notification:", error);
+      }
+    }
+  }
 
   async ngOnInit(): Promise<void> {
     this.updateSidebarMode();
@@ -83,6 +118,11 @@ export class HomeComponent {
     await this.rcloneService.openInFiles(mountPoint);
   }
 
+  saveRemoteSettings(remoteName: string, settings: any): void {
+    console.log("Saving Remote Settings:", remoteName, settings);
+    this.settingservice.saveRemoteSettings(remoteName, settings);
+  }
+
   openQuickAddRemoteModal(): void {
     this.dialog.open(QuickAddRemoteComponent, {
       width: "70vw",
@@ -102,7 +142,8 @@ export class HomeComponent {
       disableClose: true,
 
       data: {
-        editTarget: editTarget,  // 🔹 Edit only mount settings
+        name: this.selectedRemote?.remoteSpecs?.name,
+        editTarget: editTarget, // 🔹 Edit only mount settings
         existingConfig: existingConfig,
       },
     });
@@ -236,7 +277,9 @@ export class HomeComponent {
       );
       await this.refreshMounts();
       await this.loadRemotes();
-      console.log(`Mounted ${remoteName} at ${remoteSettings.mount_options.mount_point}`);
+      console.log(
+        `Mounted ${remoteName} at ${remoteSettings.mount_options.mount_point}`
+      );
     } catch (error) {
       console.error(`Failed to mount ${remoteName}:`, error);
     }

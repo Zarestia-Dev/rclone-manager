@@ -6,18 +6,20 @@ use core::{
     settings_store::AppSettings,
     tray::setup_tray,
 };
+use env_logger::Builder;
+use log::{debug, error, info};
+use std::io::Write;
 use rclone::api::{
     create_remote, delete_remote, ensure_rc_api_running, get_all_remote_configs, get_copy_flags,
-    get_disk_usage, get_filter_flags, get_global_flags, get_mount_flags,
-    get_mounted_remotes, get_oauth_supported_remotes, get_remote_config, get_remote_config_fields,
-    get_remote_types, get_remotes, get_sync_flags, get_vfs_flags, list_mounts, mount_remote,
-    quit_rclone_oauth, unmount_remote, update_remote, RcloneState,
+    get_disk_usage, get_filter_flags, get_global_flags, get_mount_flags, get_mounted_remotes,
+    get_oauth_supported_remotes, get_remote_config, get_remote_config_fields, get_remote_types,
+    get_remotes, get_sync_flags, get_vfs_flags, list_mounts, mount_remote, quit_rclone_oauth,
+    unmount_remote, update_remote, RcloneState,
 };
 use reqwest::Client;
-use serde_json::json;
+use serde_json::{json};
 use std::{
-    process::Command,
-    sync::{Arc, Mutex},
+    process::Command, str::FromStr, sync::{Arc, Mutex}
 };
 use tauri::{Manager, Theme, WindowEvent};
 use tauri_plugin_http::reqwest;
@@ -40,6 +42,17 @@ fn set_theme(theme: String, window: tauri::Window) {
     window.set_theme(Some(theme)).expect("Failed to set theme");
 }
 
+fn init_logging(debug_enabled: bool) {
+    let log_level = if debug_enabled { "debug" } else { "info" };
+
+    Builder::new()
+        .format(|buf, record| {
+            writeln!(buf, "[{}] {}", record.level(), record.args())
+        })
+        .filter(None, log::LevelFilter::from_str(log_level).unwrap_or(log::LevelFilter::Info))
+        .init();
+}
+
 fn lower_webview_priority() {
     #[cfg(target_os = "windows")]
     {
@@ -57,16 +70,14 @@ fn lower_webview_priority() {
             .args(&["-n", "19", "-p", &std::process::id().to_string()])
             .output();
 
-        print!("Lowered priority");
+        info!("Lowered WebView2 process priority");
     }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let rc_process = Arc::new(Mutex::new(None));
-    ensure_rc_api_running(rc_process.clone()); // ✅ Ensures RC API is running
-
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         // .on_window_event(|window, event| match event {
         //     tauri::WindowEvent::CloseRequested { api, .. } => {
@@ -143,7 +154,7 @@ pub fn run() {
             // ✅ Define the path for settings.json
             let store_path = config_dir.join("settings.json");
 
-            println!("Settings file path: {:?}", store_path);
+            debug!("Store path: {:?}", store_path);
 
             // ✅ Create settings store
             let store = Arc::new(Mutex::new(
@@ -163,22 +174,30 @@ pub fn run() {
                 app.state::<SettingsState<tauri::Wry>>(),
             ))
             .unwrap_or_else(|err| {
-                println!("⚠️ Failed to load settings: {}. Using defaults.", err);
+                error!("Failed to load settings: {}", err);
                 json!({ "settings": AppSettings::default() }) // Ensure default settings structure
             });
 
             // ✅ Extract only "settings" part
             let settings: AppSettings = serde_json::from_value(settings_json["settings"].clone())
                 .unwrap_or_else(|_| {
-                    println!("⚠️ Failed to parse settings JSON. Using defaults.");
+                    error!("Failed to parse settings, using default");
                     AppSettings::default()
                 });
 
-            println!("Loaded Settings: {:?}", settings);
+            info!("Settings loaded: {:?}", settings);
+
+            // ✅ Initialize logging
+            init_logging(settings.experimental.debug_logging);
+            info!("Logging initialized");
+            debug!("Debug logging enabled");
+
+            let rc_process = Arc::new(Mutex::new(None));
+            ensure_rc_api_running(rc_process.clone(), settings.core.rclone_api_port); // ✅ Ensures RC API is running
 
             // ✅ Handle start_minimized
             if settings.general.start_minimized {
-                println!("Hiding window");
+                debug!("Starting minimized");
                 if let Some(win) = app.get_webview_window("main") {
                     let _ = win.hide();
                 }
@@ -186,7 +205,7 @@ pub fn run() {
 
             // ✅ Handle `--tray` argument OR `start_minimized` setting
             if start_with_tray || settings.general.start_minimized {
-                println!("Hiding window (start minimized or tray mode)");
+                debug!("Starting with tray");
                 if let Some(win) = app.get_webview_window("main") {
                     let _ = win.hide();
                 }
@@ -194,15 +213,12 @@ pub fn run() {
 
             // ✅ Handle tray_enabled
             if settings.general.tray_enabled {
-                println!("Setting up tray");
-                let tray_handle = app_handle.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(e) = setup_tray(&tray_handle).await {
-                        eprintln!("Failed to setup tray: {}", e);
-                    }
-                });
+                debug!("Tray is enabled");
+                if let Err(e) = tauri::async_runtime::block_on(setup_tray(&app_handle)) {
+                    error!("Failed to setup tray: {}", e);
+                }
             } else {
-                println!("Tray is disabled in settings");
+                debug!("Tray is disabled");
             }
 
             Ok(())

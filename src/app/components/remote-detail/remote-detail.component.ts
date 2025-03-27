@@ -32,6 +32,10 @@ export class RemoteDetailComponent {
     editTarget?: string,
     existingConfig?: any[]
   }>();
+  @Output() saveRemoteSettings = new EventEmitter<{
+    remoteName: string;
+    settings?: any;
+  }>();
 
   remoteSettingsSections: Array<{ key: string; title: string; icon: string }> =
     [
@@ -44,7 +48,22 @@ export class RemoteDetailComponent {
 
   /** ✅ Safely get settings (returns empty object if missing) */
   getRemoteSettings(sectionKey: string): { [key: string]: any } {
+    
     return this.remoteSettings?.[sectionKey] ?? {}; // Default to an empty object
+  }
+
+  getRemoteSettingsKeys(sectionKey: string): boolean {
+    return !!this.remoteSettings?.[sectionKey];
+  }
+
+  /** ✅ Save settings for a remote */
+  saveRemoteSetting(settings: any) {
+    console.log(settings);
+    
+    this.saveRemoteSettings.emit({
+      remoteName: this.selectedRemote.remoteSpecs.name,
+      settings: settings,
+    })
   }
 
   /** ✅ Checks if the section has any data */
