@@ -31,11 +31,11 @@
                   </mat-slide-toggle>
 
                   <!-- ✅ Number Settings -->
-                  <mat-form-field class="input-field" appearance="outline"
-                    *ngIf="meta.value_type === 'u16' || meta.value_type === 'number'">
-                    <input matInput type="number" [(ngModel)]="settings[category][key]"
+                    <mat-form-field class="input-field" appearance="outline"
+                    *ngIf="meta.value_type === 'number'">
+                    <input matInput type="number" min="1" [(ngModel)]="settings[category][key]"
                       (input)="updateSetting(category, key, settings[category][key])" />
-                  </mat-form-field>
+                    </mat-form-field>
 
                   <!-- ✅ String Settings -->
                   <mat-form-field class="input-field" appearance="outline" *ngIf="meta.value_type === 'string'">

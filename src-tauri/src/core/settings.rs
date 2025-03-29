@@ -1,4 +1,5 @@
 use serde_json::{json, Value};
+use tokio::sync::broadcast;
 use std::{
     fs::{self, create_dir_all, File},
     io::Write,
@@ -15,6 +16,7 @@ use super::settings_store::AppSettings;
 pub struct SettingsState<R: Runtime> {
     pub store: Arc<Mutex<Arc<Store<R>>>>,
     pub config_dir: PathBuf,
+    pub update_sender: broadcast::Sender<()>, // Notify when settings change
 }
 
 /// **Load settings from store**
@@ -67,10 +69,10 @@ pub async fn save_settings(
 ) -> Result<(), String> {
     let store = state.store.lock().unwrap();
 
-    // **Load stored settings**
+    // Load stored settings
     let mut stored_settings = store.get("app_settings").unwrap_or_else(|| json!({}));
 
-    // **Merge updated values**
+    // Merge updates dynamically
     if let Some(settings_obj) = updated_settings.as_object() {
         for (category, new_values) in settings_obj.iter() {
             if let Some(stored_category) = stored_settings.get_mut(category) {
@@ -88,16 +90,20 @@ pub async fn save_settings(
         }
     }
 
-    // **Save to store**
+    // Save to store
     store.set("app_settings".to_string(), stored_settings);
     store.save().map_err(|e| {
         error!("❌ Failed to save settings: {}", e);
         e.to_string()
     })?;
-    
+
+    // Notify listeners about settings update
+    let _ = state.update_sender.send(());
+
     info!("✅ Settings saved successfully.");
     Ok(())
 }
+
 
 /// **Save remote settings (per remote)**
 #[tauri::command]
@@ -148,6 +154,8 @@ pub async fn save_remote_settings(
 
     file.write_all(settings.to_string().as_bytes())
         .map_err(|e| format!("❌ Failed to save settings: {}", e))?;
+
+    let _ = state.update_sender.send(());
 
     info!("✅ Remote settings saved at {:?}", remote_config_path);
     Ok(())

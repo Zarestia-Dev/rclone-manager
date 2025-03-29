@@ -69,7 +69,6 @@ pub fn start_rc_api(port: u16) -> Result<Child, Box<dyn Error>> {
     Ok(child)
 }
 
-
 pub fn stop_rc_api(rc_process: &mut Option<Child>) {
     if let Some(mut child) = rc_process.take() {
         if let Err(e) = child.kill() {
@@ -87,27 +86,37 @@ pub fn ensure_rc_api_running(rc_process: Arc<Mutex<Option<Child>>>, rc_port: u16
     thread::spawn(move || {
         loop {
             {
-                let mut process_guard = rc_process.lock().unwrap();
+                let process_guard = rc_process.lock();
 
-                if !is_rc_api_running() {
-                    warn!("⚠️ Rclone API is not running. Attempting to restart...");
+                match process_guard {
+                    Ok(mut process_guard) => {
+                        if !is_rc_api_running() {
+                            warn!("⚠️ Rclone API is not running. Attempting to restart...");
 
-                    stop_rc_api(&mut process_guard);
+                            stop_rc_api(&mut process_guard);
 
-                    match start_rc_api(rc_port) {
-                        Ok(child) => {
-                            info!("✅ Rclone RC API started successfully on port {}", rc_port);
-                            *process_guard = Some(child);
-                        }
-                        Err(e) => {
-                            error!("🚨 Failed to start Rclone RC API: {}", e);
+                            match start_rc_api(rc_port) {
+                                Ok(child) => {
+                                    info!(
+                                        "✅ Rclone RC API started successfully on port {}",
+                                        rc_port
+                                    );
+                                    *process_guard = Some(child);
+                                }
+                                Err(e) => {
+                                    error!("🚨 Failed to start Rclone RC API: {}", e);
+                                }
+                            }
+                        } else {
+                            debug!("✅ Rclone API is running on port {}", rc_port);
                         }
                     }
-                } else {
-                    debug!("✅ Rclone API is running on port {}", rc_port);
+                    Err(_) => {
+                        error!("❌ Failed to acquire lock for Rclone process.");
+                    }
                 }
             }
-            thread::sleep(Duration::from_secs(10));
+            thread::sleep(Duration::from_secs(10)); // Adjust the sleep duration as needed
         }
     });
 }
@@ -160,7 +169,6 @@ pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, S
 
     Ok(remotes)
 }
-
 
 lazy_static::lazy_static! {
     static ref OAUTH_PROCESS: Arc<tokio::sync::Mutex<Option<Child>>> = Arc::new(tokio::sync::Mutex::new(None));
@@ -272,7 +280,10 @@ pub async fn quit_rclone_oauth() -> Result<(), String> {
                 warn!("⚠️ Rclone OAuth process still running. Attempting to kill...");
                 if let Err(kill_err) = process.kill() {
                     error!("💀 Failed to force-kill process: {}", kill_err);
-                    return Err(format!("Failed to terminate Rclone OAuth process: {}", kill_err));
+                    return Err(format!(
+                        "Failed to terminate Rclone OAuth process: {}",
+                        kill_err
+                    ));
                 } else {
                     info!("💀 Successfully killed Rclone OAuth process.");
                 }
@@ -283,7 +294,6 @@ pub async fn quit_rclone_oauth() -> Result<(), String> {
     debug!("✅ Rclone OAuth process cleanup complete.");
     Ok(())
 }
-
 
 /// Update an existing remote
 #[command]
@@ -311,7 +321,11 @@ pub async fn update_remote(
 pub async fn delete_remote(name: String, state: State<'_, RcloneState>) -> Result<(), String> {
     state
         .client
-        .post(format!("{}/config/delete?name={}", get_rclone_api_url_global(), name))
+        .post(format!(
+            "{}/config/delete?name={}",
+            get_rclone_api_url_global(),
+            name
+        ))
         .send()
         .await
         .map_err(|e| e.to_string())?;
@@ -359,7 +373,11 @@ pub async fn get_remote_config(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = format!("{}/config/get?name={}", get_rclone_api_url_global(), remote_name);
+    let url = format!(
+        "{}/config/get?name={}",
+        get_rclone_api_url_global(),
+        remote_name
+    );
 
     let response = state
         .client
@@ -402,9 +420,9 @@ pub async fn list_mounts(state: State<'_, RcloneState>) -> Result<Vec<String>, S
     Ok(mount_points)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MountedRemote {
-    fs: String,
+    pub fs: String,
     mount_point: String,
 }
 
@@ -458,7 +476,15 @@ pub async fn mount_remote(
     vfs_options: Option<HashMap<String, serde_json::Value>>,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    let url = format!("{}/mount/mount", get_rclone_api_url_global());
+    let client = &state.client;
+
+    // 🔍 Step 1: Get mounted remotes
+    let mounted_remotes = get_mounted_remotes(state.clone())
+        .await
+        .unwrap_or_else(|e| {
+            log::error!("Failed to fetch mounted remotes: {}", e);
+            vec![] // If we fail to fetch, assume no mounts (fail-safe)
+        });
 
     let formatted_remote = if remote_name.ends_with(':') {
         remote_name.clone()
@@ -466,10 +492,22 @@ pub async fn mount_remote(
         format!("{}:", remote_name)
     };
 
+    // 🔎 Step 2: Check if the remote is already mounted
+    if mounted_remotes.iter().any(|m| m.fs == formatted_remote) {
+        log::info!(
+            "✅ Remote {} is already mounted, skipping request.",
+            formatted_remote
+        );
+        return Ok(()); // Exit early if already mounted
+    }
+
+    let url = format!("{}/mount/mount", get_rclone_api_url_global());
+
     // Build JSON payload
     let mut payload = json!({
         "fs": formatted_remote,
         "mountPoint": mount_point,
+        "_async": true,  // 🚀 Make this request async
     });
 
     // Add mount options if provided
@@ -490,9 +528,8 @@ pub async fn mount_remote(
             .collect::<serde_json::Map<_, _>>());
     }
 
-    // Send HTTP POST request
-    let response = state
-        .client
+    // 🚀 Step 3: Send HTTP POST request to mount the remote
+    let response = client
         .post(url)
         .json(&payload)
         .send()

@@ -21,6 +21,7 @@ pub struct GeneralSettings {
 /// Core settings
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CoreSettings {
+    pub max_tray_items: usize,
     pub rclone_api_port: u16,
     pub default_mount_type: String,
     pub bandwidth_limit: String,
@@ -51,6 +52,7 @@ impl Default for AppSettings {
                 notifications: true,
             },
             core: CoreSettings {
+                max_tray_items: 5,
                 rclone_api_port: 5572,
                 default_mount_type: "native".to_string(),
                 bandwidth_limit: "".to_string(),
@@ -104,10 +106,19 @@ impl AppSettings {
         );
 
         metadata.insert(
+            "core.max_tray_items".to_string(),
+            SettingMetadata {
+                display_name: "Max Tray Items".to_string(),
+                value_type: "number".to_string(),
+                help_text: "Maximum number of items to show in the tray.".to_string(),
+            },
+        );
+
+        metadata.insert(
             "core.rclone_api_port".to_string(),
             SettingMetadata {
                 display_name: "Rclone API Port".to_string(),
-                value_type: "u16".to_string(),
+                value_type: "number".to_string(),
                 help_text: "Port used for Rclone API communication.".to_string(),
             },
         );

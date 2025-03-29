@@ -4,11 +4,15 @@ use core::{
         save_settings, SettingsState,
     },
     settings_store::AppSettings,
-    tray::setup_tray,
+    tray::{
+        actions::{
+            handle_browse_remote, handle_delete_remote, handle_mount_remote, handle_unmount_remote,
+            show_main_window,
+        },
+        tray::{setup_tray, update_tray_menu},
+    },
 };
-use env_logger::Builder;
 use log::{debug, error, info};
-use std::io::Write;
 use rclone::api::{
     create_remote, delete_remote, ensure_rc_api_running, get_all_remote_configs, get_copy_flags,
     get_disk_usage, get_filter_flags, get_global_flags, get_mount_flags, get_mounted_remotes,
@@ -17,16 +21,18 @@ use rclone::api::{
     unmount_remote, update_remote, RcloneState,
 };
 use reqwest::Client;
-use serde_json::{json};
+use serde_json::json;
 use std::{
-    process::Command, str::FromStr, sync::{Arc, Mutex}
+    process::Command,
+    sync::{Arc, Mutex},
 };
-use tauri::{Manager, Theme, WindowEvent};
+use tauri::{Emitter, Manager, Theme, WindowEvent};
 use tauri_plugin_http::reqwest;
 use tauri_plugin_store::StoreBuilder;
 use utils::{
     check_rclone::{check_rclone_installed, provision_rclone},
     file_helper::{get_folder_location, open_in_files},
+    startup::handle_startup,
 };
 
 mod core;
@@ -42,15 +48,17 @@ fn set_theme(theme: String, window: tauri::Window) {
     window.set_theme(Some(theme)).expect("Failed to set theme");
 }
 
-fn init_logging(debug_enabled: bool) {
-    let log_level = if debug_enabled { "debug" } else { "info" };
+use std::sync::Once;
+static INIT_LOGGER: Once = Once::new();
 
-    Builder::new()
-        .format(|buf, record| {
-            writeln!(buf, "[{}] {}", record.level(), record.args())
-        })
-        .filter(None, log::LevelFilter::from_str(log_level).unwrap_or(log::LevelFilter::Info))
-        .init();
+fn init_logging(enable_debug: bool) {
+    INIT_LOGGER.call_once(|| {
+        let mut builder = env_logger::Builder::new();
+        if enable_debug {
+            builder.filter_level(log::LevelFilter::Debug);
+        }
+        builder.init();
+    });
 }
 
 fn lower_webview_priority() {
@@ -144,7 +152,6 @@ pub fn run() {
                 .app_data_dir()
                 .expect("Failed to get app data directory");
 
-            // ✅ Ensure `config_dir` is a directory
             if config_dir.exists() && !config_dir.is_dir() {
                 std::fs::remove_file(&config_dir)
                     .expect("Failed to remove file blocking directory creation");
@@ -163,22 +170,25 @@ pub fn run() {
                     .expect("Failed to create settings store"),
             ));
 
+            // ✅ Create broadcast channel for settings updates
+            let (update_sender, mut update_receiver) = tokio::sync::broadcast::channel::<()>(1);
+
             // ✅ Register `SettingsState`
             app.manage(SettingsState {
                 store: store.clone(),
-                config_dir: config_dir.clone(), // ✅ Use correct directory
+                config_dir: config_dir.clone(),
+                update_sender,
             });
 
-            // ✅ Load settings using `block_on()`
+            // ✅ Load settings
             let settings_json = tauri::async_runtime::block_on(load_settings(
                 app.state::<SettingsState<tauri::Wry>>(),
             ))
             .unwrap_or_else(|err| {
                 error!("Failed to load settings: {}", err);
-                json!({ "settings": AppSettings::default() }) // Ensure default settings structure
+                json!({ "settings": AppSettings::default() })
             });
 
-            // ✅ Extract only "settings" part
             let settings: AppSettings = serde_json::from_value(settings_json["settings"].clone())
                 .unwrap_or_else(|_| {
                     error!("Failed to parse settings, using default");
@@ -193,7 +203,12 @@ pub fn run() {
             debug!("Debug logging enabled");
 
             let rc_process = Arc::new(Mutex::new(None));
-            ensure_rc_api_running(rc_process.clone(), settings.core.rclone_api_port); // ✅ Ensures RC API is running
+            ensure_rc_api_running(rc_process.clone(), settings.core.rclone_api_port);
+
+            let app_handle_clone = app_handle.clone();
+            tauri::async_runtime::spawn(async move {
+                handle_startup(&app_handle_clone).await;
+            });
 
             // ✅ Handle start_minimized
             if settings.general.start_minimized {
@@ -214,14 +229,96 @@ pub fn run() {
             // ✅ Handle tray_enabled
             if settings.general.tray_enabled {
                 debug!("Tray is enabled");
-                if let Err(e) = tauri::async_runtime::block_on(setup_tray(&app_handle)) {
+                if let Err(e) = tauri::async_runtime::block_on(setup_tray(
+                    &app_handle,
+                    settings.core.max_tray_items,
+                )) {
                     error!("Failed to setup tray: {}", e);
                 }
             } else {
                 debug!("Tray is disabled");
             }
 
+            // ✅ Background task to listen for settings changes
+            let app_handle_clone = app_handle.clone();
+            let rc_process_clone = rc_process.clone();
+
+            tauri::async_runtime::spawn(async move {
+                while update_receiver.recv().await.is_ok() {
+                    debug!("🔄 Detected settings change, applying updates...");
+
+                    let settings_json =
+                        load_settings(app_handle_clone.state::<SettingsState<tauri::Wry>>())
+                            .await
+                            .unwrap_or_else(|_| json!({ "settings": AppSettings::default() }));
+
+                    let settings: AppSettings =
+                        serde_json::from_value(settings_json["settings"].clone())
+                            .unwrap_or_else(|_| AppSettings::default());
+
+                    // ✅ Update logging dynamically
+                    init_logging(settings.experimental.debug_logging);
+                    debug!("Updated debug logging");
+
+                    // ✅ Restart Rclone API if port changed
+                    // ensure_rc_api_running(rc_process_clone.clone(), settings.core.rclone_api_port);
+                    // debug!("Updated Rclone API Port");
+
+                    // ✅ Handle window visibility
+                    // if settings.general.start_minimized {
+                    //     if let Some(win) = app_handle_clone.get_webview_window("main") {
+                    //         let _ = win.hide();
+                    //     }
+                    // } else {
+                    //     if let Some(win) = app_handle_clone.get_webview_window("main") {
+                    //         let _ = win.show();
+                    //     }
+                    // }
+
+                    // ✅ Handle tray visibility
+                    if settings.general.tray_enabled {
+                        if let Some(tray) = app_handle_clone.tray_by_id("main") {
+                            if let Err(e) = tray.set_visible(true) {
+                                error!("Failed to set tray visibility: {}", e);
+                            }
+                        } else {
+                            if let Err(e) = tauri::async_runtime::block_on(setup_tray(
+                                &app_handle_clone,
+                                settings.core.max_tray_items,
+                            )) {
+                                error!("Failed to setup tray: {}", e);
+                            }
+                            debug!("Tray setup successfully");
+                        }
+                    } else {
+                        if let Some(tray) = app_handle_clone.tray_by_id("main") {
+                            if let Err(e) = tray.set_visible(false) {
+                                error!("Failed to set tray visibility: {}", e);
+                            }
+                        }
+                        debug!("Tray hidden successfully");
+                    }
+                }
+            });
+
             Ok(())
+        })
+        .on_menu_event(move |app, event| match event.id.as_ref() {
+            "show_app" => show_main_window(app),
+            "mount_all" => {
+                let _ = app.emit("mount-all", ());
+            }
+            "unmount_all" => {
+                let _ = app.emit("unmount-all", ());
+            }
+            "quit" => {
+                app.exit(0);
+            }
+            id if id.starts_with("mount-") => handle_mount_remote(app, id),
+            id if id.starts_with("unmount-") => handle_unmount_remote(app, id),
+            id if id.starts_with("browse-") => handle_browse_remote(app, id),
+            id if id.starts_with("delete-") => handle_delete_remote(app, id),
+            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             set_theme,
