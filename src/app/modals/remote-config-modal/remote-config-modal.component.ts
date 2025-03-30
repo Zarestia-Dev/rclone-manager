@@ -510,7 +510,7 @@ export class RemoteConfigModalComponent implements OnInit {
           updatedConfig
         );
         console.log(`✅ Successfully updated ${this.editTarget} settings!`);
-        this.dialogRef.close(updatedConfig);
+        this.dialogRef.close(true);
       } else {
         await this.handleNewRemoteCreation();
       }
@@ -584,7 +584,7 @@ export class RemoteConfigModalComponent implements OnInit {
       `✅ Saved settings for remote: ${remoteData.name}`,
       finalConfig
     );
-    this.dialogRef.close();
+    this.dialogRef.close(true);
   }
 
   /** Helper function to safely parse JSON strings */
@@ -604,7 +604,7 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   ngOnDestroy(): void {
-    this.dialogRef.close();
+    this.dialogRef.close(false);
     this.cancelAuth();
     this.remoteForm.reset();
     this.remoteConfigForm.reset();
@@ -643,6 +643,6 @@ export class RemoteConfigModalComponent implements OnInit {
 
   @HostListener("document:keydown.escape", ["$event"])
   close(): void {
-    this.dialogRef.close();
+    this.dialogRef.close(false);
   }
 }

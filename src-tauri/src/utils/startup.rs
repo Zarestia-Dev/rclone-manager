@@ -25,7 +25,7 @@ pub async fn handle_startup<R: Runtime>(app_handle: &AppHandle<R>) {
             handle_remote_startup(remote.to_string(), app_handle).await;
         }
     }
-    
+
     // Handle any errors from sync_all_remotes
     if let Err(err) = sync_result {
         error!("❌ Sync task failed: {}", err);
@@ -33,7 +33,9 @@ pub async fn handle_startup<R: Runtime>(app_handle: &AppHandle<R>) {
 }
 
 /// Fetches the list of available remotes.
-async fn initialize_remotes<R: Runtime>(rclone_state: tauri::State<'_, RcloneState>) -> Result<Vec<String>, String> {
+async fn initialize_remotes<R: Runtime>(
+    rclone_state: tauri::State<'_, RcloneState>,
+) -> Result<Vec<String>, String> {
     get_remotes(rclone_state).await
 }
 
@@ -59,7 +61,13 @@ async fn handle_remote_startup<R: Runtime>(remote_name: String, app_handle: &App
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| format!("/mnt/{}", remote_name));
 
-                spawn_mount_task(remote_name, mount_point, mount_options, vfs_options, app_handle);
+                spawn_mount_task(
+                    remote_name,
+                    mount_point,
+                    mount_options,
+                    vfs_options,
+                    app_handle,
+                );
             }
         }
         Err(e) => warn!("⚠️ Failed to load settings for '{}': {}", remote_name, e),
@@ -104,11 +112,10 @@ fn spawn_mount_task<R: Runtime>(
 /// Runs sync jobs for all remotes.
 async fn sync_all_remotes<R: Runtime>(_app_handle: &AppHandle<R>) -> Result<(), String> {
     info!("🔄 Starting remote sync tasks...");
-    
+
     debug!("🧪 For testing.");
 
     // sleep(Duration::from_secs(5)).await;
-    
 
     Ok(())
 }

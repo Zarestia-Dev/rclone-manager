@@ -62,10 +62,14 @@
 
     <!-- 🌟 Action Buttons -->
     <div class="button-group">
-      <button class="finish" mat-raised-button color="primary" type="submit" [disabled]="isLoading || quickAddForm.invalid">
+      <button class="finish" mat-raised-button color="primary" type="submit" [disabled]="isLoading || quickAddForm.invalid || authDisabled">
         <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
         {{ isLoading ? 'Adding...' : 'Create Remote' }}
       </button>
+      <p *ngIf="authDisabled" >
+        Cleaning authentication. Please wait...
+        <mat-spinner *ngIf="authDisabled" diameter="20"></mat-spinner>
+      </p>
       <button @slideInOut class="cancel" mat-stroked-button type="button" (click)="cancelAuth()" [disabled]="!isLoading" *ngIf="isLoading">
         Cancel Authentication
       </button>

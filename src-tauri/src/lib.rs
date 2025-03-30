@@ -27,6 +27,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tauri::{Emitter, Manager, Theme, WindowEvent};
+use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_http::reqwest;
 use tauri_plugin_store::StoreBuilder;
 use utils::{
@@ -85,6 +86,10 @@ fn lower_webview_priority() {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--tray"]),
+        ))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         // .on_window_event(|window, event| match event {
@@ -210,20 +215,30 @@ pub fn run() {
                 handle_startup(&app_handle_clone).await;
             });
 
-            // ✅ Handle start_minimized
-            if settings.general.start_minimized {
-                debug!("Starting minimized");
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.hide();
-                }
-            }
 
-            // ✅ Handle `--tray` argument OR `start_minimized` setting
-            if start_with_tray || settings.general.start_minimized {
-                debug!("Starting with tray");
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.hide();
-                }
+            // ✅ Handle `--tray` argument OR `start_on_startup` setting
+            if settings.general.start_on_startup {
+                // Get the autostart manager
+                let autostart_manager = app.autolaunch();
+                // Enable autostart
+                let _ = autostart_manager.enable();
+
+                // Check enable state
+                debug!(
+                    "registered for autostart? {}",
+                    autostart_manager.is_enabled().unwrap()
+                );
+            } else if !settings.general.start_on_startup {
+                // Get the autostart manager
+                let autostart_manager = app.autolaunch();
+                // Disable autostart
+                let _ = autostart_manager.disable();
+
+                // Check enable state
+                debug!(
+                    "registered for autostart? {}",
+                    autostart_manager.is_enabled().unwrap()
+                );
             }
 
             // ✅ Handle tray_enabled
@@ -265,7 +280,7 @@ pub fn run() {
                     // debug!("Updated Rclone API Port");
 
                     // ✅ Handle window visibility
-                    // if settings.general.start_minimized {
+                    // if settings.general.start_on_startup {
                     //     if let Some(win) = app_handle_clone.get_webview_window("main") {
                     //         let _ = win.hide();
                     //     }
@@ -275,6 +290,19 @@ pub fn run() {
                     //     }
                     // }
 
+
+                    // ✅ Handle autostart
+                    let autostart_manager = app_handle_clone.autolaunch();
+                    if settings.general.start_on_startup {
+                        let _ = autostart_manager.enable();
+                    } else {
+                        let _ = autostart_manager.disable();
+                    }
+                    debug!(
+                        "Autostart enabled: {}",
+                        autostart_manager.is_enabled().unwrap()
+                    );
+
                     // ✅ Handle tray visibility
                     if settings.general.tray_enabled {
                         if let Some(tray) = app_handle_clone.tray_by_id("main") {
@@ -282,12 +310,8 @@ pub fn run() {
                                 error!("Failed to set tray visibility: {}", e);
                             }
                         } else {
-                            if let Err(e) = tauri::async_runtime::block_on(setup_tray(
-                                &app_handle_clone,
-                                settings.core.max_tray_items,
-                            )) {
-                                error!("Failed to setup tray: {}", e);
-                            }
+                            let _ =
+                                setup_tray(&app_handle_clone, settings.core.max_tray_items).await;
                             debug!("Tray setup successfully");
                         }
                     } else {
@@ -298,8 +322,23 @@ pub fn run() {
                         }
                         debug!("Tray hidden successfully");
                     }
+
+                    if settings.core.max_tray_items > 0 {
+                        if let Err(e) =
+                            update_tray_menu(&app_handle_clone, settings.core.max_tray_items).await
+                        {
+                            error!("Failed to update tray menu: {}", e);
+                        }
+                    }
                 }
             });
+
+            if start_with_tray {
+                debug!("Starting with tray");
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.hide();
+                }
+            }
 
             Ok(())
         })

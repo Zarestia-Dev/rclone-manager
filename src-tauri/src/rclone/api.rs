@@ -11,7 +11,7 @@ use std::{
     thread,
     time::Duration,
 };
-use tauri::command;
+use tauri::{command, Emitter};
 use tauri::State;
 use tokio::time::sleep;
 
@@ -179,6 +179,7 @@ pub async fn create_remote(
     name: String,
     parameters: serde_json::Value,
     state: State<'_, RcloneState>,
+    app: tauri::AppHandle,
 ) -> Result<(), String> {
     let remote_type = parameters
         .get("type")
@@ -251,7 +252,7 @@ pub async fn create_remote(
     if response_text.contains("couldn't find type field in config") {
         return Err("Configuration update failed due to a missing type field.".to_string());
     }
-
+    app.emit("remote-update", ()).map_err(|e| format!("Failed to emit event: {}", e))?;
     Ok(())
 }
 

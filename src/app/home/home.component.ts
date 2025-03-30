@@ -133,8 +133,8 @@ export class HomeComponent {
     });
   }
 
-  openRemoteConfigModal(editTarget?: string, existingConfig?: any[]): void {
-    this.dialog.open(RemoteConfigModalComponent, {
+  openRemoteConfigModal(editTarget?: string, existingConfig?: any[]) {
+    const dialogRef = this.dialog.open(RemoteConfigModalComponent, {
       width: "70vw",
       maxWidth: "800px",
       height: "80vh",
@@ -146,6 +146,14 @@ export class HomeComponent {
         editTarget: editTarget, // 🔹 Edit only mount settings
         existingConfig: existingConfig,
       },
+
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        console.log("Remote Config Modal Result:", result);
+          this.loadRemotes()
+      }
     });
   }
 
@@ -175,6 +183,9 @@ export class HomeComponent {
             );
           });
           this.selectedRemote = null;
+          this.remotes = this.remotes.filter(
+            (r) => r.remoteSpecs.name !== remoteName
+          );
         } catch (error) {
           console.error(`Failed to delete remote: ${remoteName}`, error);
         }
@@ -277,6 +288,9 @@ export class HomeComponent {
       );
       await this.refreshMounts();
       await this.loadRemotes();
+      this.selectRemote(
+        this.remotes.find((remote) => remote.remoteSpecs.name === remoteName)
+      );
       console.log(
         `Mounted ${remoteName} at ${remoteSettings.mount_options.mount_point}`
       );
@@ -300,6 +314,9 @@ export class HomeComponent {
       await this.rcloneService.unmountRemote(mountPoint);
       await this.refreshMounts();
       await this.loadRemotes();
+      this.selectRemote(
+        this.remotes.find((remote) => remote.remoteSpecs.name === remoteName)
+      );
       console.log(`Unmounted ${remoteName} from ${mountPoint}`);
     } catch (error) {
       console.error(`Failed to unmount ${remoteName}:`, error);

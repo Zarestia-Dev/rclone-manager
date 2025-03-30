@@ -1,12 +1,23 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs/internal/BehaviorSubject';
+import { Injectable } from "@angular/core";
+import { listen } from "@tauri-apps/api/event";
+import { BehaviorSubject } from "rxjs/internal/BehaviorSubject";
+import { RcloneService } from "./rclone.service";
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: "root",
 })
 export class StateService {
   private selectedRemoteSource = new BehaviorSubject<any>(null);
   selectedRemote$ = this.selectedRemoteSource.asObservable();
+
+  private remotesSubject = new BehaviorSubject<any[]>([]);
+  remotes$ = this.remotesSubject.asObservable();
+
+  constructor(private rcloneService: RcloneService) {
+    listen("remote-update", () => {
+      this.refreshRemotes();
+    });
+  }
 
   resetSelectedRemote(): void {
     this.selectedRemoteSource.next(null);
@@ -16,27 +27,10 @@ export class StateService {
     this.selectedRemoteSource.next(remote);
   }
 
-  private remotesSubject = new BehaviorSubject<any[]>([]);
-  remotes$ = this.remotesSubject.asObservable();
 
-  updateRemotes(newRemotes: any[]) {
-    this.remotesSubject.next(newRemotes);
-  }
-
-  addRemote(remote: any) {
-    const currentRemotes = this.remotesSubject.getValue();
-    this.remotesSubject.next([...currentRemotes, remote]);
-  }
-
-  removeRemote(remoteName: string) {
-    const currentRemotes = this.remotesSubject.getValue().filter(r => r.remoteSpecs.name !== remoteName);
-    this.remotesSubject.next(currentRemotes);
-  }
-
-  updateRemote(remoteName: string, updatedData: any) {
-    const currentRemotes = this.remotesSubject.getValue().map(r => 
-      r.remoteSpecs.name === remoteName ? { ...r, ...updatedData } : r
-    );
-    this.remotesSubject.next(currentRemotes);
+  async refreshRemotes() {
+    const remotes = await this.rcloneService.getRemotes();
+    this.remotesSubject.next(remotes);
+    console.log("Remotes updated:", remotes);
   }
 }

@@ -1,18 +1,22 @@
-use tauri::{image::Image, tray::{TrayIconBuilder, TrayIconEvent}, AppHandle, Manager, Runtime};
 use log::info;
+use tauri::{
+    image::Image,
+    tray::{TrayIconBuilder, TrayIconEvent},
+    AppHandle, Manager, Runtime,
+};
 
 use super::menu::create_tray_menu;
-
 
 pub async fn setup_tray<R: Runtime>(
     app: &AppHandle<R>,
     max_tray_items: usize,
 ) -> tauri::Result<()> {
     let tray_menu = create_tray_menu(app, max_tray_items).await?;
-    
 
     TrayIconBuilder::with_id("main")
-        .icon(Image::from_bytes(include_bytes!("../../../icons/rclone_symbolic_dark.png"))?)
+        .icon(Image::from_bytes(include_bytes!(
+            "../../../icons/rclone_symbolic.png"
+        ))?)
         .menu(&tray_menu)
         .on_tray_icon_event(move |tray, event| {
             let app = tray.app_handle();
@@ -24,7 +28,6 @@ pub async fn setup_tray<R: Runtime>(
             }
         })
         .build(app)?;
-
 
     Ok(())
 }

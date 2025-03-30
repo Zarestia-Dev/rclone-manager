@@ -1,4 +1,7 @@
-use crate::{core::settings::get_remote_settings, rclone::api::{get_mounted_remotes, get_remotes, RcloneState}};
+use crate::{
+    core::settings::get_remote_settings,
+    rclone::api::{get_mounted_remotes, get_remotes, RcloneState},
+};
 use log::error;
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},

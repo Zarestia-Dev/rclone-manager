@@ -50,6 +50,7 @@ export class QuickAddRemoteComponent implements OnInit {
   oauthSupportedRemotes: string[] = [];
   existingRemotes: string[] = [];
   isLoading = false;
+  authDisabled = false;
 
   constructor(
     private fb: FormBuilder,
@@ -172,18 +173,25 @@ export class QuickAddRemoteComponent implements OnInit {
         // await this.rcloneService.mountRemote();
         console.log("Remote mounted successfully!");
       }
+      this.isLoading = false;
     } catch (error) {
       console.error("Error adding remote:", error);
-    } finally {
-      this.isLoading = false;
-      this.dialogRef.close();
     }
   }
 
-  cancelAuth() {
-    this.rcloneService.quitOAuth();
+  async cancelAuth() {
     this.isLoading = false;
     this.setFormState(false);
+    try {
+      this.authDisabled = true;
+      await this.rcloneService.quitOAuth();
+    }
+    catch (error) {
+      console.error("Error during OAuth cancellation:", error);
+    }
+    finally {
+      this.authDisabled = false;
+    }
   }
 
   setFormState(disabled: boolean) {

@@ -13,7 +13,7 @@ pub struct SettingMetadata {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GeneralSettings {
     pub tray_enabled: bool,
-    pub start_minimized: bool,
+    pub start_on_startup: bool,
     pub auto_refresh: bool,
     pub notifications: bool,
 }
@@ -47,7 +47,7 @@ impl Default for AppSettings {
         Self {
             general: GeneralSettings {
                 tray_enabled: true,
-                start_minimized: false,
+                start_on_startup: false,
                 auto_refresh: true,
                 notifications: true,
             },
@@ -79,11 +79,11 @@ impl AppSettings {
         );
 
         metadata.insert(
-            "general.start_minimized".to_string(),
+            "general.start_on_startup".to_string(),
             SettingMetadata {
-                display_name: "Start Minimized".to_string(),
+                display_name: "Start on Startup".to_string(),
                 value_type: "bool".to_string(),
-                help_text: "Launch the app minimized to the tray.".to_string(),
+                help_text: "Automatically start the app when the system starts.".to_string(),
             },
         );
 

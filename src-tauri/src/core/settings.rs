@@ -1,5 +1,5 @@
+use log::{error, info, warn};
 use serde_json::{json, Value};
-use tokio::sync::broadcast;
 use std::{
     fs::{self, create_dir_all, File},
     io::Write,
@@ -8,7 +8,7 @@ use std::{
 };
 use tauri::{Runtime, State};
 use tauri_plugin_store::Store;
-use log::{info, warn, error};
+use tokio::sync::broadcast;
 
 use super::settings_store::AppSettings;
 
@@ -104,7 +104,6 @@ pub async fn save_settings(
     Ok(())
 }
 
-
 /// **Save remote settings (per remote)**
 #[tauri::command]
 pub async fn save_remote_settings(
@@ -118,18 +117,22 @@ pub async fn save_remote_settings(
 
     // **Ensure config directory exists**
     if state.config_dir.exists() && !state.config_dir.is_dir() {
-        fs::remove_file(&state.config_dir).map_err(|e| format!("❌ Failed to remove file: {}", e))?;
+        fs::remove_file(&state.config_dir)
+            .map_err(|e| format!("❌ Failed to remove file: {}", e))?;
     }
-    create_dir_all(&state.config_dir).map_err(|e| format!("❌ Failed to create config dir: {}", e))?;
+    create_dir_all(&state.config_dir)
+        .map_err(|e| format!("❌ Failed to create config dir: {}", e))?;
 
     let remote_config_dir = state.config_dir.join("remotes");
     let remote_config_path = remote_config_dir.join(format!("{}.json", remote_name));
 
     // **Ensure "remotes" directory exists**
     if remote_config_dir.exists() && !remote_config_dir.is_dir() {
-        fs::remove_file(&remote_config_dir).map_err(|e| format!("❌ Failed to remove file: {}", e))?;
+        fs::remove_file(&remote_config_dir)
+            .map_err(|e| format!("❌ Failed to remove file: {}", e))?;
     }
-    create_dir_all(&remote_config_dir).map_err(|e| format!("❌ Failed to create remotes directory: {}", e))?;
+    create_dir_all(&remote_config_dir)
+        .map_err(|e| format!("❌ Failed to create remotes directory: {}", e))?;
 
     // **Merge new settings with existing ones**
     if remote_config_path.exists() {
@@ -167,11 +170,17 @@ pub async fn delete_remote_settings(
     remote_name: String,
     state: State<'_, SettingsState<tauri::Wry>>,
 ) -> Result<(), String> {
-    let remote_config_path = state.config_dir.join("remotes").join(format!("{}.json", remote_name));
+    let remote_config_path = state
+        .config_dir
+        .join("remotes")
+        .join(format!("{}.json", remote_name));
 
     if !remote_config_path.exists() {
         warn!("⚠️ Remote settings for '{}' not found.", remote_name);
-        return Err(format!("⚠️ Remote settings for '{}' not found.", remote_name));
+        return Err(format!(
+            "⚠️ Remote settings for '{}' not found.",
+            remote_name
+        ));
     }
 
     fs::remove_file(&remote_config_path).map_err(|e| {
@@ -189,11 +198,17 @@ pub async fn get_remote_settings(
     remote_name: String,
     state: State<'_, SettingsState<tauri::Wry>>,
 ) -> Result<serde_json::Value, String> {
-    let remote_config_path = state.config_dir.join("remotes").join(format!("{}.json", remote_name));
+    let remote_config_path = state
+        .config_dir
+        .join("remotes")
+        .join(format!("{}.json", remote_name));
 
     if !remote_config_path.exists() {
         warn!("⚠️ Remote settings for '{}' not found.", remote_name);
-        return Err(format!("⚠️ Remote settings for '{}' not found.", remote_name));
+        return Err(format!(
+            "⚠️ Remote settings for '{}' not found.",
+            remote_name
+        ));
     }
 
     let file_content = fs::read_to_string(&remote_config_path)
@@ -204,7 +219,6 @@ pub async fn get_remote_settings(
     info!("✅ Loaded settings for remote '{}'.", remote_name);
     Ok(settings)
 }
-
 
 // #[tauri::command]
 // pub async fn export_settings<R: Runtime>(state: State<'_, SettingsState<R>>) -> Result<PathBuf, String> {

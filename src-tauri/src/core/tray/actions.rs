@@ -3,7 +3,10 @@ use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_dialog::{MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 
-use crate::{core::{settings::get_remote_settings, tray::tray::update_tray_menu}, rclone::api::{delete_remote, mount_remote, unmount_remote}};
+use crate::{
+    core::{settings::get_remote_settings, tray::tray::update_tray_menu},
+    rclone::api::{delete_remote, mount_remote, unmount_remote},
+};
 
 pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
@@ -130,8 +133,7 @@ pub fn handle_delete_remote<R: Runtime>(app: &AppHandle<R>, id: &str) {
                         match delete_remote(remote.clone(), state).await {
                             Ok(_) => {
                                 info!("Deleted remote {}", remote);
-                                    update_tray_menu(&app_clone, 10).await.ok();
-                                
+                                update_tray_menu(&app_clone, 10).await.ok();
                             }
                             Err(err) => {
                                 error!("Failed to delete remote {}: {}", remote, err);

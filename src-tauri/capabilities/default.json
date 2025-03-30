@@ -31,6 +31,9 @@
     "core:tray:allow-set-temp-dir-path",
     "opener:allow-default-urls",
     "store:default",
-    "notification:default"
+    "notification:default",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
   ]
 }

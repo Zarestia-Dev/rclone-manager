@@ -21,6 +21,7 @@
     "@angular/platform-browser-dynamic": "^19.2.3",
     "@angular/router": "^19.2.3",
     "@tauri-apps/api": "^2.3.0",
+    "@tauri-apps/plugin-autostart": "^2.2.0",
     "@tauri-apps/plugin-dialog": "^2.2.0",
     "@tauri-apps/plugin-http": "^2.4.1",
     "@tauri-apps/plugin-notification": "^2.2.2",
