@@ -68,15 +68,22 @@ export class PreferencesModalComponent {
   }
 
   async updateSetting(category: string, key: string, value: any) {
-    console.log(`Updated ${category}.${key}:`, value);
-  
-    // Convert to number if necessary
     const metadata = this.getMetadata(category, key);
+        
+    // ✅ Validate numeric inputs
     if (metadata.value_type === "u16" || metadata.value_type === "number") {
+      if (isNaN(value) || value === null || value === undefined) {
+        console.warn(`🚫 Invalid number entered for ${category}.${key}:`, value);
+        value = this.settings[category][key][value]; // Reset to previous value
+        return; // Stop saving
+      }
       value = Number(value);
     }
   
-    this.settingsService.saveSetting(category, key, value);
+    console.log(`🔄 Saving setting: ${category}.${key} =`, value);
+    
+    // ✅ Save only if valid
+    await this.settingsService.saveSetting(category, key, value);
   }
   
 
@@ -84,6 +91,7 @@ export class PreferencesModalComponent {
   close() {
     this.dialogRef.close();
   }
+  
 
   selectedTab: string = this.tabs[0].key;
 

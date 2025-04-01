@@ -5,7 +5,7 @@ use tauri_plugin_opener::OpenerExt;
 
 use crate::{
     core::{settings::get_remote_settings, tray::tray::update_tray_menu},
-    rclone::api::{delete_remote, mount_remote, unmount_remote},
+    rclone::api::api::{delete_remote, mount_remote, unmount_remote},
 };
 
 pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {

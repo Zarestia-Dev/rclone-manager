@@ -27,27 +27,31 @@
                 <div class="setting-control">
                   <!-- ✅ Boolean Settings (Toggle) -->
                   <mat-slide-toggle *ngIf="meta.value_type === 'bool'" [(ngModel)]="settings[category][key]"
-                    (change)="updateSetting(category, key, settings[category][key])">
+                  (change)="updateSetting(category, key, settings[category][key])">
                   </mat-slide-toggle>
 
-                  <!-- ✅ Number Settings -->
-                    <mat-form-field class="input-field" appearance="outline"
-                    *ngIf="meta.value_type === 'number'">
-                    <input matInput type="number" min="1" [(ngModel)]="settings[category][key]"
-                      (input)="updateSetting(category, key, settings[category][key])" />
-                    </mat-form-field>
+                  <!-- ✅ Number Input -->
+                  <mat-form-field class="input-field" appearance="outline" *ngIf="meta.value_type === 'number'">
+                  <input matInput type="number" min="1" [(ngModel)]="settings[category][key]"
+                    (blur)="updateSetting(category, key, settings[category][key])"
+                    #numberInput="ngModel" required />
+                  <mat-error *ngIf="numberInput.invalid && numberInput.touched">
+                    Only numbers!
+                  </mat-error>
+                  </mat-form-field>
 
                   <!-- ✅ String Settings -->
                   <mat-form-field class="input-field" appearance="outline" *ngIf="meta.value_type === 'string'">
-                    <!-- Special Case for Default Mount Type -->
-                    <mat-select *ngIf="key === 'default_mount_type'" [(ngModel)]="settings[category][key]"
-                      (selectionChange)="updateSetting(category, key, settings[category][key])">
-                      <mat-option value="native">Native</mat-option>
-                      <mat-option value="systemd">Systemd</mat-option>
-                    </mat-select>
+                  <!-- ✅ Dropdown (Mat Select) -->
+                  <mat-select *ngIf="key === 'default_mount_type'" [(ngModel)]="settings[category][key]"
+                    (selectionChange)="updateSetting(category, key, settings[category][key])">
+                    <mat-option value="native">Native</mat-option>
+                    <mat-option value="systemd">Systemd</mat-option>
+                  </mat-select>
 
-                    <input *ngIf="key !== 'default_mount_type'" matInput [(ngModel)]="settings[category][key]"
-                      (input)="updateSetting(category, key, settings[category][key])" />
+                  <input *ngIf="key !== 'default_mount_type'" matInput [(ngModel)]="settings[category][key]"
+                    (input)="updateSetting(category, key, settings[category][key])"
+                    #stringInput="ngModel" required />
                   </mat-form-field>
                 </div>
               </ng-container>

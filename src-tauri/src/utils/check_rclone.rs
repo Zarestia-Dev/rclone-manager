@@ -1,10 +1,8 @@
 use std::{fs, path::PathBuf, process::Command};
 
-use tauri::{command, Window};
+use tauri::command;
 use tauri_plugin_os::platform;
 use zip::ZipArchive;
-
-use super::file_helper::get_folder_location;
 
 #[command]
 pub async fn check_rclone_installed() -> bool {
@@ -25,9 +23,22 @@ fn get_arch() -> String {
 }
 
 #[command]
-pub async fn provision_rclone(window: Window) -> Result<String, String> {
+pub async fn provision_rclone(path: Option<String>) -> Result<String, String> {
     let os = platform();
     let arch = get_arch();
+
+    let install_path = match path {
+        Some(custom_path) => PathBuf::from(custom_path),
+        None => {
+            if cfg!(target_os = "windows") {
+                PathBuf::from(r"C:\Program Files\")
+            } else if cfg!(target_os = "macos") {
+                PathBuf::from("/usr/local/bin/")
+            } else {
+                PathBuf::from("/usr/bin/")
+            }
+        }
+    };
 
     let os_name = match os.as_ref() {
         "macos" => "osx",
@@ -121,12 +132,7 @@ pub async fn provision_rclone(window: Window) -> Result<String, String> {
         return Err("Rclone binary not found in extracted files.".to_string());
     }
 
-    // Ask user for installation location
-    let folder_location = get_folder_location(window)
-        .await
-        .ok_or("No installation folder selected.".to_string())?;
-
-    let install_path = PathBuf::from(folder_location).join(binary_name);
+    let install_path = PathBuf::from(install_path).join(binary_name);
 
     fs::copy(&rclone_binary_path, &install_path)
         .map_err(|e| format!("Failed to copy Rclone binary: {}", e))?;

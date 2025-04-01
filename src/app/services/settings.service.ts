@@ -25,6 +25,7 @@ export class SettingsService {
   async saveSetting(category: string, key: string, value: any): Promise<void> {
     try {
       const updatedSetting = { [category]: { [key]: value } }; // ✅ Send only the updated key
+      console.log("Saving setting:", updatedSetting);
     await invoke("save_settings", { updatedSettings: updatedSetting });
     } catch (error) {
       console.log("Failed to save setting:", error)

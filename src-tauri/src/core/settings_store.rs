@@ -23,6 +23,7 @@ pub struct GeneralSettings {
 pub struct CoreSettings {
     pub max_tray_items: usize,
     pub rclone_api_port: u16,
+    pub rclone_oauth_port: u16,
     pub default_mount_type: String,
     pub bandwidth_limit: String,
 }
@@ -54,6 +55,7 @@ impl Default for AppSettings {
             core: CoreSettings {
                 max_tray_items: 5,
                 rclone_api_port: 5572,
+                rclone_oauth_port: 5580,
                 default_mount_type: "native".to_string(),
                 bandwidth_limit: "".to_string(),
             },
@@ -120,6 +122,15 @@ impl AppSettings {
                 display_name: "Rclone API Port".to_string(),
                 value_type: "number".to_string(),
                 help_text: "Port used for Rclone API communication.".to_string(),
+            },
+        );
+
+        metadata.insert(
+            "core.rclone_oauth_port".to_string(),
+            SettingMetadata {
+                display_name: "Rclone OAuth Port".to_string(),
+                value_type: "number".to_string(),
+                help_text: "Port used for Rclone OAuth communication.".to_string(),
             },
         );
 

@@ -1,58 +1,51 @@
 <div class="onboarding-container">
   <div class="card-container">
-    <mat-card class="onboarding-card"
-      *ngFor="let card of cards; let i = index"
-      [@slideAnimation]="i === currentCardIndex ? animationState : 'void'"
-      class="card"
-      [ngClass]="{ active: i === currentCardIndex }"
-    >
-      <img mat-card-avatar src="{{ card.image }}"/>
+    <mat-card class="onboarding-card" *ngFor="let card of cards; let i = index"
+      [@slideAnimation]="i === currentCardIndex ? animationState : 'void'" class="card"
+      [ngClass]="{ active: i === currentCardIndex }">
+      <img mat-card-avatar src="{{ card.image }}" />
 
       <mat-divider></mat-divider>
 
       <mat-card-title>{{ card.title }}</mat-card-title>
       <mat-card-subtitle>{{ card.content }}</mat-card-subtitle>
+
+      <mat-radio-group [(ngModel)]="installLocation" *ngIf="currentCardIndex === cards.length - 1 && !rcloneInstalled">
+        <mat-radio-button value="default">Predefined Location (Recommended)</mat-radio-button>
+        <mat-radio-button value="custom">Choose Custom Path</mat-radio-button>
+      </mat-radio-group>
+
+      <mat-form-field *ngIf="installLocation === 'custom' && currentCardIndex === cards.length - 1 && !rcloneInstalled"
+        class="input-field" @slideInOut>
+        <mat-label>Rclone Installation Path</mat-label>
+        <input matInput [(ngModel)]="customPath" placeholder="Select a folder" readonly />
+        <button mat-button matSuffix type="button" (click)="selectCustomPath()" class="folder-button">
+          <img src="assets/icons/folder-white.svg" class="icon" />
+        </button>
+      </mat-form-field>
+
     </mat-card>
 
+
     <div class="navigation">
-      <button
-        *ngIf="currentCardIndex !== 0"
-        mat-icon-button
-        (click)="previousCard()"
-        aria-label="Previous"
-      >
-        <img src="assets/icons/circle-arrow-left.svg" class="icon" style="filter: invert(1);"/>
+      <button *ngIf="currentCardIndex !== 0" mat-icon-button (click)="previousCard()" aria-label="Previous">
+        <img src="assets/icons/circle-arrow-left.svg" class="icon" style="filter: invert(1);" />
       </button>
 
-      <button
-        *ngIf="currentCardIndex !== cards.length - 1"
-        mat-icon-button
-        (click)="nextCard()"
-        aria-label="Next"
-      >
-        <img src="assets/icons/circle-arrow-right.svg" class="icon" style="filter: invert(1);"/>
+      <button *ngIf="currentCardIndex !== cards.length - 1" mat-icon-button (click)="nextCard()" aria-label="Next">
+        <img src="assets/icons/circle-arrow-right.svg" class="icon" style="filter: invert(1);" />
       </button>
 
-      <button
-        *ngIf="currentCardIndex === cards.length - 1 && !rcloneInstalled"
-        mat-raised-button
-        color="warn"
-        (click)="installRclone()"
-        [disabled]="installing"
-        aria-label="Install Rclone"
-      >
-        <img src="assets/icons/download.svg" class="icon" style="filter: invert(1);"/>
+      <button *ngIf="currentCardIndex === cards.length - 1 && !rcloneInstalled" mat-raised-button color="warn"
+        (click)="installRclone()" [disabled]="installing" aria-label="Install Rclone">
+        <img src="assets/icons/download.svg" class="icon" style="filter: invert(1);" />
         {{ installing ? 'Installing...' : 'Install Rclone' }}
       </button>
 
-      <button
-        *ngIf="currentCardIndex === cards.length - 1 && rcloneInstalled"
-        mat-raised-button
-        color="primary"
-        (click)="completeOnboarding()"
-        aria-label="Finish"
-      >
-        <img src="assets/icons/circle-check.svg" class="icon" style="filter: invert(1);"/>
+
+      <button *ngIf="currentCardIndex === cards.length - 1 && rcloneInstalled" mat-raised-button color="primary"
+        (click)="completeOnboarding()" aria-label="Finish">
+        <img src="assets/icons/circle-check.svg" class="icon" style="filter: invert(1);" />
         Finish
       </button>
     </div>

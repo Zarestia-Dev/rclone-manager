@@ -1,125 +1,20 @@
 use log::{debug, error, info, warn};
-use once_cell::sync::Lazy;
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     collections::HashMap,
-    error::Error,
     process::{Child, Command, Stdio},
-    sync::{Arc, Mutex},
-    thread,
+    sync::Arc,
     time::Duration,
 };
 use tauri::{command, Emitter};
 use tauri::State;
 use tokio::time::sleep;
 
-const DEFAULT_RCLONE_API_PORT: &str = "5572";
+use crate::{rclone::api::state::get_rclone_oauth_port_global, RcloneState};
 
-static RCLONE_API_URL: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new(String::new()));
+use super::state::get_rclone_api_url_global;
 
-fn get_rclone_api_url(port: u16) -> String {
-    if port == 0 {
-        return format!("http://localhost:{}", DEFAULT_RCLONE_API_PORT);
-    }
-    format!("http://localhost:{}", port)
-}
-
-pub fn set_rclone_api_url(port: u16) {
-    let mut url = RCLONE_API_URL.lock().unwrap();
-    *url = get_rclone_api_url(port);
-}
-
-pub fn get_rclone_api_url_global() -> String {
-    RCLONE_API_URL.lock().unwrap().clone()
-}
-
-pub struct RcloneState {
-    pub client: Client,
-}
-
-pub fn is_rc_api_running() -> bool {
-    let client = reqwest::blocking::Client::new();
-    let url = format!("{}/config/listremotes", get_rclone_api_url_global());
-
-    match client.post(url).send() {
-        Ok(response) => response.status().is_success(),
-        Err(_) => false,
-    }
-}
-
-pub fn start_rc_api(port: u16) -> Result<Child, Box<dyn Error>> {
-    info!("🚀 Starting Rclone RC API on port {}", port);
-
-    let child = Command::new("rclone")
-        .args(&[
-            "rcd",
-            "--rc-no-auth",
-            "--rc-serve",
-            &format!("--rc-addr=localhost:{}", port),
-        ])
-        .spawn()
-        .map_err(|e| {
-            error!("❌ Failed to start Rclone RC API: {}", e);
-            e
-        })?;
-
-    debug!("✅ Rclone RC API started with PID: {:?}", child.id());
-    Ok(child)
-}
-
-pub fn stop_rc_api(rc_process: &mut Option<Child>) {
-    if let Some(mut child) = rc_process.take() {
-        if let Err(e) = child.kill() {
-            warn!("Failed to kill Rclone process: {}", e);
-        } else {
-            info!("Rclone process killed successfully.");
-        }
-    }
-}
-
-pub fn ensure_rc_api_running(rc_process: Arc<Mutex<Option<Child>>>, rc_port: u16) {
-    set_rclone_api_url(rc_port);
-    info!("🔧 Ensuring Rclone RC API is running on port {}", rc_port);
-
-    thread::spawn(move || {
-        loop {
-            {
-                let process_guard = rc_process.lock();
-
-                match process_guard {
-                    Ok(mut process_guard) => {
-                        if !is_rc_api_running() {
-                            warn!("⚠️ Rclone API is not running. Attempting to restart...");
-
-                            stop_rc_api(&mut process_guard);
-
-                            match start_rc_api(rc_port) {
-                                Ok(child) => {
-                                    info!(
-                                        "✅ Rclone RC API started successfully on port {}",
-                                        rc_port
-                                    );
-                                    *process_guard = Some(child);
-                                }
-                                Err(e) => {
-                                    error!("🚨 Failed to start Rclone RC API: {}", e);
-                                }
-                            }
-                        } else {
-                            debug!("✅ Rclone API is running on port {}", rc_port);
-                        }
-                    }
-                    Err(_) => {
-                        error!("❌ Failed to acquire lock for Rclone process.");
-                    }
-                }
-            }
-            thread::sleep(Duration::from_secs(10)); // Adjust the sleep duration as needed
-        }
-    });
-}
 
 #[command]
 pub async fn get_all_remote_configs(
@@ -203,7 +98,7 @@ pub async fn create_remote(
             "--rc-no-auth",
             "--rc-serve",
             "--rc-addr",
-            "localhost:5580",
+            &format!("localhost:{}", get_rclone_oauth_port_global()),
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -227,8 +122,10 @@ pub async fn create_remote(
         "parameters": parameters
     });
 
+    let url = format!("http://localhost:{}/config/create", get_rclone_oauth_port_global());
+
     let response = client
-        .post("http://localhost:5580/config/create")
+        .post(&url)
         .json(&body)
         .send()
         .await
@@ -267,7 +164,10 @@ pub async fn quit_rclone_oauth() -> Result<(), String> {
     }
 
     let client = reqwest::Client::new();
-    let url = "http://localhost:5580/core/quit";
+    let url = format!(
+        "http://localhost:{}/core/quit",
+        get_rclone_oauth_port_global()
+    );
 
     info!("📡 Sending quit request to Rclone OAuth process...");
     if let Err(e) = client.post(url).send().await {
@@ -277,7 +177,7 @@ pub async fn quit_rclone_oauth() -> Result<(), String> {
     if let Some(mut process) = guard.take() {
         match process.wait() {
             Ok(status) => info!("✅ Rclone OAuth process exited with status: {:?}", status),
-            Err(e) => {
+            Err(_) => {
                 warn!("⚠️ Rclone OAuth process still running. Attempting to kill...");
                 if let Err(kill_err) = process.kill() {
                     error!("💀 Failed to force-kill process: {}", kill_err);
@@ -718,149 +618,4 @@ pub async fn get_oauth_supported_remotes(
         .collect();
 
     Ok(oauth_remotes)
-}
-
-// FLAGS
-
-async fn fetch_rclone_options(
-    endpoint: &str,
-    state: State<'_, RcloneState>,
-) -> Result<Value, Box<dyn Error>> {
-    let url = format!("{}/options/{}", get_rclone_api_url_global(), endpoint);
-
-    let response = state
-        .client
-        .post(&url)
-        .json(&json!({})) // Empty JSON body
-        .send()
-        .await?;
-
-    if response.status().is_success() {
-        let json: Value = response.json().await?;
-        Ok(json)
-    } else {
-        Err(format!("Failed to fetch data: {:?}", response.text().await?).into())
-    }
-}
-
-/// Fetch all global flags
-#[command]
-pub async fn get_global_flags(state: State<'_, RcloneState>) -> Result<Value, String> {
-    fetch_rclone_options("get", state)
-        .await
-        .map_err(|e| e.to_string())
-}
-
-/// Fetch copy flags
-#[command]
-pub async fn get_copy_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let json = fetch_rclone_options("info", state)
-        .await
-        .map_err(|e| e.to_string())?;
-    let empty_vec = Vec::new();
-    let main_flags = json["main"].as_array().unwrap_or(&empty_vec);
-
-    let copy_flags: Vec<Value> = main_flags
-        .iter()
-        .filter(|flag| {
-            if let Some(groups) = flag["Groups"].as_str() {
-                groups.contains("Copy") || groups.contains("Performance")
-            } else {
-                false
-            }
-        })
-        .cloned()
-        .collect();
-
-    Ok(copy_flags)
-}
-
-/// Fetch sync flags
-#[command]
-pub async fn get_sync_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let json = fetch_rclone_options("info", state)
-        .await
-        .map_err(|e| e.to_string())?;
-    let empty_vec = Vec::new();
-    let main_flags = json["main"].as_array().unwrap_or(&empty_vec);
-
-    let sync_flags: Vec<Value> = main_flags
-        .iter()
-        .filter(|flag| {
-            if let Some(groups) = flag["Groups"].as_str() {
-                groups.contains("Copy") || groups.contains("Sync") || groups.contains("Performance")
-            } else {
-                false
-            }
-        })
-        .cloned()
-        .collect();
-
-    Ok(sync_flags)
-}
-
-/// Fetch filter flags (excluding metadata)
-#[command]
-pub async fn get_filter_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let json = fetch_rclone_options("info", state)
-        .await
-        .map_err(|e| e.to_string())?;
-    let empty_vec = vec![];
-    let filter_flags = json["filter"].as_array().unwrap_or(&empty_vec);
-
-    let filtered_flags: Vec<Value> = filter_flags
-        .iter()
-        .filter(|flag| {
-            static EMPTY_VEC: Vec<Value> = Vec::new();
-            let groups = flag["Groups"].as_array().unwrap_or(&EMPTY_VEC);
-            !groups.iter().any(|g| g == "Metadata")
-        })
-        .cloned()
-        .collect();
-
-    Ok(filtered_flags)
-}
-
-/// Fetch VFS flags (excluding ignored flags)
-#[command]
-pub async fn get_vfs_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let json = fetch_rclone_options("info", state)
-        .await
-        .map_err(|e| e.to_string())?;
-    let empty_vec = vec![];
-    let vfs_flags = json["vfs"].as_array().unwrap_or(&empty_vec);
-
-    let ignored_flags = vec!["NONE"];
-    let filtered_flags: Vec<Value> = vfs_flags
-        .iter()
-        .filter(|flag| {
-            let name = flag["Name"].as_str().unwrap_or("");
-            !ignored_flags.contains(&name)
-        })
-        .cloned()
-        .collect();
-
-    Ok(filtered_flags)
-}
-
-/// Fetch mount flags (excluding specific ignored flags)
-#[command]
-pub async fn get_mount_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
-    let json = fetch_rclone_options("info", state)
-        .await
-        .map_err(|e| e.to_string())?;
-    let empty_vec = vec![];
-    let mount_flags = json["mount"].as_array().unwrap_or(&empty_vec);
-
-    let ignored_flags = vec!["debug_fuse", "daemon", "daemon_timeout"];
-    let filtered_flags: Vec<Value> = mount_flags
-        .iter()
-        .filter(|flag| {
-            let name = flag["Name"].as_str().unwrap_or("");
-            !ignored_flags.contains(&name)
-        })
-        .cloned()
-        .collect();
-
-    Ok(filtered_flags)
 }

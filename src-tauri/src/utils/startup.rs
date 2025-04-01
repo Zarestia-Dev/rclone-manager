@@ -3,8 +3,7 @@ use tauri::{AppHandle, Manager, Runtime};
 use tokio::join;
 
 use crate::{
-    core::settings::get_remote_settings,
-    rclone::api::{get_remotes, mount_remote, RcloneState},
+    core::settings::get_remote_settings, rclone::api::api::{get_remotes, mount_remote}, RcloneState
 };
 
 /// Main entry point for handling startup tasks.

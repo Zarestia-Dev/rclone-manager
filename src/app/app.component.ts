@@ -1,7 +1,6 @@
-import { Component, HostListener } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
-import { invoke } from "@tauri-apps/api/core";
 import { TitlebarComponent } from './components/titlebar/titlebar.component';
 import { OnboardingComponent } from './components/onboarding/onboarding.component';
 import { HomeComponent } from './home/home.component';
@@ -14,20 +13,7 @@ import { HomeComponent } from './home/home.component';
     styleUrl: './app.component.scss'
 })
 export class AppComponent {
-  greetingMessage = "";
-
-  greet(event: SubmitEvent, name: string): void {
-    event.preventDefault();
-
-    invoke<string>("greet", { name }).then((text) => {
-      this.greetingMessage = text;
-    });
-  }
   showOnboarding = false;
-
-
-  ngOnInit() {
-  }
 
   finishOnboarding() {
     console.log(this.showOnboarding);

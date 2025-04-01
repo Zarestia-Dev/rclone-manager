@@ -14,11 +14,16 @@ use core::{
 };
 use log::{debug, error, info};
 use rclone::api::{
-    create_remote, delete_remote, ensure_rc_api_running, get_all_remote_configs, get_copy_flags,
-    get_disk_usage, get_filter_flags, get_global_flags, get_mount_flags, get_mounted_remotes,
-    get_oauth_supported_remotes, get_remote_config, get_remote_config_fields, get_remote_types,
-    get_remotes, get_sync_flags, get_vfs_flags, list_mounts, mount_remote, quit_rclone_oauth,
-    unmount_remote, update_remote, RcloneState,
+    api::{
+        create_remote, delete_remote, get_all_remote_configs, get_disk_usage, get_mounted_remotes,
+        get_oauth_supported_remotes, get_remote_config, get_remote_config_fields, get_remote_types,
+        get_remotes, list_mounts, mount_remote, quit_rclone_oauth, unmount_remote, update_remote,
+    },
+    engine::ensure_rc_api_running,
+    flags::{
+        get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags, get_sync_flags,
+        get_vfs_flags,
+    },
 };
 use reqwest::Client;
 use serde_json::json;
@@ -39,6 +44,10 @@ use utils::{
 mod core;
 mod rclone;
 mod utils;
+
+pub struct RcloneState {
+    pub client: Client,
+}
 
 #[tauri::command]
 fn set_theme(theme: String, window: tauri::Window) {
@@ -208,13 +217,12 @@ pub fn run() {
             debug!("Debug logging enabled");
 
             let rc_process = Arc::new(Mutex::new(None));
-            ensure_rc_api_running(rc_process.clone(), settings.core.rclone_api_port);
+            ensure_rc_api_running(rc_process.clone(), settings.core.rclone_api_port, settings.core.rclone_oauth_port);
 
             let app_handle_clone = app_handle.clone();
             tauri::async_runtime::spawn(async move {
                 handle_startup(&app_handle_clone).await;
             });
-
 
             // ✅ Handle `--tray` argument OR `start_on_startup` setting
             if settings.general.start_on_startup {
@@ -289,7 +297,6 @@ pub fn run() {
                     //         let _ = win.show();
                     //     }
                     // }
-
 
                     // ✅ Handle autostart
                     let autostart_manager = app_handle_clone.autolaunch();
@@ -378,15 +385,17 @@ pub fn run() {
             delete_remote,
             delete_remote_settings,
             quit_rclone_oauth,
+            get_mounted_remotes,
+            open_in_files,
+            get_folder_location,
+            // Flags
             get_global_flags,
             get_copy_flags,
             get_sync_flags,
             get_filter_flags,
             get_vfs_flags,
             get_mount_flags,
-            get_mounted_remotes,
-            open_in_files,
-            get_folder_location,
+            // Settings
             load_settings,
             save_settings,
             save_remote_settings,
