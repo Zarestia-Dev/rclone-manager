@@ -1,5 +1,4 @@
-use crate::{
-    core::settings::get_remote_settings, rclone::api::api::{get_mounted_remotes, get_remotes}, RcloneState
+use crate::{ core::settings::settings::get_remote_settings, rclone::api::api::{get_mounted_remotes, get_remotes}, RcloneState
 };
 use log::error;
 use tauri::{

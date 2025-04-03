@@ -1,11 +1,30 @@
 import { Injectable } from "@angular/core";
 import { invoke } from "@tauri-apps/api/core";
+import { ConfirmDialogData, ConfirmModalComponent } from "../modals/confirm-modal/confirm-modal.component";
+import { MatDialog } from "@angular/material/dialog";
 
 @Injectable({
   providedIn: "root",
 })
 export class RcloneService {
-  constructor() {}
+  constructor(
+    private dialog: MatDialog // Inject MatDialog for opening modals
+  ) {}
+
+    alertModal(title: string, message: string) {
+      // Create the confirmation dialog data
+      const dialogData: ConfirmDialogData = {
+        title: title,
+        message: message,
+        cancelText: "OK",
+      };
+  
+      // Open the confirmation dialog
+      this.dialog.open(ConfirmModalComponent, {
+        width: "300px",
+        data: dialogData,
+      });
+    }
 
   openInFiles(mountPoint: string): Promise<void> {
     try {
@@ -16,13 +35,14 @@ export class RcloneService {
     }
   }
 
-  selectFolder(): Promise<string> {
-    try {
-      return invoke("get_folder_location");
-    } catch (err) {
-      console.error("Failed to open folder picker:", err);
-      return Promise.reject(err);
-    }
+  selectFolder(is_empty?: boolean): Promise<string> {
+      return invoke<string>("get_folder_location", {
+        isEmpty: is_empty,
+      }).catch((err) => {
+        console.error("Failed to open folder picker:", err);
+        this.alertModal("Error", err);
+        return Promise.reject(err);
+      });
   }
 
   /** Get all available remote types */

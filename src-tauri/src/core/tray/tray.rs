@@ -11,7 +11,19 @@ pub async fn setup_tray<R: Runtime>(
     app: &AppHandle<R>,
     max_tray_items: usize,
 ) -> tauri::Result<()> {
+    let mut old_max_tray_items = 0;
+
+    let max_tray_items = if max_tray_items == 0 {
+        old_max_tray_items
+    } else {
+        old_max_tray_items = max_tray_items;
+        old_max_tray_items
+    } as usize;
+
     let tray_menu = create_tray_menu(app, max_tray_items).await?;
+
+    
+
 
     TrayIconBuilder::with_id("main")
         .icon(Image::from_bytes(include_bytes!(

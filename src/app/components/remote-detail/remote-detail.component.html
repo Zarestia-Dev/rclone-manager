@@ -16,11 +16,11 @@
         <mat-menu #remoteOptionsMenu="matMenu">
             <!-- ✅ Show in Tray Menu (Toggle) -->
             <button mat-menu-item (click)="$event.stopPropagation()">
-                <mat-checkbox 
+                <mat-slide-toggle 
                     [checked]="getRemoteSettingsKeys('show_in_tray_menu')"
                     (change)="saveRemoteSetting({ show_in_tray_menu: $event.checked })">
-                    Show in Tray Menu
-                </mat-checkbox>
+                    <p style="font-size: 16px; font-weight: 600;">Show in Tray Menu</p>
+                </mat-slide-toggle>
             </button>
 
             <mat-divider></mat-divider>

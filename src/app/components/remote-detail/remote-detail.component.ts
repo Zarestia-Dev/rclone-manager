@@ -5,7 +5,7 @@ import { MatDividerModule } from "@angular/material/divider";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatMenuModule } from "@angular/material/menu";
-import { MatCheckboxModule } from "@angular/material/checkbox";
+import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 
 @Component({
   selector: "app-remote-detail",
@@ -16,7 +16,7 @@ import { MatCheckboxModule } from "@angular/material/checkbox";
     MatChipsModule,
     MatTooltipModule,
     MatMenuModule,
-    MatCheckboxModule,
+    MatSlideToggleModule,
   ],
   templateUrl: "./remote-detail.component.html",
   styleUrl: "./remote-detail.component.scss",

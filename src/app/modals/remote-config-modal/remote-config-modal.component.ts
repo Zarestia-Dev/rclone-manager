@@ -160,7 +160,7 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   selectFolder(): void {
-    this.rcloneService.selectFolder().then((selectedPath) => {
+    this.rcloneService.selectFolder(true).then((selectedPath) => {
       this.remoteConfigForm.get("mountPath")?.setValue(selectedPath);
     });
   }

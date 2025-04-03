@@ -1,4 +1,4 @@
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use serde_json::{json, Value};
 use std::{
     fs::{self, create_dir_all, File},
@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
 };
-use tauri::{Runtime, State};
+use tauri::{Emitter, Runtime, State};
 use tauri_plugin_store::Store;
 use tokio::sync::broadcast;
 
@@ -66,43 +66,74 @@ pub async fn load_settings<'a>(
 pub async fn save_settings(
     state: State<'_, SettingsState<tauri::Wry>>,
     updated_settings: serde_json::Value,
+    app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let store = state.store.lock().unwrap();
 
     // Load stored settings
     let mut stored_settings = store.get("app_settings").unwrap_or_else(|| json!({}));
 
-    // Merge updates dynamically
+    // Prepare a new object to store only changed values
+    let mut changed_settings = serde_json::Map::new();
+
+    // Merge updates dynamically and track changes
     if let Some(settings_obj) = updated_settings.as_object() {
         for (category, new_values) in settings_obj.iter() {
             if let Some(stored_category) = stored_settings.get_mut(category) {
                 if let Some(stored_obj) = stored_category.as_object_mut() {
+                    let mut category_changes = serde_json::Map::new();
+
                     for (key, value) in new_values.as_object().unwrap() {
-                        stored_obj.insert(key.clone(), value.clone());
+                        // ✅ Only update if the value is different
+                        if stored_obj.get(key) != Some(value) {
+                            stored_obj.insert(key.clone(), value.clone());
+                            category_changes.insert(key.clone(), value.clone());
+                        }
+                    }
+
+                    // ✅ Only add category if there are changes
+                    if !category_changes.is_empty() {
+                        changed_settings.insert(
+                            category.clone(),
+                            serde_json::Value::Object(category_changes),
+                        );
                     }
                 }
             } else {
+                // New category added
                 stored_settings
                     .as_object_mut()
                     .unwrap()
                     .insert(category.clone(), new_values.clone());
+                changed_settings.insert(category.clone(), new_values.clone());
             }
         }
     }
 
-    // Save to store
-    store.set("app_settings".to_string(), stored_settings);
-    store.save().map_err(|e| {
-        error!("❌ Failed to save settings: {}", e);
-        e.to_string()
-    })?;
+    // Save only the changed settings
+    if !changed_settings.is_empty() {
+        store.set("app_settings".to_string(), stored_settings);
+        store.save().map_err(|e| {
+            error!("❌ Failed to save settings: {}", e);
+            e.to_string()
+        })?;
 
-    // Notify listeners about settings update
-    let _ = state.update_sender.send(());
+        let _ = state.update_sender.send(());
+
+        debug!("🟢 Emitting settings_changed with payload: {:?}", changed_settings);
+
+        // ✅ Emit only changed settings
+        app_handle
+            .emit("settings_changed", changed_settings.clone())
+            .unwrap();
+    } else {
+        debug!("⚠️ No changes detected, skipping emission.");
+    }
 
     info!("✅ Settings saved successfully.");
     Ok(())
 }
+
 
 /// **Save remote settings (per remote)**
 #[tauri::command]

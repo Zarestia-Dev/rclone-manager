@@ -1,16 +1,17 @@
 use std::{fs, path::PathBuf, process::Command};
 
-use tauri::command;
+use serde_json::{json, Value};
+use tauri::{command, AppHandle, Manager};
 use tauri_plugin_os::platform;
 use zip::ZipArchive;
 
 #[command]
 pub async fn check_rclone_installed() -> bool {
-    let output = Command::new("rclone").arg("--version").output();
-    match output {
-        Ok(output) if output.status.success() => true,
-        _ => false,
-    }
+    Command::new("rclone")
+        .arg("--version")
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
 }
 
 fn get_arch() -> String {
@@ -22,23 +23,53 @@ fn get_arch() -> String {
     }
 }
 
+fn save_rclone_path(app_handle: &AppHandle, rclone_path: &str) -> Result<(), String> {
+    let config_dir = app_handle
+        .path()
+        .app_data_dir()
+        .expect("Failed to get app data directory");
+
+    let settings_path = config_dir.join("settings.json");
+
+    let mut settings: Value = if let Ok(contents) = fs::read_to_string(&settings_path) {
+        serde_json::from_str(&contents).unwrap_or_else(|_| json!({}))
+    } else {
+        json!({})
+    };
+
+    settings["core_options"]["rclone_path"] = Value::String(rclone_path.to_string());
+
+    fs::write(
+        &settings_path,
+        serde_json::to_string_pretty(&settings).unwrap(),
+    )
+    .map_err(|e| format!("Failed to save settings: {}", e))?;
+
+    println!("✅ Rclone path saved: {}", rclone_path);
+    Ok(())
+}
+
 #[command]
-pub async fn provision_rclone(path: Option<String>) -> Result<String, String> {
+pub async fn provision_rclone(
+    app_handle: tauri::AppHandle,
+    path: Option<String>,
+) -> Result<String, String> {
     let os = platform();
     let arch = get_arch();
 
     let install_path = match path {
         Some(custom_path) => PathBuf::from(custom_path),
-        None => {
-            if cfg!(target_os = "windows") {
-                PathBuf::from(r"C:\Program Files\")
-            } else if cfg!(target_os = "macos") {
-                PathBuf::from("/usr/local/bin/")
-            } else {
-                PathBuf::from("/usr/bin/")
-            }
-        }
+        None => app_handle
+            .path()
+            .app_data_dir()
+            .expect("Failed to get app data directory"),
     };
+
+    // First, check if Rclone is already installed in the system
+    if check_rclone_installed().await {
+        save_rclone_path(&app_handle, "system")?;
+        return Ok("Rclone already installed system-wide.".to_string());
+    }
 
     let os_name = match os.as_ref() {
         "macos" => "osx",
@@ -132,13 +163,15 @@ pub async fn provision_rclone(path: Option<String>) -> Result<String, String> {
         return Err("Rclone binary not found in extracted files.".to_string());
     }
 
-    let install_path = PathBuf::from(install_path).join(binary_name);
+    let final_install_path = install_path.join(binary_name);
 
-    fs::copy(&rclone_binary_path, &install_path)
+    fs::copy(&rclone_binary_path, &final_install_path)
         .map_err(|e| format!("Failed to copy Rclone binary: {}", e))?;
+
+    save_rclone_path(&app_handle, final_install_path.to_str().unwrap())?;
 
     Ok(format!(
         "Rclone successfully installed in {}",
-        install_path.display()
+        final_install_path.display()
     ))
 }

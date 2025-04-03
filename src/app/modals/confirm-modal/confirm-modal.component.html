@@ -5,8 +5,10 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="center">
-  <button mat-button class="cancel" (click)="onCancel()">{{ data.cancelText || "No" }}</button>
-  <button mat-raised-button class="delete" (click)="onConfirm()">
+  <button mat-button class="cancel" *ngIf="data.cancelText"
+   (click)="onCancel()">{{ data.cancelText || "No" }}</button>
+  <button mat-raised-button class="delete" *ngIf="data.confirmText"
+   (click)="onConfirm()">
     {{ data.confirmText || "Yes" }}
   </button>
 </mat-dialog-actions>

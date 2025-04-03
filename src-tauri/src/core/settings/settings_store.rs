@@ -26,6 +26,7 @@ pub struct CoreSettings {
     pub rclone_oauth_port: u16,
     pub default_mount_type: String,
     pub bandwidth_limit: String,
+    pub completed_onboarding: bool,
 }
 
 /// Experimental settings
@@ -58,6 +59,7 @@ impl Default for AppSettings {
                 rclone_oauth_port: 5580,
                 default_mount_type: "native".to_string(),
                 bandwidth_limit: "".to_string(),
+                completed_onboarding: false,
             },
             experimental: ExperimentalSettings {
                 debug_logging: false,
@@ -149,6 +151,15 @@ impl AppSettings {
                 display_name: "Bandwidth Limit".to_string(),
                 value_type: "string".to_string(),
                 help_text: "Limit the bandwidth used by Rclone transfers.".to_string(),
+            },
+        );
+
+        metadata.insert(
+            "core.completed_onboarding".to_string(),
+            SettingMetadata {
+                display_name: "Completed Onboarding".to_string(),
+                value_type: "bool".to_string(),
+                help_text: "Indicates if the onboarding process is completed.".to_string(),
             },
         );
 

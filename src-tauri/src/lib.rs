@@ -1,29 +1,38 @@
 use core::{
+    event_listener::setup_event_listener,
     settings::{
-        delete_remote_settings, get_remote_settings, load_settings, save_remote_settings,
-        save_settings, SettingsState,
+        settings::{
+            delete_remote_settings, get_remote_settings, load_settings, save_remote_settings,
+            save_settings, SettingsState,
+        },
+        settings_store::AppSettings,
     },
-    settings_store::AppSettings,
+    startup::handle_startup,
     tray::{
         actions::{
             handle_browse_remote, handle_delete_remote, handle_mount_remote, handle_unmount_remote,
             show_main_window,
         },
-        tray::{setup_tray, update_tray_menu},
+        tray::setup_tray,
     },
 };
 use log::{debug, error, info};
-use rclone::api::{
+use rclone::{
     api::{
-        create_remote, delete_remote, get_all_remote_configs, get_disk_usage, get_mounted_remotes,
-        get_oauth_supported_remotes, get_remote_config, get_remote_config_fields, get_remote_types,
-        get_remotes, list_mounts, mount_remote, quit_rclone_oauth, unmount_remote, update_remote,
+        api::{
+            create_remote, delete_remote, get_all_remote_configs, get_disk_usage,
+            get_mounted_remotes, get_oauth_supported_remotes, get_remote_config,
+            get_remote_config_fields, get_remote_types, get_remotes, list_mounts, mount_remote,
+            quit_rclone_oauth, unmount_remote, update_remote,
+        },
+        engine::{ensure_rc_api_running, set_rclone_path},
+        flags::{
+            get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags, get_sync_flags,
+            get_vfs_flags,
+        },
+        state::{set_rclone_api_url_port, set_rclone_oauth_url_port},
     },
-    engine::ensure_rc_api_running,
-    flags::{
-        get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags, get_sync_flags,
-        get_vfs_flags,
-    },
+    mount::{check_mount_plugin, install_mount_plugin},
 };
 use reqwest::Client;
 use serde_json::json;
@@ -32,13 +41,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tauri::{Emitter, Manager, Theme, WindowEvent};
-use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_http::reqwest;
 use tauri_plugin_store::StoreBuilder;
 use utils::{
     check_rclone::{check_rclone_installed, provision_rclone},
     file_helper::{get_folder_location, open_in_files},
-    startup::handle_startup,
 };
 
 mod core;
@@ -154,103 +161,61 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let app_handle = app.handle();
-
             // ✅ Read command-line arguments
             let args: Vec<String> = std::env::args().collect();
             let start_with_tray = args.contains(&"--tray".to_string());
 
-            // ✅ Get app's data directory
+            let app_handle = app.handle();
+
             let config_dir = app_handle
                 .path()
                 .app_data_dir()
                 .expect("Failed to get app data directory");
 
-            if config_dir.exists() && !config_dir.is_dir() {
-                std::fs::remove_file(&config_dir)
-                    .expect("Failed to remove file blocking directory creation");
-            }
             std::fs::create_dir_all(&config_dir).expect("Failed to create config directory");
 
-            // ✅ Define the path for settings.json
             let store_path = config_dir.join("settings.json");
-
-            debug!("Store path: {:?}", store_path);
-
-            // ✅ Create settings store
             let store = Arc::new(Mutex::new(
                 StoreBuilder::new(app_handle, store_path)
                     .build()
                     .expect("Failed to create settings store"),
             ));
 
-            // ✅ Create broadcast channel for settings updates
-            let (update_sender, mut update_receiver) = tokio::sync::broadcast::channel::<()>(1);
+            let (update_sender, update_receiver) = tokio::sync::broadcast::channel::<()>(1);
 
-            // ✅ Register `SettingsState`
             app.manage(SettingsState {
                 store: store.clone(),
                 config_dir: config_dir.clone(),
                 update_sender,
             });
 
-            // ✅ Load settings
             let settings_json = tauri::async_runtime::block_on(load_settings(
                 app.state::<SettingsState<tauri::Wry>>(),
             ))
-            .unwrap_or_else(|err| {
-                error!("Failed to load settings: {}", err);
-                json!({ "settings": AppSettings::default() })
-            });
+            .unwrap_or_else(|_| json!({ "settings": AppSettings::default() }));
 
             let settings: AppSettings = serde_json::from_value(settings_json["settings"].clone())
-                .unwrap_or_else(|_| {
-                    error!("Failed to parse settings, using default");
-                    AppSettings::default()
-                });
+                .unwrap_or_else(|_| AppSettings::default());
 
-            info!("Settings loaded: {:?}", settings);
-
-            // ✅ Initialize logging
+            set_rclone_path(app_handle.clone());
+            
             init_logging(settings.experimental.debug_logging);
-            info!("Logging initialized");
-            debug!("Debug logging enabled");
+            set_rclone_oauth_url_port(settings.core.rclone_oauth_port);
+            set_rclone_api_url_port(app_handle, settings.core.rclone_api_port);
 
             let rc_process = Arc::new(Mutex::new(None));
-            ensure_rc_api_running(rc_process.clone(), settings.core.rclone_api_port, settings.core.rclone_oauth_port);
-
+            let rc_process_clone = rc_process.clone();
             let app_handle_clone = app_handle.clone();
-            tauri::async_runtime::spawn(async move {
-                handle_startup(&app_handle_clone).await;
+            ensure_rc_api_running(app_handle_clone, rc_process_clone.clone());
+
+            tauri::async_runtime::spawn({
+                let app_handle_clone = app_handle.clone();
+                async move {
+                    handle_startup(&app_handle_clone).await;
+                }
             });
 
-            // ✅ Handle `--tray` argument OR `start_on_startup` setting
-            if settings.general.start_on_startup {
-                // Get the autostart manager
-                let autostart_manager = app.autolaunch();
-                // Enable autostart
-                let _ = autostart_manager.enable();
-
-                // Check enable state
-                debug!(
-                    "registered for autostart? {}",
-                    autostart_manager.is_enabled().unwrap()
-                );
-            } else if !settings.general.start_on_startup {
-                // Get the autostart manager
-                let autostart_manager = app.autolaunch();
-                // Disable autostart
-                let _ = autostart_manager.disable();
-
-                // Check enable state
-                debug!(
-                    "registered for autostart? {}",
-                    autostart_manager.is_enabled().unwrap()
-                );
-            }
-
-            // ✅ Handle tray_enabled
-            if settings.general.tray_enabled {
+            if settings.general.tray_enabled || start_with_tray {
                 debug!("Tray is enabled");
                 if let Err(e) = tauri::async_runtime::block_on(setup_tray(
                     &app_handle,
@@ -258,94 +223,18 @@ pub fn run() {
                 )) {
                     error!("Failed to setup tray: {}", e);
                 }
+
+                if start_with_tray {
+                    if let Some(win) = app.get_webview_window("main") {
+                        let _ = win.hide();
+                    }
+                }
             } else {
                 debug!("Tray is disabled");
             }
 
-            // ✅ Background task to listen for settings changes
-            let app_handle_clone = app_handle.clone();
-            let rc_process_clone = rc_process.clone();
-
-            tauri::async_runtime::spawn(async move {
-                while update_receiver.recv().await.is_ok() {
-                    debug!("🔄 Detected settings change, applying updates...");
-
-                    let settings_json =
-                        load_settings(app_handle_clone.state::<SettingsState<tauri::Wry>>())
-                            .await
-                            .unwrap_or_else(|_| json!({ "settings": AppSettings::default() }));
-
-                    let settings: AppSettings =
-                        serde_json::from_value(settings_json["settings"].clone())
-                            .unwrap_or_else(|_| AppSettings::default());
-
-                    // ✅ Update logging dynamically
-                    init_logging(settings.experimental.debug_logging);
-                    debug!("Updated debug logging");
-
-                    // ✅ Restart Rclone API if port changed
-                    // ensure_rc_api_running(rc_process_clone.clone(), settings.core.rclone_api_port);
-                    // debug!("Updated Rclone API Port");
-
-                    // ✅ Handle window visibility
-                    // if settings.general.start_on_startup {
-                    //     if let Some(win) = app_handle_clone.get_webview_window("main") {
-                    //         let _ = win.hide();
-                    //     }
-                    // } else {
-                    //     if let Some(win) = app_handle_clone.get_webview_window("main") {
-                    //         let _ = win.show();
-                    //     }
-                    // }
-
-                    // ✅ Handle autostart
-                    let autostart_manager = app_handle_clone.autolaunch();
-                    if settings.general.start_on_startup {
-                        let _ = autostart_manager.enable();
-                    } else {
-                        let _ = autostart_manager.disable();
-                    }
-                    debug!(
-                        "Autostart enabled: {}",
-                        autostart_manager.is_enabled().unwrap()
-                    );
-
-                    // ✅ Handle tray visibility
-                    if settings.general.tray_enabled {
-                        if let Some(tray) = app_handle_clone.tray_by_id("main") {
-                            if let Err(e) = tray.set_visible(true) {
-                                error!("Failed to set tray visibility: {}", e);
-                            }
-                        } else {
-                            let _ =
-                                setup_tray(&app_handle_clone, settings.core.max_tray_items).await;
-                            debug!("Tray setup successfully");
-                        }
-                    } else {
-                        if let Some(tray) = app_handle_clone.tray_by_id("main") {
-                            if let Err(e) = tray.set_visible(false) {
-                                error!("Failed to set tray visibility: {}", e);
-                            }
-                        }
-                        debug!("Tray hidden successfully");
-                    }
-
-                    if settings.core.max_tray_items > 0 {
-                        if let Err(e) =
-                            update_tray_menu(&app_handle_clone, settings.core.max_tray_items).await
-                        {
-                            error!("Failed to update tray menu: {}", e);
-                        }
-                    }
-                }
-            });
-
-            if start_with_tray {
-                debug!("Starting with tray");
-                if let Some(win) = app.get_webview_window("main") {
-                    let _ = win.hide();
-                }
-            }
+            // ✅ Pass `update_receiver` to the event listener
+            setup_event_listener(&app_handle, rc_process_clone.clone(), update_receiver);
 
             Ok(())
         })
@@ -383,7 +272,6 @@ pub fn run() {
             create_remote,
             update_remote,
             delete_remote,
-            delete_remote_settings,
             quit_rclone_oauth,
             get_mounted_remotes,
             open_in_files,
@@ -399,7 +287,11 @@ pub fn run() {
             load_settings,
             save_settings,
             save_remote_settings,
-            get_remote_settings
+            get_remote_settings,
+            delete_remote_settings,
+            // Check mount plugin
+            check_mount_plugin,
+            install_mount_plugin
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

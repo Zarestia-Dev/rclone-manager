@@ -14,6 +14,11 @@ fn needs_mount_plugin() -> bool {
     !has_fuse_t && !has_osx_fuse
 }
 
+#[cfg(target_os = "linux")]
+fn needs_mount_plugin() -> bool {
+    return false; // Linux does not require a mount plugin
+}
+
 #[cfg(target_os = "windows")]
 fn needs_mount_plugin() -> bool {
     let has_winfsp = PathBuf::from("C:\\Program Files\\WinFsp").exists()
@@ -22,34 +27,60 @@ fn needs_mount_plugin() -> bool {
     !has_winfsp
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
 #[tauri::command]
-async fn download_mount_plugin(app: AppHandle) -> Result<(), String> {
-    let client = Client::new();
-    let download_path = app.path().app_data_dir().unwrap_or(PathBuf::from("/tmp"));
-
-    #[cfg(target_os = "macos")]
-    {
-        let url = "https://github.com/macos-fuse-t/fuse-t/releases/download/1.0.44/fuse-t-macos-installer-1.0.44.pkg";
-        let local_file = download_path.join("fuse-t-installer.pkg");
-
-        if let Err(e) = fetch_and_save(&client, url, &local_file).await {
-            return Err(format!("Failed to download macOS plugin: {}", e));
-        }
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        let url = "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi";
-        let local_file = download_path.join("winfsp-installer.msi");
-
-        if let Err(e) = fetch_and_save(&client, url, &local_file).await {
-            return Err(format!("Failed to download Windows plugin: {}", e));
-        }
-    }
-
-    Ok(())
+pub fn check_mount_plugin() -> bool {
+    needs_mount_plugin()
 }
+
+#[tauri::command]
+pub async fn install_mount_plugin() -> Result<String, String> {
+    let client = Client::new();
+    let download_path = std::env::temp_dir().join("rclone_temp");
+
+    let (url, local_file, _install_command) = if cfg!(target_os = "macos") {
+        (
+            "https://github.com/macos-fuse-t/fuse-t/releases/download/1.0.44/fuse-t-macos-installer-1.0.44.pkg",
+            download_path.join("fuse-t-installer.pkg"),
+            format!("sudo installer -pkg {} -target /", download_path.join("fuse-t-installer.pkg").display()),
+        )
+    } else {
+        (
+            "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi",
+            download_path.join("winfsp-installer.msi"),
+            format!("msiexec /i {} /quiet /norestart", download_path.join("winfsp-installer.msi").display()),
+        )
+    };
+
+    // Download the plugin
+    if let Err(e) = fetch_and_save(&client, url, &local_file).await {
+        return Err(format!("Failed to download plugin: {}", e));
+    }
+
+    // Install the plugin
+    let status = if cfg!(target_os = "macos") {
+        std::process::Command::new("osascript")
+            .arg("installer")
+            .arg("-pkg")
+            .arg(local_file.to_str().unwrap())
+            .arg("-target")
+            .arg("/")
+            .status()
+    } else {
+        std::process::Command::new("msiexec")
+            .arg("/i")
+            .arg(local_file.to_str().unwrap())
+            .arg("/quiet")
+            .arg("/norestart")
+            .status()
+    };
+
+    match status {
+        Ok(exit_status) if exit_status.success() => Ok("Mount plugin installed successfully".to_string()),
+        Ok(exit_status) => Err(format!("Installation failed with exit code: {}", exit_status)),
+        Err(e) => Err(format!("Failed to execute installer: {}", e)),
+    }
+}
+
 
 async fn fetch_and_save(client: &Client, url: &str, file_path: &PathBuf) -> Result<(), String> {
     let response = client

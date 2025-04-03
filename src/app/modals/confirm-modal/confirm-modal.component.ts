@@ -1,3 +1,4 @@
+import { CommonModule } from '@angular/common';
 import { Component, Inject } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 
@@ -10,7 +11,7 @@ export interface ConfirmDialogData {
 
 @Component({
     selector: 'app-confirm-modal',
-    imports: [MatDialogModule],
+    imports: [MatDialogModule, CommonModule],
     templateUrl: './confirm-modal.component.html',
     styleUrl: './confirm-modal.component.scss'
 })

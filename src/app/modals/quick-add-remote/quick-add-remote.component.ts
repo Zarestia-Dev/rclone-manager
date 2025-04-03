@@ -128,7 +128,7 @@ export class QuickAddRemoteComponent implements OnInit {
 
   /** 📂 Select Folder for Mount Path */
   async selectFolder(): Promise<void> {
-    const selectedPath = await this.rcloneService.selectFolder();
+    const selectedPath = await this.rcloneService.selectFolder(true);
     if (selectedPath) {
       this.quickAddForm.patchValue({ mountPath: selectedPath });
     }

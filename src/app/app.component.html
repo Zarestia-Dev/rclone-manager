@@ -10,6 +10,6 @@
   <!-- Main Layout -->
   <router-outlet></router-outlet>
   <app-titlebar class="title-bar"></app-titlebar>
-  <app-onboarding *ngIf="showOnboarding" (completed)="finishOnboarding()" class="onboarding"></app-onboarding>
+  <app-onboarding *ngIf="!completedOnboarding" (completed)="finishOnboarding()" class="onboarding"></app-onboarding>
   <app-home appRightClick></app-home> <!-- Enable Right-Click on Home -->
   

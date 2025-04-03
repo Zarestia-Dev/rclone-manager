@@ -4,7 +4,7 @@ use tauri_plugin_dialog::{MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::{
-    core::{settings::get_remote_settings, tray::tray::update_tray_menu},
+    core::{settings::settings::get_remote_settings, tray::tray::update_tray_menu},
     rclone::api::api::{delete_remote, mount_remote, unmount_remote},
 };
 
