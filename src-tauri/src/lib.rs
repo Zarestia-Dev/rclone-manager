@@ -167,7 +167,11 @@ pub fn run() {
             
             let app_handle = app.handle();
             
-            set_rclone_path(app_handle.clone());
+            // Ensure set_rclone_path runs and finishes before proceeding
+            if let Err(e) = set_rclone_path(app_handle.clone()) {
+                error!("❌ Failed to set rclone path: {}", e);
+                return Err(e.into());
+            }
             
             let config_dir = app_handle
                 .path()

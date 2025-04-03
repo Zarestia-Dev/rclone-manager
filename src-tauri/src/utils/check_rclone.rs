@@ -1,5 +1,6 @@
-use std::{fs, path::PathBuf, process::Command};
+use std::{fs, path::{Path, PathBuf}, process::Command};
 
+use log::{debug, info};
 use serde_json::{json, Value};
 use tauri::{command, AppHandle, Manager};
 use tauri_plugin_os::platform;
@@ -12,6 +13,25 @@ pub async fn check_rclone_installed() -> bool {
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false)
+}
+
+fn safe_copy_rclone(rclone_binary_path: &Path, final_install_dir: &Path, binary_name: &str) -> Result<(), String> {
+    let target_path = final_install_dir.join(binary_name);
+
+    // If file exists, check if it's corrupt (not executable or 0 bytes)
+    if target_path.exists() {
+        if fs::metadata(&target_path).map(|m| m.len() == 0).unwrap_or(true) {
+            info!("⚠️ Found broken Rclone binary. Deleting...");
+            fs::remove_file(&target_path).map_err(|e| format!("Failed to delete broken Rclone binary: {}", e))?;
+        }
+    }
+
+    // Copy the file
+    fs::copy(rclone_binary_path, &target_path)
+        .map_err(|e| format!("Failed to copy Rclone binary: {}", e))?;
+
+    info!("✅ Successfully copied Rclone binary to {:?}", target_path);
+    Ok(())
 }
 
 fn get_arch() -> String {
@@ -29,7 +49,7 @@ fn save_rclone_path(app_handle: &AppHandle, rclone_path: &str) -> Result<(), Str
         .app_data_dir()
         .expect("Failed to get app data directory");
 
-    let settings_path = config_dir.join("settings.json");
+    let settings_path = config_dir.join("core.json");
 
     let mut settings: Value = if let Ok(contents) = fs::read_to_string(&settings_path) {
         serde_json::from_str(&contents).unwrap_or_else(|_| json!({}))
@@ -96,13 +116,15 @@ pub async fn provision_rclone(
         version, version, os_name, arch
     );
 
-    // println!("Downloading Rclone from: {}", download_url);
+    debug!("Rclone download URL: {}", download_url);
 
     let temp_dir = std::env::temp_dir().join("rclone_temp");
     if temp_dir.exists() {
         fs::remove_dir_all(&temp_dir).map_err(|e| format!("Failed to clean temp dir: {}", e))?;
     }
     fs::create_dir_all(&temp_dir).map_err(|e| format!("Failed to create temp dir: {}", e))?;
+
+    debug!("Temporary directory created at: {:?}", temp_dir);
 
     let zip_path = temp_dir.join(format!("rclone-v{}-{}-{}.zip", version, os_name, arch));
 
@@ -117,16 +139,19 @@ pub async fn provision_rclone(
                     .await
                     .map_err(|e| format!("Failed to read Rclone zip: {}", e))?;
                 response = bytes.to_vec();
+                debug!("Rclone ZIP downloaded successfully.");
                 break;
             }
             Err(e) => {
                 retries -= 1;
                 if retries == 0 {
+                    debug!("Failed to download Rclone after 3 retries: {}", e);
                     return Err(format!("Failed to download Rclone after retries: {}", e));
                 }
             }
         }
     }
+    
 
     if response.is_empty() {
         return Err("Downloaded file is empty.".to_string());
@@ -134,12 +159,13 @@ pub async fn provision_rclone(
 
     fs::write(&zip_path, &response).map_err(|e| format!("Failed to save ZIP file: {}", e))?;
 
-    // let metadata = fs::metadata(&zip_path).map_err(|e| format!("Failed to get metadata: {}", e))?;
-    // println!("ZIP file size: {} bytes", metadata.len());
+    debug!("Rclone ZIP downloaded to: {:?}", zip_path);
 
     let extract_path = temp_dir.join("rclone");
     fs::create_dir_all(&extract_path)
         .map_err(|e| format!("Failed to create extract dir: {}", e))?;
+
+    debug!("Extracting Rclone ZIP to: {:?}", extract_path);
 
     // Extract ZIP using Rust's zip crate
     let zip_file =
@@ -149,6 +175,8 @@ pub async fn provision_rclone(
     archive
         .extract(&extract_path)
         .map_err(|e| format!("Failed to unzip Rclone: {}", e))?;
+
+    debug!("Rclone ZIP extracted successfully.");
 
     let binary_name = if os == "windows" {
         "rclone.exe"
@@ -164,15 +192,18 @@ pub async fn provision_rclone(
         return Err("Rclone binary not found in extracted files.".to_string());
     }
 
-    let final_install_dir = install_path.to_str().unwrap().to_string();
+    let final_install_dir = PathBuf::from(install_path);
 
-    fs::copy(&rclone_binary_path, &final_install_dir)
-        .map_err(|e| format!("Failed to copy Rclone binary: {}", e))?;
+    debug!("Final install directory: {}", final_install_dir.join(binary_name).display());
 
-    save_rclone_path(&app_handle, &final_install_dir)?;
+    safe_copy_rclone(&rclone_binary_path, &final_install_dir, binary_name)?;
+    debug!("Rclone binary copied to: {}", final_install_dir.join(binary_name).display());
+
+    save_rclone_path(&app_handle, &final_install_dir.to_str().unwrap())?;
+    debug!("Rclone path saved to settings: {}", final_install_dir.display());
 
     Ok(format!(
         "Rclone successfully installed in {}",
-        final_install_dir
+        final_install_dir.display()
     ))
 }

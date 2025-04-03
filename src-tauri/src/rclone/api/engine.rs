@@ -1,17 +1,24 @@
-use std::{error::Error, fs, path::PathBuf, process::{Child, Command}, sync::{Arc, Mutex}, thread, time::Duration};
+use std::{
+    error::Error,
+    fs,
+    path::{Path, PathBuf},
+    process::{Child, Command},
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
+};
 
 use log::{debug, error, info, warn};
 
 use once_cell::sync::Lazy;
-use serde_json::Value;
-use tauri::{Emitter, Manager};
-use std::sync::RwLock;
 use reqwest::blocking::Client;
+use serde_json::Value;
+use std::sync::RwLock;
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::rclone::api::state::get_rclone_api_port_global;
 
 use super::state::get_rclone_api_url_global;
-
 
 pub static RCLONE_PATH: Lazy<RwLock<String>> = Lazy::new(|| RwLock::new("rclone".to_string()));
 
@@ -39,35 +46,50 @@ pub fn is_rc_api_running() -> bool {
     new_state
 }
 
-pub fn set_rclone_path(app: tauri::AppHandle) {
-    let config_dir = app.path().app_data_dir().expect("Failed to get app data directory");
-    let settings_path = config_dir.join("settings.json");
+pub fn set_rclone_path(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    let config_dir = app
+        .path()
+        .app_data_dir()
+        .expect("Failed to get app data directory");
 
-    if let Ok(contents) = fs::read_to_string(&settings_path) {
-        if let Ok(json) = serde_json::from_str::<Value>(&contents) {
-            if let Some(path) = json["core_options"]["rclone_path"].as_str() {
-                let mut rclone_path = RCLONE_PATH.write().unwrap();
+    let settings_path = config_dir.join("core.json");
 
-                *rclone_path = if path == "system" {
-                    "rclone".to_string()
-                } else {
-                    let binary_name: &str = if cfg!(target_os = "windows") { "rclone.exe" } else { "rclone" };
-                    PathBuf::from(path).join(binary_name).to_string_lossy().to_string()
-                };
+    // Read file content
+    let contents = fs::read_to_string(&settings_path).map_err(|_| "Failed to read core.json")?;
 
-                println!("✅ Rclone path set to: {}", *rclone_path);
-                return;
-            }
-        }
-    }
+    // Parse JSON
+    let json: Value = serde_json::from_str(&contents).map_err(|_| "Failed to parse JSON")?;
 
-    info!("⚠️ Rclone path not found in settings. Using default.");
+    // Extract Rclone path
+    let rclone_path = json["core_options"]["rclone_path"]
+        .as_str()
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("rclone"));
+
+    let final_path = if rclone_path == Path::new("system") {
+        "rclone".to_string()
+    } else {
+        let binary_name = if cfg!(target_os = "windows") {
+            "rclone.exe"
+        } else {
+            "rclone"
+        };
+        rclone_path.join(binary_name).to_string_lossy().to_string()
+    };
+
+    // Update the global RCLONE_PATH
+    let mut rclone_path_lock = RCLONE_PATH.write().unwrap();
+    *rclone_path_lock = final_path;
+
+    debug!("✅ Rclone path set to: {}", *rclone_path_lock);
+    Ok(())
 }
 
-
-
 pub fn start_rc_api() -> Result<Child, Box<dyn Error>> {
-    info!("🚀 Starting Rclone RC API on port {}", get_rclone_api_port_global());
+    info!(
+        "🚀 Starting Rclone RC API on port {}",
+        get_rclone_api_port_global()
+    );
 
     // Retrieve the stored custom installation path
     let rclone_path = {
@@ -117,10 +139,11 @@ pub fn stop_rc_api(rc_process: &mut Option<Child>) {
     }
 }
 
-pub fn ensure_rc_api_running(
-    app: tauri::AppHandle,
-    rc_process: Arc<Mutex<Option<Child>>>) {
-    info!("🔧 Ensuring Rclone RC API is running on port {}", get_rclone_api_port_global());
+pub fn ensure_rc_api_running(app: tauri::AppHandle, rc_process: Arc<Mutex<Option<Child>>>) {
+    info!(
+        "🔧 Ensuring Rclone RC API is running on port {}",
+        get_rclone_api_port_global()
+    );
 
     let rc_process_clone: Arc<Mutex<Option<Child>>> = rc_process.clone();
     let app_clone = app.clone();
@@ -141,7 +164,9 @@ pub fn ensure_rc_api_running(
 
                     match start_rc_api() {
                         Ok(child) => {
-                            app_clone.emit("rclone_api_started", get_rclone_api_url_global()).unwrap();
+                            app_clone
+                                .emit("rclone_api_started", get_rclone_api_url_global())
+                                .unwrap();
                             *process_guard = Some(child);
                         }
                         Err(e) => {
@@ -149,7 +174,10 @@ pub fn ensure_rc_api_running(
                         }
                     }
                 } else {
-                    debug!("✅ Rclone API is running on port {}", get_rclone_api_port_global());
+                    debug!(
+                        "✅ Rclone API is running on port {}",
+                        get_rclone_api_port_global()
+                    );
                 }
             }
             thread::sleep(Duration::from_secs(10)); // Adjust as needed

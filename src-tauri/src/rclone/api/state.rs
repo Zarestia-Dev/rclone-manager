@@ -61,11 +61,6 @@ pub fn get_rclone_api_port_global() -> u16 {
     *RCLONE_API_PORT.lock().unwrap()
 }
 
-/// Get the globally stored Rclone OAuth URL
-pub fn get_rclone_oauth_url_global() -> String {
-    RCLONE_OAUTH_URL.lock().unwrap().clone()
-}
-
 /// Get the globally stored Rclone OAuth port
 pub fn get_rclone_oauth_port_global() -> u16 {
     *RCLONE_OAUTH_PORT.lock().unwrap()
