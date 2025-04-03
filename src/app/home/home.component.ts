@@ -18,11 +18,6 @@ import { SidebarComponent } from "../components/sidebar/sidebar.component";
 import { OverviewComponent } from "../components/overview/overview.component";
 import { RemoteDetailComponent } from "../components/remote-detail/remote-detail.component";
 import { QuickAddRemoteComponent } from "../modals/quick-add-remote/quick-add-remote.component";
-import {
-  isPermissionGranted,
-  requestPermission,
-  sendNotification,
-} from "@tauri-apps/plugin-notification";
 
 @Component({
   selector: "app-home",
@@ -54,37 +49,7 @@ export class HomeComponent {
     private stateService: StateService,
     private rcloneService: RcloneService,
     private settingservice: SettingsService
-  ) {
-    this.testNotification();
-  }
-
-  async testNotification() {
-        // when using `"withGlobalTauri": true`, you may use
-    // const { isPermissionGranted, requestPermission, sendNotification, } = window.__TAURI__.notification;
-
-    // Do you have permission to send a notification?
-    let permissionGranted = await isPermissionGranted();
-
-    // If not we need to request it
-    if (!permissionGranted) {
-      const permission = await requestPermission();
-      permissionGranted = permission === "granted";
-    }
-    console.log("Permission granted:", permissionGranted);
-
-    // Once permission has been granted we can send the notification
-    if (permissionGranted) {
-      try {
-        await sendNotification({
-          title: "Tauri",
-          body: "Tauri is awesome!",
-        });
-      }
-      catch (error) {
-        console.error("Error sending notification:", error);
-      }
-    }
-  }
+  ) {}
 
   async ngOnInit(): Promise<void> {
     this.updateSidebarMode();
@@ -146,13 +111,12 @@ export class HomeComponent {
         editTarget: editTarget, // 🔹 Edit only mount settings
         existingConfig: existingConfig,
       },
-
     });
 
     dialogRef.afterClosed().subscribe((result) => {
       if (result) {
         console.log("Remote Config Modal Result:", result);
-          this.loadRemotes()
+        this.loadRemotes();
       }
     });
   }

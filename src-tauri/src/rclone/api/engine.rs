@@ -13,6 +13,8 @@ use crate::rclone::api::state::get_rclone_api_port_global;
 use super::state::get_rclone_api_url_global;
 
 
+pub static RCLONE_PATH: Lazy<RwLock<String>> = Lazy::new(|| RwLock::new("rclone".to_string()));
+
 static HTTP_CLIENT: Lazy<Client> = Lazy::new(Client::new);
 static LAST_KNOWN_STATE: Lazy<RwLock<bool>> = Lazy::new(|| RwLock::new(false));
 
@@ -37,9 +39,6 @@ pub fn is_rc_api_running() -> bool {
     new_state
 }
 
-
-static RCLONE_PATH: Lazy<RwLock<String>> = Lazy::new(|| RwLock::new("rclone".to_string()));
-
 pub fn set_rclone_path(app: tauri::AppHandle) {
     let config_dir = app.path().app_data_dir().expect("Failed to get app data directory");
     let settings_path = config_dir.join("settings.json");
@@ -52,7 +51,7 @@ pub fn set_rclone_path(app: tauri::AppHandle) {
                 *rclone_path = if path == "system" {
                     "rclone".to_string()
                 } else {
-                    let binary_name = if cfg!(target_os = "windows") { "rclone.exe" } else { "rclone" };
+                    let binary_name: &str = if cfg!(target_os = "windows") { "rclone.exe" } else { "rclone" };
                     PathBuf::from(path).join(binary_name).to_string_lossy().to_string()
                 };
 
@@ -64,6 +63,7 @@ pub fn set_rclone_path(app: tauri::AppHandle) {
 
     info!("⚠️ Rclone path not found in settings. Using default.");
 }
+
 
 
 pub fn start_rc_api() -> Result<Child, Box<dyn Error>> {

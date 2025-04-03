@@ -155,6 +155,7 @@ pub async fn provision_rclone(
     } else {
         "rclone"
     };
+
     let rclone_binary_path = extract_path
         .join(format!("rclone-v{}-{}-{}", version, os_name, arch))
         .join(binary_name);
@@ -163,15 +164,15 @@ pub async fn provision_rclone(
         return Err("Rclone binary not found in extracted files.".to_string());
     }
 
-    let final_install_path = install_path.join(binary_name);
+    let final_install_dir = install_path.to_str().unwrap().to_string();
 
-    fs::copy(&rclone_binary_path, &final_install_path)
+    fs::copy(&rclone_binary_path, &final_install_dir)
         .map_err(|e| format!("Failed to copy Rclone binary: {}", e))?;
 
-    save_rclone_path(&app_handle, final_install_path.to_str().unwrap())?;
+    save_rclone_path(&app_handle, &final_install_dir)?;
 
     Ok(format!(
         "Rclone successfully installed in {}",
-        final_install_path.display()
+        final_install_dir
     ))
 }

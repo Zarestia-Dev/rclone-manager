@@ -11,7 +11,7 @@ use tauri::{command, Emitter};
 use tauri::State;
 use tokio::time::sleep;
 
-use crate::{rclone::api::state::get_rclone_oauth_port_global, RcloneState};
+use crate::{rclone::api::{engine::RCLONE_PATH, state::get_rclone_oauth_port_global}, RcloneState};
 
 use super::state::get_rclone_api_url_global;
 
@@ -92,7 +92,15 @@ pub async fn create_remote(
     } // ✅ Guard is dropped when this scope ends
 
     // ✅ Start a new Rclone instance
-    let rclone_process = Command::new("rclone")
+    let rclone_path = {
+        let rclone_path = RCLONE_PATH.read().unwrap();
+        if rclone_path.is_empty() {
+            return Err("Rclone path is not set.".into());
+        }
+        rclone_path.clone()
+    };
+
+    let rclone_process = Command::new(rclone_path)
         .args([
             "rcd",
             "--rc-no-auth",

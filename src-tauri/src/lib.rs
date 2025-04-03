@@ -164,9 +164,11 @@ pub fn run() {
             // ✅ Read command-line arguments
             let args: Vec<String> = std::env::args().collect();
             let start_with_tray = args.contains(&"--tray".to_string());
-
+            
             let app_handle = app.handle();
-
+            
+            set_rclone_path(app_handle.clone());
+            
             let config_dir = app_handle
                 .path()
                 .app_data_dir()
@@ -197,7 +199,6 @@ pub fn run() {
             let settings: AppSettings = serde_json::from_value(settings_json["settings"].clone())
                 .unwrap_or_else(|_| AppSettings::default());
 
-            set_rclone_path(app_handle.clone());
             
             init_logging(settings.experimental.debug_logging);
             set_rclone_oauth_url_port(settings.core.rclone_oauth_port);

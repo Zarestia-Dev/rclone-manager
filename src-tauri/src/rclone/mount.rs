@@ -69,8 +69,6 @@ pub async fn install_mount_plugin() -> Result<String, String> {
         std::process::Command::new("msiexec")
             .arg("/i")
             .arg(local_file.to_str().unwrap())
-            .arg("/quiet")
-            .arg("/norestart")
             .status()
     };
 
