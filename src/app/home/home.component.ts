@@ -238,11 +238,6 @@ export class HomeComponent {
   // Mount a remote
   async mountRemote(remoteName: string): Promise<void> {
     const remoteSettings = this.loadRemoteSettings(remoteName);
-    if (!remoteSettings.mount_options.mount_point) {
-      console.warn(`No mount point found for ${remoteName}`);
-      return;
-    }
-
     try {
       await this.rcloneService.mountRemote(
         remoteName,

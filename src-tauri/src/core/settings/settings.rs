@@ -120,11 +120,11 @@ pub async fn save_settings(
 
         let _ = state.update_sender.send(());
 
-        debug!("🟢 Emitting settings_changed with payload: {:?}", changed_settings);
+        debug!("🟢 Emitting system_settings_changed with payload: {:?}", changed_settings);
 
         // ✅ Emit only changed settings
         app_handle
-            .emit("settings_changed", changed_settings.clone())
+            .emit("system_settings_changed", changed_settings.clone())
             .unwrap();
     } else {
         debug!("⚠️ No changes detected, skipping emission.");
@@ -188,8 +188,6 @@ pub async fn save_remote_settings(
 
     file.write_all(settings.to_string().as_bytes())
         .map_err(|e| format!("❌ Failed to save settings: {}", e))?;
-
-    let _ = state.update_sender.send(());
 
     info!("✅ Remote settings saved at {:?}", remote_config_path);
     Ok(())

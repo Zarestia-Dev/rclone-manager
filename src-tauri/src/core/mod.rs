@@ -1,4 +1,4 @@
 pub mod settings;
 pub mod tray;
 pub mod event_listener;
-pub mod startup;
+pub mod lifecycle;

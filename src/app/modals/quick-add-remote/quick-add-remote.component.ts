@@ -51,6 +51,7 @@ export class QuickAddRemoteComponent implements OnInit {
   existingRemotes: string[] = [];
   isLoading = false;
   authDisabled = false;
+  cancelced = false;
 
   constructor(
     private fb: FormBuilder,
@@ -176,12 +177,20 @@ export class QuickAddRemoteComponent implements OnInit {
       this.isLoading = false;
     } catch (error) {
       console.error("Error adding remote:", error);
+    } finally {
+      if (!this.cancelced) {
+        this.setFormState(false); // Re-enable form fields
+        this.dialogRef.close(true); // Close modal and return success
+      }
+      this.isLoading = false; // Reset loading state
+      this.cancelced = false; // Reset cancellation state
     }
   }
 
   async cancelAuth() {
     this.isLoading = false;
     this.setFormState(false);
+    this.cancelced = true;
     try {
       this.authDisabled = true;
       await this.rcloneService.quitOAuth();

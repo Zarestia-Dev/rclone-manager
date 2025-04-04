@@ -201,7 +201,15 @@ export class RcloneService {
     mount_options?: Record<string, string | number | boolean>,
     vfs_options?: Record<string, string | number | boolean>
   ): Promise<void> {
-    try {
+    try {        
+      if (!mountPoint) {
+        console.error("Mount point is required");
+        this.alertModal(
+          "Mount Point Required",
+          "Please Add a mount point to continue."
+        );
+        return;
+      }
       await invoke("mount_remote", {
         remoteName,
         mountPoint,
@@ -223,16 +231,6 @@ export class RcloneService {
       console.error("Unmount failed:", error);
     }
   }
-
-  // async getMountTypes(): Promise<string[]> {
-  //   try {
-  //     const response = await invoke("get_mount_types");
-  //     return response as string[];
-  //   } catch (error) {
-  //     console.error("Error fetching mount types:", error);
-  //     return [];
-  //   }
-  // }
 
   /** Add a new mount configuration */
   async addMount(

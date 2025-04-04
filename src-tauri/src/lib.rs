@@ -1,5 +1,6 @@
 use core::{
     event_listener::setup_event_listener,
+    lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
     settings::{
         settings::{
             delete_remote_settings, get_remote_settings, load_settings, save_remote_settings,
@@ -7,7 +8,6 @@ use core::{
         },
         settings_store::AppSettings,
     },
-    startup::handle_startup,
     tray::{
         actions::{
             handle_browse_remote, handle_delete_remote, handle_mount_remote, handle_unmount_remote,
@@ -19,18 +19,10 @@ use core::{
 use log::{debug, error, info};
 use rclone::{
     api::{
-        api::{
-            create_remote, delete_remote, get_all_remote_configs, get_disk_usage,
-            get_mounted_remotes, get_oauth_supported_remotes, get_remote_config,
-            get_remote_config_fields, get_remote_types, get_remotes, list_mounts, mount_remote,
-            quit_rclone_oauth, unmount_remote, update_remote,
-        },
-        engine::{ensure_rc_api_running, set_rclone_path},
-        flags::{
+        api_command::{create_remote, delete_remote, mount_remote, quit_rclone_oauth, unmount_all_remotes, unmount_remote, update_remote}, api_query::{get_all_remote_configs, get_disk_usage, get_mounted_remotes, get_oauth_supported_remotes, get_remote_config, get_remote_config_fields, get_remote_types, get_remotes}, engine::{ensure_rc_api_running, set_rclone_path}, flags::{
             get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags, get_sync_flags,
             get_vfs_flags,
-        },
-        state::{set_rclone_api_url_port, set_rclone_oauth_url_port},
+        }, state::{set_rclone_api_url_port, set_rclone_oauth_url_port}
     },
     mount::{check_mount_plugin, install_mount_plugin},
 };
@@ -164,15 +156,15 @@ pub fn run() {
             // ✅ Read command-line arguments
             let args: Vec<String> = std::env::args().collect();
             let start_with_tray = args.contains(&"--tray".to_string());
-            
+
             let app_handle = app.handle();
-            
+
             // Ensure set_rclone_path runs and finishes before proceeding
             if let Err(e) = set_rclone_path(app_handle.clone()) {
                 error!("❌ Failed to set rclone path: {}", e);
                 return Err(e.into());
             }
-            
+
             let config_dir = app_handle
                 .path()
                 .app_data_dir()
@@ -203,32 +195,23 @@ pub fn run() {
             let settings: AppSettings = serde_json::from_value(settings_json["settings"].clone())
                 .unwrap_or_else(|_| AppSettings::default());
 
-            
             init_logging(settings.experimental.debug_logging);
             set_rclone_oauth_url_port(settings.core.rclone_oauth_port);
             set_rclone_api_url_port(app_handle, settings.core.rclone_api_port);
 
-            let rc_process = Arc::new(Mutex::new(None));
-            let rc_process_clone = rc_process.clone();
             let app_handle_clone = app_handle.clone();
-            ensure_rc_api_running(app_handle_clone, rc_process_clone.clone());
-
-            tauri::async_runtime::spawn({
-                let app_handle_clone = app_handle.clone();
-                async move {
-                    handle_startup(&app_handle_clone).await;
-                }
-            });
-
+            ensure_rc_api_running(app_handle_clone);
+            
+            
             if settings.general.tray_enabled || start_with_tray {
                 debug!("Tray is enabled");
                 if let Err(e) = tauri::async_runtime::block_on(setup_tray(
-                    &app_handle,
+                    app_handle.clone(),
                     settings.core.max_tray_items,
                 )) {
                     error!("Failed to setup tray: {}", e);
                 }
-
+                
                 if start_with_tray {
                     if let Some(win) = app.get_webview_window("main") {
                         let _ = win.hide();
@@ -237,9 +220,15 @@ pub fn run() {
             } else {
                 debug!("Tray is disabled");
             }
-
+            
+            tauri::async_runtime::spawn({
+                let app_handle_clone = app_handle.clone();
+                async move {
+                    handle_startup(app_handle_clone).await;
+                }
+            });
             // ✅ Pass `update_receiver` to the event listener
-            setup_event_listener(&app_handle, rc_process_clone.clone(), update_receiver);
+            setup_event_listener(&app_handle, update_receiver);
 
             Ok(())
         })
@@ -249,38 +238,55 @@ pub fn run() {
                 let _ = app.emit("mount-all", ());
             }
             "unmount_all" => {
-                let _ = app.emit("unmount-all", ());
+            let app_clone = app.clone();
+            tauri::async_runtime::spawn(async move {
+                let state = app_clone.state::<RcloneState>().clone();
+                match unmount_all_remotes(app_clone.clone(), state).await {
+                    Ok((success_count, total_count)) => {
+                        info!("Unmounted {} remotes out of {}", success_count, total_count);
+                    }
+                    Err(e) => {
+                        error!("Failed to unmount all remotes: {}", e);
+                    }
+                }
+            });
             }
             "quit" => {
-                app.exit(0);
+                let app_clone = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    handle_shutdown(app_clone.clone()).await;
+                    app_clone.exit(0);
+                });
             }
-            id if id.starts_with("mount-") => handle_mount_remote(app, id),
-            id if id.starts_with("unmount-") => handle_unmount_remote(app, id),
+            id if id.starts_with("mount-") => handle_mount_remote(app.clone(), id),
+            id if id.starts_with("unmount-") => handle_unmount_remote(app.clone(), id),
             id if id.starts_with("browse-") => handle_browse_remote(app, id),
-            id if id.starts_with("delete-") => handle_delete_remote(app, id),
+            id if id.starts_with("delete-") => handle_delete_remote(app.clone(), id),
             _ => {}
         })
         .invoke_handler(tauri::generate_handler![
+            // Others
+            open_in_files,
+            get_folder_location,
             set_theme,
             check_rclone_installed,
             provision_rclone,
+            // Rclone Command API
             get_all_remote_configs,
             get_disk_usage,
-            list_mounts,
-            mount_remote,
-            unmount_remote,
             get_remotes,
             get_remote_config,
             get_remote_types,
             get_oauth_supported_remotes,
             get_remote_config_fields,
+            get_mounted_remotes,
+            // Rclone Query API
+            mount_remote,
+            unmount_remote,
             create_remote,
             update_remote,
             delete_remote,
             quit_rclone_oauth,
-            get_mounted_remotes,
-            open_in_files,
-            get_folder_location,
             // Flags
             get_global_flags,
             get_copy_flags,

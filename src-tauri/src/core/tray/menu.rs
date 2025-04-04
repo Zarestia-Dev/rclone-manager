@@ -1,15 +1,25 @@
-use crate::{ core::settings::settings::get_remote_settings, rclone::api::api::{get_mounted_remotes, get_remotes}, RcloneState
-};
+use crate::{ core::settings::settings::get_remote_settings, rclone::api::api_query::{get_mounted_remotes, get_remotes}, RcloneState};
 use log::error;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     AppHandle, Manager,
 };
+static OLD_MAX_TRAY_ITEMS: AtomicUsize = AtomicUsize::new(0);
 
 pub async fn create_tray_menu<R: tauri::Runtime>(
     app: &AppHandle<R>,
     max_tray_items: usize,
 ) -> tauri::Result<Menu<R>> {
+
+    let max_tray_items = if max_tray_items == 0 {
+        OLD_MAX_TRAY_ITEMS.load(Ordering::Relaxed)
+    } else {
+        OLD_MAX_TRAY_ITEMS.store(max_tray_items, Ordering::Relaxed);
+        max_tray_items
+    };
+
+    println!("Max tray items: {}", max_tray_items);
     let handle = app.clone();
     let separator = PredefinedMenuItem::separator(&handle)?;
     let show_app_item = MenuItem::with_id(&handle, "show_app", "Show App", true, None::<&str>)?;

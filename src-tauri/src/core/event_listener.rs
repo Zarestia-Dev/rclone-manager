@@ -1,8 +1,3 @@
-use std::{
-    process::Child,
-    sync::{Arc, Mutex},
-};
-
 use log::{debug, error};
 use serde_json::Value;
 use tauri::Listener;
@@ -10,10 +5,10 @@ use tauri_plugin_autostart::ManagerExt;
 use tokio::sync::broadcast::Receiver;
 
 use crate::{
-    core::tray::tray::setup_tray,
+    core::{lifecycle::shutdown::handle_shutdown, tray::tray::setup_tray},
     init_logging,
     rclone::api::{
-        engine::stop_rc_api,
+        engine::{stop_rc_api, RC_PROCESS},
         state::{set_rclone_api_url_port, set_rclone_oauth_url_port},
     },
 };
@@ -22,11 +17,22 @@ use super::tray::tray::update_tray_menu;
 
 pub fn setup_event_listener(
     app: &tauri::AppHandle,
-    rc_process: Arc<Mutex<Option<Child>>>,
     mut update_receiver: Receiver<()>,
 ) {
+
+    let app_handle_clone = app.clone();
+    tauri::async_runtime::spawn(async move {
+        use tokio::signal::ctrl_c;
+    
+        ctrl_c().await.expect("Failed to install Ctrl+C handler");
+    
+        log::info!("🧹 Ctrl+C received via tokio. Initiating shutdown...");
+        handle_shutdown(app_handle_clone.clone()).await;
+        app_handle_clone.exit(0);
+    });
+
     // Handle rclone API URL updates
-    let rc_process_clone = rc_process.clone();
+    let rc_process_clone = RC_PROCESS.clone();
     app.listen("rclone_api_url_updated", move |_| {
         if let Ok(mut guard) = rc_process_clone.lock() {
             stop_rc_api(&mut *guard);
@@ -40,7 +46,17 @@ pub fn setup_event_listener(
     app.listen("rclone_api_started", move |_| {
         let app_clone_inner = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            if let Err(e) = update_tray_menu(&app_clone_inner, 0).await {
+            if let Err(e) = update_tray_menu(app_clone_inner, 0).await {
+                error!("Failed to update tray menu: {}", e);
+            }
+        });
+    });
+
+    let app_clone = app.clone();
+    app.listen("remote_state_changed", move |_| {
+        let app_clone_inner = app_clone.clone();
+        tauri::async_runtime::spawn(async move {
+            if let Err(e) = update_tray_menu(app_clone_inner, 0).await {
                 error!("Failed to update tray menu: {}", e);
             }
         });
@@ -48,7 +64,7 @@ pub fn setup_event_listener(
 
     // Handle settings changes - REGISTERED ONLY ONCE
     let app_handle_clone = app.clone();
-    app.listen("settings_changed", move |event| {
+    app.listen("system_settings_changed", move |event| {
         let app_handle_inner = app_handle_clone.clone();
 
         debug!("🔄 Settings saved! Raw payload: {:?}", event.payload());
@@ -78,7 +94,7 @@ pub fn setup_event_listener(
                         } else {
                             let app_handle = app_handle_inner.clone();
                             tauri::async_runtime::spawn(async move {
-                                if let Err(e) = setup_tray(&app_handle, 0).await {
+                                if let Err(e) = setup_tray(app_handle, 0).await {
                                     error!("Failed to set up tray: {}", e);
                                 }
                             });
@@ -105,7 +121,7 @@ pub fn setup_event_listener(
                         debug!("🗂️ Max tray items changed to: {}", max_tray_items);
                         let app_handle = app_handle_inner.clone();
                         tauri::async_runtime::spawn(async move {
-                            if let Err(e) = update_tray_menu(&app_handle, max_tray_items as usize).await {
+                            if let Err(e) = update_tray_menu(app_handle, max_tray_items as usize).await {
                                 error!("Failed to update tray menu: {}", e);
                             }
                         });

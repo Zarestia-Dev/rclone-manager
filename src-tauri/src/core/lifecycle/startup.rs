@@ -1,30 +1,27 @@
 use log::{debug, error, info, warn};
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::join;
 
 use crate::{
-    rclone::api::api::{get_remotes, mount_remote},
-    RcloneState,
+    core::settings::settings::get_remote_settings, rclone::api::{api_command::mount_remote, api_query::get_remotes}, RcloneState
 };
 
-use super::settings::settings::get_remote_settings;
-
 /// Main entry point for handling startup tasks.
-pub async fn handle_startup<R: Runtime>(app_handle: &AppHandle<R>) {
+pub async fn handle_startup(app_handle: AppHandle) {
     info!("🚀 Checking startup options...");
 
     let rclone_state = app_handle.state::<RcloneState>();
 
     // Run both tasks in parallel
     let (remotes_result, sync_result) = join!(
-        initialize_remotes::<R>(rclone_state),
-        sync_all_remotes(app_handle)
+        initialize_remotes(rclone_state),
+        sync_all_remotes(&app_handle)
     );
 
     // Process remotes after retrieval
     if let Ok(remotes) = remotes_result {
         for remote in remotes.iter() {
-            handle_remote_startup(remote.to_string(), app_handle).await;
+            handle_remote_startup(remote.to_string(), app_handle.clone()).await;
         }
     }
 
@@ -35,14 +32,14 @@ pub async fn handle_startup<R: Runtime>(app_handle: &AppHandle<R>) {
 }
 
 /// Fetches the list of available remotes.
-async fn initialize_remotes<R: Runtime>(
+async fn initialize_remotes(
     rclone_state: tauri::State<'_, RcloneState>,
 ) -> Result<Vec<String>, String> {
     get_remotes(rclone_state).await
 }
 
 /// Handles startup logic for an individual remote.
-async fn handle_remote_startup<R: Runtime>(remote_name: String, app_handle: &AppHandle<R>) {
+async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
     match get_remote_settings(remote_name.clone(), app_handle.state()).await {
         Ok(settings) => {
             let mount_options = settings.get("mount_options").cloned();
@@ -77,12 +74,12 @@ async fn handle_remote_startup<R: Runtime>(remote_name: String, app_handle: &App
 }
 
 /// Spawns an async task to mount a remote.
-fn spawn_mount_task<R: Runtime>(
+fn spawn_mount_task(
     remote_name: String,
     mount_point: String,
     mount_options: Option<serde_json::Value>,
     vfs_options: Option<serde_json::Value>,
-    app_handle: &AppHandle<R>,
+    app_handle: AppHandle,
 ) {
     let app_clone = app_handle.clone();
     let mount_options_clone = mount_options
@@ -97,6 +94,7 @@ fn spawn_mount_task<R: Runtime>(
 
     tauri::async_runtime::spawn(async move {
         match mount_remote(
+            app_clone.clone(),
             remote_name.clone(),
             mount_point,
             mount_options_clone,
@@ -105,7 +103,10 @@ fn spawn_mount_task<R: Runtime>(
         )
         .await
         {
-            Ok(_) => info!("✅ Mounted {}", remote_name),
+            Ok(_) => {
+                info!("✅ Mounted {}", remote_name);
+                app_clone.emit("remote_state_changed", remote_name.clone()).ok();
+            }
             Err(err) => error!("❌ Failed to mount {}: {}", remote_name, err),
         }
     });

@@ -15,9 +15,11 @@ pub async fn get_folder_location(window: Window, is_empty: bool) -> Result<Optio
 
     debug!("Folder location: {:?}", folder_location);
 
-    if is_empty {
-        if let Some(ref folder) = folder_location {
-            let is_empty = match tokio::fs::read_dir(folder).await {
+    if let Some(ref folder) = folder_location {
+        if is_empty {
+            let path = std::path::Path::new(folder);
+
+            let is_empty = match tokio::fs::read_dir(path).await {
                 Ok(mut entries) => match entries.next_entry().await {
                     Ok(None) => true,
                     Ok(Some(_)) => false,
@@ -35,11 +37,22 @@ pub async fn get_folder_location(window: Window, is_empty: bool) -> Result<Optio
             if !is_empty {
                 return Err("Selected folder is not empty.".to_string());
             }
+
+            #[cfg(target_os = "windows")]
+            {
+                // On Windows, remove the empty folder so rclone can recreate it cleanly
+                debug!("Removing empty mount folder on Windows: {:?}", path);
+                if let Err(e) = std::fs::remove_dir_all(path) {
+                    error!("Failed to remove folder {}: {}", folder, e);
+                    return Err(format!("Failed to remove folder: {}", e));
+                }
+            }
         }
     }
 
     Ok(folder_location)
 }
+
 
 
 #[command]

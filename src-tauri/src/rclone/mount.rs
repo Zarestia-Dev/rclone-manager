@@ -62,8 +62,6 @@ pub async fn install_mount_plugin() -> Result<String, String> {
             .arg("installer")
             .arg("-pkg")
             .arg(local_file.to_str().unwrap())
-            .arg("-target")
-            .arg("/")
             .status()
     } else {
         std::process::Command::new("msiexec")

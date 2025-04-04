@@ -1,11 +1,12 @@
+use std::collections::HashMap;
+
 use log::{error, info};
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_dialog::{MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::{
-    core::{settings::settings::get_remote_settings, tray::tray::update_tray_menu},
-    rclone::api::api::{delete_remote, mount_remote, unmount_remote},
+    core::settings::settings::get_remote_settings, rclone::api::api_command::{delete_remote, mount_remote, unmount_remote}
 };
 
 pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
@@ -15,28 +16,54 @@ pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-pub fn handle_mount_remote<R: Runtime>(app: &AppHandle<R>, id: &str) {
+pub fn handle_mount_remote(app: AppHandle, id: &str) {
     let remote = id.replace("mount-", "");
     let app_clone = app.clone();
+
     tauri::async_runtime::spawn(async move {
         let remote_name = remote.to_string();
-        let settings = get_remote_settings(remote_name.clone(), app_clone.state())
-            .await
-            .unwrap();
-        let mount_options = settings.get("mount_options").unwrap().clone();
-        let vfs_options = settings.get("vfs_options").unwrap().clone();
-        let state = app_clone.state();
-        let mount_point = mount_options.get("mount_point").unwrap().as_str().unwrap();
 
-        let mount_options = mount_options
-            .as_object()
-            .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect());
-        let vfs_options = vfs_options
-            .as_object()
-            .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect());
+        let settings_result = get_remote_settings(remote_name.clone(), app_clone.state()).await;
+        if settings_result.is_err() {
+            error!("Failed to get settings for remote '{}'", remote_name);
+            return;
+        }
+
+        let settings = settings_result.unwrap();
+
+        // Gracefully handle optional values
+        let mount_options = settings
+            .get("mount_options")
+            .and_then(|v| v.as_object())
+            .map(|obj| {
+                obj.iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect::<HashMap<_, _>>()
+            });
+
+        let vfs_options = settings
+            .get("vfs_options")
+            .and_then(|v| v.as_object())
+            .map(|obj| {
+                obj.iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect::<HashMap<_, _>>()
+            });
+
+        // Optional mount_point fallback (empty string or use remote_name)
+        let mount_point = settings
+            .get("mount_options")
+            .and_then(|v| v.get("mount_point"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("/tmp/unknown") // fallback default
+            .to_string();
+
+        let state = app_clone.state();
+
         match mount_remote(
-            remote_name,
-            mount_point.to_string(),
+            app_clone.clone(),
+            remote_name.clone(),
+            mount_point,
             mount_options,
             vfs_options,
             state,
@@ -44,17 +71,16 @@ pub fn handle_mount_remote<R: Runtime>(app: &AppHandle<R>, id: &str) {
         .await
         {
             Ok(_) => {
-                info!("Mounted {}", remote);
-                update_tray_menu(&app_clone, 10).await.ok();
+                info!("✅ Mounted {}", remote_name);
             }
             Err(err) => {
-                error!("Failed to mount {}: {}", remote, err);
+                error!("❌ Failed to mount {}: {}", remote_name, err);
             }
         }
     });
 }
 
-pub fn handle_unmount_remote<R: Runtime>(app: &AppHandle<R>, id: &str) {
+pub fn handle_unmount_remote(app: AppHandle, id: &str) {
     let remote = id.replace("unmount-", "");
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
@@ -69,10 +95,9 @@ pub fn handle_unmount_remote<R: Runtime>(app: &AppHandle<R>, id: &str) {
             .as_str()
             .unwrap();
         let state = app_clone.state();
-        match unmount_remote(mount_point.to_string(), state).await {
+        match unmount_remote(app_clone.clone(), mount_point.to_string(), state).await {
             Ok(_) => {
                 info!("Unmounted {}", remote);
-                update_tray_menu(&app_clone, 10).await.ok();
             }
             Err(err) => {
                 error!("Failed to unmount {}: {}", remote, err);
@@ -99,7 +124,6 @@ pub fn handle_browse_remote<R: Runtime>(app: &AppHandle<R>, id: &str) {
         match app_clone.opener().open_path(mount_point, None::<&str>) {
             Ok(_) => {
                 info!("Opened file manager for {}", remote);
-                update_tray_menu(&app_clone, 10).await.ok();
             }
             Err(e) => {
                 error!("Failed to open file manager for {}: {}", remote, e);
@@ -108,7 +132,7 @@ pub fn handle_browse_remote<R: Runtime>(app: &AppHandle<R>, id: &str) {
     });
 }
 
-pub fn handle_delete_remote<R: Runtime>(app: &AppHandle<R>, id: &str) {
+pub fn handle_delete_remote(app: AppHandle, id: &str) {
     let remote = id.replace("delete-", "");
     let app_clone = app.clone(); // Cloning the app
     tauri::async_runtime::spawn(async move {
@@ -130,10 +154,9 @@ pub fn handle_delete_remote<R: Runtime>(app: &AppHandle<R>, id: &str) {
                 tauri::async_runtime::spawn(async move {
                     if result {
                         let state = app_clone.state();
-                        match delete_remote(remote.clone(), state).await {
+                        match delete_remote(app_clone.clone(), remote.clone(), state).await {
                             Ok(_) => {
                                 info!("Deleted remote {}", remote);
-                                update_tray_menu(&app_clone, 10).await.ok();
                             }
                             Err(err) => {
                                 error!("Failed to delete remote {}: {}", remote, err);
