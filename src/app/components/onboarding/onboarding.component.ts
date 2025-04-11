@@ -16,6 +16,7 @@ import { MatRadioModule } from "@angular/material/radio";
 import { RcloneService } from "../../services/rclone.service";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
+import { MatIconModule } from "@angular/material/icon";
 
 @Component({
   selector: "app-onboarding",
@@ -29,6 +30,7 @@ import { MatButtonModule } from "@angular/material/button";
     MatInputModule,
     MatRadioModule,
     MatButtonModule,
+    MatIconModule
   ],
   animations: [
     trigger("slideAnimation", [
@@ -154,7 +156,7 @@ export class OnboardingComponent implements OnInit {
   }
 
   async selectCustomPath(): Promise<void> {
-    const path = await this.rcloneService.selectFolder(true);
+    const path = await this.rcloneService.selectFolder(false);
     if (path) {
       this.customPath = path;
     }

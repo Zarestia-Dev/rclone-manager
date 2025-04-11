@@ -1,219 +1,171 @@
 use std::{
-    error::Error,
-    fs,
-    path::PathBuf,
     process::{Child, Command},
     sync::{Arc, Mutex},
     thread,
     time::Duration,
 };
 
-use log::{debug, error, info, warn};
-
 use once_cell::sync::Lazy;
 use reqwest::blocking::Client;
 use serde_json::Value;
-use std::sync::RwLock;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
-use crate::rclone::api::state::get_rclone_api_port_global;
+use log::{debug, error, info, warn};
 
-use super::state::get_rclone_api_url_global;
+use crate::rclone::api::state::RCLONE_STATE;
 
-use std::sync::atomic::{AtomicBool, Ordering};
+pub static ENGINE: Lazy<Arc<Mutex<RcApiEngine>>> =
+    Lazy::new(|| Arc::new(Mutex::new(RcApiEngine::default())));
 
-pub static SHOULD_EXIT: AtomicBool = AtomicBool::new(false);
+#[derive(Default)]
+pub struct RcApiEngine {
+    process: Option<Child>,
+    should_exit: bool,
+    running: bool,
+    rclone_path: String,
+}
 
-pub static RCLONE_PATH: Lazy<RwLock<String>> = Lazy::new(|| RwLock::new("rclone".to_string()));
-pub static RC_PROCESS: Lazy<Arc<Mutex<Option<Child>>>> = Lazy::new(|| Arc::new(Mutex::new(None)));
+impl RcApiEngine {
+    pub fn init(&mut self, app: &AppHandle) {
+        if self.rclone_path.is_empty() {
+            self.rclone_path = Self::read_rclone_path(app);
+        }
 
-static HTTP_CLIENT: Lazy<Client> = Lazy::new(Client::new);
-static LAST_KNOWN_STATE: Lazy<RwLock<bool>> = Lazy::new(|| RwLock::new(false));
+        let app_handle = app.clone();
+        let engine_arc = ENGINE.clone();
 
-pub fn is_rc_api_running() -> bool {
-    let url = format!("{}/config/listremotes", get_rclone_api_url_global());
+        thread::spawn(move || loop {
+            {
+                let mut engine = engine_arc.lock().unwrap();
 
-    let new_state = match HTTP_CLIENT.post(&url).send() {
-        Ok(response) => response.status().is_success(),
-        Err(_) => false,
-    };
+                if engine.should_exit {
+                    debug!("🛑 Exit requested, stopping monitor thread.");
+                    break;
+                }
 
-    let mut last_state = LAST_KNOWN_STATE.write().unwrap();
-    if *last_state != new_state {
-        *last_state = new_state; // Update state
-        if new_state {
-            info!("✅ Rclone API is back online!");
-        } else {
-            warn!("⚠️ Rclone API is down!");
+                if !engine.is_running() {
+                    warn!("🔄 Rclone API not running. Starting...");
+                    engine.start(&app_handle);
+                } else {
+                    debug!("✅ Rclone API running on port {}", RCLONE_STATE.get_api().1);
+                }
+            }
+
+            thread::sleep(Duration::from_secs(5));
+        });
+    }
+
+    pub fn is_running(&self) -> bool {
+        let url = format!("{}/config/listremotes", RCLONE_STATE.get_api().0);
+        match Client::new().post(&url).send() {
+            Ok(resp) => resp.status().is_success(),
+            Err(e) => {
+                debug!("Failed to check Rclone API status: {}", e);
+                false
+            }
         }
     }
 
-    new_state
-}
+    pub fn start(&mut self, _app: &AppHandle) {
+        if self.process.is_some() {
+            debug!("⚠️ Rclone process already exists, stopping first...");
+            self.stop();
+        }
 
-pub fn set_rclone_path(app: AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let config_dir = app
-        .path()
-        .app_data_dir()
-        .expect("Failed to get app data directory");
+        let port = RCLONE_STATE.get_api().1;
+        let path = &self.rclone_path;
 
-    let settings_path = config_dir.join("core.json");
+        match Command::new(path)
+            .args(&[
+                "rcd",
+                "--rc-no-auth",
+                "--rc-serve",
+                &format!("--rc-addr=127.0.0.1:{}", port),
+            ])
+            .spawn()
+        {
+            Ok(child) => {
+                self.process = Some(child);
+                self.running = true;
+                info!("✅ Rclone RC API started process on port {}", port);
+            }
+            Err(e) => {
+                error!("❌ Failed to start Rclone: {}", e);
+                self.running = false;
+            }
+        }
+    }
 
-    let rclone_path = match fs::read_to_string(&settings_path) {
-        Ok(contents) => {
-            if let Ok(json) = serde_json::from_str::<Value>(&contents) {
-                if let Some(path) = json["core_options"]["rclone_path"].as_str() {
-                    let resolved_path = if path == "system" {
-                        "rclone".to_string()
-                    } else {
-                        let binary_name = if cfg!(target_os = "windows") {
-                            "rclone.exe"
+    pub fn wait_until_ready(&self, timeout_secs: u64) -> bool {
+        let start = std::time::Instant::now();
+        let timeout = Duration::from_secs(timeout_secs);
+        let poll = Duration::from_millis(200);
+
+        while start.elapsed() < timeout {
+            if self.is_running() {
+                return true;
+            }
+            std::thread::sleep(poll);
+        }
+
+        false
+    }
+
+    pub fn start_and_wait(&mut self, app: &AppHandle, timeout_secs: u64) -> bool {
+        self.start(app);
+        info!(
+            "⏳ Waiting up to {}s for Rclone API to become ready...",
+            timeout_secs
+        );
+        self.wait_until_ready(timeout_secs)
+    }
+
+    pub fn stop(&mut self) {
+        if let Some(mut child) = self.process.take() {
+            info!("🛑 Killing Rclone process...");
+            if let Err(e) = child.kill() {
+                error!("❌ Failed to kill Rclone: {}", e);
+            }
+            let _ = child.wait();
+        }
+
+        self.running = false;
+    }
+
+    pub fn shutdown(&mut self) {
+        self.should_exit = true;
+        self.stop();
+    }
+
+    pub fn read_rclone_path(app: &AppHandle) -> String {
+        let config_path = app
+            .path()
+            .app_data_dir()
+            .expect("Failed to get app data dir")
+            .join("core.json");
+
+        match std::fs::read_to_string(&config_path) {
+            Ok(contents) => {
+                if let Ok(json) = serde_json::from_str::<Value>(&contents) {
+                    if let Some(path) = json["core_options"]["rclone_path"].as_str() {
+                        return if path == "system" {
+                            "rclone".to_string()
                         } else {
-                            "rclone"
+                            let bin = if cfg!(windows) {
+                                "rclone.exe"
+                            } else {
+                                "rclone"
+                            };
+                            format!("{}/{}", path, bin)
                         };
-                        PathBuf::from(path)
-                            .join(binary_name)
-                            .to_string_lossy()
-                            .to_string()
-                    };
-                    debug!("✅ Rclone path set to: {}", resolved_path);
-                    resolved_path
-                } else {
-                    warn!("⚠️ No 'rclone_path' found in core.json, using default.");
-                    "rclone".to_string()
+                    }
                 }
-            } else {
-                warn!("⚠️ Failed to parse core.json, using default Rclone path.");
+                "rclone".to_string()
+            }
+            Err(e) => {
+                warn!("Could not read rclone path from config: {}", e);
                 "rclone".to_string()
             }
         }
-        Err(_) => {
-            warn!("⚠️ core.json not found or unreadable, using default Rclone path.");
-            "rclone".to_string()
-        }
-    };
-
-    // Update the global RCLONE_PATH
-    let mut rclone_path_lock = RCLONE_PATH.write().unwrap();
-    *rclone_path_lock = rclone_path;
-
-    Ok(())
-}
-
-pub fn start_rc_api() -> Result<Child, Box<dyn Error>> {
-    info!(
-        "🚀 Starting Rclone RC API on port {}",
-        get_rclone_api_port_global()
-    );
-
-    // Retrieve the stored custom installation path
-    let rclone_path = {
-        let rclone_path = RCLONE_PATH.read().unwrap();
-        if rclone_path.is_empty() {
-            return Err("Rclone path is not set.".into());
-        }
-        rclone_path.clone()
-    };
-
-    let child = Command::new(rclone_path)
-        .args(&[
-            "rcd",
-            "--rc-no-auth",
-            "--rc-serve",
-            &format!("--rc-addr=localhost:{}", get_rclone_api_port_global()),
-        ])
-        .spawn()
-        .map_err(|e| {
-            error!("❌ Failed to start Rclone RC API: {}", e);
-            e
-        })?;
-
-    // Wait for the process to start
-    thread::sleep(Duration::from_secs(2));
-
-    debug!("✅ Rclone RC API started with PID: {:?}", child.id());
-    Ok(child)
-}
-
-pub fn stop_rc_api(rc_process: &mut Option<Child>) {
-    debug!("🔄 Attempting to stop Rclone RCD process...");
-
-    if let Some(mut child) = rc_process.take() {
-        // First try to kill the process
-        if let Err(e) = child.kill() {
-            warn!("Failed to kill Rclone process: {}", e);
-        } else {
-            info!("Rclone process kill signal sent successfully.");
-        }
-
-        // Always wait for the process to clean up resources
-        match child.wait() {
-            Ok(status) => debug!("✅ Rclone process exited with status: {:?}", status),
-            Err(e) => warn!("⚠️ Failed to wait for Rclone process: {}", e),
-        }
     }
-}
-
-pub fn ensure_rc_api_running(app: tauri::AppHandle) {
-    info!(
-        "🔧 Ensuring Rclone RC API is running on port {}",
-        get_rclone_api_port_global()
-    );
-
-    let rc_process_clone: Arc<Mutex<Option<Child>>> = RC_PROCESS.clone();
-    let app_clone = app.clone();
-
-    match start_rc_api() {
-        Ok(child) => {
-            app_clone
-                .emit("rclone_api_started", get_rclone_api_url_global())
-                .unwrap();
-            *rc_process_clone.lock().unwrap() = Some(child);
-        }
-        Err(e) => {
-            error!("🚨 Failed to start Rclone RC API: {}", e);
-        }
-    }
-
-    thread::spawn(move || {
-        loop {
-            // Exit condition check
-            if SHOULD_EXIT.load(Ordering::SeqCst) {
-                info!("🛑 Shutdown flag received. Exiting Rclone watchdog thread.");
-                break;
-            }
-
-            {
-                let mut process_guard = rc_process_clone.lock().unwrap();
-
-                if !is_rc_api_running() {
-                    warn!("⚠️ Rclone API is not running. Restarting...");
-
-                    if process_guard.is_some() {
-                        warn!("🛑 Stopping previous Rclone instance...");
-                        stop_rc_api(&mut process_guard);
-                    }
-
-                    match start_rc_api() {
-                        Ok(child) => {
-                            app_clone
-                                .emit("rclone_api_started", get_rclone_api_url_global())
-                                .unwrap();
-                            *process_guard = Some(child);
-                        }
-                        Err(e) => {
-                            error!("🚨 Failed to start Rclone RC API: {}", e);
-                        }
-                    }
-                } else {
-                    debug!(
-                        "✅ Rclone API is running on port {}",
-                        get_rclone_api_port_global()
-                    );
-                }
-            }
-
-            thread::sleep(Duration::from_secs(10));
-        }
-    });
 }

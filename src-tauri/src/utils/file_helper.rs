@@ -66,3 +66,20 @@ pub async fn open_in_files(app: tauri::AppHandle, path: String) -> Result<String
         Err(e) => Err(format!("Failed to open file manager: {}", e)),
     }
 }
+
+#[command]
+pub async fn get_file_location(
+    window: Window
+) -> Result<Option<String>, String> {
+    debug!("Opening file picker dialog...");
+
+    let file_location = window
+        .dialog()
+        .file()
+        .blocking_pick_file()
+        .map(|path| path.to_string());
+
+    debug!("File location: {:?}", file_location);
+
+    Ok(file_location)
+}

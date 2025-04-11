@@ -15,9 +15,18 @@ import {
 import { SettingsService } from "../services/settings.service";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { SidebarComponent } from "../components/sidebar/sidebar.component";
-import { OverviewComponent } from "../components/overview/overview.component";
-import { RemoteDetailComponent } from "../components/remote-detail/remote-detail.component";
 import { QuickAddRemoteComponent } from "../modals/quick-add-remote/quick-add-remote.component";
+import { MountOverviewComponent } from "../components/overviews/mount-overview/mount-overview.component";
+import { SyncOverviewComponent } from "../components/overviews/sync-overview/sync-overview.component";
+import { CopyOverviewComponent } from "../components/overviews/copy-overview/copy-overview.component";
+import { JobsOverviewComponent } from "../components/overviews/jobs-overview/jobs-overview.component";
+import { MountDetailComponent } from "../components/details/mount-detail/mount-detail.component";
+import { MatSlideToggleModule } from "@angular/material/slide-toggle";
+import { MatMenuModule } from "@angular/material/menu";
+import { MatIconModule } from "@angular/material/icon";
+import { SyncDetailComponent } from "../components/details/sync-detail/sync-detail.component";
+import { CopyDetailComponent } from "../components/details/copy-detail/copy-detail.component";
+import { JobDetailComponent } from "../components/details/job-detail/job-detail.component";
 
 @Component({
   selector: "app-home",
@@ -28,10 +37,19 @@ import { QuickAddRemoteComponent } from "../modals/quick-add-remote/quick-add-re
     CommonModule,
     MatCardModule,
     MatTooltipModule,
+    MatSlideToggleModule,
+    MatMenuModule,
+    MatIconModule,
     SidebarComponent,
-    OverviewComponent,
-    RemoteDetailComponent,
-  ],
+    MountOverviewComponent,
+    SyncOverviewComponent,
+    CopyOverviewComponent,
+    JobsOverviewComponent,
+    MountDetailComponent,
+    SyncDetailComponent,
+    CopyDetailComponent,
+    JobDetailComponent
+],
   templateUrl: "./home.component.html",
   styleUrl: "./home.component.scss",
 })
@@ -41,8 +59,9 @@ export class HomeComponent {
   selectedRemote: any = null;
   remotes: any[] = [];
   mountTypes: any[] = [];
-  remoteSettings: any[] = [];
+  remoteSettings: Record<string, Record<string, any>> = {};
   mountedRemotes: { fs: string; mount_point: string }[] = [];
+  currentTab: "mount" | "sync" | "copy" | "jobs" = "mount";
 
   constructor(
     private dialog: MatDialog,
@@ -51,21 +70,15 @@ export class HomeComponent {
     private settingservice: SettingsService
   ) {}
 
-  async ngOnInit(): Promise<void> {
-    this.updateSidebarMode();
-
-    this.stateService.selectedRemote$.subscribe((remote) => {
-      this.selectedRemote = remote;
-    });
-
-    await this.refreshMounts();
-    await this.loadRemotes();
-    await this.getRemoteSettings();
-  }
-
   @HostListener("window:resize", [])
   onResize() {
     this.updateSidebarMode();
+  }
+
+  ngOnInit() {
+    this.updateSidebarMode();
+    this.setupSubscriptions();
+    this.loadInitialData();
   }
 
   private updateSidebarMode() {
@@ -73,6 +86,36 @@ export class HomeComponent {
       this.sidebarMode = "over";
     } else {
       this.sidebarMode = "side";
+    }
+  }
+
+  private setupSubscriptions() {
+    this.stateService.currentTab$.subscribe((tab) => (this.currentTab = tab));
+    this.stateService.selectedRemote$.subscribe(
+      (remote) => (this.selectedRemote = remote)
+    );
+  }
+
+  private async loadInitialData() {
+    await this.refreshMounts();
+    await this.loadRemotes();
+    await this.getRemoteSettings();
+  }
+
+  getRemoteSettingValue(remoteName: string, key: string): any {
+    return this.remoteSettings[remoteName]?.[key];
+  }
+
+  resetRemoteSettings() {
+    this.settingservice.resetRemoteSettings(
+      this.selectedRemote?.remoteSpecs?.name
+    );
+  }
+
+  deleteRemoteByName() {
+    const remoteName = this.selectedRemote?.remoteSpecs?.name;
+    if (remoteName) {
+      this.deleteRemote(remoteName);
     }
   }
 
@@ -169,6 +212,7 @@ export class HomeComponent {
   // Load all remotes with their configurations & mount status
   async loadRemotes(): Promise<void> {
     const remoteConfigs = await this.rcloneService.getAllRemoteConfigs();
+    console.log("Remote Configs:", remoteConfigs);
     const remoteNames = Object.keys(remoteConfigs);
 
     this.remotes = await Promise.all(
@@ -208,12 +252,7 @@ export class HomeComponent {
 
   // Load all saved mount configurations
   async getRemoteSettings(): Promise<void> {
-    const remoteNames = this.remotes.map((remote) => remote.remoteSpecs.name);
-    this.remoteSettings = await Promise.all(
-      remoteNames.map(async (name) => {
-        return await this.settingservice.getRemoteSettings(name);
-      })
-    );
+    this.remoteSettings = await this.settingservice.getRemoteSettings();
     console.log("Saved Mount Configs:", this.remoteSettings);
   }
 
@@ -228,34 +267,70 @@ export class HomeComponent {
   }
 
   // Get saved mount configuration for a remote
+  loadRemoteMountSettings(remoteName: string): any {
+    const all_settings = Object.values(this.remoteSettings).find(
+      (config: any) => config?.name === remoteName
+    );
+    console.log("Loaded Remote Mount Settings:", all_settings);
+    return {
+      mount_options: all_settings?.["mount_options"],
+      vfs_options: all_settings?.["vfs_options"],
+    };
+  }
+
+  loadRemoteSyncSettings(remoteName: string): any {
+    const all_settings = Object.values(this.remoteSettings).find(
+      (config: any) => config?.name === remoteName
+    );
+    return {
+      sync_options: all_settings?.["sync_options"],
+      filter_options: all_settings?.["filter_options"],
+    };
+  }
+
+  loadRemoteCopySettings(remoteName: string): any {
+    const all_settings = Object.values(this.remoteSettings).find(
+      (config: any) => config?.name === remoteName
+    );
+    return {
+      copy_options: all_settings?.["copy_options"],
+      filter_options: all_settings?.["filter_options"],
+    };
+  }
+
   loadRemoteSettings(remoteName: string): any {
-    const all_settings = this.remoteSettings.find(
-      (config) => config?.name === remoteName
+    const all_settings = Object.values(this.remoteSettings).find(
+      (config: any) => config?.name === remoteName
     );
     return all_settings;
   }
 
   // Mount a remote
   async mountRemote(remoteName: string): Promise<void> {
-    const remoteSettings = this.loadRemoteSettings(remoteName);
+    const { mount_options, vfs_options } = this.loadRemoteSettings(remoteName);
+    if (!mount_options?.mount_point) {
+      console.warn(`Mount point is missing for ${remoteName}`);
+      return;
+    }
+
     try {
       await this.rcloneService.mountRemote(
         remoteName,
-        remoteSettings.mount_options.mount_point,
-        remoteSettings.mount_options,
-        remoteSettings.vfs_options
+        mount_options.mount_point,
+        mount_options,
+        vfs_options
       );
       await this.refreshMounts();
       await this.loadRemotes();
-      this.selectRemote(
-        this.remotes.find((remote) => remote.remoteSpecs.name === remoteName)
-      );
-      console.log(
-        `Mounted ${remoteName} at ${remoteSettings.mount_options.mount_point}`
-      );
+      this.selectRemoteByName(remoteName);
     } catch (error) {
       console.error(`Failed to mount ${remoteName}:`, error);
     }
+  }
+
+  selectRemoteByName(remoteName: string) {
+    const remote = this.remotes.find((r) => r.remoteSpecs.name === remoteName);
+    if (remote) this.selectedRemote = { ...remote };
   }
 
   // Unmount a remote
@@ -280,23 +355,6 @@ export class HomeComponent {
     } catch (error) {
       console.error(`Failed to unmount ${remoteName}:`, error);
     }
-  }
-
-  // Add a mount
-  async addMount(remote: any): Promise<void> {
-    const mountPoint = this.loadRemoteSettings(remote.remoteSpecs.name)
-      ?.mount_options?.mount_path;
-    if (!mountPoint) {
-      console.warn(`No mount point found for ${remote.remoteSpecs.name}`);
-      return;
-    }
-
-    await this.rcloneService.addMount(remote.remoteSpecs.name, mountPoint);
-  }
-
-  // Remove a mount
-  async removeMount(remote: any): Promise<void> {
-    await this.rcloneService.removeMount(remote.remoteSpecs.name);
   }
 
   ngOnDestroy(): void {

@@ -1,14 +1,15 @@
+use chrono::Local;
 use log::{debug, error, info, warn};
 use serde_json::{json, Value};
+use zip::write::FileOptions;
 use std::{
     fs::{self, create_dir_all, File},
     io::Write,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 use tauri::{Emitter, Runtime, State};
 use tauri_plugin_store::Store;
-use tokio::sync::broadcast;
 
 use super::settings_store::AppSettings;
 
@@ -16,7 +17,6 @@ use super::settings_store::AppSettings;
 pub struct SettingsState<R: Runtime> {
     pub store: Arc<Mutex<Arc<Store<R>>>>,
     pub config_dir: PathBuf,
-    pub update_sender: broadcast::Sender<()>, // Notify when settings change
 }
 
 /// **Load settings from store**
@@ -118,9 +118,10 @@ pub async fn save_settings(
             e.to_string()
         })?;
 
-        let _ = state.update_sender.send(());
-
-        debug!("🟢 Emitting system_settings_changed with payload: {:?}", changed_settings);
+        debug!(
+            "🟢 Emitting system_settings_changed with payload: {:?}",
+            changed_settings
+        );
 
         // ✅ Emit only changed settings
         app_handle
@@ -134,13 +135,13 @@ pub async fn save_settings(
     Ok(())
 }
 
-
 /// **Save remote settings (per remote)**
 #[tauri::command]
 pub async fn save_remote_settings(
     remote_name: String,
     mut settings: Value, // **Accepts dynamic JSON**
     state: State<'_, SettingsState<tauri::Wry>>,
+    app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     if let Some(settings_obj) = settings.as_object_mut() {
         settings_obj.insert("name".to_string(), Value::String(remote_name.clone()));
@@ -190,6 +191,8 @@ pub async fn save_remote_settings(
         .map_err(|e| format!("❌ Failed to save settings: {}", e))?;
 
     info!("✅ Remote settings saved at {:?}", remote_config_path);
+
+    app_handle.emit("remote_presence_changed", remote_name).ok();
     Ok(())
 }
 
@@ -198,6 +201,7 @@ pub async fn save_remote_settings(
 pub async fn delete_remote_settings(
     remote_name: String,
     state: State<'_, SettingsState<tauri::Wry>>,
+    app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let remote_config_path = state
         .config_dir
@@ -218,6 +222,8 @@ pub async fn delete_remote_settings(
     })?;
 
     info!("✅ Remote settings for '{}' deleted.", remote_name);
+
+    app_handle.emit("remote_presence_changed", remote_name).ok();
     Ok(())
 }
 
@@ -249,54 +255,110 @@ pub async fn get_remote_settings(
     Ok(settings)
 }
 
-// #[tauri::command]
-// pub async fn export_settings<R: Runtime>(state: State<'_, SettingsState<R>>) -> Result<PathBuf, String> {
-//     let export_path = state.config_dir.join("rclone_settings_backup.zip");
-//     let settings_json = state.config_dir.join("settings.json");
-//     let remotes_dir = state.config_dir.join("remotes");
+#[tauri::command]
+pub async fn backup_settings(
+    backup_dir: String,
+    state: State<'_, SettingsState<tauri::Wry>>,
+) -> Result<String, String> {
+    let backup_path = PathBuf::from(backup_dir);
 
-//     let file = File::create(&export_path).map_err(|e| format!("Failed to create backup file: {}", e))?;
-//     let mut zip = zip::ZipWriter::new(file);
+    if !backup_path.exists() {
+        fs::create_dir_all(&backup_path)
+            .map_err(|e| format!("Failed to create backup directory: {}", e))?;
+    }
 
-//     // Add settings.json
-//     let settings_content = fs::read_to_string(&settings_json).map_err(|e| format!("Failed to read settings.json: {}", e))?;
-//     zip.start_file("settings.json", Default::default()).unwrap();
-//     zip.write_all(settings_content.as_bytes()).unwrap();
+    // Add timestamp to the filename
+    let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+    let backup_file_path = backup_path.join(format!("settings_backup_{}.zip", timestamp));
 
-//     // Add remote configs
-//     for entry in fs::read_dir(&remotes_dir).map_err(|e| format!("Failed to read remotes dir: {}", e))? {
-//         let entry = entry.map_err(|e| format!("Failed to read remote file: {}", e))?;
-//         let file_name = entry.file_name().to_string_lossy().to_string();
-//         let file_content = fs::read_to_string(entry.path()).map_err(|e| format!("Failed to read {}: {}", file_name, e))?;
+    let file = File::create(&backup_file_path)
+        .map_err(|e| format!("Failed to create backup file: {}", e))?;
+    let mut zip = zip::ZipWriter::new(file);
 
-//         zip.start_file(format!("remotes/{}", file_name), Default::default()).unwrap();
-//         zip.write_all(file_content.as_bytes()).unwrap();
-//     }
+    let options: FileOptions<'_, ()> = FileOptions::<'static, ()>::default().compression_method(zip::CompressionMethod::Stored);
 
-//     zip.finish().map_err(|e| format!("Failed to finish zip archive: {}", e))?;
+    // === settings.json ===
+    let store_path = state.config_dir.join("settings.json");
+    if store_path.exists() {
+        zip.start_file("settings.json", options)
+            .map_err(|e| format!("Failed to add settings.json to zip: {}", e))?;
+        let store_data = fs::read(&store_path)
+            .map_err(|e| format!("Failed to read settings.json: {}", e))?;
+        zip.write_all(&store_data)
+            .map_err(|e| format!("Failed to write settings.json to zip: {}", e))?;
+    }
 
-//     Ok(export_path)
-// }
+    // === Remotes ===
+    let remotes_dir = state.config_dir.join("remotes");
+    if remotes_dir.exists() {
+        for entry in fs::read_dir(remotes_dir)
+            .map_err(|e| format!("Failed to read remotes directory: {}", e))?
+        {
+            let entry = entry.map_err(|e| format!("Error reading file entry: {}", e))?;
+            let path = entry.path();
 
-// #[tauri::command]
-// pub async fn import_settings<R: Runtime>(
-//     archive_path: PathBuf,
-//     state: State<'_, SettingsState<R>>,
-// ) -> Result<(), String> {
-//     let mut zip = zip::ZipArchive::new(File::open(&archive_path).map_err(|e| format!("Failed to open zip file: {}", e))?)
-//         .map_err(|e| format!("Failed to read zip archive: {}", e))?;
+            if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                let filename = path.file_name().unwrap().to_string_lossy();
+                zip.start_file(format!("remotes/{}", filename), options)
+                    .map_err(|e| format!("Failed to add remote '{}': {}", filename, e))?;
 
-//     for i in 0..zip.len() {
-//         let mut file = zip.by_index(i).map_err(|e| format!("Failed to access file in zip: {}", e))?;
-//         let outpath = state.config_dir.join(file.name());
+                let content = fs::read(&path)
+                    .map_err(|e| format!("Failed to read remote '{}': {}", filename, e))?;
+                zip.write_all(&content)
+                    .map_err(|e| format!("Failed to write remote '{}': {}", filename, e))?;
+            }
+        }
+    }
 
-//         if file.is_dir() {
-//             fs::create_dir_all(&outpath).map_err(|e| format!("Failed to create directory: {}", e))?;
-//         } else {
-//             let mut outfile = File::create(&outpath).map_err(|e| format!("Failed to create file: {}", e))?;
-//             io::copy(&mut file, &mut outfile).map_err(|e| format!("Failed to write file: {}", e))?;
-//         }
-//     }
+    zip.finish()
+        .map_err(|e| format!("Failed to finish writing zip: {}", e))?;
 
-//     Ok(())
-// }
+    Ok(backup_file_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub async fn restore_settings(
+    backup_path: &Path,
+    state: State<'_, SettingsState<tauri::Wry>>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let file = File::open(backup_path).map_err(|e| format!("Failed to open backup file: {}", e))?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Failed to read zip archive: {}", e))?;
+
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).map_err(|e| format!("Failed to access file in archive: {}", e))?;
+        let out_path = match file.name() {
+            "settings.json" => state.config_dir.join("settings.json"),
+            name if name.starts_with("remotes/") => {
+                let remote_name = name.trim_start_matches("remotes/");
+                let remote_config_dir = state.config_dir.join("remotes");
+                let remote_config_path = remote_config_dir.join(remote_name);
+                create_dir_all(&remote_config_dir).map_err(|e| format!("Failed to create remote config directory: {}", e))?;
+                remote_config_path
+            }
+            _ => continue,
+        };
+
+        let mut out_file = File::create(out_path).map_err(|e| format!("Failed to create output file: {}", e))?;
+        std::io::copy(&mut file, &mut out_file).map_err(|e| format!("Failed to copy file content: {}", e))?;
+    }
+
+    app_handle.emit("remote_presence_changed", json!({})).ok();
+    app_handle.emit("system_settings_changed", json!({})).ok();
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn reset_settings(
+    state: State<'_, SettingsState<tauri::Wry>>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let default_settings = AppSettings::default();
+    let default_settings_value = serde_json::to_value(default_settings)
+        .map_err(|e| format!("Failed to serialize default settings: {}", e.to_string()))?;
+    save_settings(state, default_settings_value, app_handle.clone()).await?;
+
+    app_handle.emit("remote_presence_changed", json!({})).ok();
+    app_handle.emit("system_settings_changed", json!({})).ok();
+    Ok(())
+}

@@ -27,6 +27,7 @@ import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { SettingsService } from "../../services/settings.service";
+import { MatIconModule } from "@angular/material/icon";
 
 @Component({
   selector: "app-remote-config-modal",
@@ -41,6 +42,7 @@ import { SettingsService } from "../../services/settings.service";
     MatSlideToggleModule,
     MatChipsModule,
     MatTooltipModule,
+    MatIconModule,
   ],
   templateUrl: "./remote-config-modal.component.html",
   styleUrl: "./remote-config-modal.component.scss",

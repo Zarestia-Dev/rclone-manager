@@ -4,12 +4,13 @@ import { Component, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
 
 @Component({
     selector: 'app-keyboard-shortcuts-modal',
-    imports: [CommonModule, MatTableModule, MatFormFieldModule, MatInputModule, FormsModule],
+    imports: [CommonModule, MatTableModule, MatIconModule, MatFormFieldModule, MatInputModule, FormsModule],
     templateUrl: './keyboard-shortcuts-modal.component.html',
     styleUrl: './keyboard-shortcuts-modal.component.scss',
     animations: [

@@ -2,7 +2,7 @@ use log::info;
 use tauri::{
     image::Image,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, Runtime,
+    AppHandle, Manager
 };
 
 use super::menu::create_tray_menu;

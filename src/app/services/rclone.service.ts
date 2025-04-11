@@ -45,6 +45,14 @@ export class RcloneService {
       });
   }
 
+  selectFile(): Promise<string> {
+    return invoke<string>("get_file_location").catch((err) => {
+      console.error("Failed to open file picker:", err);
+      this.alertModal("Error", err);
+      return Promise.reject(err);
+    });
+  }
+
   /** Get all available remote types */
   async getRemoteTypes(): Promise<{ name: string; description: string }[]> {
     try {
@@ -95,7 +103,8 @@ export class RcloneService {
 
   async getRemotes(): Promise<string[]> {
     try {
-      return await invoke<string[]>("get_remotes");
+      // return await invoke<string[]>("get_remotes");
+      return await invoke<string[]>("get_cached_remotes");
     } catch (error) {
       console.error("Failed to fetch remotes:", error);
       return [];
@@ -124,7 +133,7 @@ export class RcloneService {
   async getAllRemoteConfigs(): Promise<Record<string, any>> {
     try {
       console.log("Fetching all remote configs");
-      return await invoke<Record<string, any>>("get_all_remote_configs");
+      return await invoke<Record<string, any>>("get_configs"); // ✅ Updated to use get_configs
     } catch (error) {
       console.error("Failed to fetch all remote configs:", error);
       return {};
@@ -232,63 +241,40 @@ export class RcloneService {
     }
   }
 
-  /** Add a new mount configuration */
-  async addMount(
-    remote: string,
-    mountPoint: string,
-    options?: string
+  async startSync(
+    source: string,
+    destination: string,
+    syncOptions: Record<string, any>,
+    filterOptions: Record<string, any>
   ): Promise<void> {
     try {
-      await invoke("add_mount", { remote, mount_point: mountPoint, options });
-      console.log("Mount config added");
+      return await invoke("start_sync", {
+        source : source,
+        destination : destination,
+        syncOptions: syncOptions,
+        filterOptions: filterOptions,
+      });
     } catch (error) {
-      console.error("Failed to add mount config:", error);
+      console.error("Sync failed:", error);
     }
   }
 
-  /** Remove a mount configuration */
-  async removeMount(remote: string): Promise<void> {
-    try {
-      await invoke("remove_mount", { remote });
-      console.log("Mount config removed");
-    } catch (error) {
-      console.error("Failed to remove mount config:", error);
-    }
-  }
-
-  async saveMountConfig(
-    remote: string,
-    mountPath: string,
-    options: Record<string, any>
+  async startCopy(
+    source: string,
+    destination: string,
+    copyOptions: Record<string, any>,
+    filterOptions: Record<string, any>
   ): Promise<void> {
-    console.log(
-      "Saving mount config for",
-      remote,
-      "at",
-      mountPath,
-      "with options:",
-      options
-    );
-
-    await invoke("save_mount_config", {
-      remote: remote,
-      mountPath: mountPath,
-      options: options,
-    }).catch((error) => {
-      console.error(`Error saving mount config for ${remote}:`, error);
+    return await (invoke("start_copy", {
+      source: source,
+      destination: destination,
+      copyOptions: copyOptions,
+      filterOptions: filterOptions,
+    }) as Promise<void>).catch((error) => {
+      console.error("Copy failed:", error);
     });
   }
 
-  async getSavedMountConfig(remoteName: string): Promise<any> {
-    try {
-      return await invoke<any>("get_saved_mount_config", {
-        remote: remoteName,
-      });
-    } catch (error) {
-      console.error("Error fetching mount config for", remoteName, ":", error);
-      return null;
-    }
-  }
 
   // Get Flags
 

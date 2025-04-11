@@ -11,38 +11,104 @@
     <!-- Sidebar Toggle Button -->
     <div class="sticky-sidebar-button">
       <button class="toggle-sidebar" (click)="sidenav.toggle()">
-        <img src="assets/icons/titlebar/menu-bar.svg" class="icons icon-bw" />
+        <mat-icon svgIcon="menu-bar"></mat-icon>
       </button>
+    </div>
+
+    <!-- Ellipsis Vertical Button -->
+    <div class="ellipsis-button-container" *ngIf="selectedRemote">
+      <button matButton class="ellipsis-button" [matMenuTriggerFor]="remoteOptionsMenu">
+        <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+      </button>
+      <mat-menu #remoteOptionsMenu="matMenu">
+        <!-- ✅ Show in Tray Menu (Toggle) -->
+        <button mat-menu-item (click)="$event.stopPropagation()">
+          <mat-slide-toggle [checked]="getRemoteSettingValue(selectedRemote.remoteSpecs.name, 'show_in_tray_menu')"
+            (change)="saveRemoteSettings(selectedRemote.remoteSpecs.name, {
+              show_in_tray_menu: $event.checked
+            })">
+            <p style="font-size: 16px; font-weight: 600;">Show in Tray Menu</p>
+          </mat-slide-toggle>
+        </button>
+
+        <mat-divider></mat-divider>
+
+        <!-- ✅ Remote Actions -->
+        <button mat-menu-item>
+          <span>View Logs</span>
+        </button>
+        <button mat-menu-item>
+          <span>Export Configuration</span>
+        </button>
+        <button mat-menu-item (click)="resetRemoteSettings()">
+          <span>Reset Settings</span>
+        </button>
+
+        <mat-divider></mat-divider>
+
+        <!-- ❌ Delete Remote (Destructive Action) -->
+        <button mat-menu-item class="delete-option" (click)="deleteRemoteByName()">
+          <span>Delete Remote</span>
+        </button>
+      </mat-menu>
+
     </div>
 
 
     <!-- Add Remote Dialog -->
     <div class="add-remote" *ngIf="remotes.length === 0">
-      <img src="../../assets/rclone-2.svg" alt="RClone Manager Secondary Icon" />
+      <mat-icon svgIcon="rclone-2"
+        style="width: 100%; min-height: 100px; height: 200px; margin-bottom: 20px;"></mat-icon>
       <h2>RClone Manager</h2>
-      <p>Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for a fast and simple setup.</p>
+      <p>Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for a fast and simple setup.
+      </p>
       <button (click)="openQuickAddRemoteModal()" class="secondary">
-        <img src="assets/icons/add-white.svg" class="icon" /> Add Quick Remote
+        <mat-icon svgIcon="add"></mat-icon>
+        Add Quick Remote
       </button>
       <button (click)="openRemoteConfigModal()" class="secondary">
-        <img src="assets/icons/add-white.svg" class="icon" /> Add Detailed Remote
+        <mat-icon svgIcon="add"></mat-icon> Add Detailed Remote
       </button>
     </div>
 
-    <!-- Overview -->
-    <app-overview *ngIf="remotes.length > 0 && !selectedRemote" [remotes]="remotes" [selectedRemote]="selectedRemote"
-      (remoteSelected)="selectRemote($event)" (mountRemote)="mountRemote($event)"
+    <app-mount-overview *ngIf="currentTab === 'mount' && remotes.length > 0 && !selectedRemote" [remotes]="remotes"
+      [selectedRemote]="selectedRemote" (remoteSelected)="selectRemote($event)" (mountRemote)="mountRemote($event)"
       (openInFiles)="openRemoteInFiles($event)" style="width: 100%;">
-    </app-overview>
+    </app-mount-overview>
+
+    <!-- Sync Overview -->
+    <app-sync-overview *ngIf="currentTab === 'sync' && remotes.length > 0 && !selectedRemote" style="width: 100%;">
+    </app-sync-overview>
+
+    <!-- Copy Overview -->
+    <app-copy-overview *ngIf="currentTab === 'copy' && remotes.length > 0 && !selectedRemote" style="width: 100%;">
+    </app-copy-overview>
+
+    <!-- Jobs Overview -->
+    <app-jobs-overview *ngIf="currentTab === 'jobs' && remotes.length > 0 && !selectedRemote" style="width: 100%;">
+    </app-jobs-overview>
 
 
     <!-- Remote Details (Show When a Remote is Selected) -->
-    <app-remote-detail *ngIf="selectedRemote" [selectedRemote]="selectedRemote" [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
+    <app-mount-detail *ngIf="selectedRemote && currentTab === 'mount'" [selectedRemote]="selectedRemote"
+      [remoteSettings]="loadRemoteMountSettings(selectedRemote.remoteSpecs.name)"
       (openInFiles)="openRemoteInFiles($event)" (mountRemote)="mountRemote($event)"
-      (unmountRemote)="unmountRemote($event)" (deleteRemote)="deleteRemote($event)"
-      (saveRemoteSettings)="saveRemoteSettings($event.remoteName, $event.settings)"
+      (unmountRemote)="unmountRemote($event)"
       (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)" style="width: 100%;">
-    </app-remote-detail>
+    </app-mount-detail>
+
+    <app-sync-detail *ngIf="selectedRemote && currentTab === 'sync'" [selectedRemote]="selectedRemote"
+      [remoteSettings]="loadRemoteSyncSettings(selectedRemote.remoteSpecs.name)" style="width: 100%;">
+    </app-sync-detail>
+
+    <app-copy-detail *ngIf="selectedRemote && currentTab === 'copy'" [selectedRemote]="selectedRemote"
+      [remoteSettings]="loadRemoteCopySettings(selectedRemote.remoteSpecs.name)" style="width: 100%;">
+    </app-copy-detail>
+
+    <app-job-detail *ngIf="selectedRemote && currentTab === 'jobs'" [selectedRemote]="selectedRemote"
+      style="width: 100%;">
+    </app-job-detail>
+
 
 
   </mat-sidenav-content>

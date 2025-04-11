@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
 
 @Component({
@@ -9,6 +10,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
     CommonModule,
     MatSidenavModule,
     MatCardModule,
+    MatIconModule,
   ],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss'

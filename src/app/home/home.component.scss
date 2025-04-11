@@ -13,6 +13,23 @@
     display: flex;
     justify-content: center;
 
+    .ellipsis-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      right: 20px;
+      top: 10px;
+      padding: 10px;
+      cursor: pointer;
+      border-radius: 50%;
+      color: var(--app-text-color);
+  
+      &.hover {
+        background-color: var(--hover-color);
+      }
+    }
+
     .add-remote {
       display: flex;
       flex-direction: column;
@@ -44,6 +61,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        color: var(--app-text-color);
 
         &:hover {
           background: var(--hover-color);

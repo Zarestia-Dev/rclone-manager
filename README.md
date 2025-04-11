@@ -16,20 +16,7 @@ Rclone Manager is a **cross-platform (For Now Only Linux) GUI application** desi
 ---
 
 ## 📸 Screenshots  
-
-<details>
-  <summary>Click to expand screenshots 📷</summary>
-
-### Home Screen  
-<img src="assets/home.png" alt="Home Screen With Remotes" width="500">  
-<img src="assets/home-no-remote.png" alt="Home Screen With No Remotes" width="500">  
-
-### Add Remote  
-<img src="assets/quick-remote-add-modal.png" alt="Quick Add Remote" width="500">  
-<img src="assets/advanced-remote-add-modal.png" alt="Advanced Add Remote" width="500">  
-
-🚧 *More screenshots coming soon!*
-</details>
+*** Soon... ***
 
 
 ---

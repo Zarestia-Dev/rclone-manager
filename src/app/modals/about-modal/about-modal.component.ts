@@ -5,11 +5,12 @@ import { MatDialogRef } from "@angular/material/dialog";
 import { MatDividerModule } from "@angular/material/divider";
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { MatSnackBar } from "@angular/material/snack-bar";
+import { MatIconModule } from "@angular/material/icon";
 
 
 @Component({
     selector: "app-about-modal",
-    imports: [CommonModule, MatDividerModule],
+    imports: [CommonModule, MatDividerModule, MatIconModule],
     templateUrl: "./about-modal.component.html",
     styleUrl: "./about-modal.component.scss",
     animations: [

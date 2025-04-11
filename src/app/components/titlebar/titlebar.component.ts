@@ -11,17 +11,39 @@ import { KeyboardShortcutsModalComponent } from "../../modals/keyboard-shortcuts
 import { AboutModalComponent } from "../../modals/about-modal/about-modal.component";
 import { StateService } from "../../services/state.service";
 import { QuickAddRemoteComponent } from "../../modals/quick-add-remote/quick-add-remote.component";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatIconModule } from "@angular/material/icon";
 
 const appWindow = getCurrentWindow();
 
 @Component({
     selector: "app-titlebar",
-    imports: [MatMenuModule, MatDividerModule, CommonModule],
+    imports: [MatMenuModule, MatDividerModule, CommonModule, MatTooltipModule, MatIconModule],
     templateUrl: "./titlebar.component.html",
     styleUrl: "./titlebar.component.scss"
-})
-export class TitlebarComponent implements OnInit, OnDestroy {
-  constructor(private dialog: MatDialog, private stateService: StateService) {}
+  })
+  export class TitlebarComponent implements OnInit, OnDestroy {
+    constructor(private dialog: MatDialog, private stateService: StateService) {}
+    currentTab: "mount" | "sync" | "copy" | "jobs" = "mount";
+
+    ngOnInit() {
+      this.setTheme(this.selectedTheme);
+      this.stateService.currentTab$.subscribe((tab) => {
+        this.currentTab = tab;
+      });      
+    
+      // Listen for system theme changes
+      this.darkModeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      this.mediaQueryListener = (event) => {
+        if (this.selectedTheme === "system") {
+          const systemTheme = event.matches ? "dark" : "light";
+          document.documentElement.setAttribute("class", systemTheme);
+          invoke("set_theme", { theme: systemTheme });
+        }
+      };
+      this.darkModeMediaQuery.addEventListener("change", this.mediaQueryListener);
+    }
+    
 
   ngAfterViewInit() {
     // Add a keyboard shortcut for Ctrl + ,
@@ -51,6 +73,11 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
   resetRemote(): void {
     this.stateService.resetSelectedRemote();
+  }
+
+  setTab(tab: "mount" | "sync" | "copy" | "jobs") {
+    this.stateService.setTab(tab);
+    this.currentTab = tab;
   }
 
   closeWindow() {
@@ -136,20 +163,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnInit() {
-    this.setTheme(this.selectedTheme);
-
-    // Listen for system theme changes
-    this.darkModeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    this.mediaQueryListener = (event) => {
-      if (this.selectedTheme === "system") {
-        const systemTheme = event.matches ? "dark" : "light";
-        document.documentElement.setAttribute("class", systemTheme);
-        invoke("set_theme", { theme: systemTheme });
-      }
-    };
-    this.darkModeMediaQuery.addEventListener("change", this.mediaQueryListener);
-  }
 
   ngOnDestroy() {
     // Clean up the event listener

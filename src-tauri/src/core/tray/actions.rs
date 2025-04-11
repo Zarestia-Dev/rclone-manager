@@ -5,9 +5,31 @@ use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_dialog::{MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 
-use crate::{
-    core::settings::settings::get_remote_settings, rclone::api::api_command::{delete_remote, mount_remote, unmount_remote}
+use crate::rclone::api::{
+    api_command::{delete_remote, mount_remote, unmount_remote},
+    state::CACHE,
 };
+
+fn get_mount_point(settings: &serde_json::Value) -> String {
+    let remote_name = settings
+        .get("mount_options")
+        .and_then(|v| v.get("remote_name"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+
+    let default_mount_point = if cfg!(target_os = "windows") {
+        format!("C:\\Documents\\Rclone\\{}", remote_name)
+    } else {
+        format!("/tmp/{}", remote_name)
+    };
+
+    settings
+        .get("mount_options")
+        .and_then(|v| v.get("mount_point"))
+        .and_then(|v| v.as_str())
+        .unwrap_or(&default_mount_point)
+        .to_string()
+}
 
 pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
     if let Some(window) = app.get_webview_window("main") {
@@ -23,16 +45,18 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
     tauri::async_runtime::spawn(async move {
         let remote_name = remote.to_string();
 
-        let settings_result = get_remote_settings(remote_name.clone(), app_clone.state()).await;
-        if settings_result.is_err() {
-            error!("Failed to get settings for remote '{}'", remote_name);
-            return;
-        }
+        let settings_result = CACHE.settings.read().await;
 
-        let settings = settings_result.unwrap();
+        let settings_result = settings_result
+            .get(&remote_name)
+            .cloned()
+            .unwrap_or_else(|| {
+                error!("Remote {} not found in cached settings", remote_name);
+                serde_json::Value::Null
+            });
 
         // Gracefully handle optional values
-        let mount_options = settings
+        let mount_options = settings_result
             .get("mount_options")
             .and_then(|v| v.as_object())
             .map(|obj| {
@@ -41,7 +65,7 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                     .collect::<HashMap<_, _>>()
             });
 
-        let vfs_options = settings
+        let vfs_options = settings_result
             .get("vfs_options")
             .and_then(|v| v.as_object())
             .map(|obj| {
@@ -51,12 +75,7 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
             });
 
         // Optional mount_point fallback (empty string or use remote_name)
-        let mount_point = settings
-            .get("mount_options")
-            .and_then(|v| v.get("mount_point"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("/tmp/unknown") // fallback default
-            .to_string();
+        let mount_point = get_mount_point(&settings_result);
 
         let state = app_clone.state();
 
@@ -83,19 +102,17 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
 pub fn handle_unmount_remote(app: AppHandle, id: &str) {
     let remote = id.replace("unmount-", "");
     let app_clone = app.clone();
+
     tauri::async_runtime::spawn(async move {
-        let settings = get_remote_settings(remote.to_string(), app_clone.state())
-            .await
-            .unwrap();
-        let mount_point = settings
-            .get("mount_options")
-            .unwrap()
-            .get("mount_point")
-            .unwrap()
-            .as_str()
-            .unwrap();
+        let settings_result = CACHE.settings.read().await;
+        let settings = settings_result.get(&remote).cloned().unwrap_or_else(|| {
+            error!("Remote {} not found in cached settings", remote);
+            serde_json::Value::Null
+        });
+
+        let mount_point = get_mount_point(&settings);
         let state = app_clone.state();
-        match unmount_remote(app_clone.clone(), mount_point.to_string(), state).await {
+        match unmount_remote(app_clone.clone(), mount_point, state).await {
             Ok(_) => {
                 info!("Unmounted {}", remote);
             }
@@ -110,16 +127,12 @@ pub fn handle_browse_remote<R: Runtime>(app: &AppHandle<R>, id: &str) {
     let remote = id.replace("browse-", "");
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
-        let settings = get_remote_settings(remote.to_string(), app_clone.state())
-            .await
-            .unwrap();
-        let mount_point = settings
-            .get("mount_options")
-            .unwrap()
-            .get("mount_point")
-            .unwrap()
-            .as_str()
-            .unwrap();
+        let settings_result = CACHE.settings.read().await;
+        let settings = settings_result.get(&remote).cloned().unwrap_or_else(|| {
+            error!("Remote {} not found in cached settings", remote);
+            serde_json::Value::Null
+        });
+        let mount_point = get_mount_point(&settings);
 
         match app_clone.opener().open_path(mount_point, None::<&str>) {
             Ok(_) => {

@@ -1,27 +1,29 @@
     <div class="sidebar">
-      <h3>Remotes <img src="assets/icons/remotes.svg" class="icon icon-bw" /></h3>
+      <h3>Remotes <mat-icon svgIcon="remotes"></mat-icon></h3>
       <ul *ngIf="remotes.length > 0">
         <mat-card class="remote-card" *ngFor="let remote of remotes" (click)="selectRemote(remote)">
           <mat-card-content class="card-content">
             <h4>{{ remote.remoteSpecs.name }}</h4>
             <p>
-              <img src="assets/icons/remotes/{{ remote.remoteSpecs.type }}.svg" class="icon"
-                onerror="this.onerror=null;this.src='assets/icons/remotes/hard-drive.svg';" />
-              {{ remote.remoteSpecs.type }}
+              <mat-icon svgIcon="{{ remote.remoteSpecs.type }}"></mat-icon>
+              {{ remote.remoteSpecs.type | titlecase }}
             </p>
             <ng-container *ngIf="remote.mounted === true">
               <p class="mounted">
-                <img src="assets/icons/mounted-green.svg" class="icon" />Mounted
+                <mat-icon svgIcon="mount"></mat-icon>
+                Mounted
               </p>
             </ng-container>
             <ng-container *ngIf="remote.mounted === false">
               <p class="not-mounted">
-                <img src="assets/icons/circle-xmark-orange.svg" class="icon" />Not Mounted
+                
+                <mat-icon svgIcon="circle-xmark"></mat-icon> Not Mounted
               </p>
             </ng-container>
             <ng-container *ngIf="remote.mounted === null || remote.mounted === undefined">
               <p class="error">
-                <img src="assets/icons/circle-exclamation-red.svg" class="icon" />Error
+                <mat-icon svgIcon="circle-exclamation"></mat-icon>
+                Error
               </p>
             </ng-container>
           </mat-card-content>

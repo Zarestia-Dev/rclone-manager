@@ -1,13 +1,19 @@
 <div class="preferences-modal">
   <!-- 🔹 Modal Header -->
   <div class="modal-header" data-tauri-drag-region>
-    <button><img src="assets/icons/titlebar/search.svg" class="icon icon-bw" /></button>
+    <button>
+      <mat-icon svgIcon="search"></mat-icon>
+    </button>
     <div class="tabs">
       <button *ngFor="let tab of tabs; let i = index" (click)="selectTab(i)" [class.active]="selectedTabIndex === i">
-        <img src="assets/icons/{{tab.icon}}" class="icon icon-bw" />{{ tab.label }}
+        
+        <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
+        {{ tab.label }}
       </button>
     </div>
-    <button (click)="close()"><img src="assets/icons/circle-xmark.svg" class="icon icon-bw" /></button>
+    <button (click)="close()">
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    </button>
   </div>
 
   <!-- 🔹 Modal Content -->
@@ -27,38 +33,46 @@
                 <div class="setting-control">
                   <!-- ✅ Boolean Settings (Toggle) -->
                   <mat-slide-toggle *ngIf="meta.value_type === 'bool'" [(ngModel)]="settings[category][key]"
-                  (change)="updateSetting(category, key, settings[category][key])">
+                    (change)="updateSetting(category, key, settings[category][key])">
                   </mat-slide-toggle>
 
                   <!-- ✅ Number Input -->
                   <mat-form-field class="input-field" appearance="outline" *ngIf="meta.value_type === 'number'">
-                  <input matInput type="number" min="1" [(ngModel)]="settings[category][key]"
-                    (blur)="updateSetting(category, key, settings[category][key])"
-                    #numberInput="ngModel" required />
-                  <mat-error *ngIf="numberInput.invalid && numberInput.touched">
-                    Only numbers!
-                  </mat-error>
+                    <input matInput type="number" min="1" [(ngModel)]="settings[category][key]"
+                      (blur)="updateSetting(category, key, settings[category][key])" #numberInput="ngModel" required />
+                    <mat-error *ngIf="numberInput.invalid && numberInput.touched">
+                      Only numbers!
+                    </mat-error>
                   </mat-form-field>
 
                   <!-- ✅ String Settings -->
                   <mat-form-field class="input-field" appearance="outline" *ngIf="meta.value_type === 'string'">
-                  <!-- ✅ Dropdown (Mat Select) -->
-                  <mat-select *ngIf="key === 'default_mount_type'" [(ngModel)]="settings[category][key]"
-                    (selectionChange)="updateSetting(category, key, settings[category][key])">
-                    <mat-option value="native">Native</mat-option>
-                    <mat-option value="systemd">Systemd</mat-option>
-                  </mat-select>
+                    <!-- ✅ Dropdown (Mat Select) -->
+                    <mat-select *ngIf="key === 'default_mount_type'" [(ngModel)]="settings[category][key]"
+                      (selectionChange)="updateSetting(category, key, settings[category][key])">
+                      <mat-option value="native">Native</mat-option>
+                      <mat-option value="systemd">Systemd</mat-option>
+                    </mat-select>
 
-                  <input *ngIf="key !== 'default_mount_type'" matInput [(ngModel)]="settings[category][key]"
-                    (input)="updateSetting(category, key, settings[category][key])"
-                    #stringInput="ngModel" required />
+                    <input *ngIf="key !== 'default_mount_type'" matInput [(ngModel)]="settings[category][key]"
+                      (input)="updateSetting(category, key, settings[category][key])" #stringInput="ngModel" required />
                   </mat-form-field>
                 </div>
               </ng-container>
+
+
             </div>
           </div>
         </div>
       </ng-container>
+    </ng-container>
+    <ng-container *ngIf="selectedTab === 'general'">
+      <div class="app-backup">
+        <p><strong>App Backup & Reset</strong></p>
+        <button mat-raised-button class="primary" (click)="backupSettings()">Backup Settings & Remotes</button>
+        <button mat-raised-button class="edit" (click)="restoreSettings()">Restore Settings & Remotes</button>
+        <button mat-raised-button class="secondary" (click)="resetSettings()">Reset Settings</button>
+      </div>
     </ng-container>
   </div>
 </div>

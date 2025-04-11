@@ -4,14 +4,14 @@ use std::error::Error;
 
 use crate::RcloneState;
 
-use super::state::get_rclone_api_url_global;
+use super::state::RCLONE_STATE;
 
 
 async fn fetch_rclone_options(
     endpoint: &str,
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error>> {
-    let url = format!("{}/options/{}", get_rclone_api_url_global(), endpoint);
+    let url = format!("{}/options/{}", RCLONE_STATE.get_api().0, endpoint);
 
     let response = state
         .client

@@ -11,30 +11,41 @@
       </button>
     </mat-menu>
     <button mat-icon-button class="add-button" [matMenuTriggerFor]="addRemoteMenu">
-      <img src="assets/icons/titlebar/add.svg" class="icon icon-bw" />
+      <mat-icon svgIcon="add"></mat-icon>
     </button>
     <button (click)="resetRemote()">
-      <img src="assets/rclone_symbolic.svg" alt="RClone Manager Logo" class="logo icon-bw" />
-    <span class="title">RClone Manager</span>
+      <mat-icon svgIcon="rclone-symbolic" alt="RClone Manager Logo" class="logo"></mat-icon>
+    </button>
+  </div>
+
+  <div class="center-section">
+    <button mat-icon-button matTooltip="Mount" (click)="setTab('mount')" [class.active]="currentTab === 'mount'">
+      <mat-icon svgIcon="mount"></mat-icon>
+    </button>
+    <button mat-icon-button matTooltip="Sync" (click)="setTab('sync')" [class.active]="currentTab === 'sync'">
+      <mat-icon svgIcon="sync"></mat-icon>
+    </button>
+    <button mat-icon-button matTooltip="Copy" (click)="setTab('copy')" [class.active]="currentTab === 'copy'">
+      <mat-icon svgIcon="copy"></mat-icon>
+    </button>
+    <button mat-icon-button matTooltip="Jobs" (click)="setTab('jobs')" [class.active]="currentTab === 'jobs'">
+      <mat-icon svgIcon="jobs"></mat-icon>
     </button>
   </div>
 
 
   <div class="right-section">
-    <button mat-icon-button>
-      <img src="assets/icons/titlebar/search.svg" class="icon icon-bw" />
-    </button>
     <button mat-icon-button [matMenuTriggerFor]="menu">
-      <img src="assets/icons/titlebar/menu-bar.svg" class="icons icon-bw" />
+      <mat-icon svgIcon="menu-bar"></mat-icon>
     </button>
     <button mat-icon-button (click)="minimizeWindow()">
-      <img src="assets/icons/titlebar/remove.svg" class="icons icon-bw" />
+      <mat-icon svgIcon="remove"></mat-icon>
     </button>
     <button mat-icon-button (click)="maximizeWindow()">
-      <img src="assets/icons/titlebar/check_box.svg" class="icons icon-bw" />
+      <mat-icon svgIcon="check_box"></mat-icon>
     </button>
     <button mat-icon-button (click)="closeWindow()">
-      <img src="assets/icons/titlebar/close.svg" class="icons icon-bw" />
+      <mat-icon svgIcon="close"></mat-icon>
     </button>
   </div>
 
@@ -42,17 +53,17 @@
     <div class="theme-selector">
       <button mat-icon-button class="theme-button system" [class.selected]="selectedTheme === 'system'"
         (click)="$event.stopPropagation(); setTheme('system')">
-        <img src="assets/icons/circle-check-blue.svg" *ngIf="selectedTheme === 'system'" class="icon checkmark" />
+        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'system'" class="icon checkmark"></mat-icon>
       </button>
 
       <button mat-icon-button class="theme-button light" [class.selected]="selectedTheme === 'light'"
         (click)="$event.stopPropagation(); setTheme('light')">
-        <img src="assets/icons/circle-check-blue.svg" *ngIf="selectedTheme === 'light'" class="icon checkmark" />
+        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'light'" class="icon checkmark"></mat-icon>
       </button>
 
       <button mat-icon-button class="theme-button dark" [class.selected]="selectedTheme === 'dark'"
         (click)="$event.stopPropagation(); setTheme('dark')">
-        <img src="assets/icons/circle-check-blue.svg" *ngIf="selectedTheme === 'dark'" class="icon checkmark" />
+        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'dark'" class="icon checkmark"></mat-icon>
       </button>
     </div>
 

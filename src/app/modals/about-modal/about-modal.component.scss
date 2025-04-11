@@ -21,6 +21,9 @@
       justify-content: flex-end;
       align-items: center;
       gap: 10px;
+      .close-btn {
+        color: var(--app-text-color);
+      }
     }
   }
 
@@ -112,7 +115,6 @@
       align-items: center;
       padding: 10px;
       width: calc(100% - 20px);
-      
     }
 
     .credits {

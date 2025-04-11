@@ -1,5 +1,11 @@
-use crate::{ core::settings::settings::get_remote_settings, rclone::api::api_query::{get_mounted_remotes, get_remotes}, RcloneState};
-use log::error;
+use crate::{
+    rclone::api::{
+        api_query::get_mounted_remotes,
+        state::{get_cached_remotes, get_settings},
+    },
+    RcloneState,
+};
+use log::{error, warn};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
@@ -11,7 +17,6 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
     app: &AppHandle<R>,
     max_tray_items: usize,
 ) -> tauri::Result<Menu<R>> {
-
     let max_tray_items = if max_tray_items == 0 {
         OLD_MAX_TRAY_ITEMS.load(Ordering::Relaxed)
     } else {
@@ -19,7 +24,6 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
         max_tray_items
     };
 
-    println!("Max tray items: {}", max_tray_items);
     let handle = app.clone();
     let separator = PredefinedMenuItem::separator(&handle)?;
     let show_app_item = MenuItem::with_id(&handle, "show_app", "Show App", true, None::<&str>)?;
@@ -29,7 +33,11 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
     let quit_item = MenuItem::with_id(&handle, "quit", "Quit", true, None::<&str>)?;
 
     let rclone_state = app.state::<RcloneState>();
-    let remotes = get_remotes(rclone_state.clone()).await;
+    let remotes = get_cached_remotes().await.unwrap_or_else(|err| {
+        error!("Failed to fetch cached remotes: {}", err);
+        vec![]
+    });
+
     let mounted_remotes = match get_mounted_remotes(rclone_state).await {
         Ok(remotes) => remotes,
         Err(err) => {
@@ -40,8 +48,15 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
 
     let mut remote_menus = vec![];
 
-    for remote in remotes.iter().flatten().take(max_tray_items) {
-        if let Ok(settings) = get_remote_settings(remote.to_string(), app.state()).await {
+    let cached_settings = get_settings().await.unwrap_or_else(|_| {
+        error!("Failed to fetch cached settings");
+        serde_json::Value::Null
+    });
+
+    for remote in remotes.iter().take(max_tray_items) {
+        let settings = cached_settings.get(remote).cloned();
+
+        if let Some(settings) = settings {
             if settings
                 .get("show_in_tray_menu")
                 .and_then(|v| v.as_bool())
@@ -102,9 +117,15 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                 submenu_items.push(Box::new(browse_item));
                 submenu_items.push(Box::new(delete_item));
 
+                let name = if remote.len() > 20 {
+                    format!("{}...", &remote[..17])
+                } else {
+                    remote.clone()
+                };
+                
                 let remote_submenu = Submenu::with_items(
                     &handle,
-                    &format!("{} {}", remote, if is_mounted { "🖴" } else { "" }),
+                    &format!("{} {}", name, if is_mounted { "🖴" } else { "" }),
                     true,
                     &submenu_items
                         .iter()
@@ -114,6 +135,8 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
 
                 remote_menus.push(remote_submenu);
             }
+        } else {
+            warn!("No cached settings found for remote: {}", remote);
         }
     }
 

@@ -1,5 +1,6 @@
 use log::{debug, error, info, warn};
 use serde_json::{json, Value};
+use serde_urlencoded;
 use std::{
     collections::HashMap,
     process::{Child, Command, Stdio},
@@ -11,11 +12,11 @@ use tauri::{command, Emitter};
 use tokio::time::sleep;
 
 use crate::{
-    rclone::api::{engine::RCLONE_PATH, state::get_rclone_oauth_port_global},
+    rclone::api::{engine::RcApiEngine, state::RCLONE_STATE},
     RcloneState,
 };
 
-use super::{api_query::get_mounted_remotes, state::get_rclone_api_url_global};
+use super::api_query::get_mounted_remotes;
 
 lazy_static::lazy_static! {
     static ref OAUTH_PROCESS: Arc<tokio::sync::Mutex<Option<Child>>> = Arc::new(tokio::sync::Mutex::new(None));
@@ -44,13 +45,7 @@ pub async fn create_remote(
     } // ✅ Guard is dropped when this scope ends
 
     // ✅ Start a new Rclone instance
-    let rclone_path = {
-        let rclone_path = RCLONE_PATH.read().unwrap();
-        if rclone_path.is_empty() {
-            return Err("Rclone path is not set.".into());
-        }
-        rclone_path.clone()
-    };
+    let rclone_path = RcApiEngine::read_rclone_path(&app);
 
     let rclone_process = Command::new(rclone_path)
         .args([
@@ -58,7 +53,7 @@ pub async fn create_remote(
             "--rc-no-auth",
             "--rc-serve",
             "--rc-addr",
-            &format!("localhost:{}", get_rclone_oauth_port_global()),
+            &format!("127.0.0.1:{}", RCLONE_STATE.get_oauth().1),
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -84,7 +79,7 @@ pub async fn create_remote(
 
     let url = format!(
         "http://localhost:{}/config/create",
-        get_rclone_oauth_port_global()
+        RCLONE_STATE.get_oauth().1
     );
 
     let response = client
@@ -99,6 +94,7 @@ pub async fn create_remote(
         .await
         .map_err(|e| format!("Failed to read response: {}", e))?;
 
+    app.emit("remote_presence_changed", &name).ok();
     // ✅ Detect OAuth errors
     if response_text.contains("failed to get oauth token") {
         return Err(
@@ -113,7 +109,6 @@ pub async fn create_remote(
         return Err("Configuration update failed due to a missing type field.".to_string());
     }
 
-    app.emit("remote_state_changed", &name).ok();
     info!("✅ Remote created successfully: {}", name);
     Ok(())
 }
@@ -129,13 +124,10 @@ pub async fn quit_rclone_oauth() -> Result<(), String> {
     }
 
     let client = reqwest::Client::new();
-    let url = format!(
-        "http://localhost:{}/core/quit",
-        get_rclone_oauth_port_global()
-    );
+    let url = format!("http://localhost:{}/core/quit", RCLONE_STATE.get_oauth().1);
 
     info!("📡 Sending quit request to Rclone OAuth process...");
-    if let Err(e) = client.post(url).send().await {
+    if let Err(e) = client.post(&url).send().await {
         error!("❌ Failed to send quit request: {}", e);
     }
 
@@ -161,7 +153,6 @@ pub async fn quit_rclone_oauth() -> Result<(), String> {
     Ok(())
 }
 
-
 /// Update an existing remote
 #[command]
 pub async fn update_remote(
@@ -171,7 +162,7 @@ pub async fn update_remote(
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
     let body = serde_json::json!({ "name": name, "parameters": parameters });
-    let url = format!("{}/config/update", get_rclone_api_url_global());
+    let url = format!("{}/config/update", RCLONE_STATE.get_api().0);
 
     state
         .client
@@ -181,7 +172,7 @@ pub async fn update_remote(
         .await
         .map_err(|e| e.to_string())?;
 
-    app.emit("remote_state_changed", name).ok();
+    app.emit("remote_presence_changed", name).ok();
     Ok(())
 }
 
@@ -196,14 +187,14 @@ pub async fn delete_remote(
         .client
         .post(format!(
             "{}/config/delete?name={}",
-            get_rclone_api_url_global(),
+            RCLONE_STATE.get_api().0,
             name
         ))
         .send()
         .await
         .map_err(|e| e.to_string())?;
 
-    app.emit("remote_state_changed", name).ok();
+    app.emit("remote_presence_changed", name).ok();
     Ok(())
 }
 
@@ -243,7 +234,7 @@ pub async fn mount_remote(
         return Ok(()); // Exit early if already mounted
     }
 
-    let url = format!("{}/mount/mount", get_rclone_api_url_global());
+    let url = format!("{}/mount/mount", RCLONE_STATE.get_api().0);
 
     // Build JSON payload
     let mut payload = json!({
@@ -285,9 +276,9 @@ pub async fn mount_remote(
         .await
         .unwrap_or_else(|_| "No response body".to_string());
 
+    app.emit("remote_state_changed", remote_name).ok();
     if status.is_success() {
         debug!("✅ Mount request successful: {}", body);
-        app.emit("remote_state_changed", remote_name).ok();
         Ok(())
     } else {
         Err(format!(
@@ -308,7 +299,7 @@ pub async fn unmount_remote(
         return Err("Empty mount point provided".to_string());
     }
 
-    let url = format!("{}/mount/unmount", get_rclone_api_url_global());
+    let url = format!("{}/mount/unmount", RCLONE_STATE.get_api().0);
     let params = serde_json::json!({ "mountPoint": mount_point });
 
     debug!("Attempting to unmount: {}", mount_point);
@@ -324,9 +315,9 @@ pub async fn unmount_remote(
             format!("Failed to connect to rclone API: {}", e)
         })?;
 
+    app.emit("remote_state_changed", mount_point).ok();
     if response.status().is_success() {
         info!("Successfully unmounted {}", mount_point);
-        app.emit("remote_state_changed", mount_point).ok();
         Ok(format!("Successfully unmounted {}", mount_point))
     } else {
         let status = response.status();
@@ -340,59 +331,133 @@ pub async fn unmount_remote(
 pub async fn unmount_all_remotes(
     app: tauri::AppHandle,
     state: tauri::State<'_, RcloneState>,
-) -> Result<(usize, usize), String> {
-    // Step 1: Get the list of mounted remotes
-    let mounts = match get_mounted_remotes(state.clone()).await {
-        Ok(mounts) => mounts,
-        Err(e) => {
-            error!("Failed to list mounts: {}", e);
-            return Err(format!("Could not retrieve mount list: {}", e));
-        }
-    };
+) -> Result<String, String> {
+    let url = format!("{}/mount/unmountall", RCLONE_STATE.get_api().0);
+    let params = serde_json::json!({});
+    debug!("Attempting to unmount all remotes");
+    let response = state
+        .client
+        .post(&url)
+        .json(&params)
+        .send()
+        .await
+        .map_err(|e| {
+            error!("Network error unmounting all remotes: {}", e);
+            format!("Failed to connect to rclone API: {}", e)
+        })?;
+    app.emit("remote_state_changed", "all").ok();
+    if response.status().is_success() {
+        info!("Successfully unmounted all remotes");
+        Ok("Successfully unmounted all remotes".to_string())
+    } else {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        error!("Failed to unmount all remotes: {} - {}", status, body);
+        Err(format!("Rclone API error: {} - {}", status, body))
+    }
+}
 
-    let total_mounts = mounts.len();
-    if total_mounts == 0 {
-        debug!("No mounts found to unmount");
-        return Ok((0, 0));
+#[derive(Debug, serde::Deserialize)]
+struct SyncJobResponse {
+    jobid: String,
+}
+
+#[command]
+pub async fn start_sync(
+    source: &str,
+    dest: &str,
+    sync_options: Option<HashMap<String, serde_json::Value>>,
+    filter_options: Option<HashMap<String, serde_json::Value>>,
+    state: State<'_, RcloneState>,
+) -> Result<String, String> {
+    let mut query_params = vec![
+        ("srcFs", source.to_string()),
+        ("dstFs", dest.to_string()),
+        ("_async", "true".to_string()),
+    ];
+
+    if let Some(sync_opts) = sync_options {
+        query_params.push((
+            "_config",
+            serde_json::to_string(&sync_opts).map_err(|e| e.to_string())?,
+        ));
     }
 
-    info!("Found {} mounts to unmount", total_mounts);
-
-    // Step 2: Unmount each one with proper error handling
-    let mut success_count = 0;
-    let mut errors = Vec::new();
-
-    for mount in mounts {
-        let mount_point = mount.mount_point.clone();
-        debug!("Unmounting {}", mount_point);
-
-        match unmount_remote(app.clone(), mount_point.clone(), state.clone()).await {
-            Ok(_) => {
-                success_count += 1;
-                info!("Successfully unmounted {}", mount_point);
-            }
-            Err(e) => {
-                error!("Failed to unmount {}: {}", mount_point, e);
-                errors.push((mount_point, e));
-            }
-        }
-    }
-    // Step 3: Verify all mounts were successfully unmounted
-    if !errors.is_empty() {
-        let error_msg = errors
-            .iter()
-            .map(|(mp, e)| format!("{}: {}", mp, e))
-            .collect::<Vec<_>>()
-            .join(", ");
-
-        warn!("Failed to unmount some remotes: {}", error_msg);
-
-        if success_count == 0 {
-            return Err(format!("Failed to unmount any mounts: {}", error_msg));
-        }
-
-        return Ok((success_count, total_mounts));
+    if let Some(filter_opts) = filter_options {
+        query_params.push((
+            "_filter",
+            serde_json::to_string(&filter_opts).map_err(|e| e.to_string())?,
+        ));
     }
 
-    Ok((success_count, total_mounts))
+    let query_string = serde_urlencoded::to_string(query_params);
+    let query_string = query_string.map_err(|e| e.to_string())?;
+    let url = format!("{}/sync/sync?{}", RCLONE_STATE.get_api().0, query_string);
+
+    let response = state
+        .client
+        .post(&url)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .error_for_status()
+        .map_err(|e| e.to_string())? // fails if response is not 2xx
+        .json::<SyncJobResponse>()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(response.jobid)
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct CopyJobResponse {
+    jobid: String,
+}
+
+#[command]
+pub async fn start_copy(
+    source: &str,
+    dest: &str,
+    copy_options: Option<HashMap<String, serde_json::Value>>,
+    filter_options: Option<HashMap<String, serde_json::Value>>,
+    state: State<'_, RcloneState>,
+) -> Result<String, String> {
+    let mut query_params = vec![
+        ("srcFs", source.to_string()),
+        ("dstFs", dest.to_string()),
+        ("_async", "true".to_string()),
+    ];
+
+    if let Some(copy_opts) = copy_options {
+        query_params.push((
+            "_config",
+            serde_json::to_string(&copy_opts).map_err(|e| e.to_string())?,
+        ));
+    }
+
+    if let Some(filter_opts) = filter_options {
+        query_params.push((
+            "_filter",
+            serde_json::to_string(&filter_opts).map_err(|e| e.to_string())?,
+        ));
+    }
+
+    let query_string = serde_urlencoded::to_string(query_params).map_err(|e| e.to_string())?;
+    let url = format!("{}/sync/copy?{}", RCLONE_STATE.get_api().0, query_string);
+
+    let response = state
+        .client
+        .post(&url)
+        // If you want to add auth headers:
+        // .header("Authorization", "Bearer <token>")
+        .send()
+        .await
+        .map_err(|e| e.to_string())?
+        .error_for_status()
+        .map_err(|e| e.to_string())? // ensures non-2xx errors are caught
+        .json::<CopyJobResponse>()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(response.jobid)
 }

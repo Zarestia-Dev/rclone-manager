@@ -72,6 +72,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --button-background: #f5f5f5;
   --button-text: #000000;
   --button-hover: #dddddd;
+  --button-active: #cfcfcf;
   --add-button-background: #dbdbdb;
   --add-button-hover: #939090;
   --theme-border: #dbdbdb;
@@ -100,6 +101,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --button-background: #333;
   --button-text: #ffffff;
   --button-hover: #444;
+  --button-active: #555;
   --add-button-background: #444;
   --add-button-hover: #666;
   --theme-border: #555;
@@ -142,16 +144,6 @@ body {
 p, h1, h2, h3, h4, h5, h6 {
   margin-bottom: 0;
   margin-top: 0;
-
-  .icon-bw {
-    .dark & {
-      filter: invert(1);
-    }
-
-    .light & {
-      filter: invert(0);
-    }
-  }
 }
 
 button {
@@ -167,19 +159,6 @@ button {
   background-color: transparent;
   color: white;
 
-  img {
-    cursor: pointer;
-
-    &.icon-bw {
-      .dark & {
-        filter: invert(1);
-      }
-
-      .light & {
-        filter: invert(0);
-      }
-    }
-  }
 
   &.primary,
   &.mount,
@@ -242,16 +221,6 @@ button {
 
 .mat-divider {
   border-color: var(--border-color) !important;
-}
-
-.icons {
-  width: 24px;
-  height: 24px;
-}
-
-.icon {
-  width: 20px;
-  height: 20px;
 }
 
 /* Disable text selection and use default cursor */

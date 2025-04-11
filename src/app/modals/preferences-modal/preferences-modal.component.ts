@@ -10,6 +10,8 @@ import { MatDialogRef } from "@angular/material/dialog";
 import { SettingsService } from "../../services/settings.service";
 import { MatSelectModule } from "@angular/material/select";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { RcloneService } from "../../services/rclone.service";
+import { MatIconModule } from "@angular/material/icon";
 
 @Component({
   selector: "app-preferences-modal",
@@ -22,6 +24,7 @@ import { MatTooltipModule } from "@angular/material/tooltip";
     FormsModule,
     MatSelectModule,
     MatTooltipModule,
+    MatIconModule
   ],
   templateUrl: "./preferences-modal.component.html",
   styleUrl: "./preferences-modal.component.scss",
@@ -49,14 +52,15 @@ export class PreferencesModalComponent {
   metadata: any = {}; // ✅ Store metadata separately
 
   tabs = [
-    { label: "General", icon: "wrench.svg", key: "general" },
-    { label: "Core", icon: "puzzle-piece.svg", key: "core" },
-    { label: "Experimental", icon: "flask.svg", key: "experimental" },
+    { label: "General", icon: "wrench", key: "general" },
+    { label: "Core", icon: "puzzle-piece", key: "core" },
+    { label: "Experimental", icon: "flask", key: "experimental" },
   ];
 
   constructor(
     private dialogRef: MatDialogRef<PreferencesModalComponent>,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    private rcloneService: RcloneService
   ) {}
 
   async ngOnInit() {
@@ -113,5 +117,29 @@ export class PreferencesModalComponent {
 
   getObjectKeys(obj: any): string[] {
     return obj && typeof obj === "object" ? Object.keys(obj) : [];
+  }
+  
+  async backupSettings() {
+    const path = await this.rcloneService.selectFolder(false);
+    if (path) {
+      await this.settingsService.backupSettings(path);
+    }
+  }
+
+  async restoreSettings() {
+    const path = await this.rcloneService.selectFile();
+    if (path) {
+      await this.settingsService.restoreSettings(path);
+    }
+  }
+
+  async resetSettings() {
+    const confirmed = confirm(
+      "Are you sure you want to reset all settings? This action cannot be undone."
+    );
+    if (confirmed) {
+      await this.settingsService.resetSettings();
+      this.dialogRef.close();
+    }
   }
 }

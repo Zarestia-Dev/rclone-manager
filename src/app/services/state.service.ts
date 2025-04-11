@@ -7,8 +7,10 @@ import { RcloneService } from "./rclone.service";
   providedIn: "root",
 })
 export class StateService {
+  private currentTab = new BehaviorSubject<'mount' | 'sync' | 'copy' | 'jobs'>('mount');
   private selectedRemoteSource = new BehaviorSubject<any>(null);
   selectedRemote$ = this.selectedRemoteSource.asObservable();
+  currentTab$ = this.currentTab.asObservable();
 
   private remotesSubject = new BehaviorSubject<any[]>([]);
   remotes$ = this.remotesSubject.asObservable();
@@ -33,4 +35,18 @@ export class StateService {
     this.remotesSubject.next(remotes);
     console.log("Remotes updated:", remotes);
   }
+
+
+
+  setTab(tab: 'mount' | 'sync' | 'copy' | 'jobs') {
+    this.currentTab.next(tab);
+  }
+
+  getCurrentTab() {
+    // Return the current tab value
+    console.log("Current tab:", this.currentTab.value);
+    
+    return this.currentTab.value;
+  }
+
 }

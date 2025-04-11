@@ -18,6 +18,7 @@ import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { SettingsService } from "../../services/settings.service";
 import { animate, style, transition, trigger } from "@angular/animations";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatIconModule } from "@angular/material/icon";
 
 @Component({
   selector: "app-quick-add-remote",
@@ -30,6 +31,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
     MatDividerModule,
     MatSlideToggleModule,
     MatProgressSpinnerModule,
+    MatIconModule,
   ],
   templateUrl: "./quick-add-remote.component.html",
   styleUrl: "./quick-add-remote.component.scss",

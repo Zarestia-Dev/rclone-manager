@@ -3,15 +3,10 @@
   justify-content: space-between;
   align-items: center;
   height: var(--titlebar-height);
-  background: var(--secondary-background);
+  background: var(--app-background);
   color: var(--app-text-color);
   padding: 4px var(--title-bar-padding);
   border-radius: 8px 8px 0 0;
-  border-bottom: var(--titlebar-border) solid var(--border-color);
-
-  // Smooth transition for theme changes
-  transition: background 0.3s ease-in-out, color 0.3s ease-in-out,
-    border-color 0.3s ease-in-out;
 
   button {
     display: flex;
@@ -30,7 +25,7 @@
     }
   }
 
-  .left-section {
+  .left-section{
     display: flex;
     align-items: center;
     gap: 10px;
@@ -38,7 +33,6 @@
     .add-button {
       background: var(--add-button-background);
       color: var(--button-text);
-      transition: background 0.2s ease-in-out, color 0.2s ease-in-out;
 
       &:hover {
         background: var(--add-button-hover);
@@ -47,18 +41,32 @@
 
     button {
       &:hover {
-        background: var(--secondary-background);
+        background: var(--button-hover);
       }
       .logo {
-        cursor: pointer;
         width: 32px;
-        height: 32px;
+        height: 32px; 
+      }
+    }
+  }
+
+
+  .center-section {
+    display: flex;
+    align-items: center;
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+    
+    button {
+      padding-inline: 10px;
+
+      &:hover {
+        background: var(--button-hover);
       }
 
-      .title {
-        cursor: pointer;
-        font-weight: bold;
-        transition: color 0.3s ease-in-out;
+      &.active {
+        background: var(--button-active);
       }
     }
   }
@@ -85,7 +93,7 @@
   height: 50px;
   border-radius: 50%;
   border: 2px solid var(--theme-border);
-  transition: border-color 0.3s ease-in-out, background 0.3s ease-in-out;
+  color: var(--selected-border);
   display: flex;
   align-items: end;
   position: relative;

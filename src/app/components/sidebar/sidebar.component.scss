@@ -56,7 +56,15 @@
       gap: 10px;
 
       h4 {
-        font-size: 1.3rem;
+        font-size: 1.2rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px;
+        display: block;
+      }
+      p {
+        color: #8C8888;
       }
 
       .mounted {

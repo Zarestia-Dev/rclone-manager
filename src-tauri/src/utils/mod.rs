@@ -1,2 +1,2 @@
-pub mod check_rclone;
+pub mod rclone;
 pub mod file_helper;

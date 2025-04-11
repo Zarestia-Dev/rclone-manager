@@ -5,6 +5,7 @@ import { TitlebarComponent } from "./components/titlebar/titlebar.component";
 import { OnboardingComponent } from "./components/onboarding/onboarding.component";
 import { HomeComponent } from "./home/home.component";
 import { SettingsService } from "./services/settings.service";
+import { IconService } from "./services/icon.service";
 // import { RightClickDirective } from './directives/right-click.directive';
 
 @Component({
@@ -22,7 +23,7 @@ import { SettingsService } from "./services/settings.service";
 export class AppComponent {
   completedOnboarding: boolean = false; // Default to true
 
-  constructor(private settingsService: SettingsService) {
+  constructor(private settingsService: SettingsService, private iconService: IconService) {
     // Check if the onboarding has already been completed
     this.settingsService
       .loadSettings()

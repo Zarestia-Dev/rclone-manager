@@ -1,67 +1,133 @@
+use log::{debug, error};
 use once_cell::sync::Lazy;
-use tauri::Emitter;
+use serde_json::json;
 use std::sync::Mutex;
+use tauri::Manager;
+use tokio::sync::RwLock;
 
-const DEFAULT_RCLONE_API_PORT: &str = "5572";
-const DEFAULT_RCLONE_OAUTH_PORT: &str = "5580";
+use crate::core::settings::settings::get_remote_settings;
 
-// Stores the current Rclone API URL
-pub static RCLONE_API_URL: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new(String::new()));
-pub static RCLONE_API_PORT: Lazy<Mutex<u16>> = Lazy::new(|| Mutex::new(DEFAULT_RCLONE_API_PORT.parse().unwrap()));
+use super::api_query::{get_all_remote_configs, get_remotes};
 
-// Stores the current Rclone OAuth URL
-pub static RCLONE_OAUTH_URL: Lazy<Mutex<String>> = Lazy::new(|| Mutex::new(String::new()));
-pub static RCLONE_OAUTH_PORT: Lazy<Mutex<u16>> = Lazy::new(|| Mutex::new(DEFAULT_RCLONE_OAUTH_PORT.parse().unwrap()));
+#[derive(Debug)]
+pub struct RcloneState {
+    pub api_url: Mutex<String>,
+    pub api_port: Mutex<u16>,
+    pub oauth_url: Mutex<String>,
+    pub oauth_port: Mutex<u16>,
+}
 
-/// Get the Rclone API URL based on the port
-fn get_rclone_api_url(port: u16) -> String {
-    if port == 0 {
-        return format!("http://localhost:{}", DEFAULT_RCLONE_API_PORT);
+pub static RCLONE_STATE: Lazy<RcloneState> = Lazy::new(|| RcloneState {
+    api_url: Mutex::new(String::new()),
+    api_port: Mutex::new(5572),
+    oauth_url: Mutex::new(String::new()),
+    oauth_port: Mutex::new(5580),
+});
+
+impl RcloneState {
+    pub fn set_api(&self, url: String, port: u16) -> Result<(), String> {
+        *self.api_url.lock().map_err(|e| e.to_string())? = url;
+        *self.api_port.lock().map_err(|e| e.to_string())? = port;
+        Ok(())
+    }    
+
+    pub fn get_api(&self) -> (String, u16) {
+        (
+            self.api_url.lock().unwrap().clone(),
+            *self.api_port.lock().unwrap(),
+        )
     }
-    format!("http://localhost:{}", port)
-}
 
-/// Get the Rclone OAuth URL based on the port
-fn get_rclone_oauth_url(port: u16) -> String {
-    if port == 0 {
-        return format!("http://localhost:{}", DEFAULT_RCLONE_OAUTH_PORT);
+    pub fn set_oauth(&self, url: String, port: u16) -> Result<(), String> {
+        *self.oauth_url.lock().map_err(|e| e.to_string())? = url;
+        *self.oauth_port.lock().map_err(|e| e.to_string())? = port;
+        Ok(())
     }
-    format!("http://localhost:{}", port)
+
+    pub fn get_oauth(&self) -> (String, u16) {
+        (
+            self.oauth_url.lock().unwrap().clone(),
+            *self.oauth_port.lock().unwrap(),
+        )
+    }
 }
 
-/// Set the Rclone API URL globally
-pub fn set_rclone_api_url_port(
-    app_handle_clone: &tauri::AppHandle,
-    port: u16) {
-    let mut url = RCLONE_API_URL.lock().unwrap();
-    *url = get_rclone_api_url(port);
-    let mut api_port = RCLONE_API_PORT.lock().unwrap();
-    *api_port = port;
-
-    app_handle_clone
-    .emit("rclone_api_url_updated", port)
-    .unwrap();
+pub struct RemoteCache {
+    pub remotes: RwLock<Vec<String>>,
+    pub configs: RwLock<serde_json::Value>,
+    pub settings: RwLock<serde_json::Value>,
 }
 
-/// Set the Rclone OAuth URL globally
-pub fn set_rclone_oauth_url_port(port: u16) {
-    let mut url = RCLONE_OAUTH_URL.lock().unwrap();
-    *url = get_rclone_oauth_url(port);
-    let mut oauth_port = RCLONE_OAUTH_PORT.lock().unwrap();
-    *oauth_port = port;
+pub static CACHE: Lazy<RemoteCache> = Lazy::new(|| RemoteCache {
+    remotes: RwLock::new(Vec::new()),
+    configs: RwLock::new(json!({})),
+    settings: RwLock::new(json!({})),
+});
+
+impl RemoteCache {
+    // pub fn new() -> Self {
+    //     Self {
+    //         remotes: RwLock::new(Vec::new()),
+    //         configs: RwLock::new(json!({})),
+    //         settings: RwLock::new(json!({})),
+    //     }
+    // }
+
+    pub async fn refresh_remote_list(&self, app_handle: tauri::AppHandle) {
+        let mut remotes = self.remotes.write().await;
+        if let Ok(remote_list) = get_remotes(app_handle.state()).await {
+            *remotes = remote_list;
+            debug!("🔄 Updated remotes: {:?}", *remotes);
+        } else {
+            error!("Failed to fetch remotes");
+        }
+    }
+    pub async fn refresh_remote_configs(&self, app_handle: tauri::AppHandle) {
+        let mut configs = self.configs.write().await;
+        if let Ok(remote_list) = get_all_remote_configs(app_handle.state()).await {
+            *configs = remote_list;
+            debug!("🔄 Updated remotes config: {:?}", *configs);
+        } else {
+            error!("Failed to fetch remotes config");
+        }
+    }
+    pub async fn refresh_remote_settings(&self, app_handle: tauri::AppHandle) {
+        let remotes = self.remotes.read().await;
+        let mut settings = self.settings.write().await;
+
+        let mut all_settings = serde_json::Map::new();
+
+        for remote in remotes.iter() {
+            if let Ok(settings) = get_remote_settings(remote.to_string(), app_handle.state()).await
+            {
+                all_settings.insert(remote.clone(), settings);
+            } else {
+                error!("❌ Failed to fetch settings for remote: {}", remote);
+            }
+        }
+
+        *settings = serde_json::Value::Object(all_settings);
+        debug!("🔄 Updated remotes settings cache");
+    }
+
+    pub async fn refresh_all(&self, app_handle: tauri::AppHandle) {
+        self.refresh_remote_list(app_handle.clone()).await;
+        self.refresh_remote_configs(app_handle.clone()).await;
+        self.refresh_remote_settings(app_handle).await;
+    }
 }
 
-/// Get the globally stored Rclone API URL
-pub fn get_rclone_api_url_global() -> String {
-    RCLONE_API_URL.lock().unwrap().clone()
+#[tauri::command]
+pub async fn get_cached_remotes() -> Result<Vec<String>, String> {
+    Ok(CACHE.remotes.read().await.clone())
 }
 
-/// Get the globally stored Rclone API port
-pub fn get_rclone_api_port_global() -> u16 {
-    *RCLONE_API_PORT.lock().unwrap()
+#[tauri::command]
+pub async fn get_configs() -> Result<serde_json::Value, String> {
+    Ok(CACHE.configs.read().await.clone())
 }
 
-/// Get the globally stored Rclone OAuth port
-pub fn get_rclone_oauth_port_global() -> u16 {
-    *RCLONE_OAUTH_PORT.lock().unwrap()
+#[tauri::command]
+pub async fn get_settings() -> Result<serde_json::Value, String> {
+    Ok(CACHE.settings.read().await.clone())
 }

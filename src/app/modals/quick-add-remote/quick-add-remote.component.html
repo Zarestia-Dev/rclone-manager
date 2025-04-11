@@ -3,14 +3,15 @@
   <div class="modal-header" data-tauri-drag-region>
     <div class="header-content">
       <button mat-icon-button class="help-btn">
-        <img src="assets/icons/question.svg" class="icon icon-bw" />
+       
+        <mat-icon svgIcon="question"></mat-icon>
       </button>
       <p>
-        <img src="assets/icons/hard-drive.svg" class="icon icon-bw" />
+        <mat-icon svgIcon="hard-drive"></mat-icon>
         Quick Add Remote
       </p>
       <button mat-icon-button (click)="close()">
-        <img src="assets/icons/circle-xmark.svg" class="icon icon-bw" />
+        <mat-icon svgIcon="circle-xmark"></mat-icon>
       </button>
     </div>
     <mat-divider></mat-divider>
@@ -52,7 +53,7 @@
     <mat-form-field appearance="fill" *ngIf="quickAddForm.get('autoMount')?.value" @slideInOut>
       <mat-label>Mount Path</mat-label>
       <button mat-button matSuffix type="button" (click)="selectFolder()" *ngIf="quickAddForm.get('autoMount')?.value">
-        <img src="assets/icons/folder-white.svg" class="icon icon-bw" style="filter: invert(1);" />
+        <mat-icon svgIcon="folder"></mat-icon>
       </button>
       <input matInput formControlName="mountPath" id="mountPath" />
       <mat-error *ngIf="quickAddForm.get('autoMount')?.value && quickAddForm.get('mountPath')?.hasError('required')">

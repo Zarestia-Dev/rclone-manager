@@ -1,9 +1,9 @@
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::join;
 
 use crate::{
-    core::settings::settings::get_remote_settings, rclone::api::{api_command::mount_remote, api_query::get_remotes}, RcloneState
+    rclone::api::{api_command::mount_remote, api_query::get_remotes, state::get_settings}, RcloneState
 };
 
 /// Main entry point for handling startup tasks.
@@ -40,38 +40,43 @@ async fn initialize_remotes(
 
 /// Handles startup logic for an individual remote.
 async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
-    match get_remote_settings(remote_name.clone(), app_handle.state()).await {
-        Ok(settings) => {
-            let mount_options = settings.get("mount_options").cloned();
-            let vfs_options = settings.get("vfs_options").cloned();
+    let settings_result = get_settings().await;
+    let settings = settings_result
+        .ok()
+        .and_then(|settings| settings.get(&remote_name).cloned())
+        .unwrap_or_else(|| {
+            error!("Remote {} not found in cached settings", remote_name);
+            serde_json::Value::Null
+        });
 
-            if let Some(auto_mount) = mount_options
-                .as_ref()
-                .and_then(|opts| opts.get("auto_mount").and_then(|v| v.as_bool()))
-            {
-                if !auto_mount {
-                    debug!("Skipping mount for {}: auto_mount is not true", remote_name);
-                    return;
-                }
+    let mount_options = settings.get("mount_options").cloned();
+    let vfs_options = settings.get("vfs_options").cloned();
 
-                let mount_point = mount_options
-                    .as_ref()
-                    .and_then(|opts| opts.get("mount_point").and_then(|v| v.as_str()))
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| format!("/mnt/{}", remote_name));
-
-                spawn_mount_task(
-                    remote_name,
-                    mount_point,
-                    mount_options,
-                    vfs_options,
-                    app_handle,
-                );
-            }
+    if let Some(auto_mount) = mount_options
+        .as_ref()
+        .and_then(|opts| opts.get("auto_mount").and_then(|v| v.as_bool()))
+    {
+        if !auto_mount {
+            debug!("Skipping mount for {}: auto_mount is not true", remote_name);
+            return;
         }
-        Err(e) => warn!("⚠️ Failed to load settings for '{}': {}", remote_name, e),
+
+        let mount_point = mount_options
+            .as_ref()
+            .and_then(|opts| opts.get("mount_point").and_then(|v| v.as_str()))
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| format!("/mnt/{}", remote_name));
+
+        spawn_mount_task(
+            remote_name,
+            mount_point,
+            mount_options,
+            vfs_options,
+            app_handle,
+        );
     }
 }
+
 
 /// Spawns an async task to mount a remote.
 fn spawn_mount_task(

@@ -11,7 +11,8 @@ use tauri::command;
 
 use crate::RcloneState;
 
-use super::state::get_rclone_api_url_global;
+use super::state::RCLONE_STATE;
+
 
 lazy_static::lazy_static! {
     static ref OAUTH_PROCESS: Arc<tokio::sync::Mutex<Option<Child>>> = Arc::new(tokio::sync::Mutex::new(None));
@@ -21,7 +22,7 @@ lazy_static::lazy_static! {
 pub async fn get_all_remote_configs(
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = format!("{}/config/dump", get_rclone_api_url_global());
+    let url = format!("{}/config/dump", RCLONE_STATE.get_api().0);
 
     let response = state
         .client
@@ -41,7 +42,7 @@ pub async fn get_all_remote_configs(
 
 #[command]
 pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let url = format!("{}/config/listremotes", get_rclone_api_url_global());
+    let url = format!("{}/config/listremotes", RCLONE_STATE.get_api().0);
     debug!("📡 Fetching remotes from: {}", url);
 
     let response = state.client.post(url).send().await.map_err(|e| {
@@ -73,7 +74,7 @@ pub async fn get_remote_config_fields(
     remote_type: String,
     state: State<'_, RcloneState>,
 ) -> Result<Vec<Value>, String> {
-    let url = format!("{}/config/providers", get_rclone_api_url_global());
+    let url = format!("{}/config/providers", RCLONE_STATE.get_api().0);
 
     let response = state
         .client
@@ -109,7 +110,7 @@ pub async fn get_remote_config(
 ) -> Result<serde_json::Value, String> {
     let url = format!(
         "{}/config/get?name={}",
-        get_rclone_api_url_global(),
+        RCLONE_STATE.get_api().0,
         remote_name
     );
 
@@ -138,7 +139,7 @@ pub struct MountedRemote {
 pub async fn get_mounted_remotes(
     state: State<'_, RcloneState>,
 ) -> Result<Vec<MountedRemote>, String> {
-    let url = format!("{}/mount/listmounts", get_rclone_api_url_global());
+    let url = format!("{}/mount/listmounts", RCLONE_STATE.get_api().0);
 
     let response = state
         .client
@@ -187,7 +188,7 @@ pub async fn get_disk_usage(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<DiskUsage, String> {
-    let url = format!("{}/operations/about", get_rclone_api_url_global());
+    let url = format!("{}/operations/about", RCLONE_STATE.get_api().0);
 
     let response = state
         .client
@@ -268,7 +269,7 @@ pub struct RemoteProvider {
 async fn fetch_remote_providers(
     state: &State<'_, RcloneState>,
 ) -> Result<HashMap<String, Vec<RemoteProvider>>, String> {
-    let url = format!("{}/config/providers", get_rclone_api_url_global());
+    let url = format!("{}/config/providers", RCLONE_STATE.get_api().0);
 
     let response = state
         .client

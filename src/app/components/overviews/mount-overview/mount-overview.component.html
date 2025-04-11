@@ -1,0 +1,114 @@
+<div class="overview">
+    <div class="remote-header">
+        <h2>Mount Overview</h2>
+    </div>
+
+    <div class="info-card overview-card">
+        <h3>
+            <mat-icon svgIcon="remotes"></mat-icon>
+            Overview Remotes
+        </h3>
+        <mat-card class="info-card-content">
+            <mat-card-content class="overview-content">
+                <strong>Remotes Status</strong>
+                <div class="remotes-bar">
+                    <div class="bar mounted-bar" [style.width.%]="(mountedCount / remotes.length) * 100"></div>
+                    <div class="bar unmounted-bar" [style.width.%]="(unmountedCount / remotes.length) * 100"></div>
+                    <div class="bar error-bar" [style.width.%]="(errorCount / remotes.length) * 100"></div>
+                </div>
+
+                <!-- Legend -->
+                <div class="legend" *ngIf="mountedCount > 0 || unmountedCount > 0 || errorCount > 0">
+                    <div class="legend-item" *ngIf="mountedCount > 0">
+                        <span class="color-box mounted"></span>Mounted: {{ mountedCount }}
+                    </div>
+                    <div class="legend-item" *ngIf="unmountedCount > 0">
+                        <span class="color-box unmounted"></span>Unmounted: {{ unmountedCount }}
+                    </div>
+                    <div class="legend-item" *ngIf="errorCount > 0">
+                        <span class="color-box error"></span>Error: {{ errorCount }}
+                    </div>
+                </div>
+            </mat-card-content>
+
+            <mat-divider *ngIf="mountedCount > 0 && unmountedCount > 0"></mat-divider>
+
+            <!-- Mounted Remotes -->
+            <mat-card-content class="mounted-remotes" *ngIf="mountedCount > 0">
+                <h3>
+                    <mat-icon svgIcon="mount"></mat-icon> Mounted Remotes
+                </h3>
+                <div class="remote-list">
+                    <div *ngFor="let remote of mountedRemotes" class="remote-card" (click)="selectRemote(remote)">
+                        <div class="remote-content">
+                            <h4 matTooltip="{{ remote.remoteSpecs.name }}">
+                                {{ remote.remoteSpecs.name }}
+                            </h4>
+                            <p>
+                                <mat-icon svgIcon="{{ remote.remoteSpecs.type }}"></mat-icon>
+                                {{ remote.remoteSpecs.type | titlecase }}
+                            </p>
+                        </div>
+                        <button class="open"
+                            (click)="openRemoteInFiles(remote.remoteSpecs.name); $event.stopPropagation()">
+                            <mat-icon svgIcon="folder"></mat-icon>
+                            Open Files
+                        </button>
+                    </div>
+                </div>
+            </mat-card-content>
+
+            <mat-divider *ngIf="unmountedCount > 0 && errorCount > 0"></mat-divider>
+
+            <!-- Unmounted Remotes -->
+            <mat-card-content class="unmounted-remotes" *ngIf="unmountedCount > 0">
+                <h3>
+                    <mat-icon svgIcon="circle-xmark"></mat-icon> Unmounted Remotes
+                </h3>
+                <div class="remote-list">
+                    <div *ngFor="let remote of unmountedRemotes" class="remote-card" (click)="selectRemote(remote)">
+                        <div class="remote-content">
+                            <h4 matTooltip="{{ remote.remoteSpecs.name }}">
+                                {{ remote.remoteSpecs.name }}
+                            </h4>
+                            <p>
+                                <mat-icon svgIcon="{{ remote.remoteSpecs.type }}"></mat-icon>
+                                {{ remote.remoteSpecs.type | titlecase }}
+                            </p>
+                        </div>
+                        <button class="mount"
+                            (click)="mountRemoteByFs(remote.remoteSpecs.name); $event.stopPropagation()">
+                            <mat-icon svgIcon="mount"></mat-icon>
+                            Mount
+                        </button>
+                    </div>
+                </div>
+            </mat-card-content>
+
+            <mat-divider *ngIf="errorCount > 0"></mat-divider>
+
+            <!-- Remotes with Problems -->
+            <mat-card-content *ngIf="errorCount > 0">
+                <h3>
+                    <mat-icon svgIcon="circle-exclamation"></mat-icon>
+                    Remotes with Problems
+                </h3>
+                <div class="remote-list">
+                    <div *ngFor="let remote of errorRemotes" class="remote-card" (click)="selectRemote(remote)">
+                        <div class="remote-content">
+                            <h4 matTooltip="{{ remote.remoteSpecs.name }}">{{ remote.remoteSpecs.name }}</h4>
+                            <p>
+                                <mat-icon svgIcon="{{ remote.remoteSpecs.type }}"></mat-icon>
+                                {{ remote.remoteSpecs.type | titlecase }}
+                            </p>
+                        </div>
+                        <button class="fix" (click)="$event.stopPropagation()">
+                            <mat-icon svgIcon="wrench"></mat-icon>
+                            Fix
+                        </button>
+                    </div>
+                </div>
+            </mat-card-content>
+        </mat-card>
+    </div>
+</div>

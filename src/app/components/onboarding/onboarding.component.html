@@ -28,7 +28,7 @@
           <mat-label>Rclone Installation Path</mat-label>
           <input matInput [(ngModel)]="customPath" placeholder="Select a folder" readonly />
           <button matSuffix type="button" (click)="selectCustomPath()">
-            <img src="assets/icons/folder-white.svg" class="icon" />
+            <mat-icon svgIcon="folder"></mat-icon>
           </button>
         </mat-form-field>
       </div>
@@ -37,29 +37,29 @@
 
     <div class="navigation">
       <button *ngIf="currentCardIndex > 0" (click)="previousCard()" aria-label="Previous">
-        <img src="assets/icons/circle-arrow-left.svg" class="icon" style="filter: invert(1);" />
+        <mat-icon svgIcon="left-arrow"></mat-icon>
       </button>
 
       <button *ngIf="currentCardIndex < cards.length - 1 && !shouldShowActionButton()"
         (click)="nextCard()" aria-label="Next">
-        <img src="assets/icons/circle-arrow-right.svg" class="icon" style="filter: invert(1);" />
+        <mat-icon svgIcon="right-arrow"></mat-icon>
       </button>
 
       <button *ngIf="shouldShowInstallRcloneButton()" (click)="installRclone()"
         [disabled]="installing" aria-label="Install Rclone">
-        <img src="assets/icons/download.svg" class="icon" style="filter: invert(1);" />
+        <mat-icon svgIcon="download"></mat-icon>
         {{ installing ? 'Installing...' : 'Install Rclone' }}
       </button>
 
       <button *ngIf="shouldShowInstallPluginButton()" (click)="installMountPlugin()"
         [disabled]="downloadingPlugin" aria-label="Install Plugin">
-        <img src="assets/icons/download.svg" class="icon" style="filter: invert(1);" />
+        <mat-icon svgIcon="download"></mat-icon>
         {{ downloadingPlugin ? 'Downloading...' : 'Install Plugin' }}
       </button>
 
       <button *ngIf="cards[currentCardIndex].title === 'Setup Complete'"
         (click)="completeOnboarding()" aria-label="Finish">
-        <img src="assets/icons/circle-check.svg" class="icon" style="filter: invert(1);" />
+        <mat-icon svgIcon="circle-check"></mat-icon>
       </button>
     </div>
   </div>
