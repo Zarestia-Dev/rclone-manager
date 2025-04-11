@@ -1,4 +1,4 @@
-<h1 align="center">
+<h1 align="center" style="width: 100%;">
   <br>
   <a><img src="src/assets/rclone.svg" alt="Rclone Manager" height="250"></a>
   <br>
