@@ -119,21 +119,21 @@ export class RcloneService {
     }>("get_disk_usage", { remoteName: remoteName });
   }
 
-  async getRemoteConfig(remoteName: string): Promise<any> {
-    try {
-      return await invoke<any>("get_remote_config", {
-        remote_name: remoteName,
-      });
-    } catch (error) {
-      console.error(`Failed to fetch config for remote ${remoteName}:`, error);
-      return null;
-    }
-  }
+  // async getRemoteConfig(remoteName: string): Promise<any> {
+  //   try {
+  //     return await invoke<any>("get_remote_config", {
+  //       remote_name: remoteName,
+  //     });
+  //   } catch (error) {
+  //     console.error(`Failed to fetch config for remote ${remoteName}:`, error);
+  //     return null;
+  //   }
+  // }
 
   async getAllRemoteConfigs(): Promise<Record<string, any>> {
     try {
       console.log("Fetching all remote configs");
-      return await invoke<Record<string, any>>("get_configs"); // ✅ Updated to use get_configs
+      return await invoke<Record<string, any>>("get_configs");
     } catch (error) {
       console.error("Failed to fetch all remote configs:", error);
       return {};
@@ -196,7 +196,8 @@ export class RcloneService {
 
   async getMountedRemotes(): Promise<any[]> {
     try {
-      return await invoke<string[]>("get_mounted_remotes");
+      // return await invoke<string[]>("get_mounted_remotes");
+      return await invoke<string[]>("get_cached_mounted_remotes");
     } catch (error) {
       console.error("Failed to fetch mounted remotes:", error);
     }

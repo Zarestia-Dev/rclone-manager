@@ -95,11 +95,6 @@ export class OnboardingComponent implements OnInit {
       title: "Features",
       content: "Sync, mount, and manage cloud storage effortlessly.",
     },
-    {
-      image: "../assets/rclone.svg",
-      title: "System Check",
-      content: "We will check if RClone and required plugins are installed.",
-    },
   ];
 
   // Dynamic cards that will be added based on conditions

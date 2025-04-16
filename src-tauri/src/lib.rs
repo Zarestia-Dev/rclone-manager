@@ -1,77 +1,94 @@
-use core::{
-    event_listener::setup_event_listener,
-    lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
-    settings::{
-        settings::{
-            backup_settings, delete_remote_settings, get_remote_settings, load_settings, reset_settings, restore_settings, save_remote_settings, save_settings, SettingsState
-        },
-        settings_store::AppSettings,
-    },
-    tray::{
-        actions::{
-            handle_browse_remote, handle_delete_remote, handle_mount_remote, handle_unmount_remote,
-            show_main_window,
-        },
-        tray::setup_tray,
-    },
-};
-use log::{debug, error, info};
-use rclone::{
-    api::{
-        api_command::{
-            create_remote, delete_remote, mount_remote, quit_rclone_oauth, start_copy, start_sync,
-            unmount_all_remotes, unmount_remote, update_remote,
-        },
-        api_query::{
-            get_all_remote_configs, get_disk_usage, get_mounted_remotes,
-            get_oauth_supported_remotes, get_remote_config, get_remote_config_fields,
-            get_remote_types, get_remotes,
-        },
-        engine::ENGINE,
-        flags::{
-            get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags, get_sync_flags,
-            get_vfs_flags,
-        },
-        state::{get_cached_remotes, get_configs, get_settings, CACHE, RCLONE_STATE},
-    },
-    mount::{check_mount_plugin, install_mount_plugin},
-};
-use reqwest::Client;
-use serde_json::json;
-use std::sync::Once;
 use std::{
+    path::PathBuf,
     process::Command,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, Once},
 };
+
+use log::{debug, error, info};
+use rclone::api::{engine::RcApiEngine, state::get_cached_mounted_remotes};
+use serde_json::json;
 use tauri::{Emitter, Manager, Theme, WindowEvent};
-use tauri_plugin_http::reqwest;
 use tauri_plugin_store::StoreBuilder;
-use utils::{file_helper::{get_file_location, get_folder_location, open_in_files}, rclone::provision::{check_rclone_installed, provision_rclone}};
+
+use crate::{
+    core::{
+        event_listener::setup_event_listener,
+        lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
+        settings::{
+            settings::{
+                backup_settings, delete_remote_settings, get_remote_settings, load_settings,
+                reset_settings, restore_settings, save_remote_settings, save_settings,
+                SettingsState,
+            },
+            settings_store::AppSettings,
+        },
+        tray::{
+            actions::{
+                handle_browse_remote, handle_delete_remote, handle_mount_remote,
+                handle_unmount_remote, show_main_window,
+            },
+            tray::setup_tray,
+        },
+    },
+    rclone::{
+        api::{
+            api_command::{
+                create_remote, delete_remote, mount_remote, quit_rclone_oauth, start_copy,
+                start_sync, unmount_all_remotes, unmount_remote, update_remote,
+            },
+            api_query::{
+                get_all_remote_configs, get_disk_usage, get_mounted_remotes,
+                get_oauth_supported_remotes, get_remote_config, get_remote_config_fields,
+                get_remote_types, get_remotes,
+            },
+            flags::{
+                get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags,
+                get_sync_flags, get_vfs_flags,
+            },
+            state::{get_cached_remotes, get_configs, get_settings, CACHE, RCLONE_STATE},
+        },
+        mount::{check_mount_plugin, install_mount_plugin},
+    },
+    utils::{
+        file_helper::{get_file_location, get_folder_location, open_in_files},
+        rclone::provision::{check_rclone_installed, provision_rclone},
+    },
+};
 
 mod core;
 mod rclone;
 mod utils;
 
 static INIT_LOGGER: Once = Once::new();
+
 pub struct RcloneState {
-    pub client: Client,
+    pub client: reqwest::Client,
 }
 
+use std::sync::RwLock;
+
+#[derive(Clone)]
+struct TrayEnabled(pub Arc<RwLock<bool>>);
+
 #[tauri::command]
-fn set_theme(theme: String, window: tauri::Window) {
+fn set_theme(theme: String, window: tauri::Window) -> Result<(), String> {
     let theme = match theme.as_str() {
         "dark" => Theme::Dark,
         _ => Theme::Light,
     };
-    window.set_theme(Some(theme)).expect("Failed to set theme");
+    window
+        .set_theme(Some(theme))
+        .map_err(|e| format!("Failed to set theme: {}", e))
 }
 
 fn init_logging(enable_debug: bool) {
     INIT_LOGGER.call_once(|| {
         let mut builder = env_logger::Builder::new();
-        if enable_debug {
-            builder.filter_level(log::LevelFilter::Debug);
-        }
+        builder.filter_level(if enable_debug {
+            log::LevelFilter::Debug
+        } else {
+            log::LevelFilter::Info
+        });
         builder.init();
     });
 }
@@ -84,22 +101,20 @@ fn lower_webview_priority() {
                 "/C",
                 "wmic process where name='WebView2.exe' CALL setpriority 64",
             ])
-            .output();
+            .output()
+            .map_err(|e| debug!("Failed to lower WebView priority: {}", e));
     }
 
     #[cfg(target_os = "linux")]
     {
         let _ = Command::new("renice")
             .args(&["-n", "19", "-p", &std::process::id().to_string()])
-            .output();
-
-        info!("Lowered WebView2 process priority");
+            .output()
+            .map_err(|e| debug!("Failed to lower process priority: {}", e));
     }
 }
 
 /// Initializes Rclone API and OAuth state, and launches the Rclone engine.
-///
-/// Returns `Ok(())` if successful, or an `Err(String)` with failure reason.
 pub fn init_rclone_state(
     app_handle: &tauri::AppHandle,
     settings: &AppSettings,
@@ -120,22 +135,52 @@ pub fn init_rclone_state(
         )
         .map_err(|e| format!("Failed to set Rclone OAuth: {}", e))?;
 
-    // Init Rclone engine
-    let mut engine = ENGINE.lock().unwrap();
-    engine.init(app_handle); // still spawn the monitor thread
-    
-    if !engine.start_and_wait(app_handle, 5) {
-        error!("🚨 Rclone API did not become ready in time!");
-    } else {
-        info!("✅ Rclone API is confirmed ready, continuing startup logic.");
-        app_handle
-            .emit("rclone-api-ready", ())
-            .expect("Failed to emit rclone-api-ready event");
-    }
-    info!("✅ Rclone engine and state initialized");
+    // Initialize Rclone engine
+    let mut engine = RcApiEngine::lock_engine()?;
+    engine.init(app_handle);
+
+    info!("🔄 Rclone engine initialized");
 
     Ok(())
 }
+
+fn setup_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let config_dir = app_handle
+        .path()
+        .app_data_dir()
+        .expect("Failed to get app data directory");
+
+    std::fs::create_dir_all(&config_dir)
+        .map_err(|e| format!("Failed to create config directory: {}", e))?;
+
+    Ok(config_dir)
+}
+
+async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
+    debug!("🚀 Starting async startup tasks");
+
+    let app_handle1 = app_handle.clone();
+    let app_handle2 = app_handle.clone();
+    let app_handle3 = app_handle.clone();
+
+    let _refresh = tokio::join!(
+        CACHE.refresh_remote_list(app_handle1),
+        CACHE.refresh_remote_settings(app_handle2),
+        CACHE.refresh_remote_configs(app_handle3),
+    );
+
+    handle_startup(app_handle.clone()).await;
+
+    if settings.general.tray_enabled {
+        debug!("🧊 Setting up tray");
+        if let Err(e) = setup_tray(app_handle.clone(), settings.core.max_tray_items).await {
+            error!("Failed to setup tray: {}", e);
+        }
+    }
+
+    setup_event_listener(&app_handle);
+}
+
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -146,42 +191,24 @@ pub fn run() {
         ))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::new().build())
-        .on_window_event(|window, event| match event {
-            tauri::WindowEvent::CloseRequested { api, .. } => {
-                api.prevent_close();
-                if let Some(win) = window.app_handle().get_webview_window("main") {
-                    let _ = win.hide();
-                }
-            }
-            _ => {}
-        }) // ✅ Prevent window close and hide instead
-        // .on_window_event(|window, event| match event {
-        //     WindowEvent::CloseRequested { api, .. } => {
-        //         api.prevent_close();
-        //         api.prevent_close();
-        //         if let Some(win) = window.app_handle().get_webview_window("main") {
-        //             let _ = win.hide();
-        //             let _ = win.eval("document.body.innerHTML = '';"); // ✅ Clear UI content to free memory
-        //         }
-        //     }
-        //     WindowEvent::Focused(false) => {
-        //         if let Some(win) = window.app_handle().get_webview_window("main") {
-        //             let _ = win.eval("document.body.innerHTML = '';"); // ✅ Clear UI when unfocused
-        //         }
-        //     }
-        //     WindowEvent::Focused(true) => {
-        //         if let Some(win) = window.app_handle().get_webview_window("main") {
-        //             let _ = win.eval("location.reload();"); // ✅ Reload UI when refocused
-        //         }
-        //     }
-        //     _ => {}
-        // }) // ✅ Clear UI content when window is hidden
+        .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .on_window_event(|window, event| match event {
             WindowEvent::CloseRequested { api, .. } => {
-                api.prevent_close();
-                if let Some(win) = window.app_handle().get_webview_window("main") {
-                    let _ = win.hide();
-                    lower_webview_priority(); // ✅ Reduce WebView CPU usage
+                let tray_enabled = window.app_handle().state::<TrayEnabled>();
+
+                if *tray_enabled.0.read().unwrap() {
+                    api.prevent_close();
+                    if let Some(win) = window.app_handle().get_webview_window("main") {
+                        let _ = win.hide();
+                        lower_webview_priority();
+                    }
+                } else {
+                    let _ = window.hide();
+                    tauri::async_runtime::block_on(handle_shutdown(window.app_handle().clone()));
+                    window.app_handle().exit(0);
                 }
             }
             WindowEvent::Focused(true) => {
@@ -190,36 +217,35 @@ pub fn run() {
                 }
             }
             _ => {}
-        }) // ✅ Hide window on close and show on focus
-        .manage(RcloneState {
-            client: Client::new(),
         })
-        .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init())
+        .manage(RcloneState {
+            client: reqwest::Client::new(),
+        })
         .setup(|app| {
             let app_handle = app.handle();
-            let args: Vec<String> = std::env::args().collect();
+            let args = std::env::args().collect::<Vec<_>>();
             let start_with_tray = args.contains(&"--tray".to_string());
 
-            // ────── CONFIG DIR & SETTINGS STORE ──────
-            let config_dir = app_handle
-                .path()
-                .app_data_dir()
-                .expect("Failed to get app data directory");
-            std::fs::create_dir_all(&config_dir).expect("Failed to create config directory");
+            // ────── Hide main window if started with tray ──────
+            if start_with_tray {
+                if let Some(win) = app_handle.get_webview_window("main") {
+                    let _ = win.hide();
+                }
+            }
 
+            let config_dir = setup_config_dir(&app_handle)?;
             let store_path = config_dir.join("settings.json");
+
+            // ────── CONFIG DIR & SETTINGS STORE ──────
             let store = Arc::new(Mutex::new(
-                StoreBuilder::new(&app_handle.clone(), store_path)
+                StoreBuilder::new(app_handle, store_path)
                     .build()
-                    .expect("Failed to create settings store"),
+                    .map_err(|e| format!("Failed to create settings store: {}", e))?,
             ));
 
             app.manage(SettingsState {
                 store: store.clone(),
-                config_dir: config_dir.clone(),
+                config_dir,
             });
 
             // ────── LOAD SETTINGS ──────
@@ -231,66 +257,34 @@ pub fn run() {
             let settings: AppSettings = serde_json::from_value(settings_json["settings"].clone())
                 .unwrap_or_else(|_| AppSettings::default());
 
+            let tray_enabled = Arc::new(RwLock::new(settings.general.tray_enabled));
+            app.manage(TrayEnabled(tray_enabled.clone()));
+
+            // ────── INIT LOGGING ──────
             init_logging(settings.experimental.debug_logging);
 
             // ────── INIT RCLONE STATE + ENGINE ──────
             if let Err(e) = init_rclone_state(&app_handle, &settings) {
-                error!("{}", e);
+                error!("Rclone initialization failed: {}", e);
             }
 
             // ────── ASYNC STARTUP ──────
             let app_handle_clone = app_handle.clone();
             tauri::async_runtime::spawn(async move {
-                debug!("🚀 Starting async startup logic");
-
-                CACHE.refresh_remote_list(app_handle_clone.clone()).await;
-
-                CACHE
-                    .refresh_remote_settings(app_handle_clone.clone())
-                    .await;
-
-                CACHE.refresh_remote_configs(app_handle_clone.clone()).await;
-
-                handle_startup(app_handle_clone.clone()).await;
-
-                if settings.general.tray_enabled || start_with_tray {
-                    debug!("🧊 Tray is enabled, setting up...");
-
-                    if let Err(e) =
-                        setup_tray(app_handle_clone.clone(), settings.core.max_tray_items).await
-                    {
-                        error!("Failed to setup tray: {}", e);
-                    }
-
-                    if start_with_tray {
-                        if let Some(win) = app_handle_clone.get_webview_window("main") {
-                            let _ = win.hide();
-                        }
-                    }
-                }
-
-                // ✅ Now that everything is ready, start event listeners
-                setup_event_listener(&app_handle_clone);
+                async_startup(app_handle_clone, settings).await;
             });
 
             Ok(())
         })
-        .on_menu_event(move |app, event| match event.id.as_ref() {
+        .on_menu_event(|app, event| match event.id.as_ref() {
             "show_app" => show_main_window(app),
-            "mount_all" => {
-                let _ = app.emit("mount-all", ());
-            }
+            "mount_all" => app.emit("mount-all", ()).unwrap(),
             "unmount_all" => {
                 let app_clone = app.clone();
                 tauri::async_runtime::spawn(async move {
-                    let state = app_clone.state::<RcloneState>().clone();
-                    match unmount_all_remotes(app_clone.clone(), state).await {
-                        Ok(info) => {
-                            info!("Unmounted all remotes: {}", info);
-                        }
-                        Err(e) => {
-                            error!("Failed to unmount all remotes: {}", e);
-                        }
+                    if let Err(e) = unmount_all_remotes(app_clone.clone(), app_clone.state()).await
+                    {
+                        error!("Failed to unmount all remotes: {}", e);
                     }
                 });
             }
@@ -355,7 +349,8 @@ pub fn run() {
             // Cache remotes
             get_cached_remotes,
             get_configs,
-            get_settings
+            get_settings,
+            get_cached_mounted_remotes
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -2,21 +2,16 @@ use log::{debug, error, info};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::join;
 
-use crate::{
-    rclone::api::{api_command::mount_remote, api_query::get_remotes, state::get_settings}, RcloneState
+use crate::rclone::api::{
+    api_command::mount_remote,
+    state::{get_cached_remotes, get_settings},
 };
-
 /// Main entry point for handling startup tasks.
 pub async fn handle_startup(app_handle: AppHandle) {
     info!("🚀 Checking startup options...");
 
-    let rclone_state = app_handle.state::<RcloneState>();
-
     // Run both tasks in parallel
-    let (remotes_result, sync_result) = join!(
-        initialize_remotes(rclone_state),
-        sync_all_remotes(&app_handle)
-    );
+    let (remotes_result, sync_result) = join!(initialize_remotes(), sync_all_remotes(&app_handle));
 
     // Process remotes after retrieval
     if let Ok(remotes) = remotes_result {
@@ -32,10 +27,9 @@ pub async fn handle_startup(app_handle: AppHandle) {
 }
 
 /// Fetches the list of available remotes.
-async fn initialize_remotes(
-    rclone_state: tauri::State<'_, RcloneState>,
-) -> Result<Vec<String>, String> {
-    get_remotes(rclone_state).await
+async fn initialize_remotes() -> Result<Vec<String>, String> {
+    let remotes = get_cached_remotes().await?;
+    Ok(remotes)
 }
 
 /// Handles startup logic for an individual remote.
@@ -77,7 +71,6 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
     }
 }
 
-
 /// Spawns an async task to mount a remote.
 fn spawn_mount_task(
     remote_name: String,
@@ -110,7 +103,9 @@ fn spawn_mount_task(
         {
             Ok(_) => {
                 info!("✅ Mounted {}", remote_name);
-                app_clone.emit("remote_state_changed", remote_name.clone()).ok();
+                app_clone
+                    .emit("remote_state_changed", remote_name.clone())
+                    .ok();
             }
             Err(err) => error!("❌ Failed to mount {}: {}", remote_name, err),
         }

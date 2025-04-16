@@ -1,7 +1,7 @@
 use std::{path::PathBuf, process::Command};
 
-use log::info;
-use tauri::Manager;
+use log::{debug, error, info};
+use tauri::{Emitter, Manager};
 
 use super::{
     downloader::download_rclone_zip,
@@ -51,12 +51,17 @@ pub async fn provision_rclone(
     info!("Rclone version: {}", version);
     // Save the downloaded zip bytes to a local file for debugging or reuse
     let temp_dir = std::env::temp_dir().join("rclone_temp");
+    std::fs::create_dir_all(&temp_dir)
+        .map_err(|e| format!("Failed to create temp directory: {}", e))?;
+    debug!("Temp directory created at {}", temp_dir.display());
     let zip_file_path = temp_dir.join(format!("rclone-v{}-{}-{}.zip", version, os_name, arch));
     std::fs::write(&zip_file_path, &zip_bytes)
         .map_err(|e| format!("Failed to save rclone zip file locally: {}", e))?;
-    info!("Rclone zip file saved locally at {}", zip_file_path.display());
+    info!(
+        "Rclone zip file saved locally at {}",
+        zip_file_path.display()
+    );
 
-    
     match verify_rclone_sha256(
         &temp_dir,
         &version,
@@ -64,9 +69,9 @@ pub async fn provision_rclone(
     )
     .await
     {
-        Ok(_) => println!("SHA256 hash matches ✅"),
+        Ok(_) => info!("SHA256 hash matches ✅"),
         Err(err) => {
-            eprintln!("SHA256 verification failed ❌: {err}");
+            error!("SHA256 verification failed ❌: {err}");
             return Err(err);
         }
     }
@@ -96,5 +101,9 @@ pub async fn provision_rclone(
         "Rclone installed successfully at {}",
         install_path.display()
     );
+    // 🔥 Emit the event so frontend updates
+    if let Err(e) = app_handle.emit("rclone_path_updated", &install_path) {
+        return Err(format!("Failed to emit event: {e}"));
+    }
     Ok(format!("Rclone installed in {}", install_path.display()))
 }

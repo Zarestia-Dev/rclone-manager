@@ -1,4 +1,4 @@
-import { Component } from "@angular/core";
+import { Component, inject } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterOutlet } from "@angular/router";
 import { TitlebarComponent } from "./components/titlebar/titlebar.component";
@@ -6,6 +6,9 @@ import { OnboardingComponent } from "./components/onboarding/onboarding.componen
 import { HomeComponent } from "./home/home.component";
 import { SettingsService } from "./services/settings.service";
 import { IconService } from "./services/icon.service";
+import { listen } from "@tauri-apps/api/event";
+import { RepairSheetComponent } from "./components/repair-sheet/repair-sheet.component";
+import { MatBottomSheet, MatBottomSheetModule } from "@angular/material/bottom-sheet";
 // import { RightClickDirective } from './directives/right-click.directive';
 
 @Component({
@@ -16,25 +19,54 @@ import { IconService } from "./services/icon.service";
     TitlebarComponent,
     OnboardingComponent,
     HomeComponent /*, RightClickDirective*/,
+    MatBottomSheetModule
   ],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss",
 })
 export class AppComponent {
-  completedOnboarding: boolean = false; // Default to true
+  completedOnboarding: boolean = false;
+  private emit_listened = false;
+  private bottomSheet = inject(MatBottomSheet);
 
-  constructor(private settingsService: SettingsService, private iconService: IconService) {
-    // Check if the onboarding has already been completed
+  constructor(
+    private settingsService: SettingsService,
+    private iconService: IconService,
+  ) {
+    this.checkOnboardingStatus();
+ 
+  }
+
+  private checkOnboardingStatus(): void {
     this.settingsService
       .loadSettings()
       .then((data) => {
-      this.completedOnboarding =
-      data.settings.core?.completed_onboarding ?? false; // Default to false if not set
-      console.log("Onboarding completed status:", this.completedOnboarding);
+        console.log("Settings loaded:", data);
+        this.completedOnboarding =
+          data.settings.core?.completed_onboarding ?? false;
+        console.log("Onboarding status: ", this.completedOnboarding);
+  
+        if (this.completedOnboarding) {
+          this.listenForErrors(); // ✅ move listener here
+        }
       })
       .catch((error) => {
-      console.error("Error loading settings:", error);
+        console.error("Error loading settings:", error);
       });
+  }
+  
+  private listenForErrors() {
+    listen<string>("rclone_path_invalid", () => {
+      this.bottomSheet.open(RepairSheetComponent, {
+        data: {
+          type: "rclone_path",
+          title: "Rclone Path Problem",
+          message:
+            "The Rclone binary could not be found or started. You can reinstall it now.",
+        },
+        disableClose: true,
+      });
+    });
   }
 
   finishOnboarding() {

@@ -78,7 +78,7 @@ impl AppSettings {
             SettingMetadata {
                 display_name: "Enable Tray Icon".to_string(),
                 value_type: "bool".to_string(),
-                help_text: "Show an icon in the system tray.".to_string(),
+                help_text: "Show an icon in the system tray. Also enables the background service.".to_string(),
             },
         );
 

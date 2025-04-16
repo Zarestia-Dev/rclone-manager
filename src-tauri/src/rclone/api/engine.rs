@@ -1,14 +1,11 @@
 use std::{
-    process::{Child, Command},
-    sync::{Arc, Mutex},
-    thread,
-    time::Duration,
+    path::PathBuf, process::{Child, Command}, sync::{Arc, Mutex}, thread, time::Duration
 };
 
 use once_cell::sync::Lazy;
 use reqwest::blocking::Client;
 use serde_json::Value;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use log::{debug, error, info, warn};
 
@@ -22,21 +19,27 @@ pub struct RcApiEngine {
     process: Option<Child>,
     should_exit: bool,
     running: bool,
-    rclone_path: String,
+    rclone_path: PathBuf,
+    already_reported_invalid_path: bool,
 }
 
 impl RcApiEngine {
     pub fn init(&mut self, app: &AppHandle) {
-        if self.rclone_path.is_empty() {
-            self.rclone_path = Self::read_rclone_path(app);
+        if self.rclone_path.as_os_str().is_empty() {
+            self.rclone_path = self.read_rclone_path(app);
         }
 
         let app_handle = app.clone();
-        let engine_arc = ENGINE.clone();
 
         thread::spawn(move || loop {
             {
-                let mut engine = engine_arc.lock().unwrap();
+                let mut engine = match RcApiEngine::lock_engine() {
+                    Ok(engine) => engine,
+                    Err(e) => {
+                        error!("❗ Failed to acquire lock on RcApiEngine: {}", e);
+                        break;
+                    }
+                };
 
                 if engine.should_exit {
                     debug!("🛑 Exit requested, stopping monitor thread.");
@@ -44,6 +47,10 @@ impl RcApiEngine {
                 }
 
                 if !engine.is_running() {
+                    if !engine.is_path_valid() {
+                        engine.handle_invalid_path(&app_handle);
+                        continue;
+                    }
                     warn!("🔄 Rclone API not running. Starting...");
                     engine.start(&app_handle);
                 } else {
@@ -53,6 +60,56 @@ impl RcApiEngine {
 
             thread::sleep(Duration::from_secs(5));
         });
+    }
+
+    pub fn lock_engine() -> Result<std::sync::MutexGuard<'static, RcApiEngine>, String> {
+        match ENGINE.lock() {
+            Ok(guard) => Ok(guard),
+            Err(poisoned) => {
+                error!("❗ Engine mutex poisoned. Recovering...");
+                Ok(poisoned.into_inner())
+            }
+        }
+    }
+
+    fn is_path_valid(&self) -> bool {
+        // Check if custom path exists or system rclone is available
+        self.rclone_path.exists() || self.is_system_rclone_available()
+    }
+
+    fn handle_invalid_path(&mut self, app: &AppHandle) {
+        if self.already_reported_invalid_path {
+            // Skip re-emitting
+            thread::sleep(Duration::from_secs(5));
+            return;
+        }
+        error!(
+            "❌ Rclone binary does not exist: {}",
+            self.rclone_path.display()
+        );
+
+        // Try falling back to system rclone
+        if self.is_system_rclone_available() {
+            info!("🔄 Falling back to system-installed rclone");
+            self.rclone_path = PathBuf::from("rclone");
+        } else {
+            warn!("🔄 Waiting for valid Rclone path...");
+            thread::sleep(Duration::from_secs(5));
+            if let Err(e) = app.emit(
+                "rclone_path_invalid",
+                self.rclone_path.to_string_lossy().to_string(),
+            ) {
+                error!("Failed to emit event: {}", e);
+            }
+            self.already_reported_invalid_path = true;
+        }
+    }
+
+    pub fn update_path(&mut self, app: &AppHandle) {
+        self.rclone_path = self.read_rclone_path(app);
+        self.already_reported_invalid_path = false;
+        info!("🔄 Rclone path updated to: {}", self.rclone_path.display());
+        self.start(app);
     }
 
     pub fn is_running(&self) -> bool {
@@ -66,16 +123,15 @@ impl RcApiEngine {
         }
     }
 
-    pub fn start(&mut self, _app: &AppHandle) {
+    pub fn start(&mut self, app: &AppHandle) {
         if self.process.is_some() {
             debug!("⚠️ Rclone process already exists, stopping first...");
             self.stop();
         }
 
         let port = RCLONE_STATE.get_api().1;
-        let path = &self.rclone_path;
 
-        match Command::new(path)
+        match Command::new(&self.rclone_path)
             .args(&[
                 "rcd",
                 "--rc-no-auth",
@@ -85,18 +141,36 @@ impl RcApiEngine {
             .spawn()
         {
             Ok(child) => {
-                self.process = Some(child);
-                self.running = true;
-                info!("✅ Rclone RC API started process on port {}", port);
+                if self.wait_until_ready(5) {
+                    self.running = true;
+                    self.process = Some(child);
+                    info!("✅ Rclone API started successfully on port {}", port);
+                    if let Err(e) = app.emit("rclone_api_ready", ()) {
+                        error!("Failed to emit ready event: {}", e);
+                    }
+                } else {
+                    error!("❌ Failed to start Rclone API within timeout.");
+                    if let Err(e) = app.emit(
+                        "rclone_api_failed",
+                        "Failed to start Rclone API".to_string(),
+                    ) {
+                        error!("Failed to emit event: {}", e);
+                    }
+                }
             }
             Err(e) => {
-                error!("❌ Failed to start Rclone: {}", e);
-                self.running = false;
+                error!("❌ Failed to spawn Rclone process: {}", e);
+                if let Err(e) = app.emit(
+                    "rclone_api_failed",
+                    "Failed to spawn Rclone process".to_string(),
+                ) {
+                    error!("Failed to emit event: {}", e);
+                }
             }
         }
     }
 
-    pub fn wait_until_ready(&self, timeout_secs: u64) -> bool {
+        fn wait_until_ready(&self, timeout_secs: u64) -> bool {
         let start = std::time::Instant::now();
         let timeout = Duration::from_secs(timeout_secs);
         let poll = Duration::from_millis(200);
@@ -105,19 +179,10 @@ impl RcApiEngine {
             if self.is_running() {
                 return true;
             }
-            std::thread::sleep(poll);
+            thread::sleep(poll);
         }
 
         false
-    }
-
-    pub fn start_and_wait(&mut self, app: &AppHandle, timeout_secs: u64) -> bool {
-        self.start(app);
-        info!(
-            "⏳ Waiting up to {}s for Rclone API to become ready...",
-            timeout_secs
-        );
-        self.wait_until_ready(timeout_secs)
     }
 
     pub fn stop(&mut self) {
@@ -137,34 +202,63 @@ impl RcApiEngine {
         self.stop();
     }
 
-    pub fn read_rclone_path(app: &AppHandle) -> String {
-        let config_path = app
+    fn core_config_path(&self, app: &AppHandle) -> PathBuf {
+        let app_data_dir = app
             .path()
             .app_data_dir()
-            .expect("Failed to get app data dir")
-            .join("core.json");
+            .expect("Failed to get app data dir");
+        app_data_dir.join("core.json")
+    }
 
-        match std::fs::read_to_string(&config_path) {
+    fn is_system_rclone_available(&self) -> bool {
+        which::which("rclone").is_ok()
+    }
+
+    pub fn read_rclone_path(&self, app: &AppHandle) -> PathBuf {
+        let config_path = self.core_config_path(app);
+
+        // First try to read the configured path
+        let configured_path = match std::fs::read_to_string(&config_path) {
             Ok(contents) => {
                 if let Ok(json) = serde_json::from_str::<Value>(&contents) {
                     if let Some(path) = json["core_options"]["rclone_path"].as_str() {
-                        return if path == "system" {
-                            "rclone".to_string()
+                        if path == "system" {
+                            PathBuf::from("rclone") // System-wide installation
                         } else {
                             let bin = if cfg!(windows) {
                                 "rclone.exe"
                             } else {
                                 "rclone"
                             };
-                            format!("{}/{}", path, bin)
-                        };
+                            PathBuf::from(path).join(bin)
+                        }
+                    } else {
+                        PathBuf::from("rclone") // Default to system-wide
                     }
+                } else {
+                    PathBuf::from("rclone") // Default to system-wide
                 }
-                "rclone".to_string()
             }
-            Err(e) => {
-                warn!("Could not read rclone path from config: {}", e);
-                "rclone".to_string()
+            Err(_) => {
+                PathBuf::from("rclone") // Default to system-wide
+            }
+        };
+
+        // Verify the path exists or fallback to system rclone
+        if configured_path.exists() {
+            configured_path
+        } else {
+            warn!(
+                "⚠️ Configured Rclone path does not exist: {}, falling back to system rclone",
+                configured_path.display()
+            );
+
+            if self.is_system_rclone_available() {
+                info!("🔄 Using system-installed rclone");
+                PathBuf::from("rclone")
+            } else {
+                error!("❌ No valid Rclone binary found - neither configured path nor system rclone available");
+                configured_path // Return the original path anyway (will fail later with proper error)
             }
         }
     }

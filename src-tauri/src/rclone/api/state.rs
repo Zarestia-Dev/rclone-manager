@@ -7,7 +7,7 @@ use tokio::sync::RwLock;
 
 use crate::core::settings::settings::get_remote_settings;
 
-use super::api_query::{get_all_remote_configs, get_remotes};
+use super::api_query::{get_all_remote_configs, get_mounted_remotes, get_remotes, MountedRemote};
 
 #[derive(Debug)]
 pub struct RcloneState {
@@ -56,12 +56,14 @@ pub struct RemoteCache {
     pub remotes: RwLock<Vec<String>>,
     pub configs: RwLock<serde_json::Value>,
     pub settings: RwLock<serde_json::Value>,
+    pub mounted: RwLock<Vec<MountedRemote>>
 }
 
 pub static CACHE: Lazy<RemoteCache> = Lazy::new(|| RemoteCache {
     remotes: RwLock::new(Vec::new()),
     configs: RwLock::new(json!({})),
     settings: RwLock::new(json!({})),
+    mounted: RwLock::new(Vec::new()),
 });
 
 impl RemoteCache {
@@ -109,11 +111,24 @@ impl RemoteCache {
         *settings = serde_json::Value::Object(all_settings);
         debug!("🔄 Updated remotes settings cache");
     }
+    pub async fn refresh_mounted_remotes(&self, app_handle: tauri::AppHandle) {
+        match get_mounted_remotes(app_handle.state()).await {
+            Ok(remotes) => {
+                let mut mounted = self.mounted.write().await;
+                *mounted = remotes;
+                debug!("🔄 Updated mounted remotes cache");
+            }
+            Err(e) => {
+                error!("❌ Failed to refresh mounted remotes: {}", e);
+            }
+        }
+    }
 
     pub async fn refresh_all(&self, app_handle: tauri::AppHandle) {
         self.refresh_remote_list(app_handle.clone()).await;
         self.refresh_remote_configs(app_handle.clone()).await;
-        self.refresh_remote_settings(app_handle).await;
+        self.refresh_remote_settings(app_handle.clone()).await;
+        self.refresh_mounted_remotes(app_handle.clone()).await;
     }
 }
 
@@ -130,4 +145,9 @@ pub async fn get_configs() -> Result<serde_json::Value, String> {
 #[tauri::command]
 pub async fn get_settings() -> Result<serde_json::Value, String> {
     Ok(CACHE.settings.read().await.clone())
+}
+
+#[tauri::command]
+pub async fn get_cached_mounted_remotes() -> Result<Vec<MountedRemote>, String> {
+    Ok(CACHE.mounted.read().await.clone())
 }

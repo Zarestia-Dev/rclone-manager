@@ -12,11 +12,9 @@ use tauri::{command, Emitter};
 use tokio::time::sleep;
 
 use crate::{
-    rclone::api::{engine::RcApiEngine, state::RCLONE_STATE},
+    rclone::api::{engine::ENGINE, state::{get_cached_mounted_remotes, RCLONE_STATE}},
     RcloneState,
 };
-
-use super::api_query::get_mounted_remotes;
 
 lazy_static::lazy_static! {
     static ref OAUTH_PROCESS: Arc<tokio::sync::Mutex<Option<Child>>> = Arc::new(tokio::sync::Mutex::new(None));
@@ -45,7 +43,7 @@ pub async fn create_remote(
     } // ✅ Guard is dropped when this scope ends
 
     // ✅ Start a new Rclone instance
-    let rclone_path = RcApiEngine::read_rclone_path(&app);
+    let rclone_path = ENGINE.lock().unwrap().read_rclone_path(&app);
 
     let rclone_process = Command::new(rclone_path)
         .args([
@@ -212,12 +210,11 @@ pub async fn mount_remote(
     let client = &state.client;
 
     // 🔍 Step 1: Get mounted remotes
-    let mounted_remotes = get_mounted_remotes(state.clone())
-        .await
-        .unwrap_or_else(|e| {
-            log::error!("Failed to fetch mounted remotes: {}", e);
-            vec![] // If we fail to fetch, assume no mounts (fail-safe)
-        });
+    let mounted_remotes = get_cached_mounted_remotes().await?;
+
+
+    debug!("Current mounted remotes: {:?}", mounted_remotes);
+    
 
     let formatted_remote = if remote_name.ends_with(':') {
         remote_name.clone()
@@ -228,10 +225,10 @@ pub async fn mount_remote(
     // 🔎 Step 2: Check if the remote is already mounted
     if mounted_remotes.iter().any(|m| m.fs == formatted_remote) {
         log::info!(
-            "✅ Remote {} is already mounted, skipping request.",
+            "✅ Remote {} is already mounted (cached), skipping request.",
             formatted_remote
         );
-        return Ok(()); // Exit early if already mounted
+        return Ok(()); // Skip remount
     }
 
     let url = format!("{}/mount/mount", RCLONE_STATE.get_api().0);
@@ -276,9 +273,9 @@ pub async fn mount_remote(
         .await
         .unwrap_or_else(|_| "No response body".to_string());
 
-    app.emit("remote_state_changed", remote_name).ok();
     if status.is_success() {
         debug!("✅ Mount request successful: {}", body);
+        app.emit("remote_state_changed", remote_name).ok();
         Ok(())
     } else {
         Err(format!(

@@ -129,7 +129,7 @@ pub async fn get_remote_config(
     Ok(json)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MountedRemote {
     pub fs: String,
     pub mount_point: String,

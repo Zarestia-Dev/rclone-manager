@@ -1,117 +1,170 @@
-use log::{debug, error};
+use log::{debug, error, info};
 use serde_json::Value;
-use tauri::Listener;
+use tauri::{AppHandle, Listener, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
-    core::{lifecycle::shutdown::handle_shutdown, tray::tray::setup_tray},
+    core::{
+        lifecycle::shutdown::handle_shutdown,
+        tray::tray::{setup_tray, update_tray_menu},
+    },
     init_logging,
     rclone::api::{
         engine::ENGINE,
         state::{CACHE, RCLONE_STATE},
-    },
+    }, TrayEnabled,
 };
 
-use super::tray::tray::update_tray_menu;
+mod events {
+    pub const RCLONE_API_READY: &str = "rclone_api_ready";
+    pub const RCLONE_API_URL_UPDATED: &str = "rclone_api_url_updated";
+    pub const RCLONE_PATH_UPDATED: &str = "rclone_path_updated";
+    pub const REMOTE_STATE_CHANGED: &str = "remote_state_changed";
+    pub const REMOTE_PRESENCE_CHANGED: &str = "remote_presence_changed";
+    pub const SYSTEM_SETTINGS_CHANGED: &str = "system_settings_changed";
+    pub const TRAY_MENU_UPDATED: &str = "tray_menu_updated";
+}
 
-pub fn setup_event_listener(app: &tauri::AppHandle) {
+fn parse_payload<T: for<'de> serde::Deserialize<'de>>(payload: Option<&str>) -> Result<T, String> {
+    payload
+        .ok_or_else(|| "No payload".into())
+        .and_then(|p| serde_json::from_str(p).map_err(|e| e.to_string()))
+}
+
+async fn refresh_and_update_tray(app: AppHandle, max_items: usize) {
+    CACHE.refresh_all(app.clone()).await;
+    if let Err(e) = update_tray_menu(app, max_items).await {
+        error!("Failed to update tray menu: {}", e);
+    }
+}
+
+fn handle_ctrl_c(app: &AppHandle) {
     let app_handle_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         use tokio::signal::ctrl_c;
-
         ctrl_c().await.expect("Failed to install Ctrl+C handler");
-
-        log::info!("🧹 Ctrl+C received via tokio. Initiating shutdown...");
+        info!("🧹 Ctrl+C received via tokio. Initiating shutdown...");
         handle_shutdown(app_handle_clone.clone()).await;
         app_handle_clone.exit(0);
     });
+}
 
+fn handle_rclone_api_url_updated(app: &AppHandle) {
     let app_handle = app.clone();
-    app.listen("rclone_api_url_updated", move |_| {
+    app.listen(events::RCLONE_API_URL_UPDATED, move |_| {
         let app = app_handle.clone();
-        std::thread::spawn(move || {
+        tauri::async_runtime::spawn(async move {
             let mut engine = ENGINE.lock().unwrap();
             engine.stop();
             engine.start(&app);
         });
     });
+}
 
-    // Handle rclone API started event
+fn handle_rclone_path_updated(app: &AppHandle) {
+    let app_handle = app.clone();
+    app.listen(events::RCLONE_PATH_UPDATED, move |event| {
+        debug!("🔄 Rclone path updated! Raw payload: {:?}", event.payload());
+
+        match parse_payload::<Value>(Some(event.payload())) {
+            Ok(parsed_path) => {
+                if let Some(path_str) = parsed_path.as_str() {
+                    debug!("🔄 Rclone path updated to: {}", path_str);
+                    tauri::async_runtime::spawn({
+                        let app_handle = app_handle.clone();
+                        async move {
+                            ENGINE.lock().unwrap().update_path(&app_handle);
+                        }
+                    });
+                }
+            }
+            Err(e) => error!("❌ Failed to parse rclone path update: {}", e),
+        }
+    });
+}
+
+fn handle_rclone_api_ready(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen("rclone-api-ready", move |_| {
-        let app_clone_inner = app_clone.clone();
+    app.listen(events::RCLONE_API_READY, move |_| {
+        let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            CACHE.refresh_all(app_clone_inner.clone()).await;
-            if let Err(e) = update_tray_menu(app_clone_inner, 0).await {
+            refresh_and_update_tray(app, 0).await;
+        });
+    });
+}
+
+fn handle_remote_state_changed(app: &AppHandle) {
+    let app_clone = app.clone();
+    app.listen(events::REMOTE_STATE_CHANGED, move |_| {
+        let app = app_clone.clone();
+        tauri::async_runtime::spawn(async move {
+            CACHE.refresh_mounted_remotes(app.clone()).await;
+            if let Err(e) = update_tray_menu(app, 0).await {
                 error!("Failed to update tray menu: {}", e);
             }
         });
     });
+}
 
-    // Handle remote mount/unmount event
+fn handle_remote_presence_changed(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen("remote_state_changed", move |_| {
-        let app_clone_inner = app_clone.clone();
-
+    app.listen(events::REMOTE_PRESENCE_CHANGED, move |_| {
+        let app_clone = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            if let Err(e) = update_tray_menu(app_clone_inner, 0).await {
+            CACHE.refresh_remote_list(app_clone.clone()).await;
+            CACHE.refresh_remote_configs(app_clone.clone()).await;
+            CACHE.refresh_remote_settings(app_clone.clone()).await;
+            if let Err(e) = update_tray_menu(app_clone.clone(), 0).await {
                 error!("Failed to update tray menu: {}", e);
             }
         });
     });
+}
 
-    // Handle remote addition/removal event
+fn tray_menu_updated(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen("remote_presence_changed", move |_| {
-        let app_clone_inner = app_clone.clone();
-
+    app.listen(events::TRAY_MENU_UPDATED, move |_| {
+        let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            CACHE.refresh_remote_list(app_clone_inner.clone()).await;
-            CACHE.refresh_remote_configs(app_clone_inner.clone()).await;
-            CACHE.refresh_remote_settings(app_clone_inner.clone()).await;
-            if let Err(e) = update_tray_menu(app_clone_inner, 0).await {
+            if let Err(e) = update_tray_menu(app, 0).await {
                 error!("Failed to update tray menu: {}", e);
             }
         });
     });
+}
 
-    // Handle settings changes - REGISTERED ONLY ONCE
-    let app_handle_clone = app.clone();
-    app.listen("system_settings_changed", move |event| {
-        let app_handle_inner = app_handle_clone.clone();
-
+fn handle_settings_changed(app: &AppHandle) {
+    let app_handle = app.clone();
+    
+    app.listen(events::SYSTEM_SETTINGS_CHANGED, move |event| {
         debug!("🔄 Settings saved! Raw payload: {:?}", event.payload());
 
-        match serde_json::from_str::<Value>(event.payload()) {
-            Ok(parsed_settings) => {
-                debug!("✅ Parsed settings: {:?}", parsed_settings);
-
-                // General settings
-                if let Some(general) = parsed_settings.get("general") {
-                    // Start on startup
-                    if let Some(start_on_startup) =
-                        general.get("start_on_startup").and_then(|v| v.as_bool())
-                    {
-                        debug!("🚀 Start on Startup changed to: {}", start_on_startup);
-                        let autostart_manager = app_handle_inner.autolaunch();
-                        if start_on_startup {
-                            let _ = autostart_manager.enable();
+        match parse_payload::<Value>(Some(event.payload())) {
+            Ok(settings) => {
+                // same logic...
+                if let Some(general) = settings.get("general") {
+                    if let Some(startup) = general.get("start_on_startup").and_then(|v| v.as_bool()) {
+                        debug!("🚀 Start on Startup changed to: {}", startup);
+                        let autostart = app_handle.autolaunch();
+                        let _ = if startup {
+                            autostart.enable()
                         } else {
-                            let _ = autostart_manager.disable();
-                        }
+                            autostart.disable()
+                        };
                     }
 
-                    // Tray visibility
-                    if let Some(tray_enabled) =
-                        general.get("tray_enabled").and_then(|v| v.as_bool())
-                    {
+                    if let Some(tray_enabled) = general.get("tray_enabled").and_then(|v| v.as_bool()) {
+                        let tray_state = app_handle.state::<TrayEnabled>();
+                        let mut guard = tray_state.0.write().unwrap();
+                        *guard = tray_enabled;
                         debug!("🛠️ Tray visibility changed to: {}", tray_enabled);
-                        if let Some(tray) = app_handle_inner.tray_by_id("main") {
+
+                        if let Some(tray) = app_handle.tray_by_id("main") {
                             let _ = tray.set_visible(tray_enabled);
                         } else {
-                            let app_handle = app_handle_inner.clone();
+                            let app = app_handle.clone();
                             tauri::async_runtime::spawn(async move {
-                                if let Err(e) = setup_tray(app_handle, 0).await {
+                                if let Err(e) = setup_tray(app, 0).await {
                                     error!("Failed to set up tray: {}", e);
                                 }
                             });
@@ -119,49 +172,39 @@ pub fn setup_event_listener(app: &tauri::AppHandle) {
                     }
                 }
 
-                // Core settings
-                if let Some(core) = parsed_settings.get("core") {
-                    // Rclone API port
-                    if let Some(rclone_api_port) =
-                        core.get("rclone_api_port").and_then(|v| v.as_u64())
-                    {
-                        debug!("🔌 Rclone API Port changed to: {}", rclone_api_port);
-                        if let Err(e) = RCLONE_STATE.set_api(format!("http://localhost:{}", rclone_api_port), rclone_api_port as u16)
+                if let Some(core) = settings.get("core") {
+                    if let Some(api_port) = core.get("rclone_api_port").and_then(|v| v.as_u64()) {
+                        debug!("🔌 Rclone API Port changed to: {}", api_port);
+                        if let Err(e) = RCLONE_STATE
+                            .set_api(format!("http://localhost:{}", api_port), api_port as u16)
                         {
                             error!("Failed to set Rclone API Port: {}", e);
                         }
                     }
 
-                    // Rclone OAuth port
-                    if let Some(rclone_oauth_port) =
-                        core.get("rclone_oauth_port").and_then(|v| v.as_u64())
+                    if let Some(oauth_port) = core.get("rclone_oauth_port").and_then(|v| v.as_u64())
                     {
-                        debug!("🔑 Rclone OAuth Port changed to: {}", rclone_oauth_port);
-                        if let Err(e) =
-                            RCLONE_STATE.set_oauth(format!("http://localhost:{}", rclone_oauth_port), rclone_oauth_port as u16)
-                        {
+                        debug!("🔑 Rclone OAuth Port changed to: {}", oauth_port);
+                        if let Err(e) = RCLONE_STATE.set_oauth(
+                            format!("http://localhost:{}", oauth_port),
+                            oauth_port as u16,
+                        ) {
                             error!("Failed to set Rclone OAuth Port: {}", e);
                         }
                     }
 
-                    // Max tray items
-                    if let Some(max_tray_items) =
-                        core.get("max_tray_items").and_then(|v| v.as_u64())
-                    {
-                        debug!("🗂️ Max tray items changed to: {}", max_tray_items);
-                        let app_handle = app_handle_inner.clone();
+                    if let Some(max_items) = core.get("max_tray_items").and_then(|v| v.as_u64()) {
+                        debug!("🗂️ Max tray items changed to: {}", max_items);
+                        let app = app_handle.clone();
                         tauri::async_runtime::spawn(async move {
-                            if let Err(e) =
-                                update_tray_menu(app_handle, max_tray_items as usize).await
-                            {
+                            if let Err(e) = update_tray_menu(app, max_items as usize).await {
                                 error!("Failed to update tray menu: {}", e);
                             }
                         });
                     }
                 }
 
-                // Experimental settings
-                if let Some(experimental) = parsed_settings.get("experimental") {
+                if let Some(experimental) = settings.get("experimental") {
                     if let Some(debug_logging) =
                         experimental.get("debug_logging").and_then(|v| v.as_bool())
                     {
@@ -170,9 +213,19 @@ pub fn setup_event_listener(app: &tauri::AppHandle) {
                     }
                 }
             }
-            Err(e) => {
-                error!("❌ Failed to parse settings change: {}", e);
-            }
+            Err(e) => error!("❌ Failed to parse settings change: {}", e),
         }
     });
+}
+
+pub fn setup_event_listener(app: &AppHandle) {
+    handle_ctrl_c(app);
+    handle_rclone_api_url_updated(app);
+    handle_rclone_path_updated(app);
+    handle_rclone_api_ready(app);
+    handle_remote_state_changed(app);
+    handle_remote_presence_changed(app);
+    handle_settings_changed(app);
+    tray_menu_updated(app);
+    debug!("✅ Event listeners set up");
 }

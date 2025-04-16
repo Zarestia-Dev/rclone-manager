@@ -1,8 +1,6 @@
 use log::info;
 use tauri::{
-    image::Image,
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager
+    image::Image, tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}, AppHandle, Emitter, Manager
 };
 
 use super::menu::create_tray_menu;
@@ -49,6 +47,7 @@ pub async fn setup_tray(
         })
         .build(&app_clone)?;
 
+    app.emit("tray_menu_updated", ())?;
     Ok(())
 }
 

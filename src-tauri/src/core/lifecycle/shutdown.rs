@@ -3,7 +3,7 @@ use log::{error, info, warn};
 use tauri::{AppHandle, Manager};
 
 use crate::{
-    rclone::api::{api_command::unmount_all_remotes, engine::ENGINE},
+    rclone::api::{api_command::unmount_all_remotes, engine::RcApiEngine},
     RcloneState,
 };
 
@@ -28,7 +28,9 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         }
     }
 
-    ENGINE.lock().unwrap().shutdown();
+    let mut engine = RcApiEngine::lock_engine()
+        .expect("Failed to acquire lock on RcApiEngine");
+    engine.shutdown();
     
     info!("🛑 Shutdown sequence complete");
 }
