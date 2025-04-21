@@ -33,6 +33,7 @@
         display: flex;
         align-items: center;
         flex-direction: row;
+        text-wrap: nowrap;
         gap: 6px;
         font-size: 20px;
         font-weight: 600;
@@ -53,7 +54,7 @@
       top: 0;
       left: 0;
 
-      h3 {
+      .visually-hidden {
         margin: 10px;
         display: flex;
         align-content: center;

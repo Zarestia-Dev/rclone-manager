@@ -1,15 +1,17 @@
 use chrono::Local;
 use log::{debug, error, info, warn};
+use serde::Serialize;
 use serde_json::{json, Value};
-use zip::write::FileOptions;
 use std::{
     fs::{self, create_dir_all, File},
-    io::Write,
+    io::{BufReader, Write},
     path::{Path, PathBuf},
+    process::Command,
     sync::{Arc, Mutex},
 };
-use tauri::{Emitter, Runtime, State};
+use tauri::{AppHandle, Emitter, Runtime, State};
 use tauri_plugin_store::Store;
+use zip::{write::FileOptions, ZipArchive, ZipWriter};
 
 use super::settings_store::AppSettings;
 
@@ -24,10 +26,16 @@ pub struct SettingsState<R: Runtime> {
 pub async fn load_settings<'a>(
     state: State<'a, SettingsState<tauri::Wry>>,
 ) -> Result<serde_json::Value, String> {
-    let store = state.store.lock().unwrap();
+    let store_arc = state.store.clone();
+    let store_guard = store_arc.lock().unwrap();
+
+    // Reload from disk
+    store_guard
+        .reload()
+        .map_err(|e| format!("Failed to reload settings store: {}", e))?;
 
     // **Load stored settings**
-    let stored_settings = store
+    let stored_settings = store_guard
         .get("app_settings")
         .unwrap_or_else(|| json!({}))
         .clone();
@@ -258,94 +266,309 @@ pub async fn get_remote_settings(
 #[tauri::command]
 pub async fn backup_settings(
     backup_dir: String,
+    export_type: String, // "all", "settings", "remotes", "remote-configs"
+    password: Option<String>,
     state: State<'_, SettingsState<tauri::Wry>>,
 ) -> Result<String, String> {
-    let backup_path = PathBuf::from(backup_dir);
+    let backup_path = PathBuf::from(&backup_dir);
+    fs::create_dir_all(&backup_path)
+        .map_err(|e| format!("Failed to create backup directory: {}", e))?;
 
-    if !backup_path.exists() {
-        fs::create_dir_all(&backup_path)
-            .map_err(|e| format!("Failed to create backup directory: {}", e))?;
-    }
+    let timestamp = Local::now();
+    let archive_name = format!(
+        "settings_export_{}.{}",
+        timestamp.format("%Y-%m-%d_%H-%M-%S"),
+        if password.is_some() { "7z" } else { "zip" }
+    );
+    let archive_path = backup_path.join(archive_name);
 
-    // Add timestamp to the filename
-    let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
-    let backup_file_path = backup_path.join(format!("settings_backup_{}.zip", timestamp));
+    // Step 1: Create a temporary folder and collect files
+    let tmp_dir = tempfile::tempdir().map_err(|e| format!("Failed to create temp dir: {}", e))?;
+    let export_dir = tmp_dir.path();
 
-    let file = File::create(&backup_file_path)
-        .map_err(|e| format!("Failed to create backup file: {}", e))?;
-    let mut zip = zip::ZipWriter::new(file);
+    let mut exported_items = vec![];
 
-    let options: FileOptions<'_, ()> = FileOptions::<'static, ()>::default().compression_method(zip::CompressionMethod::Stored);
-
-    // === settings.json ===
-    let store_path = state.config_dir.join("settings.json");
-    if store_path.exists() {
-        zip.start_file("settings.json", options)
-            .map_err(|e| format!("Failed to add settings.json to zip: {}", e))?;
-        let store_data = fs::read(&store_path)
-            .map_err(|e| format!("Failed to read settings.json: {}", e))?;
-        zip.write_all(&store_data)
-            .map_err(|e| format!("Failed to write settings.json to zip: {}", e))?;
-    }
-
-    // === Remotes ===
-    let remotes_dir = state.config_dir.join("remotes");
-    if remotes_dir.exists() {
-        for entry in fs::read_dir(remotes_dir)
-            .map_err(|e| format!("Failed to read remotes directory: {}", e))?
-        {
-            let entry = entry.map_err(|e| format!("Error reading file entry: {}", e))?;
-            let path = entry.path();
-
-            if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                let filename = path.file_name().unwrap().to_string_lossy();
-                zip.start_file(format!("remotes/{}", filename), options)
-                    .map_err(|e| format!("Failed to add remote '{}': {}", filename, e))?;
-
-                let content = fs::read(&path)
-                    .map_err(|e| format!("Failed to read remote '{}': {}", filename, e))?;
-                zip.write_all(&content)
-                    .map_err(|e| format!("Failed to write remote '{}': {}", filename, e))?;
-            }
+    if export_type == "all" || export_type == "settings" {
+        let settings_path = state.config_dir.join("settings.json");
+        if settings_path.exists() {
+            fs::copy(&settings_path, export_dir.join("settings.json")).ok();
+            exported_items.push("settings");
         }
     }
 
-    zip.finish()
-        .map_err(|e| format!("Failed to finish writing zip: {}", e))?;
+    if export_type == "all" || export_type == "remote-configs" {
+        let remotes_dir = state.config_dir.join("remotes");
+        let out_remotes = export_dir.join("remotes");
+        fs::create_dir_all(&out_remotes).ok();
 
-    Ok(backup_file_path.to_string_lossy().to_string())
+        if remotes_dir.exists() {
+            for entry in match fs::read_dir(remotes_dir) {
+                Ok(rd) => rd,
+                Err(_) => {
+                    warn!("⚠️ Failed to read remotes directory.");
+                    // Return early since we can't iterate remotes
+                    return Err("⚠️ Failed to read remotes directory.".to_string());
+                }
+            } {
+                let path = entry.map_err(|e| e.to_string())?.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    fs::copy(&path, out_remotes.join(path.file_name().unwrap())).ok();
+                }
+            }
+            exported_items.push("remote-configs");
+        }
+    }
+
+    if export_type == "all" || export_type == "remotes" {
+        let rclone_conf = state.config_dir.join("rclone.conf");
+        if rclone_conf.exists() {
+            fs::copy(&rclone_conf, export_dir.join("rclone.conf")).ok();
+            exported_items.push("remotes");
+        }
+    }
+
+    // Write export_info.json
+    let export_info = json!({
+        "exported": exported_items,
+        "timestamp": timestamp.to_rfc3339()
+    });
+    fs::write(export_dir.join("export_info.json"), export_info.to_string())
+        .map_err(|e| format!("Failed to write export_info.json: {}", e))?;
+
+    // Step 2: Create archive
+    if let Some(pw) = password {
+        // 7z encrypted
+        let seven_zip = which::which("7z")
+            .or_else(|_| which::which("7za"))
+            .map_err(|_| "7z/7za not found on system. Encryption is unavailable.".to_string())?;
+        let status = Command::new(seven_zip)
+            .current_dir(export_dir)
+            .arg("a")
+            .arg("-mhe=on")
+            .arg(format!("-p{}", pw))
+            .arg(archive_path.to_string_lossy().to_string())
+            .arg(".")
+            .status()
+            .map_err(|e| format!("Failed to execute 7z: {}", e))?;
+
+        if !status.success() {
+            return Err("7z failed to create encrypted archive.".into());
+        }
+    } else {
+        // Standard ZIP archive
+        let file =
+            File::create(&archive_path).map_err(|e| format!("Failed to create zip file: {}", e))?;
+        let mut zip = ZipWriter::new(file);
+        let options = FileOptions::<'static, ()>::default()
+            .compression_method(zip::CompressionMethod::Stored);
+
+        for entry in walkdir::WalkDir::new(export_dir)
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            let path = entry.path();
+            if path.is_file() {
+                let rel_path = path.strip_prefix(export_dir).unwrap();
+                zip.start_file(rel_path.to_string_lossy(), options)
+                    .map_err(|e| format!("Failed to start file in zip: {}", e))?;
+                zip.write_all(
+                    &fs::read(path)
+                        .map_err(|e| format!("Failed to read file {}: {}", path.display(), e))?,
+                )
+                .map_err(|e| format!("Failed to write file {} to zip: {}", path.display(), e))?;
+            }
+        }
+
+        zip.finish()
+            .map_err(|e| format!("Failed to finish zip archive: {}", e))?;
+    }
+
+    Ok(format!(
+        "Backup created at: {}",
+        archive_path.display()
+    ))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BackupAnalysis {
+    pub is_encrypted: bool,
+    pub archive_type: String,
+}
+
+pub fn is_7z_encrypted(path: &Path) -> Result<bool, String> {
+    let output = Command::new("7z")
+        .arg("l")
+        .arg(path)
+        .output()
+        .map_err(|e| format!("Failed to run 7z: {}", e))?;
+
+    if !output.status.success() {
+        return Ok(true); // possibly encrypted
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    if stdout.contains("Headers Encrypted") || stderr.contains("Wrong password") {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+#[tauri::command]
+pub async fn analyze_backup_file(path: PathBuf) -> Result<BackupAnalysis, String> {
+    let ext = path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+
+    match ext.as_str() {
+        "7z" => {
+            let encrypted = is_7z_encrypted(&path)?;
+            Ok(BackupAnalysis {
+                is_encrypted: encrypted,
+                archive_type: "7z".to_string(),
+            })
+        }
+        "zip" => {
+            // We assume your .zip backups are always unencrypted unless you add zip password support
+            Ok(BackupAnalysis {
+                is_encrypted: false,
+                archive_type: "zip".to_string(),
+            })
+        }
+        _ => Err("Unsupported archive type".into()),
+    }
+}
+
+#[tauri::command]
+pub async fn restore_encrypted_settings(
+    path: PathBuf,
+    password: String,
+    state: State<'_, SettingsState<tauri::Wry>>,
+    app_handle: AppHandle,
+) -> Result<String, String> {
+    // example: 7z x archive_path -p{password} -o{temp_dir}
+    let temp_dir = tempfile::tempdir().map_err(|e| e.to_string())?;
+    let out_path = temp_dir.path().to_str().unwrap();
+
+    let output = Command::new("7z")
+        .args(&["x", path.to_str().unwrap()])
+        .arg(format!("-p{}", password))
+        .arg(format!("-o{}", out_path))
+        .output()
+        .map_err(|e| format!("Failed to extract archive: {}", e))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "7z extraction failed:\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+
+    // Use same logic from `restore_settings` to restore from `out_path`
+    restore_settings_from_path(Path::new(out_path), state, app_handle).await
+}
+
+pub async fn restore_settings_from_path(
+    extracted_dir: &Path,
+    state: State<'_, SettingsState<tauri::Wry>>,
+    app_handle: AppHandle,
+) -> Result<String, String> {
+    info!(
+        "Restoring settings from extracted path: {:?}",
+        extracted_dir
+    );
+
+    for entry in walkdir::WalkDir::new(extracted_dir)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| e.file_type().is_file())
+    {
+        let relative_path = entry.path().strip_prefix(extracted_dir).unwrap();
+        let file_name = relative_path.to_string_lossy();
+
+        let out_path = match file_name.as_ref() {
+            "settings.json" => state.config_dir.join("settings.json"),
+
+            "rclone.conf" => state.config_dir.join("rclone.conf"),
+
+            name if name.starts_with("remotes/") => {
+                let remote_name = name.trim_start_matches("remotes/");
+                let remotes_dir = state.config_dir.join("remotes");
+                create_dir_all(&remotes_dir)
+                    .map_err(|e| format!("Failed to create remotes dir: {}", e))?;
+                remotes_dir.join(remote_name)
+            }
+
+            "export_info.json" => state.config_dir.join("last_import_info.json"),
+
+            _ => {
+                debug!("Skipping unknown file: {}", file_name);
+                continue;
+            }
+        };
+
+        if let Some(parent) = out_path.parent() {
+            create_dir_all(parent).map_err(|e| format!("Failed to create parent dir: {}", e))?;
+        }
+
+        std::fs::copy(entry.path(), &out_path)
+            .map_err(|e| format!("Failed to copy to {:?}: {}", out_path, e))?;
+
+        info!("Restored: {:?}", out_path);
+    }
+    // Load the settings from the restored settings.json
+    let settings_path = state.config_dir.join("settings.json");
+    let settings_content = fs::read_to_string(&settings_path)
+        .map_err(|e| format!("Failed to read settings file: {}", e))?;
+    let new_settings: serde_json::Value = serde_json::from_str(&settings_content)
+        .map_err(|e| format!("Failed to parse settings file: {}", e))?;
+
+    app_handle.emit("remote_presence_changed", json!({})).ok();
+    app_handle
+        .emit(
+            "system_settings_changed",
+            serde_json::to_value(new_settings.get("app_settings")).unwrap(),
+        )
+        .ok();
+
+    Ok("Settings restored successfully.".to_string())
 }
 
 #[tauri::command]
 pub async fn restore_settings(
-    backup_path: &Path,
+    backup_path: PathBuf,
     state: State<'_, SettingsState<tauri::Wry>>,
-    app_handle: tauri::AppHandle,
-) -> Result<(), String> {
-    let file = File::open(backup_path).map_err(|e| format!("Failed to open backup file: {}", e))?;
-    let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Failed to read zip archive: {}", e))?;
+    app_handle: AppHandle,
+) -> Result<String, String> {
+    info!("Starting restore_settings from {:?}", backup_path);
+
+    let file = File::open(&backup_path).map_err(|e| format!("Failed to open backup: {}", e))?;
+    let mut archive =
+        ZipArchive::new(BufReader::new(file)).map_err(|e| format!("Invalid ZIP: {}", e))?;
+
+    let temp_dir = tempfile::tempdir().map_err(|e| format!("Temp dir error: {}", e))?;
 
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i).map_err(|e| format!("Failed to access file in archive: {}", e))?;
-        let out_path = match file.name() {
-            "settings.json" => state.config_dir.join("settings.json"),
-            name if name.starts_with("remotes/") => {
-                let remote_name = name.trim_start_matches("remotes/");
-                let remote_config_dir = state.config_dir.join("remotes");
-                let remote_config_path = remote_config_dir.join(remote_name);
-                create_dir_all(&remote_config_dir).map_err(|e| format!("Failed to create remote config directory: {}", e))?;
-                remote_config_path
-            }
-            _ => continue,
-        };
+        let mut file = archive
+            .by_index(i)
+            .map_err(|e| format!("Zip read error: {}", e))?;
+        let out_path = temp_dir.path().join(file.name());
 
-        let mut out_file = File::create(out_path).map_err(|e| format!("Failed to create output file: {}", e))?;
-        std::io::copy(&mut file, &mut out_file).map_err(|e| format!("Failed to copy file content: {}", e))?;
+        if let Some(parent) = out_path.parent() {
+            create_dir_all(parent).map_err(|e| format!("Failed to create parent: {}", e))?;
+        }
+
+        let mut outfile =
+            File::create(&out_path).map_err(|e| format!("Failed to create file: {}", e))?;
+        std::io::copy(&mut file, &mut outfile).map_err(|e| format!("Copy error: {}", e))?;
     }
 
-    app_handle.emit("remote_presence_changed", json!({})).ok();
-    app_handle.emit("system_settings_changed", json!({})).ok();
-    Ok(())
+    restore_settings_from_path(temp_dir.path(), state, app_handle).await
 }
 
 #[tauri::command]

@@ -1,0 +1,20 @@
+.tabs-buttons {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  button {
+    border-radius: 8px;
+    padding-inline: 6px;
+
+    &:hover {
+      background: var(--button-hover);
+    }
+
+    &.active {
+      background: var(--button-active);
+    }
+  }
+}

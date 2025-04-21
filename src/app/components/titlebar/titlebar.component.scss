@@ -13,12 +13,8 @@
     align-items: center;
     gap: 5px;
     padding: 6px;
-    border: none;
     border-radius: 8px;
-    background: transparent;
     color: var(--button-text);
-    cursor: pointer;
-    transition: background 0.2s, color 0.2s ease-in-out;
 
     &:hover {
       background: var(--button-hover);
@@ -46,27 +42,6 @@
       .logo {
         width: 32px;
         height: 32px; 
-      }
-    }
-  }
-
-
-  .center-section {
-    display: flex;
-    align-items: center;
-    flex-direction: row;
-    justify-content: center;
-    gap: 10px;
-    
-    button {
-      padding-inline: 10px;
-
-      &:hover {
-        background: var(--button-hover);
-      }
-
-      &.active {
-        background: var(--button-active);
       }
     }
   }

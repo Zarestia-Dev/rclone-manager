@@ -1,11 +1,11 @@
-<div class="about-modal">
+<div class="modal">
+    <div class="modal-header" data-tauri-drag-region>
+        <button mat-icon-button class="close-btn" (click)="close()">
+            <mat-icon svgIcon="circle-xmark"></mat-icon>
+        </button>
+    </div>
     <!-- Main About Page -->
-    <div class="about-content" [class.blurred]="currentPage !== 'main'">
-        <div class="header" data-tauri-drag-region>
-            <button mat-icon-button class="close-btn" (click)="closeModal()">
-                <mat-icon svgIcon="circle-xmark"></mat-icon>
-            </button>
-        </div>
+    <div class="modal-content" [class.blurred]="currentPage !== 'main'">
         <mat-icon svgIcon="rclone" class="app-icon"></mat-icon>
         <h2 class="app-name">RClone Manager</h2>
         <p class="app-team">Hakan İSMAİL</p>
@@ -38,7 +38,7 @@
                 <mat-icon svgIcon="chevron-left" class="icon icon-bw"></mat-icon>
             </button>
             <p><strong>{{ currentPage | titlecase }}</strong></p>
-            <button mat-button (click)="closeModal()">
+            <button mat-button (click)="close()">
                 <mat-icon svgIcon="circle-xmark" class="icon icon-bw"></mat-icon>
             </button>
         </div>

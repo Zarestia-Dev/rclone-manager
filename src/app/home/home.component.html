@@ -9,7 +9,7 @@
   <mat-sidenav-content class="main-content" position="start">
 
     <!-- Sidebar Toggle Button -->
-    <div class="sticky-sidebar-button">
+    <div class="sidebar-button">
       <button class="toggle-sidebar" (click)="sidenav.toggle()">
         <mat-icon svgIcon="menu-bar"></mat-icon>
       </button>
@@ -47,7 +47,7 @@
         <mat-divider></mat-divider>
 
         <!-- ❌ Delete Remote (Destructive Action) -->
-        <button mat-menu-item class="delete-option" (click)="deleteRemoteByName()">
+        <button mat-menu-item class="delete-option" (click)="deleteRemote(selectedRemote.remoteSpecs.name)">
           <span>Delete Remote</span>
         </button>
       </mat-menu>
@@ -91,25 +91,22 @@
 
     <!-- Remote Details (Show When a Remote is Selected) -->
     <app-mount-detail *ngIf="selectedRemote && currentTab === 'mount'" [selectedRemote]="selectedRemote"
-      [remoteSettings]="loadRemoteMountSettings(selectedRemote.remoteSpecs.name)"
-      (openInFiles)="openRemoteInFiles($event)" (mountRemote)="mountRemote($event)"
-      (unmountRemote)="unmountRemote($event)"
+      [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" (openInFiles)="openRemoteInFiles($event)"
+      (mountRemote)="mountRemote($event)" (unmountRemote)="unmountRemote($event)"
       (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)" style="width: 100%;">
     </app-mount-detail>
 
     <app-sync-detail *ngIf="selectedRemote && currentTab === 'sync'" [selectedRemote]="selectedRemote"
-      [remoteSettings]="loadRemoteSyncSettings(selectedRemote.remoteSpecs.name)" style="width: 100%;">
+      style="width: 100%;">
     </app-sync-detail>
 
     <app-copy-detail *ngIf="selectedRemote && currentTab === 'copy'" [selectedRemote]="selectedRemote"
-      [remoteSettings]="loadRemoteCopySettings(selectedRemote.remoteSpecs.name)" style="width: 100%;">
+      style="width: 100%;">
     </app-copy-detail>
 
     <app-job-detail *ngIf="selectedRemote && currentTab === 'jobs'" [selectedRemote]="selectedRemote"
       style="width: 100%;">
     </app-job-detail>
-
-
 
   </mat-sidenav-content>
 </mat-sidenav-container>

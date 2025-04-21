@@ -1,182 +1,244 @@
-import { Component, OnInit, OnDestroy } from "@angular/core";
-import { MatMenuModule } from "@angular/material/menu";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { MatDividerModule } from "@angular/material/divider";
-import { CommonModule } from "@angular/common";
-import { invoke } from "@tauri-apps/api/core";
+import { Component, OnInit, OnDestroy, HostListener } from "@angular/core";
 import { MatDialog } from "@angular/material/dialog";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
+import { Observable } from "rxjs";
+import { takeUntil } from "rxjs/operators";
+import { Subject } from "rxjs";
+
+// Components
 import { RemoteConfigModalComponent } from "../../modals/remote-config-modal/remote-config-modal.component";
 import { PreferencesModalComponent } from "../../modals/preferences-modal/preferences-modal.component";
 import { KeyboardShortcutsModalComponent } from "../../modals/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component";
 import { AboutModalComponent } from "../../modals/about-modal/about-modal.component";
-import { StateService } from "../../services/state.service";
 import { QuickAddRemoteComponent } from "../../modals/quick-add-remote/quick-add-remote.component";
-import { MatTooltipModule } from "@angular/material/tooltip";
+import { ExportModalComponent } from "../../modals/export-modal/export-modal.component";
+import { InputModalComponent } from "../../modals/input-modal/input-modal.component";
+
+// Services
+import { StateService } from "../../services/state.service";
+import { SettingsService } from "../../services/settings.service";
+import { RcloneService } from "../../services/rclone.service";
+import { MatDividerModule } from "@angular/material/divider";
 import { MatIconModule } from "@angular/material/icon";
+import { CommonModule } from "@angular/common";
+import { MatMenuModule } from "@angular/material/menu";
+import { TabsButtonsComponent } from "../tabs-buttons/tabs-buttons.component";
+
+// Models
+type Theme = "light" | "dark" | "system";
+type ModalSize = {
+  width: string;
+  maxWidth: string;
+  minWidth: string;
+  height: string;
+  maxHeight: string;
+};
 
 const appWindow = getCurrentWindow();
+const STANDARD_MODAL_SIZE: ModalSize = {
+  width: "90vw",
+  maxWidth: "642px",
+  minWidth: "360px",
+  height: "80vh",
+  maxHeight: "600px",
+};
 
 @Component({
-    selector: "app-titlebar",
-    imports: [MatMenuModule, MatDividerModule, CommonModule, MatTooltipModule, MatIconModule],
-    templateUrl: "./titlebar.component.html",
-    styleUrl: "./titlebar.component.scss"
-  })
-  export class TitlebarComponent implements OnInit, OnDestroy {
-    constructor(private dialog: MatDialog, private stateService: StateService) {}
-    currentTab: "mount" | "sync" | "copy" | "jobs" = "mount";
+  selector: "app-titlebar",
+  imports: [
+    MatMenuModule,
+    MatDividerModule,
+    CommonModule,
+    MatIconModule,
+    TabsButtonsComponent,
+  ],
+  templateUrl: "./titlebar.component.html",
+  styleUrls: ["./titlebar.component.scss"],
+})
+export class TitlebarComponent implements OnInit, OnDestroy {
+  selectedTheme: Theme = "system";
+  isMobile$: Observable<boolean>;
 
-    ngOnInit() {
-      this.setTheme(this.selectedTheme);
-      this.stateService.currentTab$.subscribe((tab) => {
-        this.currentTab = tab;
-      });      
-    
-      // Listen for system theme changes
-      this.darkModeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      this.mediaQueryListener = (event) => {
-        if (this.selectedTheme === "system") {
-          const systemTheme = event.matches ? "dark" : "light";
-          document.documentElement.setAttribute("class", systemTheme);
-          invoke("set_theme", { theme: systemTheme });
-        }
-      };
-      this.darkModeMediaQuery.addEventListener("change", this.mediaQueryListener);
-    }
-    
+  private darkModeMediaQuery: MediaQueryList | null = null;
+  private destroy$ = new Subject<void>();
 
-  ngAfterViewInit() {
-    // Add a keyboard shortcut for Ctrl + ,
-    window.addEventListener("keydown", (event) => {
-      if (event.ctrlKey && event.key === ",") {
-        event.preventDefault();
-        this.openPreferencesModal();
-      }
-      else if (event.ctrlKey && event.key === "r") {
-        event.preventDefault();
-        this.openQuickAddRemoteModal();
-      }
-      else if (event.ctrlKey && event.key === "n") {
-        event.preventDefault();
-        this.openRemoteConfigModal();
-      }
-      else if (event.ctrlKey && event.key === "?") {
-        event.preventDefault();
-        this.openKeyboardShortcutsModal();
-      }
-      else if (event.ctrlKey && ( event.key === "q" || event.key === "w" )) {
-        event.preventDefault();
-        this.closeWindow();
-      }
-    });
+  constructor(
+    private dialog: MatDialog,
+    private stateService: StateService,
+    private rcloneService: RcloneService,
+    private settingsService: SettingsService
+  ) {
+    this.isMobile$ = this.stateService.isMobile$;
+  }
+
+  ngOnInit(): void {
+    this.initThemeSystem();
+    this.setTheme(this.selectedTheme);
+  }
+
+  ngOnDestroy(): void {
+    this.cleanup();
   }
 
   resetRemote(): void {
     this.stateService.resetSelectedRemote();
   }
 
-  setTab(tab: "mount" | "sync" | "copy" | "jobs") {
-    this.stateService.setTab(tab);
-    this.currentTab = tab;
+  @HostListener("window:keydown", ["$event"])
+  handleKeyboardShortcuts(event: KeyboardEvent): void {
+    if (!event.ctrlKey) return;
+
+    const keyHandlers: Record<string, () => void> = {
+      ",": () => this.openPreferencesModal(),
+      r: () => this.openQuickAddRemoteModal(),
+      n: () => this.openRemoteConfigModal(),
+      "?": () => this.openKeyboardShortcutsModal(),
+      q: () => this.closeWindow(),
+      w: () => this.closeWindow(),
+    };
+
+    if (keyHandlers[event.key]) {
+      event.preventDefault();
+      keyHandlers[event.key]();
+    }
   }
 
-  closeWindow() {
+  // Window controls
+  closeWindow(): void {
     appWindow.close();
   }
 
-  minimizeWindow() {
+  minimizeWindow(): void {
     appWindow.minimize();
   }
 
-  maximizeWindow() {
+  maximizeWindow(): void {
     appWindow.toggleMaximize();
   }
 
-  selectedTheme: string = "system";
-  private darkModeMediaQuery: MediaQueryList | null = null;
-  private mediaQueryListener: ((event: MediaQueryListEvent) => void) | null =
-    null;
-
-  async setTheme(theme: string) {
+  // Theme management
+  async setTheme(theme: Theme): Promise<void> {
     this.selectedTheme = theme;
+    const effectiveTheme = theme === "system" ? this.getSystemTheme() : theme;
 
-    // Apply the theme to the app
-    if (theme === "system") {
-      const systemTheme = this.getSystemTheme();
-      document.documentElement.setAttribute("class", systemTheme);
-      await invoke("set_theme", { theme: systemTheme });
-    } else {
-      document.documentElement.setAttribute("class", theme);
-      await invoke("set_theme", { theme });
-    }
+    document.documentElement.setAttribute("class", effectiveTheme);
+    await invoke("set_theme", { theme: effectiveTheme });
   }
 
-  openQuickAddRemoteModal(): void {
-    this.dialog.open(QuickAddRemoteComponent, {
-      width: "70vw",
-      maxWidth: "800px",
-      height: "80vh",
-      maxHeight: "600px",
-      disableClose: true,
-    });
-  }
-
-  openRemoteConfigModal(): void {
-    this.dialog.open(RemoteConfigModalComponent, {
-      width: "70vw",
-      maxWidth: "800px",
-      height: "80vh",
-      maxHeight: "600px",
-      disableClose: true,
-    });
-  }
-
-
-  openPreferencesModal() {
-    const dialogRef = this.dialog.open(PreferencesModalComponent, {
-      width: "70vw",
-      maxWidth: "800px",
-      height: "80vh",
-      maxHeight: "600px",
-      disableClose: true,
-    });
-
-    dialogRef.afterClosed().subscribe((result) => {
-      console.log("Modal closed:", result);
-    });
-  }
-
-  openKeyboardShortcutsModal() {
-    this.dialog.open(KeyboardShortcutsModalComponent, {
-      width: "70vw",
-      maxWidth: "800px",
-      height: "80vh",
-      maxHeight: "600px",
-      disableClose: true,
-    });
-  }
-
-  openAboutModal() {
-    this.dialog.open(AboutModalComponent, {
-      width: "400px",
-      disableClose: true,
-    });
-  }
-
-
-  ngOnDestroy() {
-    // Clean up the event listener
-    if (this.darkModeMediaQuery && this.mediaQueryListener) {
-      this.darkModeMediaQuery.removeEventListener(
-        "change",
-        this.mediaQueryListener
-      );
-    }
-  }
-
-  public getSystemTheme(): "light" | "dark" {
+  getSystemTheme(): "light" | "dark" {
     return window.matchMedia("(prefers-color-scheme: dark)").matches
       ? "dark"
       : "light";
+  }
+
+  // Modal methods
+  public openQuickAddRemoteModal(): void {
+    this.openModal(QuickAddRemoteComponent, STANDARD_MODAL_SIZE);
+  }
+
+  openRemoteConfigModal(): void {
+    this.openModal(RemoteConfigModalComponent, STANDARD_MODAL_SIZE);
+  }
+
+  openPreferencesModal(): void {
+    this.openModal(PreferencesModalComponent, STANDARD_MODAL_SIZE);
+  }
+
+  openKeyboardShortcutsModal(): void {
+    this.openModal(KeyboardShortcutsModalComponent, STANDARD_MODAL_SIZE);
+  }
+
+  openExportModal(): void {
+    this.openModal(ExportModalComponent, STANDARD_MODAL_SIZE);
+  }
+
+  openAboutModal(): void {
+    this.openModal(AboutModalComponent, {
+      width: "362px",
+      maxWidth: "362px",
+      minWidth: "360px",
+      height: "80vh",
+      maxHeight: "600px",
+    });
+  }
+
+  async restoreSettings(): Promise<void> {
+    const path = await this.rcloneService.selectFile();
+    if (!path) return;
+
+    const result = await this.settingsService.analyzeBackupFile(path);
+    if (!result) return;
+
+    if (result.isEncrypted) {
+      this.handleEncryptedBackup(path);
+    } else {
+      await this.settingsService.restoreSettings(path);
+    }
+  }
+
+  // Private methods
+  private initThemeSystem(): void {
+    this.darkModeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const listener = (event: MediaQueryListEvent) => {
+      if (this.selectedTheme === "system") {
+        this.setTheme("system");
+      }
+    };
+    this.darkModeMediaQuery.addEventListener("change", listener);
+  }
+
+  private openModal(component: any, size: ModalSize): void {
+    const dialogRef = this.dialog.open(component, {
+      ...size,
+      disableClose: true,
+    });
+
+    dialogRef
+      .afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((result) => {
+        console.log("Modal closed with:", result);
+      });
+  }
+
+  private handleEncryptedBackup(path: string): void {
+    this.dialog
+      .open(InputModalComponent, {
+        width: "400px",
+        disableClose: true,
+        data: {
+          title: "Enter Password",
+          description: "Please enter the password to decrypt the backup file.",
+          fields: [
+            {
+              name: "password",
+              label: "Password",
+              type: "password",
+              required: true,
+            },
+          ],
+        },
+      })
+      .afterClosed()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(async (inputData) => {
+        if (inputData?.password) {
+          await this.settingsService.restore_encrypted_settings(
+            path,
+            inputData.password
+          );
+        }
+      });
+  }
+
+  private cleanup(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+
+    if (this.darkModeMediaQuery) {
+      // Remove all listeners to be safe
+      this.darkModeMediaQuery.removeEventListener("change", () => {});
+    }
   }
 }

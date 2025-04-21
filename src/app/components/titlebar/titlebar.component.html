@@ -19,18 +19,8 @@
   </div>
 
   <div class="center-section">
-    <button mat-icon-button matTooltip="Mount" (click)="setTab('mount')" [class.active]="currentTab === 'mount'">
-      <mat-icon svgIcon="mount"></mat-icon>
-    </button>
-    <button mat-icon-button matTooltip="Sync" (click)="setTab('sync')" [class.active]="currentTab === 'sync'">
-      <mat-icon svgIcon="sync"></mat-icon>
-    </button>
-    <button mat-icon-button matTooltip="Copy" (click)="setTab('copy')" [class.active]="currentTab === 'copy'">
-      <mat-icon svgIcon="copy"></mat-icon>
-    </button>
-    <button mat-icon-button matTooltip="Jobs" (click)="setTab('jobs')" [class.active]="currentTab === 'jobs'">
-      <mat-icon svgIcon="jobs"></mat-icon>
-    </button>
+    <app-tabs-buttons *ngIf="!(isMobile$ | async)" style="display: flex;"
+    ></app-tabs-buttons>
   </div>
 
 
@@ -69,9 +59,14 @@
 
     <mat-divider></mat-divider>
 
-    <button mat-menu-item>
+    <button mat-menu-item (click)="restoreSettings()">
       <span>Import</span>
       <span class="shortcut">Ctrl + I</span>
+    </button>
+
+    <button mat-menu-item (click)="openExportModal()">
+      <span>Export</span>
+      <span class="shortcut">Ctrl + E</span>
     </button>
 
     <mat-divider></mat-divider>

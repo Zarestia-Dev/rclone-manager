@@ -1,31 +1,59 @@
-import { Component, HostListener, OnInit } from "@angular/core";
-import {
-  AbstractControl,
-  FormBuilder,
-  FormGroup,
-  ReactiveFormsModule,
-  ValidationErrors,
-  Validators,
+import { 
+  Component, 
+  HostListener, 
+  OnInit, 
+  OnDestroy, 
+  inject 
+} from "@angular/core";
+import { 
+  AbstractControl, 
+  FormBuilder, 
+  FormGroup, 
+  ReactiveFormsModule, 
+  ValidationErrors, 
+  Validators 
 } from "@angular/forms";
-import { RcloneService } from "../../services/rclone.service";
 import { CommonModule } from "@angular/common";
+import { MatDialogRef } from "@angular/material/dialog";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatSelectModule } from "@angular/material/select";
 import { MatInputModule } from "@angular/material/input";
-import { MatDialogRef } from "@angular/material/dialog";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
-import { SettingsService } from "../../services/settings.service";
-import { animate, style, transition, trigger } from "@angular/animations";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatIconModule } from "@angular/material/icon";
+import { animate, style, transition, trigger } from "@angular/animations";
+import { RcloneService } from "../../services/rclone.service";
+import { SettingsService } from "../../services/settings.service";
+import { Subscription } from "rxjs";
+
+interface QuickAddForm {
+  remoteName: string;
+  remoteType: string;
+  autoMount: boolean;
+  mountPath: string;
+}
+
+interface RemoteSettings {
+  name: string;
+  custom_flags: string[];
+  vfs_options: {
+    cache_mode: string;
+    chunk_size: string;
+  };
+  mount_options: {
+    mount_point: string;
+    auto_mount: boolean;
+  };
+}
 
 @Component({
   selector: "app-quick-add-remote",
+  standalone: true,
   imports: [
     CommonModule,
-    MatFormFieldModule,
     ReactiveFormsModule,
+    MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
     MatDividerModule,
@@ -34,7 +62,7 @@ import { MatIconModule } from "@angular/material/icon";
     MatIconModule,
   ],
   templateUrl: "./quick-add-remote.component.html",
-  styleUrl: "./quick-add-remote.component.scss",
+  styleUrls: ["./quick-add-remote.component.scss"],
   animations: [
     trigger("slideInOut", [
       transition(":enter", [
@@ -47,22 +75,35 @@ import { MatIconModule } from "@angular/material/icon";
     ]),
   ],
 })
-export class QuickAddRemoteComponent implements OnInit {
+export class QuickAddRemoteComponent implements OnInit, OnDestroy {
+  private fb = inject(FormBuilder);
+  private rcloneService = inject(RcloneService);
+  private settingsService = inject(SettingsService);
+  private dialogRef = inject(MatDialogRef<QuickAddRemoteComponent>);
+
   quickAddForm: FormGroup;
   oauthSupportedRemotes: string[] = [];
   existingRemotes: string[] = [];
   isLoading = false;
   authDisabled = false;
-  cancelced = false;
+  cancelled = false;
+  private formSubscriptions: Subscription[] = [];
 
-  constructor(
-    private fb: FormBuilder,
-    private rcloneService: RcloneService,
-    private dialogRef: MatDialogRef<QuickAddRemoteComponent>,
-    private settingsService: SettingsService
-  ) {
-    // ✅ Initialize the form with validators
-    this.quickAddForm = this.fb.group({
+  constructor() {
+    this.quickAddForm = this.createQuickAddForm();
+    this.setupFormListeners();
+  }
+
+  ngOnInit(): void {
+    this.initializeComponent();
+  }
+
+  ngOnDestroy(): void {
+    this.cleanup();
+  }
+
+  private createQuickAddForm(): FormGroup {
+    return this.fb.group({
       remoteName: [
         { value: "", disabled: this.isLoading },
         [Validators.required, this.validateRemoteName.bind(this)],
@@ -71,53 +112,48 @@ export class QuickAddRemoteComponent implements OnInit {
         { value: "", disabled: this.isLoading },
         Validators.required,
       ],
-      autoMount: [{ value: false, disabled: this.isLoading }], // Default disabled
-      mountPath: [{ value: "", disabled: this.isLoading }], // Initially not required
+      autoMount: [{ value: false, disabled: this.isLoading }],
+      mountPath: [{ value: "", disabled: this.isLoading }],
     });
-
-    // ✅ Automatically toggle mountPath validation based on autoMount
-    this.quickAddForm
-      .get("autoMount")
-      ?.valueChanges.subscribe((autoMount: boolean) => {
-        const mountPathControl = this.quickAddForm.get("mountPath");
-        if (autoMount) {
-          mountPathControl?.setValidators([Validators.required]);
-        } else {
-          mountPathControl?.clearValidators();
-        }
-        mountPathControl?.updateValueAndValidity();
-      });
   }
 
-  async ngOnInit() {
-    try {
-      // ✅ Load existing remotes to prevent conflicts
-      this.existingRemotes = await this.rcloneService.getRemotes();
-      console.log("Loaded existing remotes:", this.existingRemotes);
-
-      // ✅ Fetch OAuth-supported remotes
-      this.oauthSupportedRemotes =
-        await this.rcloneService.getOAuthSupportedRemotes();
-      console.log("OAuth-supported remotes:", this.oauthSupportedRemotes);
-    } catch (error) {
-      console.error("Error loading remote data:", error);
+  private setupFormListeners(): void {
+    const autoMountSub = this.quickAddForm.get("autoMount")?.valueChanges
+      .subscribe((autoMount: boolean) => {
+        const mountPathControl = this.quickAddForm.get("mountPath");
+        autoMount 
+          ? mountPathControl?.setValidators([Validators.required])
+          : mountPathControl?.clearValidators();
+        mountPathControl?.updateValueAndValidity();
+      });
+    
+    if (autoMountSub) {
+      this.formSubscriptions.push(autoMountSub);
     }
   }
 
-  /** ✅ Custom Validator: Prevent duplicate remote names */
+  private async initializeComponent(): Promise<void> {
+    try {
+      [this.existingRemotes, this.oauthSupportedRemotes] = await Promise.all([
+        this.rcloneService.getRemotes(),
+        this.rcloneService.getOAuthSupportedRemotes()
+      ]);
+    } catch (error) {
+      console.error("Error initializing component:", error);
+    }
+  }
+
   validateRemoteName(control: AbstractControl): ValidationErrors | null {
     const value = control.value?.trim();
-    if (!value) return null; // Skip empty validation
+    if (!value) return null;
     return this.existingRemotes.includes(value) ? { nameTaken: true } : null;
   }
 
-  /** 📌 Handle Remote Type Selection */
-  onRemoteTypeChange() {
+  onRemoteTypeChange(): void {
     const selectedRemote = this.quickAddForm.get("remoteType")?.value;
     if (!selectedRemote) return;
 
-    // ✅ Generate a unique remote name (e.g., "GoogleDrive-1")
-    let baseName = selectedRemote.replace(/\s+/g, "");
+    const baseName = selectedRemote.replace(/\s+/g, "");
     let newName = baseName;
     let counter = 1;
 
@@ -129,98 +165,89 @@ export class QuickAddRemoteComponent implements OnInit {
     this.quickAddForm.patchValue({ remoteName: newName });
   }
 
-  /** 📂 Select Folder for Mount Path */
   async selectFolder(): Promise<void> {
-    const selectedPath = await this.rcloneService.selectFolder(true);
-    if (selectedPath) {
-      this.quickAddForm.patchValue({ mountPath: selectedPath });
+    try {
+      const selectedPath = await this.rcloneService.selectFolder(true);
+      if (selectedPath) {
+        this.quickAddForm.patchValue({ mountPath: selectedPath });
+      }
+    } catch (error) {
+      console.error("Error selecting folder:", error);
     }
   }
 
-  /** 📌 Handle Quick Add Submission */
-  async onSubmit() {
-    if (this.quickAddForm.invalid) return;
+  async onSubmit(): Promise<void> {
+    if (this.quickAddForm.invalid || this.isLoading) return;
 
     this.isLoading = true;
+    this.cancelled = false;
 
     try {
-      const { remoteName, remoteType, autoMount, mountPath } =
-        this.quickAddForm.value;
-
-      // ✅ Prepare remote config
-      const remoteConfig = {
-        name: remoteName,
-        type: remoteType,
-      };
-
-      this.setFormState(true); // Disable form fields
-      // ✅ Create Remote
-      await this.rcloneService.createRemote(remoteName, remoteConfig);
-
-      // ✅ Save Remote-Specific Settings (Need to add the settings for editeable default quick remote settings.)
-      const remoteSettings = {
-        name: remoteName,
-        custom_flags: [], // Empty array for now (user can customize later)
-        vfs_options: { cache_mode: "full", chunk_size: "32M" },
-        mount_options: {
-          mount_point: mountPath || "",
-          auto_mount: autoMount || false,
-        },
-      };
-
-      await this.settingsService.saveRemoteSettings(remoteName, remoteSettings);
-      console.log(`✅ Saved settings for remote: ${remoteName}`);
-
-      // ✅ Auto-mount if enabled
-      if (autoMount && mountPath) {
-        // await this.rcloneService.mountRemote();
-        console.log("Remote mounted successfully!");
+      const formValue = this.quickAddForm.value as QuickAddForm;
+      await this.handleRemoteCreation(formValue);
+      
+      if (!this.cancelled) {
+        this.dialogRef.close(true);
       }
-      this.isLoading = false;
     } catch (error) {
-      console.error("Error adding remote:", error);
+      console.error("Error in onSubmit:", error);
     } finally {
-      if (!this.cancelced) {
-        this.setFormState(false); // Re-enable form fields
-        this.dialogRef.close(true); // Close modal and return success
-      }
-      this.isLoading = false; // Reset loading state
-      this.cancelced = false; // Reset cancellation state
+      this.isLoading = false;
     }
   }
 
-  async cancelAuth() {
+  private async handleRemoteCreation(formValue: QuickAddForm): Promise<void> {
+    const { remoteName, remoteType, autoMount, mountPath } = formValue;
+
+    await this.rcloneService.createRemote(remoteName, {
+      name: remoteName,
+      type: remoteType
+    });
+
+    const remoteSettings: RemoteSettings = {
+      name: remoteName,
+      custom_flags: [],
+      vfs_options: { cache_mode: "full", chunk_size: "32M" },
+      mount_options: {
+        mount_point: mountPath || "",
+        auto_mount: autoMount || false,
+      },
+    };
+
+    await this.settingsService.saveRemoteSettings(remoteName, remoteSettings);
+
+    if (autoMount && mountPath) {
+      await this.rcloneService.mountRemote(remoteName, mountPath);
+      console.log("Remote mounted successfully!");
+    }
+  }
+
+  async cancelAuth(): Promise<void> {
     this.isLoading = false;
-    this.setFormState(false);
-    this.cancelced = true;
+    this.cancelled = true;
+    this.authDisabled = true;
+
     try {
-      this.authDisabled = true;
       await this.rcloneService.quitOAuth();
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Error during OAuth cancellation:", error);
-    }
-    finally {
+    } finally {
       this.authDisabled = false;
+      this.setFormState(false);
     }
   }
 
-  setFormState(disabled: boolean) {
-    if (disabled) {
-      this.quickAddForm.disable(); // 🚀 Disables all form fields
-    } else {
-      this.quickAddForm.enable(); // ✅ Enables all form fields
-    }
+  private setFormState(disabled: boolean): void {
+    disabled ? this.quickAddForm.disable() : this.quickAddForm.enable();
   }
 
-  /** ✅ Handle closing modal with ESC */
   @HostListener("document:keydown.escape", ["$event"])
   close(): void {
     this.dialogRef.close();
   }
 
-  /** ✅ Ensure cleanup on modal close */
-  ngOnDestroy() {
+  private cleanup(): void {
+    this.formSubscriptions.forEach(sub => sub.unsubscribe());
     this.rcloneService.quitOAuth();
   }
 }

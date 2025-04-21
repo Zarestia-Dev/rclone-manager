@@ -1,35 +1,42 @@
-.about-modal {
-  position: relative;
+.modal {
+  height: 100%;
   background: var(--secondary-background);
-  padding: 10px 10px 21px;
-  box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
-  text-align: center;
-  overflow: hidden;
+  box-shadow: 0 4px 12px var(--shadow-color);
+  display: flex;
+  flex-direction: column;
+  position: relative; /* Ensure absolute positioning works for children */
+  overflow: hidden; /* Hide overflow from children */
+  
+  .modal-header {
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    .close-btn {
+      margin-top: 4px;
+    }
+  }
 
-  .about-content {
-    transition: filter 0.3s ease-in-out;
+  .modal-content {
+    padding: 16px;
+    overflow: auto;
     position: relative;
-    z-index: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 
     &.blurred {
       filter: blur(4px);
     }
 
-    .header {
-      width: 100%;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 10px;
-      .close-btn {
-        color: var(--app-text-color);
-      }
-    }
   }
 
   .app-icon {
     width: 140px;
     height: 140px;
+    min-height: 128px;
   }
 
   .app-name {
@@ -63,6 +70,7 @@
   .about-list {
     margin-top: 20px;
     display: flex;
+    width: 100%;
     flex-direction: column;
     gap: 8px;
   }

@@ -1,3 +1,4 @@
+use core::{check_binaries::{is_7z_available, is_rclone_available}, settings::settings::{analyze_backup_file, restore_encrypted_settings}};
 use std::{
     path::PathBuf,
     process::Command,
@@ -51,7 +52,7 @@ use crate::{
     },
     utils::{
         file_helper::{get_file_location, get_folder_location, open_in_files},
-        rclone::provision::{check_rclone_installed, provision_rclone},
+        rclone::provision::provision_rclone,
     },
 };
 
@@ -282,7 +283,7 @@ pub fn run() {
             "unmount_all" => {
                 let app_clone = app.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Err(e) = unmount_all_remotes(app_clone.clone(), app_clone.state()).await
+                    if let Err(e) = unmount_all_remotes(app_clone.clone(), app_clone.state(), "menu").await
                     {
                         error!("Failed to unmount all remotes: {}", e);
                     }
@@ -307,7 +308,6 @@ pub fn run() {
             get_folder_location,
             get_file_location,
             set_theme,
-            check_rclone_installed,
             provision_rclone,
             // Rclone Command API
             get_all_remote_configs,
@@ -341,6 +341,8 @@ pub fn run() {
             get_remote_settings,
             delete_remote_settings,
             backup_settings,
+            analyze_backup_file,
+            restore_encrypted_settings,
             restore_settings,
             reset_settings,
             // Check mount plugin
@@ -350,7 +352,10 @@ pub fn run() {
             get_cached_remotes,
             get_configs,
             get_settings,
-            get_cached_mounted_remotes
+            get_cached_mounted_remotes,
+            // Check binaries
+            is_rclone_available,
+            is_7z_available,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

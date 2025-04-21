@@ -139,6 +139,7 @@ body {
 body {
   margin: 0;
   font-family: system-ui, Inter, sans-serif;
+  overflow: hidden;
 }
 
 p, h1, h2, h3, h4, h5, h6 {
@@ -157,41 +158,58 @@ button {
   justify-content: center;
   gap: 6px;
   background-color: transparent;
-  color: white;
+  color: var(--app-text-color);
+
+  mat-icon {
+    cursor: pointer !important;
+    svg {
+      cursor: pointer !important;
+      path {
+        cursor: pointer !important;
+      }
+    }
+  }
 
 
   &.primary,
   &.mount,
   &.finish {
+    color: white;
     background-color: var(--green);
   }
   
   &.fix {
+    color: white;
     background-color: var(--orange);
   }
 
   &.secondary,
   &.open,
   &.next {
+    color: white;
     background-color: var(--blue);
   }
 
   &.cancel,
   &.delete,
   &.unmount {
+    color: white;
     background-color: var(--red);
   }
 
   &.cancel {
+    color: white;
     background-color: var(--secodary-text-color);
   }
 
   &.edit,
   &.back {
+    color: white;
     background-color: var(--purple);
   }
 
   &:disabled {
+    color: white;
     background-color: var(--button-background);
     color: var(--button-text);
     cursor: not-allowed;

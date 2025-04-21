@@ -1,17 +1,20 @@
-<div class="preferences-modal">
-  <!-- 🔹 Modal Header -->
+<div class="modal">
+  <!-- 🔹 Modal Header (Top) -->
   <div class="modal-header" data-tauri-drag-region>
-    <button>
-      <mat-icon svgIcon="search"></mat-icon>
-    </button>
-    <div class="tabs">
+      <button class="search-button">
+        <mat-icon svgIcon="search"></mat-icon>
+      </button>
+      <h2 *ngIf="bottomTabs">Preferences</h2>
+
+    <!-- Tabs - Desktop Layout -->
+    <div class="tabs desktop-tabs" *ngIf="!bottomTabs">
       <button *ngFor="let tab of tabs; let i = index" (click)="selectTab(i)" [class.active]="selectedTabIndex === i">
-        
         <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
-        {{ tab.label }}
+        <span class="tab-label">{{ tab.label }}</span>
       </button>
     </div>
-    <button (click)="close()">
+
+    <button class="close-button" (click)="close()">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -67,12 +70,15 @@
       </ng-container>
     </ng-container>
     <ng-container *ngIf="selectedTab === 'general'">
-      <div class="app-backup">
-        <p><strong>App Backup & Reset</strong></p>
-        <button mat-raised-button class="primary" (click)="backupSettings()">Backup Settings & Remotes</button>
-        <button mat-raised-button class="edit" (click)="restoreSettings()">Restore Settings & Remotes</button>
-        <button mat-raised-button class="secondary" (click)="resetSettings()">Reset Settings</button>
-      </div>
+      <button mat-raised-button class="secondary reset" (click)="resetSettings()">Reset Settings</button>
     </ng-container>
+  </div>
+
+  <!-- 🔻 Bottom Tabs (if enabled) -->
+  <div class="tabs bottom-tabs" *ngIf="bottomTabs">
+    <button *ngFor="let tab of tabs; let i = index" (click)="selectTab(i)" [class.active]="selectedTabIndex === i">
+      <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
+      <span class="tab-label">{{ tab.label }}</span>
+    </button>
   </div>
 </div>

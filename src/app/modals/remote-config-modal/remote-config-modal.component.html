@@ -1,51 +1,57 @@
 <div class="modal-container">
-  <div class="modal-header" data-tauri-drag-region>
+  <!-- Modal Header -->
+  <header class="modal-header" data-tauri-drag-region>
     <div class="header-content">
-      <button>
+      <button type="button" aria-label="Help">
         <mat-icon svgIcon="question"></mat-icon>
       </button>
       <p>
-        <mat-icon svgIcon="hard-drive"></mat-icon>
-        {{ editTarget ? 'Edit ' + editTarget + ' Settings' : 'Add New Remote' }}
+        <mat-icon svgIcon="hard-drive" aria-hidden="true"></mat-icon>
+        {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
       </p>
-      <button (click)="close()">
+      <button type="button" (click)="close()" aria-label="Close dialog">
         <mat-icon svgIcon="circle-xmark"></mat-icon>
       </button>
     </div>
     <mat-divider></mat-divider>
-  </div>
+  </header>
 
-  <div class="modal-content">
+  <!-- Modal Content -->
+  <main class="modal-content">
     <!-- Step 1: Remote Configuration -->
-    <div *ngIf="(editTarget === 'remote') || (!editTarget && currentStep === 1)" [@slideAnimation]
-      class="step-container">
-      <form [formGroup]="remoteForm" (ngSubmit)="nextStep()">
+    <section *ngIf="(editTarget === 'remote') || (!editTarget && currentStep === 1)" [@slideAnimation]
+      class="step-container" aria-labelledby="remote-config-heading">
+      <h2 id="remote-config-heading" class="visually-hidden">Remote Configuration</h2>
+
+      <form [formGroup]="remoteForm" (ngSubmit)="nextStep()" class="remote-form">
+        <!-- Remote Name Field -->
         <mat-form-field appearance="fill">
           <mat-label>Remote Name</mat-label>
-          <input matInput formControlName="name" id="remoteName" />
-          <mat-error *ngIf="remoteForm.get('name')?.hasError('required')">
+          <input matInput formControlName="name" id="remoteName" aria-describedby="remoteNameError" />
+          <mat-error *ngIf="remoteForm.get('name')?.hasError('required')" id="remoteNameError">
             Remote Name is required.
           </mat-error>
-          <mat-error *ngIf="remoteForm.get('name')?.hasError('nameTaken')">
+          <mat-error *ngIf="remoteForm.get('name')?.hasError('nameTaken')" id="remoteNameError">
             This remote name already exists! Choose another name.
           </mat-error>
         </mat-form-field>
 
+        <!-- Remote Type Selector -->
         <mat-form-field appearance="fill">
           <mat-label>Select Remote Type</mat-label>
           <mat-select formControlName="type" id="remoteType"
-            (selectionChange)="onRemoteTypeChange(); $event.source.close()">
+            (selectionChange)="onRemoteTypeChange(); $event.source.close()" aria-describedby="remoteTypeError">
             <mat-option *ngFor="let remote of remoteTypes" [value]="remote.value">
               {{ remote.label }}
             </mat-option>
           </mat-select>
-          <mat-error *ngIf="remoteForm.get('type')?.hasError('required')">
+          <mat-error *ngIf="remoteForm.get('type')?.hasError('required')" id="remoteTypeError">
             Remote Type is required.
           </mat-error>
         </mat-form-field>
 
-        <!-- Show Loading State -->
-        <div *ngIf="isLoading.mountConfig" class="loading-container">
+        <!-- Loading State -->
+        <div *ngIf="isLoading.remoteConfig" class="loading-container" aria-live="polite">
           <mat-spinner diameter="30"></mat-spinner>
           <p>Loading configuration options...</p>
         </div>
@@ -53,133 +59,120 @@
         <!-- Dynamic Fields -->
         <ng-container *ngFor="let field of dynamicRemoteFields">
           <mat-label>{{ field.Help }}</mat-label>
-          <mat-form-field appearance="fill" *ngIf="field.Type !== 'bool'">
-            <mat-label>{{ field.Value ? field.Value : 'No default value' }}</mat-label>
-            <input *ngIf="['int', 'SizeSuffix', 'bits'].includes(field.Type)" matInput type="number"
-              [formControlName]="field.Name" pattern="\d*" (keypress)="allowOnlyNumbers($event)"
-              (input)="sanitizeNumberInput(field.Name)" />
 
-            <mat-select *ngIf="field.Type === 'Encoding' || field.Examples.length > 0" [formControlName]="field.Name">
+          <!-- Number Inputs -->
+          <mat-form-field appearance="fill" *ngIf="['int', 'SizeSuffix', 'bits'].includes(field.Type)">
+            <mat-label>{{ field.Value || 'No default value' }}</mat-label>
+            <input matInput type="number" [formControlName]="field.Name" pattern="\d*"
+              (keypress)="allowOnlyNumbers($event)" (input)="sanitizeNumberInput(field.Name)" />
+          </mat-form-field>
+
+          <!-- Select Inputs -->
+          <mat-form-field appearance="fill" *ngIf="field.Type === 'Encoding' || field.Examples.length > 0">
+            <mat-label>{{ field.Name }}</mat-label>
+            <mat-select [formControlName]="field.Name">
               <mat-option *ngFor="let example of field.Examples" [value]="example.Value">
                 {{ example.Help }}
               </mat-option>
             </mat-select>
-
-            <input *ngIf="field.Type === 'Duration'" matInput type="text" [formControlName]="field.Name" />
-            <input
-              *ngIf="!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration'].includes(field.Type) && field.Examples.length === 0"
-              matInput type="text" [formControlName]="field.Name" />
           </mat-form-field>
 
+          <!-- Duration Input -->
+          <mat-form-field appearance="fill" *ngIf="field.Type === 'Duration'">
+            <mat-label>{{ field.Name }}</mat-label>
+            <input matInput type="text" [formControlName]="field.Name" />
+          </mat-form-field>
+
+          <!-- Default Text Input -->
+          <mat-form-field appearance="fill" *ngIf="!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration'].includes(field.Type) && 
+                                field.Examples.length === 0">
+            <mat-label>{{ field.Name }}</mat-label>
+            <input matInput type="text" [formControlName]="field.Name" />
+          </mat-form-field>
+
+          <!-- Boolean Toggle -->
           <mat-slide-toggle *ngIf="field.Type === 'bool'" [formControlName]="field.Name">
             {{ field.Name }}
           </mat-slide-toggle>
         </ng-container>
       </form>
-    </div>
+    </section>
 
-    <!-- Step 2: Mount Configuration -->
-    <div *ngIf="(editTarget === 'mount') || (!editTarget && currentStep === 2)" [@slideAnimation]
-      class="step-container">
-      <form [formGroup]="remoteConfigForm" (ngSubmit)="onSubmit()">
-        <mat-form-field appearance="fill">
-          <mat-label>Mount Path</mat-label>
-          <button mat-button matSuffix type="button" (click)="selectFolder()">
-            <mat-icon svgIcon="folder"></mat-icon>
-          </button>
-          <input matInput formControlName="mountPath" id="mountPath" />
-          <mat-error *ngIf="remoteConfigForm.get('mountPath')?.hasError('required')">
-            Mount Path is required.
-          </mat-error>
-        </mat-form-field>
+    <!-- Steps 2-6: Flags and Mount Configurations -->
+    <ng-container *ngFor="let step of FLAG_TYPES; let i = index">
+      <section *ngIf="(editTarget === step) || (!editTarget && currentStep === i + 2)" [@slideAnimation]
+        class="step-container" [attr.aria-labelledby]="step + '-config-heading'">
+        <h2 [id]="step + '-config-heading'" class="visually-hidden">{{ step | titlecase }} Configuration</h2>
 
-        <mat-slide-toggle formControlName="autoMount" id="autoMount"
-          [checked]="remoteConfigForm.get('autoMount')?.value">
-          Auto Mount
-        </mat-slide-toggle>
+        <form [formGroup]="remoteConfigForm" class="flag-form">
+          <ng-container *ngIf="(step === 'mount')">
+            <mat-form-field appearance="fill">
+              <mat-label>Mount Path</mat-label>
+              <button mat-button matSuffix type="button" (click)="selectFolder()" aria-label="Select folder">
+                <mat-icon svgIcon="folder"></mat-icon>
+              </button>
+              <input matInput formControlName="mountPath" id="mountPath" aria-describedby="mountPathError" />
+              <mat-error *ngIf="remoteConfigForm.get('mountPath')?.hasError('required')" id="mountPathError">
+                Mount Path is required.
+              </mat-error>
+            </mat-form-field>
+    
+            <!-- Auto Mount Toggle -->
+            <mat-slide-toggle formControlName="autoMount" id="autoMount">
+              Auto Mount
+            </mat-slide-toggle>
+    
+            <!-- Mount Type Selector -->
+            <mat-form-field appearance="fill">
+              <mat-label>Mount Type</mat-label>
+              <mat-select formControlName="mountType" id="mountType"
+                (selectionChange)="onMountTypeChange(); $event.source.close()" aria-describedby="mountTypeError">
+                <mat-option *ngFor="let mount of mountTypes" [value]="mount.value">
+                  {{ mount.label }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="remoteConfigForm.get('mountType')?.hasError('required')" id="mountTypeError">
+                Mount Type is required.
+              </mat-error>
+            </mat-form-field>
+          </ng-container>
 
-        <mat-form-field appearance="fill">
-          <mat-label>Mount Type</mat-label>
-          <mat-select formControlName="mountType" id="mountType"
-            (selectionChange)="onMountTypeChange(); $event.source.close()">
-            <mat-option *ngFor="let mount of mountTypes" [value]="mount.value">
-              {{ mount.label }}
-            </mat-option>
-          </mat-select>
-          <mat-error *ngIf="remoteConfigForm.get('mountType')?.hasError('required')">
-            Mount Type is required.
-          </mat-error>
-        </mat-form-field>
+          <div class="json-config-container">
+            <mat-form-field appearance="fill" style="width: 100%;" formGroupName="jsonConfigs">
+              <mat-label>{{ step | titlecase }} Configuration</mat-label>
+              <button mat-button matSuffix type="button" (click)="resetJson(step)"
+                attr.aria-label="Reset {{ step }} configuration"
+                *ngIf="remoteConfigForm.get('jsonConfigs')?.get(step)?.value">
+                <mat-icon svgIcon="circle-xmark"></mat-icon>
+              </button>
+              <textarea matInput [formControlName]="step" #jsonArea (input)="validateJson(step)"
+                [attr.aria-describedby]="step + 'JsonError'" spellcheck="false"></textarea>
+              <mat-error *ngIf="remoteConfigForm.get('jsonConfigs')?.get(step)?.hasError('invalidJson')"
+                [id]="step + 'JsonError'">
+                Invalid JSON format in {{ step }} configuration!
+              </mat-error>
+            </mat-form-field>
 
-        <!-- Show Loading State -->
-        <div *ngIf="isLoading.mountConfig" class="loading-container">
-          <mat-spinner diameter="30"></mat-spinner>
-          <p>Loading mount options...</p>
-        </div>
-
-        <!-- Render dynamic mount-specific inputs -->
-        <ng-container *ngIf="remoteConfigForm.get('mountType')?.value">
-          <mat-form-field class="full-width" formGroupName="jsonConfigs">
-            <button mat-button matSuffix *ngIf="remoteConfigForm.get('jsonConfigs')?.get('mount')?.value" type="button"
-              (click)="resetJson('mount')">
-              <mat-icon svgIcon="circle-xmark"></mat-icon>
-            </button>
-            <textarea matInput formControlName="mount" #jsonArea (input)="validateJson('mount')">
-            </textarea>
-            <mat-error *ngIf="remoteConfigForm.get('jsonConfigs')?.get('mount')?.hasError('invalidJson')">
-              Invalid JSON format in mount!
-            </mat-error>
-          </mat-form-field>
-
-
-          <mat-chip-set [disabled]="!remoteConfigForm.get('jsonConfigs')?.get('mount')?.valid">
-            <mat-chip-option *ngFor="let field of dynamicFlagFields['mount']" (click)="toggleOption('mount', field)"
-              [selected]="selectedOptions['mount'] && selectedOptions['mount'].hasOwnProperty(field.name)"
-              [matTooltipShowDelay]="400" [matTooltipHideDelay]="100" [matTooltipPosition]="'above'"
-              matTooltip="{{ field.help }}">
-              {{ field.name }}
-            </mat-chip-option>
-          </mat-chip-set>
-        </ng-container>
-      </form>
-    </div>
-
-    <!-- Steps 3-6: Copy, Sync, Filter, VFS Flags -->
-    <ng-container *ngFor="let step of ['copy', 'sync', 'filter', 'vfs']; let i = index">
-      <div *ngIf="(editTarget === step) || (!editTarget && currentStep === i + 3)"
-        [@slideAnimation] class="step-container">
-        <h3>{{ step | titlecase }} Flags</h3>
-        <form [formGroup]="remoteConfigForm">
-          <mat-form-field class="full-width" formGroupName="jsonConfigs">
-            <button mat-button matSuffix *ngIf="remoteConfigForm.get('jsonConfigs')?.get(step)?.value" type="button"
-              (click)="resetJson(step)">
-              <mat-icon svgIcon="circle-xmark"></mat-icon>
-            </button>
-            <textarea matInput [formControlName]="step" #jsonArea (input)="validateJson(step)">
-            </textarea>
-            <mat-error *ngIf="remoteConfigForm.get('jsonConfigs')?.get(step)?.hasError('invalidJson')">
-              Invalid JSON format in {{ step }}!
-            </mat-error>
-          </mat-form-field>
-
-
-
-          <mat-chip-set [disabled]="!remoteConfigForm.get('jsonConfigs')?.get(step)?.valid">
-            <mat-chip-option *ngFor="let field of dynamicFlagFields[step]" (click)="toggleOption(step, field)"
-              [selected]="selectedOptions[step] && selectedOptions[step].hasOwnProperty(field.name)"
-              [matTooltipShowDelay]="400" [matTooltipHideDelay]="100" [matTooltipPosition]="'above'"
-              matTooltip="{{ field.help }}">
-              {{ field.name }}
-            </mat-chip-option>
-          </mat-chip-set>
+            <mat-chip-set [attr.aria-label]="step + ' configuration options'"
+              [disabled]="!remoteConfigForm.get('jsonConfigs')?.get(step)?.valid">
+              <mat-chip-option *ngFor="let field of dynamicFlagFields[step]" (click)="toggleOption(step, field)"
+                [selected]="selectedOptions[step] && selectedOptions[step].hasOwnProperty(field.name)"
+                [matTooltip]="field.help" [matTooltipShowDelay]="400" [matTooltipHideDelay]="100"
+                [matTooltipPosition]="'above'">
+                {{ field.name }}
+              </mat-chip-option>
+            </mat-chip-set>
+          </div>
         </form>
-      </div>
+      </section>
     </ng-container>
-  </div>
+  </main>
 
-  <div class="button-container">
+  <!-- Footer Buttons -->
+  <footer class="button-container">
     <div class="button-container-inner">
-      <button *ngIf="currentStep < totalSteps && !editTarget" class="next" (click)="nextStep()"
+      <!-- Navigation Buttons -->
+      <button *ngIf="currentStep < TOTAL_STEPS && !editTarget" class="next" (click)="nextStep()"
         [disabled]="!remoteForm.valid" [@fadeInOut]>
         Next
       </button>
@@ -187,14 +180,18 @@
         Back
       </button>
     </div>
-    <button class="finish" (click)="onSubmit()" [disabled]="isLoading.saving || !remoteConfigForm.valid || !remoteForm.valid"
-     [@fadeInOut] *ngIf="currentStep > 1 && !editTarget">
+
+    <!-- Save Buttons -->
+    <button class="finish" (click)="onSubmit()"
+      [disabled]="isLoading.saving || !remoteConfigForm.valid || !remoteForm.valid" [@fadeInOut]
+      *ngIf="currentStep > 1 && !editTarget" aria-live="polite">
       {{ isLoading.saving ? 'Saving...' : 'Save' }}
     </button>
 
-    <button class="finish" (click)="onSubmit()" [disabled]="isLoading.saving || (editTarget === 'remote' && !remoteForm.valid) || (editTarget === 'mount' && !remoteConfigForm.valid)"
-     [@fadeInOut] *ngIf="editTarget">
+    <button class="finish" (click)="onSubmit()"
+      [disabled]="isLoading.saving || (editTarget === 'remote' && !remoteForm.valid) || (editTarget === 'mount' && !remoteConfigForm.valid)"
+      [@fadeInOut] *ngIf="editTarget" aria-live="polite">
       {{ isLoading.saving ? 'Saving...' : 'Save' }}
     </button>
-  </div>
+  </footer>
 </div>

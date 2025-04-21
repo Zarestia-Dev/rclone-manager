@@ -1,0 +1,63 @@
+<div class="input-modal">
+  <!-- 🔹 Modal Header -->
+  <div class="modal-header">
+    <button mat-icon-button>
+      <mat-icon svgIcon="question"></mat-icon>
+    </button>
+    <p>{{ data.title }}</p>
+    <button mat-button (click)="close()">
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    </button>
+  </div>
+
+  <div mat-dialog-content class="modal-content">
+    <p>{{ data.description }}</p>
+    <ng-container *ngFor="let field of data.fields">
+      <ng-container [ngSwitch]="field.type">
+    
+        <!-- Regular input types -->
+        <mat-form-field *ngSwitchCase="'text'" appearance="fill" style="width: 100%;">
+          <mat-label>{{ field.label }}</mat-label>
+          <input matInput [(ngModel)]="formData[field.name]" [required]="field.required" />
+        </mat-form-field>
+    
+        <mat-form-field *ngSwitchCase="'password'" appearance="fill" style="width: 100%;">
+          <mat-label>{{ field.label }}</mat-label>
+          <input matInput [(ngModel)]="formData[field.name]" type="password" [required]="field.required" />
+        </mat-form-field>
+    
+        <mat-form-field *ngSwitchCase="'number'" appearance="fill" style="width: 100%;">
+          <mat-label>{{ field.label }}</mat-label>
+          <input matInput type="number" [(ngModel)]="formData[field.name]" [required]="field.required" />
+        </mat-form-field>
+    
+        <mat-form-field *ngSwitchCase="'select'" appearance="fill" style="width: 100%;">
+          <mat-label>{{ field.label }}</mat-label>
+          <mat-select [(ngModel)]="formData[field.name]" [required]="field.required">
+            <mat-option *ngFor="let option of field.options" [value]="option">
+              {{ option }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+    
+        <!-- Folder select input -->
+        <mat-form-field *ngSwitchCase="'folder'" appearance="fill" style="width: 100%;">
+          <mat-label>{{ field.label }}</mat-label>
+          <input matInput [value]="formData[field.name]" placeholder="Select a folder..." readonly />
+          <button mat-icon-button matSuffix type="button" (click)="selectFolder()">
+            <mat-icon svgIcon="folder"></mat-icon>
+          </button>
+        </mat-form-field>
+    
+      </ng-container>
+    </ng-container>    
+  </div>
+
+  <div mat-dialog-actions align="center">
+    <button mat-raised-button class="primary" (click)="confirm()" 
+    [disabled]="!isFormValid()">
+      <mat-icon svgIcon="circle-check"></mat-icon>
+      <span>Confirm</span>
+    </button>
+  </div>
+</div>

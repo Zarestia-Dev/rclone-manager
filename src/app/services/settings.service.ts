@@ -1,36 +1,13 @@
 import { Injectable } from "@angular/core";
 import { invoke } from "@tauri-apps/api/core";
-import {
-  ConfirmDialogData,
-  ConfirmModalComponent,
-} from "../modals/confirm-modal/confirm-modal.component";
-import { MatDialog } from "@angular/material/dialog";
+import { InfoService } from "./info.service";
 
 @Injectable({
   providedIn: "root",
 })
 export class SettingsService {
-  constructor(private dialog: MatDialog) {}
-
-  confirmModal(title: string, message: string) {
-    // Create the confirmation dialog data
-    const dialogData: ConfirmDialogData = {
-      title: title,
-      message: message,
-      cancelText: "No",
-      confirmText: "Yes",
-    };
-
-    return new Promise((resolve) => {
-      const dialogRef = this.dialog.open(ConfirmModalComponent, {
-        width: "300px",
-        data: dialogData,
-      });
-      dialogRef.afterClosed().subscribe((result) => {
-        resolve(result);
-      });
-    });
-  }
+  isMobile$: any;
+  constructor(private infoService: InfoService) {}
 
   async loadSettings(): Promise<any> {
     try {
@@ -73,35 +50,79 @@ export class SettingsService {
     }
   }
 
-  async backupSettings(path: string): Promise<void> {
+  async backupSettings(
+    selectedPath: string,
+    selectedOption: string,
+    password: string
+  ): Promise<void> {
     try {
-      await invoke("backup_settings", { backupDir: path });
-      console.log("Settings backed up successfully.");
+      const result = await invoke("backup_settings", {
+        backupDir: selectedPath,
+        exportType: selectedOption,
+        password: password,
+      });
+      this.infoService.openSnackBar(String(result), "OK");
     } catch (error) {
+      this.infoService.openSnackBar(String(error), "OK");
       console.error("Failed to backup settings:", error);
     }
   }
 
   async restoreSettings(path: string): Promise<void> {
     try {
-      await invoke("restore_settings", { backupPath: path });
-      console.log("Settings restored successfully.");
+      const result = await invoke("restore_settings", { backupPath: path });
+      this.infoService.openSnackBar(String(result), "OK");
     } catch (error) {
+      this.infoService.openSnackBar(String(error), "OK");
       console.error("Failed to restore settings:", error);
+    }
+  }
+
+  async analyzeBackupFile(path: string): Promise<any> {
+    try {
+      return await invoke("analyze_backup_file", { path });
+    } catch (error) {
+      this.infoService.alertModal("Error", String(error));
+      console.error("Failed to analyze backup file:", error);
+      return null;
+    }
+  }
+
+  async restore_encrypted_settings(
+    path: string,
+    password: string
+  ): Promise<void> {
+    try {
+      const result = await invoke("restore_encrypted_settings", {
+        path,
+        password,
+      });
+      this.infoService.openSnackBar(String(result), "OK");
+    } catch (error) {
+      this.infoService.openSnackBar(String(error), "OK");
+      console.error("Failed to restore encrypted settings:", error);
+    }
+  }
+
+  async check7zSupport(): Promise<boolean> {
+    try {
+      return await invoke("is_7z_available");
+    } catch (error) {
+      console.error("Failed to check 7z support:", error);
+      return false;
     }
   }
 
   async resetSettings(): Promise<void> {
     try {
-      this.confirmModal(
+      const result = await this.infoService.confirmModal(
         "Reset Settings",
-        "Are you sure you want to reset all settings to default?"
-      ).then(async (result) => {
-        if (result) {
-          await invoke("reset_settings");
-          console.log("Settings reset successfully.");
-        }
-      });
+        "Are you sure you want to reset all settings? This action cannot be undone."
+      );
+      if (result) {
+        await invoke("reset_settings");
+        console.log("Settings reset successfully.");
+      }
     } catch (error) {
       console.error("Failed to reset settings:", error);
     }
@@ -109,15 +130,15 @@ export class SettingsService {
 
   async resetRemoteSettings(remoteName: string): Promise<void> {
     try {
-      this.confirmModal(
+      const result = await this.infoService.confirmModal(
         "Reset Remote Settings",
-        `Are you sure you want to reset settings for ${remoteName}?`
-      ).then(async (result) => {
-        if (result) {
-          await invoke("delete_remote_settings", { remoteName });
-          console.log(`Settings for ${remoteName} deleted successfully.`);
-        }
-      });
+        `Are you sure you want to reset settings for ${remoteName}? This action cannot be undone.`
+      );
+      // If the user confirms, proceed with the reset
+      if (result) {
+        await invoke("delete_remote_settings", { remoteName });
+        console.log(`Settings for ${remoteName} deleted successfully.`);
+      }
     } catch (error) {
       console.error(`Failed to reset settings for ${remoteName}:`, error);
     }

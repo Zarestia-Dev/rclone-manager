@@ -1,7 +1,6 @@
 import { animate, style, transition, trigger } from "@angular/animations";
-import { Component, HostListener } from "@angular/core";
+import { Component, HostListener, OnInit, Optional } from "@angular/core";
 import { FormsModule } from "@angular/forms";
-import { MatTabsModule } from "@angular/material/tabs";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { CommonModule } from "@angular/common";
 import { MatInputModule } from "@angular/material/input";
@@ -10,13 +9,13 @@ import { MatDialogRef } from "@angular/material/dialog";
 import { SettingsService } from "../../services/settings.service";
 import { MatSelectModule } from "@angular/material/select";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { RcloneService } from "../../services/rclone.service";
 import { MatIconModule } from "@angular/material/icon";
+import { MatBottomSheetRef } from "@angular/material/bottom-sheet";
 
 @Component({
   selector: "app-preferences-modal",
+  standalone: true,
   imports: [
-    MatTabsModule,
     MatSlideToggleModule,
     CommonModule,
     MatFormFieldModule,
@@ -27,7 +26,7 @@ import { MatIconModule } from "@angular/material/icon";
     MatIconModule
   ],
   templateUrl: "./preferences-modal.component.html",
-  styleUrl: "./preferences-modal.component.scss",
+  styleUrls: ["./preferences-modal.component.scss"],
   animations: [
     trigger("slideAnimation", [
       transition(":enter", [
@@ -46,10 +45,11 @@ import { MatIconModule } from "@angular/material/icon";
     ]),
   ],
 })
-export class PreferencesModalComponent {
+export class PreferencesModalComponent implements OnInit {
   selectedTabIndex = 0;
   settings: any = {};
-  metadata: any = {}; // ✅ Store metadata separately
+  metadata: any = {};
+  bottomTabs = false;
 
   tabs = [
     { label: "General", icon: "wrench", key: "general" },
@@ -60,15 +60,22 @@ export class PreferencesModalComponent {
   constructor(
     private dialogRef: MatDialogRef<PreferencesModalComponent>,
     private settingsService: SettingsService,
-    private rcloneService: RcloneService
   ) {}
 
-  async ngOnInit() {
+  ngOnInit() {
+    this.onResize();
+    this.loadSettings();
+  }
+
+  @HostListener('window:resize')
+  onResize() {
+    this.bottomTabs = window.innerWidth < 540;
+  }
+
+  async loadSettings() {
     const response = await this.settingsService.loadSettings();
     this.settings = response.settings;
-    this.metadata = response.metadata; // ✅ Load metadata separately
-    console.log("Loaded settings:", this.settings);
-    console.log("Loaded metadata:", this.metadata);
+    this.metadata = response.metadata;
   }
 
   async updateSetting(category: string, key: string, value: any) {
@@ -118,28 +125,8 @@ export class PreferencesModalComponent {
   getObjectKeys(obj: any): string[] {
     return obj && typeof obj === "object" ? Object.keys(obj) : [];
   }
-  
-  async backupSettings() {
-    const path = await this.rcloneService.selectFolder(false);
-    if (path) {
-      await this.settingsService.backupSettings(path);
-    }
-  }
-
-  async restoreSettings() {
-    const path = await this.rcloneService.selectFile();
-    if (path) {
-      await this.settingsService.restoreSettings(path);
-    }
-  }
 
   async resetSettings() {
-    const confirmed = confirm(
-      "Are you sure you want to reset all settings? This action cannot be undone."
-    );
-    if (confirmed) {
       await this.settingsService.resetSettings();
-      this.dialogRef.close();
-    }
   }
 }

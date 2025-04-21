@@ -1,22 +1,15 @@
-use std::{path::PathBuf, process::Command};
+use std::path::PathBuf;
 
 use log::{debug, error, info};
 use tauri::{Emitter, Manager};
+
+use crate::core::check_binaries::is_rclone_available;
 
 use super::{
     downloader::download_rclone_zip,
     extractor::extract_rclone_zip,
     util::{get_arch, safe_copy_rclone, save_rclone_path, verify_rclone_sha256},
 };
-
-#[tauri::command]
-pub async fn check_rclone_installed() -> bool {
-    Command::new("rclone")
-        .arg("--version")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-}
 
 #[tauri::command]
 pub async fn provision_rclone(
@@ -34,7 +27,7 @@ pub async fn provision_rclone(
             .expect("Failed to get app data directory"),
     };
 
-    if check_rclone_installed().await {
+    if is_rclone_available(app_handle.clone()) {
         save_rclone_path(&app_handle, "system")?;
         return Ok("Rclone already installed system-wide.".into());
     }

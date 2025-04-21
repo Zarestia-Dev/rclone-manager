@@ -8,8 +8,14 @@
   </div> -->
   
   <!-- Main Layout -->
-  <router-outlet></router-outlet>
-  <app-titlebar class="title-bar"></app-titlebar>
-  <app-onboarding *ngIf="!completedOnboarding" (completed)="finishOnboarding()" class="onboarding"></app-onboarding>
-  <app-home appRightClick></app-home> <!-- Enable Right-Click on Home -->
-  
+  <div class="app-wrapper">
+    <router-outlet></router-outlet>
+    <app-titlebar class="title-bar"></app-titlebar>
+    <app-onboarding *ngIf="!completedOnboarding" (completed)="finishOnboarding()" class="onboarding"></app-onboarding>
+    <app-home appRightClick></app-home> <!-- Enable Right-Click on Home -->
+    <ng-container *ngIf="isMobile$ | async">
+      <div class="mobile-tab-bar">
+        <app-tabs-buttons></app-tabs-buttons>
+      </div>
+    </ng-container>
+  </div>

@@ -1,6 +1,6 @@
 use log::{debug, error, info};
 use serde_json::Value;
-use tauri::{AppHandle, Listener, Manager};
+use tauri::{AppHandle, Emitter, Listener, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
@@ -12,7 +12,8 @@ use crate::{
     rclone::api::{
         engine::ENGINE,
         state::{CACHE, RCLONE_STATE},
-    }, TrayEnabled,
+    },
+    TrayEnabled,
 };
 
 mod events {
@@ -95,13 +96,23 @@ fn handle_rclone_api_ready(app: &AppHandle) {
 
 fn handle_remote_state_changed(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen(events::REMOTE_STATE_CHANGED, move |_| {
+    app.listen(events::REMOTE_STATE_CHANGED, move |event| {
+        debug!(
+            "🔄 Remote state changed! Raw payload: {:?}",
+            event.payload()
+        );
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
             CACHE.refresh_mounted_remotes(app.clone()).await;
-            if let Err(e) = update_tray_menu(app, 0).await {
+            if let Err(e) = update_tray_menu(app.clone(), 0).await {
                 error!("Failed to update tray menu: {}", e);
             }
+
+            let _ = app.clone()
+                .emit("mount_cache_updated", "remote_presence")
+                .map_err(|e| {
+                    error!("❌ Failed to emit event to frontend: {}", e);
+                });
         });
     });
 }
@@ -117,6 +128,12 @@ fn handle_remote_presence_changed(app: &AppHandle) {
             if let Err(e) = update_tray_menu(app_clone.clone(), 0).await {
                 error!("Failed to update tray menu: {}", e);
             }
+
+            let _ = app_clone
+                .emit("remote_cache_updated", "remote_presence")
+                .map_err(|e| {
+                    error!("❌ Failed to emit event to frontend: {}", e);
+                });
         });
     });
 }
@@ -135,7 +152,7 @@ fn tray_menu_updated(app: &AppHandle) {
 
 fn handle_settings_changed(app: &AppHandle) {
     let app_handle = app.clone();
-    
+
     app.listen(events::SYSTEM_SETTINGS_CHANGED, move |event| {
         debug!("🔄 Settings saved! Raw payload: {:?}", event.payload());
 
@@ -143,7 +160,8 @@ fn handle_settings_changed(app: &AppHandle) {
             Ok(settings) => {
                 // same logic...
                 if let Some(general) = settings.get("general") {
-                    if let Some(startup) = general.get("start_on_startup").and_then(|v| v.as_bool()) {
+                    if let Some(startup) = general.get("start_on_startup").and_then(|v| v.as_bool())
+                    {
                         debug!("🚀 Start on Startup changed to: {}", startup);
                         let autostart = app_handle.autolaunch();
                         let _ = if startup {
@@ -153,7 +171,9 @@ fn handle_settings_changed(app: &AppHandle) {
                         };
                     }
 
-                    if let Some(tray_enabled) = general.get("tray_enabled").and_then(|v| v.as_bool()) {
+                    if let Some(tray_enabled) =
+                        general.get("tray_enabled").and_then(|v| v.as_bool())
+                    {
                         let tray_state = app_handle.state::<TrayEnabled>();
                         let mut guard = tray_state.0.write().unwrap();
                         *guard = tray_enabled;

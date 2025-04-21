@@ -1,3 +1,5 @@
+use std::{thread::sleep, time::Duration};
+
 use log::{debug, error, info};
 use tauri::{AppHandle, Emitter, Manager, Runtime};
 use tokio::join;
@@ -118,7 +120,7 @@ async fn sync_all_remotes<R: Runtime>(_app_handle: &AppHandle<R>) -> Result<(), 
 
     debug!("🧪 For testing.");
 
-    // sleep(Duration::from_secs(5)).await;
+    sleep(Duration::from_secs(5));
 
     Ok(())
 }

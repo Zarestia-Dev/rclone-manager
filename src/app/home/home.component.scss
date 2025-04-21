@@ -35,7 +35,7 @@
       flex-direction: column;
       align-items: center;
       gap: 15px;
-      padding-top: 12vh;
+      padding-block: 4vh;
 
       p {
         display: flex;
@@ -45,9 +45,8 @@
       }
     }
 
-    .sticky-sidebar-button {
+    .sidebar-button {
       position: absolute;
-      height: 100%;
       left: 10px;
       z-index: 10;
 

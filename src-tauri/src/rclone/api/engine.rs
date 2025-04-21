@@ -1,15 +1,27 @@
+/// To Do:
+/// - When app rebuilds, background thread should be stopped (rclone rcd).
+/// Because it cleans the process and when the app did not see the background thread.
+/// After trying to start "rclone" with the ENGINE.lock(), it will be poisoned.
+/// Because the thread is still running with same port and start function will not be able to start the rclone process.
+/// Ensure to implement a mechanism to stop the background thread before rebuilding.
 use std::{
-    path::PathBuf, process::{Child, Command}, sync::{Arc, Mutex}, thread, time::Duration
+    path::PathBuf,
+    process::{Child, Command},
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration,
 };
 
 use once_cell::sync::Lazy;
 use reqwest::blocking::Client;
-use serde_json::Value;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 use log::{debug, error, info, warn};
 
-use crate::rclone::api::state::RCLONE_STATE;
+use crate::{
+    core::check_binaries::{is_rclone_available, read_rclone_path},
+    rclone::api::state::RCLONE_STATE,
+};
 
 pub static ENGINE: Lazy<Arc<Mutex<RcApiEngine>>> =
     Lazy::new(|| Arc::new(Mutex::new(RcApiEngine::default())));
@@ -26,10 +38,12 @@ pub struct RcApiEngine {
 impl RcApiEngine {
     pub fn init(&mut self, app: &AppHandle) {
         if self.rclone_path.as_os_str().is_empty() {
-            self.rclone_path = self.read_rclone_path(app);
+            self.rclone_path = read_rclone_path(app);
         }
 
         let app_handle = app.clone();
+
+        self.start(app);
 
         thread::spawn(move || loop {
             {
@@ -47,7 +61,7 @@ impl RcApiEngine {
                 }
 
                 if !engine.is_running() {
-                    if !engine.is_path_valid() {
+                    if !(engine.rclone_path.exists() || is_rclone_available(app_handle.clone())) {
                         engine.handle_invalid_path(&app_handle);
                         continue;
                     }
@@ -72,11 +86,6 @@ impl RcApiEngine {
         }
     }
 
-    fn is_path_valid(&self) -> bool {
-        // Check if custom path exists or system rclone is available
-        self.rclone_path.exists() || self.is_system_rclone_available()
-    }
-
     fn handle_invalid_path(&mut self, app: &AppHandle) {
         if self.already_reported_invalid_path {
             // Skip re-emitting
@@ -89,7 +98,7 @@ impl RcApiEngine {
         );
 
         // Try falling back to system rclone
-        if self.is_system_rclone_available() {
+        if is_rclone_available(app.clone()) {
             info!("🔄 Falling back to system-installed rclone");
             self.rclone_path = PathBuf::from("rclone");
         } else {
@@ -106,7 +115,7 @@ impl RcApiEngine {
     }
 
     pub fn update_path(&mut self, app: &AppHandle) {
-        self.rclone_path = self.read_rclone_path(app);
+        self.rclone_path = read_rclone_path(app);
         self.already_reported_invalid_path = false;
         info!("🔄 Rclone path updated to: {}", self.rclone_path.display());
         self.start(app);
@@ -170,7 +179,7 @@ impl RcApiEngine {
         }
     }
 
-        fn wait_until_ready(&self, timeout_secs: u64) -> bool {
+    fn wait_until_ready(&self, timeout_secs: u64) -> bool {
         let start = std::time::Instant::now();
         let timeout = Duration::from_secs(timeout_secs);
         let poll = Duration::from_millis(200);
@@ -198,68 +207,8 @@ impl RcApiEngine {
     }
 
     pub fn shutdown(&mut self) {
+        info!("🛑 Shutting down Rclone engine...");
         self.should_exit = true;
         self.stop();
-    }
-
-    fn core_config_path(&self, app: &AppHandle) -> PathBuf {
-        let app_data_dir = app
-            .path()
-            .app_data_dir()
-            .expect("Failed to get app data dir");
-        app_data_dir.join("core.json")
-    }
-
-    fn is_system_rclone_available(&self) -> bool {
-        which::which("rclone").is_ok()
-    }
-
-    pub fn read_rclone_path(&self, app: &AppHandle) -> PathBuf {
-        let config_path = self.core_config_path(app);
-
-        // First try to read the configured path
-        let configured_path = match std::fs::read_to_string(&config_path) {
-            Ok(contents) => {
-                if let Ok(json) = serde_json::from_str::<Value>(&contents) {
-                    if let Some(path) = json["core_options"]["rclone_path"].as_str() {
-                        if path == "system" {
-                            PathBuf::from("rclone") // System-wide installation
-                        } else {
-                            let bin = if cfg!(windows) {
-                                "rclone.exe"
-                            } else {
-                                "rclone"
-                            };
-                            PathBuf::from(path).join(bin)
-                        }
-                    } else {
-                        PathBuf::from("rclone") // Default to system-wide
-                    }
-                } else {
-                    PathBuf::from("rclone") // Default to system-wide
-                }
-            }
-            Err(_) => {
-                PathBuf::from("rclone") // Default to system-wide
-            }
-        };
-
-        // Verify the path exists or fallback to system rclone
-        if configured_path.exists() {
-            configured_path
-        } else {
-            warn!(
-                "⚠️ Configured Rclone path does not exist: {}, falling back to system rclone",
-                configured_path.display()
-            );
-
-            if self.is_system_rclone_available() {
-                info!("🔄 Using system-installed rclone");
-                PathBuf::from("rclone")
-            } else {
-                error!("❌ No valid Rclone binary found - neither configured path nor system rclone available");
-                configured_path // Return the original path anyway (will fail later with proper error)
-            }
-        }
     }
 }

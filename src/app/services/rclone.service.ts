@@ -1,30 +1,12 @@
 import { Injectable } from "@angular/core";
 import { invoke } from "@tauri-apps/api/core";
-import { ConfirmDialogData, ConfirmModalComponent } from "../modals/confirm-modal/confirm-modal.component";
-import { MatDialog } from "@angular/material/dialog";
+import { InfoService } from "./info.service";
 
 @Injectable({
   providedIn: "root",
 })
 export class RcloneService {
-  constructor(
-    private dialog: MatDialog // Inject MatDialog for opening modals
-  ) {}
-
-    alertModal(title: string, message: string) {
-      // Create the confirmation dialog data
-      const dialogData: ConfirmDialogData = {
-        title: title,
-        message: message,
-        cancelText: "OK",
-      };
-  
-      // Open the confirmation dialog
-      this.dialog.open(ConfirmModalComponent, {
-        width: "300px",
-        data: dialogData,
-      });
-    }
+  constructor(private infoService: InfoService) {}
 
   openInFiles(mountPoint: string): Promise<void> {
     try {
@@ -36,19 +18,19 @@ export class RcloneService {
   }
 
   selectFolder(is_empty?: boolean): Promise<string> {
-      return invoke<string>("get_folder_location", {
-        isEmpty: is_empty,
-      }).catch((err) => {
-        console.error("Failed to open folder picker:", err);
-        this.alertModal("Error", err);
-        return Promise.reject(err);
-      });
+    return invoke<string>("get_folder_location", {
+      isEmpty: is_empty,
+    }).catch((err) => {
+      console.error("Failed to open folder picker:", err);
+      this.infoService.alertModal("Error", err);
+      return Promise.reject(err);
+    });
   }
 
   selectFile(): Promise<string> {
     return invoke<string>("get_file_location").catch((err) => {
       console.error("Failed to open file picker:", err);
-      this.alertModal("Error", err);
+      this.infoService.alertModal("Error", err);
       return Promise.reject(err);
     });
   }
@@ -119,17 +101,6 @@ export class RcloneService {
     }>("get_disk_usage", { remoteName: remoteName });
   }
 
-  // async getRemoteConfig(remoteName: string): Promise<any> {
-  //   try {
-  //     return await invoke<any>("get_remote_config", {
-  //       remote_name: remoteName,
-  //     });
-  //   } catch (error) {
-  //     console.error(`Failed to fetch config for remote ${remoteName}:`, error);
-  //     return null;
-  //   }
-  // }
-
   async getAllRemoteConfigs(): Promise<Record<string, any>> {
     try {
       console.log("Fetching all remote configs");
@@ -171,17 +142,30 @@ export class RcloneService {
 
   /** Delete a remote */
   async deleteRemote(name: string): Promise<void> {
-    await invoke("unmount_remote", { mountPoint: name }).catch((error) => {
-      console.error(`Error unmounting remote ${name}:`, error);
-    });
-    await invoke("delete_remote", { name }).catch((error) => {
-      console.error(`Error deleting remote ${name}:`, error);
-    });
-    await invoke("delete_remote_settings", { remoteName: name }).catch(
-      (error) => {
-        console.error(`Error deleting saved mount config for ${name}:`, error);
-      }
+    const result = await this.infoService.confirmModal(
+      "Delete Confirmation",
+      `Are you sure you want to delete '${name}'? This action cannot be undone.`
     );
+
+    if (result) {
+      await invoke("unmount_remote", { mountPoint: name }).catch((error) => {
+        console.error(`Error unmounting remote ${name}:`, error);
+      });
+      await invoke("delete_remote", { name }).catch((error) => {
+        console.error(`Error deleting remote ${name}:`, error);
+      });
+      await invoke("delete_remote_settings", { remoteName: name }).catch(
+        (error) => {
+          console.error(
+            `Error deleting saved mount config for ${name}:`,
+            error
+          );
+        }
+      );
+      console.log(`Remote ${name} deleted successfully.`);
+    } else {
+      console.log(`Deletion of remote ${name} cancelled.`);
+    }
   }
 
   /** List all mounted remotes */
@@ -211,10 +195,10 @@ export class RcloneService {
     mount_options?: Record<string, string | number | boolean>,
     vfs_options?: Record<string, string | number | boolean>
   ): Promise<void> {
-    try {        
+    try {
       if (!mountPoint) {
         console.error("Mount point is required");
-        this.alertModal(
+        this.infoService.alertModal(
           "Mount Point Required",
           "Please Add a mount point to continue."
         );
@@ -250,8 +234,8 @@ export class RcloneService {
   ): Promise<void> {
     try {
       return await invoke("start_sync", {
-        source : source,
-        destination : destination,
+        source: source,
+        destination: destination,
         syncOptions: syncOptions,
         filterOptions: filterOptions,
       });
@@ -266,16 +250,17 @@ export class RcloneService {
     copyOptions: Record<string, any>,
     filterOptions: Record<string, any>
   ): Promise<void> {
-    return await (invoke("start_copy", {
-      source: source,
-      destination: destination,
-      copyOptions: copyOptions,
-      filterOptions: filterOptions,
-    }) as Promise<void>).catch((error) => {
+    return await (
+      invoke("start_copy", {
+        source: source,
+        destination: destination,
+        copyOptions: copyOptions,
+        filterOptions: filterOptions,
+      }) as Promise<void>
+    ).catch((error) => {
       console.error("Copy failed:", error);
     });
   }
-
 
   // Get Flags
 

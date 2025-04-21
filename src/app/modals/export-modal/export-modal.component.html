@@ -1,0 +1,55 @@
+<div class="export-modal">
+    <!-- 🔹 Modal Header -->
+    <div class="modal-header">
+        <button mat-icon-button>
+            <mat-icon svgIcon="question"></mat-icon>
+        </button>
+        <p>Export Settings</p>
+        <button mat-button (click)="close()">
+            <mat-icon svgIcon="circle-xmark"></mat-icon>
+        </button>
+    </div>
+    <!-- 🔸 Modal Content -->
+    <div class="modal-content">
+        <mat-form-field appearance="fill" style="width: 100%;">
+            <mat-label>Export Option</mat-label>
+            <mat-select [(ngModel)]="selectedOption">
+                <mat-option *ngFor="let option of exportOptions" [value]="option.value">
+                    {{ option.label }}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" style="width: 100%;">
+            <mat-label>Save Export To</mat-label>
+            <input matInput [value]="exportPath" placeholder="Select a folder..." readonly />
+            <button mat-icon-button matSuffix type="button" (click)="selectFolder()" matTooltip="Browse">
+                <mat-icon svgIcon="folder"></mat-icon>
+            </button>
+        </mat-form-field>
+
+        <span matTooltip="7-Zip is not available on this system" [matTooltipDisabled]="sevenZipSupported">
+            <mat-checkbox [(ngModel)]="withPassword" [disabled]="!sevenZipSupported">
+                Encrypt Backup
+            </mat-checkbox>
+        </span>
+
+        <mat-form-field *ngIf="withPassword" appearance="fill" style="width: 100%;" @slideInOut>
+            <mat-label>Password</mat-label>
+            <input matInput [(ngModel)]="password" type="password" />
+        </mat-form-field>
+    </div>
+
+    <!-- 🔘 Modal Actions -->
+    <div class="button-group">
+        <span
+            matTooltip="Please select a folder to save the export"
+            [matTooltipDisabled]="!(!exportPath || (withPassword && !password))">
+            <button class="primary" (click)="onExport()"
+                [disabled]="!exportPath || (withPassword && !password)">
+                <mat-icon svgIcon="circle-check" class="icon-left"></mat-icon>
+                Export
+            </button>
+        </span>
+    </div>
+</div>

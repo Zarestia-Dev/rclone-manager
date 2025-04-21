@@ -1,0 +1,14 @@
+<div class="tabs-buttons">
+    <button matTooltip="Mount" (click)="setTab('mount')" [class.active]="currentTab === 'mount'">
+        <mat-icon svgIcon="mount"></mat-icon>
+    </button>
+    <button matTooltip="Sync" (click)="setTab('sync')" [class.active]="currentTab === 'sync'">
+        <mat-icon svgIcon="sync"></mat-icon>
+    </button>
+    <button matTooltip="Copy" (click)="setTab('copy')" [class.active]="currentTab === 'copy'">
+        <mat-icon svgIcon="copy"></mat-icon>
+    </button>
+    <button matTooltip="Jobs" (click)="setTab('jobs')" [class.active]="currentTab === 'jobs'">
+        <mat-icon svgIcon="jobs"></mat-icon>
+    </button>
+</div>

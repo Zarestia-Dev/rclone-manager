@@ -1,14 +1,13 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from "@angular/animations";
+import { animate, style, transition, trigger } from "@angular/animations";
 import { CommonModule } from "@angular/common";
-import { Component, EventEmitter, Output, OnInit } from "@angular/core";
+import {
+  Component,
+  EventEmitter,
+  Output,
+  OnInit,
+  HostListener,
+} from "@angular/core";
 import { MatCardModule } from "@angular/material/card";
-import { MatDividerModule } from "@angular/material/divider";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { invoke } from "@tauri-apps/api/core";
@@ -17,6 +16,7 @@ import { RcloneService } from "../../services/rclone.service";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
+import confetti from "canvas-confetti";
 
 @Component({
   selector: "app-onboarding",
@@ -24,36 +24,46 @@ import { MatIconModule } from "@angular/material/icon";
   imports: [
     CommonModule,
     MatCardModule,
-    MatDividerModule,
     MatFormFieldModule,
     FormsModule,
     MatInputModule,
     MatRadioModule,
     MatButtonModule,
-    MatIconModule
+    MatIconModule,
   ],
   animations: [
     trigger("slideAnimation", [
-      state("void", style({ opacity: 0, transform: "translateX(100%)" })),
-      state("forward", style({ opacity: 1, transform: "translateX(0)" })),
-      state("backward", style({ opacity: 1, transform: "translateX(0)" })),
-      transition("void => forward", [animate("300ms ease-out")]),
+      // Slide in from right (next)
+      transition("void => forward", [
+        style({ transform: "translateX(100%)", opacity: 0 }),
+        animate(
+          "300ms ease-out",
+          style({ transform: "translateX(0)", opacity: 1 })
+        ),
+      ]),
+
+      // Slide out to left (next)
       transition("forward => void", [
         animate(
           "300ms ease-in",
-          style({ opacity: 0, transform: "translateX(-100%)" })
+          style({ transform: "translateX(-100%)", opacity: 0 })
         ),
       ]),
+
+      // Slide in from left (back)
       transition("void => backward", [
+        style({ transform: "translateX(-100%)", opacity: 0 }),
         animate(
           "300ms ease-out",
-          style({ opacity: 0, transform: "translateX(-100%)" })
+          style({ transform: "translateX(0)", opacity: 1 })
         ),
       ]),
+
+      // Slide out to right (back)
       transition("backward => void", [
         animate(
           "300ms ease-in",
-          style({ opacity: 0, transform: "translateX(100%)" })
+          style({ transform: "translateX(100%)", opacity: 0 })
         ),
       ]),
     ]),
@@ -71,16 +81,18 @@ import { MatIconModule } from "@angular/material/icon";
   styleUrls: ["./onboarding.component.scss"],
 })
 export class OnboardingComponent implements OnInit {
+  @Output() completed = new EventEmitter<void>();
+
+  animationState: "forward" | "backward" = "forward";
   installLocation: "default" | "custom" = "default";
   customPath: string = "";
+  hasCelebrated = false;
   mountPluginRequired = false;
   downloadingPlugin = false;
   currentCardIndex = 0;
   rcloneInstalled = false;
   installing = false;
 
-  @Output() completed = new EventEmitter<void>();
-  animationState: "forward" | "backward" = "forward";
 
   // Base cards that are always shown
   private baseCards = [
@@ -107,9 +119,24 @@ export class OnboardingComponent implements OnInit {
     await this.checkMountPlugin();
   }
 
+  @HostListener("document:keydown", ["$event"])
+  handleKeyboardEvent(event: KeyboardEvent): void {
+    if (event.key === "ArrowRight" || event.key === "Enter") {
+      if (this.currentCardIndex < this.cards.length - 1) {
+        this.nextCard();
+      } else {
+        this.completeOnboarding();
+      }
+    } else if (event.key === "ArrowLeft") {
+      if (this.currentCardIndex > 0) {
+        this.previousCard();
+      }
+    }
+  }
+
   async checkRclone(): Promise<void> {
     try {
-      this.rcloneInstalled = await invoke<boolean>("check_rclone_installed");
+      this.rcloneInstalled = await invoke<boolean>("is_rclone_available");
       if (!this.rcloneInstalled) {
         this.cards.splice(3, 0, {
           image: "../assets/rclone.svg",
@@ -159,16 +186,58 @@ export class OnboardingComponent implements OnInit {
 
   nextCard(): void {
     this.animationState = "forward";
-    if (this.currentCardIndex < this.cards.length - 1) {
-      this.currentCardIndex++;
-    }
+    setTimeout(() => {
+      if (this.currentCardIndex < this.cards.length - 1) {
+        this.currentCardIndex++;
+        if (
+          !this.hasCelebrated &&
+          this.currentCardIndex === this.cards.length - 1
+        ) {
+          this.celebrate();
+        }
+      }
+    });
   }
 
   previousCard(): void {
     this.animationState = "backward";
-    if (this.currentCardIndex > 0) {
-      this.currentCardIndex--;
-    }
+    setTimeout(() => {
+      if (this.currentCardIndex > 0) {
+        this.currentCardIndex--;
+      }
+    });
+  }
+  
+  celebrate(): void {
+    this.hasCelebrated = true;
+  
+    const duration = 500;
+    const end = Date.now() + duration;
+  
+    const colors = ['#6366F1', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#F43F5E'];
+  
+    const random = (min: number, max: number): number =>
+      Math.floor(Math.random() * (max - min + 1)) + min;
+  
+    const frame = () => {
+      confetti({
+        particleCount: 15,
+        angle: random(15, 185),
+        spread: random(20, 270),
+        origin: { y: 0.6 },
+        colors,
+      });
+  
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    };
+  
+    frame();
+  }
+  
+  trackByIndex(index: number): number {
+    return index;
   }
 
   async installMountPlugin(): Promise<void> {
@@ -199,7 +268,7 @@ export class OnboardingComponent implements OnInit {
       // Move to next card after installation
       this.nextCard();
     } catch (error) {
-      console.error(`Installation failed: ${error}`);
+      console.error("RClone installation failed:", error);
     } finally {
       this.installing = false;
     }

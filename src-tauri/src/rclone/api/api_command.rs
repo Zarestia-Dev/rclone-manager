@@ -12,8 +12,7 @@ use tauri::{command, Emitter};
 use tokio::time::sleep;
 
 use crate::{
-    rclone::api::{engine::ENGINE, state::{get_cached_mounted_remotes, RCLONE_STATE}},
-    RcloneState,
+    core::check_binaries::read_rclone_path, rclone::api::state::{get_cached_mounted_remotes, RCLONE_STATE}, RcloneState
 };
 
 lazy_static::lazy_static! {
@@ -43,7 +42,7 @@ pub async fn create_remote(
     } // ✅ Guard is dropped when this scope ends
 
     // ✅ Start a new Rclone instance
-    let rclone_path = ENGINE.lock().unwrap().read_rclone_path(&app);
+    let rclone_path = read_rclone_path(&app);
 
     let rclone_process = Command::new(rclone_path)
         .args([
@@ -328,6 +327,7 @@ pub async fn unmount_remote(
 pub async fn unmount_all_remotes(
     app: tauri::AppHandle,
     state: tauri::State<'_, RcloneState>,
+    state_name: &str,
 ) -> Result<String, String> {
     let url = format!("{}/mount/unmountall", RCLONE_STATE.get_api().0);
     let params = serde_json::json!({});
@@ -342,7 +342,10 @@ pub async fn unmount_all_remotes(
             error!("Network error unmounting all remotes: {}", e);
             format!("Failed to connect to rclone API: {}", e)
         })?;
-    app.emit("remote_state_changed", "all").ok();
+        
+    if state_name != "shutdown" {
+        app.emit("remote_state_changed", "all").ok();
+    }
     if response.status().is_success() {
         info!("Successfully unmounted all remotes");
         Ok("Successfully unmounted all remotes".to_string())

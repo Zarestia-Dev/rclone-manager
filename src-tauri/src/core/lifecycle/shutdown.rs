@@ -14,7 +14,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     let rclone_state = app_handle.state::<RcloneState>();
     
     // Run cleanup tasks in parallel
-    let unmount_result = unmount_all_remotes(app_handle.clone(), rclone_state).await;
+    let unmount_result = unmount_all_remotes(app_handle.clone(), rclone_state, "shutdown").await;
 
     
     // Handle unmount results
@@ -28,6 +28,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         }
     }
 
+    
     let mut engine = RcApiEngine::lock_engine()
         .expect("Failed to acquire lock on RcApiEngine");
     engine.shutdown();

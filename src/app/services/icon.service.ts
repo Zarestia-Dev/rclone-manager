@@ -46,6 +46,7 @@ export class IconService {
       'ftp': 'assets/icons/remotes/ftp.svg',
       'onedrive': 'assets/icons/remotes/onedrive.svg',
       's3': 'assets/icons/remotes/s3.svg',
+      'memory': 'assets/icons/remotes/memory.svg',
 
       // Theme icons
       'circle-check': 'assets/icons/circle-check.svg',
