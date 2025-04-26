@@ -1,5 +1,6 @@
+use chrono::Utc;
 use log::{debug, error, info, warn};
-use serde_json::{json, Value};
+use serde_json::json;
 use serde_urlencoded;
 use std::{
     collections::HashMap,
@@ -12,7 +13,9 @@ use tauri::{command, Emitter};
 use tokio::time::sleep;
 
 use crate::{
-    core::check_binaries::read_rclone_path, rclone::api::state::{get_cached_mounted_remotes, RCLONE_STATE}, RcloneState
+    core::check_binaries::read_rclone_path,
+    rclone::api::state::{get_cached_mounted_remotes, RCLONE_STATE},
+    RcloneState,
 };
 
 lazy_static::lazy_static! {
@@ -211,9 +214,7 @@ pub async fn mount_remote(
     // 🔍 Step 1: Get mounted remotes
     let mounted_remotes = get_cached_mounted_remotes().await?;
 
-
     debug!("Current mounted remotes: {:?}", mounted_remotes);
-    
 
     let formatted_remote = if remote_name.ends_with(':') {
         remote_name.clone()
@@ -241,20 +242,18 @@ pub async fn mount_remote(
 
     // Add mount options if provided
     if let Some(mount_opts) = mount_options {
+        debug!("Mount options: {:?}", mount_opts);
         payload["mountOpt"] = json!(mount_opts);
+        debug!("Mount options JSON: {}", payload["mountOpt"]);
     }
 
     // Add VFS options if provided
     if let Some(vfs_opts) = vfs_options {
-        payload["vfsOpt"] = json!(vfs_opts
-            .into_iter()
-            .map(|(key, value)| {
-                match value {
-                    Value::String(s) if s.is_empty() => (key, Value::Bool(false)), // Convert empty strings to false
-                    other => (key, other),
-                }
-            })
-            .collect::<serde_json::Map<_, _>>());
+        if !vfs_opts.is_empty() {
+            debug!("VFS options: {:?}", vfs_opts);
+            payload["vfsOpt"] = json!(vfs_opts);
+            debug!("VFS options JSON: {}", payload["vfsOpt"]);
+        }
     }
 
     // 🚀 Step 3: Send HTTP POST request to mount the remote
@@ -274,6 +273,66 @@ pub async fn mount_remote(
 
     if status.is_success() {
         debug!("✅ Mount request successful: {}", body);
+
+        let jobid: Option<u64> = serde_json::from_str::<serde_json::Value>(&body)
+            .ok()
+            .and_then(|v| v.get("jobid").and_then(|id| id.as_u64()));
+
+        if let Some(jobid) = jobid {
+            debug!("📦 Waiting for job {} to complete...", jobid);
+
+            let job_status_url = format!("{}/job/status", RCLONE_STATE.get_api().0);
+
+            loop {
+                let res = client
+                    .post(&job_status_url)
+                    .json(&json!({ "jobid": jobid }))
+                    .send()
+                    .await
+                    .map_err(|e| format!("Failed to query job status: {}", e))?;
+
+                let status = res.status();
+                let body = res
+                    .text()
+                    .await
+                    .map_err(|e| format!("Failed to read job status response: {}", e))?;
+
+                if status == 500 && body.contains("job not found") {
+                    // Treat as already completed (maybe quick and expired)
+                    debug!("⚠️ Job {} not found, assuming it finished quickly.", jobid);
+                    break;
+                }
+
+                if !status.is_success() {
+                    return Err(format!("Job status error (HTTP {}): {}", status, body));
+                }
+
+                let job: serde_json::Value = serde_json::from_str(&body).map_err(|e| {
+                    format!("Failed to parse job status JSON: {}\nBody: {}", e, body)
+                })?;
+
+                let finished = job
+                    .get("finished")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let success = job
+                    .get("success")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+
+                if finished {
+                    if success {
+                        debug!("✅ Job {} finished successfully.", jobid);
+                        break;
+                    } else {
+                        return Err(format!("❌ Job {} failed: {}", jobid, job));
+                    }
+                }
+
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+            }
+        } // ✅ Now emit, after the remote is actually mounted
+
         app.emit("remote_state_changed", remote_name).ok();
         Ok(())
     } else {
@@ -342,7 +401,7 @@ pub async fn unmount_all_remotes(
             error!("Network error unmounting all remotes: {}", e);
             format!("Failed to connect to rclone API: {}", e)
         })?;
-        
+
     if state_name != "shutdown" {
         app.emit("remote_state_changed", "all").ok();
     }

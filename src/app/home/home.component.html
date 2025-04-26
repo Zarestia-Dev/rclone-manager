@@ -1,23 +1,21 @@
 <mat-sidenav-container class="home-container">
   <!-- Sidebar -->
   <mat-sidenav #sidenav [(opened)]="isSidebarOpen" [mode]="sidebarMode">
-    <app-sidebar [remotes]="remotes" (remoteSelected)="selectRemote($event)">
-    </app-sidebar>
+    <app-sidebar [remotes]="remotes" (remoteSelected)="selectRemote($event)"></app-sidebar>
   </mat-sidenav>
 
   <!-- Main Content -->
-  <mat-sidenav-content class="main-content" position="start">
-
+  <mat-sidenav-content class="main-content" position="center">
     <!-- Sidebar Toggle Button -->
     <div class="sidebar-button">
-      <button class="toggle-sidebar" (click)="sidenav.toggle()">
+      <button mat-icon-button class="toggle-sidebar" (click)="sidenav.toggle()">
         <mat-icon svgIcon="menu-bar"></mat-icon>
       </button>
     </div>
 
-    <!-- Ellipsis Vertical Button -->
+    <!-- Remote Options Menu -->
     <div class="ellipsis-button-container" *ngIf="selectedRemote">
-      <button matButton class="ellipsis-button" [matMenuTriggerFor]="remoteOptionsMenu">
+      <button mat-icon-button class="ellipsis-button" [matMenuTriggerFor]="remoteOptionsMenu">
         <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
       </button>
       <mat-menu #remoteOptionsMenu="matMenu">
@@ -55,58 +53,50 @@
     </div>
 
 
-    <!-- Add Remote Dialog -->
-    <div class="add-remote" *ngIf="remotes.length === 0">
-      <mat-icon svgIcon="rclone-2"
-        style="width: 100%; min-height: 100px; height: 200px; margin-bottom: 20px;"></mat-icon>
-      <h2>RClone Manager</h2>
-      <p>Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for a fast and simple setup.
-      </p>
-      <button (click)="openQuickAddRemoteModal()" class="secondary">
-        <mat-icon svgIcon="add"></mat-icon>
-        Add Quick Remote
-      </button>
-      <button (click)="openRemoteConfigModal()" class="secondary">
-        <mat-icon svgIcon="add"></mat-icon> Add Detailed Remote
-      </button>
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="remotes.length === 0">
+      <div class="empty-state-content">
+        <mat-icon svgIcon="rclone-2" class="empty-state-icon"></mat-icon>
+        <h2>RClone Manager</h2>
+        <p>Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for a fast and simple
+          setup.</p>
+        <div class="empty-state-actions">
+          <button mat-raised-button class="primary" (click)="openQuickAddRemoteModal()">
+            <mat-icon svgIcon="add"></mat-icon>
+            Add Quick Remote
+          </button>
+          <button mat-stroked-button class="secondary" (click)="openRemoteConfigModal()">
+            <mat-icon svgIcon="add"></mat-icon>
+            Add Detailed Remote
+          </button>
+        </div>
+      </div>
     </div>
 
-    <app-mount-overview *ngIf="currentTab === 'mount' && remotes.length > 0 && !selectedRemote" [remotes]="remotes"
-      [selectedRemote]="selectedRemote" (remoteSelected)="selectRemote($event)" (mountRemote)="mountRemote($event)"
-      (openInFiles)="openRemoteInFiles($event)" style="width: 100%;">
-    </app-mount-overview>
+    <!-- Overview Components -->
+    <ng-container *ngIf="remotes.length > 0 && !selectedRemote">
+      <app-mount-overview *ngIf="currentTab === 'mount'" [remotes]="remotes" (remoteSelected)="selectRemote($event)"
+        (mountRemote)="mountRemote($event)" (openInFiles)="openRemoteInFiles($event)">
+      </app-mount-overview>
 
-    <!-- Sync Overview -->
-    <app-sync-overview *ngIf="currentTab === 'sync' && remotes.length > 0 && !selectedRemote" style="width: 100%;">
-    </app-sync-overview>
-
-    <!-- Copy Overview -->
-    <app-copy-overview *ngIf="currentTab === 'copy' && remotes.length > 0 && !selectedRemote" style="width: 100%;">
-    </app-copy-overview>
-
-    <!-- Jobs Overview -->
-    <app-jobs-overview *ngIf="currentTab === 'jobs' && remotes.length > 0 && !selectedRemote" style="width: 100%;">
-    </app-jobs-overview>
+      <app-sync-overview *ngIf="currentTab === 'sync'"></app-sync-overview>
+      <app-copy-overview *ngIf="currentTab === 'copy'"></app-copy-overview>
+      <app-jobs-overview *ngIf="currentTab === 'jobs'"></app-jobs-overview>
+    </ng-container>
 
 
-    <!-- Remote Details (Show When a Remote is Selected) -->
-    <app-mount-detail *ngIf="selectedRemote && currentTab === 'mount'" [selectedRemote]="selectedRemote"
-      [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" (openInFiles)="openRemoteInFiles($event)"
-      (mountRemote)="mountRemote($event)" (unmountRemote)="unmountRemote($event)"
-      (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)" style="width: 100%;">
-    </app-mount-detail>
+    <!-- Remote Detail View -->
+    <ng-container *ngIf="selectedRemote">
+      <app-mount-detail *ngIf="currentTab === 'mount'" [selectedRemote]="selectedRemote"
+        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" (mountRemote)="mountRemote($event)"
+        [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" (unmountRemote)="unmountRemote($event)"
+        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
+        (openInFiles)="openRemoteInFiles($event)">
+      </app-mount-detail>
 
-    <app-sync-detail *ngIf="selectedRemote && currentTab === 'sync'" [selectedRemote]="selectedRemote"
-      style="width: 100%;">
-    </app-sync-detail>
-
-    <app-copy-detail *ngIf="selectedRemote && currentTab === 'copy'" [selectedRemote]="selectedRemote"
-      style="width: 100%;">
-    </app-copy-detail>
-
-    <app-job-detail *ngIf="selectedRemote && currentTab === 'jobs'" [selectedRemote]="selectedRemote"
-      style="width: 100%;">
-    </app-job-detail>
-
+      <app-sync-detail *ngIf="currentTab === 'sync'" [selectedRemote]="selectedRemote"></app-sync-detail>
+      <app-copy-detail *ngIf="currentTab === 'copy'" [selectedRemote]="selectedRemote"></app-copy-detail>
+      <app-job-detail *ngIf="currentTab === 'jobs'" [selectedRemote]="selectedRemote"></app-job-detail>
+    </ng-container>
   </mat-sidenav-content>
 </mat-sidenav-container>

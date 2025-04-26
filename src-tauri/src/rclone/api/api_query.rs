@@ -183,6 +183,7 @@ pub struct DiskUsage {
     used: String,
     total: String,
 }
+
 #[command]
 pub async fn get_disk_usage(
     remote_name: String,
@@ -190,13 +191,33 @@ pub async fn get_disk_usage(
 ) -> Result<DiskUsage, String> {
     let url = format!("{}/operations/about", RCLONE_STATE.get_api().0);
 
-    let response = state
-        .client
+    // Add timeout to prevent hanging
+    let client = state.client.clone();
+    let request = client
         .post(&url)
         .json(&json!({ "fs": format!("{}:", remote_name) }))
-        .send()
-        .await
-        .map_err(|e| format!("Failed to send request: {}", e))?;
+        .timeout(std::time::Duration::from_secs(5)); // 5 second timeout
+
+    let mut attempts = 3;
+    let mut response = None;
+
+    while attempts > 0 {
+        match request.try_clone().unwrap().send().await {
+            Ok(res) => {
+                response = Some(res);
+                break;
+            }
+            Err(e) => {
+                attempts -= 1;
+                if attempts == 0 {
+                    return Err(format!("Failed to send request after retries: {}", e));
+                }
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await; // Wait before retrying
+            }
+        }
+    }
+
+    let response = response.unwrap();
 
     if !response.status().is_success() {
         let error_msg = response
@@ -206,11 +227,12 @@ pub async fn get_disk_usage(
         return Err(format!("Failed to fetch disk usage: {}", error_msg));
     }
 
-    let json_response: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {}", e))?;
+    let json_response: Value = match response.json().await {
+        Ok(json) => json,
+        Err(e) => return Err(format!("Failed to parse response: {}", e)),
+    };
 
+    // Extract values safely
     let free = json_response["free"].as_u64().unwrap_or(0);
     let used = json_response["used"].as_u64().unwrap_or(0);
     let total = json_response["total"].as_u64().unwrap_or(0);
@@ -236,39 +258,10 @@ fn format_size(bytes: u64) -> String {
     format!("{:.2} {}", size, sizes[i])
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct RemoteExample {
-    pub value: String,
-    pub help: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct RemoteOption {
-    pub name: String,
-    pub help: String,
-    pub required: bool,
-    pub value: Option<String>,
-    pub r#type: Option<String>,
-
-    #[serde(default)] // If missing, use default empty vector
-    pub examples: Vec<RemoteExample>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct RemoteProvider {
-    pub name: String,
-    pub description: String,
-    pub prefix: String,
-    pub options: Vec<RemoteOption>,
-}
-
 /// ✅ Fetch remote providers (cached for reuse)
 async fn fetch_remote_providers(
     state: &State<'_, RcloneState>,
-) -> Result<HashMap<String, Vec<RemoteProvider>>, String> {
+) -> Result<HashMap<String, Vec<Value>>, String> {
     let url = format!("{}/config/providers", RCLONE_STATE.get_api().0);
 
     let response = state
@@ -282,7 +275,7 @@ async fn fetch_remote_providers(
         .text()
         .await
         .map_err(|e| format!("Failed to read response: {}", e))?;
-    let providers: HashMap<String, Vec<RemoteProvider>> =
+    let providers: HashMap<String, Vec<Value>> =
         serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
 
     Ok(providers)
@@ -292,7 +285,7 @@ async fn fetch_remote_providers(
 #[tauri::command]
 pub async fn get_remote_types(
     state: State<'_, RcloneState>,
-) -> Result<HashMap<String, Vec<RemoteProvider>>, String> {
+) -> Result<HashMap<String, Vec<Value>>, String> {
     fetch_remote_providers(&state).await
 }
 
@@ -308,11 +301,14 @@ pub async fn get_oauth_supported_remotes(
         .into_values()
         .flatten()
         .filter(|remote| {
-            remote.options.iter().any(|opt| {
-                opt.name == "token" && opt.help.contains("OAuth Access Token as a JSON blob.")
+            remote.get("Options").and_then(|options| options.as_array()).map_or(false, |opts| {
+            opts.iter().any(|opt| {
+                opt.get("Name").and_then(|n| n.as_str()) == Some("token")
+                && opt.get("Help").and_then(|h| h.as_str()).map_or(false, |h| h.contains("OAuth Access Token as a JSON blob"))
+            })
             })
         })
-        .map(|remote| remote.name.clone()) // Clone the name string
+        .filter_map(|remote| remote.get("Name").and_then(|name| name.as_str()).map(|s| s.to_string())) // Extract the name string
         .collect();
 
     Ok(oauth_remotes)

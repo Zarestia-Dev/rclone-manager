@@ -13,7 +13,12 @@
 // (imported above). For each palette, you can optionally specify a default, lighter, and darker
 // hue. Available color palettes: https://material.io/design/color/
 $rclone-manager-primary: mat.m2-define-palette(mat.$m2-indigo-palette);
-$rclone-manager-accent: mat.m2-define-palette(mat.$m2-blue-palette, A200, A100, A400);
+$rclone-manager-accent: mat.m2-define-palette(
+  mat.$m2-blue-palette,
+  A200,
+  A100,
+  A400
+);
 
 // The warn palette is optional (defaults to red).
 $rclone-manager-warn: mat.m2-define-palette(mat.$m2-red-palette);
@@ -37,10 +42,14 @@ $rclone-manager-theme: mat.m2-define-light-theme(
 // that you are using.
 @include mat.all-component-themes($rclone-manager-theme);
 
-
 // Define the palettes for the dark theme
 $rclone-manager-dark-primary: mat.m2-define-palette(mat.$m2-indigo-palette);
-$rclone-manager-dark-accent: mat.m2-define-palette(mat.$m2-blue-palette, A200, A100, A400);
+$rclone-manager-dark-accent: mat.m2-define-palette(
+  mat.$m2-blue-palette,
+  A200,
+  A100,
+  A400
+);
 $rclone-manager-dark-warn: mat.m2-define-palette(mat.$m2-red-palette);
 
 // Create the dark theme object
@@ -56,9 +65,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   )
 );
 
-
 .light {
-
   /* Define custom colors for light mode */
   --app-background: #fafafa;
   --secondary-background: #ffffff;
@@ -78,7 +85,6 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --theme-border: #dbdbdb;
   --theme-border-hover: #777;
   --faint-blue: #f0f8ff;
-  
 }
 
 /* 🌙 Dark Theme */
@@ -87,7 +93,6 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   @include mat.all-component-colors($rclone-manager-dark-theme);
 }
 .dark {
-
   /* Define custom colors for dark mode */
   --app-background: #242424;
   --secondary-background: #000000;
@@ -107,7 +112,6 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --theme-border: #555;
   --theme-border-hover: #888;
   --faint-blue: #464d50;
-
 }
 
 :root {
@@ -115,11 +119,11 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --light-theme-color: white;
   --dark-theme-color: black;
   --selected-border: #007bff;
-  --green: #5CB85C;
-  --orange: #F89F24;
+  --green: #5cb85c;
+  --orange: #f89f24;
   --red: #c30000;
   --blue: #3584e4;
-  --purple: #9747FF;
+  --purple: #9747ff;
 
   /* Default values */
   --border-radius: 8px;
@@ -128,7 +132,13 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --titlebar-height: 40px; // Adjust this value to match your title bar height
   --titlebar-border: 1px;
   --sidebar-width: 250px;
-  --app-height: calc(100vh - (var(--titlebar-height) + var(--title-bar-padding) + var(--titlebar-border)));
+  --app-height: calc(
+    100vh -
+      (
+        var(--titlebar-height) + var(--title-bar-padding) +
+          var(--titlebar-border)
+      )
+  );
 }
 
 html,
@@ -142,7 +152,13 @@ body {
   overflow: hidden;
 }
 
-p, h1, h2, h3, h4, h5, h6 {
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   margin-bottom: 0;
   margin-top: 0;
 }
@@ -159,6 +175,16 @@ button {
   gap: 6px;
   background-color: transparent;
   color: var(--app-text-color);
+  // transition: all 200ms ease;
+
+  // &:hover {
+  //   transform: translateY(-1px);
+  //   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  // }
+
+  // &:active {
+  //   transform: translateY(1px);
+  // }
 
   mat-icon {
     cursor: pointer !important;
@@ -170,14 +196,13 @@ button {
     }
   }
 
-
   &.primary,
   &.mount,
   &.finish {
     color: white;
     background-color: var(--green);
   }
-  
+
   &.fix {
     color: white;
     background-color: var(--orange);
@@ -214,7 +239,6 @@ button {
     color: var(--button-text);
     cursor: not-allowed;
   }
-
 }
 
 .mat-mdc-menu-item-text {
@@ -250,7 +274,9 @@ button {
 }
 
 /* Allow text selection and normal text cursor inside inputs */
-input, textarea, [contenteditable="true"] {
+input,
+textarea,
+[contenteditable="true"] {
   user-select: text;
   cursor: text;
 }

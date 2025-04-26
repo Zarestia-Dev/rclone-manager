@@ -10,7 +10,6 @@ import { listen } from "@tauri-apps/api/event";
 import { RepairSheetComponent } from "./components/repair-sheet/repair-sheet.component";
 import { MatBottomSheet, MatBottomSheetModule } from "@angular/material/bottom-sheet";
 import { TabsButtonsComponent } from "./components/tabs-buttons/tabs-buttons.component";
-import { animate, style, transition, trigger } from "@angular/animations";
 import { Observable } from "rxjs";
 import { StateService } from "./services/state.service";
 // import { RightClickDirective } from './directives/right-click.directive';

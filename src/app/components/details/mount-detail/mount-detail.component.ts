@@ -1,16 +1,16 @@
 import { CommonModule } from "@angular/common";
-import { Component, EventEmitter, Input, Output } from "@angular/core";
+import { Component, EventEmitter, Input, Output, SimpleChanges } from "@angular/core";
 import { MatCardModule } from "@angular/material/card";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { MatMenuModule } from "@angular/material/menu";
-import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { MatIconModule } from "@angular/material/icon";
-
+import { MatProgressBarModule } from "@angular/material/progress-bar";
+import { Subject } from "rxjs";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 @Component({
-  selector: 'app-mount-detail',
+  selector: "app-mount-detail",
   imports: [
     CommonModule,
     MatCardModule,
@@ -18,21 +18,25 @@ import { MatIconModule } from "@angular/material/icon";
     MatChipsModule,
     MatTooltipModule,
     MatIconModule,
+    MatProgressBarModule,
+    MatProgressSpinnerModule
   ],
-  templateUrl: './mount-detail.component.html',
-  styleUrl: './mount-detail.component.scss'
+  templateUrl: "./mount-detail.component.html",
+  styleUrl: "./mount-detail.component.scss",
 })
 export class MountDetailComponent {
   @Input() selectedRemote: any = null;
   @Input() remoteSettings: { [key: string]: { [key: string]: any } } = {};
+  @Input() actionInProgress: 'mount' | 'unmount' | 'open' | null = null;
   @Output() openInFiles = new EventEmitter<string>();
   @Output() mountRemote = new EventEmitter<string>();
   @Output() unmountRemote = new EventEmitter<string>();
   @Output() openRemoteConfigModal = new EventEmitter<{
-    editTarget?: string,
-    existingConfig?: any[]
+    editTarget?: string;
+    existingConfig?: any[];
   }>();
 
+  filteredRemoteSpecs: { key: string; value: any }[] = [];
   remoteSettingsSections: Array<{ key: string; title: string; icon: string }> =
     [
       { key: "mount", title: "Mount Options", icon: "mount" },
@@ -41,6 +45,59 @@ export class MountDetailComponent {
       // { key: "sync", title: "Sync Options", icon: "folder-sync.svg" },
       // { key: "filter", title: "Filter Options", icon: "filter.svg" },
     ];
+
+  ngOnInit() {
+    console.log(this.selectedRemote);
+    console.log(this.remoteSettings);
+  }
+
+  private destroy$ = new Subject<void>();
+
+  ngOnDestroy() {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+  
+  // Modify ngOnChanges to be more efficient
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['selectedRemote']) {
+      console.log("Selected remote changed:", changes['selectedRemote'].currentValue);
+      
+    }
+  }
+  
+  private filterSpecs(specs: any): { key: string; value: any }[] {
+    if (!specs) return [];
+    return Object.entries(specs)
+      .filter(([key]) => !['name', 'type'].includes(key))
+      .map(([key, value]) => ({ key, value }));
+  }
+
+  getDiskBarStyle(): { [key: string]: string } {
+    if (!this.selectedRemote) return {};
+
+    if (!this.selectedRemote.mounted) {
+      return {
+        backgroundColor: "var(--purple)",
+        border: "3px solid transparent",
+        transition: "all 0.5s ease-in-out",
+      };
+    }
+
+    if (this.selectedRemote.mounted === "error") {
+      return {
+        backgroundColor: "var(--red)",
+        border: "3px solid transparent",
+        transition: "all 0.5s ease-in-out",
+      };
+    }
+
+    return {
+      backgroundColor: "#cecece",
+      border: "3px solid #70caf2",
+      transition: "all 0.5s ease-in-out",
+    };
+  }
 
   /** ✅ Safely get settings (returns empty object if missing) */
   getRemoteSettings(sectionKey: string): { [key: string]: any } {
@@ -52,23 +109,23 @@ export class MountDetailComponent {
     return Object.keys(this.getRemoteSettings(sectionKey)).length > 0;
   }
 
-  openRemoteConfig(editTarget?: string, existingConfig?: any) {
-    console.log(existingConfig)
+  triggerOpenRemoteConfig(editTarget?: string, existingConfig?: any) {
+    console.log(existingConfig);
     this.openRemoteConfigModal.emit({
       editTarget: editTarget,
-      existingConfig: existingConfig
+      existingConfig: existingConfig,
     });
   }
 
-  mountRemoteByFs() {
+  triggerMountRemote() {
     this.mountRemote.emit(this.selectedRemote.remoteSpecs.name);
   }
 
-  unmountRemoteByFs() {
+  triggerUnmountRemote() {
     this.unmountRemote.emit(this.selectedRemote.remoteSpecs.name);
   }
 
-  openRemoteInFiles() {
+  triggerOpenInFiles() {
     this.openInFiles.emit(this.selectedRemote.remoteSpecs.name);
   }
 
@@ -77,6 +134,7 @@ export class MountDetailComponent {
     const total = parseFloat(this.selectedRemote.diskUsage?.total_space || "1");
     return (used / total) * 100;
   }
+
   truncateValue(value: any, length: number): string {
     if (typeof value === "object") {
       try {

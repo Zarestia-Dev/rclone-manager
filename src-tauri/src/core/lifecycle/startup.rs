@@ -1,7 +1,7 @@
 use std::{thread::sleep, time::Duration};
 
 use log::{debug, error, info};
-use tauri::{AppHandle, Emitter, Manager, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 use tokio::join;
 
 use crate::rclone::api::{
@@ -105,9 +105,6 @@ fn spawn_mount_task(
         {
             Ok(_) => {
                 info!("✅ Mounted {}", remote_name);
-                app_clone
-                    .emit("remote_state_changed", remote_name.clone())
-                    .ok();
             }
             Err(err) => error!("❌ Failed to mount {}: {}", remote_name, err),
         }

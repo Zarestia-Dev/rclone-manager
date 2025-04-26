@@ -1,5 +1,4 @@
 import { Host, HostListener, Injectable } from "@angular/core";
-import { listen } from "@tauri-apps/api/event";
 import { BehaviorSubject } from "rxjs/internal/BehaviorSubject";
 import { RcloneService } from "./rclone.service";
 
@@ -14,16 +13,10 @@ export class StateService {
   selectedRemote$ = this.selectedRemoteSource.asObservable();
   currentTab$ = this.currentTab.asObservable();
 
-  private remotesSubject = new BehaviorSubject<any[]>([]);
-  remotes$ = this.remotesSubject.asObservable();
-
   private _isMobile = new BehaviorSubject<boolean>(window.innerWidth <= 768);
   public isMobile$ = this._isMobile.asObservable();
 
   constructor(private rcloneService: RcloneService) {
-    listen("remote-update", () => {
-      this.refreshRemotes();
-    });
 
     this.updateMobileStatus();
     window.addEventListener("resize", this.updateMobileStatus.bind(this));
@@ -56,12 +49,6 @@ export class StateService {
     this.selectedRemoteSource.next(remote);
   }
 
-  async refreshRemotes() {
-    const remotes = await this.rcloneService.getRemotes();
-    this.remotesSubject.next(remotes);
-    console.log("Remotes updated:", remotes);
-  }
-
   setTab(tab: "mount" | "sync" | "copy" | "jobs") {
     this.currentTab.next(tab);
   }
@@ -71,5 +58,46 @@ export class StateService {
     console.log("Current tab:", this.currentTab.value);
 
     return this.currentTab.value;
+  }
+
+  private _isAuthInProgress$ = new BehaviorSubject<boolean>(false);
+  private _currentRemoteName$ = new BehaviorSubject<string | null>(null);
+  private _isAuthCancelled$ = new BehaviorSubject<boolean>(false);
+  
+  isAuthInProgress$ = this._isAuthInProgress$.asObservable();
+  isAuthCancelled$ = this._isAuthCancelled$.asObservable();
+  currentRemoteName$ = this._currentRemoteName$.asObservable();
+
+
+  async startAuth(remoteName: string): Promise<void> {
+    this._isAuthInProgress$.next(true);
+    this._currentRemoteName$.next(remoteName);
+    this._isAuthCancelled$.next(false);
+  }
+
+  async cancelAuth(): Promise<void> {
+    this._isAuthCancelled$.next(true);
+    const remoteName = this._currentRemoteName$.value;
+    try {
+      if (remoteName) {
+        await this.rcloneService.quitOAuth();
+        await this.rcloneService.deleteRemote(remoteName, false);
+      }
+    } finally {
+      this.resetAuthState();
+    }
+  }
+
+  resetAuthState(): void {
+    this._isAuthInProgress$.next(false);
+    this._currentRemoteName$.next(null);
+    this._isAuthCancelled$.next(false);
+  }
+
+  get currentState() {
+    return {
+      isAuthInProgress: this._isAuthInProgress$.value,
+      currentRemoteName: this._currentRemoteName$.value
+    };
   }
 }

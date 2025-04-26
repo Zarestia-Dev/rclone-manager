@@ -50,9 +50,10 @@
                             </p>
                         </div>
                         <button class="open"
-                            (click)="openRemoteInFiles(remote.remoteSpecs.name); $event.stopPropagation()">
-                            <mat-icon svgIcon="folder"></mat-icon>
-                            Open Files
+                            (click)="openRemoteInFiles(remote.remoteSpecs.name)">
+                            <mat-spinner *ngIf="actionInProgress[remote.remoteSpecs.name] === 'open'" diameter="20"></mat-spinner>
+                            <mat-icon *ngIf="!(actionInProgress[remote.remoteSpecs.name] === 'open')" svgIcon="folder"></mat-icon>
+                            {{ actionInProgress[remote.remoteSpecs.name] === 'mount' ? "Openning" : "Open Files" }}
                         </button>
                     </div>
                 </div>
@@ -77,9 +78,10 @@
                             </p>
                         </div>
                         <button class="mount"
-                            (click)="mountRemoteByFs(remote.remoteSpecs.name); $event.stopPropagation()">
-                            <mat-icon svgIcon="mount"></mat-icon>
-                            Mount
+                            (click)="mountRemoteByFs(remote.remoteSpecs.name)">
+                            <mat-spinner *ngIf="actionInProgress[remote.remoteSpecs.name] === 'mount'" diameter="20"></mat-spinner>
+                            <mat-icon *ngIf="!(actionInProgress[remote.remoteSpecs.name] === 'mount')" svgIcon="mount"></mat-icon>
+                            {{ actionInProgress[remote.remoteSpecs.name] === 'mount' ? "Mounting" : "Mount" }}
                         </button>
                     </div>
                 </div>

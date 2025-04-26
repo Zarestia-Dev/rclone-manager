@@ -1,17 +1,17 @@
-import { 
-  Component, 
-  HostListener, 
-  OnInit, 
-  OnDestroy, 
-  inject 
+import {
+  Component,
+  HostListener,
+  OnInit,
+  OnDestroy,
+  inject,
 } from "@angular/core";
-import { 
-  AbstractControl, 
-  FormBuilder, 
-  FormGroup, 
-  ReactiveFormsModule, 
-  ValidationErrors, 
-  Validators 
+import {
+  AbstractControl,
+  FormBuilder,
+  FormGroup,
+  ReactiveFormsModule,
+  ValidationErrors,
+  Validators,
 } from "@angular/forms";
 import { CommonModule } from "@angular/common";
 import { MatDialogRef } from "@angular/material/dialog";
@@ -26,6 +26,7 @@ import { animate, style, transition, trigger } from "@angular/animations";
 import { RcloneService } from "../../services/rclone.service";
 import { SettingsService } from "../../services/settings.service";
 import { Subscription } from "rxjs";
+import { StateService } from "../../services/state.service";
 
 interface QuickAddForm {
   remoteName: string;
@@ -45,6 +46,13 @@ interface RemoteSettings {
     mount_point: string;
     auto_mount: boolean;
   };
+  show_in_tray_menu: boolean;
+}
+
+interface LoadingState {
+  saving: boolean;
+  authDisabled: boolean;
+  cancelled: boolean;
 }
 
 @Component({
@@ -76,57 +84,89 @@ interface RemoteSettings {
   ],
 })
 export class QuickAddRemoteComponent implements OnInit, OnDestroy {
-  private fb = inject(FormBuilder);
-  private rcloneService = inject(RcloneService);
-  private settingsService = inject(SettingsService);
-  private dialogRef = inject(MatDialogRef<QuickAddRemoteComponent>);
-
   quickAddForm: FormGroup;
   oauthSupportedRemotes: string[] = [];
   existingRemotes: string[] = [];
-  isLoading = false;
-  authDisabled = false;
-  cancelled = false;
-  private formSubscriptions: Subscription[] = [];
 
-  constructor() {
+  isLoading: LoadingState = {
+    saving: false,
+    authDisabled: false,
+    cancelled: false,
+  };
+
+  private formSubscriptions: Subscription[] = [];
+  private authSubscriptions: Subscription[] = [];
+
+  constructor(
+    private fb: FormBuilder,
+    private dialogRef: MatDialogRef<QuickAddRemoteComponent>,
+    private rcloneService: RcloneService,
+    private settingsService: SettingsService,
+    private stateService: StateService
+  ) {
     this.quickAddForm = this.createQuickAddForm();
     this.setupFormListeners();
   }
 
   ngOnInit(): void {
     this.initializeComponent();
+    this.setupAuthStateListeners();
+  }
+
+  private setupAuthStateListeners(): void {
+    this.authSubscriptions.push(
+      this.stateService.isAuthInProgress$.subscribe((isInProgress) => {
+        this.isLoading.saving = isInProgress;
+        this.isLoading.authDisabled = isInProgress;
+        this.setFormState(isInProgress);
+      })
+    );
+    this.authSubscriptions.push(
+      this.stateService.isAuthCancelled$.subscribe((isCancelled) => {
+        this.isLoading.cancelled = isCancelled;
+        console.log("Auth cancelled:", isCancelled);
+      })
+    );
   }
 
   ngOnDestroy(): void {
+    this.cleanupSubscriptions();
     this.cleanup();
+  }
+
+  private cleanupSubscriptions(): void {
+    this.formSubscriptions.forEach((sub) => sub.unsubscribe());
+    this.authSubscriptions.forEach((sub) => sub.unsubscribe());
+    this.formSubscriptions = [];
+    this.authSubscriptions = [];
   }
 
   private createQuickAddForm(): FormGroup {
     return this.fb.group({
       remoteName: [
-        { value: "", disabled: this.isLoading },
+        { value: "", disabled: this.isLoading.saving },
         [Validators.required, this.validateRemoteName.bind(this)],
       ],
       remoteType: [
-        { value: "", disabled: this.isLoading },
+        { value: "", disabled: this.isLoading.saving },
         Validators.required,
       ],
-      autoMount: [{ value: false, disabled: this.isLoading }],
-      mountPath: [{ value: "", disabled: this.isLoading }],
+      autoMount: [{ value: false, disabled: this.isLoading.saving }],
+      mountPath: [{ value: "", disabled: this.isLoading.saving }],
     });
   }
 
   private setupFormListeners(): void {
-    const autoMountSub = this.quickAddForm.get("autoMount")?.valueChanges
-      .subscribe((autoMount: boolean) => {
+    const autoMountSub = this.quickAddForm
+      .get("autoMount")
+      ?.valueChanges.subscribe((autoMount: boolean) => {
         const mountPathControl = this.quickAddForm.get("mountPath");
-        autoMount 
+        autoMount
           ? mountPathControl?.setValidators([Validators.required])
           : mountPathControl?.clearValidators();
         mountPathControl?.updateValueAndValidity();
       });
-    
+
     if (autoMountSub) {
       this.formSubscriptions.push(autoMountSub);
     }
@@ -136,7 +176,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     try {
       [this.existingRemotes, this.oauthSupportedRemotes] = await Promise.all([
         this.rcloneService.getRemotes(),
-        this.rcloneService.getOAuthSupportedRemotes()
+        this.rcloneService.getOAuthSupportedRemotes(),
       ]);
     } catch (error) {
       console.error("Error initializing component:", error);
@@ -177,22 +217,20 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   async onSubmit(): Promise<void> {
-    if (this.quickAddForm.invalid || this.isLoading) return;
+    if (this.quickAddForm.invalid || this.isLoading.saving) return;
 
-    this.isLoading = true;
-    this.cancelled = false;
+    const formValue = this.quickAddForm.value as QuickAddForm;
+    await this.stateService.startAuth(formValue.remoteName);
 
     try {
-      const formValue = this.quickAddForm.value as QuickAddForm;
       await this.handleRemoteCreation(formValue);
-      
-      if (!this.cancelled) {
+      if (!this.isLoading.cancelled) {
         this.dialogRef.close(true);
       }
     } catch (error) {
       console.error("Error in onSubmit:", error);
     } finally {
-      this.isLoading = false;
+      this.stateService.resetAuthState();
     }
   }
 
@@ -201,13 +239,14 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
     await this.rcloneService.createRemote(remoteName, {
       name: remoteName,
-      type: remoteType
+      type: remoteType,
     });
 
     const remoteSettings: RemoteSettings = {
       name: remoteName,
       custom_flags: [],
       vfs_options: { cache_mode: "full", chunk_size: "32M" },
+      show_in_tray_menu: true,
       mount_options: {
         mount_point: mountPath || "",
         auto_mount: autoMount || false,
@@ -223,18 +262,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   async cancelAuth(): Promise<void> {
-    this.isLoading = false;
-    this.cancelled = true;
-    this.authDisabled = true;
-
-    try {
-      await this.rcloneService.quitOAuth();
-    } catch (error) {
-      console.error("Error during OAuth cancellation:", error);
-    } finally {
-      this.authDisabled = false;
-      this.setFormState(false);
-    }
+    await this.stateService.cancelAuth();
   }
 
   private setFormState(disabled: boolean): void {
@@ -247,7 +275,8 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   private cleanup(): void {
-    this.formSubscriptions.forEach(sub => sub.unsubscribe());
-    this.rcloneService.quitOAuth();
+    this.formSubscriptions.forEach((sub) => sub.unsubscribe());
+    this.authSubscriptions.forEach((sub) => sub.unsubscribe());
+    this.cancelAuth();
   }
 }

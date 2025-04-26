@@ -1,7 +1,9 @@
-use core::{check_binaries::{is_7z_available, is_rclone_available}, settings::settings::{analyze_backup_file, restore_encrypted_settings}};
+use core::{
+    check_binaries::{is_7z_available, is_rclone_available},
+    settings::settings::{analyze_backup_file, restore_encrypted_settings},
+};
 use std::{
     path::PathBuf,
-    process::Command,
     sync::{Arc, Mutex, Once},
 };
 
@@ -94,27 +96,6 @@ fn init_logging(enable_debug: bool) {
     });
 }
 
-fn lower_webview_priority() {
-    #[cfg(target_os = "windows")]
-    {
-        let _ = Command::new("cmd")
-            .args(&[
-                "/C",
-                "wmic process where name='WebView2.exe' CALL setpriority 64",
-            ])
-            .output()
-            .map_err(|e| debug!("Failed to lower WebView priority: {}", e));
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        let _ = Command::new("renice")
-            .args(&["-n", "19", "-p", &std::process::id().to_string()])
-            .output()
-            .map_err(|e| debug!("Failed to lower process priority: {}", e));
-    }
-}
-
 /// Initializes Rclone API and OAuth state, and launches the Rclone engine.
 pub fn init_rclone_state(
     app_handle: &tauri::AppHandle,
@@ -160,6 +141,8 @@ fn setup_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
 async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
     debug!("🚀 Starting async startup tasks");
 
+    setup_event_listener(&app_handle);
+
     let app_handle1 = app_handle.clone();
     let app_handle2 = app_handle.clone();
     let app_handle3 = app_handle.clone();
@@ -170,8 +153,6 @@ async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
         CACHE.refresh_remote_configs(app_handle3),
     );
 
-    handle_startup(app_handle.clone()).await;
-
     if settings.general.tray_enabled {
         debug!("🧊 Setting up tray");
         if let Err(e) = setup_tray(app_handle.clone(), settings.core.max_tray_items).await {
@@ -179,9 +160,8 @@ async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
         }
     }
 
-    setup_event_listener(&app_handle);
+    handle_startup(app_handle.clone()).await;
 }
-
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -196,28 +176,42 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .on_window_event(|window, event| match event {
-            WindowEvent::CloseRequested { api, .. } => {
-                let tray_enabled = window.app_handle().state::<TrayEnabled>();
-
-                if *tray_enabled.0.read().unwrap() {
-                    api.prevent_close();
-                    if let Some(win) = window.app_handle().get_webview_window("main") {
-                        let _ = win.hide();
-                        lower_webview_priority();
+        .on_window_event(move |window, event| {
+            match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    let tray_enabled_arc = window.app_handle().state::<TrayEnabled>().0.clone();
+                    
+                    if let Ok(tray_enabled) = tray_enabled_arc.clone().read() {
+                        if *tray_enabled {
+                            api.prevent_close();
+                            if let Some(win) = window.app_handle().get_webview_window("main") {
+                                win.hide().unwrap_or_else(|e| {
+                                    eprintln!("Failed to hide window: {}", e);
+                                });
+                                win.eval("document.body.innerHTML = '';").unwrap_or_else(|e| {
+                                    eprintln!("Failed to clear window content: {}", e);
+                                });
+                            }
+                        } else {
+                            window.hide().unwrap_or_else(|e| {
+                                eprintln!("Failed to hide window: {}", e);
+                            });
+                            tauri::async_runtime::block_on(handle_shutdown(window.app_handle().clone()));
+                            window.app_handle().exit(0);
+                        }
+                    } else {
+                        eprintln!("Failed to read tray_enabled state");
                     }
-                } else {
-                    let _ = window.hide();
-                    tauri::async_runtime::block_on(handle_shutdown(window.app_handle().clone()));
-                    window.app_handle().exit(0);
                 }
-            }
-            WindowEvent::Focused(true) => {
-                if let Some(win) = window.app_handle().get_webview_window("main") {
-                    let _ = win.show();
+                WindowEvent::Focused(true) => {
+                    if let Some(win) = window.app_handle().get_webview_window("main") {
+                        win.show().unwrap_or_else(|e| {
+                            eprintln!("Failed to show window: {}", e);
+                        });
+                    }
                 }
+                _ => {}
             }
-            _ => {}
         })
         .manage(RcloneState {
             client: reqwest::Client::new(),
@@ -283,7 +277,8 @@ pub fn run() {
             "unmount_all" => {
                 let app_clone = app.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Err(e) = unmount_all_remotes(app_clone.clone(), app_clone.state(), "menu").await
+                    if let Err(e) =
+                        unmount_all_remotes(app_clone.clone(), app_clone.state(), "menu").await
                     {
                         error!("Failed to unmount all remotes: {}", e);
                     }

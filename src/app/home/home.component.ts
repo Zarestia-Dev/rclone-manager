@@ -1,4 +1,4 @@
-import { Component, HostListener, OnDestroy, OnInit } from "@angular/core";
+import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { MatDrawerMode, MatSidenavModule } from "@angular/material/sidenav";
 import { MatCardModule } from "@angular/material/card";
@@ -35,13 +35,16 @@ type AppTab = "mount" | "sync" | "copy" | "jobs";
 interface Remote {
   remoteSpecs: {
     name: string;
+    type: string;
     [key: string]: any;
   };
-  mounted: boolean;
+  mounted: boolean | 'error';
   diskUsage: {
     total_space: string;
     used_space: string;
     free_space: string;
+    loading?: boolean;
+    error?: boolean;
   };
 }
 
@@ -98,6 +101,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   sidebarMode: MatDrawerMode = "side";
   currentTab: AppTab = "mount";
 
+  actionInProgress: { [remoteName: string]: 'mount' | 'unmount' | 'open' | null } = {};
+
   // Data State
   remotes: Remote[] = [];
   mountedRemotes: MountedRemote[] = [];
@@ -112,7 +117,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private stateService: StateService,
     private rcloneService: RcloneService,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    private ngZone: NgZone,
+    private cdr: ChangeDetectorRef
+    
   ) {}
 
   // Lifecycle Hooks
@@ -155,12 +163,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   async mountRemote(remoteName: string): Promise<void> {
+    this.actionInProgress[remoteName] = 'mount';
     const settings = this.loadRemoteSettings(remoteName);
-    if (!settings?.mount_options?.mount_point) {
-      console.warn(`Mount point is missing for ${remoteName}`);
-      return;
-    }
-
     try {
       await this.rcloneService.mountRemote(
         remoteName,
@@ -168,14 +172,16 @@ export class HomeComponent implements OnInit, OnDestroy {
         settings.mount_options,
         settings.vfs_options
       );
-      await this.refreshData();
       this.selectRemoteByName(remoteName);
     } catch (error) {
       console.error(`Failed to mount ${remoteName}:`, error);
+    } finally {
+      this.actionInProgress[remoteName] = null;
     }
   }
 
   async unmountRemote(remoteName: string): Promise<void> {
+    this.actionInProgress[remoteName] = 'unmount';
     const mountPoint = this.getMountPoint(remoteName);
     if (!mountPoint) {
       console.warn(`No mount point found for ${remoteName}`);
@@ -184,12 +190,24 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     try {
       await this.rcloneService.unmountRemote(mountPoint);
-      await this.refreshData();
       this.selectRemoteByName(remoteName);
     } catch (error) {
       console.error(`Failed to unmount ${remoteName}:`, error);
+    } finally {
+      this.actionInProgress[remoteName] = null;
     }
   }
+
+    // Utility Methods
+    async openRemoteInFiles(remoteName: string): Promise<void> {
+      this.actionInProgress[remoteName] = 'open';
+      const mountPoint =
+        this.loadRemoteSettings(remoteName)?.mount_options?.mount_point;
+      if (mountPoint) {
+        await this.rcloneService.openInFiles(mountPoint);
+      }
+      this.actionInProgress[remoteName] = null;
+    }
 
   async deleteRemote(remoteName: string): Promise<void> {
     try {
@@ -209,11 +227,19 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   // Helper Methods
   private async refreshData(): Promise<void> {
-    await Promise.all([
-      this.refreshMounts(),
-      this.loadRemotes(),
-      this.getRemoteSettings(),
-    ]);
+    this.ngZone.run(async () => {
+      await Promise.all([
+        this.refreshMounts(),
+        this.loadRemotes(),
+        this.getRemoteSettings(),
+      ]);
+      
+      if (this.selectedRemote?.remoteSpecs.name) {
+        this.selectRemoteByName(this.selectedRemote.remoteSpecs.name);
+      }
+      // Optional but safe
+      this.cdr.detectChanges();
+    });
   }
 
   private getMountPoint(remoteName: string): string | undefined {
@@ -310,37 +336,70 @@ export class HomeComponent implements OnInit, OnDestroy {
   private async loadRemotes(): Promise<void> {
     try {
       const remoteConfigs = await this.rcloneService.getAllRemoteConfigs();
-      this.remotes = await Promise.all(
-        Object.keys(remoteConfigs).map(async (name) => {
-          const mounted = this.isRemoteMounted(name);
-          let diskUsage = {
-            total_space: "N/A",
-            used_space: "N/A",
-            free_space: "N/A",
-          };
-
-          if (mounted) {
-            try {
-              const usage = await this.rcloneService.getDiskUsage(name);
-              diskUsage = {
-                total_space: usage.total || "N/A",
-                used_space: usage.used || "N/A",
-                free_space: usage.free || "N/A",
-              };
-            } catch (error) {
-              console.error(`Failed to fetch disk usage for ${name}:`, error);
-            }
+      
+      // First pass - load all remotes quickly without waiting for disk usage
+      this.remotes = Object.keys(remoteConfigs).map(name => {
+        const mounted = this.isRemoteMounted(name);
+        return {
+          remoteSpecs: { name, ...remoteConfigs[name] },
+          mounted,
+          diskUsage: {
+            total_space: "Loading...",
+            used_space: "Loading...",
+            free_space: "Loading...",
+            loading: true
           }
-
-          return {
-            remoteSpecs: { name, ...remoteConfigs[name] },
-            mounted,
-            diskUsage,
-          };
-        })
-      );
+        };
+      });
+  
+      // Second pass - load disk usage in background without blocking
+      this.loadDiskUsageInBackground();
+      
     } catch (error) {
       console.error("Failed to load remotes:", error);
+    }
+  }
+  
+  private async loadDiskUsageInBackground(): Promise<void> {
+    // Process each remote sequentially to avoid overwhelming the system
+    for (const remote of this.remotes) {
+      if (!remote.mounted) continue;
+      
+      try {
+        // Update UI to show loading state
+        remote.diskUsage.loading = true;
+        this.cdr.detectChanges();
+        
+        const usage = await this.rcloneService.getDiskUsage(remote.remoteSpecs.name);
+        
+        // Update the remote with disk usage info
+        remote.diskUsage = {
+          total_space: usage.total || "N/A",
+          used_space: usage.used || "N/A",
+          free_space: usage.free || "N/A",
+          loading: false
+        };
+        
+        // If this is the selected remote, update the reference
+        if (this.selectedRemote?.remoteSpecs.name === remote.remoteSpecs.name) {
+          this.selectedRemote = { ...remote };
+        }
+        
+        this.cdr.detectChanges();
+      } catch (error) {
+        console.error(`Failed to fetch disk usage for ${remote.remoteSpecs.name}:`, error);
+        remote.diskUsage = {
+          total_space: "Error",
+          used_space: "Error",
+          free_space: "Error",
+          loading: false,
+          error: true
+        };
+        this.cdr.detectChanges();
+      }
+      
+      // Small delay between requests to prevent overwhelming the system
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
 
@@ -350,14 +409,5 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private async refreshMounts(): Promise<void> {
     this.mountedRemotes = await this.rcloneService.getMountedRemotes();
-  }
-
-  // Utility Methods
-  async openRemoteInFiles(remoteName: string): Promise<void> {
-    const mountPoint =
-      this.loadRemoteSettings(remoteName)?.mount_options?.mount_point;
-    if (mountPoint) {
-      await this.rcloneService.openInFiles(mountPoint);
-    }
   }
 }

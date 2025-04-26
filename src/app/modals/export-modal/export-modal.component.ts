@@ -1,5 +1,5 @@
 import { CommonModule } from "@angular/common";
-import { Component, HostListener, Optional } from "@angular/core";
+import { Component, HostListener } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatFormFieldModule } from "@angular/material/form-field";
@@ -11,7 +11,6 @@ import { SettingsService } from "../../services/settings.service";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatCheckboxModule } from "@angular/material/checkbox";
 import { animate, style, transition, trigger } from "@angular/animations";
-import { MatBottomSheetRef } from "@angular/material/bottom-sheet";
 
 @Component({
   selector: "app-export-modal",
@@ -91,7 +90,7 @@ export class ExportModalComponent {
     await this.settingsService.backupSettings(
       this.exportPath,
       this.selectedOption,
-      this.password
+      this.withPassword ? this.password : null
     );
   }
 }

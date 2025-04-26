@@ -14,7 +14,6 @@ pub struct SettingMetadata {
 pub struct GeneralSettings {
     pub tray_enabled: bool,
     pub start_on_startup: bool,
-    pub auto_refresh: bool,
     pub notifications: bool,
 }
 
@@ -50,7 +49,6 @@ impl Default for AppSettings {
             general: GeneralSettings {
                 tray_enabled: true,
                 start_on_startup: false,
-                auto_refresh: true,
                 notifications: true,
             },
             core: CoreSettings {
@@ -88,15 +86,6 @@ impl AppSettings {
                 display_name: "Start on Startup".to_string(),
                 value_type: "bool".to_string(),
                 help_text: "Automatically start the app when the system starts.".to_string(),
-            },
-        );
-
-        metadata.insert(
-            "general.auto_refresh".to_string(),
-            SettingMetadata {
-                display_name: "Auto Refresh Remotes".to_string(),
-                value_type: "bool".to_string(),
-                help_text: "Automatically refresh the list of remotes.".to_string(),
             },
         );
 

@@ -76,6 +76,8 @@ export class RcloneService {
     try {
       const response = await invoke<{ providers: any[] }>("get_remote_types");
       const provider = response.providers.find((p) => p.Name === type);
+      console.log(response);
+      
       return provider ? provider.Options : [];
     } catch (error) {
       console.error(`Failed to fetch config fields for ${type}:`, error);
@@ -116,9 +118,11 @@ export class RcloneService {
     name: string,
     parameters: Record<string, any>
   ): Promise<void> {
-    await invoke("create_remote", { name, parameters }).catch((error) => {
+    try {
+    await invoke("create_remote", { name, parameters })
+    } catch (error) {
       console.error(`Error creating remote ${name}:`, error);
-    });
+    }
   }
 
   async quitOAuth() {
@@ -141,11 +145,15 @@ export class RcloneService {
   }
 
   /** Delete a remote */
-  async deleteRemote(name: string): Promise<void> {
-    const result = await this.infoService.confirmModal(
-      "Delete Confirmation",
-      `Are you sure you want to delete '${name}'? This action cannot be undone.`
-    );
+  async deleteRemote(name: string, confirmation: boolean = true): Promise<void> {
+    let result = true;
+
+    if (confirmation) {
+      result = (await this.infoService.confirmModal(
+        "Delete Confirmation",
+        `Are you sure you want to delete '${name}'? This action cannot be undone.`
+      )) as boolean;
+    }
 
     if (result) {
       await invoke("unmount_remote", { mountPoint: name }).catch((error) => {
@@ -167,6 +175,7 @@ export class RcloneService {
       console.log(`Deletion of remote ${name} cancelled.`);
     }
   }
+
 
   /** List all mounted remotes */
   async listMounts(): Promise<string[]> {
@@ -204,11 +213,17 @@ export class RcloneService {
         );
         return;
       }
-      await invoke("mount_remote", {
+      console.log("Mounting remote:", {
         remoteName,
         mountPoint,
         mount_options,
         vfs_options,
+      });
+      await invoke("mount_remote", {
+        remoteName: remoteName,
+        mountPoint: mountPoint,
+        mountOptions: mount_options,
+        vfsOptions: vfs_options,
       });
       console.log("Mounted successfully");
     } catch (error) {

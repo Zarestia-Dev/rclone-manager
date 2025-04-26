@@ -3,7 +3,6 @@
   <div class="modal-header" data-tauri-drag-region>
     <div class="header-content">
       <button mat-icon-button class="help-btn">
-       
         <mat-icon svgIcon="question"></mat-icon>
       </button>
       <p>
@@ -40,7 +39,7 @@
         Remote name is required.
       </mat-error>
       <mat-error *ngIf="quickAddForm.get('remoteName')?.hasError('nameTaken')">
-        This remote name already exists! Choose another name.
+        That name is taken. Try another.
       </mat-error>
     </mat-form-field>
 
@@ -63,22 +62,27 @@
 
     <!-- 🌟 Action Buttons -->
     <div class="button-group">
-      <button class="finish" mat-raised-button color="primary" type="submit" [disabled]="isLoading || quickAddForm.invalid || authDisabled">
-        <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
-        {{ isLoading ? 'Adding...' : 'Create Remote' }}
+      <button class="finish" mat-raised-button color="primary" type="submit"
+        [disabled]="isLoading.saving || quickAddForm.invalid || isLoading.authDisabled">
+        <mat-spinner *ngIf="isLoading.saving && !isLoading.cancelled" diameter="20"></mat-spinner>
+        {{ isLoading.saving && !isLoading.cancelled ? 'Adding...' : 'Create Remote' }}
       </button>
-      <p *ngIf="authDisabled" >
+
+      <p *ngIf="isLoading.cancelled">
         Cleaning authentication. Please wait...
-        <mat-spinner *ngIf="authDisabled" diameter="20"></mat-spinner>
+        <mat-spinner *ngIf="isLoading.cancelled" diameter="20"></mat-spinner>
       </p>
-      <button @slideInOut class="cancel" mat-stroked-button type="button" (click)="cancelAuth()" [disabled]="!isLoading" *ngIf="isLoading">
+
+      <button @slideInOut class="cancel" mat-stroked-button type="button" (click)="cancelAuth()"
+        [disabled]="!isLoading.saving" *ngIf="isLoading.saving && !isLoading.cancelled">
         Cancel Authentication
       </button>
+
+      <!-- 🔄 Additional Message (Loading) -->
+      <p *ngIf="isLoading.saving && !isLoading.cancelled" class="loading-message">
+        A browser window may open for authentication...
+      </p>
     </div>
 
-    <!-- 🔄 Additional Message (Loading) -->
-    <p *ngIf="isLoading" class="loading-message">
-      A browser window may open for authentication...
-    </p>
   </form>
 </div>

@@ -1,9 +1,10 @@
 .overview {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  width: 84%;
+    margin: 0 auto;
   
-    .remote-header {
+    h2 {
+      display: flex;
+      justify-content: center;
       padding-top: 20px;
     }
   
@@ -21,7 +22,6 @@
       align-items: baseline;
       border-radius: 8px;
       padding-block: 20px;
-      width: 84%;
   
       h3 {
         display: flex;

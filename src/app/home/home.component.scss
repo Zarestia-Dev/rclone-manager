@@ -10,8 +10,6 @@
 
   mat-sidenav-content {
     flex: 1;
-    display: flex;
-    justify-content: center;
 
     .ellipsis-button {
       display: flex;
@@ -24,24 +22,43 @@
       cursor: pointer;
       border-radius: 50%;
       color: var(--app-text-color);
-  
+
       &.hover {
         background-color: var(--hover-color);
       }
     }
 
-    .add-remote {
+    .empty-state {
+      height: 100%;
       display: flex;
-      flex-direction: column;
       align-items: center;
-      gap: 15px;
-      padding-block: 4vh;
+      justify-content: center;
 
-      p {
-        display: flex;
-        font-size: 20px;
+      .empty-state-content {
         text-align: center;
-        margin-inline: 40px;
+        max-width: 500px;
+        padding: 24px;
+
+        .empty-state-icon {
+          width: 120px;
+          height: 120px;
+          margin-bottom: 16px;
+        }
+
+        h2 {
+          margin-bottom: 8px;
+        }
+
+        p {
+          margin-bottom: 24px;
+          color: rgba(0, 0, 0, 0.6);
+        }
+
+        .empty-state-actions {
+          display: flex;
+          gap: 16px;
+          justify-content: center;
+        }
       }
     }
 

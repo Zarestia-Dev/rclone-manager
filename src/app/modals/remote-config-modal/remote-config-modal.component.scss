@@ -1,98 +1,150 @@
 .modal-container {
-  height: 100%;
-  background: var(--app-background);
-  box-shadow: 0 4px 12px var(--shadow-color);
   display: flex;
   flex-direction: column;
-  position: relative; /* Ensure absolute positioning works for children */
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  background: var(--app-background);
+  color: var(--app-text-color);
 
   .modal-header {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     position: sticky;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 0 4px var(--shadow-color);
     top: 0;
+    padding: 9px 0px;
     background: var(--app-background);
     color: var(--app-text-color);
     z-index: 10;
 
-    .header-content {
+    p {
       display: flex;
-      justify-content: space-between;
-      margin: 10px 10px 8px 10px;
       align-items: center;
-      gap: 10px;
-
-      button {
-        background: none;
-        border: none;
-        font-size: 20px;
-        font-weight: 600;
-      }
-
-      p {
-        display: flex;
-        align-items: center;
-        flex-direction: row;
-        text-wrap: nowrap;
-        gap: 6px;
-        font-size: 20px;
-        font-weight: 600;
-      }
+      text-wrap: nowrap;
+      flex-direction: row;
+      gap: 6px;
+      font-size: 20px;
+      font-weight: 600;
     }
   }
 
   .modal-content {
-    flex-grow: 1;
-    padding: 10px;
-    overflow: hidden;
     position: relative;
-    
+    height: 100%;
+    overflow: hidden;
+
+    .animation-wrapper {
+      position: relative;
+      height: 100%;
+      width: 100%;
+    }
+
     .step-container {
       position: absolute;
-      width: 100%;
-      height: 100%;
       top: 0;
       left: 0;
+      right: 0;
+      padding-inline: 12px;
+      height: 100%;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
 
-      .visually-hidden {
-        margin: 10px;
-        display: flex;
-        align-content: center;
-        justify-content: center;
+    h2 {
+      display: flex;
+      margin-top: 12px;
+      justify-content: center;
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+
+      .slide-toggle {
+        margin-bottom: 12px;
       }
 
-      form {
+      .field-card {
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        gap: 6px;
+
+        &.advanced-field {
+          border-left: 4px solid var(--purple);
+        }
+      }
+      .section-heading {
+        margin: 16px 0 8px 0;
+      }
+
+      .responsive-config-row {
         display: flex;
-        flex-direction: column;
-        gap: 10px;
-        padding: 10px;
-        overflow-y: auto;
-        height: calc(100% - 20px);
+        flex-direction: row;
+        gap: 16px;
+        margin-top: 16px;
+        align-items: flex-start;
+
+        .json-textarea {
+          flex: 1;
+          width: 100%;
+
+          .reset-btn {
+            position: absolute;
+            top: 0;
+            right: -16px;
+            z-index: 2;
+            background: var(--app-background);
+            padding: 4px;
+            border-radius: 4px;
+          }
+        }
+
+        .json-chip-set {
+          flex: 1;
+          background: var(--faint-blue);
+          border-radius: 8px;
+          padding: 12px 8px;
+          margin-top: 8px;
+        }
+
+        @media (max-width: 640px) {
+          flex-direction: column;
+
+          .json-chip-set {
+            margin-top: 12px;
+            width: 100%;
+          }
+        }
       }
     }
   }
 
   .button-container {
     border-top: 1px solid #939090;
-    display: flex;
-    padding: 10px 20px;
-    justify-content: space-between;
-    position: sticky; /* Stick to the bottom */
+    background-color: var(--app-background);
+    position: sticky;
     bottom: 0;
-    background: var(--app-background);
-    z-index: 10;
-
-    button {
-        &.disabled {
-        cursor: not-allowed;
-        background-color: #b0b0b0;
-        color: #ffffff;
-      }
-    }
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding: 6px 16px;
 
     .button-container-inner {
       display: flex;
+      flex-direction: row;
       gap: 10px;
-    } 
+
+      p {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        align-items: center;
+      }
+    }
   }
 }
