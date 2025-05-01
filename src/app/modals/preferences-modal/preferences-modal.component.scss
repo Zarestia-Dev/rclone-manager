@@ -4,43 +4,14 @@
   box-shadow: 0 4px 12px var(--shadow-color);
   display: flex;
   flex-direction: column;
-  position: relative; /* Ensure absolute positioning works for children */
-  overflow: hidden; /* Hide overflow from children */
+  position: relative;
+  overflow: hidden;
 
   .modal-header {
-    display: flex;
-    flex-direction: row;
-    position: sticky;
-    top: 0;
-    background: var(--app-background);
-    color: var(--app-text-color);
-    border-bottom: 1px solid #ddd;
-    z-index: 10;
-    justify-content: space-between;
-    padding: 10px 10px 8px 10px;
-    min-height: 30px;
-
-    button {
-      color: var(--app-text-color);
-      background-color: transparent;
-      padding: 6px;
-
-      &.active {
-        background-color: var(--hover-color);
-      }
-    }
-
     .tabs {
       display: flex;
       gap: 2vw;
-      justify-content: center;
-
-      button {
-        border-radius: 8px;
-        padding: 10px 8px;
-      }
-      
-
+      align-items: center;
     }
     h2 {
       font-weight: 600;
@@ -49,37 +20,18 @@
       align-self: center;
     }
   }
+  .bottom-tabs {
+    display: flex;
+    flex-direction: row;
+    align-self: center;
+    justify-content: space-evenly;
+    width: 100%;
+    margin: 10px;
 
-
-    .bottom-tabs {
-      border-top: 1px solid #ddd;
-      display: flex;
-      flex-direction: row;
-      align-self: center;
-      justify-content: space-evenly;
-      width: 100%;
-
-
-      button {
-        flex-direction: column;
-        color: var(--app-text-color);
-        background-color: transparent;
-        gap: 0;
-        font-size: 14px;
-        font-weight: 600;
-        padding: 4px 8px;
-        margin-block: 4px;
-
-        mat-icon {
-          width: 14px;
-        }
-  
-        &.active {
-          background-color: var(--hover-color);
-        }
-      }
+    button {
+      padding: 0 8px;
     }
-
+  }
 
   .modal-content {
     padding: 16px;
@@ -140,12 +92,6 @@
           }
         }
       }
-    }
-
-    .reset {
-      width: 90%;
-      margin-top: 16px;
-            
     }
   }
 }

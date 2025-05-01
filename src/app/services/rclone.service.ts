@@ -145,20 +145,7 @@ export class RcloneService {
   }
 
   /** Delete a remote */
-  async deleteRemote(name: string, confirmation: boolean = true): Promise<void> {
-    let result = true;
-
-    if (confirmation) {
-      result = (await this.infoService.confirmModal(
-        "Delete Confirmation",
-        `Are you sure you want to delete '${name}'? This action cannot be undone.`
-      )) as boolean;
-    }
-
-    if (result) {
-      await invoke("unmount_remote", { mountPoint: name }).catch((error) => {
-        console.error(`Error unmounting remote ${name}:`, error);
-      });
+  async deleteRemote(name: string): Promise<void> {
       await invoke("delete_remote", { name }).catch((error) => {
         console.error(`Error deleting remote ${name}:`, error);
       });
@@ -171,9 +158,6 @@ export class RcloneService {
         }
       );
       console.log(`Remote ${name} deleted successfully.`);
-    } else {
-      console.log(`Deletion of remote ${name} cancelled.`);
-    }
   }
 
 
@@ -205,38 +189,25 @@ export class RcloneService {
     vfs_options?: Record<string, string | number | boolean>
   ): Promise<void> {
     try {
-      if (!mountPoint) {
-        console.error("Mount point is required");
-        this.infoService.alertModal(
-          "Mount Point Required",
-          "Please Add a mount point to continue."
-        );
-        return;
-      }
-      console.log("Mounting remote:", {
-        remoteName,
-        mountPoint,
-        mount_options,
-        vfs_options,
-      });
       await invoke("mount_remote", {
         remoteName: remoteName,
         mountPoint: mountPoint,
         mountOptions: mount_options,
         vfsOptions: vfs_options,
       });
-      console.log("Mounted successfully");
     } catch (error) {
+      this.infoService.openSnackBar(String(error), "Close")
       console.error("Mount failed:", error);
     }
   }
 
   /** Unmount a remote */
-  async unmountRemote(mountPoint: string): Promise<void> {
+  async unmountRemote(mountPoint: string, remoteName: string): Promise<void> {
     try {
-      await invoke("unmount_remote", { mountPoint });
+      await invoke("unmount_remote", { mountPoint, remoteName });
       console.log("Unmounted successfully");
     } catch (error) {
+      this.infoService.openSnackBar(String(error), "Close")
       console.error("Unmount failed:", error);
     }
   }
@@ -278,7 +249,6 @@ export class RcloneService {
   }
 
   // Get Flags
-
   async getGlobalFlags(): Promise<any> {
     try {
       return await invoke<any>("get_global_flags");
@@ -330,6 +300,44 @@ export class RcloneService {
     } catch (error) {
       console.error("Error fetching mount flags:", error);
       return null;
+    }
+  }
+
+
+  // Get Logs
+  async getRemoteLogs(remoteName: string): Promise<string[]> {
+    try {
+      return await invoke<string[]>("get_remote_logs", { remoteName });
+    } catch (error) {
+      console.error("Error fetching remote logs:", error);
+      return [];
+    }
+  }
+
+  async getRemoteErrors(remoteName: string): Promise<string[]> {
+    try {
+      return await invoke<string[]>("get_remote_errors", { remoteName });
+    } catch (error) {
+      console.error("Error fetching remote errors:", error);
+      return [];
+    }
+  } 
+
+  async clearRemoteLogs(remoteName: string): Promise<void> {
+    try {
+      await invoke("clear_logs_for_remote", { remoteName });
+      console.log(`Logs for ${remoteName} cleared successfully.`);
+    } catch (error) {
+      console.error("Error clearing remote logs:", error);
+    }
+  }
+
+  async clearRemoteErrors(remoteName: string): Promise<void> {
+    try {
+      await invoke("clear_errors_for_remote", { remoteName });
+      console.log(`Errors for ${remoteName} cleared successfully.`);
+    } catch (error) {
+      console.error("Error clearing remote errors:", error);
     }
   }
 }

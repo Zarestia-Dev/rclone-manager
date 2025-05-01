@@ -1,91 +1,124 @@
-<h1 align="center" style="width: 100%;">
-  <br>
-  <a><img src="src/assets/rclone.svg" alt="Rclone Manager" height="250"></a>
+<h1 align="center">
+  <img src="src/assets/rclone.svg" alt="Rclone Manager" height="180">
   <br>
   Rclone Manager
-  <br>
 </h1>
 
-Rclone Manager is a **cross-platform (For Now Only Linux) GUI application** designed to help users **manage Rclone remotes** efficiently.  
-
-🌟 **Inspired by GTK**, it features a **modern, intuitive interface** built with **Tauri and Angular**, allowing users to configure, mount, and manage cloud storage remotes via Rclone with ease.
-
-
-🚧 **Under active development!** Expect frequent updates and improvements.
+<p align="center">
+  <b>Cross-platform GUI for managing Rclone remotes with style.</b><br>
+  <i>Built with Angular + Tauri · Linux support (Windows/macOS planned)</i>
+</p>
 
 ---
 
-## 📸 Screenshots  
-*** Soon... ***
+## 🌐 Overview
 
+**Rclone Manager** is a **cross-platform (currently Linux-only)** GUI application to help users manage [Rclone](https://rclone.org/) remotes with a modern interface.
+
+> ⚠️ **Actively developed** – Expect frequent updates and improvements.
+
+---
+
+## 🎨 Design Philosophy
+
+💡 **Caotic Design** – A unique mix of **GTK styling**, **Angular Material**, and **FontAwesome**, creating a minimalist yet modern look.
+
+---
+
+## 📸 Screenshots
+
+📷 *Coming soon...*
 
 ---
 
 ## 🚀 Features
-- **GTK-Inspired Design** – A clean and intuitive UI inspired by **modern GTK applications**.
-- **Add, Edit, and Remove Remotes** – Manage cloud storage configurations effortlessly.
-- **Quick Remote Adding Support with OAuth** – Authenticate cloud services easily.
-- **Dynamic Remote Configurations** – Supports Google Drive, AWS S3, OneDrive, Dropbox, and more.
-- **Mount Management** – Mount/unmount remotes with **native execution** or **systemd-based mounting**.
-- **Advanced Mount Options** – Configure cache settings, read chunk sizes, and other **VFS options** dynamically.
-- **Tray Icon Support** – Quickly access mounted remotes from the system tray.
-- **Dark & Light Mode** – **Inspired by GTK**, with a **clean & modern** theme.
-- **Cross-Platform Support** – Currently **Linux-only** (Windows/macOS planned).
+
+- 🛠 **Remote Management** – Add, edit, and delete remotes easily.
+- 🔐 **OAuth Support** – Authenticate with popular providers effortlessly.
+- ☁️ **Supported Remotes** – Google Drive, Dropbox, OneDrive, AWS S3, and many more.
+- 📦 **Mounting** – Native or systemd-based remote mount/unmount functionality.
+- ⚙️ **Advanced VFS Options** – Tune caching, read sizes, and other performance options.
+- 🖥 **Tray Icon Support** – Quick access to your remotes from the system tray.
+- 🌗 **Light & Dark Modes** – GTK-inspired themes with a modern, responsive layout.
+- 🧪 **Cross-Platform Architecture** – Tauri + Angular. **Linux ready**, Windows/macOS coming soon.
 
 ---
 
-## 📦 Downloads  
+## 🔧 Tech Stack
 
-You can download the latest release from the **[Releases Page](https://gitlab.com/Hakanbaban53/rclone-manager/-/releases)**.  
-
-🚧 *Currently, only Linux builds are supported. Windows and macOS support is planned for future updates.*
+- **Frontend**: Angular + Angular Material + FontAwesome
+- **Backend**: Tauri (Rust)
+- **Styling**: GTK-inspired custom theming
 
 ---
 
-## 🛠️ Installation  
+## 📦 Downloads
 
-### **Prerequisites**  
-- **Rclone** ([Download](https://rclone.org/downloads/)) – Required for remote management.  
-- **Node.js** – Required for Angular development.  
-- **Rust & Cargo** – Required for Tauri.  
+👉 Get the latest release from:
 
-### **Development Setup**  
+- 🔗 [GitLab Releases](https://gitlab.com/Hakanbaban53/rclone-manager/-/releases)
+- 🔗 [GitHub Releases](https://github.com/Hakanbaban53/rclone-manager/releases)
+
+> 🚧 Only Linux builds are currently provided. Windows and macOS support is on the roadmap.
+
+---
+
+## 🛠️ Installation
+
+### 🔍 Prerequisites
+
+- [Rclone](https://rclone.org/downloads/) – Required for remote management
+- Node.js – For Angular development
+- Rust & Cargo – For building Tauri
+
+### 💻 Development Setup
+
 ```bash
-# Clone the repository
+# Clone from GitLab
 git clone https://gitlab.com/Hakanbaban53/rclone-manager.git
+cd rclone-manager
+
+# Or from GitHub
+git clone https://github.com/Hakanbaban53/rclone-manager.git
 cd rclone-manager
 
 # Install dependencies
 npm install
 
-# Run the app in development mode
+# Run the app
 npm run tauri dev
 ```
-⚠️ **Note:** Running `npm run ng serve` will not work correctly because the app relies on **Tauri APIs** (e.g., for the custom title bar). Always use `npm run tauri dev`.
 
-### **Build for Production**  
+⚠️ **Note:** Do not use `ng serve` — the app depends on **Tauri APIs**.
+
+### 📦 Build for Production
+
 ```bash
-# Build the Tauri application
 npm run tauri build
 ```
 
 ---
 
-## 📜 License  
+## 🧑‍💻 Contributing
 
-This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**. See [LICENSE](LICENSE) for details.
+Contributions welcome! 🚀
 
----
-
-## 🤝 Contributing  
-
-Contributions are welcome! 🚀  
-- Report issues and suggest features via **[GitLab Issues](https://gitlab.com/Hakanbaban53/rclone-manager/issues)**.  
-- Submit pull requests to improve the project.  
+- Report bugs & suggest features on:
+  - [GitLab Issues](https://gitlab.com/Hakanbaban53/rclone-manager/issues)
+  - [GitHub Issues](https://github.com/Hakanbaban53/rclone-manager/issues)
+- Submit pull requests and help improve the project!
 
 ---
 
-## 📧 Contact  
+## 📜 License
 
-For questions or feedback, feel free to open an issue on **[GitLab](https://gitlab.com/Hakanbaban53/rclone-manager/issues)**.  
+This project is licensed under the **[GNU GPLv3](LICENSE)**.
 
+---
+
+## 📬 Contact
+
+Have questions or ideas? Reach out via:
+
+- [GitLab Issues](https://gitlab.com/Hakanbaban53/rclone-manager/issues)
+- [GitHub Issues](https://github.com/Hakanbaban53/rclone-manager/issues)

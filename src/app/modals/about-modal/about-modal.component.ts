@@ -1,16 +1,16 @@
 import { animate, style, transition, trigger } from "@angular/animations";
 import { CommonModule } from "@angular/common";
-import { Component, HostListener, inject, Optional } from "@angular/core";
+import { Component, HostListener } from "@angular/core";
 import { MatDialogRef } from "@angular/material/dialog";
 import { MatDividerModule } from "@angular/material/divider";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { MatIconModule } from "@angular/material/icon";
 import { InfoService } from "../../services/info.service";
-import { MatBottomSheetRef } from "@angular/material/bottom-sheet";
+import { MatButtonModule } from "@angular/material/button";
 
 @Component({
   selector: "app-about-modal",
-  imports: [CommonModule, MatDividerModule, MatIconModule],
+  imports: [CommonModule, MatDividerModule, MatIconModule, MatButtonModule],
   templateUrl: "./about-modal.component.html",
   styleUrl: "./about-modal.component.scss",
   animations: [

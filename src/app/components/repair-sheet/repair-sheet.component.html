@@ -3,7 +3,7 @@
   <p>{{ data.message || 'A problem was detected. You can try repairing it below.' }}</p>
 
   <div class="sheet-actions">
-    <button mat-button class="primary" (click)="repair()" [disabled]="installing">
+    <button mat-raised-button color="accent" (click)="repair()" [disabled]="installing">
       {{ installing ? 'Repairing...' : 'Repair' }}
       <mat-progress-spinner diameter="20" mode="indeterminate" *ngIf="installing"></mat-progress-spinner>
     </button>

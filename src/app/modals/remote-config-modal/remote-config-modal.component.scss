@@ -7,30 +7,6 @@
   background: var(--app-background);
   color: var(--app-text-color);
 
-  .modal-header {
-    display: flex;
-    flex-direction: row;
-    position: sticky;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 0 4px var(--shadow-color);
-    top: 0;
-    padding: 9px 0px;
-    background: var(--app-background);
-    color: var(--app-text-color);
-    z-index: 10;
-
-    p {
-      display: flex;
-      align-items: center;
-      text-wrap: nowrap;
-      flex-direction: row;
-      gap: 6px;
-      font-size: 20px;
-      font-weight: 600;
-    }
-  }
-
   .modal-content {
     position: relative;
     height: 100%;
@@ -98,9 +74,6 @@
             top: 0;
             right: -16px;
             z-index: 2;
-            background: var(--app-background);
-            padding: 4px;
-            border-radius: 4px;
           }
         }
 

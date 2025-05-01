@@ -24,6 +24,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { CommonModule } from "@angular/common";
 import { MatMenuModule } from "@angular/material/menu";
 import { TabsButtonsComponent } from "../tabs-buttons/tabs-buttons.component";
+import { MatButtonModule } from "@angular/material/button";
 
 // Models
 type Theme = "light" | "dark" | "system";
@@ -52,6 +53,7 @@ const STANDARD_MODAL_SIZE: ModalSize = {
     CommonModule,
     MatIconModule,
     TabsButtonsComponent,
+    MatButtonModule
   ],
   templateUrl: "./titlebar.component.html",
   styleUrls: ["./titlebar.component.scss"],
@@ -72,9 +74,17 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     this.isMobile$ = this.stateService.isMobile$;
   }
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> { // Change return type to Promise<void>
+    try {
+      const theme = await this.settingsService.load_setting_value("general", "theme");
+      this.selectedTheme = theme || "system";
+      this.setTheme(this.selectedTheme);
+    } catch (error) {
+      this.selectedTheme = "system";
+      this.setTheme(this.selectedTheme);
+    }
+
     this.initThemeSystem();
-    this.setTheme(this.selectedTheme);
   }
 
   ngOnDestroy(): void {

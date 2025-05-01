@@ -1,6 +1,10 @@
-<div class="modal">
+<div class="about-modal">
     <div class="modal-header" data-tauri-drag-region>
-        <button mat-icon-button class="close-btn" (click)="close()">
+        <button style="display: none;">
+            <mat-icon svgIcon="search"></mat-icon>
+          </button>
+          <p></p>
+        <button class="close-btn" (click)="close()">
             <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
     </div>
@@ -34,11 +38,11 @@
     <!-- Overlay Pages -->
     <div class="overlay" *ngIf="currentPage !== 'main'" [@slideOverlay]>
         <div class="overlay-header">
-            <button mat-icon-button (click)="navigateTo('main')">
+            <button (click)="navigateTo('main')">
                 <mat-icon svgIcon="chevron-left" class="icon icon-bw"></mat-icon>
             </button>
             <p><strong>{{ currentPage | titlecase }}</strong></p>
-            <button mat-button (click)="close()">
+            <button (click)="close()">
                 <mat-icon svgIcon="circle-xmark" class="icon icon-bw"></mat-icon>
             </button>
         </div>

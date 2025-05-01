@@ -34,28 +34,28 @@
 
 
     <div class="navigation">
-      <button *ngIf="currentCardIndex > 0" (click)="previousCard()" aria-label="Previous">
+      <button mat-icon-button color="accent" *ngIf="currentCardIndex > 0" (click)="previousCard()" aria-label="Previous">
         <mat-icon svgIcon="left-arrow"></mat-icon>
       </button>
 
-      <button *ngIf="currentCardIndex < cards.length - 1 && !shouldShowActionButton()" (click)="nextCard()"
+      <button mat-icon-button color="accent" *ngIf="currentCardIndex < cards.length - 1 && !shouldShowActionButton()" (click)="nextCard()"
         aria-label="Next">
         <mat-icon svgIcon="right-arrow"></mat-icon>
       </button>
 
-      <button *ngIf="shouldShowInstallRcloneButton()" (click)="installRclone()" [disabled]="installing"
+      <button mat-icon-button color="accent" *ngIf="shouldShowInstallRcloneButton()" (click)="installRclone()" [disabled]="installing"
         aria-label="Install Rclone">
         <mat-icon svgIcon="download"></mat-icon>
         {{ installing ? 'Installing...' : 'Install Rclone' }}
       </button>
 
-      <button *ngIf="shouldShowInstallPluginButton()" (click)="installMountPlugin()" [disabled]="downloadingPlugin"
+      <button mat-icon-button  color="accent" *ngIf="shouldShowInstallPluginButton()" (click)="installMountPlugin()" [disabled]="downloadingPlugin"
         aria-label="Install Plugin">
         <mat-icon svgIcon="download"></mat-icon>
         {{ downloadingPlugin ? 'Downloading...' : 'Install Plugin' }}
       </button>
 
-      <button *ngIf="cards[currentCardIndex].title === 'Setup Complete'" (click)="completeOnboarding()"
+      <button mat-icon-button color="primary" *ngIf="cards[currentCardIndex].title === 'Setup Complete'" (click)="completeOnboarding()"
         aria-label="Finish">
         <mat-icon svgIcon="circle-check"></mat-icon>
       </button>

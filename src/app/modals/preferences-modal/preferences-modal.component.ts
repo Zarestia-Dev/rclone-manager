@@ -1,5 +1,5 @@
 import { animate, style, transition, trigger } from "@angular/animations";
-import { Component, HostListener, OnInit, Optional } from "@angular/core";
+import { Component, HostListener, OnInit } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { CommonModule } from "@angular/common";
@@ -10,7 +10,7 @@ import { SettingsService } from "../../services/settings.service";
 import { MatSelectModule } from "@angular/material/select";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatIconModule } from "@angular/material/icon";
-import { MatBottomSheetRef } from "@angular/material/bottom-sheet";
+import { MatButtonModule } from "@angular/material/button";
 
 @Component({
   selector: "app-preferences-modal",
@@ -23,7 +23,8 @@ import { MatBottomSheetRef } from "@angular/material/bottom-sheet";
     FormsModule,
     MatSelectModule,
     MatTooltipModule,
-    MatIconModule
+    MatIconModule,
+    MatButtonModule
   ],
   templateUrl: "./preferences-modal.component.html",
   styleUrls: ["./preferences-modal.component.scss"],
@@ -83,7 +84,7 @@ export class PreferencesModalComponent implements OnInit {
         
     // ✅ Validate numeric inputs
     if (metadata.value_type === "u16" || metadata.value_type === "number") {
-      if (isNaN(value) || value === null || value === undefined) {
+      if (isNaN(value) || value === null || value === undefined || value < 0) {
         console.warn(`🚫 Invalid number entered for ${category}.${key}:`, value);
         value = this.settings[category][key][value]; // Reset to previous value
         return; // Stop saving

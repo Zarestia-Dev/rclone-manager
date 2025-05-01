@@ -3,7 +3,6 @@ import {
   HostListener,
   OnInit,
   OnDestroy,
-  inject,
 } from "@angular/core";
 import {
   AbstractControl,
@@ -27,6 +26,7 @@ import { RcloneService } from "../../services/rclone.service";
 import { SettingsService } from "../../services/settings.service";
 import { Subscription } from "rxjs";
 import { StateService } from "../../services/state.service";
+import { MatButtonModule } from "@angular/material/button";
 
 interface QuickAddForm {
   remoteName: string;
@@ -39,8 +39,8 @@ interface RemoteSettings {
   name: string;
   custom_flags: string[];
   vfs_options: {
-    cache_mode: string;
-    chunk_size: string;
+    CacheMode: string;
+    ChunkSize: string;
   };
   mount_options: {
     mount_point: string;
@@ -68,6 +68,7 @@ interface LoadingState {
     MatSlideToggleModule,
     MatProgressSpinnerModule,
     MatIconModule,
+    MatButtonModule
   ],
   templateUrl: "./quick-add-remote.component.html",
   styleUrls: ["./quick-add-remote.component.scss"],
@@ -245,7 +246,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     const remoteSettings: RemoteSettings = {
       name: remoteName,
       custom_flags: [],
-      vfs_options: { cache_mode: "full", chunk_size: "32M" },
+      vfs_options: { CacheMode: "full", ChunkSize: "32M" },
       show_in_tray_menu: true,
       mount_options: {
         mount_point: mountPath || "",

@@ -49,8 +49,8 @@
                                 {{ remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
-                        <button class="open"
-                            (click)="openRemoteInFiles(remote.remoteSpecs.name)">
+                        <button mat-raised-button color="accent"
+                            (click)="openRemoteInFiles(remote.remoteSpecs.name); $event.stopPropagation()">
                             <mat-spinner *ngIf="actionInProgress[remote.remoteSpecs.name] === 'open'" diameter="20"></mat-spinner>
                             <mat-icon *ngIf="!(actionInProgress[remote.remoteSpecs.name] === 'open')" svgIcon="folder"></mat-icon>
                             {{ actionInProgress[remote.remoteSpecs.name] === 'mount' ? "Openning" : "Open Files" }}
@@ -77,8 +77,8 @@
                                 {{ remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
-                        <button class="mount"
-                            (click)="mountRemoteByFs(remote.remoteSpecs.name)">
+                        <button mat-raised-button color="primary"
+                            (click)="mountRemoteByFs(remote.remoteSpecs.name); $event.stopPropagation()">
                             <mat-spinner *ngIf="actionInProgress[remote.remoteSpecs.name] === 'mount'" diameter="20"></mat-spinner>
                             <mat-icon *ngIf="!(actionInProgress[remote.remoteSpecs.name] === 'mount')" svgIcon="mount"></mat-icon>
                             {{ actionInProgress[remote.remoteSpecs.name] === 'mount' ? "Mounting" : "Mount" }}
@@ -104,7 +104,7 @@
                                 {{ remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
-                        <button class="fix" (click)="$event.stopPropagation()">
+                        <button mat-raised-button class="fix" (click)="$event.stopPropagation()">
                             <mat-icon svgIcon="wrench"></mat-icon>
                             Fix
                         </button>

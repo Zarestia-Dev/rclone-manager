@@ -20,6 +20,17 @@ export class SettingsService {
     }
   }
 
+  async load_setting_value(category: string, key: string): Promise<any> {
+    try {
+      const setting = await invoke("load_setting_value", { category, key });
+      console.log("Loaded setting key:", setting);
+      return setting;
+    } catch (error) {
+      console.error("Failed to load setting key:", error);
+      return null;
+    }
+  }
+
   /** ✅ Save only updated settings */
   async saveSetting(category: string, key: string, value: any): Promise<void> {
     try {
@@ -53,13 +64,15 @@ export class SettingsService {
   async backupSettings(
     selectedPath: string,
     selectedOption: string,
-    password: string
+    password: string,
+    remoteName: string
   ): Promise<void> {
     try {
       const result = await invoke("backup_settings", {
         backupDir: selectedPath,
         exportType: selectedOption,
         password: password,
+        remoteName: remoteName,
       });
       this.infoService.openSnackBar(String(result), "OK");
     } catch (error) {

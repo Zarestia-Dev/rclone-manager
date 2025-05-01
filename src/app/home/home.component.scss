@@ -3,6 +3,11 @@
   height: var(--app-height);
   background-color: var(--app-background);
   color: var(--app-text-color);
+  border-radius: 0 0 var(--home-bottom-radius, 16px)
+    var(--home-bottom-radius, 16px);
+
+  // Ensure content doesn't overflow rounded corners
+  overflow: hidden;
 
   mat-sidenav {
     width: var(--sidebar-width);
@@ -18,14 +23,6 @@
       position: absolute;
       right: 20px;
       top: 10px;
-      padding: 10px;
-      cursor: pointer;
-      border-radius: 50%;
-      color: var(--app-text-color);
-
-      &.hover {
-        background-color: var(--hover-color);
-      }
     }
 
     .empty-state {
@@ -40,8 +37,8 @@
         padding: 24px;
 
         .empty-state-icon {
-          width: 120px;
-          height: 120px;
+          width: 180px;
+          height: 180px;
           margin-bottom: 16px;
         }
 
@@ -51,7 +48,6 @@
 
         p {
           margin-bottom: 24px;
-          color: rgba(0, 0, 0, 0.6);
         }
 
         .empty-state-actions {
@@ -70,19 +66,20 @@
       .toggle-sidebar {
         position: sticky;
         top: 10px;
-        max-width: 40px;
-        max-height: 40px;
-        padding: 8px;
-        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--app-text-color);
-
-        &:hover {
-          background: var(--hover-color);
-        }
       }
+    }
+  }
+}
+
+@media (max-width: 500px), (max-height: 500px) {
+  .empty-state {
+    align-items: start !important;
+
+    .empty-state-actions {
+      flex-direction: column;
     }
   }
 }

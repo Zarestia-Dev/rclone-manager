@@ -7,6 +7,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { RcloneService } from "../../services/rclone.service";
+import { MatButtonModule } from "@angular/material/button";
 
 export type InputField = {
   name: string;
@@ -25,6 +26,7 @@ export type InputField = {
     MatSelectModule,
     FormsModule,
     MatIconModule,
+    MatButtonModule
   ],
   templateUrl: "./input-modal.component.html",
   styleUrl: "./input-modal.component.scss",

@@ -21,20 +21,13 @@
       width: 100%;
     }
   }
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: bold;
-    font-size: 18px;
-    padding-bottom: 10px;
-  }
 
   .modal-content {
     border-radius: calc(var(--border-radius) * 2);
     display: flex;
     justify-content: center;
     overflow: auto;
+    margin: 16px;
 
     .shortcut-table {
       width: 100%;

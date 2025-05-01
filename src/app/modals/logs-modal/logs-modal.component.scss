@@ -1,0 +1,217 @@
+.log-modal {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  .modal-content {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    flex: 1 1 0;
+    height: 100%;
+    overflow: auto;
+
+    .logs-toolbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+
+      .level-filter,
+      .remote-filter,
+      .search-filter {
+        min-width: 120px;
+        flex: 1 1 0;
+      }
+
+      @media (max-width: 600px) {
+        flex-direction: column;
+
+        .level-filter,
+        .remote-filter,
+        .search-filter {
+          width: 100%;
+        }
+      }
+    }
+  }
+  .terminal-container {
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 4px;
+    overflow: hidden;
+    flex: 1 1 0;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--sidebar-background);
+      padding: 8px 12px;
+  
+      .terminal-tabs {
+        display: flex;
+        gap: 4px;
+  
+        .tab {
+          padding: 4px 12px;
+          border-radius: 4px 4px 0 0;
+          background: #e0e0e0;
+          font-size: 0.8em;
+          font-weight: 500;
+  
+          &.active {
+            background: var(--app-background);
+            color: var(--app-text-color);
+          }
+        }
+      }
+  
+      .terminal-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+    }
+    .empty-message {
+      text-align: center;
+      padding: 40px 20px;
+      color: #888;
+      background: #1e1e1e;
+      height: 100%;
+      overflow-y: auto;
+
+      mat-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+      }
+
+      .hint {
+        font-size: 0.9em;
+        margin-top: 8px;
+        color: #666;
+      }
+    }
+  
+    .spinner-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 120px;
+      background: var(--app-background);
+    }
+  
+    .terminal-log-area {
+      background: #1e1e1e;
+      color: #e0e0e0;
+      font-family: "Courier New", monospace;
+      padding: 16px;
+      flex: 1 1 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 0;
+  
+      .log-entry {
+        display: grid;
+        grid-template-columns: auto auto auto 1fr auto;
+        gap: 8px;
+        align-items: center;
+        padding: 4px 0;
+  
+        &.has-context {
+          border-left: 3px solid #444;
+          padding-left: 5px;
+        }
+  
+        &.expanded {
+          margin-bottom: 8px;
+        }
+  
+        .timestamp {
+          color: var(--light-green);
+          font-size: 0.8em;
+          flex-shrink: 0;
+        }
+  
+        .remote-name {
+          color: var(--light-blue);
+          font-weight: bold;
+          flex-shrink: 0;
+          margin-right: 8px;
+          font-size: 0.85em;
+        }
+  
+        .level {
+          font-weight: bold;
+          flex-shrink: 0;
+          width: 60px;
+          text-align: center;
+          font-size: 0.85em;
+  
+          &.info {
+            color: var(--light-blue);
+          }
+          &.error {
+            color: var(--red);
+          }
+          &.warn {
+            color: var(--light-orange);
+          }
+          &.debug {
+            color: #9e9e9e;
+          }
+        }
+  
+        .message {
+          color: #d4d4d4;
+          flex-grow: 1;
+          font-size: 0.9em;
+          white-space: pre-wrap;
+          word-break: break-word;
+        }
+  
+        .log-actions {
+          display: flex;
+          margin-left: auto;
+  
+          button {
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            padding: 0;
+  
+            &:hover {
+              opacity: 1;
+            }
+          }
+        }
+  
+        .log-context {
+          grid-column: 1 / -1;
+          background: #252525;
+          margin: 8px -16px -8px -16px;
+          padding: 12px 16px;
+          border-top: 1px solid #333;
+          font-size: 0.85em;
+          color: var(--light-green);
+  
+          pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-family: monospace;
+          }
+        }
+      }
+    }
+  }
+}
+

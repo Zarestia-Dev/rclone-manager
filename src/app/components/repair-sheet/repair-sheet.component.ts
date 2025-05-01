@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { CommonModule } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
 
 interface RepairData {
   type: 'rclone_path' | 'mount_plugin' | 'config_corrupt' | 'backend_unreachable';
@@ -14,7 +15,7 @@ interface RepairData {
 @Component({
   selector: 'app-repair-sheet',
   standalone: true,
-  imports: [MatListModule, MatProgressSpinner, CommonModule],
+  imports: [MatListModule, MatProgressSpinner, CommonModule, MatButtonModule],
   templateUrl: './repair-sheet.component.html',
   styleUrl: './repair-sheet.component.scss'
 })

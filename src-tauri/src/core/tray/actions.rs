@@ -107,6 +107,7 @@ pub fn handle_unmount_remote(app: AppHandle, id: &str) {
     let app_clone = app.clone();
 
     tauri::async_runtime::spawn(async move {
+        let remote_name = remote.to_string();
         let settings_result = CACHE.settings.read().await;
         let settings = settings_result.get(&remote).cloned().unwrap_or_else(|| {
             error!("Remote {} not found in cached settings", remote);
@@ -115,7 +116,7 @@ pub fn handle_unmount_remote(app: AppHandle, id: &str) {
 
         let mount_point = get_mount_point(&settings);
         let state = app_clone.state();
-        match unmount_remote(app_clone.clone(), mount_point, state).await {
+        match unmount_remote(app_clone.clone(), mount_point, remote_name, state).await {
             Ok(_) => {
                 info!("Unmounted {}", remote);
             }

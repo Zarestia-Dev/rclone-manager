@@ -1,11 +1,11 @@
 <div class="modal-container">
   <!-- Header -->
-  <div class="modal-header">
-    <button mat-icon-button (click)="toggleSearch()">
+  <div class="modal-header" data-tauri-drag-region>
+    <button (click)="toggleSearch()">
       <mat-icon svgIcon="search"></mat-icon>
     </button>
     <p>Shortcuts</p>
-    <button mat-button (click)="close()">
+    <button (click)="close()">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>

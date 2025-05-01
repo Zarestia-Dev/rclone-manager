@@ -1,0 +1,90 @@
+<div class="log-modal">
+    <div class="modal-header" data-tauri-drag-region>
+        <button>
+            <mat-icon svgIcon="terminal"></mat-icon>
+        </button>
+        <p>Remote Logs: {{data.remoteName}}</p>
+        <button (click)="close()" matTooltip="Close (ESC)">
+            <mat-icon svgIcon="circle-xmark"></mat-icon>
+        </button>
+    </div>
+
+    <div class="modal-content">
+        <!-- Toolbar: Level Filter, Search, Clear -->
+        <div class="logs-toolbar">
+            <mat-form-field class="level-filter">
+                <mat-label>Log Level</mat-label>
+                <mat-select [(value)]="selectedLevel">
+                    <mat-option value="">All Levels</mat-option>
+                    <mat-option value="info">Info</mat-option>
+                    <mat-option value="warn">Warning</mat-option>
+                    <mat-option value="error">Error</mat-option>
+                    <mat-option value="debug">Debug</mat-option>
+                </mat-select>
+            </mat-form-field>
+
+            <mat-form-field class="search-filter">
+                <mat-label>Search Logs</mat-label>
+                <input matInput [(ngModel)]="searchText" placeholder="Type to search..."
+                    (ngModelChange)="saveFilters()" />
+                <button mat-icon-button matSuffix *ngIf="searchText" (click)="searchText = ''; saveFilters()">
+                    <mat-icon svgIcon="close"></mat-icon>
+                </button>
+            </mat-form-field>
+        </div>
+
+        <!-- Terminal-style log area -->
+        <div class="terminal-container">
+            <div class="terminal-header">
+                <div class="terminal-actions">
+                    <button mat-icon-button color="warn" (click)="clearLogs()" [disabled]="loading"
+                        matTooltip="Clear all logs">
+                        <mat-icon svgIcon="trash"></mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="scrollToBottom()" matTooltip="Scroll to bottom">
+                        <mat-icon svgIcon="arrow-down"></mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="scrollToTop()" matTooltip="Scroll to top">
+                        <mat-icon svgIcon="arrow-up"></mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="loadLogs()" [disabled]="loading" matTooltip="Refresh logs">
+                        <mat-icon svgIcon="refresh"></mat-icon>
+                    </button>
+                </div>
+            </div>
+
+            <div *ngIf="loading" class="spinner-container">
+                <mat-spinner diameter="40"></mat-spinner>
+            </div>
+
+            <div *ngIf="filteredLogs.length === 0 && !loading" class="empty-message">
+                <mat-icon svgIcon="search"></mat-icon>
+                <p>No logs found</p>
+                <p *ngIf="selectedLevel || selectedRemote || searchText" class="hint">
+                    Try adjusting your filters
+                </p>
+            </div>
+
+            <div #terminalLogArea class="terminal-log-area" *ngIf="filteredLogs.length > 0 && !loading">
+                <div *ngFor="let log of filteredLogs" class="log-entry" [class.has-context]="log.context"
+                    [class.expanded]="isExpanded(log)">
+                    <span class="timestamp">{{ log.timestamp | date:'HH:mm:ss.SSS' }}</span>
+                    <span class="level" [ngClass]="log.level">{{ log.level.toUpperCase() }}</span>
+                    <span class="message" (click)="copyLog(log)" matTooltip="Click to copy log">{{ log.message }}</span>
+
+                    <div class="log-actions">
+                        <button mat-icon-button *ngIf="log.context" matTooltip="Show details"
+                            (click)="toggleDetails(log)" class="details-btn">
+                            <mat-icon svgIcon="caret-down" [style]="isExpanded(log) ? 'transform: rotate(180deg);' : ''"
+                                style="transition: all 0.3s;"></mat-icon>
+                        </button>
+                    </div>
+
+                    <div class="log-context" *ngIf="isExpanded(log) && log.context">
+                        <pre>{{ formatContext(log.context) }}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,6 +1,7 @@
 // Custom Theming for Angular Material
 // For more information: https://material.angular.io/guide/theming
 @use "@angular/material" as mat;
+@use "sass:map";
 // Plus imports for other components in your app.
 
 // Include the common styles for Angular Material. We include this here so that you only
@@ -9,19 +10,254 @@
 @include mat.elevation-classes();
 @include mat.app-background();
 
-// Define the palettes for your theme using the Material Design palettes available in palette.scss
-// (imported above). For each palette, you can optionally specify a default, lighter, and darker
-// hue. Available color palettes: https://material.io/design/color/
-$rclone-manager-primary: mat.m2-define-palette(mat.$m2-indigo-palette);
-$rclone-manager-accent: mat.m2-define-palette(
-  mat.$m2-blue-palette,
-  A200,
-  A100,
-  A400
+// Adwaita Green Primary Palette
+$adwaita-green-palette: (
+  50: #f0faf2,
+  100: #d8f5e0,
+  200: #b8f0c8,
+  300: #8ff0a4,  // green-1
+  400: #57e389,  // green-2
+  500: #33d17a,  // green-3
+  600: #2ec27e,  // green-4
+  700: #26a269,  // green-5
+  800: #1e8a57,
+  900: #167345,
+  contrast: (
+    50: rgba(black, 0.87),
+    100: rgba(black, 0.87),
+    200: rgba(black, 0.87),
+    300: rgba(black, 0.87),
+    400: rgba(black, 0.87),
+    500: white, // Green-3 works with dark text
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+  )
 );
 
-// The warn palette is optional (defaults to red).
-$rclone-manager-warn: mat.m2-define-palette(mat.$m2-red-palette);
+// Adwaita Blue Accent Palette
+$adwaita-blue-palette: (
+  50: #f0f7ff,
+  100: #d8ebff,
+  200: #b8d9ff,
+  300: #99c1f1,  // blue-1
+  400: #62a0ea,  // blue-2
+  500: #3584e4,  // blue-3
+  600: #1c71d8,  // blue-4
+  700: #1a5fb4,  // blue-5
+  800: #154d90,
+  900: #103b6c,
+  contrast: (
+    50: rgba(black, 0.87),
+    100: rgba(black, 0.87),
+    200: rgba(black, 0.87),
+    300: rgba(black, 0.87),
+    400: rgba(black, 0.87),
+    500: white,
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+  )
+);
+
+// Adwaita Red Warn Palette
+$adwaita-red-palette: (
+  50: #ffebee,
+  100: #ffcdd2,
+  200: #faa7a0,
+  300: #f66151,  // red-1
+  400: #ed333b,  // red-2
+  500: #e01b24,  // red-3
+  600: #c01c28,  // red-4
+  700: #a51d2d,  // red-5
+  800: #8b1522,
+  900: #700e17,
+  contrast: (
+    50: rgba(black, 0.87),
+    100: rgba(black, 0.87),
+    200: rgba(black, 0.87),
+    300: rgba(black, 0.87),
+    400: white,
+    500: white,     
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+  )
+);
+
+// Yellow Palette
+$adwaita-yellow-palette: (
+  50: #fffdf0,
+  100: #fff9d8,
+  200: #fff5b8,
+  300: #f9f06b,  // yellow-1
+  400: #f8e45c,  // yellow-2
+  500: #f6d32d,  // yellow-3
+  600: #f5c211,  // yellow-4
+  700: #e5a50a,  // yellow-5
+  800: #d38f00,
+  900: #b57900,
+  contrast: (
+    50: rgba(black, 0.87),
+    100: rgba(black, 0.87),
+    200: rgba(black, 0.87),
+    300: rgba(black, 0.87),
+    400: rgba(black, 0.87),
+    500: rgba(black, 0.87),
+    600: rgba(black, 0.87),
+    700: white,
+    800: white,
+    900: white,
+  )
+);
+
+// Orange Palette
+$adwaita-orange-palette: (
+  50: #fff8f0,
+  100: #ffebd8,
+  200: #ffddb8,
+  300: #ffbe6f,  // orange-1
+  400: #ffa348,  // orange-2
+  500: #ff7800,  // orange-3
+  600: #e66100,  // orange-4
+  700: #c64600,  // orange-5
+  800: #a53500,
+  900: #842500,
+  contrast: (
+    50: rgba(black, 0.87),
+    100: rgba(black, 0.87),
+    200: rgba(black, 0.87),
+    300: rgba(black, 0.87),
+    400: rgba(black, 0.87),
+    500: white,    
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+  )
+);
+
+// Purple Palette
+$adwaita-purple-palette: (
+  50: #faf0fa,
+  100: #f0d8f0,
+  200: #e8b8e8,
+  300: #dc8add,  // purple-1
+  400: #c061cb,  // purple-2
+  500: #9141ac,  // purple-3
+  600: #813d9c,  // purple-4
+  700: #613583,  // purple-5
+  800: #4f2a6a,
+  900: #3d1f51,
+  contrast: (
+    50: rgba(black, 0.87),
+    100: rgba(black, 0.87),
+    200: rgba(black, 0.87),
+    300: rgba(black, 0.87),
+    400: white,
+    500: white,      
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+  )
+);
+
+// Brown Palette
+$adwaita-brown-palette: (
+  50: #f7f2ed,
+  100: #ede0d8,
+  200: #e0c8b8,
+  300: #cdab8f,  // brown-1
+  400: #b5835a,  // brown-2
+  500: #986a44,  // brown-3
+  600: #865e3c,  // brown-4
+  700: #63452c,  // brown-5
+  800: #513821,
+  900: #3f2b16,
+  contrast: (
+    50: rgba(black, 0.87),
+    100: rgba(black, 0.87),
+    200: rgba(black, 0.87),
+    300: rgba(black, 0.87),
+    400: white,
+    500: white,
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+  )
+);
+
+// Light (Gray) Palette
+$adwaita-light-palette: (
+  50: #ffffff,
+  // light-1
+  100: #f6f5f4,
+  // light-2
+  200: #deddda,
+  // light-3
+  300: #c0bfbc,
+  // light-4
+  400: #9a9996,
+  // light-5
+  500: #77767b,
+  // dark-1
+  600: #5e5c64,
+  // dark-2
+  700: #3d3846,
+  // dark-3
+  800: #241f31,
+  // dark-4
+  900: #000000,
+  // dark-5
+  contrast:
+    (
+      50: rgba(black, 0.87),
+      100: rgba(black, 0.87),
+      200: rgba(black, 0.87),
+      300: rgba(black, 0.87),
+      400: white,
+      500: white,
+      600: white,
+      700: white,
+      800: white,
+      900: white,
+    ),
+);
+
+$adwaita-theme-colors: (
+  yellow: mat.m2-define-palette($adwaita-yellow-palette, 500, 400, 700),
+  orange: mat.m2-define-palette($adwaita-orange-palette, 500, 400, 700),
+  purple: mat.m2-define-palette($adwaita-purple-palette, 500, 400, 700),
+  brown: mat.m2-define-palette($adwaita-brown-palette, 500, 400, 700),
+  light: mat.m2-define-palette($adwaita-light-palette, 200, 100, 300),
+  dark: mat.m2-define-palette($adwaita-light-palette, 700, 500, 900),
+);
+
+// Function to get additional colors
+@function adwaita-color($color-name, $hue: default) {
+  @return mat.get-color-from-palette(
+    map.get($adwaita-theme-colors, $color-name),
+    $hue
+  );
+}
+
+// Then use it in your theme:
+$rclone-manager-warn: mat.m2-define-palette(
+  $adwaita-red-palette,
+  600,
+  500,
+  800
+);
+
+// Use the custom palettes
+$rclone-manager-primary: mat.m2-define-palette($adwaita-green-palette);
+
+$rclone-manager-accent: mat.m2-define-palette($adwaita-blue-palette);
 
 // Create the theme object. A theme consists of configurations for individual
 // theming systems such as "color" or "typography".
@@ -37,20 +273,15 @@ $rclone-manager-theme: mat.m2-define-light-theme(
   )
 );
 
-// Include theme styles for core and each component used in your app.
-// Alternatively, you can import and @include the theme mixins for each component
-// that you are using.
-@include mat.all-component-themes($rclone-manager-theme);
-
 // Define the palettes for the dark theme
-$rclone-manager-dark-primary: mat.m2-define-palette(mat.$m2-indigo-palette);
-$rclone-manager-dark-accent: mat.m2-define-palette(
-  mat.$m2-blue-palette,
-  A200,
-  A100,
-  A400
+$rclone-manager-dark-primary: mat.m2-define-palette($adwaita-green-palette);
+$rclone-manager-dark-accent: mat.m2-define-palette($adwaita-blue-palette);
+$rclone-manager-dark-warn: mat.m2-define-palette(
+  $adwaita-red-palette,
+  600,
+  500,
+  800
 );
-$rclone-manager-dark-warn: mat.m2-define-palette(mat.$m2-red-palette);
 
 // Create the dark theme object
 $rclone-manager-dark-theme: mat.m2-define-dark-theme(
@@ -64,66 +295,79 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
     density: 0,
   )
 );
-
 .light {
-  /* Define custom colors for light mode */
-  --app-background: #fafafa;
-  --secondary-background: #ffffff;
-  --sidebar-background: #ebebeb;
-  --semi-transparent-background: rgba(255, 255, 255, 0.8);
-  --shadow-color: rgba(0, 0, 0, 0.32);
-  --hover-color: rgb(200, 200, 200);
-  --app-text-color: #000000;
-  --secodary-text-color: #939090;
-  --border-color: #cfcfcf;
-  --button-background: #f5f5f5;
-  --button-text: #000000;
-  --button-hover: #dddddd;
-  --button-active: #cfcfcf;
-  --add-button-background: #dbdbdb;
-  --add-button-hover: #939090;
-  --theme-border: #dbdbdb;
-  --theme-border-hover: #777;
-  --faint-blue: #f0f8ff;
+  @include mat.all-component-colors($rclone-manager-theme);
+
+  & {
+    /* Define custom colors for light mode */
+    --app-background: #fafafa;
+    --secondary-background: #ffffff;
+    --sidebar-background: #f5f5f5;
+    --semi-transparent-background: rgba(255, 255, 255, 0.8);
+    --shadow-color: rgba(0, 0, 0, 0.32);
+    --hover-color: rgb(200, 200, 200);
+    --app-text-color: #000000;
+    --secodary-text-color: #939090;
+    // --border-color: #cfcfcf;
+    --button-background: #f5f5f5;
+    --button-text: #000000;
+    --button-hover: #dddddd;
+    --button-active: #cfcfcf;
+    --add-button-background: #dbdbdb;
+    --add-button-hover: #939090;
+    --theme-border: #dbdbdb;
+    --theme-border-hover: #777;
+    --faint-blue: #f0f8ff;
+  }
 }
 
 /* 🌙 Dark Theme */
 
 .dark {
   @include mat.all-component-colors($rclone-manager-dark-theme);
-}
-.dark {
-  /* Define custom colors for dark mode */
-  --app-background: #242424;
-  --secondary-background: #000000;
-  --sidebar-background: #303030;
-  --semi-transparent-background: rgba(30, 30, 30, 0.8);
-  --shadow-color: rgba(150, 150, 150, 0.32);
-  --hover-color: rgb(55, 55, 55);
-  --app-text-color: #ffffff;
-  --secodary-text-color: #939090;
-  --border-color: #808080;
-  --button-background: #333;
-  --button-text: #ffffff;
-  --button-hover: #444;
-  --button-active: #555;
-  --add-button-background: #444;
-  --add-button-hover: #666;
-  --theme-border: #555;
-  --theme-border-hover: #888;
-  --faint-blue: #464d50;
+  & {
+    /* Define custom colors for dark mode */
+    --app-background: #242424;
+    --secondary-background: #000000;
+    --sidebar-background: #050505;
+    --semi-transparent-background: rgba(30, 30, 30, 0.8);
+    --shadow-color: rgba(150, 150, 150, 0.32);
+    --hover-color: rgb(55, 55, 55);
+    --app-text-color: #ffffff;
+    --secodary-text-color: #939090;
+    // --border-color: #808080;
+    --button-background: #333;
+    --button-text: #ffffff;
+    --button-hover: #444;
+    --button-active: #555;
+    --add-button-background: #444;
+    --add-button-hover: #666;
+    --theme-border: #555;
+    --theme-border-hover: #888;
+    --faint-blue: #464d50;
+  }
 }
 
 :root {
-  /* Default colors */
-  --light-theme-color: white;
-  --dark-theme-color: black;
-  --selected-border: #007bff;
-  --green: #5cb85c;
-  --orange: #f89f24;
-  --red: #c30000;
-  --blue: #3584e4;
-  --purple: #9747ff;
+  --accent-color: #{map.get($adwaita-blue-palette, 500)};
+  --warn-color: #{map.get($adwaita-red-palette, 500)};
+  --primary-color: #{map.get($adwaita-green-palette, 500)};
+  --purple: #{map.get($adwaita-purple-palette, 500)};
+  --orange: #{map.get($adwaita-orange-palette, 500)};
+  --light-green: #{map.get($adwaita-green-palette, 300)};
+  --light-orange: #{map.get($adwaita-orange-palette, 300)};
+  --light-blue: #{map.get($adwaita-blue-palette, 300)};
+  --red: #{map.get($adwaita-red-palette, 500)};
+  --light-theme-color: #{map.get($adwaita-light-palette, 50)};
+  --dark-theme-color: #{map.get($adwaita-light-palette, 900)};
+
+  --border-opacity: 15%;
+
+  --border-color: color-mix(in srgb, var(--accent-color) var(--border-opacity), transparent)
+
+  --title-bar-radius: 16px;
+  --home-bottom-radius: 16px;
+  --tab-bar-bottom-radius: 0px;
 
   /* Default values */
   --border-radius: 8px;
@@ -139,6 +383,21 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
           var(--titlebar-border)
       )
   );
+
+  .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      padding: 8px;
+      gap: 10px;
+
+      p {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+  }
 }
 
 html,
@@ -163,28 +422,56 @@ h6 {
   margin-top: 0;
 }
 
+.mat-mdc-raised-button,
+.mat-mdc-raised-button .mdc-button__ripple,
+.mat-mdc-button, .mat-mdc-unelevated-button,
+.mat-mdc-outlined-button {
+  cursor: pointer !important;
+  border-radius: var(--button-border-radius) !important;
+  transition: all 200ms ease !important;
+    // Selected state
+    &.selected {
+      outline: none !important;
+      background-color: var(--button-hover) !important;
+
+      // Fix for ripple effect
+      .mat-mdc-button-persistent-ripple::before {
+        opacity: 0.12 !important;
+        background-color: var(--accent-color) !important;
+      }
+    }
+
+    // Active and focus states
+    &:active,
+    &:focus-visible {
+      outline: none !important;
+      background-color: var(--button-hover) !important;
+    }
+  }
+
+
+.mat-mdc-icon-button,
+.mat-mdc-icon-button .mat-mdc-button-persistent-ripple::before,
+.mat-mdc-icon-button .mat-mdc-button-persistent-ripple {
+  border-radius: 20% !important;
+  transition: all 200ms ease !important;
+}
+
+
 button {
-  cursor: pointer;
-  padding: 6px 12px;
   border: none;
-  border-radius: var(--button-border-radius);
-  font-size: 20px;
   display: flex;
   align-items: center;
+  flex-direction: row !important;
   justify-content: center;
-  gap: 6px;
   background-color: transparent;
   color: var(--app-text-color);
-  // transition: all 200ms ease;
-
-  // &:hover {
-  //   transform: translateY(-1px);
-  //   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  // }
-
-  // &:active {
-  //   transform: translateY(1px);
-  // }
+  
+  span {
+    display: flex;
+    flex-direction: row;
+    gap: 8px
+  }
 
   mat-icon {
     cursor: pointer !important;
@@ -196,48 +483,16 @@ button {
     }
   }
 
-  &.primary,
-  &.mount,
-  &.finish {
-    color: white;
-    background-color: var(--green);
-  }
 
   &.fix {
-    color: white;
-    background-color: var(--orange);
-  }
-
-  &.secondary,
-  &.open,
-  &.next {
-    color: white;
-    background-color: var(--blue);
-  }
-
-  &.cancel,
-  &.delete,
-  &.unmount {
-    color: white;
-    background-color: var(--red);
-  }
-
-  &.cancel {
-    color: white;
-    background-color: var(--secodary-text-color);
+    color: white !important;
+    background-color: var(--orange) !important;
   }
 
   &.edit,
   &.back {
-    color: white;
-    background-color: var(--purple);
-  }
-
-  &:disabled {
-    color: white;
-    background-color: var(--button-background);
-    color: var(--button-text);
-    cursor: not-allowed;
+    color: white !important;
+    background-color: var(--purple) !important;
   }
 }
 
@@ -248,13 +503,16 @@ button {
 }
 .mat-mdc-menu-panel {
   background-color: var(--app-background) !important;
+  border-radius: 14px !important;
 }
 
 .mat-mdc-menu-item {
   color: var(--app-text-color) !important;
-  min-height: 36px !important;
+  min-height: 30px !important;
   width: calc(100% - 12px) !important;
   margin: 6px !important;
+  border-radius: 10px !important;
+  padding-inline: 10px !important;
 
   &:hover {
     background-color: var(--button-hover) !important;
@@ -282,7 +540,7 @@ textarea,
 }
 
 .mat-mdc-dialog-container .mdc-dialog__surface {
-  border-radius: 18px !important;
+  border-radius: 16px !important;
   color: var(--app-text-color) !important;
   background-color: var(--app-background) !important;
 }
@@ -293,5 +551,5 @@ textarea,
 
 .cdk-overlay-dark-backdrop {
   background: var(--shadow-color) !important;
-  border-radius: var(--border-radius) !important;
+  border-radius: var(--title-bar-radius) !important;
 }

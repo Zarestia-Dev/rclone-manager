@@ -35,19 +35,19 @@
 
             <mat-card-footer class="button-container">
                 <ng-container *ngIf="selectedRemote.mounted">
-                    <button class="open" (click)="triggerOpenInFiles()">
+                    <button mat-raised-button [disabled]="actionInProgress === 'open'" color="accent" (click)="triggerOpenInFiles()">
                         <mat-spinner *ngIf="actionInProgress === 'open'" diameter="20"></mat-spinner>
                         <mat-icon *ngIf="!(actionInProgress === 'open')" svgIcon="folder"></mat-icon> 
                         {{ actionInProgress === 'open' ? "Openning" : "Open Files" }}
                     </button>
-                    <button class="unmount" (click)="triggerUnmountRemote()">
+                    <button mat-raised-button [disabled]="actionInProgress === 'unmount'" color="warn" (click)="triggerUnmountRemote()">
                         <mat-spinner *ngIf="actionInProgress === 'unmount'" diameter="20"></mat-spinner>
                         <mat-icon *ngIf="!(actionInProgress === 'unmount')" svgIcon="circle-exclamation"></mat-icon>
                         {{ actionInProgress === 'unmount' ? "Unmounting" : "Unmount" }}
                     </button>
                 </ng-container>
                 <ng-container *ngIf="!selectedRemote.mounted">
-                    <button class="mount" (click)="triggerMountRemote()">
+                    <button [disabled]="actionInProgress === 'mount'" mat-raised-button color="primary" (click)="triggerMountRemote()">
                         <mat-spinner *ngIf="actionInProgress === 'mount'" diameter="20"></mat-spinner>
                         <mat-icon *ngIf="!(actionInProgress === 'mount')" svgIcon="mount"></mat-icon>
                         {{ actionInProgress === 'mount' ? "Mounting" : "Mount" }}
@@ -77,7 +77,7 @@
             </mat-card-content>
             <mat-divider></mat-divider>
             <mat-card-footer class="button-container">
-                <button class="edit" (click)="triggerOpenRemoteConfig('remote', selectedRemote.remoteSpecs)">
+                <button mat-raised-button class="fix" (click)="triggerOpenRemoteConfig('remote', selectedRemote.remoteSpecs)">
                     <mat-icon svgIcon="pen"></mat-icon> Edit
                 </button>
             </mat-card-footer>
@@ -113,7 +113,7 @@
 
                 <!-- ✅ Edit Button -->
                 <mat-card-footer class="button-container">
-                    <button class="edit"
+                    <button mat-raised-button class="fix" 
                         (click)="triggerOpenRemoteConfig(section.key, getRemoteSettings(section.key + '_options'))">
                         <mat-icon svgIcon="pen"></mat-icon> Edit
                     </button>

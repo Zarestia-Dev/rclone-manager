@@ -8,7 +8,7 @@
 
     <!-- Tabs - Desktop Layout -->
     <div class="tabs desktop-tabs" *ngIf="!bottomTabs">
-      <button *ngFor="let tab of tabs; let i = index" (click)="selectTab(i)" [class.active]="selectedTabIndex === i">
+      <button mat-flat-button *ngFor="let tab of tabs; let i = index" (click)="selectTab(i)" [class.selected]="selectedTabIndex === i">
         <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
         <span class="tab-label">{{ tab.label }}</span>
       </button>
@@ -51,11 +51,11 @@
                   <!-- ✅ String Settings -->
                   <mat-form-field class="input-field" appearance="outline" *ngIf="meta.value_type === 'string'">
                     <!-- ✅ Dropdown (Mat Select) -->
-                    <mat-select *ngIf="key === 'default_mount_type'" [(ngModel)]="settings[category][key]"
+                    <!-- <mat-select *ngIf="key === 'default_mount_type'" [(ngModel)]="settings[category][key]"
                       (selectionChange)="updateSetting(category, key, settings[category][key])">
                       <mat-option value="native">Native</mat-option>
                       <mat-option value="systemd">Systemd</mat-option>
-                    </mat-select>
+                    </mat-select> -->
 
                     <input *ngIf="key !== 'default_mount_type'" matInput [(ngModel)]="settings[category][key]"
                       (input)="updateSetting(category, key, settings[category][key])" #stringInput="ngModel" required />
@@ -65,18 +65,18 @@
 
 
             </div>
+            <ng-container *ngIf="selectedTab === 'general'">
+              <button mat-raised-button color="warn" (click)="resetSettings()">Reset Settings</button>
+            </ng-container>
           </div>
         </div>
       </ng-container>
-    </ng-container>
-    <ng-container *ngIf="selectedTab === 'general'">
-      <button mat-raised-button class="secondary reset" (click)="resetSettings()">Reset Settings</button>
     </ng-container>
   </div>
 
   <!-- 🔻 Bottom Tabs (if enabled) -->
   <div class="tabs bottom-tabs" *ngIf="bottomTabs">
-    <button *ngFor="let tab of tabs; let i = index" (click)="selectTab(i)" [class.active]="selectedTabIndex === i">
+    <button mat-flat-button *ngFor="let tab of tabs; let i = index" (click)="selectTab(i)" [class.selected]="selectedTabIndex === i">
       <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
       <span class="tab-label">{{ tab.label }}</span>
     </button>

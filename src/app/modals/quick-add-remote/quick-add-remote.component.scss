@@ -7,33 +7,6 @@
   background: var(--app-background);
   color: var(--app-text-color);
 
-  .modal-header {
-    display: flex;
-    flex-direction: column;
-    position: sticky;
-    top: 0;
-    background: var(--app-background);
-    color: var(--app-text-color);
-    z-index: 10;
-
-    .header-content {
-      display: flex;
-      justify-content: space-between;
-      margin: 10px 10px 8px 10px;
-      align-items: center;
-      gap: 10px;
-
-      p {
-        display: flex;
-        align-items: center;
-        flex-direction: row;
-        gap: 6px;
-        font-size: 20px;
-        font-weight: 600;
-      }
-    }
-  }
-
   .form-group {
     display: flex;
     flex-direction: column;

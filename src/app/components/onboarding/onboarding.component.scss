@@ -66,23 +66,6 @@
       justify-content: center;
       gap: 1rem;
       will-change: transform, opacity;
-
-      button {
-        display: flex;
-        align-items: center;
-        background: #6200ee;
-        color: #fff;
-        padding: 0.5rem 1rem;
-      
-        &:hover {
-          background: #3700b3;
-        }
-      
-        &:disabled {
-          background: #ccc;
-          cursor: not-allowed;
-        }
-      }
     }
     
   }

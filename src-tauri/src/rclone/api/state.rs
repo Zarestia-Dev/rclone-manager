@@ -4,6 +4,8 @@ use serde_json::json;
 use std::sync::Mutex;
 use tauri::Manager;
 use tokio::sync::RwLock;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 use crate::core::settings::settings::get_remote_settings;
 
@@ -150,4 +152,109 @@ pub async fn get_settings() -> Result<serde_json::Value, String> {
 #[tauri::command]
 pub async fn get_cached_mounted_remotes() -> Result<Vec<MountedRemote>, String> {
     Ok(CACHE.mounted.read().await.clone())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RemoteError {
+    pub timestamp: DateTime<Utc>,
+    pub remote_name: String,
+    pub operation: String, // "mount", "unmount", "sync", etc.
+    pub error: String,
+    pub details: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RemoteLogEntry {
+    pub timestamp: DateTime<Utc>,
+    pub remote_name: Option<String>,
+    pub level: String, // "info", "error", "warn", "debug"
+    pub message: String,
+    pub context: Option<serde_json::Value>,
+}
+
+pub struct RemoteErrorCache {
+    pub errors: RwLock<Vec<RemoteError>>,
+    pub logs: RwLock<Vec<RemoteLogEntry>>,
+}
+
+pub static ERROR_CACHE: Lazy<RemoteErrorCache> = Lazy::new(|| RemoteErrorCache {
+    errors: RwLock::new(Vec::new()),
+    logs: RwLock::new(Vec::new()),
+});
+
+impl RemoteErrorCache {
+    pub async fn add_error(&self, error: RemoteError) {
+        let mut errors = self.errors.write().await;
+        errors.push(error);
+        // Keep only the last 100 errors to prevent memory bloat
+        if errors.len() > 100 {
+            errors.remove(0);
+        }
+    }
+
+    pub async fn add_log(&self, log: RemoteLogEntry) {
+        let mut logs = self.logs.write().await;
+        logs.push(log);
+        // Keep only the last 500 logs
+        if logs.len() > 500 {
+            let excess = logs.len() - 500;
+            logs.drain(0..excess);
+        }
+    }
+
+    pub async fn get_errors_for_remote(&self, remote_name: &str) -> Vec<RemoteError> {
+        let errors = self.errors.read().await;
+        errors.iter()
+            .filter(|e| e.remote_name == remote_name)
+            .cloned()
+            .collect()
+    }
+
+    pub async fn get_logs_for_remote(&self, remote_name: Option<&str>) -> Vec<RemoteLogEntry> {
+        let logs = self.logs.read().await;
+        match remote_name {
+            Some(name) => logs.iter()
+                .filter(|l| l.remote_name.as_deref() == Some(name))
+                .cloned()
+                .collect(),
+            None => logs.clone(),
+        }
+    }
+
+    pub async fn clear_remote_errors(&self, remote_name: &str) {
+        let mut errors = self.errors.write().await;
+        errors.retain(|e| e.remote_name != remote_name);
+    }
+
+    pub async fn clear_remote_logs(&self, remote_name: &str) {
+        let mut logs = self.logs.write().await;
+        logs.retain(|l| l.remote_name.as_deref() != Some(remote_name));
+    }
+}
+
+// Add these commands to expose the cache to the frontend
+#[tauri::command]
+pub async fn get_remote_errors(remote_name: Option<String>) -> Result<Vec<RemoteError>, String> {
+    let cache = &ERROR_CACHE;
+    match remote_name {
+        Some(name) => Ok(cache.get_errors_for_remote(&name).await),
+        None => Ok(cache.errors.read().await.clone()),
+    }
+}
+
+#[tauri::command]
+pub async fn get_remote_logs(remote_name: Option<String>) -> Result<Vec<RemoteLogEntry>, String> {
+    Ok(ERROR_CACHE.get_logs_for_remote(remote_name.as_deref()).await)
+}
+
+#[tauri::command]
+pub async fn clear_errors_for_remote(remote_name: String) -> Result<(), String> {
+    ERROR_CACHE.clear_remote_errors(&remote_name).await;
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn clear_logs_for_remote(remote_name: String) -> Result<(), String> {
+    ERROR_CACHE.clear_remote_logs(&remote_name).await;
+    Ok(())
 }

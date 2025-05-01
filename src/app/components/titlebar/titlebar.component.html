@@ -10,11 +10,11 @@
         <span class="shortcut"> Ctrl + N</span>
       </button>
     </mat-menu>
-    <button mat-icon-button class="add-button" [matMenuTriggerFor]="addRemoteMenu">
+    <button mat-icon-button [matMenuTriggerFor]="addRemoteMenu">
       <mat-icon svgIcon="add"></mat-icon>
     </button>
-    <button (click)="resetRemote()">
-      <mat-icon svgIcon="rclone-symbolic" alt="RClone Manager Logo" class="logo"></mat-icon>
+    <button mat-icon-button (click)="resetRemote()">
+      <mat-icon svgIcon="rclone-symbolic" alt="RClone Manager Logo"></mat-icon>
     </button>
   </div>
 
@@ -41,17 +41,17 @@
 
   <mat-menu #menu="matMenu">
     <div class="theme-selector">
-      <button mat-icon-button class="theme-button system" [class.selected]="selectedTheme === 'system'"
+      <button class="theme-button system" [class.selected]="selectedTheme === 'system'"
         (click)="$event.stopPropagation(); setTheme('system')">
         <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'system'" class="icon checkmark"></mat-icon>
       </button>
 
-      <button mat-icon-button class="theme-button light" [class.selected]="selectedTheme === 'light'"
+      <button class="theme-button light" [class.selected]="selectedTheme === 'light'"
         (click)="$event.stopPropagation(); setTheme('light')">
         <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'light'" class="icon checkmark"></mat-icon>
       </button>
 
-      <button mat-icon-button class="theme-button dark" [class.selected]="selectedTheme === 'dark'"
+      <button class="theme-button dark" [class.selected]="selectedTheme === 'dark'"
         (click)="$event.stopPropagation(); setTheme('dark')">
         <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'dark'" class="icon checkmark"></mat-icon>
       </button>

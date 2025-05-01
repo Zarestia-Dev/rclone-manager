@@ -1,4 +1,4 @@
-.modal {
+.about-modal {
   height: 100%;
   background: var(--secondary-background);
   box-shadow: 0 4px 12px var(--shadow-color);
@@ -6,17 +6,6 @@
   flex-direction: column;
   position: relative; /* Ensure absolute positioning works for children */
   overflow: hidden; /* Hide overflow from children */
-  
-  .modal-header {
-    width: 100%;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 10px;
-    .close-btn {
-      margin-top: 4px;
-    }
-  }
 
   .modal-content {
     padding: 16px;
@@ -86,6 +75,7 @@
     text-align: left;
     box-shadow: 0px 0px 4px var(--shadow-color);
     width: 100%;
+    flex-direction: row-reverse !important;
 
     &:hover {
       background: var(--hover-color);
@@ -121,8 +111,10 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px;
-      width: calc(100% - 20px);
+      font-weight: bold;
+      padding: 8px;
+      gap: 10px;
+      width: calc(100% - 16px);
     }
 
     .credits {

@@ -1,44 +1,84 @@
-import { Host, HostListener, Injectable } from "@angular/core";
+import { HostListener, Injectable, NgZone } from "@angular/core";
 import { BehaviorSubject } from "rxjs/internal/BehaviorSubject";
 import { RcloneService } from "./rclone.service";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
+
 
 @Injectable({
   providedIn: "root",
 })
 export class StateService {
-  private currentTab = new BehaviorSubject<"mount" | "sync" | "copy" | "jobs">(
-    "mount"
-  );
+  private currentTab = new BehaviorSubject<"mount" | "sync" | "copy" | "jobs">("mount");
   private selectedRemoteSource = new BehaviorSubject<any>(null);
+  private _isMobile = new BehaviorSubject<boolean>(window.innerWidth <= 500);
+  private _isMaximized = new BehaviorSubject<boolean>(false);
+  
   selectedRemote$ = this.selectedRemoteSource.asObservable();
   currentTab$ = this.currentTab.asObservable();
+  isMobile$ = this._isMobile.asObservable();
+  isMaximized$ = this._isMaximized.asObservable();
 
-  private _isMobile = new BehaviorSubject<boolean>(window.innerWidth <= 768);
-  public isMobile$ = this._isMobile.asObservable();
+  private appWindow = getCurrentWindow();
 
-  constructor(private rcloneService: RcloneService) {
-
-    this.updateMobileStatus();
-    window.addEventListener("resize", this.updateMobileStatus.bind(this));
+  constructor(private rcloneService: RcloneService, private ngZone: NgZone) {
+    this.initializeWindowListeners();
+    this.updateViewportSettings();
+    
+    window.addEventListener("resize", () => {
+      this.ngZone.run(() => {
+        this._isMobile.next(window.innerWidth <= 500);
+        this.updateViewportSettings();
+      });
+    });
   }
 
-  @HostListener("window:resize", ["$event"])
-  private updateMobileStatus() {
-    const isMobile = window.innerWidth <= 500;
-    this._isMobile.next(isMobile);
+  private async initializeWindowListeners() {
+    try {
+      // Listen for window maximize/unmaximize events
+      await listen('tauri://resize', () => {
+        this.ngZone.run(() => {
+          this.updateWindowState();
+        });
+      });
 
-    if (isMobile) {
-      document.documentElement.style.setProperty(
-        "--app-height",
-        `calc(100vh - ((var(--titlebar-height) + var(--title-bar-padding) + var(--titlebar-border)) + 48px))`
-      );
-    } else {
-      document.documentElement.style.setProperty(
-        "--app-height",
-        "calc(100vh - (var(--titlebar-height) + var(--title-bar-padding) + var(--titlebar-border)))"
-      );
-      console.log("Desktop view");
+      // Initial check
+      await this.updateWindowState();
+    } catch (error) {
+      console.warn('Tauri window events not available:', error);
     }
+  }
+
+  private async updateWindowState() {
+    const isMaximized = await this.appWindow.isMaximized();
+    this._isMaximized.next(isMaximized);
+    this.updateViewportSettings();
+  }
+
+  private updateViewportSettings() {
+    const isMobile = this._isMobile.value;
+    const isMaximized = this._isMaximized.value;
+
+    if (isMaximized) {
+      document.documentElement.style.setProperty("--home-bottom-radius", "0px");
+      document.documentElement.style.setProperty("--title-bar-radius", "0px");
+      document.documentElement.style.setProperty("--tab-bar-bottom-radius", "0px");
+    } else if (isMobile) {
+      document.documentElement.style.setProperty("--home-bottom-radius", "0px");
+      document.documentElement.style.setProperty("--title-bar-radius", "16px");
+      document.documentElement.style.setProperty("--tab-bar-bottom-radius", "16px");
+    } else {
+      document.documentElement.style.setProperty("--home-bottom-radius", "16px");
+      document.documentElement.style.setProperty("--title-bar-radius", "16px");
+      document.documentElement.style.setProperty("--tab-bar-bottom-radius", "0px");
+    }
+
+    // Update app height
+    const height = isMobile
+      ? `calc(100vh - ((var(--titlebar-height) + var(--title-bar-padding)) + 48px)`
+      : "calc(100vh - (var(--titlebar-height) + var(--title-bar-padding)))";
+    
+    document.documentElement.style.setProperty("--app-height", height);
   }
 
   resetSelectedRemote(): void {
@@ -63,11 +103,10 @@ export class StateService {
   private _isAuthInProgress$ = new BehaviorSubject<boolean>(false);
   private _currentRemoteName$ = new BehaviorSubject<string | null>(null);
   private _isAuthCancelled$ = new BehaviorSubject<boolean>(false);
-  
+
   isAuthInProgress$ = this._isAuthInProgress$.asObservable();
   isAuthCancelled$ = this._isAuthCancelled$.asObservable();
   currentRemoteName$ = this._currentRemoteName$.asObservable();
-
 
   async startAuth(remoteName: string): Promise<void> {
     this._isAuthInProgress$.next(true);
@@ -81,7 +120,7 @@ export class StateService {
     try {
       if (remoteName) {
         await this.rcloneService.quitOAuth();
-        await this.rcloneService.deleteRemote(remoteName, false);
+        await this.rcloneService.deleteRemote(remoteName);
       }
     } finally {
       this.resetAuthState();
@@ -97,7 +136,7 @@ export class StateService {
   get currentState() {
     return {
       isAuthInProgress: this._isAuthInProgress$.value,
-      currentRemoteName: this._currentRemoteName$.value
+      currentRemoteName: this._currentRemoteName$.value,
     };
   }
 }

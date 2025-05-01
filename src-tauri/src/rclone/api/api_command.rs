@@ -14,7 +14,9 @@ use tokio::time::sleep;
 
 use crate::{
     core::check_binaries::read_rclone_path,
-    rclone::api::state::{get_cached_mounted_remotes, RCLONE_STATE},
+    rclone::api::state::{
+        get_cached_mounted_remotes, RemoteError, RemoteLogEntry, ERROR_CACHE, RCLONE_STATE,
+    },
     RcloneState,
 };
 
@@ -209,6 +211,16 @@ pub async fn mount_remote(
     vfs_options: Option<HashMap<String, serde_json::Value>>,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
+    ERROR_CACHE
+        .add_log(RemoteLogEntry {
+            timestamp: Utc::now(),
+            remote_name: Some(remote_name.clone()),
+            level: "info".to_string(),
+            message: format!("Attempting to mount remote at {}", mount_point),
+            context: None,
+        })
+        .await;
+
     let client = &state.client;
 
     // 🔍 Step 1: Get mounted remotes
@@ -322,13 +334,53 @@ pub async fn mount_remote(
 
                 if finished {
                     if success {
+                        ERROR_CACHE
+                            .add_log(RemoteLogEntry {
+                                timestamp: Utc::now(),
+                                remote_name: Some(remote_name.clone()),
+                                level: "info".to_string(),
+                                message: format!("Successfully mounted remote at {}", mount_point),
+                                context: None,
+                            })
+                            .await;
                         debug!("✅ Job {} finished successfully.", jobid);
                         break;
                     } else {
-                        return Err(format!("❌ Job {} failed: {}", jobid, job));
+                        // Improved error extraction
+                        let error_message = extract_rclone_error(&body);
+
+                        // Create a more detailed log entry
+                        ERROR_CACHE
+                            .add_log(RemoteLogEntry {
+                                timestamp: Utc::now(),
+                                remote_name: Some(remote_name.clone()),
+                                level: "error".to_string(),
+                                message: format!("Mount failed: {}", error_message), // Use the extracted error message
+                                context: Some(json!({
+                                    "job_id": jobid,
+                                    "response": body
+                                })),
+                            })
+                            .await;
+
+                        let error = RemoteError {
+                            timestamp: Utc::now(),
+                            remote_name: remote_name.clone(),
+                            operation: "mount".to_string(),
+                            error: error_message.clone(),
+                            details: Some(json!({
+                                "mount_point": mount_point,
+                                "job_id": jobid,
+                                "response": body
+                            })),
+                        };
+
+                        ERROR_CACHE.add_error(error.clone()).await;
+
+                        debug!("❌ Job {} failed: {}", jobid, error_message);
+                        return Err(error_message);
                     }
                 }
-
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
             }
         } // ✅ Now emit, after the remote is actually mounted
@@ -336,10 +388,29 @@ pub async fn mount_remote(
         app.emit("remote_state_changed", remote_name).ok();
         Ok(())
     } else {
-        Err(format!(
-            "❌ Mount request failed: {} (HTTP {})",
-            body, status
-        ))
+        let error_message = extract_rclone_error(&body);
+        let error = RemoteError {
+            timestamp: Utc::now(),
+            remote_name: remote_name.clone(),
+            operation: "mount".to_string(),
+            error: format!("Mount request failed (HTTP {}): {}", status, body),
+            details: Some(json!({
+                "mount_point": mount_point,
+                "status": status.as_u16(),
+                "response": body
+            })),
+        };
+        ERROR_CACHE.add_error(error).await;
+        ERROR_CACHE
+            .add_log(RemoteLogEntry {
+                timestamp: Utc::now(),
+                remote_name: Some(remote_name.clone()),
+                level: "error".to_string(),
+                message: error_message.clone(),
+                context: Some(json!({"response": body})),
+            })
+            .await;
+        Err(error_message)
     }
 }
 
@@ -347,12 +418,37 @@ pub async fn mount_remote(
 pub async fn unmount_remote(
     app: tauri::AppHandle,
     mount_point: String,
+    remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<String, String> {
     let mount_point = mount_point.trim();
     if mount_point.is_empty() {
         return Err("Empty mount point provided".to_string());
     }
+    if mount_point.is_empty() {
+        let error = "Empty mount point provided".to_string();
+        ERROR_CACHE
+            .add_log(RemoteLogEntry {
+                timestamp: Utc::now(),
+                remote_name: Some(remote_name.clone()),
+                level: "error".to_string(),
+                message: error.clone(),
+                context: None,
+            })
+            .await;
+        return Err(error);
+    }
+
+    // Log unmount attempt
+    ERROR_CACHE
+        .add_log(RemoteLogEntry {
+            timestamp: Utc::now(),
+            remote_name: Some(remote_name.clone()),
+            level: "info".to_string(),
+            message: format!("Attempting to unmount: {}", mount_point),
+            context: None,
+        })
+        .await;
 
     let url = format!("{}/mount/unmount", RCLONE_STATE.get_api().0);
     let params = serde_json::json!({ "mountPoint": mount_point });
@@ -372,13 +468,45 @@ pub async fn unmount_remote(
 
     app.emit("remote_state_changed", mount_point).ok();
     if response.status().is_success() {
+        ERROR_CACHE
+            .add_log(RemoteLogEntry {
+                timestamp: Utc::now(),
+                remote_name: Some(remote_name.clone()),
+                level: "info".to_string(),
+                message: format!("Successfully unmounted {}", mount_point),
+                context: None,
+            })
+            .await;
         info!("Successfully unmounted {}", mount_point);
         Ok(format!("Successfully unmounted {}", mount_point))
     } else {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        error!("Failed to unmount {}: {} - {}", mount_point, status, body);
-        Err(format!("Rclone API error: {} - {}", status, body))
+        let error_message = extract_rclone_error(&body);
+        let error = RemoteError {
+            timestamp: Utc::now(),
+            remote_name: remote_name.clone(),
+            operation: "unmount".to_string(),
+            error: format!("Failed to unmount {}: HTTP {}", mount_point, status),
+            details: Some(json!({
+                "status": status.as_u16(),
+                "response": body
+            })),
+        };
+
+        ERROR_CACHE.add_error(error).await;
+
+        ERROR_CACHE
+            .add_log(RemoteLogEntry {
+                timestamp: Utc::now(),
+                remote_name: Some(remote_name.clone()),
+                level: "error".to_string(),
+                message: error_message.clone(),
+                context: Some(json!({"response": body})),
+            })
+            .await;
+        error!("{}", error_message.clone());
+        Err(error_message)
     }
 }
 
@@ -519,4 +647,22 @@ pub async fn start_copy(
         .map_err(|e| e.to_string())?;
 
     Ok(response.jobid)
+}
+
+fn extract_rclone_error(response_body: &str) -> String {
+    match serde_json::from_str::<serde_json::Value>(response_body) {
+        Ok(json) => {
+            json.get("error")
+                .and_then(|err| err.as_str())
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| {
+                    debug!("No error field in response");
+                    response_body.to_string()
+                })
+        }
+        Err(_) => {
+            debug!("Failed to parse response as JSON");
+            response_body.to_string()
+        }
+    }
 }

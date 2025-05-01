@@ -23,7 +23,7 @@ pub struct CoreSettings {
     pub max_tray_items: usize,
     pub rclone_api_port: u16,
     pub rclone_oauth_port: u16,
-    pub default_mount_type: String,
+    // pub default_mount_type: String,
     pub bandwidth_limit: String,
     pub completed_onboarding: bool,
 }
@@ -55,7 +55,7 @@ impl Default for AppSettings {
                 max_tray_items: 5,
                 rclone_api_port: 5572,
                 rclone_oauth_port: 5580,
-                default_mount_type: "native".to_string(),
+                // default_mount_type: "native".to_string(),
                 bandwidth_limit: "".to_string(),
                 completed_onboarding: false,
             },
@@ -125,14 +125,14 @@ impl AppSettings {
             },
         );
 
-        metadata.insert(
-            "core.default_mount_type".to_string(),
-            SettingMetadata {
-                display_name: "Default Mount Type".to_string(),
-                value_type: "string".to_string(),
-                help_text: "Choose between 'native' or 'systemd' mount methods.".to_string(),
-            },
-        );
+        // metadata.insert(
+        //     "core.default_mount_type".to_string(),
+        //     SettingMetadata {
+        //         display_name: "Default Mount Type".to_string(),
+        //         value_type: "string".to_string(),
+        //         help_text: "Choose between 'native' or 'systemd' mount methods.".to_string(),
+        //     },
+        // );
 
         metadata.insert(
             "core.bandwidth_limit".to_string(),

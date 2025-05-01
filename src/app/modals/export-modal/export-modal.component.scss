@@ -7,17 +7,6 @@
   overflow: hidden;
   height: 100%;
 
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: bold;
-    font-size: 18px;
-    padding-bottom: 10px;
-    width: 100%;
-    gap: 10px;
-  }
-
   .modal-content {
     padding: 16px;
     overflow: auto;

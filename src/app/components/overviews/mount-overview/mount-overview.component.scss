@@ -59,7 +59,7 @@
               transition: width 0.5s ease-in-out;
   
               &.mounted-bar {
-                background-color: var(--green);
+                background-color: var(--primary-color);
               }
   
               &.unmounted-bar {
@@ -67,7 +67,7 @@
               }
   
               &.error-bar {
-                background-color: var(--red);
+                background-color: var(--warn-color);
               }
             }
           }
@@ -92,7 +92,7 @@
             }
   
             .mounted {
-              background-color: var(--green);
+              background-color: var(--primary-color);
             }
   
             .unmounted {
@@ -100,7 +100,7 @@
             }
   
             .error {
-              background-color: var(--red);
+              background-color: var(--warn-color);
             }
           }
         }

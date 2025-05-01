@@ -1,14 +1,14 @@
 <div class="modal-container">
   <!-- Modal Header -->
   <header class="modal-header" data-tauri-drag-region>
-    <button type="button" aria-label="Help">
+    <button aria-label="Help">
       <mat-icon svgIcon="question"></mat-icon>
     </button>
     <p>
       <mat-icon svgIcon="hard-drive" aria-hidden="true"></mat-icon>
       {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
     </p>
-    <button type="button" (click)="close()" aria-label="Close dialog">
+    <button (click)="close()" aria-label="Close dialog">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </header>
@@ -182,7 +182,7 @@
               <!-- 🌟 Mount Path (Shown if Auto-Mount is enabled) -->
               <mat-form-field appearance="fill">
                 <mat-label>Mount Path</mat-label>
-                <button mat-button matSuffix type="button" (click)="selectFolder()">
+                <button mat-button matSuffix (click)="selectFolder()">
                   <mat-icon svgIcon="folder"></mat-icon>
                 </button>
                 <input matInput formControlName="mountPath" id="mountPath" aria-describedby="mountPathError"
@@ -212,7 +212,7 @@
               <div class="json-textarea">
                 <mat-form-field appearance="fill" style="width: 100%;" formGroupName="jsonConfigs">
                   <mat-label>{{ step | titlecase }} Configuration</mat-label>
-                  <button class="reset-btn" (click)="resetJson(step)" attr.aria-label="Reset {{ step }} configuration">
+                  <button mat-icon-button class="reset-btn" (click)="resetJson(step)" attr.aria-label="Reset {{ step }} configuration">
                     <mat-icon svgIcon="circle-xmark"></mat-icon>
                   </button>
                   <textarea matInput [formControlName]="step" #jsonArea (input)="validateJson(step)"
@@ -248,18 +248,18 @@
   <footer class="button-container">
     <div class="button-container-inner">
       <!-- Navigation Buttons -->
-      <button *ngIf="currentStep < TOTAL_STEPS && !editTarget" class="next" (click)="nextStep()"
+      <button mat-raised-button color="accent" *ngIf="currentStep < TOTAL_STEPS && !editTarget" (click)="nextStep()"
         [disabled]="!remoteForm.valid || isLoading.saving" [@fadeInOut]>
         Next
       </button>
-      <button [disabled]="isLoading.saving" *ngIf="currentStep > 1 && !editTarget" class="back" (click)="prevStep()"
+      <button mat-raised-button color="accent" [disabled]="isLoading.saving" *ngIf="currentStep > 1 && !editTarget" (click)="prevStep()"
         [@fadeInOut]>
         Back
       </button>
     </div>
 
     <div class="button-container-inner">
-      <button [@fadeInOut] class="cancel" type="button" (click)="cancelAuth()" [disabled]="!isLoading.saving"
+      <button mat-raised-button [@fadeInOut] color="warn" (click)="cancelAuth()" [disabled]="!isLoading.saving"
         *ngIf="isLoading.saving && !isLoading.cancelled">
         Cancel
       </button>
@@ -270,7 +270,7 @@
       </p>
 
       <!-- Save Buttons -->
-      <button class="finish" (click)="onSubmit()"
+      <button mat-raised-button color="primary" (click)="onSubmit()"
         [disabled]="isLoading.saving || !remoteConfigForm.valid || !remoteForm.valid" [@fadeInOut]
         *ngIf="currentStep > 1 && !editTarget" aria-live="polite">
         <div class="saving-overlay" *ngIf="isLoading.saving && !isLoading.cancelled">
@@ -278,7 +278,7 @@
         </div> {{ isLoading.saving && !isLoading.cancelled ? 'Saving' : 'Save' }}
       </button>
 
-      <button class="finish" (click)="onSubmit()"
+      <button mat-raised-button color="primary" (click)="onSubmit()"
         [disabled]="isLoading.saving || (editTarget === 'remote' && !remoteForm.valid) || (editTarget === 'mount' && !remoteConfigForm.valid)"
         [@fadeInOut] *ngIf="editTarget" aria-live="polite">
         <div class="saving-overlay" *ngIf="isLoading.saving && !isLoading.cancelled">

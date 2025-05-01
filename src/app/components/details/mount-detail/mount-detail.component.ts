@@ -8,6 +8,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { Subject } from "rxjs";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatButtonModule } from "@angular/material/button";
 
 @Component({
   selector: "app-mount-detail",
@@ -19,7 +20,8 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
     MatTooltipModule,
     MatIconModule,
     MatProgressBarModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatButtonModule
   ],
   templateUrl: "./mount-detail.component.html",
   styleUrl: "./mount-detail.component.scss",
@@ -130,8 +132,28 @@ export class MountDetailComponent {
   }
 
   getUsagePercentage(): number {
-    const used = parseFloat(this.selectedRemote.diskUsage?.used_space || "0");
-    const total = parseFloat(this.selectedRemote.diskUsage?.total_space || "1");
+    const usedStr = this.selectedRemote.diskUsage?.used_space || "0";
+    const totalStr = this.selectedRemote.diskUsage?.total_space || "1";
+
+    // Helper to parse human-readable sizes like "2.00 GB"
+    function parseSize(size: string): number {
+      const units: { [key: string]: number } = {
+        B: 1,
+        KB: 1024,
+        MB: 1024 ** 2,
+        GB: 1024 ** 3,
+        TB: 1024 ** 4,
+      };
+      const match = size.trim().match(/^([\d.]+)\s*([A-Za-z]+)?$/);
+      if (!match) return 0;
+      const value = parseFloat(match[1]);
+      const unit = (match[2] || "B").toUpperCase();
+      return value * (units[unit] || 1);
+    }
+
+    const used = parseSize(usedStr);
+    const total = parseSize(totalStr) || 1; // Prevent division by zero
+
     return (used / total) * 100;
   }
 

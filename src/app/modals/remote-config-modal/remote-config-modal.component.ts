@@ -39,6 +39,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { debounceTime, distinctUntilChanged, Subscription } from "rxjs";
 import { MatCardModule } from "@angular/material/card";
 import { StateService } from "../../services/state.service";
+import { MatButtonModule } from "@angular/material/button";
 
 // Types and Interfaces
 type FlagType = "mount" | "copy" | "sync" | "filter" | "vfs";
@@ -117,6 +118,7 @@ interface LoadingState {
     MatTooltipModule,
     MatIconModule,
     MatCardModule,
+    MatButtonModule
   ],
   templateUrl: "./remote-config-modal.component.html",
   styleUrl: "./remote-config-modal.component.scss",

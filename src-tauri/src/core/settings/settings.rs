@@ -69,6 +69,36 @@ pub async fn load_settings<'a>(
     Ok(response)
 }
 
+#[tauri::command]
+pub async fn load_setting_value<'a>(
+    category: String,
+    key: String,
+    state: State<'a, SettingsState<tauri::Wry>>,
+) -> Result<serde_json::Value, String> {
+    let store_arc = state.store.clone();
+    let store_guard = store_arc.lock().unwrap();
+
+    // Reload from disk
+    store_guard
+        .reload()
+        .map_err(|e| format!("Failed to reload settings store: {}", e))?;
+
+    // Load stored settings
+    let stored_settings = store_guard
+        .get("app_settings")
+        .unwrap_or_else(|| json!({}))
+        .clone();
+
+    // Get category object, then key value
+    let value = stored_settings
+        .get(&category)
+        .and_then(|cat| cat.get(&key))
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+
+    Ok(value)
+}
+
 /// **Save only modified settings**
 #[tauri::command]
 pub async fn save_settings(
@@ -266,8 +296,9 @@ pub async fn get_remote_settings(
 #[tauri::command]
 pub async fn backup_settings(
     backup_dir: String,
-    export_type: String, // "all", "settings", "remotes", "remote-configs"
+    export_type: String, // "all", "settings", "remotes", "remote-configs", "specific-remote"
     password: Option<String>,
+    remote_name: Option<String>, // New parameter for specific remote
     state: State<'_, SettingsState<tauri::Wry>>,
 ) -> Result<String, String> {
     let backup_path = PathBuf::from(&backup_dir);
@@ -275,14 +306,22 @@ pub async fn backup_settings(
         .map_err(|e| format!("Failed to create backup directory: {}", e))?;
 
     let timestamp = Local::now();
-    let archive_name = format!(
-        "settings_export_{}.{}",
-        timestamp.format("%Y-%m-%d_%H-%M-%S"),
-        if password.is_some() { "7z" } else { "zip" }
-    );
+    let archive_name = match remote_name.clone() {
+        Some(name) => format!(
+            "remote_{}_export_{}.{}",
+            name,
+            timestamp.format("%Y-%m-%d_%H-%M-%S"),
+            if password.is_some() { "7z" } else { "zip" }
+        ),
+        None => format!(
+            "settings_export_{}.{}",
+            timestamp.format("%Y-%m-%d_%H-%M-%S"),
+            if password.is_some() { "7z" } else { "zip" }
+        ),
+    };
     let archive_path = backup_path.join(archive_name);
 
-    // Step 1: Create a temporary folder and collect files
+    // Create a temporary folder and collect files
     let tmp_dir = tempfile::tempdir().map_err(|e| format!("Failed to create temp dir: {}", e))?;
     let export_dir = tmp_dir.path();
 
@@ -296,7 +335,7 @@ pub async fn backup_settings(
         }
     }
 
-    if export_type == "all" || export_type == "remote-configs" {
+    if export_type == "all" || export_type == "remote-configs" || export_type == "specific-remote" {
         let remotes_dir = state.config_dir.join("remotes");
         let out_remotes = export_dir.join("remotes");
         fs::create_dir_all(&out_remotes).ok();
@@ -306,20 +345,33 @@ pub async fn backup_settings(
                 Ok(rd) => rd,
                 Err(_) => {
                     warn!("⚠️ Failed to read remotes directory.");
-                    // Return early since we can't iterate remotes
                     return Err("⚠️ Failed to read remotes directory.".to_string());
                 }
             } {
                 let path = entry.map_err(|e| e.to_string())?.path();
                 if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                    fs::copy(&path, out_remotes.join(path.file_name().unwrap())).ok();
+                    // For specific remote, only copy that one
+                    if export_type == "specific-remote" {
+                        if let Some(name) = &remote_name {
+                            if path.file_stem().unwrap().to_str().unwrap() == name {
+                                fs::copy(&path, out_remotes.join(path.file_name().unwrap())).ok();
+                                exported_items.push("remote-config");
+                                break;
+                            }
+                        }
+                    } else {
+                        // For all remote configs, copy everything
+                        fs::copy(&path, out_remotes.join(path.file_name().unwrap())).ok();
+                    }
                 }
             }
-            exported_items.push("remote-configs");
+            if export_type != "specific-remote" {
+                exported_items.push("remote-configs");
+            }
         }
     }
 
-    if export_type == "all" || export_type == "remotes" {
+    if (export_type == "all" || export_type == "remotes") && remote_name.is_none() {
         let rclone_conf = state.config_dir.join("rclone.conf");
         if rclone_conf.exists() {
             fs::copy(&rclone_conf, export_dir.join("rclone.conf")).ok();
@@ -330,12 +382,13 @@ pub async fn backup_settings(
     // Write export_info.json
     let export_info = json!({
         "exported": exported_items,
-        "timestamp": timestamp.to_rfc3339()
+        "timestamp": timestamp.to_rfc3339(),
+        "remote_name": remote_name
     });
     fs::write(export_dir.join("export_info.json"), export_info.to_string())
         .map_err(|e| format!("Failed to write export_info.json: {}", e))?;
 
-    // Step 2: Create archive
+    // Create archive (same as before)
     if let Some(pw) = password {
         // 7z encrypted
         let seven_zip = which::which("7z")

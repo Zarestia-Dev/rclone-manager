@@ -1,10 +1,11 @@
 import { Component } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
 import { StateService } from "../../services/state.service";
+import { MatButtonModule } from "@angular/material/button";
 
 @Component({
   selector: "app-tabs-buttons",
-  imports: [MatIconModule],
+  imports: [MatIconModule, MatButtonModule],
   templateUrl: "./tabs-buttons.component.html",
   styleUrl: "./tabs-buttons.component.scss",
 })

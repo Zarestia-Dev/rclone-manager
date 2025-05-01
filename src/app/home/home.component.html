@@ -32,10 +32,10 @@
         <mat-divider></mat-divider>
 
         <!-- ✅ Remote Actions -->
-        <button mat-menu-item>
+        <button mat-menu-item (click)="openLogsModal(selectedRemote.remoteSpecs.name)">
           <span>View Logs</span>
         </button>
-        <button mat-menu-item>
+        <button mat-menu-item (click)="openExportModal(selectedRemote.remoteSpecs.name)">
           <span>Export Configuration</span>
         </button>
         <button mat-menu-item (click)="resetRemoteSettings()">
@@ -61,11 +61,11 @@
         <p>Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for a fast and simple
           setup.</p>
         <div class="empty-state-actions">
-          <button mat-raised-button class="primary" (click)="openQuickAddRemoteModal()">
+          <button mat-raised-button color="primary" (click)="openQuickAddRemoteModal()">
             <mat-icon svgIcon="add"></mat-icon>
             Add Quick Remote
           </button>
-          <button mat-stroked-button class="secondary" (click)="openRemoteConfigModal()">
+          <button mat-raised-button color="accent" (click)="openRemoteConfigModal()">
             <mat-icon svgIcon="add"></mat-icon>
             Add Detailed Remote
           </button>

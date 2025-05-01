@@ -1,6 +1,6 @@
 use core::{
     check_binaries::{is_7z_available, is_rclone_available},
-    settings::settings::{analyze_backup_file, restore_encrypted_settings},
+    settings::settings::{analyze_backup_file, load_setting_value, restore_encrypted_settings},
 };
 use std::{
     path::PathBuf,
@@ -8,7 +8,7 @@ use std::{
 };
 
 use log::{debug, error, info};
-use rclone::api::{engine::RcApiEngine, state::get_cached_mounted_remotes};
+use rclone::api::{engine::RcApiEngine, state::{clear_errors_for_remote, clear_logs_for_remote, get_cached_mounted_remotes, get_remote_errors, get_remote_logs}};
 use serde_json::json;
 use tauri::{Emitter, Manager, Theme, WindowEvent};
 use tauri_plugin_store::StoreBuilder;
@@ -74,14 +74,28 @@ use std::sync::RwLock;
 struct TrayEnabled(pub Arc<RwLock<bool>>);
 
 #[tauri::command]
-fn set_theme(theme: String, window: tauri::Window) -> Result<(), String> {
-    let theme = match theme.as_str() {
+async fn set_theme(
+    theme: String,
+    window: tauri::Window,
+    state: tauri::State<'_, SettingsState<tauri::Wry>>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let theme_enum = match theme.as_str() {
         "dark" => Theme::Dark,
         _ => Theme::Light,
     };
     window
-        .set_theme(Some(theme))
-        .map_err(|e| format!("Failed to set theme: {}", e))
+        .set_theme(Some(theme_enum))
+        .map_err(|e| format!("Failed to set theme: {}", e))?;
+
+    // Save the theme setting
+    let settings_json = json!({ "general": { "theme": theme.clone() } });
+    crate::core::settings::settings::save_settings(
+        state,
+        settings_json,
+        app_handle,
+    )
+    .await
 }
 
 fn init_logging(enable_debug: bool) {
@@ -331,6 +345,7 @@ pub fn run() {
             get_mount_flags,
             // Settings
             load_settings,
+            load_setting_value,
             save_settings,
             save_remote_settings,
             get_remote_settings,
@@ -351,6 +366,11 @@ pub fn run() {
             // Check binaries
             is_rclone_available,
             is_7z_available,
+            // Logs and errors
+            get_remote_errors,
+            get_remote_logs,
+            clear_errors_for_remote,
+            clear_logs_for_remote,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

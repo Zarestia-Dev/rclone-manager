@@ -1,19 +1,16 @@
 <div class="quick-add-modal">
   <!-- 🔹 Modal Header -->
   <div class="modal-header" data-tauri-drag-region>
-    <div class="header-content">
-      <button mat-icon-button class="help-btn">
+      <button class="help-btn">
         <mat-icon svgIcon="question"></mat-icon>
       </button>
       <p>
         <mat-icon svgIcon="hard-drive"></mat-icon>
         Quick Add Remote
       </p>
-      <button mat-icon-button (click)="close()">
+      <button (click)="close()">
         <mat-icon svgIcon="circle-xmark"></mat-icon>
       </button>
-    </div>
-    <mat-divider></mat-divider>
   </div>
 
   <!-- 🔹 Form -->
@@ -51,10 +48,10 @@
     <!-- 🌟 Mount Path (Shown if Auto-Mount is enabled) -->
     <mat-form-field appearance="fill" *ngIf="quickAddForm.get('autoMount')?.value" @slideInOut>
       <mat-label>Mount Path</mat-label>
-      <button mat-button matSuffix type="button" (click)="selectFolder()" *ngIf="quickAddForm.get('autoMount')?.value">
+      <button mat-icon-button matSuffix (click)="selectFolder()" *ngIf="quickAddForm.get('autoMount')?.value">
         <mat-icon svgIcon="folder"></mat-icon>
       </button>
-      <input matInput formControlName="mountPath" id="mountPath" />
+      <input matInput readonly placeholder="Select a folder..." formControlName="mountPath" id="mountPath" />
       <mat-error *ngIf="quickAddForm.get('autoMount')?.value && quickAddForm.get('mountPath')?.hasError('required')">
         Mount Path is required.
       </mat-error>
@@ -62,21 +59,22 @@
 
     <!-- 🌟 Action Buttons -->
     <div class="button-group">
-      <button class="finish" mat-raised-button color="primary" type="submit"
+      <button mat-raised-button color="primary" type="submit"
         [disabled]="isLoading.saving || quickAddForm.invalid || isLoading.authDisabled">
         <mat-spinner *ngIf="isLoading.saving && !isLoading.cancelled" diameter="20"></mat-spinner>
         {{ isLoading.saving && !isLoading.cancelled ? 'Adding...' : 'Create Remote' }}
+      </button>
+
+
+      <button mat-raised-button color="warn" @slideInOut class="cancel" (click)="cancelAuth()"
+        [disabled]="!isLoading.saving" *ngIf="isLoading.saving && !isLoading.cancelled">
+        Cancel Authentication
       </button>
 
       <p *ngIf="isLoading.cancelled">
         Cleaning authentication. Please wait...
         <mat-spinner *ngIf="isLoading.cancelled" diameter="20"></mat-spinner>
       </p>
-
-      <button @slideInOut class="cancel" mat-stroked-button type="button" (click)="cancelAuth()"
-        [disabled]="!isLoading.saving" *ngIf="isLoading.saving && !isLoading.cancelled">
-        Cancel Authentication
-      </button>
 
       <!-- 🔄 Additional Message (Loading) -->
       <p *ngIf="isLoading.saving && !isLoading.cancelled" class="loading-message">

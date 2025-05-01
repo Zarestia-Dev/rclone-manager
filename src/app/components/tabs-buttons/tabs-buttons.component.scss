@@ -4,17 +4,27 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
+  .mat-mdc-icon-button {
+    border-radius: 20% !important;
+    transition: all 200ms ease !important;
 
-  button {
-    border-radius: 8px;
-    padding-inline: 6px;
+    // Selected state
+    &.selected {
+      outline: none !important;
+      background-color: var(--button-hover) !important;
 
-    &:hover {
-      background: var(--button-hover);
+      // Fix for ripple effect
+      .mat-mdc-button-persistent-ripple::before {
+        opacity: 0.12 !important;
+        background-color: var(--accent-color) !important;
+      }
     }
 
-    &.active {
-      background: var(--button-active);
+    // Active and focus states
+    &:active,
+    &:focus-visible {
+      outline: none !important;
+      background-color: var(--button-hover) !important;
     }
   }
 }
