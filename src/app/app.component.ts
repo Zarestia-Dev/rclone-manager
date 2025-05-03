@@ -8,7 +8,10 @@ import { SettingsService } from "./services/settings.service";
 import { IconService } from "./services/icon.service";
 import { listen } from "@tauri-apps/api/event";
 import { RepairSheetComponent } from "./components/repair-sheet/repair-sheet.component";
-import { MatBottomSheet, MatBottomSheetModule } from "@angular/material/bottom-sheet";
+import {
+  MatBottomSheet,
+  MatBottomSheetModule,
+} from "@angular/material/bottom-sheet";
 import { TabsButtonsComponent } from "./components/tabs-buttons/tabs-buttons.component";
 import { Observable } from "rxjs";
 import { StateService } from "./services/state.service";
@@ -23,8 +26,8 @@ import { StateService } from "./services/state.service";
     OnboardingComponent,
     HomeComponent /*, RightClickDirective*/,
     MatBottomSheetModule,
-    TabsButtonsComponent
-],
+    TabsButtonsComponent,
+  ],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss",
 })
@@ -33,34 +36,28 @@ export class AppComponent {
   private bottomSheet = inject(MatBottomSheet);
   isMobile$: Observable<boolean>;
 
-
   constructor(
     private settingsService: SettingsService,
     private stateService: StateService,
-    private iconService: IconService,
+    private iconService: IconService
   ) {
     this.checkOnboardingStatus();
     this.isMobile$ = this.stateService.isMobile$;
   }
 
-  private checkOnboardingStatus(): void {
-    this.settingsService
-      .loadSettings()
-      .then((data) => {
-        console.log("Settings loaded:", data);
-        this.completedOnboarding =
-          data.settings.core?.completed_onboarding ?? false;
-        console.log("Onboarding status: ", this.completedOnboarding);
+  private async checkOnboardingStatus(): Promise<void> {
+    this.completedOnboarding =
+      (await this.settingsService.load_setting_value(
+        "core",
+        "completed_onboarding"
+      )) ?? false;
+    console.log("Onboarding status: ", this.completedOnboarding);
   
-        if (this.completedOnboarding) {
-          this.listenForErrors(); // ✅ move listener here
-        }
-      })
-      .catch((error) => {
-        console.error("Error loading settings:", error);
-      });
+    if (this.completedOnboarding) {
+      this.listenForErrors();
+    }
   }
-  
+
   private listenForErrors() {
     listen<string>("rclone_path_invalid", () => {
       this.bottomSheet.open(RepairSheetComponent, {

@@ -29,12 +29,12 @@ pub async fn get_all_remote_configs(
         .post(url)
         .send()
         .await
-        .map_err(|e| format!("Failed to fetch remote configs: {}", e))?;
+        .map_err(|e| format!("❌ Failed to fetch remote configs: {}", e))?;
 
     let json: serde_json::Value = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to parse response: {}", e))?;
 
     Ok(json)
 }
@@ -47,12 +47,12 @@ pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, S
 
     let response = state.client.post(url).send().await.map_err(|e| {
         error!("❌ Failed to fetch remotes: {}", e);
-        format!("Failed to fetch remotes: {}", e)
+        format!("❌ Failed to fetch remotes: {}", e)
     })?;
 
     let json: Value = response.json().await.map_err(|e| {
         error!("❌ Failed to parse remotes response: {}", e);
-        format!("Failed to parse response: {}", e)
+        format!("❌ Failed to parse response: {}", e)
     })?;
 
     let remotes: Vec<String> = json["remotes"]
@@ -81,12 +81,12 @@ pub async fn get_remote_config_fields(
         .post(&url)
         .send()
         .await
-        .map_err(|e| format!("Failed to fetch remote config fields: {}", e))?;
+        .map_err(|e| format!("❌ Failed to fetch remote config fields: {}", e))?;
 
     let json: Value = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to parse response: {}", e))?;
 
     if let Some(providers) = json.get("providers").and_then(|p| p.as_array()) {
         let fields = providers
@@ -96,10 +96,10 @@ pub async fn get_remote_config_fields(
 
         match fields {
             Some(fields) => Ok(fields.as_array().cloned().unwrap_or_else(Vec::new)),
-            None => Err("Remote type not found".to_string()),
+            _none => Err("❌ Remote type not found".to_string()),
         }
     } else {
-        Err("Invalid response format".to_string())
+        Err("❌ Invalid response format".to_string())
     }
 }
 
@@ -119,12 +119,12 @@ pub async fn get_remote_config(
         .post(&url)
         .send()
         .await
-        .map_err(|e| format!("Failed to fetch remote config: {}", e))?;
+        .map_err(|e| format!("❌ Failed to fetch remote config: {}", e))?;
 
     let json: serde_json::Value = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to parse response: {}", e))?;
 
     Ok(json)
 }
@@ -146,11 +146,11 @@ pub async fn get_mounted_remotes(
         .post(&url)
         .send()
         .await
-        .map_err(|e| format!("Failed to send request: {}", e))?;
+        .map_err(|e| format!("❌ Failed to send request: {}", e))?;
 
     if !response.status().is_success() {
         return Err(format!(
-            "Failed to fetch mounted remotes: {:?}",
+            "❌ Failed to fetch mounted remotes: {:?}",
             response.text().await
         ));
     }
@@ -158,7 +158,7 @@ pub async fn get_mounted_remotes(
     let json: Value = response
         .json()
         .await
-        .map_err(|e| format!("Failed to parse response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to parse response: {}", e))?;
 
     let mounts = json["mountPoints"]
         .as_array()
@@ -210,7 +210,7 @@ pub async fn get_disk_usage(
             Err(e) => {
                 attempts -= 1;
                 if attempts == 0 {
-                    return Err(format!("Failed to send request after retries: {}", e));
+                    return Err(format!("❌ Failed to send request after retries: {}", e));
                 }
                 tokio::time::sleep(std::time::Duration::from_secs(2)).await; // Wait before retrying
             }
@@ -224,12 +224,12 @@ pub async fn get_disk_usage(
             .text()
             .await
             .unwrap_or_else(|_| "Unknown error".to_string());
-        return Err(format!("Failed to fetch disk usage: {}", error_msg));
+        return Err(format!("❌ Failed to fetch disk usage: {}", error_msg));
     }
 
     let json_response: Value = match response.json().await {
         Ok(json) => json,
-        Err(e) => return Err(format!("Failed to parse response: {}", e)),
+        Err(e) => return Err(format!("❌ Failed to parse response: {}", e)),
     };
 
     // Extract values safely
@@ -269,14 +269,14 @@ async fn fetch_remote_providers(
         .post(url)
         .send()
         .await
-        .map_err(|e| format!("Failed to send request: {}", e))?;
+        .map_err(|e| format!("❌ Failed to send request: {}", e))?;
 
     let body = response
         .text()
         .await
-        .map_err(|e| format!("Failed to read response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to read response: {}", e))?;
     let providers: HashMap<String, Vec<Value>> =
-        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
+        serde_json::from_str(&body).map_err(|e| format!("❌ Failed to parse response: {}", e))?;
 
     Ok(providers)
 }

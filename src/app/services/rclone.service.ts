@@ -77,7 +77,7 @@ export class RcloneService {
       const response = await invoke<{ providers: any[] }>("get_remote_types");
       const provider = response.providers.find((p) => p.Name === type);
       console.log(response);
-      
+
       return provider ? provider.Options : [];
     } catch (error) {
       console.error(`Failed to fetch config fields for ${type}:`, error);
@@ -119,7 +119,7 @@ export class RcloneService {
     parameters: Record<string, any>
   ): Promise<void> {
     try {
-    await invoke("create_remote", { name, parameters })
+      await invoke("create_remote", { name, parameters });
     } catch (error) {
       console.error(`Error creating remote ${name}:`, error);
     }
@@ -139,27 +139,27 @@ export class RcloneService {
     name: string,
     parameters: Record<string, any>
   ): Promise<void> {
-    await invoke("update_remote", { name, parameters }).catch((error) => {
+    console.log("Updating remote:", name, parameters);
+    await invoke("update_remote", {
+      name,
+      parameters,
+    }).catch((error) => {
       console.error(`Error updating remote ${name}:`, error);
     });
   }
 
   /** Delete a remote */
   async deleteRemote(name: string): Promise<void> {
-      await invoke("delete_remote", { name }).catch((error) => {
-        console.error(`Error deleting remote ${name}:`, error);
-      });
-      await invoke("delete_remote_settings", { remoteName: name }).catch(
-        (error) => {
-          console.error(
-            `Error deleting saved mount config for ${name}:`,
-            error
-          );
-        }
-      );
-      console.log(`Remote ${name} deleted successfully.`);
+    await invoke("delete_remote", { name }).catch((error) => {
+      console.error(`Error deleting remote ${name}:`, error);
+    });
+    await invoke("delete_remote_settings", { remoteName: name }).catch(
+      (error) => {
+        console.error(`Error deleting saved mount config for ${name}:`, error);
+      }
+    );
+    console.log(`Remote ${name} deleted successfully.`);
   }
-
 
   /** List all mounted remotes */
   async listMounts(): Promise<string[]> {
@@ -173,7 +173,6 @@ export class RcloneService {
 
   async getMountedRemotes(): Promise<any[]> {
     try {
-      // return await invoke<string[]>("get_mounted_remotes");
       return await invoke<string[]>("get_cached_mounted_remotes");
     } catch (error) {
       console.error("Failed to fetch mounted remotes:", error);
@@ -196,7 +195,7 @@ export class RcloneService {
         vfsOptions: vfs_options,
       });
     } catch (error) {
-      this.infoService.openSnackBar(String(error), "Close")
+      this.infoService.openSnackBar(String(error), "Close");
       console.error("Mount failed:", error);
     }
   }
@@ -207,7 +206,7 @@ export class RcloneService {
       await invoke("unmount_remote", { mountPoint, remoteName });
       console.log("Unmounted successfully");
     } catch (error) {
-      this.infoService.openSnackBar(String(error), "Close")
+      this.infoService.openSnackBar(String(error), "Close");
       console.error("Unmount failed:", error);
     }
   }
@@ -303,7 +302,6 @@ export class RcloneService {
     }
   }
 
-
   // Get Logs
   async getRemoteLogs(remoteName: string): Promise<string[]> {
     try {
@@ -321,7 +319,7 @@ export class RcloneService {
       console.error("Error fetching remote errors:", error);
       return [];
     }
-  } 
+  }
 
   async clearRemoteLogs(remoteName: string): Promise<void> {
     try {

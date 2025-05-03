@@ -234,10 +234,13 @@ export class HomeComponent implements OnInit, OnDestroy {
       )) as boolean;
 
       if (result) {
-        await this.rcloneService.unmountRemote(
-          this.getMountPoint(remoteName) || "",
-          remoteName
-        );
+        // Unmount the remote if it is currently mounted before deleting
+        if (this.isRemoteMounted(remoteName)) {
+          await this.rcloneService.unmountRemote(
+            this.getMountPoint(remoteName) || "",
+            remoteName
+          );
+        }
         await this.rcloneService.deleteRemote(remoteName);
         this.remotes = this.remotes.filter(
           (r) => r.remoteSpecs.name !== remoteName

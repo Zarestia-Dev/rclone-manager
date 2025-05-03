@@ -8,7 +8,13 @@ use std::{
 };
 
 use log::{debug, error, info};
-use rclone::api::{engine::RcApiEngine, state::{clear_errors_for_remote, clear_logs_for_remote, get_cached_mounted_remotes, get_remote_errors, get_remote_logs}};
+use rclone::api::{
+    engine::RcApiEngine,
+    state::{
+        clear_errors_for_remote, clear_logs_for_remote, get_cached_mounted_remotes,
+        get_remote_errors, get_remote_logs,
+    },
+};
 use serde_json::json;
 use tauri::{Emitter, Manager, Theme, WindowEvent};
 use tauri_plugin_store::StoreBuilder;
@@ -74,28 +80,19 @@ use std::sync::RwLock;
 struct TrayEnabled(pub Arc<RwLock<bool>>);
 
 #[tauri::command]
-async fn set_theme(
-    theme: String,
-    window: tauri::Window,
-    state: tauri::State<'_, SettingsState<tauri::Wry>>,
-    app_handle: tauri::AppHandle,
-) -> Result<(), String> {
+async fn set_theme(theme: String, window: tauri::Window) -> Result<(), String> {
+    let current_theme = window.theme().unwrap_or(Theme::Light);
     let theme_enum = match theme.as_str() {
         "dark" => Theme::Dark,
         _ => Theme::Light,
     };
-    window
-        .set_theme(Some(theme_enum))
-        .map_err(|e| format!("Failed to set theme: {}", e))?;
+    if current_theme != theme_enum {
+        window
+            .set_theme(Some(theme_enum))
+            .map_err(|e| format!("Failed to set theme: {}", e))?;
+    }
 
-    // Save the theme setting
-    let settings_json = json!({ "general": { "theme": theme.clone() } });
-    crate::core::settings::settings::save_settings(
-        state,
-        settings_json,
-        app_handle,
-    )
-    .await
+    Ok(())
 }
 
 fn init_logging(enable_debug: bool) {
@@ -118,7 +115,7 @@ pub fn init_rclone_state(
     // Set API URL
     RCLONE_STATE
         .set_api(
-            format!("http://localhost:{}", settings.core.rclone_api_port),
+            format!("http://127.0.0.1:{}", settings.core.rclone_api_port),
             settings.core.rclone_api_port,
         )
         .map_err(|e| format!("Failed to set Rclone API: {}", e))?;
@@ -126,7 +123,7 @@ pub fn init_rclone_state(
     // Set OAuth URL
     RCLONE_STATE
         .set_oauth(
-            format!("http://localhost:{}", settings.core.rclone_oauth_port),
+            format!("http://127.0.0.1:{}", settings.core.rclone_oauth_port),
             settings.core.rclone_oauth_port,
         )
         .map_err(|e| format!("Failed to set Rclone OAuth: {}", e))?;
@@ -160,11 +157,13 @@ async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
     let app_handle1 = app_handle.clone();
     let app_handle2 = app_handle.clone();
     let app_handle3 = app_handle.clone();
+    let app_handle4 = app_handle.clone();
 
     let _refresh = tokio::join!(
         CACHE.refresh_remote_list(app_handle1),
         CACHE.refresh_remote_settings(app_handle2),
         CACHE.refresh_remote_configs(app_handle3),
+        CACHE.refresh_mounted_remotes(app_handle4),
     );
 
     if settings.general.tray_enabled {
@@ -190,42 +189,43 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .on_window_event(move |window, event| {
-            match event {
-                WindowEvent::CloseRequested { api, .. } => {
-                    let tray_enabled_arc = window.app_handle().state::<TrayEnabled>().0.clone();
-                    
-                    if let Ok(tray_enabled) = tray_enabled_arc.clone().read() {
-                        if *tray_enabled {
-                            api.prevent_close();
-                            if let Some(win) = window.app_handle().get_webview_window("main") {
-                                win.hide().unwrap_or_else(|e| {
-                                    eprintln!("Failed to hide window: {}", e);
-                                });
-                                win.eval("document.body.innerHTML = '';").unwrap_or_else(|e| {
-                                    eprintln!("Failed to clear window content: {}", e);
-                                });
-                            }
-                        } else {
-                            window.hide().unwrap_or_else(|e| {
+        .on_window_event(move |window, event| match event {
+            WindowEvent::CloseRequested { api, .. } => {
+                let tray_enabled_arc = window.app_handle().state::<TrayEnabled>().0.clone();
+
+                if let Ok(tray_enabled) = tray_enabled_arc.clone().read() {
+                    if *tray_enabled {
+                        api.prevent_close();
+                        if let Some(win) = window.app_handle().get_webview_window("main") {
+                            win.hide().unwrap_or_else(|e| {
                                 eprintln!("Failed to hide window: {}", e);
                             });
-                            tauri::async_runtime::block_on(handle_shutdown(window.app_handle().clone()));
-                            window.app_handle().exit(0);
+                            win.eval("document.body.innerHTML = '';")
+                                .unwrap_or_else(|e| {
+                                    eprintln!("Failed to clear window content: {}", e);
+                                });
                         }
                     } else {
-                        eprintln!("Failed to read tray_enabled state");
-                    }
-                }
-                WindowEvent::Focused(true) => {
-                    if let Some(win) = window.app_handle().get_webview_window("main") {
-                        win.show().unwrap_or_else(|e| {
-                            eprintln!("Failed to show window: {}", e);
+                        window.hide().unwrap_or_else(|e| {
+                            eprintln!("Failed to hide window: {}", e);
                         });
+                        tauri::async_runtime::block_on(handle_shutdown(
+                            window.app_handle().clone(),
+                        ));
+                        window.app_handle().exit(0);
                     }
+                } else {
+                    eprintln!("Failed to read tray_enabled state");
                 }
-                _ => {}
             }
+            WindowEvent::Focused(true) => {
+                if let Some(win) = window.app_handle().get_webview_window("main") {
+                    win.show().unwrap_or_else(|e| {
+                        eprintln!("Failed to show window: {}", e);
+                    });
+                }
+            }
+            _ => {}
         })
         .manage(RcloneState {
             client: reqwest::Client::new(),
@@ -292,7 +292,7 @@ pub fn run() {
                 let app_clone = app.clone();
                 tauri::async_runtime::spawn(async move {
                     if let Err(e) =
-                        unmount_all_remotes(app_clone.clone(), app_clone.state(), "menu").await
+                        unmount_all_remotes(app_clone.clone(), app_clone.state(), "menu".to_string()).await
                     {
                         error!("Failed to unmount all remotes: {}", e);
                     }

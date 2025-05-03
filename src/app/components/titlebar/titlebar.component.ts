@@ -74,17 +74,44 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     this.isMobile$ = this.stateService.isMobile$;
   }
 
-  async ngOnInit(): Promise<void> { // Change return type to Promise<void>
+  async ngOnInit(): Promise<void> {
     try {
       const theme = await this.settingsService.load_setting_value("general", "theme");
-      this.selectedTheme = theme || "system";
-      this.setTheme(this.selectedTheme);
+      // Only set theme if it's different from the current one
+      if (theme && theme !== this.selectedTheme) {
+        this.selectedTheme = theme;
+        await this.setTheme(this.selectedTheme, true); // Add a parameter to indicate initialization
+      } else {
+        // Still need to apply the theme, but without triggering save
+        const effectiveTheme = this.selectedTheme === "system" ? this.getSystemTheme() : this.selectedTheme;
+        document.documentElement.setAttribute("class", effectiveTheme);
+        await invoke("set_theme", { theme: effectiveTheme });
+      }
     } catch (error) {
+      // Default to system theme if loading fails
       this.selectedTheme = "system";
-      this.setTheme(this.selectedTheme);
+      const effectiveTheme = this.getSystemTheme();
+      document.documentElement.setAttribute("class", effectiveTheme);
+      await invoke("set_theme", { theme: effectiveTheme });
     }
-
+  
     this.initThemeSystem();
+  }
+  
+  // Update setTheme signature
+  async setTheme(theme: Theme, isInitialization = false): Promise<void> {
+    if (this.selectedTheme === theme && !isInitialization) return;
+    
+    this.selectedTheme = theme;
+    const effectiveTheme = theme === "system" ? this.getSystemTheme() : theme;
+  
+    document.documentElement.setAttribute("class", effectiveTheme);
+    await invoke("set_theme", { theme: effectiveTheme });
+  
+    // Only save settings if this isn't during initialization
+    if (!isInitialization) {
+      await this.settingsService.saveSetting("general", "theme", theme);
+    }
   }
 
   ngOnDestroy(): void {
@@ -127,14 +154,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     appWindow.toggleMaximize();
   }
 
-  // Theme management
-  async setTheme(theme: Theme): Promise<void> {
-    this.selectedTheme = theme;
-    const effectiveTheme = theme === "system" ? this.getSystemTheme() : theme;
-
-    document.documentElement.setAttribute("class", effectiveTheme);
-    await invoke("set_theme", { theme: effectiveTheme });
-  }
 
   getSystemTheme(): "light" | "dark" {
     return window.matchMedia("(prefers-color-scheme: dark)").matches

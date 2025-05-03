@@ -1,15 +1,9 @@
-use crate::{
-    rclone::api::{
-        api_query::get_mounted_remotes,
-        state::{get_cached_remotes, get_settings},
-    },
-    RcloneState,
-};
+use crate::rclone::api::state::{get_cached_mounted_remotes, get_cached_remotes, get_settings};
 use log::{error, warn};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
-    AppHandle, Manager,
+    AppHandle,
 };
 static OLD_MAX_TRAY_ITEMS: AtomicUsize = AtomicUsize::new(0);
 
@@ -32,13 +26,12 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
         MenuItem::with_id(&handle, "unmount_all", "Unmount All", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(&handle, "quit", "Quit", true, None::<&str>)?;
 
-    let rclone_state = app.state::<RcloneState>();
     let remotes = get_cached_remotes().await.unwrap_or_else(|err| {
         error!("Failed to fetch cached remotes: {}", err);
         vec![]
     });
 
-    let mounted_remotes = match get_mounted_remotes(rclone_state).await {
+    let mounted_remotes = match get_cached_mounted_remotes().await {
         Ok(remotes) => remotes,
         Err(err) => {
             error!("Failed to fetch mounted remotes: {}", err);

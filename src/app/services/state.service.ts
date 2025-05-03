@@ -112,14 +112,17 @@ export class StateService {
     this._isAuthInProgress$.next(true);
     this._currentRemoteName$.next(remoteName);
     this._isAuthCancelled$.next(false);
+    console.log("Starting auth for remote:", remoteName);
   }
 
-  async cancelAuth(): Promise<void> {
+  async cancelAuth(editMode: boolean): Promise<void> {
     this._isAuthCancelled$.next(true);
     const remoteName = this._currentRemoteName$.value;
+    console.log("Cancelling auth for remote:", remoteName);
     try {
-      if (remoteName) {
-        await this.rcloneService.quitOAuth();
+      await this.rcloneService.quitOAuth();
+      if (remoteName && !editMode) {
+        console.log("Deleting remote:", remoteName);
         await this.rcloneService.deleteRemote(remoteName);
       }
     } finally {
@@ -131,6 +134,7 @@ export class StateService {
     this._isAuthInProgress$.next(false);
     this._currentRemoteName$.next(null);
     this._isAuthCancelled$.next(false);
+    console.log("Auth state reset");
   }
 
   get currentState() {

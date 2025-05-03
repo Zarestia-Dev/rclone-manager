@@ -55,9 +55,18 @@ fn handle_rclone_api_url_updated(app: &AppHandle) {
     app.listen(events::RCLONE_API_URL_UPDATED, move |_| {
         let app = app_handle.clone();
         tauri::async_runtime::spawn(async move {
-            let mut engine = ENGINE.lock().unwrap();
-            engine.stop();
-            engine.start(&app);
+            let port = RCLONE_STATE.get_api().1;
+            let result = tauri::async_runtime::spawn_blocking(move || {
+                let mut engine = match ENGINE.lock() {
+                    Ok(guard) => guard,
+                    Err(poisoned) => poisoned.into_inner(),
+                };
+                engine.update_port(&app, port)
+            }).await;
+
+            if let Err(e) = result {
+                error!("Failed to update Rclone API port: {}", e);
+            }
         });
     });
 }
@@ -71,15 +80,32 @@ fn handle_rclone_path_updated(app: &AppHandle) {
             Ok(parsed_path) => {
                 if let Some(path_str) = parsed_path.as_str() {
                     debug!("🔄 Rclone path updated to: {}", path_str);
-                    tauri::async_runtime::spawn({
-                        let app_handle = app_handle.clone();
-                        async move {
-                            ENGINE.lock().unwrap().update_path(&app_handle);
+                    let app_handle_clone = app_handle.clone();                    
+                    tauri::async_runtime::spawn(async move {
+                        let result = tauri::async_runtime::spawn_blocking(move || {
+                            match ENGINE.lock() {
+                                Ok(mut engine) => engine.update_path(&app_handle_clone),
+                                Err(poisoned) => {
+                                    error!("Mutex poisoned during path update");
+                                    let mut guard = poisoned.into_inner();
+                                    guard.update_path(&app_handle_clone)
+                                }
+                            }
+                        }).await;
+
+                        if let Err(e) = result {
+                            error!("Failed to update rclone path: {}", e);
+                            // let _ = app_handle_clone.emit("rclone_error", 
+                            //     format!("Failed to update rclone path: {}", e));
                         }
                     });
                 }
             }
-            Err(e) => error!("❌ Failed to parse rclone path update: {}", e),
+            Err(e) => {
+                error!("❌ Failed to parse rclone path update: {}", e);
+                let _ = app_handle.emit("rclone_error", 
+                    format!("Invalid path update payload: {}", e));
+            }
         }
     });
 }
@@ -196,7 +222,7 @@ fn handle_settings_changed(app: &AppHandle) {
                     if let Some(api_port) = core.get("rclone_api_port").and_then(|v| v.as_u64()) {
                         debug!("🔌 Rclone API Port changed to: {}", api_port);
                         if let Err(e) = RCLONE_STATE
-                            .set_api(format!("http://localhost:{}", api_port), api_port as u16)
+                            .set_api(format!("http://127.0.0.1:{}", api_port), api_port as u16)
                         {
                             error!("Failed to set Rclone API Port: {}", e);
                         }
@@ -206,7 +232,7 @@ fn handle_settings_changed(app: &AppHandle) {
                     {
                         debug!("🔑 Rclone OAuth Port changed to: {}", oauth_port);
                         if let Err(e) = RCLONE_STATE.set_oauth(
-                            format!("http://localhost:{}", oauth_port),
+                            format!("http://127.0.0.1:{}", oauth_port),
                             oauth_port as u16,
                         ) {
                             error!("Failed to set Rclone OAuth Port: {}", e);

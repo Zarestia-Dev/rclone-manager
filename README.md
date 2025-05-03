@@ -27,16 +27,34 @@
 
 ## 📸 Screenshots
 
-📷 *Coming soon...*
+<p align="center">
+  <strong>💻 Desktop</strong><br/>
+  <img src="assets/desktop-ui.png" alt="Desktop UI" width="500"/>
+</p>
+
+<p align="center">
+  <strong>📱 Mobile</strong><br/>
+  <img src="assets/mobile-ui.png" alt="Mobile UI" width="200"/>
+</p>
+
+<p align="center">
+  <em>Both light and dark modes are shown with a diagonal split for visual comparison.</em>
+</p>
+
 
 ---
 
 ## 🚀 Features
 
+- 🎨 **User-Friendly Theme** – Enjoy a clean, intuitive interface designed for ease of use, making remote management accessible for everyone.
 - 🛠 **Remote Management** – Add, edit, and delete remotes easily.
 - 🔐 **OAuth Support** – Authenticate with popular providers effortlessly.
-- ☁️ **Supported Remotes** – Google Drive, Dropbox, OneDrive, AWS S3, and many more.
-- 📦 **Mounting** – Native or systemd-based remote mount/unmount functionality.
+- ☁️ **Supported Remotes** – Nearly all Rclone remotes are supported, including:
+  - Google Drive
+  - Dropbox
+  - OneDrive
+  - S3-compatible services
+  - And many more!
 - ⚙️ **Advanced VFS Options** – Tune caching, read sizes, and other performance options.
 - 🖥 **Tray Icon Support** – Quick access to your remotes from the system tray.
 - 🌗 **Light & Dark Modes** – GTK-inspired themes with a modern, responsive layout.
@@ -96,6 +114,89 @@ npm run tauri dev
 ```bash
 npm run tauri build
 ```
+
+---
+
+## 🐛 Known Issues
+
+### 💡 Why Does a Terminal Window Flash on Windows?
+
+On **Windows**, you may see a **brief terminal window flash** either:
+
+- When **starting Rclone Manager**, or
+- When running certain Rclone operations like **mounting remotes** or **OAuth authentication**.
+
+This is **not a bug in Rclone Manager**, but a side effect of how the **official Rclone binary** is compiled:
+
+> ⚙️ **Rclone is compiled as a console application using Go**, and on Windows, such binaries always open a terminal window when executed — even if launched from a GUI app.
+
+### ✅ What This Means
+
+- This behavior is **harmless** and does **not affect** functionality.
+- It is simply a side effect of **how Rclone is compiled**, not something we directly control.
+
+### 🔮 Future Plans & Workarounds
+
+We are actively looking into solutions to suppress the terminal window:
+
+- ✨ **Build a GUI version of Rclone**
+  A custom Rclone binary can be compiled with Go using:
+  `go build -ldflags="-H windowsgui" -o rclone.exe`
+  This prevents the terminal window from opening.
+
+- 🤝 **Contribute upstream**
+  We’re considering proposing a **pull request to the Rclone project** to provide an optional “GUI mode” build target for better GUI integration.
+
+Any approach will ensure full CLI compatibility is preserved.
+
+---
+
+## 📜 Roadmap
+
+### 🔜 Short-Term Goals _(Next few releases)_
+
+- [ ] **Windows & macOS Support**
+      Package and test Rclone Manager for Windows and macOS.
+
+- [ ] **Built-in Sync & Copy Support**
+      Provide GUI options for `rclone sync` and `rclone copy` with common settings.
+
+- [ ] **Enhanced Remote Management**
+      Improve the interface for creating, editing, and organizing remotes.
+
+- [ ] **User Interface Enhancements**
+      Refine layout, icons, and theming for a smoother user experience.
+
+- [ ] **Feature Requests & Feedback Integration**
+      Review community input and prioritize highly requested features.
+
+- [ ] **Basic Testing & QA**
+      Implement initial test coverage and manual platform validation.
+
+---
+
+### 🚀 Long-Term Goals _(Future milestones)_
+
+- [ ] **Mobile Support**
+      Explore options for Android and iOS compatibility.
+
+- [ ] **Performance Optimization**
+      Streamline backend communication, reduce resource usage, and optimize startup time.
+
+- [ ] **Localization / Internationalization**
+      Add multi-language support to reach a broader user base.
+
+- [ ] **Accessibility Improvements**
+      Ensure compatibility with screen readers, keyboard-only navigation, and accessibility standards.
+
+- [ ] **Advanced Rclone Features**
+      Expose more advanced Rclone functionalities (like filters, bandwidth limits, scheduling).
+
+- [ ] **Integration with Other Tools**
+      Allow interaction with file managers, cloud dashboards, or automation tools.
+
+- [ ] **Comprehensive Testing & QA**
+      Establish robust automated testing pipelines and continuous integration for stability across platforms.
 
 ---
 

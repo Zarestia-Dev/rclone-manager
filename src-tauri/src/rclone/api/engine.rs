@@ -1,9 +1,3 @@
-/// To Do:
-/// - When app rebuilds, background thread should be stopped (rclone rcd).
-/// Because it cleans the process and when the app did not see the background thread.
-/// After trying to start "rclone" with the ENGINE.lock(), it will be poisoned.
-/// Because the thread is still running with same port and start function will not be able to start the rclone process.
-/// Ensure to implement a mechanism to stop the background thread before rebuilding.
 use std::{
     path::PathBuf,
     process::{Child, Command},
@@ -32,10 +26,22 @@ pub struct RcApiEngine {
     should_exit: bool,
     running: bool,
     rclone_path: PathBuf,
+    current_api_port: u16,
     already_reported_invalid_path: bool,
 }
 
 impl RcApiEngine {
+    fn default() -> Self {
+        Self {
+            process: None,
+            should_exit: false,
+            running: false,
+            rclone_path: PathBuf::new(),
+            already_reported_invalid_path: false,
+            current_api_port: RCLONE_STATE.get_api().1, // Initialize with current port
+        }
+    }
+
     pub fn init(&mut self, app: &AppHandle) {
         if self.rclone_path.as_os_str().is_empty() {
             self.rclone_path = read_rclone_path(app);
@@ -132,6 +138,16 @@ impl RcApiEngine {
         }
     }
 
+    pub fn update_port(&mut self, app: &AppHandle, new_port: u16) {
+        info!(
+            "🔄 Updating Rclone API port from {} to {}",
+            self.current_api_port, new_port
+        );
+        self.stop();
+        self.current_api_port = new_port;
+        self.start(app);
+    }
+
     pub fn start(&mut self, app: &AppHandle) {
         if self.process.is_some() {
             debug!("⚠️ Rclone process already exists, stopping first...");
@@ -139,16 +155,31 @@ impl RcApiEngine {
         }
 
         let port = RCLONE_STATE.get_api().1;
+        self.current_api_port = port;
 
-        match Command::new(&self.rclone_path)
-            .args(&[
-                "rcd",
-                "--rc-no-auth",
-                "--rc-serve",
-                &format!("--rc-addr=127.0.0.1:{}", port),
-            ])
-            .spawn()
+        let mut engine_app = Command::new(&self.rclone_path);
+
+        engine_app.args(&[
+            "rcd",
+            "--rc-no-auth",
+            "--rc-serve",
+            &format!("--rc-addr=127.0.0.1:{}", port),
+        ]);
+
+
+        // This is a workaround for Windows to avoid showing a console window
+        // when starting the Rclone process.
+        // It uses the CREATE_NO_WINDOW and DETACHED_PROCESS flags.
+        // But it may not work in all cases. Like when app build for terminal
+        // and not for GUI. Rclone may still try to open a console window.
+        // You can see the flashing of the console window when starting the app.
+        #[cfg(target_os = "windows")]
         {
+            use std::os::windows::process::CommandExt;
+            engine_app.creation_flags(0x08000000 | 0x00200000);
+        }
+
+        match engine_app.spawn() {
             Ok(child) => {
                 if self.wait_until_ready(5) {
                     self.running = true;
@@ -196,14 +227,30 @@ impl RcApiEngine {
 
     pub fn stop(&mut self) {
         if let Some(mut child) = self.process.take() {
-            info!("🛑 Killing Rclone process...");
+            let quit_url = format!("http://127.0.0.1:{}/core/quit", self.current_api_port);
+
+            if self.running {
+                info!(
+                    "🔄 Attempting graceful shutdown of Rclone on port {}...",
+                    self.current_api_port
+                );
+                if let Ok(_) = Client::new().post(&quit_url).send() {
+                    // Wait a bit for graceful shutdown
+                    thread::sleep(Duration::from_secs(1));
+                }
+            }
+
+            // Force kill if still running
+            info!(
+                "🛑 Killing Rclone process on port {}...",
+                self.current_api_port
+            );
             if let Err(e) = child.kill() {
                 error!("❌ Failed to kill Rclone: {}", e);
             }
             let _ = child.wait();
+            self.running = false;
         }
-
-        self.running = false;
     }
 
     pub fn shutdown(&mut self) {

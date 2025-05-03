@@ -316,10 +316,18 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   private createRemoteForm(): FormGroup {
-    return this.fb.group({
-      name: ["", [Validators.required, this.validateRemoteName.bind(this)]],
-      type: ["", Validators.required],
+    const isEditMode = this.editTarget === "remote" && !!this.data?.existingConfig;
+    const form = this.fb.group({
+      name: [
+        { value: "", disabled: isEditMode },
+        [Validators.required, this.validateRemoteName.bind(this)],
+      ],
+      type: [
+        { value: "", disabled: isEditMode },
+        [Validators.required],
+      ]
     });
+    return form;
   }
 
   private createRemoteConfigForm(): FormGroup {
@@ -719,6 +727,8 @@ export class RemoteConfigModalComponent implements OnInit {
     const updatedConfig: any = {};
     const remoteName = this.data.name || this.remoteForm.get("name")?.value;
 
+    await this.stateService.startAuth(remoteName);
+
     switch (this.editTarget) {
       case "remote":
         await this.handleRemoteUpdate(updatedConfig);
@@ -1033,7 +1043,7 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   async cancelAuth(): Promise<void> {
-    await this.stateService.cancelAuth();
+    await this.stateService.cancelAuth(this.editTarget !==  null);
   }
 
   @HostListener("document:keydown.escape", ["$event"])

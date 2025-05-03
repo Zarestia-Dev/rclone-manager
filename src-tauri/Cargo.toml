@@ -44,6 +44,9 @@ walkdir = "2.5.0"
 sha2 = "0.10.8"
 tempfile = "3.19.1"
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59.0", features = ["Win32_System_Threading"] }
+
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"
 

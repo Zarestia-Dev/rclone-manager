@@ -263,7 +263,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   async cancelAuth(): Promise<void> {
-    await this.stateService.cancelAuth();
+    await this.stateService.cancelAuth(false);
   }
 
   private setFormState(disabled: boolean): void {
