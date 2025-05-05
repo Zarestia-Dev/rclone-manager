@@ -221,7 +221,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     if (this.quickAddForm.invalid || this.isLoading.saving) return;
 
     const formValue = this.quickAddForm.value as QuickAddForm;
-    await this.stateService.startAuth(formValue.remoteName);
+    await this.stateService.startAuth(formValue.remoteName, false);
 
     try {
       await this.handleRemoteCreation(formValue);
@@ -263,7 +263,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   async cancelAuth(): Promise<void> {
-    await this.stateService.cancelAuth(false);
+    await this.stateService.cancelAuth();
   }
 
   private setFormState(disabled: boolean): void {

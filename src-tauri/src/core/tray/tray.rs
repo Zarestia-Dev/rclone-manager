@@ -26,6 +26,7 @@ pub async fn setup_tray(
         .icon(Image::from_bytes(include_bytes!(
             "../../../icons/rclone_symbolic.png"
         ))?)
+        .tooltip("RClone Manager")
         .menu(&tray_menu)
         .on_tray_icon_event(move |tray, event| {
             let app = tray.app_handle();

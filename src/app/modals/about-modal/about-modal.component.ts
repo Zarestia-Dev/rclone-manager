@@ -17,10 +17,16 @@ import { MatButtonModule } from "@angular/material/button";
     trigger("slideOverlay", [
       transition(":enter", [
         style({ transform: "translateX(100%)" }),
-        animate("300ms ease-out", style({ transform: "translateX(0%)" })),
+        animate(
+          "200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          style({ transform: "translateX(0%)" })
+        ),
       ]),
       transition(":leave", [
-        animate("300ms ease-in", style({ transform: "translateX(100%)" })),
+        animate(
+          "200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          style({ transform: "translateX(100%)" })
+        ),
       ]),
     ]),
   ],
@@ -28,6 +34,12 @@ import { MatButtonModule } from "@angular/material/button";
 export class AboutModalComponent {
   currentPage = "main";
   version = "0.1.0";
+
+  scrolled = false;
+
+  onScroll(content: HTMLElement) {
+    this.scrolled = content.scrollTop > 10;
+  }
 
   constructor(
     private dialogRef: MatDialogRef<AboutModalComponent>,
@@ -55,7 +67,7 @@ export class AboutModalComponent {
     );
   }
 
-  @HostListener('document:keydown.escape', ['$event'])
+  @HostListener("document:keydown.escape", ["$event"])
   close() {
     this.dialogRef.close();
   }

@@ -47,10 +47,6 @@
   padding-inline-start: 6px;
   transition: all 200ms ease-in-out;
 
-  &:hover {
-    border-color: var(--theme-border-hover);
-  }
-
   .checkmark {
     width: 20px;
     height: 20px;

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=RClone Manager
+Comment=User-friendly GUI for Rclone
+Exec=rclone-manager
+Icon=rclone-manager
+Terminal=false
+Type=Application
+Categories=Utility;FileTools;
+Keywords=rclone;cloud;backup;sync;
+StartupWMClass=rclone-manager
+MimeType=application/x-rclone-config;

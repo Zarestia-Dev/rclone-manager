@@ -74,12 +74,19 @@
   }
 }
 
-@media (max-width: 500px), (max-height: 500px) {
+@media (max-width: 500px) {
   .empty-state {
-    align-items: start !important;
+    align-items: flex-start !important;
 
     .empty-state-actions {
       flex-direction: column;
+      gap: 12px;
     }
+  }
+}
+
+@media (max-height: 500px) {
+  .empty-state {
+    align-items: flex-start !important;
   }
 }

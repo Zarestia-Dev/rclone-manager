@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "RClone Manager",
+  "productName": "rclone-manager",
   "version": "0.1.0",
   "identifier": "com.rclone-manager.app",
   "build": {
@@ -11,6 +11,11 @@
   },
 
   "app": {
+    // "trayIcon": { // Path to the tray icon. I handled the tray icon in the in rust.
+    //   "iconPath": "icons/rclone_symbolic.png",
+    //   "tooltip": "RClone Manager",
+    //   "id": "main"
+    // },
     "windows": [
       {
         "title": "RClone Manager",
@@ -34,12 +39,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi", "dmg", "app", "deb", "rpm", "appimage"],
-    "category": "utility",
-    "shortDescription": "User-friendly GUI for RClone",
-    "longDescription": "RClone Manager is a user-friendly GUI for RClone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge.",
-    "copyright": "Copyright © 2025 RClone Manager",
-    "license": "GNU GPLv3",
+    "targets": ["nsis", "dmg", "app", "appimage", "deb", "rpm"],
     "linux": {
       "deb": {
         "desktopTemplate": "linux/template.desktop",
@@ -61,6 +61,11 @@
         "compression": "lzma"
       }
     },
+    "category": "utility",
+    "shortDescription": "User-friendly GUI for RClone",
+    "longDescription": "RClone Manager is a user-friendly GUI for RClone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge.",
+    "copyright": "Copyright © 2025 RClone Manager",
+    "license": "GNU GPLv3",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

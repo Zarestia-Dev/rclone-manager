@@ -1,11 +1,11 @@
 <h1 align="center">
-  <img src="src/assets/rclone.svg" alt="Rclone Manager" height="180">
+  <img src="src/assets/rclone.svg" alt="RClone Manager" height="180">
   <br>
-  Rclone Manager
+  RClone Manager
 </h1>
 
 <p align="center">
-  <b>Cross-platform GUI for managing Rclone remotes with style.</b><br>
+  <b>Cross-platform GUI for managing RClone remotes with style.</b><br>
   <i>Built with Angular + Tauri · Linux support (Windows/macOS planned)</i>
 </p>
 
@@ -13,7 +13,7 @@
 
 ## 🌐 Overview
 
-**Rclone Manager** is a **cross-platform (currently Linux-only)** GUI application to help users manage [Rclone](https://rclone.org/) remotes with a modern interface.
+**RClone Manager** is a **cross-platform (currently Linux-only)** GUI application to help users manage [RClone](https://rclone.org/) remotes with a modern interface.
 
 > ⚠️ **Actively developed** – Expect frequent updates and improvements.
 
@@ -75,7 +75,6 @@
 👉 Get the latest release from:
 
 - 🔗 [GitLab Releases](https://gitlab.com/Hakanbaban53/rclone-manager/-/releases)
-- 🔗 [GitHub Releases](https://github.com/Hakanbaban53/rclone-manager/releases)
 
 > 🚧 Only Linux builds are currently provided. Windows and macOS support is on the roadmap.
 
@@ -85,9 +84,14 @@
 
 ### 🔍 Prerequisites
 
-- [Rclone](https://rclone.org/downloads/) – Required for remote management
-- Node.js – For Angular development
-- Rust & Cargo – For building Tauri
+Make sure you have the following installed:
+
+- **[RClone](https://rclone.org/downloads/):** Required for remote management.
+- **[Fuse](https://github.com/libfuse/libfuse):** Needed for mounting remotes on Linux/macOS.
+- **[WinFsp](https://github.com/billziss-gh/winfsp):** Needed for mounting remotes on Windows.
+- **[Node.js](https://nodejs.org/en/download/):** Required for Angular development and running the frontend.
+- **[Rust](https://www.rust-lang.org/tools/install):** Required for Tauri (backend) development.
+- **[Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html):** Rust’s package manager, required for Tauri.
 
 ### 💻 Development Setup
 

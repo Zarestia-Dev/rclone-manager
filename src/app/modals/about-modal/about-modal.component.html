@@ -1,15 +1,15 @@
 <div class="about-modal">
-    <div class="modal-header" data-tauri-drag-region>
-        <button style="display: none;">
-            <mat-icon svgIcon="search"></mat-icon>
-          </button>
-          <p></p>
-        <button class="close-btn" (click)="close()">
-            <mat-icon svgIcon="circle-xmark"></mat-icon>
-        </button>
+    <div class="modal-header" data-tauri-drag-region [class.scrolled]="scrolled">
+      <button>
+        <mat-icon></mat-icon>
+      </button>
+      <p>About</p>
+      <button class="close-btn" (click)="close()">
+        <mat-icon svgIcon="circle-xmark"></mat-icon>
+      </button>
     </div>
     <!-- Main About Page -->
-    <div class="modal-content" [class.blurred]="currentPage !== 'main'">
+    <div class="modal-content" #content (scroll)="onScroll(content)" [class.blurred]="currentPage !== 'main'">
         <mat-icon svgIcon="rclone" class="app-icon"></mat-icon>
         <h2 class="app-name">RClone Manager</h2>
         <p class="app-team">Hakan İSMAİL</p>

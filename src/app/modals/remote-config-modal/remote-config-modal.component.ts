@@ -134,7 +134,7 @@ interface LoadingState {
             [
               style({ transform: "translateX(-100%)", opacity: 0 }),
               animate(
-                "500ms cubic-bezier(0.35, 0, 0.25, 1)",
+                "300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
                 style({ transform: "translateX(0)", opacity: 1 })
               ),
             ],
@@ -144,7 +144,7 @@ interface LoadingState {
             ":leave",
             [
               animate(
-                "500ms cubic-bezier(0.35, 0, 0.25, 1)",
+                "300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
                 style({ transform: "translateX(-100%)", opacity: 0 })
               ),
             ],
@@ -727,7 +727,7 @@ export class RemoteConfigModalComponent implements OnInit {
     const updatedConfig: any = {};
     const remoteName = this.data.name || this.remoteForm.get("name")?.value;
 
-    await this.stateService.startAuth(remoteName);
+    await this.stateService.startAuth(remoteName, true);
 
     switch (this.editTarget) {
       case "remote":
@@ -762,7 +762,7 @@ export class RemoteConfigModalComponent implements OnInit {
       filter_options: this.safeJsonParse(mountData.jsonConfigs?.filter),
     };
 
-    await this.stateService.startAuth(remoteData.name);
+    await this.stateService.startAuth(remoteData.name, false);
     await this.rcloneService.createRemote(remoteData.name, remoteData);
     await this.settingsService.saveRemoteSettings(remoteData.name, finalConfig);
     return { success: true };
@@ -1043,7 +1043,7 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   async cancelAuth(): Promise<void> {
-    await this.stateService.cancelAuth(this.editTarget !==  null);
+    await this.stateService.cancelAuth();
   }
 
   @HostListener("document:keydown.escape", ["$event"])

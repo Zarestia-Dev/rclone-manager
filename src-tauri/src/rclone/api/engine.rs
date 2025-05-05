@@ -49,8 +49,6 @@ impl RcApiEngine {
 
         let app_handle = app.clone();
 
-        self.start(app);
-
         thread::spawn(move || loop {
             {
                 let mut engine = match RcApiEngine::lock_engine() {

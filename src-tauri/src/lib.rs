@@ -192,7 +192,6 @@ pub fn run() {
         .on_window_event(move |window, event| match event {
             WindowEvent::CloseRequested { api, .. } => {
                 let tray_enabled_arc = window.app_handle().state::<TrayEnabled>().0.clone();
-
                 if let Ok(tray_enabled) = tray_enabled_arc.clone().read() {
                     if *tray_enabled {
                         api.prevent_close();

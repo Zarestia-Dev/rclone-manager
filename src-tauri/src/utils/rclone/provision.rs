@@ -21,7 +21,7 @@ pub async fn provision_rclone(
 
     let install_path = match path {
         Some(p) => PathBuf::from(p),
-        None => app_handle
+        _none => app_handle
             .path()
             .app_data_dir()
             .expect("Failed to get app data directory"),

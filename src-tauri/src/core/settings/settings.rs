@@ -391,9 +391,8 @@ pub async fn backup_settings(
     // Create archive (same as before)
     if let Some(pw) = password {
         // 7z encrypted
-        let seven_zip = which::which("7z")
-            .or_else(|_| which::which("7za"))
-            .map_err(|_| "7z/7za not found on system. Encryption is unavailable.".to_string())?;
+        let seven_zip = find_7z_executable()
+            .map_err(|e| format!("Failed to find 7z executable: {}", e))?;
         let status = Command::new(seven_zip)
             .current_dir(export_dir)
             .arg("a")
@@ -450,7 +449,9 @@ pub struct BackupAnalysis {
 }
 
 pub fn is_7z_encrypted(path: &Path) -> Result<bool, String> {
-    let output = Command::new("7z")
+    let seven_zip = find_7z_executable()
+        .map_err(|e| format!("Failed to find 7z executable: {}", e))?;
+    let output = Command::new(seven_zip)
         .arg("l")
         .arg(path)
         .output()
@@ -508,7 +509,9 @@ pub async fn restore_encrypted_settings(
     let temp_dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let out_path = temp_dir.path().to_str().unwrap();
 
-    let output = Command::new("7z")
+    let seven_zip = find_7z_executable()
+        .map_err(|e| format!("Failed to find 7z executable: {}", e))?;
+    let output = Command::new(seven_zip)
         .args(&["x", path.to_str().unwrap()])
         .arg(format!("-p{}", password))
         .arg(format!("-o{}", out_path))
@@ -622,6 +625,44 @@ pub async fn restore_settings(
     }
 
     restore_settings_from_path(temp_dir.path(), state, app_handle).await
+}
+
+
+fn find_7z_executable() -> Result<String, String> {
+    for cmd in ["7z", "7za", "7z.exe", "7za.exe"] {
+        if which::which(cmd).is_ok() {
+            return Ok(cmd.to_string());
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        // use winreg::enums::*;
+        // use winreg::RegKey;
+
+        let common_paths = [
+            r"C:\Program Files\7-Zip\7z.exe",
+            r"C:\Program Files (x86)\7-Zip\7z.exe",
+            r"C:\tools\7zip\7z.exe",
+        ];
+
+        for path in common_paths.iter() {
+            if Path::new(path).exists() {
+                return Ok(path.to_string());
+            }
+        }
+
+        // if let Ok(hklm) = RegKey::predef(HKEY_LOCAL_MACHINE).open_subkey("SOFTWARE\\7-Zip") {
+        //     if let Ok(install_path) = hklm.get_value::<String, _>("Path") {
+        //         let exe_path = format!("{}\\7z.exe", install_path);
+        //         if Path::new(&exe_path).exists() {
+        //             return Ok(exe_path);
+        //         }
+        //     }
+        // }
+    }
+
+    Err("7z executable not found".into())
 }
 
 #[tauri::command]

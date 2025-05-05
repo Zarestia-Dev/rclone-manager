@@ -6,9 +6,6 @@ use std::fs::File;
 use std::{fs, path::Path};
 use tauri::{AppHandle, Manager};
 
-#[cfg(unix)]
-use std::os::unix::fs::PermissionsExt;
-
 pub fn get_arch() -> String {
     match std::env::consts::ARCH {
         "x86_64" => "amd64".into(),
@@ -45,20 +42,18 @@ pub fn safe_copy_rclone(from: &Path, to: &Path, binary_name: &str) -> Result<(),
             .map_err(|e| format!("Failed to set permissions: {}", e))?;
 
         info!("🔒 Executable permissions set for {:?}", target);
-    }
 
-    // Verify permissions were set correctly on Unix systems
-    #[cfg(unix)]
-    {
         let perms = fs::metadata(&target)
             .map_err(|e| format!("Failed to verify permissions: {}", e))?
             .permissions();
+
         debug!("Final permissions: {:o}", perms.mode());
+
+        File::open(&target)
+            .and_then(|file| file.sync_all())
+            .map_err(|e| format!("Failed to sync file to disk: {}", e))?;
     }
 
-    File::open(&target)
-        .and_then(|file| file.sync_all())
-        .map_err(|e| format!("Failed to sync file to disk: {}", e))?;
 
     Ok(())
 }

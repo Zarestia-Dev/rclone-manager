@@ -295,6 +295,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
     density: 0,
   )
 );
+
 .light {
   @include mat.all-component-colors($rclone-manager-theme);
 
@@ -303,20 +304,13 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
     --app-background: #fafafa;
     --secondary-background: #ffffff;
     --sidebar-background: #f5f5f5;
-    --semi-transparent-background: rgba(255, 255, 255, 0.8);
-    --shadow-color: rgba(0, 0, 0, 0.32);
+    --box-shadow: 0 0 0 1px rgba(232, 232, 233, 1), 0 0 4px 1px rgba(10, 10, 11, 0.06); 
+    --selected-tab-color: #e6e6e7;
     --hover-color: rgb(200, 200, 200);
     --app-text-color: #000000;
     --secodary-text-color: #939090;
-    // --border-color: #cfcfcf;
-    --button-background: #f5f5f5;
-    --button-text: #000000;
     --button-hover: #dddddd;
-    --button-active: #cfcfcf;
-    --add-button-background: #dbdbdb;
-    --add-button-hover: #939090;
     --theme-border: #dbdbdb;
-    --theme-border-hover: #777;
     --faint-blue: #f0f8ff;
   }
 }
@@ -327,23 +321,16 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   @include mat.all-component-colors($rclone-manager-dark-theme);
   & {
     /* Define custom colors for dark mode */
-    --app-background: #242424;
+    --app-background: #222226;
     --secondary-background: #000000;
     --sidebar-background: #050505;
-    --semi-transparent-background: rgba(30, 30, 30, 0.8);
-    --shadow-color: rgba(150, 150, 150, 0.32);
+    --box-shadow: 0 0 0 1px rgba(32, 32, 36, 1), 0 0 4px 1px rgba(0, 0, 0, 0.25);
+    --selected-tab-color: #2f2f30;
     --hover-color: rgb(55, 55, 55);
     --app-text-color: #ffffff;
     --secodary-text-color: #939090;
-    // --border-color: #808080;
-    --button-background: #333;
-    --button-text: #ffffff;
-    --button-hover: #444;
-    --button-active: #555;
-    --add-button-background: #444;
-    --add-button-hover: #666;
+    --button-hover: #333;
     --theme-border: #555;
-    --theme-border-hover: #888;
     --faint-blue: #464d50;
   }
 }
@@ -361,10 +348,6 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --light-theme-color: #{map.get($adwaita-light-palette, 50)};
   --dark-theme-color: #{map.get($adwaita-light-palette, 900)};
 
-  --border-opacity: 15%;
-
-  --border-color: color-mix(in srgb, var(--accent-color) var(--border-opacity), transparent)
-
   --title-bar-radius: 16px;
   --home-bottom-radius: 16px;
   --tab-bar-bottom-radius: 0px;
@@ -373,14 +356,12 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --border-radius: 8px;
   --button-border-radius: 12px;
   --title-bar-padding: 8px;
-  --titlebar-height: 40px; // Adjust this value to match your title bar height
-  --titlebar-border: 1px;
+  --titlebar-height: 40px;
   --sidebar-width: 250px;
   --app-height: calc(
     100vh -
       (
-        var(--titlebar-height) + var(--title-bar-padding) +
-          var(--titlebar-border)
+        var(--titlebar-height) + var(--title-bar-padding)
       )
   );
 
@@ -404,11 +385,28 @@ html,
 body {
   height: 100%;
   --mat-menu-container-shape: 16px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(128, 128, 128, 0.5) transparent;
 }
+
 body {
   margin: 0;
   font-family: system-ui, Inter, sans-serif;
   overflow: hidden;
+}
+
+* {
+  user-select: none;
+  cursor: default;
+  transition: background 0.5s ease, background-color 0.5s ease, color 0.05s ease;
+  -webkit-user-drag: none;
+}
+
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text;
+  cursor: text;
 }
 
 p,
@@ -423,39 +421,14 @@ h6 {
 }
 
 .mat-mdc-raised-button,
+.mat-mdc-icon-button,
+.mat-mdc-icon-button .mat-mdc-button-persistent-ripple,
 .mat-mdc-raised-button .mdc-button__ripple,
 .mat-mdc-button, .mat-mdc-unelevated-button,
 .mat-mdc-outlined-button {
-  cursor: pointer !important;
-  border-radius: var(--button-border-radius) !important;
-  transition: all 200ms ease !important;
-    // Selected state
-    &.selected {
-      outline: none !important;
-      background-color: var(--button-hover) !important;
-
-      // Fix for ripple effect
-      .mat-mdc-button-persistent-ripple::before {
-        opacity: 0.12 !important;
-        background-color: var(--accent-color) !important;
-      }
-    }
-
-    // Active and focus states
-    &:active,
-    &:focus-visible {
-      outline: none !important;
-      background-color: var(--button-hover) !important;
-    }
+  border-radius: var(--button-border-radius) !important
   }
 
-
-.mat-mdc-icon-button,
-.mat-mdc-icon-button .mat-mdc-button-persistent-ripple::before,
-.mat-mdc-icon-button .mat-mdc-button-persistent-ripple {
-  border-radius: 20% !important;
-  transition: all 200ms ease !important;
-}
 
 
 button {
@@ -472,17 +445,6 @@ button {
     flex-direction: row;
     gap: 8px
   }
-
-  mat-icon {
-    cursor: pointer !important;
-    svg {
-      cursor: pointer !important;
-      path {
-        cursor: pointer !important;
-      }
-    }
-  }
-
 
   &.fix {
     color: white !important;
@@ -501,6 +463,7 @@ button {
   justify-content: space-between;
   gap: 12px;
 }
+
 .mat-mdc-menu-panel {
   background-color: var(--app-background) !important;
   border-radius: 14px !important;
@@ -519,26 +482,6 @@ button {
   }
 }
 
-.mat-divider {
-  border-color: var(--border-color) !important;
-}
-
-/* Disable text selection and use default cursor */
-* {
-  user-select: none;
-  cursor: default;
-  transition: background 0.5s ease, background-color 0.5s ease, color 0.05s ease;
-  -webkit-user-drag: none; /* Disable image dragging in WebKit browsers */
-}
-
-/* Allow text selection and normal text cursor inside inputs */
-input,
-textarea,
-[contenteditable="true"] {
-  user-select: text;
-  cursor: text;
-}
-
 .mat-mdc-dialog-container .mdc-dialog__surface {
   border-radius: 16px !important;
   color: var(--app-text-color) !important;
@@ -550,6 +493,5 @@ textarea,
 }
 
 .cdk-overlay-dark-backdrop {
-  background: var(--shadow-color) !important;
   border-radius: var(--title-bar-radius) !important;
 }
