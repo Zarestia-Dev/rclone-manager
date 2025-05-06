@@ -1,0 +1,46 @@
+name: Release Windows
+
+on:
+  workflow_dispatch
+
+jobs:
+  build-windows:
+    strategy:
+      matrix:
+        target: [x86_64-pc-windows-msvc, aarch64-pc-windows-msvc]
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: 'npm'
+          
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+          
+      - name: Install frontend dependencies
+        run: npm install
+        
+      # Uncomment when ready for Windows signing
+      # - name: Install signing tools
+      #   run: cargo install trusted-signing-cli
+        
+      - name: Build application
+        run: npm run tauri build -- --target ${{ matrix.target }}
+        
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.target }}-build
+          path: src-tauri/target/${{ matrix.target }}/release

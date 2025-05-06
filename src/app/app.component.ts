@@ -32,7 +32,8 @@ import { StateService } from "./services/state.service";
   styleUrl: "./app.component.scss",
 })
 export class AppComponent {
-  completedOnboarding: boolean = false;
+  completedOnboarding: boolean = true;
+  alreadyReported: boolean = false;
   private bottomSheet = inject(MatBottomSheet);
   isMobile$: Observable<boolean>;
 
@@ -52,7 +53,7 @@ export class AppComponent {
         "completed_onboarding"
       )) ?? false;
     console.log("Onboarding status: ", this.completedOnboarding);
-  
+
     if (this.completedOnboarding) {
       this.listenForErrors();
     }
@@ -60,7 +61,11 @@ export class AppComponent {
 
   private listenForErrors() {
     listen<string>("rclone_path_invalid", () => {
-      this.bottomSheet.open(RepairSheetComponent, {
+      if (this.alreadyReported) {
+        return;
+      }
+      this.alreadyReported = true;
+      const sheetRef = this.bottomSheet.open(RepairSheetComponent, {
         data: {
           type: "rclone_path",
           title: "Rclone Path Problem",
@@ -68,6 +73,10 @@ export class AppComponent {
             "The Rclone binary could not be found or started. You can reinstall it now.",
         },
         disableClose: true,
+      });
+      listen("rclone_api_ready", () => {
+        this.alreadyReported = false;
+        sheetRef.dismiss();
       });
     });
   }

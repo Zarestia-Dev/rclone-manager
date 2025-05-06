@@ -246,7 +246,7 @@ pub fn run() {
 
             // ────── CONFIG DIR & SETTINGS STORE ──────
             let store = Arc::new(Mutex::new(
-                StoreBuilder::new(app_handle, store_path)
+                StoreBuilder::new(&app_handle.clone(), store_path)
                     .build()
                     .map_err(|e| format!("Failed to create settings store: {}", e))?,
             ));

@@ -1,4 +1,4 @@
-import { HostListener, Injectable, NgZone } from "@angular/core";
+import { Injectable, NgZone } from "@angular/core";
 import { BehaviorSubject } from "rxjs/internal/BehaviorSubject";
 import { RcloneService } from "./rclone.service";
 import { getCurrentWindow } from "@tauri-apps/api/window";

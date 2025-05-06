@@ -492,6 +492,16 @@ button {
   background-color: var(--faint-blue) !important;
 }
 
+.cdk-overlay-pane,
 .cdk-overlay-dark-backdrop {
   border-radius: var(--title-bar-radius) !important;
+}
+
+.mat-bottom-sheet-container {
+  box-shadow: none !important;
+  border-radius:  var(--title-bar-radius) var(--title-bar-radius) 0 0 !important;
+
+  @media (max-width: 960px) {
+    border-radius:  var(--title-bar-radius) !important;
+  }
 }

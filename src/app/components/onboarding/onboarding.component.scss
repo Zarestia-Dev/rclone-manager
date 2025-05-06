@@ -4,6 +4,7 @@
   align-items: center;
   height: 100%;
   width: 100%;
+  border-radius: var(--title-bar-radius);
   backdrop-filter: blur(10px);
   
   .card-container {
@@ -15,6 +16,7 @@
     height: min(80vh, 500px);
     background: var(--app-background);
     border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     overflow: hidden;
     
     .card {

@@ -74,7 +74,7 @@
 
 👉 Get the latest release from:
 
-- 🔗 [GitLab Releases](https://gitlab.com/Hakanbaban53/rclone-manager/-/releases)
+- 🔗 [GitHub Releases](https://gitlab.com/Hakanbaban53/rclone-manager/-/releases)
 
 > 🚧 Only Linux builds are currently provided. Windows and macOS support is on the roadmap.
 
@@ -96,12 +96,12 @@ Make sure you have the following installed:
 ### 💻 Development Setup
 
 ```bash
-# Clone from GitLab
-git clone https://gitlab.com/Hakanbaban53/rclone-manager.git
+# Clone from GitHub
+git clone https://github.com/Hakanbaban53/rclone-manager.git
 cd rclone-manager
 
-# Or from GitHub
-git clone https://github.com/Hakanbaban53/rclone-manager.git
+# Or from GitLab
+git clone https://gitlab.com/Hakanbaban53/rclone-manager.git
 cd rclone-manager
 
 # Install dependencies
@@ -209,8 +209,8 @@ Any approach will ensure full CLI compatibility is preserved.
 Contributions welcome! 🚀
 
 - Report bugs & suggest features on:
-  - [GitLab Issues](https://gitlab.com/Hakanbaban53/rclone-manager/issues)
   - [GitHub Issues](https://github.com/Hakanbaban53/rclone-manager/issues)
+  - [GitLab Issues](https://gitlab.com/Hakanbaban53/rclone-manager/issues)
 - Submit pull requests and help improve the project!
 
 ---
@@ -225,5 +225,5 @@ This project is licensed under the **[GNU GPLv3](LICENSE)**.
 
 Have questions or ideas? Reach out via:
 
-- [GitLab Issues](https://gitlab.com/Hakanbaban53/rclone-manager/issues)
 - [GitHub Issues](https://github.com/Hakanbaban53/rclone-manager/issues)
+- [GitLab Issues](https://gitlab.com/Hakanbaban53/rclone-manager/issues)

@@ -27,7 +27,6 @@ pub struct RcApiEngine {
     running: bool,
     rclone_path: PathBuf,
     current_api_port: u16,
-    already_reported_invalid_path: bool,
 }
 
 impl RcApiEngine {
@@ -37,7 +36,6 @@ impl RcApiEngine {
             should_exit: false,
             running: false,
             rclone_path: PathBuf::new(),
-            already_reported_invalid_path: false,
             current_api_port: RCLONE_STATE.get_api().1, // Initialize with current port
         }
     }
@@ -48,6 +46,8 @@ impl RcApiEngine {
         }
 
         let app_handle = app.clone();
+
+        self.start(app);
 
         thread::spawn(move || loop {
             {
@@ -91,36 +91,29 @@ impl RcApiEngine {
     }
 
     fn handle_invalid_path(&mut self, app: &AppHandle) {
-        if self.already_reported_invalid_path {
-            // Skip re-emitting
-            thread::sleep(Duration::from_secs(5));
-            return;
-        }
         error!(
             "❌ Rclone binary does not exist: {}",
             self.rclone_path.display()
         );
-
+        
         // Try falling back to system rclone
         if is_rclone_available(app.clone()) {
             info!("🔄 Falling back to system-installed rclone");
             self.rclone_path = PathBuf::from("rclone");
         } else {
             warn!("🔄 Waiting for valid Rclone path...");
-            thread::sleep(Duration::from_secs(5));
             if let Err(e) = app.emit(
                 "rclone_path_invalid",
                 self.rclone_path.to_string_lossy().to_string(),
             ) {
                 error!("Failed to emit event: {}", e);
             }
-            self.already_reported_invalid_path = true;
         }
+        thread::sleep(Duration::from_secs(5));
     }
 
     pub fn update_path(&mut self, app: &AppHandle) {
         self.rclone_path = read_rclone_path(app);
-        self.already_reported_invalid_path = false;
         info!("🔄 Rclone path updated to: {}", self.rclone_path.display());
         self.start(app);
     }
@@ -247,8 +240,8 @@ impl RcApiEngine {
                 error!("❌ Failed to kill Rclone: {}", e);
             }
             let _ = child.wait();
-            self.running = false;
         }
+        self.running = false;
     }
 
     pub fn shutdown(&mut self) {

@@ -1,0 +1,96 @@
+name: ⭐ Feature Request
+description: Suggest an idea or improvement for the RClone Manager
+body:
+  - type: checkboxes
+    attributes:
+      label: Pre-submission checks
+      description: Please verify these items before submitting
+      options:
+        - label: I have searched both open and closed issues and confirmed this doesn't already exist
+          required: true
+        - label: I have checked the roadmap and this isn't already planned
+        - label: This feature aligns with the project's scope (RClone management)
+
+  - type: markdown
+    attributes:
+      value: |
+        ### Thank you for suggesting a feature!
+        Please provide as much detail as possible to help us understand and evaluate your request.
+
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature Description
+      description: |
+        A clear and concise description of:
+        - What problem this would solve
+        - Who would benefit from this feature
+        - Current workarounds (if any)
+      placeholder: |
+        Example:
+        Currently, users have to manually edit rclone.conf for advanced configurations.
+        This makes it difficult for non-technical users to set up complex remotes.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed Solution
+      description: |
+        How you think this should be implemented:
+        - Specific UI changes needed
+        - Technical considerations
+        - Alternative solutions you've considered
+      placeholder: |
+        A GUI form for advanced configuration options with:
+        - Dropdown for common advanced settings
+        - Validation for complex parameters
+        - Help tooltips explaining each option
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature-type
+    attributes:
+      label: Feature Category
+      options:
+        - "UI/UX Improvement"
+        - "New Remote Configuration"
+        - "File Management"
+        - "Sync/Copy Operations"
+        - "Performance"
+        - "Security"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups/Screenshots
+      description: |
+        Visual examples help tremendously:
+        - Sketch or screenshot annotations
+        - Links to design tools (Figma, Excalidraw)
+        - Before/after comparisons if improving existing UI
+
+  - type: textarea
+    id: technical-details
+    attributes:
+      label: Technical Considerations
+      description: |
+        Any relevant technical information:
+        - RClone features this would utilize
+        - Platform-specific requirements
+        - Potential performance impacts
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: |
+        Anything else that might help:
+        - Similar features in other apps
+        - User research or feedback
+        - Priority/urgency level

@@ -47,7 +47,6 @@ export class RepairSheetComponent {
           break;
       }
 
-      this.sheetRef.dismiss();
     } catch (error) {
       console.error("Repair failed:", error);
     }

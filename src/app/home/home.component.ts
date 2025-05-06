@@ -357,7 +357,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private setupTauriListeners(): void {
-    const events = ["mount_cache_updated", "remote_cache_updated"];
+    const events = ["mount_cache_updated", "remote_cache_updated", "rclone_api_ready"];
 
     events.forEach((event) => {
       listen<string>(event, async () => {

@@ -1,0 +1,110 @@
+name: 🐛 Bug Report
+description: File a bug report for the RClone Manager
+body:
+  - type: checkboxes
+    attributes:
+      label: Is there an existing issue for this?
+      description: Please search to see if an issue already exists for the bug you encountered.
+      options:
+        - label: I have searched the existing issues and did not find anything similar.
+          required: true
+
+  - type: textarea
+    id: the-problem
+    attributes:
+      label: Bug Description
+      description: |
+        A clear and concise description of:
+        - What you were trying to do
+        - What actually happened
+        - Any error messages you encountered
+      placeholder: |
+        Example:
+        When trying to sync my Google Drive, the app crashes with error "Failed to initialize rclone config"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: Select the OS where the bug occurred
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS Version
+      description: The specific version of your operating system
+      placeholder: e.g., Windows 11 23H2, macOS 14.4, Ubuntu 22.04
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App Version
+      description: The version of RClone Manager you're using
+      placeholder: e.g., 1.2.0 or commit hash if using development build
+    validations:
+      required: true
+
+  - type: input
+    id: rclone-version
+    attributes:
+      label: RClone Version
+      description: The version of rclone you have installed
+      placeholder: Found by running `rclone version` in terminal
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Clear steps to reproduce the issue
+      placeholder: |
+        1. Open RClone Manager
+        2. Click on 'Add Remote'
+        3. Select 'drive' type
+        4. See error "Connection timeout"
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: What you expected to happen
+      placeholder: The app should successfully connect to Google Drive and show my files
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: |
+        Please provide relevant logs:
+        - Application logs (check developer console)
+        - Terminal output if running from command line
+        - RClone debug logs (add `-vv` flag to rclone commands)
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots/Recordings
+      description: |
+        Add screenshots or screen recordings to help explain your problem.
+        For UI-related issues, these are especially helpful.
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: |
+        Any other information that might be helpful:
+        - Does this happen with all remotes or just specific ones?
+        - Does it happen consistently or intermittently?
+        - Have you made any custom configurations?
