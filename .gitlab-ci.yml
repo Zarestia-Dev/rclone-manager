@@ -37,8 +37,8 @@ setup:
     - cargo install --locked tauri-cli
   script:
     - echo "Dependencies installed"
-  tags:
-    - docker
+  # tags:
+  #   - docker
 
 # Linux x86_64 build
 build_linux_x86_64:
@@ -52,8 +52,8 @@ build_linux_x86_64:
     paths:
       - src-tauri/target/x86_64-unknown-linux-gnu/release/
     expire_in: 1 week
-  tags:
-    - docker
+  # tags:
+  #   - docker
 
 # Linux aarch64 build
 build_linux_aarch64:
@@ -69,8 +69,8 @@ build_linux_aarch64:
     paths:
       - src-tauri/target/aarch64-unknown-linux-gnu/release/
     expire_in: 1 week
-  tags:
-    - docker
+  # tags:
+  #   - docker
 
 # Windows build
 build_windows:
@@ -85,8 +85,8 @@ build_windows:
     paths:
       - src-tauri/target/x86_64-pc-windows-gnu/release/
     expire_in: 1 week
-  tags:
-    - docker
+  # tags:
+  #   - docker
 
 # Uncomment below if you have a macOS runner:
 # build_macos_intel:
@@ -139,5 +139,5 @@ create_release:
       release-cli create --name "Release $CI_COMMIT_TAG" --tag-name $CI_COMMIT_TAG --assets "$RELEASE_ASSETS"
   rules:
     - if: $CI_COMMIT_TAG
-  tags:
-    - docker
+  # tags:
+  #   - docker
