@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "RClone Manager",
+  "productName": "RClone-Manager",
   "version": "0.1.0",
   "identifier": "com.rclone-manager.app",
   "build": {

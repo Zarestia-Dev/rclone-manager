@@ -74,7 +74,7 @@
 
 👉 Get the latest release from:
 
-- 🔗 [GitHub Releases](https://gitlab.com/Hakanbaban53/rclone-manager/-/releases)
+- 🔗 [GitHub Releases](https://github.com/Hakanbaban53/rclone-manager/releases)
 
 > 🚧 Only Linux builds are currently provided. Windows and macOS support is on the roadmap.
 

@@ -1,86 +1,79 @@
-name: Release
+name: 'publish'
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
 
 jobs:
-  build:
+  publish-tauri:
+    permissions:
+      contents: write
     strategy:
+      fail-fast: false
       matrix:
-        platform: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+            arch: 'silicon'
+            type: 'aarch64'
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+            arch: 'silicon'
+            type: 'x86_64'
+          - platform: 'ubuntu-22.04' 
+            args: ''
+          - platform: 'windows-latest'
+            args: '--target x86_64-pc-windows-msvc'
+            arch: 'arm64'
+            type: 'x86_64'
+          - platform: "windows-latest"
+            args: "--target aarch64-pc-windows-msvc"
+            arch: 'arm64'
+            type: 'aarch64'
+
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
-          cache: "npm"
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{
-            matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' ||
-            matrix.platform == 'windows-latest' && 'x86_64-pc-windows-msvc,aarch64-pc-windows-msvc' ||
-            matrix.platform == 'ubuntu-latest' && 'x86_64-unknown-linux-gnu,aarch64-unknown-linux-gnu'}}
-
-      - name: Cache Rust dependencies
-        uses: swatinem/rust-cache@v2
-
-      - name: Install system dependencies (Linux)
-        if: matrix.platform == 'ubuntu-latest'
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: Install frontend dependencies
-        run: npm install
-
-      - name: Build application
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          npm run tauri build
-
-      - name: Generate version info
-        run: |
-          echo "RClone Manager v$(node -p "require('./package.json').version")" > version.txt
-          echo "Platform: ${{ matrix.platform }}" >> version.txt
-          echo "Build date: $(date)" >> version.txt
-          echo "Commit: $(git rev-parse HEAD)" >> version.txt
-
-      - name: Generate checksums (Linux/macOS)
-        if: matrix.platform != 'windows-latest'
-        run: |
-          cd src-tauri/target/release
-          find . -type f -exec sha256sum {} \; > SHA256SUMS
-          find . -type f -exec sha1sum {} \; > SHA1SUMS
-          find . -type f -exec md5sum {} \; > MD5SUMS
-
-      - name: Generate checksums (Windows)
-        if: matrix.platform == 'windows-latest'
-        run: |
-          cd src-tauri/target/release
-          Get-ChildItem -File | ForEach-Object {
-            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
-            "$hash  $($_.Name)" | Out-File -Append -Encoding utf8 SHA256SUMS
-          }
-          Get-ChildItem -File | ForEach-Object {
-            $hash = (Get-FileHash $_.FullName -Algorithm SHA1).Hash
-            "$hash  $($_.Name)" | Out-File -Append -Encoding utf8 SHA1SUMS
-          }
-          Get-ChildItem -File | ForEach-Object {
-            $hash = (Get-FileHash $_.FullName -Algorithm MD5).Hash
-            "$hash  $($_.Name)" | Out-File -Append -Encoding utf8 MD5SUMS
-          }
-
-      - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+      - name: setup node
+        uses: actions/setup-node@v4
         with:
-          name: ${{ matrix.platform }}-release
-          path: |
-            src-tauri/target/release/*
-            version.txt
-            src-tauri/target/release/SHA*SUMS
-            src-tauri/target/release/MD5SUMS
+          node-version: lts/*
+          cache: 'npm'
+
+      - name: install Rust stable (macos only)
+        uses: dtolnay/rust-toolchain@stable
+        if: matrix.platform == 'macos-latest'
+        with:
+          targets: ${{ matrix.type == 'aarch64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
+          
+      - name: install Rust stable (windows only)
+        uses: dtolnay/rust-toolchain@stable
+        if: matrix.platform == 'windows-latest'
+        with:
+            targets: ${{ matrix.type == 'aarch64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: install frontend dependencies
+        # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
+        run: npm install #
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.TAURI_TOKEN }}
+        with:
+          tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
+          releaseName: 'App v__VERSION__'
+          releaseBody: 'See the assets to download this version and install.'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

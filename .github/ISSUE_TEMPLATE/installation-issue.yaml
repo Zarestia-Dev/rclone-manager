@@ -1,0 +1,119 @@
+name: "💻 Installation Issue"
+description: "Report problems installing the RClone Manager"
+title: "[Install] "
+labels: ["installation"]
+body:
+  - type: checkboxes
+    attributes:
+      label: "Pre-Submission Checklist"
+      options:
+        - label: "I've verified this isn't a duplicate issue"
+          required: true
+        - label: "I've checked the troubleshooting guide (not available yet)"
+        - label: "I've included all requested information"
+          required: true
+
+  - type: dropdown
+    attributes:
+      label: "Operating System"
+      description: "Select your operating system"
+      options:
+        - "Windows"
+        - "macOS"
+        - "Linux"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: "OS Version"
+      description: "Example: Windows 11 23H2, macOS 14.4, Ubuntu 22.04"
+      placeholder: "Enter your OS version"
+    validations:
+      required: true
+
+  - type: dropdown
+    attributes:
+      label: "Installation Method"
+      options:
+        - "Pre-built package (.deb/.rpm/.exe/.dmg)"
+        - "Building from source"
+        - "AppImage/Flatpak/Snap"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: "App Version"
+      description: "The version of RClone Manager you're trying to install"
+      placeholder: "Example: 1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: "RClone Version"
+      description: "If applicable"
+      placeholder: "Run 'rclone version' to find this"
+
+  - type: input
+    attributes:
+      label: "Node Version"
+      description: "If building from source"
+      placeholder: "Run 'node --version' to find this"
+
+  - type: input
+    attributes:
+      label: "Rust Version"
+      description: "If building from source"
+      placeholder: "Run 'rustc --version' to find this"
+
+  - type: textarea
+    attributes:
+      label: "Expected Behavior"
+      description: "What should have happened during installation?"
+      placeholder: "The package should install without errors..."
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: "Actual Behavior"
+      description: "What actually happened? Include any error messages."
+      placeholder: "Got error 'Failed to install dependencies...'"
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: "Steps to Reproduce"
+      description: "How can we reproduce this issue?"
+      placeholder: |
+        1. Downloaded the .deb package
+        2. Ran 'sudo apt install ./package.deb'
+        3. Got error message
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: "Error Output"
+      description: "Paste any terminal output or error messages"
+      render: shell
+
+  - type: textarea
+    attributes:
+      label: "Additional Information"
+      description: "Anything else that might help diagnose the issue"
+      placeholder: "Special system configurations, antivirus software, etc."
+
+  - type: textarea
+    attributes:
+      label: "Troubleshooting Attempts"
+      description: "What have you already tried to resolve this issue?"
+      placeholder: |
+        - Tried reinstalling the package
+        - Verified checksums
+        - Checked system requirements
