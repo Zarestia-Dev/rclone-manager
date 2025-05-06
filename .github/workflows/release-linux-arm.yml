@@ -25,7 +25,7 @@ jobs:
             base_image: https://dietpi.com/downloads/images/DietPi_RPi-ARMv7-Bookworm.img.xz
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Cache rust build artifacts
         uses: Swatinem/rust-cache@v2
@@ -61,6 +61,9 @@ jobs:
             # Install frontend dependencies
             npm install
 
+            # Remove "appimage" from the bundle.targets array in tauri.conf.json
+            jq 'del(.bundle.targets[] | select(. == "appimage"))' src-tauri/tauri.conf.json > src-tauri/tauri.conf.json.tmp && mv src-tauri/tauri.conf.json.tmp src-tauri/tauri.conf.json
+
             # Build the application
             npm run tauri build -- --verbose
 
@@ -80,8 +83,9 @@ jobs:
           name: RPM Bundle
           path: ${{ github.workspace }}/src-tauri/target/release/bundle/rpm/appname-${{ env.APP_VERSION }}-1.${{ matrix.rpm }}.rpm
 
-      - name: Upload appimage bundle
-        uses: actions/upload-artifact@v3
-        with:
-          name: AppImage Bundle
-          path: ${{ github.workspace }}/src-tauri/target/release/bundle/appimage/appname_${{ env.APP_VERSION }}_${{ matrix.appimage }}.AppImage
+          # Not Supported from tauri
+      # - name: Upload appimage bundle
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: AppImage Bundle
+      #     path: ${{ github.workspace }}/src-tauri/target/release/bundle/appimage/appname_${{ env.APP_VERSION }}_${{ matrix.appimage }}.AppImage

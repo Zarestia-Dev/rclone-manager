@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "RClone-Manager",
+  "productName": "RClone Manager",
   "version": "0.1.0",
   "identifier": "com.rclone-manager.app",
   "build": {
@@ -9,7 +9,6 @@
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist/rclone-manager/browser"
   },
-
   "app": {
     "windows": [
       {
@@ -53,6 +52,10 @@
       }
     },
     "windows": {
+      "wix": {
+        "bannerPath": "icons/wix-banner.bmp",
+        "dialogImagePath": "icons/wix-dialog.bmp"
+      },
       "nsis": {
         "headerImage": "icons/nsis-header.bmp",
         "sidebarImage": "icons/nsis-sidebar.bmp",

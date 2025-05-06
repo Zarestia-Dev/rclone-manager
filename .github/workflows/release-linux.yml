@@ -1,92 +1,51 @@
-name: Release Linux
+name: 'Release Linux'
 
 on:
-  workflow_dispatch
-
-env:
-  RUST_BACKTRACE: 1
-  TAURI_LOG: info
+  workflow_dispatch:
 
 jobs:
-  build-linux:
+  publish-tauri:
+    permissions:
+      contents: write
     strategy:
+      fail-fast: false
       matrix:
-        target: [x86_64-unknown-linux-gnu, aarch64-unknown-linux-gnu]
-    runs-on: ubuntu-latest
+        include:
+          - platform: 'ubuntu-latest' 
+            args: ''
+
+    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node
+
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-latest' # This must match the platform value defined above.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
           cache: 'npm'
-          
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        
-      - name: Cache Rust dependencies
+
+      - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
-        
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf \
-            libgtk-3-dev \
-            libssl-dev \
-            rpm \
-            fakeroot
-            
-      - name: Install frontend dependencies
-        run: npm install
-        
-      - name: Build application with verbose logging
-        run: |
-          npm run tauri build -- --target ${{ matrix.target }} --verbose 2>&1 | tee build.log
-          echo "::group::Build Log"
-          cat build.log
-          echo "::endgroup::"
-          
-          # Verify bundle outputs
-          if [ ! -d "src-tauri/target/${{ matrix.target }}/release/bundle" ]; then
-            echo "::error::Build failed - bundle directory not found"
-            exit 1
-          fi
-          
-      - name: Prepare release assets
-        run: |
-          # Create architecture-specific release directory
-          RELEASE_DIR="release/linux-${{ matrix.target }}"
-          mkdir -p $RELEASE_DIR
-          
-          # Copy all bundle artifacts
-          find src-tauri/target/${{ matrix.target }}/release/bundle -type f \( \
-            -name "*.deb" -o \
-            -name "*.rpm" -o \
-            -name "*.AppImage" \
-          \) -exec cp {} $RELEASE_DIR \;
-          
-          # Generate version info
-          echo "RClone Manager v$(node -p "require('./package.json').version")" > $RELEASE_DIR/version.txt
-          echo "Architecture: ${{ matrix.target }}" >> $RELEASE_DIR/version.txt
-          echo "Build date: $(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> $RELEASE_DIR/version.txt
-          echo "Git SHA: $(git rev-parse HEAD)" >> $RELEASE_DIR/version.txt
-          
-          # Generate checksums
-          cd $RELEASE_DIR
-          sha256sum * > SHA256SUMS
-          sha1sum * > SHA1SUMS
-          md5sum * > MD5SUMS
-          
-      - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+
+      - name: install frontend dependencies
+        # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
+        run: npm install #
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.TAURI_TOKEN }}
         with:
-          name: linux-${{ matrix.target }}-release
-          path: release/linux-${{ matrix.target }}
-          if-no-files-found: error
+          tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
+          releaseName: 'RClone Manager v__VERSION__'
+          releaseBody: 'See the assets to download this version and install.'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

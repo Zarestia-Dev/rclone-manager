@@ -1,46 +1,57 @@
-name: Release Windows
+name: 'Release Windows'
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
 
 jobs:
-  build-windows:
+  publish-tauri:
+    permissions:
+      contents: write
     strategy:
+      fail-fast: false
       matrix:
-        target: [x86_64-pc-windows-msvc, aarch64-pc-windows-msvc]
-    runs-on: windows-latest
-    
+        include:
+          - platform: 'windows-latest'
+            args: '--target x86_64-pc-windows-msvc'
+            arch: 'arm64'
+            type: 'x86_64'
+          - platform: "windows-latest"
+            args: "--target aarch64-pc-windows-msvc"
+            arch: 'arm64'
+            type: 'aarch64'
+
+    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Node
+
+      - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
           cache: 'npm'
           
-      - name: Install Rust
+      - name: install Rust stable (windows only)
         uses: dtolnay/rust-toolchain@stable
+        if: matrix.platform == 'windows-latest'
         with:
-          targets: ${{ matrix.target }}
-          
-      - name: Cache Rust dependencies
+            targets: ${{ matrix.type == 'aarch64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
+
+      - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
-          
-      - name: Install frontend dependencies
-        run: npm install
-        
-      # Uncomment when ready for Windows signing
-      # - name: Install signing tools
-      #   run: cargo install trusted-signing-cli
-        
-      - name: Build application
-        run: npm run tauri build -- --target ${{ matrix.target }}
-        
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+
+      - name: install frontend dependencies
+        # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
+        run: npm install #
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.TAURI_TOKEN }}
         with:
-          name: windows-${{ matrix.target }}-build
-          path: src-tauri/target/${{ matrix.target }}/release
+          tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
+          releaseName: 'RClone Manager v__VERSION__'
+          releaseBody: 'See the assets to download this version and install.'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

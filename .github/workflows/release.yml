@@ -1,4 +1,4 @@
-name: 'publish'
+name: 'Release All'
 
 on:
   workflow_dispatch:
@@ -72,7 +72,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.TAURI_TOKEN }}
         with:
           tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
-          releaseName: 'App v__VERSION__'
+          releaseName: 'RClone Manager v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           prerelease: false
