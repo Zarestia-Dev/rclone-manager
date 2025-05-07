@@ -2,8 +2,8 @@
     <div class="remote-header">
         <h2 matTooltip="{{ selectedRemote.remoteSpecs.name }}">{{ selectedRemote.remoteSpecs.name }}</h2>
         <p>
-            <mat-icon svgIcon="{{ selectedRemote.remoteSpecs.type }}"></mat-icon>
-            {{ selectedRemote.remoteSpecs.type | titlecase }}
+            <mat-icon [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"></mat-icon> {{
+            selectedRemote.remoteSpecs.type | titlecase }}
         </p>
     </div>
 
@@ -35,19 +35,22 @@
 
             <mat-card-footer class="button-container">
                 <ng-container *ngIf="selectedRemote.mounted">
-                    <button mat-raised-button [disabled]="actionInProgress === 'open'" color="accent" (click)="triggerOpenInFiles()">
+                    <button mat-raised-button [disabled]="actionInProgress === 'open'" color="accent"
+                        (click)="triggerOpenInFiles()">
                         <mat-spinner *ngIf="actionInProgress === 'open'" diameter="20"></mat-spinner>
-                        <mat-icon *ngIf="!(actionInProgress === 'open')" svgIcon="folder"></mat-icon> 
+                        <mat-icon *ngIf="!(actionInProgress === 'open')" svgIcon="folder"></mat-icon>
                         {{ actionInProgress === 'open' ? "Openning" : "Open Files" }}
                     </button>
-                    <button mat-raised-button [disabled]="actionInProgress === 'unmount'" color="warn" (click)="triggerUnmountRemote()">
+                    <button mat-raised-button [disabled]="actionInProgress === 'unmount'" color="warn"
+                        (click)="triggerUnmountRemote()">
                         <mat-spinner *ngIf="actionInProgress === 'unmount'" diameter="20"></mat-spinner>
                         <mat-icon *ngIf="!(actionInProgress === 'unmount')" svgIcon="circle-exclamation"></mat-icon>
                         {{ actionInProgress === 'unmount' ? "Unmounting" : "Unmount" }}
                     </button>
                 </ng-container>
                 <ng-container *ngIf="!selectedRemote.mounted">
-                    <button [disabled]="actionInProgress === 'mount'" mat-raised-button color="primary" (click)="triggerMountRemote()">
+                    <button [disabled]="actionInProgress === 'mount'" mat-raised-button color="primary"
+                        (click)="triggerMountRemote()">
                         <mat-spinner *ngIf="actionInProgress === 'mount'" diameter="20"></mat-spinner>
                         <mat-icon *ngIf="!(actionInProgress === 'mount')" svgIcon="mount"></mat-icon>
                         {{ actionInProgress === 'mount' ? "Mounting" : "Mount" }}
@@ -77,7 +80,8 @@
             </mat-card-content>
             <mat-divider></mat-divider>
             <mat-card-footer class="button-container">
-                <button mat-raised-button class="fix" (click)="triggerOpenRemoteConfig('remote', selectedRemote.remoteSpecs)">
+                <button mat-raised-button class="fix"
+                    (click)="triggerOpenRemoteConfig('remote', selectedRemote.remoteSpecs)">
                     <mat-icon svgIcon="pen"></mat-icon> Edit
                 </button>
             </mat-card-footer>
@@ -113,7 +117,7 @@
 
                 <!-- ✅ Edit Button -->
                 <mat-card-footer class="button-container">
-                    <button mat-raised-button class="fix" 
+                    <button mat-raised-button class="fix"
                         (click)="triggerOpenRemoteConfig(section.key, getRemoteSettings(section.key + '_options'))">
                         <mat-icon svgIcon="pen"></mat-icon> Edit
                     </button>

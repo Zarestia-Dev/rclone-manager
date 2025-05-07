@@ -191,27 +191,23 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .on_window_event(move |window, event| match event {
             WindowEvent::CloseRequested { api, .. } => {
+                window.hide().unwrap_or_else(|e| {
+                    eprintln!("Failed to hide window: {}", e);
+                });
                 let tray_enabled_arc = window.app_handle().state::<TrayEnabled>().0.clone();
                 if let Ok(tray_enabled) = tray_enabled_arc.clone().read() {
                     if *tray_enabled {
                         api.prevent_close();
                         if let Some(win) = window.app_handle().get_webview_window("main") {
-                            win.hide().unwrap_or_else(|e| {
-                                eprintln!("Failed to hide window: {}", e);
-                            });
                             win.eval("document.body.innerHTML = '';")
                                 .unwrap_or_else(|e| {
                                     eprintln!("Failed to clear window content: {}", e);
                                 });
                         }
                     } else {
-                        window.hide().unwrap_or_else(|e| {
-                            eprintln!("Failed to hide window: {}", e);
-                        });
                         tauri::async_runtime::block_on(handle_shutdown(
                             window.app_handle().clone(),
                         ));
-                        window.app_handle().exit(0);
                     }
                 } else {
                     eprintln!("Failed to read tray_enabled state");
@@ -290,8 +286,12 @@ pub fn run() {
             "unmount_all" => {
                 let app_clone = app.clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Err(e) =
-                        unmount_all_remotes(app_clone.clone(), app_clone.state(), "menu".to_string()).await
+                    if let Err(e) = unmount_all_remotes(
+                        app_clone.clone(),
+                        app_clone.state(),
+                        "menu".to_string(),
+                    )
+                    .await
                     {
                         error!("Failed to unmount all remotes: {}", e);
                     }
@@ -299,9 +299,8 @@ pub fn run() {
             }
             "quit" => {
                 let app_clone = app.clone();
-                tauri::async_runtime::spawn(async move {
+                tauri::async_runtime::block_on(async move {
                     handle_shutdown(app_clone.clone()).await;
-                    app_clone.exit(0);
                 });
             }
             id if id.starts_with("mount-") => handle_mount_remote(app.clone(), id),

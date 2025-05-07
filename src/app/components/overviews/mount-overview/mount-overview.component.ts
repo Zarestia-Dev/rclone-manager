@@ -24,6 +24,7 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 export class MountOverviewComponent {
   @Input() remotes: any[] = [];
   @Input() selectedRemote: any = null;
+  @Input() iconService: any;
   @Input() actionInProgress: {
     [remoteName: string]: "mount" | "unmount" | "open" | null;
   } = {};

@@ -5,8 +5,7 @@
           <mat-card-content class="card-content">
             <h4>{{ remote.remoteSpecs.name }}</h4>
             <p>
-              <mat-icon svgIcon="{{ remote.remoteSpecs.type }}"></mat-icon>
-              {{ remote.remoteSpecs.type | titlecase }}
+              <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>              {{ remote.remoteSpecs.type | titlecase }}
             </p>
             <ng-container *ngIf="remote.mounted === true">
               <p class="mounted">

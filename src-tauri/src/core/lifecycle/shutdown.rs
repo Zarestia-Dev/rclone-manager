@@ -3,7 +3,7 @@ use tauri::{AppHandle, Manager};
 use tokio::task::spawn_blocking;
 
 use crate::{
-    rclone::api::{api_command::unmount_all_remotes, engine::RcApiEngine},
+    rclone::api::{api_command::unmount_all_remotes, engine::ENGINE},
     RcloneState,
 };
 
@@ -26,15 +26,21 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     }
 
     // Perform engine shutdown in a blocking task
-    match spawn_blocking(move || {
-        let mut engine = RcApiEngine::lock_engine()
-            .unwrap_or_else(|e| {
-                error!("Failed to acquire engine lock: {}", e);
-                panic!("Failed to acquire engine lock");
-            });
-        engine.shutdown()
-    }).await {
-        Ok(_) => info!("🛑 Shutdown sequence complete"),
-        Err(e) => error!("Failed to complete shutdown sequence: {:?}", e),
+    let result = spawn_blocking(move || {
+        match ENGINE.lock() {
+             Ok(mut engine) => engine.shutdown(),
+             Err(poisoned) => {
+                    error!("Failed to acquire lock on RcApiEngine: {}", poisoned);
+                 let mut guard = poisoned.into_inner();
+                    guard.shutdown();
+             }
+             }
+        }).await;
+    if let Err(e) = result {
+        error!("Failed to shutdown engine: {:?}", e);
+    } else {
+        info!("Engine shutdown completed successfully.");
     }
+
+    app_handle.exit(0);
 }

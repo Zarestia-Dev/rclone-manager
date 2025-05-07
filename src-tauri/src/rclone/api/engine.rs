@@ -241,6 +241,7 @@ impl RcApiEngine {
             }
             let _ = child.wait();
         }
+        info!("✅ Rclone process stopped.");
         self.running = false;
     }
 

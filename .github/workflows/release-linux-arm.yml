@@ -5,11 +5,11 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        arch: [aarch64, armv7l]
+        arch: [aarch64] # armv7l
         include:
           - arch: aarch64
             cpu: cortex-a72
@@ -17,12 +17,12 @@ jobs:
             deb: arm64
             rpm: aarch64
             appimage: aarch64
-          - arch: armv7l
-            cpu: cortex-a53
-            deb: armhfp
-            rpm: arm
-            appimage: armhf
-            base_image: https://dietpi.com/downloads/images/DietPi_RPi-ARMv7-Bookworm.img.xz
+          # - arch: armv7l
+          #   cpu: cortex-a53
+          #   deb: armhfp
+          #   rpm: arm
+          #   appimage: armhf
+          #   base_image: https://dietpi.com/downloads/images/DietPi_RPi-ARMv7-Bookworm.img.xz
 
     steps:
       - uses: actions/checkout@v4
@@ -75,17 +75,17 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: Debian Bundle
-          path: ${{ github.workspace }}/src-tauri/target/release/bundle/deb/appname_${{ env.APP_VERSION }}_${{ matrix.deb }}.deb
+          path: ${{ github.workspace }}/src-tauri/target/release/bundle/deb/RClone Manager_${{ env.APP_VERSION }}_${{ matrix.deb }}.deb
 
       - name: Upload rpm bundle
         uses: actions/upload-artifact@v3
         with:
           name: RPM Bundle
-          path: ${{ github.workspace }}/src-tauri/target/release/bundle/rpm/appname-${{ env.APP_VERSION }}-1.${{ matrix.rpm }}.rpm
+          path: ${{ github.workspace }}/src-tauri/target/release/bundle/rpm/RClone Manager-${{ env.APP_VERSION }}-1.${{ matrix.rpm }}.rpm
 
           # Not Supported from tauri
       # - name: Upload appimage bundle
       #   uses: actions/upload-artifact@v3
       #   with:
       #     name: AppImage Bundle
-      #     path: ${{ github.workspace }}/src-tauri/target/release/bundle/appimage/appname_${{ env.APP_VERSION }}_${{ matrix.appimage }}.AppImage
+      #     path: ${{ github.workspace }}/src-tauri/target/release/bundle/appimage/RClone Manager_${{ env.APP_VERSION }}_${{ matrix.appimage }}.AppImage

@@ -17,6 +17,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 })
 export class SidebarComponent {
   @Input() remotes: any[] = [];
+  @Input() iconService: any;
   @Output() remoteSelected = new EventEmitter<any>();
 
   selectRemote(remote: any) {

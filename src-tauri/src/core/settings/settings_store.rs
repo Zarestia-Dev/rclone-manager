@@ -14,7 +14,7 @@ pub struct SettingMetadata {
 pub struct GeneralSettings {
     pub tray_enabled: bool,
     pub start_on_startup: bool,
-    pub notifications: bool,
+    // pub notifications: bool,
 }
 
 /// Core settings
@@ -24,7 +24,7 @@ pub struct CoreSettings {
     pub rclone_api_port: u16,
     pub rclone_oauth_port: u16,
     // pub default_mount_type: String,
-    pub bandwidth_limit: String,
+    // pub bandwidth_limit: String,
     pub completed_onboarding: bool,
 }
 
@@ -49,14 +49,14 @@ impl Default for AppSettings {
             general: GeneralSettings {
                 tray_enabled: true,
                 start_on_startup: false,
-                notifications: true,
+                // notifications: true,
             },
             core: CoreSettings {
                 max_tray_items: 5,
                 rclone_api_port: 5572,
                 rclone_oauth_port: 5580,
                 // default_mount_type: "native".to_string(),
-                bandwidth_limit: "".to_string(),
+                // bandwidth_limit: "".to_string(),
                 completed_onboarding: false,
             },
             experimental: ExperimentalSettings {
@@ -89,14 +89,14 @@ impl AppSettings {
             },
         );
 
-        metadata.insert(
-            "general.notifications".to_string(),
-            SettingMetadata {
-                display_name: "Enable Notifications".to_string(),
-                value_type: "bool".to_string(),
-                help_text: "Show notifications for mount events.".to_string(),
-            },
-        );
+        // metadata.insert(
+        //     "general.notifications".to_string(),
+        //     SettingMetadata {
+        //         display_name: "Enable Notifications".to_string(),
+        //         value_type: "bool".to_string(),
+        //         help_text: "Show notifications for mount events.".to_string(),
+        //     },
+        // );
 
         metadata.insert(
             "core.max_tray_items".to_string(),
@@ -134,14 +134,14 @@ impl AppSettings {
         //     },
         // );
 
-        metadata.insert(
-            "core.bandwidth_limit".to_string(),
-            SettingMetadata {
-                display_name: "Bandwidth Limit".to_string(),
-                value_type: "string".to_string(),
-                help_text: "Limit the bandwidth used by Rclone transfers.".to_string(),
-            },
-        );
+        // metadata.insert(
+        //     "core.bandwidth_limit".to_string(),
+        //     SettingMetadata {
+        //         display_name: "Bandwidth Limit".to_string(),
+        //         value_type: "string".to_string(),
+        //         help_text: "Limit the bandwidth used by Rclone transfers.".to_string(),
+        //     },
+        // );
 
         metadata.insert(
             "core.completed_onboarding".to_string(),

@@ -28,6 +28,7 @@ import { MatButtonModule } from "@angular/material/button";
 })
 export class MountDetailComponent {
   @Input() selectedRemote: any = null;
+  @Input() iconService: any;
   @Input() remoteSettings: { [key: string]: { [key: string]: any } } = {};
   @Input() actionInProgress: 'mount' | 'unmount' | 'open' | null = null;
   @Output() openInFiles = new EventEmitter<string>();

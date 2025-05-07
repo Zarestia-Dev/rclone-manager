@@ -45,14 +45,16 @@
                                 {{ remote.remoteSpecs.name }}
                             </h4>
                             <p>
-                                <mat-icon svgIcon="{{ remote.remoteSpecs.type }}"></mat-icon>
-                                {{ remote.remoteSpecs.type | titlecase }}
+                                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon> {{
+                                remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
                         <button mat-raised-button color="accent"
                             (click)="openRemoteInFiles(remote.remoteSpecs.name); $event.stopPropagation()">
-                            <mat-spinner *ngIf="actionInProgress[remote.remoteSpecs.name] === 'open'" diameter="20"></mat-spinner>
-                            <mat-icon *ngIf="!(actionInProgress[remote.remoteSpecs.name] === 'open')" svgIcon="folder"></mat-icon>
+                            <mat-spinner *ngIf="actionInProgress[remote.remoteSpecs.name] === 'open'"
+                                diameter="20"></mat-spinner>
+                            <mat-icon *ngIf="!(actionInProgress[remote.remoteSpecs.name] === 'open')"
+                                svgIcon="folder"></mat-icon>
                             {{ actionInProgress[remote.remoteSpecs.name] === 'mount' ? "Openning" : "Open Files" }}
                         </button>
                     </div>
@@ -73,14 +75,16 @@
                                 {{ remote.remoteSpecs.name }}
                             </h4>
                             <p>
-                                <mat-icon svgIcon="{{ remote.remoteSpecs.type }}"></mat-icon>
-                                {{ remote.remoteSpecs.type | titlecase }}
+                                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon> {{
+                                remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
                         <button mat-raised-button color="primary"
                             (click)="mountRemoteByFs(remote.remoteSpecs.name); $event.stopPropagation()">
-                            <mat-spinner *ngIf="actionInProgress[remote.remoteSpecs.name] === 'mount'" diameter="20"></mat-spinner>
-                            <mat-icon *ngIf="!(actionInProgress[remote.remoteSpecs.name] === 'mount')" svgIcon="mount"></mat-icon>
+                            <mat-spinner *ngIf="actionInProgress[remote.remoteSpecs.name] === 'mount'"
+                                diameter="20"></mat-spinner>
+                            <mat-icon *ngIf="!(actionInProgress[remote.remoteSpecs.name] === 'mount')"
+                                svgIcon="mount"></mat-icon>
                             {{ actionInProgress[remote.remoteSpecs.name] === 'mount' ? "Mounting" : "Mount" }}
                         </button>
                     </div>
@@ -100,8 +104,8 @@
                         <div class="remote-content">
                             <h4 matTooltip="{{ remote.remoteSpecs.name }}">{{ remote.remoteSpecs.name }}</h4>
                             <p>
-                                <mat-icon svgIcon="{{ remote.remoteSpecs.type }}"></mat-icon>
-                                {{ remote.remoteSpecs.type | titlecase }}
+                                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon> {{
+                                remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
                         <button mat-raised-button class="fix" (click)="$event.stopPropagation()">

@@ -6,6 +6,9 @@ import { MatIconRegistry } from "@angular/material/icon";
   providedIn: "root",
 })
 export class IconService {
+  private icons: Record<string, string> = {};
+  private fallbackIcon = "hard-drive";
+
   constructor(
     private iconRegistry: MatIconRegistry,
     private sanitizer: DomSanitizer
@@ -73,11 +76,19 @@ export class IconService {
       "caret-down": "assets/icons/caret-down.svg",
     };
 
+    this.icons = icons;
+
     for (const [name, path] of Object.entries(icons)) {
       this.iconRegistry.addSvgIcon(
         name,
         this.sanitizer.bypassSecurityTrustResourceUrl(path)
       );
     }
+  }
+  getIconName(name: string | undefined | null): string {
+    if (name && this.icons[name]) {
+      return name;
+    }
+    return this.fallbackIcon;
   }
 }

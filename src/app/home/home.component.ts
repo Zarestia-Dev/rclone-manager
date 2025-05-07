@@ -43,6 +43,7 @@ import {
 } from "../modals/export-modal/export-modal.component";
 import { MatButtonModule } from "@angular/material/button";
 import { InfoService } from "../services/info.service";
+import { IconService } from "../services/icon.service";
 
 // Types
 type AppTab = "mount" | "sync" | "copy" | "jobs";
@@ -137,7 +138,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     private settingsService: SettingsService,
     private ngZone: NgZone,
     private cdr: ChangeDetectorRef,
-    private infoService: InfoService
+    private infoService: InfoService,
+    public iconService: IconService
   ) {}
 
   // Lifecycle Hooks
