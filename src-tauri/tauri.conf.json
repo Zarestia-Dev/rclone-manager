@@ -16,7 +16,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi", "dmg", "app", "deb", "rpm", "appimage"],
+    "targets": ["nsis", "msi", "deb", "rpm", "appimage"],
     "category": "utility",
     "shortDescription": "User-friendly GUI for RClone",
     "longDescription": "RClone Manager is a user-friendly GUI for RClone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge.",
