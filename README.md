@@ -76,7 +76,7 @@
 
 - 🔗 [GitHub Releases](https://github.com/Hakanbaban53/rclone-manager/releases)
 
-> 🚧 Only Linux builds are currently provided. Windows and macOS support is on the roadmap.
+> 🚧 Linux and Windows builds are currently provided. macOS support is on the roadmap.
 
 ---
 
