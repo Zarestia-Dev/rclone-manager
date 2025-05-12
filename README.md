@@ -129,8 +129,11 @@ npm run tauri build
 - [ ] **Move the Roadmap on GitHub**
       Transition the roadmap to GitHub Projects for better visibility and collaboration.
 
-- [ ] **Windows & macOS Support**
-      Package and test Rclone Manager for Windows and macOS. (Windows is currently in progress)
+- [x] **Windows Support**
+      Package and test Rclone Manager for Windows. ✅ Completed
+
+- [ ] **macOS Support**
+      Package and test Rclone Manager for macOS.
 
 - [ ] **Built-in Sync & Copy Support**
       Provide GUI options for `rclone sync` and `rclone copy` with common settings.
