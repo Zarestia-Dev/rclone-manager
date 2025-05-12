@@ -1,6 +1,7 @@
 # Maintainer: Hakan İSMAİL <hakanismail53@gmail.com>
 pkgname=rclone-manager
 appname='Rclone.Manager'
+releasetag=0.1.0-beta
 pkgver=0.1.0
 pkgrel=1
 pkgdesc="User-friendly GUI for Rclone"
@@ -11,8 +12,8 @@ depends=('cairo' 'desktop-file-utils' 'gdk-pixbuf2' 'glib2' 'gtk3' 'hicolor-icon
 optdepends=('7zip: Encrypt/decrypt backup data')
 options=('!strip' '!debug')
 # install=${pkgname}.install
-source_x86_64=("${url}/releases/download/v${pkgver}/${appname}_${pkgver}_amd64.deb")
-source_aarch64=("${url}/releases/download/v${pkgver}/${appname}_${pkgver}_arm64.deb")
+source_x86_64=("${url}/releases/download/v${releasetag}/${appname}_${pkgver}_amd64.deb")
+source_aarch64=("${url}/releases/download/v${releasetag}/${appname}_${pkgver}_arm64.deb")
 sha256sums_x86_64=('SKIP')
 sha256sums_aarch64=('SKIP')
 package() {
