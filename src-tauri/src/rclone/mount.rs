@@ -69,10 +69,8 @@ pub async fn install_mount_plugin(state: State<'_, RcloneState>) -> Result<Strin
             .arg(local_file.to_str().unwrap())
             .status()
     } else {
-        std::process::Command::new("msiexec")
-            .arg("/i")
-            .arg(local_file.to_str().unwrap())
-            .status()
+        
+        execute_as_admin_powershell(local_file.to_str().unwrap())
     };
 
     match status {
@@ -85,6 +83,18 @@ pub async fn install_mount_plugin(state: State<'_, RcloneState>) -> Result<Strin
         )),
         Err(e) => Err(format!("Failed to execute installer: {}", e)),
     }
+}
+
+fn execute_as_admin_powershell(msi_path: &str) -> std::io::Result<std::process::ExitStatus> {
+    std::process::Command::new("powershell")
+        .args(&[
+            "-Command",
+            &format!(
+                "Start-Process -FilePath 'msiexec' -ArgumentList '/i \"{}\" /qn /norestart' -Verb RunAs",
+                msi_path.replace("'", "''")
+            ),
+        ])
+        .status()
 }
 
 async fn fetch_and_save(state: State<'_, RcloneState>, url: &str, file_path: &PathBuf) -> Result<(), String> {

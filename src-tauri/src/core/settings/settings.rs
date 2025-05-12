@@ -89,10 +89,18 @@ pub async fn load_setting_value<'a>(
         .unwrap_or_else(|| json!({}))
         .clone();
 
-    // Get category object, then key value
+    // Load default settings
+    let default_settings = serde_json::to_value(AppSettings::default()).unwrap();
+
+    // Try to get the value from stored settings, else fallback to default
     let value = stored_settings
         .get(&category)
         .and_then(|cat| cat.get(&key))
+        .or_else(|| {
+            default_settings
+                .get(&category)
+                .and_then(|cat| cat.get(&key))
+        })
         .cloned()
         .unwrap_or(serde_json::Value::Null);
 

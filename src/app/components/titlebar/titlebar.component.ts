@@ -180,6 +180,9 @@ export class TitlebarComponent implements OnInit, OnDestroy {
         "connection_check_urls"
       );
 
+      console.log("Loaded connection check URLs:", links);
+      
+
       if (this.internetCheckSub) {
         this.internetCheckSub.unsubscribe();
       }
@@ -190,6 +193,8 @@ export class TitlebarComponent implements OnInit, OnDestroy {
           2, // retries
           3 // delay in seconds
         );
+        console.log("Connection check result:", result);
+        
         this.result = result;
         this.connectionHistory.unshift({
           timestamp: new Date(),

@@ -82,7 +82,7 @@ pub fn show_main_window(app: AppHandle) {
         window.set_focus().unwrap_or_else(|_| {
             error!("🚨 Failed to focus main window");
         });
-        if let Ok(false) = window.is_visible() {
+        if let Ok(true) = window.is_visible() {
             window.eval("location.reload();").unwrap_or_else(|_| {
                 error!("🔄 Failed to reload main window");
             });

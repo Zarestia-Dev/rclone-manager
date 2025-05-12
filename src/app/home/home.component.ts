@@ -114,7 +114,6 @@ export interface RemoteActionProgress {
     MatMenuModule,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
     SidebarComponent,
     MountOverviewComponent,
     SyncOverviewComponent,

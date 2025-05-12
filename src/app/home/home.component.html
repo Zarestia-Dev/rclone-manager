@@ -10,11 +10,6 @@
 
   <!-- Main Content -->
   <mat-sidenav-content class="main-content" position="center">
-    <!-- Loading Indicator -->
-    <div class="loading-overlay" *ngIf="isLoading">
-      <mat-spinner diameter="50"></mat-spinner>
-    </div>
-
     <!-- Sidebar Toggle Button -->
     <div class="sidebar-button">
       <button mat-icon-button class="toggle-sidebar" (click)="sidenav.toggle()">

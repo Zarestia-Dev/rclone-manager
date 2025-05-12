@@ -1,6 +1,6 @@
-use tauri::{image::Image, tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}, AppHandle, Emitter, Manager};
+use tauri::{image::Image, tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}, AppHandle, Emitter};
 
-use crate::core::tray::menu::create_tray_menu;
+use crate::core::tray::{actions::show_main_window, menu::create_tray_menu};
 
 pub async fn setup_tray(
     app: AppHandle,
@@ -35,10 +35,7 @@ pub async fn setup_tray(
                     ..
                 } => {
                     // Show the main window on left click
-                    if let Some(window) = app.get_webview_window("main") {
-                        let _ = window.show();
-                        let _ = window.set_focus();
-                    }
+                    show_main_window(app.clone());
                 }
                 _ => {}
             }
