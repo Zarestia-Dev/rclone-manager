@@ -1,16 +1,29 @@
 # Changelog
-# All notable changes to this project will be documented in this file.
-## [beta-0.1.0] - 2024-12-05
-### Added
-- Added a new feature to manage remotes with a user-friendly interface.
-- GTK-themed Angular frontend
-- Tauri backend
-- Basic remote management (add/edit/delete)
-- Exporting and importing configurations
-- Mounting and unmounting remotes
-- File browser for mounted remotes
-- OAuth support for OAuth2 providers
-- VFS options
-- Tray icon support
-- Light/dark mode
-- Cross-platform (Linux and Windows-ready, macOS coming soon)
+
+## \[v0.1.0] - 2025-05-13
+
+### ✨ Added
+
+* 🚀 **Initial public beta release** for **RClone Manager**.
+* 🖥️ **Linux and Windows** support (AppImage for Linux, EXE for Windows).
+* 🔧 **Remote management** for RClone remotes (add, edit, remove).
+* 🔐 **OAuth authentication** with cloud services (Google Drive, OneDrive, Dropbox, S3, etc.).
+* 🌗 **GTK-inspired Dark & Light modes**.
+* 🧑‍💻 **System tray integration** for quick access to remotes.
+* 📱 **Mobile-friendly preview layout** for smaller screens.
+
+### 🔄 Changed
+
+* 🎨 Refined UI using **Angular Material** and **GTK theming**.
+* 🚀 **Windows** UI performance improvements (Linux still needs optimization).
+
+### 🐛 Fixed
+
+* 🖥️ Resolved initial setup issues for **Windows** users with RClone installation.
+* 🐧 Improved **Linux AppImage packaging** and window scaling.
+
+### ⚠️ Known Issues
+
+* 🐌 **Linux AppImage UI is laggy** on some systems due to frontend rendering in AppImage containers.
+* 🚫 **No macOS support yet**, builds coming soon.
+* ⏳ **Sync/Copy GUI missing**, expected in future releases.
