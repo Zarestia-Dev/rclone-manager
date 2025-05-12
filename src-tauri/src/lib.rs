@@ -1,23 +1,25 @@
 use core::{
     check_binaries::{is_7z_available, is_rclone_available},
-    settings::settings::{analyze_backup_file, load_setting_value, restore_encrypted_settings},
+    settings::settings::{analyze_backup_file, load_setting_value, restore_encrypted_settings}, tray::tray::TrayEnabled,
 };
 use std::{
     path::PathBuf,
-    sync::{Arc, Mutex, Once},
+    sync::{Arc, Mutex},
 };
 
 use log::{debug, error, info};
 use rclone::api::{
-    engine::RcApiEngine,
-    state::{
+    api_query::get_fs_info, engine::RcApiEngine, state::{
         clear_errors_for_remote, clear_logs_for_remote, get_cached_mounted_remotes,
         get_remote_errors, get_remote_logs,
-    },
+    }
 };
 use serde_json::json;
 use tauri::{Emitter, Manager, Theme, WindowEvent};
 use tauri_plugin_store::StoreBuilder;
+use utils::{
+    builder::{create_app_window, setup_tray}, log::init_logging, network::check_links, notification::NotificationService
+};
 
 use crate::{
     core::{
@@ -31,12 +33,9 @@ use crate::{
             },
             settings_store::AppSettings,
         },
-        tray::{
-            actions::{
-                handle_browse_remote, handle_delete_remote, handle_mount_remote,
-                handle_unmount_remote, show_main_window,
-            },
-            tray::setup_tray,
+        tray::actions::{
+            handle_browse_remote, handle_delete_remote, handle_mount_remote, handle_unmount_remote,
+            show_main_window,
         },
     },
     rclone::{
@@ -68,16 +67,11 @@ mod core;
 mod rclone;
 mod utils;
 
-static INIT_LOGGER: Once = Once::new();
-
 pub struct RcloneState {
     pub client: reqwest::Client,
 }
 
 use std::sync::RwLock;
-
-#[derive(Clone)]
-struct TrayEnabled(pub Arc<RwLock<bool>>);
 
 #[tauri::command]
 async fn set_theme(theme: String, window: tauri::Window) -> Result<(), String> {
@@ -93,18 +87,6 @@ async fn set_theme(theme: String, window: tauri::Window) -> Result<(), String> {
     }
 
     Ok(())
-}
-
-fn init_logging(enable_debug: bool) {
-    INIT_LOGGER.call_once(|| {
-        let mut builder = env_logger::Builder::new();
-        builder.filter_level(if enable_debug {
-            log::LevelFilter::Debug
-        } else {
-            log::LevelFilter::Info
-        });
-        builder.init();
-    });
 }
 
 /// Initializes Rclone API and OAuth state, and launches the Rclone engine.
@@ -194,23 +176,21 @@ pub fn run() {
                 window.hide().unwrap_or_else(|e| {
                     eprintln!("Failed to hide window: {}", e);
                 });
-                let tray_enabled_arc = window.app_handle().state::<TrayEnabled>().0.clone();
-                if let Ok(tray_enabled) = tray_enabled_arc.clone().read() {
-                    if *tray_enabled {
-                        api.prevent_close();
-                        if let Some(win) = window.app_handle().get_webview_window("main") {
-                            win.eval("document.body.innerHTML = '';")
-                                .unwrap_or_else(|e| {
-                                    eprintln!("Failed to clear window content: {}", e);
-                                });
-                        }
-                    } else {
-                        tauri::async_runtime::block_on(handle_shutdown(
-                            window.app_handle().clone(),
-                        ));
+                if *window.app_handle().state::<TrayEnabled>().enabled.clone().read().unwrap() {
+                    api.prevent_close();
+                    if let Some(win) = window.app_handle().get_webview_window("main") {
+                        win.eval("document.body.innerHTML = '';")
+                            .unwrap_or_else(|e| {
+                                eprintln!("Failed to clear window content: {}", e);
+                            });
+
+                        // When windows are closed, the "main" label is still exist?
+                        // win.close().unwrap_or_else(|e| {
+                        //     eprintln!("Failed to close window: {}", e);
+                        // });
                     }
                 } else {
-                    eprintln!("Failed to read tray_enabled state");
+                    tauri::async_runtime::block_on(handle_shutdown(window.app_handle().clone()));
                 }
             }
             WindowEvent::Focused(true) => {
@@ -227,15 +207,6 @@ pub fn run() {
         })
         .setup(|app| {
             let app_handle = app.handle();
-            let args = std::env::args().collect::<Vec<_>>();
-            let start_with_tray = args.contains(&"--tray".to_string());
-
-            // ────── Hide main window if started with tray ──────
-            if start_with_tray {
-                if let Some(win) = app_handle.get_webview_window("main") {
-                    let _ = win.hide();
-                }
-            }
 
             let config_dir = setup_config_dir(&app_handle)?;
             let store_path = config_dir.join("settings.json");
@@ -261,11 +232,17 @@ pub fn run() {
             let settings: AppSettings = serde_json::from_value(settings_json["settings"].clone())
                 .unwrap_or_else(|_| AppSettings::default());
 
-            let tray_enabled = Arc::new(RwLock::new(settings.general.tray_enabled));
-            app.manage(TrayEnabled(tray_enabled.clone()));
+            app.manage(NotificationService {
+                enabled: Arc::new(RwLock::new(settings.general.notifications)),
+            });
+            app.manage(TrayEnabled {
+                enabled: Arc::new(RwLock::new(settings.general.tray_enabled)),
+            });
 
             // ────── INIT LOGGING ──────
-            init_logging(settings.experimental.debug_logging);
+            if let Err(e) = init_logging(settings.experimental.debug_logging) {
+                error!("Failed to initialize logging: {}", e);
+            }
 
             // ────── INIT RCLONE STATE + ENGINE ──────
             if let Err(e) = init_rclone_state(&app_handle, &settings) {
@@ -278,10 +255,17 @@ pub fn run() {
                 async_startup(app_handle_clone, settings).await;
             });
 
+            let args = std::env::args().collect::<Vec<_>>();
+            let start_with_tray = args.contains(&"--tray".to_string());
+            if !start_with_tray {
+                debug!("Creating main window");
+                create_app_window(app.handle().clone());
+            }
+
             Ok(())
         })
         .on_menu_event(|app, event| match event.id.as_ref() {
-            "show_app" => show_main_window(app),
+            "show_app" => show_main_window(app.clone()),
             "mount_all" => app.emit("mount-all", ()).unwrap(),
             "unmount_all" => {
                 let app_clone = app.clone();
@@ -318,6 +302,7 @@ pub fn run() {
             provision_rclone,
             // Rclone Command API
             get_all_remote_configs,
+            get_fs_info,
             get_disk_usage,
             get_remotes,
             get_remote_config,
@@ -353,6 +338,7 @@ pub fn run() {
             restore_encrypted_settings,
             restore_settings,
             reset_settings,
+            check_links,
             // Check mount plugin
             check_mount_plugin,
             install_mount_plugin,

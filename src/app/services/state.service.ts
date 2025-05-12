@@ -38,7 +38,7 @@ export class StateService {
   };
 
   private selectedRemoteSource = new BehaviorSubject<any>(null);
-  private _isMobile = new BehaviorSubject<boolean>(window.innerWidth <= 500);
+  private _isMobile = new BehaviorSubject<boolean>(window.innerWidth <= 600);
   private _isMaximized = new BehaviorSubject<boolean>(false);
 
   selectedRemote$ = this.selectedRemoteSource.asObservable();
@@ -51,13 +51,43 @@ export class StateService {
   constructor(private rcloneService: RcloneService, private ngZone: NgZone) {
     this.initializeWindowListeners();
     this.updateViewportSettings();
+    this.setupRemoteDeletionListener();
 
     window.addEventListener("resize", () => {
       this.ngZone.run(() => {
-        this._isMobile.next(window.innerWidth <= 500);
+        this._isMobile.next(window.innerWidth <= 600);
         this.updateViewportSettings();
       });
     });
+  }
+
+  // Add this new method
+  private _showToast$ = new BehaviorSubject<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
+  showToast$ = this._showToast$.asObservable();
+
+  // Update the deletion listener
+  private async setupRemoteDeletionListener() {
+    try {
+      await listen<string>("remote_deleted", (event) => {
+        this.ngZone.run(() => {
+          const deletedRemoteName = event.payload;
+          const currentRemote = this.selectedRemoteSource.value;
+
+          if (currentRemote?.remoteSpecs?.name === deletedRemoteName) {
+            this.resetSelectedRemote();
+            this._showToast$.next({
+              message: `Remote ${deletedRemoteName} deleted`,
+              type: "success",
+            });
+          }
+        });
+      });
+    } catch (error) {
+      console.warn("Failed to setup remote deletion listener:", error);
+    }
   }
 
   private async initializeWindowListeners() {

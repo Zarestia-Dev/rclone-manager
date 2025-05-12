@@ -49,6 +49,7 @@
         margin-bottom: 12px;
         padding: 8px 12px;
         gap: 6px;
+        overflow: clip;
 
         &.advanced-field {
           border-left: 4px solid var(--purple);

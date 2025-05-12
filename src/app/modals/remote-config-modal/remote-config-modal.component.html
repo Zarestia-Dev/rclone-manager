@@ -69,7 +69,7 @@
           <ng-container *ngFor="let field of dynamicRemoteFields">
             <ng-container *ngIf="!field.Advanced">
               <mat-card class="field-card">
-                <mat-label>{{ field.Help }}</mat-label>
+                <mat-label [innerHTML]="field.Help | linebreaks"></mat-label>
 
                 <!-- Boolean Toggle (takes precedence over select even if Examples exist) -->
                 <mat-slide-toggle *ngIf="field.Type === 'bool'" [formControlName]="field.Name">
@@ -104,7 +104,8 @@
                 <mat-form-field appearance="fill" *ngIf="!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration', 'bool'].includes(field.Type) && 
                           field.Examples?.length === 0">
                   <mat-label>{{ field.Name }}</mat-label>
-                  <input matInput type="text" [formControlName]="field.Name" />
+                  <input matInput [type]="isSensitiveField(field.Name) ? 'password' : 'text'"
+                    [formControlName]="field.Name" />
                 </mat-form-field>
               </mat-card>
 
@@ -121,7 +122,7 @@
               <ng-container *ngIf="field.Advanced">
                 <mat-card class="field-card advanced-field">
 
-                  <mat-label>{{ field.Help }}</mat-label>
+                  <mat-label [innerHTML]="field.Help | linebreaks"></mat-label>
 
                   <!-- Boolean Toggle (takes precedence over select even if Examples exist) -->
                   <mat-slide-toggle *ngIf="field.Type === 'bool'" [formControlName]="field.Name">
@@ -156,7 +157,8 @@
                   <mat-form-field appearance="fill" *ngIf="!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration', 'bool'].includes(field.Type) && 
                           field.Examples?.length === 0">
                     <mat-label>{{ field.Name }}</mat-label>
-                    <input matInput type="text" [formControlName]="field.Name" />
+                    <input matInput [type]="isSensitiveField(field.Name) ? 'password' : 'text'"
+                      [formControlName]="field.Name" />
                   </mat-form-field>
                 </mat-card>
               </ng-container>
@@ -212,10 +214,11 @@
               <div class="json-textarea">
                 <mat-form-field appearance="fill" style="width: 100%;" formGroupName="jsonConfigs">
                   <mat-label>{{ step | titlecase }} Configuration</mat-label>
-                  <button mat-icon-button class="reset-btn" (click)="resetJson(step)" attr.aria-label="Reset {{ step }} configuration">
+                  <button mat-icon-button class="reset-btn" (click)="resetJson(step)"
+                    attr.aria-label="Reset {{ step }} configuration">
                     <mat-icon svgIcon="circle-xmark"></mat-icon>
                   </button>
-                  <textarea matInput [formControlName]="step" #jsonArea (input)="validateJson(step)"
+                  <textarea cdkTextareaAutosize matInput [formControlName]="step" #jsonArea (input)="validateJson(step)"
                     [attr.aria-describedby]="step + 'JsonError'" spellcheck="false"></textarea>
                   <mat-error *ngIf="remoteConfigForm.get('jsonConfigs')?.get(step)?.hasError('invalidJson')"
                     [id]="step + 'JsonError'">
@@ -231,7 +234,7 @@
                   [disabled]="!remoteConfigForm.get('jsonConfigs')?.get(step)?.valid">
                   <mat-chip-option *ngFor="let field of dynamicFlagFields[step]" (click)="toggleOption(step, field)"
                     [selected]="selectedOptions[step] && selectedOptions[step].hasOwnProperty(field.name)"
-                    [matTooltip]="field.help" [matTooltipShowDelay]="400" [matTooltipHideDelay]="100"
+                    [matTooltip]="field.help | linebreaks" [matTooltipShowDelay]="400" [matTooltipHideDelay]="100"
                     [matTooltipPosition]="'above'">
                     {{ field.name }}
                   </mat-chip-option>
@@ -252,8 +255,8 @@
         [disabled]="!remoteForm.valid || isLoading.saving" [@fadeInOut]>
         Next
       </button>
-      <button mat-raised-button color="accent" [disabled]="isLoading.saving" *ngIf="currentStep > 1 && !editTarget" (click)="prevStep()"
-        [@fadeInOut]>
+      <button mat-raised-button color="accent" [disabled]="isLoading.saving" *ngIf="currentStep > 1 && !editTarget"
+        (click)="prevStep()" [@fadeInOut]>
         Back
       </button>
     </div>

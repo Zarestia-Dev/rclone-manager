@@ -16,7 +16,6 @@ import { RcloneService } from "../../services/rclone.service";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
-import confetti from "canvas-confetti";
 
 @Component({
   selector: "app-onboarding",
@@ -86,7 +85,6 @@ export class OnboardingComponent implements OnInit {
   animationState: "forward" | "backward" = "forward";
   installLocation: "default" | "custom" = "default";
   customPath: string = "";
-  hasCelebrated = false;
   mountPluginRequired = false;
   downloadingPlugin = false;
   currentCardIndex = 0;
@@ -189,12 +187,6 @@ export class OnboardingComponent implements OnInit {
     setTimeout(() => {
       if (this.currentCardIndex < this.cards.length - 1) {
         this.currentCardIndex++;
-        if (
-          !this.hasCelebrated &&
-          this.currentCardIndex === this.cards.length - 1
-        ) {
-          this.celebrate();
-        }
       }
     });
   }
@@ -206,34 +198,6 @@ export class OnboardingComponent implements OnInit {
         this.currentCardIndex--;
       }
     });
-  }
-  
-  celebrate(): void {
-    this.hasCelebrated = true;
-  
-    const duration = 500;
-    const end = Date.now() + duration;
-  
-    const colors = ['#6366F1', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#F43F5E'];
-  
-    const random = (min: number, max: number): number =>
-      Math.floor(Math.random() * (max - min + 1)) + min;
-  
-    const frame = () => {
-      confetti({
-        particleCount: 15,
-        angle: random(15, 185),
-        spread: random(20, 270),
-        origin: { y: 0.6 },
-        colors,
-      });
-  
-      if (Date.now() < end) {
-        requestAnimationFrame(frame);
-      }
-    };
-  
-    frame();
   }
   
   trackByIndex(index: number): number {

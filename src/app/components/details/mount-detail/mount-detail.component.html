@@ -1,9 +1,11 @@
 <div class="remote-details" *ngIf="selectedRemote">
     <div class="remote-header">
-        <h2 matTooltip="{{ selectedRemote.remoteSpecs.name }}">{{ selectedRemote.remoteSpecs.name }}</h2>
+        <h2 matTooltip="{{ selectedRemote.remoteSpecs?.['name'] }}">
+            {{ selectedRemote.remoteSpecs?.['name'] }}
+        </h2>
         <p>
-            <mat-icon [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"></mat-icon> {{
-            selectedRemote.remoteSpecs.type | titlecase }}
+            <mat-icon [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs?.['type'])"></mat-icon>
+            {{ selectedRemote.remoteSpecs?.['type'] | titlecase }}
         </p>
     </div>
 
@@ -18,44 +20,53 @@
                         {{ selectedRemote.mounted === 'error' ? 'Error' : 'Not Mounted' }}
                     </p>
                     <div *ngIf="selectedRemote.mounted && selectedRemote.mounted !== 'error'" class="usage"
-                        [ngStyle]="{ width: getUsagePercentage() + '%' }"></div>
+                        [style.width]="getUsagePercentage() + '%'">
+                    </div>
                 </div>
 
-                <div class="legend" *ngIf="selectedRemote.mounted">
-                    <div class="legend-item"><span class="color-box border"></span> Total Space: {{
-                        selectedRemote.diskUsage.total_space }}</div>
-                    <div class="legend-item"><span class="color-box used"></span> Used Space: {{
-                        selectedRemote.diskUsage.used_space }}</div>
-                    <div class="legend-item"><span class="color-box free"></span> Free Space: {{
-                        selectedRemote.diskUsage.free_space }}</div>
+                <div class="legend" *ngIf="selectedRemote.mounted && selectedRemote.diskUsage">
+                    <div class="legend-item">
+                        <span class="color-box border"></span>
+                        Total Space: {{ selectedRemote.diskUsage["total_space"] }}
+                    </div>
+                    <div class="legend-item">
+                        <span class="color-box used"></span>
+                        Used Space: {{ selectedRemote.diskUsage["used_space"] }}
+                    </div>
+                    <div class="legend-item">
+                        <span class="color-box free"></span>
+                        Free Space: {{ selectedRemote.diskUsage["free_space"] }}
+                    </div>
                 </div>
             </mat-card-content>
 
             <mat-divider></mat-divider>
 
             <mat-card-footer class="button-container">
-                <ng-container *ngIf="selectedRemote.mounted">
+                <ng-container *ngIf="selectedRemote.mounted && selectedRemote.mounted !== 'error'">
                     <button mat-raised-button [disabled]="actionInProgress === 'open'" color="accent"
                         (click)="triggerOpenInFiles()">
                         <mat-spinner *ngIf="actionInProgress === 'open'" diameter="20"></mat-spinner>
-                        <mat-icon *ngIf="!(actionInProgress === 'open')" svgIcon="folder"></mat-icon>
-                        {{ actionInProgress === 'open' ? "Openning" : "Open Files" }}
+                        <mat-icon *ngIf="actionInProgress !== 'open'" svgIcon="folder"></mat-icon>
+                        {{ actionInProgress === 'open' ? "Opening" : "Open Files" }}
                     </button>
                     <button mat-raised-button [disabled]="actionInProgress === 'unmount'" color="warn"
                         (click)="triggerUnmountRemote()">
                         <mat-spinner *ngIf="actionInProgress === 'unmount'" diameter="20"></mat-spinner>
-                        <mat-icon *ngIf="!(actionInProgress === 'unmount')" svgIcon="circle-exclamation"></mat-icon>
+                        <mat-icon *ngIf="actionInProgress !== 'unmount'" svgIcon="circle-exclamation"></mat-icon>
                         {{ actionInProgress === 'unmount' ? "Unmounting" : "Unmount" }}
                     </button>
                 </ng-container>
+
                 <ng-container *ngIf="!selectedRemote.mounted">
-                    <button [disabled]="actionInProgress === 'mount'" mat-raised-button color="primary"
+                    <button mat-raised-button [disabled]="actionInProgress === 'mount'" color="primary"
                         (click)="triggerMountRemote()">
                         <mat-spinner *ngIf="actionInProgress === 'mount'" diameter="20"></mat-spinner>
-                        <mat-icon *ngIf="!(actionInProgress === 'mount')" svgIcon="mount"></mat-icon>
+                        <mat-icon *ngIf="actionInProgress !== 'mount'" svgIcon="mount"></mat-icon>
                         {{ actionInProgress === 'mount' ? "Mounting" : "Mount" }}
                     </button>
                 </ng-container>
+
                 <ng-container *ngIf="selectedRemote.mounted === 'error'">
                     <button class="fix">
                         <mat-icon svgIcon="wrench"></mat-icon> Fix
@@ -72,9 +83,10 @@
             <mat-card-content class="spec-content">
                 <mat-chip-set class="specs-container">
                     <mat-chip *ngFor="let spec of selectedRemote.remoteSpecs | keyvalue" class="spec-pill"
-                        [matTooltip]="spec.value | json" matTooltipPosition="above" [matTooltipHideDelay]="500">
+                        [matTooltip]="isSensitiveKey(spec.key) ? '[RESTRICTED]' : (spec.value | json)"
+                        matTooltipPosition="above" [matTooltipHideDelay]="500">
                         <strong>{{ spec.key }}:</strong>
-                        <span>{{ truncateValue(spec.value, 15) }}</span>
+                        <span>{{ maskSensitiveValue(spec.key, spec.value) }}</span>
                     </mat-chip>
                 </mat-chip-set>
             </mat-card-content>
@@ -88,7 +100,7 @@
         </mat-card>
     </div>
 
-    <!-- ✅ Dynamic Remote Settings Sections -->
+    <!-- Dynamic Remote Settings Sections -->
     <ng-container *ngFor="let section of remoteSettingsSections">
         <div class="info-card spec-card">
             <h3>
@@ -98,15 +110,14 @@
             <mat-card class="info-card-content">
                 <mat-card-content class="spec-content">
                     <mat-chip-set class="specs-container">
-                        <!-- ✅ Show normal settings if available -->
                         <mat-chip *ngFor="let spec of getRemoteSettings(section.key + '_options') | keyvalue"
-                            class="spec-pill" matTooltip="{{ spec.value | json }}" matTooltipPosition="above"
+                            class="spec-pill"
+                            [matTooltip]="isSensitiveKey(spec.key) ? '[RESTRICTED]' : (spec.value | json)"
                             [matTooltipHideDelay]="500">
                             <strong>{{ spec.key }}:</strong>
-                            <span>{{ truncateValue(spec.value, 15) }}</span>
+                            <span>{{ maskSensitiveValue(spec.key, spec.value) }}</span>
                         </mat-chip>
 
-                        <!-- ❌ Show "No Data" chip if section is empty -->
                         <mat-chip *ngIf="!hasSettings(section.key + '_options')" class="spec-pill not-found">
                             <strong>No data found</strong>
                         </mat-chip>
@@ -115,7 +126,6 @@
 
                 <mat-divider></mat-divider>
 
-                <!-- ✅ Edit Button -->
                 <mat-card-footer class="button-container">
                     <button mat-raised-button class="fix"
                         (click)="triggerOpenRemoteConfig(section.key, getRemoteSettings(section.key + '_options'))">

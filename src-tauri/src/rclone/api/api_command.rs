@@ -8,31 +8,23 @@ use std::{
     time::Duration,
 };
 use tauri::{AppHandle, Emitter, State};
-use tokio::{sync::Mutex, time::sleep};
 use tokio::net::TcpStream;
+use tokio::{sync::Mutex, time::sleep};
 
 use crate::{
     core::check_binaries::read_rclone_path,
     rclone::api::state::{
-        clear_logs_for_remote, get_cached_mounted_remotes, RemoteError, RemoteLogEntry, ERROR_CACHE, RCLONE_STATE
+        clear_logs_for_remote, get_cached_mounted_remotes, RemoteError, RemoteLogEntry,
+        ERROR_CACHE, RCLONE_STATE,
     },
     RcloneState,
 };
 
+use super::state::SENSITIVE_KEYS;
+
 lazy_static::lazy_static! {
     static ref OAUTH_PROCESS: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
 }
-
-const SENSITIVE_KEYS: &[&str] = &[
-    "password",
-    "secret",
-    "token",
-    "key",
-    "credentials",
-    "auth",
-    "client_secret",
-    "api_key",
-];
 
 fn redact_sensitive_values(params: &HashMap<String, Value>) -> Value {
     params
@@ -42,7 +34,7 @@ fn redact_sensitive_values(params: &HashMap<String, Value>) -> Value {
                 .iter()
                 .any(|sk| k.to_lowercase().contains(sk))
             {
-                json!("[REDACTED]")
+                json!("[RESTRICTED]")
             } else {
                 v.clone()
             };
@@ -104,7 +96,10 @@ async fn ensure_oauth_process(app: &AppHandle) -> Result<(), String> {
         let addr = format!("127.0.0.1:{}", port);
         if TcpStream::connect(&addr).await.is_ok() {
             process_running = true;
-            warn!("⚠️ Rclone OAuth process already running (port {} in use)", port);
+            warn!(
+                "⚠️ Rclone OAuth process already running (port {} in use)",
+                port
+            );
         }
     } else {
         warn!("⚠️ Rclone OAuth process already running (tracked in memory)");
@@ -136,7 +131,7 @@ async fn ensure_oauth_process(app: &AppHandle) -> Result<(), String> {
             use std::os::windows::process::CommandExt;
             oauth_app.creation_flags(0x08000000 | 0x00200000);
         }
-        
+
         let process = oauth_app.spawn().map_err(|e| {
             format!(
                 "Failed to start Rclone OAuth process: {}. Ensure Rclone is installed and in PATH.",
@@ -158,7 +153,6 @@ pub async fn create_remote(
     parameters: Value,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-
     let remote_type = parameters
         .get("type")
         .and_then(|v| v.as_str())
@@ -254,7 +248,6 @@ pub async fn update_remote(
     parameters: HashMap<String, Value>,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-
     let remote_type = parameters
         .get("type")
         .and_then(|v| v.as_str())
@@ -320,14 +313,12 @@ pub async fn update_remote(
     Ok(())
 }
 
-/// Delete a remote configuration
 #[tauri::command]
 pub async fn delete_remote(
     app: AppHandle,
     name: String,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-
     info!("🗑️ Deleting remote: {}", name);
 
     let url = format!("{}/config/delete", RCLONE_STATE.get_api().0);
@@ -349,9 +340,18 @@ pub async fn delete_remote(
         return Err(error);
     }
 
+    // Emit two events:
+    // 1. The standard presence changed event
     app.emit("remote_presence_changed", &name)
         .map_err(|e| format!("Failed to emit event: {}", e))?;
-    clear_logs_for_remote(name.clone()).await.unwrap_or_default();
+
+    // 2. A new specific event for deletion
+    app.emit("remote_deleted", &name)
+        .map_err(|e| format!("Failed to emit event: {}", e))?;
+
+    clear_logs_for_remote(name.clone())
+        .await
+        .unwrap_or_default();
     info!("✅ Remote {} deleted successfully", name);
     Ok(())
 }
@@ -366,7 +366,6 @@ pub async fn mount_remote(
     vfs_options: Option<HashMap<String, Value>>,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-
     if mount_point.trim().is_empty() {
         return Err("Mount point cannot be empty".to_string());
     }
@@ -569,6 +568,16 @@ pub async fn unmount_remote(
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
+        if status.as_u16() == 500 && body.contains("\"mount not found\"") {
+            warn!(
+                "🚨 Mount not found for {}, updating mount cache",
+                mount_point
+            );
+            // Update the cached mounted remotes
+            app.emit("remote_state_changed", &mount_point)
+                .map_err(|e| format!("Failed to emit event: {}", e))?;
+        }
+
         let error = format!("HTTP {}: {}", status, body);
         let _ = log_error(
             Some(remote_name.clone()),
@@ -577,6 +586,7 @@ pub async fn unmount_remote(
             Some(json!({"response": body})),
         )
         .await;
+
         return Err(error);
     }
 
@@ -814,8 +824,7 @@ pub async fn start_copy(
 
 /// Clean up OAuth process
 #[tauri::command]
-pub async fn quit_rclone_oauth() -> Result<(), String> {
-
+pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), String> {
     info!("🛑 Quitting Rclone OAuth process");
 
     let mut guard = OAUTH_PROCESS.lock().await;
@@ -839,9 +848,8 @@ pub async fn quit_rclone_oauth() -> Result<(), String> {
     }
 
     let url = format!("http://127.0.0.1:{}/core/quit", port);
-    let client = reqwest::Client::new();
 
-    if let Err(e) = client.post(&url).send().await {
+    if let Err(e) = state.client.post(&url).send().await {
         warn!("⚠️ Failed to send quit request: {}", e);
     }
 

@@ -11,14 +11,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
-            arch: 'silicon'
-            type: 'aarch64'
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
-            arch: 'silicon'
-            type: 'x86_64'
+          # - platform: 'macos-latest'
+          #   args: '--target aarch64-apple-darwin'
+          #   arch: 'silicon'
+          #   type: 'aarch64'
+          # - platform: 'macos-latest'
+          #   args: '--target x86_64-apple-darwin'
+          #   arch: 'silicon'
+          #   type: 'x86_64'
           - platform: 'ubuntu-22.04' 
             args: ''
           - platform: 'windows-latest'
@@ -46,11 +46,11 @@ jobs:
           node-version: lts/*
           cache: 'npm'
 
-      - name: install Rust stable (macos only)
-        uses: dtolnay/rust-toolchain@stable
-        if: matrix.platform == 'macos-latest'
-        with:
-          targets: ${{ matrix.type == 'aarch64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
+      # - name: install Rust stable (macos only)
+      #   uses: dtolnay/rust-toolchain@stable
+      #   if: matrix.platform == 'macos-latest'
+      #   with:
+      #     targets: ${{ matrix.type == 'aarch64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
           
       - name: install Rust stable (windows only)
         uses: dtolnay/rust-toolchain@stable
@@ -64,14 +64,13 @@ jobs:
           workspaces: './src-tauri -> target'
 
       - name: install frontend dependencies
-        # If you don't have `beforeBuildCommand` configured you may want to build your frontend here too.
         run: npm install #
 
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.TAURI_TOKEN }}
         with:
-          tagName: app-v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
+          tagName: app-v__VERSION__
           releaseName: 'RClone Manager v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true

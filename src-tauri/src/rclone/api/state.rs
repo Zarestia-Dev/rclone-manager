@@ -1,15 +1,69 @@
+use chrono::{DateTime, Utc};
 use log::{debug, error};
 use once_cell::sync::Lazy;
-use serde_json::json;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use std::sync::Mutex;
 use tauri::Manager;
 use tokio::sync::RwLock;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 
 use crate::core::settings::settings::get_remote_settings;
 
 use super::api_query::{get_all_remote_configs, get_mounted_remotes, get_remotes, MountedRemote};
+
+pub const SENSITIVE_KEYS: &[&str] = &[
+    "password",
+    "secret",
+    "endpoint",
+    "token",
+    "key",
+    "credentials",
+    "auth",
+    "client_secret",
+    "client_id",
+    "api_key",
+];
+
+fn redact_sensitive_values(params: &Vec<std::string::String>) -> Value {
+    params
+        .iter()
+        .map(|k| {
+            let value = if SENSITIVE_KEYS
+                .iter()
+                .any(|sk| k.to_lowercase().contains(sk))
+            {
+                json!("[RESTRICTED]")
+            } else {
+                json!(k)
+            };
+            (k.clone(), value)
+        })
+        .collect()
+}
+
+// Recursively redact sensitive values in a serde_json::Value
+fn redact_sensitive_json(value: &Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let redacted_map = map
+                .iter()
+                .map(|(k, v)| {
+                    if SENSITIVE_KEYS
+                        .iter()
+                        .any(|sk| k.to_lowercase().contains(sk))
+                    {
+                        (k.clone(), json!("[RESTRICTED]"))
+                    } else {
+                        (k.clone(), redact_sensitive_json(v))
+                    }
+                })
+                .collect();
+            Value::Object(redacted_map)
+        }
+        Value::Array(arr) => Value::Array(arr.iter().map(redact_sensitive_json).collect()),
+        _ => value.clone(),
+    }
+}
 
 #[derive(Debug)]
 pub struct RcloneState {
@@ -31,7 +85,7 @@ impl RcloneState {
         *self.api_url.lock().map_err(|e| e.to_string())? = url;
         *self.api_port.lock().map_err(|e| e.to_string())? = port;
         Ok(())
-    }    
+    }
 
     pub fn get_api(&self) -> (String, u16) {
         (
@@ -58,7 +112,7 @@ pub struct RemoteCache {
     pub remotes: RwLock<Vec<String>>,
     pub configs: RwLock<serde_json::Value>,
     pub settings: RwLock<serde_json::Value>,
-    pub mounted: RwLock<Vec<MountedRemote>>
+    pub mounted: RwLock<Vec<MountedRemote>>,
 }
 
 pub static CACHE: Lazy<RemoteCache> = Lazy::new(|| RemoteCache {
@@ -73,15 +127,17 @@ impl RemoteCache {
     //     Self {
     //         remotes: RwLock::new(Vec::new()),
     //         configs: RwLock::new(json!({})),
-    //         settings: RwLock::new(json!({})),
-    //     }
+    // let redacted_configs = redact_sensitive_json(&*configs);
+    // debug!("🔄 Updated remotes configs: {:?}", redacted_configs);
     // }
 
     pub async fn refresh_remote_list(&self, app_handle: tauri::AppHandle) {
         let mut remotes = self.remotes.write().await;
         if let Ok(remote_list) = get_remotes(app_handle.state()).await {
             *remotes = remote_list;
-            debug!("🔄 Updated remotes: {:?}", *remotes);
+            // Redact sensitive values in the remote list
+            let redacted_remotes = redact_sensitive_values(&*remotes);
+            debug!("🔄 Updated remotes: {:?}", redacted_remotes);
         } else {
             error!("Failed to fetch remotes");
         }
@@ -90,7 +146,9 @@ impl RemoteCache {
         let mut configs = self.configs.write().await;
         if let Ok(remote_list) = get_all_remote_configs(app_handle.state()).await {
             *configs = remote_list;
-            debug!("🔄 Updated remotes config: {:?}", *configs);
+            // Redact sensitive values in the remote configs
+            let redacted_configs = redact_sensitive_json(&*configs);
+            debug!("🔄 Updated remotes configs: {:?}", redacted_configs);
         } else {
             error!("Failed to fetch remotes config");
         }
@@ -111,7 +169,9 @@ impl RemoteCache {
         }
 
         *settings = serde_json::Value::Object(all_settings);
-        debug!("🔄 Updated remotes settings cache");
+        // Redact sensitive values in the remote settings
+        let redacted_settings = redact_sensitive_json(&*settings);
+        debug!("🔄 Updated remotes settings: {:?}", redacted_settings);
     }
     pub async fn refresh_mounted_remotes(&self, app_handle: tauri::AppHandle) {
         match get_mounted_remotes(app_handle.state()).await {
@@ -204,7 +264,8 @@ impl RemoteErrorCache {
 
     pub async fn get_errors_for_remote(&self, remote_name: &str) -> Vec<RemoteError> {
         let errors = self.errors.read().await;
-        errors.iter()
+        errors
+            .iter()
             .filter(|e| e.remote_name == remote_name)
             .cloned()
             .collect()
@@ -213,7 +274,8 @@ impl RemoteErrorCache {
     pub async fn get_logs_for_remote(&self, remote_name: Option<&str>) -> Vec<RemoteLogEntry> {
         let logs = self.logs.read().await;
         match remote_name {
-            Some(name) => logs.iter()
+            Some(name) => logs
+                .iter()
                 .filter(|l| l.remote_name.as_deref() == Some(name))
                 .cloned()
                 .collect(),
@@ -244,7 +306,9 @@ pub async fn get_remote_errors(remote_name: Option<String>) -> Result<Vec<Remote
 
 #[tauri::command]
 pub async fn get_remote_logs(remote_name: Option<String>) -> Result<Vec<RemoteLogEntry>, String> {
-    Ok(ERROR_CACHE.get_logs_for_remote(remote_name.as_deref()).await)
+    Ok(ERROR_CACHE
+        .get_logs_for_remote(remote_name.as_deref())
+        .await)
 }
 
 #[tauri::command]

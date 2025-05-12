@@ -1,31 +1,44 @@
 <div class="modal">
   <!-- 🔹 Modal Header (Top) -->
   <div class="modal-header" data-tauri-drag-region>
-      <button class="search-button">
-        <mat-icon svgIcon="search"></mat-icon>
-      </button>
-      <h2 *ngIf="bottomTabs">Preferences</h2>
+    <button (click)="toggleSearch()">
+      <mat-icon svgIcon="search"></mat-icon>
+    </button>
+
+    <h2 *ngIf="bottomTabs">Preferences</h2>
 
     <!-- Tabs - Desktop Layout -->
     <div class="tabs desktop-tabs" *ngIf="!bottomTabs">
-      <button mat-flat-button *ngFor="let tab of tabs; let i = index" (click)="selectTab(i)" [class.selected]="selectedTabIndex === i">
+      <button mat-flat-button *ngFor="let tab of filteredTabs; let i = index" (click)="selectTab(i)"
+        [class.selected]="selectedTabIndex === i">
         <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
         <span class="tab-label">{{ tab.label }}</span>
       </button>
     </div>
 
-    <button class="close-button" (click)="close()">
+    <button class="close-button" (click)="close()" mat-icon-button aria-label="Close">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
 
+  <!-- Search Box with Animation -->
+  <div class="search-container" [@slideToggle]="searchVisible ? 'visible' : 'hidden'">
+    <input matInput class="search-input" placeholder="Search settings..." [(ngModel)]="searchQuery"
+      (ngModelChange)="filterSettings($event)">
+  </div>
+
+  <!-- 🔹 Loading Indicator -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <mat-spinner diameter="50"></mat-spinner>
+  </div>
+
   <!-- 🔹 Modal Content -->
-  <div class="modal-content">
-    <ng-container *ngFor="let category of getObjectKeys(settings)">
+  <div class="modal-content" *ngIf="!isLoading">
+    <ng-container *ngFor="let category of getObjectKeys(settingsForm.controls)">
       <ng-container *ngIf="selectedTab === category">
         <div class="tab-content">
           <div class="settings-list">
-            <div class="setting-item" *ngFor="let key of getObjectKeys(settings[category])">
+            <div class="setting-item" *ngFor="let key of getFilteredSettings(category)">
               <!-- ✅ Fetch metadata -->
               <ng-container *ngIf="getMetadata(category, key) as meta">
                 <div class="setting-info">
@@ -34,49 +47,62 @@
                 </div>
 
                 <div class="setting-control">
+                  <mat-icon svgIcon="error" matSuffix *ngIf="getFormControl(category, key)?.invalid" color="warn"
+                    fontSet="material-icons" matTooltip="{{ getValidationMessage(category, key) }}"
+                    matTooltipPosition="above">
+                  </mat-icon>
+
                   <!-- ✅ Boolean Settings (Toggle) -->
-                  <mat-slide-toggle *ngIf="meta.value_type === 'bool'" [(ngModel)]="settings[category][key]"
-                    (change)="updateSetting(category, key, settings[category][key])">
+                  <mat-slide-toggle *ngIf="meta.value_type === 'bool'" [formControl]="getFormControl(category, key)"
+                    (change)="updateSetting(category, key, getFormControl(category, key).value)">
                   </mat-slide-toggle>
 
                   <!-- ✅ Number Input -->
                   <mat-form-field class="input-field" appearance="outline" *ngIf="meta.value_type === 'number'">
-                    <input matInput type="number" min="1" [(ngModel)]="settings[category][key]"
-                      (blur)="updateSetting(category, key, settings[category][key])" #numberInput="ngModel" required />
-                    <mat-error *ngIf="numberInput.invalid && numberInput.touched">
-                      Only numbers!
-                    </mat-error>
+                    <input matInput (blur)="updateSetting(category, key, getFormControl(category, key).value)"
+                      type="number" [formControl]="getFormControl(category, key)" [min]="meta.min_value || 0"
+                      [max]="meta.max_value" (keypress)="allowOnlyNumbers($event)">
+                    <mat-error>Invalid input</mat-error>
                   </mat-form-field>
 
                   <!-- ✅ String Settings -->
                   <mat-form-field class="input-field" appearance="outline" *ngIf="meta.value_type === 'string'">
                     <!-- ✅ Dropdown (Mat Select) -->
-                    <!-- <mat-select *ngIf="key === 'default_mount_type'" [(ngModel)]="settings[category][key]"
-                      (selectionChange)="updateSetting(category, key, settings[category][key])">
-                      <mat-option value="native">Native</mat-option>
-                      <mat-option value="systemd">Systemd</mat-option>
-                    </mat-select> -->
-
-                    <input *ngIf="key !== 'default_mount_type'" matInput [(ngModel)]="settings[category][key]"
-                      (input)="updateSetting(category, key, settings[category][key])" #stringInput="ngModel" required />
+                    <mat-select *ngIf="meta.options" [formControl]="getFormControl(category, key)"
+                      (selectionChange)="updateSetting(category, key, $event.value)">
+                      <mat-option *ngFor="let option of meta.options" [value]="option">
+                        {{ option }}
+                      </mat-option>
+                    </mat-select>
+                    <input *ngIf="!meta.options" matInput [formControl]="getFormControl(category, key)">
+                    <mat-error>Invalid input</mat-error>
                   </mat-form-field>
                 </div>
               </ng-container>
-
-
             </div>
+
             <ng-container *ngIf="selectedTab === 'general'">
-              <button mat-raised-button color="warn" (click)="resetSettings()">Reset Settings</button>
+              <div class="actions">
+                <button mat-raised-button color="warn" (click)="resetSettings()" class="reset-button">
+                  Reset All Settings
+                </button>
+              </div>
             </ng-container>
           </div>
         </div>
       </ng-container>
     </ng-container>
+
+    <div class="no-results" *ngIf="filteredTabs.length === 0">
+      <mat-icon svgIcon="search-off"></mat-icon>
+      <p>No settings found matching "{{ searchQuery }}"</p>
+    </div>
   </div>
 
   <!-- 🔻 Bottom Tabs (if enabled) -->
-  <div class="tabs bottom-tabs" *ngIf="bottomTabs">
-    <button mat-flat-button *ngFor="let tab of tabs; let i = index" (click)="selectTab(i)" [class.selected]="selectedTabIndex === i">
+  <div class="tabs bottom-tabs" *ngIf="bottomTabs && filteredTabs.length > 0">
+    <button mat-flat-button *ngFor="let tab of filteredTabs; let i = index" (click)="selectTab(i)"
+      [class.selected]="selectedTabIndex === i">
       <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
       <span class="tab-label">{{ tab.label }}</span>
     </button>

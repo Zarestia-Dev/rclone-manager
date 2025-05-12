@@ -441,6 +441,7 @@ button {
   color: var(--app-text-color);
   
   span {
+    text-wrap: nowrap;
     display: flex;
     flex-direction: row;
     gap: 8px

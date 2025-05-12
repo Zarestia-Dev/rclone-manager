@@ -1,10 +1,14 @@
-import { Component, OnInit, OnDestroy, HostListener } from "@angular/core";
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  HostListener,
+} from "@angular/core";
 import { MatDialog } from "@angular/material/dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { Observable } from "rxjs";
-import { takeUntil } from "rxjs/operators";
-import { Subject } from "rxjs";
+import { Observable, Subject, BehaviorSubject, Subscription } from "rxjs";
+import { takeUntil, take } from "rxjs/operators";
 
 // Components
 import { RemoteConfigModalComponent } from "../../modals/remote-config-modal/remote-config-modal.component";
@@ -17,7 +21,7 @@ import { InputModalComponent } from "../../modals/input-modal/input-modal.compon
 
 // Services
 import { StateService } from "../../services/state.service";
-import { SettingsService } from "../../services/settings.service";
+import { CheckResult, SettingsService } from "../../services/settings.service";
 import { RcloneService } from "../../services/rclone.service";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatIconModule } from "@angular/material/icon";
@@ -25,8 +29,9 @@ import { CommonModule } from "@angular/common";
 import { MatMenuModule } from "@angular/material/menu";
 import { TabsButtonsComponent } from "../tabs-buttons/tabs-buttons.component";
 import { MatButtonModule } from "@angular/material/button";
+import { MatTooltipModule } from "@angular/material/tooltip";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
-// Models
 type Theme = "light" | "dark" | "system";
 type ModalSize = {
   width: string;
@@ -35,6 +40,8 @@ type ModalSize = {
   height: string;
   maxHeight: string;
 };
+
+type ConnectionStatus = "online" | "offline" | "checking";
 
 const appWindow = getCurrentWindow();
 const STANDARD_MODAL_SIZE: ModalSize = {
@@ -47,13 +54,16 @@ const STANDARD_MODAL_SIZE: ModalSize = {
 
 @Component({
   selector: "app-titlebar",
+  standalone: true,
   imports: [
     MatMenuModule,
     MatDividerModule,
     CommonModule,
     MatIconModule,
     TabsButtonsComponent,
-    MatButtonModule
+    MatButtonModule,
+    MatTooltipModule,
+    MatProgressSpinnerModule,
   ],
   templateUrl: "./titlebar.component.html",
   styleUrls: ["./titlebar.component.scss"],
@@ -61,9 +71,25 @@ const STANDARD_MODAL_SIZE: ModalSize = {
 export class TitlebarComponent implements OnInit, OnDestroy {
   selectedTheme: Theme = "system";
   isMobile$: Observable<boolean>;
+  connectionStatus: ConnectionStatus = "online";
+  connectionHistory: { timestamp: Date; result: CheckResult }[] = [];
+  result?: CheckResult;
 
   private darkModeMediaQuery: MediaQueryList | null = null;
   private destroy$ = new Subject<void>();
+  private internetCheckSub?: Subscription;
+  private systemTheme$ = new BehaviorSubject<"light" | "dark">(
+    window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+  );
+  private shortcutMap = new Map<string, () => void>([
+    ["Control+,", () => this.openPreferencesModal()],
+    ["Control+r", () => this.openQuickAddRemoteModal()],
+    ["Control+n", () => this.openRemoteConfigModal()],
+    ["Control+?", () => this.openKeyboardShortcutsModal()],
+    ["Control+q", () => this.closeWindow()],
+    ["Control+w", () => this.closeWindow()],
+    ["Escape", () => this.resetRemote()],
+  ]);
 
   constructor(
     private dialog: MatDialog,
@@ -76,41 +102,23 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
     try {
-      const theme = await this.settingsService.load_setting_value("general", "theme");
-      // Only set theme if it's different from the current one
+      const theme = await this.settingsService.load_setting_value(
+        "general",
+        "theme"
+      );
       if (theme && theme !== this.selectedTheme) {
         this.selectedTheme = theme;
-        await this.setTheme(this.selectedTheme, true); // Add a parameter to indicate initialization
+        await this.setTheme(this.selectedTheme, true);
       } else {
-        // Still need to apply the theme, but without triggering save
-        const effectiveTheme = this.selectedTheme === "system" ? this.getSystemTheme() : this.selectedTheme;
-        document.documentElement.setAttribute("class", effectiveTheme);
-        await invoke("set_theme", { theme: effectiveTheme });
+        this.applyTheme(this.systemTheme$.value);
       }
+
+      this.initThemeSystem();
+      await this.runInternetCheck();
     } catch (error) {
-      // Default to system theme if loading fails
+      console.error("Initialization error:", error);
       this.selectedTheme = "system";
-      const effectiveTheme = this.getSystemTheme();
-      document.documentElement.setAttribute("class", effectiveTheme);
-      await invoke("set_theme", { theme: effectiveTheme });
-    }
-  
-    this.initThemeSystem();
-  }
-  
-  // Update setTheme signature
-  async setTheme(theme: Theme, isInitialization = false): Promise<void> {
-    if (this.selectedTheme === theme && !isInitialization) return;
-    
-    this.selectedTheme = theme;
-    const effectiveTheme = theme === "system" ? this.getSystemTheme() : theme;
-  
-    document.documentElement.setAttribute("class", effectiveTheme);
-    await invoke("set_theme", { theme: effectiveTheme });
-  
-    // Only save settings if this isn't during initialization
-    if (!isInitialization) {
-      await this.settingsService.saveSetting("general", "theme", theme);
+      this.applyTheme(this.systemTheme$.value);
     }
   }
 
@@ -118,51 +126,161 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     this.cleanup();
   }
 
-  resetRemote(): void {
-    this.stateService.resetSelectedRemote();
+  // Theme Methods
+  private initThemeSystem(): void {
+    this.darkModeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const listener = (event: MediaQueryListEvent) => {
+      this.systemTheme$.next(event.matches ? "dark" : "light");
+      if (this.selectedTheme === "system") {
+        this.applyTheme(this.systemTheme$.value);
+      }
+    };
+    this.darkModeMediaQuery.addEventListener("change", listener);
+
+    this.destroy$.pipe(take(1)).subscribe(() => {
+      if (this.darkModeMediaQuery) {
+        this.darkModeMediaQuery.removeEventListener("change", listener);
+      }
+    });
   }
 
-  @HostListener("window:keydown", ["$event"])
-  handleKeyboardShortcuts(event: KeyboardEvent): void {
-    if (!event.ctrlKey) return;
-
-    const keyHandlers: Record<string, () => void> = {
-      ",": () => this.openPreferencesModal(),
-      r: () => this.openQuickAddRemoteModal(),
-      n: () => this.openRemoteConfigModal(),
-      "?": () => this.openKeyboardShortcutsModal(),
-      q: () => this.closeWindow(),
-      w: () => this.closeWindow(),
-    };
-
-    if (keyHandlers[event.key]) {
+  async setTheme(theme: Theme, isInitialization = false, event?: MouseEvent): Promise<void> {
+    if (event) {
       event.preventDefault();
-      keyHandlers[event.key]();
+      event.stopPropagation();
+    }
+    if (this.selectedTheme === theme && !isInitialization) return;
+
+    this.selectedTheme = theme;
+    const effectiveTheme = theme === "system" ? this.systemTheme$.value : theme;
+    this.applyTheme(effectiveTheme);
+
+    if (!isInitialization) {
+      try {
+        await this.settingsService.saveSetting("general", "theme", theme);
+      } catch (error) {
+        console.error("Failed to save theme preference");
+      }
     }
   }
 
-  // Window controls
-  closeWindow(): void {
-    appWindow.close();
+  private applyTheme(theme: "light" | "dark"): void {
+    document.documentElement.setAttribute("class", theme);
+    invoke("set_theme", { theme }).catch(console.error);
   }
 
-  minimizeWindow(): void {
-    appWindow.minimize();
+  // Connection Checking
+  async runInternetCheck(): Promise<void> {
+    if (this.connectionStatus === "checking") return;
+
+    this.connectionStatus = "checking";
+    try {
+      const links = await this.settingsService.load_setting_value(
+        "core",
+        "connection_check_urls"
+      );
+
+      if (this.internetCheckSub) {
+        this.internetCheckSub.unsubscribe();
+      }
+
+      try {
+        const result = await this.settingsService.checkInternetLinks(
+          links,
+          2, // retries
+          3 // delay in seconds
+        );
+        this.result = result;
+        this.connectionHistory.unshift({
+          timestamp: new Date(),
+          result: result,
+        });
+        if (this.connectionHistory.length > 5) {
+          this.connectionHistory.pop();
+        }
+        this.connectionStatus =
+          Object.keys(this.result?.failed || {}).length > 0
+            ? "offline"
+            : "online";
+      } catch (err) {
+        console.error("Connection check failed:", err);
+        this.result = { successful: [], failed: {}, retries_used: {} };
+        this.connectionStatus = "offline";
+        console.error("Connection check failed");
+      }
+    } catch (err) {
+      console.error("Connection check error:", err);
+      this.connectionStatus = "offline";
+      console.error("Failed to load connection check settings");
+    }
   }
 
-  maximizeWindow(): void {
-    appWindow.toggleMaximize();
+  getInternetStatusTooltip(): string {
+    if (this.connectionStatus === "checking")
+      return "Checking internet connection...";
+
+    if (this.result && Object.keys(this.result.failed).length > 0) {
+      const services = Object.keys(this.result.failed)
+        .map((url) => {
+          if (url.includes("google")) return "Google Drive";
+          if (url.includes("dropbox")) return "Dropbox";
+          if (url.includes("onedrive")) return "OneDrive";
+          return new URL(url).hostname;
+        })
+        .join(", ");
+
+      return `Cannot connect to: ${services}. Some features may not work as expected. Click to retry.`;
+    }
+
+    return "Your internet connection is working properly.";
   }
 
-
-  getSystemTheme(): "light" | "dark" {
-    return window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light";
+  // Window Controls
+  async minimizeWindow(): Promise<void> {
+    try {
+      await appWindow.minimize();
+    } catch (error) {
+      console.error("Failed to minimize window");
+    }
   }
 
-  // Modal methods
-  public openQuickAddRemoteModal(): void {
+  async maximizeWindow(): Promise<void> {
+    try {
+      await appWindow.toggleMaximize();
+    } catch (error) {
+      console.error("Failed to toggle maximize");
+    }
+  }
+
+  async closeWindow(): Promise<void> {
+    try {
+      await appWindow.close();
+    } catch (error) {
+      console.error("Failed to close window");
+    }
+  }
+
+  // Keyboard Shortcuts
+  @HostListener("window:keydown", ["$event"])
+  handleKeyboardShortcuts(event: KeyboardEvent): void {
+    const keys = [];
+    if (event.ctrlKey || event.metaKey) keys.push("Control");
+    if (event.shiftKey) keys.push("Shift");
+    if (event.altKey) keys.push("Alt");
+    keys.push(event.key);
+
+    const shortcut = keys.join("+").toLowerCase();
+    const handler = this.shortcutMap.get(shortcut);
+
+    if (handler) {
+      event.preventDefault();
+      event.stopPropagation();
+      handler();
+    }
+  }
+
+  // Modal Methods
+  openQuickAddRemoteModal(): void {
     this.openModal(QuickAddRemoteComponent, STANDARD_MODAL_SIZE);
   }
 
@@ -192,63 +310,52 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     });
   }
 
-  async restoreSettings(): Promise<void> {
-    const path = await this.rcloneService.selectFile();
-    if (!path) return;
-
-    const result = await this.settingsService.analyzeBackupFile(path);
-    if (!result) return;
-
-    if (result.isEncrypted) {
-      this.handleEncryptedBackup(path);
-    } else {
-      await this.settingsService.restoreSettings(path);
-    }
-  }
-
-  // Private methods
-  private initThemeSystem(): void {
-    this.darkModeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const listener = (event: MediaQueryListEvent) => {
-      if (this.selectedTheme === "system") {
-        this.setTheme("system");
-      }
-    };
-    this.darkModeMediaQuery.addEventListener("change", listener);
-  }
-
   private openModal(component: any, size: ModalSize): void {
-    const dialogRef = this.dialog.open(component, {
+    this.dialog.open(component, {
       ...size,
       disableClose: true,
     });
+  }
 
-    dialogRef
-      .afterClosed()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((result) => {
-        console.log("Modal closed with:", result);
-      });
+  // Other Methods
+  resetRemote(): void {
+    this.stateService.resetSelectedRemote();
+  }
+
+  async restoreSettings(): Promise<void> {
+
+      const path = await this.rcloneService.selectFile();
+      if (!path) return;
+
+      const result = await this.settingsService.analyzeBackupFile(path);
+      if (!result) return;
+
+      if (result.isEncrypted) {
+        this.handleEncryptedBackup(path);
+      } else {
+        await this.settingsService.restoreSettings(path);
+      }
   }
 
   private handleEncryptedBackup(path: string): void {
-    this.dialog
-      .open(InputModalComponent, {
-        width: "400px",
-        disableClose: true,
-        data: {
-          title: "Enter Password",
-          description: "Please enter the password to decrypt the backup file.",
-          fields: [
-            {
-              name: "password",
-              label: "Password",
-              type: "password",
-              required: true,
-            },
-          ],
-        },
-      })
+    const dialogRef = this.dialog.open(InputModalComponent, {
+      width: "400px",
+      disableClose: true,
+      data: {
+        title: "Enter Password",
+        description: "Please enter the password to decrypt the backup file.",
+        fields: [
+          {
+            name: "password",
+            label: "Password",
+            type: "password",
+            required: true,
+          },
+        ],
+      },
+    });
+
+    dialogRef
       .afterClosed()
       .pipe(takeUntil(this.destroy$))
       .subscribe(async (inputData) => {
@@ -264,10 +371,8 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   private cleanup(): void {
     this.destroy$.next();
     this.destroy$.complete();
-
-    if (this.darkModeMediaQuery) {
-      // Remove all listeners to be safe
-      this.darkModeMediaQuery.removeEventListener("change", () => {});
+    if (this.internetCheckSub) {
+      this.internetCheckSub.unsubscribe();
     }
   }
 }

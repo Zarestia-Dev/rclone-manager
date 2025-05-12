@@ -1,34 +1,33 @@
-    <div class="sidebar">
-      <h3>Remotes <mat-icon svgIcon="remotes"></mat-icon></h3>
-      <ul *ngIf="remotes.length > 0">
-        <mat-card class="remote-card" *ngFor="let remote of remotes" (click)="selectRemote(remote)">
-          <mat-card-content class="card-content">
-            <h4>{{ remote.remoteSpecs.name }}</h4>
-            <p>
-              <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>              {{ remote.remoteSpecs.type | titlecase }}
-            </p>
-            <ng-container *ngIf="remote.mounted === true">
-              <p class="mounted">
-                <mat-icon svgIcon="mount"></mat-icon>
-                Mounted
-              </p>
-            </ng-container>
-            <ng-container *ngIf="remote.mounted === false">
-              <p class="not-mounted">
-                
-                <mat-icon svgIcon="circle-xmark"></mat-icon> Not Mounted
-              </p>
-            </ng-container>
-            <ng-container *ngIf="remote.mounted === null || remote.mounted === undefined">
-              <p class="error">
-                <mat-icon svgIcon="circle-exclamation"></mat-icon>
-                Error
-              </p>
-            </ng-container>
-          </mat-card-content>
-        </mat-card>
-      </ul>
-      <p *ngIf="remotes.length === 0" class="no-remotes">
-        No remotes available
-      </p>
-    </div>
+<div class="sidebar">
+  <h3>Remotes <mat-icon svgIcon="remotes"></mat-icon></h3>
+  <ul *ngIf="remotes.length > 0">
+    <mat-card class="remote-card" *ngFor="let remote of remotes" (click)="selectRemote(remote)">
+      <mat-card-content class="card-content">
+        <h4>{{ remote.remoteSpecs.name }}</h4>
+        <p>
+          <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon> {{ remote.remoteSpecs.type
+          | titlecase }}
+        </p>
+        <div class="remote-status">
+          <p [class.mounted]="remote.mounted" [class.not-mounted]="!remote.mounted"> <mat-icon
+              svgIcon="mount"></mat-icon>
+          </p>
+          <p class="sync">
+            <mat-icon svgIcon="sync"></mat-icon>
+          </p>
+
+          <p class="copy">
+            <mat-icon svgIcon="copy"></mat-icon>
+          </p>
+
+          <p class="jobs">
+            <mat-icon svgIcon="jobs"></mat-icon>
+          </p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </ul>
+  <p *ngIf="remotes.length === 0" class="no-remotes">
+    No remotes available
+  </p>
+</div>

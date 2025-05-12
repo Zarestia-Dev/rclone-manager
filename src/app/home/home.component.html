@@ -1,11 +1,20 @@
 <mat-sidenav-container class="home-container">
   <!-- Sidebar -->
   <mat-sidenav #sidenav [(opened)]="isSidebarOpen" [mode]="sidebarMode">
-    <app-sidebar [iconService]="iconService" [remotes]="remotes" (remoteSelected)="selectRemote($event)"></app-sidebar>
+    <app-sidebar 
+      [iconService]="iconService" 
+      [remotes]="remotes" 
+      (remoteSelected)="selectRemote($event)">
+    </app-sidebar>
   </mat-sidenav>
 
   <!-- Main Content -->
   <mat-sidenav-content class="main-content" position="center">
+    <!-- Loading Indicator -->
+    <div class="loading-overlay" *ngIf="isLoading">
+      <mat-spinner diameter="50"></mat-spinner>
+    </div>
+
     <!-- Sidebar Toggle Button -->
     <div class="sidebar-button">
       <button mat-icon-button class="toggle-sidebar" (click)="sidenav.toggle()">
@@ -19,19 +28,19 @@
         <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
       </button>
       <mat-menu #remoteOptionsMenu="matMenu">
-        <!-- ✅ Show in Tray Menu (Toggle) -->
+        <!-- Show in Tray Menu (Toggle) -->
         <button mat-menu-item (click)="$event.stopPropagation()">
-          <mat-slide-toggle [checked]="getRemoteSettingValue(selectedRemote.remoteSpecs.name, 'show_in_tray_menu')"
-            (change)="saveRemoteSettings(selectedRemote.remoteSpecs.name, {
-              show_in_tray_menu: $event.checked
-            })">
-            <p style="font-size: 16px; font-weight: 600;">Show in Tray Menu</p>
-          </mat-slide-toggle>
+          <p class="menu-item-label"><mat-slide-toggle 
+            [checked]="getRemoteSettingValue(selectedRemote.remoteSpecs.name, 'show_in_tray_menu')"
+            (change)="saveRemoteSettings(selectedRemote.remoteSpecs.name, { show_in_tray_menu: $event.checked })">
+            Show in Tray Menu
+          </mat-slide-toggle></p>
         </button>
+        
 
         <mat-divider></mat-divider>
 
-        <!-- ✅ Remote Actions -->
+        <!-- Remote Actions -->
         <button mat-menu-item (click)="openLogsModal(selectedRemote.remoteSpecs.name)">
           <span>View Logs</span>
         </button>
@@ -44,22 +53,19 @@
 
         <mat-divider></mat-divider>
 
-        <!-- ❌ Delete Remote (Destructive Action) -->
+        <!-- Delete Remote -->
         <button mat-menu-item class="delete-option" (click)="deleteRemote(selectedRemote.remoteSpecs.name)">
           <span>Delete Remote</span>
         </button>
       </mat-menu>
-
     </div>
 
-
     <!-- Empty State -->
-    <div class="empty-state" *ngIf="remotes.length === 0">
+    <div class="empty-state" *ngIf="remotes.length === 0 && !isLoading">
       <div class="empty-state-content">
         <mat-icon svgIcon="rclone-2" class="empty-state-icon"></mat-icon>
         <h2>RClone Manager</h2>
-        <p>Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for a fast and simple
-          setup.</p>
+        <p>Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for a fast and simple setup.</p>
         <div class="empty-state-actions">
           <button mat-raised-button color="primary" (click)="openQuickAddRemoteModal()">
             <mat-icon svgIcon="add"></mat-icon>
@@ -74,9 +80,14 @@
     </div>
 
     <!-- Overview Components -->
-    <ng-container *ngIf="remotes.length > 0 && !selectedRemote">
-      <app-mount-overview *ngIf="currentTab === 'mount'" [iconService]="iconService" [remotes]="remotes" (remoteSelected)="selectRemote($event)"
-        (mountRemote)="mountRemote($event)" (openInFiles)="openRemoteInFiles($event)">
+    <ng-container *ngIf="remotes.length > 0 && !selectedRemote && !isLoading">
+      <app-mount-overview 
+        *ngIf="currentTab === 'mount'" 
+        [iconService]="iconService" 
+        [remotes]="remotes"
+        (remoteSelected)="selectRemote($event)" 
+        (mountRemote)="mountRemote($event)"
+        (openInFiles)="openRemoteInFiles($event)">
       </app-mount-overview>
 
       <app-sync-overview *ngIf="currentTab === 'sync'"></app-sync-overview>
@@ -84,12 +95,16 @@
       <app-jobs-overview *ngIf="currentTab === 'jobs'"></app-jobs-overview>
     </ng-container>
 
-
     <!-- Remote Detail View -->
-    <ng-container *ngIf="selectedRemote">
-      <app-mount-detail *ngIf="currentTab === 'mount'" [iconService]="iconService" [selectedRemote]="selectedRemote"
-        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" (mountRemote)="mountRemote($event)"
-        [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" (unmountRemote)="unmountRemote($event)"
+    <ng-container *ngIf="selectedRemote && !isLoading">
+      <app-mount-detail 
+        *ngIf="currentTab === 'mount'" 
+        [iconService]="iconService" 
+        [selectedRemote]="selectedRemote"
+        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" 
+        (mountRemote)="mountRemote($event)"
+        [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" 
+        (unmountRemote)="unmountRemote($event)"
         (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
         (openInFiles)="openRemoteInFiles($event)">
       </app-mount-detail>

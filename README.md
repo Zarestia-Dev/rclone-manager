@@ -6,14 +6,14 @@
 
 <p align="center">
   <b>Cross-platform GUI for managing RClone remotes with style.</b><br>
-  <i>Built with Angular + Tauri · Linux support (Windows/macOS planned)</i>
+  <i>Built with Angular + Tauri · Linux and Windows support (macOS planned)</i>
 </p>
 
 ---
 
 ## 🌐 Overview
 
-**RClone Manager** is a **cross-platform (currently Linux-only)** GUI application to help users manage [RClone](https://rclone.org/) remotes with a modern interface.
+**RClone Manager** is a **cross-platform (macOS planned)** GUI application to help users manage [RClone](https://rclone.org/) remotes with a modern interface.
 
 > ⚠️ **Actively developed** – Expect frequent updates and improvements.
 
@@ -21,7 +21,7 @@
 
 ## 🎨 Design Philosophy
 
-💡 **Caotic Design** – A unique mix of **GTK styling**, **Angular Material**, and **FontAwesome**, creating a minimalist yet modern look.
+💡 A unique mix of **GTK styling**, **Angular Material**, and **FontAwesome**, creating a minimalist yet modern look.
 
 ---
 
@@ -58,7 +58,7 @@
 - ⚙️ **Advanced VFS Options** – Tune caching, read sizes, and other performance options.
 - 🖥 **Tray Icon Support** – Quick access to your remotes from the system tray.
 - 🌗 **Light & Dark Modes** – GTK-inspired themes with a modern, responsive layout.
-- 🧪 **Cross-Platform Architecture** – Tauri + Angular. **Linux ready**, Windows/macOS coming soon.
+- 🧪 **Cross-Platform Architecture** – Tauri + Angular. **Linux and Windows ready**, macOS coming soon.
 
 ---
 
@@ -100,10 +100,6 @@ Make sure you have the following installed:
 git clone https://github.com/Hakanbaban53/rclone-manager.git
 cd rclone-manager
 
-# Or from GitLab
-git clone https://gitlab.com/Hakanbaban53/rclone-manager.git
-cd rclone-manager
-
 # Install dependencies
 npm install
 
@@ -123,18 +119,18 @@ npm run tauri build
 
 ## 🐛 Known Issues
 
-You can find known issues and bugs in the [ISSUES.md](ISSUES.md) file.
+### You can find known issues and bugs in the [ISSUES.md](ISSUES.md) file.
 ---
 
 ## 📜 Roadmap
 
 ### 🔜 Short-Term Goals _(Next few releases)_
 
-- [ ] **Windows & macOS Support**
-      Package and test Rclone Manager for Windows and macOS.
+- [ ] **Move the Roadmap on GitHub**
+      Transition the roadmap to GitHub Projects for better visibility and collaboration.
 
-- [ ] **Notification System**
-      Implement a notification system for background tasks and updates.
+- [ ] **Windows & macOS Support**
+      Package and test Rclone Manager for Windows and macOS. (Windows is currently in progress)
 
 - [ ] **Built-in Sync & Copy Support**
       Provide GUI options for `rclone sync` and `rclone copy` with common settings.
@@ -184,7 +180,6 @@ Contributions welcome! 🚀
 
 - Report bugs & suggest features on:
   - [GitHub Issues](https://github.com/Hakanbaban53/rclone-manager/issues)
-  - [GitLab Issues](https://gitlab.com/Hakanbaban53/rclone-manager/issues)
 - Submit pull requests and help improve the project!
 
 ---
@@ -200,4 +195,3 @@ This project is licensed under the **[GNU GPLv3](LICENSE)**.
 Have questions or ideas? Reach out via:
 
 - [GitHub Issues](https://github.com/Hakanbaban53/rclone-manager/issues)
-- [GitLab Issues](https://gitlab.com/Hakanbaban53/rclone-manager/issues)

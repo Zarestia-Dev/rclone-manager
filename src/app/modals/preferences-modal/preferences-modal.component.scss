@@ -6,40 +6,60 @@
   position: relative;
   overflow: hidden;
 
-  
-  .modal-header {
-    .tabs {
-      display: flex;
-      gap: 2vw;
-      align-items: center;
+  mat-error {
+    font-size: 12px;
+  }
 
-      .mat-mdc-raised-button,
-      .mat-mdc-raised-button .mdc-button__ripple,
-      .mat-mdc-button,
-      .mat-mdc-unelevated-button,
-      .mat-mdc-outlined-button {
-        background-color: transparent !important;
-    
-        // Selected state
-        &.selected {
-          outline: none !important;
-          background-color: var(--button-hover) !important;
-    
-          // Fix for ripple effect
-          .mat-mdc-button-persistent-ripple::before {
-            opacity: 0.12 !important;
-            background-color: var(--selected-tab-color) !important;
-          }
-        }
-    
-        // Active and focus states
-        &:active,
-        &:focus-visible {
-          outline: none !important;
+  .search-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0;
+
+    input {
+      padding: 8px;
+      margin: 12px;
+      border-radius: var(--border-radius);
+      border: 1px solid #ddd;
+      font-size: 16px;
+      width: 100%;
+    }
+  }
+
+  .tabs {
+    display: flex;
+    gap: 2vw;
+    align-items: center;
+
+    .mat-mdc-raised-button,
+    .mat-mdc-raised-button .mdc-button__ripple,
+    .mat-mdc-button,
+    .mat-mdc-unelevated-button,
+    .mat-mdc-outlined-button {
+      background-color: transparent !important;
+
+      // Selected state
+      &.selected {
+        outline: none !important;
+        background-color: var(--button-hover) !important;
+
+        // Fix for ripple effect
+        .mat-mdc-button-persistent-ripple::before {
+          opacity: 0.12 !important;
           background-color: var(--selected-tab-color) !important;
         }
       }
+
+      // Active and focus states
+      &:active,
+      &:focus-visible {
+        outline: none !important;
+        background-color: var(--selected-tab-color) !important;
+      }
     }
+  }
+
+  .modal-header {
     h2 {
       font-weight: 600;
       font-size: 18px;
@@ -92,30 +112,25 @@
           .setting-info {
             display: flex;
             flex-direction: column;
-            max-width: 60%;
+            margin-right: auto;
             strong {
-              font-size: 14px;
+              font-size: 16px;
+              font-weight: 400;
               color: var(--app-text-color);
-
-              p {
-                font-size: 12px;
-                color: var(--secondary-text-color);
-                margin: 4px 0 0;
-              }
+            }
+            p {
+              font-size: 14px;
+              color: var(--secodary-text-color);
             }
           }
           .setting-control {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 6px;
           }
 
           .input-field {
-            width: 120px;
-          }
-
-          mat-slide-toggle {
-            margin-left: auto;
+            max-width: 120px;
           }
         }
       }

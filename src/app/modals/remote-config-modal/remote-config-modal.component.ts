@@ -4,6 +4,8 @@ import {
   HostListener,
   Inject,
   OnInit,
+  Pipe,
+  PipeTransform,
   ViewChild,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
@@ -40,68 +42,25 @@ import { debounceTime, distinctUntilChanged, Subscription } from "rxjs";
 import { MatCardModule } from "@angular/material/card";
 import { StateService } from "../../services/state.service";
 import { MatButtonModule } from "@angular/material/button";
+import {
+  EditTarget,
+  FieldType,
+  FlagField,
+  FlagType,
+  LoadingState,
+  RemoteField,
+  RemoteType,
+  SENSITIVE_KEYS,
+} from "../../shared/remote-config-types";
+import { CdkTextareaAutosize } from "@angular/cdk/text-field";
 
-// Types and Interfaces
-type FlagType = "mount" | "copy" | "sync" | "filter" | "vfs";
-type EditTarget = FlagType | "remote" | null;
-
-interface RemoteType {
-  value: string;
-  label: string;
+@Pipe({ name: "linebreaks" })
+export class LinebreaksPipe implements PipeTransform {
+  transform(value: string): string {
+    return value ? value.replace(/(?:\r\n|\r|\n)/g, "<br>") : "";
+  }
 }
-
-// interface MountType {
-//   value: string;
-//   label: string;
-// }
-
-type FieldType =
-  | "bool"
-  | "int"
-  | "Duration"
-  | "string"
-  | "SizeSuffix"
-  | "HARD|SOFT|CAUTIOUS"
-  | "stringArray"
-  | "int64"
-  | "Tristate"
-  | "uint32"
-  | "FileMode"
-  | "CacheMode"
-  | "CommaSeparatedList";
-
-interface FlagField {
-  name: string;
-  type: FieldType;
-  help: string;
-  required: boolean;
-  examples: { Value: any; Help: string }[];
-  default: any;
-  Value: any;
-  ValueStr: string;
-  hidden?: boolean;
-  advanced?: boolean;
-}
-
-interface RemoteField {
-  Name: string;
-  Type: string;
-  Help: string;
-  Value: any;
-  Default: any;
-  Required: boolean;
-  Advanced: boolean;
-  Examples: any[];
-}
-
-interface LoadingState {
-  remoteConfig: boolean;
-  mountConfig: boolean;
-  saving: boolean;
-  authDisabled: boolean;
-  cancelled: boolean;
-  [key: string]: boolean;
-}
+const REMOTE_NAME_REGEX = /^[A-Za-z0-9_\-.\+@ ]+$/;
 
 @Component({
   selector: "app-remote-config-modal",
@@ -118,7 +77,9 @@ interface LoadingState {
     MatTooltipModule,
     MatIconModule,
     MatCardModule,
-    MatButtonModule
+    MatButtonModule,
+    LinebreaksPipe,
+    CdkTextareaAutosize,
   ],
   templateUrl: "./remote-config-modal.component.html",
   styleUrl: "./remote-config-modal.component.scss",
@@ -249,7 +210,7 @@ export class RemoteConfigModalComponent implements OnInit {
 
   ngOnDestroy(): void {
     this.cleanupSubscriptions();
-    this.cleanup();
+    this.cancelAuth();
   }
 
   private initializeComponent(): void {
@@ -290,7 +251,7 @@ export class RemoteConfigModalComponent implements OnInit {
         }
         mountPathCtrl?.updateValueAndValidity();
       });
-      
+
     // Debounce JSON validation
     const jsonConfigs = this.remoteConfigForm.get("jsonConfigs") as FormGroup;
     this.FLAG_TYPES.forEach((flagType) => {
@@ -301,11 +262,6 @@ export class RemoteConfigModalComponent implements OnInit {
           .subscribe(() => this.validateJson(flagType))
       );
     });
-
-    // Auto-resize textarea on changes
-    this.subscriptions.push(
-      jsonConfigs.valueChanges.subscribe(() => this.autoResize())
-    );
   }
 
   private cleanupSubscriptions(): void {
@@ -316,16 +272,14 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   private createRemoteForm(): FormGroup {
-    const isEditMode = this.editTarget === "remote" && !!this.data?.existingConfig;
+    const isEditMode =
+      this.editTarget === "remote" && !!this.data?.existingConfig;
     const form = this.fb.group({
       name: [
         { value: "", disabled: isEditMode },
-        [Validators.required, this.validateRemoteName.bind(this)],
+        [Validators.required, this.validateRemoteNameFactory()],
       ],
-      type: [
-        { value: "", disabled: isEditMode },
-        [Validators.required],
-      ]
+      type: [{ value: "", disabled: isEditMode }, [Validators.required]],
     });
     return form;
   }
@@ -369,7 +323,7 @@ export class RemoteConfigModalComponent implements OnInit {
       const providers = await this.rcloneService.getRemoteTypes();
       this.remoteTypes = providers.map((provider: any) => ({
         value: provider.name,
-        label: provider.name,
+        label: provider.description,
       }));
     } catch (error) {
       this.handleError(error, "loading remote types");
@@ -405,21 +359,39 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   private createFormControlForField(field: RemoteField): FormControl {
-    const defaultValue = this.coerceValueToType(
-      field.Value,
-      field.Type as FieldType
-    );
-    const validators = field.Required ? [Validators.required] : [];
+    // Use field.Default if defined, otherwise field.Value, otherwise type default
+    let initialValue =
+      field.Default !== undefined
+        ? this.coerceValueToType(field.Default, field.Type as FieldType)
+        : field.Value !== undefined
+        ? this.coerceValueToType(field.Value, field.Type as FieldType)
+        : this.getDefaultValueForType(field.Type as FieldType);
+
+    // Fix: If initialValue is an object (not array), convert to string (or boolean for bool)
+    if (
+      typeof initialValue === "object" &&
+      !Array.isArray(initialValue) &&
+      initialValue !== null
+    ) {
+      if (field.Type === "bool") {
+        initialValue = false;
+      } else {
+        initialValue = JSON.stringify(initialValue);
+      }
+    }
+
+    const validators = [];
+    if (field.Required) {
+      validators.push(Validators.required);
+    }
 
     // Add type-specific validators
     switch (field.Type) {
       case "int":
       case "int64":
       case "uint32":
-        validators.push(Validators.pattern(/^-?\d+$/));
-        break;
       case "SizeSuffix":
-        validators.push(Validators.pattern(/^\d+[KMGTP]?[B]?$/i));
+        validators.push(Validators.pattern("^[0-9]*$"));
         break;
       case "stringArray":
       case "CommaSeparatedList":
@@ -427,7 +399,7 @@ export class RemoteConfigModalComponent implements OnInit {
         break;
     }
 
-    return this.fb.control(defaultValue, validators);
+    return this.fb.control(initialValue, validators);
   }
 
   // Custom array validator
@@ -525,7 +497,6 @@ export class RemoteConfigModalComponent implements OnInit {
 
     const jsonStr = JSON.stringify(typedOptions, this.jsonReplacer, 2);
     control.setValue(jsonStr);
-    this.autoResize();
   }
 
   private jsonReplacer(key: string, value: any): any {
@@ -558,10 +529,8 @@ export class RemoteConfigModalComponent implements OnInit {
         case "int":
         case "int64":
         case "uint32":
-          result[key] = parseInt(value, 10) || 0;
-          break;
         case "SizeSuffix":
-          result[key] = this.parseSizeSuffix(value);
+          result[key] = parseInt(value, 10) || 0;
           break;
         case "stringArray":
           result[key] = Array.isArray(value) ? value : [String(value)];
@@ -609,7 +578,6 @@ export class RemoteConfigModalComponent implements OnInit {
     ) as FormGroup;
     jsonConfigsGroup?.get(flagType)?.setValue("{}");
     this.selectedOptions[flagType] = {};
-    this.autoResize();
   }
   //#endregion
 
@@ -707,7 +675,7 @@ export class RemoteConfigModalComponent implements OnInit {
         this.close();
       }
     } catch (error) {
-        this.handleError(error, "saving configuration");
+      this.handleError(error, "saving configuration");
     } finally {
       this.stateService.resetAuthState();
     }
@@ -844,11 +812,9 @@ export class RemoteConfigModalComponent implements OnInit {
         case "int":
         case "int64":
         case "uint32":
+        case "SizeSuffix":
           const intValue = parseInt(value, 10);
           return isNaN(intValue) ? this.getDefaultValueForType(type) : intValue;
-
-        case "SizeSuffix":
-          return this.parseSizeSuffix(value);
 
         case "stringArray":
         case "CommaSeparatedList":
@@ -878,38 +844,28 @@ export class RemoteConfigModalComponent implements OnInit {
     }
   }
 
-  private parseSizeSuffix(value: string | number): number {
-    if (typeof value === "number") return value;
+  private validateRemoteNameFactory() {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value?.trimEnd();
+      if (!value) return null;
 
-    const match = String(value).match(/^(\d+(?:\.\d+)?)\s*([KMGTP]?)[B]?$/i);
-    if (!match) return 0;
+      // Check allowed characters
+      if (!REMOTE_NAME_REGEX.test(value)) {
+        return { invalidChars: true };
+      }
 
-    const num = parseFloat(match[1]);
-    const suffix = match[2].toUpperCase();
-    const multipliers = {
-      "": 1,
-      K: 1024,
-      M: 1024 ** 2,
-      G: 1024 ** 3,
-      T: 1024 ** 4,
-      P: 1024 ** 5,
+      // Check start character
+      if (value.startsWith("-") || value.startsWith(" ")) {
+        return { invalidStart: true };
+      }
+
+      // Check end character
+      if (control.value.endsWith(" ")) {
+        return { invalidEnd: true };
+      }
+
+      return this.existingRemotes.includes(value) ? { nameTaken: true } : null;
     };
-
-    return num * (multipliers[suffix as keyof typeof multipliers] || 1);
-  }
-
-  validateRemoteName(control: AbstractControl): ValidationErrors | null {
-    const value = control.value?.trim();
-    if (!value) return null;
-
-    if (
-      this.editTarget === "remote" &&
-      this.data?.existingConfig?.name === value
-    ) {
-      return null;
-    }
-
-    return this.existingRemotes.includes(value) ? { nameTaken: true } : null;
   }
 
   private mapFlagFields(fields: any[]): FlagField[] {
@@ -941,8 +897,9 @@ export class RemoteConfigModalComponent implements OnInit {
   private cleanFormData(formData: any): any {
     return Object.entries(formData)
       .filter(([key, value]) => {
-        // Skip null/empty values
-        if (value === null || value === "") return false;
+        if (value === null || value === 0 || value === "0") {
+          return false;
+        }
         // Skip if value matches default
         return !this.isDefaultValue(key, value);
       })
@@ -954,18 +911,41 @@ export class RemoteConfigModalComponent implements OnInit {
     if (!field) return false;
 
     // Get the proper default value
-    const defaultValue =
+    let defaultValue =
       field.Default !== undefined
         ? this.coerceValueToType(field.Default, field.Type as FieldType)
         : this.coerceValueToType(field.Value, field.Type as FieldType);
 
-    // Special handling for different types
+    // If value or defaultValue is an object or stringified object, compare as strings
+    if (
+      (typeof value === "string" &&
+        value.startsWith("{") &&
+        value.endsWith("}")) ||
+      typeof defaultValue === "object"
+    ) {
+      try {
+        // Parse both to objects for deep comparison
+        const parsedValue =
+          typeof value === "string" ? JSON.parse(value) : value;
+        const parsedDefault =
+          typeof defaultValue === "string"
+            ? JSON.parse(defaultValue)
+            : defaultValue;
+        return JSON.stringify(parsedValue) === JSON.stringify(parsedDefault);
+      } catch {
+        // Fallback to string comparison if parsing fails
+        return String(value) === String(defaultValue);
+      }
+    }
+
+    // Special handling for arrays
     if (Array.isArray(value) && Array.isArray(defaultValue)) {
       return (
         JSON.stringify(value.sort()) === JSON.stringify(defaultValue.sort())
       );
     }
 
+    // Fallback to simple comparison
     return JSON.stringify(value) === JSON.stringify(defaultValue);
   }
 
@@ -996,20 +976,14 @@ export class RemoteConfigModalComponent implements OnInit {
     return this.dynamicRemoteFields.filter((f) => f.Advanced).length;
   }
 
+  isSensitiveField(fieldName: string): boolean {
+    return SENSITIVE_KEYS.some((key) => fieldName.toLowerCase().includes(key));
+  }
+
   selectFolder(): void {
     this.rcloneService.selectFolder(true).then((selectedPath) => {
       this.remoteConfigForm.get("mountPath")?.setValue(selectedPath);
     });
-  }
-
-  autoResize(): void {
-    setTimeout(() => {
-      if (this.jsonArea) {
-        const textarea = this.jsonArea.nativeElement;
-        textarea.style.height = "auto";
-        textarea.style.height = `${textarea.scrollHeight}px`;
-      }
-    }, 0);
   }
 
   allowOnlyNumbers(event: KeyboardEvent): void {
@@ -1049,10 +1023,6 @@ export class RemoteConfigModalComponent implements OnInit {
   @HostListener("document:keydown.escape", ["$event"])
   close(): void {
     this.dialogRef.close(false);
-  }
-
-  private cleanup(): void {
-    this.cancelAuth();
   }
   //#endregion
 }

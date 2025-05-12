@@ -1,84 +1,108 @@
 <div class="title-bar" data-tauri-drag-region>
   <div class="left-section">
-    <mat-menu #addRemoteMenu="matMenu">
-      <button mat-menu-item (click)="openQuickAddRemoteModal()">
+    <!-- Add Remote Menu -->
+    <mat-menu #addRemoteMenu="matMenu" xPosition="before">
+      <button mat-menu-item (click)="openQuickAddRemoteModal()" aria-label="Quick add remote">
         <span>Quick Remote</span>
-        <span class="shortcut">Ctrl + R</span>
+        <span class="shortcut" aria-hidden="true">Ctrl + R</span>
       </button>
-      <button mat-menu-item (click)="openRemoteConfigModal()">
-        <span>Detailed Remote </span>
-        <span class="shortcut"> Ctrl + N</span>
+      <button mat-menu-item (click)="openRemoteConfigModal()" aria-label="Detailed remote configuration">
+        <span>Detailed Remote</span>
+        <span class="shortcut" aria-hidden="true">Ctrl + N</span>
       </button>
     </mat-menu>
-    <button mat-icon-button [matMenuTriggerFor]="addRemoteMenu">
-      <mat-icon svgIcon="add"></mat-icon>
+
+    <!-- Main Buttons -->
+    <button mat-icon-button [matMenuTriggerFor]="addRemoteMenu" aria-label="Add remote menu">
+      <mat-icon svgIcon="add" aria-hidden="true"></mat-icon>
     </button>
-    <button mat-icon-button (click)="resetRemote()">
-      <mat-icon svgIcon="rclone-symbolic" alt="RClone Manager Logo"></mat-icon>
+
+    <button mat-icon-button (click)="resetRemote()" aria-label="Home">
+      <mat-icon svgIcon="rclone-symbolic" aria-hidden="true"></mat-icon>
+    </button>
+
+    <!-- Connection Status Indicator -->
+    <button mat-icon-button *ngIf="connectionStatus === 'offline' || connectionStatus === 'checking'"
+      (click)="runInternetCheck()" [disabled]="connectionStatus === 'checking'" aria-label="Internet connection status"
+      matTooltip="{{ getInternetStatusTooltip() }}">
+      <mat-icon *ngIf="connectionStatus !== 'checking'" svgIcon="no-internet" aria-hidden="true">
+      </mat-icon>
+      <mat-progress-spinner color="accent" *ngIf="connectionStatus === 'checking'" diameter="24" mode="indeterminate" strokeWidth="4"
+        aria-hidden="true">
+      </mat-progress-spinner>
     </button>
   </div>
 
   <div class="center-section">
-    <app-tabs-buttons *ngIf="!(isMobile$ | async)" style="display: flex;"
-    ></app-tabs-buttons>
+    <app-tabs-buttons *ngIf="!(isMobile$ | async)"></app-tabs-buttons>
   </div>
-
 
   <div class="right-section">
-    <button mat-icon-button [matMenuTriggerFor]="menu">
-      <mat-icon svgIcon="menu-bar"></mat-icon>
+    <!-- App Menu -->
+    <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Application menu">
+      <mat-icon svgIcon="menu-bar" aria-hidden="true"></mat-icon>
     </button>
-    <button mat-icon-button (click)="minimizeWindow()">
-      <mat-icon svgIcon="remove"></mat-icon>
+
+    <!-- Window Controls -->
+    <button mat-icon-button (click)="minimizeWindow()" aria-label="Minimize window">
+      <mat-icon svgIcon="remove" aria-hidden="true"></mat-icon>
     </button>
-    <button mat-icon-button (click)="maximizeWindow()">
-      <mat-icon svgIcon="check_box"></mat-icon>
+    <button mat-icon-button (click)="maximizeWindow()" aria-label="Maximize window">
+      <mat-icon svgIcon="check_box" aria-hidden="true"></mat-icon>
     </button>
-    <button mat-icon-button (click)="closeWindow()">
-      <mat-icon svgIcon="close"></mat-icon>
+    <button mat-icon-button (click)="closeWindow()" aria-label="Close window" class="close-button">
+      <mat-icon svgIcon="close" aria-hidden="true"></mat-icon>
     </button>
   </div>
 
+  <!-- App Menu Content -->
   <mat-menu #menu="matMenu">
-    <div class="theme-selector">
-      <button class="theme-button system" [class.selected]="selectedTheme === 'system'"
-        (click)="$event.stopPropagation(); setTheme('system')">
-        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'system'" class="icon checkmark"></mat-icon>
+    <!-- Theme Selector -->
+    <div class="theme-selector" aria-label="Theme selection">
+      <button class="theme-button system" [class.selected]="selectedTheme === 'system'" (click)="setTheme('system', false, $event)"
+        aria-label="System theme">
+        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'system'" class="checkmark" aria-hidden="true"></mat-icon>
       </button>
 
-      <button class="theme-button light" [class.selected]="selectedTheme === 'light'"
-        (click)="$event.stopPropagation(); setTheme('light')">
-        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'light'" class="icon checkmark"></mat-icon>
+      <button class="theme-button light" [class.selected]="selectedTheme === 'light'" (click)="setTheme('light', false, $event)"
+        aria-label="Light theme">
+        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'light'" class="checkmark" aria-hidden="true"></mat-icon>
       </button>
 
-      <button class="theme-button dark" [class.selected]="selectedTheme === 'dark'"
-        (click)="$event.stopPropagation(); setTheme('dark')">
-        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'dark'" class="icon checkmark"></mat-icon>
+      <button class="theme-button dark" [class.selected]="selectedTheme === 'dark'" (click)="setTheme('dark', false, $event)"
+        aria-label="Dark theme">
+        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'dark'" class="checkmark" aria-hidden="true"></mat-icon>
       </button>
     </div>
 
     <mat-divider></mat-divider>
 
-    <button mat-menu-item (click)="restoreSettings()">
+    <!-- Settings Actions -->
+    <button mat-menu-item (click)="restoreSettings()" aria-label="Import settings">
       <span>Import</span>
-      <span class="shortcut">Ctrl + I</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + I</span>
     </button>
 
-    <button mat-menu-item (click)="openExportModal()">
+    <button mat-menu-item (click)="openExportModal()" aria-label="Export settings">
       <span>Export</span>
-      <span class="shortcut">Ctrl + E</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + E</span>
     </button>
 
     <mat-divider></mat-divider>
 
-    <button mat-menu-item (click)="openPreferencesModal()">
+    <!-- Preferences -->
+    <button mat-menu-item (click)="openPreferencesModal()" aria-label="Open preferences">
       <span>Preferences</span>
-      <span class="shortcut">Ctrl + ,</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + ,</span>
     </button>
-    <button mat-menu-item (click)="openKeyboardShortcutsModal()">
+
+    <button mat-menu-item (click)="openKeyboardShortcutsModal()" aria-label="View keyboard shortcuts">
       <span>Keyboard Shortcuts</span>
-      <span class="shortcut">Ctrl + ?</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + ?</span>
     </button>
-    <button mat-menu-item (click)="openAboutModal()">About RClone Manager</button>
+
+    <button mat-menu-item (click)="openAboutModal()" aria-label="About application">
+      <span>About RClone Manager</span>
+    </button>
   </mat-menu>
 </div>

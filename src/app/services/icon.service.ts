@@ -47,6 +47,8 @@ export class IconService {
       terminal: "assets/icons/terminal.svg",
       trash: "assets/icons/trash.svg",
       refresh: "assets/icons/rotate.svg",
+      "no-internet": "assets/icons/no-internet.svg",
+      error: "assets/icons/triangle-exclamation.svg",
 
       // Remote icons
       drive: "assets/icons/remotes/drive.svg",

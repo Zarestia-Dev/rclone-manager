@@ -1,6 +1,11 @@
 import { Injectable } from "@angular/core";
 import { invoke } from "@tauri-apps/api/core";
 import { InfoService } from "./info.service";
+export interface CheckResult {
+  successful: string[];
+  failed: Record<string, string>;
+  retries_used: Record<string, number>;
+}
 
 @Injectable({
   providedIn: "root",
@@ -155,5 +160,17 @@ export class SettingsService {
     } catch (error) {
       console.error(`Failed to reset settings for ${remoteName}:`, error);
     }
+  }
+
+  async checkInternetLinks(
+    links: string,
+    maxRetries: number,
+    retryDelaySecs: number
+  ): Promise<CheckResult> {
+    return await invoke<CheckResult>("check_links", {
+      links,
+      maxRetries,
+      retryDelaySecs,
+    });
   }
 }

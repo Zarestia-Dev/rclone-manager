@@ -1,11 +1,10 @@
 use serde_json::{json, Value};
-use tauri::{command, State};
 use std::error::Error;
+use tauri::{command, State};
 
 use crate::RcloneState;
 
 use super::state::RCLONE_STATE;
-
 
 async fn fetch_rclone_options(
     endpoint: &str,
@@ -90,20 +89,21 @@ pub async fn get_filter_flags(state: State<'_, RcloneState>) -> Result<Vec<Value
     let json = fetch_rclone_options("info", state)
         .await
         .map_err(|e| e.to_string())?;
-    let empty_vec = vec![];
-    let filter_flags = json["filter"].as_array().unwrap_or(&empty_vec);
 
-    let filtered_flags: Vec<Value> = filter_flags
+    let filter_flags = json["filter"]
+        .as_array()
+        .unwrap_or(&vec![])
         .iter()
         .filter(|flag| {
-            static EMPTY_VEC: Vec<Value> = Vec::new();
-            let groups = flag["Groups"].as_array().unwrap_or(&EMPTY_VEC);
-            !groups.iter().any(|g| g == "Metadata")
+            !flag["Groups"]
+                .as_str() // Note: Changed from as_array() to as_str()
+                .map(|groups| groups.contains("Metadata"))
+                .unwrap_or(false)
         })
         .cloned()
         .collect();
 
-    Ok(filtered_flags)
+    Ok(filter_flags)
 }
 
 /// Fetch VFS flags (excluding ignored flags)

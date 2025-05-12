@@ -6,14 +6,11 @@ use tauri_plugin_autostart::ManagerExt;
 use crate::{
     core::{
         lifecycle::shutdown::handle_shutdown,
-        tray::tray::{setup_tray, update_tray_menu},
-    },
-    init_logging,
-    rclone::api::{
+        tray::tray::{update_tray_menu, TrayEnabled},
+    }, rclone::api::{
         engine::ENGINE,
         state::{CACHE, RCLONE_STATE},
-    },
-    TrayEnabled,
+    }, utils::{builder::setup_tray, log::update_log_level, notification::NotificationService}
 };
 
 mod events {
@@ -186,6 +183,12 @@ fn handle_settings_changed(app: &AppHandle) {
             Ok(settings) => {
                 // same logic...
                 if let Some(general) = settings.get("general") {
+                    if let Some(notification) = general.get("notification").and_then(|v| v.as_bool()) {
+                        debug!("💬 Notifications changed to: {}", notification);
+                        let notifications_enabled = app_handle.state::<NotificationService>();
+                        let mut guard = notifications_enabled.enabled.write().unwrap();
+                        *guard = notification;
+                    }
                     if let Some(startup) = general.get("start_on_startup").and_then(|v| v.as_bool())
                     {
                         debug!("🚀 Start on Startup changed to: {}", startup);
@@ -201,11 +204,11 @@ fn handle_settings_changed(app: &AppHandle) {
                         general.get("tray_enabled").and_then(|v| v.as_bool())
                     {
                         let tray_state = app_handle.state::<TrayEnabled>();
-                        let mut guard = tray_state.0.write().unwrap();
+                        let mut guard = tray_state.enabled.write().unwrap();
                         *guard = tray_enabled;
                         debug!("🛠️ Tray visibility changed to: {}", tray_enabled);
 
-                        if let Some(tray) = app_handle.tray_by_id("main") {
+                        if let Some(tray) = app_handle.tray_by_id("main-tray") {
                             let _ = tray.set_visible(tray_enabled);
                         } else {
                             let app = app_handle.clone();
@@ -255,7 +258,7 @@ fn handle_settings_changed(app: &AppHandle) {
                         experimental.get("debug_logging").and_then(|v| v.as_bool())
                     {
                         debug!("🐞 Debug logging changed to: {}", debug_logging);
-                        init_logging(debug_logging);
+                        update_log_level(debug_logging);
                     }
                 }
             }

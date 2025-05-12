@@ -1,6 +1,6 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
-## [Unreleased]
+## [beta-0.1.0] - 2024-12-05
 ### Added
 - Added a new feature to manage remotes with a user-friendly interface.
 - GTK-themed Angular frontend
@@ -13,4 +13,4 @@
 - VFS options
 - Tray icon support
 - Light/dark mode
-- Cross-platform (Linux-ready, Windows/macOS coming)
+- Cross-platform (Linux and Windows-ready, macOS coming soon)

@@ -1,65 +1,112 @@
 use std::collections::HashMap;
 
-use log::{error, info};
-use tauri::{AppHandle, Manager, Runtime};
-use tauri_plugin_dialog::{MessageDialogButtons, MessageDialogKind};
+use log::{debug, error, info, warn};
+use tauri::{AppHandle, Manager};
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 
-use crate::rclone::api::{
-    api_command::{delete_remote, mount_remote, unmount_remote},
-    state::CACHE,
+use crate::{
+    core::settings::settings::save_remote_settings,
+    rclone::api::{
+        api_command::{delete_remote, mount_remote, unmount_remote},
+        state::CACHE,
+    },
+    utils::{
+        builder::create_app_window, file_helper::get_folder_location, notification::NotificationService,
+    },
 };
 
-fn get_mount_point(settings: &serde_json::Value) -> String {
-    let remote_name = settings
-        .get("mount_options")
-        .and_then(|v| v.get("remote_name"))
-        .and_then(|v| v.as_str())
-        .unwrap_or("unknown");
-
-    let default_mount_point = if cfg!(target_os = "windows") {
-        format!("C:\\Documents\\Rclone\\{}", remote_name)
-    } else {
-        format!("/tmp/{}", remote_name)
-    };
-
-    settings
-        .get("mount_options")
-        .and_then(|v| v.get("mount_point"))
-        .and_then(|v| v.as_str())
-        .unwrap_or(&default_mount_point)
-        .to_string()
+fn notify(app: &AppHandle, title: &str, body: &str) {
+    let notifier = app.state::<NotificationService>();
+    notifier.send(app, title, body);
 }
 
-pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.set_focus();
-        if let Ok(false) = window.is_visible() {
-            let _ = window.eval("location.reload();");
+async fn prompt_mount_point(app: &AppHandle, remote_name: &str) -> Option<String> {
+    let response = app
+        .dialog()
+        .message(format!(
+            "No mount point specified for '{}'. Would you like to select one now?",
+            remote_name
+        ))
+        .title("Mount Point Required")
+        .buttons(MessageDialogButtons::OkCancelCustom(
+            "Yes, Select".to_owned(),
+            "Cancel".to_owned(),
+        ))
+        .kind(MessageDialogKind::Warning)
+        .blocking_show();
+
+    if !response {
+        info!(
+            "❌ User cancelled mount point selection for {}",
+            remote_name
+        );
+        return None;
+    }
+
+    match get_folder_location(app.clone(), false).await {
+        Ok(Some(path)) if !path.is_empty() => {
+            info!("📁 Selected mount point for {}: {}", remote_name, path);
+            Some(path)
+        }
+        Ok(Some(_)) => {
+            info!("⚠️ User selected an empty folder path for {}", remote_name);
+            None
+        }
+        Ok(None) => {
+            info!("❌ User didn't select a folder for {}", remote_name);
+            None
+        }
+        Err(err) => {
+            error!("🚨 Error selecting folder for {}: {}", remote_name, err);
+            None
         }
     }
 }
 
-pub fn handle_mount_remote(app: AppHandle, id: &str) {
-    let remote = id.replace("mount-", "");
-    let app_clone = app.clone();
+fn get_mount_point(settings: &serde_json::Value) -> String {
+    settings
+        .get("mount_options")
+        .and_then(|v| v.get("mount_point"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string()
+}
 
-    tauri::async_runtime::spawn(async move {
-        let remote_name = remote.to_string();
-
-        let settings_result = CACHE.settings.read().await;
-
-        let settings_result = settings_result
-            .get(&remote_name)
-            .cloned()
-            .unwrap_or_else(|| {
-                error!("Remote {} not found in cached settings", remote_name);
-                serde_json::Value::Null
+pub fn show_main_window(app: AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        debug!("🪟 Showing main window");
+        window.show().unwrap_or_else(|_| {
+            error!("🚨 Failed to show main window");
+        });
+        window.set_focus().unwrap_or_else(|_| {
+            error!("🚨 Failed to focus main window");
+        });
+        if let Ok(false) = window.is_visible() {
+            window.eval("location.reload();").unwrap_or_else(|_| {
+                error!("🔄 Failed to reload main window");
             });
+        }
+    } else {
+        warn!("⚠️ Main window not found. Building...");
+        create_app_window(app);
+    }
+}
 
-        // Gracefully handle optional values
-        let mount_options = settings_result
+pub fn handle_mount_remote(app: AppHandle, id: &str) {
+    let remote_name = id.replace("mount-", "");
+    tauri::async_runtime::spawn(async move {
+        // Load settings with proper error handling
+        let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
+            Some(s) => s,
+            None => {
+                error!("🚨 Remote {} not found in settings", remote_name);
+                return;
+            }
+        };
+
+        // Extract mount options
+        let mount_options = settings
             .get("mount_options")
             .and_then(|v| v.as_object())
             .map(|obj| {
@@ -68,7 +115,8 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                     .collect::<HashMap<_, _>>()
             });
 
-        let vfs_options = settings_result
+        // Extract VFS options
+        let vfs_options = settings
             .get("vfs_options")
             .and_then(|v| v.as_object())
             .map(|obj| {
@@ -77,26 +125,66 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                     .collect::<HashMap<_, _>>()
             });
 
-        // Optional mount_point fallback (empty string or use remote_name)
-        let mount_point = get_mount_point(&settings_result);
+        // Get or prompt for mount point
+        let mount_point = match settings
+            .get("mount_options")
+            .and_then(|v| v.get("mount_point"))
+            .and_then(|v| v.as_str())
+            .filter(|s| !s.is_empty())
+        {
+            Some(existing) => existing.to_string(),
+            None => match prompt_mount_point(&app, &remote_name).await {
+                Some(path) => path,
+                None => {
+                    info!("❌ Mounting cancelled - no mount point selected");
+                    return;
+                }
+            },
+        };
 
-        let state = app_clone.state();
-
+        // Mount the remote
         match mount_remote(
-            app_clone.clone(),
+            app.clone(),
             remote_name.clone(),
-            mount_point,
+            mount_point.clone(),
             mount_options,
             vfs_options,
-            state,
+            app.state(),
         )
         .await
         {
             Ok(_) => {
-                info!("✅ Mounted {}", remote_name);
+                info!("✅ Successfully mounted {}", remote_name);
+                notify(
+                    &app,
+                    "Mount Successful",
+                    &format!("Successfully mounted {} at {}", remote_name, mount_point),
+                );
+                // Save the mount point if it was newly selected
+                if settings
+                    .get("mount_options")
+                    .and_then(|v| v.get("mount_point"))
+                    .and_then(|v| v.as_str())
+                    .is_none()
+                {
+                    let mut new_settings = settings.clone();
+                    new_settings["mount_options"]["mount_point"] =
+                        serde_json::Value::String(mount_point);
+                    if let Err(e) =
+                        save_remote_settings(remote_name, new_settings, app.state(), app.clone())
+                            .await
+                    {
+                        error!("🚨 Failed to save mount point: {}", e);
+                    }
+                }
             }
-            Err(err) => {
-                error!("❌ Failed to mount {}: {}", remote_name, err);
+            Err(e) => {
+                error!("🚨 Failed to mount {}: {}", remote_name, e);
+                notify(
+                    &app, 
+                    "Mount Failed",
+                    &format!("Failed to mount {}: {}", remote_name, e),
+                );
             }
         }
     });
@@ -110,7 +198,7 @@ pub fn handle_unmount_remote(app: AppHandle, id: &str) {
         let remote_name = remote.to_string();
         let settings_result = CACHE.settings.read().await;
         let settings = settings_result.get(&remote).cloned().unwrap_or_else(|| {
-            error!("Remote {} not found in cached settings", remote);
+            error!("🚨 Remote {} not found in cached settings", remote);
             serde_json::Value::Null
         });
 
@@ -118,32 +206,42 @@ pub fn handle_unmount_remote(app: AppHandle, id: &str) {
         let state = app_clone.state();
         match unmount_remote(app_clone.clone(), mount_point, remote_name, state).await {
             Ok(_) => {
-                info!("Unmounted {}", remote);
+                info!("🛑 Unmounted {}", remote);
+                notify(
+                    &app_clone,
+                    "Unmount Successful",
+                    &format!("Successfully unmounted {}", remote),
+                );
             }
             Err(err) => {
-                error!("Failed to unmount {}: {}", remote, err);
+                error!("🚨 Failed to unmount {}: {}", remote, err);
+                notify(
+                    &app_clone,
+                    "Unmount Failed",
+                    &format!("Failed to unmount {}: {}", remote, err),
+                );
             }
         }
     });
 }
 
-pub fn handle_browse_remote<R: Runtime>(app: &AppHandle<R>, id: &str) {
+pub fn handle_browse_remote(app: &AppHandle, id: &str) {
     let remote = id.replace("browse-", "");
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         let settings_result = CACHE.settings.read().await;
         let settings = settings_result.get(&remote).cloned().unwrap_or_else(|| {
-            error!("Remote {} not found in cached settings", remote);
+            error!("🚨 Remote {} not found in cached settings", remote);
             serde_json::Value::Null
         });
         let mount_point = get_mount_point(&settings);
 
         match app_clone.opener().open_path(mount_point, None::<&str>) {
             Ok(_) => {
-                info!("Opened file manager for {}", remote);
+                info!("📂 Opened file manager for {}", remote);
             }
             Err(e) => {
-                error!("Failed to open file manager for {}: {}", remote, e);
+                error!("🚨 Failed to open file manager for {}: {}", remote, e);
             }
         }
     });
@@ -173,14 +271,24 @@ pub fn handle_delete_remote(app: AppHandle, id: &str) {
                         let state = app_clone.state();
                         match delete_remote(app_clone.clone(), remote.clone(), state).await {
                             Ok(_) => {
-                                info!("Deleted remote {}", remote);
+                                info!("🗑️ Deleted remote {}", remote);
+                                notify(
+                                    &app_clone,
+                                    "Remote Deleted",
+                                    &format!("Successfully deleted remote {}", remote),
+                                );
                             }
                             Err(err) => {
-                                error!("Failed to delete remote {}: {}", remote, err);
+                                error!("🚨 Failed to delete remote {}: {}", remote, err);
+                                notify(
+                                    &app_clone,
+                                    "Deletion Failed",
+                                    &format!("Failed to delete remote {}: {}", remote, err),
+                                );
                             }
                         }
                     } else {
-                        info!("Cancelled deletion of remote {}", remote);
+                        info!("❌ Cancelled deletion of remote {}", remote);
                     }
                 });
             });

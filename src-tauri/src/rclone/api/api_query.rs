@@ -1,18 +1,13 @@
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{
-    collections::HashMap,
-    process::Child,
-    sync::Arc,
-};
-use tauri::State;
+use std::{collections::HashMap, process::Child, sync::Arc};
 use tauri::command;
+use tauri::State;
 
 use crate::RcloneState;
 
 use super::state::RCLONE_STATE;
-
 
 lazy_static::lazy_static! {
     static ref OAUTH_PROCESS: Arc<tokio::sync::Mutex<Option<Child>>> = Arc::new(tokio::sync::Mutex::new(None));
@@ -38,7 +33,6 @@ pub async fn get_all_remote_configs(
 
     Ok(json)
 }
-
 
 #[command]
 pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
@@ -66,6 +60,42 @@ pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, S
     debug!("📂 Remote List: {:?}", remotes);
 
     Ok(remotes)
+}
+
+#[command]
+pub async fn get_fs_info(
+    state: State<'_, RcloneState>,
+    remote_name: String,
+) -> Result<Value, String> {
+    let url = format!("{}/operations/fsinfo", RCLONE_STATE.get_api().0);
+
+    let payload = json!({
+        "fs": format!("{}:", remote_name)
+    });
+
+    let response = state
+        .client
+        .post(&url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("❌ Failed to fetch fs info: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(format!(
+            "❌ Rclone fsinfo returned error {}: {}",
+            status, text
+        ));
+    }
+
+    let json: Value = response
+        .json()
+        .await
+        .map_err(|e| format!("❌ Failed to parse fsinfo response: {}", e))?;
+
+    Ok(json)
 }
 
 /// Fetch remote config fields dynamically
@@ -290,26 +320,38 @@ pub async fn get_remote_types(
 }
 
 /// ✅ Fetch only OAuth-supported remotes
-#[tauri::command]
+#[command]
 pub async fn get_oauth_supported_remotes(
     state: State<'_, RcloneState>,
-) -> Result<Vec<String>, String> {
+) -> Result<HashMap<String, Vec<Value>>, String> {
     let providers = fetch_remote_providers(&state).await?;
 
-    // ✅ Extract OAuth-supported remotes
-    let oauth_remotes: Vec<String> = providers
-        .into_values()
-        .flatten()
-        .filter(|remote| {
-            remote.get("Options").and_then(|options| options.as_array()).map_or(false, |opts| {
-            opts.iter().any(|opt| {
-                opt.get("Name").and_then(|n| n.as_str()) == Some("token")
-                && opt.get("Help").and_then(|h| h.as_str()).map_or(false, |h| h.contains("OAuth Access Token as a JSON blob"))
+    // Extract all OAuth-supported remotes with their full information
+    let mut oauth_remotes = HashMap::new();
+    
+    for (provider_type, remotes) in providers {
+        let supported_remotes: Vec<Value> = remotes
+            .into_iter()
+            .filter(|remote| {
+                remote
+                    .get("Options")
+                    .and_then(|options| options.as_array())
+                    .map_or(false, |opts| {
+                        opts.iter().any(|opt| {
+                            opt.get("Name").and_then(|n| n.as_str()) == Some("token")
+                                && opt
+                                    .get("Help")
+                                    .and_then(|h| h.as_str())
+                                    .map_or(false, |h| h.contains("OAuth Access Token as a JSON blob"))
+                        })
+                    })
             })
-            })
-        })
-        .filter_map(|remote| remote.get("Name").and_then(|name| name.as_str()).map(|s| s.to_string())) // Extract the name string
-        .collect();
+            .collect();
+            
+        if !supported_remotes.is_empty() {
+            oauth_remotes.insert(provider_type, supported_remotes);
+        }
+    }
 
     Ok(oauth_remotes)
 }

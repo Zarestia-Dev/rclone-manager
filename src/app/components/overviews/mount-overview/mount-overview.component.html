@@ -12,9 +12,15 @@
             <mat-card-content class="overview-content">
                 <strong>Remotes Status</strong>
                 <div class="remotes-bar">
-                    <div class="bar mounted-bar" [style.width.%]="(mountedCount / remotes.length) * 100"></div>
-                    <div class="bar unmounted-bar" [style.width.%]="(unmountedCount / remotes.length) * 100"></div>
-                    <div class="bar error-bar" [style.width.%]="(errorCount / remotes.length) * 100"></div>
+                    <div class="bar mounted-bar" 
+                         [style.width.%]="(mountedCount / remotes.length) * 100">
+                    </div>
+                    <div class="bar unmounted-bar" 
+                         [style.width.%]="(unmountedCount / remotes.length) * 100">
+                    </div>
+                    <div class="bar error-bar" 
+                         [style.width.%]="(errorCount / remotes.length) * 100">
+                    </div>
                 </div>
 
                 <!-- Legend -->
@@ -39,23 +45,27 @@
                     <mat-icon svgIcon="mount"></mat-icon> Mounted Remotes
                 </h3>
                 <div class="remote-list">
-                    <div *ngFor="let remote of mountedRemotes" class="remote-card" (click)="selectRemote(remote)">
+                    <div *ngFor="let remote of mountedRemotes" 
+                         class="remote-card" 
+                         (click)="selectRemote(remote)">
                         <div class="remote-content">
                             <h4 matTooltip="{{ remote.remoteSpecs.name }}">
                                 {{ remote.remoteSpecs.name }}
                             </h4>
                             <p>
-                                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon> {{
-                                remote.remoteSpecs.type | titlecase }}
+                                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
+                                {{ remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
-                        <button mat-raised-button color="accent"
-                            (click)="openRemoteInFiles(remote.remoteSpecs.name); $event.stopPropagation()">
-                            <mat-spinner *ngIf="actionInProgress[remote.remoteSpecs.name] === 'open'"
+                        <button mat-raised-button 
+                                color="accent"
+                                (click)="openRemoteInFiles(remote.remoteSpecs.name); $event.stopPropagation()"
+                                [disabled]="getActionState(remote.remoteSpecs.name) === 'open'">
+                            <mat-spinner *ngIf="getActionState(remote.remoteSpecs?.name) === 'open'"
                                 diameter="20"></mat-spinner>
-                            <mat-icon *ngIf="!(actionInProgress[remote.remoteSpecs.name] === 'open')"
+                            <mat-icon *ngIf="getActionState(remote.remoteSpecs?.name) !== 'open'"
                                 svgIcon="folder"></mat-icon>
-                            {{ actionInProgress[remote.remoteSpecs.name] === 'mount' ? "Openning" : "Open Files" }}
+                            {{ getActionState(remote.remoteSpecs.name) === 'open' ? "Opening" : "Open Files" }}
                         </button>
                     </div>
                 </div>
@@ -69,23 +79,27 @@
                     <mat-icon svgIcon="circle-xmark"></mat-icon> Unmounted Remotes
                 </h3>
                 <div class="remote-list">
-                    <div *ngFor="let remote of unmountedRemotes" class="remote-card" (click)="selectRemote(remote)">
+                    <div *ngFor="let remote of unmountedRemotes" 
+                         class="remote-card" 
+                         (click)="selectRemote(remote)">
                         <div class="remote-content">
                             <h4 matTooltip="{{ remote.remoteSpecs.name }}">
                                 {{ remote.remoteSpecs.name }}
                             </h4>
                             <p>
-                                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon> {{
-                                remote.remoteSpecs.type | titlecase }}
+                                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
+                                {{ remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
-                        <button mat-raised-button color="primary"
-                            (click)="mountRemoteByFs(remote.remoteSpecs.name); $event.stopPropagation()">
-                            <mat-spinner *ngIf="actionInProgress[remote.remoteSpecs.name] === 'mount'"
+                        <button mat-raised-button 
+                                color="primary"
+                                (click)="mountRemoteByFs(remote.remoteSpecs.name); $event.stopPropagation()"
+                                [disabled]="getActionState(remote.remoteSpecs.name) === 'mount'">
+                            <mat-spinner *ngIf="getActionState(remote.remoteSpecs.name) === 'mount'"
                                 diameter="20"></mat-spinner>
-                            <mat-icon *ngIf="!(actionInProgress[remote.remoteSpecs.name] === 'mount')"
+                            <mat-icon *ngIf="getActionState(remote.remoteSpecs.name) !== 'mount'"
                                 svgIcon="mount"></mat-icon>
-                            {{ actionInProgress[remote.remoteSpecs.name] === 'mount' ? "Mounting" : "Mount" }}
+                            {{ getActionState(remote.remoteSpecs.name) === 'mount' ? "Mounting" : "Mount" }}
                         </button>
                     </div>
                 </div>
@@ -100,15 +114,21 @@
                     Remotes with Problems
                 </h3>
                 <div class="remote-list">
-                    <div *ngFor="let remote of errorRemotes" class="remote-card" (click)="selectRemote(remote)">
+                    <div *ngFor="let remote of errorRemotes" 
+                         class="remote-card" 
+                         (click)="selectRemote(remote)">
                         <div class="remote-content">
-                            <h4 matTooltip="{{ remote.remoteSpecs.name }}">{{ remote.remoteSpecs.name }}</h4>
+                            <h4 matTooltip="{{ remote.remoteSpecs.name }}">
+                                {{ remote.remoteSpecs.name }}
+                            </h4>
                             <p>
-                                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon> {{
-                                remote.remoteSpecs.type | titlecase }}
+                                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
+                                {{ remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
-                        <button mat-raised-button class="fix" (click)="$event.stopPropagation()">
+                        <button mat-raised-button 
+                                class="fix" 
+                                (click)="$event.stopPropagation()">
                             <mat-icon svgIcon="wrench"></mat-icon>
                             Fix
                         </button>

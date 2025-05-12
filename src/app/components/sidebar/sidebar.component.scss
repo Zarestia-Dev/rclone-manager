@@ -64,19 +64,43 @@
         display: block;
       }
       p {
-        color: #8C8888;
+        color: #8c8888;
       }
+      .remote-status {
+        display: flex;
+        align-items: center;
+        flex-direction: row;
+        width: 100%;
+        justify-content: space-between;
+        font-size: 14px;
+        color: var(--secondary-text-color);
 
-      .mounted {
-        color: var(--primary-color);
-      }
+        p {
+          display: inline-flex;
+          align-items: center;
+          padding: 4px;
+          border-radius: var(--border-radius);
+          margin-right: 8px;
+          transition: all 0.3s ease;
 
-      .not-mounted {
-        color: var(--orange);
-      }
+          &.mounted {
+            color: var(--primary-color);
+            background-color: color-mix(
+              in srgb,
+              var(--primary-color) 20%,
+              transparent
+            );
+          }
 
-      .error {
-        color: var(--red);
+          &.not-mounted {
+            color: var(--orange);
+            background-color: color-mix(
+              in srgb,
+              var(--orange) 20%,
+              transparent
+            );
+          }
+        }
       }
     }
   }

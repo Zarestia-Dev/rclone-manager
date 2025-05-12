@@ -27,33 +27,7 @@ import { SettingsService } from "../../services/settings.service";
 import { Subscription } from "rxjs";
 import { StateService } from "../../services/state.service";
 import { MatButtonModule } from "@angular/material/button";
-
-interface QuickAddForm {
-  remoteName: string;
-  remoteType: string;
-  autoMount: boolean;
-  mountPath: string;
-}
-
-interface RemoteSettings {
-  name: string;
-  custom_flags: string[];
-  vfs_options: {
-    CacheMode: string;
-    ChunkSize: string;
-  };
-  mount_options: {
-    mount_point: string;
-    auto_mount: boolean;
-  };
-  show_in_tray_menu: boolean;
-}
-
-interface LoadingState {
-  saving: boolean;
-  authDisabled: boolean;
-  cancelled: boolean;
-}
+import { LoadingState, QuickAddForm, RemoteSettings, RemoteType } from "../../shared/remote-config-types";
 
 @Component({
   selector: "app-quick-add-remote",
@@ -86,7 +60,7 @@ interface LoadingState {
 })
 export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   quickAddForm: FormGroup;
-  oauthSupportedRemotes: string[] = [];
+  remoteTypes: RemoteType[] = [];
   existingRemotes: string[] = [];
 
   isLoading: LoadingState = {
@@ -175,10 +149,18 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   private async initializeComponent(): Promise<void> {
     try {
-      [this.existingRemotes, this.oauthSupportedRemotes] = await Promise.all([
-        this.rcloneService.getRemotes(),
-        this.rcloneService.getOAuthSupportedRemotes(),
-      ]);
+      // [this.existingRemotes, this.oauthSupportedRemotes] = await Promise.all([
+      //   this.rcloneService.getRemotes(),
+      //   this.rcloneService.getOAuthSupportedRemotes(),
+      // ]);
+      const oauthSupportedRemotes = await this.rcloneService.getOAuthSupportedRemotes();
+      console.log("OAuth Supported Remotes:", oauthSupportedRemotes);
+      this.remoteTypes = oauthSupportedRemotes.map((remote: any) => ({
+        value: remote.name,
+        label: remote.description,
+      }));
+      this.existingRemotes = await this.rcloneService.getRemotes();
+      console.log("OAuth Supported Remotes:", this.remoteTypes);
     } catch (error) {
       console.error("Error initializing component:", error);
     }

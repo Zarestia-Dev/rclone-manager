@@ -17,9 +17,9 @@ export class RcloneService {
     }
   }
 
-  selectFolder(is_empty?: boolean): Promise<string> {
+  selectFolder(require_empty?: boolean): Promise<string> {
     return invoke<string>("get_folder_location", {
-      isEmpty: is_empty,
+      requireEmpty: require_empty,
     }).catch((err) => {
       console.error("Failed to open folder picker:", err);
       this.infoService.alertModal("Error", err);
@@ -59,12 +59,24 @@ export class RcloneService {
   }
 
   /** ✅ Get only OAuth-supported remote types */
-  async getOAuthSupportedRemotes(): Promise<string[]> {
+  async getOAuthSupportedRemotes(): Promise<
+    { name: string; description: string }[]
+  > {
     try {
-      const response = await invoke<string[]>("get_oauth_supported_remotes");
+      const response = await invoke<{
+        [key: string]: { Name: string; Description: string }[];
+      }>("get_oauth_supported_remotes");
 
-      console.log("Fetched OAuth-supported remotes:", response);
-      return response;
+      // Convert PascalCase keys to camelCase
+      const providers = Object.values(response)
+        .flat()
+        .map((provider) => ({
+          name: provider.Name,
+          description: provider.Description,
+        }));
+
+      console.log("Fetched remote types:", providers);
+      return providers;
     } catch (error) {
       console.error("❌ Failed to fetch OAuth-supported remotes:", error);
       return [];
@@ -245,6 +257,15 @@ export class RcloneService {
     ).catch((error) => {
       console.error("Copy failed:", error);
     });
+  }
+
+  async getFsInfo(remoteName: string): Promise<any> {
+    try {
+      return await invoke<any>("get_fs_info", { remoteName });
+    } catch (error) {
+      console.error("Error fetching fs info:", error);
+      return null;
+    }
   }
 
   // Get Flags

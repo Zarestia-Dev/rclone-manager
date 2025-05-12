@@ -15,6 +15,7 @@
 
     input {
       padding: 8px;
+      margin: 12px;
       border-radius: var(--border-radius);
       border: 1px solid #ddd;
       font-size: 16px;
@@ -24,6 +25,7 @@
 
   .modal-content {
     border-radius: calc(var(--border-radius) * 2);
+    box-shadow: var(--box-shadow);
     display: flex;
     justify-content: center;
     overflow: auto;

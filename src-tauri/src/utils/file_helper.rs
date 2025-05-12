@@ -1,59 +1,63 @@
 use log::{debug, error};
-use tauri::{command, Window};
+use tauri::{command, AppHandle, Window};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 #[command]
-pub async fn get_folder_location(window: Window, is_empty: bool) -> Result<Option<String>, String> {
-    debug!("Opening folder picker dialog...");
+pub async fn get_folder_location(app: AppHandle, require_empty: bool) -> Result<Option<String>, String> {
+    debug!("Opening folder picker dialog");
     
-    let folder_location = window
-        .dialog()
+    let folder = match app.dialog()
         .file()
+        .set_title("Select Folder")
         .blocking_pick_folder()
-        .map(|path| path.to_string());
+        .map(|p| p.to_string())
+    {
+        Some(path) if path.is_empty() => {
+            debug!("User selected empty path");
+            return Ok(None);
+        }
+        Some(path) => path,
+        None => {
+            debug!("User cancelled folder selection");
+            return Ok(None);
+        }
+    };
 
-    debug!("Folder location: {:?}", folder_location);
-
-    if let Some(ref folder) = folder_location {
-        if is_empty {
-            let path = std::path::Path::new(folder);
-
-            let is_empty = match tokio::fs::read_dir(path).await {
-                Ok(mut entries) => match entries.next_entry().await {
-                    Ok(None) => true,
-                    Ok(Some(_)) => false,
-                    Err(err) => {
-                        error!("Error reading directory entry: {:?}", err);
-                        false
-                    }
-                },
-                Err(err) => {
-                    error!("Error checking directory: {:?}", err);
-                    false
+    if require_empty {
+        debug!("Checking if folder is empty: {}", folder);
+        let path = std::path::Path::new(&folder);
+        
+        // Check if folder exists and is empty
+        match tokio::fs::read_dir(path).await {
+            Ok(mut entries) => match entries.next_entry().await {
+                Ok(Some(_)) => return Err("Selected folder is not empty".into()),
+                Ok(None) => (), // Folder is empty
+                Err(e) => {
+                    error!("Error reading directory: {}", e);
+                    return Err(format!("Error checking folder: {}", e));
                 }
-            };
-
-            if !is_empty {
-                return Err("Selected folder is not empty.".to_string());
+            },
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (), // Folder doesn't exist
+            Err(e) => {
+                error!("Error accessing folder: {}", e);
+                return Err(format!("Error accessing folder: {}", e));
             }
+        }
 
-            #[cfg(target_os = "windows")]
-            {
-                // On Windows, remove the empty folder so rclone can recreate it cleanly
-                debug!("Removing empty mount folder on Windows: {:?}", path);
-                if let Err(e) = std::fs::remove_dir_all(path) {
-                    error!("Failed to remove folder {}: {}", folder, e);
-                    return Err(format!("Failed to remove folder: {}", e));
-                }
+        // On Windows, clean up the empty folder if it exists
+        #[cfg(target_os = "windows")]
+        if path.exists() {
+            debug!("Removing existing empty folder on Windows");
+            if let Err(e) = tokio::fs::remove_dir_all(path).await {
+                error!("Failed to remove folder: {}", e);
+                return Err(format!("Failed to prepare folder: {}", e));
             }
         }
     }
 
-    Ok(folder_location)
+    Ok(Some(folder))
 }
-
-
 
 #[command]
 pub async fn open_in_files(app: tauri::AppHandle, path: String) -> Result<String, String> {

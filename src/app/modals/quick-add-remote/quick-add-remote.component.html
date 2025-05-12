@@ -19,8 +19,8 @@
     <mat-form-field class="full-width">
       <mat-label>Select Remote Type</mat-label>
       <mat-select formControlName="remoteType" (selectionChange)="onRemoteTypeChange()">
-        <mat-option *ngFor="let remote of oauthSupportedRemotes" [value]="remote">
-          {{ remote }}
+        <mat-option *ngFor="let remote of remoteTypes" [value]="remote.value">
+          {{ remote.label }}
         </mat-option>
       </mat-select>
       <mat-error *ngIf="quickAddForm.get('remoteType')?.hasError('required')">

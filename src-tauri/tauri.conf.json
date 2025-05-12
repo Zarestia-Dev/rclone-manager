@@ -10,23 +10,6 @@
     "frontendDist": "../dist/rclone-manager/browser"
   },
   "app": {
-    "windows": [
-      {
-        "title": "RClone Manager",
-        "label": "main",
-        "width": 800,
-        "height": 600,
-        "resizable": true,
-        "transparent": true,
-        "center": true,
-        "focus": true,
-        "shadow": false,
-        "fullscreen": false,
-        "decorations": false,
-        "minHeight": 240,
-        "minWidth": 362
-      }
-    ],
     "security": {
       "csp": null
     }

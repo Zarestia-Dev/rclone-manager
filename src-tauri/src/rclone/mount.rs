@@ -1,7 +1,10 @@
-use reqwest::Client;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+
+use tauri::State;
+
+use crate::RcloneState;
 
 #[cfg(target_os = "macos")]
 fn needs_mount_plugin() -> bool {
@@ -33,8 +36,7 @@ pub fn check_mount_plugin() -> bool {
 }
 
 #[tauri::command]
-pub async fn install_mount_plugin() -> Result<String, String> {
-    let client = Client::new();
+pub async fn install_mount_plugin(state: State<'_, RcloneState>) -> Result<String, String> {
     let download_path = std::env::temp_dir().join("rclone_temp");
 
     let (url, local_file, _install_command) = if cfg!(target_os = "macos") {
@@ -47,12 +49,15 @@ pub async fn install_mount_plugin() -> Result<String, String> {
         (
             "https://github.com/winfsp/winfsp/releases/download/v2.0/winfsp-2.0.23075.msi",
             download_path.join("winfsp-installer.msi"),
-            format!("msiexec /i {} /quiet /norestart", download_path.join("winfsp-installer.msi").display()),
+            format!(
+                "msiexec /i {} /quiet /norestart",
+                download_path.join("winfsp-installer.msi").display()
+            ),
         )
     };
 
     // Download the plugin
-    if let Err(e) = fetch_and_save(&client, url, &local_file).await {
+    if let Err(e) = fetch_and_save(state, url, &local_file).await {
         return Err(format!("Failed to download plugin: {}", e));
     }
 
@@ -71,15 +76,19 @@ pub async fn install_mount_plugin() -> Result<String, String> {
     };
 
     match status {
-        Ok(exit_status) if exit_status.success() => Ok("Mount plugin installed successfully".to_string()),
-        Ok(exit_status) => Err(format!("Installation failed with exit code: {}", exit_status)),
+        Ok(exit_status) if exit_status.success() => {
+            Ok("Mount plugin installed successfully".to_string())
+        }
+        Ok(exit_status) => Err(format!(
+            "Installation failed with exit code: {}",
+            exit_status
+        )),
         Err(e) => Err(format!("Failed to execute installer: {}", e)),
     }
 }
 
-
-async fn fetch_and_save(client: &Client, url: &str, file_path: &PathBuf) -> Result<(), String> {
-    let response = client
+async fn fetch_and_save(state: State<'_, RcloneState>, url: &str, file_path: &PathBuf) -> Result<(), String> {
+    let response = state.client
         .get(url)
         .send()
         .await
