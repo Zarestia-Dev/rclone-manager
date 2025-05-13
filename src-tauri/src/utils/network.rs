@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tauri::command;
 
@@ -31,27 +31,28 @@ impl LinkChecker {
             .timeout(std::time::Duration::from_secs(10))
             .build()
             .expect("Failed to create HTTP client");
-            
+
         Self {
             client,
             max_retries,
             retry_delay: std::time::Duration::from_secs(retry_delay_secs),
         }
     }
-    
+
     async fn check_links(&self, links: &str) -> Result<CheckResult, Box<dyn std::error::Error>> {
-        let links_vec: Vec<String> = links.split(';')
+        let links_vec: Vec<String> = links
+            .split(';')
             .map(|s| s.trim())
             .filter(|s| !s.is_empty())
             .map(|s| s.to_string())
             .collect();
-            
+
         let successful = std::sync::Arc::new(tokio::sync::Mutex::new(Vec::new()));
         let failed = std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new()));
         let retries_used = std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new()));
-        
+
         let mut handles = vec![];
-        
+
         for link in links_vec {
             let checker = self.client.clone();
             let max_retries = self.max_retries;
@@ -59,11 +60,11 @@ impl LinkChecker {
             let successful = successful.clone();
             let failed = failed.clone();
             let retries_used = retries_used.clone();
-            
+
             handles.push(tokio::spawn(async move {
                 let mut last_error = None;
                 let mut retries = 0;
-                
+
                 while retries <= max_retries {
                     match checker.get(&link).send().await {
                         Ok(response) => {
@@ -79,27 +80,30 @@ impl LinkChecker {
                             last_error = Some(e.to_string());
                         }
                     }
-                    
+
                     if retries < max_retries {
                         tokio::time::sleep(retry_delay).await;
                     }
                     retries += 1;
                 }
-                
-                failed.lock().await.insert(link.clone(), last_error.unwrap_or_else(|| "Unknown error".to_string()));
+
+                failed.lock().await.insert(
+                    link.clone(),
+                    last_error.unwrap_or_else(|| "Unknown error".to_string()),
+                );
                 retries_used.lock().await.insert(link.clone(), retries - 1);
             }));
         }
-        
+
         // Wait for all tasks to complete
         for handle in handles {
             let _ = handle.await;
         }
-        
+
         let successful = successful.lock().await.clone();
         let failed = failed.lock().await.clone();
         let retries_used = retries_used.lock().await.clone();
-        
+
         Ok(CheckResult {
             successful,
             failed,

@@ -33,7 +33,7 @@ pub fn safe_copy_rclone(from: &Path, to: &Path, binary_name: &str) -> Result<(),
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        
+
         let mut perms = fs::metadata(&target)
             .map_err(|e| format!("Failed to read metadata: {}", e))?
             .permissions();
@@ -53,7 +53,6 @@ pub fn safe_copy_rclone(from: &Path, to: &Path, binary_name: &str) -> Result<(),
             .and_then(|file| file.sync_all())
             .map_err(|e| format!("Failed to sync file to disk: {}", e))?;
     }
-
 
     Ok(())
 }

@@ -4,10 +4,14 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
 #[command]
-pub async fn get_folder_location(app: AppHandle, require_empty: bool) -> Result<Option<String>, String> {
+pub async fn get_folder_location(
+    app: AppHandle,
+    require_empty: bool,
+) -> Result<Option<String>, String> {
     debug!("Opening folder picker dialog");
-    
-    let folder = match app.dialog()
+
+    let folder = match app
+        .dialog()
         .file()
         .set_title("Select Folder")
         .blocking_pick_folder()
@@ -27,7 +31,7 @@ pub async fn get_folder_location(app: AppHandle, require_empty: bool) -> Result<
     if require_empty {
         debug!("Checking if folder is empty: {}", folder);
         let path = std::path::Path::new(&folder);
-        
+
         // Check if folder exists and is empty
         match tokio::fs::read_dir(path).await {
             Ok(mut entries) => match entries.next_entry().await {
@@ -72,9 +76,7 @@ pub async fn open_in_files(app: tauri::AppHandle, path: String) -> Result<String
 }
 
 #[command]
-pub async fn get_file_location(
-    window: Window
-) -> Result<Option<String>, String> {
+pub async fn get_file_location(window: Window) -> Result<Option<String>, String> {
     debug!("Opening file picker dialog...");
 
     let file_location = window

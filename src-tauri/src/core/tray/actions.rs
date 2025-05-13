@@ -12,7 +12,8 @@ use crate::{
         state::CACHE,
     },
     utils::{
-        builder::create_app_window, file_helper::get_folder_location, notification::NotificationService,
+        builder::create_app_window, file_helper::get_folder_location,
+        notification::NotificationService,
     },
 };
 
@@ -181,7 +182,7 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
             Err(e) => {
                 error!("🚨 Failed to mount {}: {}", remote_name, e);
                 notify(
-                    &app, 
+                    &app,
                     "Mount Failed",
                     &format!("Failed to mount {}: {}", remote_name, e),
                 );

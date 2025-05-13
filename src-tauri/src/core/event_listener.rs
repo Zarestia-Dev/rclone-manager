@@ -7,10 +7,12 @@ use crate::{
     core::{
         lifecycle::shutdown::handle_shutdown,
         tray::tray::{update_tray_menu, TrayEnabled},
-    }, rclone::api::{
+    },
+    rclone::api::{
         engine::ENGINE,
         state::{CACHE, RCLONE_STATE},
-    }, utils::{builder::setup_tray, log::update_log_level, notification::NotificationService}
+    },
+    utils::{builder::setup_tray, log::update_log_level, notification::NotificationService},
 };
 
 mod events {
@@ -59,7 +61,8 @@ fn handle_rclone_api_url_updated(app: &AppHandle) {
                     Err(poisoned) => poisoned.into_inner(),
                 };
                 engine.update_port(&app, port)
-            }).await;
+            })
+            .await;
 
             if let Err(e) = result {
                 error!("Failed to update Rclone API port: {}", e);
@@ -77,22 +80,22 @@ fn handle_rclone_path_updated(app: &AppHandle) {
             Ok(parsed_path) => {
                 if let Some(path_str) = parsed_path.as_str() {
                     debug!("🔄 Rclone path updated to: {}", path_str);
-                    let app_handle_clone = app_handle.clone();                    
+                    let app_handle_clone = app_handle.clone();
                     tauri::async_runtime::spawn(async move {
-                        let result = tauri::async_runtime::spawn_blocking(move || {
-                            match ENGINE.lock() {
+                        let result =
+                            tauri::async_runtime::spawn_blocking(move || match ENGINE.lock() {
                                 Ok(mut engine) => engine.update_path(&app_handle_clone),
                                 Err(poisoned) => {
                                     error!("Mutex poisoned during path update");
                                     let mut guard = poisoned.into_inner();
                                     guard.update_path(&app_handle_clone)
                                 }
-                            }
-                        }).await;
+                            })
+                            .await;
 
                         if let Err(e) = result {
                             error!("Failed to update rclone path: {}", e);
-                            // let _ = app_handle_clone.emit("rclone_error", 
+                            // let _ = app_handle_clone.emit("rclone_error",
                             //     format!("Failed to update rclone path: {}", e));
                         }
                     });
@@ -100,8 +103,10 @@ fn handle_rclone_path_updated(app: &AppHandle) {
             }
             Err(e) => {
                 error!("❌ Failed to parse rclone path update: {}", e);
-                let _ = app_handle.emit("rclone_error", 
-                    format!("Invalid path update payload: {}", e));
+                let _ = app_handle.emit(
+                    "rclone_error",
+                    format!("Invalid path update payload: {}", e),
+                );
             }
         }
     });
@@ -131,7 +136,8 @@ fn handle_remote_state_changed(app: &AppHandle) {
                 error!("Failed to update tray menu: {}", e);
             }
 
-            let _ = app.clone()
+            let _ = app
+                .clone()
                 .emit("mount_cache_updated", "remote_presence")
                 .map_err(|e| {
                     error!("❌ Failed to emit event to frontend: {}", e);
@@ -183,7 +189,9 @@ fn handle_settings_changed(app: &AppHandle) {
             Ok(settings) => {
                 // same logic...
                 if let Some(general) = settings.get("general") {
-                    if let Some(notification) = general.get("notification").and_then(|v| v.as_bool()) {
+                    if let Some(notification) =
+                        general.get("notification").and_then(|v| v.as_bool())
+                    {
                         debug!("💬 Notifications changed to: {}", notification);
                         let notifications_enabled = app_handle.state::<NotificationService>();
                         let mut guard = notifications_enabled.enabled.write().unwrap();

@@ -1,11 +1,8 @@
+use std::io::Cursor;
 use std::{fs, path::Path};
 use zip::ZipArchive;
-use std::io::Cursor;
 
-pub fn extract_rclone_zip(
-    zip_bytes: &[u8],
-    temp_dir: &Path
-) -> Result<(), String> {
+pub fn extract_rclone_zip(zip_bytes: &[u8], temp_dir: &Path) -> Result<(), String> {
     if temp_dir.exists() {
         fs::remove_dir_all(temp_dir).map_err(|e| e.to_string())?;
     }

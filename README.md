@@ -117,81 +117,46 @@ npm run tauri build
 
 ---
 
-## 🐛 Known Issues
+## 🐞 Known Issues
 
-### You can find known issues and bugs in the [ISSUES.md](ISSUES.md) file.
----
+Known bugs and technical limitations are tracked in two places:
 
-## 📜 Roadmap
-
-### 🔜 Short-Term Goals _(Next few releases)_
-
-- [ ] **Move the Roadmap on GitHub**
-      Transition the roadmap to GitHub Projects for better visibility and collaboration.
-
-- [ ] **Windows & macOS Support**
-      Package and test Rclone Manager for Windows and macOS. (Windows is currently in progress)
-
-- [ ] **Built-in Sync & Copy Support**
-      Provide GUI options for `rclone sync` and `rclone copy` with common settings.
-
-- [ ] **Enhanced Remote Management**
-      Improve the interface for creating, editing, and organizing remotes.
-
-- [ ] **User Interface Enhancements**
-      Refine layout, icons, and theming for a smoother user experience.
-
-- [ ] **Feature Requests & Feedback Integration**
-      Review community input and prioritize highly requested features.
-
-- [ ] **Basic Testing & QA**
-      Implement initial test coverage and manual platform validation.
+* 📄 See [**ISSUES.md**](ISSUES.md) for detailed explanations of platform-specific issues (e.g. Windows terminal flash)
+* 📌 Visit our [**GitHub Project Board**](https://github.com/users/Hakanbaban53/projects/6) for open bugs and upcoming fixes
 
 ---
 
-### 🚀 Long-Term Goals _(Future milestones)_
+## 🗺️ Roadmap
 
-- [ ] **Mobile Support**
-      Explore options for Android and iOS compatibility.
+We organize development on [**GitHub Projects**](https://github.com/users/Hakanbaban53/projects/6) — including features, bugs, and long-term goals.
 
-- [ ] **Performance Optimization**
-      Streamline backend communication, reduce resource usage, and optimize startup time.
+The board includes:
 
-- [ ] **Localization / Internationalization**
-      Add multi-language support to reach a broader user base.
+* 🔜 **Short-Term Goals** (UI improvements, packaging, sync/copy GUI)
+* 🚀 **Long-Term Features** (mobile support, performance, localization)
+* 🧩 **Open Tasks & Suggestions** from the community
+* 🐛 **Known Issues & Workarounds** not yet fixed
 
-- [ ] **Accessibility Improvements**
-      Ensure compatibility with screen readers, keyboard-only navigation, and accessibility standards.
-
-- [ ] **Advanced Rclone Features**
-      Expose more advanced Rclone functionalities (like filters, bandwidth limits, scheduling).
-
-- [ ] **Integration with Other Tools**
-      Allow interaction with file managers, cloud dashboards, or automation tools.
-
-- [ ] **Comprehensive Testing & QA**
-      Establish robust automated testing pipelines and continuous integration for stability across platforms.
+> 🧠 Want to follow progress or help shape direction? Watch the board and leave your ideas!
 
 ---
 
-## 🧑‍💻 Contributing
+## 🤝 Contributing
 
-Contributions welcome! 🚀
+We welcome contributors of all experience levels!
+You can help by:
 
-- Report bugs & suggest features on:
-  - [GitHub Issues](https://github.com/Hakanbaban53/rclone-manager/issues)
-- Submit pull requests and help improve the project!
+* 🐛 Reporting bugs & submitting suggestions in [**GitHub Issues**](https://github.com/Hakanbaban53/rclone-manager/issues)
+* 🛠️ Submitting pull requests — see the [CONTRIBUTING.md](CONTRIBUTING.md) guide (coming soon)
 
 ---
 
 ## 📜 License
 
-This project is licensed under the **[GNU GPLv3](LICENSE)**.
+Licensed under the **[GNU GPLv3](LICENSE)**.
 
 ---
 
 ## 📬 Contact
 
-Have questions or ideas? Reach out via:
-
-- [GitHub Issues](https://github.com/Hakanbaban53/rclone-manager/issues)
+Reach out via [**GitHub Issues**](https://github.com/Hakanbaban53/rclone-manager/issues) — we’d love your feedback!

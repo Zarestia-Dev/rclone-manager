@@ -69,7 +69,6 @@ pub async fn install_mount_plugin(state: State<'_, RcloneState>) -> Result<Strin
             .arg(local_file.to_str().unwrap())
             .status()
     } else {
-        
         execute_as_admin_powershell(local_file.to_str().unwrap())
     };
 
@@ -97,8 +96,13 @@ fn execute_as_admin_powershell(msi_path: &str) -> std::io::Result<std::process::
         .status()
 }
 
-async fn fetch_and_save(state: State<'_, RcloneState>, url: &str, file_path: &PathBuf) -> Result<(), String> {
-    let response = state.client
+async fn fetch_and_save(
+    state: State<'_, RcloneState>,
+    url: &str,
+    file_path: &PathBuf,
+) -> Result<(), String> {
+    let response = state
+        .client
         .get(url)
         .send()
         .await

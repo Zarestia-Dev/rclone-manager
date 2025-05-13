@@ -399,8 +399,8 @@ pub async fn backup_settings(
     // Create archive (same as before)
     if let Some(pw) = password {
         // 7z encrypted
-        let seven_zip = find_7z_executable()
-            .map_err(|e| format!("Failed to find 7z executable: {}", e))?;
+        let seven_zip =
+            find_7z_executable().map_err(|e| format!("Failed to find 7z executable: {}", e))?;
         let status = Command::new(seven_zip)
             .current_dir(export_dir)
             .arg("a")
@@ -443,10 +443,7 @@ pub async fn backup_settings(
             .map_err(|e| format!("Failed to finish zip archive: {}", e))?;
     }
 
-    Ok(format!(
-        "Backup created at: {}",
-        archive_path.display()
-    ))
+    Ok(format!("Backup created at: {}", archive_path.display()))
 }
 
 #[derive(Serialize)]
@@ -457,8 +454,8 @@ pub struct BackupAnalysis {
 }
 
 pub fn is_7z_encrypted(path: &Path) -> Result<bool, String> {
-    let seven_zip = find_7z_executable()
-        .map_err(|e| format!("Failed to find 7z executable: {}", e))?;
+    let seven_zip =
+        find_7z_executable().map_err(|e| format!("Failed to find 7z executable: {}", e))?;
     let output = Command::new(seven_zip)
         .arg("l")
         .arg(path)
@@ -517,8 +514,8 @@ pub async fn restore_encrypted_settings(
     let temp_dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let out_path = temp_dir.path().to_str().unwrap();
 
-    let seven_zip = find_7z_executable()
-        .map_err(|e| format!("Failed to find 7z executable: {}", e))?;
+    let seven_zip =
+        find_7z_executable().map_err(|e| format!("Failed to find 7z executable: {}", e))?;
     let output = Command::new(seven_zip)
         .args(&["x", path.to_str().unwrap()])
         .arg(format!("-p{}", password))
@@ -634,7 +631,6 @@ pub async fn restore_settings(
 
     restore_settings_from_path(temp_dir.path(), state, app_handle).await
 }
-
 
 fn find_7z_executable() -> Result<String, String> {
     for cmd in ["7z", "7za", "7z.exe", "7za.exe"] {

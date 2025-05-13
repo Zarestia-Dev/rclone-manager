@@ -1,5 +1,5 @@
-pub mod settings;
-pub mod tray;
+pub mod check_binaries;
 pub mod event_listener;
 pub mod lifecycle;
-pub mod check_binaries;
+pub mod settings;
+pub mod tray;

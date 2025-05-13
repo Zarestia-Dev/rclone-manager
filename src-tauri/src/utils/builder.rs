@@ -1,11 +1,12 @@
-use tauri::{image::Image, tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}, AppHandle, Emitter};
+use tauri::{
+    image::Image,
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    AppHandle, Emitter,
+};
 
 use crate::core::tray::{actions::show_main_window, menu::create_tray_menu};
 
-pub async fn setup_tray(
-    app: AppHandle,
-    max_tray_items: usize,
-) -> tauri::Result<()> {
+pub async fn setup_tray(app: AppHandle, max_tray_items: usize) -> tauri::Result<()> {
     let mut old_max_tray_items = 0;
 
     let max_tray_items = if max_tray_items == 0 {

@@ -1,6 +1,7 @@
 use core::{
     check_binaries::{is_7z_available, is_rclone_available},
-    settings::settings::{analyze_backup_file, load_setting_value, restore_encrypted_settings}, tray::tray::TrayEnabled,
+    settings::settings::{analyze_backup_file, load_setting_value, restore_encrypted_settings},
+    tray::tray::TrayEnabled,
 };
 use std::{
     path::PathBuf,
@@ -9,16 +10,21 @@ use std::{
 
 use log::{debug, error, info};
 use rclone::api::{
-    api_query::get_fs_info, engine::RcApiEngine, state::{
+    api_query::get_fs_info,
+    engine::RcApiEngine,
+    state::{
         clear_errors_for_remote, clear_logs_for_remote, get_cached_mounted_remotes,
         get_remote_errors, get_remote_logs,
-    }
+    },
 };
 use serde_json::json;
 use tauri::{Emitter, Manager, Theme, WindowEvent};
 use tauri_plugin_store::StoreBuilder;
 use utils::{
-    builder::{create_app_window, setup_tray}, log::init_logging, network::check_links, notification::NotificationService
+    builder::{create_app_window, setup_tray},
+    log::init_logging,
+    network::check_links,
+    notification::NotificationService,
 };
 
 use crate::{
@@ -161,6 +167,9 @@ async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            show_main_window(app.clone());
+        }))
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--tray"]),
@@ -176,7 +185,14 @@ pub fn run() {
                 window.hide().unwrap_or_else(|e| {
                     eprintln!("Failed to hide window: {}", e);
                 });
-                if *window.app_handle().state::<TrayEnabled>().enabled.clone().read().unwrap() {
+                if *window
+                    .app_handle()
+                    .state::<TrayEnabled>()
+                    .enabled
+                    .clone()
+                    .read()
+                    .unwrap()
+                {
                     api.prevent_close();
                     if let Some(win) = window.app_handle().get_webview_window("main") {
                         win.eval("document.body.innerHTML = '';")

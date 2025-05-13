@@ -38,7 +38,8 @@ fn current_log_level() -> LevelFilter {
     }
 }
 
-pub fn init_logging(enable_debug: bool) -> Result<(), SetLoggerError> { //Init only once
+pub fn init_logging(enable_debug: bool) -> Result<(), SetLoggerError> {
+    //Init only once
     let level = if enable_debug {
         LevelFilter::Debug
     } else {

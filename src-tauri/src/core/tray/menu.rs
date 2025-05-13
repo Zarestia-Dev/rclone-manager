@@ -115,7 +115,7 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                 } else {
                     remote.clone()
                 };
-                
+
                 let remote_submenu = Submenu::with_items(
                     &handle,
                     &format!("{} {}", name, if is_mounted { "🖴" } else { "" }),

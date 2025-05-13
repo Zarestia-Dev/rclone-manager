@@ -328,7 +328,7 @@ pub async fn get_oauth_supported_remotes(
 
     // Extract all OAuth-supported remotes with their full information
     let mut oauth_remotes = HashMap::new();
-    
+
     for (provider_type, remotes) in providers {
         let supported_remotes: Vec<Value> = remotes
             .into_iter()
@@ -339,15 +339,14 @@ pub async fn get_oauth_supported_remotes(
                     .map_or(false, |opts| {
                         opts.iter().any(|opt| {
                             opt.get("Name").and_then(|n| n.as_str()) == Some("token")
-                                && opt
-                                    .get("Help")
-                                    .and_then(|h| h.as_str())
-                                    .map_or(false, |h| h.contains("OAuth Access Token as a JSON blob"))
+                                && opt.get("Help").and_then(|h| h.as_str()).map_or(false, |h| {
+                                    h.contains("OAuth Access Token as a JSON blob")
+                                })
                         })
                     })
             })
             .collect();
-            
+
         if !supported_remotes.is_empty() {
             oauth_remotes.insert(provider_type, supported_remotes);
         }

@@ -9,10 +9,7 @@ pub struct TrayEnabled {
     pub enabled: Arc<RwLock<bool>>,
 }
 
-pub async fn update_tray_menu(
-    app: AppHandle,
-    max_tray_items: usize,
-) -> tauri::Result<()> {
+pub async fn update_tray_menu(app: AppHandle, max_tray_items: usize) -> tauri::Result<()> {
     let new_menu = create_tray_menu(&app, max_tray_items).await?;
     if let Some(tray) = app.tray_by_id("main-tray") {
         tray.set_menu(Some(new_menu))?;

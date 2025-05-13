@@ -95,7 +95,7 @@ impl RcApiEngine {
             "❌ Rclone binary does not exist: {}",
             self.rclone_path.display()
         );
-        
+
         // Try falling back to system rclone
         if is_rclone_available(app.clone()) {
             info!("🔄 Falling back to system-installed rclone");
@@ -156,7 +156,6 @@ impl RcApiEngine {
             "--rc-serve",
             &format!("--rc-addr=127.0.0.1:{}", port),
         ]);
-
 
         // This is a workaround for Windows to avoid showing a console window
         // when starting the Rclone process.
