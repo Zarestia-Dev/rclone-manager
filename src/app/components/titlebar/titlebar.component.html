@@ -27,8 +27,8 @@
       matTooltip="{{ getInternetStatusTooltip() }}">
       <mat-icon *ngIf="connectionStatus !== 'checking'" svgIcon="no-internet" aria-hidden="true">
       </mat-icon>
-      <mat-progress-spinner color="accent" *ngIf="connectionStatus === 'checking'" diameter="24" mode="indeterminate" strokeWidth="4"
-        aria-hidden="true">
+      <mat-progress-spinner color="accent" *ngIf="connectionStatus === 'checking'" diameter="24" mode="indeterminate"
+        strokeWidth="4" aria-hidden="true">
       </mat-progress-spinner>
     </button>
   </div>
@@ -44,34 +44,39 @@
     </button>
 
     <!-- Window Controls -->
-    <button mat-icon-button (click)="minimizeWindow()" aria-label="Minimize window">
-      <mat-icon svgIcon="remove" aria-hidden="true"></mat-icon>
-    </button>
-    <button mat-icon-button (click)="maximizeWindow()" aria-label="Maximize window">
-      <mat-icon svgIcon="check_box" aria-hidden="true"></mat-icon>
-    </button>
-    <button mat-icon-button (click)="closeWindow()" aria-label="Close window" class="close-button">
-      <mat-icon svgIcon="close" aria-hidden="true"></mat-icon>
-    </button>
+    <ng-container *ngIf="!isMacOS">
+      <button mat-icon-button (click)="minimizeWindow()" aria-label="Minimize window">
+        <mat-icon svgIcon="remove" aria-hidden="true"></mat-icon>
+      </button>
+      <button mat-icon-button (click)="maximizeWindow()" aria-label="Maximize window">
+        <mat-icon svgIcon="check_box" aria-hidden="true"></mat-icon>
+      </button>
+      <button mat-icon-button (click)="closeWindow()" aria-label="Close window" class="close-button">
+        <mat-icon svgIcon="close" aria-hidden="true"></mat-icon>
+      </button>
+    </ng-container>
   </div>
 
   <!-- App Menu Content -->
   <mat-menu #menu="matMenu">
     <!-- Theme Selector -->
     <div class="theme-selector" aria-label="Theme selection">
-      <button class="theme-button system" [class.selected]="selectedTheme === 'system'" (click)="setTheme('system', false, $event)"
-        aria-label="System theme">
-        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'system'" class="checkmark" aria-hidden="true"></mat-icon>
+      <button class="theme-button system" [class.selected]="selectedTheme === 'system'"
+        (click)="setTheme('system', false, $event)" aria-label="System theme">
+        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'system'" class="checkmark"
+          aria-hidden="true"></mat-icon>
       </button>
 
-      <button class="theme-button light" [class.selected]="selectedTheme === 'light'" (click)="setTheme('light', false, $event)"
-        aria-label="Light theme">
-        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'light'" class="checkmark" aria-hidden="true"></mat-icon>
+      <button class="theme-button light" [class.selected]="selectedTheme === 'light'"
+        (click)="setTheme('light', false, $event)" aria-label="Light theme">
+        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'light'" class="checkmark"
+          aria-hidden="true"></mat-icon>
       </button>
 
-      <button class="theme-button dark" [class.selected]="selectedTheme === 'dark'" (click)="setTheme('dark', false, $event)"
-        aria-label="Dark theme">
-        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'dark'" class="checkmark" aria-hidden="true"></mat-icon>
+      <button class="theme-button dark" [class.selected]="selectedTheme === 'dark'"
+        (click)="setTheme('dark', false, $event)" aria-label="Dark theme">
+        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'dark'" class="checkmark"
+          aria-hidden="true"></mat-icon>
       </button>
     </div>
 

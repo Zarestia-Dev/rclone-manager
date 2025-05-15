@@ -16,6 +16,7 @@ import { RcloneService } from "../../services/rclone.service";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
+import { listen } from "@tauri-apps/api/event";
 
 @Component({
   selector: "app-onboarding",
@@ -85,7 +86,7 @@ export class OnboardingComponent implements OnInit {
   animationState: "forward" | "backward" = "forward";
   installLocation: "default" | "custom" = "default";
   customPath: string = "";
-  mountPluginRequired = false;
+  mountPluginInstalled = false;
   downloadingPlugin = false;
   currentCardIndex = 0;
   rcloneInstalled = false;
@@ -150,8 +151,8 @@ export class OnboardingComponent implements OnInit {
 
   async checkMountPlugin(): Promise<void> {
     try {
-      this.mountPluginRequired = await invoke<boolean>("check_mount_plugin");
-      if (this.mountPluginRequired) {
+      this.mountPluginInstalled = await invoke<boolean>("check_mount_plugin_installed");
+      if (!this.mountPluginInstalled) {
         // Add after install rclone card if it exists, otherwise at position 3
         const insertPosition = this.cards.length > 3 ? 4 : 3;
         this.cards.splice(insertPosition, 0, {
@@ -162,7 +163,7 @@ export class OnboardingComponent implements OnInit {
       }
     } catch (error) {
       console.error("Error checking mount plugin:", error);
-      this.mountPluginRequired = false;
+      this.mountPluginInstalled = false;
     }
 
     // Always add setup complete as the last card
@@ -209,9 +210,11 @@ export class OnboardingComponent implements OnInit {
     try {
       const filePath = await invoke<string>("install_mount_plugin");
       console.log("Downloaded plugin at:", filePath);
-      this.mountPluginRequired = false;
-      // Optionally move to next card after installation
-      this.nextCard();
+      listen("mount_plugin_installed", () => {
+        this.mountPluginInstalled = true;
+        // Optionally move to next card after installation
+        this.nextCard();
+      });
     } catch (error) {
       console.error("Plugin installation failed:", error);
     } finally {
@@ -251,7 +254,7 @@ export class OnboardingComponent implements OnInit {
     return (
       this.currentCardIndex ===
         this.cards.findIndex((c) => c.title === "Install Mount Plugin") &&
-      this.mountPluginRequired
+      this.mountPluginInstalled === false
     );
   }
 

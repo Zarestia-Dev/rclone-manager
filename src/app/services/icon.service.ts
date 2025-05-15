@@ -32,6 +32,7 @@ export class IconService {
       sync: "assets/icons/folder-sync.svg",
       copy: "assets/icons/copy.svg",
       jobs: "assets/icons/jobs.svg",
+      filter: "assets/icons/filter.svg",
       "hard-drive": "assets/icons/hard-drive.svg",
       folder: "assets/icons/folder.svg",
       "circle-exclamation": "assets/icons/circle-exclamation.svg",

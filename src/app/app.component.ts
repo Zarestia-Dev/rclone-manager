@@ -15,6 +15,7 @@ import {
 import { TabsButtonsComponent } from "./components/tabs-buttons/tabs-buttons.component";
 import { Observable } from "rxjs";
 import { StateService } from "./services/state.service";
+import { invoke } from "@tauri-apps/api/core";
 // import { RightClickDirective } from './directives/right-click.directive';
 
 @Component({
@@ -55,7 +56,29 @@ export class AppComponent {
     console.log("Onboarding status: ", this.completedOnboarding);
 
     if (this.completedOnboarding) {
-      this.listenForErrors();
+      // Check mount plugin status
+      try {
+        const mountPluginOk = await invoke<boolean>("check_mount_plugin_installed");
+        console.log("Mount plugin status: ", mountPluginOk);
+        if (!mountPluginOk) {
+          this.bottomSheet.open(RepairSheetComponent, {
+            data: {
+              type: "mount_plugin",
+              title: "Mount Plugin Problem",
+              message:
+                "The mount plugin could not be found or started. You can reinstall or repair it now.",
+            },
+            disableClose: true,
+          });
+          listen("mount_plugin_installed", () => {
+            this.bottomSheet.dismiss();
+          });
+        }
+        this.listenForErrors();
+      } catch (e) {
+        console.error("Error checking mount plugin status:", e);
+        this.listenForErrors();
+      }
     }
   }
 

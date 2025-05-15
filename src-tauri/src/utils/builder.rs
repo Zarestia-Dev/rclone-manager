@@ -51,18 +51,25 @@ pub fn create_app_window(app_handle: AppHandle) {
     let main_window = tauri::WebviewWindowBuilder::new(
         &app_handle,
         "main",
-        tauri::WebviewUrl::App("index.html".into()),
+        tauri::WebviewUrl::default(),
     )
     .title("Rclone Manager")
     .inner_size(800.0, 630.0)
     .resizable(true)
-    .decorations(false)
-    .transparent(true)
     .center()
     .shadow(false)
-    .min_inner_size(362.0, 240.0)
-    .build()
-    .expect("Failed to create main window");
+    .min_inner_size(362.0, 240.0);
+
+    // MacOS does not support transparent windows. So we set the title bar style to show
+    // and remove the decorations.
+    // On other platforms, we set the decorations to false and make the window transparent.
+    #[cfg(target_os = "macos")]
+    let main_window = main_window.title_bar_style(tauri::TitleBarStyle::Show);
+
+    #[cfg(not(target_os = "macos"))]
+    let main_window = main_window.decorations(false).transparent(true);
+
+    let main_window = main_window.build().expect("Failed to build main window");
 
     main_window.show().unwrap_or_else(|e| {
         eprintln!("Failed to show main window: {}", e);

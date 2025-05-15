@@ -61,7 +61,7 @@ use crate::{
             },
             state::{get_cached_remotes, get_configs, get_settings, CACHE, RCLONE_STATE},
         },
-        mount::{check_mount_plugin, install_mount_plugin},
+        mount::{check_mount_plugin_installed, install_mount_plugin},
     },
     utils::{
         file_helper::{get_file_location, get_folder_location, open_in_files},
@@ -194,17 +194,12 @@ pub fn run() {
                     .unwrap()
                 {
                     api.prevent_close();
-                    if let Some(win) = window.app_handle().get_webview_window("main") {
-                        win.eval("document.body.innerHTML = '';")
-                            .unwrap_or_else(|e| {
-                                eprintln!("Failed to clear window content: {}", e);
-                            });
-
-                        // When windows are closed, the "main" label is still exist?
-                        // win.close().unwrap_or_else(|e| {
-                        //     eprintln!("Failed to close window: {}", e);
-                        // });
-                    }
+                    // if let Some(win) = window.app_handle().get_webview_window("main") {
+                    //     // When windows are closed, the "main" label is still exist?
+                    //     // win.close().unwrap_or_else(|e| {
+                    //     //     eprintln!("Failed to close window: {}", e);
+                    //     // });
+                    // }
                 } else {
                     tauri::async_runtime::block_on(handle_shutdown(window.app_handle().clone()));
                 }
@@ -356,7 +351,7 @@ pub fn run() {
             reset_settings,
             check_links,
             // Check mount plugin
-            check_mount_plugin,
+            check_mount_plugin_installed,
             install_mount_plugin,
             // Cache remotes
             get_cached_remotes,

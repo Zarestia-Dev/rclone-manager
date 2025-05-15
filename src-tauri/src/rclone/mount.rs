@@ -1,42 +1,55 @@
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+use log::debug;
 
-use tauri::State;
+use tauri::{Emitter, State};
 
 use crate::RcloneState;
 
 #[cfg(target_os = "macos")]
-fn needs_mount_plugin() -> bool {
-    let has_fuse_t = PathBuf::from("/Library/Application Support/fuse-t").exists();
-    let has_osx_fuse = PathBuf::from("/Library/Filesystems/macfuse.fs").exists();
-    println!(
-        "MacOS: hasFuseT: {}, hasOsxFuse: {}",
-        has_fuse_t, has_osx_fuse
-    );
-    !has_fuse_t && !has_osx_fuse
+fn check_fuse_t_installed() -> bool {
+    let fuse_t_exists = PathBuf::from("/Library/Application Support/fuse-t").exists();
+    debug!("macOS: FUSE-T installed: {}", fuse_t_exists);
+    fuse_t_exists
 }
 
 #[cfg(target_os = "linux")]
-fn needs_mount_plugin() -> bool {
-    return false; // Linux does not require a mount plugin
+fn check_mount_plugin_installed_linux() -> bool {
+    // Linux does not require a mount plugin, always return true
+    true
 }
 
 #[cfg(target_os = "windows")]
-fn needs_mount_plugin() -> bool {
-    let has_winfsp = PathBuf::from("C:\\Program Files\\WinFsp").exists()
+fn check_winfsp_installed() -> bool {
+    let winfsp_exists = PathBuf::from("C:\\Program Files\\WinFsp").exists()
         || PathBuf::from("C:\\Program Files (x86)\\WinFsp").exists();
-    println!("Windows: hasWinFsp: {}", has_winfsp);
-    !has_winfsp
+    debug!("Windows: WinFsp installed: {}", winfsp_exists);
+    winfsp_exists
+}
+
+/// Checks if the required mount plugin is installed for the current platform.
+#[tauri::command]
+pub fn check_mount_plugin_installed() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        check_fuse_t_installed()
+    }
+    #[cfg(target_os = "linux")]
+    {
+        check_mount_plugin_installed_linux()
+    }
+    #[cfg(target_os = "windows")]
+    {
+        check_winfsp_installed()
+    }
 }
 
 #[tauri::command]
-pub fn check_mount_plugin() -> bool {
-    needs_mount_plugin()
-}
-
-#[tauri::command]
-pub async fn install_mount_plugin(state: State<'_, RcloneState>) -> Result<String, String> {
+pub async fn install_mount_plugin(
+    window: tauri::Window,
+    state: State<'_, RcloneState>
+) -> Result<String, String> {
     let download_path = std::env::temp_dir().join("rclone_temp");
 
     let (url, local_file, _install_command) = if cfg!(target_os = "macos") {
@@ -64,9 +77,13 @@ pub async fn install_mount_plugin(state: State<'_, RcloneState>) -> Result<Strin
     // Install the plugin
     let status = if cfg!(target_os = "macos") {
         std::process::Command::new("osascript")
-            .arg("installer")
-            .arg("-pkg")
-            .arg(local_file.to_str().unwrap())
+            .args(&[
+                "-e",
+                &format!(
+                    "do shell script \"installer -pkg '{}' -target /\" with administrator privileges",
+                    local_file.to_str().unwrap()
+                ),
+            ])
             .status()
     } else {
         execute_as_admin_powershell(local_file.to_str().unwrap())
@@ -74,6 +91,7 @@ pub async fn install_mount_plugin(state: State<'_, RcloneState>) -> Result<Strin
 
     match status {
         Ok(exit_status) if exit_status.success() => {
+            window.emit("mount_plugin_installed", ()).map_err(|e| e.to_string())?;
             Ok("Mount plugin installed successfully".to_string())
         }
         Ok(exit_status) => Err(format!(
@@ -117,6 +135,6 @@ async fn fetch_and_save(
     file.write_all(&bytes)
         .map_err(|e| format!("Failed to write file: {}", e))?;
 
-    println!("Downloaded and saved at {:?}", file_path);
+    debug!("Downloaded and saved at {:?}", file_path);
     Ok(())
 }

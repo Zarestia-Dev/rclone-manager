@@ -4,6 +4,7 @@ import { RcloneService } from "./rclone.service";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { filter, firstValueFrom, take } from "rxjs";
+import { platform } from "@tauri-apps/plugin-os";
 
 @Injectable({
   providedIn: "root",
@@ -59,6 +60,9 @@ export class StateService {
         this.updateViewportSettings();
       });
     });
+      this.appWindow.listen("reset-ui", () => {
+    this.ngZone.run(() => this.resetAppState());
+  });
   }
 
   // Add this new method
@@ -107,7 +111,25 @@ export class StateService {
   }
 
   private async updateWindowState() {
-    const isMaximized = await this.appWindow.isMaximized();
+    let isMaximized = false;
+    const currentPlatform = await platform();
+    console.log("Current platform:", currentPlatform);
+
+    if (currentPlatform === "macos") {
+      // On macOS, always set maximized to true and set all radii to 0
+      isMaximized = true;
+      this._isMaximized.next(isMaximized);
+      document.documentElement.style.setProperty("--home-bottom-radius", "0px");
+      document.documentElement.style.setProperty("--title-bar-radius", "0px");
+      document.documentElement.style.setProperty(
+        "--tab-bar-bottom-radius",
+        "0px"
+      );
+      return;
+    }
+    // For other platforms, check if the window is maximized. Also when we listen to isMaximized, its cause the infinite loop
+    // on macOS. So we need to check if the platform is macOS and if it is, we don't set the isMaximized.
+    isMaximized = await this.appWindow.isMaximized();
     this._isMaximized.next(isMaximized);
     this.updateViewportSettings();
   }
@@ -246,5 +268,12 @@ export class StateService {
     this._isAuthCancelled$.next(false);
     this._isEditMode$.next(false);
     console.log("Auth state reset");
+  }
+
+  resetAppState(): void {
+    this.resetSelectedRemote();
+    this.resetAuthState();
+    this._showToast$.next(null);
+    this.setTab("mount");
   }
 }

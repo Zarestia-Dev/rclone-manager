@@ -1,9 +1,4 @@
-import {
-  Component,
-  OnInit,
-  OnDestroy,
-  HostListener,
-} from "@angular/core";
+import { Component, OnInit, OnDestroy, HostListener } from "@angular/core";
 import { MatDialog } from "@angular/material/dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
@@ -31,6 +26,7 @@ import { TabsButtonsComponent } from "../tabs-buttons/tabs-buttons.component";
 import { MatButtonModule } from "@angular/material/button";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { platform } from "@tauri-apps/plugin-os";
 
 type Theme = "light" | "dark" | "system";
 type ModalSize = {
@@ -70,6 +66,7 @@ const STANDARD_MODAL_SIZE: ModalSize = {
 })
 export class TitlebarComponent implements OnInit, OnDestroy {
   selectedTheme: Theme = "system";
+  isMacOS: boolean = false;
   isMobile$: Observable<boolean>;
   connectionStatus: ConnectionStatus = "online";
   connectionHistory: { timestamp: Date; result: CheckResult }[] = [];
@@ -97,6 +94,10 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     private rcloneService: RcloneService,
     private settingsService: SettingsService
   ) {
+    const currentPlatform = platform();
+    if (currentPlatform === "macos") {
+      this.isMacOS = true;
+    }
     this.isMobile$ = this.stateService.isMobile$;
   }
 
@@ -144,7 +145,11 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     });
   }
 
-  async setTheme(theme: Theme, isInitialization = false, event?: MouseEvent): Promise<void> {
+  async setTheme(
+    theme: Theme,
+    isInitialization = false,
+    event?: MouseEvent
+  ): Promise<void> {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
@@ -181,7 +186,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
       );
 
       console.log("Loaded connection check URLs:", links);
-      
 
       if (this.internetCheckSub) {
         this.internetCheckSub.unsubscribe();
@@ -194,7 +198,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
           3 // delay in seconds
         );
         console.log("Connection check result:", result);
-        
+
         this.result = result;
         this.connectionHistory.unshift({
           timestamp: new Date(),
@@ -328,18 +332,17 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   }
 
   async restoreSettings(): Promise<void> {
+    const path = await this.rcloneService.selectFile();
+    if (!path) return;
 
-      const path = await this.rcloneService.selectFile();
-      if (!path) return;
+    const result = await this.settingsService.analyzeBackupFile(path);
+    if (!result) return;
 
-      const result = await this.settingsService.analyzeBackupFile(path);
-      if (!result) return;
-
-      if (result.isEncrypted) {
-        this.handleEncryptedBackup(path);
-      } else {
-        await this.settingsService.restoreSettings(path);
-      }
+    if (result.isEncrypted) {
+      this.handleEncryptedBackup(path);
+    } else {
+      await this.settingsService.restoreSettings(path);
+    }
   }
 
   private handleEncryptedBackup(path: string): void {
