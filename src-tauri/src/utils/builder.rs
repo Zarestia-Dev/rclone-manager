@@ -64,7 +64,7 @@ pub fn create_app_window(app_handle: AppHandle) {
     // and remove the decorations.
     // On other platforms, we set the decorations to false and make the window transparent.
     #[cfg(target_os = "macos")]
-    let main_window = main_window.title_bar_style(tauri::TitleBarStyle::Show);
+    let main_window = main_window.title_bar_style(tauri::TitleBarStyle::Visible);
 
     #[cfg(not(target_os = "macos"))]
     let main_window = main_window.decorations(false).transparent(true);
