@@ -42,7 +42,6 @@ import { RcloneService } from "../services/rclone.service";
 import { SettingsService } from "../services/settings.service";
 import { InfoService } from "../services/info.service";
 import { IconService } from "../services/icon.service";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 // home.types.ts
 export type AppTab = "mount" | "sync" | "copy" | "jobs";
@@ -175,7 +174,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.updateSidebarMode();
   }
 
-  selectRemote(remote: Remote): void {
+  async selectRemote(remote: Remote): Promise<void> {
     // this.selectedRemote = { ...remote };
     this.stateService.setSelectedRemote(remote);
     this.cdr.markForCheck();
@@ -191,10 +190,10 @@ export class HomeComponent implements OnInit, OnDestroy {
 
       const settings = this.loadRemoteSettings(remoteName);
       await this.rcloneService.mountRemote(
-        remoteName,
-        settings.mount_options?.mount_point,
-        settings.mount_options,
-        settings.vfs_options
+        remoteName + ":" + settings.mountConfig?.source,
+        settings.mountConfig?.dest,
+        settings.mountConfig?.options,
+        settings.vfsConfig || {}
       );
 
       await this.refreshMounts();
@@ -240,7 +239,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
 
       const mountPoint =
-        this.loadRemoteSettings(remoteName)?.mount_options?.mount_point;
+        this.loadRemoteSettings(remoteName)?.mountConfig?.dest;
       if (!mountPoint) {
         throw new Error(`No mount point found for ${remoteName}`);
       }
@@ -514,14 +513,17 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private getMountPoint(remoteName: string): string | undefined {
-    return this.mountedRemotes.find((mount) => mount.fs === `${remoteName}:`)
-      ?.mount_point;
+    const mount = this.mountedRemotes.find((m) =>
+      m.fs.startsWith(`${remoteName}:`)
+    );
+    return mount?.mount_point;
   }
 
   private isRemoteMounted(remoteName: string): boolean {
-    return this.mountedRemotes.some((mount) => mount.fs === `${remoteName}:`);
+    return this.mountedRemotes.some((mount) =>
+      mount.fs.startsWith(`${remoteName}:`)
+    );
   }
-
   private selectRemoteByName(remoteName: string): void {
     const remote = this.remotes.find((r) => r.remoteSpecs.name === remoteName);
     if (remote) {

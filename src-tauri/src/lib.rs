@@ -10,7 +10,7 @@ use std::{
 
 use log::{debug, error, info};
 use rclone::api::{
-    api_query::get_fs_info,
+    api_query::{get_fs_info, get_remote_paths},
     engine::RcApiEngine,
     state::{
         clear_errors_for_remote, clear_logs_for_remote, get_cached_mounted_remotes,
@@ -194,12 +194,6 @@ pub fn run() {
                     .unwrap()
                 {
                     api.prevent_close();
-                    // if let Some(win) = window.app_handle().get_webview_window("main") {
-                    //     // When windows are closed, the "main" label is still exist?
-                    //     // win.close().unwrap_or_else(|e| {
-                    //     //     eprintln!("Failed to close window: {}", e);
-                    //     // });
-                    // }
                 } else {
                     tauri::async_runtime::block_on(handle_shutdown(window.app_handle().clone()));
                 }
@@ -330,6 +324,7 @@ pub fn run() {
             update_remote,
             delete_remote,
             quit_rclone_oauth,
+            get_remote_paths,
             // Flags
             get_global_flags,
             get_copy_flags,

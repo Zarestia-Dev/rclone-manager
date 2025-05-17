@@ -51,12 +51,19 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
 
         if let Some(settings) = settings {
             if settings
-                .get("show_in_tray_menu")
+                .get("showOnTray")
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false)
             {
+                // Check if the remote is mounted
+                // and create a submenu for it
                 let is_mounted = mounted_remotes.iter().any(|mounted| {
-                    mounted.fs.trim_end_matches(':') == remote.trim_end_matches(':')
+                    let remote_name = remote.trim_end_matches(':');
+                    let mounted_name = mounted.fs.trim_end_matches(':');
+                    mounted_name == remote_name
+                        || mounted_name == remote
+                        || mounted_name.starts_with(&format!("{}/", remote_name))
+                        || mounted_name.starts_with(&format!("{}:", remote_name))
                 });
 
                 let mount_status = CheckMenuItem::with_id(

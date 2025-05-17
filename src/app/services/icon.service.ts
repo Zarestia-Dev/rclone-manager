@@ -50,6 +50,11 @@ export class IconService {
       refresh: "assets/icons/rotate.svg",
       "no-internet": "assets/icons/no-internet.svg",
       error: "assets/icons/triangle-exclamation.svg",
+      eye: "assets/icons/eye.svg",
+
+      play: "assets/icons/play.svg",
+      pause: "assets/icons/pause.svg",
+      "cloud-arrow-up": "assets/icons/cloud-arrow-up.svg",
 
       // Remote icons
       drive: "assets/icons/remotes/drive.svg",

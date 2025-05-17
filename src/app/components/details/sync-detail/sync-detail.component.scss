@@ -1,11 +1,12 @@
-.sync-details {
+.remote-details {
   display: flex;
   width: 100%;
+  gap: 20px;
   flex-direction: column;
   align-items: center;
-  flex: 1;
+  height: 100%;
 
-  .sync-header {
+  .remote-header {
     padding-top: 20px;
     display: flex;
     gap: 10px;
@@ -27,5 +28,394 @@
     align-items: center;
     gap: 5px;
     color: #8c8888;
+  }
+
+  mat-tab-group {
+    width: 90%;
+    height: 100%;
+  }
+
+  .info-card {
+    display: flex;
+    flex-direction: column;
+    align-items: baseline;
+    border-radius: 8px;
+    padding: 16px;
+
+    h3 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .info-card-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: 100%;
+      padding-block: 10px;
+      border-radius: 8px;
+
+      .button-container {
+        display: flex;
+        justify-content: space-evenly;
+        gap: 10px;
+      }
+    }
+  }
+}
+
+// Animation for sync icon
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(66, 133, 244, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0);
+  }
+}
+
+// Smooth status color transition
+.status-indicator {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+// Use with:
+.status-indicator.active {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.status-indicator mat-icon {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+// Make sure icon spins only when syncing
+.status-indicator.active mat-icon {
+  animation: spin 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+// Button hover feedback
+.sync-actions button {
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  &:hover {
+    transform: scale(1.03);
+  }
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+.sync-monitor {
+  display: grid;
+  gap: 20px;
+  padding: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(100%, 1fr));
+
+  // Sync Control Card
+  .sync-control-card {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    box-shadow: var(--box-shadow);
+    border-radius: var(--border-radius);
+
+    .sync-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+
+      .sync-path {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-grow: 1;
+        width: 100%;
+        min-width: 0; // Important for text truncation
+
+        mat-icon {
+          flex-shrink: 0;
+        }
+
+        .path-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          background: var(--app-background);
+          border-radius: var(--border-radius);
+          flex-grow: 1;
+          min-width: 0; // Important for text truncation
+          overflow: hidden;
+          width: 100%;
+
+          .path-details {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+
+            .path-label,
+            .path-value {
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+          }
+        }
+      }
+    }
+
+    .sync-status-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+
+      .sync-status {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+
+        .status-indicator {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 8px;
+          border-radius: 16px;
+          font-size: 0.875rem;
+          font-weight: 500;
+
+          &.active {
+            background: rgba(66, 133, 244, 0.1);
+            color: var(--primary);
+
+            mat-icon {
+              animation: spin 2s linear infinite;
+            }
+          }
+
+          &.paused {
+            background: rgba(255, 152, 0, 0.1);
+            color: var(--orange);
+          }
+        }
+
+        .last-sync {
+          font-size: 0.75rem;
+          color: var(--text-secondary);
+          margin-top: 4px;
+        }
+      }
+    }
+
+    .dry-run {
+      display: flex;
+      align-items: center;
+
+      span {
+        gap: 8px;
+        display: flex;
+        align-items: center;
+        text-wrap: nowrap;
+      }
+    }
+  }
+  
+  .stats-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+
+    .stat-card {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      text-align: center;
+      transition: transform 0.2s ease;
+
+      .stat-value {
+        font-size: 18px;
+        font-weight: bold;
+        color: #4285f4;
+      }
+
+      .stat-label {
+        font-size: 12px;
+        color: #666;
+        margin-top: 4px;
+      }
+
+      &:hover {
+        transform: translateY(-2px);
+      }
+    }
+  }
+
+  .file-list {
+    overflow-y: auto;
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    max-height: 24vh;
+    min-height: 200px;
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+
+      th,
+      td {
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        background: #f8f8f8;
+        font-weight: 500;
+        color: #555;
+      }
+
+      .filename {
+        max-width: 300px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .progress-bar {
+        width: 100px;
+        height: 8px;
+        background-color: #e0e0e0;
+        border-radius: 4px;
+        display: inline-block;
+        vertical-align: middle;
+        margin-right: 8px;
+
+        > div {
+          height: 100%;
+          border-radius: 4px;
+          background-color: #4285f4;
+          transition: width 0.3s ease;
+        }
+      }
+    }
+  }
+
+  .performance-graphs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+
+    .graph-card {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+      h4 {
+        margin-top: 0;
+        margin-bottom: 12px;
+        font-size: 14px;
+        color: #555;
+      }
+
+      canvas {
+        width: 100% !important;
+        height: 200px !important;
+      }
+    }
+  }
+}
+
+/* Small devices (landscape phones, less than 768px) */
+@media (max-width: 767.98px) {
+  .sync-monitor {
+    .performance-graphs {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+/* Extra small devices (portrait phones, less than 576px) */
+@media (max-width: 575.98px) {
+  .remote-details {
+    mat-tab-group {
+      width: 100%;
+    }
+  }
+
+  .sync-monitor {
+    .stats-summary {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .file-list {
+      table {
+        .filename {
+          max-width: 150px;
+        }
+      }
+    }
+  }
+
+  .sync-control-card {
+    .sync-info {
+      flex-direction: column;
+      align-items: stretch;
+
+      .sync-path {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+
+        .arrow-icon {
+          transform: rotate(90deg);
+          margin: 4px 0;
+          align-self: center;
+        }
+      }
+    }
+
+    .sync-status-container {
+      flex-direction: column;
+      align-items: stretch;
+
+      .sync-status {
+        align-items: center !important;
+        margin-bottom: 12px;
+      }
+
+      .dry-run {
+        justify-content: center;
+        margin-bottom: 12px;
+      }
+    }
+  }
+
+  .remote-header {
+    h2 {
+      max-width: 100%;
+    }
   }
 }

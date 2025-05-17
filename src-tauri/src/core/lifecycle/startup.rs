@@ -45,21 +45,21 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
             serde_json::Value::Null
         });
 
-    let mount_options = settings.get("mount_options").cloned();
-    let vfs_options = settings.get("vfs_options").cloned();
+    let mount_options = settings.get("mountConfig").cloned();
+    let vfs_options = settings.get("vfsConfig").cloned();
 
     if let Some(auto_mount) = mount_options
         .as_ref()
-        .and_then(|opts| opts.get("auto_mount").and_then(|v| v.as_bool()))
+        .and_then(|opts| opts.get("autoMount").and_then(|v| v.as_bool()))
     {
         if !auto_mount {
-            debug!("Skipping mount for {}: auto_mount is not true", remote_name);
+            debug!("Skipping mount for {}: autoMount is not true", remote_name);
             return;
         }
 
         let mount_point = mount_options
             .as_ref()
-            .and_then(|opts| opts.get("mount_point").and_then(|v| v.as_str()))
+            .and_then(|opts| opts.get("dest").and_then(|v| v.as_str()))
             .map(|s| s.to_string())
             .unwrap_or_else(|| format!("/mnt/{}", remote_name));
 

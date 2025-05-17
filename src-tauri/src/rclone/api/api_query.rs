@@ -354,3 +354,54 @@ pub async fn get_oauth_supported_remotes(
 
     Ok(oauth_remotes)
 }
+
+#[derive(Debug, Deserialize)]
+pub struct ListOptions {
+    #[serde(flatten)]
+    pub extra: std::collections::HashMap<String, serde_json::Value>,
+}
+
+#[tauri::command]
+pub async fn get_remote_paths(
+    remote: String,
+    path: Option<String>,
+    options: Option<ListOptions>,
+    state: State<'_, RcloneState>,
+) -> Result<serde_json::Value, String> {
+    let url = format!("{}/operations/list", RCLONE_STATE.get_api().0);
+
+    // Build parameters
+    let mut params = serde_json::Map::new();
+    params.insert("fs".to_string(), serde_json::Value::String(format!("{}:", remote)));
+    params.insert("remote".to_string(), serde_json::Value::String(path.unwrap_or_default()));
+
+    if let Some(opts) = options {
+        for (key, value) in opts.extra {
+            params.insert(key, value);
+        }
+    }
+
+    let response = state
+        .client
+        .post(&url)
+        .json(&params)
+        .send()
+        .await
+        .map_err(|e| format!("❌ Failed to list path: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let text = response.text().await.unwrap_or_default();
+        return Err(format!(
+            "❌ Rclone list returned error {}: {}",
+            status, text
+        ));
+    }
+
+    let json: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("❌ Failed to parse list response: {}", e))?;
+
+    Ok(json["list"].clone())
+}

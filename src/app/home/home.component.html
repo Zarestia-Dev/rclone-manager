@@ -1,10 +1,7 @@
 <mat-sidenav-container class="home-container">
   <!-- Sidebar -->
   <mat-sidenav #sidenav [(opened)]="isSidebarOpen" [mode]="sidebarMode">
-    <app-sidebar 
-      [iconService]="iconService" 
-      [remotes]="remotes" 
-      (remoteSelected)="selectRemote($event)">
+    <app-sidebar [iconService]="iconService" [remotes]="remotes" (remoteSelected)="selectRemote($event)">
     </app-sidebar>
   </mat-sidenav>
 
@@ -25,13 +22,13 @@
       <mat-menu #remoteOptionsMenu="matMenu">
         <!-- Show in Tray Menu (Toggle) -->
         <button mat-menu-item (click)="$event.stopPropagation()">
-          <p class="menu-item-label"><mat-slide-toggle 
-            [checked]="getRemoteSettingValue(selectedRemote.remoteSpecs.name, 'show_in_tray_menu')"
-            (change)="saveRemoteSettings(selectedRemote.remoteSpecs.name, { show_in_tray_menu: $event.checked })">
-            Show in Tray Menu
-          </mat-slide-toggle></p>
+          <p class="menu-item-label"><mat-slide-toggle
+              [checked]="getRemoteSettingValue(selectedRemote.remoteSpecs.name, 'showOnTray')"
+              (change)="saveRemoteSettings(selectedRemote.remoteSpecs.name, { showOnTray: $event.checked })">
+              Show in Tray Menu
+            </mat-slide-toggle></p>
         </button>
-        
+
 
         <mat-divider></mat-divider>
 
@@ -60,7 +57,8 @@
       <div class="empty-state-content">
         <mat-icon svgIcon="rclone-2" class="empty-state-icon"></mat-icon>
         <h2>RClone Manager</h2>
-        <p>Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for a fast and simple setup.</p>
+        <p>Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for a fast and simple
+          setup.</p>
         <div class="empty-state-actions">
           <button mat-raised-button color="primary" (click)="openQuickAddRemoteModal()">
             <mat-icon svgIcon="add"></mat-icon>
@@ -76,12 +74,8 @@
 
     <!-- Overview Components -->
     <ng-container *ngIf="remotes.length > 0 && !selectedRemote && !isLoading">
-      <app-mount-overview 
-        *ngIf="currentTab === 'mount'" 
-        [iconService]="iconService" 
-        [remotes]="remotes"
-        (remoteSelected)="selectRemote($event)" 
-        (mountRemote)="mountRemote($event)"
+      <app-mount-overview *ngIf="currentTab === 'mount'" [iconService]="iconService" [remotes]="remotes"
+        (remoteSelected)="selectRemote($event)" (mountRemote)="mountRemote($event)"
         (openInFiles)="openRemoteInFiles($event)">
       </app-mount-overview>
 
@@ -92,19 +86,16 @@
 
     <!-- Remote Detail View -->
     <ng-container *ngIf="selectedRemote && !isLoading">
-      <app-mount-detail 
-        *ngIf="currentTab === 'mount'" 
-        [iconService]="iconService" 
-        [selectedRemote]="selectedRemote"
-        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" 
-        (mountRemote)="mountRemote($event)"
-        [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" 
-        (unmountRemote)="unmountRemote($event)"
+      <app-mount-detail *ngIf="currentTab === 'mount'" [iconService]="iconService" [selectedRemote]="selectedRemote"
+        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" (mountRemote)="mountRemote($event)"
+        [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" (unmountRemote)="unmountRemote($event)"
         (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
         (openInFiles)="openRemoteInFiles($event)">
       </app-mount-detail>
 
-      <app-sync-detail *ngIf="currentTab === 'sync'" [selectedRemote]="selectedRemote"></app-sync-detail>
+      <app-sync-detail *ngIf="currentTab === 'sync'" [selectedRemote]="selectedRemote"
+        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
+        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"></app-sync-detail>
       <app-copy-detail *ngIf="currentTab === 'copy'" [selectedRemote]="selectedRemote"></app-copy-detail>
       <app-job-detail *ngIf="currentTab === 'jobs'" [selectedRemote]="selectedRemote"></app-job-detail>
     </ng-container>

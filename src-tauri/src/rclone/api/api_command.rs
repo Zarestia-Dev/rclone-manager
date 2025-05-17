@@ -370,6 +370,28 @@ pub async fn mount_remote(
         return Err("Mount point cannot be empty".to_string());
     }
 
+    let mounted_remotes = get_cached_mounted_remotes().await?;
+    // Check if the mount point is already in use
+    if mounted_remotes.iter().any(|m| m.mount_point == mount_point) {
+        let error_msg = format!(
+            "Mount point {} is already in use by remote {}",
+            mount_point,
+            mounted_remotes
+                .iter()
+                .find(|m| m.mount_point == mount_point)
+                .map(|m| m.fs.clone())
+                .unwrap_or_default()
+        );
+        warn!("{}", error_msg);
+        return Err(error_msg);
+    }
+
+    // Check if the remote is already mounted (by name)
+    if mounted_remotes.iter().any(|m| m.fs == remote_name) {
+        info!("Remote {} already mounted", remote_name);
+        return Ok(());
+    }
+
     // Enhanced logging with values
     let mut log_context = json!({
         "mount_point": mount_point,
@@ -392,23 +414,12 @@ pub async fn mount_remote(
     )
     .await;
 
-    let mounted_remotes = get_cached_mounted_remotes().await?;
-    let formatted_remote = if remote_name.ends_with(':') {
-        remote_name.clone()
-    } else {
-        format!("{}:", remote_name)
-    };
-
-    if mounted_remotes.iter().any(|m| m.fs == formatted_remote) {
-        info!("Remote {} already mounted", formatted_remote);
-        return Ok(());
-    }
-
     let mut payload = json!({
-        "fs": formatted_remote,
+        "fs": remote_name,
         "mountPoint": mount_point,
         "_async": true,
     });
+
 
     if let Some(opts) = mount_options {
         payload["mountOpt"] = json!(opts);

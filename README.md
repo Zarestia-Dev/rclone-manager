@@ -5,7 +5,7 @@
 </h1>
 
 <p align="center">
-  <b>Cross-platform GUI for managing RClone remotes with style.</b><br>
+  <b>Cross-platform GUI for managing Rclone remotes with style.</b><br>
   <i>Built with Angular + Tauri · Cross-platform support</i>
 </p>
 
@@ -13,7 +13,7 @@
 
 ## 🌐 Overview
 
-**RClone Manager** is a **cross-platform** GUI application to help users manage [RClone](https://rclone.org/) remotes with a modern interface.
+**RClone Manager** is a **cross-platform** GUI application to help users manage [Rclone](https://rclone.org/) remotes with a modern interface.
 
 > ⚠️ **Actively developed** – Expect frequent updates and improvements.
 
@@ -83,7 +83,7 @@
 
 Make sure you have the following installed:
 
-- **[RClone](https://rclone.org/downloads/):** Required for remote management.
+- **[Rclone](https://rclone.org/downloads/):** Required for remote management.
 - **[Fuse](https://github.com/libfuse/libfuse):** Needed for mounting remotes on Linux/macOS.
 - **[WinFsp](https://github.com/billziss-gh/winfsp):** Needed for mounting remotes on Windows.
 - **[Node.js](https://nodejs.org/en/download/):** Required for Angular development and running the frontend.

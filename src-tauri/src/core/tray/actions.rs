@@ -67,8 +67,8 @@ async fn prompt_mount_point(app: &AppHandle, remote_name: &str) -> Option<String
 
 fn get_mount_point(settings: &serde_json::Value) -> String {
     settings
-        .get("mount_options")
-        .and_then(|v| v.get("mount_point"))
+        .get("mountConfig")
+        .and_then(|v| v.get("dest"))
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string()
@@ -80,14 +80,6 @@ pub fn show_main_window(app: AppHandle) {
         window.show().unwrap_or_else(|_| {
             error!("🚨 Failed to show main window");
         });
-        window.set_focus().unwrap_or_else(|_| {
-            error!("🚨 Failed to focus main window");
-        });
-        if let Ok(true) = window.is_visible() {
-            window.eval("location.reload();").unwrap_or_else(|_| {
-                error!("🔄 Failed to reload main window");
-            });
-        }
     } else {
         warn!("⚠️ Main window not found. Building...");
         create_app_window(app);
@@ -106,9 +98,10 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
             }
         };
 
-        // Extract mount options
+        // Extract mount options (from "mountConfig.options")
         let mount_options = settings
-            .get("mount_options")
+            .get("mountConfig")
+            .and_then(|v| v.get("options"))
             .and_then(|v| v.as_object())
             .map(|obj| {
                 obj.iter()
@@ -116,9 +109,9 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                     .collect::<HashMap<_, _>>()
             });
 
-        // Extract VFS options
+        // Extract VFS options (from "vfsConfig")
         let vfs_options = settings
-            .get("vfs_options")
+            .get("vfsConfig")
             .and_then(|v| v.as_object())
             .map(|obj| {
                 obj.iter()
@@ -128,8 +121,8 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
 
         // Get or prompt for mount point
         let mount_point = match settings
-            .get("mount_options")
-            .and_then(|v| v.get("mount_point"))
+            .get("mountConfig")
+            .and_then(|v| v.get("dest"))
             .and_then(|v| v.as_str())
             .filter(|s| !s.is_empty())
         {
@@ -143,10 +136,20 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
             },
         };
 
+        // Compose the remote path using remote_name and mountConfig.source
+        let remote_path = match settings
+            .get("mountConfig")
+            .and_then(|v| v.get("source"))
+            .and_then(|v| v.as_str())
+        {
+            Some(source) if !source.is_empty() => format!("{}:{}", remote_name, source),
+            _ => format!("{}:", remote_name),
+        };
+
         // Mount the remote
         match mount_remote(
             app.clone(),
-            remote_name.clone(),
+            remote_path.clone(),
             mount_point.clone(),
             mount_options,
             vfs_options,
@@ -155,21 +158,21 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
         .await
         {
             Ok(_) => {
-                info!("✅ Successfully mounted {}", remote_name);
+                info!("✅ Successfully mounted {}", remote_path);
                 notify(
                     &app,
                     "Mount Successful",
-                    &format!("Successfully mounted {} at {}", remote_name, mount_point),
+                    &format!("Successfully mounted {} at {}", remote_path, mount_point),
                 );
                 // Save the mount point if it was newly selected
                 if settings
-                    .get("mount_options")
-                    .and_then(|v| v.get("mount_point"))
+                    .get("mountConfig")
+                    .and_then(|v| v.get("dest"))
                     .and_then(|v| v.as_str())
                     .is_none()
                 {
                     let mut new_settings = settings.clone();
-                    new_settings["mount_options"]["mount_point"] =
+                    new_settings["mountConfig"]["dest"] =
                         serde_json::Value::String(mount_point);
                     if let Err(e) =
                         save_remote_settings(remote_name, new_settings, app.state(), app.clone())
@@ -180,11 +183,11 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                 }
             }
             Err(e) => {
-                error!("🚨 Failed to mount {}: {}", remote_name, e);
+                error!("🚨 Failed to mount {}: {}", remote_path, e);
                 notify(
                     &app,
                     "Mount Failed",
-                    &format!("Failed to mount {}: {}", remote_name, e),
+                    &format!("Failed to mount {}: {}", remote_path, e),
                 );
             }
         }

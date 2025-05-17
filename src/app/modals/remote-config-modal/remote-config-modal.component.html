@@ -174,64 +174,224 @@
           <h2 [id]="step + '-config-heading'" class="visually-hidden">{{ step | titlecase }} Configuration</h2>
 
           <form [formGroup]="remoteConfigForm" class="flag-form">
-            <ng-container *ngIf="(step === 'mount')">
 
-              <!-- 🌟 Auto-Mount Checkbox -->
+            <!-- Mount Configuration -->
+            <ng-container *ngIf="(step === 'mount')" formGroupName="mountConfig">
+              <!-- Auto-Mount Toggle -->
               <mat-slide-toggle class="slide-toggle" formControlName="autoMount" id="autoMount">
                 Auto-Mount after creation and on startup
               </mat-slide-toggle>
 
-              <!-- 🌟 Mount Path (Shown if Auto-Mount is enabled) -->
+              <!-- Mount Path -->
               <mat-form-field appearance="fill">
                 <mat-label>Mount Path</mat-label>
-                <button mat-icon-button matSuffix (click)="selectFolder()">
+                <button mat-icon-button matSuffix (click)="selectLocalFolder('mountConfig.dest')"
+                  aria-label="Select folder">
                   <mat-icon svgIcon="folder"></mat-icon>
                 </button>
-                <input matInput formControlName="mountPath" id="mountPath" aria-describedby="mountPathError"
+                <input matInput formControlName="dest" id="dest" aria-describedby="mountPathError"
                   placeholder="Select a folder..." readonly />
-                <mat-error *ngIf="remoteConfigForm.get('mountPath')?.hasError('required')" id="mountPathError">
+                <mat-error *ngIf="remoteConfigForm.get('mountConfig.dest')?.hasError('required')" id="mountPathError">
                   Mount Path is required.
                 </mat-error>
               </mat-form-field>
 
-
-              <!-- Mount Type Selector -->
-              <!-- <mat-form-field appearance="fill">
-                <mat-label>Mount Type</mat-label>
-                <mat-select formControlName="mountType" id="mountType" aria-describedby="mountTypeError">
-                  <mat-option *ngFor="let mount of mountTypes" [value]="mount.value">
-                    {{ mount.label }}
+              <!-- Remote Path with Autocomplete -->
+              <mat-form-field appearance="fill" *ngIf="isEditMode">
+                <mat-label>Remote Path</mat-label>
+                <input matInput formControlName="source" id="source" placeholder="Root path inside the remote"
+                  [matAutocomplete]="auto" autocomplete="off" />
+                <mat-spinner matSuffix *ngIf="loading" diameter="24"></mat-spinner>
+                <mat-autocomplete #auto="matAutocomplete"
+                  (optionSelected)="onSourceOptionSelectedField($event.option.value, 'mountConfig.source')">
+                  <mat-option *ngFor="let option of pathState['mountConfig.source']?.options || []"
+                    [value]="option.Name">
+                    <span *ngIf="option.IsDir">📁</span>
+                    <span *ngIf="!option.IsDir">📄</span>
+                    {{ option.Name }}
                   </mat-option>
-                </mat-select>
-                <mat-error *ngIf="remoteConfigForm.get('mountType')?.hasError('required')" id="mountTypeError">
-                  Mount Type is required.
-                </mat-error>
-              </mat-form-field> -->
+                </mat-autocomplete>
+              </mat-form-field>
             </ng-container>
 
+            <!-- Sync Configuration -->
+            <ng-container *ngIf="(step === 'sync')" formGroupName="syncConfig">
+              <!-- Auto-Sync Toggle -->
+              <mat-slide-toggle class="slide-toggle" formControlName="autoSync" id="autoSync">
+                Auto-Sync after creation and on startup
+              </mat-slide-toggle>
+
+              <!-- Destination Path -->
+              <mat-form-field appearance="fill">
+                <mat-label>Sync Destination</mat-label>
+                <input matInput formControlName="dest"
+                  placeholder="Select destination path or enter remote (remote:path)"
+                  [matAutocomplete]="syncDestAuto" />
+                <button mat-icon-button matSuffix (click)="resetRemoteSelectionField('syncConfig.dest')"
+                  *ngIf="this.pathState['syncConfig.dest']?.remoteName">
+                  <mat-icon svgIcon="circle-xmark"></mat-icon>
+                </button>
+                <button mat-icon-button matSuffix (click)="selectLocalFolder('syncConfig.dest')"
+                  aria-label="Select local folder">
+                  <mat-icon svgIcon="folder"></mat-icon>
+                </button>
+                <mat-autocomplete #syncDestAuto="matAutocomplete">
+                  <ng-container *ngIf="!this.pathState['syncConfig.dest']?.remoteName">
+                    <mat-option *ngFor="let remote of existingRemotes" [value]="remote + ':/'"
+                      (onSelectionChange)="onRemoteSelectedField(remote + ':/', 'syncConfig.dest')">
+                      {{ remote }}
+                    </mat-option>
+                  </ng-container>
+
+                  <!-- Show remote entries if a remote is selected -->
+                  <ng-container *ngIf="this.pathState['syncConfig.dest']?.remoteName">
+                    <mat-option *ngFor="let option of pathState['syncConfig.dest']?.options || []"
+                      [value]="this.pathState['syncConfig.dest'].remoteName + ':/' + (this.pathState['syncConfig.dest'].currentPath ? this.pathState['syncConfig.dest'].currentPath + '/' : '') + option.Name"
+                      (onSelectionChange)="onDestOptionSelectedField(option.Name, 'syncConfig.dest')">
+                      <span *ngIf="option.IsDir">📁</span>
+                      <span *ngIf="!option.IsDir">📄</span>
+                      {{ option.Name }}
+                    </mat-option>
+                  </ng-container>
+                </mat-autocomplete>
+                <mat-error *ngIf="remoteConfigForm.get('syncConfig.dest')?.hasError('required')">
+                  Destination path is required when auto-sync is enabled
+                </mat-error>
+              </mat-form-field>
+
+              <!-- Source Path -->
+              <mat-form-field appearance="fill" *ngIf="isEditMode">
+                <mat-label>Sync Source</mat-label>
+                <input matInput formControlName="source" placeholder="Select source path or enter remote (remote:path)"
+                  [matAutocomplete]="syncSourceAuto" />
+                <button mat-icon-button matSuffix (click)="selectLocalFolder('syncConfig.source')"
+                  aria-label="Select local folder">
+                  <mat-icon svgIcon="folder"></mat-icon>
+                </button>
+                <mat-autocomplete #syncSourceAuto="matAutocomplete"
+                  (optionSelected)="onSourceOptionSelectedField($event.option.value, 'syncConfig.source')">
+                  <mat-option *ngFor="let option of pathState['syncConfig.source']?.options || []"
+                    [value]="option.Name">
+                    <span *ngIf="option.IsDir">📁</span>
+                    <span *ngIf="!option.IsDir">📄</span>
+                    {{ option.Name }}
+                  </mat-option>
+                </mat-autocomplete>
+                <mat-error *ngIf="remoteConfigForm.get('syncConfig.source')?.hasError('required')">
+                  Source path is required when auto-sync is enabled
+                </mat-error>
+              </mat-form-field>
+            </ng-container>
+
+            <ng-container *ngIf="(step === 'copy')" formGroupName="copyConfig">
+              <!-- Auto-Copy Toggle -->
+              <mat-slide-toggle class="slide-toggle" formControlName="autoCopy" id="autoCopy">
+                Auto-Copy after creation and on startup
+              </mat-slide-toggle>
+
+              <!-- Destination Path -->
+              <mat-form-field appearance="fill">
+                <mat-label>Copy Destination</mat-label>
+                <input matInput formControlName="dest"
+                  placeholder="Select destination path or enter remote (remote:path)"
+                  [matAutocomplete]="copyDestAuto" />
+                <button mat-icon-button matSuffix (click)="selectLocalFolder('copyConfig.dest')"
+                  aria-label="Select local folder">
+                  <mat-icon svgIcon="folder"></mat-icon>
+                </button>
+                <button mat-icon-button matSuffix (click)="resetRemoteSelectionField('copyConfig.dest')"
+                  *ngIf="this.pathState['copyConfig.dest']?.remoteName">
+                  <mat-icon svgIcon="circle-xmark"></mat-icon>
+                </button>
+                <mat-autocomplete #copyDestAuto="matAutocomplete">
+                  <ng-container *ngIf="!this.pathState['copyConfig.dest']?.remoteName">
+
+                    <mat-option *ngFor="let remote of existingRemotes" [value]="remote + ':/'"
+                      (onSelectionChange)="onRemoteSelected(remote + ':/', 'copyConfig.dest')">
+                      {{ remote }}
+                    </mat-option>
+                  </ng-container>
+
+                  <!-- Phase 2: Path entries within selected remote (clicking folders) -->
+                  <ng-container *ngIf="this.pathState['copyConfig.dest']?.remoteName">
+                    <mat-option *ngFor="let option of this.pathState['copyConfig.dest'].options || []"
+                      [value]="this.pathState['copyConfig.dest'].remoteName + ':/' + (this.pathState['copyConfig.dest'].currentPath ? this.pathState['copyConfig.dest'].currentPath + '/' : '') + option.Name"
+                      (onSelectionChange)="onDestOptionSelectedField(option.Name, 'copyConfig.dest')">
+                      <span *ngIf="option.IsDir">📁</span>
+                      <span *ngIf="!option.IsDir">📄</span>
+                      {{ option.Name }}
+                    </mat-option>
+                  </ng-container>
+                </mat-autocomplete>
+                <mat-error *ngIf="remoteConfigForm.get('copyConfig.dest')?.hasError('required')">
+                  Destination path is required when auto-copy is enabled
+                </mat-error>
+              </mat-form-field>
+
+              <!-- Source Path -->
+              <mat-form-field appearance="fill" *ngIf="isEditMode">
+                <mat-label>Copy Source</mat-label>
+                <input matInput formControlName="source" placeholder="Select source path or enter remote (remote:path)"
+                  [matAutocomplete]="copySourceAuto" />
+                <button mat-icon-button matSuffix (click)="selectLocalFolder('copyConfig.source')"
+                  aria-label="Select local folder">
+                  <mat-icon svgIcon="folder"></mat-icon>
+                </button>
+                <button mat-icon-button matSuffix (click)="resetRemoteSelectionField('copyConfig.source')"
+                  *ngIf="this.pathState['copyConfig.source'].remoteName">
+                  <mat-icon svgIcon="circle-xmark"></mat-icon>
+                </button>
+                <mat-autocomplete #copySourceAuto="matAutocomplete">
+                  <ng-container *ngIf="!this.pathState['copyConfig.source'].remoteName">
+
+                    <mat-option *ngFor="let remote of existingRemotes" [value]="remote + ':/'"
+                      (onSelectionChange)="onRemoteSelected(remote + ':/', 'copyConfig.source')">
+                      {{ remote }}
+                    </mat-option>
+                  </ng-container>
+
+                  <!-- Phase 2: Path entries within selected remote (clicking folders) -->
+                  <ng-container *ngIf="this.pathState['copyConfig.source'].remoteName">
+                    <mat-option *ngFor="let option of this.pathState['copyConfig.source'].options || []"
+                      [value]="this.pathState['copyConfig.source'].remoteName + ':/' + (this.pathState['copyConfig.source'].currentPath ? this.pathState['copyConfig.source'].currentPath + '/' : '') + option.Name"
+                      (onSelectionChange)="onSourceOptionSelectedField(option.Name, 'copyConfig.source')">
+                      <span *ngIf="option.IsDir">📁</span>
+                      <span *ngIf="!option.IsDir">📄</span>
+                      {{ option.Name }}
+                    </mat-option>
+                  </ng-container>
+                </mat-autocomplete>
+                <mat-error *ngIf="remoteConfigForm.get('copyConfig.source')?.hasError('required')">
+                  Source path is required when auto-copy is enabled
+                </mat-error>
+              </mat-form-field>
+            </ng-container>
+
+            <!-- JSON Configuration Section -->
             <div class="json-config-container responsive-config-row">
               <!-- JSON Form Field -->
               <div class="json-textarea">
-                <mat-form-field appearance="fill" style="width: 100%;" formGroupName="jsonConfigs">
+                <mat-form-field appearance="fill" style="width: 100%;" formGroupName="{{step}}Config">
                   <mat-label>{{ step | titlecase }} Configuration</mat-label>
                   <button mat-icon-button class="reset-btn" (click)="resetJson(step)"
                     attr.aria-label="Reset {{ step }} configuration">
                     <mat-icon svgIcon="circle-xmark"></mat-icon>
                   </button>
-                  <textarea cdkTextareaAutosize matInput [formControlName]="step" #jsonArea (input)="validateJson(step)"
-                    [attr.aria-describedby]="step + 'JsonError'" spellcheck="false"></textarea>
-                  <mat-error *ngIf="remoteConfigForm.get('jsonConfigs')?.get(step)?.hasError('invalidJson')"
+                  <textarea cdkTextareaAutosize matInput formControlName="options" #jsonArea
+                    (input)="validateJson(step)" [attr.aria-describedby]="step + 'JsonError'"
+                    spellcheck="false"></textarea>
+                  <mat-error *ngIf="remoteConfigForm.get(step + 'Config.options')?.hasError('invalidJson')"
                     [id]="step + 'JsonError'">
                     Invalid JSON format in {{ step }} configuration!
                   </mat-error>
                 </mat-form-field>
               </div>
 
-              <!-- Chip Set -->
+              <!-- Flag Chips -->
               <div class="json-chip-set">
                 <label class="chip-set-label">{{ step | titlecase }} Flags</label>
                 <mat-chip-set [attr.aria-label]="step + ' configuration options'"
-                  [disabled]="!remoteConfigForm.get('jsonConfigs')?.get(step)?.valid">
+                  [disabled]="!remoteConfigForm.get(step + 'Config.options')?.valid">
                   <mat-chip-option *ngFor="let field of dynamicFlagFields[step]" (click)="toggleOption(step, field)"
                     [selected]="selectedOptions[step] && selectedOptions[step].hasOwnProperty(field.name)"
                     [matTooltip]="field.help | linebreaks" [matTooltipShowDelay]="400" [matTooltipHideDelay]="100"

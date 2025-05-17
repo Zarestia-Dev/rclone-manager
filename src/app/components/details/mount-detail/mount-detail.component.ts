@@ -1,5 +1,11 @@
 import { CommonModule } from "@angular/common";
-import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from "@angular/core";
+import {
+  Component,
+  EventEmitter,
+  Input,
+  Output,
+  ChangeDetectionStrategy,
+} from "@angular/core";
 import { MatCardModule } from "@angular/material/card";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatChipsModule } from "@angular/material/chips";
@@ -28,10 +34,10 @@ export interface RemoteSettings {
 }
 
 export interface Remote {
-  custom_flags?: { [key: string]: any };
-  mount_options?: { [key: string]: any };
+  customFlags?: { [key: string]: any };
+  mountConfig?: { [key: string]: any };
   name?: string;
-  show_in_tray_menu?: boolean;
+  showOnTray?: boolean;
   type?: string;
   remoteSpecs?: RemoteSpecs;
   diskUsage?: RemoteDiskUsage;
@@ -56,18 +62,18 @@ export interface RemoteSettingsSection {
     MatIconModule,
     MatProgressBarModule,
     MatProgressSpinnerModule,
-    MatButtonModule
+    MatButtonModule,
   ],
   templateUrl: "./mount-detail.component.html",
   styleUrls: ["./mount-detail.component.scss"],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MountDetailComponent {
   @Input() selectedRemote: Remote | null = null;
   @Input() iconService: any; // Consider creating an interface for this
   @Input() remoteSettings: RemoteSettings = {};
-  @Input() actionInProgress: 'mount' | 'unmount' | 'open' | null = null;
-  
+  @Input() actionInProgress: "mount" | "unmount" | "open" | null = null;
+
   @Output() openInFiles = new EventEmitter<string>();
   @Output() mountRemote = new EventEmitter<string>();
   @Output() unmountRemote = new EventEmitter<string>();
@@ -86,6 +92,10 @@ export class MountDetailComponent {
   ngOnDestroy() {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  isObjectButNotArray(value: any): boolean {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
   }
 
   // Memoized function for better performance
@@ -112,6 +122,18 @@ export class MountDetailComponent {
       transition: "all 0.5s ease-in-out",
     };
   };
+
+  get mountDestination(): string {
+    return this.remoteSettings?.["mountConfig"]?.["dest"] || "Need to set!";
+  }
+
+  get mountSource(): string {
+    return (
+      this.selectedRemote?.remoteSpecs?.name +
+      ":/" +
+      (this.remoteSettings?.["mountConfig"]?.["source"] || "")
+    );
+  }
 
   getRemoteSettings(sectionKey: string): RemoteSettings {
     return this.remoteSettings?.[sectionKey] || {};
@@ -145,10 +167,14 @@ export class MountDetailComponent {
 
   getUsagePercentage(): number {
     if (!this.selectedRemote?.diskUsage) return 0;
-    
-    const used = this.parseSize(this.selectedRemote.diskUsage.used_space || "0");
-    const total = this.parseSize(this.selectedRemote.diskUsage.total_space || "1");
-    
+
+    const used = this.parseSize(
+      this.selectedRemote.diskUsage.used_space || "0"
+    );
+    const total = this.parseSize(
+      this.selectedRemote.diskUsage.total_space || "1"
+    );
+
     return total > 0 ? (used / total) * 100 : 0;
   }
 
@@ -168,20 +194,20 @@ export class MountDetailComponent {
   }
 
   isSensitiveKey(key: string): boolean {
-    return SENSITIVE_KEYS.some(sensitive =>
+    return SENSITIVE_KEYS.some((sensitive) =>
       key.toLowerCase().includes(sensitive)
     );
   }
 
   maskSensitiveValue(key: string, value: any): string {
-    return this.isSensitiveKey(key) 
-      ? "RESTRICTED" 
+    return this.isSensitiveKey(key)
+      ? "RESTRICTED"
       : this.truncateValue(value, 15);
   }
 
   private truncateValue(value: any, length: number): string {
-    if (value === null || value === undefined) return '';
-    
+    if (value === null || value === undefined) return "";
+
     if (typeof value === "object") {
       try {
         const jsonString = JSON.stringify(value);
@@ -192,9 +218,9 @@ export class MountDetailComponent {
         return "[Invalid JSON]";
       }
     }
-    
+
     const stringValue = String(value);
-    return stringValue.length > length 
+    return stringValue.length > length
       ? `${stringValue.slice(0, length)}...`
       : stringValue;
   }

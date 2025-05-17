@@ -1,3 +1,5 @@
+import { Pipe, PipeTransform } from "@angular/core";
+
 export type FlagType = "mount" | "copy" | "sync" | "filter" | "vfs";
 export type EditTarget = FlagType | "remote" | null;
 
@@ -46,6 +48,8 @@ export interface FlagField {
 export interface LoadingState {
   remoteConfig?: boolean;
   mountConfig?: boolean;
+  copyConfig?: boolean;
+  syncConfig?: boolean;
   saving: boolean;
   authDisabled: boolean;
   cancelled: boolean;
@@ -70,29 +74,86 @@ export const SENSITIVE_KEYS = [
   "api_key",
 ];
 
-
-export interface QuickAddForm {
-  remoteName: string;
-  remoteType: string;
+export interface MountConfig {
   autoMount: boolean;
   mountPath: string;
+  remotePath: string;
+  options: string; // JSON string
+}
+
+export interface CopyConfig {
+  autoCopy: boolean;
+  source: string;
+  dest: string;
+  options: string; // JSON string
+}
+
+export interface SyncConfig {
+  autoSync: boolean;
+  source: string;
+  dest: string;
+  options: string; // JSON string
+}
+
+export interface FilterConfig {
+  options: string; // JSON string
+}
+
+export interface VfsConfig {
+  options: string; // JSON string
 }
 
 export interface RemoteSettings {
   name: string;
-  custom_flags: string[];
-  vfs_options: {
-    CacheMode: string;
-    ChunkSize: string;
+  mountConfig: {
+    autoMount: boolean;
+    dest: string;
+    source: string;
+    [key: string]: any;
   };
-  mount_options: {
-    mount_point: string;
-    auto_mount: boolean;
+  copyConfig: {
+    autoCopy: boolean;
+    source: string;
+    dest: string;
+    [key: string]: any;
   };
-  show_in_tray_menu: boolean;
+  syncConfig: {
+    autoSync: boolean;
+    source: string;
+    dest: string;
+    [key: string]: any;
+  };
+  filterConfig: {
+    [key: string]: any;
+  };
+  vfsConfig: {
+    [key: string]: any;
+  };
+  showOnTray?: boolean;
 }
 
-// interface MountType {
-//   value: string;
-//   label: string;
-// }
+export interface QuickAddForm {
+  remoteName: string;
+  remoteType: string;
+  mountPath: string;
+  autoMount: boolean;
+}
+
+export const REMOTE_NAME_REGEX = /^[A-Za-z0-9_\-.\+@ ]+$/;
+
+export interface Entry {
+  ID: string;
+  IsDir: boolean;
+  MimeType: string;
+  ModTime: string;
+  Name: string;
+  Path: string;
+  Size: number;
+}
+
+@Pipe({ name: "linebreaks" })
+export class LinebreaksPipe implements PipeTransform {
+  transform(value: string): string {
+    return value ? value.replace(/(?:\r\n|\r|\n)/g, "<br>") : "";
+  }
+}

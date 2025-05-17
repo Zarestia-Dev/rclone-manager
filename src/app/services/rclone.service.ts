@@ -196,15 +196,15 @@ export class RcloneService {
   async mountRemote(
     remoteName: string,
     mountPoint: string,
-    mount_options?: Record<string, string | number | boolean>,
-    vfs_options?: Record<string, string | number | boolean>
+    mountOptions?: Record<string, string | number | boolean>,
+    vfsOptions?: Record<string, string | number | boolean>
   ): Promise<void> {
     try {
       await invoke("mount_remote", {
         remoteName: remoteName,
         mountPoint: mountPoint,
-        mountOptions: mount_options,
-        vfsOptions: vfs_options,
+        mountOptions: mountOptions,
+        vfsOptions: vfsOptions,
       });
     } catch (error) {
       this.infoService.openSnackBar(String(error), "Close");
@@ -264,6 +264,23 @@ export class RcloneService {
       return await invoke<any>("get_fs_info", { remoteName });
     } catch (error) {
       console.error("Error fetching fs info:", error);
+      return null;
+    }
+  }
+
+  async getRemotePaths(
+    remote: string,
+    path: string,
+    options: Record<string, any>
+  ): Promise<any> {
+    try {
+      return await invoke<any>("get_remote_paths", {
+        remote,
+        path,
+        options,
+      });
+    } catch (error) {
+      console.error("Error fetching remote paths:", error);
       return null;
     }
   }

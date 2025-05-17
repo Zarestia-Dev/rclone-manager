@@ -76,6 +76,29 @@
         </mat-card>
     </div>
 
+    <div class="info-card spec-card">
+        <h3><mat-icon svgIcon="cloud-arrow-up"></mat-icon> Source & Destination</h3>
+        <mat-card class="info-card-content">
+            <mat-card-content class="dest-info">
+                <div class="path-row">
+                    <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
+                    <div class="path-details" matTooltip="{{ mountSource }}">
+                        <div class="path-label">Source</div>
+                        <div class="path-value">{{ mountSource }}</div>
+                    </div>
+                </div>
+                <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+                <div class="path-row">
+                    <mat-icon svgIcon="folder" class="path-icon"></mat-icon>
+                    <div class="path-details" matTooltip="{{ mountDestination }}">
+                        <div class="path-label">Destination</div>
+                        <div class="path-value">{{ mountDestination }}</div>
+                    </div>
+                </div>
+            </mat-card-content>
+        </mat-card>
+    </div>
+
     <!-- Remote Specs -->
     <div class="info-card spec-card">
         <h3><mat-icon svgIcon="wrench"></mat-icon> Remote Specs</h3>
@@ -110,17 +133,38 @@
             <mat-card class="info-card-content">
                 <mat-card-content class="spec-content">
                     <mat-chip-set class="specs-container">
-                        <mat-chip *ngFor="let spec of getRemoteSettings(section.key + '_options') | keyvalue"
-                            class="spec-pill"
-                            [matTooltip]="isSensitiveKey(spec.key) ? '[RESTRICTED]' : (spec.value | json)"
-                            [matTooltipHideDelay]="500">
-                            <strong>{{ spec.key }}:</strong>
-                            <span>{{ maskSensitiveValue(spec.key, spec.value) }}</span>
-                        </mat-chip>
-
-                        <mat-chip *ngIf="!hasSettings(section.key + '_options')" class="spec-pill not-found">
-                            <strong>No data found</strong>
-                        </mat-chip>
+                        <ng-container *ngIf="hasSettings(section.key + 'Config'); else noData">
+                            <ng-container *ngFor="let spec of getRemoteSettings(section.key + 'Config') | keyvalue">
+                                <ng-container *ngIf="isObjectButNotArray(spec.value)">
+                                    <!-- Nested object: show parent key, then its properties as chips -->
+                                    <!-- <mat-chip class="spec-pill parent-key">
+                                        <strong>{{ spec.key }}:</strong>
+                                    </mat-chip> -->
+                                    <ng-container *ngFor="let subSpec of spec.value | keyvalue">
+                                        <mat-chip class="spec-pill sub-key"
+                                            [matTooltip]="isSensitiveKey(subSpec.key) ? '[RESTRICTED]' : (subSpec.value | json)"
+                                            [matTooltipHideDelay]="500">
+                                            <strong>{{ subSpec.key }}:</strong>
+                                            <span>{{ maskSensitiveValue(subSpec.key, subSpec.value) }}</span>
+                                        </mat-chip>
+                                    </ng-container>
+                                </ng-container>
+                                <ng-container *ngIf="!isObjectButNotArray(spec.value)">
+                                    <!-- Primitive or array -->
+                                    <mat-chip class="spec-pill"
+                                        [matTooltip]="isSensitiveKey(spec.key) ? '[RESTRICTED]' : (spec.value | json)"
+                                        [matTooltipHideDelay]="500">
+                                        <strong>{{ spec.key }}:</strong>
+                                        <span>{{ maskSensitiveValue(spec.key, spec.value) }}</span>
+                                    </mat-chip>
+                                </ng-container>
+                            </ng-container>
+                        </ng-container>
+                        <ng-template #noData>
+                            <mat-chip class="spec-pill not-found">
+                                <strong>No data found</strong>
+                            </mat-chip>
+                        </ng-template>
                     </mat-chip-set>
                 </mat-card-content>
 
@@ -128,7 +172,7 @@
 
                 <mat-card-footer class="button-container">
                     <button mat-raised-button class="fix"
-                        (click)="triggerOpenRemoteConfig(section.key, getRemoteSettings(section.key + '_options'))">
+                        (click)="triggerOpenRemoteConfig(section.key, getRemoteSettings(section.key + 'Config'))">
                         <mat-icon svgIcon="pen"></mat-icon> Edit
                     </button>
                 </mat-card-footer>

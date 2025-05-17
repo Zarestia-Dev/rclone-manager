@@ -1,9 +1,4 @@
-import {
-  Component,
-  HostListener,
-  OnInit,
-  OnDestroy,
-} from "@angular/core";
+import { Component, HostListener, OnInit, OnDestroy } from "@angular/core";
 import {
   AbstractControl,
   FormBuilder,
@@ -27,7 +22,12 @@ import { SettingsService } from "../../services/settings.service";
 import { Subscription } from "rxjs";
 import { StateService } from "../../services/state.service";
 import { MatButtonModule } from "@angular/material/button";
-import { LoadingState, QuickAddForm, RemoteSettings, RemoteType } from "../../shared/remote-config-types";
+import {
+  LoadingState,
+  QuickAddForm,
+  RemoteSettings,
+  RemoteType,
+} from "../../shared/remote-config-types";
 
 @Component({
   selector: "app-quick-add-remote",
@@ -42,7 +42,7 @@ import { LoadingState, QuickAddForm, RemoteSettings, RemoteType } from "../../sh
     MatSlideToggleModule,
     MatProgressSpinnerModule,
     MatIconModule,
-    MatButtonModule
+    MatButtonModule,
   ],
   templateUrl: "./quick-add-remote.component.html",
   styleUrls: ["./quick-add-remote.component.scss"],
@@ -153,7 +153,8 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       //   this.rcloneService.getRemotes(),
       //   this.rcloneService.getOAuthSupportedRemotes(),
       // ]);
-      const oauthSupportedRemotes = await this.rcloneService.getOAuthSupportedRemotes();
+      const oauthSupportedRemotes =
+        await this.rcloneService.getOAuthSupportedRemotes();
       console.log("OAuth Supported Remotes:", oauthSupportedRemotes);
       this.remoteTypes = oauthSupportedRemotes.map((remote: any) => ({
         value: remote.name,
@@ -227,19 +228,30 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
     const remoteSettings: RemoteSettings = {
       name: remoteName,
-      custom_flags: [],
-      vfs_options: { CacheMode: "full", ChunkSize: "32M" },
-      show_in_tray_menu: true,
-      mount_options: {
-        mount_point: mountPath || "",
-        auto_mount: autoMount || false,
+      vfsConfig: { CacheMode: "full", ChunkSize: "32M" },
+      showOnTray: true,
+      mountConfig: {
+        dest: mountPath || "",
+        source: "",
+        autoMount: autoMount || false,
       },
+      copyConfig: {
+        autoCopy: false,
+        source: "",
+        dest: "",
+      },
+      syncConfig: {
+        autoSync: false,
+        source: "",
+        dest: "",
+      },
+      filterConfig: {},
     };
 
     await this.settingsService.saveRemoteSettings(remoteName, remoteSettings);
 
     if (autoMount && mountPath) {
-      await this.rcloneService.mountRemote(remoteName, mountPath);
+      await this.rcloneService.mountRemote(remoteName + ":", mountPath);
       console.log("Remote mounted successfully!");
     }
   }

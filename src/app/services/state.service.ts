@@ -113,7 +113,6 @@ export class StateService {
   private async updateWindowState() {
     let isMaximized = false;
     const currentPlatform = await platform();
-    console.log("Current platform:", currentPlatform);
 
     if (currentPlatform === "macos") {
       // On macOS, always set maximized to true and set all radii to 0
