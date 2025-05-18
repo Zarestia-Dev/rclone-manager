@@ -1,0 +1,183 @@
+<form [formGroup]="configGroup" class="flag-form">
+    <!-- Mount Configuration -->
+    <ng-container *ngIf="isMount">
+        <!-- Auto-Mount Toggle -->
+        <mat-slide-toggle class="slide-toggle" formControlName="autoMount" id="autoMount">
+            Auto-Mount after creation and on startup
+        </mat-slide-toggle>
+
+        <!-- Mount Path -->
+        <mat-form-field appearance="fill">
+            <mat-label>Mount Path</mat-label>
+            <button mat-icon-button matSuffix (click)="onSelectFolder('mountConfig.dest')" aria-label="Select folder">
+                <mat-icon svgIcon="folder"></mat-icon>
+            </button>
+            <input matInput formControlName="dest" id="dest" placeholder="Select a folder..." readonly />
+        </mat-form-field>
+
+        <!-- Remote Path -->
+        <mat-form-field appearance="fill" *ngIf="isEditMode">
+            <mat-label>Remote Path</mat-label>
+            <input matInput formControlName="source" placeholder="Root path inside the remote"
+                [matAutocomplete]="mountSourceAuto" autocomplete="off" />
+            <mat-spinner color="accent" *ngIf="sourceLoading" diameter="24"></mat-spinner>
+            <mat-autocomplete #mountSourceAuto="matAutocomplete"
+                (optionSelected)="onSourceOptionSelected($event.option.value)">
+                <mat-option *ngFor="let option of pathState['mountConfig.source']?.options || []" [value]="option.Name">
+                    <span *ngIf="option.IsDir">📁</span>
+                    <span *ngIf="!option.IsDir">📄</span>
+                    {{ option.Name }}
+                </mat-option>
+            </mat-autocomplete>
+        </mat-form-field>
+    </ng-container>
+
+    <!-- Sync Configuration -->
+    <ng-container *ngIf="isSync">
+        <!-- Auto-Sync Toggle -->
+        <mat-slide-toggle class="slide-toggle" formControlName="autoSync" id="autoSync">
+            Auto-Sync after creation and on startup
+        </mat-slide-toggle>
+
+        <!-- Destination Path -->
+        <mat-form-field appearance="fill">
+            <mat-label>Sync Destination</mat-label>
+            <input matInput formControlName="dest" placeholder="Select destination path or enter remote (remote:path)"
+                [matAutocomplete]="syncDestAuto" />
+            <button mat-icon-button matSuffix (click)="onResetRemoteSelection('syncConfig.dest')"
+                *ngIf="pathState['syncConfig.dest']?.remoteName">
+                <mat-icon svgIcon="circle-xmark"></mat-icon>
+            </button>
+            <button mat-icon-button matSuffix (click)="onSelectFolder('syncConfig.dest')"
+                aria-label="Select local folder">
+                <mat-icon svgIcon="folder"></mat-icon>
+            </button>
+            <mat-spinner color="accent" *ngIf="destLoading" diameter="24"></mat-spinner>
+            <mat-autocomplete #syncDestAuto="matAutocomplete">
+                <ng-container *ngIf="!pathState['syncConfig.dest']?.remoteName">
+                    <mat-option *ngFor="let remote of existingRemotes" [value]="remote + ':/'"
+                        (onSelectionChange)="onRemoteSelected(remote + ':/')">
+                        {{ remote }}
+                    </mat-option>
+                </ng-container>
+                <ng-container *ngIf="pathState['syncConfig.dest']?.remoteName">
+                    <mat-option *ngFor="let option of pathState['syncConfig.dest']?.options || []"
+                        [value]="pathState['syncConfig.dest'].remoteName + ':/' + (pathState['syncConfig.dest'].currentPath ? pathState['syncConfig.dest'].currentPath + '/' : '') + option.Name"
+                        (onSelectionChange)="onDestOptionSelected(option.Name)">
+                        <span *ngIf="option.IsDir">📁</span>
+                        <span *ngIf="!option.IsDir">📄</span>
+                        {{ option.Name }}
+                    </mat-option>
+                </ng-container>
+            </mat-autocomplete>
+        </mat-form-field>
+
+        <!-- Source Path -->
+        <mat-form-field appearance="fill" *ngIf="isEditMode">
+            <mat-label>Sync Source</mat-label>
+            <input matInput formControlName="source" placeholder="Select source path or enter remote (remote:path)"
+                [matAutocomplete]="syncSourceAuto" />
+            <button mat-icon-button matSuffix (click)="onSelectFolder('syncConfig.source')"
+                aria-label="Select local folder">
+                <mat-icon svgIcon="folder"></mat-icon>
+            </button>
+            <mat-spinner color="accent" *ngIf="sourceLoading" diameter="24"></mat-spinner>
+            <mat-autocomplete #syncSourceAuto="matAutocomplete"
+                (optionSelected)="onSourceOptionSelected($event.option.value)">
+                <mat-option *ngFor="let option of pathState['syncConfig.source']?.options || []" [value]="option.Name">
+                    <span *ngIf="option.IsDir">📁</span>
+                    <span *ngIf="!option.IsDir">📄</span>
+                    {{ option.Name }}
+                </mat-option>
+            </mat-autocomplete>
+        </mat-form-field>
+    </ng-container>
+
+    <ng-container *ngIf="isCopy">
+        <!-- Auto-Copy Toggle -->
+        <mat-slide-toggle class="slide-toggle" formControlName="autoCopy" id="autoCopy">
+            Auto-Copy after creation and on startup
+        </mat-slide-toggle>
+
+        <!-- Destination Path -->
+        <mat-form-field appearance="fill">
+            <mat-label>Copy Destination</mat-label>
+            <input matInput formControlName="dest" placeholder="Select destination path or enter remote (remote:path)"
+                [matAutocomplete]="copyDestAuto" />
+            <button mat-icon-button matSuffix (click)="onResetRemoteSelection('copyConfig.dest')"
+                *ngIf="pathState['copyConfig.dest']?.remoteName">
+                <mat-icon svgIcon="circle-xmark"></mat-icon>
+            </button>
+            <button mat-icon-button matSuffix (click)="onSelectFolder('copyConfig.dest')"
+                aria-label="Select local folder">
+                <mat-icon svgIcon="folder"></mat-icon>
+            </button>
+            <mat-spinner color="accent" *ngIf="destLoading" diameter="24"></mat-spinner>
+            <mat-autocomplete #copyDestAuto="matAutocomplete">
+                <ng-container *ngIf="!pathState['copyConfig.dest']?.remoteName">
+                    <mat-option *ngFor="let remote of existingRemotes" [value]="remote + ':/'"
+                        (onSelectionChange)="onRemoteSelected(remote + ':/')">
+                        {{ remote }}
+                    </mat-option>
+                </ng-container>
+                <ng-container *ngIf="pathState['copyConfig.dest']?.remoteName">
+                    <mat-option *ngFor="let option of pathState['copyConfig.dest']?.options || []"
+                        [value]="pathState['copyConfig.dest'].remoteName + ':/' + (pathState['copyConfig.dest'].currentPath ? pathState['copyConfig.dest'].currentPath + '/' : '') + option.Name"
+                        (onSelectionChange)="onDestOptionSelected(option.Name)">
+                        <span *ngIf="option.IsDir">📁</span>
+                        <span *ngIf="!option.IsDir">📄</span>
+                        {{ option.Name }}
+                    </mat-option>
+                </ng-container>
+            </mat-autocomplete>
+        </mat-form-field>
+
+        <!-- Source Path -->
+        <mat-form-field appearance="fill" *ngIf="isEditMode">
+            <mat-label>Copy Source</mat-label>
+            <input matInput formControlName="source" placeholder="Select source path or enter remote (remote:path)"
+                [matAutocomplete]="copySourceAuto" />
+            <button mat-icon-button matSuffix (click)="onSelectFolder('copyConfig.source')"
+                aria-label="Select local folder">
+                <mat-icon svgIcon="folder"></mat-icon>
+            </button>
+            <mat-spinner color="accent" *ngIf="sourceLoading" diameter="24"></mat-spinner>
+            <mat-autocomplete #copySourceAuto="matAutocomplete"
+                (optionSelected)="onSourceOptionSelected($event.option.value)">
+                <mat-option *ngFor="let option of pathState['copyConfig.source']?.options || []" [value]="option.Name">
+                    <span *ngIf="option.IsDir">📁</span>
+                    <span *ngIf="!option.IsDir">📄</span>
+                    {{ option.Name }}
+                </mat-option>
+            </mat-autocomplete>
+        </mat-form-field>
+    </ng-container>
+
+    <!-- JSON Configuration Section -->
+    <div class="json-config-container responsive-config-row">
+        <!-- JSON Form Field -->
+        <div class="json-textarea">
+            <mat-form-field appearance="fill" style="width: 100%;">
+                <mat-label>{{ flagType | titlecase }} Configuration</mat-label>
+                <button mat-icon-button class="reset-btn" (click)="onResetJson()"
+                    [attr.aria-label]="'Reset ' + flagType + ' configuration'">
+                    <mat-icon svgIcon="circle-xmark"></mat-icon>
+                </button>
+                <textarea cdkTextareaAutosize matInput formControlName="options" (input)="onValidateJson()"
+                    spellcheck="false"></textarea>
+            </mat-form-field>
+        </div>
+
+        <!-- Flag Chips -->
+        <div class="json-chip-set">
+            <label class="chip-set-label">{{ flagType | titlecase }} Flags</label>
+            <mat-chip-set [attr.aria-label]="flagType + ' configuration options'">
+                <mat-chip-option *ngFor="let field of dynamicFlagFields" (click)="onToggleOption(field)"
+                    [selected]="getSelectedOptions.hasOwnProperty(field.name)" [matTooltip]="field.help | linebreaks"
+                    matTooltipPosition="above">
+                    {{ field.name }}
+                </mat-chip-option>
+            </mat-chip-set>
+        </div>
+    </div>
+</form>

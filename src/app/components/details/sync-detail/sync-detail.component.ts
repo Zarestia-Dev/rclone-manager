@@ -162,6 +162,7 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
 
   isSyncing = true;
   lastSyncTime = new Date();
+  dryRun = false;
 
   // Charts
   private speedChart!: Chart;
@@ -370,6 +371,10 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.cleanUp();
+  }
+
+  toggleDryRun(): void {
+    this.dryRun = !this.dryRun;
   }
 
   toggleSync(): void {

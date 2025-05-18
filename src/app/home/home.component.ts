@@ -238,8 +238,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.actionInProgress[remoteName] = "open";
       this.cdr.markForCheck();
 
-      const mountPoint =
-        this.loadRemoteSettings(remoteName)?.mountConfig?.dest;
+      const mountPoint = this.loadRemoteSettings(remoteName)?.mountConfig?.dest;
       if (!mountPoint) {
         throw new Error(`No mount point found for ${remoteName}`);
       }
@@ -279,6 +278,10 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.selectedRemote = null;
       }
       this.cdr.markForCheck();
+      this.infoService.openSnackBar(
+        `Remote ${remoteName} deleted successfully.`,
+        "Close"
+      );
     } catch (error) {
       console.error(`Failed to delete remote ${remoteName}:`, error);
       this.infoService.openSnackBar(
@@ -345,13 +348,24 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  resetRemoteSettings(): void {
+  async resetRemoteSettings(): Promise<void> {
     if (!this.selectedRemote?.remoteSpecs.name) return;
-
-    const remoteName = this.selectedRemote.remoteSpecs.name;
-    this.settingsService.resetRemoteSettings(remoteName);
-    delete this.remoteSettings[remoteName];
-    this.cdr.markForCheck();
+    const result = await this.infoService.confirmModal(
+      "Reset Remote Settings",
+      `Are you sure you want to reset settings for ${this.selectedRemote?.remoteSpecs.name}? This action cannot be undone.`
+    );
+    console.log("Reset Remote Settings", result);
+    // If the user confirms, proceed with the reset
+    if (result) {
+      const remoteName = this.selectedRemote.remoteSpecs.name;
+      await this.settingsService.resetRemoteSettings(remoteName);
+      delete this.remoteSettings[remoteName];
+      this.cdr.markForCheck();
+      this.infoService.openSnackBar(
+        `Settings for ${remoteName} have been reset.`,
+        "Close"
+      );
+    }
   }
 
   // Private Helpers

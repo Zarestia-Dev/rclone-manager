@@ -13,9 +13,10 @@
 
       <div class="sync-monitor">
         <mat-card class="sync-control-card" [class.syncing]="isSyncing">
-          <div class="sync-info">
+          <!-- Top section: Sync Paths -->
+          <div class="sync-path-section">
             <div class="sync-path">
-              <div class="path-row">
+              <div class="path">
                 <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
                 <div class="path-details" matTooltip="{{syncSource}}">
                   <div class="path-label">Source</div>
@@ -23,7 +24,7 @@
                 </div>
               </div>
               <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-              <div class="path-row">
+              <div class="path">
                 <mat-icon svgIcon="folder" class="path-icon"></mat-icon>
                 <div class="path-details" matTooltip="{{syncDestination}}">
                   <div class="path-label">Destination</div>
@@ -33,7 +34,11 @@
             </div>
           </div>
 
-          <div class="sync-status-container">
+          <!-- Divider for clarity -->
+          <mat-divider></mat-divider>
+
+          <!-- Bottom section: Status + Controls -->
+          <div class="sync-footer">
             <div class="sync-status">
               <div class="status-indicator" [class.active]="isSyncing" [class.paused]="!isSyncing">
                 <mat-icon [svgIcon]="isSyncing ? 'refresh' : 'pause'"></mat-icon>
@@ -44,16 +49,14 @@
               </div>
             </div>
 
-            <div class="dry-run">
-              <mat-slide-toggle [disabled]="isSyncing">
+            <div class="sync-controls">
+              <mat-slide-toggle class="dry-run-toggle" [disabled]="isSyncing" (change)="toggleDryRun()">
                 <span>
-                  <mat-icon svgIcon="eye"></mat-icon>
+                  <mat-icon [svgIcon]="dryRun ? 'eye' : 'eye-slash'"></mat-icon>
                   Dry Run
                 </span>
               </mat-slide-toggle>
-            </div>
 
-            <div class="sync-actions">
               <button mat-flat-button [color]="isSyncing ? 'warn' : 'primary'" (click)="toggleSync()">
                 <mat-icon [svgIcon]="isSyncing ? 'pause' : 'play'"></mat-icon>
                 {{isSyncing ? 'Stop Sync' : 'Start Sync'}}
@@ -61,6 +64,7 @@
             </div>
           </div>
         </mat-card>
+
         <div class="stats-summary">
           <div class="stat-card">
             <div class="stat-value">{{stats.bytes | filesize}}</div>

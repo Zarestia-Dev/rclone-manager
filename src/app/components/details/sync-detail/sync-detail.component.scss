@@ -134,7 +134,7 @@
     box-shadow: var(--box-shadow);
     border-radius: var(--border-radius);
 
-    .sync-info {
+    .sync-path-section {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -153,7 +153,7 @@
           flex-shrink: 0;
         }
 
-        .path-row {
+        .path {
           display: flex;
           align-items: center;
           gap: 8px;
@@ -181,7 +181,7 @@
       }
     }
 
-    .sync-status-container {
+    .sync-footer {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -224,19 +224,22 @@
       }
     }
 
-    .dry-run {
+    .sync-controls {
       display: flex;
+      justify-content: space-between;
       align-items: center;
+      gap: 20px;
 
-      span {
-        gap: 8px;
-        display: flex;
-        align-items: center;
-        text-wrap: nowrap;
+        span {
+          gap: 8px;
+          display: flex;
+          align-items: center;
+          text-wrap: nowrap;
+        
       }
     }
   }
-  
+
   .stats-summary {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -380,7 +383,7 @@
   }
 
   .sync-control-card {
-    .sync-info {
+    .sync-path-section {
       flex-direction: column;
       align-items: stretch;
 
@@ -397,17 +400,12 @@
       }
     }
 
-    .sync-status-container {
+    .sync-footer {
       flex-direction: column;
       align-items: stretch;
 
       .sync-status {
         align-items: center !important;
-        margin-bottom: 12px;
-      }
-
-      .dry-run {
-        justify-content: center;
         margin-bottom: 12px;
       }
     }

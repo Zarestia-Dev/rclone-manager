@@ -151,6 +151,31 @@ export interface Entry {
   Size: number;
 }
 
+export function getDefaultValueForType(type: FieldType): any {
+  switch (type) {
+    case "bool":
+      return false;
+    case "int":
+    case "int64":
+    case "uint32":
+    case "SizeSuffix":
+      return 0;
+    case "string":
+    case "Duration":
+    case "FileMode":
+    case "CacheMode":
+      return "";
+    case "stringArray":
+      return [""];
+    case "Tristate":
+      return null;
+    case "HARD|SOFT|CAUTIOUS":
+      return "HARD";
+    default:
+      return null;
+  }
+}
+
 @Pipe({ name: "linebreaks" })
 export class LinebreaksPipe implements PipeTransform {
   transform(value: string): string {

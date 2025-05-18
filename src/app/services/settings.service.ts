@@ -148,15 +148,8 @@ export class SettingsService {
 
   async resetRemoteSettings(remoteName: string): Promise<void> {
     try {
-      const result = await this.infoService.confirmModal(
-        "Reset Remote Settings",
-        `Are you sure you want to reset settings for ${remoteName}? This action cannot be undone.`
-      );
-      // If the user confirms, proceed with the reset
-      if (result) {
-        await invoke("delete_remote_settings", { remoteName });
-        console.log(`Settings for ${remoteName} deleted successfully.`);
-      }
+      await invoke("delete_remote_settings", { remoteName });
+      console.log(`Settings for ${remoteName} deleted successfully.`);
     } catch (error) {
       console.error(`Failed to reset settings for ${remoteName}:`, error);
     }
