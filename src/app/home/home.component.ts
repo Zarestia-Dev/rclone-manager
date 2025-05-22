@@ -19,14 +19,20 @@ import { MatMenuModule } from "@angular/material/menu";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { listen } from "@tauri-apps/api/event";
-import { Subject, takeUntil } from "rxjs";
+import {
+  from,
+  interval,
+  Subject,
+  Subscription,
+  switchMap,
+  takeUntil,
+} from "rxjs";
 
 // Components
 import { SidebarComponent } from "../components/sidebar/sidebar.component";
 import { RemoteConfigModalComponent } from "../modals/remote-config-modal/remote-config-modal.component";
 import { QuickAddRemoteComponent } from "../modals/quick-add-remote/quick-add-remote.component";
 import { MountOverviewComponent } from "../components/overviews/mount-overview/mount-overview.component";
-import { SyncOverviewComponent } from "../components/overviews/sync-overview/sync-overview.component";
 import { CopyOverviewComponent } from "../components/overviews/copy-overview/copy-overview.component";
 import { JobsOverviewComponent } from "../components/overviews/jobs-overview/jobs-overview.component";
 import { MountDetailComponent } from "../components/details/mount-detail/mount-detail.component";
@@ -45,7 +51,13 @@ import { IconService } from "../services/icon.service";
 
 // home.types.ts
 export type AppTab = "mount" | "sync" | "copy" | "jobs";
-export type RemoteAction = "mount" | "unmount" | "open" | null;
+export type RemoteAction =
+  | "mount"
+  | "unmount"
+  | "sync"
+  | "stop"
+  | "open"
+  | null;
 
 export interface RemoteSpecs {
   name: string;
@@ -64,8 +76,10 @@ export interface DiskUsage {
 
 export interface Remote {
   remoteSpecs: RemoteSpecs;
-  mounted: boolean | "error";
-  diskUsage: DiskUsage;
+  mounted?: boolean | "error";
+  diskUsage?: DiskUsage;
+  isOnSync?: boolean | "error";
+  syncJobID?: number;
 }
 
 export interface MountedRemote {
@@ -115,7 +129,6 @@ export interface RemoteActionProgress {
     MatButtonModule,
     SidebarComponent,
     MountOverviewComponent,
-    SyncOverviewComponent,
     CopyOverviewComponent,
     JobsOverviewComponent,
     MountDetailComponent,
@@ -162,6 +175,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.setupSubscriptions();
     this.loadInitialData();
     this.setupTauriListeners();
+    this.loadJobsForRemote(this.selectedRemote?.remoteSpecs.name || "");
   }
 
   ngOnDestroy(): void {
@@ -422,6 +436,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.refreshMounts(),
       this.loadRemotes(),
       this.getRemoteSettings(),
+      this.loadJobsForRemote(this.selectedRemote?.remoteSpecs.name || ""),
     ]);
 
     if (this.selectedRemote?.remoteSpecs.name) {
@@ -443,10 +458,13 @@ export class HomeComponent implements OnInit, OnDestroy {
           free_space: "Loading...",
           loading: true,
         },
+        isOnSync: false,
+        syncJobID: 0,
       }));
 
       // Load disk usage in background
       this.loadDiskUsageInBackground();
+      this.loadJobs();
       this.cdr.markForCheck();
     } catch (error) {
       console.error("Failed to load remotes:", error);
@@ -459,7 +477,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       if (!remote.mounted) continue;
 
       try {
-        remote.diskUsage.loading = true;
+        if (remote.diskUsage) {
+          remote.diskUsage.loading = true;
+        }
         this.cdr.markForCheck();
 
         const fsInfo = await this.rcloneService.getFsInfo(
@@ -538,6 +558,177 @@ export class HomeComponent implements OnInit, OnDestroy {
       mount.fs.startsWith(`${remoteName}:`)
     );
   }
+
+  // Update startSync method
+  async startSync(remoteName: string): Promise<void> {
+    if (!remoteName) return;
+
+    console.log("Starting sync for remote:", remoteName);
+    try {
+      this.actionInProgress[remoteName] = "sync";
+      this.cdr.markForCheck();
+
+      const settings = this.loadRemoteSettings(remoteName);
+      const jobInfo = await this.rcloneService.startSync(
+        remoteName + ":" + settings.syncConfig?.source,
+        settings.syncConfig?.dest,
+        settings.syncConfig?.options,
+        settings.syncConfig?.syncOptions || {}
+      );
+
+      // Update state immediately
+      console.log("Job Info:", jobInfo);
+      this.remotes = this.remotes.map((remote) => {
+        if (remote.remoteSpecs.name === remoteName) {
+          return {
+            ...remote,
+            isOnSync: true,
+            syncJobID: jobInfo, // Capture the job ID
+          };
+        }
+        return remote;
+      });
+
+      // Update selected remote if it's the current one
+      if (this.selectedRemote?.remoteSpecs.name === remoteName) {
+        this.selectedRemote = {
+          ...this.selectedRemote,
+          isOnSync: true,
+          syncJobID: jobInfo,
+        };
+      }
+      
+      this.loadJobsForRemote(remoteName);
+      this.cdr.markForCheck();
+    } catch (error) {
+      console.error(`Failed to start sync for ${remoteName}:`, error);
+      this.infoService.openSnackBar(
+        `Failed to start sync for ${remoteName}`,
+        "Close"
+      );
+    } finally {
+      this.actionInProgress[remoteName] = null;
+      this.cdr.markForCheck();
+    }
+  }
+
+  // Update stopSync method
+  async stopSync(remoteName: string): Promise<void> {
+    if (!remoteName) return;
+
+    try {
+      this.actionInProgress[remoteName] = "stop";
+      this.cdr.markForCheck();
+
+      const remote = this.remotes.find(
+        (r) => r.remoteSpecs.name === remoteName
+      );
+      if (!remote?.syncJobID) {
+        throw new Error(`No job ID found for ${remoteName}`);
+      }
+
+      await this.rcloneService.stopJob(remote.syncJobID);
+
+      // Update state immediately
+      this.remotes = this.remotes.map((r) => {
+        if (r.remoteSpecs.name === remoteName) {
+          return { ...r, isOnSync: false, syncJobID: undefined };
+        }
+        return r;
+      });
+
+      // Update selected remote if it's the current one
+      if (this.selectedRemote?.remoteSpecs.name === remoteName) {
+        this.selectedRemote = {
+          ...this.selectedRemote,
+          isOnSync: false,
+          syncJobID: undefined,
+        };
+      }
+
+      this.loadJobsForRemote(remoteName);
+      this.cdr.markForCheck();
+    } catch (error) {
+      console.error(`Failed to stop sync for ${remoteName}:`, error);
+      this.infoService.openSnackBar(
+        `Failed to stop sync for ${remoteName}`,
+        "Close"
+      );
+    } finally {
+      this.actionInProgress[remoteName] = null;
+      this.cdr.markForCheck();
+    }
+  }
+
+  private async loadJobs(): Promise<void> {
+    try {
+      const jobs = await this.rcloneService.getActiveJobs();
+
+      // Update remotes array with current job status
+      this.remotes = this.remotes.map((remote) => {
+        const remoteJobs = jobs.filter(
+          (j: any) => j.remote_name === remote.remoteSpecs.name
+        );
+        const runningJob = remoteJobs.find((j: any) => j.status === "running");
+
+        return {
+          ...remote,
+          isOnSync: !!runningJob,
+          syncJobID: runningJob?.jobid,
+        };
+      });
+
+      // Update selected remote if needed
+      if (this.selectedRemote) {
+        const updatedRemote = this.remotes.find(
+          (r) => r.remoteSpecs.name === this.selectedRemote?.remoteSpecs.name
+        );
+        if (updatedRemote) {
+          this.selectedRemote = { ...updatedRemote };
+        }
+      }
+      this.cdr.markForCheck();
+    } catch (error) {
+      console.error("Failed to load jobs:", error);
+    }
+  }
+
+  private async loadJobsForRemote(remoteName: string): Promise<void> {
+    try {
+      const jobs = await this.rcloneService.getActiveJobs();
+      const remoteJobs = jobs.filter(
+        (j: { remote_name: string | undefined }) =>
+          j.remote_name === this.selectedRemote?.remoteSpecs?.name
+      );
+      if (remoteJobs.length > 0) {
+        const runningJob = remoteJobs.find(
+          (j: { status: string }) => j.status === "running"
+        );
+        console.log("Running job:", runningJob);
+        if (runningJob) {
+          this.selectedRemote = {
+            ...(this.selectedRemote as Remote),
+            isOnSync: true,
+            syncJobID: runningJob.jobid,
+          };
+          console.log("Job Id", runningJob.jobid);
+        } else {
+          this.selectedRemote = {
+            ...(this.selectedRemote as Remote),
+            isOnSync: false,
+          };
+        }
+        this.cdr.markForCheck();
+      }
+    } catch (error) {
+      console.error(`Failed to load jobs for ${remoteName}:`, error);
+      this.infoService.openSnackBar(
+        `Failed to load jobs for ${remoteName}`,
+        "Close"
+      );
+    }
+  }
+
   private selectRemoteByName(remoteName: string): void {
     const remote = this.remotes.find((r) => r.remoteSpecs.name === remoteName);
     if (remote) {

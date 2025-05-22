@@ -322,3 +322,87 @@ pub async fn clear_logs_for_remote(remote_name: String) -> Result<(), String> {
     ERROR_CACHE.clear_remote_logs(&remote_name).await;
     Ok(())
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ActiveJob {
+    pub jobid: u64,
+    pub job_type: String,    // "sync" or "copy"
+    pub remote_name: String, // Add this field
+    pub source: String,
+    pub destination: String,
+    pub start_time: DateTime<Utc>,
+    pub status: String, // "running", "completed", "failed", "stopped"
+    pub stats: Option<Value>,
+}
+pub struct JobCache {
+    pub active_jobs: RwLock<Vec<ActiveJob>>,
+}
+
+pub static JOB_CACHE: Lazy<JobCache> = Lazy::new(|| JobCache {
+    active_jobs: RwLock::new(Vec::new()),
+});
+
+impl JobCache {
+    pub async fn add_job(&self, job: ActiveJob) {
+        let mut jobs = self.active_jobs.write().await;
+        jobs.push(job);
+    }
+
+    pub async fn remove_job(&self, jobid: u64) -> Result<(), String> {
+        let mut jobs = self.active_jobs.write().await;
+        let len_before = jobs.len();
+        jobs.retain(|j| j.jobid != jobid);
+        if jobs.len() < len_before {
+            Ok(())
+        } else {
+            Err("Job not found".to_string())
+        }
+    }
+
+    pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
+        let mut jobs = self.active_jobs.write().await;
+        if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
+            job.stats = Some(stats);
+            Ok(())
+        } else {
+            Err("Job not found".to_string())
+        }
+    }
+
+    pub async fn complete_job(&self, jobid: u64, success: bool) -> Result<(), String> {
+        let mut jobs = self.active_jobs.write().await;
+        if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
+            job.status = if success {
+                "completed".to_string()
+            } else {
+                "failed".to_string()
+            };
+            Ok(())
+        } else {
+            Err("Job not found".to_string())
+        }
+    }
+
+    pub async fn get_jobs(&self) -> Vec<ActiveJob> {
+        self.active_jobs.read().await.clone()
+    }
+
+    pub async fn get_job(&self, jobid: u64) -> Option<ActiveJob> {
+        self.active_jobs
+            .read()
+            .await
+            .iter()
+            .find(|j| j.jobid == jobid)
+            .cloned()
+    }
+}
+
+#[tauri::command]
+pub async fn get_active_jobs() -> Result<Vec<ActiveJob>, String> {
+    Ok(JOB_CACHE.get_jobs().await)
+}
+
+#[tauri::command]
+pub async fn get_job_status(jobid: u64) -> Result<Option<ActiveJob>, String> {
+    Ok(JOB_CACHE.get_job(jobid).await)
+}

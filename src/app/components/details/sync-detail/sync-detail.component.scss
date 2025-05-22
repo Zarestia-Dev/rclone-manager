@@ -230,12 +230,11 @@
       align-items: center;
       gap: 20px;
 
-        span {
-          gap: 8px;
-          display: flex;
-          align-items: center;
-          text-wrap: nowrap;
-        
+      span {
+        gap: 8px;
+        display: flex;
+        align-items: center;
+        text-wrap: nowrap;
       }
     }
   }

@@ -1,6 +1,19 @@
 import { Injectable } from "@angular/core";
 import { invoke } from "@tauri-apps/api/core";
 import { InfoService } from "./info.service";
+import { listen } from "@tauri-apps/api/event";
+import { BehaviorSubject } from "rxjs";
+
+interface ActiveJob {
+  jobid: number;
+  job_type: string;
+  source: string;
+  destination: string;
+  start_time: string;
+  status: string;
+  remote_name: string;
+  stats: any;
+}
 
 @Injectable({
   providedIn: "root",
@@ -225,37 +238,98 @@ export class RcloneService {
 
   async startSync(
     source: string,
-    destination: string,
-    syncOptions: Record<string, any>,
-    filterOptions: Record<string, any>
-  ): Promise<void> {
+    dest: string,
+    syncOptions?: Record<string, any>,
+    filterOptions?: Record<string, any>
+  ): Promise<number> {
     try {
-      return await invoke("start_sync", {
-        source: source,
-        destination: destination,
-        syncOptions: syncOptions,
-        filterOptions: filterOptions,
+      const jobId = await invoke<string>("start_sync", {
+        source,
+        dest,
+        syncOptions: syncOptions || {},
+        filterOptions: filterOptions || {},
       });
+
+      return parseInt(jobId, 10);
     } catch (error) {
-      console.error("Sync failed:", error);
+      console.error("Failed to start sync:", error);
+      throw error;
     }
   }
 
   async startCopy(
     source: string,
-    destination: string,
-    copyOptions: Record<string, any>,
-    filterOptions: Record<string, any>
-  ): Promise<void> {
-    return await (
-      invoke("start_copy", {
-        source: source,
-        destination: destination,
-        copyOptions: copyOptions,
-        filterOptions: filterOptions,
-      }) as Promise<void>
-    ).catch((error) => {
-      console.error("Copy failed:", error);
+    dest: string,
+    copyOptions?: Record<string, any>,
+    filterOptions?: Record<string, any>
+  ): Promise<number> {
+    try {
+      const jobId = await invoke<string>("start_copy", {
+        source,
+        dest,
+        copyOptions: copyOptions || {},
+        filterOptions: filterOptions || {},
+      });
+
+      return parseInt(jobId, 10);
+    } catch (error) {
+      console.error("Failed to start copy:", error);
+      throw error;
+    }
+  }
+
+  async getActiveJobs(): Promise<any> {
+    try {
+      const jobs = await invoke<any[]>("get_active_jobs");
+      return jobs;
+    } catch (error) {
+      console.error("Failed to load initial jobs:", error);
+    }
+  }
+
+  async stopJob(jobid: number): Promise<void> {
+    try {
+      await invoke("stop_job", { jobid });
+      // The job status will update via the event listener
+    } catch (error) {
+      console.error("Failed to stop job:", error);
+      throw error;
+    }
+  }
+
+  async getJobStatus(jobid: number): Promise<ActiveJob | null> {
+    try {
+      return await invoke<ActiveJob>("get_job_status", { jobid });
+    } catch (error) {
+      console.error("Failed to get job status:", error);
+      return null;
+    }
+  }
+
+  private activeJobsSubject = new BehaviorSubject<ActiveJob[]>([]);
+  activeJobs$ = this.activeJobsSubject.asObservable();
+
+  setupListeners(): void {
+    // Listen for job updates from backend
+    listen("ui_job_update", (event: any) => {
+      const jobs = this.activeJobsSubject.value;
+      const jobIndex = jobs.findIndex((j) => j.jobid === event.payload.jobid);
+
+      if (jobIndex >= 0) {
+        jobs[jobIndex].stats = event.payload.stats;
+        this.activeJobsSubject.next([...jobs]);
+      }
+    });
+
+    // Listen for job completion
+    listen("ui_job_completed", (event: any) => {
+      const jobs = this.activeJobsSubject.value;
+      const jobIndex = jobs.findIndex((j) => j.jobid === event.payload.jobid);
+
+      if (jobIndex >= 0) {
+        jobs[jobIndex].status = event.payload.success ? "completed" : "failed";
+        this.activeJobsSubject.next([...jobs]);
+      }
     });
   }
 

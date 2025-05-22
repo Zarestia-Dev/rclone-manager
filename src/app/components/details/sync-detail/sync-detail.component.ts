@@ -1,12 +1,15 @@
 import { CommonModule } from "@angular/common";
 import {
   AfterViewInit,
+  ChangeDetectorRef,
   Component,
   ElementRef,
   EventEmitter,
   Input,
+  NgZone,
   OnDestroy,
   Output,
+  SimpleChanges,
   ViewChild,
 } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
@@ -21,6 +24,9 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatTabsModule } from "@angular/material/tabs";
 import { IconService } from "../../../services/icon.service";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
+import { map, Observable, Subscription } from "rxjs";
+import { RcloneService } from "../../../services/rclone.service";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 
 // Interfaces
 interface RemoteDiskUsage {
@@ -47,6 +53,9 @@ interface Remote {
   type?: string;
   remoteSpecs?: RemoteSpecs;
   diskUsage?: RemoteDiskUsage;
+  syncJobID?: number;
+  isOnSync?: boolean | "error";
+
   mounted?: boolean | string;
 }
 
@@ -67,6 +76,17 @@ interface TransferFile {
   speed: number;
   speedAvg: number;
   srcFs: string;
+}
+
+interface ActiveJob {
+  jobid: number;
+  job_type: string;
+  source: string;
+  destination: string;
+  start_time: string;
+  status: string;
+  remote_name: string;
+  stats: any;
 }
 
 interface SyncStats {
@@ -94,11 +114,33 @@ interface SyncStats {
   transfers: number;
 }
 
-// Pipes
+@Pipe({ name: "formatTime", standalone: true })
+export class FormatTimePipe implements PipeTransform {
+  transform(seconds: number): string {
+    if (isNaN(seconds) || seconds <= 0) return "-";
+
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    const parts = [];
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0 || hours > 0) parts.push(`${minutes}m`);
+    parts.push(`${secs}s`);
+
+    return parts.join(" ");
+  }
+}
+
 @Pipe({ name: "filesize", standalone: true })
 export class FileSizePipe implements PipeTransform {
-  transform(bytes: number = 0, precision: number = 2): string {
-    if (isNaN(parseFloat(String(bytes))) || !isFinite(bytes)) return "0 B";
+  transform(
+    bytes: number = 0,
+    precision: number = 2,
+    mode: "size" | "speed" = "size"
+  ): string {
+    if (isNaN(parseFloat(String(bytes))) || !isFinite(bytes))
+      return mode === "speed" ? "0 B/s" : "0 B";
 
     const units = ["B", "KB", "MB", "GB", "TB"];
     let unitIndex = 0;
@@ -108,25 +150,9 @@ export class FileSizePipe implements PipeTransform {
       unitIndex++;
     }
 
-    return `${bytes.toFixed(precision)} ${units[unitIndex]}`;
-  }
-}
-
-@Pipe({ name: "formatTime", standalone: true })
-export class FormatTimePipe implements PipeTransform {
-  transform(seconds: number): string {
-    if (isNaN(seconds)) return "";
-
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${secs}s`;
-    }
-    return `${secs}s`;
+    return `${bytes.toFixed(precision)} ${units[unitIndex]}${
+      mode === "speed" ? "/s" : ""
+    }`;
   }
 }
 
@@ -144,7 +170,8 @@ export class FormatTimePipe implements PipeTransform {
     MatChipsModule,
     MatButtonModule,
     MatTabsModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatProgressSpinnerModule,
   ],
   templateUrl: "./sync-detail.component.html",
   styleUrls: ["./sync-detail.component.scss"],
@@ -157,10 +184,39 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     existingConfig?: any;
   }>();
 
+  @Output() openInFiles = new EventEmitter<string>();
+  @Output() startSync = new EventEmitter<string>();
+  @Output() stopSync = new EventEmitter<string>();
+
+  stats: SyncStats = {
+    bytes: 0,
+    checks: 0,
+    deletedDirs: 0,
+    deletes: 0,
+    elapsedTime: 0,
+    errors: 0,
+    eta: 0,
+    fatalError: false,
+    lastError: "",
+    renames: 0,
+    retryError: false,
+    serverSideCopies: 0,
+    serverSideCopyBytes: 0,
+    serverSideMoveBytes: 0,
+    serverSideMoves: 0,
+    speed: 0,
+    totalBytes: 0,
+    totalChecks: 0,
+    totalTransfers: 0,
+    transferTime: 0,
+    transferring: [],
+    transfers: 0,
+  };
+
   @ViewChild("speedChart") speedChartRef!: ElementRef;
   @ViewChild("progressChart") progressChartRef!: ElementRef;
 
-  isSyncing = true;
+  // isSyncing = false;
   lastSyncTime = new Date();
   dryRun = false;
 
@@ -177,190 +233,12 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     { key: "filter", title: "Filter Options", icon: "filter" },
   ];
 
-  // Mock data
-  stats: SyncStats = {
-    bytes: 41664894,
-    checks: 32,
-    deletedDirs: 0,
-    deletes: 0,
-    elapsedTime: 909.680364148,
-    errors: 12,
-    eta: 14628,
-    fatalError: false,
-    lastError: "multi-thread copy: failed to write chunk: context canceled",
-    renames: 0,
-    retryError: true,
-    serverSideCopies: 0,
-    serverSideCopyBytes: 0,
-    serverSideMoveBytes: 0,
-    serverSideMoves: 0,
-    speed: 841728.3913165091,
-    totalBytes: 12354661185,
-    totalChecks: 32,
-    totalTransfers: 8,
-    transferTime: 25.96935682,
-    transferring: [
-      {
-        bytes: 3014656,
-        dstFs: "/home/user/Documents/Google",
-        eta: 1222,
-        group: "job/5",
-        name: "MEZUNIYET.zip",
-        percentage: 0,
-        size: 463656164,
-        speed: 485648.93327225564,
-        speedAvg: 376831.9693976102,
-        srcFs: "Google Drive:",
-      },
-      {
-        bytes: 126976,
-        dstFs: "/home/user/Documents/Google",
-        eta: 161,
-        group: "job/5",
-        name: "University/Project.pdf",
-        percentage: 1,
-        size: 6968381,
-        speed: 38458.51027742036,
-        speedAvg: 42324.83408845396,
-        srcFs: "Google Drive:",
-      },
-      {
-        bytes: 3014656,
-        dstFs: "/home/user/Documents/Google",
-        eta: 758,
-        group: "job/5",
-        name: "University/Presentation.mp4",
-        percentage: 0,
-        size: 329761503,
-        speed: 483429.0395659025,
-        speedAvg: 430665.35153259535,
-        srcFs: "Google Drive:",
-      },
-      {
-        bytes: 3014656,
-        dstFs: "/home/user/Documents/Google",
-        eta: 758,
-        group: "job/5",
-        name: "University/Presentation.mp4",
-        percentage: 0,
-        size: 329761503,
-        speed: 483429.0395659025,
-        speedAvg: 430665.35153259535,
-        srcFs: "Google Drive:",
-      },
-      {
-        bytes: 3014656,
-        dstFs: "/home/user/Documents/Google",
-        eta: 758,
-        group: "job/5",
-        name: "University/Presentation.mp4",
-        percentage: 0,
-        size: 329761503,
-        speed: 483429.0395659025,
-        speedAvg: 430665.35153259535,
-        srcFs: "Google Drive:",
-      },
-      {
-        bytes: 3014656,
-        dstFs: "/home/user/Documents/Google",
-        eta: 758,
-        group: "job/5",
-        name: "University/Presentation.mp4",
-        percentage: 0,
-        size: 329761503,
-        speed: 483429.0395659025,
-        speedAvg: 430665.35153259535,
-        srcFs: "Google Drive:",
-      },
-      {
-        bytes: 3014656,
-        dstFs: "/home/user/Documents/Google",
-        eta: 758,
-        group: "job/5",
-        name: "University/Presentation.mp4",
-        percentage: 0,
-        size: 329761503,
-        speed: 483429.0395659025,
-        speedAvg: 430665.35153259535,
-        srcFs: "Google Drive:",
-      },
-      {
-        bytes: 3014656,
-        dstFs: "/home/user/Documents/Google",
-        eta: 758,
-        group: "job/5",
-        name: "University/Presentation.mp4",
-        percentage: 0,
-        size: 329761503,
-        speed: 483429.0395659025,
-        speedAvg: 430665.35153259535,
-        srcFs: "Google Drive:",
-      },
-      {
-        bytes: 3014656,
-        dstFs: "/home/user/Documents/Google",
-        eta: 758,
-        group: "job/5",
-        name: "University/Presentation.mp4",
-        percentage: 0,
-        size: 329761503,
-        speed: 483429.0395659025,
-        speedAvg: 430665.35153259535,
-        srcFs: "Google Drive:",
-      },
-      {
-        bytes: 3014656,
-        dstFs: "/home/user/Documents/Google",
-        eta: 758,
-        group: "job/5",
-        name: "University/Presentation.mp4",
-        percentage: 0,
-        size: 329761503,
-        speed: 483429.0395659025,
-        speedAvg: 430665.35153259535,
-        srcFs: "Google Drive:",
-      },
-      {
-        bytes: 3014656,
-        dstFs: "/home/user/Documents/Google",
-        eta: 758,
-        group: "job/5",
-        name: "University/Presentation.mp4",
-        percentage: 0,
-        size: 329761503,
-        speed: 483429.0395659025,
-        speedAvg: 430665.35153259535,
-        srcFs: "Google Drive:",
-      },
-      {
-        bytes: 3014656,
-        dstFs: "/home/user/Documents/Google",
-        eta: 758,
-        group: "job/5",
-        name: "University/Presentation.mp4",
-        percentage: 0,
-        size: 329761503,
-        speed: 483429.0395659025,
-        speedAvg: 430665.35153259535,
-        srcFs: "Google Drive:",
-      },
-      {
-        bytes: 262144,
-        dstFs: "/home/user/Documents/Google",
-        eta: 11,
-        group: "job/5",
-        name: "University/Thesis.docx",
-        percentage: 28,
-        size: 922016,
-        speed: 52511.59117144923,
-        speedAvg: 57343.118438488455,
-        srcFs: "Google Drive:",
-      },
-    ],
-    transfers: 4,
-  };
-
-  constructor(public iconService: IconService) {
+  constructor(
+    private rcloneService: RcloneService,
+    public iconService: IconService,
+    private ngZone: NgZone,
+    private cdr: ChangeDetectorRef
+  ) {
     Chart.register(...registerables);
   }
 
@@ -369,21 +247,177 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     this.simulateLiveData();
   }
 
-  ngOnDestroy(): void {
-    this.cleanUp();
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes["selectedRemote"] && this.selectedRemote) {
+      // Always update currentJobId when selectedRemote changes
+      this.currentJobId = this.selectedRemote.syncJobID;
+      this.resetHistory();
+      this.cdr.markForCheck();
+    }
   }
 
   toggleDryRun(): void {
     this.dryRun = !this.dryRun;
   }
 
-  toggleSync(): void {
-    this.isSyncing = !this.isSyncing;
-    if (this.isSyncing) {
-      this.simulateLiveData();
-    } else {
-      this.clearDataInterval();
+  getStatsForJob(jobid: number): Observable<SyncStats | null> {
+    return this.rcloneService.activeJobs$.pipe(
+      map((jobs) => {
+        const job = jobs.find((j) => j.jobid === jobid);
+        return job ? job.stats : null;
+      })
+    );
+  }
+
+  private jobSubscription?: Subscription;
+  currentJobId?: number;
+
+  async ngOnInit(): Promise<void> {
+    // Initialize with current job ID if sync is active
+    if (this.selectedRemote?.isOnSync) {
+      this.currentJobId = this.selectedRemote.syncJobID;
     }
+
+    // Subscribe to active jobs updates
+    this.jobSubscription = this.rcloneService.activeJobs$.subscribe((jobs) => {
+      if (!this.selectedRemote) return;
+
+      const job = jobs.find(
+        (j) =>
+          j.remote_name === this.selectedRemote?.remoteSpecs?.name &&
+          j.status === "running"
+      );
+
+      if (job) {
+        this.currentJobId = job.jobid;
+        this.updateStatsFromJob(job);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.jobSubscription?.unsubscribe();
+    this.cleanUp();
+  }
+
+  get transferSummary(): { total: number; completed: number; active: number } {
+    return {
+      total: this.stats.totalTransfers || 0,
+      completed: (this.stats.totalTransfers || 0) - (this.stats.transfers || 0),
+      active: this.stats.transferring?.length || 0,
+    };
+  }
+
+  get hasErrors(): boolean {
+    return this.stats.errors > 0 || this.stats.fatalError;
+  }
+
+  get errorSummary(): string {
+    if (this.stats.fatalError)
+      return this.stats.lastError || "Fatal error occurred";
+    if (this.stats.errors > 0) return `${this.stats.errors} error(s) occurred`;
+    return "";
+  }
+
+  async toggleSync(): Promise<void> {
+    if (!this.selectedRemote) return;
+
+    this.isLoading = true;
+    try {
+      if (this.selectedRemote.isOnSync) {
+        await this.stopSync.emit(this.selectedRemote.remoteSpecs?.name || "");
+      } else {
+        await this.startSync.emit(this.selectedRemote.remoteSpecs?.name || "");
+        // Set currentJobId after starting sync
+        this.currentJobId = this.selectedRemote.syncJobID;
+      }
+    } catch (error) {
+      this.errorMessage =
+        error instanceof Error ? error.message : "Failed to toggle sync";
+    } finally {
+      this.isLoading = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  isLoading = false;
+  errorMessage = "";
+  private updateStatsFromJob(job: ActiveJob): void {
+    this.ngZone.run(() => {
+      if (job.stats) {
+        const updatedStats = {
+          ...job.stats,
+          transferring:
+            job.stats.transferring?.map(
+              (file: { size: number; bytes: number }) => ({
+                ...file,
+                percentage:
+                  file.size > 0
+                    ? Math.min(100, Math.round((file.bytes / file.size) * 100))
+                    : 0,
+              })
+            ) || [],
+        };
+
+        this.stats = updatedStats;
+
+        if (job.stats.fatalError) {
+          this.selectedRemote = {
+            ...this.selectedRemote,
+            isOnSync: "error",
+          };
+        }
+        this.updateChartData();
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private getSpeedUnitAndValue(speedInBps: number): {
+    value: number;
+    unit: string;
+  } {
+    const units = ["B/s", "KB/s", "MB/s", "GB/s"];
+    let speed = speedInBps;
+    let unitIndex = 0;
+
+    while (speed >= 1024 && unitIndex < units.length - 1) {
+      speed /= 1024;
+      unitIndex++;
+    }
+
+    return {
+      value: speed,
+      unit: units[unitIndex],
+    };
+  }
+
+  private simulateLiveData(): void {
+    this.clearDataInterval();
+
+    this.dataInterval = setInterval(() => {
+      if (!this.selectedRemote?.isOnSync || !this.currentJobId) {
+        console.log("No active sync or missing job ID");
+        return;
+      }
+
+      this.rcloneService
+        .getJobStatus(this.currentJobId)
+        .then((job) => {
+          if (!job) {
+            console.warn("No job data received for ID:", this.currentJobId);
+            return;
+          }
+          this.ngZone.run(() => {
+            console.log("Job data received:", job);
+            this.updateStatsFromJob(job);
+            console.log("Job stats updated:", job.stats);
+          });
+        })
+        .catch((error) => {
+          console.error("Error fetching job status:", error);
+        });
+    }, 1000);
   }
 
   triggerOpenRemoteConfig(editTarget?: string, existingConfig?: any): void {
@@ -409,13 +443,22 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
   hasSettings(sectionKey: string): boolean {
     return Object.keys(this.getRemoteSettings(sectionKey)).length > 0;
   }
+  private resetHistory(): void {
+    this.progressHistory = [];
+    this.speedHistory = [];
+  }
+
+  getFormattedSpeed(): string {
+    const { value, unit } = this.getSpeedUnitAndValue(this.stats.speed);
+    return `${value.toFixed(2)} ${unit}`;
+  }
 
   private initCharts(): void {
     this.speedChart = this.createChart(
       this.speedChartRef.nativeElement,
       "Transfer Speed",
       "#4285F4",
-      "Speed (bytes/s)"
+      "Speed (B/s)"
     );
 
     this.progressChart = this.createChart(
@@ -469,56 +512,27 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     return value !== null && typeof value === "object" && !Array.isArray(value);
   }
 
-  private simulateLiveData(): void {
-    this.clearDataInterval();
-    this.updateChartData();
-
-    this.dataInterval = setInterval(() => {
-      if (!this.isSyncing) return;
-
-      this.updateStats();
-      this.updateChartData();
-    }, 1000);
-  }
-
-  private updateStats(): void {
-    // Update speed with random fluctuation
-    this.stats.speed = this.stats.speed * (0.9 + Math.random() * 0.2);
-
-    // Update transferred bytes
-    this.stats.bytes = Math.min(
-      this.stats.totalBytes,
-      this.stats.bytes + this.stats.speed
-    );
-
-    // Update transferring files
-    this.stats.transferring.forEach((file) => {
-      if (file.percentage < 100) {
-        file.bytes = Math.min(
-          file.size,
-          file.bytes + file.speed * (0.8 + Math.random() * 0.4)
-        );
-        file.percentage = Math.round((file.bytes / file.size) * 100);
-        file.speed = file.speed * (0.9 + Math.random() * 0.2);
-      }
-    });
-
-    // Update ETA
-    if (this.stats.speed > 0) {
-      this.stats.eta =
-        (this.stats.totalBytes - this.stats.bytes) / this.stats.speed;
-    }
-  }
-
   private updateChartData(): void {
-    // Update speed chart
-    this.speedHistory.push(this.stats.speed);
+    const speedData = this.getSpeedUnitAndValue(this.stats.speed);
+    const speedInSelectedUnit = speedData.value;
+
+    this.speedHistory.push(speedInSelectedUnit);
     if (this.speedHistory.length > 30) this.speedHistory.shift();
+
     this.speedChart.data.datasets[0].data = [...this.speedHistory];
+
+    const yScale = this.speedChart.options.scales?.["y"] as any;
+    if (yScale?.title) {
+      yScale.title.text = `Speed (${speedData.unit})`;
+    }
+
     this.speedChart.update();
 
-    // Update progress chart
-    const progress = (this.stats.bytes / this.stats.totalBytes) * 100;
+    const progress =
+      this.stats.totalBytes > 0
+        ? Math.min(100, (this.stats.bytes / this.stats.totalBytes) * 100)
+        : 0;
+
     this.progressHistory.push(progress);
     if (this.progressHistory.length > 30) this.progressHistory.shift();
     this.progressChart.data.datasets[0].data = [...this.progressHistory];
@@ -558,7 +572,7 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     this.progressChart?.destroy();
   }
 
-    get syncDestination(): string {
+  get syncDestination(): string {
     return this.remoteSettings?.["syncConfig"]?.["dest"] || "Need to set!";
   }
 
@@ -569,5 +583,4 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
       (this.remoteSettings?.["syncConfig"]?.["source"] || "")
     );
   }
-
 }

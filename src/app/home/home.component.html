@@ -74,12 +74,24 @@
 
     <!-- Overview Components -->
     <ng-container *ngIf="remotes.length > 0 && !selectedRemote && !isLoading">
-      <app-mount-overview *ngIf="currentTab === 'mount'" [iconService]="iconService" [remotes]="remotes"
+      <!-- <app-mount-overview *ngIf="currentTab === 'mount'" [iconService]="iconService" [remotes]="remotes"
         (remoteSelected)="selectRemote($event)" (mountRemote)="mountRemote($event)"
         (openInFiles)="openRemoteInFiles($event)">
       </app-mount-overview>
 
-      <app-sync-overview *ngIf="currentTab === 'sync'"></app-sync-overview>
+      <app-sync-overview *ngIf="currentTab === 'sync'" [iconService]="iconService" [remotes]="remotes"
+        (remoteSelected)="selectRemote($event)" (startSync)="startSync($event)"
+        (openInFiles)="openRemoteInFiles($event)"></app-sync-overview> -->
+      <app-mount-overview [mode]="currentTab" [iconService]="iconService" [remotes]="remotes"
+        (remoteSelected)="selectRemote($event)"
+        (primaryAction)="currentTab === 'mount' ? mountRemote($event) : startSync($event)"
+        (openInFiles)="openRemoteInFiles($event)" [actionInProgress]="actionInProgress">
+      </app-mount-overview>
+
+      <!-- <app-mount-overview *ngIf="currentTab === 'sync'" [mode]="'sync'" [iconService]="iconService" [remotes]="remotes"
+        (remoteSelected)="selectRemote($event)" (primaryAction)="startSync($event)"
+        (openInFiles)="openRemoteInFiles($event)" [actionInProgress]="actionInProgress">
+      </app-mount-overview> -->
       <app-copy-overview *ngIf="currentTab === 'copy'"></app-copy-overview>
       <app-jobs-overview *ngIf="currentTab === 'jobs'"></app-jobs-overview>
     </ng-container>
@@ -95,7 +107,9 @@
 
       <app-sync-detail *ngIf="currentTab === 'sync'" [selectedRemote]="selectedRemote"
         [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
-        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"></app-sync-detail>
+        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
+        (startSync)="startSync($event)" (stopSync)="stopSync($event)"></app-sync-detail>
+
       <app-copy-detail *ngIf="currentTab === 'copy'" [selectedRemote]="selectedRemote"></app-copy-detail>
       <app-job-detail *ngIf="currentTab === 'jobs'" [selectedRemote]="selectedRemote"></app-job-detail>
     </ng-container>

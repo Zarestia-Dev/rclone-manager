@@ -58,11 +58,11 @@
               height: 100%;
               transition: width 0.5s ease-in-out;
   
-              &.mounted-bar {
+              &.active-bar {
                 background-color: var(--primary-color);
               }
   
-              &.unmounted-bar {
+              &.inactive-bar {
                 background-color: var(--purple);
               }
   
@@ -91,11 +91,11 @@
               }
             }
   
-            .mounted {
+            .active {
               background-color: var(--primary-color);
             }
-  
-            .unmounted {
+
+            .inactive {
               background-color: var(--purple);
             }
   

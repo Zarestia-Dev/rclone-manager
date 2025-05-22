@@ -12,7 +12,7 @@
     <mat-tab label="Monitoring">
 
       <div class="sync-monitor">
-        <mat-card class="sync-control-card" [class.syncing]="isSyncing">
+        <mat-card class="sync-control-card" [class.syncing]="selectedRemote.isOnSync">
           <!-- Top section: Sync Paths -->
           <div class="sync-path-section">
             <div class="sync-path">
@@ -40,9 +40,14 @@
           <!-- Bottom section: Status + Controls -->
           <div class="sync-footer">
             <div class="sync-status">
-              <div class="status-indicator" [class.active]="isSyncing" [class.paused]="!isSyncing">
-                <mat-icon [svgIcon]="isSyncing ? 'refresh' : 'pause'"></mat-icon>
-                <span>{{isSyncing ? 'Syncing' : 'Paused'}}</span>
+              <div class="status-indicator" [class.active]="selectedRemote.isOnSync"
+                [class.error]="selectedRemote.isOnSync === 'error'">
+                <mat-icon
+                  [svgIcon]="selectedRemote.isOnSync === 'error' ? 'error' : (selectedRemote.isOnSync ? 'refresh' : 'pause')"></mat-icon>
+                <span>
+                  {{ selectedRemote.isOnSync === 'error' ? 'Error' : (selectedRemote.isOnSync ? 'Syncing' : 'Paused') }}
+                </span>
+                <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
               </div>
               <div class="last-sync" *ngIf="lastSyncTime">
                 Last sync: {{lastSyncTime | date:'medium'}}
@@ -50,16 +55,16 @@
             </div>
 
             <div class="sync-controls">
-              <mat-slide-toggle class="dry-run-toggle" [disabled]="isSyncing" (change)="toggleDryRun()">
+              <mat-slide-toggle class="dry-run-toggle" [disabled]="selectedRemote.isOnSync" (change)="toggleDryRun()">
                 <span>
                   <mat-icon [svgIcon]="dryRun ? 'eye' : 'eye-slash'"></mat-icon>
                   Dry Run
                 </span>
               </mat-slide-toggle>
 
-              <button mat-flat-button [color]="isSyncing ? 'warn' : 'primary'" (click)="toggleSync()">
-                <mat-icon [svgIcon]="isSyncing ? 'pause' : 'play'"></mat-icon>
-                {{isSyncing ? 'Stop Sync' : 'Start Sync'}}
+              <button mat-flat-button [color]="selectedRemote.isOnSync ? 'warn' : 'primary'" (click)="toggleSync()">
+                <mat-icon [svgIcon]="selectedRemote.isOnSync ? 'pause' : 'play'"></mat-icon>
+                {{selectedRemote.isOnSync ? 'Stop Sync' : 'Start Sync'}}
               </button>
             </div>
           </div>
@@ -75,12 +80,12 @@
             <div class="stat-label">Total Size</div>
           </div>
           <div class="stat-card">
-            <div class="stat-value">{{stats.speed | filesize}}/s</div>
+            <div class="stat-value">{{getFormattedSpeed()}}</div>
             <div class="stat-label">Speed</div>
           </div>
           <div class="stat-card">
             <div class="stat-value">{{stats.eta | formatTime}}</div>
-            <div class="stat-label">ETA</div>
+            <div class="stat-label">Total ETA</div>
           </div>
           <div class="stat-card">
             <div class="stat-value">{{stats.errors}}</div>
@@ -104,9 +109,9 @@
                 <td class="filename">{{file.name}}</td>
                 <td class="progress">
                   <div class="progress-bar">
-                    <div [style.width.%]="file.percentage"></div>
+                    <div [style.width.%]="file.percentage || 100"></div>
                   </div>
-                  <span>{{file.percentage}}%</span>
+                  <span>{{ (file.percentage || 100) }}%</span>
                 </td>
                 <td class="speed">{{file.speed | filesize}}/s</td>
                 <td class="size">{{file.size | filesize}}</td>

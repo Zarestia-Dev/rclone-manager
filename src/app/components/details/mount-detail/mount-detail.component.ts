@@ -72,8 +72,7 @@ export class MountDetailComponent {
   @Input() selectedRemote: Remote | null = null;
   @Input() iconService: any; // Consider creating an interface for this
   @Input() remoteSettings: RemoteSettings = {};
-  @Input() actionInProgress: "mount" | "unmount" | "open" | null = null;
-
+  @Input() actionInProgress: "mount" | "unmount" | "sync" | "stop" | "open" | null = null;
   @Output() openInFiles = new EventEmitter<string>();
   @Output() mountRemote = new EventEmitter<string>();
   @Output() unmountRemote = new EventEmitter<string>();

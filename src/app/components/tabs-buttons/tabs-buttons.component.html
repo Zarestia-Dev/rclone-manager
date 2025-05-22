@@ -2,7 +2,7 @@
     <button mat-icon-button matTooltip="Mount" (click)="setTab('mount')" [class.selected]="currentTab === 'mount'">
         <mat-icon svgIcon="mount"></mat-icon>
     </button>
-    <button mat-icon-button matTooltip="Sync" disabled="true" (click)="setTab('sync')" [class.selected]="currentTab === 'sync'">
+    <button mat-icon-button matTooltip="Sync" (click)="setTab('sync')" [class.selected]="currentTab === 'sync'">
         <mat-icon svgIcon="sync"></mat-icon>
     </button>
     <button mat-icon-button matTooltip="Copy" disabled="true" (click)="setTab('copy')" [class.selected]="currentTab === 'copy'">

@@ -1,5 +1,5 @@
 use chrono::Utc;
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use serde_json::{json, Value};
 use std::{
     collections::HashMap,
@@ -14,8 +14,8 @@ use tokio::{sync::Mutex, time::sleep};
 use crate::{
     core::check_binaries::read_rclone_path,
     rclone::api::state::{
-        clear_logs_for_remote, get_cached_mounted_remotes, RemoteError, RemoteLogEntry,
-        ERROR_CACHE, RCLONE_STATE,
+        clear_logs_for_remote, get_cached_mounted_remotes, ActiveJob, RemoteError, RemoteLogEntry,
+        ERROR_CACHE, JOB_CACHE, RCLONE_STATE,
     },
     RcloneState,
 };
@@ -420,7 +420,6 @@ pub async fn mount_remote(
         "_async": true,
     });
 
-
     if let Some(opts) = mount_options {
         payload["mountOpt"] = json!(opts);
     }
@@ -662,7 +661,9 @@ pub async fn start_sync(
     sync_options: Option<HashMap<String, Value>>,
     filter_options: Option<HashMap<String, Value>>,
     state: State<'_, RcloneState>,
-) -> Result<String, String> {
+) -> Result<u64, String> {
+    use serde_json::{Map, Value};
+
     log_operation(
         "info",
         None,
@@ -674,48 +675,49 @@ pub async fn start_sync(
     )
     .await;
 
-    let mut query = vec![
-        ("srcFs", source),
-        ("dstFs", dest),
-        ("_async", "true".to_string()),
-    ];
+    // Construct the JSON body
+    let mut body = Map::new();
+    body.insert("srcFs".to_string(), Value::String(source.clone()));
+    body.insert("dstFs".to_string(), Value::String(dest.clone()));
+    body.insert("_async".to_string(), Value::Bool(true));
 
     if let Some(opts) = sync_options {
-        query.push((
-            "_config",
-            serde_json::to_string(&opts).map_err(|e| e.to_string())?,
-        ));
+        body.insert(
+            "_config".to_string(),
+            Value::Object(opts.into_iter().collect()),
+        );
     }
 
     if let Some(filters) = filter_options {
-        query.push((
-            "_filter",
-            serde_json::to_string(&filters).map_err(|e| e.to_string())?,
-        ));
+        body.insert(
+            "_filter".to_string(),
+            Value::Object(filters.into_iter().collect()),
+        );
     }
 
+    debug!("Sync request body: {:#?}", body);
+
     let url = format!("{}/sync/sync", RCLONE_STATE.get_api().0);
-    let query_str = serde_urlencoded::to_string(&query).map_err(|e| e.to_string())?;
 
     let response = state
         .client
         .post(&url)
-        .query(&[("", &query_str)])
+        .json(&Value::Object(body)) // send JSON body
         .timeout(Duration::from_secs(30))
         .send()
         .await
         .map_err(|e| format!("Request failed: {}", e))?;
 
     let status = response.status();
-    let body = response.text().await.unwrap_or_default();
+    let body_text = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {}: {}", status, body);
+        let error = format!("HTTP {}: {}", status, body_text);
         let _ = log_error(
             None,
             "start_sync",
             error.clone(),
-            Some(json!({"response": body})),
+            Some(json!({"response": body_text})),
         )
         .await;
         return Err(error);
@@ -723,11 +725,11 @@ pub async fn start_sync(
 
     #[derive(serde::Deserialize)]
     struct JobResponse {
-        jobid: String,
+        jobid: u64,
     }
 
     let job: JobResponse =
-        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
+        serde_json::from_str(&body_text).map_err(|e| format!("Failed to parse response: {}", e))?;
 
     log_operation(
         "info",
@@ -737,10 +739,62 @@ pub async fn start_sync(
     )
     .await;
 
+    let jobid = job.jobid;
+    JOB_CACHE
+        .add_job(ActiveJob {
+            jobid,
+            job_type: "sync".to_string(),
+            remote_name: source.split(':').next().unwrap_or("").to_string(),
+            source: source.clone(),
+            destination: dest.clone(),
+            start_time: Utc::now(),
+            status: "running".to_string(),
+            stats: None,
+        })
+        .await;
+
+    // Start monitoring the job
+    let app_clone = app.clone();
+    let client = state.client.clone();
+    tauri::async_runtime::spawn(async move {
+        monitor_job(jobid, app_clone, client).await;
+    });
+
     app.emit("sync_job_started", &job.jobid)
         .map_err(|e| format!("Failed to emit event: {}", e))?;
 
     Ok(job.jobid)
+}
+
+/// Stop a running job
+#[tauri::command]
+pub async fn stop_job(jobid: u64, state: State<'_, RcloneState>) -> Result<(), String> {
+    let url = format!("{}/job/stop", RCLONE_STATE.get_api().0);
+    let payload = json!({ "jobid": jobid });
+
+    let response = state
+        .client
+        .post(&url)
+        .timeout(Duration::from_secs(10))
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        let error = format!("HTTP {}: {}", status, body);
+        error!("❌ Failed to stop job {}: {}", jobid, error);
+        return Err(error);
+    }
+
+    // Remove job from cache after stopping
+    JOB_CACHE.remove_job(jobid).await.ok();
+
+    info!("✅ Stopped job {}", jobid);
+    Ok(())
 }
 
 /// Start a copy operation
@@ -831,6 +885,104 @@ pub async fn start_copy(
         .map_err(|e| format!("Failed to emit event: {}", e))?;
 
     Ok(job.jobid)
+}
+
+async fn monitor_job(jobid: u64, app: AppHandle, client: reqwest::Client) {
+    let job_status_url = format!("{}/job/status", RCLONE_STATE.get_api().0);
+    let stats_url = format!("{}/core/stats", RCLONE_STATE.get_api().0);
+
+    loop {
+        // Check job status
+        let status_res = client
+            .post(&job_status_url)
+            .json(&json!({ "jobid": jobid }))
+            .timeout(Duration::from_secs(10))
+            .send()
+            .await;
+
+        // Get stats
+        let stats_res = client
+            .post(&stats_url)
+            .json(&json!({ "jobid": jobid }))
+            .timeout(Duration::from_secs(10))
+            .send()
+            .await;
+
+        if let Some(job) = JOB_CACHE.get_job(jobid).await {
+            if job.status == "stopped" {
+                break;
+            }
+        }
+
+        match (status_res, stats_res) {
+            (Ok(status_response), Ok(stats_response)) => {
+                let status = status_response.status();
+                let status_body = status_response.text().await.unwrap_or_default();
+
+                let stats_body = stats_response.text().await.unwrap_or_default();
+
+                if !status.is_success() {
+                    if status == 500 && status_body.contains("job not found") {
+                        // Job completed or failed
+                        let job_completed = JOB_CACHE
+                            .get_job(jobid)
+                            .await
+                            .map(|j| j.status == "completed" || j.status == "failed")
+                            .unwrap_or(true);
+
+                        if job_completed {
+                            break;
+                        }
+                    }
+                    continue;
+                }
+
+                // Update job stats in cache
+                if let Ok(stats) = serde_json::from_str::<Value>(&stats_body) {
+                    let _ = JOB_CACHE.update_job_stats(jobid, stats).await;
+                }
+
+                // Emit update to frontend
+                let _ = app.emit(
+                    "job_update",
+                    json!({
+                        "jobid": jobid,
+                        "status": status_body,
+                        "stats": stats_body
+                    }),
+                );
+
+                // Check if job is finished
+                let job_status: Value = match serde_json::from_str(&status_body) {
+                    Ok(v) => v,
+                    Err(_) => continue,
+                };
+
+                if job_status
+                    .get("finished")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false)
+                {
+                    let success = job_status
+                        .get("success")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    let _ = JOB_CACHE.complete_job(jobid, success).await;
+                    let _ = app.emit(
+                        "job_completed",
+                        json!({
+                            "jobid": jobid,
+                            "success": success
+                        }),
+                    );
+                    break;
+                }
+            }
+            _ => {}
+        }
+
+        sleep(Duration::from_secs(1)).await;
+    }
 }
 
 /// Clean up OAuth process

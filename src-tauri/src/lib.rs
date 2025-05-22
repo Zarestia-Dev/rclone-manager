@@ -10,12 +10,9 @@ use std::{
 
 use log::{debug, error, info};
 use rclone::api::{
-    api_query::{get_fs_info, get_remote_paths},
-    engine::RcApiEngine,
-    state::{
-        clear_errors_for_remote, clear_logs_for_remote, get_cached_mounted_remotes,
-        get_remote_errors, get_remote_logs,
-    },
+    api_command::stop_job, api_query::{get_fs_info, get_remote_paths}, engine::RcApiEngine, state::{
+        clear_errors_for_remote, clear_logs_for_remote, get_active_jobs, get_cached_mounted_remotes, get_job_status, get_remote_errors, get_remote_logs
+    }
 };
 use serde_json::json;
 use tauri::{Emitter, Manager, Theme, WindowEvent};
@@ -361,6 +358,10 @@ pub fn run() {
             get_remote_logs,
             clear_errors_for_remote,
             clear_logs_for_remote,
+            // Jobs Cache
+            get_active_jobs,
+            get_job_status,
+            stop_job
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

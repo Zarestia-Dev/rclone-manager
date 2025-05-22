@@ -1,6 +1,7 @@
+<!-- remote-overview.component.html -->
 <div class="overview">
     <div class="remote-header">
-        <h2>Mount Overview</h2>
+        <h2>{{ title }}</h2>
     </div>
 
     <div class="info-card overview-card">
@@ -12,24 +13,20 @@
             <mat-card-content class="overview-content">
                 <strong>Remotes Status</strong>
                 <div class="remotes-bar">
-                    <div class="bar mounted-bar" 
-                         [style.width.%]="(mountedCount / remotes.length) * 100">
-                    </div>
-                    <div class="bar unmounted-bar" 
-                         [style.width.%]="(unmountedCount / remotes.length) * 100">
-                    </div>
-                    <div class="bar error-bar" 
-                         [style.width.%]="(errorCount / remotes.length) * 100">
-                    </div>
+                    <div class="bar active-bar" [style.width.%]="(activeCount / remotes.length) * 100"></div>
+                    <div class="bar inactive-bar" [style.width.%]="(inactiveCount / remotes.length) * 100"></div>
+                    <div class="bar error-bar" [style.width.%]="(errorCount / remotes.length) * 100"></div>
                 </div>
 
                 <!-- Legend -->
-                <div class="legend" *ngIf="mountedCount > 0 || unmountedCount > 0 || errorCount > 0">
-                    <div class="legend-item" *ngIf="mountedCount > 0">
-                        <span class="color-box mounted"></span>Mounted: {{ mountedCount }}
+                <div class="legend" *ngIf="activeCount > 0 || inactiveCount > 0 || errorCount > 0">
+                    <div class="legend-item" *ngIf="activeCount > 0">
+                        <span class="color-box active"></span>
+                        {{ mode === 'mount' ? 'Mounted' : 'Syncing' }}: {{ activeCount }}
                     </div>
-                    <div class="legend-item" *ngIf="unmountedCount > 0">
-                        <span class="color-box unmounted"></span>Unmounted: {{ unmountedCount }}
+                    <div class="legend-item" *ngIf="inactiveCount > 0">
+                        <span class="color-box inactive"></span>
+                        {{ mode === 'mount' ? 'Unmounted' : 'Off Sync' }}: {{ inactiveCount }}
                     </div>
                     <div class="legend-item" *ngIf="errorCount > 0">
                         <span class="color-box error"></span>Error: {{ errorCount }}
@@ -37,17 +34,16 @@
                 </div>
             </mat-card-content>
 
-            <mat-divider *ngIf="mountedCount > 0 && unmountedCount > 0"></mat-divider>
+            <mat-divider *ngIf="activeCount > 0 && inactiveCount > 0"></mat-divider>
 
-            <!-- Mounted Remotes -->
-            <mat-card-content class="mounted-remotes" *ngIf="mountedCount > 0">
+            <!-- Active Remotes -->
+            <mat-card-content class="active-remotes" *ngIf="activeCount > 0">
                 <h3>
-                    <mat-icon svgIcon="mount"></mat-icon> Mounted Remotes
+                    <mat-icon [svgIcon]="activeIcon"></mat-icon>
+                    {{ mode === 'mount' ? 'Mounted' : 'Syncing' }} Remotes
                 </h3>
                 <div class="remote-list">
-                    <div *ngFor="let remote of mountedRemotes" 
-                         class="remote-card" 
-                         (click)="selectRemote(remote)">
+                    <div class="remote-card" *ngFor="let remote of activeRemotes" (click)="selectRemote(remote)">
                         <div class="remote-content">
                             <h4 matTooltip="{{ remote.remoteSpecs.name }}">
                                 {{ remote.remoteSpecs.name }}
@@ -57,31 +53,29 @@
                                 {{ remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
-                        <button mat-raised-button 
-                                color="accent"
-                                (click)="openRemoteInFiles(remote.remoteSpecs.name); $event.stopPropagation()"
+                        <button mat-raised-button color="accent"
+                                (click)="triggerOpenInFiles(remote.remoteSpecs.name); $event.stopPropagation()"
                                 [disabled]="getActionState(remote.remoteSpecs.name) === 'open'">
-                            <mat-spinner *ngIf="getActionState(remote.remoteSpecs?.name) === 'open'"
-                                diameter="20"></mat-spinner>
-                            <mat-icon *ngIf="getActionState(remote.remoteSpecs?.name) !== 'open'"
-                                svgIcon="folder"></mat-icon>
-                            {{ getActionState(remote.remoteSpecs.name) === 'open' ? "Opening" : "Open Files" }}
+                            <mat-spinner *ngIf="getActionState(remote.remoteSpecs.name) === 'open'"
+                                        diameter="20"></mat-spinner>
+                            <mat-icon *ngIf="getActionState(remote.remoteSpecs.name) !== 'open'"
+                                    [svgIcon]="secondaryActionIcon"></mat-icon>
+                            {{ getActionState(remote.remoteSpecs.name) === 'open' ? "Opening" : secondaryActionLabel }}
                         </button>
                     </div>
                 </div>
             </mat-card-content>
 
-            <mat-divider *ngIf="unmountedCount > 0 && errorCount > 0"></mat-divider>
+            <mat-divider *ngIf="inactiveCount > 0 && errorCount > 0"></mat-divider>
 
-            <!-- Unmounted Remotes -->
-            <mat-card-content class="unmounted-remotes" *ngIf="unmountedCount > 0">
+            <!-- Inactive Remotes -->
+            <mat-card-content class="inactive-remotes" *ngIf="inactiveCount > 0">
                 <h3>
-                    <mat-icon svgIcon="circle-xmark"></mat-icon> Unmounted Remotes
+                    <mat-icon [svgIcon]="inactiveIcon"></mat-icon>
+                    {{ mode === 'mount' ? 'Unmounted' : 'Off Sync' }} Remotes
                 </h3>
                 <div class="remote-list">
-                    <div *ngFor="let remote of unmountedRemotes" 
-                         class="remote-card" 
-                         (click)="selectRemote(remote)">
+                    <div class="remote-card" *ngFor="let remote of inactiveRemotes" (click)="selectRemote(remote)">
                         <div class="remote-content">
                             <h4 matTooltip="{{ remote.remoteSpecs.name }}">
                                 {{ remote.remoteSpecs.name }}
@@ -91,15 +85,16 @@
                                 {{ remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
-                        <button mat-raised-button 
-                                color="primary"
-                                (click)="mountRemoteByFs(remote.remoteSpecs.name); $event.stopPropagation()"
-                                [disabled]="getActionState(remote.remoteSpecs.name) === 'mount'">
-                            <mat-spinner *ngIf="getActionState(remote.remoteSpecs.name) === 'mount'"
-                                diameter="20"></mat-spinner>
-                            <mat-icon *ngIf="getActionState(remote.remoteSpecs.name) !== 'mount'"
-                                svgIcon="mount"></mat-icon>
-                            {{ getActionState(remote.remoteSpecs.name) === 'mount' ? "Mounting" : "Mount" }}
+                        <button mat-raised-button color="primary"
+                                (click)="triggerPrimaryAction(remote.remoteSpecs.name); $event.stopPropagation()"
+                                [disabled]="getActionState(remote.remoteSpecs.name) === (mode === 'mount' ? 'mount' : 'sync')">
+                            <mat-spinner *ngIf="getActionState(remote.remoteSpecs.name) === (mode === 'mount' ? 'mount' : 'sync')"
+                                        diameter="20"></mat-spinner>
+                            <mat-icon *ngIf="getActionState(remote.remoteSpecs.name) !== (mode === 'mount' ? 'mount' : 'sync')"
+                                    [svgIcon]="primaryActionIcon"></mat-icon>
+                            {{ getActionState(remote.remoteSpecs.name) === (mode === 'mount' ? 'mount' : 'sync') 
+                                ? (mode === 'mount' ? 'Mounting' : 'Starting') 
+                                : primaryActionLabel }}
                         </button>
                     </div>
                 </div>
@@ -107,16 +102,14 @@
 
             <mat-divider *ngIf="errorCount > 0"></mat-divider>
 
-            <!-- Remotes with Problems -->
+            <!-- Error Remotes -->
             <mat-card-content *ngIf="errorCount > 0">
                 <h3>
                     <mat-icon svgIcon="circle-exclamation"></mat-icon>
                     Remotes with Problems
                 </h3>
                 <div class="remote-list">
-                    <div *ngFor="let remote of errorRemotes" 
-                         class="remote-card" 
-                         (click)="selectRemote(remote)">
+                    <div class="remote-card" *ngFor="let remote of errorRemotes" (click)="selectRemote(remote)">
                         <div class="remote-content">
                             <h4 matTooltip="{{ remote.remoteSpecs.name }}">
                                 {{ remote.remoteSpecs.name }}
@@ -126,9 +119,7 @@
                                 {{ remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
-                        <button mat-raised-button 
-                                class="fix" 
-                                (click)="$event.stopPropagation()">
+                        <button mat-raised-button class="fix" (click)="$event.stopPropagation()">
                             <mat-icon svgIcon="wrench"></mat-icon>
                             Fix
                         </button>
