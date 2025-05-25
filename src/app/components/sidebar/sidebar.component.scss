@@ -83,7 +83,7 @@
           margin-right: 8px;
           transition: all 0.3s ease;
 
-          &.mounted {
+          &.active {
             color: var(--primary-color);
             background-color: color-mix(
               in srgb,
@@ -92,7 +92,7 @@
             );
           }
 
-          &.not-mounted {
+          &.passive {
             color: var(--orange);
             background-color: color-mix(
               in srgb,

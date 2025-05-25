@@ -9,19 +9,15 @@
           | titlecase }}
         </p>
         <div class="remote-status">
-          <p [class.mounted]="remote.mounted" [class.not-mounted]="!remote.mounted"> <mat-icon
+          <p [class.active]="remote.mountState?.mounted" [class.passive]="!remote.mountState?.mounted"> <mat-icon
               svgIcon="mount"></mat-icon>
           </p>
-          <p class="sync">
+          <p class="sync" [class.active]="remote.syncState?.isOnSync" [class.passive]="!remote.syncState?.isOnSync">
             <mat-icon svgIcon="sync"></mat-icon>
           </p>
 
           <p class="copy">
             <mat-icon svgIcon="copy"></mat-icon>
-          </p>
-
-          <p class="jobs">
-            <mat-icon svgIcon="jobs"></mat-icon>
           </p>
         </div>
       </mat-card-content>
