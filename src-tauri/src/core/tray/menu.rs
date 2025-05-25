@@ -1,10 +1,11 @@
-use crate::rclone::api::state::{get_cached_mounted_remotes, get_cached_remotes, get_settings};
+use crate::rclone::api::state::{get_cached_mounted_remotes, get_cached_remotes, get_settings, JOB_CACHE};
 use log::{error, warn};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     AppHandle,
 };
+
 static OLD_MAX_TRAY_ITEMS: AtomicUsize = AtomicUsize::new(0);
 
 pub async fn create_tray_menu<R: tauri::Runtime>(
@@ -21,9 +22,10 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
     let handle = app.clone();
     let separator = PredefinedMenuItem::separator(&handle)?;
     let show_app_item = MenuItem::with_id(&handle, "show_app", "Show App", true, None::<&str>)?;
-    let mount_all_item = MenuItem::with_id(&handle, "mount_all", "Mount All", true, None::<&str>)?;
-    let unmount_all_item =
-        MenuItem::with_id(&handle, "unmount_all", "Unmount All", true, None::<&str>)?;
+    // let mount_all_item = MenuItem::with_id(&handle, "mount_all", "Mount All", true, None::<&str>)?;
+    let unmount_all_item = MenuItem::with_id(&handle, "unmount_all", "Unmount All", true, None::<&str>)?;
+    // let sync_all_item = MenuItem::with_id(&handle, "sync_all", "Sync All", true, None::<&str>)?;
+    let stop_all_jobs_item = MenuItem::with_id(&handle, "stop_all_jobs", "Stop All Jobs", true, None::<&str>)?;
     let quit_item = MenuItem::with_id(&handle, "quit", "Quit", true, None::<&str>)?;
 
     let remotes = get_cached_remotes().await.unwrap_or_else(|err| {
@@ -38,6 +40,8 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
             vec![]
         }
     };
+
+    let active_jobs = JOB_CACHE.get_jobs().await;
 
     let mut remote_menus = vec![];
 
@@ -55,8 +59,7 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false)
             {
-                // Check if the remote is mounted
-                // and create a submenu for it
+                // Check mount status
                 let is_mounted = mounted_remotes.iter().any(|mounted| {
                     let remote_name = remote.trim_end_matches(':');
                     let mounted_name = mounted.fs.trim_end_matches(':');
@@ -65,6 +68,11 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                         || mounted_name.starts_with(&format!("{}/", remote_name))
                         || mounted_name.starts_with(&format!("{}:", remote_name))
                 });
+
+                // Check job status
+                let active_job = active_jobs.iter().find(|job| job.remote_name == *remote);
+                let has_active_job = active_job.is_some();
+                let job_type = active_job.map(|j| j.job_type.clone()).unwrap_or_default();
 
                 let mount_status = CheckMenuItem::with_id(
                     &handle,
@@ -75,9 +83,23 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                     None::<&str>,
                 )?;
 
-                let mut submenu_items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> =
-                    vec![Box::new(mount_status)];
+                let job_status = CheckMenuItem::with_id(
+                    &handle,
+                    format!("job_status-{}", remote),
+                    if has_active_job {
+                        format!("{} in progress", job_type)
+                    } else {
+                        "No active job".to_string()
+                    },
+                    false,
+                    has_active_job,
+                    None::<&str>,
+                )?;
 
+                let mut submenu_items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> =
+                    vec![Box::new(mount_status), Box::new(job_status)];
+
+                // Mount/Unmount items
                 if is_mounted {
                     let unmount_item = MenuItem::with_id(
                         &handle,
@@ -98,6 +120,38 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                     submenu_items.push(Box::new(mount_item));
                 }
 
+                // Job control items
+                if has_active_job {
+                    let stop_job_item = MenuItem::with_id(
+                        &handle,
+                        format!("stop_job-{}", remote),
+                        "Stop Job",
+                        true,
+                        None::<&str>,
+                    )?;
+                    submenu_items.push(Box::new(stop_job_item));
+                } else {
+                    let sync_item = MenuItem::with_id(
+                        &handle,
+                        format!("sync-{}", remote),
+                        "Start Sync",
+                        true,
+                        None::<&str>,
+                    )?;
+                    // let copy_item = MenuItem::with_id(
+                    //     &handle,
+                    //     format!("copy-{}", remote),
+                    //     "Start Copy",
+                    //     true,
+                    //     None::<&str>,
+                    // )?;
+                    submenu_items.push(Box::new(sync_item));
+                    // submenu_items.push(Box::new(copy_item));
+                }
+
+                submenu_items.push(Box::new(PredefinedMenuItem::separator(&handle)?));
+
+                // Common items
                 let browse_item = MenuItem::with_id(
                     &handle,
                     format!("browse-{}", remote),
@@ -113,7 +167,6 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                     None::<&str>,
                 )?;
 
-                submenu_items.push(Box::new(PredefinedMenuItem::separator(&handle)?));
                 submenu_items.push(Box::new(browse_item));
                 submenu_items.push(Box::new(delete_item));
 
@@ -123,9 +176,15 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                     remote.clone()
                 };
 
+                // Add emoji indicators
+                let indicators = format!("{}{}",
+                    if is_mounted { "🖴" } else { "" },
+                    if has_active_job { " 🔄" } else { "" }
+                );
+
                 let remote_submenu = Submenu::with_items(
                     &handle,
-                    &format!("{} {}", name, if is_mounted { "🖴" } else { "" }),
+                    &format!("{} {}", name, indicators),
                     true,
                     &submenu_items
                         .iter()
@@ -149,8 +208,10 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                 .map(|submenu| submenu as &dyn tauri::menu::IsMenuItem<R>),
         );
         menu_items.push(&separator);
-        menu_items.push(&mount_all_item);
+        // menu_items.push(&mount_all_item);
         menu_items.push(&unmount_all_item);
+        // menu_items.push(&sync_all_item);
+        menu_items.push(&stop_all_jobs_item);
         menu_items.push(&separator);
     }
 

@@ -24,12 +24,19 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatTabsModule } from "@angular/material/tabs";
 import { IconService } from "../../../services/icon.service";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
-import { map, Observable, Subscription } from "rxjs";
+import { Subscription } from "rxjs";
 import { RcloneService } from "../../../services/rclone.service";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { MatDialog } from "@angular/material/dialog";
+import { MatProgressBarModule } from "@angular/material/progress-bar";
+import { MatFormFieldModule } from "@angular/material/form-field";
+import { FormsModule } from "@angular/forms";
+import { MatTableModule } from "@angular/material/table";
+import { MatTableDataSource } from "@angular/material/table";
+import { MatSort, MatSortModule } from "@angular/material/sort";
 
-// Interfaces
-interface RemoteDiskUsage {
+// Enhanced Interfaces with stricter typing
+interface DiskUsage {
   total_space?: string;
   used_space?: string;
   free_space?: string;
@@ -52,11 +59,14 @@ interface Remote {
   showOnTray?: boolean;
   type?: string;
   remoteSpecs?: RemoteSpecs;
-  diskUsage?: RemoteDiskUsage;
-  syncJobID?: number;
-  isOnSync?: boolean | "error";
-
-  mounted?: boolean | string;
+  mountState?: {
+    mounted?: boolean | "error";
+    diskUsage?: DiskUsage;
+  };
+  syncState?: {
+    isOnSync?: boolean | "error";
+    syncJobID?: number;
+  };
 }
 
 interface RemoteSettingsSection {
@@ -76,17 +86,21 @@ interface TransferFile {
   speed: number;
   speedAvg: number;
   srcFs: string;
+  isError?: boolean;
 }
+
+type JobType = "sync" | "copy" | "move" | "check";
+type JobStatus = "running" | "finished" | "failed";
 
 interface ActiveJob {
   jobid: number;
-  job_type: string;
+  job_type: JobType;
   source: string;
   destination: string;
   start_time: string;
-  status: string;
+  status: JobStatus;
   remote_name: string;
-  stats: any;
+  stats: SyncStats;
 }
 
 interface SyncStats {
@@ -112,6 +126,7 @@ interface SyncStats {
   transferTime: number;
   transferring: TransferFile[];
   transfers: number;
+  startTime?: string;
 }
 
 @Pipe({ name: "formatTime", standalone: true })
@@ -139,8 +154,9 @@ export class FileSizePipe implements PipeTransform {
     precision: number = 2,
     mode: "size" | "speed" = "size"
   ): string {
-    if (isNaN(parseFloat(String(bytes))) || !isFinite(bytes))
+    if (isNaN(parseFloat(String(bytes))) || !isFinite(bytes)) {
       return mode === "speed" ? "0 B/s" : "0 B";
+    }
 
     const units = ["B", "KB", "MB", "GB", "TB"];
     let unitIndex = 0;
@@ -172,66 +188,59 @@ export class FileSizePipe implements PipeTransform {
     MatTabsModule,
     MatSlideToggleModule,
     MatProgressSpinnerModule,
+    MatProgressBarModule,
+    MatFormFieldModule,
+    FormsModule,
+    MatTableModule,
+    MatSortModule,
   ],
   templateUrl: "./sync-detail.component.html",
   styleUrls: ["./sync-detail.component.scss"],
 })
 export class SyncDetailComponent implements AfterViewInit, OnDestroy {
+  dataSource = new MatTableDataSource<TransferFile>([]);
+  displayedColumns: string[] = ["name", "percentage", "speed", "size", "eta"];
+
+  @ViewChild(MatSort) sort!: MatSort;
+  // Input/Output properties
   @Input() selectedRemote: Remote | null = null;
   @Input() remoteSettings: RemoteSettings = {};
+
   @Output() openRemoteConfigModal = new EventEmitter<{
     editTarget?: string;
     existingConfig?: any;
   }>();
-
   @Output() openInFiles = new EventEmitter<string>();
   @Output() startSync = new EventEmitter<string>();
   @Output() stopSync = new EventEmitter<string>();
 
-  stats: SyncStats = {
-    bytes: 0,
-    checks: 0,
-    deletedDirs: 0,
-    deletes: 0,
-    elapsedTime: 0,
-    errors: 0,
-    eta: 0,
-    fatalError: false,
-    lastError: "",
-    renames: 0,
-    retryError: false,
-    serverSideCopies: 0,
-    serverSideCopyBytes: 0,
-    serverSideMoveBytes: 0,
-    serverSideMoves: 0,
-    speed: 0,
-    totalBytes: 0,
-    totalChecks: 0,
-    totalTransfers: 0,
-    transferTime: 0,
-    transferring: [],
-    transfers: 0,
-  };
-
+  // View children
   @ViewChild("speedChart") speedChartRef!: ElementRef;
   @ViewChild("progressChart") progressChartRef!: ElementRef;
 
-  // isSyncing = false;
-  lastSyncTime = new Date();
+  // Public properties
+  stats: SyncStats = this.getDefaultStats();
+  currentJobId?: number;
+  isLoading = false;
+  errorMessage = "";
+  lastSyncTime = "";
   dryRun = false;
 
-  // Charts
+  // Private properties
   private speedChart!: Chart;
   private progressChart!: Chart;
-  private dataInterval?: any;
+  private dataInterval?: number;
   private speedHistory: number[] = [];
   private progressHistory: number[] = [];
+  private jobSubscription?: Subscription;
 
-  // Settings
+  // Constants
   readonly remoteSettingsSections: RemoteSettingsSection[] = [
     { key: "sync", title: "Sync Options", icon: "sync" },
     { key: "filter", title: "Filter Options", icon: "filter" },
   ];
+  readonly MAX_HISTORY_LENGTH = 30;
+  readonly POLLING_INTERVAL = 1000;
 
   constructor(
     private rcloneService: RcloneService,
@@ -242,64 +251,76 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     Chart.register(...registerables);
   }
 
+  // Lifecycle hooks
   ngAfterViewInit(): void {
     this.initCharts();
-    this.simulateLiveData();
+    if (this.selectedRemote?.syncState?.isOnSync) {
+      this.simulateLiveData();
+      this.lastSyncTime = new Date().toLocaleString();
+    }
+    this.dataSource.sort = this.sort;
+  }
+
+  ngOnInit(): void {
+  console.log(this.selectedRemote);
+  
+  }
+
+  applyFilter(event: Event) {
+    const filterValue = (event.target as HTMLInputElement).value;
+    this.dataSource.filter = filterValue.trim().toLowerCase();
+
+    if (this.dataSource.paginator) {
+      this.dataSource.paginator.firstPage();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes["selectedRemote"] && this.selectedRemote) {
-      // Always update currentJobId when selectedRemote changes
-      this.currentJobId = this.selectedRemote.syncJobID;
-      this.resetHistory();
-      this.cdr.markForCheck();
+      this.handleSelectedRemoteChange();
     }
   }
 
+  ngOnDestroy(): void {
+    this.cleanUp();
+  }
+
+  // Public methods
   toggleDryRun(): void {
     this.dryRun = !this.dryRun;
   }
 
-  getStatsForJob(jobid: number): Observable<SyncStats | null> {
-    return this.rcloneService.activeJobs$.pipe(
-      map((jobs) => {
-        const job = jobs.find((j) => j.jobid === jobid);
-        return job ? job.stats : null;
-      })
-    );
-  }
-
-  private jobSubscription?: Subscription;
-  currentJobId?: number;
-
-  async ngOnInit(): Promise<void> {
-    // Initialize with current job ID if sync is active
-    if (this.selectedRemote?.isOnSync) {
-      this.currentJobId = this.selectedRemote.syncJobID;
+  triggerOpenInFiles(): void {
+    if (this.selectedRemote?.remoteSpecs?.name) {
+      this.openInFiles.emit(this.selectedRemote.remoteSpecs.name);
     }
+  }
 
-    // Subscribe to active jobs updates
-    this.jobSubscription = this.rcloneService.activeJobs$.subscribe((jobs) => {
-      if (!this.selectedRemote) return;
-
-      const job = jobs.find(
-        (j) =>
-          j.remote_name === this.selectedRemote?.remoteSpecs?.name &&
-          j.status === "running"
-      );
-
-      if (job) {
-        this.currentJobId = job.jobid;
-        this.updateStatsFromJob(job);
+  async toggleSync(): Promise<void> {
+    if (!this.selectedRemote) return;
+    this.isLoading = true;
+    try {
+      if (this.selectedRemote.syncState?.isOnSync) {
+        await this.stopSync.emit(this.selectedRemote.remoteSpecs?.name || "");
+      } else {
+        await this.startSync.emit(this.selectedRemote.remoteSpecs?.name || "");
+        this.currentJobId = this.selectedRemote.syncState?.syncJobID;
+        this.lastSyncTime = new Date().toLocaleString();
       }
-    });
+      this.errorMessage = "";
+    } catch (error) {
+      this.handleSyncError(error);
+    } finally {
+      this.isLoading = false;
+      this.cdr.markForCheck();
+    }
   }
 
-  ngOnDestroy(): void {
-    this.jobSubscription?.unsubscribe();
-    this.cleanUp();
+  triggerOpenRemoteConfig(editTarget?: string, existingConfig?: any): void {
+    this.openRemoteConfigModal.emit({ editTarget, existingConfig });
   }
 
+  // Getters
   get transferSummary(): { total: number; completed: number; active: number } {
     return {
       total: this.stats.totalTransfers || 0,
@@ -308,120 +329,47 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     };
   }
 
-  get hasErrors(): boolean {
-    return this.stats.errors > 0 || this.stats.fatalError;
-  }
-
   get errorSummary(): string {
-    if (this.stats.fatalError)
+    if (this.stats.fatalError) {
       return this.stats.lastError || "Fatal error occurred";
-    if (this.stats.errors > 0) return `${this.stats.errors} error(s) occurred`;
+    }
+    if (this.stats.errors > 0) {
+      return `${this.stats.errors} error(s) occurred`;
+    }
     return "";
   }
 
-  async toggleSync(): Promise<void> {
-    if (!this.selectedRemote) return;
-
-    this.isLoading = true;
-    try {
-      if (this.selectedRemote.isOnSync) {
-        await this.stopSync.emit(this.selectedRemote.remoteSpecs?.name || "");
-      } else {
-        await this.startSync.emit(this.selectedRemote.remoteSpecs?.name || "");
-        // Set currentJobId after starting sync
-        this.currentJobId = this.selectedRemote.syncJobID;
-      }
-    } catch (error) {
-      this.errorMessage =
-        error instanceof Error ? error.message : "Failed to toggle sync";
-    } finally {
-      this.isLoading = false;
-      this.cdr.markForCheck();
-    }
+  get syncDestination(): string {
+    return (
+      (this.remoteSettings?.["syncConfig"]?.["dest"] as string) ||
+      "Need to set!"
+    );
   }
 
-  isLoading = false;
-  errorMessage = "";
-  private updateStatsFromJob(job: ActiveJob): void {
-    this.ngZone.run(() => {
-      if (job.stats) {
-        const updatedStats = {
-          ...job.stats,
-          transferring:
-            job.stats.transferring?.map(
-              (file: { size: number; bytes: number }) => ({
-                ...file,
-                percentage:
-                  file.size > 0
-                    ? Math.min(100, Math.round((file.bytes / file.size) * 100))
-                    : 0,
-              })
-            ) || [],
-        };
-
-        this.stats = updatedStats;
-
-        if (job.stats.fatalError) {
-          this.selectedRemote = {
-            ...this.selectedRemote,
-            isOnSync: "error",
-          };
-        }
-        this.updateChartData();
-        this.cdr.markForCheck();
-      }
-    });
+  get syncSource(): string {
+    return (
+      this.selectedRemote?.remoteSpecs?.name +
+      ":/" +
+      ((this.remoteSettings?.["syncConfig"]?.["source"] as string) || "")
+    );
   }
 
-  private getSpeedUnitAndValue(speedInBps: number): {
-    value: number;
-    unit: string;
-  } {
-    const units = ["B/s", "KB/s", "MB/s", "GB/s"];
-    let speed = speedInBps;
-    let unitIndex = 0;
+  // Utility methods
+  isLocalPath(path: string): boolean {
+    if (!path) return false;
 
-    while (speed >= 1024 && unitIndex < units.length - 1) {
-      speed /= 1024;
-      unitIndex++;
-    }
+    // Check for Windows paths (C:\, D:\, etc.)
+    if (/^[a-zA-Z]:[\\/]/.test(path)) return true;
 
-    return {
-      value: speed,
-      unit: units[unitIndex],
-    };
+    // Check for Unix-like paths (/home, /Users, etc.)
+    return (
+      path.startsWith("/") || path.startsWith("~/") || path.startsWith("./")
+    );
   }
 
-  private simulateLiveData(): void {
-    this.clearDataInterval();
-
-    this.dataInterval = setInterval(() => {
-      if (!this.selectedRemote?.isOnSync || !this.currentJobId) {
-        console.log("No active sync or missing job ID");
-        return;
-      }
-
-      this.rcloneService
-        .getJobStatus(this.currentJobId)
-        .then((job) => {
-          if (!job) {
-            console.warn("No job data received for ID:", this.currentJobId);
-            return;
-          }
-          this.ngZone.run(() => {
-            console.log("Job data received:", job);
-            this.updateStatsFromJob(job);
-            console.log("Job stats updated:", job.stats);
-          });
-        })
-        .catch((error) => {
-          console.error("Error fetching job status:", error);
-        });
-    }, 1000);
-  }
-
-  triggerOpenRemoteConfig(editTarget?: string, existingConfig?: any): void {
-    this.openRemoteConfigModal.emit({ editTarget, existingConfig });
+  getFormattedSpeed(): string {
+    const { value, unit } = this.getSpeedUnitAndValue(this.stats.speed);
+    return `${value.toFixed(2)} ${unit}`;
   }
 
   isSensitiveKey(key: string): boolean {
@@ -443,14 +391,50 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
   hasSettings(sectionKey: string): boolean {
     return Object.keys(this.getRemoteSettings(sectionKey)).length > 0;
   }
-  private resetHistory(): void {
-    this.progressHistory = [];
-    this.speedHistory = [];
+
+  isObjectButNotArray(value: any): boolean {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
   }
 
-  getFormattedSpeed(): string {
-    const { value, unit } = this.getSpeedUnitAndValue(this.stats.speed);
-    return `${value.toFixed(2)} ${unit}`;
+  // Private methods
+  private getDefaultStats(): SyncStats {
+    return {
+      bytes: 0,
+      checks: 0,
+      deletedDirs: 0,
+      deletes: 0,
+      elapsedTime: 0,
+      errors: 0,
+      eta: 0,
+      fatalError: false,
+      lastError: "",
+      renames: 0,
+      retryError: false,
+      serverSideCopies: 0,
+      serverSideCopyBytes: 0,
+      serverSideMoveBytes: 0,
+      serverSideMoves: 0,
+      speed: 0,
+      totalBytes: 0,
+      totalChecks: 0,
+      totalTransfers: 0,
+      transferTime: 0,
+      transferring: [],
+      transfers: 0,
+    };
+  }
+
+  private handleSelectedRemoteChange(): void {
+    this.currentJobId = this.selectedRemote?.syncState?.syncJobID;
+    this.resetHistory();
+
+    if (this.selectedRemote?.syncState?.isOnSync) {
+      this.simulateLiveData();
+    } else {
+      this.clearDataInterval();
+    }
+
+    this.cdr.markForCheck();
   }
 
   private initCharts(): void {
@@ -480,11 +464,11 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     return new Chart(element, {
       type: "line",
       data: {
-        labels: Array(30).fill(""),
+        labels: Array(this.MAX_HISTORY_LENGTH).fill(""),
         datasets: [
           {
             label,
-            data: Array(30).fill(0),
+            data: Array(this.MAX_HISTORY_LENGTH).fill(0),
             borderColor: color,
             backgroundColor: `${color}20`,
             tension: 0.4,
@@ -508,16 +492,19 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  isObjectButNotArray(value: any): boolean {
-    return value !== null && typeof value === "object" && !Array.isArray(value);
+  private updateChartData(): void {
+    this.updateSpeedChart();
+    this.updateProgressChart();
   }
 
-  private updateChartData(): void {
+  private updateSpeedChart(): void {
     const speedData = this.getSpeedUnitAndValue(this.stats.speed);
     const speedInSelectedUnit = speedData.value;
 
     this.speedHistory.push(speedInSelectedUnit);
-    if (this.speedHistory.length > 30) this.speedHistory.shift();
+    if (this.speedHistory.length > this.MAX_HISTORY_LENGTH) {
+      this.speedHistory.shift();
+    }
 
     this.speedChart.data.datasets[0].data = [...this.speedHistory];
 
@@ -527,20 +514,134 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     }
 
     this.speedChart.update();
+  }
 
-    const progress =
-      this.stats.totalBytes > 0
-        ? Math.min(100, (this.stats.bytes / this.stats.totalBytes) * 100)
-        : 0;
+  private updateProgressChart(): void {
+    const progress = this.calculateProgress();
 
     this.progressHistory.push(progress);
-    if (this.progressHistory.length > 30) this.progressHistory.shift();
+    if (this.progressHistory.length > this.MAX_HISTORY_LENGTH) {
+      this.progressHistory.shift();
+    }
+
     this.progressChart.data.datasets[0].data = [...this.progressHistory];
     this.progressChart.update();
   }
 
+  private calculateProgress(): number {
+    return this.stats.totalBytes > 0
+      ? Math.min(100, (this.stats.bytes / this.stats.totalBytes) * 100)
+      : 0;
+  }
+
+  private getSpeedUnitAndValue(speedInBps: number): {
+    value: number;
+    unit: string;
+  } {
+    const units = ["B/s", "KB/s", "MB/s", "GB/s"];
+    let speed = speedInBps;
+    let unitIndex = 0;
+
+    while (speed >= 1024 && unitIndex < units.length - 1) {
+      speed /= 1024;
+      unitIndex++;
+    }
+
+    return { value: speed, unit: units[unitIndex] };
+  }
+
+  private simulateLiveData(): void {
+    this.clearDataInterval();
+
+    this.dataInterval = window.setInterval(() => {
+      if (!this.selectedRemote?.syncState?.isOnSync || !this.currentJobId) {
+        return;
+      }
+
+      this.fetchJobStatus();
+    }, this.POLLING_INTERVAL);
+  }
+
+  private fetchJobStatus(): void {
+    this.rcloneService
+      .getJobStatus(this.currentJobId!)
+      .then((job) => {
+        if (job) {
+          // Ensure job_type is cast to JobType
+          const typedJob = {
+            ...job,
+            job_type: job.job_type as JobType,
+          } as ActiveJob;
+          this.ngZone.run(() => this.updateStatsFromJob(typedJob));
+        }
+      })
+      .catch((error) => console.error("Error fetching job status:", error));
+  }
+
+  private updateStatsFromJob(job: ActiveJob): void {
+    if (!job.stats) return;
+
+    const updatedStats = {
+      ...job.stats,
+      transferring: this.processTransferringFiles(job.stats.transferring),
+    };
+
+    this.stats = updatedStats;
+    this.updateRemoteStatusOnError(job);
+    this.updateChartData();
+    this.dataSource.data = this.processTransferringFiles(
+      job.stats.transferring
+    );
+    this.cdr.markForCheck();
+  }
+
+  private processTransferringFiles(files: any[] = []): TransferFile[] {
+    return (files as TransferFile[]).map((file) => ({
+      ...file,
+      percentage:
+        file.size > 0
+          ? Math.min(100, Math.round((file.bytes / file.size) * 100))
+          : 0,
+      isError: file.percentage === 100 && file.bytes < file.size, // Mark as error if not fully transferred
+    }));
+  }
+
+  private updateRemoteStatusOnError(job: ActiveJob): void {
+    if (job.stats.fatalError && this.selectedRemote) {
+      this.selectedRemote = {
+        ...this.selectedRemote,
+        syncState: {
+        isOnSync: "error",
+        }
+      };
+    }
+  }
+
+  private resetHistory(): void {
+    this.progressHistory = [];
+    this.speedHistory = [];
+  }
+
+  private clearDataInterval(): void {
+    if (this.dataInterval) {
+      clearInterval(this.dataInterval);
+      this.dataInterval = undefined;
+    }
+  }
+
+  private cleanUp(): void {
+    this.clearDataInterval();
+    this.destroyCharts();
+    this.jobSubscription?.unsubscribe();
+  }
+
+  private destroyCharts(): void {
+    this.speedChart?.destroy();
+    this.progressChart?.destroy();
+  }
+
   private truncateValue(value: any, length: number): string {
-    if (value === null || value === undefined) return "";
+    if (value == null) return "";
 
     if (typeof value === "object") {
       try {
@@ -559,28 +660,8 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
       : stringValue;
   }
 
-  private clearDataInterval(): void {
-    if (this.dataInterval) {
-      clearInterval(this.dataInterval);
-      this.dataInterval = undefined;
-    }
-  }
-
-  private cleanUp(): void {
-    this.clearDataInterval();
-    this.speedChart?.destroy();
-    this.progressChart?.destroy();
-  }
-
-  get syncDestination(): string {
-    return this.remoteSettings?.["syncConfig"]?.["dest"] || "Need to set!";
-  }
-
-  get syncSource(): string {
-    return (
-      this.selectedRemote?.remoteSpecs?.name +
-      ":/" +
-      (this.remoteSettings?.["syncConfig"]?.["source"] || "")
-    );
+  private handleSyncError(error: any): void {
+    this.errorMessage =
+      error instanceof Error ? error.message : "Failed to toggle sync";
   }
 }

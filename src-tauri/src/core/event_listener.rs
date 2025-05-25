@@ -23,8 +23,7 @@ mod events {
     pub const REMOTE_PRESENCE_CHANGED: &str = "remote_presence_changed";
     pub const SYSTEM_SETTINGS_CHANGED: &str = "system_settings_changed";
     pub const TRAY_MENU_UPDATED: &str = "tray_menu_updated";
-    pub const JOB_UPDATE: &str = "job_update";
-    pub const JOB_COMPLETED: &str = "job_completed";
+    pub const JOB_CACHE_CHANGED: &str = "job_cache_changed";
 }
 
 fn parse_payload<T: for<'de> serde::Deserialize<'de>>(payload: Option<&str>) -> Result<T, String> {
@@ -181,24 +180,15 @@ fn tray_menu_updated(app: &AppHandle) {
     });
 }
 
-fn handle_job_updates(app: &AppHandle) {
+fn handle_job_cache_changed(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen(events::JOB_UPDATE, move |event| {
-        // debug!("🔄 Job update received! Raw payload: {:?}", event.payload());
+    app.listen(events::JOB_CACHE_CHANGED, move |event| {
+        debug!("🔄 Job cache changed! Raw payload: {:?}", event.payload());
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            // You might want to update your UI cache here
-            let _ = app.emit("ui_job_update", "payload");
-        });
-    });
-
-    let app_clone = app.clone();
-    app.listen(events::JOB_COMPLETED, move |event| {
-        // debug!("🔄 Job completed! Raw payload: {:?}", event.payload());
-        let app = app_clone.clone();
-        tauri::async_runtime::spawn(async move {
-            // Update UI when job completes
-            let _ = app.emit("ui_job_completed", "payload");
+            if let Err(e) = update_tray_menu(app, 0).await {
+                error!("Failed to update tray menu: {}", e);
+            }
         });
     });
 }
@@ -308,6 +298,6 @@ pub fn setup_event_listener(app: &AppHandle) {
     handle_remote_presence_changed(app);
     handle_settings_changed(app);
     tray_menu_updated(app);
-    handle_job_updates(app);
+    handle_job_cache_changed(app);
     debug!("✅ Event listeners set up");
 }

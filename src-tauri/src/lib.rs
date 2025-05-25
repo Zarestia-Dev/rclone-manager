@@ -1,7 +1,10 @@
 use core::{
     check_binaries::{is_7z_available, is_rclone_available},
     settings::settings::{analyze_backup_file, load_setting_value, restore_encrypted_settings},
-    tray::tray::TrayEnabled,
+    tray::{
+        actions::{handle_stop_all_jobs, handle_stop_job, handle_sync_remote},
+        tray::TrayEnabled,
+    },
 };
 use std::{
     path::PathBuf,
@@ -10,12 +13,16 @@ use std::{
 
 use log::{debug, error, info};
 use rclone::api::{
-    api_command::stop_job, api_query::{get_fs_info, get_remote_paths}, engine::RcApiEngine, state::{
-        clear_errors_for_remote, clear_logs_for_remote, get_active_jobs, get_cached_mounted_remotes, get_job_status, get_remote_errors, get_remote_logs
-    }
+    api_command::stop_job,
+    api_query::{get_fs_info, get_remote_paths},
+    engine::RcApiEngine,
+    state::{
+        clear_errors_for_remote, clear_logs_for_remote, get_active_jobs,
+        get_cached_mounted_remotes, get_job_status, get_remote_errors, get_remote_logs,
+    },
 };
 use serde_json::json;
-use tauri::{Emitter, Manager, Theme, WindowEvent};
+use tauri::{Manager, Theme, WindowEvent};
 use tauri_plugin_store::StoreBuilder;
 use utils::{
     builder::{create_app_window, setup_tray},
@@ -157,8 +164,6 @@ async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
             error!("Failed to setup tray: {}", e);
         }
     }
-
-    handle_startup(app_handle.clone()).await;
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -254,7 +259,8 @@ pub fn run() {
             // ────── ASYNC STARTUP ──────
             let app_handle_clone = app_handle.clone();
             tauri::async_runtime::spawn(async move {
-                async_startup(app_handle_clone, settings).await;
+                async_startup(app_handle_clone.clone(), settings).await;
+                handle_startup(app_handle_clone).await;
             });
 
             let args = std::env::args().collect::<Vec<_>>();
@@ -268,7 +274,8 @@ pub fn run() {
         })
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show_app" => show_main_window(app.clone()),
-            "mount_all" => app.emit("mount-all", ()).unwrap(),
+            // "mount_all" => handle_mount_all_remotes(app.clone()),
+            "stop_all_jobs" => handle_stop_all_jobs(app.clone()),
             "unmount_all" => {
                 let app_clone = app.clone();
                 tauri::async_runtime::spawn(async move {
@@ -291,8 +298,12 @@ pub fn run() {
             }
             id if id.starts_with("mount-") => handle_mount_remote(app.clone(), id),
             id if id.starts_with("unmount-") => handle_unmount_remote(app.clone(), id),
-            id if id.starts_with("browse-") => handle_browse_remote(app, id),
+            id if id.starts_with("sync-") => handle_sync_remote(app.clone(), id),
+            // id if id.starts_with("copy-") => handle_copy_remote(app.clone(), id),
+            id if id.starts_with("stop_job-") => handle_stop_job(app.clone(), id),
+            id if id.starts_with("browse-") => handle_browse_remote(&app, id),
             id if id.starts_with("delete-") => handle_delete_remote(app.clone(), id),
+
             _ => {}
         })
         .invoke_handler(tauri::generate_handler![

@@ -16,26 +16,26 @@
             <mat-card-content class="disk-usage">
                 <strong>Space Allocation</strong>
                 <div class="full-bar disk-usage-bar" [ngStyle]="getDiskBarStyle()">
-                    <p *ngIf="!selectedRemote.mounted || selectedRemote.mounted === 'error'">
-                        {{ selectedRemote.mounted === 'error' ? 'Error' : 'Not Mounted' }}
+                    <p *ngIf="!selectedRemote.mountState?.mounted || selectedRemote.mountState?.mounted === 'error'">
+                        {{ selectedRemote.mountState?.mounted === 'error' ? 'Error' : 'Not Mounted' }}
                     </p>
-                    <div *ngIf="selectedRemote.mounted && selectedRemote.mounted !== 'error'" class="usage"
+                    <div *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error'" class="usage"
                         [style.width]="getUsagePercentage() + '%'">
                     </div>
                 </div>
 
-                <div class="legend" *ngIf="selectedRemote.mounted && selectedRemote.diskUsage">
+                <div class="legend" *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.diskUsage">
                     <div class="legend-item">
                         <span class="color-box border"></span>
-                        Total Space: {{ selectedRemote.diskUsage["total_space"] }}
+                        Total Space: {{ selectedRemote.mountState?.diskUsage?.total_space }}
                     </div>
                     <div class="legend-item">
                         <span class="color-box used"></span>
-                        Used Space: {{ selectedRemote.diskUsage["used_space"] }}
+                        Used Space: {{ selectedRemote.mountState?.diskUsage?.used_space }}
                     </div>
                     <div class="legend-item">
                         <span class="color-box free"></span>
-                        Free Space: {{ selectedRemote.diskUsage["free_space"] }}
+                        Free Space: {{ selectedRemote.mountState?.diskUsage?.free_space }}
                     </div>
                 </div>
             </mat-card-content>
@@ -43,7 +43,7 @@
             <mat-divider></mat-divider>
 
             <mat-card-footer class="button-container">
-                <ng-container *ngIf="selectedRemote.mounted && selectedRemote.mounted !== 'error'">
+                <ng-container *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error'">
                     <button mat-raised-button [disabled]="actionInProgress === 'open'" color="accent"
                         (click)="triggerOpenInFiles()">
                         <mat-spinner *ngIf="actionInProgress === 'open'" diameter="20"></mat-spinner>
@@ -58,7 +58,7 @@
                     </button>
                 </ng-container>
 
-                <ng-container *ngIf="!selectedRemote.mounted">
+                <ng-container *ngIf="!selectedRemote.mountState?.mounted">
                     <button mat-raised-button [disabled]="actionInProgress === 'mount'" color="primary"
                         (click)="triggerMountRemote()">
                         <mat-spinner *ngIf="actionInProgress === 'mount'" diameter="20"></mat-spinner>
@@ -67,7 +67,7 @@
                     </button>
                 </ng-container>
 
-                <ng-container *ngIf="selectedRemote.mounted === 'error'">
+                <ng-container *ngIf="selectedRemote.mountState?.mounted === 'error'">
                     <button class="fix">
                         <mat-icon svgIcon="wrench"></mat-icon> Fix
                     </button>

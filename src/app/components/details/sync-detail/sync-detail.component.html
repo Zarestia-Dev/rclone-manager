@@ -10,14 +10,14 @@
   </div>
   <mat-tab-group>
     <mat-tab label="Monitoring">
-
       <div class="sync-monitor">
-        <mat-card class="sync-control-card" [class.syncing]="selectedRemote.isOnSync">
-          <!-- Top section: Sync Paths -->
+        <!-- Sync Control Card -->
+        <mat-card class="sync-control-card" [class.syncing]="selectedRemote.syncState?.isOnSync">
           <div class="sync-path-section">
             <div class="sync-path">
               <div class="path">
-                <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
+                <mat-icon [svgIcon]="isLocalPath(syncSource) ? 'folder' : 'cloud-arrow-up'"
+                  class="path-icon"></mat-icon>
                 <div class="path-details" matTooltip="{{syncSource}}">
                   <div class="path-label">Source</div>
                   <div class="path-value">{{syncSource}}</div>
@@ -25,7 +25,11 @@
               </div>
               <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
               <div class="path">
-                <mat-icon svgIcon="folder" class="path-icon"></mat-icon>
+                <mat-icon svgIcon="folder" class="path-icon clickable" (click)="triggerOpenInFiles()"
+                  matTooltip="Open in file explorer" *ngIf="isLocalPath(syncDestination); else remoteIcon"></mat-icon>
+                <ng-template #remoteIcon>
+                  <mat-icon [svgIcon]="'cloud-arrow-up'" class="path-icon"></mat-icon>
+                </ng-template>
                 <div class="path-details" matTooltip="{{syncDestination}}">
                   <div class="path-label">Destination</div>
                   <div class="path-value">{{syncDestination}}</div>
@@ -34,108 +38,196 @@
             </div>
           </div>
 
-          <!-- Divider for clarity -->
           <mat-divider></mat-divider>
 
-          <!-- Bottom section: Status + Controls -->
-          <div class="sync-footer">
+          <mat-card-footer class="sync-footer">
             <div class="sync-status">
-              <div class="status-indicator" [class.active]="selectedRemote.isOnSync"
-                [class.error]="selectedRemote.isOnSync === 'error'">
+              <div class="status-indicator" [class.active]="selectedRemote.syncState?.isOnSync"
+                [class.error]="selectedRemote.syncState?.isOnSync === 'error'">
                 <mat-icon
-                  [svgIcon]="selectedRemote.isOnSync === 'error' ? 'error' : (selectedRemote.isOnSync ? 'refresh' : 'pause')"></mat-icon>
+                  [svgIcon]="selectedRemote.syncState?.isOnSync === 'error' ? 'error' : (selectedRemote.syncState?.isOnSync ? 'refresh' : 'pause')"></mat-icon>
                 <span>
-                  {{ selectedRemote.isOnSync === 'error' ? 'Error' : (selectedRemote.isOnSync ? 'Syncing' : 'Paused') }}
+                  {{ selectedRemote.syncState?.isOnSync === 'error' ? 'Error' : (selectedRemote.syncState?.isOnSync ?
+                  'Syncing' : 'Paused') }}
                 </span>
                 <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
-              </div>
-              <div class="last-sync" *ngIf="lastSyncTime">
-                Last sync: {{lastSyncTime | date:'medium'}}
               </div>
             </div>
 
             <div class="sync-controls">
-              <mat-slide-toggle class="dry-run-toggle" [disabled]="selectedRemote.isOnSync" (change)="toggleDryRun()">
+              <mat-slide-toggle class="dry-run-toggle" [disabled]="selectedRemote.syncState?.isOnSync"
+                (change)="toggleDryRun()">
                 <span>
                   <mat-icon [svgIcon]="dryRun ? 'eye' : 'eye-slash'"></mat-icon>
                   Dry Run
                 </span>
               </mat-slide-toggle>
 
-              <button mat-flat-button [color]="selectedRemote.isOnSync ? 'warn' : 'primary'" (click)="toggleSync()">
-                <mat-icon [svgIcon]="selectedRemote.isOnSync ? 'pause' : 'play'"></mat-icon>
-                {{selectedRemote.isOnSync ? 'Stop Sync' : 'Start Sync'}}
+              <button mat-flat-button [color]="selectedRemote.syncState?.isOnSync ? 'warn' : 'primary'"
+                (click)="toggleSync()" [disabled]="isLoading">
+                <mat-icon [svgIcon]="selectedRemote.syncState?.isOnSync ? 'pause' : 'play'"></mat-icon>
+                {{selectedRemote.syncState?.isOnSync ? 'Stop Sync' : 'Start Sync'}}
               </button>
             </div>
-          </div>
+          </mat-card-footer>
         </mat-card>
 
+        <!-- Job Info Card -->
+        <mat-card class="sync-control-card">
+          <mat-card-content class="sync-path-section">
+            <div class="job-details-grid">
+              <div class="job-detail">
+                <span class="detail-label">Job Type:</span>
+                <span class="detail-value">Sync</span>
+              </div>
+              <div class="job-detail">
+                <span class="detail-label">Job ID:</span>
+                <span class="detail-value">
+                  {{currentJobId || 'N/A'}}
+                </span>
+              </div>
+              <div class="job-detail" *ngIf="stats.startTime">
+                <span class="detail-label">Started:</span>
+                <span class="detail-value">{{stats.startTime | date:'medium'}}</span>
+              </div>
+              <div class="job-detail">
+                <span class="detail-label">Location:</span>
+                <span class="detail-value">
+                  {{isLocalPath(syncDestination) ? 'Local Directory' : 'Remote Storage'}}
+                </span>
+              </div>
+              <div class="job-detail">
+                <span class="detail-label">Last Sync:</span>
+                <span class="detail-value">
+                  {{ lastSyncTime ? (lastSyncTime | date:'medium') : 'N/A' }}
+                </span>
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Stats Summary -->
         <div class="stats-summary">
-          <div class="stat-card">
+          <mat-card class="stat-card">
             <div class="stat-value">{{stats.bytes | filesize}}</div>
             <div class="stat-label">Transferred</div>
-          </div>
-          <div class="stat-card">
+            <mat-progress-bar mode="determinate" [value]="(stats.bytes / stats.totalBytes) * 100"></mat-progress-bar>
+          </mat-card>
+          <mat-card class="stat-card">
             <div class="stat-value">{{stats.totalBytes | filesize}}</div>
             <div class="stat-label">Total Size</div>
-          </div>
-          <div class="stat-card">
+          </mat-card>
+          <mat-card class="stat-card">
             <div class="stat-value">{{getFormattedSpeed()}}</div>
             <div class="stat-label">Speed</div>
-          </div>
-          <div class="stat-card">
+          </mat-card>
+          <mat-card class="stat-card">
+            <div class="stat-value">{{stats.elapsedTime | formatTime}}</div>
+            <div class="stat-label">Elapsed Time</div>
+          </mat-card>
+          <mat-card class="stat-card">
             <div class="stat-value">{{stats.eta | formatTime}}</div>
-            <div class="stat-label">Total ETA</div>
-          </div>
-          <div class="stat-card">
+            <div class="stat-label">ETA</div>
+            <mat-progress-bar mode="determinate"
+              [value]="(stats.elapsedTime / (stats.elapsedTime + stats.eta)) * 100"></mat-progress-bar>
+          </mat-card>
+          <mat-card [matTooltip]="'Last Error: ' + stats.lastError" class="stat-card"
+            [class.has-error]="stats.errors > 0">
             <div class="stat-value">{{stats.errors}}</div>
             <div class="stat-label">Errors</div>
-          </div>
+          </mat-card>
         </div>
 
-        <div class="file-list">
-          <table>
-            <thead>
-              <tr>
-                <th>Filename</th>
-                <th>Progress</th>
-                <th>Speed</th>
-                <th>Size</th>
-                <th>ETA</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let file of stats.transferring">
-                <td class="filename">{{file.name}}</td>
-                <td class="progress">
-                  <div class="progress-bar">
-                    <div [style.width.%]="file.percentage || 100"></div>
-                  </div>
-                  <span>{{ (file.percentage || 100) }}%</span>
-                </td>
-                <td class="speed">{{file.speed | filesize}}/s</td>
-                <td class="size">{{file.size | filesize}}</td>
-                <td class="eta">{{file.eta | formatTime}}</td>
-              </tr>
-            </tbody>
+        <!-- File List -->
+        <mat-card class="file-list">
+          <!-- <div class="file-list-controls">
+            <mat-form-field appearance="outline" style="width: 100%;">
+              <mat-label>Filter files</mat-label>
+              <input matInput (keyup)="applyFilter($event)" placeholder="Search files..." />
+            </mat-form-field>
+          </div> -->
+
+          <table mat-table [dataSource]="dataSource" matSort class="mat-elevation-z8">
+
+            <!-- Filename Column -->
+            <ng-container matColumnDef="name">
+              <th class="filename" mat-header-cell *matHeaderCellDef mat-sort-header>
+                Filename
+              </th>
+              <td class="filename-text" mat-cell *matCellDef="let file">
+                <span>
+                  <mat-icon svgIcon="{{file.isError ? 'circle-exclamation' : 'file'}}"></mat-icon>
+                  {{file.name}}
+                </span>
+              </td>
+            </ng-container>
+
+            <!-- Progress Column -->
+            <ng-container matColumnDef="percentage">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                Progress
+              </th>
+              <td mat-cell *matCellDef="let file">
+                <div class="progress-bar">
+                  <div [style.width.%]="file.percentage || 100"></div>
+                </div>
+                <span>{{ (file.percentage || 100) }}%</span>
+              </td>
+            </ng-container>
+
+            <!-- Speed Column -->
+            <ng-container matColumnDef="speed">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                Speed
+              </th>
+              <td mat-cell *matCellDef="let file">
+                {{file.speed | filesize}}/s
+              </td>
+            </ng-container>
+
+            <!-- Size Column -->
+            <ng-container matColumnDef="size">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                Size
+              </th>
+              <td mat-cell *matCellDef="let file">
+                {{file.size | filesize}}
+              </td>
+            </ng-container>
+
+            <!-- ETA Column -->
+            <ng-container matColumnDef="eta">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                ETA
+              </th>
+              <td mat-cell *matCellDef="let file">
+                {{file.eta | formatTime}}
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let file; columns: displayedColumns;" [class.error-file]="file.isError"></tr>
+            <tr class="mat-row" *matNoDataRow>
+              <td class="mat-cell" colspan="5">No files found.</td>
+            </tr>
           </table>
-        </div>
+        </mat-card>
 
+        <!-- Performance Graphs -->
         <div class="performance-graphs">
-          <div class="graph-card">
+          <mat-card class="graph-card">
             <h4>Transfer Speed</h4>
             <canvas #speedChart></canvas>
-          </div>
-
-          <div class="graph-card">
+          </mat-card>
+          <mat-card class="graph-card">
             <h4>Transfer Progress</h4>
             <canvas #progressChart></canvas>
-          </div>
+          </mat-card>
         </div>
       </div>
     </mat-tab>
+
     <mat-tab label="Configuration">
-      <!-- Dynamic Remote Settings Sections -->
       <ng-container *ngFor="let section of remoteSettingsSections">
         <div class="info-card spec-card">
           <h3>
@@ -148,10 +240,6 @@
                 <ng-container *ngIf="hasSettings(section.key + 'Config'); else noData">
                   <ng-container *ngFor="let spec of getRemoteSettings(section.key + 'Config') | keyvalue">
                     <ng-container *ngIf="isObjectButNotArray(spec.value)">
-                      <!-- Nested object: show parent key, then its properties as chips -->
-                      <!-- <mat-chip class="spec-pill parent-key">
-                        <strong>{{ spec.key }}:</strong>
-                      </mat-chip> -->
                       <ng-container *ngFor="let subSpec of spec.value | keyvalue">
                         <mat-chip class="spec-pill sub-key"
                           [matTooltip]="isSensitiveKey(subSpec.key) ? '[RESTRICTED]' : (subSpec.value | json)"
@@ -162,7 +250,6 @@
                       </ng-container>
                     </ng-container>
                     <ng-container *ngIf="!isObjectButNotArray(spec.value)">
-                      <!-- Primitive or array -->
                       <mat-chip class="spec-pill"
                         [matTooltip]="isSensitiveKey(spec.key) ? '[RESTRICTED]' : (spec.value | json)"
                         [matTooltipHideDelay]="500">

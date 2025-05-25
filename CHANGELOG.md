@@ -6,6 +6,7 @@
 - Single instance support added
 - MacOS mount plugin installer support implemented
 - Remote root path selection added (That will be active after remote added)
+- Sync feature added (Syncs remote with local folder or remote with remote)
 
 ### Fixed
 - In the tray icon, the "Show App" option now correctly opens the app window. (Fixed)

@@ -361,6 +361,7 @@ pub async fn delete_remote(
 pub async fn mount_remote(
     app: AppHandle,
     remote_name: String,
+    source: String,
     mount_point: String,
     mount_options: Option<HashMap<String, Value>>,
     vfs_options: Option<HashMap<String, Value>>,
@@ -392,6 +393,8 @@ pub async fn mount_remote(
         return Ok(());
     }
 
+    let source_fs = format!("{}:{}", remote_name, source);
+
     // Enhanced logging with values
     let mut log_context = json!({
         "mount_point": mount_point,
@@ -415,7 +418,7 @@ pub async fn mount_remote(
     .await;
 
     let mut payload = json!({
-        "fs": remote_name,
+        "fs": source_fs,
         "mountPoint": mount_point,
         "_async": true,
     });
@@ -656,6 +659,7 @@ pub async fn unmount_all_remotes(
 #[tauri::command]
 pub async fn start_sync(
     app: AppHandle,
+    remote_name: String,
     source: String,
     dest: String,
     sync_options: Option<HashMap<String, Value>>,
@@ -664,10 +668,12 @@ pub async fn start_sync(
 ) -> Result<u64, String> {
     use serde_json::{Map, Value};
 
+    let source_fs = format!("{}:{}", remote_name, source);
+
     log_operation(
         "info",
-        None,
-        format!("Starting sync from {} to {}", source, dest),
+        Some(remote_name.clone()),
+        format!("Starting sync from {} to {}", source_fs, dest),
         Some(json!({
             "options": sync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
             "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
@@ -677,7 +683,7 @@ pub async fn start_sync(
 
     // Construct the JSON body
     let mut body = Map::new();
-    body.insert("srcFs".to_string(), Value::String(source.clone()));
+    body.insert("srcFs".to_string(), Value::String(source_fs.clone()));
     body.insert("dstFs".to_string(), Value::String(dest.clone()));
     body.insert("_async".to_string(), Value::Bool(true));
 
@@ -714,7 +720,7 @@ pub async fn start_sync(
     if !status.is_success() {
         let error = format!("HTTP {}: {}", status, body_text);
         let _ = log_error(
-            None,
+            Some(remote_name.clone()),
             "start_sync",
             error.clone(),
             Some(json!({"response": body_text})),
@@ -731,9 +737,9 @@ pub async fn start_sync(
     let job: JobResponse =
         serde_json::from_str(&body_text).map_err(|e| format!("Failed to parse response: {}", e))?;
 
-    log_operation(
+    let _ = log_operation(
         "info",
-        None,
+        Some(remote_name.clone()),
         format!("Sync job started with ID {}", job.jobid),
         Some(json!({"jobid": job.jobid})),
     )
@@ -744,7 +750,7 @@ pub async fn start_sync(
         .add_job(ActiveJob {
             jobid,
             job_type: "sync".to_string(),
-            remote_name: source.split(':').next().unwrap_or("").to_string(),
+            remote_name: remote_name,
             source: source.clone(),
             destination: dest.clone(),
             start_time: Utc::now(),
@@ -760,15 +766,18 @@ pub async fn start_sync(
         monitor_job(jobid, app_clone, client).await;
     });
 
-    app.emit("sync_job_started", &job.jobid)
+    app.emit("job_cache_changed", jobid)
         .map_err(|e| format!("Failed to emit event: {}", e))?;
-
     Ok(job.jobid)
 }
 
 /// Stop a running job
 #[tauri::command]
-pub async fn stop_job(jobid: u64, state: State<'_, RcloneState>) -> Result<(), String> {
+pub async fn stop_job(
+    app: AppHandle,
+    jobid: u64,
+    state: State<'_, RcloneState>,
+) -> Result<(), String> {
     let url = format!("{}/job/stop", RCLONE_STATE.get_api().0);
     let payload = json!({ "jobid": jobid });
 
@@ -785,6 +794,14 @@ pub async fn stop_job(jobid: u64, state: State<'_, RcloneState>) -> Result<(), S
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
+        // If job not found, remove from cache and emit event
+        if status.as_u16() == 500 && body.contains("\"job not found\"") {
+            JOB_CACHE.remove_job(jobid).await.ok();
+            app.emit("job_cache_changed", jobid)
+                .map_err(|e| format!("Failed to emit event: {}", e))?;
+            warn!("Job {} not found, removed from cache.", jobid);
+            return Ok(());
+        }
         let error = format!("HTTP {}: {}", status, body);
         error!("❌ Failed to stop job {}: {}", jobid, error);
         return Err(error);
@@ -792,6 +809,9 @@ pub async fn stop_job(jobid: u64, state: State<'_, RcloneState>) -> Result<(), S
 
     // Remove job from cache after stopping
     JOB_CACHE.remove_job(jobid).await.ok();
+
+    app.emit("job_cache_changed", jobid)
+        .map_err(|e| format!("Failed to emit event: {}", e))?;
 
     info!("✅ Stopped job {}", jobid);
     Ok(())
@@ -801,16 +821,19 @@ pub async fn stop_job(jobid: u64, state: State<'_, RcloneState>) -> Result<(), S
 #[tauri::command]
 pub async fn start_copy(
     app: AppHandle,
+    remote_name: String,
     source: String,
     dest: String,
     copy_options: Option<HashMap<String, Value>>,
     filter_options: Option<HashMap<String, Value>>,
     state: State<'_, RcloneState>,
 ) -> Result<String, String> {
+    let source_fs = format!("{}:{}", remote_name, source);
+
     log_operation(
         "info",
-        None,
-        format!("Starting copy from {} to {}", source, dest),
+        Some(remote_name.clone()),
+        format!("Starting copy from {} to {}", source_fs, dest),
         Some(json!({
             "options": copy_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
             "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
@@ -819,7 +842,7 @@ pub async fn start_copy(
     .await;
 
     let mut query = vec![
-        ("srcFs", source),
+        ("srcFs", source_fs),
         ("dstFs", dest),
         ("_async", "true".to_string()),
     ];
@@ -856,7 +879,7 @@ pub async fn start_copy(
     if !status.is_success() {
         let error = format!("HTTP {}: {}", status, body);
         let _ = log_error(
-            None,
+            Some(remote_name.clone()),
             "start_copy",
             error.clone(),
             Some(json!({"response": body})),
@@ -875,19 +898,18 @@ pub async fn start_copy(
 
     log_operation(
         "info",
-        None,
+        Some(remote_name.clone()),
         format!("Copy job started with ID {}", job.jobid),
         Some(json!({"jobid": job.jobid})),
     )
     .await;
 
-    app.emit("copy_job_started", &job.jobid)
+    app.emit("job_cache_changed", job.jobid.clone())
         .map_err(|e| format!("Failed to emit event: {}", e))?;
-
     Ok(job.jobid)
 }
 
-async fn monitor_job(jobid: u64, app: AppHandle, client: reqwest::Client) {
+async fn monitor_job(jobid: u64, _app: AppHandle, client: reqwest::Client) {
     let job_status_url = format!("{}/job/status", RCLONE_STATE.get_api().0);
     let stats_url = format!("{}/core/stats", RCLONE_STATE.get_api().0);
 
@@ -941,17 +963,6 @@ async fn monitor_job(jobid: u64, app: AppHandle, client: reqwest::Client) {
                 if let Ok(stats) = serde_json::from_str::<Value>(&stats_body) {
                     let _ = JOB_CACHE.update_job_stats(jobid, stats).await;
                 }
-
-                // Emit update to frontend
-                let _ = app.emit(
-                    "job_update",
-                    json!({
-                        "jobid": jobid,
-                        "status": status_body,
-                        "stats": stats_body
-                    }),
-                );
-
                 // Check if job is finished
                 let job_status: Value = match serde_json::from_str(&status_body) {
                     Ok(v) => v,
@@ -968,13 +979,6 @@ async fn monitor_job(jobid: u64, app: AppHandle, client: reqwest::Client) {
                         .and_then(|v| v.as_bool())
                         .unwrap_or(false);
                     let _ = JOB_CACHE.complete_job(jobid, success).await;
-                    let _ = app.emit(
-                        "job_completed",
-                        json!({
-                            "jobid": jobid,
-                            "success": success
-                        }),
-                    );
                     break;
                 }
             }

@@ -74,24 +74,12 @@
 
     <!-- Overview Components -->
     <ng-container *ngIf="remotes.length > 0 && !selectedRemote && !isLoading">
-      <!-- <app-mount-overview *ngIf="currentTab === 'mount'" [iconService]="iconService" [remotes]="remotes"
-        (remoteSelected)="selectRemote($event)" (mountRemote)="mountRemote($event)"
-        (openInFiles)="openRemoteInFiles($event)">
-      </app-mount-overview>
-
-      <app-sync-overview *ngIf="currentTab === 'sync'" [iconService]="iconService" [remotes]="remotes"
-        (remoteSelected)="selectRemote($event)" (startSync)="startSync($event)"
-        (openInFiles)="openRemoteInFiles($event)"></app-sync-overview> -->
-      <app-mount-overview [mode]="currentTab" [iconService]="iconService" [remotes]="remotes"
+      <app-app-overview [mode]="currentTab" [iconService]="iconService" [remotes]="remotes"
         (remoteSelected)="selectRemote($event)"
         (primaryAction)="currentTab === 'mount' ? mountRemote($event) : startSync($event)"
-        (openInFiles)="openRemoteInFiles($event)" [actionInProgress]="actionInProgress">
-      </app-mount-overview>
-
-      <!-- <app-mount-overview *ngIf="currentTab === 'sync'" [mode]="'sync'" [iconService]="iconService" [remotes]="remotes"
-        (remoteSelected)="selectRemote($event)" (primaryAction)="startSync($event)"
-        (openInFiles)="openRemoteInFiles($event)" [actionInProgress]="actionInProgress">
-      </app-mount-overview> -->
+        (secondaryAction)="currentTab === 'mount' ? unmountRemote($event) : stopSync($event)"
+        (openInFiles)="openRemoteInFiles($event, currentTab)" [actionInProgress]="actionInProgress">
+      </app-app-overview>
       <app-copy-overview *ngIf="currentTab === 'copy'"></app-copy-overview>
       <app-jobs-overview *ngIf="currentTab === 'jobs'"></app-jobs-overview>
     </ng-container>
@@ -102,13 +90,14 @@
         [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" (mountRemote)="mountRemote($event)"
         [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" (unmountRemote)="unmountRemote($event)"
         (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        (openInFiles)="openRemoteInFiles($event)">
+        (openInFiles)="openRemoteInFiles($event, currentTab)">
       </app-mount-detail>
 
       <app-sync-detail *ngIf="currentTab === 'sync'" [selectedRemote]="selectedRemote"
         [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
         (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        (startSync)="startSync($event)" (stopSync)="stopSync($event)"></app-sync-detail>
+        (startSync)="startSync($event)" (stopSync)="stopSync($event)"
+        (openInFiles)="openRemoteInFiles($event, currentTab)"></app-sync-detail>
 
       <app-copy-detail *ngIf="currentTab === 'copy'" [selectedRemote]="selectedRemote"></app-copy-detail>
       <app-job-detail *ngIf="currentTab === 'jobs'" [selectedRemote]="selectedRemote"></app-job-detail>

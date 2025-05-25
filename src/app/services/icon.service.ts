@@ -52,6 +52,7 @@ export class IconService {
       error: "assets/icons/triangle-exclamation.svg",
       eye: "assets/icons/eye.svg",
       "eye-slash": "assets/icons/eye-slash.svg",
+      file: "assets/icons/file.svg",
 
       play: "assets/icons/play.svg",
       pause: "assets/icons/pause.svg",

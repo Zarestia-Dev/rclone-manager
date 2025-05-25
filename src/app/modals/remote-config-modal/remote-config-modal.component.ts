@@ -735,7 +735,7 @@ export class RemoteConfigModalComponent implements OnInit {
       const mountPath = finalConfig.mountConfig.dest;
       const remoteName = remoteData.name;
       const source = finalConfig.mountConfig?.source;
-      await this.rcloneService.mountRemote(remoteName + ":" + source, mountPath);
+      await this.rcloneService.mountRemote(remoteName, source, mountPath);
     }
 
     return { success: true };

@@ -19,15 +19,19 @@
       text-overflow: ellipsis;
       max-width: 50vw;
       display: block;
+      margin: 0;
+      font-size: 24px;
+      font-weight: 500;
     }
-  }
 
-  p {
-    font-size: 20px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    color: #8c8888;
+    p {
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--secondary-text-color);
+      margin: 0;
+    }
   }
 
   mat-tab-group {
@@ -47,6 +51,8 @@
       align-items: center;
       gap: 10px;
       margin-bottom: 10px;
+      font-size: 18px;
+      color: var(--app-text-color);
     }
 
     .info-card-content {
@@ -66,59 +72,6 @@
   }
 }
 
-// Animation for sync icon
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(66, 133, 244, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0);
-  }
-}
-
-// Smooth status color transition
-.status-indicator {
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-// Use with:
-.status-indicator.active {
-  animation: pulse 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-.status-indicator mat-icon {
-  display: inline-block;
-  transition: transform 0.3s ease;
-}
-
-// Make sure icon spins only when syncing
-.status-indicator.active mat-icon {
-  animation: spin 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-// Button hover feedback
-.sync-actions button {
-  transition: background-color 0.2s ease, transform 0.1s ease;
-  &:hover {
-    transform: scale(1.03);
-  }
-  &:active {
-    transform: scale(0.97);
-  }
-}
-
 .sync-monitor {
   display: grid;
   gap: 20px;
@@ -131,8 +84,13 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    box-shadow: var(--box-shadow);
-    border-radius: var(--border-radius);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+
+    &.syncing {
+      border-left: 4px solid var(--primary-color);
+    }
 
     .sync-path-section {
       display: flex;
@@ -147,10 +105,11 @@
         gap: 12px;
         flex-grow: 1;
         width: 100%;
-        min-width: 0; // Important for text truncation
+        min-width: 0;
 
         mat-icon {
           flex-shrink: 0;
+          color: var(--secondary-text-color);
         }
 
         .path {
@@ -161,22 +120,56 @@
           background: var(--app-background);
           border-radius: var(--border-radius);
           flex-grow: 1;
-          min-width: 0; // Important for text truncation
+          min-width: 0;
           overflow: hidden;
-          width: 100%;
+
+          .path-icon.clickable {
+            color: var(--primary-color);
+          }
 
           .path-details {
             display: flex;
             flex-direction: column;
             min-width: 0;
 
-            .path-label,
+            .path-label {
+              font-size: 12px;
+              color: var(--secondary-text-color);
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
             .path-value {
+              font-size: 14px;
               white-space: nowrap;
               overflow: hidden;
               text-overflow: ellipsis;
             }
           }
+        }
+      }
+    }
+
+    .job-details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      width: 100%;
+
+      .job-detail {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+
+        .detail-label {
+          font-size: 12px;
+          color: var(--secondary-text-color);
+        }
+
+        .detail-value {
+          font-size: 14px;
+          font-weight: 500;
         }
       }
     }
@@ -200,41 +193,44 @@
           border-radius: 16px;
           font-size: 0.875rem;
           font-weight: 500;
+          background: rgba(255, 152, 0, 0.1);
+          color: var(--orange);
 
           &.active {
             background: rgba(66, 133, 244, 0.1);
-            color: var(--primary);
+            color: var(--primary-color);
 
             mat-icon {
               animation: spin 2s linear infinite;
             }
           }
 
-          &.paused {
-            background: rgba(255, 152, 0, 0.1);
-            color: var(--orange);
+          &.error {
+            background: rgba(234, 67, 53, 0.1);
+            color: var(--warn-color);
           }
         }
 
         .last-sync {
           font-size: 0.75rem;
-          color: var(--text-secondary);
+          color: var(--secondary-text-color);
           margin-top: 4px;
         }
       }
-    }
 
-    .sync-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 20px;
-
-      span {
-        gap: 8px;
+      .sync-controls {
         display: flex;
+        justify-content: flex-end;
         align-items: center;
-        text-wrap: nowrap;
+        gap: 16px;
+
+        span {
+          gap: 8px;
+          display: flex;
+          align-items: center;
+          text-wrap: nowrap;
+          font-size: 14px;
+        }
       }
     }
   }
@@ -245,81 +241,109 @@
     gap: 16px;
 
     .stat-card {
-      background: white;
+      // background: var(--card-background);
       border-radius: 8px;
       padding: 16px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       text-align: center;
-      transition: transform 0.2s ease;
+      transition: all 0.2s ease;
+      position: relative;
+
+      &.has-error {
+        background: rgba(234, 67, 53, 0.05);
+      }
 
       .stat-value {
         font-size: 18px;
         font-weight: bold;
-        color: #4285f4;
+        color: var(--primary-color);
+        margin-bottom: 4px;
       }
 
       .stat-label {
         font-size: 12px;
-        color: #666;
-        margin-top: 4px;
+        color: var(--secondary-text-color);
+        margin-bottom: 8px;
+      }
+
+      mat-progress-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        border-radius: 0 0 8px 8px;
+      }
+
+      .error-icon {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        color: var(--warn-color);
+        font-size: 18px;
       }
 
       &:hover {
         transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
       }
     }
   }
 
   .file-list {
     overflow-y: auto;
-    background: white;
     border-radius: 8px;
-    padding: 16px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    max-height: 24vh;
-    min-height: 200px;
+    max-height: 30vh;
+
+    // .file-list-controls {
+    //   display: flex;
+    //   justify-content: space-between;
+    //   align-items: center;
+    //   margin-bottom: 16px;
+    //   gap: 16px;
+
+    //   // mat-form-field {
+    //   //   flex-grow: 1;
+    //   // }
+    // }
 
     table {
-      width: 100%;
-      border-collapse: collapse;
-
-      th,
       td {
-        padding: 8px 12px;
-        text-align: left;
-        border-bottom: 1px solid #eee;
+        text-wrap: nowrap;
+        padding: 8px;
+        font-size: 14px;
+        color: var(--app-text-color);
       }
 
-      th {
-        position: sticky;
-        top: 0;
-        background: #f8f8f8;
-        font-weight: 500;
-        color: #555;
-      }
-
-      .filename {
-        max-width: 300px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .progress-bar {
-        width: 100px;
-        height: 8px;
-        background-color: #e0e0e0;
-        border-radius: 4px;
-        display: inline-block;
-        vertical-align: middle;
-        margin-right: 8px;
-
-        > div {
-          height: 100%;
-          border-radius: 4px;
-          background-color: #4285f4;
-          transition: width 0.3s ease;
+      .filename-text {
+        color: var(--app-text-color);
+        
+        span {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
+      }
+
+        .progress-bar {
+          width: 100px;
+          height: 8px;
+          padding: 8px;
+          border-radius: 4px;
+          display: inline-block;
+          overflow: hidden;
+          vertical-align: middle;
+
+          > div {
+            height: 100%;
+            border-radius: 4px;
+            background-color: var(--primary-color);
+            transition: width 0.3s ease;
+          }
+        
       }
     }
   }
@@ -330,7 +354,6 @@
     gap: 16px;
 
     .graph-card {
-      background: white;
       border-radius: 8px;
       padding: 16px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -339,7 +362,7 @@
         margin-top: 0;
         margin-bottom: 12px;
         font-size: 14px;
-        color: #555;
+        color: var(--app-text-color);
       }
 
       canvas {
@@ -350,7 +373,17 @@
   }
 }
 
-/* Small devices (landscape phones, less than 768px) */
+// Animations
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Responsive adjustments
 @media (max-width: 767.98px) {
   .sync-monitor {
     .performance-graphs {
@@ -359,60 +392,45 @@
   }
 }
 
-/* Extra small devices (portrait phones, less than 576px) */
 @media (max-width: 575.98px) {
-  .remote-details {
-    mat-tab-group {
-      width: 100%;
-    }
-  }
-
   .sync-monitor {
     .stats-summary {
       grid-template-columns: repeat(2, 1fr);
     }
 
-    .file-list {
-      table {
-        .filename {
-          max-width: 150px;
-        }
-      }
-    }
-  }
-
-  .sync-control-card {
-    .sync-path-section {
-      flex-direction: column;
-      align-items: stretch;
-
-      .sync-path {
+    .sync-control-card {
+      .sync-path-section {
         flex-direction: column;
         align-items: stretch;
-        gap: 8px;
 
-        .arrow-icon {
-          transform: rotate(90deg);
-          margin: 4px 0;
-          align-self: center;
+        .sync-path {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 8px;
+
+          .arrow-icon {
+            transform: rotate(90deg);
+            margin: 4px 0;
+            align-self: center;
+          }
         }
       }
-    }
 
-    .sync-footer {
-      flex-direction: column;
-      align-items: stretch;
+      .sync-footer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
 
-      .sync-status {
-        align-items: center !important;
-        margin-bottom: 12px;
+        .sync-status {
+          align-items: center !important;
+          margin-bottom: 12px;
+        }
+
+        .sync-controls {
+          flex-direction: column;
+          justify-content: center;
+        }
       }
-    }
-  }
-
-  .remote-header {
-    h2 {
-      max-width: 100%;
     }
   }
 }

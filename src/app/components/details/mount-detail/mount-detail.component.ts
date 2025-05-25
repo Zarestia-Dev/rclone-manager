@@ -17,7 +17,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatButtonModule } from "@angular/material/button";
 import { SENSITIVE_KEYS } from "../../../shared/remote-config-types";
 
-export interface RemoteDiskUsage {
+export interface DiskUsage {
   total_space?: string;
   used_space?: string;
   free_space?: string;
@@ -40,8 +40,11 @@ export interface Remote {
   showOnTray?: boolean;
   type?: string;
   remoteSpecs?: RemoteSpecs;
-  diskUsage?: RemoteDiskUsage;
-  mounted?: boolean | string;
+  mountState?: {
+    mounted?: boolean | "error";
+    diskUsage?: DiskUsage;
+  };
+
 }
 
 export interface RemoteSettingsSection {
@@ -99,7 +102,7 @@ export class MountDetailComponent {
 
   // Memoized function for better performance
   getDiskBarStyle = (): { [key: string]: string } => {
-    if (!this.selectedRemote?.mounted) {
+    if (!this.selectedRemote?.mountState?.mounted) {
       return {
         backgroundColor: "var(--purple)",
         border: "3px solid transparent",
@@ -107,7 +110,7 @@ export class MountDetailComponent {
       };
     }
 
-    if (this.selectedRemote.mounted === "error") {
+    if (this.selectedRemote.mountState?.mounted === "error") {
       return {
         backgroundColor: "var(--red)",
         border: "3px solid transparent",
@@ -165,13 +168,13 @@ export class MountDetailComponent {
   }
 
   getUsagePercentage(): number {
-    if (!this.selectedRemote?.diskUsage) return 0;
+    if (!this.selectedRemote?.mountState?.diskUsage) return 0;
 
     const used = this.parseSize(
-      this.selectedRemote.diskUsage.used_space || "0"
+      this.selectedRemote.mountState?.diskUsage.used_space || "0"
     );
     const total = this.parseSize(
-      this.selectedRemote.diskUsage.total_space || "1"
+      this.selectedRemote.mountState?.diskUsage.total_space || "1"
     );
 
     return total > 0 ? (used / total) * 100 : 0;

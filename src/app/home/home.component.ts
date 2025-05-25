@@ -3,7 +3,6 @@ import {
   ChangeDetectorRef,
   Component,
   HostListener,
-  NgZone,
   OnDestroy,
   OnInit,
 } from "@angular/core";
@@ -19,20 +18,12 @@ import { MatMenuModule } from "@angular/material/menu";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { listen } from "@tauri-apps/api/event";
-import {
-  from,
-  interval,
-  Subject,
-  Subscription,
-  switchMap,
-  takeUntil,
-} from "rxjs";
+import { Subject, takeUntil } from "rxjs";
 
 // Components
 import { SidebarComponent } from "../components/sidebar/sidebar.component";
 import { RemoteConfigModalComponent } from "../modals/remote-config-modal/remote-config-modal.component";
 import { QuickAddRemoteComponent } from "../modals/quick-add-remote/quick-add-remote.component";
-import { MountOverviewComponent } from "../components/overviews/mount-overview/mount-overview.component";
 import { CopyOverviewComponent } from "../components/overviews/copy-overview/copy-overview.component";
 import { JobsOverviewComponent } from "../components/overviews/jobs-overview/jobs-overview.component";
 import { MountDetailComponent } from "../components/details/mount-detail/mount-detail.component";
@@ -48,6 +39,7 @@ import { RcloneService } from "../services/rclone.service";
 import { SettingsService } from "../services/settings.service";
 import { InfoService } from "../services/info.service";
 import { IconService } from "../services/icon.service";
+import { AppOverviewComponent } from "../components/overviews/app-overview/app-overview.component";
 
 // home.types.ts
 export type AppTab = "mount" | "sync" | "copy" | "jobs";
@@ -76,10 +68,14 @@ export interface DiskUsage {
 
 export interface Remote {
   remoteSpecs: RemoteSpecs;
-  mounted?: boolean | "error";
-  diskUsage?: DiskUsage;
-  isOnSync?: boolean | "error";
-  syncJobID?: number;
+  mountState?: {
+    mounted?: boolean | "error";
+    diskUsage?: DiskUsage;
+  };
+  syncState?: {
+    isOnSync?: boolean | "error";
+    syncJobID?: number;
+  };
 }
 
 export interface MountedRemote {
@@ -128,13 +124,13 @@ export interface RemoteActionProgress {
     MatIconModule,
     MatButtonModule,
     SidebarComponent,
-    MountOverviewComponent,
     CopyOverviewComponent,
     JobsOverviewComponent,
     MountDetailComponent,
     SyncDetailComponent,
     CopyDetailComponent,
     JobDetailComponent,
+    AppOverviewComponent,
   ],
   templateUrl: "./home.component.html",
   styleUrls: ["./home.component.scss"],
@@ -163,7 +159,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     private stateService: StateService,
     private rcloneService: RcloneService,
     private settingsService: SettingsService,
-    private ngZone: NgZone,
     private cdr: ChangeDetectorRef,
     private infoService: InfoService,
     public iconService: IconService
@@ -204,7 +199,8 @@ export class HomeComponent implements OnInit, OnDestroy {
 
       const settings = this.loadRemoteSettings(remoteName);
       await this.rcloneService.mountRemote(
-        remoteName + ":" + settings.mountConfig?.source,
+        remoteName,
+        settings.mountConfig?.source,
         settings.mountConfig?.dest,
         settings.mountConfig?.options,
         settings.vfsConfig || {}
@@ -235,7 +231,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
       await this.rcloneService.unmountRemote(mountPoint, remoteName);
       await this.refreshMounts();
-      this.selectRemoteByName(remoteName);
+      // this.selectRemoteByName(remoteName);
     } catch (error) {
       console.error(`Failed to unmount ${remoteName}:`, error);
       this.infoService.openSnackBar(`Failed to unmount ${remoteName}`, "Close");
@@ -245,19 +241,34 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  async openRemoteInFiles(remoteName: string): Promise<void> {
+  async openRemoteInFiles(remoteName: string, appTab: AppTab): Promise<void> {
+    console.log("Open remote in files:", remoteName);
+    console.log("App Tab:", appTab);
+
     if (!remoteName) return;
+    console.log("Opening remote in files:", remoteName);
 
     try {
       this.actionInProgress[remoteName] = "open";
       this.cdr.markForCheck();
 
-      const mountPoint = this.loadRemoteSettings(remoteName)?.mountConfig?.dest;
-      if (!mountPoint) {
-        throw new Error(`No mount point found for ${remoteName}`);
+      console.log("App Tab:", appTab);
+
+      const remoteSettings = this.loadRemoteSettings(remoteName);
+
+      let path: string | undefined;
+      if (appTab === "mount") {
+        path = remoteSettings?.["mountConfig"]?.dest;
+      } else if (appTab === "sync") {
+        path = this.remoteSettings[remoteName]?.["syncConfig"]?.dest;
+        console.log("path", path);
+      } else if (appTab === "copy") {
+        path = this.remoteSettings[remoteName]?.["copyConfig"]?.dest;
+      } else {
+        throw new Error(`Invalid app tab: ${appTab}`);
       }
 
-      await this.rcloneService.openInFiles(mountPoint);
+      await this.rcloneService.openInFiles(path || "");
     } catch (error) {
       console.error(`Failed to open ${remoteName} in files:`, error);
       this.infoService.openSnackBar(`Failed to open ${remoteName}`, "Close");
@@ -439,9 +450,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.loadJobsForRemote(this.selectedRemote?.remoteSpecs.name || ""),
     ]);
 
-    if (this.selectedRemote?.remoteSpecs.name) {
-      this.selectRemoteByName(this.selectedRemote.remoteSpecs.name);
-    }
+    // if (this.selectedRemote?.remoteSpecs.name) {
+    //   this.selectRemoteByName(this.selectedRemote.remoteSpecs.name);
+    // }
   }
 
   private async loadRemotes(): Promise<void> {
@@ -451,15 +462,19 @@ export class HomeComponent implements OnInit, OnDestroy {
       // Initial load with basic info
       this.remotes = Object.keys(remoteConfigs).map((name) => ({
         remoteSpecs: { name, ...remoteConfigs[name] },
-        mounted: this.isRemoteMounted(name),
-        diskUsage: {
-          total_space: "Loading...",
-          used_space: "Loading...",
-          free_space: "Loading...",
-          loading: true,
+        mountState: {
+          mounted: this.isRemoteMounted(name),
+          diskUsage: {
+            total_space: "Loading...",
+            used_space: "Loading...",
+            free_space: "Loading...",
+            loading: true,
+          },
         },
-        isOnSync: false,
-        syncJobID: 0,
+        syncState: {
+          isOnSync: false,
+          syncJobID: 0,
+        },
       }));
 
       // Load disk usage in background
@@ -474,11 +489,28 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private async loadDiskUsageInBackground(): Promise<void> {
     for (const remote of this.remotes) {
-      if (!remote.mounted) continue;
+      if (!remote.mountState?.mounted) continue;
+
+      // Skip if we already have disk usage data
+      if (
+        remote.mountState.diskUsage &&
+        !remote.mountState.diskUsage.loading &&
+        !remote.mountState.diskUsage.error
+      ) {
+        continue;
+      }
 
       try {
-        if (remote.diskUsage) {
-          remote.diskUsage.loading = true;
+        // Only update disk usage loading state
+        if (!remote.mountState.diskUsage) {
+          remote.mountState.diskUsage = {
+            total_space: "Loading...",
+            used_space: "Loading...",
+            free_space: "Loading...",
+            loading: true,
+          };
+        } else {
+          remote.mountState.diskUsage.loading = true;
         }
         this.cdr.markForCheck();
 
@@ -487,7 +519,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         );
 
         if (fsInfo?.Features?.About === false) {
-          remote.diskUsage = {
+          remote.mountState.diskUsage = {
             total_space: "Not supported",
             used_space: "Not supported",
             free_space: "Not supported",
@@ -501,15 +533,14 @@ export class HomeComponent implements OnInit, OnDestroy {
         const usage = await this.rcloneService.getDiskUsage(
           remote.remoteSpecs.name
         );
-        remote.diskUsage = {
-          total_space: usage.total || "N/A",
-          used_space: usage.used || "N/A",
-          free_space: usage.free || "N/A",
-          loading: false,
-        };
 
-        if (this.selectedRemote?.remoteSpecs.name === remote.remoteSpecs.name) {
-          this.selectedRemote = { ...remote };
+        // Only update disk usage properties
+        if (remote.mountState.diskUsage) {
+          remote.mountState.diskUsage.total_space = usage.total || "N/A";
+          remote.mountState.diskUsage.used_space = usage.used || "N/A";
+          remote.mountState.diskUsage.free_space = usage.free || "N/A";
+          remote.mountState.diskUsage.loading = false;
+          remote.mountState.diskUsage.error = false;
         }
 
         this.cdr.markForCheck();
@@ -518,21 +549,12 @@ export class HomeComponent implements OnInit, OnDestroy {
           `Failed to fetch disk usage for ${remote.remoteSpecs.name}:`,
           error
         );
-        remote.diskUsage = {
-          total_space: "Error",
-          used_space: "Error",
-          free_space: "Error",
-          loading: false,
-          error: true,
-        };
+        if (remote.mountState.diskUsage) {
+          remote.mountState.diskUsage.loading = false;
+          remote.mountState.diskUsage.error = true;
+        }
         this.cdr.markForCheck();
       }
-
-      if (this.selectedRemote?.remoteSpecs.name === remote.remoteSpecs.name) {
-        this.selectedRemote = { ...remote };
-      }
-
-      // await new Promise((resolve) => setTimeout(resolve, 100));
     }
   }
 
@@ -569,37 +591,13 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
 
       const settings = this.loadRemoteSettings(remoteName);
-      const jobInfo = await this.rcloneService.startSync(
-        remoteName + ":" + settings.syncConfig?.source,
+      await this.rcloneService.startSync(
+        remoteName,
+        settings.syncConfig?.source,
         settings.syncConfig?.dest,
         settings.syncConfig?.options,
-        settings.syncConfig?.syncOptions || {}
+        settings.filterConfig || {}
       );
-
-      // Update state immediately
-      console.log("Job Info:", jobInfo);
-      this.remotes = this.remotes.map((remote) => {
-        if (remote.remoteSpecs.name === remoteName) {
-          return {
-            ...remote,
-            isOnSync: true,
-            syncJobID: jobInfo, // Capture the job ID
-          };
-        }
-        return remote;
-      });
-
-      // Update selected remote if it's the current one
-      if (this.selectedRemote?.remoteSpecs.name === remoteName) {
-        this.selectedRemote = {
-          ...this.selectedRemote,
-          isOnSync: true,
-          syncJobID: jobInfo,
-        };
-      }
-      
-      this.loadJobsForRemote(remoteName);
-      this.cdr.markForCheck();
     } catch (error) {
       console.error(`Failed to start sync for ${remoteName}:`, error);
       this.infoService.openSnackBar(
@@ -623,31 +621,11 @@ export class HomeComponent implements OnInit, OnDestroy {
       const remote = this.remotes.find(
         (r) => r.remoteSpecs.name === remoteName
       );
-      if (!remote?.syncJobID) {
+      if (!remote?.syncState?.syncJobID) {
         throw new Error(`No job ID found for ${remoteName}`);
       }
 
-      await this.rcloneService.stopJob(remote.syncJobID);
-
-      // Update state immediately
-      this.remotes = this.remotes.map((r) => {
-        if (r.remoteSpecs.name === remoteName) {
-          return { ...r, isOnSync: false, syncJobID: undefined };
-        }
-        return r;
-      });
-
-      // Update selected remote if it's the current one
-      if (this.selectedRemote?.remoteSpecs.name === remoteName) {
-        this.selectedRemote = {
-          ...this.selectedRemote,
-          isOnSync: false,
-          syncJobID: undefined,
-        };
-      }
-
-      this.loadJobsForRemote(remoteName);
-      this.cdr.markForCheck();
+      await this.rcloneService.stopJob(remote.syncState.syncJobID);
     } catch (error) {
       console.error(`Failed to stop sync for ${remoteName}:`, error);
       this.infoService.openSnackBar(
@@ -673,8 +651,10 @@ export class HomeComponent implements OnInit, OnDestroy {
 
         return {
           ...remote,
-          isOnSync: !!runningJob,
-          syncJobID: runningJob?.jobid,
+          syncState: {
+            isOnSync: !!runningJob,
+            syncJobID: runningJob?.jobid,
+          },
         };
       });
 
@@ -704,18 +684,22 @@ export class HomeComponent implements OnInit, OnDestroy {
         const runningJob = remoteJobs.find(
           (j: { status: string }) => j.status === "running"
         );
-        console.log("Running job:", runningJob);
         if (runningJob) {
           this.selectedRemote = {
             ...(this.selectedRemote as Remote),
-            isOnSync: true,
-            syncJobID: runningJob.jobid,
+            syncState: {
+              isOnSync: true,
+              syncJobID: runningJob.jobid,
+            },
           };
+          console.log(this.selectedRemote);
           console.log("Job Id", runningJob.jobid);
         } else {
           this.selectedRemote = {
             ...(this.selectedRemote as Remote),
-            isOnSync: false,
+            syncState: {
+              isOnSync: false,
+            },
           };
         }
         this.cdr.markForCheck();
@@ -729,19 +713,33 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  private selectRemoteByName(remoteName: string): void {
-    const remote = this.remotes.find((r) => r.remoteSpecs.name === remoteName);
-    if (remote) {
-      this.selectedRemote = { ...remote };
-      this.cdr.markForCheck();
-    }
+  isLocalPath(path: string): boolean {
+    if (!path) return false;
+
+    // Check for Windows paths (C:\, D:\, etc.)
+    if (/^[a-zA-Z]:[\\/]/.test(path)) return true;
+
+    // Check for Unix-like paths (/home, /Users, etc.)
+    return (
+      path.startsWith("/") || path.startsWith("~/") || path.startsWith("./")
+    );
   }
+
+  // private selectRemoteByName(remoteName: string): void {
+  //   const remote = this.remotes.find((r) => r.remoteSpecs.name === remoteName);
+  //   if (remote) {
+  //     this.selectedRemote = { ...remote };
+  //     this.cdr.markForCheck();
+  //   }
+  //   console.log(remote)
+  // }
 
   private setupTauriListeners(): void {
     const events = [
       "mount_cache_updated",
       "remote_cache_updated",
       "rclone_api_ready",
+      "job_cache_changed",
     ];
 
     events.forEach((event) => {

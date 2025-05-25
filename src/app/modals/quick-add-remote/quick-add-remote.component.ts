@@ -251,7 +251,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     await this.settingsService.saveRemoteSettings(remoteName, remoteSettings);
 
     if (autoMount && mountPath) {
-      await this.rcloneService.mountRemote(remoteName + ":", mountPath);
+      await this.rcloneService.mountRemote(remoteName, "", mountPath);
       console.log("Remote mounted successfully!");
     }
   }

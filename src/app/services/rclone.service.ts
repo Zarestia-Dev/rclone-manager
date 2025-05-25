@@ -4,17 +4,6 @@ import { InfoService } from "./info.service";
 import { listen } from "@tauri-apps/api/event";
 import { BehaviorSubject } from "rxjs";
 
-interface ActiveJob {
-  jobid: number;
-  job_type: string;
-  source: string;
-  destination: string;
-  start_time: string;
-  status: string;
-  remote_name: string;
-  stats: any;
-}
-
 @Injectable({
   providedIn: "root",
 })
@@ -208,6 +197,7 @@ export class RcloneService {
   /** Mount a remote */
   async mountRemote(
     remoteName: string,
+    source: string,
     mountPoint: string,
     mountOptions?: Record<string, string | number | boolean>,
     vfsOptions?: Record<string, string | number | boolean>
@@ -215,6 +205,7 @@ export class RcloneService {
     try {
       await invoke("mount_remote", {
         remoteName: remoteName,
+        source: source,
         mountPoint: mountPoint,
         mountOptions: mountOptions,
         vfsOptions: vfsOptions,
@@ -237,6 +228,7 @@ export class RcloneService {
   }
 
   async startSync(
+    remoteName: string,
     source: string,
     dest: string,
     syncOptions?: Record<string, any>,
@@ -244,6 +236,7 @@ export class RcloneService {
   ): Promise<number> {
     try {
       const jobId = await invoke<string>("start_sync", {
+        remoteName,
         source,
         dest,
         syncOptions: syncOptions || {},
@@ -258,6 +251,7 @@ export class RcloneService {
   }
 
   async startCopy(
+    remoteName: string,
     source: string,
     dest: string,
     copyOptions?: Record<string, any>,
@@ -265,6 +259,7 @@ export class RcloneService {
   ): Promise<number> {
     try {
       const jobId = await invoke<string>("start_copy", {
+        remoteName,
         source,
         dest,
         copyOptions: copyOptions || {},
@@ -297,16 +292,18 @@ export class RcloneService {
     }
   }
 
-  async getJobStatus(jobid: number): Promise<ActiveJob | null> {
+  async getJobStatus(jobid: number): Promise<any | null> {
     try {
-      return await invoke<ActiveJob>("get_job_status", { jobid });
+      const job = await invoke<any>("get_job_status", { jobid });
+      console.log(job);
+      return job;
     } catch (error) {
       console.error("Failed to get job status:", error);
       return null;
     }
   }
 
-  private activeJobsSubject = new BehaviorSubject<ActiveJob[]>([]);
+  private activeJobsSubject = new BehaviorSubject<any[]>([]);
   activeJobs$ = this.activeJobsSubject.asObservable();
 
   setupListeners(): void {
