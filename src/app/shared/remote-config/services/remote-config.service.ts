@@ -1,5 +1,5 @@
 import { Injectable } from "@angular/core";
-import { FieldType, getDefaultValueForType, RemoteField, RemoteType } from "../../remote-config-types";
+import { FieldType, getDefaultValueForType, RemoteField, RemoteType } from "../remote-config-types";
 import { RcloneService } from "../../../services/rclone.service";
 import { AbstractControl, ValidationErrors, Validators } from "@angular/forms";
 

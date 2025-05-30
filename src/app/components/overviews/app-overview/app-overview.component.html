@@ -22,11 +22,13 @@
                 <div class="legend" *ngIf="activeCount > 0 || inactiveCount > 0 || errorCount > 0">
                     <div class="legend-item" *ngIf="activeCount > 0">
                         <span class="color-box active"></span>
-                        {{ mode === 'mount' ? 'Mounted' : 'Syncing' }}: {{ activeCount }}
+                        {{ mode === 'mount' ? 'Mounted' : (mode === 'sync' ? 'Syncing' : 'Copying') }}: {{ activeCount
+                        }}
                     </div>
                     <div class="legend-item" *ngIf="inactiveCount > 0">
                         <span class="color-box inactive"></span>
-                        {{ mode === 'mount' ? 'Unmounted' : 'Off Sync' }}: {{ inactiveCount }}
+                        {{ mode === 'mount' ? 'Unmounted' : (mode === 'sync' ? 'Off Sync' : 'Not Copying') }}: {{
+                        inactiveCount }}
                     </div>
                     <div class="legend-item" *ngIf="errorCount > 0">
                         <span class="color-box error"></span>Error: {{ errorCount }}
@@ -40,7 +42,7 @@
             <mat-card-content class="active-remotes" *ngIf="activeCount > 0">
                 <h3>
                     <mat-icon [svgIcon]="activeIcon"></mat-icon>
-                    {{ mode === 'mount' ? 'Mounted' : 'Syncing' }} Remotes
+                    {{ mode === 'mount' ? 'Mounted' : (mode === 'sync' ? 'Syncing' : 'Copying') }} Remotes
                 </h3>
                 <div class="remote-list">
                     <div class="remote-card" *ngFor="let remote of activeRemotes" (click)="selectRemote(remote)">
@@ -54,12 +56,12 @@
                             </p>
                         </div>
                         <button mat-raised-button color="accent"
-                                (click)="triggerOpenInFiles(remote.remoteSpecs.name); $event.stopPropagation()"
-                                [disabled]="getActionState(remote.remoteSpecs.name) === 'open'">
+                            (click)="triggerOpenInFiles(remote.remoteSpecs.name); $event.stopPropagation()"
+                            [disabled]="getActionState(remote.remoteSpecs.name) === 'open'">
                             <mat-spinner *ngIf="getActionState(remote.remoteSpecs.name) === 'open'"
-                                        diameter="20"></mat-spinner>
+                                diameter="20"></mat-spinner>
                             <mat-icon *ngIf="getActionState(remote.remoteSpecs.name) !== 'open'"
-                                    [svgIcon]="secondaryActionIcon"></mat-icon>
+                                [svgIcon]="secondaryActionIcon"></mat-icon>
                             {{ getActionState(remote.remoteSpecs.name) === 'open' ? "Opening" : secondaryActionLabel }}
                         </button>
                     </div>
@@ -72,7 +74,7 @@
             <mat-card-content class="inactive-remotes" *ngIf="inactiveCount > 0">
                 <h3>
                     <mat-icon [svgIcon]="inactiveIcon"></mat-icon>
-                    {{ mode === 'mount' ? 'Unmounted' : 'Off Sync' }} Remotes
+                    {{ mode === 'mount' ? 'Unmounted' : (mode === 'sync' ? 'Off Sync' : 'Not Copying') }} Remotes
                 </h3>
                 <div class="remote-list">
                     <div class="remote-card" *ngFor="let remote of inactiveRemotes" (click)="selectRemote(remote)">
@@ -85,16 +87,16 @@
                                 {{ remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
-                        <button mat-raised-button color="primary"
-                                (click)="triggerPrimaryAction(remote.remoteSpecs.name); $event.stopPropagation()"
-                                [disabled]="getActionState(remote.remoteSpecs.name) === (mode === 'mount' ? 'mount' : 'sync')">
-                            <mat-spinner *ngIf="getActionState(remote.remoteSpecs.name) === (mode === 'mount' ? 'mount' : 'sync')"
-                                        diameter="20"></mat-spinner>
-                            <mat-icon *ngIf="getActionState(remote.remoteSpecs.name) !== (mode === 'mount' ? 'mount' : 'sync')"
-                                    [svgIcon]="primaryActionIcon"></mat-icon>
-                            {{ getActionState(remote.remoteSpecs.name) === (mode === 'mount' ? 'mount' : 'sync') 
-                                ? (mode === 'mount' ? 'Mounting' : 'Starting') 
-                                : primaryActionLabel }}
+                        <button mat-raised-button [color]="mode === 'copy' ? 'accent' : 'primary'"
+                            (click)="triggerPrimaryAction(remote.remoteSpecs.name); $event.stopPropagation()"
+                            [disabled]="getActionState(remote.remoteSpecs.name) === mode">
+                            <mat-spinner *ngIf="getActionState(remote.remoteSpecs.name) === mode"
+                                diameter="20"></mat-spinner>
+                            <mat-icon *ngIf="getActionState(remote.remoteSpecs.name) !== mode"
+                                [svgIcon]="primaryActionIcon"></mat-icon>
+                            {{ getActionState(remote.remoteSpecs.name) === mode
+                            ? (mode === 'mount' ? 'Mounting' : mode === 'sync' ? 'Starting Sync' : 'Starting Copy')
+                            : primaryActionLabel }}
                         </button>
                     </div>
                 </div>

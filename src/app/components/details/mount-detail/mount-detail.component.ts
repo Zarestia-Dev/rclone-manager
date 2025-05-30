@@ -5,6 +5,7 @@ import {
   Input,
   Output,
   ChangeDetectionStrategy,
+  OnDestroy,
 } from "@angular/core";
 import { MatCardModule } from "@angular/material/card";
 import { MatDividerModule } from "@angular/material/divider";
@@ -15,43 +16,9 @@ import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { Subject } from "rxjs";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatButtonModule } from "@angular/material/button";
-import { SENSITIVE_KEYS } from "../../../shared/remote-config-types";
+import { SENSITIVE_KEYS } from "../../../shared/remote-config/remote-config-types";
+import { Remote, RemoteSettings, RemoteSettingsSection } from "../../../shared/components/types";
 
-export interface DiskUsage {
-  total_space?: string;
-  used_space?: string;
-  free_space?: string;
-}
-
-export interface RemoteSpecs {
-  name: string;
-  type: string;
-  [key: string]: any;
-}
-
-export interface RemoteSettings {
-  [key: string]: { [key: string]: any };
-}
-
-export interface Remote {
-  customFlags?: { [key: string]: any };
-  mountConfig?: { [key: string]: any };
-  name?: string;
-  showOnTray?: boolean;
-  type?: string;
-  remoteSpecs?: RemoteSpecs;
-  mountState?: {
-    mounted?: boolean | "error";
-    diskUsage?: DiskUsage;
-  };
-
-}
-
-export interface RemoteSettingsSection {
-  key: string;
-  title: string;
-  icon: string;
-}
 
 @Component({
   selector: "app-mount-detail",
@@ -71,11 +38,12 @@ export interface RemoteSettingsSection {
   styleUrls: ["./mount-detail.component.scss"],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MountDetailComponent {
+export class MountDetailComponent implements OnDestroy {
   @Input() selectedRemote: Remote | null = null;
   @Input() iconService: any; // Consider creating an interface for this
   @Input() remoteSettings: RemoteSettings = {};
-  @Input() actionInProgress: "mount" | "unmount" | "sync" | "stop" | "open" | null = null;
+  @Input() actionInProgress: "mount" | "unmount" | "sync" | "copy" | "stop" | "open" | null = null;
+  
   @Output() openInFiles = new EventEmitter<string>();
   @Output() mountRemote = new EventEmitter<string>();
   @Output() unmountRemote = new EventEmitter<string>();
@@ -96,47 +64,40 @@ export class MountDetailComponent {
     this.destroy$.complete();
   }
 
-  isObjectButNotArray(value: any): boolean {
-    return value !== null && typeof value === "object" && !Array.isArray(value);
-  }
-
-  // Memoized function for better performance
-  getDiskBarStyle = (): { [key: string]: string } => {
+  // Disk Usage Helpers
+  getDiskBarStyle(): { [key: string]: string } {
     if (!this.selectedRemote?.mountState?.mounted) {
-      return {
-        backgroundColor: "var(--purple)",
-        border: "3px solid transparent",
-        transition: "all 0.5s ease-in-out",
-      };
+      return this.getUnmountedStyle();
     }
 
     if (this.selectedRemote.mountState?.mounted === "error") {
-      return {
-        backgroundColor: "var(--red)",
-        border: "3px solid transparent",
-        transition: "all 0.5s ease-in-out",
-      };
+      return this.getErrorStyle();
     }
 
-    return {
-      backgroundColor: "#cecece",
-      border: "3px solid #70caf2",
-      transition: "all 0.5s ease-in-out",
-    };
-  };
+    if (this.selectedRemote.mountState?.diskUsage?.notSupported) {
+      return this.getUnsupportedStyle();
+    }
 
-  get mountDestination(): string {
-    return this.remoteSettings?.["mountConfig"]?.["dest"] || "Need to set!";
+    return this.getMountedStyle();
   }
 
-  get mountSource(): string {
-    return (
-      this.selectedRemote?.remoteSpecs?.name +
-      ":/" +
-      (this.remoteSettings?.["mountConfig"]?.["source"] || "")
+  getUsagePercentage(): number {
+    if (!this.selectedRemote?.mountState?.diskUsage || 
+        this.selectedRemote.mountState.diskUsage.notSupported) {
+      return 0;
+    }
+
+    const used = this.parseSize(
+      this.selectedRemote.mountState.diskUsage.used_space || "0"
     );
+    const total = this.parseSize(
+      this.selectedRemote.mountState.diskUsage.total_space || "1"
+    );
+
+    return total > 0 ? (used / total) * 100 : 0;
   }
 
+  // Remote Settings Helpers
   getRemoteSettings(sectionKey: string): RemoteSettings {
     return this.remoteSettings?.[sectionKey] || {};
   }
@@ -145,6 +106,20 @@ export class MountDetailComponent {
     return Object.keys(this.getRemoteSettings(sectionKey)).length > 0;
   }
 
+  isObjectButNotArray(value: any): boolean {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+  }
+
+  // Path Helpers
+  get mountDestination(): string {
+    return this.remoteSettings?.["mountConfig"]?.["dest"] || "Not configured";
+  }
+
+  get mountSource(): string {
+    return `${this.selectedRemote?.remoteSpecs?.name}:/${this.remoteSettings?.["mountConfig"]?.["source"] || ""}`;
+  }
+
+  // Event Triggers
   triggerOpenRemoteConfig(editTarget?: string, existingConfig?: any) {
     this.openRemoteConfigModal.emit({ editTarget, existingConfig });
   }
@@ -167,17 +142,46 @@ export class MountDetailComponent {
     }
   }
 
-  getUsagePercentage(): number {
-    if (!this.selectedRemote?.mountState?.diskUsage) return 0;
+  // Security Helpers
+  isSensitiveKey(key: string): boolean {
+    return SENSITIVE_KEYS.some(sensitive => key.toLowerCase().includes(sensitive));
+  }
 
-    const used = this.parseSize(
-      this.selectedRemote.mountState?.diskUsage.used_space || "0"
-    );
-    const total = this.parseSize(
-      this.selectedRemote.mountState?.diskUsage.total_space || "1"
-    );
+  maskSensitiveValue(key: string, value: any): string {
+    return this.isSensitiveKey(key) ? "RESTRICTED" : this.truncateValue(value, 15);
+  }
 
-    return total > 0 ? (used / total) * 100 : 0;
+  // Private Helpers
+  private getUnmountedStyle(): { [key: string]: string } {
+    return {
+      backgroundColor: "var(--purple)",
+      border: "3px solid transparent",
+      transition: "all 0.5s ease-in-out",
+    };
+  }
+
+  private getErrorStyle(): { [key: string]: string } {
+    return {
+      backgroundColor: "var(--red)",
+      border: "3px solid transparent",
+      transition: "all 0.5s ease-in-out",
+    };
+  }
+
+  private getUnsupportedStyle(): { [key: string]: string } {
+    return {
+      backgroundColor: "var(--yellow)",
+      border: "3px solid transparent",
+      transition: "all 0.5s ease-in-out",
+    };
+  }
+
+  private getMountedStyle(): { [key: string]: string } {
+    return {
+      backgroundColor: "#cecece",
+      border: "3px solid #70caf2",
+      transition: "all 0.5s ease-in-out",
+    };
   }
 
   private parseSize(size: string): number {
@@ -193,18 +197,6 @@ export class MountDetailComponent {
     const value = parseFloat(match[1]);
     const unit = (match[2] || "B").toUpperCase();
     return value * (units[unit] || 1);
-  }
-
-  isSensitiveKey(key: string): boolean {
-    return SENSITIVE_KEYS.some((sensitive) =>
-      key.toLowerCase().includes(sensitive)
-    );
-  }
-
-  maskSensitiveValue(key: string, value: any): string {
-    return this.isSensitiveKey(key)
-      ? "RESTRICTED"
-      : this.truncateValue(value, 15);
   }
 
   private truncateValue(value: any, length: number): string {

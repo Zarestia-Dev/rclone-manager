@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { SyncDetailComponent } from './sync-detail.component';
+import { OperationDetailComponent } from './operation-detail.component';
 
-describe('SyncDetailComponent', () => {
-  let component: SyncDetailComponent;
-  let fixture: ComponentFixture<SyncDetailComponent>;
+describe('OperationDetailComponent', () => {
+  let component: OperationDetailComponent;
+  let fixture: ComponentFixture<OperationDetailComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [SyncDetailComponent]
+      imports: [OperationDetailComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(SyncDetailComponent);
+    fixture = TestBed.createComponent(OperationDetailComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

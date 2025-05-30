@@ -1,6 +1,6 @@
 use chrono::Utc;
 use log::{debug, error, info, warn};
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use std::{
     collections::HashMap,
     process::{Child, Command, Stdio},
@@ -655,6 +655,11 @@ pub async fn unmount_all_remotes(
     Ok("✅ All remotes unmounted successfully".to_string())
 }
 
+#[derive(serde::Deserialize)]
+struct JobResponse {
+    jobid: u64,
+}
+
 /// Start a sync operation
 #[tauri::command]
 pub async fn start_sync(
@@ -727,11 +732,6 @@ pub async fn start_sync(
         )
         .await;
         return Err(error);
-    }
-
-    #[derive(serde::Deserialize)]
-    struct JobResponse {
-        jobid: u64,
     }
 
     let job: JobResponse =
@@ -827,7 +827,7 @@ pub async fn start_copy(
     copy_options: Option<HashMap<String, Value>>,
     filter_options: Option<HashMap<String, Value>>,
     state: State<'_, RcloneState>,
-) -> Result<String, String> {
+) -> Result<u64, String> {
     let source_fs = format!("{}:{}", remote_name, source);
 
     log_operation(
@@ -841,33 +841,33 @@ pub async fn start_copy(
     )
     .await;
 
-    let mut query = vec![
-        ("srcFs", source_fs),
-        ("dstFs", dest),
-        ("_async", "true".to_string()),
-    ];
+    let mut body = Map::new();
+    body.insert("srcFs".to_string(), Value::String(source_fs.clone()));
+    body.insert("dstFs".to_string(), Value::String(dest.clone()));
+    body.insert("_async".to_string(), Value::Bool(true));
 
     if let Some(opts) = copy_options {
-        query.push((
-            "_config",
-            serde_json::to_string(&opts).map_err(|e| e.to_string())?,
-        ));
+        body.insert(
+            "_config".to_string(),
+            Value::Object(opts.into_iter().collect()),
+        );
     }
 
     if let Some(filters) = filter_options {
-        query.push((
-            "_filter",
-            serde_json::to_string(&filters).map_err(|e| e.to_string())?,
-        ));
+        body.insert(
+            "_filter".to_string(),
+            Value::Object(filters.into_iter().collect()),
+        );
     }
 
+    debug!("Copy request body: {:#?}", body);
+
     let url = format!("{}/sync/copy", RCLONE_STATE.get_api().0);
-    let query_str = serde_urlencoded::to_string(&query).map_err(|e| e.to_string())?;
 
     let response = state
         .client
         .post(&url)
-        .query(&[("", &query_str)])
+        .json(&Value::Object(body)) // send JSON body
         .timeout(Duration::from_secs(30))
         .send()
         .await
@@ -888,23 +888,38 @@ pub async fn start_copy(
         return Err(error);
     }
 
-    #[derive(serde::Deserialize)]
-    struct JobResponse {
-        jobid: String,
-    }
-
     let job: JobResponse =
         serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
+
+    let jobid = job.jobid.clone();
+    JOB_CACHE
+        .add_job(ActiveJob {
+            jobid: jobid.clone(),
+            job_type: "copy".to_string(),
+            remote_name: remote_name.clone(),
+            source: source.clone(),
+            destination: dest.clone(),
+            start_time: Utc::now(),
+            status: "running".to_string(),
+            stats: None,
+        })
+        .await;
+    // Start monitoring the job
+    let app_clone = app.clone();
+    let client = state.client.clone();
+    tokio::spawn(async move {
+        monitor_job(jobid, app_clone, client).await;
+    });
 
     log_operation(
         "info",
         Some(remote_name.clone()),
-        format!("Copy job started with ID {}", job.jobid),
-        Some(json!({"jobid": job.jobid})),
+        format!("Copy job started with ID {}", jobid),
+        Some(json!({"jobid": jobid})),
     )
     .await;
 
-    app.emit("job_cache_changed", job.jobid.clone())
+    app.emit("job_cache_changed", jobid.clone())
         .map_err(|e| format!("Failed to emit event: {}", e))?;
     Ok(job.jobid)
 }

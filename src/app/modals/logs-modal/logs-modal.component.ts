@@ -3,7 +3,6 @@ import {
   ElementRef,
   OnInit,
   ViewChild,
-  AfterViewChecked,
   Inject,
   HostListener,
   ChangeDetectorRef,
@@ -12,7 +11,6 @@ import {
 import { FormsModule } from "@angular/forms";
 import {
   MAT_DIALOG_DATA,
-  MatDialogModule,
   MatDialogRef,
 } from "@angular/material/dialog";
 import { MatListModule } from "@angular/material/list";

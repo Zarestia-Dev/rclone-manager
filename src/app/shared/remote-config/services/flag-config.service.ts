@@ -1,5 +1,5 @@
 import { Injectable } from "@angular/core";
-import { FieldType, FlagField, FlagType, getDefaultValueForType } from "../../remote-config-types";
+import { FieldType, FlagField, FlagType, getDefaultValueForType } from "../remote-config-types";
 import { RcloneService } from "../../../services/rclone.service";
 
 @Injectable({

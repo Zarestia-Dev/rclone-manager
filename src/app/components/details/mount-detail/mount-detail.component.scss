@@ -19,15 +19,15 @@
       max-width: 50vw;
       display: block;
     }
+    p {
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: #8c8888;
+    }
   }
 
-  p {
-    font-size: 20px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    color: #8c8888;
-  }
 
   .info-card {
     display: flex;

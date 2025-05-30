@@ -1,7 +1,7 @@
 import { Injectable } from "@angular/core";
 import { RcloneService } from "../../../services/rclone.service";
 import { BehaviorSubject } from "rxjs";
-import { Entry } from "../../remote-config-types";
+import { Entry } from "../remote-config-types";
 import { AbstractControl } from "@angular/forms";
 
 @Injectable({

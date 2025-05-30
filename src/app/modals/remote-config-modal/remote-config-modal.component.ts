@@ -42,7 +42,7 @@ import {
   REMOTE_NAME_REGEX,
   RemoteField,
   RemoteType,
-} from "../../shared/remote-config-types";
+} from "../../shared/remote-config/remote-config-types";
 import { RemoteConfigStepComponent } from "../../shared/remote-config/components/remote-config-step/remote-config-step.component";
 import { FlagConfigStepComponent } from "../../shared/remote-config/components/flag-config-step/flag-config-step.component";
 import { RemoteConfigService } from "../../shared/remote-config/services/remote-config.service";

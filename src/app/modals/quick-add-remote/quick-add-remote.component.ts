@@ -27,7 +27,7 @@ import {
   QuickAddForm,
   RemoteSettings,
   RemoteType,
-} from "../../shared/remote-config-types";
+} from "../../shared/remote-config/remote-config-types";
 
 @Component({
   selector: "app-quick-add-remote",

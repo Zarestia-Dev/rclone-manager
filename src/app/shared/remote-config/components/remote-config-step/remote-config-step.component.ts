@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from "@angular/core";
-import { RemoteField, RemoteType, LinebreaksPipe, SENSITIVE_KEYS } from "../../../remote-config-types";
+import { RemoteField, RemoteType, LinebreaksPipe, SENSITIVE_KEYS } from "../../remote-config-types";
 import { FormGroup, ReactiveFormsModule } from "@angular/forms";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatDividerModule } from "@angular/material/divider";

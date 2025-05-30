@@ -76,11 +76,10 @@
     <ng-container *ngIf="remotes.length > 0 && !selectedRemote && !isLoading">
       <app-app-overview [mode]="currentTab" [iconService]="iconService" [remotes]="remotes"
         (remoteSelected)="selectRemote($event)"
-        (primaryAction)="currentTab === 'mount' ? mountRemote($event) : startSync($event)"
-        (secondaryAction)="currentTab === 'mount' ? unmountRemote($event) : stopSync($event)"
+        (primaryAction)="currentTab === 'mount' ? mountRemote($event) : (currentTab === 'sync' || currentTab === 'copy' ? startOperation(currentTab, $event) : null)"
+        (secondaryAction)="currentTab === 'mount' ? unmountRemote($event) : (currentTab === 'copy' || currentTab === 'sync' ? stopOperation(currentTab, $event) : null)"
         (openInFiles)="openRemoteInFiles($event, currentTab)" [actionInProgress]="actionInProgress">
       </app-app-overview>
-      <app-copy-overview *ngIf="currentTab === 'copy'"></app-copy-overview>
       <app-jobs-overview *ngIf="currentTab === 'jobs'"></app-jobs-overview>
     </ng-container>
 
@@ -93,13 +92,14 @@
         (openInFiles)="openRemoteInFiles($event, currentTab)">
       </app-mount-detail>
 
-      <app-sync-detail *ngIf="currentTab === 'sync'" [selectedRemote]="selectedRemote"
-        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
+      <app-operation-detail *ngIf="currentTab === 'sync' || currentTab === 'copy'" [operationType]="currentTab"
+        [selectedRemote]="selectedRemote" [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
         (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        (startSync)="startSync($event)" (stopSync)="stopSync($event)"
-        (openInFiles)="openRemoteInFiles($event, currentTab)"></app-sync-detail>
+        (startOperation)="startOperation($event.type, $event.remoteName)"
+        (stopOperation)="stopOperation($event.type, $event.remoteName)"
+        (openInFiles)="openRemoteInFiles($event, currentTab)">
+      </app-operation-detail>
 
-      <app-copy-detail *ngIf="currentTab === 'copy'" [selectedRemote]="selectedRemote"></app-copy-detail>
       <app-job-detail *ngIf="currentTab === 'jobs'" [selectedRemote]="selectedRemote"></app-job-detail>
     </ng-container>
   </mat-sidenav-content>

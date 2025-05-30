@@ -11,15 +11,16 @@ import {
   Output,
   SimpleChanges,
   ViewChild,
+  OnInit,
+  PipeTransform,
+  Pipe,
 } from "@angular/core";
 import { MatIconModule } from "@angular/material/icon";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { Chart, registerables } from "chart.js";
-import { Pipe, PipeTransform } from "@angular/core";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatCardModule } from "@angular/material/card";
 import { MatChipsModule } from "@angular/material/chips";
-import { SENSITIVE_KEYS } from "../../../shared/remote-config-types";
 import { MatButtonModule } from "@angular/material/button";
 import { MatTabsModule } from "@angular/material/tabs";
 import { IconService } from "../../../services/icon.service";
@@ -27,107 +28,21 @@ import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { Subscription } from "rxjs";
 import { RcloneService } from "../../../services/rclone.service";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatDialog } from "@angular/material/dialog";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { FormsModule } from "@angular/forms";
 import { MatTableModule } from "@angular/material/table";
 import { MatTableDataSource } from "@angular/material/table";
 import { MatSort, MatSortModule } from "@angular/material/sort";
-
-// Enhanced Interfaces with stricter typing
-interface DiskUsage {
-  total_space?: string;
-  used_space?: string;
-  free_space?: string;
-}
-
-interface RemoteSpecs {
-  name: string;
-  type: string;
-  [key: string]: any;
-}
-
-interface RemoteSettings {
-  [key: string]: { [key: string]: any };
-}
-
-interface Remote {
-  custom_flags?: { [key: string]: any };
-  mount_options?: { [key: string]: any };
-  name?: string;
-  showOnTray?: boolean;
-  type?: string;
-  remoteSpecs?: RemoteSpecs;
-  mountState?: {
-    mounted?: boolean | "error";
-    diskUsage?: DiskUsage;
-  };
-  syncState?: {
-    isOnSync?: boolean | "error";
-    syncJobID?: number;
-  };
-}
-
-interface RemoteSettingsSection {
-  key: string;
-  title: string;
-  icon: string;
-}
-
-interface TransferFile {
-  bytes: number;
-  dstFs: string;
-  eta: number;
-  group: string;
-  name: string;
-  percentage: number;
-  size: number;
-  speed: number;
-  speedAvg: number;
-  srcFs: string;
-  isError?: boolean;
-}
-
-type JobType = "sync" | "copy" | "move" | "check";
-type JobStatus = "running" | "finished" | "failed";
-
-interface ActiveJob {
-  jobid: number;
-  job_type: JobType;
-  source: string;
-  destination: string;
-  start_time: string;
-  status: JobStatus;
-  remote_name: string;
-  stats: SyncStats;
-}
-
-interface SyncStats {
-  bytes: number;
-  checks: number;
-  deletedDirs: number;
-  deletes: number;
-  elapsedTime: number;
-  errors: number;
-  eta: number;
-  fatalError: boolean;
-  lastError: string;
-  renames: number;
-  retryError: boolean;
-  serverSideCopies: number;
-  serverSideCopyBytes: number;
-  serverSideMoveBytes: number;
-  serverSideMoves: number;
-  speed: number;
-  totalBytes: number;
-  totalChecks: number;
-  totalTransfers: number;
-  transferTime: number;
-  transferring: TransferFile[];
-  transfers: number;
-  startTime?: string;
-}
+import { ThemePalette } from "@angular/material/core";
+import {
+  Remote,
+  RemoteSettings,
+  RemoteSettingsSection,
+  SyncStats,
+  TransferFile,
+} from "../../../shared/components/types";
+import { SENSITIVE_KEYS } from "../../../shared/remote-config/remote-config-types";
 
 @Pipe({ name: "formatTime", standalone: true })
 export class FormatTimePipe implements PipeTransform {
@@ -173,14 +88,12 @@ export class FileSizePipe implements PipeTransform {
 }
 
 @Component({
-  selector: "app-sync-detail",
+  selector: "app-operation-detail",
   standalone: true,
   imports: [
     CommonModule,
     MatIconModule,
     MatTooltipModule,
-    FileSizePipe,
-    FormatTimePipe,
     MatDividerModule,
     MatCardModule,
     MatChipsModule,
@@ -193,16 +106,16 @@ export class FileSizePipe implements PipeTransform {
     FormsModule,
     MatTableModule,
     MatSortModule,
+    FileSizePipe,
+    FormatTimePipe,
   ],
-  templateUrl: "./sync-detail.component.html",
-  styleUrls: ["./sync-detail.component.scss"],
+  templateUrl: "./operation-detail.component.html",
+  styleUrls: ["./operation-detail.component.scss"],
 })
-export class SyncDetailComponent implements AfterViewInit, OnDestroy {
-  dataSource = new MatTableDataSource<TransferFile>([]);
-  displayedColumns: string[] = ["name", "percentage", "speed", "size", "eta"];
-
-  @ViewChild(MatSort) sort!: MatSort;
-  // Input/Output properties
+export class OperationDetailComponent
+  implements OnInit, AfterViewInit, OnDestroy
+{
+  @Input() operationType!: "sync" | "copy";
   @Input() selectedRemote: Remote | null = null;
   @Input() remoteSettings: RemoteSettings = {};
 
@@ -211,14 +124,22 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     existingConfig?: any;
   }>();
   @Output() openInFiles = new EventEmitter<string>();
-  @Output() startSync = new EventEmitter<string>();
-  @Output() stopSync = new EventEmitter<string>();
+  @Output() startOperation = new EventEmitter<{
+    type: "sync" | "copy";
+    remoteName: string;
+  }>();
+  @Output() stopOperation = new EventEmitter<{
+    type: "sync" | "copy";
+    remoteName: string;
+  }>();
 
-  // View children
+  @ViewChild(MatSort) sort!: MatSort;
   @ViewChild("speedChart") speedChartRef!: ElementRef;
   @ViewChild("progressChart") progressChartRef!: ElementRef;
 
-  // Public properties
+  dataSource = new MatTableDataSource<TransferFile>([]);
+  displayedColumns: string[] = ["name", "percentage", "speed", "size", "eta"];
+
   stats: SyncStats = this.getDefaultStats();
   currentJobId?: number;
   isLoading = false;
@@ -226,7 +147,6 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
   lastSyncTime = "";
   dryRun = false;
 
-  // Private properties
   private speedChart!: Chart;
   private progressChart!: Chart;
   private dataInterval?: number;
@@ -234,11 +154,7 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
   private progressHistory: number[] = [];
   private jobSubscription?: Subscription;
 
-  // Constants
-  readonly remoteSettingsSections: RemoteSettingsSection[] = [
-    { key: "sync", title: "Sync Options", icon: "sync" },
-    { key: "filter", title: "Filter Options", icon: "filter" },
-  ];
+  remoteSettingsSections: RemoteSettingsSection[] = [];
   readonly MAX_HISTORY_LENGTH = 30;
   readonly POLLING_INTERVAL = 1000;
 
@@ -251,32 +167,19 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     Chart.register(...registerables);
   }
 
-  // Lifecycle hooks
+  ngOnInit(): void {
+    this.setupRemoteSettingsSections();
+  }
+
   ngAfterViewInit(): void {
     this.initCharts();
-    if (this.selectedRemote?.syncState?.isOnSync) {
-      this.simulateLiveData();
-      this.lastSyncTime = new Date().toLocaleString();
-    }
     this.dataSource.sort = this.sort;
-  }
-
-  ngOnInit(): void {
-  console.log(this.selectedRemote);
-  
-  }
-
-  applyFilter(event: Event) {
-    const filterValue = (event.target as HTMLInputElement).value;
-    this.dataSource.filter = filterValue.trim().toLowerCase();
-
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
-    }
+    this.handleSelectedRemoteChange();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes["selectedRemote"] && this.selectedRemote) {
+    if (changes["operationType"] || changes["selectedRemote"]) {
+      this.setupRemoteSettingsSections();
       this.handleSelectedRemoteChange();
     }
   }
@@ -296,15 +199,25 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  async toggleSync(): Promise<void> {
+  async toggleOperation(): Promise<void> {
     if (!this.selectedRemote) return;
+
     this.isLoading = true;
     try {
-      if (this.selectedRemote.syncState?.isOnSync) {
-        await this.stopSync.emit(this.selectedRemote.remoteSpecs?.name || "");
+      const isOperationActive = this.isOperationActive();
+      const remoteName = this.selectedRemote.remoteSpecs?.name || "";
+
+      if (isOperationActive) {
+        await this.stopOperation.emit({
+          type: this.operationType,
+          remoteName,
+        });
       } else {
-        await this.startSync.emit(this.selectedRemote.remoteSpecs?.name || "");
-        this.currentJobId = this.selectedRemote.syncState?.syncJobID;
+        await this.startOperation.emit({
+          type: this.operationType,
+          remoteName,
+        });
+        this.currentJobId = this.getCurrentJobId();
         this.lastSyncTime = new Date().toLocaleString();
       }
       this.errorMessage = "";
@@ -339,31 +252,38 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     return "";
   }
 
-  get syncDestination(): string {
+  get operationDestination(): string {
     return (
-      (this.remoteSettings?.["syncConfig"]?.["dest"] as string) ||
-      "Need to set!"
+      (this.remoteSettings?.[`${this.operationType}Config`]?.[
+        "dest"
+      ] as string) || "Need to set!"
     );
   }
 
-  get syncSource(): string {
-    return (
-      this.selectedRemote?.remoteSpecs?.name +
-      ":/" +
-      ((this.remoteSettings?.["syncConfig"]?.["source"] as string) || "")
-    );
+  get operationColor(): ThemePalette {
+    return this.operationType === "sync" ? "primary" : "accent";
+  }
+
+  get operationClass(): string {
+    return `${this.operationType}-operation`;
+  }
+
+  get operationSource(): string {
+    return `${this.selectedRemote?.remoteSpecs?.name}:/${
+      (this.remoteSettings?.[`${this.operationType}Config`]?.[
+        "source"
+      ] as string) || ""
+    }`;
   }
 
   // Utility methods
   isLocalPath(path: string): boolean {
     if (!path) return false;
-
-    // Check for Windows paths (C:\, D:\, etc.)
-    if (/^[a-zA-Z]:[\\/]/.test(path)) return true;
-
-    // Check for Unix-like paths (/home, /Users, etc.)
     return (
-      path.startsWith("/") || path.startsWith("~/") || path.startsWith("./")
+      /^[a-zA-Z]:[\\/]/.test(path) ||
+      path.startsWith("/") ||
+      path.startsWith("~/") ||
+      path.startsWith("./")
     );
   }
 
@@ -397,6 +317,31 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   // Private methods
+  private isOperationActive(): boolean {
+    return this.operationType === "sync"
+      ? !!this.selectedRemote?.syncState?.isOnSync
+      : !!this.selectedRemote?.copyState?.isOnCopy;
+  }
+
+  private getCurrentJobId(): number | undefined {
+    return this.operationType === "sync"
+      ? this.selectedRemote?.syncState?.syncJobID
+      : this.selectedRemote?.copyState?.copyJobID;
+  }
+
+  private setupRemoteSettingsSections(): void {
+    this.remoteSettingsSections = [
+      { key: "filter", title: "Filter Options", icon: "filter" },
+      {
+        key: this.operationType,
+        title: `${this.operationType
+          .charAt(0)
+          .toUpperCase()}${this.operationType.slice(1)} Options`,
+        icon: this.operationType,
+      },
+    ];
+  }
+
   private getDefaultStats(): SyncStats {
     return {
       bytes: 0,
@@ -425,11 +370,14 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   private handleSelectedRemoteChange(): void {
-    this.currentJobId = this.selectedRemote?.syncState?.syncJobID;
+    this.stats = this.getDefaultStats();
+    this.dataSource.data = [];
+    this.currentJobId = this.getCurrentJobId();
     this.resetHistory();
 
-    if (this.selectedRemote?.syncState?.isOnSync) {
+    if (this.isOperationActive()) {
       this.simulateLiveData();
+      this.lastSyncTime = new Date().toLocaleString();
     } else {
       this.clearDataInterval();
     }
@@ -554,7 +502,7 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
     this.clearDataInterval();
 
     this.dataInterval = window.setInterval(() => {
-      if (!this.selectedRemote?.syncState?.isOnSync || !this.currentJobId) {
+      if (!this.isOperationActive() || !this.currentJobId) {
         return;
       }
 
@@ -567,18 +515,13 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
       .getJobStatus(this.currentJobId!)
       .then((job) => {
         if (job) {
-          // Ensure job_type is cast to JobType
-          const typedJob = {
-            ...job,
-            job_type: job.job_type as JobType,
-          } as ActiveJob;
-          this.ngZone.run(() => this.updateStatsFromJob(typedJob));
+          this.ngZone.run(() => this.updateStatsFromJob(job));
         }
       })
       .catch((error) => console.error("Error fetching job status:", error));
   }
 
-  private updateStatsFromJob(job: ActiveJob): void {
+  private updateStatsFromJob(job: any): void {
     if (!job.stats) return;
 
     const updatedStats = {
@@ -602,17 +545,20 @@ export class SyncDetailComponent implements AfterViewInit, OnDestroy {
         file.size > 0
           ? Math.min(100, Math.round((file.bytes / file.size) * 100))
           : 0,
-      isError: file.percentage === 100 && file.bytes < file.size, // Mark as error if not fully transferred
+      isError: file.percentage === 100 && file.bytes < file.size,
     }));
   }
 
-  private updateRemoteStatusOnError(job: ActiveJob): void {
+  private updateRemoteStatusOnError(job: any): void {
     if (job.stats.fatalError && this.selectedRemote) {
+      const stateKey =
+        this.operationType === "sync" ? "syncState" : "copyState";
+
       this.selectedRemote = {
         ...this.selectedRemote,
-        syncState: {
-        isOnSync: "error",
-        }
+        [stateKey]: {
+          isOnSync: "error",
+        },
       };
     }
   }

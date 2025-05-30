@@ -5,7 +5,7 @@ import {
   FlagField,
   FlagType,
   LinebreaksPipe,
-} from "../../../remote-config-types";
+} from "../../remote-config-types";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatIconModule } from "@angular/material/icon";
 import { MatAutocompleteModule } from "@angular/material/autocomplete";

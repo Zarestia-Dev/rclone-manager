@@ -19,24 +19,27 @@
       text-overflow: ellipsis;
       max-width: 50vw;
       display: block;
-      margin: 0;
-      font-size: 24px;
-      font-weight: 500;
     }
-
     p {
-      font-size: 16px;
+      font-size: 20px;
       display: flex;
       align-items: center;
-      gap: 8px;
-      color: var(--secondary-text-color);
-      margin: 0;
+      gap: 5px;
+      color: #8c8888;
     }
   }
 
   mat-tab-group {
     width: 90%;
     height: 100%;
+
+    &.operation-operation {
+      --operation-color: var(--primary-color);
+    }
+
+    &.copy-operation {
+      --operation-color: var(--accent-color);
+    }
   }
 
   .info-card {
@@ -72,14 +75,20 @@
   }
 }
 
-.sync-monitor {
+.operation-monitor {
   display: grid;
   gap: 20px;
   padding: 16px;
   grid-template-columns: repeat(auto-fit, minmax(100%, 1fr));
 
-  // Sync Control Card
-  .sync-control-card {
+  // operation Control Card
+  .operation-control-card.sync-operation {
+    --operation-control: var(--primary-color);
+  }
+  .operation-control-card.copy-operation {
+    --operation-control: var(--accent-color);
+  }
+  .operation-control-card {
     padding: 16px;
     display: flex;
     flex-direction: column;
@@ -88,29 +97,24 @@
     border-radius: 8px;
     transition: all 0.3s ease;
 
-    &.syncing {
-      border-left: 4px solid var(--primary-color);
+    &.active {
+      border-left: 4px solid var(--operation-control);
     }
 
-    .sync-path-section {
+    .operation-path-section {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 20px;
       flex-wrap: wrap;
 
-      .sync-path {
+      .operation-path {
         display: flex;
         align-items: center;
         gap: 12px;
         flex-grow: 1;
         width: 100%;
         min-width: 0;
-
-        mat-icon {
-          flex-shrink: 0;
-          color: var(--secondary-text-color);
-        }
 
         .path {
           display: flex;
@@ -122,10 +126,6 @@
           flex-grow: 1;
           min-width: 0;
           overflow: hidden;
-
-          .path-icon.clickable {
-            color: var(--primary-color);
-          }
 
           .path-details {
             display: flex;
@@ -174,13 +174,13 @@
       }
     }
 
-    .sync-footer {
+    .operation-footer {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 20px;
 
-      .sync-status {
+      .operation-status {
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -211,14 +211,14 @@
           }
         }
 
-        .last-sync {
+        .last-operation {
           font-size: 0.75rem;
           color: var(--secondary-text-color);
           margin-top: 4px;
         }
       }
 
-      .sync-controls {
+      .operation-controls {
         display: flex;
         justify-content: flex-end;
         align-items: center;
@@ -240,8 +240,14 @@
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 16px;
 
+    &.sync-operation .stat-card {
+      --stat-color: var(--primary-color);
+    }
+    &.copy-operation .stat-card {
+      --stat-color: var(--accent-color);
+    }
+
     .stat-card {
-      // background: var(--card-background);
       border-radius: 8px;
       padding: 16px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -256,7 +262,7 @@
       .stat-value {
         font-size: 18px;
         font-weight: bold;
-        color: var(--primary-color);
+        color: var(--stat-color, var(--primary-color));
         margin-bottom: 4px;
       }
 
@@ -272,6 +278,14 @@
         left: 0;
         right: 0;
         border-radius: 0 0 8px 8px;
+        --mat-progress-bar-active-color: var(
+          --stat-color,
+          var(--primary-color)
+        );
+        --mat-progress-bar-buffer-color: var(
+          --stat-color,
+          var(--primary-color)
+        );
       }
 
       .error-icon {
@@ -317,7 +331,7 @@
 
       .filename-text {
         color: var(--app-text-color);
-        
+
         span {
           white-space: nowrap;
           overflow: hidden;
@@ -328,22 +342,29 @@
         }
       }
 
-        .progress-bar {
-          width: 100px;
-          height: 8px;
-          padding: 8px;
-          border-radius: 4px;
-          display: inline-block;
-          overflow: hidden;
-          vertical-align: middle;
+      .progress-bar.copy-operation > div {
+        --progress-bar-color: var(--accent-color);
+      }
+      .progress-bar.sync-operation > div {
+        --progress-bar-color: var(--primary-color);
+      }
+      .progress-bar {
+        width: 100px;
+        height: 8px;
+        margin: 0 8px 0 0;
+        border-radius: 4px;
+        background: var(--progress-bar-bg, #e0e0e0);
+        display: inline-block;
+        overflow: hidden;
+        vertical-align: middle;
+        position: relative;
 
-          > div {
-            height: 100%;
-            border-radius: 4px;
-            background-color: var(--primary-color);
-            transition: width 0.3s ease;
-          }
-        
+        > div {
+          height: 100%;
+          border-radius: 4px;
+          background-color: var(--progress-bar-color, var(--primary-color));
+          transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
       }
     }
   }
@@ -383,9 +404,21 @@
   }
 }
 
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(66, 133, 244, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0);
+  }
+}
+
 // Responsive adjustments
 @media (max-width: 767.98px) {
-  .sync-monitor {
+  .operation-monitor {
     .performance-graphs {
       grid-template-columns: 1fr;
     }
@@ -393,17 +426,17 @@
 }
 
 @media (max-width: 575.98px) {
-  .sync-monitor {
+  .operation-monitor {
     .stats-summary {
       grid-template-columns: repeat(2, 1fr);
     }
 
-    .sync-control-card {
-      .sync-path-section {
+    .operation-control-card {
+      .operation-path-section {
         flex-direction: column;
         align-items: stretch;
 
-        .sync-path {
+        .operation-path {
           flex-direction: column;
           align-items: stretch;
           gap: 8px;
@@ -416,17 +449,17 @@
         }
       }
 
-      .sync-footer {
+      .operation-footer {
         flex-direction: column;
         align-items: stretch;
         gap: 12px;
 
-        .sync-status {
+        .operation-status {
           align-items: center !important;
           margin-bottom: 12px;
         }
 
-        .sync-controls {
+        .operation-controls {
           flex-direction: column;
           justify-content: center;
         }
