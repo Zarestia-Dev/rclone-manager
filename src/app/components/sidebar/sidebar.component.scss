@@ -83,11 +83,28 @@
           margin-right: 8px;
           transition: all 0.3s ease;
 
-          &.active {
+          &.mount.active {
+            color: var(--accent-color);
+            background-color: color-mix(
+              in srgb,
+              var(--accent-color) 20%,
+              transparent
+            );
+          }
+          &.sync.active {
             color: var(--primary-color);
             background-color: color-mix(
               in srgb,
               var(--primary-color) 20%,
+              transparent
+            );
+          }
+
+          &.copy.active {
+            color: var(--accent-color);
+            background-color: color-mix(
+              in srgb,
+              var(--accent-color) 20%,
               transparent
             );
           }

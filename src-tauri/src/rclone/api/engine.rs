@@ -8,13 +8,14 @@ use std::{
 
 use once_cell::sync::Lazy;
 use reqwest::blocking::Client;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 use log::{debug, error, info, warn};
 
 use crate::{
     core::check_binaries::{is_rclone_available, read_rclone_path},
     rclone::api::state::RCLONE_STATE,
+    RcloneState,
 };
 
 pub static ENGINE: Lazy<Arc<Mutex<RcApiEngine>>> =
@@ -113,9 +114,20 @@ impl RcApiEngine {
     }
 
     pub fn update_path(&mut self, app: &AppHandle) {
-        self.rclone_path = read_rclone_path(app);
+        let rclone_state = app.state::<RcloneState>();
+        self.rclone_path = rclone_state.rclone_path.read().unwrap().clone();
         info!("🔄 Rclone path updated to: {}", self.rclone_path.display());
         self.start(app);
+    }
+
+    pub fn get_config_path(&self, app: &AppHandle) -> Option<PathBuf> {
+        let rclone_state = app.state::<RcloneState>();
+        let config_path = rclone_state.config_path.read().unwrap();
+        if config_path.is_empty() {
+            None
+        } else {
+            Some(PathBuf::from(config_path.clone()))
+        }
     }
 
     pub fn is_running(&self) -> bool {
@@ -150,11 +162,15 @@ impl RcApiEngine {
 
         let mut engine_app = Command::new(&self.rclone_path);
 
+        if let Some(config_path) = self.get_config_path(app) {
+            engine_app.arg("--config").arg(config_path);
+        }
+
         engine_app.args(&[
             "rcd",
             "--rc-no-auth",
             "--rc-serve",
-            &format!("--rc-addr=127.0.0.1:{}", port),
+            &format!("--rc-addr=127.0.0.1:{}", self.current_api_port),
         ]);
 
         // This is a workaround for Windows to avoid showing a console window

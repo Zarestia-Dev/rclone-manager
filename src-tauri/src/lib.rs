@@ -1,10 +1,7 @@
 use core::{
-    check_binaries::{is_7z_available, is_rclone_available},
+    check_binaries::{is_7z_available, is_rclone_available, read_rclone_path},
     settings::settings::{analyze_backup_file, load_setting_value, restore_encrypted_settings},
-    tray::{
-        actions::{handle_stop_all_jobs, handle_stop_job, handle_sync_remote},
-        tray::TrayEnabled,
-    },
+    tray::actions::{handle_copy_remote, handle_stop_all_jobs, handle_stop_copy, handle_stop_sync, handle_sync_remote},
 };
 use std::{
     path::PathBuf,
@@ -13,8 +10,8 @@ use std::{
 
 use log::{debug, error, info};
 use rclone::api::{
-    api_command::stop_job,
-    api_query::{get_fs_info, get_remote_paths},
+    api_command::{set_bandwidth_limit, stop_job},
+    api_query::{get_bandwidth_limit, get_fs_info, get_remote_paths},
     engine::RcApiEngine,
     state::{
         clear_errors_for_remote, clear_logs_for_remote, get_active_jobs,
@@ -28,7 +25,6 @@ use utils::{
     builder::{create_app_window, setup_tray},
     log::init_logging,
     network::check_links,
-    notification::NotificationService,
 };
 
 use crate::{
@@ -72,6 +68,7 @@ use crate::{
         rclone::provision::provision_rclone,
     },
 };
+use std::sync::RwLock;
 
 mod core;
 mod rclone;
@@ -79,9 +76,11 @@ mod utils;
 
 pub struct RcloneState {
     pub client: reqwest::Client,
+    pub config_path: Arc<RwLock<String>>,
+    pub tray_enabled: Arc<RwLock<bool>>,
+    pub notifications_enabled: Arc<RwLock<bool>>,
+    pub rclone_path: Arc<RwLock<PathBuf>>,
 }
-
-use std::sync::RwLock;
 
 #[tauri::command]
 async fn set_theme(theme: String, window: tauri::Window) -> Result<(), String> {
@@ -164,6 +163,23 @@ async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
             error!("Failed to setup tray: {}", e);
         }
     }
+
+    if !settings.core.bandwidth_limit.is_empty() {
+        debug!(
+            "🌐 Setting bandwidth limit: {}",
+            settings.core.bandwidth_limit
+        );
+        let rclone_state = app_handle.state::<RcloneState>();
+        if let Err(e) = set_bandwidth_limit(
+            app_handle.clone(),
+            Some(settings.core.bandwidth_limit.clone()),
+            rclone_state,
+        )
+        .await
+        {
+            error!("Failed to set bandwidth limit: {}", e);
+        }
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -189,8 +205,8 @@ pub fn run() {
                 });
                 if *window
                     .app_handle()
-                    .state::<TrayEnabled>()
-                    .enabled
+                    .state::<RcloneState>()
+                    .tray_enabled
                     .clone()
                     .read()
                     .unwrap()
@@ -208,9 +224,6 @@ pub fn run() {
                 }
             }
             _ => {}
-        })
-        .manage(RcloneState {
-            client: reqwest::Client::new(),
         })
         .setup(|app| {
             let app_handle = app.handle();
@@ -239,11 +252,14 @@ pub fn run() {
             let settings: AppSettings = serde_json::from_value(settings_json["settings"].clone())
                 .unwrap_or_else(|_| AppSettings::default());
 
-            app.manage(NotificationService {
-                enabled: Arc::new(RwLock::new(settings.general.notifications)),
-            });
-            app.manage(TrayEnabled {
-                enabled: Arc::new(RwLock::new(settings.general.tray_enabled)),
+            let rclone_path = read_rclone_path(&app_handle);
+
+            app.manage(RcloneState {
+                client: reqwest::Client::new(),
+                config_path: Arc::new(RwLock::new(settings.core.rclone_config_path.clone())),
+                tray_enabled: Arc::new(RwLock::new(settings.general.tray_enabled)),
+                notifications_enabled: Arc::new(RwLock::new(settings.general.notifications)),
+                rclone_path: Arc::new(RwLock::new(rclone_path)),
             });
 
             // ────── INIT LOGGING ──────
@@ -299,8 +315,9 @@ pub fn run() {
             id if id.starts_with("mount-") => handle_mount_remote(app.clone(), id),
             id if id.starts_with("unmount-") => handle_unmount_remote(app.clone(), id),
             id if id.starts_with("sync-") => handle_sync_remote(app.clone(), id),
-            // id if id.starts_with("copy-") => handle_copy_remote(app.clone(), id),
-            id if id.starts_with("stop_job-") => handle_stop_job(app.clone(), id),
+            id if id.starts_with("copy-") => handle_copy_remote(app.clone(), id),
+            id if id.starts_with("stop_sync-") => handle_stop_sync(app.clone(), id),
+            id if id.starts_with("stop_copy-") => handle_stop_copy(app.clone(), id),
             id if id.starts_with("browse-") => handle_browse_remote(&app, id),
             id if id.starts_with("delete-") => handle_delete_remote(app.clone(), id),
 
@@ -325,6 +342,7 @@ pub fn run() {
             get_mounted_remotes,
             start_sync,
             start_copy,
+            set_bandwidth_limit,
             // Rclone Query API
             mount_remote,
             unmount_remote,
@@ -333,6 +351,7 @@ pub fn run() {
             delete_remote,
             quit_rclone_oauth,
             get_remote_paths,
+            get_bandwidth_limit,
             // Flags
             get_global_flags,
             get_copy_flags,

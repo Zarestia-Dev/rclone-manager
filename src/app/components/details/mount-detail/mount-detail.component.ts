@@ -6,6 +6,7 @@ import {
   Output,
   ChangeDetectionStrategy,
   OnDestroy,
+  SimpleChanges,
 } from "@angular/core";
 import { MatCardModule } from "@angular/material/card";
 import { MatDividerModule } from "@angular/material/divider";
@@ -17,8 +18,11 @@ import { Subject } from "rxjs";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatButtonModule } from "@angular/material/button";
 import { SENSITIVE_KEYS } from "../../../shared/remote-config/remote-config-types";
-import { Remote, RemoteSettings, RemoteSettingsSection } from "../../../shared/components/types";
-
+import {
+  Remote,
+  RemoteSettings,
+  RemoteSettingsSection,
+} from "../../../shared/components/types";
 
 @Component({
   selector: "app-mount-detail",
@@ -42,8 +46,15 @@ export class MountDetailComponent implements OnDestroy {
   @Input() selectedRemote: Remote | null = null;
   @Input() iconService: any; // Consider creating an interface for this
   @Input() remoteSettings: RemoteSettings = {};
-  @Input() actionInProgress: "mount" | "unmount" | "sync" | "copy" | "stop" | "open" | null = null;
-  
+  @Input() actionInProgress:
+    | "mount"
+    | "unmount"
+    | "sync"
+    | "copy"
+    | "stop"
+    | "open"
+    | null = null;
+
   @Output() openInFiles = new EventEmitter<string>();
   @Output() mountRemote = new EventEmitter<string>();
   @Output() unmountRemote = new EventEmitter<string>();
@@ -64,7 +75,8 @@ export class MountDetailComponent implements OnDestroy {
     this.destroy$.complete();
   }
 
-  // Disk Usage Helpers
+  ngOnChanges(changes: SimpleChanges): void {}
+
   getDiskBarStyle(): { [key: string]: string } {
     if (!this.selectedRemote?.mountState?.mounted) {
       return this.getUnmountedStyle();
@@ -74,16 +86,24 @@ export class MountDetailComponent implements OnDestroy {
       return this.getErrorStyle();
     }
 
+    // Check if we have disk usage data and it's not supported
     if (this.selectedRemote.mountState?.diskUsage?.notSupported) {
       return this.getUnsupportedStyle();
+    }
+
+    // Check if we're still loading disk usage
+    if (this.selectedRemote.mountState?.diskUsage?.loading) {
+      return this.getLoadingStyle();
     }
 
     return this.getMountedStyle();
   }
 
   getUsagePercentage(): number {
-    if (!this.selectedRemote?.mountState?.diskUsage || 
-        this.selectedRemote.mountState.diskUsage.notSupported) {
+    if (
+      !this.selectedRemote?.mountState?.diskUsage ||
+      this.selectedRemote.mountState.diskUsage.notSupported
+    ) {
       return 0;
     }
 
@@ -116,7 +136,9 @@ export class MountDetailComponent implements OnDestroy {
   }
 
   get mountSource(): string {
-    return `${this.selectedRemote?.remoteSpecs?.name}:/${this.remoteSettings?.["mountConfig"]?.["source"] || ""}`;
+    return `${this.selectedRemote?.remoteSpecs?.name}:/${
+      this.remoteSettings?.["mountConfig"]?.["source"] || ""
+    }`;
   }
 
   // Event Triggers
@@ -144,11 +166,15 @@ export class MountDetailComponent implements OnDestroy {
 
   // Security Helpers
   isSensitiveKey(key: string): boolean {
-    return SENSITIVE_KEYS.some(sensitive => key.toLowerCase().includes(sensitive));
+    return SENSITIVE_KEYS.some((sensitive) =>
+      key.toLowerCase().includes(sensitive)
+    );
   }
 
   maskSensitiveValue(key: string, value: any): string {
-    return this.isSensitiveKey(key) ? "RESTRICTED" : this.truncateValue(value, 15);
+    return this.isSensitiveKey(key)
+      ? "RESTRICTED"
+      : this.truncateValue(value, 15);
   }
 
   // Private Helpers
@@ -176,10 +202,22 @@ export class MountDetailComponent implements OnDestroy {
     };
   }
 
+  private getLoadingStyle(): { [key: string]: string } {
+    return {
+      backgroundColor: "var(--orange)",
+      border: "3px solid transparent",
+      backgroundImage:
+        "linear-gradient(120deg, rgba(255,255,255,0.15) 25%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.15) 75%)",
+      backgroundSize: "200% 100%",
+      animation: "diskLoadingShimmer 1.2s linear infinite",
+      transition: "all 0.5s ease-in-out",
+    };
+  }
+
   private getMountedStyle(): { [key: string]: string } {
     return {
       backgroundColor: "#cecece",
-      border: "3px solid #70caf2",
+      border: "3px solid var(--light-blue)",
       transition: "all 0.5s ease-in-out",
     };
   }

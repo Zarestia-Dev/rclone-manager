@@ -74,7 +74,7 @@
                         {{ option }}
                       </mat-option>
                     </mat-select>
-                    <input *ngIf="!meta.options" matInput [formControl]="getFormControl(category, key)">
+                    <input *ngIf="!meta.options" (blur)="updateSetting(category, key, getFormControl(category, key).value)" matInput [formControl]="getFormControl(category, key)">
                     <mat-error>Invalid input</mat-error>
                   </mat-form-field>
                 </div>

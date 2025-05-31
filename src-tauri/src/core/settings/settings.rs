@@ -9,9 +9,11 @@ use std::{
     process::Command,
     sync::{Arc, Mutex},
 };
-use tauri::{AppHandle, Emitter, Runtime, State};
+use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use tauri_plugin_store::Store;
 use zip::{write::FileOptions, ZipArchive, ZipWriter};
+
+use crate::RcloneState;
 
 use super::settings_store::AppSettings;
 
@@ -308,6 +310,7 @@ pub async fn backup_settings(
     password: Option<String>,
     remote_name: Option<String>, // New parameter for specific remote
     state: State<'_, SettingsState<tauri::Wry>>,
+    app_handle: AppHandle,
 ) -> Result<String, String> {
     let backup_path = PathBuf::from(&backup_dir);
     fs::create_dir_all(&backup_path)
@@ -334,6 +337,7 @@ pub async fn backup_settings(
     let export_dir = tmp_dir.path();
 
     let mut exported_items = vec![];
+    let mut config_path: Option<PathBuf> = None;
 
     if export_type == "all" || export_type == "settings" {
         let settings_path = state.config_dir.join("settings.json");
@@ -380,18 +384,30 @@ pub async fn backup_settings(
     }
 
     if (export_type == "all" || export_type == "remotes") && remote_name.is_none() {
-        let rclone_conf = state.config_dir.join("rclone.conf");
-        if rclone_conf.exists() {
-            fs::copy(&rclone_conf, export_dir.join("rclone.conf")).ok();
+        let resolved_config_path = match get_rclone_config_path(&app_handle) {
+            Ok(path) => path,
+            Err(e) => {
+                warn!("⚠️ Failed to get rclone config path: {}", e);
+                return Err(format!("⚠️ Failed to get rclone config path: {}", e));
+            }
+        };
+        debug!("Rclone config path: {:?}", resolved_config_path);
+        if resolved_config_path.exists() {
+            fs::copy(&resolved_config_path, export_dir.join("rclone.conf")).ok();
             exported_items.push("remotes");
         }
+        config_path = Some(resolved_config_path);
     }
 
     // Write export_info.json
     let export_info = json!({
         "exported": exported_items,
         "timestamp": timestamp.to_rfc3339(),
-        "remote_name": remote_name
+        "remote_name": remote_name,
+        "rclone_config_path": config_path
+            .as_ref()
+            .map(|p| p.to_string_lossy())
+            .unwrap_or_else(|| "".into()),
     });
     fs::write(export_dir.join("export_info.json"), export_info.to_string())
         .map_err(|e| format!("Failed to write export_info.json: {}", e))?;
@@ -544,6 +560,18 @@ pub async fn restore_settings_from_path(
         extracted_dir
     );
 
+    let export_info_path = extracted_dir.join("export_info.json");
+    let export_info: Option<serde_json::Value> = std::fs::read_to_string(&export_info_path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok());
+
+    let exported_rclone_path = export_info
+        .as_ref()
+        .and_then(|info| info.get("rclone_config_path"))
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.trim().is_empty())
+        .map(PathBuf::from);
+
     for entry in walkdir::WalkDir::new(extracted_dir)
         .into_iter()
         .filter_map(Result::ok)
@@ -555,7 +583,27 @@ pub async fn restore_settings_from_path(
         let out_path = match file_name.as_ref() {
             "settings.json" => state.config_dir.join("settings.json"),
 
-            "rclone.conf" => state.config_dir.join("rclone.conf"),
+            "rclone.conf" => {
+                if let Some(ref custom) = exported_rclone_path {
+                    custom.clone()
+                } else {
+                    // fallback to default logic
+                    let store = state.store.lock().unwrap();
+                    let settings = store.get("app_settings").unwrap_or_else(|| json!({}));
+                    let custom_path = settings
+                        .get("core")
+                        .and_then(|c| c.get("rclone_config_path"))
+                        .and_then(|p| p.as_str())
+                        .filter(|s| !s.trim().is_empty());
+
+                    if let Some(custom) = custom_path {
+                        PathBuf::from(custom)
+                    } else {
+                        get_rclone_config_path(&app_handle)
+                            .unwrap_or_else(|_| state.config_dir.join("rclone.conf"))
+                    }
+                }
+            }
 
             name if name.starts_with("remotes/") => {
                 let remote_name = name.trim_start_matches("remotes/");
@@ -619,6 +667,7 @@ pub async fn restore_settings(
             .by_index(i)
             .map_err(|e| format!("Zip read error: {}", e))?;
         let out_path = temp_dir.path().join(file.name());
+        debug!("Extracting file: {:?}", out_path);
 
         if let Some(parent) = out_path.parent() {
             create_dir_all(parent).map_err(|e| format!("Failed to create parent: {}", e))?;
@@ -682,4 +731,36 @@ pub async fn reset_settings(
     app_handle.emit("remote_presence_changed", json!({})).ok();
     app_handle.emit("system_settings_changed", json!({})).ok();
     Ok(())
+}
+
+pub fn get_rclone_config_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    // Get default path from rclone
+    let rclone_state = app.state::<RcloneState>();
+    let rclone_path = rclone_state.rclone_path.read().unwrap().clone();
+    let output = Command::new(&rclone_path)
+        .arg("config")
+        .arg("file")
+        .output()
+        .map_err(|e| format!("Failed to execute rclone: {}", e))?;
+
+    debug!("Rclone config output: {:?}", output);
+    if !output.status.success() {
+        return Err("Failed to get rclone config path".to_string());
+    }
+
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|e| format!("Invalid output from rclone: {}", e))?;
+
+    // rclone prints: "Configuration file is stored at:\n/path/to/file\n"
+    // Extract the last non-empty line as the path
+    let path_str = stdout
+        .lines()
+        .rev()
+        .find(|line| !line.trim().is_empty())
+        .ok_or("Could not parse rclone config path")?
+        .trim()
+        .to_string();
+
+    debug!("Rclone config path: {}", path_str);
+    Ok(PathBuf::from(path_str))
 }

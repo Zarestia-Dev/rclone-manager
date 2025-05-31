@@ -2,12 +2,6 @@ use log::info;
 use tauri::AppHandle;
 
 use super::menu::create_tray_menu;
-use std::sync::{Arc, RwLock};
-
-#[derive(Clone)]
-pub struct TrayEnabled {
-    pub enabled: Arc<RwLock<bool>>,
-}
 
 pub async fn update_tray_menu(app: AppHandle, max_tray_items: usize) -> tauri::Result<()> {
     let new_menu = create_tray_menu(&app, max_tray_items).await?;

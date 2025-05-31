@@ -9,14 +9,14 @@
           | titlecase }}
         </p>
         <div class="remote-status">
-          <p [class.active]="remote.mountState?.mounted" [class.passive]="!remote.mountState?.mounted"> <mat-icon
+          <p class="mount" [class.active]="remote.mountState?.mounted" [class.passive]="!remote.mountState?.mounted"> <mat-icon
               svgIcon="mount"></mat-icon>
           </p>
           <p class="sync" [class.active]="remote.syncState?.isOnSync" [class.passive]="!remote.syncState?.isOnSync">
             <mat-icon svgIcon="sync"></mat-icon>
           </p>
 
-          <p class="copy">
+          <p class="copy" [class.active]="remote.copyState?.isOnCopy" [class.passive]="!remote.copyState?.isOnCopy">
             <mat-icon svgIcon="copy"></mat-icon>
           </p>
         </div>

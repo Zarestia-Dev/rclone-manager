@@ -451,7 +451,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.setDiskUsageLoading(remote, true);
       
       const fsInfo = await this.rcloneService.getFsInfo(remote.remoteSpecs.name);
-      console.log(`Disk usage for ${remote.remoteSpecs.name}:`, fsInfo);
       
       if (fsInfo?.Features?.About === false) {
         this.setDiskUsageNotSupported(remote);
@@ -488,6 +487,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         total_space: "Not supported",
         used_space: "Not supported",
         free_space: "Not supported",
+        notSupported: true,
         loading: false,
         error: false,
       };
@@ -504,7 +504,19 @@ export class HomeComponent implements OnInit, OnDestroy {
         loading: false,
         error: false,
       };
-      this.cdr.markForCheck();
+      if (
+        this.selectedRemote &&
+        this.selectedRemote.remoteSpecs.name === remote.remoteSpecs.name
+      ) {
+        this.selectedRemote = {
+          ...this.selectedRemote,
+          mountState: {
+            ...this.selectedRemote.mountState,
+            diskUsage: { ...remote.mountState.diskUsage },
+          },
+        };
+        this.cdr.markForCheck();
+      }
     }
   }
 

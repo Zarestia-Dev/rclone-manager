@@ -16,15 +16,17 @@
             <mat-card-content class="disk-usage">
                 <strong>Space Allocation</strong>
                 <div class="full-bar disk-usage-bar" [ngStyle]="getDiskBarStyle()">
-                    <p *ngIf="!selectedRemote.mountState?.mounted || selectedRemote.mountState?.mounted === 'error'">
-                        {{ selectedRemote.mountState?.mounted === 'error' ? 'Error' : 'Not Mounted' }}
+                    <p
+                        *ngIf="!selectedRemote.mountState?.mounted || selectedRemote.mountState?.mounted === 'error' || selectedRemote.mountState?.diskUsage?.notSupported">
+                        {{ selectedRemote.mountState?.diskUsage?.notSupported ? 'Not Supported' :
+                        (selectedRemote.mountState?.mounted === 'error' ? 'Error' : 'Not Mounted') }}
                     </p>
-                    <div *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error'" class="usage"
-                        [style.width]="getUsagePercentage() + '%'">
+                    <div *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error'"
+                        class="usage" [style.width]="getUsagePercentage() + '%'">
                     </div>
                 </div>
 
-                <div class="legend" *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.diskUsage">
+                <div class="legend" *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.diskUsage && !selectedRemote.mountState?.diskUsage?.notSupported">
                     <div class="legend-item">
                         <span class="color-box border"></span>
                         Total Space: {{ selectedRemote.mountState?.diskUsage?.total_space }}
@@ -43,7 +45,8 @@
             <mat-divider></mat-divider>
 
             <mat-card-footer class="button-container">
-                <ng-container *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error'">
+                <ng-container
+                    *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error'">
                     <button mat-raised-button [disabled]="actionInProgress === 'open'" color="accent"
                         (click)="triggerOpenInFiles()">
                         <mat-spinner *ngIf="actionInProgress === 'open'" diameter="20"></mat-spinner>

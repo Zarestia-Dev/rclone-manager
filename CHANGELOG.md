@@ -6,10 +6,13 @@
 - Single instance support added
 - MacOS mount plugin installer support implemented
 - Remote root path selection added (That will be active after remote added)
-- Sync feature added (Syncs remote with local folder or remote with remote)
+- Remote Operations added: Sync and Copy  feature added (Syncs or copies remote with local folder or remote with remote (need some fixes))
+- Bandwidth limit feature added (Limits the bandwidth for remote operations)
+- Support for custom rclone config file location added
 
 ### Fixed
 - In the tray icon, the "Show App" option now correctly opens the app window. (Fixed)
+- Rclone Configuration file is now correctly exported and imported.
 
 ## [beta-0.1.0] - 2024-12-05
 ### Added

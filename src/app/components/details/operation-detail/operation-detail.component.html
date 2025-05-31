@@ -49,9 +49,11 @@
 
           <mat-card-footer class="operation-footer">
             <div class="operation-status">
-              <div class="status-indicator"
-                [class.active]="operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy"
-                [class.error]="(operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) === 'error'">
+              <div class="status-indicator" [ngClass]="{
+                  'active-sync': operationType === 'sync' && selectedRemote.syncState?.isOnSync,
+                  'active-copy': operationType === 'copy' && selectedRemote.copyState?.isOnCopy,
+                  'error': (operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) === 'error'
+                }">
                 <mat-icon
                   [svgIcon]="(operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) === 'error' ? 'error' : 
               ((operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) ? 'refresh' : 'pause')"></mat-icon>
@@ -104,12 +106,6 @@
               <div class="job-detail" *ngIf="stats.startTime">
                 <span class="detail-label">Started:</span>
                 <span class="detail-value">{{stats.startTime | date:'medium'}}</span>
-              </div>
-              <div class="job-detail">
-                <span class="detail-label">Location:</span>
-                <span class="detail-value">
-                  {{isLocalPath(operationDestination) ? 'Local Directory' : 'Remote Storage'}}
-                </span>
               </div>
               <div class="job-detail">
                 <span class="detail-label">Last Operation:</span>

@@ -5,14 +5,16 @@ use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
     core::{
-        lifecycle::shutdown::handle_shutdown,
-        tray::tray::{update_tray_menu, TrayEnabled},
+        check_binaries::read_rclone_path, lifecycle::shutdown::handle_shutdown,
+        tray::tray::update_tray_menu,
     },
     rclone::api::{
+        api_command::set_bandwidth_limit,
         engine::ENGINE,
         state::{CACHE, RCLONE_STATE},
     },
-    utils::{builder::setup_tray, log::update_log_level, notification::NotificationService},
+    utils::{builder::setup_tray, log::update_log_level},
+    RcloneState,
 };
 
 mod events {
@@ -82,7 +84,12 @@ fn handle_rclone_path_updated(app: &AppHandle) {
                 if let Some(path_str) = parsed_path.as_str() {
                     debug!("🔄 Rclone path updated to: {}", path_str);
                     let app_handle_clone = app_handle.clone();
+                    let app_handle_clone2 = app_handle.clone();
+                    let rclone_state = app_handle_clone2.state::<RcloneState>();
+                    let mut guard = rclone_state.rclone_path.write().unwrap();
+                    *guard = read_rclone_path(&app_handle_clone2);
                     tauri::async_runtime::spawn(async move {
+                        // Update the Rclone path in the state
                         let result =
                             tauri::async_runtime::spawn_blocking(move || match ENGINE.lock() {
                                 Ok(mut engine) => engine.update_path(&app_handle_clone),
@@ -204,13 +211,15 @@ fn handle_settings_changed(app: &AppHandle) {
                 // same logic...
                 if let Some(general) = settings.get("general") {
                     if let Some(notification) =
-                        general.get("notification").and_then(|v| v.as_bool())
+                        general.get("notifications").and_then(|v| v.as_bool())
                     {
                         debug!("💬 Notifications changed to: {}", notification);
-                        let notifications_enabled = app_handle.state::<NotificationService>();
-                        let mut guard = notifications_enabled.enabled.write().unwrap();
+                        let notifications_enabled = app_handle.state::<RcloneState>();
+                        let mut guard =
+                            notifications_enabled.notifications_enabled.write().unwrap();
                         *guard = notification;
                     }
+
                     if let Some(startup) = general.get("start_on_startup").and_then(|v| v.as_bool())
                     {
                         debug!("🚀 Start on Startup changed to: {}", startup);
@@ -225,8 +234,8 @@ fn handle_settings_changed(app: &AppHandle) {
                     if let Some(tray_enabled) =
                         general.get("tray_enabled").and_then(|v| v.as_bool())
                     {
-                        let tray_state = app_handle.state::<TrayEnabled>();
-                        let mut guard = tray_state.enabled.write().unwrap();
+                        let tray_state = app_handle.state::<RcloneState>();
+                        let mut guard = tray_state.tray_enabled.write().unwrap();
                         *guard = tray_enabled;
                         debug!("🛠️ Tray visibility changed to: {}", tray_enabled);
 
@@ -244,6 +253,49 @@ fn handle_settings_changed(app: &AppHandle) {
                 }
 
                 if let Some(core) = settings.get("core") {
+                    if let Some(bandwidth_limit) = core.get("bandwidth_limit") {
+                        debug!("🌐 Bandwidth limit changed to: {}", bandwidth_limit);
+                        let app = app_handle.clone();
+                        let bandwidth_limit_opt = if bandwidth_limit.is_null() {
+                            None
+                        } else if let Some(s) = bandwidth_limit.as_str() {
+                            Some(s.to_string())
+                        } else if let Some(n) = bandwidth_limit.as_u64() {
+                            Some(n.to_string())
+                        } else {
+                            None
+                        };
+                        tauri::async_runtime::spawn(async move {
+                            // Get the RcloneState from tauri's state management
+                            let app_clone = app.clone();
+                            let rclone_state = app.state::<RcloneState>();
+                            if let Err(e) =
+                                set_bandwidth_limit(app_clone, bandwidth_limit_opt, rclone_state)
+                                    .await
+                            {
+                                error!("Failed to set bandwidth limit: {}", e);
+                            }
+                        });
+                    }
+
+                    if let Some(config_path) =
+                        core.get("rclone_config_path").and_then(|v| v.as_str())
+                    {
+                        debug!("🔄 Rclone config path changed to: {}", config_path);
+                        let rclone_state = app_handle.state::<RcloneState>();
+                        let mut guard = rclone_state.config_path.write().unwrap();
+                        *guard = config_path.to_string();
+
+                        // Restart engine to apply new config path
+                        let app_handle_clone = app_handle.clone();
+                        tauri::async_runtime::spawn_blocking(move || {
+                            if let Ok(mut engine) = ENGINE.lock() {
+                                engine.stop();
+                                engine.start(&app_handle_clone);
+                            }
+                        });
+                    }
+
                     if let Some(api_port) = core.get("rclone_api_port").and_then(|v| v.as_u64()) {
                         debug!("🔌 Rclone API Port changed to: {}", api_port);
                         if let Err(e) = RCLONE_STATE

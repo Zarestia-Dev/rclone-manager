@@ -1,6 +1,7 @@
 use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::time::Duration;
 use std::{collections::HashMap, process::Child, sync::Arc};
 use tauri::command;
 use tauri::State;
@@ -404,4 +405,43 @@ pub async fn get_remote_paths(
         .map_err(|e| format!("❌ Failed to parse list response: {}", e))?;
 
     Ok(json["list"].clone())
+}
+
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BandwidthLimitResponse {
+    pub bytes_per_second: i64,
+    pub bytes_per_second_rx: i64,
+    pub bytes_per_second_tx: i64,
+    pub rate: String,
+}
+
+/// Get current bandwidth limit settings
+#[tauri::command]
+pub async fn get_bandwidth_limit(
+    state: State<'_, RcloneState>,
+) -> Result<BandwidthLimitResponse, String> {
+    let url = format!("{}/core/bwlimit", RCLONE_STATE.get_api().0);
+
+    let response = state
+        .client
+        .get(&url)
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        let error = format!("HTTP {}: {}", status, body);
+        return Err(error);
+    }
+
+    let response_data: BandwidthLimitResponse = serde_json::from_str(&body)
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+
+    Ok(response_data)
 }

@@ -15,11 +15,16 @@ $adwaita-green-palette: (
   50: #f0faf2,
   100: #d8f5e0,
   200: #b8f0c8,
-  300: #8ff0a4,  // green-1
-  400: #57e389,  // green-2
-  500: #33d17a,  // green-3
-  600: #2ec27e,  // green-4
-  700: #26a269,  // green-5
+  300: #8ff0a4,
+  // green-1
+  400: #57e389,
+  // green-2
+  500: #33d17a,
+  // green-3
+  600: #2ec27e,
+  // green-4
+  700: #26a269,
+  // green-5
   800: #1e8a57,
   900: #167345,
   contrast: (
@@ -28,12 +33,13 @@ $adwaita-green-palette: (
     200: rgba(black, 0.87),
     300: rgba(black, 0.87),
     400: rgba(black, 0.87),
-    500: white, // Green-3 works with dark text
+    500: white,
+    // Green-3 works with dark text
     600: white,
     700: white,
     800: white,
     900: white,
-  )
+  ),
 );
 
 // Adwaita Blue Accent Palette
@@ -41,11 +47,16 @@ $adwaita-blue-palette: (
   50: #f0f7ff,
   100: #d8ebff,
   200: #b8d9ff,
-  300: #99c1f1,  // blue-1
-  400: #62a0ea,  // blue-2
-  500: #3584e4,  // blue-3
-  600: #1c71d8,  // blue-4
-  700: #1a5fb4,  // blue-5
+  300: #99c1f1,
+  // blue-1
+  400: #62a0ea,
+  // blue-2
+  500: #3584e4,
+  // blue-3
+  600: #1c71d8,
+  // blue-4
+  700: #1a5fb4,
+  // blue-5
   800: #154d90,
   900: #103b6c,
   contrast: (
@@ -59,7 +70,7 @@ $adwaita-blue-palette: (
     700: white,
     800: white,
     900: white,
-  )
+  ),
 );
 
 // Adwaita Red Warn Palette
@@ -67,11 +78,16 @@ $adwaita-red-palette: (
   50: #ffebee,
   100: #ffcdd2,
   200: #faa7a0,
-  300: #f66151,  // red-1
-  400: #ed333b,  // red-2
-  500: #e01b24,  // red-3
-  600: #c01c28,  // red-4
-  700: #a51d2d,  // red-5
+  300: #f66151,
+  // red-1
+  400: #ed333b,
+  // red-2
+  500: #e01b24,
+  // red-3
+  600: #c01c28,
+  // red-4
+  700: #a51d2d,
+  // red-5
   800: #8b1522,
   900: #700e17,
   contrast: (
@@ -80,12 +96,12 @@ $adwaita-red-palette: (
     200: rgba(black, 0.87),
     300: rgba(black, 0.87),
     400: white,
-    500: white,     
+    500: white,
     600: white,
     700: white,
     800: white,
     900: white,
-  )
+  ),
 );
 
 // Yellow Palette
@@ -93,11 +109,16 @@ $adwaita-yellow-palette: (
   50: #fffdf0,
   100: #fff9d8,
   200: #fff5b8,
-  300: #f9f06b,  // yellow-1
-  400: #f8e45c,  // yellow-2
-  500: #f6d32d,  // yellow-3
-  600: #f5c211,  // yellow-4
-  700: #e5a50a,  // yellow-5
+  300: #f9f06b,
+  // yellow-1
+  400: #f8e45c,
+  // yellow-2
+  500: #f6d32d,
+  // yellow-3
+  600: #f5c211,
+  // yellow-4
+  700: #e5a50a,
+  // yellow-5
   800: #d38f00,
   900: #b57900,
   contrast: (
@@ -111,7 +132,7 @@ $adwaita-yellow-palette: (
     700: white,
     800: white,
     900: white,
-  )
+  ),
 );
 
 // Orange Palette
@@ -119,11 +140,16 @@ $adwaita-orange-palette: (
   50: #fff8f0,
   100: #ffebd8,
   200: #ffddb8,
-  300: #ffbe6f,  // orange-1
-  400: #ffa348,  // orange-2
-  500: #ff7800,  // orange-3
-  600: #e66100,  // orange-4
-  700: #c64600,  // orange-5
+  300: #ffbe6f,
+  // orange-1
+  400: #ffa348,
+  // orange-2
+  500: #ff7800,
+  // orange-3
+  600: #e66100,
+  // orange-4
+  700: #c64600,
+  // orange-5
   800: #a53500,
   900: #842500,
   contrast: (
@@ -132,12 +158,12 @@ $adwaita-orange-palette: (
     200: rgba(black, 0.87),
     300: rgba(black, 0.87),
     400: rgba(black, 0.87),
-    500: white,    
+    500: white,
     600: white,
     700: white,
     800: white,
     900: white,
-  )
+  ),
 );
 
 // Purple Palette
@@ -145,11 +171,16 @@ $adwaita-purple-palette: (
   50: #faf0fa,
   100: #f0d8f0,
   200: #e8b8e8,
-  300: #dc8add,  // purple-1
-  400: #c061cb,  // purple-2
-  500: #9141ac,  // purple-3
-  600: #813d9c,  // purple-4
-  700: #613583,  // purple-5
+  300: #dc8add,
+  // purple-1
+  400: #c061cb,
+  // purple-2
+  500: #9141ac,
+  // purple-3
+  600: #813d9c,
+  // purple-4
+  700: #613583,
+  // purple-5
   800: #4f2a6a,
   900: #3d1f51,
   contrast: (
@@ -158,12 +189,12 @@ $adwaita-purple-palette: (
     200: rgba(black, 0.87),
     300: rgba(black, 0.87),
     400: white,
-    500: white,      
+    500: white,
     600: white,
     700: white,
     800: white,
     900: white,
-  )
+  ),
 );
 
 // Brown Palette
@@ -171,11 +202,16 @@ $adwaita-brown-palette: (
   50: #f7f2ed,
   100: #ede0d8,
   200: #e0c8b8,
-  300: #cdab8f,  // brown-1
-  400: #b5835a,  // brown-2
-  500: #986a44,  // brown-3
-  600: #865e3c,  // brown-4
-  700: #63452c,  // brown-5
+  300: #cdab8f,
+  // brown-1
+  400: #b5835a,
+  // brown-2
+  500: #986a44,
+  // brown-3
+  600: #865e3c,
+  // brown-4
+  700: #63452c,
+  // brown-5
   800: #513821,
   900: #3f2b16,
   contrast: (
@@ -189,7 +225,7 @@ $adwaita-brown-palette: (
     700: white,
     800: white,
     900: white,
-  )
+  ),
 );
 
 // Light (Gray) Palette
@@ -304,7 +340,8 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
     --app-background: #fafafa;
     --secondary-background: #ffffff;
     --sidebar-background: #f5f5f5;
-    --box-shadow: 0 0 0 1px rgba(232, 232, 233, 1), 0 0 4px 1px rgba(10, 10, 11, 0.06); 
+    --box-shadow: 0 0 0 1px rgba(232, 232, 233, 1),
+      0 0 4px 1px rgba(10, 10, 11, 0.06);
     --selected-tab-color: #e6e6e7;
     --hover-color: rgb(200, 200, 200);
     --app-text-color: #000000;
@@ -341,6 +378,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --primary-color: #{map.get($adwaita-green-palette, 500)};
   --purple: #{map.get($adwaita-purple-palette, 500)};
   --orange: #{map.get($adwaita-orange-palette, 500)};
+  --yellow: #{map.get($adwaita-yellow-palette, 500)};
   --light-green: #{map.get($adwaita-green-palette, 300)};
   --light-orange: #{map.get($adwaita-orange-palette, 300)};
   --light-blue: #{map.get($adwaita-blue-palette, 300)};
@@ -359,25 +397,22 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --titlebar-height: 40px;
   --sidebar-width: 250px;
   --app-height: calc(
-    100vh -
-      (
-        var(--titlebar-height) + var(--title-bar-padding)
-      )
+    100vh - (var(--titlebar-height) + var(--title-bar-padding))
   );
 
   .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: bold;
-      padding: 8px;
-      gap: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    padding: 8px;
+    gap: 10px;
 
-      p {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
+    p {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
   }
 }
 
@@ -424,12 +459,20 @@ h6 {
 .mat-mdc-icon-button,
 .mat-mdc-icon-button .mat-mdc-button-persistent-ripple,
 .mat-mdc-raised-button .mdc-button__ripple,
-.mat-mdc-button, .mat-mdc-unelevated-button,
+.mat-mdc-button,
+.mat-mdc-unelevated-button,
 .mat-mdc-outlined-button {
-  border-radius: var(--button-border-radius) !important
+  border-radius: var(--button-border-radius) !important;
+}
+
+@keyframes diskLoadingShimmer {
+  0% {
+    background-position: 200% 0;
   }
-
-
+  100% {
+    background-position: -200% 0;
+  }
+}
 
 button {
   border: none;
@@ -439,12 +482,12 @@ button {
   justify-content: center;
   background-color: transparent;
   color: var(--app-text-color);
-  
+
   span {
     text-wrap: nowrap;
     display: flex;
     flex-direction: row;
-    gap: 8px
+    gap: 8px;
   }
 
   &.fix {
@@ -500,9 +543,9 @@ button {
 
 .mat-bottom-sheet-container {
   box-shadow: none !important;
-  border-radius:  var(--title-bar-radius) var(--title-bar-radius) 0 0 !important;
+  border-radius: var(--title-bar-radius) var(--title-bar-radius) 0 0 !important;
 
   @media (max-width: 960px) {
-    border-radius:  var(--title-bar-radius) !important;
+    border-radius: var(--title-bar-radius) !important;
   }
 }

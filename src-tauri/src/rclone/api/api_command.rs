@@ -20,7 +20,7 @@ use crate::{
     RcloneState,
 };
 
-use super::state::SENSITIVE_KEYS;
+use super::{api_query::BandwidthLimitResponse, state::SENSITIVE_KEYS};
 
 lazy_static::lazy_static! {
     static ref OAUTH_PROCESS: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
@@ -1055,4 +1055,43 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
 
     info!("✅ Rclone OAuth process quit successfully");
     Ok(())
+}
+
+#[tauri::command]
+pub async fn set_bandwidth_limit(
+    _app: AppHandle,
+    rate: Option<String>,
+    state: State<'_, RcloneState>,
+) -> Result<BandwidthLimitResponse, String> {
+    let rate_value = match rate {
+        Some(ref s) if s.trim().is_empty() => "off".to_string(),
+        Some(s) => s,
+        None => "off".to_string(),
+    };
+
+    let url = format!("{}/core/bwlimit", RCLONE_STATE.get_api().0);
+    let payload = json!({ "rate": rate_value });
+
+    let response = state
+        .client
+        .post(&url)
+        .timeout(Duration::from_secs(10))
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {}", e))?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        let error = format!("HTTP {}: {}", status, body);
+        return Err(error);
+    }
+
+    let response_data: BandwidthLimitResponse =
+        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
+
+    debug!("🪢 Bandwidth limit set: {:?}", response_data);
+    Ok(response_data)
 }

@@ -8,18 +8,17 @@ use tauri_plugin_opener::OpenerExt;
 use crate::{
     core::settings::settings::save_remote_settings,
     rclone::api::{
-        api_command::{delete_remote, mount_remote, start_sync, stop_job, unmount_remote},
+        api_command::{delete_remote, mount_remote, start_copy, start_sync, stop_job, unmount_remote},
         state::{CACHE, JOB_CACHE},
     },
     utils::{
         builder::create_app_window, file_helper::get_folder_location,
-        notification::NotificationService,
+        notification::send_notification,
     },
 };
 
 fn notify(app: &AppHandle, title: &str, body: &str) {
-    let notifier = app.state::<NotificationService>();
-    notifier.send(app, title, body);
+    send_notification(app, title, body);
 }
 
 async fn prompt_mount_point(app: &AppHandle, remote_name: &str) -> Option<String> {
@@ -160,7 +159,11 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                 notify(
                     &app,
                     "Mount Successful",
-                    &format!("Successfully mounted {} at {}", format!("{}:{}", remote_name, source), mount_point),
+                    &format!(
+                        "Successfully mounted {} at {}",
+                        format!("{}:{}", remote_name, source),
+                        mount_point
+                    ),
                 );
                 // Save the mount point if it was newly selected
                 if settings
@@ -170,8 +173,7 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                     .is_none()
                 {
                     let mut new_settings = settings.clone();
-                    new_settings["mountConfig"]["dest"] =
-                        serde_json::Value::String(mount_point);
+                    new_settings["mountConfig"]["dest"] = serde_json::Value::String(mount_point);
                     if let Err(e) =
                         save_remote_settings(remote_name, new_settings, app.state(), app.clone())
                             .await
@@ -181,11 +183,19 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                 }
             }
             Err(e) => {
-                error!("🚨 Failed to mount {}: {}", format!("{}:{}", remote_name, source), e);
+                error!(
+                    "🚨 Failed to mount {}: {}",
+                    format!("{}:{}", remote_name, source),
+                    e
+                );
                 notify(
                     &app,
                     "Mount Failed",
-                    &format!("Failed to mount {}: {}", format!("{}:{}", remote_name, source), e),
+                    &format!(
+                        "Failed to mount {}: {}",
+                        format!("{}:{}", remote_name, source),
+                        e
+                    ),
                 );
             }
         }
@@ -302,263 +312,157 @@ pub fn handle_sync_remote(app: AppHandle, id: &str) {
         }
     });
 }
-
-// pub fn handle_copy_remote(app: AppHandle, id: &str) {
-//     let remote_name = id.replace("copy-", "");
-//     tauri::async_runtime::spawn(async move {
-//         let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
-//             Some(s) => s,
-//             None => {
-//                 error!("🚨 Remote {} not found in settings", remote_name);
-//                 return;
-//             }
-//         };
-
-//         let copy_config = settings
-//             .get("copyConfig")
-//             .and_then(|v| v.as_object())
-//             .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect());
-
-//         let filter_config = settings
-//             .get("filterConfig")
-//             .and_then(|v| v.as_object())
-//             .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect());
-
-//         let source = settings
-//             .get("copyConfig")
-//             .and_then(|v| v.get("source"))
-//             .and_then(|v| v.as_str())
-//             .unwrap_or("")
-//             .to_string();
-
-//         let dest = settings
-//             .get("copyConfig")
-//             .and_then(|v| v.get("dest"))
-//             .and_then(|v| v.as_str())
-//             .unwrap_or("")
-//             .to_string();
-
-//         if dest.is_empty() {
-//             error!("🚨 Copy configuration incomplete for {}", remote_name);
-//             notify(
-//                 &app,
-//                 "Copy Failed",
-//                 &format!("Copy configuration incomplete for {}", remote_name),
-//             );
-//             return;
-//         }
-
-//         match start_copy(
-//             app.clone(),
-//             format!("{}:{}", remote_name, source),
-//             dest,
-//             copy_config,
-//             filter_config,
-//             app.state(),
-//         )
-//         .await
-//         {
-//             Ok(jobid) => {
-//                 info!("✅ Started copy for {} (Job ID: {})", remote_name, jobid);
-//                 notify(
-//                     &app,
-//                     "Copy Started",
-//                     &format!("Started copy for {} (Job ID: {})", remote_name, jobid),
-//                 );
-//             }
-//             Err(e) => {
-//                 error!("🚨 Failed to start copy for {}: {}", remote_name, e);
-//                 notify(
-//                     &app,
-//                     "Copy Failed",
-//                     &format!("Failed to start copy for {}: {}", remote_name, e),
-//                 );
-//             }
-//         }
-//     });
-// }
-
-pub fn handle_stop_job(app: AppHandle, id: &str) {
-    let remote_name = id.replace("stop_job-", "");
+pub fn handle_copy_remote(app: AppHandle, id: &str) {
+    let remote_name = id.replace("copy-", "");
     tauri::async_runtime::spawn(async move {
-        // Find the active job for this remote
-        let active_jobs = JOB_CACHE.get_jobs().await;
-        if let Some(job) = active_jobs.iter().find(|j| j.remote_name == remote_name) {
+        let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
+            Some(s) => s,
+            None => {
+                error!("🚨 Remote {} not found in settings", remote_name);
+                return;
+            }
+        };
+
+        let copy_config = settings
+            .get("copyConfig")
+            .and_then(|v| v.as_object())
+            .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect());
+
+        let filter_config = settings
+            .get("filterConfig")
+            .and_then(|v| v.as_object())
+            .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect());
+
+        let source = settings
+            .get("copyConfig")
+            .and_then(|v| v.get("source"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        let dest = settings
+            .get("copyConfig")
+            .and_then(|v| v.get("dest"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        if dest.is_empty() {
+            error!("🚨 Copy configuration incomplete for {}", remote_name);
+            notify(
+                &app,
+                "Copy Failed",
+                &format!("Copy configuration incomplete for {}", remote_name),
+            );
+            return;
+        }
+
+        match start_copy(
+            app.clone(),
+            remote_name.clone(),
+            source,
+            dest,
+            copy_config,
+            filter_config,
+            app.state(),
+        )
+        .await
+        {
+            Ok(jobid) => {
+                info!("✅ Started copy for {} (Job ID: {})", remote_name, jobid);
+                notify(
+                    &app,
+                    "Copy Started",
+                    &format!("Started copy for {} (Job ID: {})", remote_name, jobid),
+                );
+            }
+            Err(e) => {
+                error!("🚨 Failed to start copy for {}: {}", remote_name, e);
+                notify(
+                    &app,
+                    "Copy Failed",
+                    &format!("Failed to start copy for {}: {}", remote_name, e),
+                );
+            }
+        }
+    });
+}
+
+pub fn handle_stop_sync(app: AppHandle, id: &str) {
+    let remote_name = id.replace("stop_sync-", "");
+    tauri::async_runtime::spawn(async move {
+        if let Some(job) = JOB_CACHE
+            .get_jobs()
+            .await
+            .iter()
+            .find(|j| j.remote_name == remote_name && j.job_type == "sync")
+        {
             match stop_job(app.clone(), job.jobid, app.state()).await {
                 Ok(_) => {
-                    info!("🛑 Stopped job {} for {}", job.jobid, remote_name);
+                    info!("🛑 Stopped sync job {} for {}", job.jobid, remote_name);
                     notify(
                         &app,
-                        "Job Stopped",
-                        &format!("Stopped job {} for {}", job.jobid, remote_name),
+                        "Sync Stopped",
+                        &format!("Stopped sync job for {}", remote_name),
                     );
                 }
                 Err(e) => {
-                    error!("🚨 Failed to stop job {}: {}", job.jobid, e);
+                    error!("🚨 Failed to stop sync job {}: {}", job.jobid, e);
                     notify(
                         &app,
-                        "Stop Job Failed",
-                        &format!("Failed to stop job {}: {}", job.jobid, e),
+                        "Stop Sync Failed",
+                        &format!("Failed to stop sync job for {}: {}", remote_name, e),
                     );
                 }
             }
         } else {
-            error!("🚨 No active job found for {}", remote_name);
+            error!("🚨 No active sync job found for {}", remote_name);
             notify(
                 &app,
-                "Stop Job Failed",
-                &format!("No active job found for {}", remote_name),
+                "Stop Sync Failed",
+                &format!("No active sync job found for {}", remote_name),
             );
         }
     });
 }
 
-// pub fn handle_mount_all_remotes(app: AppHandle) {
-//     let app = app.clone();
-//     tauri::async_runtime::spawn(async move {
-//         let remotes = match get_cached_remotes().await {
-//             Ok(r) => r,
-//             Err(e) => {
-//                 error!("🚨 Failed to get remotes: {}", e);
-//                 notify(&app, "Mount All Failed", &format!("Failed to get remotes: {}", e));
-//                 return;
-//             }
-//         };
-
-//         let mut successes = Vec::new();
-//         let mut failures = Vec::new();
-
-//         for remote in remotes {
-//             let settings = match CACHE.settings.read().await.get(&remote).cloned() {
-//                 Some(s) => s,
-//                 None => {
-//                     failures.push((remote.clone(), "No settings found".to_string()));
-//                     continue;
-//                 }
-//             };
-
-//             // Get or prompt for mount point
-//             let mount_point = settings
-//                 .get("mountConfig")
-//                 .and_then(|v| v.get("dest"))
-//                 .and_then(|v| v.as_str())
-//                 .filter(|s| !s.is_empty())
-//                 .map(|s| s.to_string());
-
-//             let mount_point = match mount_point {
-//                 Some(mp) => mp,
-//                 None => {
-//                     // Prompt user for mount point
-//                     match prompt_mount_point(&app, &remote).await {
-//                         Some(path) => path,
-//                         None => {
-//                             failures.push((remote.clone(), "No mount point selected".to_string()));
-//                             continue;
-//                         }
-//                     }
-//                 }
-//             };
-
-//             // Compose the remote path using remote_name and mountConfig.source
-//             let remote_path = match settings
-//                 .get("mountConfig")
-//                 .and_then(|v| v.get("source"))
-//                 .and_then(|v| v.as_str())
-//             {
-//                 Some(source) if !source.is_empty() => format!("{}:{}", remote, source),
-//                 _ => format!("{}:", remote),
-//             };
-
-//             // Extract mount options (from "mountConfig.options")
-//             let mount_options = settings
-//                 .get("mountConfig")
-//                 .and_then(|v| v.get("options"))
-//                 .and_then(|v| v.as_object())
-//                 .map(|obj| {
-//                     obj.iter()
-//                         .map(|(k, v)| (k.clone(), v.clone()))
-//                         .collect::<std::collections::HashMap<_, _>>()
-//                 });
-
-//             // Extract VFS options (from "vfsConfig")
-//             let vfs_options = settings
-//                 .get("vfsConfig")
-//                 .and_then(|v| v.as_object())
-//                 .map(|obj| {
-//                     obj.iter()
-//                         .map(|(k, v)| (k.clone(), v.clone()))
-//                         .collect::<std::collections::HashMap<_, _>>()
-//                 });
-
-//             match mount_remote(
-//                 app.clone(),
-//                 remote_path.clone(),
-//                 mount_point.clone(),
-//                 mount_options,
-//                 vfs_options,
-//                 app.state(),
-//             )
-//             .await
-//             {
-//                 Ok(_) => {
-//                     successes.push(remote.clone());
-//                 }
-//                 Err(e) => {
-//                     failures.push((remote.clone(), e));
-//                 }
-//             }
-//         }
-
-//         // Show notification
-//         if failures.is_empty() {
-//             notify(&app, "Mount All", &format!("Successfully mounted all remotes: {}", successes.join(", ")));
-//         } else {
-//             let fail_list = failures
-//                 .iter()
-//                 .map(|(r, e)| format!("{} ({})", r, e))
-//                 .collect::<Vec<_>>()
-//                 .join(", ");
-//             notify(
-//                 &app,
-//                 "Mount All - Some Failed",
-//                 &format!(
-//                     "Mounted: {}\nFailed: {}",
-//                     if successes.is_empty() { "None".to_string() } else { successes.join(", ") },
-//                     fail_list
-//                 ),
-//             );
-//         }
-//     });
-// }
-
-// pub fn handle_sync_all_remotes(app: AppHandle) {
-//     tauri::async_runtime::spawn(async move {
-//         let remotes = match get_cached_remotes().await {
-//             Ok(r) => r,
-//             Err(e) => {
-//                 error!("🚨 Failed to get remotes: {}", e);
-//                 return;
-//             }
-//         };
-
-//         for remote in remotes {
-//             let settings = match CACHE.settings.read().await.get(&remote).cloned() {
-//                 Some(s) => s,
-//                 None => continue,
-//             };
-
-//             if let Some(auto_sync) = settings
-//                 .get("syncConfig")
-//                 .and_then(|v| v.get("autoSync"))
-//                 .and_then(|v| v.as_bool())
-//             {
-//                 if auto_sync {
-//                     handle_sync_remote(app.clone(), &format!("sync-{}", remote));
-//                 }
-//             }
-//         }
-//     });
-// }
+pub fn handle_stop_copy(app: AppHandle, id: &str) {
+    let remote_name = id.replace("stop_copy-", "");
+    tauri::async_runtime::spawn(async move {
+        if let Some(job) = JOB_CACHE
+            .get_jobs()
+            .await
+            .iter()
+            .find(|j| j.remote_name == remote_name && j.job_type == "copy")
+        {
+            match stop_job(app.clone(), job.jobid, app.state()).await {
+                Ok(_) => {
+                    info!("🛑 Stopped copy job {} for {}", job.jobid, remote_name);
+                    notify(
+                        &app,
+                        "Copy Stopped",
+                        &format!("Stopped copy job for {}", remote_name),
+                    );
+                }
+                Err(e) => {
+                    error!("🚨 Failed to stop copy job {}: {}", job.jobid, e);
+                    notify(
+                        &app,
+                        "Stop Copy Failed",
+                        &format!("Failed to stop copy job for {}: {}", remote_name, e),
+                    );
+                }
+            }
+        } else {
+            error!("🚨 No active copy job found for {}", remote_name);
+            notify(
+                &app,
+                "Stop Copy Failed",
+                &format!("No active copy job found for {}", remote_name),
+            );
+        }
+    });
+}
 
 pub fn handle_stop_all_jobs(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
