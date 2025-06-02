@@ -50,7 +50,7 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
         }
     };
 
-    let active_jobs = JOB_CACHE.get_jobs().await;
+    let active_jobs = JOB_CACHE.get_active_jobs().await;
 
     let mut remote_menus = vec![];
 
@@ -78,7 +78,6 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                         || mounted_name.starts_with(&format!("{}:", remote_name))
                 });
 
-                // Check job status
                 // Check job status - separate sync and copy jobs
                 let active_sync_job = active_jobs
                     .iter()

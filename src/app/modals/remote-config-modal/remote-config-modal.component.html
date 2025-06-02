@@ -42,7 +42,8 @@
             (jsonReset)="resetJson(step)" (remoteSelected)="onRemoteSelected($event, step + 'Config.dest')"
             (destOptionSelected)="onDestOptionSelectedField($event, step + 'Config.dest')"
             (sourceOptionSelected)="onSourceOptionSelectedField($event, step + 'Config.source')"
-            (folderSelected)="selectLocalFolder($event)" (remoteSelectionReset)="resetRemoteSelectionField($event)">
+            (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
+            (remoteSelectionReset)="resetRemoteSelectionField($event)">
           </app-flag-config-step>
         </section>
       </ng-container>
@@ -84,7 +85,7 @@
       </button>
 
       <button mat-raised-button color="primary" (click)="onSubmit()"
-        [disabled]="isLoading.saving || (editTarget === 'remote' && !remoteForm.valid) || (editTarget === 'mount' && !remoteConfigForm.valid)"
+        [disabled]="isLoading.saving || (editTarget === 'remote' && !remoteForm.valid) || (['mount', 'copy', 'sync'].includes(editTarget) && !remoteConfigForm.valid)"
         [@fadeInOut] *ngIf="editTarget" aria-live="polite">
         <div class="saving-overlay" *ngIf="isLoading.saving && !isLoading.cancelled">
           <mat-spinner diameter="20"></mat-spinner>

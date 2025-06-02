@@ -379,8 +379,7 @@ export class RemoteConfigModalComponent implements OnInit {
     await this.pathSelectionService.onPathSelected(
       formPath,
       entryName,
-      control,
-      true
+      control
     );
   }
 
@@ -582,10 +581,14 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   private populateFlagBasedForm(flagType: FlagType, config: any): void {
+    let source = config.source || "";
+    if (!source || source.trim() === "") {
+      source = `${this.getRemoteName()}:/`;
+    }
     this.remoteConfigForm.patchValue({
       [`${flagType}Config`]: {
         autoSync: config.autoSync ?? false,
-        source: config.source || "",
+        source: source,
         dest: config.dest || "",
         options: JSON.stringify(config.options || {}, null, 2),
       },
@@ -781,7 +784,11 @@ export class RemoteConfigModalComponent implements OnInit {
     const syncData = this.cleanFormData(
       this.remoteConfigForm.getRawValue().syncConfig
     );
-
+    // If source is empty, set to remoteName:/
+    if (!syncData.source || syncData.source.trim() === "") {
+      const remoteName = this.getRemoteName();
+      syncData.source = `${remoteName}:/`;
+    }
     updatedConfig.syncConfig = {
       autoSync: syncData.autoSync,
       source: syncData.source,
@@ -911,8 +918,8 @@ export class RemoteConfigModalComponent implements OnInit {
   //#endregion
 
   //#region UI Helper Methods
-  selectLocalFolder(whichFormPath: string): void {
-    this.rcloneService.selectFolder(true).then((selectedPath) => {
+  selectLocalFolder(whichFormPath: string, requireEmpty: boolean): void {
+    this.rcloneService.selectFolder(requireEmpty).then((selectedPath) => {
       this.remoteConfigForm.get(whichFormPath)?.setValue(selectedPath);
     });
   }

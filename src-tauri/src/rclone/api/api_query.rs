@@ -373,8 +373,14 @@ pub async fn get_remote_paths(
 
     // Build parameters
     let mut params = serde_json::Map::new();
-    params.insert("fs".to_string(), serde_json::Value::String(format!("{}:", remote)));
-    params.insert("remote".to_string(), serde_json::Value::String(path.unwrap_or_default()));
+    params.insert(
+        "fs".to_string(),
+        serde_json::Value::String(format!("{}:", remote)),
+    );
+    params.insert(
+        "remote".to_string(),
+        serde_json::Value::String(path.unwrap_or_default()),
+    );
 
     if let Some(opts) = options {
         for (key, value) in opts.extra {
@@ -406,7 +412,6 @@ pub async fn get_remote_paths(
 
     Ok(json["list"].clone())
 }
-
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -440,8 +445,46 @@ pub async fn get_bandwidth_limit(
         return Err(error);
     }
 
-    let response_data: BandwidthLimitResponse = serde_json::from_str(&body)
-        .map_err(|e| format!("Failed to parse response: {}", e))?;
+    let response_data: BandwidthLimitResponse =
+        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
 
     Ok(response_data)
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RcloneCoreVersion {
+    pub version: String,
+    pub decomposed: Vec<u32>,
+    pub go_version: String,
+    pub os: String,
+    pub arch: String,
+    pub is_beta: bool,
+    pub is_git: bool,
+    pub linking: String,
+    pub go_tags: String,
+}
+
+#[tauri::command]
+pub async fn get_rclone_info(
+    state: State<'_, RcloneState>,
+) -> Result<RcloneCoreVersion, String> {
+    let url = format!("{}/core/version", RCLONE_STATE.get_api().0);
+
+    let response = state
+        .client
+        .post(&url)
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to get Rclone version: {}", e))?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        return Err(format!("HTTP {}: {}", status, body));
+    }
+
+    serde_json::from_str(&body).map_err(|e| format!("Failed to parse version info: {}", e))
 }

@@ -1,24 +1,28 @@
 <div class="about-modal">
     <div class="modal-header" data-tauri-drag-region [class.scrolled]="scrolled">
-      <button>
-        <mat-icon></mat-icon>
-      </button>
-      <p>About</p>
-      <button class="close-btn" (click)="close()">
-        <mat-icon svgIcon="circle-xmark"></mat-icon>
-      </button>
+        <button>
+            <mat-icon></mat-icon>
+        </button>
+        <p>About</p>
+        <button class="close-btn" (click)="close()">
+            <mat-icon svgIcon="circle-xmark"></mat-icon>
+        </button>
     </div>
     <!-- Main About Page -->
     <div class="modal-content" #content (scroll)="onScroll(content)" [class.blurred]="currentPage !== 'main'">
         <mat-icon svgIcon="rclone" class="app-icon"></mat-icon>
         <h2 class="app-name">RClone Manager</h2>
         <p class="app-team">Hakan İSMAİL</p>
-        <span class="version-badge" (click)="copyToClipboard(version)">{{ version }}</span>
+        <span class="version-badge" (click)="copyToClipboard(rCloneManagerVersion)">{{ rCloneManagerVersion }}</span>
 
         <!-- Navigation List -->
         <div class="about-list">
             <button mat-button class="about-item" (click)="navigateTo('details')">
                 <span>Details</span>
+                <mat-icon svgIcon="chevron-right"></mat-icon>
+            </button>
+            <button mat-button class="about-item" (click)="navigateTo('About Rclone')">
+                <span>About Rclone</span>
                 <mat-icon svgIcon="chevron-right"></mat-icon>
             </button>
             <div class="stacked-buttons">
@@ -37,7 +41,7 @@
 
     <!-- Overlay Pages -->
     <div class="overlay" *ngIf="currentPage !== 'main'" [@slideOverlay]>
-        <div class="overlay-header">
+        <div class="overlay-header" data-tauri-drag-region>
             <button (click)="navigateTo('main')">
                 <mat-icon svgIcon="chevron-left" class="icon icon-bw"></mat-icon>
             </button>
@@ -61,6 +65,54 @@
                     (click)="openLink('https://github.com/Hakanbaban53/rclone-manager/issues')"
                     style="border-radius: 0px 0px 16px 16px !important;">
                     <span>Report Issues</span> <mat-icon svgIcon="open-link"></mat-icon>
+                </button>
+            </div>
+        </div>
+
+        <div class="overlay-content" *ngIf="currentPage === 'About Rclone'">
+            <div class="rclone-info">
+                <h3>Rclone Information</h3>
+
+                <div *ngIf="loadingRclone" class="loading">
+                    <mat-spinner diameter="24"></mat-spinner>
+                    <span>Loading Rclone info...</span>
+                </div>
+
+                <div *ngIf="rcloneError" class="error">
+                    <mat-icon svgIcon="circle-xmark"></mat-icon>
+                    <span>{{ rcloneError }}</span>
+                </div>
+
+                <div *ngIf="rcloneInfo" class="rclone-details">
+                    <div class="detail-row">
+                        <span class="detail-label">Version:</span>
+                        <span class="detail-value">{{ rcloneInfo.version }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">OS:</span>
+                        <span class="detail-value">{{ rcloneInfo.os }} ({{ rcloneInfo.arch }})</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Go Version:</span>
+                        <span class="detail-value">{{ rcloneInfo.goVersion }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <span class="detail-label">Build:</span>
+                        <span class="detail-value">{{ rcloneInfo.linking }}</span>
+                    </div>
+                    <div *ngIf="rcloneInfo.isBeta" class="detail-row warning">
+                        <mat-icon svgIcon="triangle-exclamation"></mat-icon>
+                        <span>This is a beta version</span>
+                    </div>
+                    <div *ngIf="rcloneInfo.isGit" class="detail-row warning">
+                        <mat-icon svgIcon="triangle-exclamation"></mat-icon>
+                        <span>This is a git build</span>
+                    </div>
+                </div>
+
+                <button mat-button class="about-item" (click)="openLink('https://rclone.org')">
+                    <span>Rclone Website</span>
+                    <mat-icon svgIcon="open-link"></mat-icon>
                 </button>
             </div>
         </div>

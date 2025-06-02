@@ -55,7 +55,10 @@ export class MountDetailComponent implements OnDestroy {
     | "open"
     | null = null;
 
-  @Output() openInFiles = new EventEmitter<string>();
+  @Output() openInFiles = new EventEmitter<{
+    remoteName: string;
+    path: string;
+  }>();
   @Output() mountRemote = new EventEmitter<string>();
   @Output() unmountRemote = new EventEmitter<string>();
   @Output() openRemoteConfigModal = new EventEmitter<{
@@ -132,13 +135,11 @@ export class MountDetailComponent implements OnDestroy {
 
   // Path Helpers
   get mountDestination(): string {
-    return this.remoteSettings?.["mountConfig"]?.["dest"] || "Not configured";
+    return this.remoteSettings?.["mountConfig"]?.["dest"] || "Need to set!";
   }
 
   get mountSource(): string {
-    return `${this.selectedRemote?.remoteSpecs?.name}:/${
-      this.remoteSettings?.["mountConfig"]?.["source"] || ""
-    }`;
+    return this.remoteSettings?.["mountConfig"]?.["source"] || "Need to set!";
   }
 
   // Event Triggers
@@ -160,7 +161,10 @@ export class MountDetailComponent implements OnDestroy {
 
   triggerOpenInFiles() {
     if (this.selectedRemote?.remoteSpecs?.name) {
-      this.openInFiles.emit(this.selectedRemote.remoteSpecs.name);
+      this.openInFiles.emit({
+        remoteName: this.selectedRemote.remoteSpecs.name,
+        path: this.mountDestination,
+      });
     }
   }
 

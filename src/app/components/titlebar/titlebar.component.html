@@ -61,7 +61,7 @@
   <mat-menu #menu="matMenu">
     <!-- Theme Selector -->
     <div class="theme-selector" aria-label="Theme selection">
-      <button class="theme-button system" [class.selected]="selectedTheme === 'system'"
+      <button matTooltip="Not Supported" disabled class="theme-button system" [class.selected]="selectedTheme === 'system'"
         (click)="setTheme('system', false, $event)" aria-label="System theme">
         <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'system'" class="checkmark"
           aria-hidden="true"></mat-icon>

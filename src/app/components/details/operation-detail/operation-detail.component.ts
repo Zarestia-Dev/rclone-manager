@@ -123,7 +123,11 @@ export class OperationDetailComponent
     editTarget?: string;
     existingConfig?: any;
   }>();
-  @Output() openInFiles = new EventEmitter<string>();
+  @Output() openInFiles = new EventEmitter<
+  {
+    remoteName: string;
+    path: string;
+  }>();
   @Output() startOperation = new EventEmitter<{
     type: "sync" | "copy";
     remoteName: string;
@@ -193,9 +197,9 @@ export class OperationDetailComponent
     this.dryRun = !this.dryRun;
   }
 
-  triggerOpenInFiles(): void {
+  triggerOpenInFiles(path: string): void {
     if (this.selectedRemote?.remoteSpecs?.name) {
-      this.openInFiles.emit(this.selectedRemote.remoteSpecs.name);
+      this.openInFiles.emit({ remoteName: this.selectedRemote.remoteSpecs.name, path });
     }
   }
 
@@ -269,11 +273,11 @@ export class OperationDetailComponent
   }
 
   get operationSource(): string {
-    return `${this.selectedRemote?.remoteSpecs?.name}:/${
+    return (
       (this.remoteSettings?.[`${this.operationType}Config`]?.[
         "source"
-      ] as string) || ""
-    }`;
+      ] as string) || "Need to set!"
+    );
   }
 
   // Utility methods
@@ -331,7 +335,6 @@ export class OperationDetailComponent
 
   private setupRemoteSettingsSections(): void {
     this.remoteSettingsSections = [
-      { key: "filter", title: "Filter Options", icon: "filter" },
       {
         key: this.operationType,
         title: `${this.operationType
@@ -339,6 +342,7 @@ export class OperationDetailComponent
           .toUpperCase()}${this.operationType.slice(1)} Options`,
         icon: this.operationType,
       },
+      { key: "filter", title: "Filter Options", icon: "filter" },
     ];
   }
 

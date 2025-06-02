@@ -6,7 +6,7 @@
 - Single instance support added
 - MacOS mount plugin installer support implemented
 - Remote root path selection added (That will be active after remote added)
-- Remote Operations added: Sync and Copy  feature added (Syncs or copies remote with local folder or remote with remote (need some fixes))
+- Remote Operations added: Sync and Copy  feature added (Syncs or copies remote with local folder, remote with remote or local with remote (if you want to copy local to local its working too. Idk why you would do that but it works))
 - Bandwidth limit feature added (Limits the bandwidth for remote operations)
 - Support for custom rclone config file location added
 

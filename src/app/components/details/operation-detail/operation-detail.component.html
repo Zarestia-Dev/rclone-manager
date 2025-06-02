@@ -20,8 +20,15 @@
           <div class="operation-path-section">
             <div class="operation-path">
               <div class="path">
-                <mat-icon [svgIcon]="isLocalPath(operationSource) ? 'folder' : 'cloud-arrow-up'"
-                  class="path-icon"></mat-icon>
+                <ng-container *ngIf="isLocalPath(operationSource); else remoteIcon">
+                  <button mat-icon-button [color]="operationColor" (click)="triggerOpenInFiles(operationSource)"
+                    matTooltip="Open in file explorer">
+                    <mat-icon svgIcon="folder"></mat-icon>
+                  </button>
+                </ng-container>
+                <ng-template #remoteIcon>
+                  <mat-icon [svgIcon]="'cloud-arrow-up'" class="path-icon"></mat-icon>
+                </ng-template>
                 <div class="path-details" matTooltip="{{operationSource}}">
                   <div class="path-label">Source</div>
                   <div class="path-value">{{operationSource}}</div>
@@ -30,7 +37,7 @@
               <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
               <div class="path">
                 <ng-container *ngIf="isLocalPath(operationDestination); else remoteIcon">
-                  <button mat-icon-button [color]="operationColor" (click)="triggerOpenInFiles()"
+                  <button mat-icon-button [color]="operationColor" (click)="triggerOpenInFiles(operationDestination)"
                     matTooltip="Open in file explorer">
                     <mat-icon svgIcon="folder"></mat-icon>
                   </button>
@@ -69,13 +76,13 @@
             </div>
 
             <div class="operation-controls">
-              <mat-slide-toggle class="dry-run-toggle" [disabled]="selectedRemote.syncState?.isOnSync"
+              <!-- <mat-slide-toggle class="dry-run-toggle" [disabled]="selectedRemote.syncState?.isOnSync"
                 (change)="toggleDryRun()">
                 <span>
                   <mat-icon [svgIcon]="dryRun ? 'eye' : 'eye-slash'"></mat-icon>
                   Dry Run
                 </span>
-              </mat-slide-toggle>
+              </mat-slide-toggle> -->
 
               <button mat-flat-button
                 [color]="(operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) ? 'warn' : operationColor"
@@ -143,7 +150,7 @@
             <mat-progress-bar [color]="operationColor" mode="determinate"
               [value]="(stats.elapsedTime / (stats.elapsedTime + stats.eta)) * 100"></mat-progress-bar>
           </mat-card>
-          <mat-card [matTooltip]="'Last Error: ' + stats.lastError" class="stat-card"
+          <mat-card [matTooltip]="'Last Error: ' + stats.lastError" [matTooltipDisabled]="!stats.lastError" class="stat-card"
             [class.has-error]="stats.errors > 0">
             <div class="stat-value">{{stats.errors}}</div>
             <div class="stat-label">Errors</div>

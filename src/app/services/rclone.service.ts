@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { InfoService } from "./info.service";
 import { listen } from "@tauri-apps/api/event";
 import { BehaviorSubject } from "rxjs";
+import { RcloneInfo } from "../shared/components/types";
 
 @Injectable({
   providedIn: "root",
@@ -445,6 +446,15 @@ export class RcloneService {
       console.log(`Errors for ${remoteName} cleared successfully.`);
     } catch (error) {
       console.error("Error clearing remote errors:", error);
+    }
+  }
+
+  async getRcloneInfo(): Promise<RcloneInfo | null> {
+    try {
+      return await invoke<RcloneInfo>("get_rclone_info");
+    } catch (error) {
+      console.error("Error fetching Rclone info:", error);
+      return null;
     }
   }
 }

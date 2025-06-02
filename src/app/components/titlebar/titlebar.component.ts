@@ -65,7 +65,7 @@ const STANDARD_MODAL_SIZE: ModalSize = {
   styleUrls: ["./titlebar.component.scss"],
 })
 export class TitlebarComponent implements OnInit, OnDestroy {
-  selectedTheme: Theme = "system";
+  selectedTheme: Theme = "light";
   isMacOS: boolean = false;
   isMobile$: Observable<boolean>;
   connectionStatus: ConnectionStatus = "online";

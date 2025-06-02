@@ -89,7 +89,7 @@
         [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" (mountRemote)="mountRemote($event)"
         [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" (unmountRemote)="unmountRemote($event)"
         (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        (openInFiles)="openRemoteInFiles($event, currentTab)">
+        (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">
       </app-mount-detail>
 
       <app-operation-detail *ngIf="currentTab === 'sync' || currentTab === 'copy'" [operationType]="currentTab"
@@ -97,7 +97,7 @@
         (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
         (startOperation)="startOperation($event.type, $event.remoteName)"
         (stopOperation)="stopOperation($event.type, $event.remoteName)"
-        (openInFiles)="openRemoteInFiles($event, currentTab)">
+        (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">
       </app-operation-detail>
 
       <app-job-detail *ngIf="currentTab === 'jobs'" [selectedRemote]="selectedRemote"></app-job-detail>

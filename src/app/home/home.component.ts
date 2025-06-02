@@ -174,6 +174,17 @@ export class HomeComponent implements OnInit, OnDestroy {
     );
   }
 
+    async openRemoteInFilesWithPath(remoteName: string, path?: string): Promise<void> {
+    await this.executeRemoteAction(
+      remoteName,
+      "open",
+      async () => {
+        await this.rcloneService.openInFiles(path || "");
+      },
+      `Failed to open ${remoteName}`
+    );
+  }
+
   async deleteRemote(remoteName: string): Promise<void> {
     if (!remoteName) return;
 
@@ -203,7 +214,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   // Operation Control
-  async startOperation(type: "sync" | "copy", remoteName: string): Promise<void> {
+  async startOperation(type: "sync" | "copy", remoteName: string): Promise<void> {    
     await this.executeRemoteAction(
       remoteName,
       type,
@@ -403,7 +414,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       const remoteConfigs = await this.rcloneService.getAllRemoteConfigs();
       this.remotes = this.createRemotesFromConfigs(remoteConfigs);
       this.loadDiskUsageInBackground();
-      await this.loadJobs();
+      await this.loadActiveJobs();
       this.cdr.markForCheck();
     } catch (error) {
       this.handleError("Failed to load remotes", error);
@@ -547,7 +558,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     return this.mountedRemotes.some(mount => mount.fs.startsWith(`${remoteName}:`));
   }
 
-  private async loadJobs(): Promise<void> {
+  private async loadActiveJobs(): Promise<void> {
     try {
       const jobs = await this.rcloneService.getActiveJobs();
       this.updateRemotesWithJobs(jobs);

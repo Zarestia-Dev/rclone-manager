@@ -65,7 +65,7 @@ export interface SyncStats {
   startTime?: string;
 }
 
-export interface ActiveJob {
+export interface Job {
   jobid: number;
   job_type: JobType;
   source: string;
@@ -131,3 +131,15 @@ export const STANDARD_MODAL_SIZE: ModalSize = {
   height: "80vh",
   maxHeight: "600px",
 };
+
+export interface RcloneInfo {
+  version: string;
+  decomposed: number[];
+  goVersion: string;
+  os: string;
+  arch: string;
+  isBeta: boolean;
+  isGit: boolean;
+  linking: string;
+  goTags: string;
+}

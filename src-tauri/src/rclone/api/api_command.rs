@@ -14,7 +14,7 @@ use tokio::{sync::Mutex, time::sleep};
 use crate::{
     core::check_binaries::read_rclone_path,
     rclone::api::state::{
-        clear_logs_for_remote, get_cached_mounted_remotes, ActiveJob, RemoteError, RemoteLogEntry,
+        clear_logs_for_remote, get_cached_mounted_remotes, JobInfo, RemoteError, RemoteLogEntry,
         ERROR_CACHE, JOB_CACHE, RCLONE_STATE,
     },
     RcloneState,
@@ -357,6 +357,7 @@ pub async fn delete_remote(
 }
 
 /// Mount a remote filesystem
+/// Mount a remote filesystem
 #[tauri::command]
 pub async fn mount_remote(
     app: AppHandle,
@@ -367,47 +368,39 @@ pub async fn mount_remote(
     vfs_options: Option<HashMap<String, Value>>,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
+    // Validate inputs
     if mount_point.trim().is_empty() {
         return Err("Mount point cannot be empty".to_string());
     }
 
     let mounted_remotes = get_cached_mounted_remotes().await?;
-    // Check if the mount point is already in use
-    if mounted_remotes.iter().any(|m| m.mount_point == mount_point) {
+
+    // Check if mount point is in use
+    if let Some(existing) = mounted_remotes
+        .iter()
+        .find(|m| m.mount_point == mount_point)
+    {
         let error_msg = format!(
             "Mount point {} is already in use by remote {}",
-            mount_point,
-            mounted_remotes
-                .iter()
-                .find(|m| m.mount_point == mount_point)
-                .map(|m| m.fs.clone())
-                .unwrap_or_default()
+            mount_point, existing.fs
         );
         warn!("{}", error_msg);
         return Err(error_msg);
     }
 
-    // Check if the remote is already mounted (by name)
+    // Check if remote is already mounted
     if mounted_remotes.iter().any(|m| m.fs == remote_name) {
         info!("Remote {} already mounted", remote_name);
         return Ok(());
     }
 
-    let source_fs = format!("{}:{}", remote_name, source);
-
-    // Enhanced logging with values
-    let mut log_context = json!({
+    // Prepare logging context
+    let log_context = json!({
         "mount_point": mount_point,
-        "remote_name": remote_name
+        "remote_name": remote_name,
+        "mount_options": mount_options.as_ref().map(redact_sensitive_values),
+        "vfs_options": vfs_options.as_ref().map(redact_sensitive_values)
     });
-
-    if let Some(opts) = &mount_options {
-        log_context["mount_options"] = redact_sensitive_values(opts);
-    }
-
-    if let Some(opts) = &vfs_options {
-        log_context["vfs_options"] = redact_sensitive_values(opts);
-    }
 
     log_operation(
         "info",
@@ -417,6 +410,8 @@ pub async fn mount_remote(
     )
     .await;
 
+    // Prepare payload
+    let source_fs = format!("{}:{}", remote_name, source);
     let mut payload = json!({
         "fs": source_fs,
         "mountPoint": mount_point,
@@ -431,8 +426,8 @@ pub async fn mount_remote(
         payload["vfsOpt"] = json!(opts);
     }
 
+    // Make the request
     let url = format!("{}/mount/mount", RCLONE_STATE.get_api().0);
-
     let response = state
         .client
         .post(&url)
@@ -440,8 +435,19 @@ pub async fn mount_remote(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| {
+            let error = format!("Mount request failed: {}", e);
+            // Clone error for use in both places
+            let error_for_log = error.clone();
+            // Spawn an async task to log the error since we can't await here
+            let remote_name_clone = remote_name.clone();
+            tokio::spawn(async move {
+                log_error(Some(remote_name_clone), "mount_remote", error_for_log, None).await;
+            });
+            error
+        })?;
 
+    // Handle response
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
@@ -457,86 +463,39 @@ pub async fn mount_remote(
         return Err(error);
     }
 
-    let jobid: Option<u64> = serde_json::from_str::<Value>(&body)
-        .ok()
-        .and_then(|v| v.get("jobid").and_then(|id| id.as_u64()));
+    let job_response: JobResponse =
+        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
 
-    if let Some(jobid) = jobid {
-        let job_status_url = format!("{}/job/status", RCLONE_STATE.get_api().0);
+    log_operation(
+        "info",
+        Some(remote_name.clone()),
+        format!("Mount job started with ID {}", job_response.jobid),
+        Some(json!({"jobid": job_response.jobid})),
+    )
+    .await;
 
-        loop {
-            let res = state
-                .client
-                .post(&job_status_url)
-                .json(&json!({ "jobid": jobid }))
-                .timeout(Duration::from_secs(10))
-                .send()
-                .await
-                .map_err(|e| format!("Failed to query job status: {}", e))?;
+    // Extract job ID and monitor the job
+    let jobid = job_response.jobid;
+    // Add to job cache
+    JOB_CACHE
+        .add_job(JobInfo {
+            jobid,
+            job_type: "mount".to_string(),
+            remote_name: remote_name.clone(),
+            source: source.clone(),
+            destination: mount_point.clone(),
+            start_time: Utc::now(),
+            status: "running".to_string(),
+            stats: None,
+            group: format!("job/{}", jobid),
+        })
+        .await;
 
-            let status = res.status();
-            let body = res
-                .text()
-                .await
-                .map_err(|e| format!("Failed to read response: {}", e))?;
-
-            if status == 500 && body.contains("job not found") {
-                break;
-            }
-
-            if !status.is_success() {
-                let error = format!("HTTP {}: {}", status, body);
-                let _ = log_error(
-                    Some(remote_name.clone()),
-                    "mount_remote",
-                    error.clone(),
-                    Some(json!({"jobid": jobid, "response": body})),
-                )
-                .await;
-                return Err(error);
-            }
-
-            let job: Value = serde_json::from_str(&body)
-                .map_err(|e| format!("Failed to parse response: {}", e))?;
-
-            if job
-                .get("finished")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false)
-            {
-                if job
-                    .get("success")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false)
-                {
-                    log_operation(
-                        "info",
-                        Some(remote_name.clone()),
-                        format!("Successfully mounted at {}", mount_point),
-                        None,
-                    )
-                    .await;
-                    break;
-                } else {
-                    let error = job
-                        .get("error")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("Unknown error")
-                        .to_string();
-
-                    let _ = log_error(
-                        Some(remote_name.clone()),
-                        "mount_remote",
-                        error.clone(),
-                        Some(json!({"jobid": jobid, "response": body})),
-                    )
-                    .await;
-                    return Err(error);
-                }
-            }
-
-            sleep(Duration::from_millis(500)).await;
-        }
+    // Start monitoring
+    let app_clone = app.clone();
+    let client = state.client.clone();
+    if let Err(e) = monitor_job(jobid, app_clone, client).await {
+        error!("Failed to monitor mount job {}: {}", jobid, e);
     }
 
     app.emit("remote_state_changed", &remote_name)
@@ -671,14 +630,10 @@ pub async fn start_sync(
     filter_options: Option<HashMap<String, Value>>,
     state: State<'_, RcloneState>,
 ) -> Result<u64, String> {
-    use serde_json::{Map, Value};
-
-    let source_fs = format!("{}:{}", remote_name, source);
-
     log_operation(
         "info",
         Some(remote_name.clone()),
-        format!("Starting sync from {} to {}", source_fs, dest),
+        format!("Starting sync from {} to {}", source, dest),
         Some(json!({
             "options": sync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
             "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
@@ -688,7 +643,7 @@ pub async fn start_sync(
 
     // Construct the JSON body
     let mut body = Map::new();
-    body.insert("srcFs".to_string(), Value::String(source_fs.clone()));
+    body.insert("srcFs".to_string(), Value::String(source.clone()));
     body.insert("dstFs".to_string(), Value::String(dest.clone()));
     body.insert("_async".to_string(), Value::Bool(true));
 
@@ -747,7 +702,7 @@ pub async fn start_sync(
 
     let jobid = job.jobid;
     JOB_CACHE
-        .add_job(ActiveJob {
+        .add_job(JobInfo {
             jobid,
             job_type: "sync".to_string(),
             remote_name: remote_name,
@@ -756,6 +711,7 @@ pub async fn start_sync(
             start_time: Utc::now(),
             status: "running".to_string(),
             stats: None,
+            group: format!("job/{}", jobid), // Add this line
         })
         .await;
 
@@ -763,7 +719,7 @@ pub async fn start_sync(
     let app_clone = app.clone();
     let client = state.client.clone();
     tauri::async_runtime::spawn(async move {
-        monitor_job(jobid, app_clone, client).await;
+        let _ = monitor_job(jobid, app_clone, client).await;
     });
 
     app.emit("job_cache_changed", jobid)
@@ -828,12 +784,10 @@ pub async fn start_copy(
     filter_options: Option<HashMap<String, Value>>,
     state: State<'_, RcloneState>,
 ) -> Result<u64, String> {
-    let source_fs = format!("{}:{}", remote_name, source);
-
     log_operation(
         "info",
         Some(remote_name.clone()),
-        format!("Starting copy from {} to {}", source_fs, dest),
+        format!("Starting copy from {} to {}", source, dest),
         Some(json!({
             "options": copy_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
             "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
@@ -842,7 +796,7 @@ pub async fn start_copy(
     .await;
 
     let mut body = Map::new();
-    body.insert("srcFs".to_string(), Value::String(source_fs.clone()));
+    body.insert("srcFs".to_string(), Value::String(source.clone()));
     body.insert("dstFs".to_string(), Value::String(dest.clone()));
     body.insert("_async".to_string(), Value::Bool(true));
 
@@ -893,8 +847,8 @@ pub async fn start_copy(
 
     let jobid = job.jobid.clone();
     JOB_CACHE
-        .add_job(ActiveJob {
-            jobid: jobid.clone(),
+        .add_job(JobInfo {
+            jobid,
             job_type: "copy".to_string(),
             remote_name: remote_name.clone(),
             source: source.clone(),
@@ -902,13 +856,14 @@ pub async fn start_copy(
             start_time: Utc::now(),
             status: "running".to_string(),
             stats: None,
+            group: format!("job/{}", jobid), // Add this line
         })
         .await;
     // Start monitoring the job
     let app_clone = app.clone();
     let client = state.client.clone();
     tokio::spawn(async move {
-        monitor_job(jobid, app_clone, client).await;
+        let _ = monitor_job(jobid, app_clone, client).await;
     });
 
     log_operation(
@@ -924,11 +879,11 @@ pub async fn start_copy(
     Ok(job.jobid)
 }
 
-async fn monitor_job(jobid: u64, _app: AppHandle, client: reqwest::Client) {
+async fn monitor_job(jobid: u64, app: AppHandle, client: reqwest::Client) -> Result<(), String> {
     let job_status_url = format!("{}/job/status", RCLONE_STATE.get_api().0);
     let stats_url = format!("{}/core/stats", RCLONE_STATE.get_api().0);
 
-    loop {
+    Ok(loop {
         // Check job status
         let status_res = client
             .post(&job_status_url)
@@ -945,55 +900,64 @@ async fn monitor_job(jobid: u64, _app: AppHandle, client: reqwest::Client) {
             .send()
             .await;
 
-        if let Some(job) = JOB_CACHE.get_job(jobid).await {
-            if job.status == "stopped" {
-                break;
-            }
+        // If job was removed from cache, exit
+        if JOB_CACHE.get_job(jobid).await.is_none() {
+            debug!("Job {} not found in cache, exiting monitor loop", jobid);
+            break;
         }
 
         match (status_res, stats_res) {
             (Ok(status_response), Ok(stats_response)) => {
-                let status = status_response.status();
                 let status_body = status_response.text().await.unwrap_or_default();
-
                 let stats_body = stats_response.text().await.unwrap_or_default();
 
-                if !status.is_success() {
-                    if status == 500 && status_body.contains("job not found") {
-                        // Job completed or failed
-                        let job_completed = JOB_CACHE
-                            .get_job(jobid)
-                            .await
-                            .map(|j| j.status == "completed" || j.status == "failed")
-                            .unwrap_or(true);
-
-                        if job_completed {
-                            break;
+                // Parse stats and update cache
+                if let Ok(mut stats) = serde_json::from_str::<Value>(&stats_body) {
+                    if let Some(transferring) = stats.get_mut("transferring") {
+                        if let Some(transferring_array) = transferring.as_array_mut() {
+                            transferring_array.retain(|item| {
+                                item.get("group")
+                                    .and_then(|g| g.as_str())
+                                    .map(|g| g.contains(&format!("job/{}", jobid)))
+                                    .unwrap_or(false)
+                            });
                         }
                     }
-                    continue;
-                }
-
-                // Update job stats in cache
-                if let Ok(stats) = serde_json::from_str::<Value>(&stats_body) {
                     let _ = JOB_CACHE.update_job_stats(jobid, stats).await;
                 }
-                // Check if job is finished
-                let job_status: Value = match serde_json::from_str(&status_body) {
-                    Ok(v) => v,
-                    Err(_) => continue,
-                };
 
-                if job_status
-                    .get("finished")
-                    .and_then(|v| v.as_bool())
-                    .unwrap_or(false)
-                {
-                    let success = job_status
-                        .get("success")
+                // Parse job status and check for finished
+                if let Ok(job_status) = serde_json::from_str::<Value>(&status_body) {
+                    if job_status
+                        .get("finished")
                         .and_then(|v| v.as_bool())
-                        .unwrap_or(false);
-                    let _ = JOB_CACHE.complete_job(jobid, success).await;
+                        .unwrap_or(false)
+                    {
+                        let success = job_status
+                            .get("success")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false);
+                        let _ = JOB_CACHE.complete_job(jobid, success).await;
+                        if let Err(e) = app.emit("job_cache_changed", jobid) {
+                            log::warn!("Failed to emit event: {}", e);
+                        }
+                        break;
+                    }
+                }
+            }
+            // If status is not OK, check for "job not found"
+            (Ok(status_response), _) => {
+                let status = status_response.status();
+                let status_body = status_response.text().await.unwrap_or_default();
+                if !status.is_success() && status == 500 && status_body.contains("job not found") {
+                    debug!(
+                        "Job {} not found (job not found), marking as completed",
+                        jobid
+                    );
+                    let _ = JOB_CACHE.complete_job(jobid, false).await;
+                    if let Err(e) = app.emit("job_cache_changed", jobid) {
+                        log::warn!("Failed to emit event: {}", e);
+                    }
                     break;
                 }
             }
@@ -1001,7 +965,7 @@ async fn monitor_job(jobid: u64, _app: AppHandle, client: reqwest::Client) {
         }
 
         sleep(Duration::from_secs(1)).await;
-    }
+    })
 }
 
 /// Clean up OAuth process

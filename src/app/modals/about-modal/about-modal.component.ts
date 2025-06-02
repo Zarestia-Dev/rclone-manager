@@ -7,10 +7,21 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { MatIconModule } from "@angular/material/icon";
 import { InfoService } from "../../services/info.service";
 import { MatButtonModule } from "@angular/material/button";
+import { RcloneService } from "../../services/rclone.service";
+import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { RcloneInfo } from "../../shared/components/types";
+import packageJson from '../../../../package.json';
+const rCloneManager = packageJson.version;
 
 @Component({
   selector: "app-about-modal",
-  imports: [CommonModule, MatDividerModule, MatIconModule, MatButtonModule],
+  imports: [
+    CommonModule,
+    MatDividerModule,
+    MatIconModule,
+    MatButtonModule,
+    MatProgressSpinnerModule,
+  ],
   templateUrl: "./about-modal.component.html",
   styleUrl: "./about-modal.component.scss",
   animations: [
@@ -33,18 +44,40 @@ import { MatButtonModule } from "@angular/material/button";
 })
 export class AboutModalComponent {
   currentPage = "main";
-  version = "0.1.0";
+  rCloneManagerVersion = rCloneManager;
 
   scrolled = false;
+
+  constructor(
+    private dialogRef: MatDialogRef<AboutModalComponent>,
+    private infoService: InfoService,
+    private rcloneService: RcloneService
+  ) {}
+
+  rcloneInfo: RcloneInfo | null = null;
+  loadingRclone = false;
+  rcloneError: string | null = null;
+
+  async ngOnInit() {
+    await this.loadRcloneInfo();
+  }
+
+  async loadRcloneInfo() {
+    this.loadingRclone = true;
+    this.rcloneError = null;
+    try {
+      this.rcloneInfo = await this.rcloneService.getRcloneInfo();
+    } catch (error) {
+      console.error("Error fetching rclone info:", error);
+      this.rcloneError = "Failed to load rclone info.";
+    } finally {
+      this.loadingRclone = false;
+    }
+  }
 
   onScroll(content: HTMLElement) {
     this.scrolled = content.scrollTop > 10;
   }
-
-  constructor(
-    private dialogRef: MatDialogRef<AboutModalComponent>,
-    private infoService: InfoService
-  ) {}
 
   @HostListener("document:keydown.escape", ["$event"])
   onEscKeyPress(event: KeyboardEvent) {

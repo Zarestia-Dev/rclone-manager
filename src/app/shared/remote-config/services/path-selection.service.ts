@@ -54,7 +54,6 @@ export class PathSelectionService {
     formPath: string,
     entryName: string,
     control: AbstractControl | null = null,
-    isDestination: boolean = false
   ): Promise<void> {
     const state = this.pathStates[formPath];
     if (!state) return;
@@ -66,13 +65,8 @@ export class PathSelectionService {
       ? `${state.currentPath}/${selectedEntry.Name}`
       : selectedEntry.Name;
 
-    let remotePath = "";
-    if (isDestination) {
-      // Fix for destination path - include the selected entry in the path
-      remotePath = `${state.remoteName}:/${fullPath}`;
-    } else {
-      remotePath = `${fullPath}`;
-    }
+    // Always include remote prefix for source paths
+    const remotePath = `${state.remoteName}:/${fullPath}`;
 
     if (selectedEntry.IsDir) {
       state.currentPath = fullPath;
@@ -93,6 +87,7 @@ export class PathSelectionService {
     this.pathStates[formPath].remoteName = remote;
     this.pathStates[formPath].currentPath = "";
 
+    // Default to remote:/ when selecting a remote
     const remotePath = `${remote}:/`;
     if (control) {
       control.setValue(remotePath);
@@ -142,21 +137,13 @@ export class PathSelectionService {
       return;
     }
     if (cleanedPath === "") {
-      await this.fetchEntriesForField(
-        formPath,
-        state?.remoteName ?? "",
-        ""
-      );
+      await this.fetchEntriesForField(formPath, state?.remoteName ?? "", "");
       return;
     }
     if (cleanedPath.includes(":/")) {
       const [remote, ...pathParts] = cleanedPath.split(/:\/?/);
       const path = pathParts.join("/");
-      await this.fetchEntriesForField(
-        formPath,
-        remote,
-        path
-      );
+      await this.fetchEntriesForField(formPath, remote, path);
     } else {
       await this.fetchEntriesForField(
         formPath,

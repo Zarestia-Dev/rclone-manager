@@ -63,7 +63,12 @@ export class FlagConfigStepComponent {
   @Output() remoteSelected = new EventEmitter<string>();
   @Output() destOptionSelected = new EventEmitter<string>();
   @Output() sourceOptionSelected = new EventEmitter<string>();
-  @Output() folderSelected = new EventEmitter<string>();
+  @Output() folderSelected = new EventEmitter<
+  {
+    formPath: string;
+    requiredEmpty: boolean;
+  }
+  >();
   @Output() remoteSelectionReset = new EventEmitter<string>();
 
   get configGroup(): FormGroup {
@@ -114,8 +119,8 @@ export class FlagConfigStepComponent {
     this.sourceOptionSelected.emit(option);
   }
 
-  onSelectFolder(formPath: string): void {
-    this.folderSelected.emit(formPath);
+  onSelectFolder(formPath: string, requiredEmpty: boolean): void {
+    this.folderSelected.emit({ formPath, requiredEmpty });
   }
 
   onResetRemoteSelection(formPath: string): void {

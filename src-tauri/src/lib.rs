@@ -14,7 +14,7 @@ use rclone::api::{
     api_query::{get_bandwidth_limit, get_fs_info, get_remote_paths},
     engine::RcApiEngine,
     state::{
-        clear_errors_for_remote, clear_logs_for_remote, get_active_jobs,
+        clear_errors_for_remote, clear_logs_for_remote, get_jobs,
         get_cached_mounted_remotes, get_job_status, get_remote_errors, get_remote_logs,
     },
 };
@@ -51,15 +51,13 @@ use crate::{
                 start_sync, unmount_all_remotes, unmount_remote, update_remote,
             },
             api_query::{
-                get_all_remote_configs, get_disk_usage, get_mounted_remotes,
-                get_oauth_supported_remotes, get_remote_config, get_remote_config_fields,
-                get_remote_types, get_remotes,
+                get_all_remote_configs, get_disk_usage, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info, get_remote_config, get_remote_config_fields, get_remote_types, get_remotes
             },
             flags::{
                 get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags,
                 get_sync_flags, get_vfs_flags,
             },
-            state::{get_cached_remotes, get_configs, get_settings, CACHE, RCLONE_STATE},
+            state::{get_active_jobs, get_cached_remotes, get_configs, get_settings, CACHE, RCLONE_STATE},
         },
         mount::{check_mount_plugin_installed, install_mount_plugin},
     },
@@ -330,6 +328,7 @@ pub fn run() {
             get_file_location,
             set_theme,
             provision_rclone,
+            get_rclone_info,
             // Rclone Command API
             get_all_remote_configs,
             get_fs_info,
@@ -389,6 +388,7 @@ pub fn run() {
             clear_errors_for_remote,
             clear_logs_for_remote,
             // Jobs Cache
+            get_jobs,
             get_active_jobs,
             get_job_status,
             stop_job
