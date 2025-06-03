@@ -191,7 +191,7 @@ fn handle_job_cache_changed(app: &AppHandle) {
     let app_clone = app.clone();
     app.listen(events::JOB_CACHE_CHANGED, move |event| {
         debug!("🔄 Job cache changed! Raw payload: {:?}", event.payload());
-        
+
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
             if let Err(e) = update_tray_menu(app, 0).await {
@@ -291,7 +291,9 @@ fn handle_settings_changed(app: &AppHandle) {
                         let app_handle_clone = app_handle.clone();
                         tauri::async_runtime::spawn_blocking(move || {
                             if let Ok(mut engine) = ENGINE.lock() {
-                                engine.stop();
+                                if let Err(e) = engine.stop() {
+                                    error!("Failed to stop Rclone process: {}", e);
+                                }
                                 engine.start(&app_handle_clone);
                             }
                         });

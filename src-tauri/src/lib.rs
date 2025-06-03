@@ -1,11 +1,17 @@
 use core::{
     check_binaries::{is_7z_available, is_rclone_available, read_rclone_path},
     settings::settings::{analyze_backup_file, load_setting_value, restore_encrypted_settings},
-    tray::actions::{handle_copy_remote, handle_stop_all_jobs, handle_stop_copy, handle_stop_sync, handle_sync_remote},
+    tray::actions::{
+        handle_copy_remote, handle_stop_all_jobs, handle_stop_copy, handle_stop_sync,
+        handle_sync_remote,
+    },
 };
 use std::{
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex,
+    },
 };
 
 use log::{debug, error, info};
@@ -14,8 +20,8 @@ use rclone::api::{
     api_query::{get_bandwidth_limit, get_fs_info, get_remote_paths},
     engine::RcApiEngine,
     state::{
-        clear_errors_for_remote, clear_logs_for_remote, get_jobs,
-        get_cached_mounted_remotes, get_job_status, get_remote_errors, get_remote_logs,
+        clear_errors_for_remote, clear_logs_for_remote, get_cached_mounted_remotes, get_job_status,
+        get_jobs, get_remote_errors, get_remote_logs,
     },
 };
 use serde_json::json;
@@ -51,13 +57,17 @@ use crate::{
                 start_sync, unmount_all_remotes, unmount_remote, update_remote,
             },
             api_query::{
-                get_all_remote_configs, get_disk_usage, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info, get_remote_config, get_remote_config_fields, get_remote_types, get_remotes
+                get_all_remote_configs, get_disk_usage, get_mounted_remotes,
+                get_oauth_supported_remotes, get_rclone_info, get_remote_config,
+                get_remote_config_fields, get_remote_types, get_remotes,
             },
             flags::{
                 get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags,
                 get_sync_flags, get_vfs_flags,
             },
-            state::{get_active_jobs, get_cached_remotes, get_configs, get_settings, CACHE, RCLONE_STATE},
+            state::{
+                get_active_jobs, get_cached_remotes, get_configs, get_settings, CACHE, RCLONE_STATE,
+            },
         },
         mount::{check_mount_plugin_installed, install_mount_plugin},
     },
@@ -76,8 +86,19 @@ pub struct RcloneState {
     pub client: reqwest::Client,
     pub config_path: Arc<RwLock<String>>,
     pub tray_enabled: Arc<RwLock<bool>>,
+    pub is_shutting_down: AtomicBool,
     pub notifications_enabled: Arc<RwLock<bool>>,
     pub rclone_path: Arc<RwLock<PathBuf>>,
+}
+
+impl RcloneState {
+    pub fn is_shutting_down(&self) -> bool {
+        self.is_shutting_down.load(Ordering::SeqCst)
+    }
+
+    pub fn set_shutting_down(&self) {
+        self.is_shutting_down.store(true, Ordering::SeqCst);
+    }
 }
 
 #[tauri::command]
@@ -211,7 +232,11 @@ pub fn run() {
                 {
                     api.prevent_close();
                 } else {
-                    tauri::async_runtime::block_on(handle_shutdown(window.app_handle().clone()));
+                    let window_ = window.clone();
+                    tauri::async_runtime::spawn(async move {
+                        window_.app_handle().state::<RcloneState>().set_shutting_down();
+                        handle_shutdown(window_.app_handle().clone()).await;
+                    });
                 }
             }
             WindowEvent::Focused(true) => {
@@ -256,6 +281,7 @@ pub fn run() {
                 client: reqwest::Client::new(),
                 config_path: Arc::new(RwLock::new(settings.core.rclone_config_path.clone())),
                 tray_enabled: Arc::new(RwLock::new(settings.general.tray_enabled)),
+                is_shutting_down: AtomicBool::new(false),
                 notifications_enabled: Arc::new(RwLock::new(settings.general.notifications)),
                 rclone_path: Arc::new(RwLock::new(rclone_path)),
             });
@@ -306,8 +332,9 @@ pub fn run() {
             }
             "quit" => {
                 let app_clone = app.clone();
-                tauri::async_runtime::block_on(async move {
-                    handle_shutdown(app_clone.clone()).await;
+                tauri::async_runtime::spawn(async move {
+                    app_clone.state::<RcloneState>().set_shutting_down();
+                    handle_shutdown(app_clone).await;
                 });
             }
             id if id.starts_with("mount-") => handle_mount_remote(app.clone(), id),

@@ -50,34 +50,38 @@ impl RcApiEngine {
 
         self.start(app);
 
-        thread::spawn(move || loop {
-            {
-                let mut engine = match RcApiEngine::lock_engine() {
-                    Ok(engine) => engine,
-                    Err(e) => {
-                        error!("❗ Failed to acquire lock on RcApiEngine: {}", e);
+        thread::spawn(move || {
+            while !app_handle.state::<RcloneState>().is_shutting_down() {
+                {
+                    let mut engine = match RcApiEngine::lock_engine() {
+                        Ok(engine) => engine,
+                        Err(e) => {
+                            error!("❗ Failed to acquire lock on RcApiEngine: {}", e);
+                            break;
+                        }
+                    };
+
+                    if engine.should_exit {
+                        debug!("🛑 Exit requested, stopping monitor thread.");
                         break;
                     }
-                };
 
-                if engine.should_exit {
-                    debug!("🛑 Exit requested, stopping monitor thread.");
-                    break;
-                }
-
-                if !engine.is_running() {
-                    if !(engine.rclone_path.exists() || is_rclone_available(app_handle.clone())) {
-                        engine.handle_invalid_path(&app_handle);
-                        continue;
+                    if !engine.is_running() {
+                        if !(engine.rclone_path.exists() || is_rclone_available(app_handle.clone()))
+                        {
+                            engine.handle_invalid_path(&app_handle);
+                            continue;
+                        }
+                        warn!("🔄 Rclone API not running. Starting...");
+                        engine.start(&app_handle);
+                    } else {
+                        debug!("✅ Rclone API running on port {}", RCLONE_STATE.get_api().1);
                     }
-                    warn!("🔄 Rclone API not running. Starting...");
-                    engine.start(&app_handle);
-                } else {
-                    debug!("✅ Rclone API running on port {}", RCLONE_STATE.get_api().1);
                 }
-            }
 
-            thread::sleep(Duration::from_secs(5));
+                thread::sleep(Duration::from_secs(5));
+            }
+            info!("Monitor thread exiting");
         });
     }
 
@@ -146,7 +150,9 @@ impl RcApiEngine {
             "🔄 Updating Rclone API port from {} to {}",
             self.current_api_port, new_port
         );
-        self.stop();
+        if let Err(e) = self.stop() {
+            error!("Failed to stop Rclone process: {}", e);
+        }
         self.current_api_port = new_port;
         self.start(app);
     }
@@ -154,7 +160,9 @@ impl RcApiEngine {
     pub fn start(&mut self, app: &AppHandle) {
         if self.process.is_some() {
             debug!("⚠️ Rclone process already exists, stopping first...");
-            self.stop();
+            if let Err(e) = self.stop() {
+                error!("Failed to stop Rclone process: {}", e);
+            }
         }
 
         let port = RCLONE_STATE.get_api().1;
@@ -231,7 +239,7 @@ impl RcApiEngine {
         false
     }
 
-    pub fn stop(&mut self) {
+    pub fn stop(&mut self) -> Result<(), String> {
         if let Some(mut child) = self.process.take() {
             let quit_url = format!("http://127.0.0.1:{}/core/quit", self.current_api_port);
 
@@ -253,16 +261,26 @@ impl RcApiEngine {
             );
             if let Err(e) = child.kill() {
                 error!("❌ Failed to kill Rclone: {}", e);
+                return Err(format!("Failed to kill Rclone process: {}", e));
             }
             let _ = child.wait();
         }
         info!("✅ Rclone process stopped.");
         self.running = false;
+        Ok(())
     }
 
     pub fn shutdown(&mut self) {
         info!("🛑 Shutting down Rclone engine...");
         self.should_exit = true;
-        self.stop();
+
+        // Stop any running process
+        if let Err(e) = self.stop() {
+            error!("Failed to stop engine cleanly: {}", e);
+        }
+
+        // Clear any remaining state
+        self.process = None;
+        self.running = false;
     }
 }

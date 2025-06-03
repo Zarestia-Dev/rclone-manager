@@ -1,21 +1,53 @@
 use log::{error, info, warn};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tokio::task::spawn_blocking;
 
-use crate::{
-    rclone::api::{api_command::unmount_all_remotes, engine::ENGINE},
-    RcloneState,
-};
+use crate::rclone::api::{
+        api_command::{stop_job, unmount_all_remotes},
+        engine::ENGINE,
+        state::get_active_jobs,
+    };
 
 /// Main entry point for handling shutdown tasks
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("🔴 Beginning shutdown sequence...");
 
-    let rclone_state = app_handle.state::<RcloneState>();
+    // Notify UI that shutdown is starting
+    if let Err(e) = app_handle.emit("shutdown_started", ()) {
+        error!("Failed to emit shutdown_started event: {}", e);
+    }
+
+    // Get active jobs before shutdown
+    let active_jobs = match get_active_jobs().await {
+        Ok(jobs) => jobs,
+        Err(e) => {
+            error!("Failed to get active jobs: {}", e);
+            vec![]
+        }
+    };
+
+    // If there are active jobs, notify UI
+    if !active_jobs.is_empty() {
+        let job_count = active_jobs.len();
+        info!("⚠️ Stopping {} active jobs during shutdown", job_count);
+        
+        if let Err(e) = app_handle.emit(
+            "shutdown_jobs_notification", 
+            format!("Stopping {} active jobs", job_count)
+        ) {
+            error!("Failed to emit jobs notification: {}", e);
+        }
+    }
 
     // Run cleanup tasks in parallel
-    let unmount_result =
-        unmount_all_remotes(app_handle.clone(), rclone_state, "shutdown".to_string()).await;
+    let (unmount_result, stop_jobs_result) = tokio::join!(
+        unmount_all_remotes(
+            app_handle.clone(),
+            app_handle.state(),
+            "shutdown".to_string()
+        ),
+        stop_all_jobs(app_handle.clone())
+    );
 
     // Handle unmount results
     match unmount_result {
@@ -24,6 +56,11 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
             error!("Failed to unmount all remotes: {:?}", e);
             warn!("Some remotes may not have been unmounted properly.");
         }
+    }
+
+    // Handle job stopping results
+    if let Err(e) = stop_jobs_result {
+        error!("Failed to stop all jobs: {}", e);
     }
 
     // Perform engine shutdown in a blocking task
@@ -36,6 +73,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         }
     })
     .await;
+
     if let Err(e) = result {
         error!("Failed to shutdown engine: {:?}", e);
     } else {
@@ -43,4 +81,22 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     }
 
     app_handle.exit(0);
+}
+
+/// Stop all active jobs
+async fn stop_all_jobs(app: AppHandle) -> Result<(), String> {
+    let active_jobs = get_active_jobs().await?;
+    let mut errors = Vec::new();
+
+    for job in active_jobs {
+        if let Err(e) = stop_job(app.clone(), job.jobid, app.state()).await {
+            errors.push(format!("Job {}: {}", job.jobid, e));
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join(", "))
+    }
 }
