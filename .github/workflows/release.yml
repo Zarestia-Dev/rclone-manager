@@ -11,14 +11,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - platform: 'macos-latest'
-          #   args: '--target aarch64-apple-darwin'
-          #   arch: 'silicon'
-          #   type: 'aarch64'
-          # - platform: 'macos-latest'
-          #   args: '--target x86_64-apple-darwin'
-          #   arch: 'silicon'
-          #   type: 'x86_64'
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+            arch: 'silicon'
+            type: 'aarch64'
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+            arch: 'silicon'
+            type: 'x86_64'
           - platform: 'ubuntu-22.04' 
             args: ''
           - platform: 'windows-latest'
@@ -46,11 +46,11 @@ jobs:
           node-version: lts/*
           cache: 'npm'
 
-      # - name: install Rust stable (macos only)
-      #   uses: dtolnay/rust-toolchain@stable
-      #   if: matrix.platform == 'macos-latest'
-      #   with:
-      #     targets: ${{ matrix.type == 'aarch64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
+      - name: install Rust stable (macos only)
+        uses: dtolnay/rust-toolchain@stable
+        if: matrix.platform == 'macos-latest'
+        with:
+          targets: ${{ matrix.type == 'aarch64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
           
       - name: install Rust stable (windows only)
         uses: dtolnay/rust-toolchain@stable
