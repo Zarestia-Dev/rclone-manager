@@ -204,6 +204,10 @@ export class RcloneService {
     vfsOptions?: Record<string, string | number | boolean>
   ): Promise<void> {
     try {
+      // Ensure mount options are defined
+      if (!mountPoint) {
+        throw new Error("Mount point is required");
+      }    
       await invoke("mount_remote", {
         remoteName: remoteName,
         source: source,
@@ -236,6 +240,14 @@ export class RcloneService {
     filterOptions?: Record<string, any>
   ): Promise<number> {
     try {
+      // Ensure destination and source are defined
+      if (!dest) {
+        throw new Error("Destination is required");
+      }
+      if (!source) {
+        throw new Error("Source is required");
+      }
+
       const jobId = await invoke<string>("start_sync", {
         remoteName,
         source,
@@ -258,6 +270,14 @@ export class RcloneService {
     copyOptions?: Record<string, any>,
     filterOptions?: Record<string, any>
   ): Promise<number> {
+    // Ensure destination and source are defined
+    if (!dest) {
+      throw new Error("Destination is required");
+    }
+    if (!source) {
+      throw new Error("Source is required");
+    }
+
     try {
       const jobId = await invoke<string>("start_copy", {
         remoteName,
@@ -283,9 +303,9 @@ export class RcloneService {
     }
   }
 
-  async stopJob(jobid: number): Promise<void> {
+  async stopJob(jobid: number, remoteName: string): Promise<void> {
     try {
-      await invoke("stop_job", { jobid });
+      await invoke("stop_job", { jobid: jobid, remoteName: remoteName });
       // The job status will update via the event listener
     } catch (error) {
       console.error("Failed to stop job:", error);
@@ -422,30 +442,12 @@ export class RcloneService {
     }
   }
 
-  async getRemoteErrors(remoteName: string): Promise<string[]> {
-    try {
-      return await invoke<string[]>("get_remote_errors", { remoteName });
-    } catch (error) {
-      console.error("Error fetching remote errors:", error);
-      return [];
-    }
-  }
-
   async clearRemoteLogs(remoteName: string): Promise<void> {
     try {
       await invoke("clear_logs_for_remote", { remoteName });
       console.log(`Logs for ${remoteName} cleared successfully.`);
     } catch (error) {
       console.error("Error clearing remote logs:", error);
-    }
-  }
-
-  async clearRemoteErrors(remoteName: string): Promise<void> {
-    try {
-      await invoke("clear_errors_for_remote", { remoteName });
-      console.log(`Errors for ${remoteName} cleared successfully.`);
-    } catch (error) {
-      console.error("Error clearing remote errors:", error);
     }
   }
 

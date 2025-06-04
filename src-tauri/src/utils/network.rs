@@ -1,13 +1,7 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tauri::command;
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CheckResult {
-    pub successful: Vec<String>,
-    pub failed: HashMap<String, String>,
-    pub retries_used: HashMap<String, usize>,
-}
+use crate::utils::types::{CheckResult, LinkChecker};
 
 #[command]
 pub async fn check_links(
@@ -17,12 +11,6 @@ pub async fn check_links(
 ) -> Result<CheckResult, String> {
     let checker = LinkChecker::new(max_retries, retry_delay_secs);
     checker.check_links(&links).await.map_err(|e| e.to_string())
-}
-
-struct LinkChecker {
-    client: reqwest::Client,
-    max_retries: usize,
-    retry_delay: std::time::Duration,
 }
 
 impl LinkChecker {

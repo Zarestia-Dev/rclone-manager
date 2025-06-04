@@ -126,17 +126,17 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         { value: "", disabled: this.isLoading.saving },
         Validators.required,
       ],
-      autoMount: [{ value: false, disabled: this.isLoading.saving }],
+      autoStart: [{ value: false, disabled: this.isLoading.saving }],
       mountPath: [{ value: "", disabled: this.isLoading.saving }],
     });
   }
 
   private setupFormListeners(): void {
     const autoMountSub = this.quickAddForm
-      .get("autoMount")
-      ?.valueChanges.subscribe((autoMount: boolean) => {
+      .get("autoStart")
+      ?.valueChanges.subscribe((autoStart: boolean) => {
         const mountPathControl = this.quickAddForm.get("mountPath");
-        autoMount
+        autoStart
           ? mountPathControl?.setValidators([Validators.required])
           : mountPathControl?.clearValidators();
         mountPathControl?.updateValueAndValidity();
@@ -219,7 +219,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   private async handleRemoteCreation(formValue: QuickAddForm): Promise<void> {
-    const { remoteName, remoteType, autoMount, mountPath } = formValue;
+    const { remoteName, remoteType, autoStart, mountPath } = formValue;
 
     await this.rcloneService.createRemote(remoteName, {
       name: remoteName,
@@ -232,17 +232,17 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       showOnTray: true,
       mountConfig: {
         dest: mountPath || "",
-        source: "",
-        autoMount: autoMount || false,
+        source: remoteName + ":/",
+        autoStart: autoStart || false,
       },
       copyConfig: {
-        autoCopy: false,
-        source: "",
+        autoStart: false,
+        source: remoteName + ":/",
         dest: "",
       },
       syncConfig: {
-        autoSync: false,
-        source: "",
+        autoStart: false,
+        source: remoteName + ":/",
         dest: "",
       },
       filterConfig: {},
@@ -250,8 +250,8 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
     await this.settingsService.saveRemoteSettings(remoteName, remoteSettings);
 
-    if (autoMount && mountPath) {
-      await this.rcloneService.mountRemote(remoteName, "", mountPath);
+    if (autoStart && mountPath) {
+      await this.rcloneService.mountRemote(remoteName, remoteName + ":/", mountPath);
       console.log("Remote mounted successfully!");
     }
   }

@@ -17,11 +17,11 @@ import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { Subject } from "rxjs";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatButtonModule } from "@angular/material/button";
-import { SENSITIVE_KEYS } from "../../../shared/remote-config/remote-config-types";
 import {
   Remote,
   RemoteSettings,
   RemoteSettingsSection,
+  SENSITIVE_KEYS,
 } from "../../../shared/components/types";
 
 @Component({
@@ -54,6 +54,7 @@ export class MountDetailComponent implements OnDestroy {
     | "stop"
     | "open"
     | null = null;
+  @Input() restrictMode!: boolean;
 
   @Output() openInFiles = new EventEmitter<{
     remoteName: string;
@@ -168,15 +169,16 @@ export class MountDetailComponent implements OnDestroy {
     }
   }
 
-  // Security Helpers
-  isSensitiveKey(key: string): boolean {
-    return SENSITIVE_KEYS.some((sensitive) =>
-      key.toLowerCase().includes(sensitive)
+  isSensitiveKey(key: string, restrictMode: boolean): boolean {
+    return (
+      SENSITIVE_KEYS.some((sensitive) =>
+        key.toLowerCase().includes(sensitive)
+      ) && restrictMode
     );
   }
 
   maskSensitiveValue(key: string, value: any): string {
-    return this.isSensitiveKey(key)
+    return this.isSensitiveKey(key, this.restrictMode)
       ? "RESTRICTED"
       : this.truncateValue(value, 15);
   }

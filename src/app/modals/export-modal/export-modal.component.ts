@@ -12,12 +12,7 @@ import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatCheckboxModule } from "@angular/material/checkbox";
 import { animate, style, transition, trigger } from "@angular/animations";
 import { MatButtonModule } from "@angular/material/button";
-
-
-export interface ExportModalData {
-  remoteName?: string;  // Optional remote name to pre-select
-  defaultExportType?: string; // Optional default export type
-}
+import { ExportModalData } from "../../shared/components/types";
 
 @Component({
   selector: "app-export-modal",

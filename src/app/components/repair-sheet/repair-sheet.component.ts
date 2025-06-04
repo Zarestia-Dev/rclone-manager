@@ -5,12 +5,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
-
-interface RepairData {
-  type: 'rclone_path' | 'mount_plugin' | 'config_corrupt' | 'backend_unreachable';
-  title?: string;
-  message?: string;
-}
+import { RepairData } from '../../shared/components/types';
 
 @Component({
   selector: 'app-repair-sheet',

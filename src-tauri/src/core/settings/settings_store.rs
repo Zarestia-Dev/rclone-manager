@@ -1,57 +1,7 @@
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// 🛠️ Metadata for settings
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct SettingMetadata {
-    pub display_name: String,
-    pub value_type: String,
-    pub help_text: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub validation_pattern: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub validation_message: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub options: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub required: Option<bool>,
-}
-
-/// General settings
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct GeneralSettings {
-    pub tray_enabled: bool,
-    pub start_on_startup: bool,
-    pub notifications: bool,
-}
-
-/// Core settings
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct CoreSettings {
-    pub max_tray_items: usize,
-    pub rclone_api_port: u16,
-    pub rclone_oauth_port: u16,
-    pub connection_check_urls: String,
-    // pub default_mount_type: String,
-    pub rclone_config_path: String,
-    pub bandwidth_limit: String,
-    pub completed_onboarding: bool,
-}
-
-/// Experimental settings
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ExperimentalSettings {
-    pub debug_logging: bool,
-}
-
-/// The complete settings model
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AppSettings {
-    pub general: GeneralSettings,
-    pub core: CoreSettings,
-    pub experimental: ExperimentalSettings,
-}
+use crate::utils::types::{AppSettings, CoreSettings, ExperimentalSettings, GeneralSettings, SettingMetadata};
 
 /// ✅ Default settings
 impl Default for AppSettings {
@@ -61,6 +11,7 @@ impl Default for AppSettings {
                 tray_enabled: true,
                 start_on_startup: false,
                 notifications: true,
+                restrict: true, // default to true for security
             },
             core: CoreSettings {
                 max_tray_items: 5,
@@ -135,6 +86,20 @@ impl AppSettings {
                 value_type: "bool".to_string(),
                 help_text: "Show an icon in the system tray. Also enables the background service."
                 .to_string(),
+                validation_pattern: None,
+                validation_message: None,
+                options: None,
+                required: Some(true),
+            },
+        );
+
+        metadata.insert(
+            "general.restrict".to_string(),
+            SettingMetadata {
+                display_name: "Restrict Values".to_string(),
+                value_type: "bool".to_string(),
+                help_text: "Restrict some specific values for security purposes (e.g., Token, Client ID, etc.)"
+                    .to_string(),
                 validation_pattern: None,
                 validation_message: None,
                 options: None,

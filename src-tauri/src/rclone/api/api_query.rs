@@ -1,14 +1,13 @@
 use log::{debug, error, info};
-use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::time::Duration;
 use std::{collections::HashMap, process::Child, sync::Arc};
 use tauri::command;
 use tauri::State;
 
+use crate::rclone::api::state::ENGINE_STATE;
+use crate::utils::types::{BandwidthLimitResponse, DiskUsage, ListOptions, MountedRemote, RcloneCoreVersion};
 use crate::RcloneState;
-
-use super::state::RCLONE_STATE;
 
 lazy_static::lazy_static! {
     static ref OAUTH_PROCESS: Arc<tokio::sync::Mutex<Option<Child>>> = Arc::new(tokio::sync::Mutex::new(None));
@@ -18,7 +17,7 @@ lazy_static::lazy_static! {
 pub async fn get_all_remote_configs(
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = format!("{}/config/dump", RCLONE_STATE.get_api().0);
+    let url = format!("{}/config/dump", ENGINE_STATE.get_api().0);
 
     let response = state
         .client
@@ -37,7 +36,7 @@ pub async fn get_all_remote_configs(
 
 #[command]
 pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let url = format!("{}/config/listremotes", RCLONE_STATE.get_api().0);
+    let url = format!("{}/config/listremotes", ENGINE_STATE.get_api().0);
     debug!("📡 Fetching remotes from: {}", url);
 
     let response = state.client.post(url).send().await.map_err(|e| {
@@ -68,7 +67,7 @@ pub async fn get_fs_info(
     state: State<'_, RcloneState>,
     remote_name: String,
 ) -> Result<Value, String> {
-    let url = format!("{}/operations/fsinfo", RCLONE_STATE.get_api().0);
+    let url = format!("{}/operations/fsinfo", ENGINE_STATE.get_api().0);
 
     let payload = json!({
         "fs": format!("{}:", remote_name)
@@ -105,7 +104,7 @@ pub async fn get_remote_config_fields(
     remote_type: String,
     state: State<'_, RcloneState>,
 ) -> Result<Vec<Value>, String> {
-    let url = format!("{}/config/providers", RCLONE_STATE.get_api().0);
+    let url = format!("{}/config/providers", ENGINE_STATE.get_api().0);
 
     let response = state
         .client
@@ -141,7 +140,7 @@ pub async fn get_remote_config(
 ) -> Result<serde_json::Value, String> {
     let url = format!(
         "{}/config/get?name={}",
-        RCLONE_STATE.get_api().0,
+        ENGINE_STATE.get_api().0,
         remote_name
     );
 
@@ -160,17 +159,11 @@ pub async fn get_remote_config(
     Ok(json)
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MountedRemote {
-    pub fs: String,
-    pub mount_point: String,
-}
-
 #[tauri::command]
 pub async fn get_mounted_remotes(
     state: State<'_, RcloneState>,
 ) -> Result<Vec<MountedRemote>, String> {
-    let url = format!("{}/mount/listmounts", RCLONE_STATE.get_api().0);
+    let url = format!("{}/mount/listmounts", ENGINE_STATE.get_api().0);
 
     let response = state
         .client
@@ -208,47 +201,74 @@ pub async fn get_mounted_remotes(
     Ok(mounts)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DiskUsage {
-    free: String,
-    used: String,
-    total: String,
-}
-
 #[command]
 pub async fn get_disk_usage(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<DiskUsage, String> {
-    let url = format!("{}/operations/about", RCLONE_STATE.get_api().0);
+    let url = format!("{}/operations/about", ENGINE_STATE.get_api().0);
 
-    // Add timeout to prevent hanging
     let client = state.client.clone();
-    let request = client
-        .post(&url)
-        .json(&json!({ "fs": format!("{}:", remote_name) }))
-        .timeout(std::time::Duration::from_secs(5)); // 5 second timeout
 
+    // First phase: 3 tries with 3s timeout
     let mut attempts = 3;
     let mut response = None;
+    let mut last_err = None;
 
     while attempts > 0 {
+        let request = client
+            .post(&url)
+            .json(&json!({ "fs": format!("{}:", remote_name) }))
+            .timeout(std::time::Duration::from_secs(3));
         match request.try_clone().unwrap().send().await {
             Ok(res) => {
                 response = Some(res);
                 break;
             }
             Err(e) => {
+                last_err = Some(e.to_string());
                 attempts -= 1;
-                if attempts == 0 {
-                    return Err(format!("❌ Failed to send request after retries: {}", e));
+                if attempts > 0 {
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 }
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await; // Wait before retrying
             }
         }
     }
 
-    let response = response.unwrap();
+    // If still no response, wait 5s and try 3 more times with 5s timeout
+    if response.is_none() {
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        let mut attempts2 = 3;
+        while attempts2 > 0 {
+            let request = client
+                .post(&url)
+                .json(&json!({ "fs": format!("{}:", remote_name) }))
+                .timeout(std::time::Duration::from_secs(5));
+            match request.try_clone().unwrap().send().await {
+                Ok(res) => {
+                    response = Some(res);
+                    break;
+                }
+                Err(e) => {
+                    last_err = Some(e.to_string());
+                    attempts2 -= 1;
+                    if attempts2 > 0 {
+                        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    }
+                }
+            }
+        }
+    }
+
+    let response = match response {
+        Some(res) => res,
+        None => {
+            return Err(format!(
+                "❌ Failed to send request after retries: {}",
+                last_err.unwrap_or_else(|| "Unknown error".to_string())
+            ));
+        }
+    };
 
     if !response.status().is_success() {
         let error_msg = response
@@ -293,7 +313,7 @@ fn format_size(bytes: u64) -> String {
 async fn fetch_remote_providers(
     state: &State<'_, RcloneState>,
 ) -> Result<HashMap<String, Vec<Value>>, String> {
-    let url = format!("{}/config/providers", RCLONE_STATE.get_api().0);
+    let url = format!("{}/config/providers", ENGINE_STATE.get_api().0);
 
     let response = state
         .client
@@ -356,12 +376,6 @@ pub async fn get_oauth_supported_remotes(
     Ok(oauth_remotes)
 }
 
-#[derive(Debug, Deserialize)]
-pub struct ListOptions {
-    #[serde(flatten)]
-    pub extra: std::collections::HashMap<String, serde_json::Value>,
-}
-
 #[tauri::command]
 pub async fn get_remote_paths(
     remote: String,
@@ -369,7 +383,7 @@ pub async fn get_remote_paths(
     options: Option<ListOptions>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = format!("{}/operations/list", RCLONE_STATE.get_api().0);
+    let url = format!("{}/operations/list", ENGINE_STATE.get_api().0);
 
     // Build parameters
     let mut params = serde_json::Map::new();
@@ -413,21 +427,12 @@ pub async fn get_remote_paths(
     Ok(json["list"].clone())
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BandwidthLimitResponse {
-    pub bytes_per_second: i64,
-    pub bytes_per_second_rx: i64,
-    pub bytes_per_second_tx: i64,
-    pub rate: String,
-}
-
 /// Get current bandwidth limit settings
 #[tauri::command]
 pub async fn get_bandwidth_limit(
     state: State<'_, RcloneState>,
 ) -> Result<BandwidthLimitResponse, String> {
-    let url = format!("{}/core/bwlimit", RCLONE_STATE.get_api().0);
+    let url = format!("{}/core/bwlimit", ENGINE_STATE.get_api().0);
 
     let response = state
         .client
@@ -451,25 +456,9 @@ pub async fn get_bandwidth_limit(
     Ok(response_data)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RcloneCoreVersion {
-    pub version: String,
-    pub decomposed: Vec<u32>,
-    pub go_version: String,
-    pub os: String,
-    pub arch: String,
-    pub is_beta: bool,
-    pub is_git: bool,
-    pub linking: String,
-    pub go_tags: String,
-}
-
 #[tauri::command]
-pub async fn get_rclone_info(
-    state: State<'_, RcloneState>,
-) -> Result<RcloneCoreVersion, String> {
-    let url = format!("{}/core/version", RCLONE_STATE.get_api().0);
+pub async fn get_rclone_info(state: State<'_, RcloneState>) -> Result<RcloneCoreVersion, String> {
+    let url = format!("{}/core/version", ENGINE_STATE.get_api().0);
 
     let response = state
         .client

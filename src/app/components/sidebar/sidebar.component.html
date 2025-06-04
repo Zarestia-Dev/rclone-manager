@@ -1,7 +1,13 @@
 <div class="sidebar">
-  <h3>Remotes <mat-icon svgIcon="remotes"></mat-icon></h3>
-  <ul *ngIf="remotes.length > 0">
-    <mat-card class="remote-card" *ngFor="let remote of remotes" (click)="selectRemote(remote)">
+  <div class="sidebar-header" (click)="toggleSearch()" matTooltip="Toggle search bar" aria-label="Toggle search bar"
+   matTooltipShowDelay="500">
+    <h3>Remotes <mat-icon svgIcon="remotes"></mat-icon></h3>
+  </div>
+  <div class="search-container" [@slideToggle]="searchVisible ? 'visible' : 'hidden'">
+    <input class="search-input" [(ngModel)]="searchTerm" placeholder="Type to filter...">
+  </div>
+  <ul *ngIf="filteredRemotes.length > 0">
+    <mat-card class="remote-card" *ngFor="let remote of filteredRemotes" (click)="selectRemote(remote)">
       <mat-card-content class="card-content">
         <h4>{{ remote.remoteSpecs.name }}</h4>
         <p>
@@ -9,8 +15,8 @@
           | titlecase }}
         </p>
         <div class="remote-status">
-          <p class="mount" [class.active]="remote.mountState?.mounted" [class.passive]="!remote.mountState?.mounted"> <mat-icon
-              svgIcon="mount"></mat-icon>
+          <p class="mount" [class.active]="remote.mountState?.mounted" [class.passive]="!remote.mountState?.mounted">
+            <mat-icon svgIcon="mount"></mat-icon>
           </p>
           <p class="sync" [class.active]="remote.syncState?.isOnSync" [class.passive]="!remote.syncState?.isOnSync">
             <mat-icon svgIcon="sync"></mat-icon>
@@ -23,7 +29,7 @@
       </mat-card-content>
     </mat-card>
   </ul>
-  <p *ngIf="remotes.length === 0" class="no-remotes">
-    No remotes available
+  <p *ngIf="filteredRemotes.length === 0" class="no-remotes">
+    No remotes found
   </p>
 </div>

@@ -16,7 +16,7 @@ import { InputModalComponent } from "../../modals/input-modal/input-modal.compon
 
 // Services
 import { StateService } from "../../services/state.service";
-import { CheckResult, SettingsService } from "../../services/settings.service";
+import { SettingsService } from "../../services/settings.service";
 import { RcloneService } from "../../services/rclone.service";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatIconModule } from "@angular/material/icon";
@@ -27,6 +27,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { platform } from "@tauri-apps/plugin-os";
+import { CheckResult } from "../../shared/components/types";
 
 type Theme = "light" | "dark" | "system";
 type ModalSize = {

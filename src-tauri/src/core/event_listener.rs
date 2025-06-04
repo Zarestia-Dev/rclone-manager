@@ -4,6 +4,7 @@ use tauri::{AppHandle, Emitter, Listener, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
+    RcloneState,
     core::{
         check_binaries::read_rclone_path, lifecycle::shutdown::handle_shutdown,
         tray::tray::update_tray_menu,
@@ -11,10 +12,9 @@ use crate::{
     rclone::api::{
         api_command::set_bandwidth_limit,
         engine::ENGINE,
-        state::{CACHE, RCLONE_STATE},
+        state::{CACHE, ENGINE_STATE},
     },
     utils::{builder::setup_tray, log::update_log_level},
-    RcloneState,
 };
 
 mod events {
@@ -57,7 +57,7 @@ fn handle_rclone_api_url_updated(app: &AppHandle) {
     app.listen(events::RCLONE_API_URL_UPDATED, move |_| {
         let app = app_handle.clone();
         tauri::async_runtime::spawn(async move {
-            let port = RCLONE_STATE.get_api().1;
+            let port = ENGINE_STATE.get_api().1;
             let result = tauri::async_runtime::spawn_blocking(move || {
                 let mut engine = match ENGINE.lock() {
                     Ok(guard) => guard,
@@ -204,12 +204,13 @@ fn handle_job_cache_changed(app: &AppHandle) {
 fn handle_settings_changed(app: &AppHandle) {
     let app_handle = app.clone();
 
+    let app_handle_clone = app_handle.clone();
     app.listen(events::SYSTEM_SETTINGS_CHANGED, move |event| {
+        let app_handle = app_handle_clone.clone();
         debug!("🔄 Settings saved! Raw payload: {:?}", event.payload());
 
         match parse_payload::<Value>(Some(event.payload())) {
             Ok(settings) => {
-                // same logic...
                 if let Some(general) = settings.get("general") {
                     if let Some(notification) =
                         general.get("notifications").and_then(|v| v.as_bool())
@@ -235,25 +236,39 @@ fn handle_settings_changed(app: &AppHandle) {
                     if let Some(tray_enabled) =
                         general.get("tray_enabled").and_then(|v| v.as_bool())
                     {
-                        let tray_state = app_handle.state::<RcloneState>();
-                        let mut guard = tray_state.tray_enabled.write().unwrap();
-                        *guard = tray_enabled;
-                        debug!("🛠️ Tray visibility changed to: {}", tray_enabled);
-
-                        if let Some(tray) = app_handle.tray_by_id("main-tray") {
-                            let _ = tray.set_visible(tray_enabled);
-                        } else {
-                            let app = app_handle.clone();
-                            tauri::async_runtime::spawn(async move {
-                                if let Err(e) = setup_tray(app, 0).await {
-                                    error!("Failed to set up tray: {}", e);
-                                }
+                        let app_handle_clone = app_handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let tray_state = app_handle_clone.state::<RcloneState>();
+                            let mut guard = tray_state.tray_enabled.write().unwrap();
+                            *guard = tray_enabled;
+                            debug!("🛠️ Tray visibility changed to: {}", tray_enabled);
+                            if let Some(tray) = app_handle_clone.tray_by_id("main-tray") {
+                                let _ = tray.set_visible(tray_enabled);
+                            } else {
+                                let app = app_handle_clone.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    if let Err(e) = setup_tray(app, 0).await {
+                                        error!("Failed to set up tray: {}", e);
+                                    }
+                                });
+                            }
+                        });
+                    }
+                    if let Some(restrict) = general.get("restrict").and_then(|v| v.as_bool()) {
+                        debug!("🔒 Restrict mode changed to: {}", restrict);
+                        let rclone_state = app_handle.state::<RcloneState>();
+                        let mut guard = rclone_state.restrict_mode.write().unwrap();
+                        *guard = restrict;
+                        let app_handle_clone = app_handle.clone();
+                        app_handle_clone
+                            .emit("remote_presence_changed", "restrict_mode_changed")
+                            .unwrap_or_else(|e| {
+                                error!("❌ Failed to emit remote presence changed event: {}", e);
                             });
-                        }
                     }
                 }
 
-                if let Some(core) = settings.get("core") {
+                if let Some(core) = settings.get("core").cloned() {
                     if let Some(bandwidth_limit) = core.get("bandwidth_limit") {
                         debug!("🌐 Bandwidth limit changed to: {}", bandwidth_limit);
                         let app = app_handle.clone();
@@ -301,7 +316,7 @@ fn handle_settings_changed(app: &AppHandle) {
 
                     if let Some(api_port) = core.get("rclone_api_port").and_then(|v| v.as_u64()) {
                         debug!("🔌 Rclone API Port changed to: {}", api_port);
-                        if let Err(e) = RCLONE_STATE
+                        if let Err(e) = ENGINE_STATE
                             .set_api(format!("http://127.0.0.1:{}", api_port), api_port as u16)
                         {
                             error!("Failed to set Rclone API Port: {}", e);
@@ -311,7 +326,7 @@ fn handle_settings_changed(app: &AppHandle) {
                     if let Some(oauth_port) = core.get("rclone_oauth_port").and_then(|v| v.as_u64())
                     {
                         debug!("🔑 Rclone OAuth Port changed to: {}", oauth_port);
-                        if let Err(e) = RCLONE_STATE.set_oauth(
+                        if let Err(e) = ENGINE_STATE.set_oauth(
                             format!("http://127.0.0.1:{}", oauth_port),
                             oauth_port as u16,
                         ) {

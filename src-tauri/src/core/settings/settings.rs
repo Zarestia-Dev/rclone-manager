@@ -1,35 +1,24 @@
 use chrono::Local;
 use log::{debug, error, info, warn};
-use serde::Serialize;
 use serde_json::{json, Value};
 use std::{
     fs::{self, create_dir_all, File},
     io::{BufReader, Write},
     path::{Path, PathBuf},
     process::Command,
-    sync::{Arc, Mutex},
 };
-use tauri::{AppHandle, Emitter, Manager, Runtime, State};
-use tauri_plugin_store::Store;
+use tauri::{AppHandle, Emitter, Manager, State};
 use zip::{write::FileOptions, ZipArchive, ZipWriter};
 
-use crate::RcloneState;
-
-use super::settings_store::AppSettings;
-
-/// **Global settings state**
-pub struct SettingsState<R: Runtime> {
-    pub store: Arc<Mutex<Arc<Store<R>>>>,
-    pub config_dir: PathBuf,
-}
+use crate::{utils::types::{AppSettings, BackupAnalysis, SettingsState}, RcloneState};
 
 /// **Load settings from store**
 #[tauri::command]
 pub async fn load_settings<'a>(
     state: State<'a, SettingsState<tauri::Wry>>,
 ) -> Result<serde_json::Value, String> {
-    let store_arc = state.store.clone();
-    let store_guard = store_arc.lock().unwrap();
+    let store_arc = &state.store;
+    let store_guard = store_arc.lock().await;
 
     // Reload from disk
     store_guard
@@ -77,8 +66,8 @@ pub async fn load_setting_value<'a>(
     key: String,
     state: State<'a, SettingsState<tauri::Wry>>,
 ) -> Result<serde_json::Value, String> {
-    let store_arc = state.store.clone();
-    let store_guard = store_arc.lock().unwrap();
+    let store_arc = &state.store;
+    let store_guard = store_arc.lock().await;
 
     // Reload from disk
     store_guard
@@ -116,7 +105,7 @@ pub async fn save_settings(
     updated_settings: serde_json::Value,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    let store = state.store.lock().unwrap();
+    let store = state.store.lock().await;
 
     // Load stored settings
     let mut stored_settings = store.get("app_settings").unwrap_or_else(|| json!({}));
@@ -462,13 +451,6 @@ pub async fn backup_settings(
     Ok(format!("Backup created at: {}", archive_path.display()))
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BackupAnalysis {
-    pub is_encrypted: bool,
-    pub archive_type: String,
-}
-
 pub fn is_7z_encrypted(path: &Path) -> Result<bool, String> {
     let seven_zip =
         find_7z_executable().map_err(|e| format!("Failed to find 7z executable: {}", e))?;
@@ -588,7 +570,7 @@ pub async fn restore_settings_from_path(
                     custom.clone()
                 } else {
                     // fallback to default logic
-                    let store = state.store.lock().unwrap();
+                    let store = state.store.lock().await;
                     let settings = store.get("app_settings").unwrap_or_else(|| json!({}));
                     let custom_path = settings
                         .get("core")

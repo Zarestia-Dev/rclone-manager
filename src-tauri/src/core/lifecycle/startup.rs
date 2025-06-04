@@ -52,7 +52,7 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
     // Handle auto-mount if configured
     if let Some(auto_mount) = mount_options
         .as_ref()
-        .and_then(|opts| opts.get("autoMount").and_then(|v| v.as_bool()))
+        .and_then(|opts| opts.get("autoStart").and_then(|v| v.as_bool()))
     {
         if auto_mount {
             let mount_point = mount_options
@@ -79,14 +79,14 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
                 error!("❌ Mount configuration incomplete for {}", remote_name);
             }
         } else {
-            debug!("Skipping mount for {}: autoMount is not true", remote_name);
+            debug!("Skipping mount for {}: autoStart is not true", remote_name);
         }
     }
 
     // Handle auto-sync if configured
     if let Some(auto_sync) = sync_config
         .as_ref()
-        .and_then(|opts| opts.get("autoSync").and_then(|v| v.as_bool()))
+        .and_then(|opts| opts.get("autoStart").and_then(|v| v.as_bool()))
     {
         if auto_sync {
             let source = sync_config
@@ -118,14 +118,14 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
                 error!("❌ Sync configuration incomplete for {}", remote_name);
             }
         } else {
-            debug!("Skipping sync for {}: autoSync is not true", remote_name);
+            debug!("Skipping sync for {}: autoStart is not true", remote_name);
         }
     }
 
     // Handle auto-copy if configured
     if let Some(auto_copy) = copy_config
         .as_ref()
-        .and_then(|opts| opts.get("autoCopy").and_then(|v| v.as_bool()))
+        .and_then(|opts| opts.get("autoStart").and_then(|v| v.as_bool()))
     {
         if auto_copy {
             let source = copy_config
@@ -157,7 +157,7 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
                 error!("❌ Copy configuration incomplete for {}", remote_name);
             }
         } else {
-            debug!("Skipping copy for {}: autoCopy is not true", remote_name);
+            debug!("Skipping copy for {}: autoStart is not true", remote_name);
         }
     }
 }
@@ -308,7 +308,7 @@ async fn sync_all_remotes<R: Runtime>(_app_handle: &AppHandle<R>) -> Result<(), 
     for remote in remotes {
         if let Some(remote_settings) = settings.get(&remote) {
             if let Some(sync_config) = remote_settings.get("syncConfig") {
-                if let Some(auto_sync) = sync_config.get("autoSync").and_then(|v| v.as_bool()) {
+                if let Some(auto_sync) = sync_config.get("autoStart").and_then(|v| v.as_bool()) {
                     if auto_sync {
                         info!("🔄 Starting sync for remote: {}", remote);
                         // The actual sync will be handled in handle_remote_startup
@@ -331,7 +331,7 @@ async fn copy_all_remotes<R: Runtime>(_app_handle: &AppHandle<R>) -> Result<(), 
     for remote in remotes {
         if let Some(remote_settings) = settings.get(&remote) {
             if let Some(copy_config) = remote_settings.get("copyConfig") {
-                if let Some(auto_copy) = copy_config.get("autoCopy").and_then(|v| v.as_bool()) {
+                if let Some(auto_copy) = copy_config.get("autoStart").and_then(|v| v.as_bool()) {
                     if auto_copy {
                         info!("📋 Starting copy for remote: {}", remote);
                         // The actual copy will be handled in handle_remote_startup

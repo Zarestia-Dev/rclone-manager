@@ -81,7 +81,7 @@
         *ngIf="currentStep > 1 && !editTarget" aria-live="polite">
         <div class="saving-overlay" *ngIf="isLoading.saving && !isLoading.cancelled">
           <mat-spinner diameter="20"></mat-spinner>
-        </div> {{ isLoading.saving && !isLoading.cancelled ? 'Saving' : 'Save' }}
+        </div> {{ saveButtonLabel }}
       </button>
 
       <button mat-raised-button color="primary" (click)="onSubmit()"
@@ -89,7 +89,7 @@
         [@fadeInOut] *ngIf="editTarget" aria-live="polite">
         <div class="saving-overlay" *ngIf="isLoading.saving && !isLoading.cancelled">
           <mat-spinner diameter="20"></mat-spinner>
-        </div> {{ isLoading.saving && !isLoading.cancelled ? 'Saving...' : 'Save' }}
+        </div> {{ saveButtonLabel }}
       </button>
     </div>
   </footer>

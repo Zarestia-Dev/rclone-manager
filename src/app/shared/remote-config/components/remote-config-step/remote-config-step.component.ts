@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from "@angular/core";
-import { RemoteField, RemoteType, LinebreaksPipe, SENSITIVE_KEYS } from "../../remote-config-types";
+import { RemoteField, RemoteType, LinebreaksPipe } from "../../remote-config-types";
 import { FormGroup, ReactiveFormsModule } from "@angular/forms";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatDividerModule } from "@angular/material/divider";
@@ -9,6 +9,7 @@ import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { CommonModule } from "@angular/common";
+import { SENSITIVE_KEYS } from "../../../components/types";
 
 @Component({
   selector: "app-remote-config-step",
@@ -33,6 +34,7 @@ export class RemoteConfigStepComponent {
   @Input() remoteTypes: RemoteType[] = [];
   @Input() isLoading = false;
   @Input() existingRemotes: string[] = [];
+  @Input() restrictMode: boolean = false;
 
   @Output() advancedOptionsToggled = new EventEmitter<boolean>();
   @Output() remoteTypeChanged = new EventEmitter<void>();
@@ -59,7 +61,7 @@ export class RemoteConfigStepComponent {
   isSensitiveField(fieldName: string): boolean {
     return SENSITIVE_KEYS.some((key) =>
       fieldName.toLowerCase().includes(key)
-    );
+    ) && this.restrictMode;
   }
 
   allowOnlyNumbers(event: KeyboardEvent): void {

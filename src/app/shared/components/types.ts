@@ -1,3 +1,5 @@
+import { SettingsService } from "../../services/settings.service";
+
 export type AppTab = "mount" | "sync" | "copy" | "jobs";
 export type JobType = "sync" | "copy" | "move" | "check";
 export type JobStatus = "running" | "finished" | "failed";
@@ -143,3 +145,58 @@ export interface RcloneInfo {
   linking: string;
   goTags: string;
 }
+
+export interface CheckResult {
+  successful: string[];
+  failed: Record<string, string>;
+  retries_used: Record<string, number>;
+}
+
+export interface ConfirmDialogData {
+  title: string;
+  message: string;
+  confirmText?: string; // Optional: Defaults to "Yes"
+  cancelText?: string; // Optional: Defaults to "No"
+}
+
+export interface ExportModalData {
+  remoteName?: string; // Optional remote name to pre-select
+  defaultExportType?: string; // Optional default export type
+}
+
+export interface LogContext {
+  job_id?: number;
+  response?: string;
+  [key: string]: any;
+}
+
+export interface RemoteLogEntry {
+  timestamp: string;
+  remote_name?: string;
+  level: string;
+  message: string;
+  context?: LogContext | null;
+}
+
+export interface RepairData {
+  type:
+    | "rclone_path"
+    | "mount_plugin"
+    | "config_corrupt"
+    | "backend_unreachable";
+  title?: string;
+  message?: string;
+}
+
+export const SENSITIVE_KEYS = [
+  "password",
+  "secret",
+  "endpoint",
+  "token",
+  "key",
+  "credentials",
+  "auth",
+  "client_secret",
+  "client_id",
+  "api_key",
+];

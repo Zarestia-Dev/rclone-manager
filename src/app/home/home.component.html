@@ -86,14 +86,16 @@
     <!-- Remote Detail View -->
     <ng-container *ngIf="selectedRemote && !isLoading">
       <app-mount-detail *ngIf="currentTab === 'mount'" [iconService]="iconService" [selectedRemote]="selectedRemote"
-        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" (mountRemote)="mountRemote($event)"
+        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" [restrictMode]="restrictMode"
         [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" (unmountRemote)="unmountRemote($event)"
+        (mountRemote)="mountRemote($event)"
         (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
         (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">
       </app-mount-detail>
 
       <app-operation-detail *ngIf="currentTab === 'sync' || currentTab === 'copy'" [operationType]="currentTab"
         [selectedRemote]="selectedRemote" [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
+        [restrictMode]="restrictMode"
         (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
         (startOperation)="startOperation($event.type, $event.remoteName)"
         (stopOperation)="stopOperation($event.type, $event.remoteName)"

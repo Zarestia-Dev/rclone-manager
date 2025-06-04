@@ -41,18 +41,18 @@
     </mat-form-field>
 
     <!-- 🌟 Auto-Mount Checkbox -->
-    <mat-slide-toggle class="slide-toggle" formControlName="autoMount">
+    <mat-slide-toggle class="slide-toggle" formControlName="autoStart">
       Auto-Mount after creation and on startup
     </mat-slide-toggle>
 
     <!-- 🌟 Mount Path (Shown if Auto-Mount is enabled) -->
-    <mat-form-field appearance="fill" *ngIf="quickAddForm.get('autoMount')?.value" @slideInOut>
+    <mat-form-field appearance="fill" *ngIf="quickAddForm.get('autoStart')?.value" @slideInOut>
       <mat-label>Mount Path</mat-label>
-      <button mat-icon-button matSuffix (click)="selectFolder()" *ngIf="quickAddForm.get('autoMount')?.value">
+      <button mat-icon-button matSuffix (click)="selectFolder()" *ngIf="quickAddForm.get('autoStart')?.value">
         <mat-icon svgIcon="folder"></mat-icon>
       </button>
       <input matInput readonly placeholder="Select a folder..." formControlName="mountPath" id="mountPath" />
-      <mat-error *ngIf="quickAddForm.get('autoMount')?.value && quickAddForm.get('mountPath')?.hasError('required')">
+      <mat-error *ngIf="quickAddForm.get('autoStart')?.value && quickAddForm.get('mountPath')?.hasError('required')">
         Mount Path is required.
       </mat-error>
     </mat-form-field>

@@ -109,7 +109,7 @@
             <mat-card-content class="spec-content">
                 <mat-chip-set class="specs-container">
                     <mat-chip *ngFor="let spec of selectedRemote.remoteSpecs | keyvalue" class="spec-pill"
-                        [matTooltip]="isSensitiveKey(spec.key) ? '[RESTRICTED]' : (spec.value | json)"
+                        [matTooltip]="isSensitiveKey(spec.key, restrictMode) ? '[RESTRICTED]' : (spec.value | json)"
                         matTooltipPosition="above" [matTooltipHideDelay]="500">
                         <strong>{{ spec.key }}:</strong>
                         <span>{{ maskSensitiveValue(spec.key, spec.value) }}</span>
@@ -145,7 +145,7 @@
                                     </mat-chip> -->
                                     <ng-container *ngFor="let subSpec of spec.value | keyvalue">
                                         <mat-chip class="spec-pill sub-key"
-                                            [matTooltip]="isSensitiveKey(subSpec.key) ? '[RESTRICTED]' : (subSpec.value | json)"
+                                            [matTooltip]="isSensitiveKey(subSpec.key, restrictMode) ? '[RESTRICTED]' : (subSpec.value | json)"
                                             [matTooltipHideDelay]="500">
                                             <strong>{{ subSpec.key }}:</strong>
                                             <span>{{ maskSensitiveValue(subSpec.key, subSpec.value) }}</span>
@@ -155,7 +155,7 @@
                                 <ng-container *ngIf="!isObjectButNotArray(spec.value)">
                                     <!-- Primitive or array -->
                                     <mat-chip class="spec-pill"
-                                        [matTooltip]="isSensitiveKey(spec.key) ? '[RESTRICTED]' : (spec.value | json)"
+                                        [matTooltip]="isSensitiveKey(spec.key, restrictMode) ? '[RESTRICTED]' : (spec.value | json)"
                                         [matTooltipHideDelay]="500">
                                         <strong>{{ spec.key }}:</strong>
                                         <span>{{ maskSensitiveValue(spec.key, spec.value) }}</span>

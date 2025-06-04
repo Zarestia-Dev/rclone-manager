@@ -4,3 +4,4 @@ pub mod log;
 pub mod network;
 pub mod notification;
 pub mod rclone;
+pub mod types;

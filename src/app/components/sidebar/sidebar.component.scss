@@ -10,7 +10,7 @@
     gap: 5px;
   }
 
-  h3 {
+  .sidebar-header {
     font-size: 1.2rem;
     display: flex;
     align-items: center;
@@ -23,6 +23,37 @@
     z-index: 10;
     box-shadow: var(--box-shadow);
     padding-block: 10px;
+
+    .search-toggle {
+      position: absolute;
+      left: 10px;
+
+      mat-icon {
+        height: 20px;
+        width: 20px;
+      }
+    }
+
+    h3 {
+      gap: 10px;
+      display: flex;
+      align-items: center;
+    }
+  }
+  .search-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0;
+
+    input {
+      padding: 8px;
+      margin: 12px;
+      border-radius: var(--border-radius);
+      border: 1px solid #ddd;
+      font-size: 16px;
+      width: 100%;
+    }
   }
 
   ul {

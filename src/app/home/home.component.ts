@@ -79,6 +79,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   sidebarMode: MatDrawerMode = "side";
   currentTab: AppTab = "mount";
   isLoading = false;
+  restrictMode = true;
 
   // Data State
   remotes: Remote[] = [];
@@ -99,7 +100,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private infoService: InfoService,
     public iconService: IconService
-  ) {}
+  ) {
+    this.restrictValue();
+  }
 
   // Lifecycle Hooks
   ngOnInit(): void {
@@ -257,7 +260,7 @@ export class HomeComponent implements OnInit, OnDestroy {
           throw new Error(`No ${type} job ID found for ${remoteName}`);
         }
 
-        await this.rcloneService.stopJob(jobId);
+        await this.rcloneService.stopJob(jobId, remoteName);
       },
       `Failed to stop ${type} for ${remoteName}`
     );
@@ -279,6 +282,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         name: this.selectedRemote?.remoteSpecs.name,
         editTarget,
         existingConfig,
+        restrictMode: this.restrictMode,
       },
     });
   }
@@ -677,7 +681,18 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private handleError(message: string, error: any): void {
     console.error(`${message}:`, error);
-    this.infoService.openSnackBar(message, "Close");
+    this.infoService.openSnackBar(String(error), "Close");
+  }
+
+  private async restrictValue(): Promise<void> {
+    try {
+      this.restrictMode = await this.settingsService.load_setting_value(
+        "general",
+        "restrict"
+      );
+    } catch (error) {
+      this.handleError("Failed to load restrict setting", error);
+    }
   }
 
   private setupTauriListeners(): void {
@@ -692,6 +707,8 @@ export class HomeComponent implements OnInit, OnDestroy {
       listen<string>(event, async () => {
         try {
           await this.refreshData();
+          await this.restrictValue();
+          this.cdr.markForCheck();
         } catch (error) {
           this.handleError(`Error handling ${event}`, error);
         }

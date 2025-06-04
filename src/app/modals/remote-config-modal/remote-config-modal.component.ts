@@ -250,15 +250,14 @@ export class RemoteConfigModalComponent implements OnInit {
     this.subscriptions.push(...subs);
   }
 
-  async ngOnDestroy(): Promise<void> {
+  ngOnDestroy(): void {
     this.cleanupSubscriptions();
-    await this.stateService.cancelAuth();
+    this.stateService.cancelAuth();
   }
 
   private async initializeComponent(): Promise<void> {
     await this.loadExistingRemotes();
     if (this.data?.existingConfig) {
-      console.log("Existing Config:", this.data.existingConfig);
       this.populateForm(this.data.existingConfig);
     }
     this.loadRemoteTypes();
@@ -313,15 +312,14 @@ export class RemoteConfigModalComponent implements OnInit {
     this.authSubscriptions.push(
       this.stateService.isAuthCancelled$.subscribe((isCancelled) => {
         this.isLoading.cancelled = isCancelled;
-        console.log("Auth cancelled:", isCancelled);
       })
     );
   }
 
   private setupFormListeners(): void {
-    // Mount path required if autoMount is enabled
+    // Mount path required if autoStart is enabled
     this.remoteConfigForm
-      .get("mountConfig.autoMount")
+      .get("mountConfig.autoStart")
       ?.valueChanges.subscribe((enabled) => {
         const destCtrl = this.remoteConfigForm.get("mountConfig.dest");
         if (enabled) {
@@ -332,9 +330,9 @@ export class RemoteConfigModalComponent implements OnInit {
         destCtrl?.updateValueAndValidity();
       });
 
-    // Copy source/dest required if autoCopy is enabled
+    // Copy source/dest required if autoStart is enabled
     this.remoteConfigForm
-      .get("copyConfig.autoCopy")
+      .get("copyConfig.autoStart")
       ?.valueChanges.subscribe((enabled) => {
         const destCtrl = this.remoteConfigForm.get("copyConfig.dest");
         if (enabled) {
@@ -345,9 +343,9 @@ export class RemoteConfigModalComponent implements OnInit {
         destCtrl?.updateValueAndValidity();
       });
 
-    // Sync source/dest required if autoSync is enabled
+    // Sync source/dest required if autoStart is enabled
     this.remoteConfigForm
-      .get("syncConfig.autoSync")
+      .get("syncConfig.autoStart")
       ?.valueChanges.subscribe((enabled) => {
         const destCtrl = this.remoteConfigForm.get("syncConfig.dest");
         if (enabled) {
@@ -435,19 +433,19 @@ export class RemoteConfigModalComponent implements OnInit {
   private createRemoteConfigForm(): FormGroup {
     return this.fb.group({
       mountConfig: this.fb.group({
-        autoMount: [false],
+        autoStart: [false],
         dest: [""],
         source: [""],
         options: ["{}", [this.jsonValidator]],
       }),
       copyConfig: this.fb.group({
-        autoCopy: [false],
+        autoStart: [false],
         source: [""],
         dest: [""],
         options: ["{}", [this.jsonValidator]],
       }),
       syncConfig: this.fb.group({
-        autoSync: [false],
+        autoStart: [false],
         source: [""],
         dest: [""],
         options: ["{}", [this.jsonValidator]],
@@ -539,13 +537,9 @@ export class RemoteConfigModalComponent implements OnInit {
   //#region Form Population Methods
   populateForm(config: any): void {
     if (!this.editTarget) return;
-    console.log(this.editTarget);
-    console.log(config);
-
     if (this.editTarget === "remote") {
       this.populateRemoteForm(config);
     } else {
-      // Handle all flag types (mount, copy, sync, filter, vfs)
       switch (this.editTarget) {
         case "mount":
         case "copy":
@@ -561,16 +555,11 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   private async populateRemoteForm(config: any): Promise<void> {
-    // Set basic fields first
     this.remoteForm.patchValue({
       name: config.name,
       type: config.type,
     });
-
-    // Load remote type configuration
     await this.onRemoteTypeChange();
-
-    // After fields are loaded, populate their values
     this.dynamicRemoteFields.forEach((field) => {
       if (config[field.Name] !== undefined) {
         this.remoteForm.get(field.Name)?.setValue(config[field.Name]);
@@ -587,7 +576,7 @@ export class RemoteConfigModalComponent implements OnInit {
     }
     this.remoteConfigForm.patchValue({
       [`${flagType}Config`]: {
-        autoSync: config.autoSync ?? false,
+        autoStart: config.autoStart ?? false,
         source: source,
         dest: config.dest || "",
         options: JSON.stringify(config.options || {}, null, 2),
@@ -601,10 +590,8 @@ export class RemoteConfigModalComponent implements OnInit {
       `${flagType}Config`
     ) as FormGroup;
     if (!configGroup) return;
-
     const optionsControl = configGroup.get("options");
     if (!optionsControl) return;
-
     optionsControl.setValue(JSON.stringify(config, null, 2));
     this.syncSelectedOptionsFromJson(flagType);
   }
@@ -614,12 +601,8 @@ export class RemoteConfigModalComponent implements OnInit {
       `${flagType}Config`
     ) as FormGroup;
     if (!configGroup) return;
-    console.log("Config Groups:", configGroup);
-
     const optionsControl = configGroup.get("options");
     if (!optionsControl) return;
-    console.log("Option Controls:", configGroup);
-
     try {
       const parsed = this.safeJsonParse(optionsControl.value || "{}");
       this.selectedOptions[flagType] = { ...parsed };
@@ -703,24 +686,24 @@ export class RemoteConfigModalComponent implements OnInit {
 
     const finalConfig = {
       mountConfig: {
-        autoMount: configData.mountConfig.autoMount,
+        autoStart: configData.mountConfig.autoStart,
         dest: configData.mountConfig.dest,
-        source: configData.mountConfig.source,
+        source: configData.mountConfig.source || `${remoteData.name}:/`,
         options: {
           ...this.safeJsonParse(configData.mountConfig.options),
         },
       },
       copyConfig: {
-        autoCopy: configData.copyConfig.autoCopy,
-        source: configData.copyConfig.source,
+        autoStart: configData.copyConfig.autoStart,
+        source: configData.copyConfig.source || `${remoteData.name}:/`,
         dest: configData.copyConfig.dest,
         options: {
           ...this.safeJsonParse(configData.copyConfig.options),
         },
       },
       syncConfig: {
-        autoSync: configData.syncConfig.autoSync,
-        source: configData.syncConfig.source,
+        autoStart: configData.syncConfig.autoStart,
+        source: configData.syncConfig.source || `${remoteData.name}:/`,
         dest: configData.syncConfig.dest,
         options: {
           ...this.safeJsonParse(configData.syncConfig.options),
@@ -734,7 +717,7 @@ export class RemoteConfigModalComponent implements OnInit {
     await this.rcloneService.createRemote(remoteData.name, remoteData);
     await this.settingsService.saveRemoteSettings(remoteData.name, finalConfig);
 
-    if (finalConfig.mountConfig.autoMount && finalConfig.mountConfig.dest) {
+    if (finalConfig.mountConfig.autoStart && finalConfig.mountConfig.dest) {
       const mountPath = finalConfig.mountConfig.dest;
       const remoteName = remoteData.name;
       const source = finalConfig.mountConfig?.source;
@@ -755,23 +738,32 @@ export class RemoteConfigModalComponent implements OnInit {
     const mountData = this.cleanFormData(
       this.remoteConfigForm.getRawValue().mountConfig
     );
+    // If source is empty, set to remoteName:/
+    if (!mountData.source || mountData.source.trim() === "") {
+      const remoteName = this.getRemoteName();
+      mountData.source = `${remoteName}:/`;
+    }
     updatedConfig.mountConfig = {
-      autoMount: mountData.autoMount,
+      autoStart: mountData.autoStart,
       dest: mountData.dest,
       source: mountData.source,
       options: {
         ...this.safeJsonParse(mountData.options),
       },
     };
-    console.log(updatedConfig);
   }
 
   private async handleCopyUpdate(updatedConfig: any): Promise<void> {
     const copyData = this.cleanFormData(
       this.remoteConfigForm.getRawValue().copyConfig
     );
+    // If source is empty, set to remoteName:/
+    if (!copyData.source || copyData.source.trim() === "") {
+      const remoteName = this.getRemoteName();
+      copyData.source = `${remoteName}:/`;
+    }
     updatedConfig.copyConfig = {
-      autoCopy: copyData.autoCopy,
+      autoStart: copyData.autoStart,
       source: copyData.source,
       dest: copyData.dest,
       options: {
@@ -790,7 +782,7 @@ export class RemoteConfigModalComponent implements OnInit {
       syncData.source = `${remoteName}:/`;
     }
     updatedConfig.syncConfig = {
-      autoSync: syncData.autoSync,
+      autoStart: syncData.autoStart,
       source: syncData.source,
       dest: syncData.dest,
       options: {
@@ -945,4 +937,37 @@ export class RemoteConfigModalComponent implements OnInit {
     this.dialogRef.close(false);
   }
   //#endregion
+
+  // Add getters for Save button logic
+  get isSaveDisabled(): boolean {
+    if (this.isLoading.saving) return true;
+    if (!this.editTarget) {
+      // Creation mode: both forms must be valid
+      return !this.remoteConfigForm.valid || !this.remoteForm.valid;
+    }
+    // Edit mode: check which form is relevant
+    if (this.editTarget === "remote") {
+      return !this.remoteForm.valid;
+    }
+    if (["mount", "copy", "sync"].includes(this.editTarget)) {
+      return !this.remoteConfigForm.valid;
+    }
+    // For filter/vfs, only config form is relevant
+    return !this.remoteConfigForm.valid;
+  }
+
+  get saveButtonLabel(): string {
+    if (this.isLoading.saving && !this.isLoading.cancelled) {
+      return this.editTarget ? "Saving..." : "Saving";
+    }
+    return "Save";
+  }
+
+  get showSaveButton(): boolean {
+    if (this.editTarget) {
+      return true;
+    }
+    // Only show in creation mode after step 1
+    return this.currentStep > 1 && !this.editTarget;
+  }
 }

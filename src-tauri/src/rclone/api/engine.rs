@@ -1,6 +1,6 @@
 use std::{
     path::PathBuf,
-    process::{Child, Command},
+    process::Command,
     sync::{Arc, Mutex},
     thread,
     time::Duration,
@@ -13,22 +13,11 @@ use tauri::{AppHandle, Emitter, Manager};
 use log::{debug, error, info, warn};
 
 use crate::{
-    core::check_binaries::{is_rclone_available, read_rclone_path},
-    rclone::api::state::RCLONE_STATE,
-    RcloneState,
+    core::check_binaries::{is_rclone_available, read_rclone_path}, rclone::api::state::ENGINE_STATE, utils::types::RcApiEngine, RcloneState
 };
 
 pub static ENGINE: Lazy<Arc<Mutex<RcApiEngine>>> =
     Lazy::new(|| Arc::new(Mutex::new(RcApiEngine::default())));
-
-#[derive(Default)]
-pub struct RcApiEngine {
-    process: Option<Child>,
-    should_exit: bool,
-    running: bool,
-    rclone_path: PathBuf,
-    current_api_port: u16,
-}
 
 impl RcApiEngine {
     fn default() -> Self {
@@ -37,7 +26,7 @@ impl RcApiEngine {
             should_exit: false,
             running: false,
             rclone_path: PathBuf::new(),
-            current_api_port: RCLONE_STATE.get_api().1, // Initialize with current port
+            current_api_port: ENGINE_STATE.get_api().1, // Initialize with current port
         }
     }
 
@@ -75,7 +64,7 @@ impl RcApiEngine {
                         warn!("🔄 Rclone API not running. Starting...");
                         engine.start(&app_handle);
                     } else {
-                        debug!("✅ Rclone API running on port {}", RCLONE_STATE.get_api().1);
+                        debug!("✅ Rclone API running on port {}", ENGINE_STATE.get_api().1);
                     }
                 }
 
@@ -135,7 +124,7 @@ impl RcApiEngine {
     }
 
     pub fn is_running(&self) -> bool {
-        let url = format!("{}/config/listremotes", RCLONE_STATE.get_api().0);
+        let url = format!("{}/config/listremotes", ENGINE_STATE.get_api().0);
         match Client::new().post(&url).send() {
             Ok(resp) => resp.status().is_success(),
             Err(e) => {
@@ -165,7 +154,7 @@ impl RcApiEngine {
             }
         }
 
-        let port = RCLONE_STATE.get_api().1;
+        let port = ENGINE_STATE.get_api().1;
         self.current_api_port = port;
 
         let mut engine_app = Command::new(&self.rclone_path);

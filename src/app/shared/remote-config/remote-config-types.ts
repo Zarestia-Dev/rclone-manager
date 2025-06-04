@@ -61,74 +61,47 @@ export interface RemoteType {
   label: string;
 }
 
-export const SENSITIVE_KEYS = [
-  "password",
-  "secret",
-  "endpoint",
-  "token",
-  "key",
-  "credentials",
-  "auth",
-  "client_secret",
-  "client_id",
-  "api_key",
-];
-
 export interface MountConfig {
-  autoMount: boolean;
-  mountPath: string;
-  remotePath: string;
-  options: string; // JSON string
+  autoStart: boolean;
+  dest: string;
+  source: string;
+  options?: any;
+  [key: string]: any; // Only if you expect extra keys
 }
 
 export interface CopyConfig {
-  autoCopy: boolean;
+  autoStart: boolean;
   source: string;
   dest: string;
-  options: string; // JSON string
+  options?: any;
+  [key: string]: any;
 }
 
 export interface SyncConfig {
-  autoSync: boolean;
+  autoStart: boolean;
   source: string;
   dest: string;
-  options: string; // JSON string
+  options?: any;
+  [key: string]: any;
 }
 
 export interface FilterConfig {
-  options: string; // JSON string
+  options?: any;
+  [key: string]: any;
 }
 
 export interface VfsConfig {
-  options: string; // JSON string
+  options?: any;
+  [key: string]: any;
 }
 
 export interface RemoteSettings {
   name: string;
-  mountConfig: {
-    autoMount: boolean;
-    dest: string;
-    source: string;
-    [key: string]: any;
-  };
-  copyConfig: {
-    autoCopy: boolean;
-    source: string;
-    dest: string;
-    [key: string]: any;
-  };
-  syncConfig: {
-    autoSync: boolean;
-    source: string;
-    dest: string;
-    [key: string]: any;
-  };
-  filterConfig: {
-    [key: string]: any;
-  };
-  vfsConfig: {
-    [key: string]: any;
-  };
+  mountConfig: MountConfig;
+  copyConfig: CopyConfig;
+  syncConfig: SyncConfig;
+  filterConfig: FilterConfig;
+  vfsConfig: VfsConfig;
   showOnTray?: boolean;
 }
 
@@ -136,7 +109,7 @@ export interface QuickAddForm {
   remoteName: string;
   remoteType: string;
   mountPath: string;
-  autoMount: boolean;
+  autoStart: boolean;
 }
 
 export const REMOTE_NAME_REGEX = /^[A-Za-z0-9_\-.\+@ ]+$/;

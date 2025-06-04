@@ -89,7 +89,7 @@ async fn stop_all_jobs(app: AppHandle) -> Result<(), String> {
     let mut errors = Vec::new();
 
     for job in active_jobs {
-        if let Err(e) = stop_job(app.clone(), job.jobid, app.state()).await {
+        if let Err(e) = stop_job(app.clone(), job.jobid, "".to_string(), app.state()).await {
             errors.push(format!("Job {}: {}", job.jobid, e));
         }
     }

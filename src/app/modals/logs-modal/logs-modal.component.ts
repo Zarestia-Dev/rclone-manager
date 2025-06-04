@@ -24,20 +24,7 @@ import { MatInputModule } from "@angular/material/input";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatButtonModule } from "@angular/material/button";
 import { MatTooltipModule } from "@angular/material/tooltip";
-
-export interface LogContext {
-  job_id?: number;
-  response?: string;
-  [key: string]: any;
-}
-
-export interface RemoteLogEntry {
-  timestamp: string;
-  remote_name?: string;
-  level: string;
-  message: string;
-  context?: LogContext | null;
-}
+import { LogContext, RemoteLogEntry } from "../../shared/components/types";
 
 @Component({
   selector: "app-logs-modal",

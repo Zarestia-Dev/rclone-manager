@@ -1,11 +1,7 @@
 import { Injectable } from "@angular/core";
 import { invoke } from "@tauri-apps/api/core";
 import { InfoService } from "./info.service";
-export interface CheckResult {
-  successful: string[];
-  failed: Record<string, string>;
-  retries_used: Record<string, number>;
-}
+import { CheckResult } from "../shared/components/types";
 
 @Injectable({
   providedIn: "root",

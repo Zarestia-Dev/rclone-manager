@@ -1,38 +1,74 @@
 use chrono::Utc;
 use log::{debug, error, info, warn};
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use std::{
     collections::HashMap,
     process::{Child, Command, Stdio},
-    sync::Arc,
-    time::Duration,
+    sync::{Arc, RwLock},
+    time::{Duration, Instant},
 };
 use tauri::{AppHandle, Emitter, State};
 use tokio::net::TcpStream;
 use tokio::{sync::Mutex, time::sleep};
 
 use crate::{
-    core::check_binaries::read_rclone_path,
-    rclone::api::state::{
-        clear_logs_for_remote, get_cached_mounted_remotes, JobInfo, RemoteError, RemoteLogEntry,
-        ERROR_CACHE, JOB_CACHE, RCLONE_STATE,
-    },
-    RcloneState,
+    core::check_binaries::read_rclone_path, rclone::api::state::{
+        clear_remote_logs, get_cached_mounted_remotes, ENGINE_STATE, JOB_CACHE
+    }, utils::{log::log_operation, types::{
+            BandwidthLimitResponse, JobInfo, JobResponse, LogLevel, SENSITIVE_KEYS
+        }}, RcloneState
 };
-
-use super::{api_query::BandwidthLimitResponse, state::SENSITIVE_KEYS};
 
 lazy_static::lazy_static! {
     static ref OAUTH_PROCESS: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
 }
 
-fn redact_sensitive_values(params: &HashMap<String, Value>) -> Value {
+#[derive(Debug)]
+pub enum RcloneError {
+    RequestFailed(String),
+    ParseError(String),
+    JobError(String),
+    // RemoteError(String),
+    OAuthError(String),
+    // IoError(String),
+}
+
+impl From<reqwest::Error> for RcloneError {
+    fn from(err: reqwest::Error) -> Self {
+        RcloneError::RequestFailed(err.to_string())
+    }
+}
+
+impl From<serde_json::Error> for RcloneError {
+    fn from(err: serde_json::Error) -> Self {
+        RcloneError::ParseError(err.to_string())
+    }
+}
+
+impl std::fmt::Display for RcloneError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RcloneError::RequestFailed(e) => write!(f, "Request failed: {}", e),
+            RcloneError::ParseError(e) => write!(f, "Parse error: {}", e),
+            RcloneError::JobError(e) => write!(f, "Job error: {}", e),
+            // RcloneError::RemoteError(e) => write!(f, "Remote error: {}", e),
+            RcloneError::OAuthError(e) => write!(f, "OAuth error: {}", e),
+            // RcloneError::IoError(e) => write!(f, "IO error: {}", e),
+        }
+    }
+}
+
+fn redact_sensitive_values(
+    params: &HashMap<String, Value>,
+    restrict_mode: &Arc<RwLock<bool>>,
+) -> Value {
     params
         .iter()
         .map(|(k, v)| {
-            let value = if SENSITIVE_KEYS
-                .iter()
-                .any(|sk| k.to_lowercase().contains(sk))
+            let value = if *restrict_mode.read().unwrap()
+                && SENSITIVE_KEYS
+                    .iter()
+                    .any(|sk| k.to_lowercase().contains(sk))
             {
                 json!("[RESTRICTED]")
             } else {
@@ -43,106 +79,87 @@ fn redact_sensitive_values(params: &HashMap<String, Value>) -> Value {
         .collect()
 }
 
-// Helper functions
-async fn log_operation(
-    level: &str,
-    remote_name: Option<String>,
-    message: String,
-    context: Option<Value>,
-) {
-    ERROR_CACHE
-        .add_log(RemoteLogEntry {
-            timestamp: Utc::now(),
-            remote_name,
-            level: level.to_string(),
-            message,
-            context,
-        })
-        .await;
-}
-
-async fn log_error(
-    remote_name: Option<String>,
-    operation: &str,
-    error: String,
-    details: Option<Value>,
-) -> RemoteError {
-    let error_entry = RemoteError {
-        timestamp: Utc::now(),
-        remote_name: remote_name.clone().unwrap_or_default(),
-        operation: operation.to_string(),
-        error: error.clone(),
-        details,
-    };
-
-    ERROR_CACHE.add_error(error_entry.clone()).await;
-    log_operation(
-        "error",
-        remote_name,
-        format!("{} failed: {}", operation, error),
-        error_entry.details.clone(),
-    )
-    .await;
-    error_entry
-}
-
-async fn ensure_oauth_process(app: &AppHandle) -> Result<(), String> {
+async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let mut guard = OAUTH_PROCESS.lock().await;
-    let port = RCLONE_STATE.get_oauth().1;
+    let port = ENGINE_STATE.get_oauth().1;
 
     // Check if process is already running (in memory or port open)
     let mut process_running = guard.is_some();
     if !process_running {
         let addr = format!("127.0.0.1:{}", port);
-        if TcpStream::connect(&addr).await.is_ok() {
-            process_running = true;
-            warn!(
-                "⚠️ Rclone OAuth process already running (port {} in use)",
-                port
-            );
+        match TcpStream::connect(&addr).await {
+            Ok(_) => {
+                process_running = true;
+                warn!(
+                    "Rclone OAuth process already running (port {} in use)",
+                    port
+                );
+            }
+            Err(_) => {
+                debug!("No existing OAuth process detected on port {}", port);
+            }
         }
-    } else {
-        warn!("⚠️ Rclone OAuth process already running (tracked in memory)");
     }
 
-    // Only start a new process if not already running
-    if !process_running {
-        let rclone_path = read_rclone_path(app);
-        let mut oauth_app = Command::new(&rclone_path);
-        oauth_app // Use oauth_app instead of Command::new(rclone_path)
-            .args([
-                "rcd",
-                "--rc-no-auth",
-                "--rc-serve",
-                "--rc-addr",
-                &format!("127.0.0.1:{}", port),
-            ])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
+    if process_running {
+        return Ok(());
+    }
 
-        // This is a workaround for Windows to avoid showing a console window
-        // when starting the Rclone process.
-        // It uses the CREATE_NO_WINDOW and DETACHED_PROCESS flags.
-        // But it may not work in all cases. Like when app build for terminal
-        // and not for GUI. Rclone may still try to open a console window.
-        // You can see the flashing of the console window when starting the app.
-        #[cfg(target_os = "windows")]
+    // Start new process
+    let rclone_path = read_rclone_path(app);
+
+    let mut oauth_app = Command::new(&rclone_path);
+    oauth_app
+        .args([
+            "rcd",
+            "--rc-no-auth",
+            "--rc-serve",
+            "--rc-addr",
+            &format!("127.0.0.1:{}", port),
+        ])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null());
+
+    // This is a workaround for Windows to avoid showing a console window
+    // when starting the Rclone process.
+    // It uses the CREATE_NO_WINDOW and DETACHED_PROCESS flags.
+    // But it may not work in all cases. Like when app build for terminal
+    // and not for GUI. Rclone may still try to open a console window.
+    // You can see the flashing of the console window when starting the app.
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        oauth_app.creation_flags(0x08000000 | 0x00200000);
+    }
+
+    let process = oauth_app.spawn().map_err(|e| {
+        RcloneError::OAuthError(format!(
+            "Failed to start Rclone OAuth process: {}. Ensure Rclone is installed and in PATH.",
+            e
+        ))
+    })?;
+
+    *guard = Some(process);
+
+    // Wait for process to start with timeout
+    let start_time = Instant::now();
+    let timeout = Duration::from_secs(5);
+
+    while start_time.elapsed() < timeout {
+        if TcpStream::connect(&format!("127.0.0.1:{}", port))
+            .await
+            .is_ok()
         {
-            use std::os::windows::process::CommandExt;
-            oauth_app.creation_flags(0x08000000 | 0x00200000);
+            info!("OAuth process started successfully on port {}", port);
+            return Ok(());
         }
-
-        let process = oauth_app.spawn().map_err(|e| {
-            format!(
-                "Failed to start Rclone OAuth process: {}. Ensure Rclone is installed and in PATH.",
-                e
-            )
-        })?;
-
-        *guard = Some(process);
-        sleep(Duration::from_secs(2)).await; // Wait for process to start
+        sleep(Duration::from_millis(100)).await;
     }
-    Ok(())
+
+    Err(RcloneError::OAuthError(format!(
+        "Timeout waiting for OAuth process to start on port {}",
+        port
+    )))
 }
 
 /// Create a new remote configuration
@@ -165,11 +182,12 @@ pub async fn create_remote(
         .clone()
         .into_iter()
         .collect();
-    let params_obj = redact_sensitive_values(&params_map);
+    let params_obj = redact_sensitive_values(&params_map, &state.restrict_mode);
 
     log_operation(
-        "info",
+        LogLevel::Info,
         Some(name.clone()),
+        Some("New remote creation".to_string()),
         "Creating new remote".to_string(),
         Some(json!({
             "type": remote_type,
@@ -179,7 +197,9 @@ pub async fn create_remote(
     .await;
 
     // Handle OAuth process
-    ensure_oauth_process(&app).await?;
+    ensure_oauth_process(&app)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let body = json!({
         "name": name,
@@ -189,7 +209,7 @@ pub async fn create_remote(
 
     let url = format!(
         "http://127.0.0.1:{}/config/create",
-        RCLONE_STATE.get_oauth().1
+        ENGINE_STATE.get_oauth().1
     );
 
     let response = state
@@ -210,25 +230,26 @@ pub async fn create_remote(
         let error = if body.contains("failed to get oauth token") {
             "OAuth authentication failed or was not completed".to_string()
         } else if body.contains("bind: address already in use") {
-            format!("Port {} already in use", RCLONE_STATE.get_oauth().1)
+            format!("Port {} already in use", ENGINE_STATE.get_oauth().1)
         } else {
             format!("HTTP {}: {}", status, body)
         };
 
-        let _ = log_error(
+        log_operation(
+            LogLevel::Error,
             Some(name.clone()),
-            "create_remote",
-            error.clone(),
+            Some("New remote creation".to_string()),
+            "Failed to create remote".to_string(),
             Some(json!({"response": body})),
-        )
-        .await;
+        ).await;
 
         return Err(error);
     }
 
     log_operation(
-        "info",
+        LogLevel::Info,
         Some(name.clone()),
+        Some("New remote creation".to_string()),
         "Remote created successfully".to_string(),
         None,
     )
@@ -254,11 +275,12 @@ pub async fn update_remote(
         .ok_or("Missing remote type")?;
 
     // Enhanced logging with parameter values
-    let params_obj = redact_sensitive_values(&parameters);
+    let params_obj = redact_sensitive_values(&parameters, &state.restrict_mode);
 
     log_operation(
-        "info",
+        LogLevel::Info,
         Some(name.clone()),
+        Some("Remote update".to_string()),
         "Updating remote".to_string(),
         Some(json!({
             "type": remote_type,
@@ -267,11 +289,13 @@ pub async fn update_remote(
     )
     .await;
 
-    ensure_oauth_process(&app).await?;
+    ensure_oauth_process(&app)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let url = format!(
         "http://127.0.0.1:{}/config/update",
-        RCLONE_STATE.get_oauth().1
+        ENGINE_STATE.get_oauth().1
     );
     let body = json!({ "name": name, "parameters": parameters });
 
@@ -289,19 +313,20 @@ pub async fn update_remote(
 
     if !status.is_success() {
         let error = format!("HTTP {}: {}", status, body);
-        let _ = log_error(
+        log_operation(
+            LogLevel::Error,
             Some(name.clone()),
-            "update_remote",
-            error.clone(),
+            Some("Remote update".to_string()),
+            "Failed to update remote".to_string(),
             Some(json!({"response": body})),
-        )
-        .await;
+        ).await;
         return Err(error);
     }
 
     log_operation(
-        "info",
+        LogLevel::Info,
         Some(name.clone()),
+        Some("Remote update".to_string()),
         "Remote updated successfully".to_string(),
         None,
     )
@@ -321,7 +346,7 @@ pub async fn delete_remote(
 ) -> Result<(), String> {
     info!("🗑️ Deleting remote: {}", name);
 
-    let url = format!("{}/config/delete", RCLONE_STATE.get_api().0);
+    let url = format!("{}/config/delete", ENGINE_STATE.get_api().0);
 
     let response = state
         .client
@@ -349,14 +374,13 @@ pub async fn delete_remote(
     app.emit("remote_deleted", &name)
         .map_err(|e| format!("Failed to emit event: {}", e))?;
 
-    clear_logs_for_remote(name.clone())
+    clear_remote_logs(Some(name.clone()))
         .await
         .unwrap_or_default();
     info!("✅ Remote {} deleted successfully", name);
     Ok(())
 }
 
-/// Mount a remote filesystem
 /// Mount a remote filesystem
 #[tauri::command]
 pub async fn mount_remote(
@@ -368,11 +392,6 @@ pub async fn mount_remote(
     vfs_options: Option<HashMap<String, Value>>,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    // Validate inputs
-    if mount_point.trim().is_empty() {
-        return Err("Mount point cannot be empty".to_string());
-    }
-
     let mounted_remotes = get_cached_mounted_remotes().await?;
 
     // Check if mount point is in use
@@ -398,25 +417,27 @@ pub async fn mount_remote(
     let log_context = json!({
         "mount_point": mount_point,
         "remote_name": remote_name,
-        "mount_options": mount_options.as_ref().map(redact_sensitive_values),
-        "vfs_options": vfs_options.as_ref().map(redact_sensitive_values)
+        "mount_options": mount_options.as_ref().map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+        "vfs_options": vfs_options.as_ref().map(|opts| redact_sensitive_values(opts, &state.restrict_mode))
     });
 
     log_operation(
-        "info",
+        LogLevel::Info,
         Some(remote_name.clone()),
+        Some("Mount remote".to_string()),
         format!("Attempting to mount at {}", mount_point),
         Some(log_context),
     )
     .await;
 
     // Prepare payload
-    let source_fs = format!("{}:{}", remote_name, source);
     let mut payload = json!({
-        "fs": source_fs,
+        "fs": source,
         "mountPoint": mount_point,
         "_async": true,
     });
+
+    debug!("Mount request payload: {:#?}", payload);
 
     if let Some(opts) = mount_options {
         payload["mountOpt"] = json!(opts);
@@ -427,7 +448,7 @@ pub async fn mount_remote(
     }
 
     // Make the request
-    let url = format!("{}/mount/mount", RCLONE_STATE.get_api().0);
+    let url = format!("{}/mount/mount", ENGINE_STATE.get_api().0);
     let response = state
         .client
         .post(&url)
@@ -441,8 +462,15 @@ pub async fn mount_remote(
             let error_for_log = error.clone();
             // Spawn an async task to log the error since we can't await here
             let remote_name_clone = remote_name.clone();
-            tokio::spawn(async move {
-                log_error(Some(remote_name_clone), "mount_remote", error_for_log, None).await;
+            let payload_clone = payload.clone();
+            tauri::async_runtime::spawn(async move {
+                log_operation(
+                    LogLevel::Error,
+                    Some(remote_name_clone),
+                    Some("Mount remote".to_string()),
+                    error_for_log,
+                    Some(json!({"payload": payload_clone})),
+                ).await;
             });
             error
         })?;
@@ -453,10 +481,11 @@ pub async fn mount_remote(
 
     if !status.is_success() {
         let error = format!("HTTP {}: {}", status, body);
-        let _ = log_error(
+        log_operation(
+            LogLevel::Error,
             Some(remote_name.clone()),
-            "mount_remote",
-            error.clone(),
+            Some("Mount remote".to_string()),
+            format!("Failed to mount remote: {}", error),
             Some(json!({"response": body})),
         )
         .await;
@@ -467,8 +496,9 @@ pub async fn mount_remote(
         serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
 
     log_operation(
-        "info",
+        LogLevel::Info,
         Some(remote_name.clone()),
+        Some("Mount remote".to_string()),
         format!("Mount job started with ID {}", job_response.jobid),
         Some(json!({"jobid": job_response.jobid})),
     )
@@ -493,9 +523,11 @@ pub async fn mount_remote(
 
     // Start monitoring
     let app_clone = app.clone();
+    let remote_name_clone = remote_name.clone();
     let client = state.client.clone();
-    if let Err(e) = monitor_job(jobid, app_clone, client).await {
-        error!("Failed to monitor mount job {}: {}", jobid, e);
+    if let Err(e) = monitor_job(remote_name_clone, "Mount remote", jobid, app_clone, client).await {
+        error!("Job {} returned an error: {}", jobid, e);
+        return Err(e.to_string());
     }
 
     app.emit("remote_state_changed", &remote_name)
@@ -517,14 +549,15 @@ pub async fn unmount_remote(
     }
 
     log_operation(
-        "info",
+        LogLevel::Info,
         Some(remote_name.clone()),
+        Some("Unmount remote".to_string()),
         format!("Attempting to unmount {}", mount_point),
         None,
     )
     .await;
 
-    let url = format!("{}/mount/unmount", RCLONE_STATE.get_api().0);
+    let url = format!("{}/mount/unmount", ENGINE_STATE.get_api().0);
     let payload = json!({ "mountPoint": mount_point });
 
     let response = state
@@ -551,20 +584,21 @@ pub async fn unmount_remote(
         }
 
         let error = format!("HTTP {}: {}", status, body);
-        let _ = log_error(
+        log_operation(
+            LogLevel::Error,
             Some(remote_name.clone()),
-            "unmount_remote",
+            Some("Unmount remote".to_string()),
             error.clone(),
             Some(json!({"response": body})),
-        )
-        .await;
-
+        ).await;
+        error!("❌ Failed to unmount {}: {}", mount_point, error);
         return Err(error);
     }
 
     log_operation(
-        "info",
+        LogLevel::Info,
         Some(remote_name.clone()),
+        Some("Unmount remote".to_string()),
         format!("Successfully unmounted {}", mount_point),
         None,
     )
@@ -585,7 +619,7 @@ pub async fn unmount_all_remotes(
 ) -> Result<String, String> {
     info!("🗑️ Unmounting all remotes");
 
-    let url = format!("{}/mount/unmountall", RCLONE_STATE.get_api().0);
+    let url = format!("{}/mount/unmountall", ENGINE_STATE.get_api().0);
 
     let response = state
         .client
@@ -614,11 +648,6 @@ pub async fn unmount_all_remotes(
     Ok("✅ All remotes unmounted successfully".to_string())
 }
 
-#[derive(serde::Deserialize)]
-struct JobResponse {
-    jobid: u64,
-}
-
 /// Start a sync operation
 #[tauri::command]
 pub async fn start_sync(
@@ -631,11 +660,14 @@ pub async fn start_sync(
     state: State<'_, RcloneState>,
 ) -> Result<u64, String> {
     log_operation(
-        "info",
+        LogLevel::Info,
         Some(remote_name.clone()),
+        Some("Sync operation".to_string()),
         format!("Starting sync from {} to {}", source, dest),
         Some(json!({
-            "options": sync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
+            "source": source,
+            "destination": dest,
+            "sync_options": sync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
             "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
         })),
     )
@@ -663,7 +695,7 @@ pub async fn start_sync(
 
     debug!("Sync request body: {:#?}", body);
 
-    let url = format!("{}/sync/sync", RCLONE_STATE.get_api().0);
+    let url = format!("{}/sync/sync", ENGINE_STATE.get_api().0);
 
     let response = state
         .client
@@ -679,33 +711,33 @@ pub async fn start_sync(
 
     if !status.is_success() {
         let error = format!("HTTP {}: {}", status, body_text);
-        let _ = log_error(
+        log_operation(
+            LogLevel::Error,
             Some(remote_name.clone()),
-            "start_sync",
-            error.clone(),
+            Some("Sync operation".to_string()),
+            "Failed to start sync job".to_string(),
             Some(json!({"response": body_text})),
-        )
-        .await;
+        ).await;
         return Err(error);
     }
 
     let job: JobResponse =
         serde_json::from_str(&body_text).map_err(|e| format!("Failed to parse response: {}", e))?;
 
-    let _ = log_operation(
-        "info",
+    log_operation(
+        LogLevel::Info,
         Some(remote_name.clone()),
+        Some("Sync operation".to_string()),
         format!("Sync job started with ID {}", job.jobid),
         Some(json!({"jobid": job.jobid})),
-    )
-    .await;
+    ).await;
 
     let jobid = job.jobid;
     JOB_CACHE
         .add_job(JobInfo {
             jobid,
             job_type: "sync".to_string(),
-            remote_name: remote_name,
+            remote_name: remote_name.clone(),
             source: source.clone(),
             destination: dest.clone(),
             start_time: Utc::now(),
@@ -718,8 +750,9 @@ pub async fn start_sync(
     // Start monitoring the job
     let app_clone = app.clone();
     let client = state.client.clone();
+    let remote_name_clone = remote_name.clone();
     tauri::async_runtime::spawn(async move {
-        let _ = monitor_job(jobid, app_clone, client).await;
+        let _ = monitor_job(remote_name_clone, "Sync operation", jobid, app_clone, client).await;
     });
 
     app.emit("job_cache_changed", jobid)
@@ -732,9 +765,10 @@ pub async fn start_sync(
 pub async fn stop_job(
     app: AppHandle,
     jobid: u64,
+    remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    let url = format!("{}/job/stop", RCLONE_STATE.get_api().0);
+    let url = format!("{}/job/stop", ENGINE_STATE.get_api().0);
     let payload = json!({ "jobid": jobid });
 
     let response = state
@@ -755,6 +789,13 @@ pub async fn stop_job(
             JOB_CACHE.remove_job(jobid).await.ok();
             app.emit("job_cache_changed", jobid)
                 .map_err(|e| format!("Failed to emit event: {}", e))?;
+            log_operation(
+                LogLevel::Warn,
+                Some(remote_name.clone()),
+                Some("Stop job".to_string()),
+                format!("Job {} not found, removed from cache", jobid),
+                None,
+            ).await;
             warn!("Job {} not found, removed from cache.", jobid);
             return Ok(());
         }
@@ -765,6 +806,14 @@ pub async fn stop_job(
 
     // Remove job from cache after stopping
     JOB_CACHE.remove_job(jobid).await.ok();
+
+    log_operation(
+        LogLevel::Info,
+        Some(remote_name.clone()),
+        Some("Stop job".to_string()),
+        format!("Job {} stopped successfully", jobid),
+        None,
+    ).await;
 
     app.emit("job_cache_changed", jobid)
         .map_err(|e| format!("Failed to emit event: {}", e))?;
@@ -785,11 +834,14 @@ pub async fn start_copy(
     state: State<'_, RcloneState>,
 ) -> Result<u64, String> {
     log_operation(
-        "info",
+        LogLevel::Info,
         Some(remote_name.clone()),
+        Some("Copy operation".to_string()),
         format!("Starting copy from {} to {}", source, dest),
         Some(json!({
-            "options": copy_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
+            "source": source,
+            "destination": dest,
+            "copy_options": copy_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
             "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
         })),
     )
@@ -816,7 +868,7 @@ pub async fn start_copy(
 
     debug!("Copy request body: {:#?}", body);
 
-    let url = format!("{}/sync/copy", RCLONE_STATE.get_api().0);
+    let url = format!("{}/sync/copy", ENGINE_STATE.get_api().0);
 
     let response = state
         .client
@@ -832,13 +884,14 @@ pub async fn start_copy(
 
     if !status.is_success() {
         let error = format!("HTTP {}: {}", status, body);
-        let _ = log_error(
+        log_operation(
+            LogLevel::Error,
             Some(remote_name.clone()),
-            "start_copy",
-            error.clone(),
+            Some("Copy operation".to_string()),
+            "Failed to start copy job".to_string(),
             Some(json!({"response": body})),
-        )
-        .await;
+        ).await;
+        error!("❌ Failed to start copy job: {}", error);
         return Err(error);
     }
 
@@ -862,13 +915,15 @@ pub async fn start_copy(
     // Start monitoring the job
     let app_clone = app.clone();
     let client = state.client.clone();
+    let remote_name_clone = remote_name.clone();
     tokio::spawn(async move {
-        let _ = monitor_job(jobid, app_clone, client).await;
+        let _ = monitor_job(remote_name_clone, "Copy operation", jobid, app_clone, client).await;
     });
 
     log_operation(
-        "info",
+        LogLevel::Info,
         Some(remote_name.clone()),
+        Some("Copy operation".to_string()),
         format!("Copy job started with ID {}", jobid),
         Some(json!({"jobid": jobid})),
     )
@@ -879,93 +934,162 @@ pub async fn start_copy(
     Ok(job.jobid)
 }
 
-async fn monitor_job(jobid: u64, app: AppHandle, client: reqwest::Client) -> Result<(), String> {
-    let job_status_url = format!("{}/job/status", RCLONE_STATE.get_api().0);
-    let stats_url = format!("{}/core/stats", RCLONE_STATE.get_api().0);
+async fn monitor_job(
+    remote_name: String,
+    operation: &str,
+    jobid: u64,
+    app: AppHandle,
+    client: reqwest::Client,
+) -> Result<(), RcloneError> {
+    let job_status_url = format!("{}/job/status", ENGINE_STATE.get_api().0);
+    let stats_url = format!("{}/core/stats", ENGINE_STATE.get_api().0);
 
-    Ok(loop {
-        // Check job status
-        let status_res = client
+    info!("Starting monitoring for job {} ({})", jobid, operation);
+
+    let mut consecutive_errors = 0;
+    const MAX_CONSECUTIVE_ERRORS: u8 = 3;
+
+    loop {
+        // Check if job was removed from cache
+        if JOB_CACHE.get_job(jobid).await.is_none() {
+            debug!("Job {} removed from cache, stopping monitoring", jobid);
+            return Ok(());
+        }
+
+        // Get job status and stats in parallel
+        let status_fut = client
             .post(&job_status_url)
             .json(&json!({ "jobid": jobid }))
             .timeout(Duration::from_secs(10))
-            .send()
-            .await;
+            .send();
 
-        // Get stats
-        let stats_res = client
+        let stats_fut = client
             .post(&stats_url)
             .json(&json!({ "jobid": jobid }))
             .timeout(Duration::from_secs(10))
-            .send()
-            .await;
+            .send();
 
-        // If job was removed from cache, exit
-        if JOB_CACHE.get_job(jobid).await.is_none() {
-            debug!("Job {} not found in cache, exiting monitor loop", jobid);
-            break;
-        }
+        match tokio::try_join!(status_fut, stats_fut) {
+            Ok((status_response, stats_response)) => {
+                consecutive_errors = 0; // Reset error counter on success
 
-        match (status_res, stats_res) {
-            (Ok(status_response), Ok(stats_response)) => {
-                let status_body = status_response.text().await.unwrap_or_default();
-                let stats_body = stats_response.text().await.unwrap_or_default();
+                let status_body = status_response.text().await?;
+                let stats_body = stats_response.text().await?;
 
-                // Parse stats and update cache
-                if let Ok(mut stats) = serde_json::from_str::<Value>(&stats_body) {
-                    if let Some(transferring) = stats.get_mut("transferring") {
-                        if let Some(transferring_array) = transferring.as_array_mut() {
-                            transferring_array.retain(|item| {
-                                item.get("group")
-                                    .and_then(|g| g.as_str())
-                                    .map(|g| g.contains(&format!("job/{}", jobid)))
-                                    .unwrap_or(false)
-                            });
-                        }
-                    }
-                    let _ = JOB_CACHE.update_job_stats(jobid, stats).await;
+                // Process stats
+                if let Ok(stats) = serde_json::from_str::<Value>(&stats_body) {
+                    JOB_CACHE
+                        .update_job_stats(jobid, stats)
+                        .await
+                        .map_err(RcloneError::JobError)?;
                 }
 
-                // Parse job status and check for finished
+                // Process status
                 if let Ok(job_status) = serde_json::from_str::<Value>(&status_body) {
                     if job_status
                         .get("finished")
                         .and_then(|v| v.as_bool())
                         .unwrap_or(false)
                     {
-                        let success = job_status
-                            .get("success")
-                            .and_then(|v| v.as_bool())
-                            .unwrap_or(false);
-                        let _ = JOB_CACHE.complete_job(jobid, success).await;
-                        if let Err(e) = app.emit("job_cache_changed", jobid) {
-                            log::warn!("Failed to emit event: {}", e);
-                        }
-                        break;
+                        return handle_job_completion(
+                            jobid,
+                            &remote_name,
+                            operation,
+                            job_status,
+                            &app,
+                        )
+                        .await;
                     }
                 }
             }
-            // If status is not OK, check for "job not found"
-            (Ok(status_response), _) => {
-                let status = status_response.status();
-                let status_body = status_response.text().await.unwrap_or_default();
-                if !status.is_success() && status == 500 && status_body.contains("job not found") {
-                    debug!(
-                        "Job {} not found (job not found), marking as completed",
-                        jobid
-                    );
-                    let _ = JOB_CACHE.complete_job(jobid, false).await;
-                    if let Err(e) = app.emit("job_cache_changed", jobid) {
-                        log::warn!("Failed to emit event: {}", e);
-                    }
-                    break;
+            Err(e) => {
+                consecutive_errors += 1;
+                warn!(
+                    "Error monitoring job {} (attempt {}/{}): {}",
+                    jobid, consecutive_errors, MAX_CONSECUTIVE_ERRORS, e
+                );
+
+                if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+                    error!("Too many errors monitoring job {}, giving up", jobid);
+                    JOB_CACHE
+                        .complete_job(jobid, false)
+                        .await
+                        .map_err(RcloneError::JobError)?;
+                    app.emit("job_cache_changed", jobid)
+                        .map_err(|e| RcloneError::JobError(e.to_string()))?;
+                    return Err(RcloneError::JobError(format!(
+                        "Too many errors monitoring job {}: {}",
+                        jobid, e
+                    )));
                 }
             }
-            _ => {}
         }
 
         sleep(Duration::from_secs(1)).await;
-    })
+    }
+}
+
+async fn handle_job_completion(
+    jobid: u64,
+    remote_name: &str,
+    operation: &str,
+    job_status: Value,
+    app: &AppHandle,
+) -> Result<(), RcloneError> {
+    let success = job_status
+        .get("success")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    let error_msg = job_status
+        .get("error")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .trim()
+        .to_string();
+
+    JOB_CACHE
+        .complete_job(jobid, success)
+        .await
+        .map_err(RcloneError::JobError)?;
+    app.emit("job_cache_changed", jobid)
+        .map_err(|e| RcloneError::JobError(e.to_string()))?;
+
+    if !error_msg.is_empty() {
+        log_operation(
+            LogLevel::Error,
+            Some(remote_name.to_string()),
+            Some(operation.to_string()),
+            format!("{} Job {} failed: {}", operation, jobid, error_msg),
+            Some(json!({"jobid": jobid, "status": job_status})),
+        )
+        .await;
+        return Err(RcloneError::JobError(error_msg));
+    } else if success {
+        log_operation(
+            LogLevel::Info,
+            Some(remote_name.to_string()),
+            Some(operation.to_string()),
+            format!("{} Job {} completed successfully", operation, jobid),
+            Some(json!({"jobid": jobid, "status": job_status})),
+        )
+        .await;
+        Ok(())
+    } else {
+        log_operation(
+            LogLevel::Warn,
+            Some(remote_name.to_string()),
+            Some(operation.to_string()),
+            format!(
+                "{} Job {} completed without success but no error message",
+                operation, jobid
+            ),
+            Some(json!({"jobid": jobid, "status": job_status})),
+        )
+        .await;
+        Err(RcloneError::JobError(
+            "Job completed without success".to_string(),
+        ))
+    }
 }
 
 /// Clean up OAuth process
@@ -974,7 +1098,7 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
     info!("🛑 Quitting Rclone OAuth process");
 
     let mut guard = OAUTH_PROCESS.lock().await;
-    let port = RCLONE_STATE.get_oauth().1;
+    let port = ENGINE_STATE.get_oauth().1;
     let mut found_process = false;
 
     // Check if process is tracked in memory
@@ -1033,7 +1157,7 @@ pub async fn set_bandwidth_limit(
         None => "off".to_string(),
     };
 
-    let url = format!("{}/core/bwlimit", RCLONE_STATE.get_api().0);
+    let url = format!("{}/core/bwlimit", ENGINE_STATE.get_api().0);
     let payload = json!({ "rate": rate_value });
 
     let response = state

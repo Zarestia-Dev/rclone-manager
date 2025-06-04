@@ -1,7 +1,6 @@
 <form [formGroup]="configGroup" class="flag-form">
     <!-- Auto-Action Toggle -->
-    <mat-slide-toggle class="slide-toggle" [formControlName]="isMount ? 'autoMount' : isSync ? 'autoSync' : 'autoCopy'"
-        [id]="isMount ? 'autoMount' : isSync ? 'autoSync' : 'autoCopy'">
+    <mat-slide-toggle class="slide-toggle" formControlName="autoStart" *ngIf="flagType !== 'vfs' && flagType !== 'filter'">
         {{
         isMount ? 'Auto-Mount after creation and on startup' :
         isSync ? 'Auto-Sync after creation and on startup' :
@@ -21,7 +20,7 @@
     </ng-container>
 
     <!-- Destination Path -->
-    <mat-form-field appearance="fill" *ngIf="isEditMode && !isMount">
+    <mat-form-field appearance="fill" *ngIf="flagType !== 'mount' && flagType !== 'vfs' && flagType !== 'filter'">
         <mat-label>{{ flagType | titlecase }} Destination</mat-label>
         <input matInput formControlName="dest" placeholder="Select destination path or enter remote (remote:path)"
             [matAutocomplete]="destAuto" />

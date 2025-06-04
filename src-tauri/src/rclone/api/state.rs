@@ -1,36 +1,32 @@
-use chrono::{DateTime, Utc};
+use std::sync::Arc;
+
 use log::{debug, error};
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::sync::Mutex;
+use serde_json::{Value, json};
 use tauri::Manager;
 use tokio::sync::RwLock;
 
-use crate::core::settings::settings::get_remote_settings;
+use crate::{
+    core::settings::settings::get_remote_settings,
+    utils::types::{
+        EngineState, JobCache, JobInfo, LogCache, LogEntry, MountedRemote, RcloneState,
+        RemoteCache, SENSITIVE_KEYS,
+    },
+};
 
-use super::api_query::{get_all_remote_configs, get_mounted_remotes, get_remotes, MountedRemote};
+use super::api_query::{get_all_remote_configs, get_mounted_remotes, get_remotes};
 
-pub const SENSITIVE_KEYS: &[&str] = &[
-    "password",
-    "secret",
-    "endpoint",
-    "token",
-    "key",
-    "credentials",
-    "auth",
-    "client_secret",
-    "client_id",
-    "api_key",
-];
-
-fn redact_sensitive_values(params: &Vec<std::string::String>) -> Value {
+fn redact_sensitive_values(
+    params: &Vec<std::string::String>,
+    restrict_mode: &Arc<std::sync::RwLock<bool>>,
+) -> Value {
     params
         .iter()
         .map(|k| {
-            let value = if SENSITIVE_KEYS
-                .iter()
-                .any(|sk| k.to_lowercase().contains(sk))
+            let value = if *restrict_mode.read().unwrap()
+                && SENSITIVE_KEYS
+                    .iter()
+                    .any(|sk| k.to_lowercase().contains(sk))
             {
                 json!("[RESTRICTED]")
             } else {
@@ -42,45 +38,42 @@ fn redact_sensitive_values(params: &Vec<std::string::String>) -> Value {
 }
 
 // Recursively redact sensitive values in a serde_json::Value
-fn redact_sensitive_json(value: &Value) -> Value {
+fn redact_sensitive_json(value: &Value, restrict_mode: &Arc<std::sync::RwLock<bool>>) -> Value {
     match value {
         Value::Object(map) => {
             let redacted_map = map
                 .iter()
                 .map(|(k, v)| {
-                    if SENSITIVE_KEYS
-                        .iter()
-                        .any(|sk| k.to_lowercase().contains(sk))
+                    if *restrict_mode.read().unwrap()
+                        && SENSITIVE_KEYS
+                            .iter()
+                            .any(|sk| k.to_lowercase().contains(sk))
                     {
                         (k.clone(), json!("[RESTRICTED]"))
                     } else {
-                        (k.clone(), redact_sensitive_json(v))
+                        (k.clone(), redact_sensitive_json(v, restrict_mode))
                     }
                 })
                 .collect();
             Value::Object(redacted_map)
         }
-        Value::Array(arr) => Value::Array(arr.iter().map(redact_sensitive_json).collect()),
+        Value::Array(arr) => Value::Array(
+            arr.iter()
+                .map(|v| redact_sensitive_json(v, restrict_mode))
+                .collect(),
+        ),
         _ => value.clone(),
     }
 }
 
-#[derive(Debug)]
-pub struct RcloneState {
-    pub api_url: Mutex<String>,
-    pub api_port: Mutex<u16>,
-    pub oauth_url: Mutex<String>,
-    pub oauth_port: Mutex<u16>,
-}
-
-pub static RCLONE_STATE: Lazy<RcloneState> = Lazy::new(|| RcloneState {
-    api_url: Mutex::new(String::new()),
-    api_port: Mutex::new(5572),
-    oauth_url: Mutex::new(String::new()),
-    oauth_port: Mutex::new(5580),
+pub static ENGINE_STATE: Lazy<EngineState> = Lazy::new(|| EngineState {
+    api_url: std::sync::Mutex::new(String::new()),
+    api_port: std::sync::Mutex::new(5572),
+    oauth_url: std::sync::Mutex::new(String::new()),
+    oauth_port: std::sync::Mutex::new(5580),
 });
 
-impl RcloneState {
+impl EngineState {
     pub fn set_api(&self, url: String, port: u16) -> Result<(), String> {
         *self.api_url.lock().map_err(|e| e.to_string())? = url;
         *self.api_port.lock().map_err(|e| e.to_string())? = port;
@@ -108,13 +101,6 @@ impl RcloneState {
     }
 }
 
-pub struct RemoteCache {
-    pub remotes: RwLock<Vec<String>>,
-    pub configs: RwLock<serde_json::Value>,
-    pub settings: RwLock<serde_json::Value>,
-    pub mounted: RwLock<Vec<MountedRemote>>,
-}
-
 pub static CACHE: Lazy<RemoteCache> = Lazy::new(|| RemoteCache {
     remotes: RwLock::new(Vec::new()),
     configs: RwLock::new(json!({})),
@@ -136,7 +122,8 @@ impl RemoteCache {
         if let Ok(remote_list) = get_remotes(app_handle.state()).await {
             *remotes = remote_list;
             // Redact sensitive values in the remote list
-            let redacted_remotes = redact_sensitive_values(&*remotes);
+            let state = app_handle.state::<RcloneState>();
+            let redacted_remotes = redact_sensitive_values(&*remotes, &state.restrict_mode);
             debug!("🔄 Updated remotes: {:?}", redacted_remotes);
         } else {
             error!("Failed to fetch remotes");
@@ -147,7 +134,8 @@ impl RemoteCache {
         if let Ok(remote_list) = get_all_remote_configs(app_handle.state()).await {
             *configs = remote_list;
             // Redact sensitive values in the remote configs
-            let redacted_configs = redact_sensitive_json(&*configs);
+            let state = app_handle.state::<RcloneState>();
+            let redacted_configs = redact_sensitive_json(&*configs, &state.restrict_mode);
             debug!("🔄 Updated remotes configs: {:?}", redacted_configs);
         } else {
             error!("Failed to fetch remotes config");
@@ -170,7 +158,8 @@ impl RemoteCache {
 
         *settings = serde_json::Value::Object(all_settings);
         // Redact sensitive values in the remote settings
-        let redacted_settings = redact_sensitive_json(&*settings);
+        let state = app_handle.state::<RcloneState>();
+        let redacted_settings = redact_sensitive_json(&*settings, &state.restrict_mode);
         debug!("🔄 Updated remotes settings: {:?}", redacted_settings);
     }
     pub async fn refresh_mounted_remotes(&self, app_handle: tauri::AppHandle) {
@@ -214,130 +203,72 @@ pub async fn get_cached_mounted_remotes() -> Result<Vec<MountedRemote>, String> 
     Ok(CACHE.mounted.read().await.clone())
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RemoteError {
-    pub timestamp: DateTime<Utc>,
-    pub remote_name: String,
-    pub operation: String, // "mount", "unmount", "sync", etc.
-    pub error: String,
-    pub details: Option<serde_json::Value>,
-}
+pub static LOG_CACHE: Lazy<LogCache> = Lazy::new(|| LogCache::new(1000));
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RemoteLogEntry {
-    pub timestamp: DateTime<Utc>,
-    pub remote_name: Option<String>,
-    pub level: String, // "info", "error", "warn", "debug"
-    pub message: String,
-    pub context: Option<serde_json::Value>,
-}
-
-pub struct RemoteErrorCache {
-    pub errors: RwLock<Vec<RemoteError>>,
-    pub logs: RwLock<Vec<RemoteLogEntry>>,
-}
-
-pub static ERROR_CACHE: Lazy<RemoteErrorCache> = Lazy::new(|| RemoteErrorCache {
-    errors: RwLock::new(Vec::new()),
-    logs: RwLock::new(Vec::new()),
-});
-
-impl RemoteErrorCache {
-    pub async fn add_error(&self, error: RemoteError) {
-        let mut errors = self.errors.write().await;
-        errors.push(error);
-        // Keep only the last 100 errors to prevent memory bloat
-        if errors.len() > 100 {
-            errors.remove(0);
+impl LogCache {
+    pub fn new(max_entries: usize) -> Self {
+        Self {
+            entries: RwLock::new(Vec::with_capacity(max_entries)),
+            max_entries,
         }
     }
 
-    pub async fn add_log(&self, log: RemoteLogEntry) {
-        let mut logs = self.logs.write().await;
-        logs.push(log);
-        // Keep only the last 500 logs
-        if logs.len() > 500 {
-            let excess = logs.len() - 500;
-            logs.drain(0..excess);
+    pub async fn add_entry(&self, entry: LogEntry) {
+        let mut entries = self.entries.write().await;
+        entries.push(entry);
+
+        // Maintain max size
+        let len = entries.len();
+        if len > self.max_entries {
+            entries.drain(0..(len - self.max_entries));
         }
     }
 
-    pub async fn get_errors_for_remote(&self, remote_name: &str) -> Vec<RemoteError> {
-        let errors = self.errors.read().await;
-        errors
+    pub async fn get_logs_for_remote(&self, remote_name: Option<&str>) -> Vec<LogEntry> {
+        let entries = self.entries.read().await;
+        entries
             .iter()
-            .filter(|e| e.remote_name == remote_name)
-            .cloned()
+            .filter_map(|e| {
+                if let Some(name) = &e.remote_name {
+                    if remote_name.is_none() || name == remote_name.unwrap() {
+                        Some(LogEntry {
+                            timestamp: e.timestamp,
+                            remote_name: Some(name.clone()),
+                            level: e.level.clone(),
+                            message: e.message.clone(),
+                            context: e.context.clone(),
+                            operation: e.operation.clone(),
+                        })
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
             .collect()
     }
 
-    pub async fn get_logs_for_remote(&self, remote_name: Option<&str>) -> Vec<RemoteLogEntry> {
-        let logs = self.logs.read().await;
-        match remote_name {
-            Some(name) => logs
-                .iter()
-                .filter(|l| l.remote_name.as_deref() == Some(name))
-                .cloned()
-                .collect(),
-            None => logs.clone(),
-        }
-    }
-
-    pub async fn clear_remote_errors(&self, remote_name: &str) {
-        let mut errors = self.errors.write().await;
-        errors.retain(|e| e.remote_name != remote_name);
-    }
-
-    pub async fn clear_remote_logs(&self, remote_name: &str) {
-        let mut logs = self.logs.write().await;
-        logs.retain(|l| l.remote_name.as_deref() != Some(remote_name));
-    }
-}
-
-// Add these commands to expose the cache to the frontend
-#[tauri::command]
-pub async fn get_remote_errors(remote_name: Option<String>) -> Result<Vec<RemoteError>, String> {
-    let cache = &ERROR_CACHE;
-    match remote_name {
-        Some(name) => Ok(cache.get_errors_for_remote(&name).await),
-        None => Ok(cache.errors.read().await.clone()),
+    pub async fn clear_for_remote(&self, remote_name: &str) {
+        let mut entries = self.entries.write().await;
+        entries.retain(|e| e.remote_name.as_deref() != Some(remote_name));
     }
 }
 
 #[tauri::command]
-pub async fn get_remote_logs(remote_name: Option<String>) -> Result<Vec<RemoteLogEntry>, String> {
-    Ok(ERROR_CACHE
-        .get_logs_for_remote(remote_name.as_deref())
-        .await)
+pub async fn get_remote_logs(
+    remote_name: Option<String>,
+) -> Result<Vec<LogEntry>, String> {
+    let logs = LOG_CACHE.get_logs_for_remote(remote_name.as_deref()).await;
+    Ok(logs)
 }
 
 #[tauri::command]
-pub async fn clear_errors_for_remote(remote_name: String) -> Result<(), String> {
-    ERROR_CACHE.clear_remote_errors(&remote_name).await;
+pub async fn clear_remote_logs(remote_name: Option<String>) -> Result<(), String> {
+    if let Some(name) = remote_name {
+        LOG_CACHE.clear_for_remote(&name).await;
+    }
     Ok(())
-}
-
-#[tauri::command]
-pub async fn clear_logs_for_remote(remote_name: String) -> Result<(), String> {
-    ERROR_CACHE.clear_remote_logs(&remote_name).await;
-    Ok(())
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct JobInfo {
-    pub jobid: u64,
-    pub job_type: String, // "sync" or "copy"
-    pub remote_name: String,
-    pub source: String,
-    pub destination: String,
-    pub start_time: DateTime<Utc>,
-    pub status: String, // "running", "completed", "failed", "stopped"
-    pub stats: Option<Value>,
-    pub group: String, // Add this field to track the job group
-}
-
-pub struct JobCache {
-    pub jobs: RwLock<Vec<JobInfo>>,
 }
 
 pub static JOB_CACHE: Lazy<JobCache> = Lazy::new(|| JobCache {

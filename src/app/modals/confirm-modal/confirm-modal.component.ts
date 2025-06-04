@@ -2,13 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, Inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-
-export interface ConfirmDialogData {
-  title: string;
-  message: string;
-  confirmText?: string; // Optional: Defaults to "Yes"
-  cancelText?: string;  // Optional: Defaults to "No"
-}
+import { ConfirmDialogData } from '../../shared/components/types';
 
 @Component({
     selector: 'app-confirm-modal',

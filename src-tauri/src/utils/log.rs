@@ -1,10 +1,19 @@
+use chrono::Utc;
+use log::debug;
+use log::error;
+use log::info;
+use log::warn;
 use log::LevelFilter;
 use log::SetLoggerError;
+use serde_json::Value;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-static LOG_LEVEL: AtomicUsize = AtomicUsize::new(LevelFilter::Info as usize);
+use crate::rclone::api::state::LOG_CACHE;
+use crate::utils::types::DynamicLogger;
+use crate::utils::types::LogEntry;
+use crate::utils::types::LogLevel;
 
-struct DynamicLogger;
+static LOG_LEVEL: AtomicUsize = AtomicUsize::new(LevelFilter::Info as usize);
 
 impl log::Log for DynamicLogger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
@@ -61,4 +70,32 @@ pub fn update_log_level(enable_debug: bool) {
 
     LOG_LEVEL.store(level as usize, Ordering::Relaxed);
     log::set_max_level(level);
+}
+
+pub async fn log_operation(
+    level: LogLevel,
+    remote_name: Option<String>,
+    operation: Option<String>,
+    message: impl Into<String>,
+    context: Option<Value>,
+) {
+    let entry = LogEntry {
+        timestamp: Utc::now(),
+        remote_name,
+        level: level.clone(),
+        message: message.into(),
+        context,
+        operation,
+    };
+
+    // Log to both console and cache
+    match level.clone() {
+        LogLevel::Error => error!("{:?}", entry),
+        LogLevel::Warn => warn!("{:?}", entry),
+        LogLevel::Info => info!("{:?}", entry),
+        LogLevel::Debug => debug!("{:?}", entry),
+        LogLevel::Trace => debug!("{:?}", entry),
+    }
+
+    LOG_CACHE.add_entry(entry).await;
 }

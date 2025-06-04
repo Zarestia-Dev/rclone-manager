@@ -397,7 +397,7 @@ pub fn handle_stop_sync(app: AppHandle, id: &str) {
             .iter()
             .find(|j| j.remote_name == remote_name && j.job_type == "sync")
         {
-            match stop_job(app.clone(), job.jobid, app.state()).await {
+            match stop_job(app.clone(), job.jobid, remote_name.clone(), app.state()).await {
                 Ok(_) => {
                     info!("🛑 Stopped sync job {} for {}", job.jobid, remote_name);
                     notify(
@@ -435,7 +435,7 @@ pub fn handle_stop_copy(app: AppHandle, id: &str) {
             .iter()
             .find(|j| j.remote_name == remote_name && j.job_type == "copy")
         {
-            match stop_job(app.clone(), job.jobid, app.state()).await {
+            match stop_job(app.clone(), job.jobid, remote_name.clone(), app.state()).await {
                 Ok(_) => {
                     info!("🛑 Stopped copy job {} for {}", job.jobid, remote_name);
                     notify(
@@ -471,7 +471,7 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
             return;
         }
         for job in active_jobs.clone() {
-            match stop_job(app.clone(), job.jobid, app.state()).await {
+            match stop_job(app.clone(), job.jobid, job.remote_name.clone(), app.state()).await {
                 Ok(_) => {
                     info!("🛑 Stopped job {}", job.jobid);
                 }

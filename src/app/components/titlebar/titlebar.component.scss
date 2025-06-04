@@ -8,10 +8,15 @@
   padding: 4px var(--title-bar-padding);
   border-radius: var(--title-bar-radius, 16px) var(--title-bar-radius, 16px) 0 0;
 
-  .left-section{
+  .left-section {
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+
+  .center-section {
+    position: absolute;
+    left: calc(50vw - 100px);
   }
 
   .right-section {
@@ -56,7 +61,7 @@
     justify-content: center;
     align-items: center;
     margin: -8px;
-    color: var(--accent-color)
+    color: var(--accent-color);
   }
 }
 .light {
@@ -73,6 +78,16 @@
     var(--dark-theme-color) 50%,
     var(--light-theme-color) 50%
   );
+
+  // Tauri does not support system theme detection yet
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--disabled-fade, rgba(255, 255, 255, 0.5));
+    border-radius: inherit;
+    z-index: 1;
+  }
 }
 
 .selected {

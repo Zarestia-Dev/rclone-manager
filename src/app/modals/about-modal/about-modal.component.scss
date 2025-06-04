@@ -6,6 +6,10 @@
   position: relative; /* Ensure absolute positioning works for children */
   overflow: hidden; /* Hide overflow from children */
 
+  mat-divider {
+    background-color: var(--secondary-background);
+  }
+
   .modal-header {
     transition: box-shadow 0.2s;
     box-shadow: none;
@@ -47,23 +51,22 @@
 
   .app-team {
     font-size: 16px;
-    color: var(----secondary-text-color);
+    color: var(--secondary-text-color);
     margin-bottom: 10px;
     font-weight: 500;
   }
 
   .version-badge {
     display: inline-block;
-    background: #e0f2fe;
+    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
     color: var(--accent-color);
-    padding: 5px 12px;
-    border-radius: 16px;
+    padding: 6px 16px;
+    border-radius: 18px;
     font-weight: bold;
     font-size: 16px;
 
     &:hover {
-      background: #d6e7f9;
-      color: #005b9f;
+      background: color-mix(in srgb, var(--accent-color) 20%, transparent);
     }
   }
 
@@ -72,14 +75,14 @@
     display: flex;
     width: 100%;
     flex-direction: column;
-    gap: 8px;
+    gap: 18px;
   }
 
   .about-item {
     display: flex;
     justify-content: space-between;
     padding-inline-start: 16px;
-    background-color: var(--secondary-background);
+    background-color: var(--about-dialog-button-color);
     flex-direction: row-reverse !important;
     height: 54px !important;
     width: 100%;
@@ -103,7 +106,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: var(--secondary-background);
+    background: var(--app-background);
     box-shadow: var(--box-shadow);
     display: flex;
     flex-direction: column;

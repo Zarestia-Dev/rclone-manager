@@ -6,22 +6,14 @@ use core::{
         handle_sync_remote,
     },
 };
-use std::{
-    path::PathBuf,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, Mutex,
-    },
-};
 
 use log::{debug, error, info};
 use rclone::api::{
     api_command::{set_bandwidth_limit, stop_job},
     api_query::{get_bandwidth_limit, get_fs_info, get_remote_paths},
-    engine::RcApiEngine,
     state::{
-        clear_errors_for_remote, clear_logs_for_remote, get_cached_mounted_remotes, get_job_status,
-        get_jobs, get_remote_errors, get_remote_logs,
+        clear_remote_logs, get_cached_mounted_remotes, get_job_status,
+        get_jobs, get_remote_logs
     },
 };
 use serde_json::json;
@@ -37,13 +29,9 @@ use crate::{
     core::{
         event_listener::setup_event_listener,
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
-        settings::{
-            settings::{
-                backup_settings, delete_remote_settings, get_remote_settings, load_settings,
-                reset_settings, restore_settings, save_remote_settings, save_settings,
-                SettingsState,
-            },
-            settings_store::AppSettings,
+        settings::settings::{
+            backup_settings, delete_remote_settings, get_remote_settings, load_settings,
+            reset_settings, restore_settings, save_remote_settings, save_settings,
         },
         tray::actions::{
             handle_browse_remote, handle_delete_remote, handle_mount_remote, handle_unmount_remote,
@@ -66,7 +54,7 @@ use crate::{
                 get_sync_flags, get_vfs_flags,
             },
             state::{
-                get_active_jobs, get_cached_remotes, get_configs, get_settings, CACHE, RCLONE_STATE,
+                CACHE, ENGINE_STATE, get_active_jobs, get_cached_remotes, get_configs, get_settings,
             },
         },
         mount::{check_mount_plugin_installed, install_mount_plugin},
@@ -74,22 +62,21 @@ use crate::{
     utils::{
         file_helper::{get_file_location, get_folder_location, open_in_files},
         rclone::provision::provision_rclone,
+        types::{AppSettings, RcApiEngine, RcloneState, SettingsState},
     },
 };
-use std::sync::RwLock;
+use std::{
+    path::PathBuf,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
+};
+use tokio::sync::Mutex;
 
 mod core;
 mod rclone;
 mod utils;
-
-pub struct RcloneState {
-    pub client: reqwest::Client,
-    pub config_path: Arc<RwLock<String>>,
-    pub tray_enabled: Arc<RwLock<bool>>,
-    pub is_shutting_down: AtomicBool,
-    pub notifications_enabled: Arc<RwLock<bool>>,
-    pub rclone_path: Arc<RwLock<PathBuf>>,
-}
 
 impl RcloneState {
     pub fn is_shutting_down(&self) -> bool {
@@ -123,7 +110,7 @@ pub fn init_rclone_state(
     settings: &AppSettings,
 ) -> Result<(), String> {
     // Set API URL
-    RCLONE_STATE
+    ENGINE_STATE
         .set_api(
             format!("http://127.0.0.1:{}", settings.core.rclone_api_port),
             settings.core.rclone_api_port,
@@ -131,7 +118,7 @@ pub fn init_rclone_state(
         .map_err(|e| format!("Failed to set Rclone API: {}", e))?;
 
     // Set OAuth URL
-    RCLONE_STATE
+    ENGINE_STATE
         .set_oauth(
             format!("http://127.0.0.1:{}", settings.core.rclone_oauth_port),
             settings.core.rclone_oauth_port,
@@ -234,7 +221,10 @@ pub fn run() {
                 } else {
                     let window_ = window.clone();
                     tauri::async_runtime::spawn(async move {
-                        window_.app_handle().state::<RcloneState>().set_shutting_down();
+                        window_
+                            .app_handle()
+                            .state::<RcloneState>()
+                            .set_shutting_down();
                         handle_shutdown(window_.app_handle().clone()).await;
                     });
                 }
@@ -255,16 +245,13 @@ pub fn run() {
             let store_path = config_dir.join("settings.json");
 
             // ────── CONFIG DIR & SETTINGS STORE ──────
-            let store = Arc::new(Mutex::new(
+            let store = Mutex::new(
                 StoreBuilder::new(&app_handle.clone(), store_path)
                     .build()
                     .map_err(|e| format!("Failed to create settings store: {}", e))?,
-            ));
+            );
 
-            app.manage(SettingsState {
-                store: store.clone(),
-                config_dir,
-            });
+            app.manage(SettingsState { store, config_dir });
 
             // ────── LOAD SETTINGS ──────
             let settings_json = tauri::async_runtime::block_on(load_settings(
@@ -279,11 +266,16 @@ pub fn run() {
 
             app.manage(RcloneState {
                 client: reqwest::Client::new(),
-                config_path: Arc::new(RwLock::new(settings.core.rclone_config_path.clone())),
-                tray_enabled: Arc::new(RwLock::new(settings.general.tray_enabled)),
+                config_path: Arc::new(std::sync::RwLock::new(
+                    settings.core.rclone_config_path.clone(),
+                )),
+                tray_enabled: Arc::new(std::sync::RwLock::new(settings.general.tray_enabled)),
                 is_shutting_down: AtomicBool::new(false),
-                notifications_enabled: Arc::new(RwLock::new(settings.general.notifications)),
-                rclone_path: Arc::new(RwLock::new(rclone_path)),
+                notifications_enabled: Arc::new(std::sync::RwLock::new(
+                    settings.general.notifications,
+                )),
+                rclone_path: Arc::new(std::sync::RwLock::new(rclone_path)),
+                restrict_mode: Arc::new(std::sync::RwLock::new(settings.general.restrict)),
             });
 
             // ────── INIT LOGGING ──────
@@ -409,11 +401,9 @@ pub fn run() {
             // Check binaries
             is_rclone_available,
             is_7z_available,
-            // Logs and errors
-            get_remote_errors,
+            // Logs
             get_remote_logs,
-            clear_errors_for_remote,
-            clear_logs_for_remote,
+            clear_remote_logs,
             // Jobs Cache
             get_jobs,
             get_active_jobs,

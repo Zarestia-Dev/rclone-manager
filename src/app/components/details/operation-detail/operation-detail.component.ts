@@ -39,10 +39,10 @@ import {
   Remote,
   RemoteSettings,
   RemoteSettingsSection,
+  SENSITIVE_KEYS,
   SyncStats,
   TransferFile,
 } from "../../../shared/components/types";
-import { SENSITIVE_KEYS } from "../../../shared/remote-config/remote-config-types";
 
 @Pipe({ name: "formatTime", standalone: true })
 export class FormatTimePipe implements PipeTransform {
@@ -118,6 +118,7 @@ export class OperationDetailComponent
   @Input() operationType!: "sync" | "copy";
   @Input() selectedRemote: Remote | null = null;
   @Input() remoteSettings: RemoteSettings = {};
+  @Input() restrictMode!: boolean;
 
   @Output() openRemoteConfigModal = new EventEmitter<{
     editTarget?: string;
@@ -299,7 +300,7 @@ export class OperationDetailComponent
   isSensitiveKey(key: string): boolean {
     return SENSITIVE_KEYS.some((sensitive) =>
       key.toLowerCase().includes(sensitive)
-    );
+    ) && this.restrictMode;
   }
 
   maskSensitiveValue(key: string, value: any): string {
