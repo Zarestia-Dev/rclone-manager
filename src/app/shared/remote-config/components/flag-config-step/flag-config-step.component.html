@@ -52,7 +52,7 @@
     </mat-form-field>
 
     <!-- Source Path -->
-    <mat-form-field appearance="fill" *ngIf="isEditMode">
+    <mat-form-field appearance="fill" *ngIf="isEditMode && flagType !== 'vfs' && flagType !== 'filter'">
         <mat-label>{{ flagType | titlecase }} Source</mat-label>
         <input matInput formControlName="source" placeholder="Select source path or enter remote (remote:path)"
             [matAutocomplete]="sourceAuto" />

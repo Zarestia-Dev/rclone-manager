@@ -620,10 +620,6 @@ export class RemoteConfigModalComponent implements OnInit {
   async onSubmit(): Promise<void> {
     if (this.isLoading.saving || this.isLoading.authDisabled) return;
 
-    // this.isLoading.saving = true;
-    // this.isLoading.cancelled = false;
-    // this.setFormState(false);
-
     try {
       const result = this.editTarget
         ? await this.handleEditMode()
@@ -644,7 +640,20 @@ export class RemoteConfigModalComponent implements OnInit {
       this.remoteConfigForm.disable();
       this.remoteForm.disable();
     } else {
-      this.remoteForm.enable();
+      // Only enable controls that should be editable
+      if (this.editTarget === "remote") {
+        // In remote edit mode, keep 'name' and 'type' disabled
+        Object.keys(this.remoteForm.controls).forEach((key) => {
+          if (["name", "type"].includes(key)) {
+            this.remoteForm.get(key)?.disable();
+          } else {
+            this.remoteForm.get(key)?.enable();
+          }
+        });
+      } else {
+        // In other modes, enable all controls
+        this.remoteForm.enable();
+      }
       this.remoteConfigForm.enable();
     }
   }
@@ -724,7 +733,42 @@ export class RemoteConfigModalComponent implements OnInit {
       const mountPath = finalConfig.mountConfig.dest;
       const remoteName = remoteData.name;
       const source = finalConfig.mountConfig?.source;
-      await this.rcloneService.mountRemote(remoteName, source, mountPath);
+      const mountOptions = finalConfig.mountConfig.options;
+      const vfs = finalConfig.vfsConfig;
+      await this.rcloneService.mountRemote(
+        remoteName,
+        source,
+        mountPath,
+        mountOptions,
+        vfs
+      );
+    }
+
+    if (finalConfig.copyConfig.autoStart && finalConfig.copyConfig.dest) {
+      const copySource = finalConfig.copyConfig.source;
+      const copyDest = finalConfig.copyConfig.dest;
+      const copyOptions = finalConfig.copyConfig.options;
+      const filter = finalConfig.filterConfig;
+      await this.rcloneService.startCopy(
+        remoteData.name,
+        copySource,
+        copyDest,
+        copyOptions,
+        filter
+      );
+    }
+    if (finalConfig.syncConfig.autoStart && finalConfig.syncConfig.dest) {
+      const syncSource = finalConfig.syncConfig.source;
+      const syncDest = finalConfig.syncConfig.dest;
+      const syncOptions = finalConfig.syncConfig.options;
+      const filter = finalConfig.filterConfig;
+      await this.rcloneService.startSync(
+        remoteData.name,
+        syncSource,
+        syncDest,
+        syncOptions,
+        filter
+      );
     }
 
     return { success: true };

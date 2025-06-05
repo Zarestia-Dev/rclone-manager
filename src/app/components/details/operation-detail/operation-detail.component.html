@@ -36,7 +36,7 @@
               </div>
               <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
               <div class="path">
-                <ng-container *ngIf="remoteSettings; else remoteIcon">
+                <ng-container *ngIf="isLocalPath(operationDestination); else remoteIcon">
                   <button mat-icon-button [color]="operationColor" (click)="triggerOpenInFiles(operationDestination)"
                     matTooltip="Open in file explorer">
                     <mat-icon svgIcon="folder"></mat-icon>

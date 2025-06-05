@@ -25,6 +25,9 @@
     }
     
     p {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       font-size: 16px;
       font-weight: 500;
       color: var(--app-text-color);
