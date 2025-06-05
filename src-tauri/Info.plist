@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Access to Documents folder -->
+  <key>NSDocumentsFolderUsageDescription</key>
+  <string>This app needs access to documents to manage remote files.</string>
+
+  <!-- Access to Downloads folder -->
+  <key>NSDownloadsFolderUsageDescription</key>
+  <string>This app needs access to downloads to sync files.</string>
+
+  <!-- Apple Events (optional, if RClone uses them indirectly) -->
+  <key>NSAppleEventsUsageDescription</key>
+  <string>This app uses Apple Events for system integration.</string>
+</dict>
+</plist>

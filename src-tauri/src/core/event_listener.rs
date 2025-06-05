@@ -139,7 +139,9 @@ fn handle_remote_state_changed(app: &AppHandle) {
         );
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            CACHE.refresh_mounted_remotes(app.clone()).await;
+            if let Err(e) = CACHE.refresh_mounted_remotes(app.clone()).await {
+                error!("Failed to refresh mounted remotes: {}", e);
+            }
             if let Err(e) = update_tray_menu(app.clone(), 0).await {
                 error!("Failed to update tray menu: {}", e);
             }
@@ -159,9 +161,14 @@ fn handle_remote_presence_changed(app: &AppHandle) {
     app.listen(events::REMOTE_PRESENCE_CHANGED, move |_| {
         let app_clone = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            CACHE.refresh_remote_list(app_clone.clone()).await;
-            CACHE.refresh_remote_configs(app_clone.clone()).await;
-            CACHE.refresh_remote_settings(app_clone.clone()).await;
+            let refresh_tasks = tokio::join!(
+                CACHE.refresh_remote_list(app_clone.clone()),
+                CACHE.refresh_remote_configs(app_clone.clone()),
+                CACHE.refresh_remote_settings(app_clone.clone()),
+            );
+            if let (Err(e1), Err(e2), Err(e3)) = refresh_tasks {
+                error!("Failed to refresh cache: {e1}, {e2}, {e3}");
+            }
             if let Err(e) = update_tray_menu(app_clone.clone(), 0).await {
                 error!("Failed to update tray menu: {}", e);
             }

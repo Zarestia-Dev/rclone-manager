@@ -24,6 +24,7 @@
 
         <app-remote-config-step [form]="remoteForm" [remoteFields]="dynamicRemoteFields" [remoteTypes]="remoteTypes"
           [isLoading]="isLoading.remoteConfig ?? false" [existingRemotes]="existingRemotes"
+          [restrictMode]="restrictMode"
           (remoteTypeChanged)="onRemoteTypeChange()">
         </app-remote-config-step>
       </section>

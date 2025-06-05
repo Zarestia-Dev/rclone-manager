@@ -120,6 +120,7 @@ export class RemoteConfigModalComponent implements OnInit {
   private subscriptions: Subscription[] = [];
   private authSubscriptions: Subscription[] = [];
   showAdvancedOptions = false;
+  restrictMode!: boolean;
 
   remoteForm: FormGroup;
   remoteConfigForm: FormGroup;
@@ -170,9 +171,11 @@ export class RemoteConfigModalComponent implements OnInit {
       editTarget?: EditTarget;
       existingConfig?: any;
       name?: string;
+      restrictMode: boolean;
     }
   ) {
     this.editTarget = data?.editTarget || null;
+    this.restrictMode = data?.restrictMode;
     this.remoteForm = this.createRemoteForm();
     this.remoteConfigForm = this.createRemoteConfigForm();
   }

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Allow user-selected files/folders for read/write -->
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+
+  <!-- Allow network access (for rclone and updates) -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+
+  <!-- Enable App Sandbox (required for notarization) -->
+  <key>com.apple.security.app-sandbox</key>
+  <true/>
+</dict>
+</plist>

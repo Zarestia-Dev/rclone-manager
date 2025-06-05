@@ -47,6 +47,10 @@
         "compression": "lzma"
       }
     },
+    "macOS": {
+      "entitlements": "entitlements.plist",
+      "exceptionDomain": "localhost"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

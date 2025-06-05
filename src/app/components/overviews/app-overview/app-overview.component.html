@@ -45,6 +45,7 @@
                     {{ mode === 'mount' ? 'Mounted' : (mode === 'sync' ? 'Syncing' : 'Copying') }} Remotes
                 </h3>
                 <div class="remote-list">
+                    <!-- Active Remotes section -->
                     <div class="remote-card" *ngFor="let remote of activeRemotes" (click)="selectRemote(remote)">
                         <div class="remote-content">
                             <h4 matTooltip="{{ remote.remoteSpecs.name }}">
@@ -55,15 +56,27 @@
                                 {{ remote.remoteSpecs.type | titlecase }}
                             </p>
                         </div>
-                        <button mat-raised-button color="accent"
-                            (click)="triggerOpenInFiles(remote.remoteSpecs.name); $event.stopPropagation()"
-                            [disabled]="getActionState(remote.remoteSpecs.name) === 'open'">
-                            <mat-spinner *ngIf="getActionState(remote.remoteSpecs.name) === 'open'"
-                                diameter="20"></mat-spinner>
-                            <mat-icon *ngIf="getActionState(remote.remoteSpecs.name) !== 'open'"
-                                [svgIcon]="secondaryActionIcon"></mat-icon>
-                            {{ getActionState(remote.remoteSpecs.name) === 'open' ? "Opening" : secondaryActionLabel }}
-                        </button>
+                        <!-- Action Button (Open or Stop) -->
+                        <ng-container *ngIf="shouldShowOpenButton(remote); else stopButton">
+                            <button mat-raised-button color="accent"
+                                (click)="triggerOpenInFiles(remote.remoteSpecs.name); $event.stopPropagation()"
+                                [disabled]="isOpening(remote.remoteSpecs.name)">
+                                <mat-spinner *ngIf="isOpening(remote.remoteSpecs.name)" diameter="20"></mat-spinner>
+                                <mat-icon *ngIf="!isOpening(remote.remoteSpecs.name)" svgIcon="folder"></mat-icon>
+                                {{ getOpenButtonLabel(remote.remoteSpecs.name) }}
+                            </button>
+                        </ng-container>
+
+                        <ng-template #stopButton>
+                            <button mat-raised-button color="warn"
+                                (click)="triggerSecondaryAction(remote.remoteSpecs.name); $event.stopPropagation()"
+                                [disabled]="isStopping(remote.remoteSpecs.name)">
+                                <mat-spinner *ngIf="isStopping(remote.remoteSpecs.name)" diameter="20"></mat-spinner>
+                                <mat-icon *ngIf="!isStopping(remote.remoteSpecs.name)" svgIcon="pause"></mat-icon>
+                                {{ isStopping(remote.remoteSpecs.name) ? 'Stopping' : getStopButtonLabel() }}
+                            </button>
+                        </ng-template>
+
                     </div>
                 </div>
             </mat-card-content>
@@ -73,7 +86,7 @@
             <!-- Inactive Remotes -->
             <mat-card-content class="inactive-remotes" *ngIf="inactiveCount > 0">
                 <h3>
-                    <mat-icon [svgIcon]="inactiveIcon"></mat-icon>
+                    <mat-icon svgIcon="circle-xmark"></mat-icon>
                     {{ mode === 'mount' ? 'Unmounted' : (mode === 'sync' ? 'Off Sync' : 'Not Copying') }} Remotes
                 </h3>
                 <div class="remote-list">

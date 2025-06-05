@@ -440,10 +440,12 @@ export class HomeComponent implements OnInit, OnDestroy {
       syncState: {
         isOnSync: false,
         syncJobID: 0,
+        isLocal: this.isLocalPath(this.remoteSettings[name]?.["syncConfig"]?.dest || ""),
       },
       copyState: {
         isOnCopy: false,
         copyJobID: 0,
+        isLocal: this.isLocalPath(this.remoteSettings[name]?.["copyConfig"]?.dest || ""),
       },
     }));
   }
@@ -589,10 +591,12 @@ export class HomeComponent implements OnInit, OnDestroy {
       syncState: {
         isOnSync: !!runningSyncJob,
         syncJobID: runningSyncJob?.jobid,
+        isLocal: this.isLocalPath(this.remoteSettings[remote.remoteSpecs.name]?.["syncConfig"]?.dest || ""),
       },
       copyState: {
         isOnCopy: !!runningCopyJob,
         copyJobID: runningCopyJob?.jobid,
+        isLocal: this.isLocalPath(this.remoteSettings[remote.remoteSpecs.name]?.["copyConfig"]?.dest || ""),
       },
     };
   }

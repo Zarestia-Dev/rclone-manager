@@ -117,7 +117,7 @@ impl RemoteCache {
     // debug!("🔄 Updated remotes configs: {:?}", redacted_configs);
     // }
 
-    pub async fn refresh_remote_list(&self, app_handle: tauri::AppHandle) {
+    pub async fn refresh_remote_list(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
         let mut remotes = self.remotes.write().await;
         if let Ok(remote_list) = get_remotes(app_handle.state()).await {
             *remotes = remote_list;
@@ -125,11 +125,13 @@ impl RemoteCache {
             let state = app_handle.state::<RcloneState>();
             let redacted_remotes = redact_sensitive_values(&*remotes, &state.restrict_mode);
             debug!("🔄 Updated remotes: {:?}", redacted_remotes);
+            Ok(())
         } else {
             error!("Failed to fetch remotes");
+            Err("Failed to fetch remotes".into())
         }
     }
-    pub async fn refresh_remote_configs(&self, app_handle: tauri::AppHandle) {
+    pub async fn refresh_remote_configs(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
         let mut configs = self.configs.write().await;
         if let Ok(remote_list) = get_all_remote_configs(app_handle.state()).await {
             *configs = remote_list;
@@ -137,11 +139,16 @@ impl RemoteCache {
             let state = app_handle.state::<RcloneState>();
             let redacted_configs = redact_sensitive_json(&*configs, &state.restrict_mode);
             debug!("🔄 Updated remotes configs: {:?}", redacted_configs);
+            Ok(())
         } else {
             error!("Failed to fetch remotes config");
+            Err("Failed to fetch remotes config".into())
         }
     }
-    pub async fn refresh_remote_settings(&self, app_handle: tauri::AppHandle) {
+    pub async fn refresh_remote_settings(
+        &self,
+        app_handle: tauri::AppHandle,
+    ) -> Result<(), String> {
         let remotes = self.remotes.read().await;
         let mut settings = self.settings.write().await;
 
@@ -161,25 +168,37 @@ impl RemoteCache {
         let state = app_handle.state::<RcloneState>();
         let redacted_settings = redact_sensitive_json(&*settings, &state.restrict_mode);
         debug!("🔄 Updated remotes settings: {:?}", redacted_settings);
+        Ok(())
     }
-    pub async fn refresh_mounted_remotes(&self, app_handle: tauri::AppHandle) {
+    pub async fn refresh_mounted_remotes(
+        &self,
+        app_handle: tauri::AppHandle,
+    ) -> Result<(), String> {
         match get_mounted_remotes(app_handle.state()).await {
             Ok(remotes) => {
                 let mut mounted = self.mounted.write().await;
                 *mounted = remotes;
                 debug!("🔄 Updated mounted remotes cache");
+                Ok(())
             }
             Err(e) => {
                 error!("❌ Failed to refresh mounted remotes: {}", e);
+                Err("Failed to refresh mounted remotes".into())
             }
         }
     }
 
     pub async fn refresh_all(&self, app_handle: tauri::AppHandle) {
-        self.refresh_remote_list(app_handle.clone()).await;
-        self.refresh_remote_configs(app_handle.clone()).await;
-        self.refresh_remote_settings(app_handle.clone()).await;
-        self.refresh_mounted_remotes(app_handle.clone()).await;
+        let refresh_tasks = tokio::join!(
+            CACHE.refresh_remote_list(app_handle.clone()),
+            CACHE.refresh_remote_settings(app_handle.clone()),
+            CACHE.refresh_remote_configs(app_handle.clone()),
+            CACHE.refresh_mounted_remotes(app_handle.clone()),
+        );
+
+        if let (Err(e1), Err(e2), Err(e3), Err(e4)) = refresh_tasks {
+            error!("Failed to refresh cache: {e1}, {e2}, {e3}, {e4}");
+        }
     }
 }
 
@@ -256,9 +275,7 @@ impl LogCache {
 }
 
 #[tauri::command]
-pub async fn get_remote_logs(
-    remote_name: Option<String>,
-) -> Result<Vec<LogEntry>, String> {
+pub async fn get_remote_logs(remote_name: Option<String>) -> Result<Vec<LogEntry>, String> {
     let logs = LOG_CACHE.get_logs_for_remote(remote_name.as_deref()).await;
     Ok(logs)
 }

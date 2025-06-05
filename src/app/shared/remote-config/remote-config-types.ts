@@ -96,13 +96,13 @@ export interface VfsConfig {
 }
 
 export interface RemoteSettings {
-  name: string;
+  [remoteName: string]: any;
   mountConfig: MountConfig;
   copyConfig: CopyConfig;
   syncConfig: SyncConfig;
   filterConfig: FilterConfig;
   vfsConfig: VfsConfig;
-  showOnTray?: boolean;
+  showOnTray: boolean;
 }
 
 export interface QuickAddForm {

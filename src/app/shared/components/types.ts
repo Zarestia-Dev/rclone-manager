@@ -79,8 +79,6 @@ export interface Job {
 }
 
 export interface Remote {
-  custom_flags?: { [key: string]: any };
-  mount_options?: { [key: string]: any };
   name?: string;
   showOnTray?: boolean;
   type?: string;
@@ -92,10 +90,12 @@ export interface Remote {
   syncState?: {
     isOnSync?: boolean | "error";
     syncJobID?: number;
+    isLocal?: boolean;
   };
   copyState?: {
     isOnCopy?: boolean | "error";
     copyJobID?: number;
+    isLocal?: boolean;
   };
 }
 

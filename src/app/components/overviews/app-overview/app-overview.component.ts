@@ -12,7 +12,12 @@ import { MatDividerModule } from "@angular/material/divider";
 import { MatIconModule } from "@angular/material/icon";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { AppTab, Remote, RemoteAction, RemoteActionProgress } from "../../../shared/components/types";
+import {
+  AppTab,
+  Remote,
+  RemoteAction,
+  RemoteActionProgress,
+} from "../../../shared/components/types";
 
 @Component({
   selector: "app-app-overview",
@@ -83,6 +88,8 @@ export class AppOverviewComponent {
   }
 
   get activeCount(): number {
+    console.log(this.remotes);
+
     return this.activeRemotes.length;
   }
 
@@ -133,20 +140,35 @@ export class AppOverviewComponent {
     }
   }
 
-  get inactiveIcon(): string {
-    return "circle-xmark";
-  }
-
   get primaryActionIcon(): string {
     return this.mode === "mount" ? "mount" : "play";
   }
 
-  get secondaryActionLabel(): string {
-    return "Open Files";
+  getOpenButtonLabel(remoteName: string): string {
+    return this.getActionState(remoteName) === "open"
+      ? "Opening"
+      : "Open Files";
   }
 
-  get secondaryActionIcon(): string {
-    return "folder";
+  getStopButtonLabel(): string {
+    if (this.mode === "sync") return "Stop Sync";
+    if (this.mode === "copy") return "Stop Copy";
+    return "Stop";
+  }
+
+  isOpening(remoteName: string): boolean {
+    return this.getActionState(remoteName) === "open";
+  }
+
+  isStopping(remoteName: string): boolean {
+    return this.getActionState(remoteName) === "stop";
+  }
+
+  shouldShowOpenButton(remote: any): boolean {
+    if (this.mode === "mount") return true;
+    if (this.mode === "sync") return remote.syncState?.isLocal;
+    if (this.mode === "copy") return remote.copyState?.isLocal;
+    return false;
   }
 
   selectRemote(remote: Remote): void {

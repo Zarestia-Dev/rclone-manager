@@ -34,7 +34,7 @@ export class RemoteConfigStepComponent {
   @Input() remoteTypes: RemoteType[] = [];
   @Input() isLoading = false;
   @Input() existingRemotes: string[] = [];
-  @Input() restrictMode: boolean = false;
+  @Input() restrictMode!: boolean;
 
   @Output() advancedOptionsToggled = new EventEmitter<boolean>();
   @Output() remoteTypeChanged = new EventEmitter<void>();
@@ -58,7 +58,7 @@ export class RemoteConfigStepComponent {
     this.remoteTypeChanged.emit();
   }
 
-  isSensitiveField(fieldName: string): boolean {
+  isSensitiveField(fieldName: string): boolean {    
     return SENSITIVE_KEYS.some((key) =>
       fieldName.toLowerCase().includes(key)
     ) && this.restrictMode;
