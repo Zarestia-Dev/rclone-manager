@@ -20,10 +20,23 @@ pub async fn load_settings<'a>(
     let store_arc = &state.store;
     let store_guard = store_arc.lock().await;
 
-    // Reload from disk
-    store_guard
-        .reload()
-        .map_err(|e| format!("Failed to reload settings store: {}", e))?;
+    // Reload from disk, but handle missing file gracefully
+    if let Err(e) = store_guard.reload() {
+        // If file not found, return default settings
+        match &e {
+            tauri_plugin_store::Error::Io(io_err) if io_err.kind() == std::io::ErrorKind::NotFound => {
+                let default_settings = AppSettings::default();
+                let metadata = AppSettings::get_metadata();
+                let response = json!({
+                    "settings": serde_json::to_value(default_settings).unwrap(),
+                    "metadata": metadata
+                });
+                return Ok(response);
+            }
+            _ => {}
+        }
+        return Err(format!("Failed to reload settings store: {}", e));
+    }
 
     // **Load stored settings**
     let stored_settings = store_guard
