@@ -53,6 +53,8 @@ export class IconService {
       eye: "assets/icons/eye.svg",
       "eye-slash": "assets/icons/eye-slash.svg",
       file: "assets/icons/file.svg",
+      home: "assets/icons/home.svg",
+      stop: "assets/icons/stop.svg",
 
       play: "assets/icons/play.svg",
       pause: "assets/icons/pause.svg",

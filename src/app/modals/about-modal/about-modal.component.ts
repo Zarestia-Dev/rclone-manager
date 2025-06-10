@@ -10,7 +10,8 @@ import { MatButtonModule } from "@angular/material/button";
 import { RcloneService } from "../../services/rclone.service";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { RcloneInfo } from "../../shared/components/types";
-import packageJson from '../../../../package.json';
+import packageJson from "../../../../package.json";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
 const rCloneManager = packageJson.version;
 
 @Component({
@@ -57,9 +58,24 @@ export class AboutModalComponent {
   rcloneInfo: RcloneInfo | null = null;
   loadingRclone = false;
   rcloneError: string | null = null;
+  private unlistenRcloneApiReady: UnlistenFn | null = null;
 
   async ngOnInit() {
     await this.loadRcloneInfo();
+    await this.loadRclonePID();
+
+    // Listen for rclone_api_ready event and store the unlisten function
+    this.unlistenRcloneApiReady = await listen("rclone_api_ready", async () => {
+      await this.loadRcloneInfo();
+      await this.loadRclonePID();
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.unlistenRcloneApiReady) {
+      this.unlistenRcloneApiReady();
+      this.unlistenRcloneApiReady = null;
+    }
   }
 
   async loadRcloneInfo() {
@@ -72,6 +88,49 @@ export class AboutModalComponent {
       this.rcloneError = "Failed to load rclone info.";
     } finally {
       this.loadingRclone = false;
+    }
+  }
+
+  async loadRclonePID() {
+    this.loadingRclone = true;
+    this.rcloneError = null;
+    try {
+      const pid = await this.rcloneService.getRclonePID();
+      if (this.rcloneInfo) {
+        this.rcloneInfo = {
+          ...this.rcloneInfo,
+          pid: pid,
+        };
+      }
+    } catch (error) {
+      console.error("Error fetching rclone PID:", error);
+      this.rcloneError = "Failed to load rclone PID.";
+      this.infoService.openSnackBar(this.rcloneError, "Close");
+    } finally {
+      this.loadingRclone = false;
+    }
+  }
+
+  killProcess() {
+    if (this.rcloneInfo?.pid) {
+      this.rcloneService.killProcess(this.rcloneInfo.pid).then(
+        () => {
+          this.infoService.openSnackBar(
+            "Rclone process killed successfully",
+            "Close"
+          );
+          this.rcloneInfo = null; // Clear info after killing
+        },
+        (error) => {
+          console.error("Failed to kill rclone process:", error);
+          this.infoService.openSnackBar(
+            "Failed to kill rclone process",
+            "Close"
+          );
+        }
+      );
+    } else {
+      this.infoService.openSnackBar("No rclone process to kill", "Close");
     }
   }
 

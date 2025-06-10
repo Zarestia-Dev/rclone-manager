@@ -1,8 +1,6 @@
-import { SettingsService } from "../../services/settings.service";
-
-export type AppTab = "mount" | "sync" | "copy" | "jobs";
+export type AppTab = "mount" | "sync" | "copy" | "general";
 export type JobType = "sync" | "copy" | "move" | "check";
-export type JobStatus = "running" | "finished" | "failed";
+export type JobStatus = "Running" | "Completed" | "Failed" | "Stopped";
 export type RemoteAction =
   | "mount"
   | "unmount"
@@ -67,7 +65,7 @@ export interface SyncStats {
   startTime?: string;
 }
 
-export interface Job {
+export interface JobInfo {
   jobid: number;
   job_type: JobType;
   source: string;
@@ -76,6 +74,7 @@ export interface Job {
   status: JobStatus;
   remote_name: string;
   stats: SyncStats;
+  group?: string;
 }
 
 export interface Remote {
@@ -84,8 +83,8 @@ export interface Remote {
   type?: string;
   remoteSpecs: RemoteSpecs;
   mountState?: {
-    mounted?: boolean | "error";
     diskUsage?: DiskUsage;
+    mounted?: boolean | "error";
   };
   syncState?: {
     isOnSync?: boolean | "error";
@@ -144,6 +143,7 @@ export interface RcloneInfo {
   isGit: boolean;
   linking: string;
   goTags: string;
+  pid: number | null;
 }
 
 export interface CheckResult {

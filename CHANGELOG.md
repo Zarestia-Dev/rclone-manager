@@ -1,6 +1,13 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Added
+- General tab added to the remote detail page. It contains general information about the remote, such as the remote disk info, jobs, and operations.
+- Remote Clone feature added. Under the remote detail ellipsis button (Clones a remote with settings to new remote.).
+- Rclone pid watcher feature added with instant stop Rclone process functionality. Also listens for changes in the rclone process state and updates the UI accordingly. You can find it in `About RClone Manager > About Rclone`  (I see the core/pid rcd command and I want to make something for it. IDK why but I did it.)
+
+
 ## [beta-0.1.1] - 2025-04-06
 ### Added
 - MacOS support added

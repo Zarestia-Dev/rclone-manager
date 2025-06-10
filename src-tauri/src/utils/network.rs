@@ -99,3 +99,39 @@ impl LinkChecker {
         })
     }
 }
+
+
+#[tauri::command]
+pub async fn kill_process(pid: u32) -> Result<(), String> {
+    #[cfg(target_family = "unix")]
+    {
+        use nix::libc::{kill, SIGKILL};
+
+
+        let result = unsafe { kill(pid as i32, SIGKILL) };
+        if result == 0 {
+            Ok(())
+        } else {
+            Err(format!("Failed to kill process: {}", std::io::Error::last_os_error()))
+        }
+    }
+    #[cfg(target_family = "windows")]
+    {
+        use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess};
+        use windows_sys::Win32::System::Threading::PROCESS_TERMINATE;
+        use windows_sys::Win32::Foundation::CloseHandle;
+
+        unsafe {
+            let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
+            if handle == 0 {
+                return Err("Failed to open process".to_string());
+            }
+            let result = TerminateProcess(handle, 1);
+            CloseHandle(handle);
+            if result == 0 {
+                return Err("Failed to terminate process".to_string());
+            }
+        }
+        Ok(())
+    }
+}

@@ -1,9 +1,10 @@
 .remote-details {
   display: flex;
   width: 100%;
+  gap: 20px;
   flex-direction: column;
   align-items: center;
-  flex: 1;
+  height: 100%;
 
   .remote-header {
     padding-top: 20px;
@@ -28,20 +29,127 @@
     }
   }
 
+  .mount-info {
+    display: grid;
+    gap: 8px;
+    width: 90%;
+
+    .mount-info-card {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      transition: all 0.3s ease;
+
+      &.active {
+        border-left: 4px solid var(--accent-color);
+      }
+
+      .mount-path-section {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-grow: 1;
+        min-width: 0;
+
+        .path {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          background: var(--app-background);
+          border-radius: var(--border-radius);
+          flex-grow: 1;
+          min-width: 0;
+          overflow: hidden;
+
+          .path-details {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+
+            .path-label {
+              font-size: 12px;
+              color: var(--secondary-text-color);
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            .path-value {
+              font-size: 14px;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+          }
+        }
+      }
+
+      .mount-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 20px;
+
+        .mount-status {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+
+          .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 16px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            background: rgba(255, 152, 0, 0.1);
+            color: var(--orange);
+
+            &.mounted {
+              background: rgba(66, 133, 244, 0.1);
+              color: var(--primary-color);
+            }
+          }
+        }
+
+        .mount-controls {
+          display: flex;
+          justify-content: flex-end;
+          align-items: center;
+          gap: 16px;
+
+          span {
+            gap: 8px;
+            display: flex;
+            align-items: center;
+            text-wrap: nowrap;
+            font-size: 14px;
+          }
+        }
+      }
+    }
+  }
 
   .info-card {
     display: flex;
     flex-direction: column;
     align-items: baseline;
     border-radius: 8px;
-    padding-block: 20px;
-    width: 84%;
+    padding: 16px;
+    width: 90%;
 
     h3 {
       display: flex;
       align-items: center;
       gap: 10px;
       margin-bottom: 10px;
+      font-size: 18px;
+      color: var(--app-text-color);
     }
 
     .info-card-content {
@@ -51,123 +159,6 @@
       width: 100%;
       padding-block: 10px;
       border-radius: 8px;
-
-      .dest-info {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-grow: 1;
-
-        mat-icon {
-          flex-shrink: 0;
-        }
-
-        .path-row {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 12px;
-          background: var(--app-background);
-          border-radius: var(--border-radius);
-          flex-grow: 1;
-          min-width: 0;
-
-          .path-details {
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-
-            .path-label {
-              font-size: 0.75rem;
-              color: var(--text-secondary);
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              min-width: 0;
-            }
-
-            .path-value {
-              font-size: 0.875rem;
-              font-weight: 500;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              min-width: 0;
-              max-width: 100%;
-            }
-          }
-        }
-      }
-
-      .disk-usage {
-        display: flex;
-        align-items: center;
-        flex-direction: column;
-        padding-inline: 10px;
-        gap: 10px;
-
-        .disk-usage-bar {
-          width: 100%;
-          height: 4.5vh;
-          min-height: 38px;
-          border-radius: 18px;
-          position: relative;
-          overflow: hidden;
-          display: flex;
-          align-items: center;
-          justify-content: start;
-          transition: all 0.5s ease-in-out; // important for smooth color changes
-
-          p {
-            color: white;
-            font-weight: bold;
-            width: 100%;
-            text-align: center;
-            align-self: center;
-            justify-content: center;
-            transition: background-color 0.5s ease-in-out;
-          }
-        }
-
-        .usage {
-          height: 100%;
-          border: 0px;
-          background-color: var(--orange);
-          transition: width 0.5s ease-in-out;
-        }
-
-        .legend {
-          display: flex;
-          gap: 15px;
-          margin-top: 10px;
-        }
-
-        .legend-item {
-          display: flex;
-          align-items: center;
-          font-size: 14px;
-        }
-
-        .color-box {
-          width: 20px;
-          height: 20px;
-          border-radius: 5px;
-          display: inline-block;
-          margin-right: 5px;
-        }
-
-        .used {
-          background-color: var(--orange);
-        }
-
-        .free {
-          background-color: #cecece;
-        }
-
-        .border {
-          background-color: var(--light-blue);
-        }
-      }
 
       .button-container {
         display: flex;
@@ -188,20 +179,5 @@
       margin: 4px 0;
       align-self: center;
     }
-  }
-
-    .disk-usage {
-    .legend {
-      flex-direction: column !important;
-      align-items: flex-start;
-      margin-top: 16px;
-    }
-    
-    .legend-item {
-      font-size: 16px;
-      gap: 8px;
-      padding: 4px 0;
-    }
-
   }
 }

@@ -53,7 +53,7 @@ export class PathSelectionService {
   async onPathSelected(
     formPath: string,
     entryName: string,
-    control: AbstractControl | null = null,
+    control: AbstractControl | null = null
   ): Promise<void> {
     const state = this.pathStates[formPath];
     if (!state) return;
@@ -73,6 +73,9 @@ export class PathSelectionService {
       control?.setValue(remotePath);
       await this.fetchEntriesForField(formPath, state.remoteName, fullPath);
     } else {
+      state.currentPath = fullPath;
+      state.options = [];
+      this.setLoading(formPath, false);
       control?.setValue(remotePath);
     }
   }

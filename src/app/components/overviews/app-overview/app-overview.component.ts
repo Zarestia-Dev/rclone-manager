@@ -35,7 +35,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppOverviewComponent {
-  @Input() mode: AppTab = "mount";
+  @Input() mode: AppTab = "mount"; // Default to 'general' mode
   @Input() remotes: Remote[] = [];
   @Input() selectedRemote: Remote | null = null;
   @Input() iconService: any;
@@ -88,8 +88,6 @@ export class AppOverviewComponent {
   }
 
   get activeCount(): number {
-    console.log(this.remotes);
-
     return this.activeRemotes.length;
   }
 

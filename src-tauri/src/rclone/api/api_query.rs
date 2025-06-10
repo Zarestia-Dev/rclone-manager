@@ -1,13 +1,15 @@
 use log::{debug, error, info};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::time::Duration;
 use std::{collections::HashMap, process::Child, sync::Arc};
-use tauri::command;
 use tauri::State;
+use tauri::command;
 
-use crate::rclone::api::state::ENGINE_STATE;
-use crate::utils::types::{BandwidthLimitResponse, DiskUsage, ListOptions, MountedRemote, RcloneCoreVersion};
 use crate::RcloneState;
+use crate::rclone::api::state::ENGINE_STATE;
+use crate::utils::types::{
+    BandwidthLimitResponse, DiskUsage, ListOptions, MountedRemote, RcloneCoreVersion,
+};
 
 lazy_static::lazy_static! {
     static ref OAUTH_PROCESS: Arc<tokio::sync::Mutex<Option<Child>>> = Arc::new(tokio::sync::Mutex::new(None));
@@ -384,13 +386,12 @@ pub async fn get_remote_paths(
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     let url = format!("{}/operations/list", ENGINE_STATE.get_api().0);
-
-    // Build parameters
-    let mut params = serde_json::Map::new();
-    params.insert(
-        "fs".to_string(),
-        serde_json::Value::String(format!("{}:", remote)),
+    debug!(
+        "📂 Listing remote paths: remote={}, path={:?}, options={:?}",
+        remote, path, options
     );
+    let mut params = serde_json::Map::new();
+    params.insert("fs".to_string(), serde_json::Value::String(remote));
     params.insert(
         "remote".to_string(),
         serde_json::Value::String(path.unwrap_or_default()),
@@ -476,4 +477,36 @@ pub async fn get_rclone_info(state: State<'_, RcloneState>) -> Result<RcloneCore
     }
 
     serde_json::from_str(&body).map_err(|e| format!("Failed to parse version info: {}", e))
+}
+
+#[tauri::command]
+pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>, String> {
+    let url = format!("{}/core/pid", ENGINE_STATE.get_api().0);
+    match state.client.post(&url).send().await {
+        Ok(resp) => {
+            debug!("📡 Querying rclone /core/pid: {}", url);
+            debug!("rclone /core/pid response status: {}", resp.status());
+            if resp.status().is_success() {
+                match resp.json::<serde_json::Value>().await {
+                    Ok(json) => Ok(json.get("pid").and_then(|v| v.as_u64()).map(|v| v as u32)),
+                    Err(e) => {
+                        debug!("Failed to parse /core/pid response: {}", e);
+                        Err(format!("Failed to parse /core/pid response: {}", e))
+                    }
+                }
+            } else {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                debug!("rclone /core/pid returned non-success status");
+                Err(format!(
+                    "rclone /core/pid returned non-success status: {}: {}",
+                    status, body
+                ))
+            }
+        }
+        Err(e) => {
+            debug!("Failed to query /core/pid: {}", e);
+            Err(format!("Failed to query /core/pid: {}", e))
+        }
+    }
 }

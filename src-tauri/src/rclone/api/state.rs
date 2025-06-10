@@ -9,8 +9,7 @@ use tokio::sync::RwLock;
 use crate::{
     core::settings::settings::get_remote_settings,
     utils::types::{
-        EngineState, JobCache, JobInfo, LogCache, LogEntry, MountedRemote, RcloneState,
-        RemoteCache, SENSITIVE_KEYS,
+        EngineState, JobCache, JobInfo, JobStatus, LogCache, LogEntry, MountedRemote, RcloneState, RemoteCache, SENSITIVE_KEYS
     },
 };
 
@@ -323,9 +322,9 @@ impl JobCache {
         let mut jobs = self.jobs.write().await;
         if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
             job.status = if success {
-                "completed".to_string()
+                JobStatus::Completed
             } else {
-                "failed".to_string()
+                JobStatus::Failed
             };
             Ok(())
         } else {
@@ -340,7 +339,7 @@ impl JobCache {
     pub async fn get_active_jobs(&self) -> Vec<JobInfo> {
         let jobs = self.get_jobs().await;
         jobs.into_iter()
-            .filter(|job| job.status == "running")
+            .filter(|job| job.status == JobStatus::Running)
             .collect()
     }
 
@@ -352,11 +351,26 @@ impl JobCache {
             .find(|j| j.jobid == jobid)
             .cloned()
     }
+
+    pub async fn stop_job(&self, jobid: u64) -> Result<(), String> {
+        let mut jobs = self.jobs.write().await;
+        if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
+            job.status = JobStatus::Stopped;
+            Ok(())
+        } else {
+            Err("JobInfo not found".to_string())
+        }
+    }
 }
 
 #[tauri::command]
 pub async fn get_jobs() -> Result<Vec<JobInfo>, String> {
     Ok(JOB_CACHE.get_jobs().await)
+}
+
+#[tauri::command]
+pub async fn remove_job(jobid: u64) -> Result<(), String> {
+    JOB_CACHE.remove_job(jobid).await
 }
 
 #[tauri::command]

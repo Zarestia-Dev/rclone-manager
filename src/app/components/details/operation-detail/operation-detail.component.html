@@ -17,41 +17,39 @@
     (operationType === 'sync' && selectedRemote.syncState?.isOnSync) ||
     (operationType === 'copy' && selectedRemote.copyState?.isOnCopy)
   " [ngClass]="operationClass">
-          <div class="operation-path-section">
-            <div class="operation-path">
-              <div class="path">
-                <ng-container *ngIf="isLocalPath(operationSource); else remoteIcon">
-                  <button mat-icon-button [color]="operationColor" (click)="triggerOpenInFiles(operationSource)"
-                    matTooltip="Open in file explorer">
-                    <mat-icon svgIcon="folder"></mat-icon>
-                  </button>
-                </ng-container>
-                <ng-template #remoteIcon>
-                  <mat-icon [svgIcon]="'cloud-arrow-up'" class="path-icon"></mat-icon>
-                </ng-template>
-                <div class="path-details" matTooltip="{{operationSource}}">
-                  <div class="path-label">Source</div>
-                  <div class="path-value">{{operationSource}}</div>
-                </div>
-              </div>
-              <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-              <div class="path">
-                <ng-container *ngIf="isLocalPath(operationDestination); else remoteIcon">
-                  <button mat-icon-button [color]="operationColor" (click)="triggerOpenInFiles(operationDestination)"
-                    matTooltip="Open in file explorer">
-                    <mat-icon svgIcon="folder"></mat-icon>
-                  </button>
-                </ng-container>
-                <ng-template #remoteIcon>
-                  <mat-icon [svgIcon]="'cloud-arrow-up'" class="path-icon"></mat-icon>
-                </ng-template>
-                <div class="path-details" matTooltip="{{operationDestination}}">
-                  <div class="path-label">Destination</div>
-                  <div class="path-value">{{operationDestination}}</div>
-                </div>
+          <mat-card-content class="operation-path-section">
+            <div class="path">
+              <ng-container *ngIf="isLocalPath(operationSource); else remoteIcon">
+                <button mat-icon-button [color]="operationColor" (click)="triggerOpenInFiles(operationSource)"
+                  matTooltip="Open in file explorer">
+                  <mat-icon svgIcon="folder"></mat-icon>
+                </button>
+              </ng-container>
+              <ng-template #remoteIcon>
+                <mat-icon [svgIcon]="'cloud-arrow-up'" class="path-icon"></mat-icon>
+              </ng-template>
+              <div class="path-details" matTooltip="{{operationSource}}">
+                <div class="path-label">Source</div>
+                <div class="path-value">{{operationSource}}</div>
               </div>
             </div>
-          </div>
+            <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+            <div class="path">
+              <ng-container *ngIf="isLocalPath(operationDestination); else remoteIcon">
+                <button mat-icon-button [color]="operationColor" (click)="triggerOpenInFiles(operationDestination)"
+                  matTooltip="Open in file explorer">
+                  <mat-icon svgIcon="folder"></mat-icon>
+                </button>
+              </ng-container>
+              <ng-template #remoteIcon>
+                <mat-icon [svgIcon]="'cloud-arrow-up'" class="path-icon"></mat-icon>
+              </ng-template>
+              <div class="path-details" matTooltip="{{operationDestination}}">
+                <div class="path-label">Destination</div>
+                <div class="path-value">{{operationDestination}}</div>
+              </div>
+            </div>
+          </mat-card-content>
           <mat-divider></mat-divider>
 
           <mat-card-footer class="operation-footer">
@@ -150,8 +148,8 @@
             <mat-progress-bar [color]="operationColor" mode="determinate"
               [value]="(stats.elapsedTime / (stats.elapsedTime + stats.eta)) * 100"></mat-progress-bar>
           </mat-card>
-          <mat-card [matTooltip]="'Last Error: ' + stats.lastError" [matTooltipDisabled]="!stats.lastError" class="stat-card"
-            [class.has-error]="stats.errors > 0">
+          <mat-card [matTooltip]="'Last Error: ' + stats.lastError" [matTooltipDisabled]="!stats.lastError"
+            class="stat-card" [class.has-error]="stats.errors > 0">
             <div class="stat-value">{{stats.errors}}</div>
             <div class="stat-label">Errors</div>
           </mat-card>

@@ -3,6 +3,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { StateService } from "../../services/state.service";
 import { MatButtonModule } from "@angular/material/button";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { AppTab } from "../../shared/components/types";
 
 @Component({
   selector: "app-tabs-buttons",
@@ -11,10 +12,10 @@ import { MatTooltipModule } from "@angular/material/tooltip";
   styleUrl: "./tabs-buttons.component.scss",
 })
 export class TabsButtonsComponent {
-  currentTab: "mount" | "sync" | "copy" | "jobs" = "mount";
+  currentTab: AppTab = "mount";
 
   constructor(private stateService: StateService) {}
-  setTab(tab: "mount" | "sync" | "copy" | "jobs") {
+  setTab(tab: AppTab) {
     this.stateService.setTab(tab);
     this.currentTab = tab;
   }

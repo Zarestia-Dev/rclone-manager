@@ -12,11 +12,15 @@ use tokio::net::TcpStream;
 use tokio::{sync::Mutex, time::sleep};
 
 use crate::{
-    core::check_binaries::read_rclone_path, rclone::api::state::{
-        clear_remote_logs, get_cached_mounted_remotes, ENGINE_STATE, JOB_CACHE
-    }, utils::{log::log_operation, types::{
-            BandwidthLimitResponse, JobInfo, JobResponse, LogLevel, SENSITIVE_KEYS
-        }}, RcloneState
+    RcloneState,
+    core::check_binaries::read_rclone_path,
+    rclone::api::state::{ENGINE_STATE, JOB_CACHE, clear_remote_logs, get_cached_mounted_remotes},
+    utils::{
+        log::log_operation,
+        types::{
+            BandwidthLimitResponse, JobInfo, JobResponse, JobStatus, LogLevel, SENSITIVE_KEYS,
+        },
+    },
 };
 
 lazy_static::lazy_static! {
@@ -241,7 +245,8 @@ pub async fn create_remote(
             Some("New remote creation".to_string()),
             "Failed to create remote".to_string(),
             Some(json!({"response": body})),
-        ).await;
+        )
+        .await;
 
         return Err(error);
     }
@@ -319,7 +324,8 @@ pub async fn update_remote(
             Some("Remote update".to_string()),
             "Failed to update remote".to_string(),
             Some(json!({"response": body})),
-        ).await;
+        )
+        .await;
         return Err(error);
     }
 
@@ -470,7 +476,8 @@ pub async fn mount_remote(
                     Some("Mount remote".to_string()),
                     error_for_log,
                     Some(json!({"payload": payload_clone})),
-                ).await;
+                )
+                .await;
             });
             error
         })?;
@@ -515,7 +522,7 @@ pub async fn mount_remote(
             source: source.clone(),
             destination: mount_point.clone(),
             start_time: Utc::now(),
-            status: "running".to_string(),
+            status: JobStatus::Running,
             stats: None,
             group: format!("job/{}", jobid),
         })
@@ -590,7 +597,8 @@ pub async fn unmount_remote(
             Some("Unmount remote".to_string()),
             error.clone(),
             Some(json!({"response": body})),
-        ).await;
+        )
+        .await;
         error!("❌ Failed to unmount {}: {}", mount_point, error);
         return Err(error);
     }
@@ -717,7 +725,8 @@ pub async fn start_sync(
             Some("Sync operation".to_string()),
             "Failed to start sync job".to_string(),
             Some(json!({"response": body_text})),
-        ).await;
+        )
+        .await;
         return Err(error);
     }
 
@@ -730,7 +739,8 @@ pub async fn start_sync(
         Some("Sync operation".to_string()),
         format!("Sync job started with ID {}", job.jobid),
         Some(json!({"jobid": job.jobid})),
-    ).await;
+    )
+    .await;
 
     let jobid = job.jobid;
     JOB_CACHE
@@ -741,7 +751,7 @@ pub async fn start_sync(
             source: source.clone(),
             destination: dest.clone(),
             start_time: Utc::now(),
-            status: "running".to_string(),
+            status: JobStatus::Running,
             stats: None,
             group: format!("job/{}", jobid), // Add this line
         })
@@ -752,7 +762,14 @@ pub async fn start_sync(
     let client = state.client.clone();
     let remote_name_clone = remote_name.clone();
     tauri::async_runtime::spawn(async move {
-        let _ = monitor_job(remote_name_clone, "Sync operation", jobid, app_clone, client).await;
+        let _ = monitor_job(
+            remote_name_clone,
+            "Sync operation",
+            jobid,
+            app_clone,
+            client,
+        )
+        .await;
     });
 
     app.emit("job_cache_changed", jobid)
@@ -768,6 +785,10 @@ pub async fn stop_job(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
+    // First mark the job as stopped in the cache
+    JOB_CACHE.stop_job(jobid).await.map_err(|e| e.to_string())?;
+
+    // Then try to stop it via API
     let url = format!("{}/job/stop", ENGINE_STATE.get_api().0);
     let payload = json!({ "jobid": jobid });
 
@@ -784,28 +805,23 @@ pub async fn stop_job(
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        // If job not found, remove from cache and emit event
+        // If job not found, we've already marked it as stopped
         if status.as_u16() == 500 && body.contains("\"job not found\"") {
-            JOB_CACHE.remove_job(jobid).await.ok();
-            app.emit("job_cache_changed", jobid)
-                .map_err(|e| format!("Failed to emit event: {}", e))?;
             log_operation(
                 LogLevel::Warn,
                 Some(remote_name.clone()),
                 Some("Stop job".to_string()),
-                format!("Job {} not found, removed from cache", jobid),
+                format!("Job {} not found, tagged as stopped", jobid),
                 None,
-            ).await;
-            warn!("Job {} not found, removed from cache.", jobid);
-            return Ok(());
+            )
+            .await;
+            warn!("Job {} not found, tagged as stopped.", jobid);
+        } else {
+            let error = format!("HTTP {}: {}", status, body);
+            error!("❌ Failed to stop job {}: {}", jobid, error);
+            return Err(error);
         }
-        let error = format!("HTTP {}: {}", status, body);
-        error!("❌ Failed to stop job {}: {}", jobid, error);
-        return Err(error);
     }
-
-    // Remove job from cache after stopping
-    JOB_CACHE.remove_job(jobid).await.ok();
 
     log_operation(
         LogLevel::Info,
@@ -813,7 +829,8 @@ pub async fn stop_job(
         Some("Stop job".to_string()),
         format!("Job {} stopped successfully", jobid),
         None,
-    ).await;
+    )
+    .await;
 
     app.emit("job_cache_changed", jobid)
         .map_err(|e| format!("Failed to emit event: {}", e))?;
@@ -890,7 +907,8 @@ pub async fn start_copy(
             Some("Copy operation".to_string()),
             "Failed to start copy job".to_string(),
             Some(json!({"response": body})),
-        ).await;
+        )
+        .await;
         error!("❌ Failed to start copy job: {}", error);
         return Err(error);
     }
@@ -907,7 +925,7 @@ pub async fn start_copy(
             source: source.clone(),
             destination: dest.clone(),
             start_time: Utc::now(),
-            status: "running".to_string(),
+            status: JobStatus::Running,
             stats: None,
             group: format!("job/{}", jobid), // Add this line
         })
@@ -917,7 +935,14 @@ pub async fn start_copy(
     let client = state.client.clone();
     let remote_name_clone = remote_name.clone();
     tokio::spawn(async move {
-        let _ = monitor_job(remote_name_clone, "Copy operation", jobid, app_clone, client).await;
+        let _ = monitor_job(
+            remote_name_clone,
+            "Copy operation",
+            jobid,
+            app_clone,
+            client,
+        )
+        .await;
     });
 
     log_operation(
@@ -950,10 +975,17 @@ async fn monitor_job(
     const MAX_CONSECUTIVE_ERRORS: u8 = 3;
 
     loop {
-        // Check if job was removed from cache
-        if JOB_CACHE.get_job(jobid).await.is_none() {
-            debug!("Job {} removed from cache, stopping monitoring", jobid);
-            return Ok(());
+        // Check if job is still in cache and not stopped
+        match JOB_CACHE.get_job(jobid).await {
+            Some(job) if job.status == JobStatus::Stopped => {
+                debug!("Job {} was stopped, ending monitoring", jobid);
+                return Ok(());
+            }
+            None => {
+                debug!("Job {} removed from cache, stopping monitoring", jobid);
+                return Ok(());
+            }
+            _ => {} // Continue monitoring
         }
 
         // Get job status and stats in parallel

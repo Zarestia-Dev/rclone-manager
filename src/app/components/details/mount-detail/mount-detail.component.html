@@ -9,57 +9,70 @@
         </p>
     </div>
 
-    <!-- Disk Info -->
-    <div class="info-card disk-card">
-        <h3><mat-icon svgIcon="hard-drive"></mat-icon> Disk Info</h3>
-        <mat-card class="info-card-content">
-            <mat-card-content class="disk-usage">
-                <strong>Space Allocation</strong>
-                <div class="full-bar disk-usage-bar" [ngStyle]="getDiskBarStyle()">
-                    <p
-                        *ngIf="!selectedRemote.mountState?.mounted || selectedRemote.mountState?.mounted === 'error' || selectedRemote.mountState?.diskUsage?.notSupported">
-                        {{ selectedRemote.mountState?.diskUsage?.notSupported ? 'Not Supported' :
-                        (selectedRemote.mountState?.mounted === 'error' ? 'Error' : 'Not Mounted') }}
-                    </p>
-                    <div *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error'"
-                        class="usage" [style.width]="getUsagePercentage() + '%'">
+    <!-- Mount Info -->
+    <div class="mount-info">
+        <h3><mat-icon svgIcon="cloud-arrow-up"></mat-icon> Source & Destination</h3>
+        <mat-card class="mount-info-card" [class.active]="selectedRemote.mountState?.mounted">
+            <mat-card-content class="mount-path-section">
+                <div class="path">
+                    <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
+                    <div class="path-details" matTooltip="{{ mountSource }}">
+                        <div class="path-label">Source</div>
+                        <div class="path-value">{{ mountSource }}</div>
                     </div>
                 </div>
-
-                <div class="legend" *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.diskUsage && !selectedRemote.mountState?.diskUsage?.notSupported">
-                    <div class="legend-item">
-                        <span class="color-box border"></span>
-                        Total Space: {{ selectedRemote.mountState?.diskUsage?.total_space }}
-                    </div>
-                    <div class="legend-item">
-                        <span class="color-box used"></span>
-                        Used Space: {{ selectedRemote.mountState?.diskUsage?.used_space }}
-                    </div>
-                    <div class="legend-item">
-                        <span class="color-box free"></span>
-                        Free Space: {{ selectedRemote.mountState?.diskUsage?.free_space }}
+                <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+                <div class="path">
+                    <ng-container
+                        *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error'; else normalIcon">
+                        <button mat-icon-button color="accent" [disabled]="actionInProgress === 'open'"
+                            (click)="triggerOpenInFiles()" matTooltip="Open in Files">
+                            <mat-spinner *ngIf="actionInProgress === 'open'" diameter="20"></mat-spinner>
+                            <mat-icon *ngIf="actionInProgress !== 'open'" svgIcon="folder"></mat-icon>
+                        </button>
+                    </ng-container>
+                    <ng-template #normalIcon>
+                        <button mat-icon-button [disabled]="!selectedRemote.mountState?.mounted">
+                            <mat-icon svgIcon="folder"></mat-icon>
+                        </button>
+                    </ng-template>
+                    <div class="path-details" matTooltip="{{ mountDestination }}">
+                        <div class="path-label">Destination</div>
+                        <div class="path-value">
+                            {{ mountDestination }}
+                        </div>
                     </div>
                 </div>
             </mat-card-content>
 
             <mat-divider></mat-divider>
 
-            <mat-card-footer class="button-container">
-                <ng-container
-                    *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error'">
-                    <button mat-raised-button [disabled]="actionInProgress === 'open'" color="accent"
-                        (click)="triggerOpenInFiles()">
-                        <mat-spinner *ngIf="actionInProgress === 'open'" diameter="20"></mat-spinner>
-                        <mat-icon *ngIf="actionInProgress !== 'open'" svgIcon="folder"></mat-icon>
-                        {{ actionInProgress === 'open' ? "Opening" : "Open Files" }}
-                    </button>
-                    <button mat-raised-button [disabled]="actionInProgress === 'unmount'" color="warn"
-                        (click)="triggerUnmountRemote()">
-                        <mat-spinner *ngIf="actionInProgress === 'unmount'" diameter="20"></mat-spinner>
-                        <mat-icon *ngIf="actionInProgress !== 'unmount'" svgIcon="circle-exclamation"></mat-icon>
-                        {{ actionInProgress === 'unmount' ? "Unmounting" : "Unmount" }}
-                    </button>
-                </ng-container>
+            <mat-card-footer class="mount-footer">
+                <div class="mount-status">
+                    <div class="status-indicator" [ngClass]="{
+                        'mounted': selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error',
+                    }">
+                        <mat-icon
+                            [svgIcon]="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error' ? 'circle-check' : 'circle-xmark'"></mat-icon>
+                        <span>
+                            {{ selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error' ?
+                            'Mounted' : 'Not Mounted' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="mount-controls">
+                    <ng-container
+                        *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error'">
+                        <button mat-raised-button [disabled]="actionInProgress === 'unmount'" color="warn"
+                            (click)="triggerUnmountRemote()">
+                            <mat-spinner *ngIf="actionInProgress === 'unmount'" diameter="20"></mat-spinner>
+                            <mat-icon *ngIf="actionInProgress !== 'unmount'" svgIcon="circle-exclamation"></mat-icon>
+                            {{ actionInProgress === 'unmount' ? "Unmounting" : "Unmount" }}
+                        </button>
+                    </ng-container>
+
+                </div>
 
                 <ng-container *ngIf="!selectedRemote.mountState?.mounted">
                     <button mat-raised-button [disabled]="actionInProgress === 'mount'" color="primary"
@@ -69,59 +82,6 @@
                         {{ actionInProgress === 'mount' ? "Mounting" : "Mount" }}
                     </button>
                 </ng-container>
-
-                <ng-container *ngIf="selectedRemote.mountState?.mounted === 'error'">
-                    <button class="fix">
-                        <mat-icon svgIcon="wrench"></mat-icon> Fix
-                    </button>
-                </ng-container>
-            </mat-card-footer>
-        </mat-card>
-    </div>
-
-    <div class="info-card spec-card">
-        <h3><mat-icon svgIcon="cloud-arrow-up"></mat-icon> Source & Destination</h3>
-        <mat-card class="info-card-content">
-            <mat-card-content class="dest-info">
-                <div class="path-row">
-                    <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
-                    <div class="path-details" matTooltip="{{ mountSource }}">
-                        <div class="path-label">Source</div>
-                        <div class="path-value">{{ mountSource }}</div>
-                    </div>
-                </div>
-                <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                <div class="path-row">
-                    <mat-icon svgIcon="folder" class="path-icon"></mat-icon>
-                    <div class="path-details" matTooltip="{{ mountDestination }}">
-                        <div class="path-label">Destination</div>
-                        <div class="path-value">{{ mountDestination }}</div>
-                    </div>
-                </div>
-            </mat-card-content>
-        </mat-card>
-    </div>
-
-    <!-- Remote Specs -->
-    <div class="info-card spec-card">
-        <h3><mat-icon svgIcon="wrench"></mat-icon> Remote Specs</h3>
-        <mat-card class="info-card-content">
-            <mat-card-content class="spec-content">
-                <mat-chip-set class="specs-container">
-                    <mat-chip *ngFor="let spec of selectedRemote.remoteSpecs | keyvalue" class="spec-pill"
-                        [matTooltip]="isSensitiveKey(spec.key, restrictMode) ? '[RESTRICTED]' : (spec.value | json)"
-                        matTooltipPosition="above" [matTooltipHideDelay]="500">
-                        <strong>{{ spec.key }}:</strong>
-                        <span>{{ maskSensitiveValue(spec.key, spec.value) }}</span>
-                    </mat-chip>
-                </mat-chip-set>
-            </mat-card-content>
-            <mat-divider></mat-divider>
-            <mat-card-footer class="button-container">
-                <button mat-raised-button class="fix"
-                    (click)="triggerOpenRemoteConfig('remote', selectedRemote.remoteSpecs)">
-                    <mat-icon svgIcon="pen"></mat-icon> Edit
-                </button>
             </mat-card-footer>
         </mat-card>
     </div>
@@ -181,6 +141,5 @@
                 </mat-card-footer>
             </mat-card>
         </div>
-        <mat-divider></mat-divider>
     </ng-container>
 </div>

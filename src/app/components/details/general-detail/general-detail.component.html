@@ -1,0 +1,163 @@
+<!-- general-detail.component.html -->
+<div class="remote-details" *ngIf="selectedRemote">
+    <div class="remote-header">
+        <h2 matTooltip="{{ selectedRemote.remoteSpecs.name }}">
+            {{ selectedRemote.remoteSpecs.name }}
+        </h2>
+        <p>
+            <mat-icon [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"></mat-icon>
+            {{ selectedRemote.remoteSpecs.type | titlecase }}
+        </p>
+
+        <!-- Status Chips -->
+        <div class="remote-status">
+            <p *ngFor="let status of getRemoteStatuses()"
+                [ngClass]="[status.key, status.active ? 'active' : 'passive']">
+                <mat-icon [svgIcon]="status.icon"></mat-icon>
+            </p>
+        </div>
+    </div>
+
+
+    <!-- Disk Info -->
+    <div class="info-card disk-card">
+        <h3><mat-icon svgIcon="hard-drive"></mat-icon> Disk Info</h3>
+        <mat-card class="info-card-content">
+            <mat-card-content class="disk-usage">
+                <strong>Space Allocation</strong>
+                <div class="full-bar disk-usage-bar" [ngStyle]="getDiskBarStyle()">
+                    <p
+                        *ngIf="selectedRemote.mountState?.mounted === 'error' || selectedRemote.mountState?.diskUsage?.notSupported">
+                        {{ selectedRemote.mountState?.diskUsage?.notSupported ? 'Not Supported' :
+                        (selectedRemote.mountState?.mounted === 'error' ? 'Error' : 'Unknown') }}
+                    </p>
+                    <div *ngIf="selectedRemote.mountState?.mounted !== 'error'" class="usage"
+                        [style.width]="getUsagePercentage() + '%'">
+                    </div>
+                </div>
+
+                <div class="legend"
+                    *ngIf="selectedRemote.mountState?.diskUsage && !selectedRemote.mountState?.diskUsage?.notSupported">
+                    <div class="legend-item">
+                        <span class="color-box border"></span>
+                        Total Space: {{ selectedRemote.mountState?.diskUsage?.total_space }}
+                    </div>
+                    <div class="legend-item">
+                        <span class="color-box used"></span>
+                        Used Space: {{ selectedRemote.mountState?.diskUsage?.used_space }}
+                    </div>
+                    <div class="legend-item">
+                        <span class="color-box free"></span>
+                        Free Space: {{ selectedRemote.mountState?.diskUsage?.free_space }}
+                    </div>
+                </div>
+            </mat-card-content>
+        </mat-card>
+    </div>
+
+    <!-- Remote Jobs -->
+    <div class="info-card jobs-card" *ngIf="getRemoteJobs().length > 0">
+        <h3><mat-icon svgIcon="jobs"></mat-icon> Recent Jobs</h3>
+        <mat-card class="info-card-content">
+            <mat-card-content>
+                <table mat-table [dataSource]="getRemoteJobs()" matSort class="mat-elevation-z8">
+                    <!-- Type Column -->
+                    <ng-container matColumnDef="type">
+                        <th mat-header-cell *matHeaderCellDef>Type</th>
+                        <td mat-cell *matCellDef="let job">
+                            <mat-icon svgIcon="{{ getJobStatusIcon(job) }}"></mat-icon>
+                            {{ job.job_type | titlecase }}
+                        </td>
+                    </ng-container>
+
+                    <!-- Status Column -->
+                    <ng-container matColumnDef="status">
+                        <th mat-header-cell *matHeaderCellDef>Status</th>
+                        <td mat-cell *matCellDef="let job">
+                            <span [class]="'status-badge ' + getJobStatusColor(job)">
+                                {{ job.status | titlecase }}
+                            </span>
+                        </td>
+                    </ng-container>
+
+                    <!-- Progress Column -->
+                    <ng-container matColumnDef="progress">
+                        <th mat-header-cell *matHeaderCellDef>Progress</th>
+                        <td mat-cell *matCellDef="let job">
+                            <mat-progress-bar *ngIf="job.stats" mode="determinate" [value]="getJobProgress(job)">
+                            </mat-progress-bar>
+                            <span *ngIf="job.stats">
+                                {{ formatBytes(job.stats.bytes) }} / {{ formatBytes(job.stats.totalBytes) }}
+                            </span>
+                        </td>
+                    </ng-container>
+
+                    <!-- Start Time Column -->
+                    <ng-container matColumnDef="startTime">
+                        <th mat-header-cell *matHeaderCellDef>Started</th>
+                        <td mat-cell *matCellDef="let job">{{ job.start_time | date:'short' }}</td>
+                    </ng-container>
+
+                    <!-- Actions Column -->
+                    <ng-container matColumnDef="actions">
+                        <th mat-header-cell *matHeaderCellDef>Actions</th>
+                        <td mat-cell *matCellDef="let job">
+                            <button mat-icon-button *ngIf="job.status === 'Running'"
+                                (click)="stopOperation.emit({type: job.job_type, remoteName: job.remote_name})">
+                                <mat-icon svgIcon="stop"></mat-icon>
+                            </button>
+                        </td>
+                    </ng-container>
+
+                    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                </table>
+            </mat-card-content>
+        </mat-card>
+    </div>
+
+    <!-- Quick Actions
+    <div class="info-card actions-card">
+        <h3><mat-icon svgIcon="zap"></mat-icon> Quick Actions</h3>
+        <mat-card class="info-card-content">
+            <mat-card-content class="quick-actions">
+                <button mat-raised-button 
+                    color="primary" 
+                    (click)="startOperation.emit({type: 'sync', remoteName: selectedRemote.remoteSpecs.name})"
+                    [disabled]="actionInProgress === 'sync'">
+                    <mat-icon>sync</mat-icon> Start Sync
+                </button>
+                <button mat-raised-button 
+                    color="accent" 
+                    (click)="startOperation.emit({type: 'copy', remoteName: selectedRemote.remoteSpecs.name})"
+                    [disabled]="actionInProgress === 'copy'">
+                    <mat-icon>content_copy</mat-icon> Start Copy
+                </button>
+            </mat-card-content>
+        </mat-card>
+    </div> -->
+
+    <!-- Remote Specs -->
+    <div class="info-card spec-card">
+        <h3><mat-icon svgIcon="wrench"></mat-icon> Remote Specs</h3>
+        <mat-card class="info-card-content">
+            <mat-card-content class="spec-content">
+                <mat-chip-set class="specs-container">
+                    <mat-chip *ngFor="let spec of selectedRemote.remoteSpecs | keyvalue" class="spec-pill"
+                        [matTooltip]="isSensitiveKey(spec.key, restrictMode) ? '[RESTRICTED]' : (spec.value | json)"
+                        matTooltipPosition="above" [matTooltipHideDelay]="500">
+                        <strong>{{ spec.key }}:</strong>
+                        <span>{{ maskSensitiveValue(spec.key, spec.value) }}</span>
+                    </mat-chip>
+                </mat-chip-set>
+            </mat-card-content>
+            <mat-divider></mat-divider>
+            <mat-card-footer class="button-container">
+                <button mat-raised-button class="fix"
+                    (click)="openRemoteConfigModal.emit({editTarget: 'remote', existingConfig: selectedRemote.remoteSpecs})">
+                    <mat-icon svgIcon="pen"></mat-icon> Edit
+                </button>
+            </mat-card-footer>
+        </mat-card>
+    </div>
+</div>

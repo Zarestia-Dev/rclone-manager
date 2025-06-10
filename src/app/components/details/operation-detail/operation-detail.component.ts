@@ -124,8 +124,7 @@ export class OperationDetailComponent
     editTarget?: string;
     existingConfig?: any;
   }>();
-  @Output() openInFiles = new EventEmitter<
-  {
+  @Output() openInFiles = new EventEmitter<{
     remoteName: string;
     path: string;
   }>();
@@ -200,7 +199,10 @@ export class OperationDetailComponent
 
   triggerOpenInFiles(path: string): void {
     if (this.selectedRemote?.remoteSpecs?.name) {
-      this.openInFiles.emit({ remoteName: this.selectedRemote.remoteSpecs.name, path });
+      this.openInFiles.emit({
+        remoteName: this.selectedRemote.remoteSpecs.name,
+        path,
+      });
     }
   }
 
@@ -298,9 +300,11 @@ export class OperationDetailComponent
   }
 
   isSensitiveKey(key: string): boolean {
-    return SENSITIVE_KEYS.some((sensitive) =>
-      key.toLowerCase().includes(sensitive)
-    ) && this.restrictMode;
+    return (
+      SENSITIVE_KEYS.some((sensitive) =>
+        key.toLowerCase().includes(sensitive)
+      ) && this.restrictMode
+    );
   }
 
   maskSensitiveValue(key: string, value: any): string {
@@ -482,8 +486,13 @@ export class OperationDetailComponent
   }
 
   private calculateProgress(): number {
-    return this.stats.totalBytes > 0
-      ? Math.min(100, (this.stats.bytes / this.stats.totalBytes) * 100)
+    // Use file-specific total bytes if available
+    const totalBytes =
+      this.stats.totalBytes ||
+      this.dataSource.data.reduce((sum, f) => sum + (f.size || 0), 0);
+
+    return totalBytes > 0
+      ? Math.min(100, (this.stats.bytes / totalBytes) * 100)
       : 0;
   }
 
@@ -529,17 +538,27 @@ export class OperationDetailComponent
   private updateStatsFromJob(job: any): void {
     if (!job.stats) return;
 
+    const transferringFiles = this.processTransferringFiles(
+      job.stats.transferring
+    );
+    const fileStats = this.getAggregatedStatsFromFiles(transferringFiles);
+
+    // Combine global stats with file-specific stats
     const updatedStats = {
       ...job.stats,
-      transferring: this.processTransferringFiles(job.stats.transferring),
+      transferring: transferringFiles,
+      // Override some stats with file-specific calculations
+      speed: fileStats.totalSpeed,
+      eta: fileStats.totalEta,
+      bytes: fileStats.totalBytes,
+      totalBytes: fileStats.totalSize,
+      transfers: fileStats.activeFiles,
     };
 
     this.stats = updatedStats;
     this.updateRemoteStatusOnError(job);
     this.updateChartData();
-    this.dataSource.data = this.processTransferringFiles(
-      job.stats.transferring
-    );
+    this.dataSource.data = transferringFiles;
     this.cdr.markForCheck();
   }
 
@@ -614,5 +633,39 @@ export class OperationDetailComponent
   private handleSyncError(error: any): void {
     this.errorMessage =
       error instanceof Error ? error.message : "Failed to toggle sync";
+  }
+
+  private getAggregatedStatsFromFiles(files: TransferFile[]) {
+    if (!files || files.length === 0) {
+      return {
+        totalSpeed: 0,
+        avgSpeed: 0,
+        totalBytes: 0,
+        totalSize: 0,
+        totalEta: 0,
+        activeFiles: 0,
+      };
+    }
+
+    // Calculate from transferring files
+    const activeFiles = files.filter((f) => f.percentage < 100);
+    const totalSpeed = activeFiles.reduce((sum, f) => sum + (f.speed || 0), 0);
+    const avgSpeed =
+      activeFiles.length > 0 ? totalSpeed / activeFiles.length : 0;
+    const totalBytes = files.reduce((sum, f) => sum + (f.bytes || 0), 0);
+    const totalSize = files.reduce((sum, f) => sum + (f.size || 0), 0);
+
+    // Calculate ETA based on remaining bytes and current speed
+    const remainingBytes = totalSize - totalBytes;
+    const calculatedEta = totalSpeed > 0 ? remainingBytes / totalSpeed : 0;
+
+    return {
+      totalSpeed,
+      avgSpeed,
+      totalBytes,
+      totalSize,
+      totalEta: calculatedEta,
+      activeFiles: activeFiles.length,
+    };
   }
 }

@@ -121,6 +121,7 @@ export class RemoteConfigModalComponent implements OnInit {
   private authSubscriptions: Subscription[] = [];
   showAdvancedOptions = false;
   restrictMode!: boolean;
+  cloneTarget!: boolean;
 
   remoteForm: FormGroup;
   remoteConfigForm: FormGroup;
@@ -169,12 +170,15 @@ export class RemoteConfigModalComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA)
     public data: {
       editTarget?: EditTarget;
+      cloneTarget?: boolean;
       existingConfig?: any;
       name?: string;
       restrictMode: boolean;
     }
   ) {
     this.editTarget = data?.editTarget || null;
+    this.cloneTarget = data?.cloneTarget || false;
+    console.log(this.editTarget, this.cloneTarget);
     this.restrictMode = data?.restrictMode;
     this.remoteForm = this.createRemoteForm();
     this.remoteConfigForm = this.createRemoteConfigForm();
@@ -539,9 +543,16 @@ export class RemoteConfigModalComponent implements OnInit {
 
   //#region Form Population Methods
   populateForm(config: any): void {
-    if (!this.editTarget) return;
+    if (!this.editTarget && !this.cloneTarget) return;
     if (this.editTarget === "remote") {
       this.populateRemoteForm(config);
+    } else if (this.cloneTarget) {
+      this.populateRemoteForm(config.remoteSpecs);
+      this.populateFlagBasedForm("mount", config.mountConfig || {});
+      this.populateFlagBasedForm("copy", config.copyConfig || {});
+      this.populateFlagBasedForm("sync", config.syncConfig || {});
+      this.populateFlagForm("filter", config.filterConfig || {});
+      this.populateFlagForm("vfs", config.vfsConfig || {});
     } else {
       switch (this.editTarget) {
         case "mount":

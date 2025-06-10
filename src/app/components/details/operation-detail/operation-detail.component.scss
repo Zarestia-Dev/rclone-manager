@@ -33,7 +33,7 @@
     width: 90%;
     height: 100%;
 
-    &.operation-operation {
+    &.sync-operation {
       --operation-color: var(--primary-color);
     }
 
@@ -103,49 +103,40 @@
 
     .operation-path-section {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      gap: 20px;
-      flex-wrap: wrap;
+      gap: 12px;
+      flex-grow: 1;
+      min-width: 0;
 
-      .operation-path {
+      .path {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 8px;
+        padding: 8px 12px;
+        background: var(--app-background);
+        border-radius: var(--border-radius);
         flex-grow: 1;
-        width: 100%;
         min-width: 0;
+        overflow: hidden;
 
-        .path {
+        .path-details {
           display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 12px;
-          background: var(--app-background);
-          border-radius: var(--border-radius);
-          flex-grow: 1;
+          flex-direction: column;
           min-width: 0;
-          overflow: hidden;
 
-          .path-details {
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
+          .path-label {
+            font-size: 12px;
+            color: var(--secondary-text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
 
-            .path-label {
-              font-size: 12px;
-              color: var(--secondary-text-color);
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-            }
-
-            .path-value {
-              font-size: 14px;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-            }
+          .path-value {
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
           }
         }
       }
@@ -218,12 +209,6 @@
             background: rgba(234, 67, 53, 0.1);
             color: var(--warn-color);
           }
-        }
-
-        .last-operation {
-          font-size: 0.75rem;
-          color: var(--secondary-text-color);
-          margin-top: 4px;
         }
       }
 

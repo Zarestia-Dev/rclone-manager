@@ -196,9 +196,17 @@ pub struct JobInfo {
     pub source: String,
     pub destination: String,
     pub start_time: DateTime<Utc>,
-    pub status: String, // "running", "completed", "failed", "stopped"
+    pub status: JobStatus, // "running", "completed", "failed", "stopped"
     pub stats: Option<Value>,
     pub group: String, // Add this field to track the job group
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum JobStatus {
+    Running,
+    Completed,
+    Failed,
+    Stopped,
 }
 
 pub struct JobCache {

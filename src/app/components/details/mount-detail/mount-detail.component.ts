@@ -81,46 +81,6 @@ export class MountDetailComponent implements OnDestroy {
 
   ngOnChanges(changes: SimpleChanges): void {}
 
-  getDiskBarStyle(): { [key: string]: string } {
-    if (!this.selectedRemote?.mountState?.mounted) {
-      return this.getUnmountedStyle();
-    }
-
-    if (this.selectedRemote.mountState?.mounted === "error") {
-      return this.getErrorStyle();
-    }
-
-    // Check if we have disk usage data and it's not supported
-    if (this.selectedRemote.mountState?.diskUsage?.notSupported) {
-      return this.getUnsupportedStyle();
-    }
-
-    // Check if we're still loading disk usage
-    if (this.selectedRemote.mountState?.diskUsage?.loading) {
-      return this.getLoadingStyle();
-    }
-
-    return this.getMountedStyle();
-  }
-
-  getUsagePercentage(): number {
-    if (
-      !this.selectedRemote?.mountState?.diskUsage ||
-      this.selectedRemote.mountState.diskUsage.notSupported
-    ) {
-      return 0;
-    }
-
-    const used = this.parseSize(
-      this.selectedRemote.mountState.diskUsage.used_space || "0"
-    );
-    const total = this.parseSize(
-      this.selectedRemote.mountState.diskUsage.total_space || "1"
-    );
-
-    return total > 0 ? (used / total) * 100 : 0;
-  }
-
   // Remote Settings Helpers
   getRemoteSettings(sectionKey: string): RemoteSettings {
     return this.remoteSettings?.[sectionKey] || {};
@@ -181,66 +141,6 @@ export class MountDetailComponent implements OnDestroy {
     return this.isSensitiveKey(key, this.restrictMode)
       ? "RESTRICTED"
       : this.truncateValue(value, 15);
-  }
-
-  // Private Helpers
-  private getUnmountedStyle(): { [key: string]: string } {
-    return {
-      backgroundColor: "var(--purple)",
-      border: "3px solid transparent",
-      transition: "all 0.5s ease-in-out",
-    };
-  }
-
-  private getErrorStyle(): { [key: string]: string } {
-    return {
-      backgroundColor: "var(--red)",
-      border: "3px solid transparent",
-      transition: "all 0.5s ease-in-out",
-    };
-  }
-
-  private getUnsupportedStyle(): { [key: string]: string } {
-    return {
-      backgroundColor: "var(--yellow)",
-      border: "3px solid transparent",
-      transition: "all 0.5s ease-in-out",
-    };
-  }
-
-  private getLoadingStyle(): { [key: string]: string } {
-    return {
-      backgroundColor: "var(--orange)",
-      border: "3px solid transparent",
-      backgroundImage:
-        "linear-gradient(120deg, rgba(255,255,255,0.15) 25%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.15) 75%)",
-      backgroundSize: "200% 100%",
-      animation: "diskLoadingShimmer 1.2s linear infinite",
-      transition: "all 0.5s ease-in-out",
-    };
-  }
-
-  private getMountedStyle(): { [key: string]: string } {
-    return {
-      backgroundColor: "#cecece",
-      border: "3px solid var(--light-blue)",
-      transition: "all 0.5s ease-in-out",
-    };
-  }
-
-  private parseSize(size: string): number {
-    const units: { [key: string]: number } = {
-      B: 1,
-      KB: 1024,
-      MB: 1024 ** 2,
-      GB: 1024 ** 3,
-      TB: 1024 ** 4,
-    };
-    const match = size.trim().match(/^([\d.]+)\s*([A-Za-z]+)?$/);
-    if (!match) return 0;
-    const value = parseFloat(match[1]);
-    const unit = (match[2] || "B").toUpperCase();
-    return value * (units[unit] || 1);
   }
 
   private truncateValue(value: any, length: number): string {

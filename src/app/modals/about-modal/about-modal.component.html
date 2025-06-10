@@ -4,7 +4,7 @@
             <mat-icon></mat-icon>
         </button>
         <p>About</p>
-        <button class="close-btn" (click)="close()">
+        <button class="close-btn" mat-icon-button aria-label="Close" (click)="close()">
             <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
     </div>
@@ -13,7 +13,9 @@
         <mat-icon svgIcon="rclone" class="app-icon"></mat-icon>
         <h2 class="app-name">RClone Manager</h2>
         <p class="app-team">Hakan İSMAİL</p>
-        <span class="version-badge" (click)="copyToClipboard(rCloneManagerVersion)">{{ rCloneManagerVersion }}</span>
+        <span class="version-badge" (click)="copyToClipboard(rCloneManagerVersion)">
+            {{ rCloneManagerVersion }}
+        </span>
 
         <!-- Navigation List -->
         <div class="about-list">
@@ -42,15 +44,14 @@
     <!-- Overlay Pages -->
     <div class="overlay" *ngIf="currentPage !== 'main'" [@slideOverlay]>
         <div class="overlay-header" data-tauri-drag-region>
-            <button (click)="navigateTo('main')">
+            <button mat-icon-button (click)="navigateTo('main')">
                 <mat-icon svgIcon="chevron-left" class="icon icon-bw"></mat-icon>
             </button>
             <p><strong>{{ currentPage | titlecase }}</strong></p>
-            <button (click)="close()">
+            <button mat-icon-button (click)="close()">
                 <mat-icon svgIcon="circle-xmark" class="icon icon-bw"></mat-icon>
             </button>
         </div>
-
 
         <div class="overlay-content" *ngIf="currentPage === 'details'">
             <div class="stacked-buttons">
@@ -93,6 +94,10 @@
                         <span class="detail-value">{{ rcloneInfo.os }} ({{ rcloneInfo.arch }})</span>
                     </div>
                     <div class="detail-row">
+                        <span class="detail-label">Rclone PID:</span>
+                        <span class="detail-value">{{ rcloneInfo.pid }}</span>
+                    </div>
+                    <div class="detail-row">
                         <span class="detail-label">Go Version:</span>
                         <span class="detail-value">{{ rcloneInfo.goVersion }}</span>
                     </div>
@@ -110,10 +115,17 @@
                     </div>
                 </div>
 
-                <button mat-button class="about-item" (click)="openLink('https://rclone.org')">
-                    <span>Rclone Website</span>
-                    <mat-icon svgIcon="open-link"></mat-icon>
-                </button>
+                <div class="about-list">
+                    <button mat-button class="about-item" (click)="openLink('https://rclone.org')">
+                        <span>Rclone Website</span>
+                        <mat-icon svgIcon="open-link"></mat-icon>
+                    </button>
+
+                    <button mat-button class="about-item" (click)="killProcess()">
+                        <span>Kill Rclone Process</span>
+                        <mat-icon svgIcon="circle-exclamation"></mat-icon>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -125,9 +137,12 @@
         </div>
 
         <div class="overlay-content" *ngIf="currentPage === 'legal'">
-            <p>This application comes with absolutely no warranty. See the <a
-                    (click)="openLink('https://www.gnu.org/licenses/gpl-3.0.html')">GNU General Public License, version
-                    3</a> or later for details.</p>
+            <p>
+                This application comes with absolutely no warranty. See the
+                <a (click)="openLink('https://www.gnu.org/licenses/gpl-3.0.html')">GNU
+                    General Public License, version 3</a>
+                or later for details.
+            </p>
         </div>
     </div>
 </div>

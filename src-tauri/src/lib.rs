@@ -39,19 +39,14 @@ use crate::{
                 update_remote,
             },
             api_query::{
-                get_all_remote_configs, get_bandwidth_limit, get_disk_usage, get_fs_info,
-                get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info,
-                get_remote_config, get_remote_config_fields, get_remote_paths, get_remote_types,
-                get_remotes,
+                get_all_remote_configs, get_bandwidth_limit, get_disk_usage, get_fs_info, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info, get_rclone_pid, get_remote_config, get_remote_config_fields, get_remote_paths, get_remote_types, get_remotes
             },
             flags::{
                 get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags,
                 get_sync_flags, get_vfs_flags,
             },
             state::{
-                CACHE, ENGINE_STATE, clear_remote_logs, get_active_jobs,
-                get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status,
-                get_jobs, get_remote_logs, get_settings,
+                clear_remote_logs, get_active_jobs, get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status, get_jobs, get_remote_logs, get_settings, remove_job, CACHE, ENGINE_STATE
             },
         },
         mount::{check_mount_plugin_installed, install_mount_plugin},
@@ -60,7 +55,7 @@ use crate::{
         builder::{create_app_window, setup_tray},
         file_helper::{get_file_location, get_folder_location, open_in_files},
         log::init_logging,
-        network::check_links,
+        network::{check_links, kill_process},
         rclone::provision::provision_rclone,
         types::{AppSettings, RcApiEngine, RcloneState, SettingsState},
     },
@@ -304,6 +299,8 @@ pub fn run() {
             // Rclone operations
             provision_rclone,
             get_rclone_info,
+            get_rclone_pid,
+            kill_process,
             // Rclone Command API
             get_all_remote_configs,
             get_fs_info,
@@ -365,7 +362,8 @@ pub fn run() {
             get_jobs,
             get_active_jobs,
             get_job_status,
-            stop_job
+            stop_job,
+            remove_job,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

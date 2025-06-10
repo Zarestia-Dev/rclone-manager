@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { InfoService } from "./info.service";
 import { listen } from "@tauri-apps/api/event";
 import { BehaviorSubject } from "rxjs";
-import { RcloneInfo } from "../shared/components/types";
+import { JobInfo, RcloneInfo } from "../shared/components/types";
 
 @Injectable({
   providedIn: "root",
@@ -294,12 +294,23 @@ export class RcloneService {
     }
   }
 
-  async getActiveJobs(): Promise<any> {
+  async getJobs(): Promise<JobInfo[]> {
     try {
-      const jobs = await invoke<any[]>("get_active_jobs");
+      const jobs = await invoke<JobInfo[]>("get_jobs");
+      return jobs;
+    } catch (error) {
+      console.error("Failed to fetch all jobs:", error);
+      return [];
+    }
+  }
+
+  async getActiveJobs(): Promise<JobInfo[]> {
+    try {
+      const jobs = await invoke<JobInfo[]>("get_active_jobs");
       return jobs;
     } catch (error) {
       console.error("Failed to load initial jobs:", error);
+      return [];
     }
   }
 
@@ -457,6 +468,25 @@ export class RcloneService {
     } catch (error) {
       console.error("Error fetching Rclone info:", error);
       return null;
+    }
+  }
+
+  async getRclonePID(): Promise<number | null> {
+    try {
+      return await invoke<number>("get_rclone_pid");
+    } catch (error) {
+      console.error("Error fetching Rclone PID:", error);
+      return null;
+    }
+  }
+
+  async killProcess(pid: number): Promise<void> {
+    try {
+      await invoke("kill_process", { pid });
+      console.log(`Process with PID ${pid} killed successfully.`);
+    } catch (error) {
+      console.error("Error killing process:", error);
+      throw error;
     }
   }
 }

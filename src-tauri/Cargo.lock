@@ -3498,6 +3498,7 @@ dependencies = [
  "dirs 6.0.0",
  "lazy_static",
  "log",
+ "nix",
  "once_cell",
  "regex",
  "reqwest",

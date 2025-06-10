@@ -5,13 +5,14 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import { filter, firstValueFrom, take } from "rxjs";
 import { platform } from "@tauri-apps/plugin-os";
+import { AppTab } from "../shared/components/types";
 
 @Injectable({
   providedIn: "root",
 })
 export class StateService {
-  private currentTab = new BehaviorSubject<"mount" | "sync" | "copy" | "jobs">(
-    "mount"
+  private currentTab = new BehaviorSubject<AppTab>(
+    "mount" as AppTab
   );
 
   private viewportSettings = {
@@ -175,14 +176,11 @@ export class StateService {
     this.selectedRemoteSource.next(remote);
   }
 
-  setTab(tab: "mount" | "sync" | "copy" | "jobs") {
+  setTab(tab: AppTab): void {
     this.currentTab.next(tab);
   }
 
-  getCurrentTab() {
-    // Return the current tab value
-    console.log("Current tab:", this.currentTab.value);
-
+  getCurrentTab(): AppTab {
     return this.currentTab.value;
   }
 
