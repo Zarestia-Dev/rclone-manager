@@ -49,6 +49,7 @@ export class StateService {
   isMaximized$ = this._isMaximized.asObservable();
 
   private appWindow = getCurrentWindow();
+  public platform = platform();
 
   constructor(private rcloneService: RcloneService, private ngZone: NgZone) {
     this.initializeWindowListeners();
@@ -113,9 +114,8 @@ export class StateService {
 
   private async updateWindowState() {
     let isMaximized = false;
-    const currentPlatform = await platform();
 
-    if (currentPlatform === "macos") {
+    if (this.platform === "macos") {
       // On macOS, always set maximized to true and set all radii to 0
       isMaximized = true;
       this._isMaximized.next(isMaximized);

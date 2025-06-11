@@ -95,8 +95,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     private rcloneService: RcloneService,
     private settingsService: SettingsService
   ) {
-    const currentPlatform = platform();
-    if (currentPlatform === "macos") {
+    if (this.stateService.platform === "macos") {
       this.isMacOS = true;
     }
     this.isMobile$ = this.stateService.isMobile$;

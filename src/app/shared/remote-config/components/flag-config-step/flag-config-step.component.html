@@ -15,7 +15,13 @@
             <button mat-icon-button matSuffix (click)="onSelectFolder('mountConfig.dest', true)" aria-label="Select folder">
                 <mat-icon svgIcon="folder"></mat-icon>
             </button>
-            <input matInput formControlName="dest" id="dest" placeholder="Select a folder..." readonly />
+            <input matInput formControlName="dest" id="dest" placeholder="Select a folder..." />
+            <mat-error *ngIf="configGroup.get('dest')?.hasError('required')">
+                Mount path is required.
+            </mat-error>
+            <mat-error *ngIf="configGroup.get('dest')?.hasError('invalidPath')">
+                Invalid mount path.
+            </mat-error>
         </mat-form-field>
     </ng-container>
 

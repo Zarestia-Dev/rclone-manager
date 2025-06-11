@@ -48,6 +48,7 @@ import { FlagConfigStepComponent } from "../../shared/remote-config/components/f
 import { RemoteConfigService } from "../../shared/remote-config/services/remote-config.service";
 import { FlagConfigService } from "../../shared/remote-config/services/flag-config.service";
 import { PathSelectionService } from "../../shared/remote-config/services/path-selection.service";
+import { platform } from "@tauri-apps/plugin-os";
 
 @Component({
   selector: "app-remote-config-modal",
@@ -330,9 +331,9 @@ export class RemoteConfigModalComponent implements OnInit {
       ?.valueChanges.subscribe((enabled) => {
         const destCtrl = this.remoteConfigForm.get("mountConfig.dest");
         if (enabled) {
-          destCtrl?.setValidators([Validators.required]);
+          destCtrl?.setValidators([Validators.required, this.crossPlatformPathValidator]);
         } else {
-          destCtrl?.clearValidators();
+          destCtrl?.setValidators([this.crossPlatformPathValidator]);
         }
         destCtrl?.updateValueAndValidity();
       });
@@ -441,7 +442,7 @@ export class RemoteConfigModalComponent implements OnInit {
     return this.fb.group({
       mountConfig: this.fb.group({
         autoStart: [false],
-        dest: [""],
+        dest: ["", [this.crossPlatformPathValidator]],
         source: [""],
         options: ["{}", [this.jsonValidator]],
       }),
@@ -475,6 +476,23 @@ export class RemoteConfigModalComponent implements OnInit {
       return { invalidJson: true };
     }
   }
+
+  // Platform-aware path validator: validates based on detected OS
+  private crossPlatformPathValidator = (
+    control: AbstractControl
+  ): ValidationErrors | null => {
+    const value = control.value;
+    if (!value) return null;
+    
+    if (this.stateService.platform === "windows") {
+      const winAbs = /^[a-zA-Z]:[\\/](?:[^:*?"<>|\r\n]*)?$/;
+      if (winAbs.test(value)) return null;
+    } else {
+      const unixAbs = /^(\/[^\0]*)$/;
+      if (unixAbs.test(value)) return null;
+    }
+    return { invalidPath: true };
+  };
 
   //#region Remote Configuration Methods
   private async loadExistingRemotes(): Promise<void> {

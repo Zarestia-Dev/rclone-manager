@@ -1,5 +1,5 @@
 use log::{debug, error};
-use tauri::{command, AppHandle, Window};
+use tauri::{AppHandle, Window, command};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -27,6 +27,18 @@ pub async fn get_folder_location(
             return Ok(None);
         }
     };
+
+    #[cfg(target_os = "windows")]
+    {
+        // If the selected path is a drive root (e.g., D:\), prevent selection and show error
+        if let Some(drive) = path.components().next() {
+            use std::path::Component;
+            if matches!(drive, Component::Prefix(_)) && path.parent().is_none() {
+                debug!("Selected path is a drive root, which is not allowed for mounting");
+                return Err("Cannot select a drive root (e.g., D:\\) as a mount point. Please select or create a subfolder.".into());
+            }
+        }
+    }
 
     if require_empty {
         debug!("Checking if folder is empty: {}", folder);
