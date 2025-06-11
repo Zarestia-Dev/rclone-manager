@@ -123,7 +123,7 @@ pub async fn kill_process(pid: u32) -> Result<(), String> {
 
         unsafe {
             let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
-            if handle == 0 {
+            if handle == std::ptr::null_mut() {
                 return Err("Failed to open process".to_string());
             }
             let result = TerminateProcess(handle, 1);

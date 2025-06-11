@@ -476,6 +476,11 @@ h6 {
   }
 }
 
+// Fix for mat-icon overflow issues in Windows
+mat-icon {
+  overflow: visible !important;
+}
+
 button {
   border: none;
   display: flex;

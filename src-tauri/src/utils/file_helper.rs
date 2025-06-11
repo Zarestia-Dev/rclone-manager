@@ -31,8 +31,10 @@ pub async fn get_folder_location(
     #[cfg(target_os = "windows")]
     {
         // If the selected path is a drive root (e.g., D:\), prevent selection and show error
+
+        use std::path::{Path, Component};
+        let path = Path::new(&folder);
         if let Some(drive) = path.components().next() {
-            use std::path::Component;
             if matches!(drive, Component::Prefix(_)) && path.parent().is_none() {
                 debug!("Selected path is a drive root, which is not allowed for mounting");
                 return Err("Cannot select a drive root (e.g., D:\\) as a mount point. Please select or create a subfolder.".into());
