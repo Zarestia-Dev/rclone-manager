@@ -161,36 +161,20 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
 
 #[cfg(target_os = "macos")]
 pub fn is_metered() -> bool {
-    use network_interface::{NetworkInterface, NetworkInterfaceConfig};
-
-    if let Ok(interfaces) = NetworkInterface::show() {
-        for itf in interfaces {
-            // This is an assumption-based check. You might need to refine the keywords.
-            // "pdp_ip" is often associated with cellular connections.
-            if itf.name.starts_with("pdp_ip") {
-                return true;
-            }
-        }
-    }
+    // macOS does not support metered network detection.
+    // Always return false.
+    log::info!("is_metered: macOS does not support metered network detection, returning false.");
     false
 }
 
 #[cfg(target_os = "macos")]
-async fn monitor_network_changes(app_handle: tauri::AppHandle) {
-    let mut last_status = is_metered();
-    loop {
-        // Poll every 5 seconds
-        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+    // Always emit is_metered: false, since macOS does not support metered detection.
+    let payload = NetworkStatusPayload { is_metered: false };
+    app_handle.emit("network-status-changed", payload).unwrap();
 
-        let current_status = is_metered();
-        if current_status != last_status {
-            last_status = current_status;
-            let payload = NetworkStatusPayload {
-                is_metered: current_status,
-            };
-            app_handle.emit("network-status-changed", payload).unwrap();
-        }
-    }
+    // Optionally, you can skip the loop entirely, or just sleep forever.
+    // loop { tokio::time::sleep(std::time::Duration::from_secs(3600)).await; }
 }
 
 #[cfg(windows)]
