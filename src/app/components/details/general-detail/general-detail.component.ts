@@ -16,6 +16,7 @@ import { CommonModule } from "@angular/common";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatTableModule } from "@angular/material/table";
 import { StateService } from "../../../services/state.service";
+import { MatSortModule } from "@angular/material/sort";
 
 @Component({
   selector: "app-general-detail",
@@ -29,7 +30,8 @@ import { StateService } from "../../../services/state.service";
     MatChipsModule,
     MatButtonModule,
     MatTableModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatSortModule,
   ],
   templateUrl: "./general-detail.component.html",
   styleUrl: "./general-detail.component.scss",
@@ -60,6 +62,7 @@ export class GeneralDetailComponent {
     type: "sync" | "copy";
     remoteName: string;
   }>();
+  @Output() deleteJob = new EventEmitter<number>();
 
   // For jobs table
   displayedColumns: string[] = [
@@ -70,15 +73,8 @@ export class GeneralDetailComponent {
     "actions",
   ];
 
-  currentTab: AppTab = "mount";
 
-  constructor(private stateService: StateService) {}
-
-  setTab(tab: AppTab) {
-    console.log(`Setting tab to: ${tab}`);
-    this.stateService.setTab(tab);
-    this.currentTab = tab;
-  }
+  constructor() {}
 
   getDiskBarStyle(): { [key: string]: string } {
     if (this.selectedRemote.mountState?.mounted === "error") {
@@ -157,7 +153,7 @@ export class GeneralDetailComponent {
     this.openRemoteConfigModal.emit({ editTarget, existingConfig });
   }
 
-  getRemoteJobs(): JobInfo[] {
+  get getRemoteJobs(): JobInfo[] {
     return this.jobs.filter(
       (job) => job.remote_name === this.selectedRemote?.remoteSpecs.name
     );
@@ -251,25 +247,5 @@ export class GeneralDetailComponent {
     return stringValue.length > length
       ? `${stringValue.slice(0, length)}...`
       : stringValue;
-  }
-
-  getRemoteStatuses(): { key: AppTab; active: boolean; icon: string; }[] {
-    return [
-      {
-        key: "mount",
-        active: !!this.selectedRemote.mountState?.mounted,
-        icon: "mount",
-      },
-      {
-        key: "sync",
-        active: !!this.selectedRemote.syncState?.isOnSync,
-        icon: "sync",
-      },
-      {
-        key: "copy",
-        active: !!this.selectedRemote.copyState?.isOnCopy,
-        icon: "copy",
-      },
-    ];
   }
 }

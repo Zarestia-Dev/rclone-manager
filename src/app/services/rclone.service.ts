@@ -324,6 +324,16 @@ export class RcloneService {
     }
   }
 
+  async deleteJob(jobid: number): Promise<void> { 
+    try {
+      await invoke("delete_job", { jobid });
+      // The job status will update via the event listener
+    } catch (error) {
+      console.error("Failed to delete job:", error);
+      throw error;
+    }
+  }
+
   async getJobStatus(jobid: number): Promise<any | null> {
     try {
       const job = await invoke<any>("get_job_status", { jobid });
@@ -361,6 +371,7 @@ export class RcloneService {
       }
     });
   }
+
 
   async getFsInfo(remoteName: string): Promise<any> {
     try {

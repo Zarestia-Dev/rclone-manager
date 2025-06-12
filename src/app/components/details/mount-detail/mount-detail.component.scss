@@ -30,8 +30,11 @@
   }
 
   .mount-info {
-    display: grid;
-    gap: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: baseline;
+    border-radius: 8px;
+    padding: 16px;
     width: 90%;
 
     .mount-info-card {
@@ -42,6 +45,7 @@
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       border-radius: 8px;
       transition: all 0.3s ease;
+      width: 100%;
 
       &.active {
         border-left: 4px solid var(--accent-color);
@@ -170,7 +174,7 @@
 }
 
 @media (max-width: 600px) {
-  .dest-info {
+  .mount-path-section {
     flex-direction: column;
     align-items: stretch !important;
 

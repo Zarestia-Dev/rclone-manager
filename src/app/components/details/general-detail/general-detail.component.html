@@ -11,9 +11,20 @@
 
         <!-- Status Chips -->
         <div class="remote-status">
-            <p *ngFor="let status of getRemoteStatuses()"
-                [ngClass]="[status.key, status.active ? 'active' : 'passive']">
-                <mat-icon [svgIcon]="status.icon"></mat-icon>
+            <p *ngIf="selectedRemote.mountState"
+                [ngClass]="['mount', selectedRemote.mountState.mounted ? 'active' : 'passive']"
+                aria-label="Mount status" [matTooltip]="selectedRemote.mountState.mounted ? 'Mounted' : 'Not Mounted'">
+                <mat-icon svgIcon="mount"></mat-icon>
+            </p>
+            <p *ngIf="selectedRemote.syncState"
+                [ngClass]="['sync', selectedRemote.syncState.isOnSync ? 'active' : 'passive']" aria-label="Sync status"
+                [matTooltip]="selectedRemote.syncState.isOnSync ? 'Syncing' : 'Idle'">
+                <mat-icon svgIcon="sync"></mat-icon>
+            </p>
+            <p *ngIf="selectedRemote.copyState"
+                [ngClass]="['copy', selectedRemote.copyState.isOnCopy ? 'active' : 'passive']" aria-label="Copy status"
+                [matTooltip]="selectedRemote.copyState.isOnCopy ? 'Copying' : 'Idle'">
+                <mat-icon svgIcon="copy"></mat-icon>
             </p>
         </div>
     </div>
@@ -56,63 +67,74 @@
     </div>
 
     <!-- Remote Jobs -->
-    <div class="info-card jobs-card" *ngIf="getRemoteJobs().length > 0">
-        <h3><mat-icon svgIcon="jobs"></mat-icon> Recent Jobs</h3>
-        <mat-card class="info-card-content">
-            <mat-card-content>
-                <table mat-table [dataSource]="getRemoteJobs()" matSort class="mat-elevation-z8">
-                    <!-- Type Column -->
-                    <ng-container matColumnDef="type">
-                        <th mat-header-cell *matHeaderCellDef>Type</th>
-                        <td mat-cell *matCellDef="let job">
+    <div class="info-card jobs-card">
+        <h3><mat-icon svgIcon="jobs"></mat-icon>Jobs</h3>
+        <mat-card class="jobs-content">
+            <table mat-table [dataSource]="getRemoteJobs" matSort class="mat-elevation-z8">
+                <!-- Type Column -->
+                <ng-container matColumnDef="type">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Type</th>
+                    <td class="type-column" mat-cell *matCellDef="let job">
+                        <span class="job-type">
                             <mat-icon svgIcon="{{ getJobStatusIcon(job) }}"></mat-icon>
                             {{ job.job_type | titlecase }}
-                        </td>
-                    </ng-container>
+                        </span>
+                    </td>
+                </ng-container>
 
-                    <!-- Status Column -->
-                    <ng-container matColumnDef="status">
-                        <th mat-header-cell *matHeaderCellDef>Status</th>
-                        <td mat-cell *matCellDef="let job">
-                            <span [class]="'status-badge ' + getJobStatusColor(job)">
-                                {{ job.status | titlecase }}
-                            </span>
-                        </td>
-                    </ng-container>
+                <!-- Status Column -->
+                <ng-container matColumnDef="status">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+                    <td mat-cell *matCellDef="let job">
+                        <span [class]="'status-badge ' + getJobStatusColor(job)">
+                            {{ job.status | titlecase }}
+                        </span>
+                    </td>
+                </ng-container>
 
-                    <!-- Progress Column -->
-                    <ng-container matColumnDef="progress">
-                        <th mat-header-cell *matHeaderCellDef>Progress</th>
-                        <td mat-cell *matCellDef="let job">
-                            <mat-progress-bar *ngIf="job.stats" mode="determinate" [value]="getJobProgress(job)">
-                            </mat-progress-bar>
-                            <span *ngIf="job.stats">
+                <!-- Progress Column -->
+                <ng-container matColumnDef="progress">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Progress</th>
+                    <td mat-cell *matCellDef="let job">
+                        <ng-container *ngIf="job.job_type !== 'mount' && job.stats">
+                            <mat-progress-bar mode="determinate" [value]="getJobProgress(job)"></mat-progress-bar>
+                            <span>
                                 {{ formatBytes(job.stats.bytes) }} / {{ formatBytes(job.stats.totalBytes) }}
                             </span>
-                        </td>
-                    </ng-container>
+                        </ng-container>
+                        <ng-container *ngIf="job.job_type === 'mount'">
+                            <span>-</span>
+                        </ng-container>
+                    </td>
+                </ng-container>
 
-                    <!-- Start Time Column -->
-                    <ng-container matColumnDef="startTime">
-                        <th mat-header-cell *matHeaderCellDef>Started</th>
-                        <td mat-cell *matCellDef="let job">{{ job.start_time | date:'short' }}</td>
-                    </ng-container>
+                <!-- Start Time Column -->
+                <ng-container matColumnDef="startTime">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Started</th>
+                    <td mat-cell *matCellDef="let job">{{ job.start_time | date:'short' }}</td>
+                </ng-container>
 
-                    <!-- Actions Column -->
-                    <ng-container matColumnDef="actions">
-                        <th mat-header-cell *matHeaderCellDef>Actions</th>
-                        <td mat-cell *matCellDef="let job">
-                            <button mat-icon-button *ngIf="job.status === 'Running'"
-                                (click)="stopOperation.emit({type: job.job_type, remoteName: job.remote_name})">
-                                <mat-icon svgIcon="stop"></mat-icon>
-                            </button>
-                        </td>
-                    </ng-container>
+                <!-- Actions Column -->
+                <ng-container matColumnDef="actions">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>Actions</th>
+                    <td mat-cell *matCellDef="let job">
+                        <button mat-icon-button matTooltip="Stop Job" *ngIf="job.status === 'Running'"
+                            (click)="stopOperation.emit({type: job.job_type, remoteName: job.remote_name})">
+                            <mat-icon svgIcon="stop"></mat-icon>
+                        </button>
+                        <button mat-icon-button matTooltip="Delete Job" color="warn" *ngIf="job.status !== 'Running'"
+                            (click)="deleteJob.emit(job.jobid)">
+                            <mat-icon svgIcon="trash"></mat-icon>
+                        </button>
+                    </td>
+                </ng-container>
 
-                    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-                </table>
-            </mat-card-content>
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                <tr class="mat-row" *matNoDataRow>
+                    <td class="mat-cell no-data" colspan="5">No job data found.</td>
+                </tr>
+            </table>
         </mat-card>
     </div>
 

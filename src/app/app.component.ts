@@ -1,4 +1,4 @@
-import { Component, inject } from "@angular/core";
+import { Component, inject, OnInit, OnDestroy, ChangeDetectorRef } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterOutlet } from "@angular/router";
 import { TitlebarComponent } from "./components/titlebar/titlebar.component";
@@ -6,7 +6,7 @@ import { OnboardingComponent } from "./components/onboarding/onboarding.componen
 import { HomeComponent } from "./home/home.component";
 import { SettingsService } from "./services/settings.service";
 import { IconService } from "./services/icon.service";
-import { listen } from "@tauri-apps/api/event";
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { RepairSheetComponent } from "./components/repair-sheet/repair-sheet.component";
 import {
   MatBottomSheet,
@@ -16,7 +16,14 @@ import { TabsButtonsComponent } from "./components/tabs-buttons/tabs-buttons.com
 import { Observable } from "rxjs";
 import { StateService } from "./services/state.service";
 import { invoke } from "@tauri-apps/api/core";
-// import { RightClickDirective } from './directives/right-click.directive';
+import { MatToolbarModule } from "@angular/material/toolbar";
+import {
+  animate,
+  state,
+  style,
+  transition,
+  trigger,
+} from "@angular/animations";
 
 @Component({
   selector: "app-root",
@@ -25,26 +32,76 @@ import { invoke } from "@tauri-apps/api/core";
     RouterOutlet,
     TitlebarComponent,
     OnboardingComponent,
-    HomeComponent /*, RightClickDirective*/,
+    HomeComponent,
     MatBottomSheetModule,
     TabsButtonsComponent,
+    MatToolbarModule,
+  ],
+  animations: [
+    trigger("slideToggle", [
+      state("hidden", style({ height: "0px", opacity: 0, overflow: "hidden" })),
+      state("visible", style({ height: "*", opacity: 1, overflow: "hidden" })),
+      transition("hidden <=> visible", animate("300ms ease-in-out")),
+    ]),
   ],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss",
 })
-export class AppComponent {
+export class AppComponent implements OnInit, OnDestroy {
   completedOnboarding: boolean = true;
   alreadyReported: boolean = false;
   private bottomSheet = inject(MatBottomSheet);
   isMobile$: Observable<boolean>;
+  isMeteredConnection: boolean = false;
+  private unlistenNetworkStatus: UnlistenFn | null = null;
 
   constructor(
     private settingsService: SettingsService,
     private stateService: StateService,
+    private cdr: ChangeDetectorRef,
     private iconService: IconService
   ) {
     this.checkOnboardingStatus();
     this.isMobile$ = this.stateService.isMobile$;
+  }
+
+  ngOnInit() {
+    this.checkMeteredConnection();
+    this.listenForNetworkStatus();
+  }
+
+  ngOnDestroy() {
+    if (this.unlistenNetworkStatus) {
+      this.unlistenNetworkStatus();
+      this.unlistenNetworkStatus = null;
+    }
+  }
+
+  async checkMeteredConnection() {
+    try {
+      const isMetered = await invoke("is_network_metered");
+      this.isMeteredConnection = !!isMetered;
+      if (isMetered) {
+        console.log("The network connection is metered.");
+      } else {
+        console.log("The network connection is not metered.");
+      }
+    } catch (e) {
+      console.error("Failed to check metered connection:", e);
+    }
+  }
+
+  private async listenForNetworkStatus() {
+    this.unlistenNetworkStatus = await listen("network-status-changed", (event: any) => {
+      const isMetered = event.payload?.isMetered;
+      this.isMeteredConnection = !!isMetered;
+      if (isMetered) {
+        console.log("Network is metered. Showing banner.");
+      } else {
+        console.log("Network is not metered. Hiding banner.");
+      }
+      this.cdr.detectChanges();
+    });
   }
 
   private async checkOnboardingStatus(): Promise<void> {
@@ -58,7 +115,9 @@ export class AppComponent {
     if (this.completedOnboarding) {
       // Check mount plugin status
       try {
-        const mountPluginOk = await invoke<boolean>("check_mount_plugin_installed");
+        const mountPluginOk = await invoke<boolean>(
+          "check_mount_plugin_installed"
+        );
         console.log("Mount plugin status: ", mountPluginOk);
         if (!mountPluginOk) {
           this.bottomSheet.open(RepairSheetComponent, {

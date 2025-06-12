@@ -1,6 +1,6 @@
 <div class="sidebar">
   <div class="sidebar-header" (click)="toggleSearch()" matTooltip="Toggle search bar" aria-label="Toggle search bar"
-   matTooltipShowDelay="500">
+    matTooltipShowDelay="500">
     <h3>Remotes <mat-icon svgIcon="remotes"></mat-icon></h3>
   </div>
   <div class="search-container" [@slideToggle]="searchVisible ? 'visible' : 'hidden'">
@@ -15,14 +15,16 @@
           | titlecase }}
         </p>
         <div class="remote-status">
-          <p class="mount" [class.active]="remote.mountState?.mounted" [class.passive]="!remote.mountState?.mounted">
+          <p *ngIf="remote.mountState" [ngClass]="['mount', remote.mountState.mounted ? 'active' : 'passive']"
+            aria-label="Mount status" [matTooltip]="remote.mountState.mounted ? 'Mounted' : 'Not Mounted'">
             <mat-icon svgIcon="mount"></mat-icon>
           </p>
-          <p class="sync" [class.active]="remote.syncState?.isOnSync" [class.passive]="!remote.syncState?.isOnSync">
+          <p *ngIf="remote.syncState" [ngClass]="['sync', remote.syncState.isOnSync ? 'active' : 'passive']"
+            aria-label="Sync status" [matTooltip]="remote.syncState.isOnSync ? 'Syncing' : 'Idle'">
             <mat-icon svgIcon="sync"></mat-icon>
           </p>
-
-          <p class="copy" [class.active]="remote.copyState?.isOnCopy" [class.passive]="!remote.copyState?.isOnCopy">
+          <p *ngIf="remote.copyState" [ngClass]="['copy', remote.copyState.isOnCopy ? 'active' : 'passive']"
+            aria-label="Copy status" [matTooltip]="remote.copyState.isOnCopy ? 'Copying' : 'Idle'">
             <mat-icon svgIcon="copy"></mat-icon>
           </p>
         </div>

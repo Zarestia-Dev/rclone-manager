@@ -238,3 +238,9 @@ pub struct DynamicLogger;
 pub struct JobResponse {
     pub jobid: u64,
 }
+
+#[derive(Clone, Serialize)]
+pub struct NetworkStatusPayload {
+  #[serde(rename = "isMetered")]
+  pub is_metered: bool,
+}

@@ -31,18 +31,13 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      font-size: 16px;
-      color: var(--app-text-color);
 
       p {
         display: inline-flex;
         align-items: center;
-        padding: 4px 10px;
+        padding: 6px;
         border-radius: var(--border-radius);
-        font-weight: 500;
-        font-size: 1rem;
         transition: all 0.3s;
-        outline: none;
 
         &.mount.active {
           color: var(--accent-color);
@@ -71,9 +66,6 @@
         &.passive {
           color: var(--orange);
           background-color: color-mix(in srgb, var(--orange) 20%, transparent);
-        }
-        &:focus {
-          box-shadow: 0 0 0 2px var(--primary-color);
         }
       }
     }
@@ -172,30 +164,37 @@
         }
       }
     }
-  }
-
-  h3 {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-    font-size: 18px;
-    color: var(--app-text-color);
-  }
-
-  .info-card-content {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    width: 100%;
-    padding-block: 10px;
-    border-radius: 8px;
 
     .button-container {
       display: flex;
       justify-content: space-evenly;
       align-items: center;
       gap: 10px;
+    }
+  }
+
+  .jobs-content {
+    overflow-y: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    max-height: 30vh;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+
+    .type-column {
+      .job-type {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 16px;
+        color: var(--app-text-color);
+      }
+    }
+
+    .no-data {
+      padding: 8px;
     }
   }
 }

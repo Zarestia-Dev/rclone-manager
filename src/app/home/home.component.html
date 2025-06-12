@@ -113,7 +113,8 @@
         [jobs]="getJobsForRemote(selectedRemote.remoteSpecs.name)"
         (stopOperation)="stopOperation($event.type, $event.remoteName)"
         (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        [iconService]="iconService" [selectedRemote]="selectedRemote"></app-general-detail>
+        [iconService]="iconService" [selectedRemote]="selectedRemote"
+        (deleteJob)="deleteJob($event)"></app-general-detail>
     </ng-container>
   </mat-sidenav-content>
 </mat-sidenav-container>

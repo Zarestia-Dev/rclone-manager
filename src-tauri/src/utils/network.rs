@@ -100,26 +100,178 @@ impl LinkChecker {
     }
 }
 
+#[cfg(target_os = "linux")]
+pub fn is_metered() -> bool {
+    use zbus::blocking::{Connection, Proxy};
+
+    let connection = Connection::system().unwrap();
+    let proxy = Proxy::new(
+        &connection,
+        "org.freedesktop.NetworkManager",
+        "/org/freedesktop/NetworkManager",
+        "org.freedesktop.NetworkManager",
+    )
+    .unwrap();
+
+    // The Metered property returns an enum:
+    // 0: Unknown, 1: Yes, 2: No, 3: Guess-Yes, 4: Guess-No
+    let metered_status: u32 = proxy.get_property("Metered").unwrap();
+
+    matches!(metered_status, 1 | 3)
+}
+
+// Make sure you have these `use` statements for the Linux implementation
+#[cfg(target_os = "linux")]
+use {
+    futures_lite::stream::StreamExt,
+    zbus::Connection,
+};
+
+#[cfg(target_os = "linux")]
+pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+    let connection = match Connection::system().await {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Failed to connect to D-Bus: {}", e);
+            return;
+        }
+    };
+
+    let proxy = zbus::Proxy::new(
+        &connection,
+        "org.freedesktop.NetworkManager",
+        "/org/freedesktop/NetworkManager",
+        "org.freedesktop.NetworkManager",
+    )
+    .await
+    .unwrap();
+
+    // Listen for changes to the "Metered" property.
+    let mut metered_changed_stream = proxy
+        .receive_property_changed::<u32>("Metered")
+        .await;
+    println!("Listening for NetworkManager 'Metered' property changes...");
+
+    use crate::utils::types::NetworkStatusPayload;
+
+    while let Some(_metered_status) = metered_changed_stream.next().await {
+        use tauri::Emitter;
+
+        println!("'Metered' property changed!");
+
+        let payload = NetworkStatusPayload { is_metered: is_metered() };
+        app_handle.emit("network-status-changed", payload).unwrap();
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub fn is_metered() -> bool {
+    use network_interface::{NetworkInterface, NetworkInterfaceConfig};
+
+    if let Ok(interfaces) = NetworkInterface::show() {
+        for itf in interfaces {
+            // This is an assumption-based check. You might need to refine the keywords.
+            // "pdp_ip" is often associated with cellular connections.
+            if itf.name.starts_with("pdp_ip") {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[cfg(target_os = "macos")]
+async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+    let mut last_status = is_metered();
+    loop {
+        // Poll every 5 seconds
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
+        let current_status = is_metered();
+        if current_status != last_status {
+            last_status = current_status;
+            let payload = NetworkStatusPayload {
+                is_metered: current_status,
+            };
+            app_handle.emit("network-status-changed", payload).unwrap();
+        }
+    }
+}
+
+#[cfg(windows)]
+pub fn is_metered() -> bool {
+    use windows::Networking::Connectivity::{NetworkCostType, NetworkInformation};
+
+    let profile = NetworkInformation::GetInternetConnectionProfile().unwrap();
+    let cost = profile.GetConnectionCost().unwrap();
+
+    matches!(
+        cost.NetworkCostType().unwrap(),
+        NetworkCostType::Fixed | NetworkCostType::Variable
+    )
+}
+
+#[cfg(windows)]
+async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+    use windows::Networking::Connectivity::{NetworkInformation, NetworkStatusChangedEventHandler};
+    use windows::core::AgileReference;
+
+    let handler = NetworkStatusChangedEventHandler::new(move |_| {
+        let payload = NetworkStatusPayload {
+            is_metered: is_metered(),
+        };
+        app_handle.emit("network-status-changed", payload).unwrap();
+        Ok(())
+    });
+
+    let token = NetworkInformation::NetworkStatusChanged(&handler).unwrap();
+
+    // Keep the task alive. In a real app, you might want a channel
+    // to gracefully shut down this loop.
+    loop {
+        tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+    }
+
+    // In a real shutdown scenario, you would unregister the token:
+    // NetworkInformation::RemoveNetworkStatusChanged(token).unwrap();
+}
+
+#[tauri::command]
+pub fn is_network_metered() -> bool {
+    #[cfg(target_os = "linux")]
+    return is_metered();
+
+    #[cfg(windows)]
+    return is_metered();
+
+    #[cfg(target_os = "macos")]
+    return is_metered();
+
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
+    return false; // Default for unsupported platforms
+}
 
 #[tauri::command]
 pub async fn kill_process(pid: u32) -> Result<(), String> {
     #[cfg(target_family = "unix")]
     {
-        use nix::libc::{kill, SIGKILL};
-
+        use nix::libc::{SIGKILL, kill};
 
         let result = unsafe { kill(pid as i32, SIGKILL) };
         if result == 0 {
             Ok(())
         } else {
-            Err(format!("Failed to kill process: {}", std::io::Error::last_os_error()))
+            Err(format!(
+                "Failed to kill process: {}",
+                std::io::Error::last_os_error()
+            ))
         }
     }
     #[cfg(target_family = "windows")]
     {
-        use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess};
-        use windows_sys::Win32::System::Threading::PROCESS_TERMINATE;
         use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::Threading::PROCESS_TERMINATE;
+        use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess};
 
         unsafe {
             let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);

@@ -279,6 +279,18 @@ export class HomeComponent implements OnInit, OnDestroy {
     );
   }
 
+  async deleteJob(jobId: number): Promise<void> {
+    try {
+      await this.rcloneService.deleteJob(jobId);
+      this.infoService.openSnackBar(`Job ${jobId} deleted successfully.`, "Close");
+      // Refresh jobs after deletion
+      await this.loadJobs();
+      this.cdr.markForCheck();
+    } catch (error) {
+      this.handleError(`Failed to delete job ${jobId}`, error);
+    }
+  }
+
   // Modal Dialogs
   openQuickAddRemoteModal(): void {
     this.dialog.open(QuickAddRemoteComponent, {

@@ -46,7 +46,7 @@ use crate::{
                 get_sync_flags, get_vfs_flags,
             },
             state::{
-                clear_remote_logs, get_active_jobs, get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status, get_jobs, get_remote_logs, get_settings, remove_job, CACHE, ENGINE_STATE
+                clear_remote_logs, delete_job, get_active_jobs, get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status, get_jobs, get_remote_logs, get_settings, CACHE, ENGINE_STATE
             },
         },
         mount::{check_mount_plugin_installed, install_mount_plugin},
@@ -55,7 +55,7 @@ use crate::{
         builder::{create_app_window, setup_tray},
         file_helper::{get_file_location, get_folder_location, open_in_files},
         log::init_logging,
-        network::{check_links, kill_process},
+        network::{check_links, is_network_metered, kill_process, monitor_network_changes},
         rclone::provision::provision_rclone,
         types::{AppSettings, RcApiEngine, RcloneState, SettingsState},
     },
@@ -244,7 +244,8 @@ pub fn run() {
             let app_handle_clone = app_handle.clone();
             tauri::async_runtime::spawn(async move {
                 async_startup(app_handle_clone.clone(), settings).await;
-                handle_startup(app_handle_clone).await;
+                handle_startup(app_handle_clone.clone()).await;
+                monitor_network_changes(app_handle_clone).await;
             });
 
             // Only create window if not starting with tray
@@ -344,6 +345,7 @@ pub fn run() {
             reset_settings,
             // Network
             check_links,
+            is_network_metered,
             // Mount plugin
             check_mount_plugin_installed,
             install_mount_plugin,
@@ -363,7 +365,7 @@ pub fn run() {
             get_active_jobs,
             get_job_status,
             stop_job,
-            remove_job,
+            delete_job,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

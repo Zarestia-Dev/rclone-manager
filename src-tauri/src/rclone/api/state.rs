@@ -297,7 +297,7 @@ impl JobCache {
         jobs.push(job);
     }
 
-    pub async fn remove_job(&self, jobid: u64) -> Result<(), String> {
+    pub async fn delete_job(&self, jobid: u64) -> Result<(), String> {
         let mut jobs = self.jobs.write().await;
         let len_before = jobs.len();
         jobs.retain(|j| j.jobid != jobid);
@@ -369,8 +369,8 @@ pub async fn get_jobs() -> Result<Vec<JobInfo>, String> {
 }
 
 #[tauri::command]
-pub async fn remove_job(jobid: u64) -> Result<(), String> {
-    JOB_CACHE.remove_job(jobid).await
+pub async fn delete_job(jobid: u64) -> Result<(), String> {
+    JOB_CACHE.delete_job(jobid).await
 }
 
 #[tauri::command]

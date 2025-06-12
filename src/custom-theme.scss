@@ -339,6 +339,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
     /* Define custom colors for light mode */
     --app-background: #fafafa;
     --secondary-background: #ffffff;
+    --banner-background: #d4d4d7; //rgba(212, 212, 215, 0.85);
     --sidebar-background: #f5f5f5;
     --box-shadow: 0 0 0 1px rgba(232, 232, 233, 1),
       0 0 4px 1px rgba(10, 10, 11, 0.06);
@@ -361,6 +362,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
     /* Define custom colors for dark mode */
     --app-background: #222226;
     --secondary-background: #000000;
+    --banner-background: #3d3d42; // rgba(61, 61, 66, 0.85); 
     --sidebar-background: #050505;
     --box-shadow: 0 0 0 1px rgba(32, 32, 36, 1), 0 0 4px 1px rgba(0, 0, 0, 0.06);
     --selected-tab-color: #2f2f30;

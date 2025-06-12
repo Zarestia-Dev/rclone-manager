@@ -2,6 +2,19 @@
   position: relative;
 }
 
+.metered-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  font-size: 16px;
+  font-weight: 600;
+  background-color: var(--banner-background);
+  mat-icon {
+    margin-right: 8px;
+  }
+}
+
 .onboarding {
   position: absolute;
   left: 0;

@@ -11,6 +11,9 @@
 <div class="app-wrapper">
   <router-outlet></router-outlet>
   <app-titlebar class="title-bar"></app-titlebar>
+  <mat-toolbar [@slideToggle]="isMeteredConnection ? 'visible' : 'hidden'" class="metered-banner" role="alert">
+    You are on a metered connection. Some features may use extra data.
+  </mat-toolbar>
   <app-onboarding *ngIf="!completedOnboarding" class="onboarding" (completed)="finishOnboarding()">
   </app-onboarding>
   <app-home appRightClick></app-home> <!-- Enable Right-Click on Home -->
