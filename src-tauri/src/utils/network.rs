@@ -1,4 +1,6 @@
+use crate::utils::types::NetworkStatusPayload;
 use std::collections::HashMap;
+use tauri::Emitter;
 use tauri::command;
 
 use crate::utils::types::{CheckResult, LinkChecker};
@@ -122,10 +124,7 @@ pub fn is_metered() -> bool {
 
 // Make sure you have these `use` statements for the Linux implementation
 #[cfg(target_os = "linux")]
-use {
-    futures_lite::stream::StreamExt,
-    zbus::Connection,
-};
+use {futures_lite::stream::StreamExt, zbus::Connection};
 
 #[cfg(target_os = "linux")]
 pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
@@ -147,19 +146,15 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     .unwrap();
 
     // Listen for changes to the "Metered" property.
-    let mut metered_changed_stream = proxy
-        .receive_property_changed::<u32>("Metered")
-        .await;
+    let mut metered_changed_stream = proxy.receive_property_changed::<u32>("Metered").await;
     println!("Listening for NetworkManager 'Metered' property changes...");
 
-    use crate::utils::types::NetworkStatusPayload;
-
     while let Some(_metered_status) = metered_changed_stream.next().await {
-        use tauri::Emitter;
-
         println!("'Metered' property changed!");
 
-        let payload = NetworkStatusPayload { is_metered: is_metered() };
+        let payload = NetworkStatusPayload {
+            is_metered: is_metered(),
+        };
         app_handle.emit("network-status-changed", payload).unwrap();
     }
 }
@@ -212,9 +207,8 @@ pub fn is_metered() -> bool {
 }
 
 #[cfg(windows)]
-async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     use windows::Networking::Connectivity::{NetworkInformation, NetworkStatusChangedEventHandler};
-    use windows::core::AgileReference;
 
     let handler = NetworkStatusChangedEventHandler::new(move |_| {
         let payload = NetworkStatusPayload {
@@ -224,16 +218,7 @@ async fn monitor_network_changes(app_handle: tauri::AppHandle) {
         Ok(())
     });
 
-    let token = NetworkInformation::NetworkStatusChanged(&handler).unwrap();
-
-    // Keep the task alive. In a real app, you might want a channel
-    // to gracefully shut down this loop.
-    loop {
-        tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
-    }
-
-    // In a real shutdown scenario, you would unregister the token:
-    // NetworkInformation::RemoveNetworkStatusChanged(token).unwrap();
+    let _token = NetworkInformation::NetworkStatusChanged(&handler).unwrap();
 }
 
 #[tauri::command]
