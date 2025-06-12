@@ -78,7 +78,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   // UI State
   isSidebarOpen = false;
   sidebarMode: MatDrawerMode = "side";
-  currentTab: AppTab = "mount";
+  currentTab: AppTab = "general";
   isLoading = false;
   restrictMode = true;
   jobs: JobInfo[] = [];

@@ -253,7 +253,7 @@ export class PreferencesModalComponent implements OnInit {
   async resetSettings() {
     try {
       await this.settingsService.resetSettings();
-      this.loadSettings();
+      await this.loadSettings();
     } catch (error) {
       console.error("Error resetting settings:", error);
     }

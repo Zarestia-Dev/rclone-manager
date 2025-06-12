@@ -500,4 +500,40 @@ export class RcloneService {
       throw error;
     }
   }
+
+  async getMemoryStats(): Promise<any> {
+    try {
+      return await invoke<any>("get_memory_stats");
+    } catch (error) {
+      console.error("Error fetching memory stats:", error);
+      return null;
+    }
+  }
+
+  async getCoreStats(): Promise<any> {
+    try {
+      return await invoke<any>("get_core_stats");
+    } catch (error) {
+      console.error("Error fetching core stats:", error);
+      return null;
+    }
+  }
+
+  async getBandwidthLimit(): Promise<any> {
+    try {
+      return await invoke<any>("get_bandwidth_limit");
+    } catch (error) {
+      console.error("Error fetching bandwidth limit:", error);
+      return null;
+    }
+  }
+
+  async setBandwidthLimit(rate?: string): Promise<any> {
+    try {
+      return await invoke<any>("set_bandwidth_limit", { rate });
+    } catch (error) {
+      console.error("Error setting bandwidth limit:", error);
+      return null;
+    }
+  }
 }

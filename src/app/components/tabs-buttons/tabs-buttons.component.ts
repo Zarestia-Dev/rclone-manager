@@ -12,7 +12,7 @@ import { AppTab } from "../../shared/components/types";
   styleUrl: "./tabs-buttons.component.scss",
 })
 export class TabsButtonsComponent {
-  currentTab: AppTab = "mount";
+  currentTab: AppTab = "general";
 
   constructor(private stateService: StateService) {}
   setTab(tab: AppTab) {

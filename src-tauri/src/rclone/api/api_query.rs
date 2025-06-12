@@ -437,7 +437,7 @@ pub async fn get_bandwidth_limit(
 
     let response = state
         .client
-        .get(&url)
+        .post(&url)
         .timeout(Duration::from_secs(10))
         .send()
         .await
@@ -509,4 +509,50 @@ pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>
             Err(format!("Failed to query /core/pid: {}", e))
         }
     }
+}
+
+/// Get RClone memory statistics
+#[tauri::command]
+pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
+    let url = format!("{}/core/memstats", ENGINE_STATE.get_api().0);
+    
+    let response = state
+        .client
+        .post(&url)
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to get memory stats: {}", e))?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        return Err(format!("HTTP {}: {}", status, body));
+    }
+
+    serde_json::from_str(&body).map_err(|e| format!("Failed to parse memory stats: {}", e))
+}
+
+/// Get RClone core statistics  
+#[tauri::command]
+pub async fn get_core_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
+    let url = format!("{}/core/stats", ENGINE_STATE.get_api().0);
+    
+    let response = state
+        .client
+        .post(&url)
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to get core stats: {}", e))?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        return Err(format!("HTTP {}: {}", status, body));
+    }
+
+    serde_json::from_str(&body).map_err(|e| format!("Failed to parse core stats: {}", e))
 }

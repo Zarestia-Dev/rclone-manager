@@ -35,7 +35,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppOverviewComponent {
-  @Input() mode: AppTab = "mount"; // Default to 'general' mode
+  @Input() mode: AppTab = "general"; // Default to 'general' mode
   @Input() remotes: Remote[] = [];
   @Input() selectedRemote: Remote | null = null;
   @Input() iconService: any;
@@ -100,16 +100,14 @@ export class AppOverviewComponent {
   }
 
   get title(): string {
-    switch (this.mode) {
-      case "mount":
-        return "Mount Overview";
-      case "sync":
-        return "Sync Overview";
-      case "copy":
-        return "Copy Overview";
-      default:
-        return "Overview";
+    if (this.mode === "mount") {
+      return "Remotes Overview";
+    } else if (this.mode === "sync") {
+      return "Sync Overview";
+    } else if (this.mode === "copy") {
+      return "Copy Overview";
     }
+    return "Remotes Overview";
   }
 
   get primaryActionLabel(): string {

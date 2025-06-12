@@ -12,7 +12,7 @@ import { AppTab } from "../shared/components/types";
 })
 export class StateService {
   private currentTab = new BehaviorSubject<AppTab>(
-    "mount" as AppTab
+    "general" as AppTab
   );
 
   private viewportSettings = {

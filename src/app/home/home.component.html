@@ -80,8 +80,7 @@
 
     <!-- Overview Components -->
     <ng-container *ngIf="remotes.length > 0 && !selectedRemote && !isLoading">
-      <app-general-overview *ngIf="currentTab === 'general'"
-        (openQuickAddRemoteModal)="openQuickAddRemoteModal()"></app-general-overview>
+      <app-general-overview *ngIf="currentTab === 'general'"></app-general-overview>
       <app-app-overview *ngIf="currentTab !== 'general'" [mode]="currentTab" [iconService]="iconService"
         [remotes]="remotes" (remoteSelected)="selectRemote($event)"
         (primaryAction)="currentTab === 'mount' ? mountRemote($event) : (currentTab === 'sync' || currentTab === 'copy' ? startOperation(currentTab, $event) : null)"

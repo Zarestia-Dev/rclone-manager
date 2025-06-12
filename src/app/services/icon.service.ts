@@ -86,6 +86,7 @@ export class IconService {
       "arrow-down": "assets/icons/circle-chevron-down.svg",
       "caret-up": "assets/icons/caret-up.svg",
       "caret-down": "assets/icons/caret-down.svg",
+      "right-left": "assets/icons/right-left.svg",
     };
 
     this.icons = icons;

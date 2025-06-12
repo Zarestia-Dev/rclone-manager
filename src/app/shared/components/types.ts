@@ -188,6 +188,59 @@ export interface RepairData {
   message?: string;
 }
 
+export interface BandwidthLimitResponse {
+  bytesPerSecond: number;
+  bytesPerSecondRx: number;
+  bytesPerSecondTx: number;
+  rate: string;
+}
+
+export interface MemoryStats {
+  Alloc: number;
+  BuckHashSys: number;
+  Frees: number;
+  GCSys: number;
+  HeapAlloc: number;
+  HeapIdle: number;
+  HeapInuse: number;
+  HeapObjects: number;
+  HeapReleased: number;
+  HeapSys: number;
+  MCacheInuse: number;
+  MCacheSys: number;
+  MSpanInuse: number;
+  MSpanSys: number;
+  Mallocs: number;
+  OtherSys: number;
+  StackInuse: number;
+  StackSys: number;
+  Sys: number;
+  TotalAlloc: number;
+}
+
+export interface CoreStats {
+  bytes: number;
+  checks: number;
+  deletedDirs: number;
+  deletes: number;
+  elapsedTime: number;
+  errors: number;
+  eta: number | null;
+  fatalError: boolean;
+  renames: number;
+  retryError: boolean;
+  serverSideCopies: number;
+  serverSideCopyBytes: number;
+  serverSideMoveBytes: number;
+  serverSideMoves: number;
+  speed: number;
+  totalBytes: number;
+  totalChecks: number;
+  totalTransfers: number;
+  transferTime: number;
+  transfers: number;
+}
+
 export const SENSITIVE_KEYS = [
   "password",
   "secret",

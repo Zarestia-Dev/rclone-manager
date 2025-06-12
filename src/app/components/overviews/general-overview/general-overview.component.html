@@ -1,0 +1,103 @@
+<!-- general-overview.component.html -->
+<div class="general-overview" @fadeInOut>
+  <div class="overview-header">
+    <h2>
+      RClone Manager
+    </h2>
+  </div>
+
+  <div class="overview-content">
+    <!-- Bandwidth Limit Card -->
+    <mat-card class="bandwidth-card">
+      <mat-card-content>
+        <div class="bandwidth-header">
+          <mat-icon svgIcon="right-left" class="bandwidth-icon"></mat-icon>
+          <h3>Bandwidth Limit</h3>
+        </div>
+        
+        <div class="bandwidth-content" *ngIf="!isLoadingBandwidth && !bandwidthError">
+          <div class="bandwidth-status" [ngClass]="{
+            'limited': isBandwidthLimited,
+            'unlimited': !isBandwidthLimited
+          }">
+            <div class="status-indicator"></div>
+            <span class="status-text">{{ bandwidthDisplayValue }}</span>
+          </div>
+          
+          <div class="bandwidth-details" *ngIf="isBandwidthLimited && bandwidthLimit">
+            <div class="detail-item">
+              <span class="label">Upload:</span>
+              <span class="value">{{ bandwidthLimit.bytesPerSecondTx | number }} B/s</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Download:</span>
+              <span class="value">{{ bandwidthLimit.bytesPerSecondRx | number }} B/s</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Total:</span>
+              <span class="value">{{ bandwidthLimit.bytesPerSecond | number }} B/s</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bandwidth-loading" *ngIf="isLoadingBandwidth">
+          <mat-spinner diameter="24"></mat-spinner>
+          <span>Loading bandwidth information...</span>
+        </div>
+
+        <div class="bandwidth-error" *ngIf="bandwidthError">
+          <mat-icon svgIcon="circle-exclamation"></mat-icon>
+          <span>{{ bandwidthError }}</span>
+          <button mat-icon-button (click)="loadBandwidthLimit()" matTooltip="Retry">
+            <mat-icon svgIcon="refresh"></mat-icon>
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- System Info Card -->
+    <mat-card class="system-info-card" @fadeInOut>
+      <mat-card-content>
+        <h3>
+          <mat-icon svgIcon="question"></mat-icon>
+          System Information
+        </h3>
+        
+        <div class="info-grid" *ngIf="!isLoadingStats">
+          <div class="info-item">
+            <span class="label">RClone Status:</span>
+            <span class="value" [ngClass]="systemStatusColor">
+              <div class="status-dot" [ngClass]="{ 'active': systemStats.rcloneStatus === 'active' }"></div>
+              {{ systemStats.rcloneStatus | titlecase }}
+            </span>
+          </div>
+          <div class="info-item">
+            <span class="label">Total Remotes:</span>
+            <span class="value">{{ systemStats.totalRemotes }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Active Jobs:</span>
+            <span class="value">{{ systemStats.activeJobs }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Data Transferred:</span>
+            <span class="value">{{ systemStats.dataTransferred }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Memory Usage:</span>
+            <span class="value">{{ systemStats.memoryUsage }}</span>
+          </div>
+          <div class="info-item">
+            <span class="label">Uptime:</span>
+            <span class="value">{{ systemStats.uptime }}</span>
+          </div>
+        </div>
+
+        <div class="info-loading" *ngIf="isLoadingStats">
+          <mat-spinner diameter="24"></mat-spinner>
+          <span>Loading system information...</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>
