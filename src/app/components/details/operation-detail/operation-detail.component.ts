@@ -40,7 +40,7 @@ import {
   RemoteSettings,
   RemoteSettingsSection,
   SENSITIVE_KEYS,
-  SyncStats,
+  GlobalStats,
   TransferFile,
 } from "../../../shared/components/types";
 
@@ -144,7 +144,7 @@ export class OperationDetailComponent
   dataSource = new MatTableDataSource<TransferFile>([]);
   displayedColumns: string[] = ["name", "percentage", "speed", "size", "eta"];
 
-  stats: SyncStats = this.getDefaultStats();
+  stats: GlobalStats = this.getDefaultStats();
   currentJobId?: number;
   isLoading = false;
   errorMessage = "";
@@ -351,7 +351,7 @@ export class OperationDetailComponent
     ];
   }
 
-  private getDefaultStats(): SyncStats {
+  private getDefaultStats(): GlobalStats {
     return {
       bytes: 0,
       checks: 0,

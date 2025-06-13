@@ -36,6 +36,7 @@ export class IconService {
       "hard-drive": "assets/icons/hard-drive.svg",
       folder: "assets/icons/folder.svg",
       "circle-exclamation": "assets/icons/circle-exclamation.svg",
+      "circle-info": "assets/icons/circle-info.svg",
       "circle-xmark": "assets/icons/circle-xmark.svg",
       wrench: "assets/icons/wrench.svg",
       pen: "assets/icons/pen.svg",

@@ -2,6 +2,7 @@
 // For more information: https://material.angular.io/guide/theming
 @use "@angular/material" as mat;
 @use "sass:map";
+@use "sass:color";
 // Plus imports for other components in your app.
 
 // Include the common styles for Angular Material. We include this here so that you only
@@ -338,7 +339,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   & {
     /* Define custom colors for light mode */
     --app-background: #fafafa;
-    --secondary-background: #ffffff;
+    --secondary-background: rgb(255, 255, 255);
     --banner-background: #d4d4d7; //rgba(212, 212, 215, 0.85);
     --sidebar-background: #f5f5f5;
     --box-shadow: 0 0 0 1px rgba(232, 232, 233, 1),
@@ -362,7 +363,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
     /* Define custom colors for dark mode */
     --app-background: #222226;
     --secondary-background: #000000;
-    --banner-background: #3d3d42; // rgba(61, 61, 66, 0.85); 
+    --banner-background: #3d3d42; // rgba(61, 61, 66, 0.85);
     --sidebar-background: #050505;
     --box-shadow: 0 0 0 1px rgba(32, 32, 36, 1), 0 0 4px 1px rgba(0, 0, 0, 0.06);
     --selected-tab-color: #2f2f30;
@@ -377,6 +378,43 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
 }
 
 :root {
+  --accent-color-rgb: #{color.channel(map.get($adwaita-blue-palette, 500), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-blue-palette, 500), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-blue-palette, 500), "blue", $space: rgb)};
+  --warn-color-rgb: #{color.channel(map.get($adwaita-red-palette, 400), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-red-palette, 400), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-red-palette, 400), "blue", $space: rgb)};
+  --primary-color-rgb: #{color.channel(map.get($adwaita-green-palette, 500), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-green-palette, 500), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-green-palette, 500), "blue", $space: rgb)};
+  --purple-rgb: #{color.channel(map.get($adwaita-purple-palette, 500), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-purple-palette, 500), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-purple-palette, 500), "blue", $space: rgb)};
+  --orange-rgb: #{color.channel(map.get($adwaita-orange-palette, 500), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-orange-palette, 500), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-orange-palette, 500), "blue", $space: rgb)};
+  --yellow-rgb: #{color.channel(map.get($adwaita-yellow-palette, 500), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-yellow-palette, 500), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-yellow-palette, 500), "blue", $space: rgb)};
+  --light-green-rgb: #{color.channel(map.get($adwaita-green-palette, 300), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-green-palette, 300), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-green-palette, 300), "blue", $space: rgb)};
+  --light-orange-rgb: #{color.channel(map.get($adwaita-orange-palette, 300), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-orange-palette, 300), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-orange-palette, 300), "blue", $space: rgb)};
+  --light-blue-rgb: #{color.channel(map.get($adwaita-blue-palette, 300), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-blue-palette, 300), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-blue-palette, 300), "blue", $space: rgb)};
+  --red-rgb: #{color.channel(map.get($adwaita-red-palette, 500), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-red-palette, 500), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-red-palette, 500), "blue", $space: rgb)};
+  --light-theme-color-rgb: #{color.channel(map.get($adwaita-light-palette, 50), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-light-palette, 50), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-light-palette, 50), "blue", $space: rgb)};
+  --dark-theme-color-rgb: #{color.channel(map.get($adwaita-light-palette, 900), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-light-palette, 900), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-light-palette, 900), "blue", $space: rgb)};
+
   --accent-color: #{map.get($adwaita-blue-palette, 500)};
   --warn-color: #{map.get($adwaita-red-palette, 500)};
   --primary-color: #{map.get($adwaita-green-palette, 500)};
@@ -469,15 +507,6 @@ h6 {
   border-radius: var(--button-border-radius) !important;
 }
 
-@keyframes diskLoadingShimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
 // Fix for mat-icon overflow issues in Windows
 mat-icon {
   overflow: visible !important;
@@ -558,3 +587,63 @@ button {
     border-radius: var(--title-bar-radius) !important;
   }
 }
+
+// Animations
+
+@keyframes diskLoadingShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulseBlue {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(var(--primary-color-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0);
+  }
+}
+
+@keyframes pulseGreen {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--light-green-rgb), 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(var(--light-green-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--light-green-rgb), 0);
+  }
+}
+
+@keyframes breathing {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.05);
+    filter: brightness(1.1);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+  

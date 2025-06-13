@@ -2,8 +2,6 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  width: 100%;
-  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
 
@@ -25,255 +23,367 @@
 
   .overview-content {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 20px;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
 
-    @media (max-width: 768px) {
-      grid-template-columns: 1fr;
-    }
+    .info-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      background-color: rgba(0, 0, 0, 0.03);
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
 
-    mat-card {
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      transition: all 0.3s ease;
-      background: var(--secondary-background);
-
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-      }
-
-      mat-card-content {
-        padding: 24px;
-      }
-
-      h3 {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin: 0 0 16px 0;
-        font-size: 18px;
-        font-weight: 600;
+      .label {
+        font-size: 12px;
         color: var(--app-text-color);
+        opacity: 0.7;
+      }
 
-        mat-icon {
+      .value {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+        font-size: 16px;
+
+        &.success,
+        &.status-active {
           color: var(--primary-color);
-          font-size: 20px;
-          width: 20px;
-          height: 20px;
-        }
-      }
-    }
-
-    // Bandwidth Card Styles
-    .bandwidth-card {
-      overflow: hidden;
-      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-
-      .bandwidth-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 16px;
-
-        .bandwidth-icon {
-          color: var(--accent-color);
-          font-size: 20px;
-          width: 20px;
-          height: 20px;
         }
 
-        h3 {
-          margin: 0;
-        }
-      }
-
-      .bandwidth-content {
-        .bandwidth-status {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 12px 16px;
-          border-radius: 8px;
-          margin-bottom: 16px;
-          transition: all 0.3s ease;
-
-          &.limited {
-            background: linear-gradient(45deg, rgba(255, 193, 7, 0.1), rgba(255, 193, 7, 0.05));
-            border: 1px solid rgba(255, 193, 7, 0.3);
-
-            .status-indicator {
-              background: var(--yellow);
-              box-shadow: 0 0 10px rgba(255, 193, 7, 0.4);
-            }
-          }
-
-          &.unlimited {
-            background: linear-gradient(45deg, rgba(76, 175, 80, 0.1), rgba(76, 175, 80, 0.05));
-            border: 1px solid rgba(76, 175, 80, 0.3);
-
-            .status-indicator {
-              background: var(--primary-color);
-              box-shadow: 0 0 10px rgba(76, 175, 80, 0.4);
-            }
-          }
-
-          .status-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-          }
-
-          .status-text {
-            font-weight: 500;
-            color: var(--app-text-color);
-          }
+        &.warning {
+          color: var(--orange);
         }
 
-        .bandwidth-details {
-          display: grid;
-          gap: 8px;
-
-          .detail-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            background: var(--hover-color);
-            border-radius: 6px;
-            transition: background-color 0.2s ease;
-
-            &:hover {
-              background: var(--hover-color-darker);
-            }
-
-            .label {
-              color: var(--app-text-color-secondary);
-              font-size: 14px;
-            }
-
-            .value {
-              font-weight: 500;
-              color: var(--app-text-color);
-              font-family: monospace;
-            }
-          }
-        }
-      }
-
-      .bandwidth-loading {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 16px;
-        color: var(--app-text-color-secondary);
-
-        mat-spinner {
-          flex-shrink: 0;
-        }
-      }
-
-      .bandwidth-error {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px;
-        background: rgba(244, 67, 54, 0.1);
-        border: 1px solid rgba(244, 67, 54, 0.3);
-        border-radius: 8px;
-        color: var(--warn-color);
-
-        mat-icon {
-          flex-shrink: 0;
-        }
-
-        span {
-          flex: 1;
-        }
-
-        button {
+        &.error,
+        &.status-error {
           color: var(--warn-color);
         }
+
+        &.status-inactive {
+          color: var(--secondary-text-color);
+        }
+      }
+
+      .status-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: var(--secondary-text-color);
+
+        &.active {
+          background-color: var(--primary-color);
+        }
       }
     }
 
-    // System Info Card Styles
-    .system-info-card {
-      .info-grid {
-        display: grid;
-        gap: 12px;
+    mat-accordion {
+      .mat-expansion-panel {
+        background-color: var(--secondary-background);
+        border-radius: 12px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 16px;
+        overflow: hidden;
+        transition: box-shadow 0.3s ease;
 
-        .info-item {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 12px 16px;
-          background: var(--hover-color);
-          border-radius: 8px;
-          transition: background-color 0.2s ease;
+        &:hover {
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .mat-expansion-panel-header {
+          height: auto;
+          min-height: 64px;
 
           &:hover {
-            background: var(--hover-color-darker);
+            background-color: rgba(0, 0, 0, 0.03);
           }
+        }
 
-          .label {
-            color: var(--app-text-color-secondary);
-            font-size: 14px;
+        .panel-title-content {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+
+          .bandwidth-icon {
+            color: var(--accent-color);
           }
+          .info-icon {
+            color: var(--primary-color);
+          }
+          .job-icon {
+            color: var(--purple);
+          }
+        }
 
-          .value {
+        .mat-expansion-panel-header-title {
+          color: var(--app-text-color);
+          font-weight: 500;
+          font-size: 16px;
+        }
+
+        .mat-expansion-panel-header-description {
+          color: var(--app-text-color);
+          opacity: 0.8;
+          justify-content: flex-end;
+          align-items: center;
+          display: flex;
+          gap: 8px;
+
+          .active-jobs-indicator {
+            display: flex;
+            align-items: center;
+            background-color: rgba(var(--primary-color-rgb), 0.1);
+            border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+            color: var(--primary-color);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
             font-weight: 500;
-            color: var(--app-text-color);
+          }
+        }
 
-            &.status-active {
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              color: var(--primary-color);
+        // Panel content padding
+        .mat-expansion-panel-body {
+          padding: 0 24px 24px 24px;
+        }
+      }
 
-              .status-dot {
-                width: 8px;
-                height: 8px;
-                border-radius: 50%;
+      // Bandwidth Panel Specific Styles
+      .bandwidth-panel {
+        .bandwidth-content {
+          margin-top: 16px;
+
+          .bandwidth-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            transition: all 0.3s ease;
+
+            &.limited {
+              background: linear-gradient(
+                45deg,
+                rgba(var(--yellow-rgb), 0.1),
+                rgba(var(--yellow-rgb), 0.05)
+              );
+              border: 1px solid rgba(var(--yellow-rgb), 0.3);
+
+              .status-indicator {
+                background: var(--yellow);
+                animation: breathing 3s ease-in-out infinite;
+                box-shadow: 0 0 10px rgba(var(--yellow-rgb), 0.4);
+              }
+            }
+
+            &.unlimited {
+              background: linear-gradient(
+                45deg,
+                rgba(var(--primary-color-rgb), 0.1),
+                rgba(var(--primary-color-rgb), 0.05)
+              );
+              border: 1px solid rgba(var(--primary-color-rgb), 0.3);
+
+              .status-indicator {
+                animation: breathing 3s ease-in-out infinite;
                 background: var(--primary-color);
-                animation: pulse 2s infinite;
+                box-shadow: 0 0 10px rgba(var(--primary-color-rgb), 0.4);
+              }
+            }
 
-                &.active {
-                  box-shadow: 0 0 8px rgba(76, 175, 80, 0.4);
-                }
+            .status-indicator {
+              width: 12px;
+              height: 12px;
+              border-radius: 50%;
+            }
+
+            .status-text {
+              font-weight: 500;
+            }
+          }
+
+          .bandwidth-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 16px;
+
+            .detail-item {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+              background-color: rgba(0, 0, 0, 0.03);
+              padding: 12px;
+              border-radius: 8px;
+              border: 1px solid rgba(255, 255, 255, 0.05);
+
+              .label {
+                font-size: 12px;
+                color: var(--app-text-color);
+                opacity: 0.7;
+              }
+
+              .value {
+                font-weight: 500;
+                font-size: 16px;
               }
             }
           }
         }
       }
+
+      // System Info Panel Specific Styles
+      .system-info-panel {
+        .info-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 16px;
+          margin-top: 16px;
+        }
+      }
+
+      // Job Info Panel Specific Styles
+      .job-info-panel {
+        .job-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-top: 16px;
+
+          .job-progress-section {
+            background-color: rgba(var(--secondary-background), 0.02);
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid rgba(var(--app-text-color), 0.05);
+
+            .progress-header {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 8px;
+
+              .label {
+                font-size: 14px;
+                opacity: 0.7;
+              }
+
+              .value {
+                font-weight: 500;
+              }
+            }
+
+            mat-progress-bar {
+              height: 8px;
+              border-radius: 4px;
+              overflow: hidden;
+            }
+
+            .progress-details {
+              display: flex;
+              justify-content: space-between;
+              margin-top: 8px;
+              font-size: 12px;
+              opacity: 0.8;
+            }
+          }
+
+          .job-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+          }
+
+          .error-section {
+            margin-top: 8px;
+            padding: 12px;
+            background-color: rgba(var(--warn-color-rgb), 0.1);
+            border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: flex-start;
+            flex-direction: column;
+
+            .label {
+              font-size: 14px;
+              font-weight: 500;
+              margin-bottom: 8px;
+              color: var(--warn-color);
+            }
+
+            .error-message {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+
+              span {
+                word-break: break-word;
+                font-size: 14px;
+              }
+            }
+          }
+
+          .no-jobs-message {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background-color: rgba(0, 0, 0, 0.03);
+            border-radius: 8px;
+
+            mat-icon {
+              opacity: 0.6;
+            }
+          }
+        }
+      }
+
+      // System status indicator in header
+      .status-indicator-small {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        background-color: var(--secondary-text-color);
+        animation: breathing 3s ease-in-out infinite;
+
+        &.status-active {
+          background-color: var(--primary-color);
+        }
+
+        &.status-error {
+          background-color: var(--warn-color);
+        }
+
+        &.status-inactive {
+          background-color: var(--secondary-text-color);
+        }
+      }
     }
-  }
-}
 
-// Animations
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.7;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
+    // Loading and error states
+    .bandwidth-loading,
+    .info-loading,
+    .bandwidth-error {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background-color: rgba(0, 0, 0, 0.03);
+      border-radius: 8px;
+      margin-top: 16px;
+    }
 
-// Dark mode adjustments
-@media (prefers-color-scheme: dark) {
-  .general-overview {
-    .overview-content {
-      mat-card {
-        border-color: rgba(255, 255, 255, 0.05);
+    .bandwidth-error {
+      background-color: rgba(var(--warn-color-rgb), 0.1);
+      border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+
+      span {
+        flex: 1;
       }
     }
   }

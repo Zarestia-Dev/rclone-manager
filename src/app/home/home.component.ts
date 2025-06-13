@@ -231,24 +231,32 @@ export class HomeComponent implements OnInit, OnDestroy {
       type,
       async () => {
         const settings = this.loadRemoteSettings(remoteName);
+
+        // Determine config and options keys
         const configKey = `${type}Config`;
-        const optionsKey = `${type}Options`;
+        const optionsKey = "options"; // always 'options' inside config
+
+        const config = settings[configKey] || {};
+        const source = config.source;
+        const dest = config.dest;
+        const options = config[optionsKey] || {};
+        const filterConfig = settings.filterConfig || {};
 
         if (type === "sync") {
           await this.rcloneService.startSync(
             remoteName,
-            settings[configKey]?.source,
-            settings[configKey]?.dest,
-            settings[optionsKey] || {},
-            settings.filterConfig || {}
+            source,
+            dest,
+            options,
+            filterConfig
           );
         } else {
           await this.rcloneService.startCopy(
             remoteName,
-            settings[configKey]?.source,
-            settings[configKey]?.dest,
-            settings[optionsKey] || {},
-            settings.filterConfig || {}
+            source,
+            dest,
+            options,
+            filterConfig
           );
         }
       },

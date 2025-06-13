@@ -1,103 +1,214 @@
-<!-- general-overview.component.html -->
 <div class="general-overview" @fadeInOut>
   <div class="overview-header">
-    <h2>
-      RClone Manager
-    </h2>
+    <h2>RClone Manager</h2>
   </div>
 
   <div class="overview-content">
-    <!-- Bandwidth Limit Card -->
-    <mat-card class="bandwidth-card">
-      <mat-card-content>
-        <div class="bandwidth-header">
-          <mat-icon svgIcon="right-left" class="bandwidth-icon"></mat-icon>
-          <h3>Bandwidth Limit</h3>
-        </div>
-        
-        <div class="bandwidth-content" *ngIf="!isLoadingBandwidth && !bandwidthError">
-          <div class="bandwidth-status" [ngClass]="{
-            'limited': isBandwidthLimited,
-            'unlimited': !isBandwidthLimited
-          }">
-            <div class="status-indicator"></div>
-            <span class="status-text">{{ bandwidthDisplayValue }}</span>
-          </div>
-          
-          <div class="bandwidth-details" *ngIf="isBandwidthLimited && bandwidthLimit">
-            <div class="detail-item">
-              <span class="label">Upload:</span>
-              <span class="value">{{ bandwidthLimit.bytesPerSecondTx | number }} B/s</span>
+    <mat-accordion multi>
+      <!-- Bandwidth Limit Panel -->
+      <mat-expansion-panel [(expanded)]="bandwidthPanelOpenState" class="bandwidth-panel">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <div class="panel-title-content">
+              <mat-icon svgIcon="right-left" class="bandwidth-icon"></mat-icon>
+              <span>Bandwidth Limit</span>
             </div>
-            <div class="detail-item">
-              <span class="label">Download:</span>
-              <span class="value">{{ bandwidthLimit.bytesPerSecondRx | number }} B/s</span>
+          </mat-panel-title>
+          <mat-panel-description>
+            @if (isLoadingBandwidth()) {
+              <span>Loading...</span>
+            } @else if (bandwidthError()) {
+              <span>Error loading bandwidth info</span>
+            } @else {
+              <span>{{ bandwidthDisplayValue }}</span>
+            }
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        @if (isLoadingBandwidth()) {
+          <div class="bandwidth-loading">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>Loading bandwidth information...</span>
+          </div>
+        } @else if (bandwidthError()) {
+          <div class="bandwidth-error">
+            <mat-icon  color="warn" svgIcon="circle-exclamation"></mat-icon>
+            <span>{{ bandwidthError() }}</span>
+            <button mat-icon-button (click)="loadBandwidthLimit()" matTooltip="Retry">
+              <mat-icon color="primary" svgIcon="refresh"></mat-icon>
+            </button>
+          </div>
+        } @else {
+          <div class="bandwidth-content">
+            <div class="bandwidth-status" [class.limited]="isBandwidthLimited" [class.unlimited]="!isBandwidthLimited">
+              <div class="status-indicator"></div>
+              <span class="status-text">{{ bandwidthDisplayValue }}</span>
             </div>
-            <div class="detail-item">
-              <span class="label">Total:</span>
-              <span class="value">{{ bandwidthLimit.bytesPerSecond | number }} B/s</span>
+
+            @if (isBandwidthLimited) {
+              <div class="bandwidth-details">
+                <div class="detail-item">
+                  <span class="label">Upload:</span>
+                  <span class="value">{{ bandwidthLimit()?.bytesPerSecondTx | number }} B/s</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Download:</span>
+                  <span class="value">{{ bandwidthLimit()?.bytesPerSecondRx | number }} B/s</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Total:</span>
+                  <span class="value">{{ bandwidthLimit()?.bytesPerSecond | number }} B/s</span>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </mat-expansion-panel>
+
+      <!-- System Info Panel -->
+      <mat-expansion-panel [(expanded)]="systemInfoPanelOpenState" class="system-info-panel">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <div class="panel-title-content">
+              <mat-icon svgIcon="question" class="info-icon"></mat-icon>
+              <span>System Information</span>
+            </div>
+          </mat-panel-title>
+          <mat-panel-description>
+            <div class="status-indicator-small" [ngClass]="systemStatusColor"></div>
+            {{ systemStats().rcloneStatus | titlecase }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        @if (isLoadingStats()) {
+          <div class="info-loading">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>Loading system information...</span>
+          </div>
+        } @else {
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="label">RClone Status:</span>
+              <span class="value" [ngClass]="systemStatusColor">
+                <div class="status-dot" [class.active]="systemStats().rcloneStatus === 'active'"></div>
+                {{ systemStats().rcloneStatus | titlecase }}
+              </span>
+            </div>
+            <div class="info-item">
+              <span class="label">Total Remotes:</span>
+              <span class="value">{{ systemStats().totalRemotes }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Active Jobs:</span>
+              <span class="value">{{ systemStats().activeJobs }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Memory Usage:</span>
+              <span class="value">{{ systemStats().memoryUsage }}</span>
+            </div>
+            <div class="info-item">
+              <span class="label">Uptime:</span>
+              <span class="value">{{ systemStats().uptime }}</span>
             </div>
           </div>
-        </div>
+        }
+      </mat-expansion-panel>
 
-        <div class="bandwidth-loading" *ngIf="isLoadingBandwidth">
-          <mat-spinner diameter="24"></mat-spinner>
-          <span>Loading bandwidth information...</span>
-        </div>
+      <!-- Job Information Panel -->
+      <mat-expansion-panel [(expanded)]="jobInfoPanelOpenState" class="job-info-panel">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <div class="panel-title-content">
+              <mat-icon svgIcon="jobs" class="job-icon"></mat-icon>
+              <span>Global Job Information</span>
+            </div>
+          </mat-panel-title>
+          <mat-panel-description>
+            @if (systemStats().activeJobs > 0) {
+              <span class="active-jobs-indicator">
+                {{ systemStats().activeJobs }} active job{{ systemStats().activeJobs !== 1 ? 's' : '' }}
+              </span>
+            } @else {
+              <span>No active jobs</span>
+            }
+          </mat-panel-description>
+        </mat-expansion-panel-header>
 
-        <div class="bandwidth-error" *ngIf="bandwidthError">
-          <mat-icon svgIcon="circle-exclamation"></mat-icon>
-          <span>{{ bandwidthError }}</span>
-          <button mat-icon-button (click)="loadBandwidthLimit()" matTooltip="Retry">
-            <mat-icon svgIcon="refresh"></mat-icon>
-          </button>
-        </div>
-      </mat-card-content>
-    </mat-card>
+        @if (isLoadingStats()) {
+          <div class="info-loading">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>Loading job information...</span>
+          </div>
+        } @else {
+          <div class="job-grid">
+            @if (jobStats().totalBytes > 0) {
+              <div class="job-progress-section">
+                <div class="progress-header">
+                  <span class="label">Progress:</span>
+                  <span class="value">{{ jobCompletionPercentage | number:'1.0-1' }}%</span>
+                </div>
+                <mat-progress-bar mode="determinate" [value]="jobCompletionPercentage" color="primary"></mat-progress-bar>
+                <div class="progress-details">
+                  <span>{{ formatBytes(jobStats().bytes) }} of {{ formatBytes(jobStats().totalBytes) }}</span>
+                  <span>ETA: {{ formatEta(jobStats().eta) }}</span>
+                </div>
+              </div>
+            }
 
-    <!-- System Info Card -->
-    <mat-card class="system-info-card" @fadeInOut>
-      <mat-card-content>
-        <h3>
-          <mat-icon svgIcon="question"></mat-icon>
-          System Information
-        </h3>
-        
-        <div class="info-grid" *ngIf="!isLoadingStats">
-          <div class="info-item">
-            <span class="label">RClone Status:</span>
-            <span class="value" [ngClass]="systemStatusColor">
-              <div class="status-dot" [ngClass]="{ 'active': systemStats.rcloneStatus === 'active' }"></div>
-              {{ systemStats.rcloneStatus | titlecase }}
-            </span>
-          </div>
-          <div class="info-item">
-            <span class="label">Total Remotes:</span>
-            <span class="value">{{ systemStats.totalRemotes }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">Active Jobs:</span>
-            <span class="value">{{ systemStats.activeJobs }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">Data Transferred:</span>
-            <span class="value">{{ systemStats.dataTransferred }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">Memory Usage:</span>
-            <span class="value">{{ systemStats.memoryUsage }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">Uptime:</span>
-            <span class="value">{{ systemStats.uptime }}</span>
-          </div>
-        </div>
+            <div class="job-stats-grid">
+              <div class="info-item">
+                <span class="label">Transfer Speed:</span>
+                <span class="value">{{ formatBytes(jobStats().speed) }}/s</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Transfers:</span>
+                <span class="value">{{ jobStats().transfers }} / {{ jobStats().totalTransfers }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Checks:</span>
+                <span class="value">{{ jobStats().checks }} / {{ jobStats().totalChecks }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Errors:</span>
+                <span class="value" [class.error]="jobStats().errors > 0">{{ jobStats().errors }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Deletes:</span>
+                <span class="value">{{ jobStats().deletes }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Renames:</span>
+                <span class="value">{{ jobStats().renames }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Server Copies:</span>
+                <span class="value">{{ jobStats().serverSideCopies }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Server Moves:</span>
+                <span class="value">{{ jobStats().serverSideMoves }}</span>
+              </div>
+            </div>
 
-        <div class="info-loading" *ngIf="isLoadingStats">
-          <mat-spinner diameter="24"></mat-spinner>
-          <span>Loading system information...</span>
-        </div>
-      </mat-card-content>
-    </mat-card>
+            @if (jobStats().lastError) {
+              <div class="error-section">
+                <div class="label">Last Error:</div>
+                <div class="error-message">
+                  <mat-icon color="warn" svgIcon="circle-exclamation" class="error-icon"></mat-icon>
+                  <span>{{ jobStats().lastError }}</span>
+                </div>
+              </div>
+            }
+
+            @if (systemStats().activeJobs === 0) {
+              <div class="no-jobs-message">
+                <mat-icon svgIcon="circle-info"></mat-icon>
+                <span>No active jobs are currently running.</span>
+              </div>
+            }
+          </div>
+        }
+      </mat-expansion-panel>
+    </mat-accordion>
   </div>
 </div>

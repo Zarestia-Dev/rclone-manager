@@ -180,15 +180,18 @@
           display: flex;
           align-items: center;
           gap: 6px;
-          padding: 4px 8px;
-          border-radius: 16px;
+          padding: 6px 10px;
+          border-radius: 20px;
           font-size: 0.875rem;
           font-weight: 500;
-          background: rgba(255, 152, 0, 0.1);
+          background: rgba(var(--orange-rgb), 0.1);
+          border: 1px solid rgba(var(--orange-rgb), 0.2);
           color: var(--orange);
-
+          
           &.active-sync {
-            background: rgba(66, 133, 244, 0.1);
+            animation: pulseGreen 3s infinite;
+            background: rgba(var(--primary-color-rgb), 0.1);
+            border: 1px solid rgba(var(--primary-color-rgb), 0.2);
             color: var(--primary-color);
 
             mat-icon {
@@ -197,7 +200,9 @@
           }
 
           &.active-copy {
-            background: rgba(66, 133, 244, 0.1);
+            animation: pulseBlue 3s infinite;
+            background: rgba(var(--accent-color-rgb), 0.1);
+            border: 1px solid rgba(var(--accent-color-rgb), 0.2);
             color: var(--accent-color);
 
             mat-icon {
@@ -385,28 +390,6 @@
         height: 200px !important;
       }
     }
-  }
-}
-
-// Animations
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0.3);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(66, 133, 244, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(66, 133, 244, 0);
   }
 }
 

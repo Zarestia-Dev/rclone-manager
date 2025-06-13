@@ -39,7 +39,7 @@ export interface TransferFile {
   isError?: boolean;
 }
 
-export interface SyncStats {
+export interface GlobalStats {
   bytes: number;
   checks: number;
   deletedDirs: number;
@@ -73,7 +73,7 @@ export interface JobInfo {
   start_time: string;
   status: JobStatus;
   remote_name: string;
-  stats: SyncStats;
+  stats: GlobalStats;
   group?: string;
 }
 
@@ -216,29 +216,6 @@ export interface MemoryStats {
   StackSys: number;
   Sys: number;
   TotalAlloc: number;
-}
-
-export interface CoreStats {
-  bytes: number;
-  checks: number;
-  deletedDirs: number;
-  deletes: number;
-  elapsedTime: number;
-  errors: number;
-  eta: number | null;
-  fatalError: boolean;
-  renames: number;
-  retryError: boolean;
-  serverSideCopies: number;
-  serverSideCopyBytes: number;
-  serverSideMoveBytes: number;
-  serverSideMoves: number;
-  speed: number;
-  totalBytes: number;
-  totalChecks: number;
-  totalTransfers: number;
-  transferTime: number;
-  transfers: number;
 }
 
 export const SENSITIVE_KEYS = [
