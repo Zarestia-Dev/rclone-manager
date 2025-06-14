@@ -1,10 +1,155 @@
 <div class="general-overview" @fadeInOut>
   <div class="overview-header">
-    <h2>RClone Manager</h2>
+    <div class="header-content">
+      <div class="title-section">
+        <mat-icon svgIcon="rclone-2" class="app-icon"></mat-icon>
+        <h2>RClone Manager</h2>
+      </div>
+      <div class="header-divider"></div>
+    </div>
   </div>
 
   <div class="overview-content">
     <mat-accordion multi>
+      <!-- Quick Remote Access Panel -->
+      <mat-card class="remotes-panel">
+        <mat-card-header class="remotes-header">
+          <mat-card-title class="panel-title-content">
+            <mat-icon svgIcon="cloud" class="remotes-icon"></mat-icon>
+            <span>Quick Remote Access</span>
+            <span class="remote-count">{{ remotes.length }}</span>
+          </mat-card-title>
+        </mat-card-header>
+
+        <mat-card-content class="remotes-content">
+          <div class="remotes-grid">
+            @for (remote of remotes; track remote.remoteSpecs.name) {
+            <mat-card 
+              class="remote-card" 
+              [class.mounted]="remote.mountState?.mounted"
+              [class.syncing]="remote.syncState?.isOnSync" 
+              [class.copying]="remote.copyState?.isOnCopy"
+              [class.hovered]="hoveredRemote?.remoteSpecs?.name === remote.remoteSpecs.name"
+              (click)="selectRemote.emit(remote)" 
+              (mouseenter)="onRemoteHover(remote)" 
+              (mouseleave)="onRemoteLeave()"
+            >
+              <mat-card-header class="remote-header">
+                <div class="remote-info">
+                  <div class="icon-container">
+                    <mat-icon 
+                      [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"
+                      class="remote-type-icon"
+                    ></mat-icon>
+                  </div>
+                  <div class="remote-details">
+                    <h4 class="remote-name">{{ remote.remoteSpecs.name }}</h4>
+                    <span class="remote-type">{{ remote.remoteSpecs.type | titlecase }}</span>
+                  </div>
+                </div>
+                <div class="remote-status-indicators">
+                  @if (remote.mountState?.mounted) {
+                    <div class="status-badge mounted">
+                      <mat-icon svgIcon="mount" class="status-icon"></mat-icon>
+                    </div>
+                  }
+                  @if (remote.syncState?.isOnSync) {
+                    <div class="status-badge syncing">
+                      <mat-icon svgIcon="refresh" class="status-icon"></mat-icon>
+                    </div>
+                  }
+                  @if (remote.copyState?.isOnCopy) {
+                    <div class="status-badge copying">
+                      <mat-icon svgIcon="copy" class="status-icon"></mat-icon>
+                    </div>
+                  }
+                </div>
+              </mat-card-header>
+
+              <mat-card-content class="remote-content">
+                <div class="quick-actions">
+                  @if (!remote.mountState?.mounted) {
+                    <button 
+                      mat-mini-fab 
+                      color="accent" 
+                      matTooltip="Mount (M)"
+                      (click)="onQuickAction($event, remote.remoteSpecs.name, 'mount')" 
+                      class="action-btn mount-btn"
+                    >
+                      <mat-icon svgIcon="mount"></mat-icon>
+                    </button>
+                  } @else {
+                    <button 
+                      mat-mini-fab 
+                      color="warn" 
+                      matTooltip="Unmount (M)"
+                      (click)="onQuickAction($event, remote.remoteSpecs.name, 'unmount')" 
+                      class="action-btn unmount-btn"
+                    >
+                      <mat-icon svgIcon="eject"></mat-icon>
+                    </button>
+                  }
+
+                  @if (!remote.syncState?.isOnSync) {
+                    <button 
+                      mat-mini-fab 
+                      color="primary" 
+                      matTooltip="Start Sync (S)"
+                      (click)="onQuickAction($event, remote.remoteSpecs.name, 'sync')" 
+                      class="action-btn sync-btn"
+                    >
+                      <mat-icon svgIcon="sync"></mat-icon>
+                    </button>
+                  } @else {
+                    <button 
+                      mat-mini-fab 
+                      color="warn" 
+                      matTooltip="Stop Sync (S)"
+                      (click)="onQuickAction($event, remote.remoteSpecs.name, 'stop-sync')" 
+                      class="action-btn stop-btn"
+                    >
+                      <mat-icon svgIcon="stop"></mat-icon>
+                    </button>
+                  }
+
+                  @if (!remote.copyState?.isOnCopy) {
+                    <button 
+                      mat-mini-fab 
+                      matTooltip="Start Copy (C)"
+                      (click)="onQuickAction($event, remote.remoteSpecs.name, 'copy')" 
+                      class="action-btn copy-btn"
+                    >
+                      <mat-icon svgIcon="copy"></mat-icon>
+                    </button>
+                  } @else {
+                    <button 
+                      mat-mini-fab 
+                      color="warn" 
+                      matTooltip="Stop Copy (C)"
+                      (click)="onQuickAction($event, remote.remoteSpecs.name, 'stop-copy')" 
+                      class="action-btn stop-btn"
+                    >
+                      <mat-icon svgIcon="stop"></mat-icon>
+                    </button>
+                  }
+
+                  <button 
+                    mat-mini-fab 
+                    [disabled]="!remote.mountState?.mounted" 
+                    matTooltip="Browse (B)"
+                    (click)="onQuickAction($event, remote.remoteSpecs.name, 'browse')" 
+                    class="action-btn browse-btn"
+                  >
+                    <mat-icon svgIcon="folder"></mat-icon>
+                  </button>
+                </div>
+              </mat-card-content>
+            </mat-card>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+
       <!-- Bandwidth Limit Panel -->
       <mat-expansion-panel [(expanded)]="bandwidthPanelOpenState" class="bandwidth-panel">
         <mat-expansion-panel-header>
@@ -15,9 +160,9 @@
             </div>
           </mat-panel-title>
           <mat-panel-description>
-            @if (isLoadingBandwidth()) {
+            @if (isLoadingBandwidth) {
               <span>Loading...</span>
-            } @else if (bandwidthError()) {
+            } @else if (bandwidthError) {
               <span>Error loading bandwidth info</span>
             } @else {
               <span>{{ bandwidthDisplayValue }}</span>
@@ -25,15 +170,15 @@
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        @if (isLoadingBandwidth()) {
+        @if (isLoadingBandwidth) {
           <div class="bandwidth-loading">
             <mat-spinner diameter="24"></mat-spinner>
             <span>Loading bandwidth information...</span>
           </div>
-        } @else if (bandwidthError()) {
+        } @else if (bandwidthError) {
           <div class="bandwidth-error">
-            <mat-icon  color="warn" svgIcon="circle-exclamation"></mat-icon>
-            <span>{{ bandwidthError() }}</span>
+            <mat-icon color="warn" svgIcon="circle-exclamation"></mat-icon>
+            <span>{{ bandwidthError }}</span>
             <button mat-icon-button (click)="loadBandwidthLimit()" matTooltip="Retry">
               <mat-icon color="primary" svgIcon="refresh"></mat-icon>
             </button>
@@ -49,15 +194,15 @@
               <div class="bandwidth-details">
                 <div class="detail-item">
                   <span class="label">Upload:</span>
-                  <span class="value">{{ bandwidthLimit()?.bytesPerSecondTx | number }} B/s</span>
+                  <span class="value">{{ formatBytes(bandwidthLimit?.bytesPerSecondTx ?? 0) }}</span>
                 </div>
                 <div class="detail-item">
                   <span class="label">Download:</span>
-                  <span class="value">{{ bandwidthLimit()?.bytesPerSecondRx | number }} B/s</span>
+                  <span class="value">{{ formatBytes(bandwidthLimit?.bytesPerSecondRx ?? 0) }}</span>
                 </div>
                 <div class="detail-item">
                   <span class="label">Total:</span>
-                  <span class="value">{{ bandwidthLimit()?.bytesPerSecond | number }} B/s</span>
+                  <span class="value">{{ formatBytes(bandwidthLimit?.bytesPerSecond ?? 0) }}</span>
                 </div>
               </div>
             }
@@ -76,11 +221,11 @@
           </mat-panel-title>
           <mat-panel-description>
             <div class="status-indicator-small" [ngClass]="systemStatusColor"></div>
-            {{ systemStats().rcloneStatus | titlecase }}
+            {{ rcloneStatus | titlecase }}
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        @if (isLoadingStats()) {
+        @if (isLoadingStats) {
           <div class="info-loading">
             <mat-spinner diameter="24"></mat-spinner>
             <span>Loading system information...</span>
@@ -90,25 +235,25 @@
             <div class="info-item">
               <span class="label">RClone Status:</span>
               <span class="value" [ngClass]="systemStatusColor">
-                <div class="status-dot" [class.active]="systemStats().rcloneStatus === 'active'"></div>
-                {{ systemStats().rcloneStatus | titlecase }}
+                <div class="status-dot" [class.active]="rcloneStatus === 'active'"></div>
+                {{ rcloneStatus | titlecase }}
               </span>
             </div>
             <div class="info-item">
               <span class="label">Total Remotes:</span>
-              <span class="value">{{ systemStats().totalRemotes }}</span>
+              <span class="value">{{ totalRemotes }}</span>
             </div>
             <div class="info-item">
               <span class="label">Active Jobs:</span>
-              <span class="value">{{ systemStats().activeJobs }}</span>
+              <span class="value">{{ activeJobsCount }}</span>
             </div>
             <div class="info-item">
               <span class="label">Memory Usage:</span>
-              <span class="value">{{ systemStats().memoryUsage }}</span>
+              <span class="value">{{ systemStats.memoryUsage }}</span>
             </div>
             <div class="info-item">
               <span class="label">Uptime:</span>
-              <span class="value">{{ systemStats().uptime }}</span>
+              <span class="value">{{ systemStats.uptime }}</span>
             </div>
           </div>
         }
@@ -124,9 +269,9 @@
             </div>
           </mat-panel-title>
           <mat-panel-description>
-            @if (systemStats().activeJobs > 0) {
+            @if (activeJobsCount > 0) {
               <span class="active-jobs-indicator">
-                {{ systemStats().activeJobs }} active job{{ systemStats().activeJobs !== 1 ? 's' : '' }}
+                {{ activeJobsCount }} active job{{ activeJobsCount !== 1 ? 's' : '' }}
               </span>
             } @else {
               <span>No active jobs</span>
@@ -134,23 +279,27 @@
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        @if (isLoadingStats()) {
+        @if (isLoadingStats) {
           <div class="info-loading">
             <mat-spinner diameter="24"></mat-spinner>
             <span>Loading job information...</span>
           </div>
         } @else {
           <div class="job-grid">
-            @if (jobStats().totalBytes > 0) {
+            @if (jobStats.totalBytes > 0) {
               <div class="job-progress-section">
                 <div class="progress-header">
                   <span class="label">Progress:</span>
                   <span class="value">{{ jobCompletionPercentage | number:'1.0-1' }}%</span>
                 </div>
-                <mat-progress-bar mode="determinate" [value]="jobCompletionPercentage" color="primary"></mat-progress-bar>
+                <mat-progress-bar 
+                  mode="determinate" 
+                  [value]="jobCompletionPercentage" 
+                  color="primary"
+                ></mat-progress-bar>
                 <div class="progress-details">
-                  <span>{{ formatBytes(jobStats().bytes) }} of {{ formatBytes(jobStats().totalBytes) }}</span>
-                  <span>ETA: {{ formatEta(jobStats().eta) }}</span>
+                  <span>{{ formatBytes(jobStats.bytes) }} of {{ formatBytes(jobStats.totalBytes) }}</span>
+                  <span>ETA: {{ formatEta(jobStats.eta) }}</span>
                 </div>
               </div>
             }
@@ -158,49 +307,49 @@
             <div class="job-stats-grid">
               <div class="info-item">
                 <span class="label">Transfer Speed:</span>
-                <span class="value">{{ formatBytes(jobStats().speed) }}/s</span>
+                <span class="value">{{ formatBytes(jobStats.speed) }}/s</span>
               </div>
               <div class="info-item">
                 <span class="label">Transfers:</span>
-                <span class="value">{{ jobStats().transfers }} / {{ jobStats().totalTransfers }}</span>
+                <span class="value">{{ jobStats.transfers }} / {{ jobStats.totalTransfers }}</span>
               </div>
               <div class="info-item">
                 <span class="label">Checks:</span>
-                <span class="value">{{ jobStats().checks }} / {{ jobStats().totalChecks }}</span>
+                <span class="value">{{ jobStats.checks }} / {{ jobStats.totalChecks }}</span>
               </div>
               <div class="info-item">
                 <span class="label">Errors:</span>
-                <span class="value" [class.error]="jobStats().errors > 0">{{ jobStats().errors }}</span>
+                <span class="value" [class.error]="jobStats.errors > 0">{{ jobStats.errors }}</span>
               </div>
               <div class="info-item">
                 <span class="label">Deletes:</span>
-                <span class="value">{{ jobStats().deletes }}</span>
+                <span class="value">{{ jobStats.deletes }}</span>
               </div>
               <div class="info-item">
                 <span class="label">Renames:</span>
-                <span class="value">{{ jobStats().renames }}</span>
+                <span class="value">{{ jobStats.renames }}</span>
               </div>
               <div class="info-item">
                 <span class="label">Server Copies:</span>
-                <span class="value">{{ jobStats().serverSideCopies }}</span>
+                <span class="value">{{ jobStats.serverSideCopies }}</span>
               </div>
               <div class="info-item">
                 <span class="label">Server Moves:</span>
-                <span class="value">{{ jobStats().serverSideMoves }}</span>
+                <span class="value">{{ jobStats.serverSideMoves }}</span>
               </div>
             </div>
 
-            @if (jobStats().lastError) {
+            @if (jobStats.lastError) {
               <div class="error-section">
                 <div class="label">Last Error:</div>
                 <div class="error-message">
                   <mat-icon color="warn" svgIcon="circle-exclamation" class="error-icon"></mat-icon>
-                  <span>{{ jobStats().lastError }}</span>
+                  <span>{{ jobStats.lastError }}</span>
                 </div>
               </div>
             }
 
-            @if (systemStats().activeJobs === 0) {
+            @if (activeJobsCount === 0) {
               <div class="no-jobs-message">
                 <mat-icon svgIcon="circle-info"></mat-icon>
                 <span>No active jobs are currently running.</span>

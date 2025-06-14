@@ -45,7 +45,7 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0;
-    
+
     input {
       padding: 8px;
       margin: 12px;
@@ -112,35 +112,19 @@
 
           &.mount.active {
             color: var(--accent-color);
-            background-color: color-mix(
-              in srgb,
-              var(--accent-color) 20%,
-              transparent
-            );
+            background-color: rgba(var(--accent-color-rgb), 0.2);
           }
           &.sync.active {
             color: var(--primary-color);
-            background-color: color-mix(
-              in srgb,
-              var(--primary-color) 20%,
-              transparent
-            );
+            background-color: rgba(var(--primary-color-rgb), 0.2);
           }
           &.copy.active {
-            color: var(--accent-color);
-            background-color: color-mix(
-              in srgb,
-              var(--accent-color) 20%,
-              transparent
-            );
+            color: var(--yellow);
+            background-color: rgba(var(--yellow-rgb), 0.2);
           }
           &.passive {
             color: var(--orange);
-            background-color: color-mix(
-              in srgb,
-              var(--orange) 20%,
-              transparent
-            );
+            background-color: rgba(var(--orange-rgb), 0.2);
           }
         }
       }

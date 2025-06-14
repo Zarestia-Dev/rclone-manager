@@ -24,6 +24,7 @@ import {
   transition,
   trigger,
 } from "@angular/animations";
+import { RcloneService } from "./services/rclone.service";
 
 @Component({
   selector: "app-root",
@@ -59,6 +60,7 @@ export class AppComponent implements OnInit, OnDestroy {
     private settingsService: SettingsService,
     private stateService: StateService,
     private cdr: ChangeDetectorRef,
+    private rcloneService: RcloneService,
     private iconService: IconService
   ) {
     this.checkOnboardingStatus();
@@ -142,7 +144,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private listenForErrors() {
-    listen<string>("rclone_path_invalid", () => {
+    this.rcloneService.listenToRclonePathInvalid().subscribe(() => {
       if (this.alreadyReported) {
         return;
       }
@@ -156,7 +158,7 @@ export class AppComponent implements OnInit, OnDestroy {
         },
         disableClose: true,
       });
-      listen("rclone_api_ready", () => {
+      this.rcloneService.listenToRcloneApiReady().subscribe(() => {
         this.alreadyReported = false;
         sheetRef.dismiss();
       });

@@ -292,11 +292,26 @@ fn handle_settings_changed(app: &AppHandle) {
                             // Get the RcloneState from tauri's state management
                             let app_clone = app.clone();
                             let rclone_state = app.state::<RcloneState>();
-                            if let Err(e) =
-                                set_bandwidth_limit(app_clone, bandwidth_limit_opt, rclone_state)
-                                    .await
-                            {
-                                error!("Failed to set bandwidth limit: {}", e);
+                            if let Err(e) = {
+                                if let Err(e) = set_bandwidth_limit(
+                                    app_clone.clone(),
+                                    bandwidth_limit_opt.clone(),
+                                    rclone_state,
+                                )
+                                .await
+                                {
+                                    error!("Failed to set bandwidth limit: {:?}", e);
+                                }
+                                app_clone
+                                    .emit("bandwidth_limit_changed", bandwidth_limit_opt)
+                                    .map_err(|e| {
+                                        error!(
+                                            "❌ Failed to emit bandwidth limit changed event: {}",
+                                            e
+                                        );
+                                    })
+                            } {
+                                error!("Failed to set bandwidth limit: {:?}", e);
                             }
                         });
                     }

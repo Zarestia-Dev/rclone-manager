@@ -67,7 +67,7 @@
                         <button mat-raised-button [disabled]="actionInProgress === 'unmount'" color="warn"
                             (click)="triggerUnmountRemote()">
                             <mat-spinner *ngIf="actionInProgress === 'unmount'" diameter="20"></mat-spinner>
-                            <mat-icon *ngIf="actionInProgress !== 'unmount'" svgIcon="circle-exclamation"></mat-icon>
+                            <mat-icon *ngIf="actionInProgress !== 'unmount'" svgIcon="eject"></mat-icon>
                             {{ actionInProgress === 'unmount' ? "Unmounting" : "Unmount" }}
                         </button>
                     </ng-container>

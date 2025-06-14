@@ -2,7 +2,7 @@ import { Injectable } from "@angular/core";
 import { invoke } from "@tauri-apps/api/core";
 import { InfoService } from "./info.service";
 import { listen } from "@tauri-apps/api/event";
-import { BehaviorSubject } from "rxjs";
+import { BehaviorSubject, Observable } from "rxjs";
 import { JobInfo, RcloneInfo } from "../shared/components/types";
 
 @Injectable({
@@ -10,6 +10,50 @@ import { JobInfo, RcloneInfo } from "../shared/components/types";
 })
 export class RcloneService {
   constructor(private infoService: InfoService) {}
+
+  listenToBandwidthChanges(): Observable<any> {
+    return new Observable((observer) => {
+      const unlisten = listen("bandwidth_limit_changed", (event) => {        
+        observer.next(event.payload);
+      });
+      return () => {
+        unlisten.then(f => f());
+      };
+    });
+  }
+
+  listenToRcloneApiReady(): Observable<any> {
+    return new Observable((observer) => {
+      const unlisten = listen("rclone_api_ready", (event) => {
+        observer.next(event.payload);
+      });
+      return () => {
+        unlisten.then(f => f());
+      };
+    });
+  }
+
+  listenToRcloneEngineFailed(): Observable<any> {
+    return new Observable((observer) => {
+      const unlisten = listen("rclone_engine_failed", (event) => {
+        observer.next(event.payload);
+      });
+      return () => {
+        unlisten.then(f => f());
+      };
+    });
+  }
+
+  listenToRclonePathInvalid(): Observable<any> {
+    return new Observable((observer) => {
+      const unlisten = listen("rclone_path_invalid", (event) => {
+        observer.next(event.payload);
+      });
+      return () => {
+        unlisten.then(f => f());
+      };
+    });
+  }
 
   openInFiles(mountPoint: string): Promise<void> {
     try {

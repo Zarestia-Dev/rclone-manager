@@ -58,11 +58,26 @@ impl RcApiEngine {
                     if !engine.is_running() {
                         if !(engine.rclone_path.exists() || is_rclone_available(app_handle.clone()))
                         {
+                            error!(
+                                "❌ Rclone binary does not exist at: {}",
+                                engine.rclone_path.display()
+                            );
+                            if let Err(e) = app_handle.emit(
+                                "rclone_path_invalid",
+                                engine.rclone_path.to_string_lossy().to_string(),
+                            ) {
+                                error!("Failed to emit event: {}", e);
+                            }
                             engine.handle_invalid_path(&app_handle);
-                            continue;
+                            engine.start(&app_handle);
+                            
+                        } else {
+                            debug!("🔄 Rclone API not running, attempting to start...");
+                            if let Err(e) = app_handle.emit("rclone_engine_failed", ()) {
+                                error!("Failed to emit event: {}", e);
+                            }
+                            engine.start(&app_handle);
                         }
-                        warn!("🔄 Rclone API not running. Starting...");
-                        engine.start(&app_handle);
                     } else {
                         debug!("✅ Rclone API running on port {}", ENGINE_STATE.get_api().1);
                     }
@@ -194,7 +209,7 @@ impl RcApiEngine {
                 } else {
                     error!("❌ Failed to start Rclone API within timeout.");
                     if let Err(e) = app.emit(
-                        "rclone_api_failed",
+                        "rclone_engine_failed",
                         "Failed to start Rclone API".to_string(),
                     ) {
                         error!("Failed to emit event: {}", e);
@@ -204,7 +219,7 @@ impl RcApiEngine {
             Err(e) => {
                 error!("❌ Failed to spawn Rclone process: {}", e);
                 if let Err(e) = app.emit(
-                    "rclone_api_failed",
+                    "rclone_engine_failed",
                     "Failed to spawn Rclone process".to_string(),
                 ) {
                     error!("Failed to emit event: {}", e);

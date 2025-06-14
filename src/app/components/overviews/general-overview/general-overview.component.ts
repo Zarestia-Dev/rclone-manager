@@ -5,7 +5,8 @@ import {
   OnInit,
   OnDestroy,
   ChangeDetectorRef,
-  signal,
+  Input,
+  HostListener,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { MatCardModule } from "@angular/material/card";
@@ -14,29 +15,22 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
-import {
-  trigger,
-  transition,
-  style,
-  animate,
-  state,
-} from "@angular/animations";
+import { MatExpansionModule } from "@angular/material/expansion";
+import { trigger, transition, style, animate } from "@angular/animations";
+import { Subject, interval, of, from } from "rxjs";
+import { takeUntil, catchError, switchMap, finalize } from "rxjs/operators";
+
 import { RcloneService } from "../../../services/rclone.service";
+import { InfoService } from "../../../services/info.service";
 import {
   BandwidthLimitResponse,
   MemoryStats,
   GlobalStats,
+  JobInfo,
+  Remote,
 } from "../../../shared/components/types";
-import { Subject, interval, of, from } from "rxjs";
-import { takeUntil, catchError, switchMap } from "rxjs/operators";
-import { MatExpansionModule } from "@angular/material/expansion";
 
 interface SystemStats {
-  rcloneStatus: "active" | "inactive" | "error";
-  activeConnections: number;
-  backgroundTasks: number;
-  totalRemotes: number;
-  activeJobs: number;
   memoryUsage: string;
   uptime: string;
 }
@@ -66,6 +60,24 @@ const DEFAULT_JOB_STATS: GlobalStats = {
   transferring: [],
 };
 
+const ANIMATIONS = [
+  trigger("fadeInOut", [
+    transition(":enter", [
+      style({ opacity: 0, transform: "translateY(10px)" }),
+      animate(
+        "300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        style({ opacity: 1, transform: "translateY(0)" })
+      ),
+    ]),
+    transition(":leave", [
+      animate(
+        "200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        style({ opacity: 0, transform: "translateY(-10px)" })
+      ),
+    ]),
+  ]),
+];
+
 @Component({
   selector: "app-general-overview",
   standalone: true,
@@ -81,59 +93,53 @@ const DEFAULT_JOB_STATS: GlobalStats = {
   ],
   templateUrl: "./general-overview.component.html",
   styleUrls: ["./general-overview.component.scss"],
-  animations: [
-    trigger("fadeInOut", [
-      transition(":enter", [
-        style({ opacity: 0, transform: "translateY(10px)" }),
-        animate(
-          "300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          style({ opacity: 1, transform: "translateY(0)" })
-        ),
-      ]),
-      transition(":leave", [
-        animate(
-          "200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          style({ opacity: 0, transform: "translateY(-10px)" })
-        ),
-      ]),
-    ]),
-  ],
+  animations: ANIMATIONS,
 })
 export class GeneralOverviewComponent implements OnInit, OnDestroy {
-  // State management using signals where appropriate
-  bandwidthLimit = signal<BandwidthLimitResponse | null>(null);
-  isLoadingBandwidth = signal(false);
-  bandwidthError = signal<string | null>(null);
+  @Input() remotes: Remote[] = [];
+  @Input() jobs: JobInfo[] = [];
+  @Input() iconService: any;
+
+  @Output() selectRemote = new EventEmitter<Remote>();
+  @Output() mountRemote = new EventEmitter<string>();
+  @Output() unmountRemote = new EventEmitter<string>();
+  @Output() syncRemote = new EventEmitter<string>();
+  @Output() copyRemote = new EventEmitter<string>();
+  @Output() stopJob = new EventEmitter<{
+    type: "sync" | "copy";
+    remoteName: string;
+  }>();
+  @Output() browseRemote = new EventEmitter<string>();
+
+  bandwidthLimit: BandwidthLimitResponse | null = null;
+  isLoadingBandwidth = false;
+  bandwidthError: string | null = null;
+  rcloneStatus: "active" | "inactive" | "error" = "inactive";
 
   // Panel states
-  bandwidthPanelOpenState = signal(false);
-  systemInfoPanelOpenState = signal(false);
-  jobInfoPanelOpenState = signal(false);
+  bandwidthPanelOpenState = false;
+  systemInfoPanelOpenState = false;
+  jobInfoPanelOpenState = false;
 
-  // System stats with initial values
-  systemStats = signal<SystemStats>({
-    rcloneStatus: "inactive",
-    activeConnections: 0,
-    backgroundTasks: 0,
-    totalRemotes: 0,
-    activeJobs: 0,
+  systemStats: SystemStats = {
     memoryUsage: "0 MB",
     uptime: "0s",
-  });
+  };
 
-  isLoadingStats = signal(false);
-  jobStats = signal<GlobalStats>({ ...DEFAULT_JOB_STATS });
+  isLoadingStats = false;
+  jobStats: GlobalStats = { ...DEFAULT_JOB_STATS };
 
   private destroy$ = new Subject<void>();
+  hoveredRemote: Remote | null = null;
 
   constructor(
     private rcloneService: RcloneService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private infoService: InfoService
   ) {}
 
   ngOnInit(): void {
-    this.loadInitialData();
-    this.setupPolling();
+    this.initializeComponent();
   }
 
   ngOnDestroy(): void {
@@ -141,115 +147,130 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  private initializeComponent(): void {
+    this.loadInitialData();
+    this.setupPolling();
+    this.setupEventListeners();
+  }
+
   private loadInitialData(): void {
     this.loadBandwidthLimit();
     this.loadSystemStats();
+    this.checkRcloneStatus();
   }
 
   private setupPolling(): void {
-    // Bandwidth polling (every 30 seconds)
-    interval(30000)
-      .pipe(
-        takeUntil(this.destroy$),
-        switchMap(async () => this.loadBandwidthLimit())
-      )
-      .subscribe();
-
-    // System stats polling (every 5 seconds)
-    interval(5000)
-      .pipe(
-        takeUntil(this.destroy$),
-        switchMap(() => this.loadSystemStats())
-      )
-      .subscribe();
+    interval(1000)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.loadSystemStats());
   }
 
-  loadBandwidthLimit() {
-    if (this.isLoadingBandwidth()) return of(null);
+  private setupEventListeners(): void {
+    this.listenToBandwidthChanges();
+    this.listenToRcloneStatusChanges();
+  }
 
-    this.isLoadingBandwidth.set(true);
-    this.bandwidthError.set(null);
-
-    // Always convert getBandwidthLimit result to Observable
-    return from(this.rcloneService.getBandwidthLimit())
-      .pipe(
-        catchError((error) => {
-          this.bandwidthError.set("Failed to load bandwidth limit");
-          console.error("Error loading bandwidth limit:", error);
-
-          // Auto-retry after delay if first load fails
-          if (!this.bandwidthLimit()) {
-            setTimeout(() => this.loadBandwidthLimit(), 5000);
-          }
-
-          return of(null);
-        })
-      )
-      .subscribe((response: BandwidthLimitResponse) => {
-        if (response) {
-          this.bandwidthLimit.set(response);
-          this.bandwidthError.set(null);
-        }
-        this.isLoadingBandwidth.set(false);
+  private checkRcloneStatus(): void {
+    this.rcloneService
+      .getRcloneInfo()
+      .then((status) => {
+        this.rcloneStatus = status ? "active" : "inactive";
+        this.cdr.markForCheck();
+      })
+      .catch(() => {
+        this.rcloneStatus = "error";
         this.cdr.markForCheck();
       });
   }
 
-  async loadSystemStats(): Promise<void> {
-    if (this.isLoadingStats()) return;
+  private listenToBandwidthChanges(): void {
+    this.rcloneService
+      .listenToBandwidthChanges()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.loadBandwidthLimit());
+  }
 
-    this.isLoadingStats.set(true);
+  private listenToRcloneStatusChanges(): void {
+    const status$ = this.rcloneService.listenToRcloneApiReady();
+    const error$ = this.rcloneService.listenToRcloneEngineFailed();
+    const invalidPath$ = this.rcloneService.listenToRclonePathInvalid();
+
+    status$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.rcloneStatus = "active";
+      this.cdr.markForCheck();
+    });
+
+    error$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.rcloneStatus = "error";
+      this.cdr.markForCheck();
+    });
+
+    invalidPath$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.rcloneStatus = "error";
+      this.cdr.markForCheck();
+    });
+  }
+
+  loadBandwidthLimit(): void {
+    if (this.isLoadingBandwidth) return;
+
+    this.isLoadingBandwidth = true;
+    this.bandwidthError = null;
+
+    from(this.rcloneService.getBandwidthLimit())
+      .pipe(
+        catchError((error) => {
+          this.bandwidthError = "Failed to load bandwidth limit";
+          if (!this.bandwidthLimit) {
+            setTimeout(() => this.loadBandwidthLimit(), 5000);
+          }
+          return of(null);
+        }),
+        finalize(() => {
+          this.isLoadingBandwidth = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe((response) => {
+        this.bandwidthLimit = response;
+      });
+  }
+
+  async loadSystemStats(): Promise<void> {
+    if (this.isLoadingStats) return;
+
+    this.isLoadingStats = true;
 
     try {
-      const [remotes, jobs, rcloneInfo, memoryStats, coreStats] =
-        await Promise.allSettled([
-          this.rcloneService.getRemotes(),
-          this.rcloneService.getJobs(),
-          this.rcloneService.getRcloneInfo(),
-          this.rcloneService.getMemoryStats(),
-          this.rcloneService.getCoreStats(),
-        ]);
+      const [memoryStats, coreStats] = await Promise.all([
+        this.rcloneService.getMemoryStats().catch(() => null),
+        this.rcloneService.getCoreStats().catch(() => null),
+      ]);
 
-      const remotesResult = remotes.status === "fulfilled" ? remotes.value : [];
-      const jobsResult = jobs.status === "fulfilled" ? jobs.value : [];
-      const activeJobs = jobsResult.filter(
-        (job: any) => job.status === "Running"
-      );
-      const memoryResult =
-        memoryStats.status === "fulfilled" ? memoryStats.value : null;
-      const coreResult =
-        coreStats.status === "fulfilled" ? coreStats.value : null;
-
-      // Update system stats
-      this.systemStats.set({
-        rcloneStatus: rcloneInfo.status === "fulfilled" ? "active" : "error",
-        activeConnections: remotesResult.length || 0,
-        backgroundTasks: activeJobs.length,
-        totalRemotes: remotesResult.length || 0,
-        activeJobs: activeJobs.length,
-        memoryUsage: this.formatMemoryUsage(memoryResult) || "Unknown",
-        uptime: this.formatUptime(coreResult?.elapsedTime || 0) || "0s",
-      });
-
-      // Update job stats
-      if (coreResult) {
-        this.jobStats.set({
-          ...DEFAULT_JOB_STATS,
-          ...coreResult,
-        });
-      } else {
-        this.jobStats.set({ ...DEFAULT_JOB_STATS });
-      }
-    } catch (error) {
-      console.error("Error loading system stats:", error);
-      this.systemStats.update((prev) => ({ ...prev, rcloneStatus: "error" }));
+      this.updateSystemStats(memoryStats, coreStats);
+    } catch {
+      this.rcloneStatus = "error";
     } finally {
-      this.isLoadingStats.set(false);
+      this.isLoadingStats = false;
       this.cdr.markForCheck();
     }
   }
 
-  // Utility functions
+  private updateSystemStats(
+    memoryStats: MemoryStats | null,
+    coreStats: GlobalStats | null
+  ): void {
+    this.systemStats = {
+      memoryUsage: this.formatMemoryUsage(memoryStats),
+      uptime: this.formatUptime(coreStats?.elapsedTime || 0),
+    };
+
+    this.jobStats = coreStats
+      ? { ...DEFAULT_JOB_STATS, ...coreStats }
+      : { ...DEFAULT_JOB_STATS };
+  }
+
+  // Formatting utilities
   formatBytes(bytes: number): string {
     if (bytes === 0) return "0 B";
 
@@ -261,8 +282,9 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }
 
   private formatMemoryUsage(memoryStats: MemoryStats | null): string {
-    if (!memoryStats?.HeapAlloc) return "Unknown";
-    return `${Math.round(memoryStats.HeapAlloc / 1024 / 1024)} MB`;
+    return memoryStats?.HeapAlloc
+      ? `${Math.round(memoryStats.HeapAlloc / 1024 / 1024)} MB`
+      : "Unknown";
   }
 
   formatUptime(elapsedTimeSeconds: number): string {
@@ -282,7 +304,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
 
   formatEta(eta: number | string): string {
     if (!eta) return "0s";
-
     if (typeof eta === "number") return `${Math.max(eta, 0)}s`;
 
     const match = eta.match(/(?:(\d+)m)?(?:(\d+)s)?/);
@@ -292,18 +313,22 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }
 
   // Computed properties
+  get totalRemotes(): number {
+    return this.remotes?.length || 0;
+  }
+
+  get activeJobsCount(): number {
+    return this.jobs?.filter((job) => job.status === "Running").length || 0;
+  }
+
   get jobCompletionPercentage(): number {
-    const totalBytes = this.jobStats().totalBytes || 0;
-    const bytes = this.jobStats().bytes || 0;
+    const totalBytes = this.jobStats.totalBytes || 0;
+    const bytes = this.jobStats.bytes || 0;
     return totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
   }
 
-  get jobStatusText(): string {
-    return this.systemStats().activeJobs === 0 ? "No active jobs" : "Running";
-  }
-
   get isBandwidthLimited(): boolean {
-    const limit = this.bandwidthLimit();
+    const limit = this.bandwidthLimit;
     return (
       !!limit &&
       limit.rate !== "off" &&
@@ -313,19 +338,17 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }
 
   get formattedBandwidthRate(): string {
-    const limit = this.bandwidthLimit();
-    if (!limit || !this.isBandwidthLimited) return "Unlimited";
+    if (!this.isBandwidthLimited) return "Unlimited";
 
-    return limit.rate.includes(":")
-      ? limit.rate
-          .split(":")
+    return this.bandwidthLimit!.rate.includes(":")
+      ? this.bandwidthLimit!.rate.split(":")
           .map((r, i) => `${i === 0 ? "↑" : "↓"}${this.formatRateValue(r)}`)
           .join(" ")
-      : this.formatRateValue(limit.rate);
+      : this.formatRateValue(this.bandwidthLimit!.rate);
   }
 
   get bandwidthDisplayValue(): string {
-    if (this.bandwidthError()) return "Error loading limit";
+    if (this.bandwidthError) return "Error loading limit";
     if (!this.isBandwidthLimited) return "Unlimited";
 
     const rate = this.formattedBandwidthRate;
@@ -364,13 +387,93 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }
 
   get systemStatusColor(): string {
-    switch (this.systemStats().rcloneStatus) {
-      case "active":
-        return "status-active";
-      case "error":
-        return "status-error";
+    return `status-${this.rcloneStatus}`;
+  }
+
+  // Event handlers
+  onQuickAction(event: Event, remoteName: string, action: string): void {
+    event.stopPropagation(); // Prevent card click
+
+    switch (action) {
+      case "mount":
+        this.mountRemote.emit(remoteName);
+        break;
+      case "unmount":
+        this.unmountRemote.emit(remoteName);
+        break;
+      case "sync":
+        this.syncRemote.emit(remoteName);
+        break;
+      case "stop-sync":
+        this.stopJob.emit({ type: "sync", remoteName });
+        break;
+      case "copy":
+        this.copyRemote.emit(remoteName);
+        break;
+      case "stop-copy":
+        this.stopJob.emit({ type: "copy", remoteName });
+        break;
+      case "browse":
+        this.browseRemote.emit(remoteName);
+        break;
       default:
-        return "status-inactive";
+        console.warn("Unknown action:", action);
+    }
+  }
+
+  onRemoteHover(remote: Remote): void {
+    this.hoveredRemote = remote;
+  }
+
+  onRemoteLeave(): void {
+    this.hoveredRemote = null;
+  }
+
+  @HostListener("window:keydown", ["$event"])
+  onKeyDown(event: KeyboardEvent): void {
+    if (
+      event.target instanceof HTMLInputElement ||
+      event.target instanceof HTMLTextAreaElement ||
+      !this.hoveredRemote
+    ) {
+      return;
+    }
+
+    const key = event.key.toLowerCase();
+    const remote = this.hoveredRemote;
+    const remoteName = remote.remoteSpecs.name;
+
+    const keyActions: Record<string, () => void> = {
+      m: () => {
+        remote.mountState?.mounted
+          ? this.unmountRemote.emit(remoteName)
+          : this.mountRemote.emit(remoteName);
+      },
+      s: () => {
+        remote.syncState?.isOnSync
+          ? this.stopJob.emit({ type: "sync", remoteName })
+          : this.syncRemote.emit(remoteName);
+      },
+      c: () => {
+        remote.copyState?.isOnCopy
+          ? this.stopJob.emit({ type: "copy", remoteName })
+          : this.copyRemote.emit(remoteName);
+      },
+      b: () => {
+        if (remote.mountState?.mounted) {
+          this.browseRemote.emit(remoteName);
+        } else {
+          this.infoService.openSnackBar(
+            "Remote is not mounted. Please mount it first.",
+            "Close"
+          );
+        }
+      },
+    };
+
+    if (keyActions[key]) {
+      keyActions[key]();
+      event.preventDefault();
     }
   }
 }

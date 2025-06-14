@@ -211,7 +211,7 @@
           }
 
           &.error {
-            background: rgba(234, 67, 53, 0.1);
+            background: rgba(var(--warn-color-rgb), 0.1);
             color: var(--warn-color);
           }
         }

@@ -101,7 +101,7 @@ export class AppOverviewComponent {
 
   get title(): string {
     if (this.mode === "mount") {
-      return "Remotes Overview";
+      return "Mount Overview";
     } else if (this.mode === "sync") {
       return "Sync Overview";
     } else if (this.mode === "copy") {

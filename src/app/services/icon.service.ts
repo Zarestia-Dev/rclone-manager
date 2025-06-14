@@ -28,6 +28,7 @@ export class IconService {
 
       // App icons
       mount: "assets/icons/mount.svg",
+      eject: "assets/icons/eject.svg",
       vfs: "assets/icons/vfs.svg",
       sync: "assets/icons/folder-sync.svg",
       copy: "assets/icons/copy.svg",
@@ -60,6 +61,7 @@ export class IconService {
       play: "assets/icons/play.svg",
       pause: "assets/icons/pause.svg",
       "cloud-arrow-up": "assets/icons/cloud-arrow-up.svg",
+      cloud : "assets/icons/cloud.svg",
 
       // Remote icons
       drive: "assets/icons/remotes/drive.svg",

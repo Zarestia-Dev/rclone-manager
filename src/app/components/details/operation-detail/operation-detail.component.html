@@ -61,13 +61,13 @@
                 }">
                 <mat-icon
                   [svgIcon]="(operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) === 'error' ? 'error' : 
-              ((operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) ? 'refresh' : 'pause')"></mat-icon>
+              ((operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) ? 'refresh' : 'stop')"></mat-icon>
                 <span>
                   {{ (operationType === 'sync' ? selectedRemote.syncState?.isOnSync :
                   selectedRemote.copyState?.isOnCopy) === 'error' ? 'Error' :
                   ((operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy)
                   ?
-                  (operationType === 'sync' ? 'Syncing' : 'Copying') : 'Paused') }}
+                  (operationType === 'sync' ? 'Syncing' : 'Copying') : 'Stopped') }}
                 </span>
                 <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
               </div>
@@ -86,7 +86,7 @@
                 [color]="(operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) ? 'warn' : operationColor"
                 (click)="toggleOperation()" [disabled]="isLoading">
                 <mat-icon
-                  [svgIcon]="(operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) ? 'pause' : 'play'"></mat-icon>
+                  [svgIcon]="(operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) ? 'stop' : 'play'"></mat-icon>
                 {{(operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) ?
                 'Stop ' + (operationType | titlecase) : 'Start ' + (operationType | titlecase)}}
               </button>

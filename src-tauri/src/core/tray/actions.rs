@@ -13,7 +13,7 @@ use crate::{
     },
     utils::{
         builder::create_app_window, file_helper::get_folder_location,
-        notification::send_notification,
+        notification::send_notification, types::JobStatus,
     },
 };
 
@@ -395,7 +395,7 @@ pub fn handle_stop_sync(app: AppHandle, id: &str) {
             .get_jobs()
             .await
             .iter()
-            .find(|j| j.remote_name == remote_name && j.job_type == "sync")
+            .find(|j| j.remote_name == remote_name && j.job_type == "sync" && j.status == JobStatus::Running)
         {
             match stop_job(app.clone(), job.jobid, remote_name.clone(), app.state()).await {
                 Ok(_) => {
@@ -433,7 +433,7 @@ pub fn handle_stop_copy(app: AppHandle, id: &str) {
             .get_jobs()
             .await
             .iter()
-            .find(|j| j.remote_name == remote_name && j.job_type == "copy")
+            .find(|j| j.remote_name == remote_name && j.job_type == "copy" && j.status == JobStatus::Running)
         {
             match stop_job(app.clone(), job.jobid, remote_name.clone(), app.state()).await {
                 Ok(_) => {

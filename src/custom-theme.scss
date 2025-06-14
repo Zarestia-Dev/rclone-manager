@@ -348,6 +348,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
     --hover-color: rgb(200, 200, 200);
     --app-text-color: #000000;
     --secondary-text-color: #939090;
+    --secondary-text-color-rgb: 147, 144, 144;
     --button-hover: #dddddd;
     --theme-border: #dbdbdb;
     --faint-blue: #f0f8ff;
@@ -370,6 +371,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
     --hover-color: rgb(55, 55, 55);
     --app-text-color: #ffffff;
     --secondary-text-color: #939090;
+    --secondary-text-color-rgb: 147, 144, 144;
     --button-hover: #333;
     --theme-border: #555;
     --faint-blue: #464d50;
@@ -610,13 +612,13 @@ button {
 
 @keyframes pulseBlue {
   0% {
-    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.5);
+    box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0.5);
   }
   50% {
-    box-shadow: 0 0 0 16px rgba(var(--primary-color-rgb), 0);
+    box-shadow: 0 0 0 16px rgba(var(--accent-color-rgb), 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0);
+    box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0);
   }
 }
 
@@ -632,6 +634,19 @@ button {
   }
 }
 
+@keyframes pulseYellow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--yellow-rgb), 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(var(--yellow-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--yellow-rgb), 0);
+  }
+}
+
+
 @keyframes breathing {
   0% {
     transform: scale(1);
@@ -644,6 +659,18 @@ button {
   100% {
     transform: scale(1);
     filter: brightness(1);
+  }
+}
+
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
   
