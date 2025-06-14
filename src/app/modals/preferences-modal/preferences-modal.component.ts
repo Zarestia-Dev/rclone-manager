@@ -15,7 +15,7 @@ import {
   Validators,
 } from "@angular/forms";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
-import { CommonModule } from "@angular/common";
+
 import { MatInputModule } from "@angular/material/input";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatDialogRef } from "@angular/material/dialog";
@@ -31,7 +31,6 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
   standalone: true,
   imports: [
     MatSlideToggleModule,
-    CommonModule,
     MatFormFieldModule,
     MatInputModule,
     FormsModule,
@@ -40,8 +39,8 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
     MatTooltipModule,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule,
-  ],
+    MatProgressSpinnerModule
+],
   templateUrl: "./preferences-modal.component.html",
   styleUrls: ["./preferences-modal.component.scss"],
   animations: [

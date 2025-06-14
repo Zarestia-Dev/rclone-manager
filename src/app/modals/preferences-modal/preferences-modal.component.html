@@ -5,16 +5,22 @@
       <mat-icon svgIcon="search"></mat-icon>
     </button>
 
-    <h2 *ngIf="bottomTabs">Preferences</h2>
+    @if (bottomTabs) {
+      <h2>Preferences</h2>
+    }
 
     <!-- Tabs - Desktop Layout -->
-    <div class="tabs desktop-tabs" *ngIf="!bottomTabs">
-      <button mat-flat-button *ngFor="let tab of filteredTabs; let i = index" (click)="selectTab(i)"
-        [class.selected]="selectedTabIndex === i">
-        <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
-        <span class="tab-label">{{ tab.label }}</span>
-      </button>
-    </div>
+    @if (!bottomTabs) {
+      <div class="tabs desktop-tabs">
+        @for (tab of filteredTabs; track tab; let i = $index) {
+          <button mat-flat-button (click)="selectTab(i)"
+            [class.selected]="selectedTabIndex === i">
+            <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
+            <span class="tab-label">{{ tab.label }}</span>
+          </button>
+        }
+      </div>
+    }
 
     <button class="close-button" (click)="close()" mat-icon-button aria-label="Close">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
@@ -28,83 +34,103 @@
   </div>
 
   <!-- 🔹 Loading Indicator -->
-  <div class="loading-overlay" *ngIf="isLoading">
-    <mat-spinner diameter="50"></mat-spinner>
-  </div>
+  @if (isLoading) {
+    <div class="loading-overlay">
+      <mat-spinner diameter="50"></mat-spinner>
+    </div>
+  }
 
   <!-- 🔹 Modal Content -->
-  <div class="modal-content" *ngIf="!isLoading">
-    <ng-container *ngFor="let category of getObjectKeys(settingsForm.controls)">
-      <ng-container *ngIf="selectedTab === category">
-        <div class="tab-content">
-          <div class="settings-list">
-            <div class="setting-item" *ngFor="let key of getFilteredSettings(category)">
-              <!-- ✅ Fetch metadata -->
-              <ng-container *ngIf="getMetadata(category, key) as meta">
-                <div class="setting-info">
-                  <strong>{{ meta.display_name }}</strong>
-                  <p>{{ meta.help_text }}</p>
+  @if (!isLoading) {
+    <div class="modal-content">
+      @for (category of getObjectKeys(settingsForm.controls); track category) {
+        @if (selectedTab === category) {
+          <div class="tab-content">
+            <div class="settings-list">
+              @for (key of getFilteredSettings(category); track key) {
+                <div class="setting-item">
+                  <!-- ✅ Fetch metadata -->
+                  @if (getMetadata(category, key); as meta) {
+                    <div class="setting-info">
+                      <strong>{{ meta.display_name }}</strong>
+                      <p>{{ meta.help_text }}</p>
+                    </div>
+                    <div class="setting-control">
+                      @if (getFormControl(category, key).invalid) {
+                        <mat-icon svgIcon="error" matSuffix color="warn"
+                          fontSet="material-icons" matTooltip="{{ getValidationMessage(category, key) }}"
+                          matTooltipPosition="above">
+                        </mat-icon>
+                      }
+                      <!-- ✅ Boolean Settings (Toggle) -->
+                      @if (meta.value_type === 'bool') {
+                        <mat-slide-toggle [formControl]="getFormControl(category, key)"
+                          (change)="updateSetting(category, key, getFormControl(category, key).value)">
+                        </mat-slide-toggle>
+                      }
+                      <!-- ✅ Number Input -->
+                      @if (meta.value_type === 'number') {
+                        <mat-form-field class="input-field" appearance="outline">
+                          <input matInput (blur)="updateSetting(category, key, getFormControl(category, key).value)"
+                            type="number" [formControl]="getFormControl(category, key)" [min]="meta.min_value || 0"
+                            [max]="meta.max_value" (keypress)="allowOnlyNumbers($event)">
+                          <mat-error>Invalid input</mat-error>
+                        </mat-form-field>
+                      }
+                      <!-- ✅ String Settings -->
+                      @if (meta.value_type === 'string') {
+                        <mat-form-field class="input-field" appearance="outline">
+                          <!-- ✅ Dropdown (Mat Select) -->
+                          @if (meta.options) {
+                            <mat-select [formControl]="getFormControl(category, key)"
+                              (selectionChange)="updateSetting(category, key, $event.value)">
+                              @for (option of meta.options; track option) {
+                                <mat-option [value]="option">
+                                  {{ option }}
+                                </mat-option>
+                              }
+                            </mat-select>
+                          }
+                          @if (!meta.options) {
+                            <input (blur)="updateSetting(category, key, getFormControl(category, key).value)" matInput [formControl]="getFormControl(category, key)">
+                          }
+                          <mat-error>Invalid input</mat-error>
+                        </mat-form-field>
+                      }
+                    </div>
+                  }
                 </div>
-
-                <div class="setting-control">
-                  <mat-icon svgIcon="error" matSuffix *ngIf="getFormControl(category, key)?.invalid" color="warn"
-                    fontSet="material-icons" matTooltip="{{ getValidationMessage(category, key) }}"
-                    matTooltipPosition="above">
-                  </mat-icon>
-
-                  <!-- ✅ Boolean Settings (Toggle) -->
-                  <mat-slide-toggle *ngIf="meta.value_type === 'bool'" [formControl]="getFormControl(category, key)"
-                    (change)="updateSetting(category, key, getFormControl(category, key).value)">
-                  </mat-slide-toggle>
-
-                  <!-- ✅ Number Input -->
-                  <mat-form-field class="input-field" appearance="outline" *ngIf="meta.value_type === 'number'">
-                    <input matInput (blur)="updateSetting(category, key, getFormControl(category, key).value)"
-                      type="number" [formControl]="getFormControl(category, key)" [min]="meta.min_value || 0"
-                      [max]="meta.max_value" (keypress)="allowOnlyNumbers($event)">
-                    <mat-error>Invalid input</mat-error>
-                  </mat-form-field>
-
-                  <!-- ✅ String Settings -->
-                  <mat-form-field class="input-field" appearance="outline" *ngIf="meta.value_type === 'string'">
-                    <!-- ✅ Dropdown (Mat Select) -->
-                    <mat-select *ngIf="meta.options" [formControl]="getFormControl(category, key)"
-                      (selectionChange)="updateSetting(category, key, $event.value)">
-                      <mat-option *ngFor="let option of meta.options" [value]="option">
-                        {{ option }}
-                      </mat-option>
-                    </mat-select>
-                    <input *ngIf="!meta.options" (blur)="updateSetting(category, key, getFormControl(category, key).value)" matInput [formControl]="getFormControl(category, key)">
-                    <mat-error>Invalid input</mat-error>
-                  </mat-form-field>
+              }
+              @if (selectedTab === 'general') {
+                <div class="actions">
+                  <button mat-raised-button color="warn" (click)="resetSettings()" class="reset-button">
+                    Reset All Settings
+                  </button>
                 </div>
-              </ng-container>
+              }
             </div>
-
-            <ng-container *ngIf="selectedTab === 'general'">
-              <div class="actions">
-                <button mat-raised-button color="warn" (click)="resetSettings()" class="reset-button">
-                  Reset All Settings
-                </button>
-              </div>
-            </ng-container>
           </div>
+        }
+      }
+      @if (filteredTabs.length === 0) {
+        <div class="no-results">
+          <mat-icon svgIcon="search-off"></mat-icon>
+          <p>No settings found matching "{{ searchQuery }}"</p>
         </div>
-      </ng-container>
-    </ng-container>
-
-    <div class="no-results" *ngIf="filteredTabs.length === 0">
-      <mat-icon svgIcon="search-off"></mat-icon>
-      <p>No settings found matching "{{ searchQuery }}"</p>
+      }
     </div>
-  </div>
+  }
 
   <!-- 🔻 Bottom Tabs (if enabled) -->
-  <div class="tabs bottom-tabs" *ngIf="bottomTabs && filteredTabs.length > 0">
-    <button mat-flat-button *ngFor="let tab of filteredTabs; let i = index" (click)="selectTab(i)"
-      [class.selected]="selectedTabIndex === i">
-      <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
-      <span class="tab-label">{{ tab.label }}</span>
-    </button>
-  </div>
+  @if (bottomTabs && filteredTabs.length > 0) {
+    <div class="tabs bottom-tabs">
+      @for (tab of filteredTabs; track tab; let i = $index) {
+        <button mat-flat-button (click)="selectTab(i)"
+          [class.selected]="selectedTabIndex === i">
+          <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
+          <span class="tab-label">{{ tab.label }}</span>
+        </button>
+      }
+    </div>
+  }
 </div>

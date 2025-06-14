@@ -1,11 +1,11 @@
 <!-- Custom Right-Click Menu -->
 <!-- <div id="custom-menu" class="menu" (mouseleave)="hideMenu()">
-    <ul>
-      <li (click)="onOptionClick('Option 1')">Option 1</li>
-      <li (click)="onOptionClick('Option 2')">Option 2</li>
-      <li (click)="onOptionClick('Option 3')">Option 3</li>
-    </ul>
-  </div> -->
+<ul>
+  <li (click)="onOptionClick('Option 1')">Option 1</li>
+  <li (click)="onOptionClick('Option 2')">Option 2</li>
+  <li (click)="onOptionClick('Option 3')">Option 3</li>
+</ul>
+</div> -->
 
 <!-- Main Layout -->
 <div class="app-wrapper">
@@ -14,12 +14,14 @@
   <mat-toolbar [@slideToggle]="isMeteredConnection ? 'visible' : 'hidden'" class="metered-banner" role="alert">
     You are on a metered connection. Some features may use extra data.
   </mat-toolbar>
-  <app-onboarding *ngIf="!completedOnboarding" class="onboarding" (completed)="finishOnboarding()">
-  </app-onboarding>
+  @if (!completedOnboarding) {
+    <app-onboarding class="onboarding" (completed)="finishOnboarding()">
+    </app-onboarding>
+  }
   <app-home appRightClick></app-home> <!-- Enable Right-Click on Home -->
-  <ng-container *ngIf="isMobile$ | async">
+  @if (isMobile$ | async) {
     <div class="mobile-tab-bar">
       <app-tabs-buttons></app-tabs-buttons>
     </div>
-  </ng-container>
+  }
 </div>

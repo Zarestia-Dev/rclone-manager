@@ -8,13 +8,12 @@ import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { MatFormFieldModule } from "@angular/material/form-field";
-import { CommonModule } from "@angular/common";
+
 import { SENSITIVE_KEYS } from "../../../components/types";
 
 @Component({
   selector: "app-remote-config-step",
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatSelectModule,

@@ -1,16 +1,16 @@
 <div class="quick-add-modal">
   <!-- 🔹 Modal Header -->
   <div class="modal-header" data-tauri-drag-region>
-      <button class="help-btn">
-        <mat-icon svgIcon="question"></mat-icon>
-      </button>
-      <p>
-        <mat-icon svgIcon="hard-drive"></mat-icon>
-        Quick Add Remote
-      </p>
-      <button (click)="close()">
-        <mat-icon svgIcon="circle-xmark"></mat-icon>
-      </button>
+    <button class="help-btn">
+      <mat-icon svgIcon="question"></mat-icon>
+    </button>
+    <p>
+      <mat-icon svgIcon="hard-drive"></mat-icon>
+      Quick Add Remote
+    </p>
+    <button (click)="close()">
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    </button>
   </div>
 
   <!-- 🔹 Form -->
@@ -19,25 +19,33 @@
     <mat-form-field class="full-width">
       <mat-label>Select Remote Type</mat-label>
       <mat-select formControlName="remoteType" (selectionChange)="onRemoteTypeChange()">
-        <mat-option *ngFor="let remote of remoteTypes" [value]="remote.value">
-          {{ remote.label }}
-        </mat-option>
+        @for (remote of remoteTypes; track remote) {
+          <mat-option [value]="remote.value">
+            {{ remote.label }}
+          </mat-option>
+        }
       </mat-select>
-      <mat-error *ngIf="quickAddForm.get('remoteType')?.hasError('required')">
-        Remote type is required.
-      </mat-error>
+      @if (quickAddForm.get('remoteType')?.hasError('required')) {
+        <mat-error>
+          Remote type is required.
+        </mat-error>
+      }
     </mat-form-field>
 
     <!-- 🌟 Remote Name Input -->
     <mat-form-field class="full-width">
       <mat-label>Remote Name</mat-label>
       <input matInput formControlName="remoteName" />
-      <mat-error *ngIf="quickAddForm.get('remoteName')?.hasError('required')">
-        Remote name is required.
-      </mat-error>
-      <mat-error *ngIf="quickAddForm.get('remoteName')?.hasError('nameTaken')">
-        That name is taken. Try another.
-      </mat-error>
+      @if (quickAddForm.get('remoteName')?.hasError('required')) {
+        <mat-error>
+          Remote name is required.
+        </mat-error>
+      }
+      @if (quickAddForm.get('remoteName')?.hasError('nameTaken')) {
+        <mat-error>
+          That name is taken. Try another.
+        </mat-error>
+      }
     </mat-form-field>
 
     <!-- 🌟 Auto-Mount Checkbox -->
@@ -46,40 +54,56 @@
     </mat-slide-toggle>
 
     <!-- 🌟 Mount Path (Shown if Auto-Mount is enabled) -->
-    <mat-form-field appearance="fill" *ngIf="quickAddForm.get('autoStart')?.value" @slideInOut>
-      <mat-label>Mount Path</mat-label>
-      <button mat-icon-button matSuffix (click)="selectFolder()" *ngIf="quickAddForm.get('autoStart')?.value">
-        <mat-icon svgIcon="folder"></mat-icon>
-      </button>
-      <input matInput readonly placeholder="Select a folder..." formControlName="mountPath" id="mountPath" />
-      <mat-error *ngIf="quickAddForm.get('autoStart')?.value && quickAddForm.get('mountPath')?.hasError('required')">
-        Mount Path is required.
-      </mat-error>
-    </mat-form-field>
+    @if (quickAddForm.get('autoStart')?.value) {
+      <mat-form-field appearance="fill" @slideInOut>
+        <mat-label>Mount Path</mat-label>
+        @if (quickAddForm.get('autoStart')?.value) {
+          <button mat-icon-button matSuffix (click)="selectFolder()">
+            <mat-icon svgIcon="folder"></mat-icon>
+          </button>
+        }
+        <input matInput readonly placeholder="Select a folder..." formControlName="mountPath" id="mountPath" />
+        @if (quickAddForm.get('autoStart')?.value && quickAddForm.get('mountPath')?.hasError('required')) {
+          <mat-error>
+            Mount Path is required.
+          </mat-error>
+        }
+      </mat-form-field>
+    }
 
     <!-- 🌟 Action Buttons -->
     <div class="button-group">
       <button mat-raised-button color="primary" type="submit"
         [disabled]="isLoading.saving || quickAddForm.invalid || isLoading.authDisabled">
-        <mat-spinner *ngIf="isLoading.saving && !isLoading.cancelled" diameter="20"></mat-spinner>
+        @if (isLoading.saving && !isLoading.cancelled) {
+          <mat-spinner diameter="20"></mat-spinner>
+        }
         {{ isLoading.saving && !isLoading.cancelled ? 'Adding...' : 'Create Remote' }}
       </button>
 
 
-      <button mat-raised-button color="warn" @slideInOut class="cancel" (click)="cancelAuth()"
-        [disabled]="!isLoading.saving" *ngIf="isLoading.saving && !isLoading.cancelled">
-        Cancel Authentication
-      </button>
+      @if (isLoading.saving && !isLoading.cancelled) {
+        <button mat-raised-button color="warn" @slideInOut class="cancel" (click)="cancelAuth()"
+          [disabled]="!isLoading.saving">
+          Cancel Authentication
+        </button>
+      }
 
-      <p *ngIf="isLoading.cancelled">
-        <mat-spinner *ngIf="isLoading.cancelled" diameter="20"></mat-spinner>
-        Cleaning authentication. Please wait...
-      </p>
+      @if (isLoading.cancelled) {
+        <p>
+          @if (isLoading.cancelled) {
+            <mat-spinner diameter="20"></mat-spinner>
+          }
+          Cleaning authentication. Please wait...
+        </p>
+      }
 
       <!-- 🔄 Additional Message (Loading) -->
-      <p *ngIf="isLoading.saving && !isLoading.cancelled" class="loading-message">
-        A browser window may open for authentication...
-      </p>
+      @if (isLoading.saving && !isLoading.cancelled) {
+        <p class="loading-message">
+          A browser window may open for authentication...
+        </p>
+      }
     </div>
 
   </form>

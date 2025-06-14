@@ -7,7 +7,7 @@ import {
   ValidationErrors,
   Validators,
 } from "@angular/forms";
-import { CommonModule } from "@angular/common";
+
 import { MatDialogRef } from "@angular/material/dialog";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatSelectModule } from "@angular/material/select";
@@ -33,7 +33,6 @@ import {
   selector: "app-quick-add-remote",
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
@@ -42,8 +41,8 @@ import {
     MatSlideToggleModule,
     MatProgressSpinnerModule,
     MatIconModule,
-    MatButtonModule,
-  ],
+    MatButtonModule
+],
   templateUrl: "./quick-add-remote.component.html",
   styleUrls: ["./quick-add-remote.component.scss"],
   animations: [

@@ -1,146 +1,181 @@
 <!-- remote-overview.component.html -->
 <div class="overview">
-    <div class="remote-header">
-        <h2>{{ title }}</h2>
-    </div>
+  <div class="remote-header">
+    <h2>{{ title }}</h2>
+  </div>
 
-    <div class="info-card overview-card">
-        <h3>
-            <mat-icon [svgIcon]="mode"></mat-icon>
-            {{ mode | titlecase}} Status
-        </h3>
-        <mat-card class="info-card-content">
-            <mat-card-content class="overview-content">
-                <strong>{{ mode | titlecase}} Status Overview</strong>
-                <div class="remotes-bar">
-                    <div class="bar active-bar" [style.width.%]="(activeCount / remotes.length) * 100"></div>
-                    <div class="bar inactive-bar" [style.width.%]="(inactiveCount / remotes.length) * 100"></div>
-                    <div class="bar error-bar" [style.width.%]="(errorCount / remotes.length) * 100"></div>
+  <div class="info-card overview-card">
+    <h3>
+      <mat-icon [svgIcon]="mode"></mat-icon>
+      {{ mode | titlecase}} Status
+    </h3>
+    <mat-card class="info-card-content">
+      <mat-card-content class="overview-content">
+        <strong>{{ mode | titlecase}} Status Overview</strong>
+        <div class="remotes-bar">
+          <div class="bar active-bar" [style.width.%]="(activeCount / remotes.length) * 100"></div>
+          <div class="bar inactive-bar" [style.width.%]="(inactiveCount / remotes.length) * 100"></div>
+          <div class="bar error-bar" [style.width.%]="(errorCount / remotes.length) * 100"></div>
+        </div>
+
+        <!-- Legend -->
+        @if (activeCount > 0 || inactiveCount > 0 || errorCount > 0) {
+          <div class="legend">
+            @if (activeCount > 0) {
+              <div class="legend-item">
+                <span class="color-box active"></span>
+                {{ mode === 'mount' ? 'Mounted' : (mode === 'sync' ? 'Syncing' : 'Copying') }}: {{ activeCount
+                }}
+              </div>
+            }
+            @if (inactiveCount > 0) {
+              <div class="legend-item">
+                <span class="color-box inactive"></span>
+                {{ mode === 'mount' ? 'Unmounted' : (mode === 'sync' ? 'Off Sync' : 'Not Copying') }}: {{
+                inactiveCount }}
+              </div>
+            }
+            @if (errorCount > 0) {
+              <div class="legend-item">
+                <span class="color-box error"></span>Error: {{ errorCount }}
+              </div>
+            }
+          </div>
+        }
+      </mat-card-content>
+
+      @if (activeCount > 0 && inactiveCount > 0) {
+        <mat-divider></mat-divider>
+      }
+
+      <!-- Active Remotes -->
+      @if (activeCount > 0) {
+        <mat-card-content class="active-remotes">
+          <h3>
+            <mat-icon [svgIcon]="activeIcon"></mat-icon>
+            {{ mode === 'mount' ? 'Mounted' : (mode === 'sync' ? 'Syncing' : 'Copying') }} Remotes
+          </h3>
+          <div class="remote-list">
+            <!-- Active Remotes section -->
+            @for (remote of activeRemotes; track remote) {
+              <div class="remote-card" (click)="selectRemote(remote)">
+                <div class="remote-content">
+                  <h4 matTooltip="{{ remote.remoteSpecs.name }}">
+                    {{ remote.remoteSpecs.name }}
+                  </h4>
+                  <p>
+                    <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
+                    {{ remote.remoteSpecs.type | titlecase }}
+                  </p>
                 </div>
+                <!-- Action Button (Open or Stop) -->
+                @if (shouldShowOpenButton(remote)) {
+                  <button mat-raised-button color="accent"
+                    (click)="triggerOpenInFiles(remote.remoteSpecs.name); $event.stopPropagation()"
+                    [disabled]="isOpening(remote.remoteSpecs.name)">
+                    @if (isOpening(remote.remoteSpecs.name)) {
+                      <mat-spinner diameter="20"></mat-spinner>
+                    }
+                    @if (!isOpening(remote.remoteSpecs.name)) {
+                      <mat-icon svgIcon="folder"></mat-icon>
+                    }
+                    {{ getOpenButtonLabel(remote.remoteSpecs.name) }}
+                  </button>
+                } @else {
+                  <button mat-raised-button color="warn"
+                    (click)="triggerSecondaryAction(remote.remoteSpecs.name); $event.stopPropagation()"
+                    [disabled]="isStopping(remote.remoteSpecs.name)">
+                    @if (isStopping(remote.remoteSpecs.name)) {
+                      <mat-spinner diameter="20"></mat-spinner>
+                    }
+                    @if (!isStopping(remote.remoteSpecs.name)) {
+                      <mat-icon svgIcon="pause"></mat-icon>
+                    }
+                    {{ isStopping(remote.remoteSpecs.name) ? 'Stopping' : getStopButtonLabel() }}
+                  </button>
+                }
+              </div>
+            }
+          </div>
+        </mat-card-content>
+      }
 
-                <!-- Legend -->
-                <div class="legend" *ngIf="activeCount > 0 || inactiveCount > 0 || errorCount > 0">
-                    <div class="legend-item" *ngIf="activeCount > 0">
-                        <span class="color-box active"></span>
-                        {{ mode === 'mount' ? 'Mounted' : (mode === 'sync' ? 'Syncing' : 'Copying') }}: {{ activeCount
-                        }}
-                    </div>
-                    <div class="legend-item" *ngIf="inactiveCount > 0">
-                        <span class="color-box inactive"></span>
-                        {{ mode === 'mount' ? 'Unmounted' : (mode === 'sync' ? 'Off Sync' : 'Not Copying') }}: {{
-                        inactiveCount }}
-                    </div>
-                    <div class="legend-item" *ngIf="errorCount > 0">
-                        <span class="color-box error"></span>Error: {{ errorCount }}
-                    </div>
+      @if (inactiveCount > 0 && errorCount > 0) {
+        <mat-divider></mat-divider>
+      }
+
+      <!-- Inactive Remotes -->
+      @if (inactiveCount > 0) {
+        <mat-card-content class="inactive-remotes">
+          <h3>
+            <mat-icon svgIcon="circle-xmark"></mat-icon>
+            {{ mode === 'mount' ? 'Unmounted' : (mode === 'sync' ? 'Off Sync' : 'Not Copying') }} Remotes
+          </h3>
+          <div class="remote-list">
+            @for (remote of inactiveRemotes; track remote) {
+              <div class="remote-card" (click)="selectRemote(remote)">
+                <div class="remote-content">
+                  <h4 matTooltip="{{ remote.remoteSpecs.name }}">
+                    {{ remote.remoteSpecs.name }}
+                  </h4>
+                  <p>
+                    <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
+                    {{ remote.remoteSpecs.type | titlecase }}
+                  </p>
                 </div>
-            </mat-card-content>
+                <button mat-raised-button [color]="mode === 'copy' ? 'accent' : 'primary'"
+                  (click)="triggerPrimaryAction(remote.remoteSpecs.name); $event.stopPropagation()"
+                  [disabled]="getActionState(remote.remoteSpecs.name) === mode">
+                  @if (getActionState(remote.remoteSpecs.name) === mode) {
+                    <mat-spinner
+                    diameter="20"></mat-spinner>
+                  }
+                  @if (getActionState(remote.remoteSpecs.name) !== mode) {
+                    <mat-icon
+                    [svgIcon]="primaryActionIcon"></mat-icon>
+                  }
+                  {{ getActionState(remote.remoteSpecs.name) === mode
+                  ? (mode === 'mount' ? 'Mounting' : mode === 'sync' ? 'Starting Sync' : 'Starting Copy')
+                  : primaryActionLabel }}
+                </button>
+              </div>
+            }
+          </div>
+        </mat-card-content>
+      }
 
-            <mat-divider *ngIf="activeCount > 0 && inactiveCount > 0"></mat-divider>
+      @if (errorCount > 0) {
+        <mat-divider></mat-divider>
+      }
 
-            <!-- Active Remotes -->
-            <mat-card-content class="active-remotes" *ngIf="activeCount > 0">
-                <h3>
-                    <mat-icon [svgIcon]="activeIcon"></mat-icon>
-                    {{ mode === 'mount' ? 'Mounted' : (mode === 'sync' ? 'Syncing' : 'Copying') }} Remotes
-                </h3>
-                <div class="remote-list">
-                    <!-- Active Remotes section -->
-                    <div class="remote-card" *ngFor="let remote of activeRemotes" (click)="selectRemote(remote)">
-                        <div class="remote-content">
-                            <h4 matTooltip="{{ remote.remoteSpecs.name }}">
-                                {{ remote.remoteSpecs.name }}
-                            </h4>
-                            <p>
-                                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
-                                {{ remote.remoteSpecs.type | titlecase }}
-                            </p>
-                        </div>
-                        <!-- Action Button (Open or Stop) -->
-                        <ng-container *ngIf="shouldShowOpenButton(remote); else stopButton">
-                            <button mat-raised-button color="accent"
-                                (click)="triggerOpenInFiles(remote.remoteSpecs.name); $event.stopPropagation()"
-                                [disabled]="isOpening(remote.remoteSpecs.name)">
-                                <mat-spinner *ngIf="isOpening(remote.remoteSpecs.name)" diameter="20"></mat-spinner>
-                                <mat-icon *ngIf="!isOpening(remote.remoteSpecs.name)" svgIcon="folder"></mat-icon>
-                                {{ getOpenButtonLabel(remote.remoteSpecs.name) }}
-                            </button>
-                        </ng-container>
-
-                        <ng-template #stopButton>
-                            <button mat-raised-button color="warn"
-                                (click)="triggerSecondaryAction(remote.remoteSpecs.name); $event.stopPropagation()"
-                                [disabled]="isStopping(remote.remoteSpecs.name)">
-                                <mat-spinner *ngIf="isStopping(remote.remoteSpecs.name)" diameter="20"></mat-spinner>
-                                <mat-icon *ngIf="!isStopping(remote.remoteSpecs.name)" svgIcon="pause"></mat-icon>
-                                {{ isStopping(remote.remoteSpecs.name) ? 'Stopping' : getStopButtonLabel() }}
-                            </button>
-                        </ng-template>
-
-                    </div>
+      <!-- Error Remotes -->
+      @if (errorCount > 0) {
+        <mat-card-content>
+          <h3>
+            <mat-icon svgIcon="circle-exclamation"></mat-icon>
+            Remotes with Problems
+          </h3>
+          <div class="remote-list">
+            @for (remote of errorRemotes; track remote) {
+              <div class="remote-card" (click)="selectRemote(remote)">
+                <div class="remote-content">
+                  <h4 matTooltip="{{ remote.remoteSpecs.name }}">
+                    {{ remote.remoteSpecs.name }}
+                  </h4>
+                  <p>
+                    <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
+                    {{ remote.remoteSpecs.type | titlecase }}
+                  </p>
                 </div>
-            </mat-card-content>
-
-            <mat-divider *ngIf="inactiveCount > 0 && errorCount > 0"></mat-divider>
-
-            <!-- Inactive Remotes -->
-            <mat-card-content class="inactive-remotes" *ngIf="inactiveCount > 0">
-                <h3>
-                    <mat-icon svgIcon="circle-xmark"></mat-icon>
-                    {{ mode === 'mount' ? 'Unmounted' : (mode === 'sync' ? 'Off Sync' : 'Not Copying') }} Remotes
-                </h3>
-                <div class="remote-list">
-                    <div class="remote-card" *ngFor="let remote of inactiveRemotes" (click)="selectRemote(remote)">
-                        <div class="remote-content">
-                            <h4 matTooltip="{{ remote.remoteSpecs.name }}">
-                                {{ remote.remoteSpecs.name }}
-                            </h4>
-                            <p>
-                                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
-                                {{ remote.remoteSpecs.type | titlecase }}
-                            </p>
-                        </div>
-                        <button mat-raised-button [color]="mode === 'copy' ? 'accent' : 'primary'"
-                            (click)="triggerPrimaryAction(remote.remoteSpecs.name); $event.stopPropagation()"
-                            [disabled]="getActionState(remote.remoteSpecs.name) === mode">
-                            <mat-spinner *ngIf="getActionState(remote.remoteSpecs.name) === mode"
-                                diameter="20"></mat-spinner>
-                            <mat-icon *ngIf="getActionState(remote.remoteSpecs.name) !== mode"
-                                [svgIcon]="primaryActionIcon"></mat-icon>
-                            {{ getActionState(remote.remoteSpecs.name) === mode
-                            ? (mode === 'mount' ? 'Mounting' : mode === 'sync' ? 'Starting Sync' : 'Starting Copy')
-                            : primaryActionLabel }}
-                        </button>
-                    </div>
-                </div>
-            </mat-card-content>
-
-            <mat-divider *ngIf="errorCount > 0"></mat-divider>
-
-            <!-- Error Remotes -->
-            <mat-card-content *ngIf="errorCount > 0">
-                <h3>
-                    <mat-icon svgIcon="circle-exclamation"></mat-icon>
-                    Remotes with Problems
-                </h3>
-                <div class="remote-list">
-                    <div class="remote-card" *ngFor="let remote of errorRemotes" (click)="selectRemote(remote)">
-                        <div class="remote-content">
-                            <h4 matTooltip="{{ remote.remoteSpecs.name }}">
-                                {{ remote.remoteSpecs.name }}
-                            </h4>
-                            <p>
-                                <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
-                                {{ remote.remoteSpecs.type | titlecase }}
-                            </p>
-                        </div>
-                        <button mat-raised-button class="fix" (click)="$event.stopPropagation()">
-                            <mat-icon svgIcon="wrench"></mat-icon>
-                            Fix
-                        </button>
-                    </div>
-                </div>
-            </mat-card-content>
-        </mat-card>
-    </div>
+                <button mat-raised-button class="fix" (click)="$event.stopPropagation()">
+                  <mat-icon svgIcon="wrench"></mat-icon>
+                  Fix
+                </button>
+              </div>
+            }
+          </div>
+        </mat-card-content>
+      }
+    </mat-card>
+  </div>
 </div>

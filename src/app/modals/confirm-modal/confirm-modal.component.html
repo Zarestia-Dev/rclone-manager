@@ -5,10 +5,14 @@
 </mat-dialog-content>
 
 <mat-dialog-actions align="center">
-  <button mat-raised-button color="primary" *ngIf="data.cancelText"
-   (click)="onCancel()">{{ data.cancelText || "No" }}</button>
-  <button mat-raised-button color="warn" *ngIf="data.confirmText"
-   (click)="onConfirm()">
-    {{ data.confirmText || "Yes" }}
-  </button>
+  @if (data.cancelText) {
+    <button mat-raised-button color="primary"
+    (click)="onCancel()">{{ data.cancelText || "No" }}</button>
+  }
+  @if (data.confirmText) {
+    <button mat-raised-button color="warn"
+      (click)="onConfirm()">
+      {{ data.confirmText || "Yes" }}
+    </button>
+  }
 </mat-dialog-actions>

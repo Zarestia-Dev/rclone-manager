@@ -1,4 +1,4 @@
-import { CommonModule } from "@angular/common";
+
 import { Component, HostListener, Inject } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
@@ -18,7 +18,6 @@ import { ExportModalData } from "../../shared/components/types";
   selector: "app-export-modal",
   imports: [
     MatIconModule,
-    CommonModule,
     MatDialogModule,
     MatFormFieldModule,
     MatSelectModule,
@@ -27,7 +26,7 @@ import { ExportModalData } from "../../shared/components/types";
     MatTooltipModule,
     MatCheckboxModule,
     MatButtonModule
-  ],
+],
   animations: [
     trigger("slideInOut", [
       transition(":enter", [

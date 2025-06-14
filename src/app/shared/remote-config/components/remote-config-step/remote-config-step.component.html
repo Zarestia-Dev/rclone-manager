@@ -3,12 +3,16 @@
   <mat-form-field appearance="fill">
     <mat-label>Remote Name</mat-label>
     <input matInput formControlName="name" id="remoteName" aria-describedby="remoteNameError" />
-    <mat-error *ngIf="form.get('name')?.hasError('required')" id="remoteNameError">
-      Remote Name is required.
-    </mat-error>
-    <mat-error *ngIf="form.get('name')?.hasError('nameTaken')" id="remoteNameError">
-      This remote name already exists! Choose another name.
-    </mat-error>
+    @if (form.get('name')?.hasError('required')) {
+      <mat-error id="remoteNameError">
+        Remote Name is required.
+      </mat-error>
+    }
+    @if (form.get('name')?.hasError('nameTaken')) {
+      <mat-error id="remoteNameError">
+        This remote name already exists! Choose another name.
+      </mat-error>
+    }
   </mat-form-field>
 
   <!-- Remote Type Selector -->
@@ -16,124 +20,154 @@
     <mat-label>Select Remote Type</mat-label>
     <mat-select formControlName="type" id="remoteType"
       (selectionChange)="onRemoteTypeChange(); $event.source.close()" aria-describedby="remoteTypeError">
-      <mat-option *ngFor="let remote of remoteTypes" [value]="remote.value">
-        {{ remote.label }}
-      </mat-option>
+      @for (remote of remoteTypes; track remote) {
+        <mat-option [value]="remote.value">
+          {{ remote.label }}
+        </mat-option>
+      }
     </mat-select>
-    <mat-error *ngIf="form.get('type')?.hasError('required')" id="remoteTypeError">
-      Remote Type is required.
-    </mat-error>
+    @if (form.get('type')?.hasError('required')) {
+      <mat-error id="remoteTypeError">
+        Remote Type is required.
+      </mat-error>
+    }
   </mat-form-field>
 
   <!-- Loading State -->
-  <div *ngIf="isLoading" class="loading-container" aria-live="polite">
-    <mat-spinner diameter="30"></mat-spinner>
-    <p>Loading configuration options...</p>
-  </div>
+  @if (isLoading) {
+    <div class="loading-container" aria-live="polite">
+      <mat-spinner diameter="30"></mat-spinner>
+      <p>Loading configuration options...</p>
+    </div>
+  }
 
   <!-- Advanced Options Toggle -->
-  <mat-slide-toggle class="slide-toggle" *ngIf="remoteFields.length > 0"
-    (change)="toggleAdvancedOptions()" [checked]="showAdvancedOptions">
-    Show Advanced Options <span *ngIf="advancedFields.length > 0">({{ advancedFields.length }})</span>
+  @if (remoteFields.length > 0) {
+    <mat-slide-toggle class="slide-toggle"
+      (change)="toggleAdvancedOptions()" [checked]="showAdvancedOptions">
+      Show Advanced Options @if (advancedFields.length > 0) {
+      <span>({{ advancedFields.length }})</span>
+    }
   </mat-slide-toggle>
+}
 
-  <!-- Basic Fields -->
-  <mat-divider *ngIf="basicFields.length > 0"></mat-divider>
-  <h3 *ngIf="basicFields.length > 0" class="section-heading">
-    Basic Options <span *ngIf="basicFields.length > 0">({{ basicFields.length }})</span>
-  </h3>
-  
-  <ng-container *ngFor="let field of basicFields; trackBy: trackByFieldName">
-    <mat-card class="field-card">
-      <mat-label [innerHTML]="field.Help | linebreaks"></mat-label>
+<!-- Basic Fields -->
+@if (basicFields.length > 0) {
+  <mat-divider></mat-divider>
+}
+@if (basicFields.length > 0) {
+  <h3 class="section-heading">
+    Basic Options @if (basicFields.length > 0) {
+    <span>({{ basicFields.length }})</span>
+  }
+</h3>
+}
 
-      <!-- Boolean Toggle -->
-      <mat-slide-toggle *ngIf="field.Type === 'bool'" [formControlName]="field.Name">
+@for (field of basicFields; track trackByFieldName($index, field)) {
+  <mat-card class="field-card">
+    <mat-label [innerHTML]="field.Help | linebreaks"></mat-label>
+    <!-- Boolean Toggle -->
+    @if (field.Type === 'bool') {
+      <mat-slide-toggle [formControlName]="field.Name">
         {{ field.Name }}
       </mat-slide-toggle>
-
-      <!-- Number Inputs -->
+    }
+    <!-- Number Inputs -->
+    @if (field.Type === 'bool' ? false : ['int', 'SizeSuffix', 'bits'].includes(field.Type)) {
       <mat-form-field appearance="fill"
-        *ngIf="field.Type === 'bool' ? false : ['int', 'SizeSuffix', 'bits'].includes(field.Type)">
+        >
         <mat-label>{{ field.Value || 'No default value' }}</mat-label>
         <input matInput type="number" [formControlName]="field.Name" pattern="\d*"
           (keypress)="allowOnlyNumbers($event)" (input)="sanitizeNumberInput(field.Name)" />
       </mat-form-field>
-
-      <!-- Select Inputs -->
-      <mat-form-field appearance="fill" *ngIf="(field.Type !== 'bool') && field.Examples.length > 0">
+    }
+    <!-- Select Inputs -->
+    @if ((field.Type !== 'bool') && field.Examples.length > 0) {
+      <mat-form-field appearance="fill">
         <mat-label>{{ field.Name }}</mat-label>
         <mat-select [formControlName]="field.Name">
-          <mat-option *ngFor="let example of field.Examples" [value]="example.Value">
-            {{ example.Help }}
-          </mat-option>
+          @for (example of field.Examples; track example) {
+            <mat-option [value]="example.Value">
+              {{ example.Help }}
+            </mat-option>
+          }
         </mat-select>
       </mat-form-field>
-
-      <!-- Duration Input -->
-      <mat-form-field appearance="fill" *ngIf="field.Type === 'Duration'">
+    }
+    <!-- Duration Input -->
+    @if (field.Type === 'Duration') {
+      <mat-form-field appearance="fill">
         <mat-label>{{ field.Name }}</mat-label>
         <input matInput type="text" [formControlName]="field.Name" />
       </mat-form-field>
-
-      <!-- Default Text Input -->
-      <mat-form-field appearance="fill" *ngIf="!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration', 'bool'].includes(field.Type) && 
-                field.Examples?.length === 0">
+    }
+    <!-- Default Text Input -->
+    @if (!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration', 'bool'].includes(field.Type) &&
+      field.Examples.length === 0) {
+      <mat-form-field appearance="fill">
         <mat-label>{{ field.Name }}</mat-label>
         <input matInput [type]="isSensitiveField(field.Name) ? 'password' : 'text'"
           [formControlName]="field.Name" />
       </mat-form-field>
-    </mat-card>
-  </ng-container>
+    }
+  </mat-card>
+}
 
-  <!-- Advanced Fields -->
-  <ng-container *ngIf="showAdvancedOptions && advancedFields.length > 0">
-    <mat-divider></mat-divider>
-    <h3 class="section-heading">
-      Advanced Options <span>({{ advancedFields.length }})</span>
-    </h3>
-    <ng-container *ngFor="let field of advancedFields; trackBy: trackByFieldName">
-      <mat-card class="field-card advanced-field">
-        <mat-label [innerHTML]="field.Help | linebreaks"></mat-label>
-
-        <!-- Repeat the same field types as basic fields -->
-        <!-- Boolean Toggle -->
-        <mat-slide-toggle *ngIf="field.Type === 'bool'" [formControlName]="field.Name">
+<!-- Advanced Fields -->
+@if (showAdvancedOptions && advancedFields.length > 0) {
+  <mat-divider></mat-divider>
+  <h3 class="section-heading">
+    Advanced Options <span>({{ advancedFields.length }})</span>
+  </h3>
+  @for (field of advancedFields; track trackByFieldName($index, field)) {
+    <mat-card class="field-card advanced-field">
+      <mat-label [innerHTML]="field.Help | linebreaks"></mat-label>
+      <!-- Repeat the same field types as basic fields -->
+      <!-- Boolean Toggle -->
+      @if (field.Type === 'bool') {
+        <mat-slide-toggle [formControlName]="field.Name">
           {{ field.Name }}
         </mat-slide-toggle>
-
-        <!-- Number Inputs -->
+      }
+      <!-- Number Inputs -->
+      @if (field.Type === 'bool' ? false : ['int', 'SizeSuffix', 'bits'].includes(field.Type)) {
         <mat-form-field appearance="fill"
-          *ngIf="field.Type === 'bool' ? false : ['int', 'SizeSuffix', 'bits'].includes(field.Type)">
+          >
           <mat-label>{{ field.Value || 'No default value' }}</mat-label>
           <input matInput type="number" [formControlName]="field.Name" pattern="\d*"
             (keypress)="allowOnlyNumbers($event)" (input)="sanitizeNumberInput(field.Name)" />
         </mat-form-field>
-
-        <!-- Select Inputs -->
-        <mat-form-field appearance="fill" *ngIf="(field.Type !== 'bool') && field.Examples.length > 0">
+      }
+      <!-- Select Inputs -->
+      @if ((field.Type !== 'bool') && field.Examples.length > 0) {
+        <mat-form-field appearance="fill">
           <mat-label>{{ field.Name }}</mat-label>
           <mat-select [formControlName]="field.Name">
-            <mat-option *ngFor="let example of field.Examples" [value]="example.Value">
-              {{ example.Help }}
-            </mat-option>
+            @for (example of field.Examples; track example) {
+              <mat-option [value]="example.Value">
+                {{ example.Help }}
+              </mat-option>
+            }
           </mat-select>
         </mat-form-field>
-
-        <!-- Duration Input -->
-        <mat-form-field appearance="fill" *ngIf="field.Type === 'Duration'">
+      }
+      <!-- Duration Input -->
+      @if (field.Type === 'Duration') {
+        <mat-form-field appearance="fill">
           <mat-label>{{ field.Name }}</mat-label>
           <input matInput type="text" [formControlName]="field.Name" />
         </mat-form-field>
-
-        <!-- Default Text Input -->
-        <mat-form-field appearance="fill" *ngIf="!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration', 'bool'].includes(field.Type) && 
-                  field.Examples?.length === 0">
+      }
+      <!-- Default Text Input -->
+      @if (!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration', 'bool'].includes(field.Type) &&
+        field.Examples.length === 0) {
+        <mat-form-field appearance="fill">
           <mat-label>{{ field.Name }}</mat-label>
           <input matInput [type]="isSensitiveField(field.Name) ? 'password' : 'text'"
             [formControlName]="field.Name" />
         </mat-form-field>
-      </mat-card>
-    </ng-container>
-  </ng-container>
+      }
+    </mat-card>
+  }
+}
 </form>

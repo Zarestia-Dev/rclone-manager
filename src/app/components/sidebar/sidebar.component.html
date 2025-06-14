@@ -6,32 +6,44 @@
   <div class="search-container" [@slideToggle]="searchVisible ? 'visible' : 'hidden'">
     <input class="search-input" [(ngModel)]="searchTerm" placeholder="Type to filter...">
   </div>
-  <ul *ngIf="filteredRemotes.length > 0">
-    <mat-card class="remote-card" *ngFor="let remote of filteredRemotes" (click)="selectRemote(remote)">
-      <mat-card-content class="card-content">
-        <h4>{{ remote.remoteSpecs.name }}</h4>
-        <p>
-          <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon> {{ remote.remoteSpecs.type
-          | titlecase }}
-        </p>
-        <div class="remote-status">
-          <p *ngIf="remote.mountState" [ngClass]="['mount', remote.mountState.mounted ? 'active' : 'passive']"
-            aria-label="Mount status" [matTooltip]="remote.mountState.mounted ? 'Mounted' : 'Not Mounted'">
-            <mat-icon svgIcon="mount"></mat-icon>
-          </p>
-          <p *ngIf="remote.syncState" [ngClass]="['sync', remote.syncState.isOnSync ? 'active' : 'passive']"
-            aria-label="Sync status" [matTooltip]="remote.syncState.isOnSync ? 'Syncing' : 'Idle'">
-            <mat-icon svgIcon="sync"></mat-icon>
-          </p>
-          <p *ngIf="remote.copyState" [ngClass]="['copy', remote.copyState.isOnCopy ? 'active' : 'passive']"
-            aria-label="Copy status" [matTooltip]="remote.copyState.isOnCopy ? 'Copying' : 'Idle'">
-            <mat-icon svgIcon="copy"></mat-icon>
-          </p>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </ul>
-  <p *ngIf="filteredRemotes.length === 0" class="no-remotes">
-    No remotes found
-  </p>
+  @if (filteredRemotes.length > 0) {
+    <ul>
+      @for (remote of filteredRemotes; track remote) {
+        <mat-card class="remote-card" (click)="selectRemote(remote)">
+          <mat-card-content class="card-content">
+            <h4>{{ remote.remoteSpecs.name }}</h4>
+            <p>
+              <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon> {{ remote.remoteSpecs.type
+              | titlecase }}
+            </p>
+            <div class="remote-status">
+              @if (remote.mountState) {
+                <p [ngClass]="['mount', remote.mountState.mounted ? 'active' : 'passive']"
+                  aria-label="Mount status" [matTooltip]="remote.mountState.mounted ? 'Mounted' : 'Not Mounted'">
+                  <mat-icon svgIcon="mount"></mat-icon>
+                </p>
+              }
+              @if (remote.syncState) {
+                <p [ngClass]="['sync', remote.syncState.isOnSync ? 'active' : 'passive']"
+                  aria-label="Sync status" [matTooltip]="remote.syncState.isOnSync ? 'Syncing' : 'Idle'">
+                  <mat-icon svgIcon="sync"></mat-icon>
+                </p>
+              }
+              @if (remote.copyState) {
+                <p [ngClass]="['copy', remote.copyState.isOnCopy ? 'active' : 'passive']"
+                  aria-label="Copy status" [matTooltip]="remote.copyState.isOnCopy ? 'Copying' : 'Idle'">
+                  <mat-icon svgIcon="copy"></mat-icon>
+                </p>
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+      }
+    </ul>
+  }
+  @if (filteredRemotes.length === 0) {
+    <p class="no-remotes">
+      No remotes found
+    </p>
+  }
 </div>

@@ -18,36 +18,39 @@
     <!-- Animation Wrapper -->
     <div [@slideAnimation]="currentStep" class="animation-wrapper">
       <!-- Step 1: Remote Configuration -->
-      <section *ngIf="(editTarget === 'remote') || (!editTarget && currentStep === 1)" class="step-container"
-        aria-labelledby="remote-config-heading">
-        <h2 id="remote-config-heading" class="visually-hidden">Remote Configuration</h2>
-
-        <app-remote-config-step [form]="remoteForm" [remoteFields]="dynamicRemoteFields" [remoteTypes]="remoteTypes"
-          [isLoading]="isLoading.remoteConfig ?? false" [existingRemotes]="existingRemotes"
-          [restrictMode]="restrictMode"
-          (remoteTypeChanged)="onRemoteTypeChange()">
-        </app-remote-config-step>
-      </section>
+      @if ((editTarget === 'remote') || (!editTarget && currentStep === 1)) {
+        <section class="step-container"
+          aria-labelledby="remote-config-heading">
+          <h2 id="remote-config-heading" class="visually-hidden">Remote Configuration</h2>
+          <app-remote-config-step [form]="remoteForm" [remoteFields]="dynamicRemoteFields" [remoteTypes]="remoteTypes"
+            [isLoading]="isLoading.remoteConfig ?? false" [existingRemotes]="existingRemotes"
+            [restrictMode]="restrictMode"
+            (remoteTypeChanged)="onRemoteTypeChange()">
+          </app-remote-config-step>
+        </section>
+      }
 
       <!-- Steps 2-6: Flags and Mount Configurations -->
-      <ng-container *ngFor="let step of flagConfigService.FLAG_TYPES; let i = index">
-        <section *ngIf="(editTarget === step) || (!editTarget && currentStep === i + 2)" class="step-container"
-          [attr.aria-labelledby]="step + '-config-heading'">
-          <h2 [id]="step + '-config-heading'" class="visually-hidden">{{ step | titlecase }} Configuration</h2>
-          <app-flag-config-step [form]="remoteConfigForm" [flagType]="step" [isEditMode]="!!editTarget"
-            [existingRemotes]="existingRemotes" [pathState]="pathSelectionService.getPathState"
-            [sourceLoading]="pathSelectionService.getLoadingState(step + 'Config.source')"
-            [destLoading]="pathSelectionService.getLoadingState(step + 'Config.dest')"
-            [dynamicFlagFields]="dynamicFlagFields[step]" [selectedOptions]="selectedOptions[step]"
-            (optionToggled)="toggleOption(step, $event)" (jsonValidated)="validateJson(step)"
-            (jsonReset)="resetJson(step)" (remoteSelected)="onRemoteSelected($event, step + 'Config.dest')"
-            (destOptionSelected)="onDestOptionSelectedField($event, step + 'Config.dest')"
-            (sourceOptionSelected)="onSourceOptionSelectedField($event, step + 'Config.source')"
-            (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
-            (remoteSelectionReset)="resetRemoteSelectionField($event)">
-          </app-flag-config-step>
-        </section>
-      </ng-container>
+      @for (step of flagConfigService.FLAG_TYPES; track step; let i = $index) {
+        @if ((editTarget === step) || (!editTarget && currentStep === i + 2)) {
+          <section class="step-container"
+            [attr.aria-labelledby]="step + '-config-heading'">
+            <h2 [id]="step + '-config-heading'" class="visually-hidden">{{ step | titlecase }} Configuration</h2>
+            <app-flag-config-step [form]="remoteConfigForm" [flagType]="step" [isEditMode]="!!editTarget"
+              [existingRemotes]="existingRemotes" [pathState]="pathSelectionService.getPathState"
+              [sourceLoading]="pathSelectionService.getLoadingState(step + 'Config.source')"
+              [destLoading]="pathSelectionService.getLoadingState(step + 'Config.dest')"
+              [dynamicFlagFields]="dynamicFlagFields[step]" [selectedOptions]="selectedOptions[step]"
+              (optionToggled)="toggleOption(step, $event)" (jsonValidated)="validateJson(step)"
+              (jsonReset)="resetJson(step)" (remoteSelected)="onRemoteSelected($event, step + 'Config.dest')"
+              (destOptionSelected)="onDestOptionSelectedField($event, step + 'Config.dest')"
+              (sourceOptionSelected)="onSourceOptionSelectedField($event, step + 'Config.source')"
+              (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
+              (remoteSelectionReset)="resetRemoteSelectionField($event)">
+            </app-flag-config-step>
+          </section>
+        }
+      }
     </div>
   </main>
 
@@ -55,43 +58,61 @@
   <footer class="button-container">
     <div class="button-container-inner">
       <!-- Navigation Buttons -->
-      <button mat-raised-button color="accent" *ngIf="currentStep < TOTAL_STEPS && !editTarget" (click)="nextStep()"
-        [disabled]="!remoteForm.valid || isLoading.saving" [@fadeInOut]>
-        Next
-      </button>
-      <button mat-raised-button color="accent" [disabled]="isLoading.saving" *ngIf="currentStep > 1 && !editTarget"
-        (click)="prevStep()" [@fadeInOut]>
-        Back
-      </button>
+      @if (currentStep < TOTAL_STEPS && !editTarget) {
+        <button mat-raised-button color="accent" (click)="nextStep()"
+          [disabled]="!remoteForm.valid || isLoading.saving" [@fadeInOut]>
+          Next
+        </button>
+      }
+      @if (currentStep > 1 && !editTarget) {
+        <button mat-raised-button color="accent" [disabled]="isLoading.saving"
+          (click)="prevStep()" [@fadeInOut]>
+          Back
+        </button>
+      }
     </div>
 
     <div class="button-container-inner">
-      <button mat-raised-button [@fadeInOut] color="warn" (click)="cancelAuth()" [disabled]="!isLoading.saving"
-        *ngIf="isLoading.saving && !isLoading.cancelled">
-        Cancel
-      </button>
+      @if (isLoading.saving && !isLoading.cancelled) {
+        <button mat-raised-button [@fadeInOut] color="warn" (click)="cancelAuth()" [disabled]="!isLoading.saving"
+          >
+          Cancel
+        </button>
+      }
 
-      <p *ngIf="isLoading.cancelled">
-        Cleaning
-        <mat-spinner *ngIf="isLoading.cancelled" diameter="20"></mat-spinner>
-      </p>
+      @if (isLoading.cancelled) {
+        <p>
+          Cleaning
+          @if (isLoading.cancelled) {
+            <mat-spinner diameter="20"></mat-spinner>
+          }
+        </p>
+      }
 
       <!-- Save Buttons -->
-      <button mat-raised-button color="primary" (click)="onSubmit()"
-        [disabled]="isLoading.saving || !remoteConfigForm.valid || !remoteForm.valid" [@fadeInOut]
-        *ngIf="currentStep > 1 && !editTarget" aria-live="polite">
-        <div class="saving-overlay" *ngIf="isLoading.saving && !isLoading.cancelled">
-          <mat-spinner diameter="20"></mat-spinner>
-        </div> {{ saveButtonLabel }}
-      </button>
+      @if (currentStep > 1 && !editTarget) {
+        <button mat-raised-button color="primary" (click)="onSubmit()"
+          [disabled]="isLoading.saving || !remoteConfigForm.valid || !remoteForm.valid" [@fadeInOut]
+          aria-live="polite">
+          @if (isLoading.saving && !isLoading.cancelled) {
+            <div class="saving-overlay">
+              <mat-spinner diameter="20"></mat-spinner>
+            </div>
+            } {{ saveButtonLabel }}
+          </button>
+        }
 
-      <button mat-raised-button color="primary" (click)="onSubmit()"
-        [disabled]="isLoading.saving || (editTarget === 'remote' && !remoteForm.valid) || (['mount', 'copy', 'sync'].includes(editTarget) && !remoteConfigForm.valid)"
-        [@fadeInOut] *ngIf="editTarget" aria-live="polite">
-        <div class="saving-overlay" *ngIf="isLoading.saving && !isLoading.cancelled">
-          <mat-spinner diameter="20"></mat-spinner>
-        </div> {{ saveButtonLabel }}
-      </button>
+        @if (editTarget) {
+          <button mat-raised-button color="primary" (click)="onSubmit()"
+            [disabled]="isLoading.saving || (editTarget === 'remote' && !remoteForm.valid) || (['mount', 'copy', 'sync'].includes(editTarget) && !remoteConfigForm.valid)"
+            [@fadeInOut] aria-live="polite">
+            @if (isLoading.saving && !isLoading.cancelled) {
+              <div class="saving-overlay">
+                <mat-spinner diameter="20"></mat-spinner>
+              </div>
+              } {{ saveButtonLabel }}
+            </button>
+          }
+        </div>
+      </footer>
     </div>
-  </footer>
-</div>

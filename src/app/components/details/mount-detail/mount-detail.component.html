@@ -1,145 +1,146 @@
-<div class="remote-details" *ngIf="selectedRemote">
+@if (selectedRemote) {
+  <div class="remote-details">
     <div class="remote-header">
-        <h2 matTooltip="{{ selectedRemote.remoteSpecs.name }}">
-            {{ selectedRemote.remoteSpecs.name }}
-        </h2>
-        <p>
-            <mat-icon [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"></mat-icon>
-            {{ selectedRemote.remoteSpecs.type | titlecase }}
-        </p>
+      <h2 matTooltip="{{ selectedRemote.remoteSpecs.name }}">
+        {{ selectedRemote.remoteSpecs.name }}
+      </h2>
+      <p>
+        <mat-icon [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"></mat-icon>
+        {{ selectedRemote.remoteSpecs.type | titlecase }}
+      </p>
     </div>
-
     <!-- Mount Info -->
     <div class="mount-info">
-        <h3><mat-icon svgIcon="cloud-arrow-up"></mat-icon> Source & Destination</h3>
-        <mat-card class="mount-info-card" [class.active]="selectedRemote.mountState?.mounted">
-            <mat-card-content class="mount-path-section">
-                <div class="path">
-                    <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
-                    <div class="path-details" matTooltip="{{ mountSource }}">
-                        <div class="path-label">Source</div>
-                        <div class="path-value">{{ mountSource }}</div>
-                    </div>
-                </div>
-                <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                <div class="path">
-                    <ng-container
-                        *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error'; else normalIcon">
-                        <button mat-icon-button color="accent" [disabled]="actionInProgress === 'open'"
-                            (click)="triggerOpenInFiles()" matTooltip="Open in Files">
-                            <mat-spinner *ngIf="actionInProgress === 'open'" diameter="20"></mat-spinner>
-                            <mat-icon *ngIf="actionInProgress !== 'open'" svgIcon="folder"></mat-icon>
-                        </button>
-                    </ng-container>
-                    <ng-template #normalIcon>
-                        <button mat-icon-button [disabled]="!selectedRemote.mountState?.mounted">
-                            <mat-icon svgIcon="folder"></mat-icon>
-                        </button>
-                    </ng-template>
-                    <div class="path-details" matTooltip="{{ mountDestination }}">
-                        <div class="path-label">Destination</div>
-                        <div class="path-value">
-                            {{ mountDestination }}
-                        </div>
-                    </div>
-                </div>
-            </mat-card-content>
-
-            <mat-divider></mat-divider>
-
-            <mat-card-footer class="mount-footer">
-                <div class="mount-status">
+      <h3><mat-icon svgIcon="cloud-arrow-up"></mat-icon> Source & Destination</h3>
+      <mat-card class="mount-info-card" [class.active]="selectedRemote.mountState?.mounted">
+        <mat-card-content class="mount-path-section">
+          <div class="path">
+            <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
+            <div class="path-details" matTooltip="{{ mountSource }}">
+              <div class="path-label">Source</div>
+              <div class="path-value">{{ mountSource }}</div>
+            </div>
+          </div>
+          <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+          <div class="path">
+            @if (selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error') {
+              <button mat-icon-button color="accent" [disabled]="actionInProgress === 'open'"
+                (click)="triggerOpenInFiles()" matTooltip="Open in Files">
+                @if (actionInProgress === 'open') {
+                  <mat-spinner diameter="20"></mat-spinner>
+                }
+                @if (actionInProgress !== 'open') {
+                  <mat-icon svgIcon="folder"></mat-icon>
+                }
+              </button>
+            } @else {
+              <button mat-icon-button [disabled]="!selectedRemote.mountState?.mounted">
+                <mat-icon svgIcon="folder"></mat-icon>
+              </button>
+            }
+            <div class="path-details" matTooltip="{{ mountDestination }}">
+              <div class="path-label">Destination</div>
+              <div class="path-value">
+                {{ mountDestination }}
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+        <mat-divider></mat-divider>
+        <mat-card-footer class="mount-footer">
+          <div class="mount-status">
                     <div class="status-indicator" [ngClass]="{
                         'mounted': selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error',
                     }">
-                        <mat-icon
-                            [svgIcon]="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error' ? 'circle-check' : 'circle-xmark'"></mat-icon>
-                        <span>
-                            {{ selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error' ?
-                            'Mounted' : 'Not Mounted' }}
-                        </span>
-                    </div>
-                </div>
-
-                <div class="mount-controls">
-                    <ng-container
-                        *ngIf="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error'">
-                        <button mat-raised-button [disabled]="actionInProgress === 'unmount'" color="warn"
-                            (click)="triggerUnmountRemote()">
-                            <mat-spinner *ngIf="actionInProgress === 'unmount'" diameter="20"></mat-spinner>
-                            <mat-icon *ngIf="actionInProgress !== 'unmount'" svgIcon="eject"></mat-icon>
-                            {{ actionInProgress === 'unmount' ? "Unmounting" : "Unmount" }}
-                        </button>
-                    </ng-container>
-
-                </div>
-
-                <ng-container *ngIf="!selectedRemote.mountState?.mounted">
-                    <button mat-raised-button [disabled]="actionInProgress === 'mount'" color="primary"
-                        (click)="triggerMountRemote()">
-                        <mat-spinner *ngIf="actionInProgress === 'mount'" diameter="20"></mat-spinner>
-                        <mat-icon *ngIf="actionInProgress !== 'mount'" svgIcon="mount"></mat-icon>
-                        {{ actionInProgress === 'mount' ? "Mounting" : "Mount" }}
-                    </button>
-                </ng-container>
-            </mat-card-footer>
-        </mat-card>
+              <mat-icon
+              [svgIcon]="selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error' ? 'circle-check' : 'circle-xmark'"></mat-icon>
+              <span>
+                {{ selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error' ?
+                'Mounted' : 'Not Mounted' }}
+              </span>
+            </div>
+          </div>
+          <div class="mount-controls">
+            @if (selectedRemote.mountState?.mounted && selectedRemote.mountState?.mounted !== 'error') {
+              <button mat-raised-button [disabled]="actionInProgress === 'unmount'" color="warn"
+                (click)="triggerUnmountRemote()">
+                @if (actionInProgress === 'unmount') {
+                  <mat-spinner diameter="20"></mat-spinner>
+                }
+                @if (actionInProgress !== 'unmount') {
+                  <mat-icon svgIcon="eject"></mat-icon>
+                }
+                {{ actionInProgress === 'unmount' ? "Unmounting" : "Unmount" }}
+              </button>
+            }
+          </div>
+          @if (!selectedRemote.mountState?.mounted) {
+            <button mat-raised-button [disabled]="actionInProgress === 'mount'" color="primary"
+              (click)="triggerMountRemote()">
+              @if (actionInProgress === 'mount') {
+                <mat-spinner diameter="20"></mat-spinner>
+              }
+              @if (actionInProgress !== 'mount') {
+                <mat-icon svgIcon="mount"></mat-icon>
+              }
+              {{ actionInProgress === 'mount' ? "Mounting" : "Mount" }}
+            </button>
+          }
+        </mat-card-footer>
+      </mat-card>
     </div>
-
     <!-- Dynamic Remote Settings Sections -->
-    <ng-container *ngFor="let section of remoteSettingsSections">
-        <div class="info-card spec-card">
-            <h3>
-                <mat-icon [svgIcon]="section.icon"></mat-icon>
-                {{ section.title }}
-            </h3>
-            <mat-card class="info-card-content">
-                <mat-card-content class="spec-content">
-                    <mat-chip-set class="specs-container">
-                        <ng-container *ngIf="hasSettings(section.key + 'Config'); else noData">
-                            <ng-container *ngFor="let spec of getRemoteSettings(section.key + 'Config') | keyvalue">
-                                <ng-container *ngIf="isObjectButNotArray(spec.value)">
-                                    <!-- Nested object: show parent key, then its properties as chips -->
-                                    <!-- <mat-chip class="spec-pill parent-key">
-                                        <strong>{{ spec.key }}:</strong>
-                                    </mat-chip> -->
-                                    <ng-container *ngFor="let subSpec of spec.value | keyvalue">
-                                        <mat-chip class="spec-pill sub-key"
-                                            [matTooltip]="isSensitiveKey(subSpec.key, restrictMode) ? '[RESTRICTED]' : (subSpec.value | json)"
-                                            [matTooltipHideDelay]="500">
-                                            <strong>{{ subSpec.key }}:</strong>
-                                            <span>{{ maskSensitiveValue(subSpec.key, subSpec.value) }}</span>
-                                        </mat-chip>
-                                    </ng-container>
-                                </ng-container>
-                                <ng-container *ngIf="!isObjectButNotArray(spec.value)">
-                                    <!-- Primitive or array -->
-                                    <mat-chip class="spec-pill"
-                                        [matTooltip]="isSensitiveKey(spec.key, restrictMode) ? '[RESTRICTED]' : (spec.value | json)"
-                                        [matTooltipHideDelay]="500">
-                                        <strong>{{ spec.key }}:</strong>
-                                        <span>{{ maskSensitiveValue(spec.key, spec.value) }}</span>
-                                    </mat-chip>
-                                </ng-container>
-                            </ng-container>
-                        </ng-container>
-                        <ng-template #noData>
-                            <mat-chip class="spec-pill not-found">
-                                <strong>No data found</strong>
-                            </mat-chip>
-                        </ng-template>
-                    </mat-chip-set>
-                </mat-card-content>
-
-                <mat-divider></mat-divider>
-
-                <mat-card-footer class="button-container">
-                    <button mat-raised-button class="fix"
-                        (click)="triggerOpenRemoteConfig(section.key, getRemoteSettings(section.key + 'Config'))">
-                        <mat-icon svgIcon="pen"></mat-icon> Edit
-                    </button>
-                </mat-card-footer>
-            </mat-card>
-        </div>
-    </ng-container>
+    @for (section of remoteSettingsSections; track section) {
+      <div class="info-card spec-card">
+        <h3>
+          <mat-icon [svgIcon]="section.icon"></mat-icon>
+          {{ section.title }}
+        </h3>
+        <mat-card class="info-card-content">
+          <mat-card-content class="spec-content">
+            <mat-chip-set class="specs-container">
+              @if (hasSettings(section.key + 'Config')) {
+                @for (spec of getRemoteSettings(section.key + 'Config') | keyvalue; track spec) {
+                  @if (isObjectButNotArray(spec.value)) {
+                    <!-- Nested object: show parent key, then its properties as chips -->
+                    <!-- <mat-chip class="spec-pill parent-key">
+                    <strong>{{ spec.key }}:</strong>
+                  </mat-chip> -->
+                  @for (subSpec of spec.value | keyvalue; track subSpec) {
+                    <mat-chip class="spec-pill sub-key"
+                      [matTooltip]="isSensitiveKey(subSpec.key, restrictMode) ? '[RESTRICTED]' : (subSpec.value | json)"
+                      [matTooltipHideDelay]="500">
+                      <strong>{{ subSpec.key }}:</strong>
+                      <span>{{ maskSensitiveValue(subSpec.key, subSpec.value) }}</span>
+                    </mat-chip>
+                  }
+                }
+                @if (!isObjectButNotArray(spec.value)) {
+                  <!-- Primitive or array -->
+                  <mat-chip class="spec-pill"
+                    [matTooltip]="isSensitiveKey(spec.key, restrictMode) ? '[RESTRICTED]' : (spec.value | json)"
+                    [matTooltipHideDelay]="500">
+                    <strong>{{ spec.key }}:</strong>
+                    <span>{{ maskSensitiveValue(spec.key, spec.value) }}</span>
+                  </mat-chip>
+                }
+              }
+            } @else {
+              <mat-chip class="spec-pill not-found">
+                <strong>No data found</strong>
+              </mat-chip>
+            }
+          </mat-chip-set>
+        </mat-card-content>
+        <mat-divider></mat-divider>
+        <mat-card-footer class="button-container">
+          <button mat-raised-button class="fix"
+            (click)="triggerOpenRemoteConfig(section.key, getRemoteSettings(section.key + 'Config'))">
+            <mat-icon svgIcon="pen"></mat-icon> Edit
+          </button>
+        </mat-card-footer>
+      </mat-card>
+    </div>
+  }
 </div>
+}

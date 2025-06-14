@@ -6,7 +6,7 @@ import {
   OnDestroy,
   OnInit,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
+
 import { MatDrawerMode, MatSidenavModule } from "@angular/material/sidenav";
 import { MatCardModule } from "@angular/material/card";
 import { MatDividerModule } from "@angular/material/divider";
@@ -53,7 +53,6 @@ import { GeneralOverviewComponent } from "../components/overviews/general-overvi
   selector: "app-home",
   standalone: true,
   imports: [
-    CommonModule,
     MatSidenavModule,
     MatDividerModule,
     MatChipsModule,
@@ -68,8 +67,8 @@ import { GeneralOverviewComponent } from "../components/overviews/general-overvi
     GeneralOverviewComponent,
     MountDetailComponent,
     OperationDetailComponent,
-    AppOverviewComponent,
-  ],
+    AppOverviewComponent
+],
   templateUrl: "./home.component.html",
   styleUrls: ["./home.component.scss"],
   changeDetection: ChangeDetectionStrategy.OnPush,

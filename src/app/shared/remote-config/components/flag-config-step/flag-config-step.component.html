@@ -1,107 +1,139 @@
 <form [formGroup]="configGroup" class="flag-form">
-    <!-- Auto-Action Toggle -->
-    <mat-slide-toggle class="slide-toggle" formControlName="autoStart" *ngIf="flagType !== 'vfs' && flagType !== 'filter'">
-        {{
-        isMount ? 'Auto-Mount after creation and on startup' :
-        isSync ? 'Auto-Sync after creation and on startup' :
-        'Auto-Copy after creation and on startup'
-        }}
+  <!-- Auto-Action Toggle -->
+  @if (flagType !== 'vfs' && flagType !== 'filter') {
+    <mat-slide-toggle class="slide-toggle" formControlName="autoStart">
+      {{
+      isMount ? 'Auto-Mount after creation and on startup' :
+      isSync ? 'Auto-Sync after creation and on startup' :
+      'Auto-Copy after creation and on startup'
+      }}
     </mat-slide-toggle>
+  }
 
-    <ng-container *ngIf="isMount">
-        <!-- Mount Path -->
-        <mat-form-field appearance="fill">
-            <mat-label>Mount Path</mat-label>
-            <button mat-icon-button matSuffix (click)="onSelectFolder('mountConfig.dest', true)" aria-label="Select folder">
-                <mat-icon svgIcon="folder"></mat-icon>
-            </button>
-            <input matInput formControlName="dest" id="dest" placeholder="Select a folder..." />
-            <mat-error *ngIf="configGroup.get('dest')?.hasError('required')">
-                Mount path is required.
-            </mat-error>
-            <mat-error *ngIf="configGroup.get('dest')?.hasError('invalidPath')">
-                Invalid mount path.
-            </mat-error>
-        </mat-form-field>
-    </ng-container>
+  @if (isMount) {
+    <!-- Mount Path -->
+    <mat-form-field appearance="fill">
+      <mat-label>Mount Path</mat-label>
+      <button mat-icon-button matSuffix (click)="onSelectFolder('mountConfig.dest', true)" aria-label="Select folder">
+        <mat-icon svgIcon="folder"></mat-icon>
+      </button>
+      <input matInput formControlName="dest" id="dest" placeholder="Select a folder..." />
+      @if (configGroup.get('dest')?.hasError('required')) {
+        <mat-error>
+          Mount path is required.
+        </mat-error>
+      }
+      @if (configGroup.get('dest')?.hasError('invalidPath')) {
+        <mat-error>
+          Invalid mount path.
+        </mat-error>
+      }
+    </mat-form-field>
+  }
 
-    <!-- Destination Path -->
-    <mat-form-field appearance="fill" *ngIf="flagType !== 'mount' && flagType !== 'vfs' && flagType !== 'filter'">
-        <mat-label>{{ flagType | titlecase }} Destination</mat-label>
-        <input matInput formControlName="dest" placeholder="Select destination path or enter remote (remote:path)"
-            [matAutocomplete]="destAuto" />
-        <button mat-icon-button matSuffix (click)="onSelectFolder(flagType + 'Config.dest', false)"
-            aria-label="Select local folder">
-            <mat-icon svgIcon="folder"></mat-icon>
-        </button>
+  <!-- Destination Path -->
+  @if (flagType !== 'mount' && flagType !== 'vfs' && flagType !== 'filter') {
+    <mat-form-field appearance="fill">
+      <mat-label>{{ flagType | titlecase }} Destination</mat-label>
+      <input matInput formControlName="dest" placeholder="Select destination path or enter remote (remote:path)"
+        [matAutocomplete]="destAuto" />
+      <button mat-icon-button matSuffix (click)="onSelectFolder(flagType + 'Config.dest', false)"
+        aria-label="Select local folder">
+        <mat-icon svgIcon="folder"></mat-icon>
+      </button>
+      @if (pathState[flagType + 'Config.dest'].remoteName) {
         <button mat-icon-button matSuffix (click)="onResetRemoteSelection(flagType + 'Config.dest')"
-            *ngIf="pathState[flagType + 'Config.dest']?.remoteName">
-            <mat-icon svgIcon="circle-xmark"></mat-icon>
+          >
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
-        <mat-spinner color="accent" *ngIf="destLoading" diameter="24"></mat-spinner>
-        <mat-autocomplete #destAuto="matAutocomplete" (optionSelected)="onDestOptionSelected($event.option.value)">
-            <ng-container *ngIf="!pathState[flagType + 'Config.dest']?.remoteName">
-                <mat-option *ngFor="let remote of existingRemotes" [value]="remote + ':/'"
-                    (onSelectionChange)="onRemoteSelected(remote + ':/')">
-                    {{ remote }}
-                </mat-option>
-            </ng-container>
-            <ng-container *ngIf="pathState[flagType + 'Config.dest']?.remoteName">
-                <mat-option *ngFor="let option of pathState[flagType + 'Config.dest']?.options || []"
-                    [value]="pathState[flagType + 'Config.dest'].remoteName + ':/' + (pathState[flagType + 'Config.dest'].currentPath ? pathState[flagType + 'Config.dest'].currentPath + '/' : '') + option.Name">
-                    <span *ngIf="option.IsDir">📁</span>
-                    <span *ngIf="!option.IsDir">📄</span>
-                    {{ option.Name }}
-                </mat-option>
-            </ng-container>
-        </mat-autocomplete>
-    </mat-form-field>
-
-    <!-- Source Path -->
-    <mat-form-field appearance="fill" *ngIf="isEditMode && flagType !== 'vfs' && flagType !== 'filter'">
-        <mat-label>{{ flagType | titlecase }} Source</mat-label>
-        <input matInput formControlName="source" placeholder="Select source path or enter remote (remote:path)"
-            [matAutocomplete]="sourceAuto" />
-        <button mat-icon-button matSuffix (click)="onSelectFolder(flagType + 'Config.source', false)"
-            aria-label="Select local folder">
-            <mat-icon svgIcon="folder"></mat-icon>
-        </button>
-        <mat-spinner color="accent" *ngIf="sourceLoading" diameter="24"></mat-spinner>
-        <mat-autocomplete #sourceAuto="matAutocomplete" (optionSelected)="onSourceOptionSelected($event.option.value)">
-            <mat-option *ngFor="let option of pathState[flagType + 'Config.source']?.options || []"
-                [value]="option.Name">
-                <span *ngIf="option.IsDir">📁</span>
-                <span *ngIf="!option.IsDir">📄</span>
-                {{ option.Name }}
+      }
+      @if (destLoading) {
+        <mat-spinner color="accent" diameter="24"></mat-spinner>
+      }
+      <mat-autocomplete #destAuto="matAutocomplete" (optionSelected)="onDestOptionSelected($event.option.value)">
+        @if (!pathState[flagType + 'Config.dest'].remoteName) {
+          @for (remote of existingRemotes; track remote) {
+            <mat-option [value]="remote + ':/'"
+              (onSelectionChange)="onRemoteSelected(remote + ':/')">
+              {{ remote }}
             </mat-option>
-        </mat-autocomplete>
+          }
+        }
+        @if (pathState[flagType + 'Config.dest'].remoteName) {
+          @for (option of pathState[flagType + 'Config.dest'].options || []; track option) {
+            <mat-option
+              [value]="pathState[flagType + 'Config.dest'].remoteName + ':/' + (pathState[flagType + 'Config.dest'].currentPath ? pathState[flagType + 'Config.dest'].currentPath + '/' : '') + option.Name">
+              @if (option.IsDir) {
+                <span>📁</span>
+              }
+              @if (!option.IsDir) {
+                <span>📄</span>
+              }
+              {{ option.Name }}
+            </mat-option>
+          }
+        }
+      </mat-autocomplete>
     </mat-form-field>
+  }
 
-    <!-- JSON Configuration Section -->
-    <div class="json-config-container responsive-config-row">
-        <!-- JSON Form Field -->
-        <div class="json-textarea">
-            <mat-form-field appearance="fill" style="width: 100%;">
-                <mat-label>{{ flagType | titlecase }} Configuration</mat-label>
-                <button mat-icon-button class="reset-btn" (click)="onResetJson()"
-                    [attr.aria-label]="'Reset ' + flagType + ' configuration'">
-                    <mat-icon svgIcon="circle-xmark"></mat-icon>
-                </button>
-                <textarea cdkTextareaAutosize matInput formControlName="options" (input)="onValidateJson()"
-                    spellcheck="false"></textarea>
-            </mat-form-field>
-        </div>
+  <!-- Source Path -->
+  @if (isEditMode && flagType !== 'vfs' && flagType !== 'filter') {
+    <mat-form-field appearance="fill">
+      <mat-label>{{ flagType | titlecase }} Source</mat-label>
+      <input matInput formControlName="source" placeholder="Select source path or enter remote (remote:path)"
+        [matAutocomplete]="sourceAuto" />
+      <button mat-icon-button matSuffix (click)="onSelectFolder(flagType + 'Config.source', false)"
+        aria-label="Select local folder">
+        <mat-icon svgIcon="folder"></mat-icon>
+      </button>
+      @if (sourceLoading) {
+        <mat-spinner color="accent" diameter="24"></mat-spinner>
+      }
+      <mat-autocomplete #sourceAuto="matAutocomplete" (optionSelected)="onSourceOptionSelected($event.option.value)">
+        @for (option of pathState[flagType + 'Config.source'].options || []; track option) {
+          <mat-option
+            [value]="option.Name">
+            @if (option.IsDir) {
+              <span>📁</span>
+            }
+            @if (!option.IsDir) {
+              <span>📄</span>
+            }
+            {{ option.Name }}
+          </mat-option>
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+  }
 
-        <!-- Flag Chips -->
-        <div class="json-chip-set">
-            <label class="chip-set-label">{{ flagType | titlecase }} Flags</label>
-            <mat-chip-set [attr.aria-label]="flagType + ' configuration options'">
-                <mat-chip-option *ngFor="let field of dynamicFlagFields" (click)="onToggleOption(field)"
-                    [selected]="getSelectedOptions.hasOwnProperty(field.name)" [matTooltip]="field.help | linebreaks"
-                    matTooltipPosition="above">
-                    {{ field.name }}
-                </mat-chip-option>
-            </mat-chip-set>
-        </div>
+  <!-- JSON Configuration Section -->
+  <div class="json-config-container responsive-config-row">
+    <!-- JSON Form Field -->
+    <div class="json-textarea">
+      <mat-form-field appearance="fill" style="width: 100%;">
+        <mat-label>{{ flagType | titlecase }} Configuration</mat-label>
+        <button mat-icon-button class="reset-btn" (click)="onResetJson()"
+          [attr.aria-label]="'Reset ' + flagType + ' configuration'">
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
+        </button>
+        <textarea cdkTextareaAutosize matInput formControlName="options" (input)="onValidateJson()"
+        spellcheck="false"></textarea>
+      </mat-form-field>
     </div>
+
+    <!-- Flag Chips -->
+    <div class="json-chip-set">
+      <label class="chip-set-label">{{ flagType | titlecase }} Flags</label>
+      <mat-chip-set [attr.aria-label]="flagType + ' configuration options'">
+        @for (field of dynamicFlagFields; track field) {
+          <mat-chip-option (click)="onToggleOption(field)"
+            [selected]="getSelectedOptions.hasOwnProperty(field.name)" [matTooltip]="field.help | linebreaks"
+            matTooltipPosition="above">
+            {{ field.name }}
+          </mat-chip-option>
+        }
+      </mat-chip-set>
+    </div>
+  </div>
 </form>

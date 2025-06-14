@@ -12,7 +12,7 @@
 
   <!-- Search Box with Animation -->
   <div class="search-container" [@slideToggle]="searchVisible ? 'visible' : 'hidden'">
-      <input matInput [(ngModel)]="searchText" (keyup)="filterShortcuts()" placeholder="Find a shortcut..." />
+    <input matInput [(ngModel)]="searchText" (keyup)="filterShortcuts()" placeholder="Find a shortcut..." />
   </div>
 
   <!-- Shortcuts Table -->
@@ -20,7 +20,9 @@
     <table mat-table [dataSource]="filteredShortcuts" class="shortcut-table">
       <ng-container matColumnDef="keys">
         <td mat-cell *matCellDef="let shortcut" class="shortcut-key">
-          <span *ngFor="let key of shortcut.keys.split('+')" class="key">{{ key }}</span>
+          @for (key of shortcut.keys.split('+'); track key) {
+            <span class="key">{{ key }}</span>
+          }
         </td>
       </ng-container>
 

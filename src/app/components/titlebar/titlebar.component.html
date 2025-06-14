@@ -22,19 +22,27 @@
     </button>
 
     <!-- Connection Status Indicator -->
-    <button mat-icon-button *ngIf="connectionStatus === 'offline' || connectionStatus === 'checking'"
-      (click)="runInternetCheck()" [disabled]="connectionStatus === 'checking'" aria-label="Internet connection status"
-      matTooltip="{{ getInternetStatusTooltip() }}">
-      <mat-icon *ngIf="connectionStatus !== 'checking'" svgIcon="no-internet" aria-hidden="true">
-      </mat-icon>
-      <mat-progress-spinner color="accent" *ngIf="connectionStatus === 'checking'" diameter="24" mode="indeterminate"
-        strokeWidth="4" aria-hidden="true">
-      </mat-progress-spinner>
-    </button>
+    @if (connectionStatus === 'offline' || connectionStatus === 'checking') {
+      <button mat-icon-button
+        (click)="runInternetCheck()" [disabled]="connectionStatus === 'checking'" aria-label="Internet connection status"
+        matTooltip="{{ getInternetStatusTooltip() }}">
+        @if (connectionStatus !== 'checking') {
+          <mat-icon svgIcon="no-internet" aria-hidden="true">
+          </mat-icon>
+        }
+        @if (connectionStatus === 'checking') {
+          <mat-progress-spinner color="accent" diameter="24" mode="indeterminate"
+            strokeWidth="4" aria-hidden="true">
+          </mat-progress-spinner>
+        }
+      </button>
+    }
   </div>
 
   <div class="center-section">
-    <app-tabs-buttons *ngIf="!(isMobile$ | async)"></app-tabs-buttons>
+    @if (!(isMobile$ | async)) {
+      <app-tabs-buttons></app-tabs-buttons>
+    }
   </div>
 
   <div class="right-section">
@@ -44,7 +52,7 @@
     </button>
 
     <!-- Window Controls -->
-    <ng-container *ngIf="!isMacOS">
+    @if (!isMacOS) {
       <button mat-icon-button (click)="minimizeWindow()" aria-label="Minimize window">
         <mat-icon svgIcon="remove" aria-hidden="true"></mat-icon>
       </button>
@@ -54,7 +62,7 @@
       <button mat-icon-button (click)="closeWindow()" aria-label="Close window" class="close-button">
         <mat-icon svgIcon="close" aria-hidden="true"></mat-icon>
       </button>
-    </ng-container>
+    }
   </div>
 
   <!-- App Menu Content -->
@@ -63,20 +71,26 @@
     <div class="theme-selector" aria-label="Theme selection">
       <button matTooltip="Not Supported" disabled class="theme-button system" [class.selected]="selectedTheme === 'system'"
         (click)="setTheme('system', false, $event)" aria-label="System theme">
-        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'system'" class="checkmark"
+        @if (selectedTheme === 'system') {
+          <mat-icon svgIcon="circle-check" class="checkmark"
           aria-hidden="true"></mat-icon>
+        }
       </button>
 
       <button class="theme-button light" [class.selected]="selectedTheme === 'light'"
         (click)="setTheme('light', false, $event)" aria-label="Light theme">
-        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'light'" class="checkmark"
+        @if (selectedTheme === 'light') {
+          <mat-icon svgIcon="circle-check" class="checkmark"
           aria-hidden="true"></mat-icon>
+        }
       </button>
 
       <button class="theme-button dark" [class.selected]="selectedTheme === 'dark'"
         (click)="setTheme('dark', false, $event)" aria-label="Dark theme">
-        <mat-icon svgIcon="circle-check" *ngIf="selectedTheme === 'dark'" class="checkmark"
+        @if (selectedTheme === 'dark') {
+          <mat-icon svgIcon="circle-check" class="checkmark"
           aria-hidden="true"></mat-icon>
+        }
       </button>
     </div>
 

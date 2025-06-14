@@ -5,7 +5,9 @@
   <div class="sheet-actions">
     <button mat-raised-button color="accent" (click)="repair()" [disabled]="installing">
       {{ installing ? 'Repairing...' : 'Repair' }}
-      <mat-progress-spinner diameter="20" mode="indeterminate" *ngIf="installing"></mat-progress-spinner>
+      @if (installing) {
+        <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+      }
     </button>
   </div>
 </mat-nav-list>

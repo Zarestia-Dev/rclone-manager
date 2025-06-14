@@ -15,111 +15,116 @@
     </div>
 
     <!-- Remote Options Menu -->
-    <div class="ellipsis-button-container" *ngIf="selectedRemote">
-      <button mat-icon-button class="ellipsis-button" [matMenuTriggerFor]="remoteOptionsMenu">
-        <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
-      </button>
-      <mat-menu #remoteOptionsMenu="matMenu">
-        <!-- Show in Tray Menu (Toggle) -->
-        <button mat-menu-item (click)="$event.stopPropagation()">
-          <p class="menu-item-label"><mat-slide-toggle
+    @if (selectedRemote) {
+      <div class="ellipsis-button-container">
+        <button mat-icon-button class="ellipsis-button" [matMenuTriggerFor]="remoteOptionsMenu">
+          <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+        </button>
+        <mat-menu #remoteOptionsMenu="matMenu">
+          <!-- Show in Tray Menu (Toggle) -->
+          <button mat-menu-item (click)="$event.stopPropagation()">
+            <p class="menu-item-label"><mat-slide-toggle
               [checked]="getRemoteSettingValue(selectedRemote.remoteSpecs.name, 'showOnTray')"
               (change)="saveRemoteSettings(selectedRemote.remoteSpecs.name, { showOnTray: $event.checked })">
               Show in Tray Menu
             </mat-slide-toggle></p>
-        </button>
-
-
-        <mat-divider></mat-divider>
-
-        <!-- Remote Actions -->
-        <button mat-menu-item (click)="openLogsModal(selectedRemote.remoteSpecs.name)">
-          <span>View Logs</span>
-        </button>
-
-        <button mat-menu-item (click)="cloneRemote(selectedRemote.remoteSpecs.name)">
-          <span>Clone Remote</span>
-        </button>
-        <mat-divider></mat-divider>
-
-        <button mat-menu-item (click)="openExportModal(selectedRemote.remoteSpecs.name)">
-          <span>Export Configuration</span>
-        </button>
-        <button mat-menu-item (click)="resetRemoteSettings()">
-          <span>Reset Settings</span>
-        </button>
-
-        <mat-divider></mat-divider>
-
-        <!-- Delete Remote -->
-        <button mat-menu-item class="delete-option" (click)="deleteRemote(selectedRemote.remoteSpecs.name)">
-          <span>Delete Remote</span>
-        </button>
-      </mat-menu>
-    </div>
+          </button>
+          <mat-divider></mat-divider>
+          <!-- Remote Actions -->
+          <button mat-menu-item (click)="openLogsModal(selectedRemote.remoteSpecs.name)">
+            <span>View Logs</span>
+          </button>
+          <button mat-menu-item (click)="cloneRemote(selectedRemote.remoteSpecs.name)">
+            <span>Clone Remote</span>
+          </button>
+          <mat-divider></mat-divider>
+          <button mat-menu-item (click)="openExportModal(selectedRemote.remoteSpecs.name)">
+            <span>Export Configuration</span>
+          </button>
+          <button mat-menu-item (click)="resetRemoteSettings()">
+            <span>Reset Settings</span>
+          </button>
+          <mat-divider></mat-divider>
+          <!-- Delete Remote -->
+          <button mat-menu-item class="delete-option" (click)="deleteRemote(selectedRemote.remoteSpecs.name)">
+            <span>Delete Remote</span>
+          </button>
+        </mat-menu>
+      </div>
+    }
 
     <!-- Empty State -->
-    <div class="empty-state" *ngIf="remotes.length === 0 && !isLoading">
-      <div class="empty-state-content">
-        <mat-icon svgIcon="rclone-2" class="empty-state-icon"></mat-icon>
-        <h2>RClone Manager</h2>
-        <p>Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for a fast and simple
+    @if (remotes.length === 0 && !isLoading) {
+      <div class="empty-state">
+        <div class="empty-state-content">
+          <mat-icon svgIcon="rclone-2" class="empty-state-icon"></mat-icon>
+          <h2>RClone Manager</h2>
+          <p>Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for a fast and simple
           setup.</p>
-        <div class="empty-state-actions">
-          <button mat-raised-button color="primary" (click)="openQuickAddRemoteModal()">
-            <mat-icon svgIcon="add"></mat-icon>
-            Add Quick Remote
-          </button>
-          <button mat-raised-button color="accent" (click)="openRemoteConfigModal()">
-            <mat-icon svgIcon="add"></mat-icon>
-            Add Detailed Remote
-          </button>
+          <div class="empty-state-actions">
+            <button mat-raised-button color="primary" (click)="openQuickAddRemoteModal()">
+              <mat-icon svgIcon="add"></mat-icon>
+              Add Quick Remote
+            </button>
+            <button mat-raised-button color="accent" (click)="openRemoteConfigModal()">
+              <mat-icon svgIcon="add"></mat-icon>
+              Add Detailed Remote
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    }
 
     <!-- Overview Components -->
-    <ng-container *ngIf="remotes.length > 0 && !selectedRemote && !isLoading">
-      <app-general-overview *ngIf="currentTab === 'general'" [remotes]="remotes" [jobs]="jobs"
-        [iconService]="iconService" (mountRemote)="mountRemote($event)" (unmountRemote)="unmountRemote($event)"
-        (stopJob)="stopOperation($event.type, $event.remoteName)"
-        (browseRemote)="openRemoteInFiles($event, 'mount')"
-        (copyRemote)="startOperation('copy', $event)"
-        (syncRemote)="startOperation('sync', $event)"
+    @if (remotes.length > 0 && !selectedRemote && !isLoading) {
+      @if (currentTab === 'general') {
+        <app-general-overview [remotes]="remotes" [jobs]="jobs"
+          [iconService]="iconService" (mountRemote)="mountRemote($event)" (unmountRemote)="unmountRemote($event)"
+          (stopJob)="stopOperation($event.type, $event.remoteName)"
+          (browseRemote)="openRemoteInFiles($event, 'mount')"
+          (copyRemote)="startOperation('copy', $event)"
+          (syncRemote)="startOperation('sync', $event)"
         (selectRemote)="selectRemote($event)"></app-general-overview>
-      <app-app-overview *ngIf="currentTab !== 'general'" [mode]="currentTab" [iconService]="iconService"
-        [remotes]="remotes" (remoteSelected)="selectRemote($event)"
-        (primaryAction)="currentTab === 'mount' ? mountRemote($event) : (currentTab === 'sync' || currentTab === 'copy' ? startOperation(currentTab, $event) : null)"
-        (secondaryAction)="currentTab === 'mount' ? unmountRemote($event) : (currentTab === 'copy' || currentTab === 'sync' ? stopOperation(currentTab, $event) : null)"
-        (openInFiles)="openRemoteInFiles($event, currentTab)" [actionInProgress]="actionInProgress">
-      </app-app-overview>
-    </ng-container>
+      }
+      @if (currentTab !== 'general') {
+        <app-app-overview [mode]="currentTab" [iconService]="iconService"
+          [remotes]="remotes" (remoteSelected)="selectRemote($event)"
+          (primaryAction)="currentTab === 'mount' ? mountRemote($event) : (currentTab === 'sync' || currentTab === 'copy' ? startOperation(currentTab, $event) : null)"
+          (secondaryAction)="currentTab === 'mount' ? unmountRemote($event) : (currentTab === 'copy' || currentTab === 'sync' ? stopOperation(currentTab, $event) : null)"
+          (openInFiles)="openRemoteInFiles($event, currentTab)" [actionInProgress]="actionInProgress">
+        </app-app-overview>
+      }
+    }
 
     <!-- Remote Detail View -->
-    <ng-container *ngIf="selectedRemote && !isLoading">
-      <app-mount-detail *ngIf="currentTab === 'mount'" [iconService]="iconService" [selectedRemote]="selectedRemote"
-        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" [restrictMode]="restrictMode"
-        [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" (unmountRemote)="unmountRemote($event)"
-        (mountRemote)="mountRemote($event)"
-        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">
-      </app-mount-detail>
-
-      <app-operation-detail *ngIf="currentTab === 'sync' || currentTab === 'copy'" [operationType]="currentTab"
-        [selectedRemote]="selectedRemote" [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
-        [restrictMode]="restrictMode"
-        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        (startOperation)="startOperation($event.type, $event.remoteName)"
-        (stopOperation)="stopOperation($event.type, $event.remoteName)"
-        (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">
-      </app-operation-detail>
-
-      <app-general-detail *ngIf="currentTab === 'general'" [restrictMode]="restrictMode"
-        [jobs]="getJobsForRemote(selectedRemote.remoteSpecs.name)"
-        (stopOperation)="stopOperation($event.type, $event.remoteName)"
-        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        [iconService]="iconService" [selectedRemote]="selectedRemote"
+    @if (selectedRemote && !isLoading) {
+      @if (currentTab === 'mount') {
+        <app-mount-detail [iconService]="iconService" [selectedRemote]="selectedRemote"
+          [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" [restrictMode]="restrictMode"
+          [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" (unmountRemote)="unmountRemote($event)"
+          (mountRemote)="mountRemote($event)"
+          (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
+          (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">
+        </app-mount-detail>
+      }
+      @if (currentTab === 'sync' || currentTab === 'copy') {
+        <app-operation-detail [operationType]="currentTab"
+          [selectedRemote]="selectedRemote" [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
+          [restrictMode]="restrictMode"
+          (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
+          (startOperation)="startOperation($event.type, $event.remoteName)"
+          (stopOperation)="stopOperation($event.type, $event.remoteName)"
+          (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">
+        </app-operation-detail>
+      }
+      @if (currentTab === 'general') {
+        <app-general-detail [restrictMode]="restrictMode"
+          [jobs]="getJobsForRemote(selectedRemote.remoteSpecs.name)"
+          (stopOperation)="stopOperation($event.type, $event.remoteName)"
+          (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
+          [iconService]="iconService" [selectedRemote]="selectedRemote"
         (deleteJob)="deleteJob($event)"></app-general-detail>
-    </ng-container>
+      }
+    }
   </mat-sidenav-content>
 </mat-sidenav-container>

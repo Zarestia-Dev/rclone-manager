@@ -1,4 +1,4 @@
-import { CommonModule } from "@angular/common";
+
 import { Component, HostListener, Inject } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MAT_DIALOG_DATA, MatDialogRef } from "@angular/material/dialog";
@@ -20,14 +20,13 @@ export type InputField = {
 @Component({
   selector: "app-input-modal",
   imports: [
-    CommonModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
     FormsModule,
     MatIconModule,
     MatButtonModule
-  ],
+],
   templateUrl: "./input-modal.component.html",
   styleUrl: "./input-modal.component.scss",
 })

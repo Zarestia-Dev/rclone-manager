@@ -3,14 +3,14 @@ import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bott
 import { invoke } from '@tauri-apps/api/core';
 import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
-import { CommonModule } from '@angular/common';
+
 import { MatButtonModule } from '@angular/material/button';
 import { RepairData } from '../../shared/components/types';
 
 @Component({
   selector: 'app-repair-sheet',
   standalone: true,
-  imports: [MatListModule, MatProgressSpinner, CommonModule, MatButtonModule],
+  imports: [MatListModule, MatProgressSpinner, MatButtonModule],
   templateUrl: './repair-sheet.component.html',
   styleUrl: './repair-sheet.component.scss'
 })

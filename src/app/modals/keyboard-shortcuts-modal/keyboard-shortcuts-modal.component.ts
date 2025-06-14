@@ -5,7 +5,7 @@ import {
   transition,
   trigger,
 } from "@angular/animations";
-import { CommonModule } from "@angular/common";
+
 import { Component, HostListener } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -18,14 +18,13 @@ import { MatTableModule } from "@angular/material/table";
 @Component({
   selector: "app-keyboard-shortcuts-modal",
   imports: [
-    CommonModule,
     MatTableModule,
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
     FormsModule,
     MatButtonModule
-  ],
+],
   templateUrl: "./keyboard-shortcuts-modal.component.html",
   styleUrl: "./keyboard-shortcuts-modal.component.scss",
   animations: [

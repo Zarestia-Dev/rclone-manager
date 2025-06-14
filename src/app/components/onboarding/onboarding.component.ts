@@ -200,10 +200,6 @@ export class OnboardingComponent implements OnInit {
       }
     });
   }
-  
-  trackByIndex(index: number): number {
-    return index;
-  }
 
   async installMountPlugin(): Promise<void> {
     this.downloadingPlugin = true;
