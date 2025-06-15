@@ -73,20 +73,30 @@
                       mat-mini-fab 
                       color="accent" 
                       matTooltip="Mount (M)"
+                      [disabled]="isMounting(remote.remoteSpecs.name)"
                       (click)="onQuickAction($event, remote.remoteSpecs.name, 'mount')" 
                       class="action-btn mount-btn"
                     >
-                      <mat-icon svgIcon="mount"></mat-icon>
+                      @if (isMounting(remote.remoteSpecs.name)) {
+                        <mat-spinner diameter="20"></mat-spinner>
+                      } @else {
+                        <mat-icon svgIcon="mount"></mat-icon>
+                      }
                     </button>
                   } @else {
                     <button 
                       mat-mini-fab 
                       color="warn" 
                       matTooltip="Unmount (M)"
+                      [disabled]="isUnmounting(remote.remoteSpecs.name)"
                       (click)="onQuickAction($event, remote.remoteSpecs.name, 'unmount')" 
                       class="action-btn unmount-btn"
                     >
-                      <mat-icon svgIcon="eject"></mat-icon>
+                      @if (isUnmounting(remote.remoteSpecs.name)) {
+                        <mat-spinner diameter="20"></mat-spinner>
+                      } @else {
+                        <mat-icon svgIcon="eject"></mat-icon>
+                      }
                     </button>
                   }
 
@@ -95,20 +105,30 @@
                       mat-mini-fab 
                       color="primary" 
                       matTooltip="Start Sync (S)"
+                      [disabled]="isSyncing(remote.remoteSpecs.name)"
                       (click)="onQuickAction($event, remote.remoteSpecs.name, 'sync')" 
                       class="action-btn sync-btn"
                     >
-                      <mat-icon svgIcon="sync"></mat-icon>
+                      @if (isSyncing(remote.remoteSpecs.name)) {
+                        <mat-spinner diameter="20"></mat-spinner>
+                      } @else {
+                        <mat-icon svgIcon="sync"></mat-icon>
+                      }
                     </button>
                   } @else {
                     <button 
                       mat-mini-fab 
                       color="warn" 
                       matTooltip="Stop Sync (S)"
+                      [disabled]="isStoppingSyncing(remote.remoteSpecs.name)"
                       (click)="onQuickAction($event, remote.remoteSpecs.name, 'stop-sync')" 
                       class="action-btn stop-btn"
                     >
-                      <mat-icon svgIcon="stop"></mat-icon>
+                      @if (isStoppingSyncing(remote.remoteSpecs.name)) {
+                        <mat-spinner diameter="20"></mat-spinner>
+                      } @else {
+                        <mat-icon svgIcon="stop"></mat-icon>
+                      }
                     </button>
                   }
 
@@ -116,31 +136,45 @@
                     <button 
                       mat-mini-fab 
                       matTooltip="Start Copy (C)"
+                      [disabled]="isCopying(remote.remoteSpecs.name)"
                       (click)="onQuickAction($event, remote.remoteSpecs.name, 'copy')" 
                       class="action-btn copy-btn"
                     >
-                      <mat-icon svgIcon="copy"></mat-icon>
+                      @if (isCopying(remote.remoteSpecs.name)) {
+                        <mat-spinner diameter="20"></mat-spinner>
+                      } @else {
+                        <mat-icon svgIcon="copy"></mat-icon>
+                      }
                     </button>
                   } @else {
                     <button 
                       mat-mini-fab 
                       color="warn" 
                       matTooltip="Stop Copy (C)"
+                      [disabled]="isStoppingCopying(remote.remoteSpecs.name)"
                       (click)="onQuickAction($event, remote.remoteSpecs.name, 'stop-copy')" 
                       class="action-btn stop-btn"
                     >
-                      <mat-icon svgIcon="stop"></mat-icon>
+                      @if (isStoppingCopying(remote.remoteSpecs.name)) {
+                        <mat-spinner diameter="20"></mat-spinner>
+                      } @else {
+                        <mat-icon svgIcon="stop"></mat-icon>
+                      }
                     </button>
                   }
 
                   <button 
                     mat-mini-fab 
-                    [disabled]="!remote.mountState?.mounted" 
+                    [disabled]="!remote.mountState?.mounted || isBrowsing(remote.remoteSpecs.name)" 
                     matTooltip="Browse (B)"
                     (click)="onQuickAction($event, remote.remoteSpecs.name, 'browse')" 
                     class="action-btn browse-btn"
                   >
-                    <mat-icon svgIcon="folder"></mat-icon>
+                    @if (isBrowsing(remote.remoteSpecs.name)) {
+                      <mat-spinner diameter="20"></mat-spinner>
+                    } @else {
+                      <mat-icon svgIcon="folder"></mat-icon>
+                    }
                   </button>
                 </div>
               </mat-card-content>

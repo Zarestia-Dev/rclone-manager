@@ -38,6 +38,7 @@ export class IconService {
       folder: "assets/icons/folder.svg",
       "circle-exclamation": "assets/icons/circle-exclamation.svg",
       "circle-info": "assets/icons/circle-info.svg",
+      info: "assets/icons/info.svg",
       "circle-xmark": "assets/icons/circle-xmark.svg",
       wrench: "assets/icons/wrench.svg",
       pen: "assets/icons/pen.svg",
@@ -57,6 +58,7 @@ export class IconService {
       file: "assets/icons/file.svg",
       home: "assets/icons/home.svg",
       stop: "assets/icons/stop.svg",
+      chart: "assets/icons/chart.svg",
 
       play: "assets/icons/play.svg",
       pause: "assets/icons/pause.svg",

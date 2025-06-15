@@ -1,193 +1,205 @@
-<!-- general-detail.component.html -->
-@if (selectedRemote) {
-  <div class="remote-details">
-    <div class="remote-header">
-      <h2 matTooltip="{{ selectedRemote.remoteSpecs.name }}">
-        {{ selectedRemote.remoteSpecs.name }}
-      </h2>
-      <p>
-        <mat-icon [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"></mat-icon>
-        {{ selectedRemote.remoteSpecs.type | titlecase }}
-      </p>
-      <!-- Status Chips -->
-      <div class="remote-status">
-        @if (selectedRemote.mountState) {
-          <p
-            [ngClass]="['mount', selectedRemote.mountState.mounted ? 'active' : 'passive']"
-            aria-label="Mount status" [matTooltip]="selectedRemote.mountState.mounted ? 'Mounted' : 'Not Mounted'">
-            <mat-icon svgIcon="mount"></mat-icon>
-          </p>
-        }
-        @if (selectedRemote.syncState) {
-          <p
-            [ngClass]="['sync', selectedRemote.syncState.isOnSync ? 'active' : 'passive']" aria-label="Sync status"
-            [matTooltip]="selectedRemote.syncState.isOnSync ? 'Syncing' : 'Idle'">
-            <mat-icon svgIcon="sync"></mat-icon>
-          </p>
-        }
-        @if (selectedRemote.copyState) {
-          <p
-            [ngClass]="['copy', selectedRemote.copyState.isOnCopy ? 'active' : 'passive']" aria-label="Copy status"
-            [matTooltip]="selectedRemote.copyState.isOnCopy ? 'Copying' : 'Idle'">
-            <mat-icon svgIcon="copy"></mat-icon>
-          </p>
-        }
+<div class="remote-details">
+  <div class="detail-header">
+    <div class="header-content">
+      <div class="remote-info-section">
+        <div class="icon-container">
+          <mat-icon [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"
+            class="remote-type-icon"></mat-icon>
+        </div>
+        <div class="remote-text-info">
+          <h2 class="remote-name" matTooltip="{{ selectedRemote.remoteSpecs.name }}">
+            {{ selectedRemote.remoteSpecs.name }}
+          </h2>
+          <span class="remote-type">{{ selectedRemote.remoteSpecs.type | titlecase }}</span>
+        </div>
+      </div>
+      <!-- Status Indicators -->
+      <div class="remote-status-indicators">
+        <div [ngClass]="['status-indicator', 'mount', selectedRemote.mountState?.mounted ? 'active' : 'inactive']"
+          aria-label="Mount status">
+          <mat-icon svgIcon="mount"></mat-icon>
+          <span class="status-text">{{ selectedRemote.mountState?.mounted ? 'Mounted' : 'Not Mounted' }}</span>
+        </div>
+        <div [ngClass]="['status-indicator', 'sync', selectedRemote.syncState?.isOnSync ? 'active' : 'inactive']"
+          aria-label="Sync status">
+          <mat-icon svgIcon="sync"></mat-icon>
+          <span class="status-text">{{ selectedRemote.syncState?.isOnSync ? 'Syncing' : 'Idle' }}</span>
+        </div>
+        <div [ngClass]="['status-indicator', 'copy', selectedRemote.copyState?.isOnCopy ? 'active' : 'inactive']"
+          aria-label="Copy status">
+          <mat-icon svgIcon="copy"></mat-icon>
+          <span class="status-text">{{ selectedRemote.copyState?.isOnCopy ? 'Copying' : 'Idle' }}</span>
+        </div>
       </div>
     </div>
-    <!-- Disk Info -->
-    <div class="info-card disk-card">
-      <h3><mat-icon svgIcon="hard-drive"></mat-icon> Disk Info</h3>
-      <mat-card class="info-card-content">
-        <mat-card-content class="disk-usage">
-          <strong>Space Allocation</strong>
-          <div class="full-bar disk-usage-bar" [ngStyle]="getDiskBarStyle()">
-            @if (selectedRemote.mountState?.mounted === 'error' || selectedRemote.mountState?.diskUsage?.notSupported) {
-              <p
-                >
-                {{ selectedRemote.mountState?.diskUsage?.notSupported ? 'Not Supported' :
-                (selectedRemote.mountState?.mounted === 'error' ? 'Error' : 'Unknown') }}
-              </p>
-            }
-            @if (selectedRemote.mountState?.mounted !== 'error') {
-              <div class="usage"
-                [style.width]="getUsagePercentage() + '%'">
-              </div>
-            }
-          </div>
-          @if (selectedRemote.mountState?.diskUsage && !selectedRemote.mountState?.diskUsage?.notSupported) {
-            <div class="legend"
-              >
-              <div class="legend-item">
-                <span class="color-box border"></span>
-                Total Space: {{ selectedRemote.mountState?.diskUsage?.total_space }}
-              </div>
-              <div class="legend-item">
-                <span class="color-box used"></span>
-                Used Space: {{ selectedRemote.mountState?.diskUsage?.used_space }}
-              </div>
-              <div class="legend-item">
-                <span class="color-box free"></span>
-                Free Space: {{ selectedRemote.mountState?.diskUsage?.free_space }}
+    <div class="header-divider"></div>
+  </div>
+
+  <div class="detail-content">
+    <div class="detail-content">
+      <!-- Disk Usage Panel -->
+      <mat-card class="detail-panel disk-panel">
+        <mat-card-header class="panel-header">
+          <mat-card-title class="panel-title-content">
+            <mat-icon svgIcon="hard-drive" class="panel-icon"></mat-icon>
+            <span>Disk Usage</span>
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content class="panel-content">
+          <div class="disk-usage-section">
+            <div class="usage-bar-container">
+              <div class="disk-usage-bar" [ngStyle]="getDiskBarStyle()">
+                @if (selectedRemote.mountState?.mounted === 'error' ||
+                selectedRemote.mountState?.diskUsage?.notSupported) {
+                <div class="usage-status-text">
+                  {{ selectedRemote.mountState?.diskUsage?.notSupported ? 'Not Supported' :
+                  (selectedRemote.mountState?.mounted === 'error' ? 'Error' : 'Unknown') }}
+                </div>
+                } @else {
+                <div class="usage-fill" [style.width]="getUsagePercentage() + '%'"></div>
+                }
               </div>
             </div>
-          }
-        </mat-card-content>
-      </mat-card>
-    </div>
-    <!-- Remote Jobs -->
-    <div class="info-card jobs-card">
-      <h3><mat-icon svgIcon="jobs"></mat-icon>Jobs</h3>
-      <mat-card class="jobs-content">
-        <table mat-table [dataSource]="getRemoteJobs" matSort class="mat-elevation-z8">
-          <!-- Type Column -->
-          <ng-container matColumnDef="type">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Type</th>
-            <td class="type-column" mat-cell *matCellDef="let job">
-              <span class="job-type">
-                <mat-icon svgIcon="{{ getJobStatusIcon(job) }}"></mat-icon>
-                {{ job.job_type | titlecase }}
-              </span>
-            </td>
-          </ng-container>
-          <!-- Status Column -->
-          <ng-container matColumnDef="status">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
-            <td mat-cell *matCellDef="let job">
-              <span [class]="'status-badge ' + getJobStatusColor(job)">
-                {{ job.status | titlecase }}
-              </span>
-            </td>
-          </ng-container>
-          <!-- Progress Column -->
-          <ng-container matColumnDef="progress">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Progress</th>
-            <td mat-cell *matCellDef="let job">
-              @if (job.job_type !== 'mount' && job.stats) {
-                <mat-progress-bar mode="determinate" [value]="getJobProgress(job)"></mat-progress-bar>
-                <span>
-                  {{ formatBytes(job.stats.bytes) }} / {{ formatBytes(job.stats.totalBytes) }}
-                </span>
-              }
-              @if (job.job_type === 'mount') {
-                <span>-</span>
-              }
-            </td>
-          </ng-container>
-          <!-- Start Time Column -->
-          <ng-container matColumnDef="startTime">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Started</th>
-            <td mat-cell *matCellDef="let job">{{ job.start_time | date:'short' }}</td>
-          </ng-container>
-          <!-- Actions Column -->
-          <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef mat-sort-header>Actions</th>
-            <td mat-cell *matCellDef="let job">
-              @if (job.status === 'Running') {
-                <button mat-icon-button matTooltip="Stop Job"
-                  (click)="stopOperation.emit({type: job.job_type, remoteName: job.remote_name})">
-                  <mat-icon svgIcon="stop"></mat-icon>
-                </button>
-              }
-              @if (job.status !== 'Running') {
-                <button mat-icon-button matTooltip="Delete Job" color="warn"
-                  (click)="deleteJob.emit(job.jobid)">
-                  <mat-icon svgIcon="trash"></mat-icon>
-                </button>
-              }
-            </td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-          <tr class="mat-row" *matNoDataRow>
-            <td class="mat-cell no-data" colspan="5">No job data found.</td>
-          </tr>
-        </table>
-      </mat-card>
-    </div>
-    <!-- Quick Actions
-    <div class="info-card actions-card">
-      <h3><mat-icon svgIcon="zap"></mat-icon> Quick Actions</h3>
-      <mat-card class="info-card-content">
-        <mat-card-content class="quick-actions">
-          <button mat-raised-button
-            color="primary"
-            (click)="startOperation.emit({type: 'sync', remoteName: selectedRemote.remoteSpecs.name})"
-            [disabled]="actionInProgress === 'sync'">
-            <mat-icon>sync</mat-icon> Start Sync
-          </button>
-          <button mat-raised-button
-            color="accent"
-            (click)="startOperation.emit({type: 'copy', remoteName: selectedRemote.remoteSpecs.name})"
-            [disabled]="actionInProgress === 'copy'">
-            <mat-icon>content_copy</mat-icon> Start Copy
-          </button>
-        </mat-card-content>
-      </mat-card>
-    </div> -->
-    <!-- Remote Specs -->
-    <div class="info-card spec-card">
-      <h3><mat-icon svgIcon="wrench"></mat-icon> Remote Specs</h3>
-      <mat-card class="info-card-content">
-        <mat-card-content class="spec-content">
-          <mat-chip-set class="specs-container">
-            @for (spec of selectedRemote.remoteSpecs | keyvalue; track spec) {
-              <mat-chip class="spec-pill"
-                [matTooltip]="isSensitiveKey(spec.key, restrictMode) ? '[RESTRICTED]' : (spec.value | json)"
-                matTooltipPosition="above" [matTooltipHideDelay]="500">
-                <strong>{{ spec.key }}:</strong>
-                <span>{{ maskSensitiveValue(spec.key, spec.value) }}</span>
-              </mat-chip>
+            @if (selectedRemote.mountState?.diskUsage && !selectedRemote.mountState?.diskUsage?.notSupported) {
+            <div class="usage-legend">
+              <div class="legend-item">
+                <div class="legend-color total"></div>
+                <span class="legend-text">Total: {{ selectedRemote.mountState?.diskUsage?.total_space }}</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color used"></div>
+                <span class="legend-text">Used: {{ selectedRemote.mountState?.diskUsage?.used_space }}</span>
+              </div>
+              <div class="legend-item">
+                <div class="legend-color free"></div>
+                <span class="legend-text">Free: {{ selectedRemote.mountState?.diskUsage?.free_space }}</span>
+              </div>
+            </div>
             }
-          </mat-chip-set>
+          </div>
         </mat-card-content>
-        <mat-divider></mat-divider>
-        <mat-card-footer class="button-container">
-          <button mat-raised-button class="fix"
+      </mat-card>
+
+      <!-- Jobs Panel -->
+      <mat-card class="detail-panel jobs-panel">
+        <mat-card-header class="panel-header">
+          <mat-card-title class="panel-title-content">
+            <mat-icon svgIcon="jobs" class="panel-icon"></mat-icon>
+            <span>Active Jobs</span>
+            <span class="job-count">{{ getRemoteJobs.length }}</span>
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content class="panel-content">
+          <div class="jobs-table-container">
+            <table mat-table [dataSource]="getRemoteJobs" matSort class="jobs-table">
+              <!-- Type Column -->
+              <ng-container matColumnDef="type">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Type</th>
+                <td class="type-column" mat-cell *matCellDef="let job">
+                  <div class="job-type-info">
+                    <span class="job-type-text">{{ job.job_type | titlecase }}</span>
+                  </div>
+                </td>
+              </ng-container>
+              <!-- Status Column -->
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
+                <td mat-cell *matCellDef="let job">
+                  <div class="status-chip" [ngClass]="getJobStatus(job)">
+                    <div class="status-dot"></div>
+                    <span>{{ job.status | titlecase }}</span>
+                  </div>
+                </td>
+              </ng-container>
+              <!-- Progress Column -->
+              <ng-container matColumnDef="progress">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Progress</th>
+                <td mat-cell *matCellDef="let job">
+                  @if (job.job_type !== 'mount' && job.stats) {
+                  <div class="progress-info">
+                    <mat-progress-bar mode="determinate" [value]="getJobProgress(job)"
+                      class="job-progress"></mat-progress-bar>
+                    <span class="progress-text">
+                      {{ formatBytes(job.stats.bytes) }} / {{ formatBytes(job.stats.totalBytes) }}
+                    </span>
+                  </div>
+                  } @else {
+                  <span class="no-progress">-</span>
+                  }
+                </td>
+              </ng-container>
+              <!-- Start Time Column -->
+              <ng-container matColumnDef="startTime">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Started</th>
+                <td mat-cell *matCellDef="let job">
+                  <span class="start-time">{{ job.start_time | date:'short' }}</span>
+                </td>
+              </ng-container>
+              <!-- Actions Column -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Actions</th>
+                <td mat-cell *matCellDef="let job">
+                  <div class="job-actions">
+                    @if (job.status === 'Running') {
+                    <button mat-icon-button class="action-button stop-button" matTooltip="Stop Job"
+                      (click)="stopOperation.emit({type: job.job_type, remoteName: job.remote_name})">
+                      <mat-icon svgIcon="stop"></mat-icon>
+                    </button>
+                    } @else {
+                    <button mat-icon-button class="action-button delete-button" matTooltip="Delete Job"
+                      (click)="deleteJob.emit(job.jobid)">
+                      <mat-icon svgIcon="trash"></mat-icon>
+                    </button>
+                    }
+                  </div>
+                </td>
+              </ng-container>
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="job-row"></tr>
+              <tr class="no-data-row" *matNoDataRow>
+                <td class="no-data-cell" colspan="5">
+                  <div class="no-data-content">
+                    <mat-icon svgIcon="jobs" class="no-data-icon"></mat-icon>
+                    <span>No active jobs</span>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Remote Specifications Panel -->
+      <mat-card class="detail-panel specs-panel">
+        <mat-card-header class="panel-header">
+          <mat-card-title class="panel-title-content">
+            <mat-icon svgIcon="wrench" class="panel-icon"></mat-icon>
+            <span>Remote Configuration</span>
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content class="panel-content">
+          <div class="specs-container">
+            <div class="specs-grid">
+              @for (spec of selectedRemote.remoteSpecs | keyvalue; track spec.key) {
+              <div class="spec-item">
+                <div class="spec-key">{{ spec.key }}</div>
+                <div class="spec-value"
+                  [matTooltip]="isSensitiveKey(spec.key, restrictMode) ? '[RESTRICTED]' : (spec.value | json)"
+                  matTooltipPosition="above" [matTooltipHideDelay]="500">
+                  {{ maskSensitiveValue(spec.key, spec.value) }}
+                </div>
+              </div>
+              }
+            </div>
+          </div>
+        </mat-card-content>
+        <mat-card-actions class="panel-actions">
+          <button mat-raised-button color="primary" class="edit-config-button"
             (click)="openRemoteConfigModal.emit({editTarget: 'remote', existingConfig: selectedRemote.remoteSpecs})">
-            <mat-icon svgIcon="pen"></mat-icon> Edit
+            <mat-icon svgIcon="pen"></mat-icon>
+            <span>Edit Configuration</span>
           </button>
-        </mat-card-footer>
+        </mat-card-actions>
       </mat-card>
     </div>
   </div>
-}

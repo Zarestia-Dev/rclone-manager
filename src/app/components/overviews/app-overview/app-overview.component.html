@@ -1,181 +1,262 @@
-<!-- remote-overview.component.html -->
-<div class="overview">
-  <div class="remote-header">
-    <h2>{{ title }}</h2>
+<!-- app-overview.component.html -->
+<div class="app-overview" [ngClass]="mode + '-mode'">
+  <div class="overview-header">
+    <div class="header-content">
+      <div class="title-section">
+        <mat-icon [svgIcon]="mode" class="mode-icon"></mat-icon>
+        <h2>{{ title }}</h2>
+      </div>
+      <div class="header-divider"></div>
+    </div>
   </div>
 
-  <div class="info-card overview-card">
-    <h3>
-      <mat-icon [svgIcon]="mode"></mat-icon>
-      {{ mode | titlecase}} Status
-    </h3>
-    <mat-card class="info-card-content">
-      <mat-card-content class="overview-content">
-        <strong>{{ mode | titlecase}} Status Overview</strong>
-        <div class="remotes-bar">
-          <div class="bar active-bar" [style.width.%]="(activeCount / remotes.length) * 100"></div>
-          <div class="bar inactive-bar" [style.width.%]="(inactiveCount / remotes.length) * 100"></div>
-          <div class="bar error-bar" [style.width.%]="(errorCount / remotes.length) * 100"></div>
+  <div class="overview-content">
+    <!-- Status Overview Panel -->
+    <mat-card class="status-panel">
+      <mat-card-header class="status-header">
+        <mat-card-title class="panel-title-content">
+          <mat-icon [svgIcon]="mode" class="status-icon"></mat-icon>
+          <span>{{ mode | titlecase}} Status Overview</span>
+          <span class="remote-count">{{ remotes.length }}</span>
+        </mat-card-title>
+      </mat-card-header>
+
+      <mat-card-content class="status-content">
+        <div class="status-bar-container">
+          <div class="remotes-bar">
+            <div class="bar active-bar" [style.width.%]="(activeCount / remotes.length) * 100"></div>
+            <div class="bar inactive-bar" [style.width.%]="(inactiveCount / remotes.length) * 100"></div>
+            <div class="bar error-bar" [style.width.%]="(errorCount / remotes.length) * 100"></div>
+          </div>
+
+          <!-- Legend -->
+          @if (activeCount > 0 || inactiveCount > 0 || errorCount > 0) {
+            <div class="legend">
+              @if (activeCount > 0) {
+                <div class="legend-item">
+                  <span class="color-box active"></span>
+                  {{ mode === 'mount' ? 'Mounted' : (mode === 'sync' ? 'Syncing' : 'Copying') }}: {{ activeCount }}
+                </div>
+              }
+              @if (inactiveCount > 0) {
+                <div class="legend-item">
+                  <span class="color-box inactive"></span>
+                  {{ mode === 'mount' ? 'Unmounted' : (mode === 'sync' ? 'Off Sync' : 'Not Copying') }}: {{ inactiveCount }}
+                </div>
+              }
+              @if (errorCount > 0) {
+                <div class="legend-item">
+                  <span class="color-box error"></span>Error: {{ errorCount }}
+                </div>
+              }
+            </div>
+          }
         </div>
-
-        <!-- Legend -->
-        @if (activeCount > 0 || inactiveCount > 0 || errorCount > 0) {
-          <div class="legend">
-            @if (activeCount > 0) {
-              <div class="legend-item">
-                <span class="color-box active"></span>
-                {{ mode === 'mount' ? 'Mounted' : (mode === 'sync' ? 'Syncing' : 'Copying') }}: {{ activeCount
-                }}
-              </div>
-            }
-            @if (inactiveCount > 0) {
-              <div class="legend-item">
-                <span class="color-box inactive"></span>
-                {{ mode === 'mount' ? 'Unmounted' : (mode === 'sync' ? 'Off Sync' : 'Not Copying') }}: {{
-                inactiveCount }}
-              </div>
-            }
-            @if (errorCount > 0) {
-              <div class="legend-item">
-                <span class="color-box error"></span>Error: {{ errorCount }}
-              </div>
-            }
-          </div>
-        }
       </mat-card-content>
-
-      @if (activeCount > 0 && inactiveCount > 0) {
-        <mat-divider></mat-divider>
-      }
-
-      <!-- Active Remotes -->
-      @if (activeCount > 0) {
-        <mat-card-content class="active-remotes">
-          <h3>
-            <mat-icon [svgIcon]="activeIcon"></mat-icon>
-            {{ mode === 'mount' ? 'Mounted' : (mode === 'sync' ? 'Syncing' : 'Copying') }} Remotes
-          </h3>
-          <div class="remote-list">
-            <!-- Active Remotes section -->
-            @for (remote of activeRemotes; track remote) {
-              <div class="remote-card" (click)="selectRemote(remote)">
-                <div class="remote-content">
-                  <h4 matTooltip="{{ remote.remoteSpecs.name }}">
-                    {{ remote.remoteSpecs.name }}
-                  </h4>
-                  <p>
-                    <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
-                    {{ remote.remoteSpecs.type | titlecase }}
-                  </p>
-                </div>
-                <!-- Action Button (Open or Stop) -->
-                @if (shouldShowOpenButton(remote)) {
-                  <button mat-raised-button color="accent"
-                    (click)="triggerOpenInFiles(remote.remoteSpecs.name); $event.stopPropagation()"
-                    [disabled]="isOpening(remote.remoteSpecs.name)">
-                    @if (isOpening(remote.remoteSpecs.name)) {
-                      <mat-spinner diameter="20"></mat-spinner>
-                    }
-                    @if (!isOpening(remote.remoteSpecs.name)) {
-                      <mat-icon svgIcon="folder"></mat-icon>
-                    }
-                    {{ getOpenButtonLabel(remote.remoteSpecs.name) }}
-                  </button>
-                } @else {
-                  <button mat-raised-button color="warn"
-                    (click)="triggerSecondaryAction(remote.remoteSpecs.name); $event.stopPropagation()"
-                    [disabled]="isStopping(remote.remoteSpecs.name)">
-                    @if (isStopping(remote.remoteSpecs.name)) {
-                      <mat-spinner diameter="20"></mat-spinner>
-                    }
-                    @if (!isStopping(remote.remoteSpecs.name)) {
-                      <mat-icon svgIcon="pause"></mat-icon>
-                    }
-                    {{ isStopping(remote.remoteSpecs.name) ? 'Stopping' : getStopButtonLabel() }}
-                  </button>
-                }
-              </div>
-            }
-          </div>
-        </mat-card-content>
-      }
-
-      @if (inactiveCount > 0 && errorCount > 0) {
-        <mat-divider></mat-divider>
-      }
-
-      <!-- Inactive Remotes -->
-      @if (inactiveCount > 0) {
-        <mat-card-content class="inactive-remotes">
-          <h3>
-            <mat-icon svgIcon="circle-xmark"></mat-icon>
-            {{ mode === 'mount' ? 'Unmounted' : (mode === 'sync' ? 'Off Sync' : 'Not Copying') }} Remotes
-          </h3>
-          <div class="remote-list">
-            @for (remote of inactiveRemotes; track remote) {
-              <div class="remote-card" (click)="selectRemote(remote)">
-                <div class="remote-content">
-                  <h4 matTooltip="{{ remote.remoteSpecs.name }}">
-                    {{ remote.remoteSpecs.name }}
-                  </h4>
-                  <p>
-                    <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
-                    {{ remote.remoteSpecs.type | titlecase }}
-                  </p>
-                </div>
-                <button mat-raised-button [color]="mode === 'copy' ? 'accent' : 'primary'"
-                  (click)="triggerPrimaryAction(remote.remoteSpecs.name); $event.stopPropagation()"
-                  [disabled]="getActionState(remote.remoteSpecs.name) === mode">
-                  @if (getActionState(remote.remoteSpecs.name) === mode) {
-                    <mat-spinner
-                    diameter="20"></mat-spinner>
-                  }
-                  @if (getActionState(remote.remoteSpecs.name) !== mode) {
-                    <mat-icon
-                    [svgIcon]="primaryActionIcon"></mat-icon>
-                  }
-                  {{ getActionState(remote.remoteSpecs.name) === mode
-                  ? (mode === 'mount' ? 'Mounting' : mode === 'sync' ? 'Starting Sync' : 'Starting Copy')
-                  : primaryActionLabel }}
-                </button>
-              </div>
-            }
-          </div>
-        </mat-card-content>
-      }
-
-      @if (errorCount > 0) {
-        <mat-divider></mat-divider>
-      }
-
-      <!-- Error Remotes -->
-      @if (errorCount > 0) {
-        <mat-card-content>
-          <h3>
-            <mat-icon svgIcon="circle-exclamation"></mat-icon>
-            Remotes with Problems
-          </h3>
-          <div class="remote-list">
-            @for (remote of errorRemotes; track remote) {
-              <div class="remote-card" (click)="selectRemote(remote)">
-                <div class="remote-content">
-                  <h4 matTooltip="{{ remote.remoteSpecs.name }}">
-                    {{ remote.remoteSpecs.name }}
-                  </h4>
-                  <p>
-                    <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
-                    {{ remote.remoteSpecs.type | titlecase }}
-                  </p>
-                </div>
-                <button mat-raised-button class="fix" (click)="$event.stopPropagation()">
-                  <mat-icon svgIcon="wrench"></mat-icon>
-                  Fix
-                </button>
-              </div>
-            }
-          </div>
-        </mat-card-content>
-      }
     </mat-card>
+
+    <!-- Active Remotes Panel -->
+    @if (activeCount > 0) {
+      <mat-card class="remotes-panel active-remotes-panel">
+        <mat-card-header class="remotes-header">
+          <mat-card-title class="panel-title-content">
+            <mat-icon [svgIcon]="activeIcon" class="active-icon"></mat-icon>
+            <span>{{ mode === 'mount' ? 'Mounted' : (mode === 'sync' ? 'Syncing' : 'Copying') }} Remotes</span>
+            <span class="remote-count">{{ activeCount }}</span>
+          </mat-card-title>
+        </mat-card-header>
+
+        <mat-card-content class="remotes-content">
+          <div class="remotes-grid">
+            @for (remote of activeRemotes; track remote.remoteSpecs.name) {
+              <mat-card 
+                class="remote-card active-remote" 
+                (click)="selectRemote(remote)"
+              >
+                <mat-card-header class="remote-header">
+                  <div class="remote-info">
+                    <div class="icon-container">
+                      <mat-icon 
+                        [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"
+                        class="remote-type-icon"
+                      ></mat-icon>
+                    </div>
+                    <div class="remote-details">
+                      <h4 class="remote-name" matTooltip="{{ remote.remoteSpecs.name }}">
+                        {{ remote.remoteSpecs.name }}
+                      </h4>
+                      <span class="remote-type">{{ remote.remoteSpecs.type | titlecase }}</span>
+                    </div>
+                  </div>
+                  <div class="remote-status-indicators">
+                    <div class="status-badge active">
+                      <mat-icon [svgIcon]="activeIcon" class="status-icon"></mat-icon>
+                    </div>
+                  </div>
+                </mat-card-header>
+
+                <mat-card-content class="remote-content">
+                  <div class="quick-actions">
+                    @if (shouldShowOpenButton(remote)) {
+                      <button 
+                        mat-mini-fab 
+                        color="accent"
+                        matTooltip="Browse (B)"
+                        (click)="triggerOpenInFiles(remote.remoteSpecs.name); $event.stopPropagation()"
+                        [disabled]="isOpening(remote.remoteSpecs.name)"
+                        class="action-btn browse-btn"
+                      >
+                        @if (isOpening(remote.remoteSpecs.name)) {
+                          <mat-spinner diameter="20"></mat-spinner>
+                        } @else {
+                          <mat-icon svgIcon="folder"></mat-icon>
+                        }
+                      </button>
+                    }
+                    <button 
+                      mat-mini-fab 
+                      color="warn"
+                      matTooltip="{{ getStopButtonLabel() }}"
+                      (click)="triggerSecondaryAction(remote.remoteSpecs.name); $event.stopPropagation()"
+                      [disabled]="isStopping(remote.remoteSpecs.name)"
+                      class="action-btn stop-btn"
+                    >
+                      @if (isStopping(remote.remoteSpecs.name)) {
+                        <mat-spinner diameter="20"></mat-spinner>
+                      } @else {
+                        <mat-icon [svgIcon]="mode === 'mount' ? 'eject' : 'stop'"></mat-icon>
+                      }
+                    </button>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <!-- Inactive Remotes Panel -->
+    @if (inactiveCount > 0) {
+      <mat-card class="remotes-panel inactive-remotes-panel">
+        <mat-card-header class="remotes-header">
+          <mat-card-title class="panel-title-content">
+            <mat-icon svgIcon="circle-xmark" class="inactive-icon"></mat-icon>
+            <span>{{ mode === 'mount' ? 'Unmounted' : (mode === 'sync' ? 'Off Sync' : 'Not Copying') }} Remotes</span>
+            <span class="remote-count">{{ inactiveCount }}</span>
+          </mat-card-title>
+        </mat-card-header>
+
+        <mat-card-content class="remotes-content">
+          <div class="remotes-grid">
+            @for (remote of inactiveRemotes; track remote.remoteSpecs.name) {
+              <mat-card 
+                class="remote-card inactive-remote" 
+                (click)="selectRemote(remote)"
+              >
+                <mat-card-header class="remote-header">
+                  <div class="remote-info">
+                    <div class="icon-container">
+                      <mat-icon 
+                        [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"
+                        class="remote-type-icon"
+                      ></mat-icon>
+                    </div>
+                    <div class="remote-details">
+                      <h4 class="remote-name" matTooltip="{{ remote.remoteSpecs.name }}">
+                        {{ remote.remoteSpecs.name }}
+                      </h4>
+                      <span class="remote-type">{{ remote.remoteSpecs.type | titlecase }}</span>
+                    </div>
+                  </div>
+                </mat-card-header>
+
+                <mat-card-content class="remote-content">
+                  <div class="quick-actions">
+                    <button 
+                      mat-mini-fab 
+                      [matTooltip]="primaryActionLabel"
+                      (click)="triggerPrimaryAction(remote.remoteSpecs.name); $event.stopPropagation()"
+                      [disabled]="getActionState(remote.remoteSpecs.name) === mode"
+                      [ngClass]="{
+                        'action-btn': true,
+                        'mount-btn': mode === 'mount',
+                        'sync-btn': mode === 'sync',
+                        'copy-btn': mode === 'copy'
+                      }"
+                    >
+                      @if (getActionState(remote.remoteSpecs.name) === mode) {
+                        <mat-spinner diameter="20"></mat-spinner>
+                      } @else {
+                        <mat-icon [svgIcon]="primaryActionIcon"></mat-icon>
+                      }
+                    </button>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <!-- Error Remotes Panel -->
+    @if (errorCount > 0) {
+      <mat-card class="remotes-panel error-remotes-panel">
+        <mat-card-header class="remotes-header">
+          <mat-card-title class="panel-title-content">
+            <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
+            <span>Remotes with Problems</span>
+            <span class="remote-count">{{ errorCount }}</span>
+          </mat-card-title>
+        </mat-card-header>
+
+        <mat-card-content class="remotes-content">
+          <div class="remotes-grid">
+            @for (remote of errorRemotes; track remote.remoteSpecs.name) {
+              <mat-card 
+                class="remote-card error-remote" 
+                (click)="selectRemote(remote)"
+              >
+                <mat-card-header class="remote-header">
+                  <div class="remote-info">
+                    <div class="icon-container">
+                      <mat-icon 
+                        [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"
+                        class="remote-type-icon"
+                      ></mat-icon>
+                    </div>
+                    <div class="remote-details">
+                      <h4 class="remote-name" matTooltip="{{ remote.remoteSpecs.name }}">
+                        {{ remote.remoteSpecs.name }}
+                      </h4>
+                      <span class="remote-type">{{ remote.remoteSpecs.type | titlecase }}</span>
+                    </div>
+                  </div>
+                  <div class="remote-status-indicators">
+                    <div class="status-badge error">
+                      <mat-icon svgIcon="circle-exclamation" class="status-icon"></mat-icon>
+                    </div>
+                  </div>
+                </mat-card-header>
+
+                <mat-card-content class="remote-content">
+                  <div class="quick-actions">
+                    <button 
+                      mat-mini-fab 
+                      class="action-btn fix-btn"
+                      matTooltip="Fix Issues"
+                      (click)="$event.stopPropagation()"
+                    >
+                      <mat-icon svgIcon="wrench"></mat-icon>
+                    </button>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
   </div>
 </div>

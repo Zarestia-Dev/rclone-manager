@@ -20,8 +20,8 @@ import { MatTooltipModule } from "@angular/material/tooltip";
   ],
   animations: [
     trigger("slideToggle", [
-      state("hidden", style({ height: "0px", opacity: 0, overflow: "hidden" })),
-      state("visible", style({ height: "*", opacity: 1, overflow: "hidden" })),
+      state("hidden", style({ height: "0px", opacity: 0, padding: "10px", overflow: "hidden" })),
+      state("visible", style({ height: "*", opacity: 1, padding: "*", overflow: "hidden" })),
       transition("hidden <=> visible", animate("300ms ease-in-out")),
     ]),
   ],

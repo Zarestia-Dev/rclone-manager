@@ -75,7 +75,7 @@
 
       @if (filteredLogs.length > 0 && !loading) {
         <div #terminalLogArea class="terminal-log-area">
-          @for (log of filteredLogs; track log) {
+          @for (log of filteredLogs; track log.timestamp) {
             <div class="log-entry" [class.has-context]="log.context"
               [class.expanded]="isExpanded(log)">
               <span class="timestamp">{{ log.timestamp | date:'HH:mm:ss.SSS' }}</span>

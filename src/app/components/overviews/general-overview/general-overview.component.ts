@@ -18,7 +18,7 @@ import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatExpansionModule } from "@angular/material/expansion";
 import { trigger, transition, style, animate } from "@angular/animations";
 import { Subject, interval, of, from } from "rxjs";
-import { takeUntil, catchError, switchMap, finalize } from "rxjs/operators";
+import { takeUntil, catchError, switchMap, finalize, filter } from "rxjs/operators";
 
 import { RcloneService } from "../../../services/rclone.service";
 import { InfoService } from "../../../services/info.service";
@@ -28,6 +28,7 @@ import {
   GlobalStats,
   JobInfo,
   Remote,
+  RemoteActionProgress,
 } from "../../../shared/components/types";
 
 interface SystemStats {
@@ -99,6 +100,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   @Input() remotes: Remote[] = [];
   @Input() jobs: JobInfo[] = [];
   @Input() iconService: any;
+  @Input() actionInProgress: RemoteActionProgress = {};
 
   @Output() selectRemote = new EventEmitter<Remote>();
   @Output() mountRemote = new EventEmitter<string>();
@@ -160,8 +162,13 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }
 
   private setupPolling(): void {
-    interval(1000)
-      .pipe(takeUntil(this.destroy$))
+    // Reduced frequency to 5 seconds to prevent UI blocking
+    interval(5000)
+      .pipe(
+        takeUntil(this.destroy$),
+        // Skip if already loading to prevent stacking
+        filter(() => !this.isLoadingStats)
+      )
       .subscribe(() => this.loadSystemStats());
   }
 
@@ -221,9 +228,8 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
       .pipe(
         catchError((error) => {
           this.bandwidthError = "Failed to load bandwidth limit";
-          if (!this.bandwidthLimit) {
-            setTimeout(() => this.loadBandwidthLimit(), 5000);
-          }
+          // Remove automatic retry to prevent infinite loops
+          console.error("Bandwidth limit error:", error);
           return of(null);
         }),
         finalize(() => {
@@ -388,6 +394,48 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
 
   get systemStatusColor(): string {
     return `status-${this.rcloneStatus}`;
+  }
+
+  // Action Progress Utilities
+  isActionInProgress(remoteName: string, action: string): boolean {
+    return this.actionInProgress[remoteName] === action;
+  }
+
+  isAnyActionInProgress(remoteName: string): boolean {
+    return !!this.actionInProgress[remoteName];
+  }
+
+  getActionInProgress(remoteName: string): string | null {
+    return this.actionInProgress[remoteName] || null;
+  }
+
+  // Specific action state checks
+  isMounting(remoteName: string): boolean {
+    return this.isActionInProgress(remoteName, 'mount');
+  }
+
+  isUnmounting(remoteName: string): boolean {
+    return this.isActionInProgress(remoteName, 'unmount');
+  }
+
+  isSyncing(remoteName: string): boolean {
+    return this.isActionInProgress(remoteName, 'sync');
+  }
+
+  isStoppingSyncing(remoteName: string): boolean {
+    return this.isActionInProgress(remoteName, 'stop');
+  }
+
+  isCopying(remoteName: string): boolean {
+    return this.isActionInProgress(remoteName, 'copy');
+  }
+
+  isStoppingCopying(remoteName: string): boolean {
+    return this.isActionInProgress(remoteName, 'stop');
+  }
+
+  isBrowsing(remoteName: string): boolean {
+    return this.isActionInProgress(remoteName, 'open');
   }
 
   // Event handlers

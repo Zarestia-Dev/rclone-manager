@@ -9,7 +9,12 @@
 - Detecting the metered connection and showing a warning banner (Linux needed Network Manager. Its `nmcli` command is used to check for metered connections). Not supported on macOS because it does not support metered network detection (For now, it is only show the warning banner.).
 
 ### Changed
+- UI design has been improved.
 - Mount path selection not forced to select a path from the file browser anymore. You can also type the path manually but it will be validated.
+- Onboarding process has been improved.
+
+### Bug
+- UI lock himself randomly.
 
 
 ## [beta-0.1.1] - 2025-04-06

@@ -161,31 +161,18 @@ export class GeneralDetailComponent {
     return (job.stats.bytes / job.stats.totalBytes) * 100;
   }
 
-  getJobStatusIcon(job: JobInfo): string {
+  getJobStatus(job: JobInfo): string {
     switch (job.status) {
       case "Running":
-        return "refresh";
+        return "running";
       case "Completed":
-        return "circle-check";
+        return "completed";
       case "Failed":
-        return "circle-exclamation";
+        return "failed";
       case "Stopped":
-        return "stop";
+        return "stopped";
       default:
-        return "question";
-    }
-  }
-
-  getJobStatusColor(job: JobInfo): string {
-    switch (job.status) {
-      case "Running":
-        return "primary";
-      case "Completed":
-        return "accent";
-      case "Failed":
-        return "warn";
-      default:
-        return "";
+        return "unknown";
     }
   }
 

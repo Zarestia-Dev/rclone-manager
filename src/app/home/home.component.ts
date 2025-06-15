@@ -5,6 +5,7 @@ import {
   HostListener,
   OnDestroy,
   OnInit,
+  NgZone,
 } from "@angular/core";
 
 import { MatDrawerMode, MatSidenavModule } from "@angular/material/sidenav";
@@ -71,7 +72,7 @@ import { GeneralOverviewComponent } from "../components/overviews/general-overvi
 ],
   templateUrl: "./home.component.html",
   styleUrls: ["./home.component.scss"],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.Default, // Temporarily change to Default
 })
 export class HomeComponent implements OnInit, OnDestroy {
   // UI State
@@ -100,17 +101,32 @@ export class HomeComponent implements OnInit, OnDestroy {
     private settingsService: SettingsService,
     private cdr: ChangeDetectorRef,
     private infoService: InfoService,
-    public iconService: IconService
+    public iconService: IconService,
+    private ngZone: NgZone
   ) {
     this.restrictValue();
   }
 
   // Lifecycle Hooks
   ngOnInit(): void {
-    this.setupResponsiveLayout();
-    this.setupSubscriptions();
-    this.loadInitialData();
-    this.setupTauriListeners();
+    console.log("HomeComponent: ngOnInit started");
+    try {
+      this.setupResponsiveLayout();
+      console.log("HomeComponent: setupResponsiveLayout completed");
+      
+      this.setupSubscriptions();
+      console.log("HomeComponent: setupSubscriptions completed");
+      
+      this.loadInitialData();
+      console.log("HomeComponent: loadInitialData called");
+      
+      this.setupTauriListeners();
+      console.log("HomeComponent: setupTauriListeners completed");
+      
+      console.log("HomeComponent: ngOnInit completed");
+    } catch (error) {
+      console.error("HomeComponent: ngOnInit failed", error);
+    }
   }
 
   ngOnDestroy(): void {
@@ -504,12 +520,15 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private async loadInitialData(): Promise<void> {
+    console.log("HomeComponent: Starting initial data load");
     this.isLoading = true;
     this.cdr.markForCheck();
 
     try {
       await this.refreshData();
+      console.log("HomeComponent: Initial data load completed successfully");
     } catch (error) {
+      console.error("HomeComponent: Initial data load failed", error);
       this.handleError("Failed to load initial data", error);
     } finally {
       this.isLoading = false;
@@ -518,12 +537,27 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private async refreshData(): Promise<void> {
-    await Promise.all([
-      this.refreshMounts(),
-      this.loadRemotes(),
-      this.getRemoteSettings(),
-      this.loadJobs(),
-    ]);
+    console.log("HomeComponent: Starting data refresh");
+    // Add timeout to prevent infinite hanging
+    const operations = [
+      this.refreshMounts().catch(e => console.error("Mount refresh failed:", e)),
+      this.loadRemotes().catch(e => console.error("Remote load failed:", e)),
+      this.getRemoteSettings().catch(e => console.error("Settings load failed:", e)),
+      this.loadJobs().catch(e => console.error("Jobs load failed:", e)),
+    ];
+    
+    // Add a timeout to prevent hanging
+    const timeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Data refresh timeout")), 10000)
+    );
+    
+    try {
+      await Promise.race([Promise.allSettled(operations), timeout]);
+      console.log("HomeComponent: Data refresh completed");
+    } catch (error) {
+      console.error("HomeComponent: Data refresh timed out or failed:", error);
+      throw error;
+    }
   }
 
   private async loadRemotes(): Promise<void> {

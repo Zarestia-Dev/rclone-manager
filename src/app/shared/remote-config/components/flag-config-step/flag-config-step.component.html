@@ -41,7 +41,7 @@
         aria-label="Select local folder">
         <mat-icon svgIcon="folder"></mat-icon>
       </button>
-      @if (pathState[flagType + 'Config.dest'].remoteName) {
+      @if (pathState[flagType + 'Config.dest'] && pathState[flagType + 'Config.dest'].remoteName) {
         <button mat-icon-button matSuffix (click)="onResetRemoteSelection(flagType + 'Config.dest')"
           >
           <mat-icon svgIcon="circle-xmark"></mat-icon>
@@ -51,7 +51,7 @@
         <mat-spinner color="accent" diameter="24"></mat-spinner>
       }
       <mat-autocomplete #destAuto="matAutocomplete" (optionSelected)="onDestOptionSelected($event.option.value)">
-        @if (!pathState[flagType + 'Config.dest'].remoteName) {
+        @if (pathState[flagType + 'Config.dest'] && !pathState[flagType + 'Config.dest'].remoteName) {
           @for (remote of existingRemotes; track remote) {
             <mat-option [value]="remote + ':/'"
               (onSelectionChange)="onRemoteSelected(remote + ':/')">
@@ -59,8 +59,8 @@
             </mat-option>
           }
         }
-        @if (pathState[flagType + 'Config.dest'].remoteName) {
-          @for (option of pathState[flagType + 'Config.dest'].options || []; track option) {
+        @if (pathState[flagType + 'Config.dest'] && pathState[flagType + 'Config.dest'].remoteName) {
+          @for (option of pathState[flagType + 'Config.dest'].options || []; track option.Name) {
             <mat-option
               [value]="pathState[flagType + 'Config.dest'].remoteName + ':/' + (pathState[flagType + 'Config.dest'].currentPath ? pathState[flagType + 'Config.dest'].currentPath + '/' : '') + option.Name">
               @if (option.IsDir) {
@@ -91,7 +91,7 @@
         <mat-spinner color="accent" diameter="24"></mat-spinner>
       }
       <mat-autocomplete #sourceAuto="matAutocomplete" (optionSelected)="onSourceOptionSelected($event.option.value)">
-        @for (option of pathState[flagType + 'Config.source'].options || []; track option) {
+        @for (option of pathState[flagType + 'Config.source'].options || []; track option.Name) {
           <mat-option
             [value]="option.Name">
             @if (option.IsDir) {
@@ -126,7 +126,7 @@
     <div class="json-chip-set">
       <label class="chip-set-label">{{ flagType | titlecase }} Flags</label>
       <mat-chip-set [attr.aria-label]="flagType + ' configuration options'">
-        @for (field of dynamicFlagFields; track field) {
+        @for (field of dynamicFlagFields; track field.name) {
           <mat-chip-option (click)="onToggleOption(field)"
             [selected]="getSelectedOptions.hasOwnProperty(field.name)" [matTooltip]="field.help | linebreaks"
             matTooltipPosition="above">

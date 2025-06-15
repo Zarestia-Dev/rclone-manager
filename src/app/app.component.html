@@ -10,18 +10,18 @@
 <!-- Main Layout -->
 <div class="app-wrapper">
   <router-outlet></router-outlet>
+  @if (!completedOnboarding) {
+  <app-onboarding class="onboarding" (completed)="finishOnboarding()">
+  </app-onboarding>
+  }
   <app-titlebar class="title-bar"></app-titlebar>
   <mat-toolbar [@slideToggle]="isMeteredConnection ? 'visible' : 'hidden'" class="metered-banner" role="alert">
     You are on a metered connection. Some features may use extra data.
   </mat-toolbar>
-  @if (!completedOnboarding) {
-    <app-onboarding class="onboarding" (completed)="finishOnboarding()">
-    </app-onboarding>
-  }
   <app-home appRightClick></app-home> <!-- Enable Right-Click on Home -->
   @if (isMobile$ | async) {
-    <div class="mobile-tab-bar">
-      <app-tabs-buttons></app-tabs-buttons>
-    </div>
+  <div class="mobile-tab-bar">
+    <app-tabs-buttons></app-tabs-buttons>
+  </div>
   }
 </div>

@@ -1,39 +1,69 @@
 <div class="sidebar">
-  <div class="sidebar-header" (click)="toggleSearch()" matTooltip="Toggle search bar" aria-label="Toggle search bar"
-    matTooltipShowDelay="500">
-    <h3>Remotes <mat-icon svgIcon="remotes"></mat-icon></h3>
+  <!-- Header Section -->
+  <div class="sidebar-header" 
+       (click)="toggleSearch()" 
+       matTooltip="Toggle search bar" 
+       aria-label="Toggle search bar"
+       matTooltipShowDelay="500">
+    <h3>
+      <mat-icon svgIcon="remotes"></mat-icon>
+      Remotes
+    </h3>
   </div>
+
+  <!-- Search Container -->
   <div class="search-container" [@slideToggle]="searchVisible ? 'visible' : 'hidden'">
-    <input class="search-input" [(ngModel)]="searchTerm" placeholder="Type to filter...">
+    <input class="search-input" 
+           [(ngModel)]="searchTerm" 
+           placeholder="Search remotes..."
+           aria-label="Search remotes">
   </div>
+
+  <!-- Remote List -->
   @if (filteredRemotes.length > 0) {
     <ul>
-      @for (remote of filteredRemotes; track remote) {
+      @for (remote of filteredRemotes; track remote.remoteSpecs.name) {
         <mat-card class="remote-card" (click)="selectRemote(remote)">
           <mat-card-content class="card-content">
+            <!-- Remote Name -->
             <h4>{{ remote.remoteSpecs.name }}</h4>
-            <p>
-              <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon> {{ remote.remoteSpecs.type
-              | titlecase }}
-            </p>
+            
+            <!-- Remote Type -->
+            <div class="remote-type">
+              <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
+              {{ remote.remoteSpecs.type | titlecase }}
+            </div>
+            
+            <!-- Status Badges -->
             <div class="remote-status">
               @if (remote.mountState) {
-                <p [ngClass]="['mount', remote.mountState.mounted ? 'active' : 'passive']"
-                  aria-label="Mount status" [matTooltip]="remote.mountState.mounted ? 'Mounted' : 'Not Mounted'">
+                <div class="status-badge mount" 
+                     [class.active]="remote.mountState.mounted" 
+                     [class.passive]="!remote.mountState.mounted"
+                     [matTooltip]="remote.mountState.mounted ? 'Mounted' : 'Not Mounted'"
+                     aria-label="Mount status">
                   <mat-icon svgIcon="mount"></mat-icon>
-                </p>
+                </div>
               }
+              
               @if (remote.syncState) {
-                <p [ngClass]="['sync', remote.syncState.isOnSync ? 'active' : 'passive']"
-                  aria-label="Sync status" [matTooltip]="remote.syncState.isOnSync ? 'Syncing' : 'Idle'">
+                <div class="status-badge sync" 
+                     [class.active]="remote.syncState.isOnSync" 
+                     [class.passive]="!remote.syncState.isOnSync"
+                     [matTooltip]="remote.syncState.isOnSync ? 'Syncing' : 'Sync Idle'"
+                     aria-label="Sync status">
                   <mat-icon svgIcon="sync"></mat-icon>
-                </p>
+                </div>
               }
+              
               @if (remote.copyState) {
-                <p [ngClass]="['copy', remote.copyState.isOnCopy ? 'active' : 'passive']"
-                  aria-label="Copy status" [matTooltip]="remote.copyState.isOnCopy ? 'Copying' : 'Idle'">
+                <div class="status-badge copy" 
+                     [class.active]="remote.copyState.isOnCopy" 
+                     [class.passive]="!remote.copyState.isOnCopy"
+                     [matTooltip]="remote.copyState.isOnCopy ? 'Copying' : 'Copy Idle'"
+                     aria-label="Copy status">
                   <mat-icon svgIcon="copy"></mat-icon>
-                </p>
+                </div>
               }
             </div>
           </mat-card-content>
@@ -41,9 +71,16 @@
       }
     </ul>
   }
+
+  <!-- No Remotes State -->
   @if (filteredRemotes.length === 0) {
-    <p class="no-remotes">
-      No remotes found
-    </p>
+    <div class="no-remotes">
+      <mat-icon svgIcon="remotes"></mat-icon>
+      @if (searchTerm.trim()) {
+        No remotes found matching "{{ searchTerm }}"
+      } @else {
+        No remotes configured
+      }
+    </div>
   }
 </div>

@@ -20,7 +20,7 @@
     <mat-label>Select Remote Type</mat-label>
     <mat-select formControlName="type" id="remoteType"
       (selectionChange)="onRemoteTypeChange(); $event.source.close()" aria-describedby="remoteTypeError">
-      @for (remote of remoteTypes; track remote) {
+      @for (remote of remoteTypes; track remote.value) {
         <mat-option [value]="remote.value">
           {{ remote.label }}
         </mat-option>
@@ -63,7 +63,7 @@
 </h3>
 }
 
-@for (field of basicFields; track trackByFieldName($index, field)) {
+@for (field of basicFields; track field.Name) {
   <mat-card class="field-card">
     <mat-label [innerHTML]="field.Help | linebreaks"></mat-label>
     <!-- Boolean Toggle -->
@@ -119,7 +119,7 @@
   <h3 class="section-heading">
     Advanced Options <span>({{ advancedFields.length }})</span>
   </h3>
-  @for (field of advancedFields; track trackByFieldName($index, field)) {
+  @for (field of advancedFields; track field.Name) {
     <mat-card class="field-card advanced-field">
       <mat-label [innerHTML]="field.Help | linebreaks"></mat-label>
       <!-- Repeat the same field types as basic fields -->

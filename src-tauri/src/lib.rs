@@ -39,14 +39,19 @@ use crate::{
                 update_remote,
             },
             api_query::{
-                get_all_remote_configs, get_bandwidth_limit, get_core_stats, get_disk_usage, get_fs_info, get_memory_stats, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info, get_rclone_pid, get_remote_config, get_remote_config_fields, get_remote_paths, get_remote_types, get_remotes
+                get_all_remote_configs, get_bandwidth_limit, get_core_stats, get_disk_usage,
+                get_fs_info, get_memory_stats, get_mounted_remotes, get_oauth_supported_remotes,
+                get_rclone_info, get_rclone_pid, get_remote_config, get_remote_config_fields,
+                get_remote_paths, get_remote_types, get_remotes,
             },
             flags::{
                 get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags,
                 get_sync_flags, get_vfs_flags,
             },
             state::{
-                clear_remote_logs, delete_job, get_active_jobs, get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status, get_jobs, get_remote_logs, get_settings, CACHE, ENGINE_STATE
+                CACHE, ENGINE_STATE, clear_remote_logs, delete_job, get_active_jobs,
+                get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status,
+                get_jobs, get_remote_logs, get_settings,
             },
         },
         mount::{check_mount_plugin_installed, install_mount_plugin},
@@ -55,7 +60,7 @@ use crate::{
         builder::{create_app_window, setup_tray},
         file_helper::{get_file_location, get_folder_location, open_in_files},
         log::init_logging,
-        network::{check_links, is_network_metered, kill_process, monitor_network_changes},
+        network::{check_links, is_network_metered, monitor_network_changes},
         rclone::provision::provision_rclone,
         types::{AppSettings, RcApiEngine, RcloneState, SettingsState},
     },
@@ -149,6 +154,43 @@ async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
         {
             error!("Failed to set bandwidth limit: {e}");
         }
+    }
+}
+
+#[tauri::command]
+async fn kill_process(pid: u32) -> Result<(), String> {
+    #[cfg(target_family = "unix")]
+    {
+        use nix::libc::{SIGKILL, kill};
+
+        let result = unsafe { kill(pid as i32, SIGKILL) };
+        if result == 0 {
+            Ok(())
+        } else {
+            Err(format!(
+                "Failed to kill process: {}",
+                std::io::Error::last_os_error()
+            ))
+        }
+    }
+    #[cfg(target_family = "windows")]
+    {
+        use windows_sys::Win32::Foundation::CloseHandle;
+        use windows_sys::Win32::System::Threading::PROCESS_TERMINATE;
+        use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess};
+
+        unsafe {
+            let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
+            if handle == std::ptr::null_mut() {
+                return Err("Failed to open process".to_string());
+            }
+            let result = TerminateProcess(handle, 1);
+            CloseHandle(handle);
+            if result == 0 {
+                return Err("Failed to terminate process".to_string());
+            }
+        }
+        Ok(())
     }
 }
 

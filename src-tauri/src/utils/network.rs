@@ -1,3 +1,4 @@
+use log::{debug, error, info};
 use crate::utils::types::NetworkStatusPayload;
 use std::collections::HashMap;
 use tauri::Emitter;
@@ -128,10 +129,12 @@ use {futures_lite::stream::StreamExt, zbus::Connection};
 
 #[cfg(target_os = "linux")]
 pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+
     let connection = match Connection::system().await {
         Ok(c) => c,
         Err(e) => {
-            eprintln!("Failed to connect to D-Bus: {}", e);
+
+            error!("Failed to connect to D-Bus: {}", e);
             return;
         }
     };
@@ -147,10 +150,11 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
 
     // Listen for changes to the "Metered" property.
     let mut metered_changed_stream = proxy.receive_property_changed::<u32>("Metered").await;
-    println!("Listening for NetworkManager 'Metered' property changes...");
+    info!("Listening for NetworkManager 'Metered' property changes...");
 
     while let Some(_metered_status) = metered_changed_stream.next().await {
-        println!("'Metered' property changed!");
+
+        debug!("'Metered' property changed!");
 
         let payload = NetworkStatusPayload {
             is_metered: is_metered(),
@@ -163,7 +167,7 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
 pub fn is_metered() -> bool {
     // macOS does not support metered network detection.
     // Always return false.
-    log::info!("is_metered: macOS does not support metered network detection, returning false.");
+    info!("is_metered: macOS does not support metered network detection, returning false.");
     false
 }
 
@@ -218,41 +222,4 @@ pub fn is_network_metered() -> bool {
 
     #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
     return false; // Default for unsupported platforms
-}
-
-#[tauri::command]
-pub async fn kill_process(pid: u32) -> Result<(), String> {
-    #[cfg(target_family = "unix")]
-    {
-        use nix::libc::{SIGKILL, kill};
-
-        let result = unsafe { kill(pid as i32, SIGKILL) };
-        if result == 0 {
-            Ok(())
-        } else {
-            Err(format!(
-                "Failed to kill process: {}",
-                std::io::Error::last_os_error()
-            ))
-        }
-    }
-    #[cfg(target_family = "windows")]
-    {
-        use windows_sys::Win32::Foundation::CloseHandle;
-        use windows_sys::Win32::System::Threading::PROCESS_TERMINATE;
-        use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess};
-
-        unsafe {
-            let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
-            if handle == std::ptr::null_mut() {
-                return Err("Failed to open process".to_string());
-            }
-            let result = TerminateProcess(handle, 1);
-            CloseHandle(handle);
-            if result == 0 {
-                return Err("Failed to terminate process".to_string());
-            }
-        }
-        Ok(())
-    }
 }

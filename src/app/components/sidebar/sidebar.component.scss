@@ -1,142 +1,234 @@
+// CSS Custom Properties
+:host {
+  // Layout
+  --sidebar-padding: 24px;
+  --sidebar-gap: 20px;
+  --header-padding: 20px 24px;
+  --search-padding: 16px 24px;
+  --card-margin: 16px;
+  --card-padding: 20px;
+  
+  // Border radius
+  --card-radius: 16px;
+  --search-radius: 12px;
+  --status-badge-radius: 8px;
+  
+  // Spacing
+  --header-gap: 12px;
+  --card-gap: 16px;
+  --status-gap: 8px;
+  
+  // Colors and effects
+  --header-background: var(--secondary-background);
+  --card-hover-opacity: 0.05;
+  --search-border-opacity: 0.1;
+  --status-active-opacity: 0.15;
+  --status-inactive-opacity: 0.08;
+  
+  // Shadows
+  --card-shadow: 0 2px 8px rgba(var(--app-text-color-rgb), 0.06), 0 1px 4px rgba(var(--app-text-color-rgb), 0.04);
+  --card-hover-shadow: 0 4px 16px rgba(var(--app-text-color-rgb), 0.1), 0 2px 8px rgba(var(--app-text-color-rgb), 0.06);
+  
+  // Transitions
+  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-quick: all 0.2s ease;
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: var(--app-background);
 
-  p {
-    font-size: 20px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-  }
-
+  // Header Section
   .sidebar-header {
-    font-size: 1.2rem;
-    display: flex;
-    align-items: center;
-    flex-direction: row;
-    justify-content: center;
-    gap: 10px;
     position: sticky;
     top: 0;
-    background-color: var(--app-background);
-    z-index: 10;
-    box-shadow: var(--box-shadow);
-    padding-block: 10px;
-
-    .search-toggle {
-      position: absolute;
-      left: 10px;
-
-      mat-icon {
-        height: 20px;
-        width: 20px;
-      }
+    background: var(--header-background);
+    padding: var(--header-padding);
+    box-shadow: var(--card-shadow);
+    transition: var(--transition-standard);
+    
+    &:hover {
+      background: rgba(var(--primary-color-rgb), var(--card-hover-opacity));
     }
 
     h3 {
-      gap: 10px;
       display: flex;
       align-items: center;
+      justify-content: center;
+      gap: var(--header-gap);
+      margin: 0;
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: var(--app-text-color);
+      letter-spacing: -0.2px;
     }
   }
+
+  // Search Container
   .search-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0;
+    padding: var(--search-padding);
+    background: var(--app-background);
 
-    input {
-      padding: 8px;
-      margin: 12px;
-      border-radius: var(--border-radius);
-      border: 1px solid #ddd;
-      font-size: 16px;
-      width: 100%;
+    .search-input {
+      padding: 12px 16px;
+      border: 1px solid rgba(var(--app-text-color-rgb), var(--search-border-opacity));
+      border-radius: var(--search-radius);
+      background: var(--secondary-background);
+      color: var(--app-text-color);
+      font-size: 14px;
+      transition: var(--transition-standard);
+      outline: none;
+
+      &::placeholder {
+        color: var(--secondary-text-color);
+      }
+
+      &:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+      }
     }
   }
 
+  // Remote List
   ul {
-    overflow: auto;
+    flex: 1;
+    overflow-y: auto;
     list-style: none;
-    padding: 10px 0px;
+    padding: 0 0 var(--sidebar-padding) 0;
     margin: 0;
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--sidebar-gap);
   }
 
+  // Remote Card
   .remote-card {
-    margin-inline: 16px;
-    padding: 10px;
-    border-radius: 16px;
+    margin: 0 var(--card-margin);
+    padding: var(--card-padding);
+    border-radius: var(--card-radius);
     background: var(--secondary-background);
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    box-shadow: var(--box-shadow);
+    box-shadow: var(--card-shadow);
+    transition: var(--transition-standard);
+    border: 1px solid rgba(var(--app-text-color-rgb), 0.02);
 
     &:hover {
-      background-color: var(--hover-color);
+      background: rgba(var(--primary-color-rgb), var(--card-hover-opacity));
+      box-shadow: var(--card-hover-shadow);
+      transform: translateY(-1px);
+    }
+
+    &:active {
+      transform: translateY(0);
     }
 
     .card-content {
-      padding-block: 0px;
+      padding: 0;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: var(--card-gap);
 
+      // Remote Name
       h4 {
-        font-size: 1.2rem;
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--app-text-color);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 150px;
-        display: block;
+        max-width: 100%;
+        letter-spacing: -0.1px;
       }
-      p {
-        color: #8c8888;
+
+      // Remote Type
+      .remote-type {
+        display: flex;
+        align-items: center;
+        gap: var(--status-gap);
+        color: var(--secondary-text-color);
+        font-size: 0.9rem;
+        font-weight: 500;
       }
+
+      // Status Section
       .remote-status {
         display: flex;
         align-items: center;
-        flex-direction: row;
-        width: 100%;
         justify-content: space-between;
+        gap: var(--status-gap);
+        margin-top: 4px;
 
-        p {
-          display: inline-flex;
+        .status-badge {
+          display: flex;
           align-items: center;
-          padding: 6px;
-          border-radius: var(--border-radius);
+          padding: 6px 10px;
+          border-radius: var(--status-badge-radius);
+          font-size: 0.75rem;
+          font-weight: 500;
+          transition: var(--transition-quick);
 
-          &.mount.active {
-            color: var(--accent-color);
-            background-color: rgba(var(--accent-color-rgb), 0.2);
+          // Mount Status
+          &.mount {
+            &.active {
+              color: var(--accent-color);
+              background: rgba(var(--accent-color-rgb), var(--status-active-opacity));
+            }
+            &.passive {
+              color: var(--secondary-text-color);
+              background: rgba(var(--app-text-color-rgb), var(--status-inactive-opacity));
+            }
           }
-          &.sync.active {
-            color: var(--primary-color);
-            background-color: rgba(var(--primary-color-rgb), 0.2);
+
+          // Sync Status
+          &.sync {
+            &.active {
+              color: var(--primary-color);
+              background: rgba(var(--primary-color-rgb), var(--status-active-opacity));
+            }
+            &.passive {
+              color: var(--secondary-text-color);
+              background: rgba(var(--app-text-color-rgb), var(--status-inactive-opacity));
+            }
           }
-          &.copy.active {
-            color: var(--yellow);
-            background-color: rgba(var(--yellow-rgb), 0.2);
-          }
-          &.passive {
-            color: var(--orange);
-            background-color: rgba(var(--orange-rgb), 0.2);
+
+          // Copy Status
+          &.copy {
+            &.active {
+              color: var(--yellow);
+              background: rgba(var(--yellow-rgb), var(--status-active-opacity));
+            }
+            &.passive {
+              color: var(--secondary-text-color);
+              background: rgba(var(--app-text-color-rgb), var(--status-inactive-opacity));
+            }
           }
         }
       }
     }
   }
 
+  // No Remotes Message
   .no-remotes {
-    font-size: 20px;
-    color: var(--secondary-text-color);
-    width: 100%;
     display: flex;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    padding-block: 20px;
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--secondary-text-color);
+    font-size: 0.95rem;
+    font-weight: 500;
+    flex: 1;
+
+    mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
   }
 }

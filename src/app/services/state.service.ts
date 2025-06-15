@@ -52,6 +52,7 @@ export class StateService {
   public platform = platform();
 
   constructor(private rcloneService: RcloneService, private ngZone: NgZone) {
+    console.log("StateService: Constructor started");
     this.initializeWindowListeners();
     this.updateViewportSettings();
     this.setupRemoteDeletionListener();
@@ -62,9 +63,11 @@ export class StateService {
         this.updateViewportSettings();
       });
     });
-      this.appWindow.listen("reset-ui", () => {
-    this.ngZone.run(() => this.resetAppState());
-  });
+    
+    this.appWindow.listen("reset-ui", () => {
+      this.ngZone.run(() => this.resetAppState());
+    });
+    console.log("StateService: Constructor completed");
   }
 
   // Add this new method

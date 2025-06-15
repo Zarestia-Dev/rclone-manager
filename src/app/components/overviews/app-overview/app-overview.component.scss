@@ -1,152 +1,656 @@
-.overview {
-  width: 84%;
+// Component Variables
+:host {
+  --section-gap: 32px;
+  --section-gap-mobile: 20px;
+  --panel-padding: 24px;
+  --panel-padding-mobile: 16px;
+  --card-border-radius: 12px;
+  --card-border-radius-large: 16px;
+  --icon-size-small: 14px;
+  --icon-size-medium: 24px;
+  --icon-size-large: 48px;
+  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
+  --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
+  --border-theme: var(--theme-border);
+  --background-secondary: var(--secondary-background);
+  --status-bar-height: 48px;
+  --legend-gap: 24px;
+  --legend-gap-mobile: 12px;
+}
+
+// 1. Main Container (.app-overview)
+.app-overview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-gap);
   margin: 0 auto;
+  padding: var(--panel-padding);
+  max-width: 100%;
 
-  h2 {
-    display: flex;
-    justify-content: center;
-    padding-top: 20px;
+  // Mode-specific color variables
+  &.mount-mode {
+    --mode-primary-color: var(--accent-color);
+    --mode-primary-color-rgb: var(--accent-color-rgb);
+    --mode-light-color: var(--light-blue);
+    --mode-light-color-rgb: var(--light-blue-rgb);
   }
 
-  p {
-    font-size: 20px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    text-wrap: nowrap;
+  &.sync-mode {
+    --mode-primary-color: var(--primary-color);
+    --mode-primary-color-rgb: var(--primary-color-rgb);
+    --mode-light-color: var(--light-green);
+    --mode-light-color-rgb: var(--light-green-rgb);
   }
 
-  .info-card {
-    display: flex;
-    flex-direction: column;
-    align-items: baseline;
-    border-radius: 8px;
-    padding-block: 20px;
+  &.copy-mode {
+    --mode-primary-color: var(--yellow);
+    --mode-primary-color-rgb: var(--yellow-rgb);
+    --mode-light-color: var(--light-yellow);
+    --mode-light-color-rgb: var(--light-yellow-rgb);
+  }
 
-    h3 {
+  // 2. Overview Header (.overview-header)
+  .overview-header {
+    text-align: center;
+    margin-bottom: var(--panel-padding);
+
+    .title-section {
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 16px;
 
-    .info-card-content {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      width: 100%;
-      padding-block: 10px;
-      border-radius: 8px;
+      .mode-icon {
+        font-size: var(--icon-size-large);
+        width: var(--icon-size-large);
+        height: var(--icon-size-large);
+        color: var(--mode-primary-color, var(--primary-color));
+        filter: drop-shadow(0 0 2px rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.3));
+      }
 
-      .overview-content {
-        display: flex;
-        align-items: center;
-        flex-direction: column;
-        padding-inline: 10px;
-        gap: 10px;
-
-        .remotes-bar {
-          width: 100%;
-          height: 4.5vh;
-          min-height: 38px;
-          border-radius: 18px;
-          position: relative;
-          overflow: hidden;
-          display: flex;
-
-          .bar {
-            height: 100%;
-            transition: width 0.5s ease-in-out;
-
-            &.active-bar {
-              background-color: var(--primary-color);
-            }
-
-            &.inactive-bar {
-              background-color: var(--purple);
-            }
-
-            &.error-bar {
-              background-color: var(--warn-color);
-            }
-          }
-        }
-
-        .legend {
-          display: flex;
-          gap: 15px;
-          margin-top: 10px;
-
-          .legend-item {
-            display: flex;
-            align-items: center;
-            font-size: 14px;
-
-            .color-box {
-              width: 20px;
-              height: 20px;
-              border-radius: 5px;
-              display: inline-block;
-              margin-right: 5px;
-            }
-          }
-
-          .active {
-            background-color: var(--primary-color);
-          }
-
-          .inactive {
-            background-color: var(--purple);
-          }
-
-          .error {
-            background-color: var(--warn-color);
-          }
-        }
+      h2 {
+        font-size: 32px;
+        font-weight: 300;
+        margin: 0;
+        color: var(--app-text-color);
+        letter-spacing: -0.5px;
       }
     }
+
+    .header-divider {
+      height: 2px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.3) 20%,
+        rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.6) 50%,
+        rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.3) 80%,
+        transparent 100%
+      );
+      margin: 0 auto;
+      max-width: 20vw;
+    }
   }
 
-  .remote-list {
-    display: flex;
-    overflow-x: auto;
-    gap: 10px;
-    padding: 10px;
-    border-radius: 16px;
-    background-color: #e6e3e3;
+  // 3. Overview Content (.overview-content)
+  .overview-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--panel-padding);
+    max-width: 1200px;
+    min-width: 320px;
+    margin: 0 auto;
+    width: 100%;
 
-    .remote-card {
-      padding: 10px;
-      border-radius: 16px;
-      background: var(--secondary-background);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
+    // 3.1 Status Overview Panel (.status-panel)
+    .status-panel {
+      margin-bottom: 2rem;
+      border-radius: var(--card-border-radius-large) !important;
+      box-shadow: var(--shadow-light);
+      transition: var(--transition-standard);
+      border: 1px solid var(--border-theme);
+      background: var(--background-secondary);
+      backdrop-filter: blur(10px);
 
       &:hover {
-        background-color: var(--hover-color);
+        box-shadow: var(--shadow-elevated);
+        transform: translateY(-2px);
       }
 
-      .remote-content {
-        display: flex;
-        flex-direction: row;
-        gap: 10px;
-        padding: 10px;
+      // 3.1.1 Status Header
+      .status-header {
+        padding: 32px 32px 16px 32px;
+        margin-bottom: 8px;
 
-        h4 {
-          font-size: 20px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 150px;
-          display: block;
+        .panel-title-content {
+          color: var(--app-text-color);
+          font-size: 18px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-weight: 500;
+
+          .status-icon {
+            color: var(--mode-primary-color, var(--primary-color));
+            filter: drop-shadow(0 0 2px rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.3));
+          }
+
+          .remote-count {
+            color: var(--secondary-text-color);
+            font-size: 0.9rem;
+            font-weight: 400;
+            background: rgba(var(--mode-primary-color-rgb, var(--accent-color-rgb)), 0.1);
+            padding: 2px 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(var(--mode-primary-color-rgb, var(--accent-color-rgb)), 0.2);
+          }
         }
+      }
 
-        p {
-          color: #8c8888;
+      // 3.1.2 Status Content
+      .status-content {
+        padding: var(--panel-padding) 32px 32px 32px;
+
+        .status-bar-container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+
+          .remotes-bar {
+            width: 100%;
+            height: var(--status-bar-height);
+            border-radius: calc(var(--status-bar-height) / 2);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            background: var(--hover-color);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+
+            .bar {
+              height: 100%;
+              transition: width 0.5s ease-in-out;
+
+              &.active-bar {
+                background: linear-gradient(135deg, var(--mode-primary-color, var(--primary-color)), var(--mode-light-color, var(--light-green)));
+              }
+
+              &.inactive-bar {
+                background: linear-gradient(135deg, var(--purple), var(--light-purple));
+              }
+
+              &.error-bar {
+                background: linear-gradient(135deg, var(--warn-color), var(--light-red));
+              }
+            }
+          }
+
+          .legend {
+            display: flex;
+            gap: var(--legend-gap);
+            flex-wrap: wrap;
+            justify-content: center;
+
+            .legend-item {
+              display: flex;
+              align-items: center;
+              font-size: 14px;
+              font-weight: 500;
+              color: var(--app-text-color);
+
+              .color-box {
+                width: 16px;
+                height: 16px;
+                border-radius: 8px;
+                margin-right: 8px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+                &.active {
+                  background: linear-gradient(135deg, var(--mode-primary-color, var(--primary-color)), var(--mode-light-color, var(--light-green)));
+                }
+
+                &.inactive {
+                  background: linear-gradient(135deg, var(--purple), var(--light-purple));
+                }
+
+                &.error {
+                  background: linear-gradient(135deg, var(--warn-color), var(--light-red));
+                }
+              }
+            }
+          }
         }
       }
     }
+
+    // 3.2 Remote Panels (.remotes-panel)
+    .remotes-panel {
+      margin-bottom: 2rem;
+      border-radius: var(--card-border-radius-large) !important;
+      box-shadow: var(--shadow-light);
+      max-height: 60vh;
+      transition: var(--transition-standard);
+      border: 1px solid var(--border-theme);
+      background: var(--background-secondary);
+      backdrop-filter: blur(10px);
+
+      &:hover {
+        box-shadow: var(--shadow-elevated);
+        transform: translateY(-2px);
+      }
+
+      // Panel-specific border colors
+      &.active-remotes-panel {
+        border-left: 4px solid var(--mode-primary-color, var(--primary-color));
+      }
+
+      &.inactive-remotes-panel {
+        border-left: 4px solid var(--purple);
+      }
+
+      &.error-remotes-panel {
+        border-left: 4px solid var(--warn-color);
+      }
+
+      // 3.2.1 Remotes Header
+      .remotes-header {
+        padding: 32px 32px 16px 32px;
+        margin-bottom: 8px;
+
+        .panel-title-content {
+          color: var(--app-text-color);
+          font-size: 18px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-weight: 500;
+
+          .active-icon {
+            color: var(--mode-primary-color, var(--primary-color));
+            filter: drop-shadow(0 0 2px rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.3));
+          }
+
+          .inactive-icon {
+            color: var(--purple);
+            filter: drop-shadow(0 0 2px rgba(var(--purple-rgb), 0.3));
+          }
+
+          .error-icon {
+            color: var(--warn-color);
+            filter: drop-shadow(0 0 2px rgba(var(--warn-color-rgb), 0.3));
+          }
+
+          .remote-count {
+            color: var(--secondary-text-color);
+            font-size: 0.9rem;
+            font-weight: 400;
+            padding: 2px 8px;
+            border-radius: 12px;
+          }
+        }
+      }
+
+      // Panel-specific remote count colors
+      &.active-remotes-panel .panel-title-content .remote-count {
+        background: rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.1);
+        border: 1px solid rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.2);
+      }
+
+      &.inactive-remotes-panel .panel-title-content .remote-count {
+        background: rgba(var(--purple-rgb), 0.1);
+        border: 1px solid rgba(var(--purple-rgb), 0.2);
+      }
+
+      &.error-remotes-panel .panel-title-content .remote-count {
+        background: rgba(var(--warn-color-rgb), 0.1);
+        border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+      }
+
+      // 3.2.2 Remotes Content
+      .remotes-content {
+        padding: var(--panel-padding) 32px 32px 32px;
+        overflow-y: auto;
+
+        .remotes-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: 20px;
+          margin-top: 8px;
+        }
+      }
+
+      // 3.2.3 Remote Card (.remote-card)
+      .remote-card {
+        position: relative;
+        transition: var(--transition-standard);
+        border-radius: var(--card-border-radius);
+        background: var(--app-background);
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-theme);
+        overflow: hidden;
+
+        &:hover {
+          transform: translateY(-4px);
+          box-shadow: var(--shadow-elevated);
+        }
+
+        // Card state animations and colors
+        &.active-remote {
+          animation: pulseMode 3s infinite;
+          border-color: rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.3);
+
+          .remote-info .icon-container {
+            background: rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.1);
+            border: 1px solid rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.2);
+            
+            .remote-type-icon {
+              color: var(--mode-primary-color, var(--primary-color));
+            }
+          }
+        }
+
+        &.inactive-remote {
+          border-color: rgba(var(--purple-rgb), 0.3);
+
+          .remote-info .icon-container {
+            background: rgba(var(--purple-rgb), 0.1);
+            border: 1px solid rgba(var(--purple-rgb), 0.2);
+            
+            .remote-type-icon {
+              color: var(--purple);
+            }
+          }
+        }
+
+        &.error-remote {
+          animation: pulseRed 3s infinite;
+          border-color: rgba(var(--warn-color-rgb), 0.3);
+
+          .remote-info .icon-container {
+            background: rgba(var(--warn-color-rgb), 0.1);
+            border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+            
+            .remote-type-icon {
+              color: var(--warn-color);
+            }
+          }
+        }
+
+        // 3.2.3.1 Remote Header
+        .remote-header {
+          padding: 20px 20px 12px 20px;
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        // 3.2.3.2 Remote Info Section
+        .remote-info {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex: 1;
+          min-width: 0;
+
+          .icon-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            border-radius: var(--card-border-radius);
+            background: var(--hover-color);
+            border: 1px solid var(--border-theme);
+            transition: var(--transition-standard);
+
+            .remote-type-icon {
+              font-size: var(--icon-size-medium);
+              width: var(--icon-size-medium);
+              height: var(--icon-size-medium);
+              color: var(--secondary-text-color);
+            }
+          }
+
+          .remote-details {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+            flex: 1;
+
+            .remote-name {
+              font-size: 16px;
+              font-weight: 600;
+              margin: 0;
+              color: var(--app-text-color);
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            .remote-type {
+              font-size: 13px;
+              color: var(--secondary-text-color);
+              font-weight: 500;
+            }
+          }
+        }
+
+        // 3.2.3.3 Remote Status Indicators
+        .remote-status-indicators {
+          display: flex;
+          flex-direction: row;
+          gap: 6px;
+          align-items: flex-end;
+
+          .status-badge {
+            display: flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 16px;
+
+            .status-icon {
+              font-size: var(--icon-size-small);
+              width: var(--icon-size-small);
+              height: var(--icon-size-small);
+            }
+
+            &.active {
+              background: rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.1);
+              color: var(--mode-primary-color, var(--primary-color));
+              border: 1px solid rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.2);
+            }
+
+            &.inactive {
+              background: rgba(var(--purple-rgb), 0.1);
+              color: var(--purple);
+              border: 1px solid rgba(var(--purple-rgb), 0.2);
+            }
+
+            &.error {
+              background: rgba(var(--warn-color-rgb), 0.1);
+              color: var(--warn-color);
+              border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+            }
+          }
+        }
+
+        // 3.2.3.4 Remote Content Section
+        .remote-content {
+          padding: 12px 20px 20px 20px;
+
+          .quick-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+
+            .action-btn {
+              transform: scale(0.85);
+              transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+              box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+
+              &.mount-btn {
+                background: var(--mode-primary-color, var(--primary-color)) !important;
+                color: white !important;
+              }
+
+              &.sync-btn {
+                background: var(--primary-color) !important;
+                color: white !important;
+              }
+
+              &.copy-btn {
+                background: var(--mode-primary-color, var(--primary-color)) !important;
+                color: white !important;
+              }
+
+              &.fix-btn {
+                background: var(--orange) !important;
+                color: white !important;
+              }
+
+              &:hover {
+                transform: scale(0.9);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+              }
+
+              &:active {
+                transform: scale(0.82);
+              }
+
+              &:disabled {
+                opacity: 0.4;
+                transform: scale(0.8);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// 4. Responsive Styles
+@media (max-width: 768px) {
+  .app-overview {
+    padding: var(--panel-padding-mobile);
+    gap: var(--section-gap-mobile);
+
+    .overview-header {
+      margin-bottom: var(--panel-padding-mobile);
+
+      .title-section {
+        .mode-icon {
+          font-size: 28px;
+          width: 28px;
+          height: 28px;
+        }
+
+        h2 {
+          font-size: 24px;
+        }
+      }
+    }
+
+    .overview-content {
+      gap: var(--panel-padding-mobile);
+
+      .status-panel,
+      .remotes-panel {
+        .status-header,
+        .remotes-header {
+          padding: var(--panel-padding) var(--panel-padding) 12px var(--panel-padding);
+        }
+
+        .status-content,
+        .remotes-content {
+          padding: var(--panel-padding-mobile) var(--panel-padding) var(--panel-padding) var(--panel-padding);
+        }
+      }
+
+      .remotes-grid {
+        grid-template-columns: 1fr;
+        gap: var(--panel-padding-mobile);
+      }
+
+      .remote-card {
+        .remote-header {
+          padding: var(--panel-padding-mobile) var(--panel-padding-mobile) 8px var(--panel-padding-mobile);
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          gap: 12px;
+        }
+
+        .remote-content {
+          padding: 8px var(--panel-padding-mobile) var(--panel-padding-mobile) var(--panel-padding-mobile);
+        }
+
+        .remote-info {
+          flex-direction: column;
+          gap: 12px;
+          text-align: center;
+        }
+
+        .quick-actions {
+          justify-content: center;
+          gap: 6px;
+
+          .action-btn {
+            transform: scale(0.8);
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .app-overview {
+    padding: 12px;
+
+    .overview-header .title-section {
+      flex-direction: column;
+      gap: 8px;
+
+      h2 {
+        font-size: 20px;
+      }
+    }
+
+    .overview-content {
+      .status-panel,
+      .remotes-panel {
+        .status-header,
+        .remotes-header {
+          padding: 20px 20px 12px 20px;
+        }
+
+        .status-content,
+        .remotes-content {
+          padding: 12px 20px 20px 20px;
+        }
+      }
+
+      .legend {
+        gap: var(--legend-gap-mobile) !important;
+      }
+    }
+  }
+}
+
+.remote-card {
+  animation: fadeInUp 0.6s ease-out;
+  animation-fill-mode: both;
+}
+
+@for $i from 1 through 6 {
+  .remote-card:nth-child(#{$i}) {
+    animation-delay: #{$i * 0.1}s;
   }
 }

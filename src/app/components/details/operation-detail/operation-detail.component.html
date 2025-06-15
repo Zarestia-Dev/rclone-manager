@@ -1,300 +1,376 @@
-<div class="remote-details" *ngIf="selectedRemote">
-  <div class="remote-header">
-    <h2 matTooltip="{{ selectedRemote.remoteSpecs['name'] }}">
-      {{ selectedRemote.remoteSpecs['name'] }}
-    </h2>
-    <p>
-      <mat-icon [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs['type'])"></mat-icon>
-      {{ selectedRemote.remoteSpecs['type'] | titlecase }}
-    </p>
-  </div>
-
-  <mat-tab-group [color]="operationColor">
-    <mat-tab label="Monitoring">
-      <div class="operation-monitor">
-        <!-- Operation Control Card -->
-        <mat-card class="operation-control-card" [class.active]="
-    (operationType === 'sync' && selectedRemote.syncState?.isOnSync) ||
-    (operationType === 'copy' && selectedRemote.copyState?.isOnCopy)
-  " [ngClass]="operationClass">
-          <mat-card-content class="operation-path-section">
-            <div class="path">
-              <ng-container *ngIf="isLocalPath(operationSource); else remoteIcon">
-                <button mat-icon-button [color]="operationColor" (click)="triggerOpenInFiles(operationSource)"
-                  matTooltip="Open in file explorer">
-                  <mat-icon svgIcon="folder"></mat-icon>
-                </button>
-              </ng-container>
-              <ng-template #remoteIcon>
-                <mat-icon [svgIcon]="'cloud-arrow-up'" class="path-icon"></mat-icon>
-              </ng-template>
-              <div class="path-details" matTooltip="{{operationSource}}">
-                <div class="path-label">Source</div>
-                <div class="path-value">{{operationSource}}</div>
-              </div>
-            </div>
-            <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-            <div class="path">
-              <ng-container *ngIf="isLocalPath(operationDestination); else remoteIcon">
-                <button mat-icon-button [color]="operationColor" (click)="triggerOpenInFiles(operationDestination)"
-                  matTooltip="Open in file explorer">
-                  <mat-icon svgIcon="folder"></mat-icon>
-                </button>
-              </ng-container>
-              <ng-template #remoteIcon>
-                <mat-icon [svgIcon]="'cloud-arrow-up'" class="path-icon"></mat-icon>
-              </ng-template>
-              <div class="path-details" matTooltip="{{operationDestination}}">
-                <div class="path-label">Destination</div>
-                <div class="path-value">{{operationDestination}}</div>
-              </div>
-            </div>
-          </mat-card-content>
-          <mat-divider></mat-divider>
-
-          <mat-card-footer class="operation-footer">
-            <div class="operation-status">
-              <div class="status-indicator" [ngClass]="{
-                  'active-sync': operationType === 'sync' && selectedRemote.syncState?.isOnSync,
-                  'active-copy': operationType === 'copy' && selectedRemote.copyState?.isOnCopy,
-                  'error': (operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) === 'error'
-                }">
-                <mat-icon
-                  [svgIcon]="(operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) === 'error' ? 'error' : 
-              ((operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) ? 'refresh' : 'stop')"></mat-icon>
-                <span>
-                  {{ (operationType === 'sync' ? selectedRemote.syncState?.isOnSync :
-                  selectedRemote.copyState?.isOnCopy) === 'error' ? 'Error' :
-                  ((operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy)
-                  ?
-                  (operationType === 'sync' ? 'Syncing' : 'Copying') : 'Stopped') }}
-                </span>
-                <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
-              </div>
-            </div>
-
-            <div class="operation-controls">
-              <!-- <mat-slide-toggle class="dry-run-toggle" [disabled]="selectedRemote.syncState?.isOnSync"
-                (change)="toggleDryRun()">
-                <span>
-                  <mat-icon [svgIcon]="dryRun ? 'eye' : 'eye-slash'"></mat-icon>
-                  Dry Run
-                </span>
-              </mat-slide-toggle> -->
-
-              <button mat-flat-button
-                [color]="(operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) ? 'warn' : operationColor"
-                (click)="toggleOperation()" [disabled]="isLoading">
-                <mat-icon
-                  [svgIcon]="(operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) ? 'stop' : 'play'"></mat-icon>
-                {{(operationType === 'sync' ? selectedRemote.syncState?.isOnSync : selectedRemote.copyState?.isOnCopy) ?
-                'Stop ' + (operationType | titlecase) : 'Start ' + (operationType | titlecase)}}
-              </button>
-            </div>
-          </mat-card-footer>
-        </mat-card>
-
-        <!-- Job Info Card -->
-        <mat-card class="operation-control-card">
-          <mat-card-content class="operation-path-section">
-            <div class="job-details-grid">
-              <div class="job-detail">
-                <span class="detail-label">Job Type:</span>
-                <span class="detail-value">{{operationType | titlecase}}</span>
-              </div>
-              <div class="job-detail">
-                <span class="detail-label">Job ID:</span>
-                <span class="detail-value">
-                  {{currentJobId || 'N/A'}}
-                </span>
-              </div>
-              <div class="job-detail" *ngIf="stats.startTime">
-                <span class="detail-label">Started:</span>
-                <span class="detail-value">{{stats.startTime | date:'medium'}}</span>
-              </div>
-              <div class="job-detail">
-                <span class="detail-label">Last Operation:</span>
-                <span class="detail-value">
-                  {{ lastSyncTime ? (lastSyncTime | date:'medium') : 'N/A' }}
-                </span>
-              </div>
-            </div>
-          </mat-card-content>
-        </mat-card>
-
-        <!-- Stats Summary -->
-        <div class="stats-summary" [ngClass]="operationClass">
-          <mat-card class="stat-card">
-            <div class="stat-value">{{stats.bytes | filesize}}</div>
-            <div class="stat-label">Transferred</div>
-            <mat-progress-bar [color]="operationColor" mode="determinate"
-              [value]="(stats.bytes / stats.totalBytes) * 100"></mat-progress-bar>
-          </mat-card>
-          <mat-card class="stat-card">
-            <div class="stat-value">{{stats.totalBytes | filesize}}</div>
-            <div class="stat-label">Total Size</div>
-          </mat-card>
-          <mat-card class="stat-card">
-            <div class="stat-value">{{getFormattedSpeed()}}</div>
-            <div class="stat-label">Speed</div>
-          </mat-card>
-          <mat-card class="stat-card">
-            <div class="stat-value">{{stats.elapsedTime | formatTime}}</div>
-            <div class="stat-label">Elapsed Time</div>
-          </mat-card>
-          <mat-card class="stat-card">
-            <div class="stat-value">{{stats.eta | formatTime}}</div>
-            <div class="stat-label">ETA</div>
-            <mat-progress-bar [color]="operationColor" mode="determinate"
-              [value]="(stats.elapsedTime / (stats.elapsedTime + stats.eta)) * 100"></mat-progress-bar>
-          </mat-card>
-          <mat-card [matTooltip]="'Last Error: ' + stats.lastError" [matTooltipDisabled]="!stats.lastError"
-            class="stat-card" [class.has-error]="stats.errors > 0">
-            <div class="stat-value">{{stats.errors}}</div>
-            <div class="stat-label">Errors</div>
-          </mat-card>
+<div class="remote-details">
+  <div class="detail-header">
+    <div class="header-content">
+      <div class="remote-info-section">
+        <div [ngClass]="{
+          'icon-container': true,
+          'active': selectedRemote?.syncState?.isOnSync || selectedRemote?.copyState?.isOnCopy
+        }">
+          <mat-icon [svgIcon]="iconService.getIconName(selectedRemote?.remoteSpecs?.type)"
+            class="remote-type-icon"></mat-icon>
         </div>
-
-        <!-- File List -->
-        <mat-card class="file-list">
-          <!-- <div class="file-list-controls">
-            <mat-form-field appearance="outline" style="width: 100%;">
-              <mat-label>Filter files</mat-label>
-              <input matInput (keyup)="applyFilter($event)" placeholder="Search files..." />
-            </mat-form-field>
-          </div> -->
-
-          <table mat-table [dataSource]="dataSource" matSort class="mat-elevation-z8">
-
-            <!-- Filename Column -->
-            <ng-container matColumnDef="name">
-              <th class="filename" mat-header-cell *matHeaderCellDef mat-sort-header>
-                Filename
-              </th>
-              <td class="filename-text" mat-cell *matCellDef="let file">
-                <span>
-                  <mat-icon svgIcon="{{file.isError ? 'circle-exclamation' : 'file'}}"></mat-icon>
-                  {{file.name}}
-                </span>
-              </td>
-            </ng-container>
-
-            <!-- Progress Column -->
-            <ng-container matColumnDef="percentage">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                Progress
-              </th>
-              <td mat-cell *matCellDef="let file">
-                <div class="progress-bar" [ngClass]="operationClass">
-                  <div [style.width.%]="file.percentage || 0"></div>
-                </div>
-                <span>{{ (file.percentage || 0) }}%</span>
-              </td>
-            </ng-container>
-
-            <!-- Speed Column -->
-            <ng-container matColumnDef="speed">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                Speed
-              </th>
-              <td mat-cell *matCellDef="let file">
-                {{file.speed | filesize}}/s
-              </td>
-            </ng-container>
-
-            <!-- Size Column -->
-            <ng-container matColumnDef="size">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                Size
-              </th>
-              <td mat-cell *matCellDef="let file">
-                {{file.size | filesize}}
-              </td>
-            </ng-container>
-
-            <!-- ETA Column -->
-            <ng-container matColumnDef="eta">
-              <th mat-header-cell *matHeaderCellDef mat-sort-header>
-                ETA
-              </th>
-              <td mat-cell *matCellDef="let file">
-                {{file.eta | formatTime}}
-              </td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let file; columns: displayedColumns;" [class.error-file]="file.isError"></tr>
-            <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell" colspan="5">No files found.</td>
-            </tr>
-          </table>
-        </mat-card>
-
-        <!-- Performance Graphs -->
-        <div class="performance-graphs">
-          <mat-card class="graph-card">
-            <h4>Transfer Speed</h4>
-            <canvas #speedChart></canvas>
-          </mat-card>
-          <mat-card class="graph-card">
-            <h4>Transfer Progress</h4>
-            <canvas #progressChart></canvas>
-          </mat-card>
+        <div class="remote-text-info">
+          <h2 class="remote-name" matTooltip="{{ selectedRemote?.remoteSpecs?.name }}">
+            {{ selectedRemote?.remoteSpecs?.name }}
+          </h2>
+          <span class="remote-type">{{ selectedRemote?.remoteSpecs?.type | titlecase }}</span>
         </div>
       </div>
-    </mat-tab>
+    </div>
+    <div class="header-divider"></div>
+  </div>
 
-    <mat-tab label="Configuration">
-      <ng-container *ngFor="let section of remoteSettingsSections">
-        <div class="info-card spec-card">
-          <h3>
-            <mat-icon [svgIcon]="section.icon"></mat-icon>
-            {{ section.title }}
-          </h3>
-          <mat-card class="info-card-content">
-            <mat-card-content class="spec-content">
-              <mat-chip-set class="specs-container">
-                <ng-container *ngIf="hasSettings(section.key + 'Config'); else noData">
-                  <ng-container *ngFor="let spec of getRemoteSettings(section.key + 'Config') | keyvalue">
-                    <ng-container *ngIf="isObjectButNotArray(spec.value)">
-                      <ng-container *ngFor="let subSpec of spec.value | keyvalue">
-                        <mat-chip class="spec-pill sub-key"
-                          [matTooltip]="isSensitiveKey(subSpec.key) ? '[RESTRICTED]' : (subSpec.value | json)"
-                          [matTooltipHideDelay]="500">
-                          <strong>{{ subSpec.key }}:</strong>
-                          <span>{{ maskSensitiveValue(subSpec.key, subSpec.value) }}</span>
-                        </mat-chip>
-                      </ng-container>
-                    </ng-container>
-                    <ng-container *ngIf="!isObjectButNotArray(spec.value)">
-                      <mat-chip class="spec-pill"
-                        [matTooltip]="isSensitiveKey(spec.key) ? '[RESTRICTED]' : (spec.value | json)"
-                        [matTooltipHideDelay]="500">
-                        <strong>{{ spec.key }}:</strong>
-                        <span>{{ maskSensitiveValue(spec.key, spec.value) }}</span>
-                      </mat-chip>
-                    </ng-container>
-                  </ng-container>
-                </ng-container>
-                <ng-template #noData>
-                  <mat-chip class="spec-pill not-found">
-                    <strong>No data found</strong>
-                  </mat-chip>
-                </ng-template>
-              </mat-chip-set>
+  <div class="detail-content">
+    <mat-tab-group [color]="operationColor" class="operation-tabs">
+      <mat-tab label="Monitoring">
+        <div class="operation-monitor">
+          <!-- Operation Control Panel -->
+          <mat-card class="detail-panel operation-control-panel"
+            [class.active]="(operationType === 'sync' && selectedRemote?.syncState?.isOnSync) || (operationType === 'copy' && selectedRemote?.copyState?.isOnCopy)"
+            [ngClass]="operationClass">
+            <mat-card-header class="panel-header">
+              <mat-card-title class="panel-title-content">
+                <mat-icon [svgIcon]="operationType === 'sync' ? 'sync' : 'copy'" class="panel-icon"></mat-icon>
+                <span>{{ operationType | titlecase }} Control</span>
+                <div class="operation-status-badge" [ngClass]="{
+                      'active-sync': operationType === 'sync' && selectedRemote?.syncState?.isOnSync,
+                      'active-copy': operationType === 'copy' && selectedRemote?.copyState?.isOnCopy,
+                      'error': (operationType === 'sync' ? selectedRemote?.syncState?.isOnSync : selectedRemote?.copyState?.isOnCopy) === 'error',
+                      'inactive': !(operationType === 'sync' ? selectedRemote?.syncState?.isOnSync : selectedRemote?.copyState?.isOnCopy)
+                    }">
+                  <div class="status-dot"></div>
+                  <span>{{
+                    (operationType === 'sync' ? selectedRemote?.syncState?.isOnSync : selectedRemote?.copyState?.isOnCopy)
+                    === 'error' ? 'Error' :
+                    ((operationType === 'sync' ? selectedRemote?.syncState?.isOnSync :
+                    selectedRemote?.copyState?.isOnCopy) ?
+                    (operationType === 'sync' ? 'Syncing' : 'Copying') : 'Stopped')
+                    }}</span>
+                  @if (isLoading) {
+                  <mat-spinner diameter="16"></mat-spinner>
+                  }
+                </div>
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content class="panel-content">
+              <div class="operation-path-section">
+                <div class="path-item source-path">
+                  <div class="path-icon-container">
+                    @if (isLocalPath(operationSource)) {
+                    <button mat-icon-button class="folder-button" [color]="operationColor"
+                      (click)="triggerOpenInFiles(operationSource)" matTooltip="Open in file explorer">
+                      <mat-icon svgIcon="folder"></mat-icon>
+                    </button>
+                    } @else {
+                    <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
+                    }
+                  </div>
+                  <div class="path-info" matTooltip="{{operationSource}}">
+                    <div class="path-label">Source</div>
+                    <div class="path-value">{{operationSource}}</div>
+                  </div>
+                </div>
+
+                <div class="path-arrow">
+                  <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+                </div>
+
+                <div class="path-item destination-path">
+                  <div class="path-icon-container">
+                    @if (isLocalPath(operationDestination)) {
+                    <button mat-icon-button class="folder-button" [color]="operationColor"
+                      (click)="triggerOpenInFiles(operationDestination)" matTooltip="Open in file explorer">
+                      <mat-icon svgIcon="folder"></mat-icon>
+                    </button>
+                    } @else {
+                    <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
+                    }
+                  </div>
+                  <div class="path-info" matTooltip="{{operationDestination}}">
+                    <div class="path-label">Destination</div>
+                    <div class="path-value">{{operationDestination}}</div>
+                  </div>
+                </div>
+              </div>
             </mat-card-content>
-
-            <mat-divider></mat-divider>
-
-            <mat-card-footer class="button-container">
-              <button mat-raised-button class="fix"
-                (click)="triggerOpenRemoteConfig(section.key, getRemoteSettings(section.key + 'Config'))">
-                <mat-icon svgIcon="pen"></mat-icon> Edit
-              </button>
-            </mat-card-footer>
+            <mat-card-actions class="panel-actions">
+              <div class="operation-controls">
+                <button mat-raised-button
+                  [color]="(operationType === 'sync' ? selectedRemote?.syncState?.isOnSync : selectedRemote?.copyState?.isOnCopy) ? 'warn' : operationColor"
+                  (click)="toggleOperation()" [disabled]="isLoading" class="operation-toggle-button">
+                  @if (isLoading) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                  } @else {
+                  <mat-icon
+                    [svgIcon]="(operationType === 'sync' ? selectedRemote?.syncState?.isOnSync : selectedRemote?.copyState?.isOnCopy) ? 'stop' : 'play'"></mat-icon>
+                  }
+                  <span>{{(operationType === 'sync' ? selectedRemote?.syncState?.isOnSync :
+                    selectedRemote?.copyState?.isOnCopy) ?
+                    'Stop ' + (operationType | titlecase) : 'Start ' + (operationType | titlecase)}}</span>
+                </button>
+              </div>
+            </mat-card-actions>
           </mat-card>
+
+          <!-- Job Information Panel -->
+          <mat-card class="detail-panel job-info-panel">
+            <mat-card-header class="panel-header">
+              <mat-card-title class="panel-title-content">
+                <mat-icon svgIcon="info" class="panel-icon"></mat-icon>
+                <span>Job Information</span>
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content class="panel-content">
+              <div class="job-details-grid">
+                <div class="job-detail-item">
+                  <div class="detail-label">Job Type</div>
+                  <div class="detail-value">{{operationType | titlecase}}</div>
+                </div>
+                <div class="job-detail-item">
+                  <div class="detail-label">Job ID</div>
+                  <div class="detail-value">{{currentJobId || 'N/A'}}</div>
+                </div>
+                @if (stats.startTime) {
+                <div class="job-detail-item">
+                  <div class="detail-label">Started</div>
+                  <div class="detail-value">{{stats.startTime | date:'medium'}}</div>
+                </div>
+                }
+                <div class="job-detail-item">
+                  <div class="detail-label">Last Operation</div>
+                  <div class="detail-value">{{ lastSyncTime ? (lastSyncTime | date:'medium') : 'N/A' }}</div>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Statistics Panel -->
+          <mat-card class="detail-panel stats-panel">
+            <mat-card-header class="panel-header">
+              <mat-card-title class="panel-title-content">
+                <mat-icon svgIcon="chart" class="panel-icon"></mat-icon>
+                <span>Transfer Statistics</span>
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content class="panel-content">
+              <div class="stats-grid" [ngClass]="operationClass">
+                <div class="stat-item primary">
+                  <div class="stat-header">
+                    <div class="stat-value">{{stats.bytes | filesize}}</div>
+                    <div class="stat-label">Transferred</div>
+                  </div>
+                  <mat-progress-bar [color]="operationColor" mode="determinate"
+                    [value]="(stats.bytes / stats.totalBytes) * 100" class="stat-progress"></mat-progress-bar>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value">{{stats.totalBytes | filesize}}</div>
+                  <div class="stat-label">Total Size</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value">{{getFormattedSpeed()}}</div>
+                  <div class="stat-label">Speed</div>
+                </div>
+                <div class="stat-item">
+                  <div class="stat-value">{{stats.elapsedTime | formatTime}}</div>
+                  <div class="stat-label">Elapsed Time</div>
+                </div>
+                <div class="stat-item primary">
+                  <div class="stat-header">
+                    <div class="stat-value">{{stats.eta | formatTime}}</div>
+                    <div class="stat-label">ETA</div>
+                  </div>
+                  <mat-progress-bar [color]="operationColor" mode="determinate"
+                    [value]="(stats.elapsedTime / (stats.elapsedTime + stats.eta)) * 100"
+                    class="stat-progress"></mat-progress-bar>
+                </div>
+                <div class="stat-item" [class.has-error]="stats.errors > 0"
+                  [matTooltip]="'Last Error: ' + stats.lastError" [matTooltipDisabled]="!stats.lastError">
+                  <div class="stat-value">{{stats.errors}}</div>
+                  <div class="stat-label">Errors</div>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- File Transfer Panel -->
+          <mat-card class="detail-panel file-list-panel">
+            <mat-card-header class="panel-header">
+              <mat-card-title class="panel-title-content">
+                <mat-icon svgIcon="file" class="panel-icon"></mat-icon>
+                <span>Transfer Progress</span>
+                <span class="file-count">{{ dataSource.data.length || 0 }}</span>
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content class="panel-content">
+              <div class="file-list-container">
+                <table mat-table [dataSource]="dataSource" matSort class="files-table">
+                  <!-- Filename Column -->
+                  <ng-container matColumnDef="name">
+                    <th class="filename-header" mat-header-cell *matHeaderCellDef mat-sort-header>
+                      Filename
+                    </th>
+                    <td class="filename-cell" mat-cell *matCellDef="let file">
+                      <div class="file-info">
+                        <mat-icon [svgIcon]="file.isError ? 'circle-exclamation' : 'file'"
+                          [class.error-icon]="file.isError" class="file-icon"></mat-icon>
+                        <span class="file-name">{{file.name}}</span>
+                      </div>
+                    </td>
+                  </ng-container>
+
+                  <!-- Progress Column -->
+                  <ng-container matColumnDef="percentage">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                      Progress
+                    </th>
+                    <td mat-cell *matCellDef="let file">
+                      <div class="progress-container">
+                        <div class="progress-bar-wrapper">
+                          <div class="progress-bar" [ngClass]="operationClass">
+                            <div class="progress-fill" [style.width.%]="file.percentage || 0"></div>
+                          </div>
+                        </div>
+                        <span class="progress-text">{{ (file.percentage || 0) }}%</span>
+                      </div>
+                    </td>
+                  </ng-container>
+
+                  <!-- Speed Column -->
+                  <ng-container matColumnDef="speed">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                      Speed
+                    </th>
+                    <td mat-cell *matCellDef="let file">
+                      <span class="speed-value">{{file.speed | filesize}}/s</span>
+                    </td>
+                  </ng-container>
+
+                  <!-- Size Column -->
+                  <ng-container matColumnDef="size">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                      Size
+                    </th>
+                    <td mat-cell *matCellDef="let file">
+                      <span class="size-value">{{file.size | filesize}}</span>
+                    </td>
+                  </ng-container>
+
+                  <!-- ETA Column -->
+                  <ng-container matColumnDef="eta">
+                    <th mat-header-cell *matHeaderCellDef mat-sort-header>
+                      ETA
+                    </th>
+                    <td mat-cell *matCellDef="let file">
+                      <span class="eta-value">{{file.eta | formatTime}}</span>
+                    </td>
+                  </ng-container>
+
+                  <tr mat-header-row *matHeaderRowDef="displayedColumns" class="file-header-row"></tr>
+                  <tr mat-row *matRowDef="let file; columns: displayedColumns;" class="file-row"
+                    [class.error-file]="file.isError"></tr>
+                  <tr class="no-data-row" *matNoDataRow>
+                    <td class="no-data-cell" colspan="5">
+                      <div class="no-data-content">
+                        <mat-icon svgIcon="file" class="no-data-icon"></mat-icon>
+                        <span>No transfer files found</span>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Performance Charts Panel -->
+          <div class="charts-grid">
+            <mat-card class="detail-panel chart-panel">
+              <mat-card-header class="panel-header">
+                <mat-card-title class="panel-title-content">
+                  <mat-icon svgIcon="chart" class="panel-icon"></mat-icon>
+                  <span>Transfer Speed</span>
+                </mat-card-title>
+              </mat-card-header>
+              <mat-card-content class="panel-content">
+                <div class="chart-container">
+                  <canvas #speedChart class="performance-chart"></canvas>
+                </div>
+              </mat-card-content>
+            </mat-card>
+
+            <mat-card class="detail-panel chart-panel">
+              <mat-card-header class="panel-header">
+                <mat-card-title class="panel-title-content">
+                  <mat-icon svgIcon="chart" class="panel-icon"></mat-icon>
+                  <span>Transfer Progress</span>
+                </mat-card-title>
+              </mat-card-header>
+              <mat-card-content class="panel-content">
+                <div class="chart-container">
+                  <canvas #progressChart class="performance-chart"></canvas>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
         </div>
-      </ng-container>
-    </mat-tab>
-  </mat-tab-group>
+      </mat-tab>
+
+      <mat-tab label="Configuration">
+        <div class="configuration-content">
+          @for (section of remoteSettingsSections; track section.key) {
+          <mat-card class="detail-panel settings-panel">
+            <mat-card-header class="panel-header">
+              <mat-card-title class="panel-title-content">
+                <mat-icon [svgIcon]="section.icon" class="panel-icon"></mat-icon>
+                <span>{{ section.title }}</span>
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content class="panel-content">
+              <div class="settings-container">
+                @if (hasSettings(section.key + 'Config')) {
+                <div class="settings-grid">
+                  @for (spec of getRemoteSettings(section.key + 'Config') | keyvalue; track spec.key) {
+                  @if (isObjectButNotArray(spec.value)) {
+                  @for (subSpec of spec.value | keyvalue; track subSpec.key) {
+                  <div class="setting-item">
+                    <div class="setting-key">{{ subSpec.key }}</div>
+                    <div class="setting-value"
+                      [matTooltip]="isSensitiveKey(subSpec.key) ? '[RESTRICTED]' : (subSpec.value | json)"
+                      [matTooltipHideDelay]="500">
+                      {{ maskSensitiveValue(subSpec.key, subSpec.value) }}
+                    </div>
+                  </div>
+                  }
+                  } @else {
+                  <div class="setting-item">
+                    <div class="setting-key">{{ spec.key }}</div>
+                    <div class="setting-value"
+                      [matTooltip]="isSensitiveKey(spec.key) ? '[RESTRICTED]' : (spec.value | json)"
+                      [matTooltipHideDelay]="500">
+                      {{ maskSensitiveValue(spec.key, spec.value) }}
+                    </div>
+                  </div>
+                  }
+                  }
+                </div>
+                } @else {
+                <div class="no-settings">
+                  <mat-icon [svgIcon]="section.icon" class="no-settings-icon"></mat-icon>
+                  <span>No configuration data available</span>
+                </div>
+                }
+              </div>
+            </mat-card-content>
+            <mat-card-actions class="panel-actions">
+              <button mat-raised-button color="primary" class="edit-settings-button"
+                (click)="triggerOpenRemoteConfig(section.key, getRemoteSettings(section.key + 'Config'))">
+                <mat-icon svgIcon="pen"></mat-icon>
+                <span>Edit Settings</span>
+              </button>
+            </mat-card-actions>
+          </mat-card>
+          }
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </div>
 </div>

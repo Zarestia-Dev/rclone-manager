@@ -13,7 +13,9 @@ export class RcloneService {
 
   listenToBandwidthChanges(): Observable<any> {
     return new Observable((observer) => {
-      const unlisten = listen("bandwidth_limit_changed", (event) => {        
+      const unlisten = listen("bandwidth_limit_changed", (event) => {   
+        console.log("Bandwidth limit changed:", event.payload);
+             
         observer.next(event.payload);
       });
       return () => {
@@ -25,6 +27,7 @@ export class RcloneService {
   listenToRcloneApiReady(): Observable<any> {
     return new Observable((observer) => {
       const unlisten = listen("rclone_api_ready", (event) => {
+        console.log("Rclone API is ready:", event.payload);
         observer.next(event.payload);
       });
       return () => {
@@ -36,6 +39,7 @@ export class RcloneService {
   listenToRcloneEngineFailed(): Observable<any> {
     return new Observable((observer) => {
       const unlisten = listen("rclone_engine_failed", (event) => {
+        console.error("Rclone engine failed:", event.payload);
         observer.next(event.payload);
       });
       return () => {
@@ -47,6 +51,7 @@ export class RcloneService {
   listenToRclonePathInvalid(): Observable<any> {
     return new Observable((observer) => {
       const unlisten = listen("rclone_path_invalid", (event) => {
+        console.error("Rclone path is invalid:", event.payload);
         observer.next(event.payload);
       });
       return () => {

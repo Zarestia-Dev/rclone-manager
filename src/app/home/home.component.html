@@ -79,7 +79,7 @@
     @if (remotes.length > 0 && !selectedRemote && !isLoading) {
       @if (currentTab === 'general') {
         <app-general-overview [remotes]="remotes" [jobs]="jobs"
-          [iconService]="iconService" (mountRemote)="mountRemote($event)" (unmountRemote)="unmountRemote($event)"
+          [iconService]="iconService" [actionInProgress]="actionInProgress" (mountRemote)="mountRemote($event)" (unmountRemote)="unmountRemote($event)"
           (stopJob)="stopOperation($event.type, $event.remoteName)"
           (browseRemote)="openRemoteInFiles($event, 'mount')"
           (copyRemote)="startOperation('copy', $event)"

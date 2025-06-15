@@ -76,8 +76,4 @@ export class RemoteConfigStepComponent {
       this.form.get(fieldName)?.setValue("");
     }
   }
-
-  trackByFieldName(index: number, field: RemoteField): string {
-    return field.Name;
-  }
 }

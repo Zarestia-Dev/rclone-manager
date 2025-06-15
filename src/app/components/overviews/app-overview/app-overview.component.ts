@@ -147,6 +147,7 @@ export class AppOverviewComponent {
   }
 
   getStopButtonLabel(): string {
+    if (this.mode === "mount") return "Unmount";
     if (this.mode === "sync") return "Stop Sync";
     if (this.mode === "copy") return "Stop Copy";
     return "Stop";

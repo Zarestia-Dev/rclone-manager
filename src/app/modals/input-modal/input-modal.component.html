@@ -12,7 +12,7 @@
 
   <div mat-dialog-content class="modal-content">
     <p>{{ data.description }}</p>
-    @for (field of data.fields; track field) {
+    @for (field of data.fields; track field.name) {
       @switch (field.type) {
         <!-- Regular input types -->
         @case ('text') {

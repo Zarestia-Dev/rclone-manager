@@ -14,7 +14,7 @@
     <mat-form-field appearance="fill" style="width: 100%;">
       <mat-label>Export Option</mat-label>
       <mat-select [(ngModel)]="selectedOption">
-        @for (option of exportOptions; track option) {
+        @for (option of exportOptions; track option.value) {
           <mat-option [value]="option.value">
             {{ option.label }}
           </mat-option>
@@ -26,7 +26,7 @@
       <mat-form-field appearance="fill" style="width: 100%;" @slideInOut>
         <mat-label>Select Remote</mat-label>
         <mat-select [(ngModel)]="selectedRemoteName" required>
-          @for (remote of remotes; track remote) {
+          @for (remote of remotes; track remote.remoteSpecs.name) {
             <mat-option [value]="remote">
               {{ remote }}
             </mat-option>
