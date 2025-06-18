@@ -668,6 +668,14 @@ export class RemoteConfigModalComponent implements OnInit {
     if (disabled) {
       this.remoteConfigForm.disable();
       this.remoteForm.disable();
+      
+      // Additionally disable all 'options' form controls specifically
+      this.flagConfigService.FLAG_TYPES.forEach(() => {
+        const optionsControl = this.remoteConfigForm.get(`options`);
+        if (optionsControl) {
+          optionsControl.disable();
+        }
+      });
     } else {
       // Only enable controls that should be editable
       if (this.editTarget === "remote") {
@@ -684,6 +692,14 @@ export class RemoteConfigModalComponent implements OnInit {
         this.remoteForm.enable();
       }
       this.remoteConfigForm.enable();
+      
+      // Re-enable 'options' form controls when not disabled
+      this.flagConfigService.FLAG_TYPES.forEach(() => {
+        const optionsControl = this.remoteConfigForm.get(`options`);
+        if (optionsControl) {
+          optionsControl.enable();
+        }
+      });
     }
   }
 

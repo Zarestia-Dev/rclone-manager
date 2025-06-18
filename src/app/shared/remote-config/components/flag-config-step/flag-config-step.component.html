@@ -35,7 +35,8 @@
   @if (flagType !== 'mount' && flagType !== 'vfs' && flagType !== 'filter') {
     <mat-form-field appearance="fill">
       <mat-label>{{ flagType | titlecase }} Destination</mat-label>
-      <input matInput formControlName="dest" placeholder="Select destination path or enter remote (remote:path)"
+      <input matInput formControlName="dest" 
+        placeholder="Type remote name or select destination path"
         [matAutocomplete]="destAuto" />
       <button mat-icon-button matSuffix (click)="onSelectFolder(flagType + 'Config.dest', false)"
         aria-label="Select local folder">
@@ -52,9 +53,10 @@
       }
       <mat-autocomplete #destAuto="matAutocomplete" (optionSelected)="onDestOptionSelected($event.option.value)">
         @if (pathState[flagType + 'Config.dest'] && !pathState[flagType + 'Config.dest'].remoteName) {
-          @for (remote of existingRemotes; track remote) {
+          @for (remote of filteredDestRemotes$ | async; track remote) {
             <mat-option [value]="remote + ':/'"
               (onSelectionChange)="onRemoteSelected(remote + ':/')">
+              <mat-icon svgIcon="hard-drive" style="margin-right: 8px; font-size: 16px; width: 16px; height: 16px;"></mat-icon>
               {{ remote }}
             </mat-option>
           }
@@ -64,10 +66,10 @@
             <mat-option
               [value]="pathState[flagType + 'Config.dest'].remoteName + ':/' + (pathState[flagType + 'Config.dest'].currentPath ? pathState[flagType + 'Config.dest'].currentPath + '/' : '') + option.Name">
               @if (option.IsDir) {
-                <span>📁</span>
+                <span style="margin-right: 8px;">📁</span>
               }
               @if (!option.IsDir) {
-                <span>📄</span>
+                <span style="margin-right: 8px;">📄</span>
               }
               {{ option.Name }}
             </mat-option>
@@ -81,7 +83,8 @@
   @if (isEditMode && flagType !== 'vfs' && flagType !== 'filter') {
     <mat-form-field appearance="fill">
       <mat-label>{{ flagType | titlecase }} Source</mat-label>
-      <input matInput formControlName="source" placeholder="Select source path or enter remote (remote:path)"
+      <input matInput formControlName="source" 
+        placeholder="Type remote name or select source path"
         [matAutocomplete]="sourceAuto" />
       <button mat-icon-button matSuffix (click)="onSelectFolder(flagType + 'Config.source', false)"
         aria-label="Select local folder">
@@ -91,17 +94,28 @@
         <mat-spinner color="accent" diameter="24"></mat-spinner>
       }
       <mat-autocomplete #sourceAuto="matAutocomplete" (optionSelected)="onSourceOptionSelected($event.option.value)">
-        @for (option of pathState[flagType + 'Config.source'].options || []; track option.Name) {
-          <mat-option
-            [value]="option.Name">
-            @if (option.IsDir) {
-              <span>📁</span>
-            }
-            @if (!option.IsDir) {
-              <span>📄</span>
-            }
-            {{ option.Name }}
-          </mat-option>
+        @if (pathState[flagType + 'Config.source'] && !pathState[flagType + 'Config.source'].remoteName) {
+          @for (remote of filteredSourceRemotes$ | async; track remote) {
+            <mat-option [value]="remote + ':/'"
+              (onSelectionChange)="onRemoteSelected(remote + ':/')">
+              <mat-icon svgIcon="hard-drive" style="margin-right: 8px; font-size: 16px; width: 16px; height: 16px;"></mat-icon>
+              {{ remote }}
+            </mat-option>
+          }
+        }
+        @if (pathState[flagType + 'Config.source'] && pathState[flagType + 'Config.source'].remoteName) {
+          @for (option of pathState[flagType + 'Config.source'].options || []; track option.Name) {
+            <mat-option
+              [value]="option.Name">
+              @if (option.IsDir) {
+                <span style="margin-right: 8px;">📁</span>
+              }
+              @if (!option.IsDir) {
+                <span style="margin-right: 8px;">📄</span>
+              }
+              {{ option.Name }}
+            </mat-option>
+          }
         }
       </mat-autocomplete>
     </mat-form-field>
@@ -128,7 +142,9 @@
       <mat-chip-set [attr.aria-label]="flagType + ' configuration options'">
         @for (field of dynamicFlagFields; track field.name) {
           <mat-chip-option (click)="onToggleOption(field)"
-            [selected]="getSelectedOptions.hasOwnProperty(field.name)" [matTooltip]="field.help | linebreaks"
+            [selected]="getSelectedOptions.hasOwnProperty(field.name)" 
+            [disabled]="isDisabled"
+            [matTooltip]="field.help | linebreaks"
             matTooltipPosition="above">
             {{ field.name }}
           </mat-chip-option>

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from "@angular/core";
+import { Component, EventEmitter, Input, Output, OnInit } from "@angular/core";
 import { FormGroup, ReactiveFormsModule } from "@angular/forms";
 import {
   Entry,
@@ -16,6 +16,7 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { CommonModule } from "@angular/common";
 import { MatButtonModule } from "@angular/material/button";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { Observable, map, startWith } from "rxjs";
 
 @Component({
   selector: "app-flag-config-step",
@@ -37,7 +38,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
   templateUrl: "./flag-config-step.component.html",
   styleUrl: "./flag-config-step.component.scss",
 })
-export class FlagConfigStepComponent {
+export class FlagConfigStepComponent implements OnInit {
   @Input() form!: FormGroup;
   @Input() flagType!: FlagType;
   @Input() isEditMode = false;
@@ -56,6 +57,11 @@ export class FlagConfigStepComponent {
     filter: {},
     vfs: {},
   };
+  @Input() isDisabled: boolean = false;
+
+  // Filtered observables for typeable autocomplete
+  filteredDestRemotes$: Observable<string[]> = new Observable();
+  filteredSourceRemotes$: Observable<string[]> = new Observable();
 
   @Output() optionToggled = new EventEmitter<FlagField>();
   @Output() jsonValidated = new EventEmitter<void>();
@@ -70,6 +76,55 @@ export class FlagConfigStepComponent {
   }
   >();
   @Output() remoteSelectionReset = new EventEmitter<string>();
+
+  ngOnInit(): void {
+    // Initialize filtering after a short delay to ensure form controls are ready
+    setTimeout(() => {
+      this.initializeFilteredRemotes();
+    }, 0);
+  }
+
+  private initializeFilteredRemotes(): void {
+    // Initialize filtered remotes for destination field
+    const destControl = this.configGroup?.get('dest');
+    if (destControl) {
+      this.filteredDestRemotes$ = destControl.valueChanges.pipe(
+        startWith(destControl.value || ''),
+        map(value => this._filterRemotes(value || ''))
+      );
+    } else {
+      // Fallback to show all remotes if control not ready
+      this.filteredDestRemotes$ = new Observable(observer => {
+        observer.next(this.existingRemotes);
+      });
+    }
+
+    // Initialize filtered remotes for source field  
+    const sourceControl = this.configGroup?.get('source');
+    if (sourceControl) {
+      this.filteredSourceRemotes$ = sourceControl.valueChanges.pipe(
+        startWith(sourceControl.value || ''),
+        map(value => this._filterRemotes(value || ''))
+      );
+    } else {
+      // Fallback to show all remotes if control not ready
+      this.filteredSourceRemotes$ = new Observable(observer => {
+        observer.next(this.existingRemotes);
+      });
+    }
+  }
+
+  private _filterRemotes(value: string): string[] {
+    // If value contains :/ or :// it's likely a path, show all remotes
+    if (!value || value.includes('://') || value.includes(':/')) {
+      return this.existingRemotes;
+    }
+    
+    const filterValue = value.toLowerCase();
+    return this.existingRemotes.filter(remote => 
+      remote.toLowerCase().includes(filterValue)
+    );
+  }
 
   get configGroup(): FormGroup {
     return this.form.get(`${this.flagType}Config`) as FormGroup;

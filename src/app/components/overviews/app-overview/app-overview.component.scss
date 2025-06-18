@@ -13,8 +13,6 @@
   --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
   --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
   --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
-  --border-theme: var(--theme-border);
-  --background-secondary: var(--secondary-background);
   --status-bar-height: 48px;
   --legend-gap: 24px;
   --legend-gap-mobile: 12px;
@@ -111,8 +109,8 @@
       border-radius: var(--card-border-radius-large) !important;
       box-shadow: var(--shadow-light);
       transition: var(--transition-standard);
-      border: 1px solid var(--border-theme);
-      background: var(--background-secondary);
+      border: 1px solid var(--theme-border);
+      background: var(--secondary-background);
       backdrop-filter: blur(10px);
 
       &:hover {
@@ -233,26 +231,13 @@
       box-shadow: var(--shadow-light);
       max-height: 60vh;
       transition: var(--transition-standard);
-      border: 1px solid var(--border-theme);
-      background: var(--background-secondary);
+      border: 1px solid var(--theme-border);
+      background: var(--secondary-background);
       backdrop-filter: blur(10px);
 
       &:hover {
         box-shadow: var(--shadow-elevated);
         transform: translateY(-2px);
-      }
-
-      // Panel-specific border colors
-      &.active-remotes-panel {
-        border-left: 4px solid var(--mode-primary-color, var(--primary-color));
-      }
-
-      &.inactive-remotes-panel {
-        border-left: 4px solid var(--purple);
-      }
-
-      &.error-remotes-panel {
-        border-left: 4px solid var(--warn-color);
       }
 
       // 3.2.1 Remotes Header
@@ -329,7 +314,7 @@
         border-radius: var(--card-border-radius);
         background: var(--app-background);
         box-shadow: var(--shadow-light);
-        border: 1px solid var(--border-theme);
+        border: 1px solid var(--theme-border);
         overflow: hidden;
 
         &:hover {
@@ -404,7 +389,7 @@
             height: 48px;
             border-radius: var(--card-border-radius);
             background: var(--hover-color);
-            border: 1px solid var(--border-theme);
+            border: 1px solid var(--theme-border);
             transition: var(--transition-standard);
 
             .remote-type-icon {
@@ -645,7 +630,7 @@
 }
 
 .remote-card {
-  animation: fadeInUp 0.6s ease-out;
+  animation: fadeIn 0.6s ease-out;
   animation-fill-mode: both;
 }
 

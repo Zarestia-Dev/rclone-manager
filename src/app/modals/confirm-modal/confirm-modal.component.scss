@@ -1,10 +1,299 @@
-p {
-  font-size: 16px !important;
-  font-weight: 400 !important;
-  color: var(--app-text-color) !important;
+// Component Variables - GNOME-like Design System for Confirm Modal
+:host {
+  // Spacing
+  --modal-padding: 32px;
+  --modal-padding-mobile: 24px;
+  --content-gap: 12px;
+  --button-gap: 16px;
+  --icon-size: 64px;
+  --icon-size-mobile: 56px;
+  
+  // Border radius
+  --modal-border-radius: 16px;
+  --button-border-radius: 12px;
+  
+  // Shadows and effects
+  --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
+  --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
+  --surface-border: rgba(var(--app-text-color-rgb), 0.08);
+  --glassmorphism-bg: rgba(var(--app-background-rgb), 0.9);
+  
+  // Colors
+  --confirm-color: var(--warn-color);
+  --confirm-color-rgb: var(--warn-color-rgb);
+  --cancel-color: var(--secondary-text-color);
+  --cancel-color-rgb: var(--secondary-text-color-rgb);
+  --primary-button-color: var(--primary-color);
+  --primary-button-color-rgb: var(--primary-color-rgb);
+  
+  // Transitions
+  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-quick: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  // Typography
+  --title-font-size: 20px;
+  --title-font-size-mobile: 18px;
+  --message-font-size: 16px;
+  --button-font-size: 16px;
 }
 
-h1 {
-  font-size: 20px !important;
-  font-weight: 800 !important;
+.confirm-modal {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  gap: var(--content-gap);
+  padding: var(--modal-padding);
+  
+  // Title styling
+  .modal-title {
+    font-size: var(--title-font-size);
+    font-weight: 600;
+    color: var(--app-text-color);
+    text-align: center;
+    margin: 0 0 var(--content-gap) 0;
+    letter-spacing: -0.3px;
+    line-height: 1.3;
+    position: relative;
+    z-index: 1;
+  }
+
+  // Content area
+  .modal-content {
+    text-align: center;
+    position: relative;
+    z-index: 1;
+
+    .modal-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--icon-size);
+      height: var(--icon-size);
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      background: linear-gradient(
+        135deg,
+        rgba(var(--confirm-color-rgb), 0.15) 0%,
+        rgba(var(--confirm-color-rgb), 0.08) 100%
+      );
+      border: 2px solid rgba(var(--confirm-color-rgb), 0.3);
+      animation: iconPulse 2s ease-in-out infinite;
+
+      mat-icon {
+        font-size: 32px;
+        width: 32px;
+        height: 32px;
+        color: var(--confirm-color);
+      }
+
+      &.info {
+        background: linear-gradient(
+          135deg,
+          rgba(var(--primary-button-color-rgb), 0.15) 0%,
+          rgba(var(--primary-button-color-rgb), 0.08) 100%
+        );
+        border-color: rgba(var(--primary-button-color-rgb), 0.3);
+
+        mat-icon {
+          color: var(--primary-button-color);
+        }
+      }
+    }
+
+    .modal-message {
+      font-size: var(--message-font-size);
+      font-weight: 400;
+      color: var(--secondary-text-color);
+      line-height: 1.5;
+      margin: 0;
+      word-wrap: break-word;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+  }
+
+  // Actions area
+  .modal-actions {
+    display: flex;
+    justify-content: center;
+    gap: var(--button-gap);
+    position: relative;
+    z-index: 1;
+
+    button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 16px 32px;
+      border-radius: var(--button-border-radius);
+      font-size: var(--button-font-size);
+      font-weight: 600;
+      letter-spacing: 0.25px;
+      transition: var(--transition-standard);
+      position: relative;
+      overflow: hidden;
+      min-width: 120px;
+      border: none;
+      cursor: pointer;
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transition: left 0.5s;
+      }
+
+      // Confirm button (destructive action)
+      &.confirm-btn {
+        background: linear-gradient(
+          135deg,
+          var(--confirm-color) 0%,
+          color-mix(in srgb, var(--confirm-color) 85%, #000) 100%
+        );
+        color: white;
+        box-shadow: var(--shadow-light);
+
+        &:hover {
+          box-shadow: var(--shadow-elevated);
+          transform: translateY(-2px);
+
+          &::before {
+            left: 100%;
+          }
+        }
+
+        &:active {
+          transform: translateY(0);
+          box-shadow: var(--shadow-light);
+        }
+      }
+
+      // Cancel button (safe action)
+      &.cancel-btn {
+        background: rgba(var(--cancel-color-rgb), 0.08);
+        color: var(--app-text-color);
+        border: 1px solid var(--surface-border);
+        box-shadow: var(--shadow-light);
+
+        &:hover {
+          background: rgba(var(--cancel-color-rgb), 0.12);
+          border-color: rgba(var(--app-text-color-rgb), 0.2);
+          transform: translateY(-1px);
+          box-shadow: var(--shadow-elevated);
+
+          &::before {
+            left: 100%;
+          }
+        }
+
+        &:active {
+          transform: translateY(0);
+          box-shadow: var(--shadow-light);
+        }
+      }
+
+      // Primary button (for info dialogs)
+      &.primary-btn {
+        background: linear-gradient(
+          135deg,
+          var(--primary-button-color) 0%,
+          color-mix(in srgb, var(--primary-button-color) 90%, #000) 100%
+        );
+        color: white;
+        box-shadow: var(--shadow-light);
+
+        &:hover {
+          box-shadow: var(--shadow-elevated);
+          transform: translateY(-2px);
+
+          &::before {
+            left: 100%;
+          }
+        }
+
+        &:active {
+          transform: translateY(0);
+          box-shadow: var(--shadow-light);
+        }
+      }
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--confirm-color-rgb), 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(var(--confirm-color-rgb), 0);
+    transform: scale(1.05);
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  :host {
+    --modal-padding: var(--modal-padding-mobile);
+    --title-font-size: var(--title-font-size-mobile);
+    --icon-size: var(--icon-size-mobile);
+    --button-gap: 12px;
+  }
+
+  .confirm-modal {
+    .modal-content {
+      .modal-icon {
+        margin-bottom: 16px;
+
+        mat-icon {
+          font-size: 28px;
+          width: 28px;
+          height: 28px;
+        }
+      }
+    }
+
+    .modal-actions {
+      flex-direction: column;
+      gap: 12px;
+
+      button {
+        width: 100%;
+        min-width: auto;
+        padding: 14px 24px;
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .confirm-modal {
+
+    .modal-content .modal-message {
+      font-size: 15px;
+    }
+
+    .modal-actions button {
+      font-size: 15px;
+      padding: 12px 20px;
+    }
+  }
 }

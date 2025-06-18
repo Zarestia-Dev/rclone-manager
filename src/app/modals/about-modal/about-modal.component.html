@@ -1,159 +1,202 @@
 <div class="about-modal">
   <div class="modal-header" data-tauri-drag-region [class.scrolled]="scrolled">
-    <button disabled mat-icon-button>
+    <button disabled mat-icon-button aria-hidden="true">
       <mat-icon></mat-icon>
     </button>
     <p>About</p>
-    <button class="close-btn" mat-icon-button aria-label="Close" (click)="close()">
-      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    <button type="button" class="close-btn" mat-icon-button aria-label="Close about dialog" (click)="close()">
+      <mat-icon svgIcon="close"></mat-icon>
     </button>
   </div>
+
   <!-- Main About Page -->
   <div class="modal-content" #content (scroll)="onScroll(content)">
-    <mat-icon svgIcon="rclone" class="app-icon"></mat-icon>
+    <mat-icon svgIcon="rclone" class="app-icon" aria-hidden="true"></mat-icon>
     <h2 class="app-name">RClone Manager</h2>
-    <p class="app-team">Hakan İSMAİL</p>
-    <span class="version-badge" (click)="copyToClipboard(rCloneManagerVersion)">
+    <p class="app-team">Developed by Hakan İSMAİL</p>
+    <button type="button" class="version-badge" (click)="copyToClipboard(rCloneManagerVersion)"
+      [attr.aria-label]="'Copy version ' + rCloneManagerVersion + ' to clipboard'">
       {{ rCloneManagerVersion }}
-    </span>
+    </button>
 
     <!-- Navigation List -->
-    <div class="about-list">
-      <button mat-button class="about-item" (click)="navigateTo('details')">
+    <nav class="about-list" role="navigation" aria-label="About sections">
+      <button type="button" mat-button class="about-item" (click)="navigateTo('details')"
+        aria-label="View application details">
         <span>Details</span>
-        <mat-icon svgIcon="chevron-right"></mat-icon>
+        <mat-icon svgIcon="chevron-right" aria-hidden="true"></mat-icon>
       </button>
-      <button mat-button class="about-item" (click)="navigateTo('About Rclone')">
+
+      <button type="button" mat-button class="about-item" (click)="navigateTo('About Rclone')"
+        aria-label="View Rclone information">
         <span>About Rclone</span>
-        <mat-icon svgIcon="chevron-right"></mat-icon>
+        <mat-icon svgIcon="chevron-right" aria-hidden="true"></mat-icon>
       </button>
-      <div class="stacked-buttons">
-        <button mat-button class="about-item" (click)="navigateTo('credits')"
-          style="border-radius: 16px 16px 0px 0px !important;">
-          <span>Credits</span> <mat-icon svgIcon="chevron-right"></mat-icon>
+
+      <div class="stacked-buttons" role="group" aria-label="Additional information">
+        <button type="button" mat-button class="about-item" (click)="navigateTo('credits')"
+          aria-label="View credits and acknowledgments">
+          <span>Credits</span>
+          <mat-icon svgIcon="chevron-right" aria-hidden="true"></mat-icon>
         </button>
         <mat-divider></mat-divider>
-        <button mat-button class="about-item" (click)="navigateTo('legal')"
-          style="border-radius: 0px 0px 16px 16px !important;">
-          <span>Legal</span> <mat-icon svgIcon="chevron-right"></mat-icon>
+        <button type="button" mat-button class="about-item" (click)="navigateTo('legal')"
+          aria-label="View legal information and licenses">
+          <span>Legal</span>
+          <mat-icon svgIcon="chevron-right" aria-hidden="true"></mat-icon>
         </button>
       </div>
-    </div>
+    </nav>
   </div>
 
   <!-- Overlay Pages -->
   @if (currentPage !== 'main') {
-    <div class="overlay" [@slideOverlay]>
-      <div class="overlay-header" data-tauri-drag-region>
-        <button mat-icon-button (click)="navigateTo('main')">
-          <mat-icon svgIcon="chevron-left" class="icon icon-bw"></mat-icon>
+  <div class="overlay" [@slideOverlay] role="dialog" [attr.aria-label]="currentPage + ' information'">
+    <div class="overlay-header" data-tauri-drag-region>
+      <button type="button" mat-icon-button (click)="navigateTo('main')" [attr.aria-label]="'Back to main about page'">
+        <mat-icon svgIcon="chevron-left" class="icon icon-bw"></mat-icon>
+      </button>
+      <p><strong>{{ currentPage | titlecase }}</strong></p>
+      <button type="button" mat-icon-button (click)="close()" aria-label="Close about dialog">
+        <mat-icon svgIcon="close" class="icon icon-bw"></mat-icon>
+      </button>
+    </div>
+
+    @if (currentPage === 'details') {
+    <div class="overlay-content">
+      <div class="stacked-buttons" role="group" aria-label="Application links">
+        <button type="button" mat-button class="about-item first"
+          (click)="openLink('https://github.com/Hakanbaban53/rclone-manager')"
+          aria-label="Open project website in browser">
+          <span>Website</span>
+          <mat-icon svgIcon="open-link" aria-hidden="true"></mat-icon>
         </button>
-        <p><strong>{{ currentPage | titlecase }}</strong></p>
-        <button mat-icon-button (click)="close()">
-          <mat-icon svgIcon="circle-xmark" class="icon icon-bw"></mat-icon>
+        <mat-divider></mat-divider>
+        <button type="button" mat-button class="about-item last"
+          (click)="openLink('https://github.com/Hakanbaban53/rclone-manager/issues')"
+          aria-label="Report issues on GitHub">
+          <span>Report Issues</span>
+          <mat-icon svgIcon="open-link" aria-hidden="true"></mat-icon>
         </button>
       </div>
-      @if (currentPage === 'details') {
-        <div class="overlay-content">
-          <div class="stacked-buttons">
-            <button mat-button class="about-item"
-              (click)="openLink('https://github.com/Hakanbaban53/rclone-manager')"
-              style="border-radius: 16px 16px 0px 0px !important;">
-              <span>Website</span>
-              <mat-icon svgIcon="open-link"></mat-icon>
-            </button>
-            <mat-divider></mat-divider>
-            <button mat-button class="about-item"
-              (click)="openLink('https://github.com/Hakanbaban53/rclone-manager/issues')"
-              style="border-radius: 0px 0px 16px 16px !important;">
-              <span>Report Issues</span> <mat-icon svgIcon="open-link"></mat-icon>
-            </button>
-          </div>
+    </div>
+    }
+
+    @if (currentPage === 'About Rclone') {
+    <div class="overlay-content">
+      <div class="rclone-info">
+        <h3>Rclone Information</h3>
+
+        @if (loadingRclone) {
+        <div class="loading" role="status" aria-live="polite">
+          <mat-spinner diameter="24" aria-hidden="true"></mat-spinner>
+          <span>Loading Rclone information...</span>
         </div>
-      }
-      @if (currentPage === 'About Rclone') {
-        <div class="overlay-content">
-          <div class="rclone-info">
-            <h3>Rclone Information</h3>
-            @if (loadingRclone) {
-              <div class="loading">
-                <mat-spinner diameter="24"></mat-spinner>
-                <span>Loading Rclone info...</span>
-              </div>
-            }
-            @if (rcloneError) {
-              <div class="error">
-                <mat-icon svgIcon="circle-xmark"></mat-icon>
-                <span>{{ rcloneError }}</span>
-              </div>
-            }
-            @if (rcloneInfo) {
-              <div class="rclone-details">
-                <div class="detail-row">
-                  <span class="detail-label">Version:</span>
-                  <span class="detail-value">{{ rcloneInfo.version }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">OS:</span>
-                  <span class="detail-value">{{ rcloneInfo.os }} ({{ rcloneInfo.arch }})</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">Rclone PID:</span>
-                  <span class="detail-value">{{ rcloneInfo.pid }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">Go Version:</span>
-                  <span class="detail-value">{{ rcloneInfo.goVersion }}</span>
-                </div>
-                <div class="detail-row">
-                  <span class="detail-label">Build:</span>
-                  <span class="detail-value">{{ rcloneInfo.linking }}</span>
-                </div>
-                @if (rcloneInfo.isBeta) {
-                  <div class="detail-row warning">
-                    <mat-icon svgIcon="triangle-exclamation"></mat-icon>
-                    <span>This is a beta version</span>
-                  </div>
-                }
-                @if (rcloneInfo.isGit) {
-                  <div class="detail-row warning">
-                    <mat-icon svgIcon="triangle-exclamation"></mat-icon>
-                    <span>This is a git build</span>
-                  </div>
-                }
-              </div>
-            }
-            <div class="about-list">
-              <button mat-button class="about-item" (click)="openLink('https://rclone.org')">
-                <span>Rclone Website</span>
-                <mat-icon svgIcon="open-link"></mat-icon>
-              </button>
-              <button mat-button class="about-item" (click)="killProcess()">
-                <span>Kill Rclone Process</span>
-                <mat-icon svgIcon="circle-exclamation"></mat-icon>
-              </button>
-            </div>
-          </div>
+        }
+
+        @if (rcloneError) {
+        <div class="error" role="alert" aria-live="assertive">
+          <mat-icon color="warn" svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
+          <span>{{ rcloneError }}</span>
         </div>
-      }
-      @if (currentPage === 'credits') {
-        <div class="overlay-content credits">
-          <strong>Developed By</strong>
-          <button mat-button class="about-item">
-            <span>Hakan İSMAİL</span>
+        }
+
+        @if (rcloneInfo && !loadingRclone) {
+        <div class="rclone-details" role="region" aria-label="Rclone system information">
+          <div class="detail-row">
+            <span class="detail-label">Version:</span>
+            <span class="detail-value">{{ rcloneInfo.version }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Operating System:</span>
+            <span class="detail-value">{{ rcloneInfo.os }} ({{ rcloneInfo.arch }})</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Process ID:</span>
+            <span class="detail-value">{{ rcloneInfo.pid }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Go Version:</span>
+            <span class="detail-value">{{ rcloneInfo.goVersion }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Build Type:</span>
+            <span class="detail-value">{{ rcloneInfo.linking }}</span>
+          </div>
+
+          @if (rcloneInfo.isBeta) {
+          <div class="detail-row warning" role="alert">
+            <mat-icon svgIcon="warning" aria-hidden="true"></mat-icon>
+            <span>This is a beta version - use with caution</span>
+          </div>
+          }
+
+          @if (rcloneInfo.isGit) {
+          <div class="detail-row warning" role="alert">
+            <mat-icon svgIcon="warning" aria-hidden="true"></mat-icon>
+            <span>This is a development build from git</span>
+          </div>
+          }
+        </div>
+        }
+
+        <div class="about-list" role="group" aria-label="Rclone actions">
+          <button type="button" mat-button class="about-item" (click)="openLink('https://rclone.org')"
+            aria-label="Visit Rclone official website">
+            <span>Rclone Website</span>
+            <mat-icon svgIcon="open-link" aria-hidden="true"></mat-icon>
+          </button>
+
+          <button type="button" mat-button class="about-item" (click)="killProcess()"
+            [attr.aria-label]="(rcloneInfo && rcloneInfo.pid) ? 'Kill Rclone process ' + rcloneInfo.pid : 'Kill Rclone process'"
+            [disabled]="!rcloneInfo?.pid">
+            <span>{{ (rcloneInfo && rcloneInfo.pid) ? 'Kill Rclone Process' : 'No Process Running' }}</span>
+            <mat-icon [svgIcon]="(rcloneInfo && rcloneInfo.pid) ? 'circle-exclamation' : 'info'" aria-hidden="true">
+            </mat-icon>
           </button>
         </div>
-      }
-      @if (currentPage === 'legal') {
-        <div class="overlay-content">
-          <p>
-            This application comes with absolutely no warranty. See the
-            <a (click)="openLink('https://www.gnu.org/licenses/gpl-3.0.html')">GNU
-            General Public License, version 3</a>
-            or later for details.
-          </p>
-        </div>
-      }
+      </div>
     </div>
+    }
+
+    @if (currentPage === 'credits') {
+    <div class="overlay-content credits">
+      <strong>Development Team</strong>
+      <button mat-button class="about-item" role="group" aria-label="Developer information">
+        <mat-icon svgIcon="terminal" aria-hidden="true"></mat-icon>
+        <span>Hakan İSMAİL - Lead Developer</span>
+      </button>
+
+      <strong>Acknowledgments</strong>
+      <p>This application is built with modern web technologies and relies on the excellent Rclone project for cloud
+        storage management.</p>
+    </div>
+    }
+
+    @if (currentPage === 'legal') {
+    <div class="overlay-content">
+      <h4>License Information</h4>
+      <p>
+        This application is free and open source software distributed under the terms of the
+        <a (click)="openLink('https://www.gnu.org/licenses/gpl-3.0.html')" role="button" tabindex="0"
+          aria-label="View GNU General Public License version 3">
+          GNU General Public License, version 3
+        </a> or later.
+      </p>
+
+      <p>
+        This program comes with absolutely no warranty. You are free to use, modify, and distribute
+        this software according to the terms of the GPL v3 license.
+      </p>
+
+      <h4>Third-Party Software</h4>
+      <p>
+        This application includes and depends upon various third-party libraries and components,
+        each with their own licensing terms. Please refer to the project repository for a complete
+        list of dependencies and their respective licenses.
+      </p>
+    </div>
+    }
+  </div>
   }
 </div>

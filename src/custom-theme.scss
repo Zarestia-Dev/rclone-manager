@@ -352,13 +352,12 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
     --theme-border: #dbdbdb;
     --faint-blue: #f0f8ff;
     --about-dialog-button-color: #ffffff;
-    
+
     /* Define rgb variables for colors */
     --app-background-rgb: 250, 250, 250;
     --secondary-background-rgb: 255, 255, 255;
     --app-text-color-rgb: 0, 0, 0;
     --secondary-text-color-rgb: 147, 144, 144;
-
   }
 }
 
@@ -381,51 +380,98 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
     --theme-border: #555;
     --faint-blue: #464d50;
     --about-dialog-button-color: #333337;
-    
+
     /* Define rgb variables for colors */
     --app-background-rgb: 34, 34, 38;
     --secondary-background-rgb: 0, 0, 0;
     --app-text-color-rgb: 255, 255, 255;
     --secondary-text-color-rgb: 147, 144, 144;
-    
   }
 }
 
 :root {
-  --accent-color-rgb: #{color.channel(map.get($adwaita-blue-palette, 500), "red", $space: rgb)},
+  --accent-color-rgb: #{color.channel(
+        map.get($adwaita-blue-palette, 500),
+        "red",
+        $space: rgb
+      )},
     #{color.channel(map.get($adwaita-blue-palette, 500), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-blue-palette, 500), "blue", $space: rgb)};
-  --warn-color-rgb: #{color.channel(map.get($adwaita-red-palette, 400), "red", $space: rgb)},
+  --warn-color-rgb: #{color.channel(
+        map.get($adwaita-red-palette, 400),
+        "red",
+        $space: rgb
+      )},
     #{color.channel(map.get($adwaita-red-palette, 400), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-red-palette, 400), "blue", $space: rgb)};
-  --primary-color-rgb: #{color.channel(map.get($adwaita-green-palette, 500), "red", $space: rgb)},
+  --primary-color-rgb: #{color.channel(
+        map.get($adwaita-green-palette, 500),
+        "red",
+        $space: rgb
+      )},
     #{color.channel(map.get($adwaita-green-palette, 500), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-green-palette, 500), "blue", $space: rgb)};
-  --purple-rgb: #{color.channel(map.get($adwaita-purple-palette, 500), "red", $space: rgb)},
+  --purple-rgb: #{color.channel(
+        map.get($adwaita-purple-palette, 500),
+        "red",
+        $space: rgb
+      )},
     #{color.channel(map.get($adwaita-purple-palette, 500), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-purple-palette, 500), "blue", $space: rgb)};
-  --orange-rgb: #{color.channel(map.get($adwaita-orange-palette, 500), "red", $space: rgb)},
+  --orange-rgb: #{color.channel(
+        map.get($adwaita-orange-palette, 500),
+        "red",
+        $space: rgb
+      )},
     #{color.channel(map.get($adwaita-orange-palette, 500), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-orange-palette, 500), "blue", $space: rgb)};
-  --yellow-rgb: #{color.channel(map.get($adwaita-yellow-palette, 500), "red", $space: rgb)},
+  --yellow-rgb: #{color.channel(
+        map.get($adwaita-yellow-palette, 500),
+        "red",
+        $space: rgb
+      )},
     #{color.channel(map.get($adwaita-yellow-palette, 500), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-yellow-palette, 500), "blue", $space: rgb)};
-  --light-green-rgb: #{color.channel(map.get($adwaita-green-palette, 300), "red", $space: rgb)},
+  --light-green-rgb: #{color.channel(
+        map.get($adwaita-green-palette, 300),
+        "red",
+        $space: rgb
+      )},
     #{color.channel(map.get($adwaita-green-palette, 300), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-green-palette, 300), "blue", $space: rgb)};
-  --light-orange-rgb: #{color.channel(map.get($adwaita-orange-palette, 300), "red", $space: rgb)},
+  --light-orange-rgb: #{color.channel(
+        map.get($adwaita-orange-palette, 300),
+        "red",
+        $space: rgb
+      )},
     #{color.channel(map.get($adwaita-orange-palette, 300), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-orange-palette, 300), "blue", $space: rgb)};
-  --light-blue-rgb: #{color.channel(map.get($adwaita-blue-palette, 300), "red", $space: rgb)},
+  --light-blue-rgb: #{color.channel(
+        map.get($adwaita-blue-palette, 300),
+        "red",
+        $space: rgb
+      )},
     #{color.channel(map.get($adwaita-blue-palette, 300), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-blue-palette, 300), "blue", $space: rgb)};
-  --red-rgb: #{color.channel(map.get($adwaita-red-palette, 500), "red", $space: rgb)},
+  --red-rgb: #{color.channel(
+        map.get($adwaita-red-palette, 500),
+        "red",
+        $space: rgb
+      )},
     #{color.channel(map.get($adwaita-red-palette, 500), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-red-palette, 500), "blue", $space: rgb)};
-  --light-theme-color-rgb: #{color.channel(map.get($adwaita-light-palette, 50), "red", $space: rgb)},
+  --light-theme-color-rgb: #{color.channel(
+        map.get($adwaita-light-palette, 50),
+        "red",
+        $space: rgb
+      )},
     #{color.channel(map.get($adwaita-light-palette, 50), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-light-palette, 50), "blue", $space: rgb)};
-  --dark-theme-color-rgb: #{color.channel(map.get($adwaita-light-palette, 900), "red", $space: rgb)},
+  --dark-theme-color-rgb: #{color.channel(
+        map.get($adwaita-light-palette, 900),
+        "red",
+        $space: rgb
+      )},
     #{color.channel(map.get($adwaita-light-palette, 900), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-light-palette, 900), "blue", $space: rgb)};
 
@@ -604,6 +650,11 @@ button {
   }
 }
 
+// ===== FORM FIELDS =====
+.mat-mdc-form-field {
+  width: 100%;
+}
+
 // Animations
 
 @keyframes diskLoadingShimmer {
@@ -662,13 +713,16 @@ button {
 
 @keyframes pulseMode {
   0% {
-    box-shadow: 0 0 0 0 rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.5);
+    box-shadow: 0 0 0 0
+      rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.5);
   }
   50% {
-    box-shadow: 0 0 0 16px rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0);
+    box-shadow: 0 0 0 16px
+      rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0);
+    box-shadow: 0 0 0 0
+      rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0);
   }
 }
 
@@ -683,7 +737,6 @@ button {
     box-shadow: 0 0 0 0 rgba(var(--warn-color-rgb), 0);
   }
 }
-
 
 @keyframes breathing {
   0% {
@@ -700,8 +753,8 @@ button {
   }
 }
 
-
-@keyframes fadeInUp {
+// Animations
+@keyframes fadeIn {
   from {
     opacity: 0;
     transform: translateY(20px);
@@ -711,4 +764,3 @@ button {
     transform: translateY(0);
   }
 }
-  

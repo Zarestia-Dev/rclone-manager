@@ -52,19 +52,23 @@ export class IconService {
       trash: "assets/icons/trash.svg",
       refresh: "assets/icons/rotate.svg",
       "no-internet": "assets/icons/no-internet.svg",
-      error: "assets/icons/triangle-exclamation.svg",
+      error: "assets/icons/circle-exclamation.svg",
       eye: "assets/icons/eye.svg",
       "eye-slash": "assets/icons/eye-slash.svg",
       file: "assets/icons/file.svg",
       home: "assets/icons/home.svg",
       stop: "assets/icons/stop.svg",
       chart: "assets/icons/chart.svg",
-
+      bug: "assets/icons/bug.svg",
+      warning: "assets/icons/warning.svg",
+      export: "assets/icons/export.svg",
+      lock: "assets/icons/lock.svg",
+      
       play: "assets/icons/play.svg",
       pause: "assets/icons/pause.svg",
       "cloud-arrow-up": "assets/icons/cloud-arrow-up.svg",
       cloud : "assets/icons/cloud.svg",
-
+      
       // Remote icons
       drive: "assets/icons/remotes/drive.svg",
       dropbox: "assets/icons/remotes/dropbox.svg",
@@ -72,15 +76,15 @@ export class IconService {
       onedrive: "assets/icons/remotes/onedrive.svg",
       s3: "assets/icons/remotes/s3.svg",
       memory: "assets/icons/remotes/memory.svg",
-
+      
       // Theme icons
       "circle-check": "assets/icons/circle-check.svg",
-
+      
       // App icons
       "rclone-symbolic": "assets/rclone-symbolic.svg",
       rclone: "assets/rclone.svg",
       "rclone-2": "assets/rclone-2.svg",
-
+      
       // Navigation icons
       "left-arrow": "assets/icons/circle-arrow-left.svg",
       "right-arrow": "assets/icons/circle-arrow-right.svg",
@@ -92,6 +96,7 @@ export class IconService {
       "caret-up": "assets/icons/caret-up.svg",
       "caret-down": "assets/icons/caret-down.svg",
       "right-left": "assets/icons/right-left.svg",
+      "arrow-rotate-left": "assets/icons/arrow-rotate-left.svg",
     };
 
     this.icons = icons;

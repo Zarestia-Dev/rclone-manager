@@ -54,6 +54,23 @@ form {
       border-radius: 8px;
       padding: 12px 8px;
       margin-top: 8px;
+      
+      // Disabled state styling
+      &:has(mat-chip-option[disabled]) {
+        opacity: 0.6;
+        pointer-events: none;
+      }
+      
+      mat-chip-option {
+        &[disabled] {
+          opacity: 0.5;
+          cursor: not-allowed;
+          
+          &:hover {
+            background-color: transparent !important;
+          }
+        }
+      }
     }
 
     @media (max-width: 640px) {

@@ -57,4 +57,17 @@ form {
       }
     }
   }
+  
+  // Remote type autocomplete styling
+  .remote-option {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    
+    .remote-label {
+      font-weight: 500;
+      font-size: 14px;
+      color: var(--app-text-color);
+    }
+  }
 }

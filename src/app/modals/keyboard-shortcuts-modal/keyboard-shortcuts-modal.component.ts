@@ -29,8 +29,8 @@ import { MatTableModule } from "@angular/material/table";
   styleUrl: "./keyboard-shortcuts-modal.component.scss",
   animations: [
     trigger("slideToggle", [
-      state("hidden", style({ height: "0px", opacity: 0, overflow: "hidden" })),
-      state("visible", style({ height: "*", opacity: 1, overflow: "hidden" })),
+      state("hidden", style({ height: "0px", opacity: 0, padding: 0, overflow: "hidden" })),
+      state("visible", style({ height: "*", opacity: 1, padding: "*", overflow: "hidden" })),
       transition("hidden <=> visible", animate("300ms ease-in-out")),
     ]),
   ],
@@ -39,14 +39,22 @@ export class KeyboardShortcutsModalComponent {
   searchText = "";
   searchVisible = false; // Controls the visibility of search field
   shortcuts = [
-    { keys: "Ctrl + ,", description: "Preferences" },
-    { keys: "Ctrl + ?", description: "Show Shortcuts" },
-    { keys: "Ctrl + Q / Ctrl + W", description: "Quit" },
-    { keys: "Ctrl + F / F3", description: "Toggle Search Field" },
-    { keys: "Ctrl + N", description: "New Detailed Remote" },
-    { keys: "Ctrl + R", description: "New Quick Remote" },
-    { keys: "Ctrl + O", description: "Open Remote" },
-    { keys: "Ctrl + S", description: "Save" },
+    { keys: "Ctrl + ,", description: "Open Preferences" },
+    { keys: "Ctrl + ?", description: "Show Keyboard Shortcuts" },
+    { keys: "Ctrl + Q", description: "Quit Application" },
+    { keys: "Ctrl + W", description: "Close Window" },
+    { keys: "Ctrl + F", description: "Toggle Search Field" },
+    { keys: "Ctrl + N", description: "Create New Remote (Detailed)" },
+    { keys: "Ctrl + R", description: "Create New Remote (Quick)" },
+    { keys: "Ctrl + O", description: "Open Remote Browser" },
+    { keys: "Ctrl + S", description: "Load Configuration" },
+    { keys: "Ctrl + E", description: "Export Configuration" },
+    { keys: "Ctrl + L", description: "View Logs" },
+    { keys: "Ctrl + T", description: "Toggle Terminal" },
+    { keys: "Ctrl + D", description: "Duplicate Remote" },
+    { keys: "Delete", description: "Delete Selected Remote" },
+    { keys: "Escape", description: "Close Dialog/Cancel Action" },
+    { keys: "Enter", description: "Confirm Action" }
   ];
 
   filteredShortcuts = [...this.shortcuts];
@@ -60,17 +68,68 @@ export class KeyboardShortcutsModalComponent {
     this.dialogRef.close();
   }
 
+  @HostListener("document:keydown.f3", ["$event"])
+  onF3(event: KeyboardEvent) {
+    event.preventDefault();
+    this.toggleSearch();
+    if (this.searchVisible) {
+      // Focus search input after animation
+      setTimeout(() => {
+        const searchInput = document.querySelector('input[aria-label="Search keyboard shortcuts"]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+        }
+      }, 300);
+    }
+  }
+
   toggleSearch() {
     this.searchVisible = !this.searchVisible;
+    if (!this.searchVisible) {
+      this.clearSearch();
+    }
   }
 
   filterShortcuts() {
+    const searchTerm = this.searchText.toLowerCase().trim();
+    
+    if (!searchTerm) {
+      this.filteredShortcuts = [...this.shortcuts];
+      return;
+    }
+
     this.filteredShortcuts = this.shortcuts.filter(
       (shortcut) =>
-        shortcut.description
-          .toLowerCase()
-          .includes(this.searchText.toLowerCase()) ||
-        shortcut.keys.toLowerCase().includes(this.searchText.toLowerCase())
+        shortcut.description.toLowerCase().includes(searchTerm) ||
+        shortcut.keys.toLowerCase().includes(searchTerm) ||
+        // Also search individual key parts
+        shortcut.keys.split('+').some(key => 
+          key.trim().toLowerCase().includes(searchTerm)
+        )
     );
+  }
+
+  clearSearch() {
+    this.searchText = "";
+    this.filteredShortcuts = [...this.shortcuts];
+  }
+
+  // Method to get category for a shortcut (for potential future categorization)
+  getShortcutCategory(shortcut: any): string {
+    const { keys, description } = shortcut;
+    
+    if (keys.includes('Ctrl + N') || keys.includes('Ctrl + R') || keys.includes('Ctrl + O')) {
+      return 'Remote Management';
+    } else if (keys.includes('Ctrl + S') || keys.includes('Ctrl + E') || keys.includes('Ctrl + L')) {
+      return 'File Operations';
+    } else if (keys.includes('Ctrl + C') || keys.includes('Ctrl + V') || keys.includes('Ctrl + X')) {
+      return 'Clipboard';
+    } else if (keys.includes('Tab') || keys.includes('Escape') || keys.includes('Enter')) {
+      return 'Navigation';
+    } else if (keys.includes('Ctrl + ,') || keys.includes('Ctrl + ?')) {
+      return 'Application';
+    }
+    
+    return 'General';
   }
 }

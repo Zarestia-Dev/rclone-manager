@@ -1,12 +1,43 @@
-<mat-nav-list>
-  <h3>{{ data.title || 'Repair Required' }}</h3>
-  <p>{{ data.message || 'A problem was detected. You can try repairing it below.' }}</p>
+<mat-nav-list class="repair-sheet" [class.repairing]="installing">
+  <!-- Header Section with Icon and Content -->
+  <div class="sheet-header">
+    <div class="repair-icon">
+      <mat-icon [svgIcon]="getRepairIcon()"></mat-icon>
+    </div>
+    
+    <div class="sheet-content">
+      <h3>{{ data.title || 'Repair Required' }}</h3>
+      <p>{{ data.message || 'A problem was detected. You can try repairing it below.' }}</p>
+      
+      @if (getRepairDetails()) {
+        <div class="repair-details">
+          @for (detail of getRepairDetails(); track $index) {
+            <div class="detail-item">
+              <mat-icon svgIcon="{{detail.icon}}"></mat-icon>
+              <span><strong>{{detail.label}}:</strong> {{detail.value}}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
 
+  <!-- Actions Section -->
   <div class="sheet-actions">
-    <button mat-raised-button color="accent" (click)="repair()" [disabled]="installing">
-      {{ installing ? 'Repairing...' : 'Repair' }}
+    <button 
+      type="button"
+      class="repair-button"
+      (click)="repair()" 
+      [disabled]="installing"
+      [attr.aria-label]="installing ? 'Repairing in progress' : 'Start repair process'">
       @if (installing) {
-        <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+        <div class="loading-content">
+          <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+          <span>{{ getRepairProgressText() }}</span>
+        </div>
+      } @else {
+        <mat-icon svgIcon="{{getRepairButtonIcon()}}"></mat-icon>
+        <span>{{ getRepairButtonText() }}</span>
       }
     </button>
   </div>

@@ -1,14 +1,18 @@
+import { CommonModule } from "@angular/common";
 import {
   Component,
-  EventEmitter,
-  Output,
   OnInit,
   OnDestroy,
-  ChangeDetectorRef,
   Input,
+  Output,
+  EventEmitter,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
   HostListener,
+  TrackByFunction,
+  OnChanges,
+  SimpleChanges,
 } from "@angular/core";
-import { CommonModule } from "@angular/common";
 import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
@@ -17,8 +21,8 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatExpansionModule } from "@angular/material/expansion";
 import { trigger, transition, style, animate } from "@angular/animations";
-import { Subject, interval, of, from } from "rxjs";
-import { takeUntil, catchError, switchMap, finalize, filter } from "rxjs/operators";
+import { Subject, timer, from, combineLatest, of } from "rxjs";
+import { takeUntil, switchMap, catchError, finalize } from "rxjs/operators";
 
 import { RcloneService } from "../../../services/rclone.service";
 import { InfoService } from "../../../services/info.service";
@@ -29,38 +33,40 @@ import {
   JobInfo,
   Remote,
   RemoteActionProgress,
+  DEFAULT_JOB_STATS,
 } from "../../../shared/components/types";
 
+/** Constants for remote actions */
+
+/** Keyboard shortcuts configuration */
+const KEYBOARD_SHORTCUTS = {
+  MOUNT: 'm',
+  SYNC: 's',
+  COPY: 'c',
+  BROWSE: 'b',
+} as const;
+
+/** Polling interval for system stats in milliseconds */
+const POLLING_INTERVAL = 5000;
+
+/** Default polling interval when component is in background */
+const BACKGROUND_POLLING_INTERVAL = 30000;
+
+/** System stats interface */
 interface SystemStats {
   memoryUsage: string;
   uptime: string;
 }
 
-const DEFAULT_JOB_STATS: GlobalStats = {
-  bytes: 0,
-  totalBytes: 0,
-  speed: 0,
-  eta: 0,
-  totalTransfers: 0,
-  transfers: 0,
-  errors: 0,
-  checks: 0,
-  totalChecks: 0,
-  deletedDirs: 0,
-  deletes: 0,
-  renames: 0,
-  serverSideCopies: 0,
-  serverSideMoves: 0,
-  elapsedTime: 0,
-  lastError: "",
-  fatalError: false,
-  retryError: false,
-  serverSideCopyBytes: 0,
-  serverSideMoveBytes: 0,
-  transferTime: 0,
-  transferring: [],
-};
+/** Action emitters mapping */
+interface ActionEmitters {
+  [key: string]: (remoteName: string) => void;
+}
 
+/** Rclone status type */
+type RcloneStatus = "active" | "inactive" | "error";
+
+/** Animation definitions */
 const ANIMATIONS = [
   trigger("fadeInOut", [
     transition(":enter", [
@@ -79,6 +85,9 @@ const ANIMATIONS = [
   ]),
 ];
 
+/**
+ * GeneralOverviewComponent displays an overview of RClone remotes and system information
+ */
 @Component({
   selector: "app-general-overview",
   standalone: true,
@@ -95,13 +104,16 @@ const ANIMATIONS = [
   templateUrl: "./general-overview.component.html",
   styleUrls: ["./general-overview.component.scss"],
   animations: ANIMATIONS,
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GeneralOverviewComponent implements OnInit, OnDestroy {
+export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
+  // Input properties
   @Input() remotes: Remote[] = [];
   @Input() jobs: JobInfo[] = [];
-  @Input() iconService: any;
+  @Input() iconService!: { getIconName: (type: string) => string };
   @Input() actionInProgress: RemoteActionProgress = {};
 
+  // Output events
   @Output() selectRemote = new EventEmitter<Remote>();
   @Output() mountRemote = new EventEmitter<string>();
   @Output() unmountRemote = new EventEmitter<string>();
@@ -113,26 +125,46 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }>();
   @Output() browseRemote = new EventEmitter<string>();
 
+  // State properties
   bandwidthLimit: BandwidthLimitResponse | null = null;
   isLoadingBandwidth = false;
   bandwidthError: string | null = null;
-  rcloneStatus: "active" | "inactive" | "error" = "inactive";
-
+  rcloneStatus: RcloneStatus = "inactive";
+  
   // Panel states
   bandwidthPanelOpenState = false;
   systemInfoPanelOpenState = false;
   jobInfoPanelOpenState = false;
 
+  // Computed properties
   systemStats: SystemStats = {
     memoryUsage: "0 MB",
     uptime: "0s",
   };
-
+  
   isLoadingStats = false;
   jobStats: GlobalStats = { ...DEFAULT_JOB_STATS };
+  
+  // Cache computed values to avoid recalculation
+  private _totalRemotes = 0;
+  private _activeJobsCount = 0;
+  private _jobCompletionPercentage = 0;
 
   private destroy$ = new Subject<void>();
   hoveredRemote: Remote | null = null;
+  private isComponentVisible = true;
+  
+  // Track by function for better performance
+  readonly trackByRemoteName: TrackByFunction<Remote> = (_, remote) => remote.remoteSpecs.name;
+
+  // Action emitters map for cleaner event handling
+  private readonly actionEmitters: ActionEmitters = {
+    "mount": (remoteName) => this.mountRemote.emit(remoteName),
+    "unmount": (remoteName) => this.unmountRemote.emit(remoteName),
+    "sync": (remoteName) => this.syncRemote.emit(remoteName),
+    "copy": (remoteName) => this.copyRemote.emit(remoteName),
+    "browse": (remoteName) => this.browseRemote.emit(remoteName),
+  };
 
   constructor(
     private rcloneService: RcloneService,
@@ -140,47 +172,108 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     private infoService: InfoService
   ) {}
 
+  /**
+   * Initialize component on ngOnInit lifecycle hook
+   */
   ngOnInit(): void {
     this.initializeComponent();
+    this.setupVisibilityListener();
   }
 
+  /**
+   * Clean up on ngOnDestroy lifecycle hook
+   */
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
   }
 
-  private initializeComponent(): void {
-    this.loadInitialData();
-    this.setupPolling();
-    this.setupEventListeners();
+  /**
+   * Handle input changes on ngOnChanges lifecycle hook
+   * @param changes - SimpleChanges object containing changed properties
+   */
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['remotes'] || changes['jobs']) {
+      this.updateComputedValues();
+      this.cdr.markForCheck();
+    }
   }
 
+  /**
+   * Initialize component state and subscriptions
+   */
+  private initializeComponent(): void {
+    this.loadInitialData();
+    this.setupEventListeners();
+    this.updateComputedValues();
+    this.startPolling();
+  }
+
+  /**
+   * Set up visibility change listener to optimize polling
+   */
+  private setupVisibilityListener(): void {
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        this.isComponentVisible = !document.hidden;
+        this.startPolling(); // Restart polling with appropriate interval
+      });
+    }
+  }
+
+  /**
+   * Start polling for system stats with appropriate interval
+   */
+  private startPolling(): void {
+    const interval = this.isComponentVisible ? POLLING_INTERVAL : BACKGROUND_POLLING_INTERVAL;
+    
+    // Clear any existing polling
+    this.destroy$.next();
+    
+    timer(0, interval)
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap(() => from(this.loadSystemStats()))
+      )
+      .subscribe({
+        error: (err) => console.error("Error in system stats polling:", err),
+      });
+  }
+
+  /**
+   * Load initial data for the component
+   */
   private loadInitialData(): void {
     this.loadBandwidthLimit();
-    this.loadSystemStats();
     this.checkRcloneStatus();
   }
 
-  private setupPolling(): void {
-    // Reduced frequency to 5 seconds to prevent UI blocking
-    interval(5000)
-      .pipe(
-        takeUntil(this.destroy$),
-        // Skip if already loading to prevent stacking
-        filter(() => !this.isLoadingStats)
-      )
-      .subscribe(() => this.loadSystemStats());
-  }
-
+  /**
+   * Set up event listeners for reactive data
+   */
   private setupEventListeners(): void {
     this.listenToBandwidthChanges();
     this.listenToRcloneStatusChanges();
   }
 
+  /**
+   * Update computed values based on current state
+   */
+  private updateComputedValues(): void {
+    this._totalRemotes = this.remotes?.length || 0;
+    this._activeJobsCount = this.jobs?.filter((job) => job.status === "Running").length || 0;
+    
+    const totalBytes = this.jobStats.totalBytes || 0;
+    const bytes = this.jobStats.bytes || 0;
+    this._jobCompletionPercentage = totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
+  }
+
+  /**
+   * Check current RClone status
+   */
   private checkRcloneStatus(): void {
-    this.rcloneService
-      .getRcloneInfo()
-      .then((status) => {
+    this.rcloneService.getRcloneInfo()
+      .then((status: any) => {
         this.rcloneStatus = status ? "active" : "inactive";
         this.cdr.markForCheck();
       })
@@ -190,46 +283,55 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
       });
   }
 
+  /**
+   * Listen to bandwidth changes
+   */
   private listenToBandwidthChanges(): void {
-    this.rcloneService
-      .listenToBandwidthChanges()
+    this.rcloneService.listenToBandwidthChanges()
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.loadBandwidthLimit());
   }
 
+  /**
+   * Listen to RClone status changes
+   */
   private listenToRcloneStatusChanges(): void {
-    const status$ = this.rcloneService.listenToRcloneApiReady();
-    const error$ = this.rcloneService.listenToRcloneEngineFailed();
-    const invalidPath$ = this.rcloneService.listenToRclonePathInvalid();
+    const statusStreams$ = combineLatest([
+      this.rcloneService.listenToRcloneApiReady(),
+      this.rcloneService.listenToRcloneEngineFailed(),
+      this.rcloneService.listenToRclonePathInvalid(),
+    ]).pipe(takeUntil(this.destroy$));
 
-    status$.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      this.rcloneStatus = "active";
-      this.cdr.markForCheck();
-    });
-
-    error$.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      this.rcloneStatus = "error";
-      this.cdr.markForCheck();
-    });
-
-    invalidPath$.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      this.rcloneStatus = "error";
+    statusStreams$.subscribe(([isReady, hasFailed, isInvalidPath]: [boolean, boolean, boolean]) => {
+      if (hasFailed || isInvalidPath) {
+        this.rcloneStatus = "error";
+      } else if (isReady) {
+        this.rcloneStatus = "active";
+      } else {
+        this.rcloneStatus = "inactive";
+      }
       this.cdr.markForCheck();
     });
   }
 
+  /**
+   * Load bandwidth limit information
+   */
   loadBandwidthLimit(): void {
-    if (this.isLoadingBandwidth) return;
-
+    if (this.isLoadingBandwidth) {
+      return;
+    }
+    
     this.isLoadingBandwidth = true;
     this.bandwidthError = null;
+    this.cdr.markForCheck();
 
     from(this.rcloneService.getBandwidthLimit())
       .pipe(
+        takeUntil(this.destroy$),
         catchError((error) => {
-          this.bandwidthError = "Failed to load bandwidth limit";
-          // Remove automatic retry to prevent infinite loops
-          console.error("Bandwidth limit error:", error);
+          this.bandwidthError = "Failed to load bandwidth limit. Please try again.";
+          console.error("Error loading bandwidth limit:", error);
           return of(null);
         }),
         finalize(() => {
@@ -237,46 +339,68 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         })
       )
-      .subscribe((response) => {
-        this.bandwidthLimit = response;
+      .subscribe((limit) => {
+        this.bandwidthLimit = limit;
       });
   }
 
+  /**
+   * Load system statistics
+   */
   async loadSystemStats(): Promise<void> {
-    if (this.isLoadingStats) return;
-
+    if (this.isLoadingStats) {
+      return;
+    }
+    
     this.isLoadingStats = true;
+    this.cdr.markForCheck();
 
     try {
       const [memoryStats, coreStats] = await Promise.all([
-        this.rcloneService.getMemoryStats().catch(() => null),
-        this.rcloneService.getCoreStats().catch(() => null),
+        this.rcloneService.getMemoryStats(), 
+        this.rcloneService.getCoreStats(),   
       ]);
-
+      
       this.updateSystemStats(memoryStats, coreStats);
-    } catch {
-      this.rcloneStatus = "error";
+      this.updateComputedValues();
+    } catch (error) {
+      console.error("Error loading system stats:", error);
     } finally {
       this.isLoadingStats = false;
       this.cdr.markForCheck();
     }
   }
 
+  /**
+   * Update system statistics
+   * @param memoryStats - Memory usage statistics
+   * @param coreStats - Core system statistics
+   */
   private updateSystemStats(
     memoryStats: MemoryStats | null,
     coreStats: GlobalStats | null
   ): void {
-    this.systemStats = {
-      memoryUsage: this.formatMemoryUsage(memoryStats),
-      uptime: this.formatUptime(coreStats?.elapsedTime || 0),
-    };
-
-    this.jobStats = coreStats
-      ? { ...DEFAULT_JOB_STATS, ...coreStats }
-      : { ...DEFAULT_JOB_STATS };
+    if (coreStats) {
+      this.jobStats = { ...coreStats };
+      this.systemStats = {
+        memoryUsage: this.formatMemoryUsage(memoryStats),
+        uptime: this.formatUptime(coreStats.elapsedTime || 0),
+      };
+    } else {
+      this.jobStats = { ...DEFAULT_JOB_STATS };
+      this.systemStats = {
+        memoryUsage: this.formatMemoryUsage(memoryStats),
+        uptime: "0s",
+      };
+    }
   }
 
   // Formatting utilities
+  /**
+   * Format bytes to human readable string
+   * @param bytes - Number of bytes
+   * @returns Formatted string with appropriate unit
+   */
   formatBytes(bytes: number): string {
     if (bytes === 0) return "0 B";
 
@@ -287,12 +411,22 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
   }
 
+  /**
+   * Format memory usage
+   * @param memoryStats - Memory statistics
+   * @returns Formatted memory usage string
+   */
   private formatMemoryUsage(memoryStats: MemoryStats | null): string {
     return memoryStats?.HeapAlloc
       ? `${Math.round(memoryStats.HeapAlloc / 1024 / 1024)} MB`
       : "Unknown";
   }
 
+  /**
+   * Format uptime in seconds to human readable string
+   * @param elapsedTimeSeconds - Uptime in seconds
+   * @returns Formatted uptime string
+   */
   formatUptime(elapsedTimeSeconds: number): string {
     if (!elapsedTimeSeconds) return "0s";
 
@@ -308,6 +442,11 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
       : `${seconds}s`;
   }
 
+  /**
+   * Format ETA to human readable string
+   * @param eta - ETA value (can be number or string)
+   * @returns Formatted ETA string
+   */
   formatEta(eta: number | string): string {
     if (!eta) return "0s";
     if (typeof eta === "number") return `${Math.max(eta, 0)}s`;
@@ -318,65 +457,11 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
       : eta;
   }
 
-  // Computed properties
-  get totalRemotes(): number {
-    return this.remotes?.length || 0;
-  }
-
-  get activeJobsCount(): number {
-    return this.jobs?.filter((job) => job.status === "Running").length || 0;
-  }
-
-  get jobCompletionPercentage(): number {
-    const totalBytes = this.jobStats.totalBytes || 0;
-    const bytes = this.jobStats.bytes || 0;
-    return totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
-  }
-
-  get isBandwidthLimited(): boolean {
-    const limit = this.bandwidthLimit;
-    return (
-      !!limit &&
-      limit.rate !== "off" &&
-      limit.rate !== "" &&
-      limit.bytesPerSecond !== -1
-    );
-  }
-
-  get formattedBandwidthRate(): string {
-    if (!this.isBandwidthLimited) return "Unlimited";
-
-    return this.bandwidthLimit!.rate.includes(":")
-      ? this.bandwidthLimit!.rate.split(":")
-          .map((r, i) => `${i === 0 ? "↑" : "↓"}${this.formatRateValue(r)}`)
-          .join(" ")
-      : this.formatRateValue(this.bandwidthLimit!.rate);
-  }
-
-  get bandwidthDisplayValue(): string {
-    if (this.bandwidthError) return "Error loading limit";
-    if (!this.isBandwidthLimited) return "Unlimited";
-
-    const rate = this.formattedBandwidthRate;
-    return rate.includes("↑") && rate.includes("↓")
-      ? rate
-      : `Limited to ${rate}`;
-  }
-
-  private formatRateValue(rate: string): string {
-    if (!rate || rate === "off") return "Unlimited";
-
-    const units = { Ki: "KB/s", Mi: "MB/s", Gi: "GB/s", Ti: "TB/s" };
-    const unit = Object.keys(units).find((u) => rate.endsWith(u));
-
-    if (unit) {
-      return `${rate.replace(unit, "")} ${units[unit as keyof typeof units]}`;
-    }
-
-    const numValue = parseInt(rate);
-    return isNaN(numValue) ? rate : this.formatBytesPerSecond(numValue);
-  }
-
+  /**
+   * Format bytes per second to human readable string
+   * @param bytes - Bytes per second
+   * @returns Formatted string with appropriate unit
+   */
   private formatBytesPerSecond(bytes: number): string {
     if (bytes <= 0) return "Unlimited";
 
@@ -392,136 +477,245 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
   }
 
-  get systemStatusColor(): string {
-    return `status-${this.rcloneStatus}`;
+  /**
+   * Format rate value to human readable string
+   * @param rate - Rate string (e.g., "10MB/s")
+   * @returns Formatted rate string
+   */
+  private formatRateValue(rate: string): string {
+    if (!rate || rate === "off") return "Unlimited";
+
+    const units = { Ki: "KB/s", Mi: "MB/s", Gi: "GB/s", Ti: "TB/s" };
+    const unit = Object.keys(units).find((u) => rate.endsWith(u));
+
+    if (unit) {
+      return `${rate.replace(unit, "")} ${units[unit as keyof typeof units]}`;
+    }
+
+    const numValue = parseInt(rate);
+    return isNaN(numValue) ? rate : this.formatBytesPerSecond(numValue);
+  }
+
+  // Computed properties
+  get totalRemotes(): number {
+    return this._totalRemotes;
+  }
+
+  get activeJobsCount(): number {
+    return this._activeJobsCount;
+  }
+
+  get jobCompletionPercentage(): number {
+    return this._jobCompletionPercentage;
+  }
+
+  get isBandwidthLimited(): boolean {
+    return (
+      !!this.bandwidthLimit &&
+      this.bandwidthLimit.rate !== "off" &&
+      this.bandwidthLimit.rate !== ""
+    );
+  }
+
+  get formattedBandwidthRate(): string {
+    if (!this.bandwidthLimit || this.bandwidthLimit.rate === "off" || this.bandwidthLimit.rate === "") {
+      return "Unlimited";
+    }
+    return this.formatRateValue(this.bandwidthLimit.rate);
+  }
+
+  get bandwidthDisplayValue(): string {
+    if (this.isLoadingBandwidth) return "Loading...";
+    if (this.bandwidthError) return "Error loading limit";
+    if (!this.bandwidthLimit || this.bandwidthLimit.rate === "off" || this.bandwidthLimit.rate === "") {
+      return "Unlimited";
+    }
+    return this.formatRateValue(this.bandwidthLimit.rate);
   }
 
   // Action Progress Utilities
+  /**
+   * Check if an action is in progress for a remote
+   * @param remoteName - Name of the remote
+   * @param action - Action to check
+   * @returns True if action is in progress
+   */
   isActionInProgress(remoteName: string, action: string): boolean {
     return this.actionInProgress[remoteName] === action;
   }
 
+  /**
+   * Check if any action is in progress for a remote
+   * @param remoteName - Name of the remote
+   * @returns True if any action is in progress
+   */
   isAnyActionInProgress(remoteName: string): boolean {
     return !!this.actionInProgress[remoteName];
   }
 
-  getActionInProgress(remoteName: string): string | null {
-    return this.actionInProgress[remoteName] || null;
-  }
-
   // Specific action state checks
-  isMounting(remoteName: string): boolean {
-    return this.isActionInProgress(remoteName, 'mount');
+  isMounting = (remoteName: string): boolean => 
+    this.isActionInProgress(remoteName, "mount");
+
+  isUnmounting = (remoteName: string): boolean => 
+    this.isActionInProgress(remoteName, "unmount");
+
+  isSyncing = (remoteName: string): boolean => 
+    this.isActionInProgress(remoteName, "sync");
+
+  isStoppingSyncing = (remoteName: string): boolean => 
+    this.isActionInProgress(remoteName, "stop");
+
+  isCopying = (remoteName: string): boolean => 
+    this.isActionInProgress(remoteName, "copy");
+
+  isStoppingCopying = (remoteName: string): boolean => 
+    this.isActionInProgress(remoteName, "stop");
+
+  isBrowsing = (remoteName: string): boolean => 
+    this.isActionInProgress(remoteName, "open");
+
+  /**
+   * Get ARIA label for a remote card
+   * @param remote - Remote object
+   * @returns ARIA label string
+   */
+  getRemoteAriaLabel(remote: Remote): string {
+    const status = [];
+    if (remote.mountState?.mounted) status.push('Mounted');
+    if (remote.syncState?.isOnSync) status.push('Syncing');
+    if (remote.copyState?.isOnCopy) status.push('Copying');
+    
+    return `${remote.remoteSpecs.name} (${remote.remoteSpecs.type})${status.length ? ` - ${status.join(', ')}` : ''}`;
   }
 
-  isUnmounting(remoteName: string): boolean {
-    return this.isActionInProgress(remoteName, 'unmount');
-  }
-
-  isSyncing(remoteName: string): boolean {
-    return this.isActionInProgress(remoteName, 'sync');
-  }
-
-  isStoppingSyncing(remoteName: string): boolean {
-    return this.isActionInProgress(remoteName, 'stop');
-  }
-
-  isCopying(remoteName: string): boolean {
-    return this.isActionInProgress(remoteName, 'copy');
-  }
-
-  isStoppingCopying(remoteName: string): boolean {
-    return this.isActionInProgress(remoteName, 'stop');
-  }
-
-  isBrowsing(remoteName: string): boolean {
-    return this.isActionInProgress(remoteName, 'open');
+  /**
+   * Check if remote is busy with any action
+   * @param remote - Remote object
+   * @returns True if remote is busy
+   */
+  isRemoteBusy(remote: Remote): boolean {
+    return this.isAnyActionInProgress(remote.remoteSpecs.name);
   }
 
   // Event handlers
+  /**
+   * Handle quick action button clicks
+   * @param event - Click event
+   * @param remoteName - Name of the remote
+   * @param action - Action to perform
+   */
   onQuickAction(event: Event, remoteName: string, action: string): void {
-    event.stopPropagation(); // Prevent card click
+    event.stopPropagation();
 
-    switch (action) {
-      case "mount":
-        this.mountRemote.emit(remoteName);
-        break;
-      case "unmount":
-        this.unmountRemote.emit(remoteName);
-        break;
-      case "sync":
-        this.syncRemote.emit(remoteName);
-        break;
-      case "stop-sync":
-        this.stopJob.emit({ type: "sync", remoteName });
-        break;
-      case "copy":
-        this.copyRemote.emit(remoteName);
-        break;
-      case "stop-copy":
-        this.stopJob.emit({ type: "copy", remoteName });
-        break;
-      case "browse":
-        this.browseRemote.emit(remoteName);
-        break;
-      default:
-        console.warn("Unknown action:", action);
+    const emitter = this.actionEmitters[action];
+    if (emitter) {
+      emitter(remoteName);
+      return;
+    }
+
+    // Handle stop actions
+    if (action === 'stop-sync') {
+      this.stopJob.emit({ type: "sync", remoteName });
+    } else if (action === 'stop-copy') {
+      this.stopJob.emit({ type: "copy", remoteName });
+    } else {
+      console.warn("Unknown action:", action);
     }
   }
 
+  /**
+   * Handle remote hover event
+   * @param remote - Hovered remote
+   */
   onRemoteHover(remote: Remote): void {
     this.hoveredRemote = remote;
   }
 
+  /**
+   * Handle remote leave event
+   */
   onRemoteLeave(): void {
     this.hoveredRemote = null;
   }
 
+  /**
+   * Handle keyboard shortcuts
+   * @param event - Keyboard event
+   */
   @HostListener("window:keydown", ["$event"])
   onKeyDown(event: KeyboardEvent): void {
-    if (
+    if (this.shouldIgnoreKeyEvent(event)) return;
+
+    const key = event.key.toLowerCase();
+    const remote = this.hoveredRemote!;
+    const remoteName = remote.remoteSpecs.name;
+
+    const keyAction = this.getKeyAction(key, remote);
+    if (keyAction) {
+      keyAction();
+      event.preventDefault();
+    }
+  }
+
+  /**
+   * Check if key event should be ignored
+   * @param event - Keyboard event
+   * @returns True if event should be ignored
+   */
+  private shouldIgnoreKeyEvent(event: KeyboardEvent): boolean {
+    return (
       event.target instanceof HTMLInputElement ||
       event.target instanceof HTMLTextAreaElement ||
       !this.hoveredRemote
-    ) {
-      return;
-    }
+    );
+  }
 
-    const key = event.key.toLowerCase();
-    const remote = this.hoveredRemote;
+  /**
+   * Get action for keyboard shortcut
+   * @param key - Pressed key
+   * @param remote - Remote object
+   * @returns Action function or null
+   */
+  private getKeyAction(key: string, remote: Remote): (() => void) | null {
     const remoteName = remote.remoteSpecs.name;
 
-    const keyActions: Record<string, () => void> = {
-      m: () => {
-        remote.mountState?.mounted
-          ? this.unmountRemote.emit(remoteName)
-          : this.mountRemote.emit(remoteName);
-      },
-      s: () => {
-        remote.syncState?.isOnSync
-          ? this.stopJob.emit({ type: "sync", remoteName })
-          : this.syncRemote.emit(remoteName);
-      },
-      c: () => {
-        remote.copyState?.isOnCopy
-          ? this.stopJob.emit({ type: "copy", remoteName })
-          : this.copyRemote.emit(remoteName);
-      },
-      b: () => {
-        if (remote.mountState?.mounted) {
-          this.browseRemote.emit(remoteName);
-        } else {
-          this.infoService.openSnackBar(
-            "Remote is not mounted. Please mount it first.",
-            "Close"
-          );
-        }
-      },
-    };
-
-    if (keyActions[key]) {
-      keyActions[key]();
-      event.preventDefault();
+    switch (key) {
+      case KEYBOARD_SHORTCUTS.MOUNT:
+        return () => {
+          remote.mountState?.mounted
+            ? this.unmountRemote.emit(remoteName)
+            : this.mountRemote.emit(remoteName);
+        };
+      
+      case KEYBOARD_SHORTCUTS.SYNC:
+        return () => {
+          remote.syncState?.isOnSync
+            ? this.stopJob.emit({ type: "sync", remoteName })
+            : this.syncRemote.emit(remoteName);
+        };
+      
+      case KEYBOARD_SHORTCUTS.COPY:
+        return () => {
+          remote.copyState?.isOnCopy
+            ? this.stopJob.emit({ type: "copy", remoteName })
+            : this.copyRemote.emit(remoteName);
+        };
+      
+      case KEYBOARD_SHORTCUTS.BROWSE:
+        return () => {
+          if (remote.mountState?.mounted) {
+            this.browseRemote.emit(remoteName);
+          } else {
+            this.infoService.openSnackBar(
+              "Remote is not mounted. Please mount it first.",
+              "Close"
+            );
+          }
+        };
+      
+      default:
+        return null;
     }
   }
 }

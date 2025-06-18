@@ -1,105 +1,149 @@
+:host {
+  // Spacing
+  --modal-padding: 12px;
+  --content-gap: 24px;
+  --icon-size: 140px;
+
+  // Border radius
+  --modal-border-radius: 16px;
+  --button-border-radius: 12px;
+  --badge-border-radius: 20px;
+  --overlay-border-radius: 16px;
+
+  // Colors
+  --badge-background: rgba(var(--accent-color-rgb), 0.12);
+  --badge-color: var(--accent-color);
+  --button-background: rgba(var(--app-text-color-rgb), 0.04);
+  --button-hover-background: rgba(var(--app-text-color-rgb), 0.08);
+
+  // Transitions
+  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
 .about-modal {
   height: 100%;
   background: var(--app-background);
   display: flex;
   flex-direction: column;
-  position: relative; /* Ensure absolute positioning works for children */
-  overflow: hidden; /* Hide overflow from children */
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
-  mat-divider {
-    background-color: var(--secondary-background);
-  }
-
-  .modal-header {
-    transition: box-shadow 0.2s;
-    box-shadow: none;
-
-    &.scrolled {
-      box-shadow: var(--box-shadow);
-    }
-
-    p {
-      opacity: 0;
-      transition: opacity 0.5s ease-in-out;
-    }
-    &.scrolled p {
-      opacity: 1;
-    }
-  }
-
-  .modal-content {
-    padding: 12px;
-    overflow: auto;
-    position: relative;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .app-icon {
-    width: 140px;
-    height: 140px;
-    min-height: 128px;
-  }
-
-  .app-name {
-    font-size: 22px;
-    font-weight: bold;
-    margin-block: 10px;
-  }
-
-  .app-team {
-    font-size: 16px;
-    color: var(--secondary-text-color);
-    margin-bottom: 10px;
-    font-weight: 500;
-  }
-
-  .version-badge {
-    display: inline-block;
-    background: color-mix(in srgb, var(--accent-color) 15%, transparent);
-    color: var(--accent-color);
-    padding: 6px 16px;
-    border-radius: 18px;
-    font-weight: bold;
-    font-size: 16px;
-
-    &:hover {
-      background: color-mix(in srgb, var(--accent-color) 20%, transparent);
-    }
-  }
-
+  // Navigation List
   .about-list {
-    margin-top: 20px;
+    margin-top: var(--content-gap);
     display: flex;
     width: 100%;
+    max-width: 400px;
     flex-direction: column;
-    gap: 18px;
+    gap: 16px;
   }
 
+  // About Items
   .about-item {
     display: flex;
+    align-items: center;
     justify-content: space-between;
     padding-inline-start: 16px;
     background-color: var(--about-dialog-button-color);
     flex-direction: row-reverse !important;
     height: 54px !important;
-    width: 100%;
     box-shadow: var(--box-shadow);
   }
+
+  // Stacked Buttons Group
   .stacked-buttons {
     display: flex;
     flex-direction: column;
     box-shadow: var(--box-shadow);
     border-radius: 16px;
+    overflow: hidden;
 
     .about-item {
-      box-shadow: none !important;
+      border-radius: 0 !important;
     }
   }
 
-  /* Overlay Style */
+  // Modal Header
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+    transition: var(--transition-standard);
+
+    &.scrolled {
+      box-shadow: var(--shadow-light);
+      border-bottom-color: rgba(var(--app-text-color-rgb), 0.12);
+    }
+
+    p {
+      opacity: 0;
+      transition: var(--transition-standard);
+    }
+
+    &.scrolled p {
+      opacity: 1;
+    }
+  }
+
+  // Main Content Area
+  .modal-content {
+    flex: 1;
+    padding: var(--modal-padding);
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    // App Icon
+    .app-icon {
+      width: var(--icon-size);
+      height: var(--icon-size);
+      min-height: var(--icon-size);
+      margin-bottom: 24px;
+    }
+
+    // App Name
+    .app-name {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--app-text-color);
+      margin: 0 0 12px 0;
+      text-align: center;
+    }
+
+    // Developer Name
+    .app-team {
+      font-size: 16px;
+      color: var(--secondary-text-color);
+      margin: 0 0 20px 0;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    // Version Badge
+    .version-badge {
+      display: inline-block;
+      background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+      color: var(--accent-color);
+      padding: 6px 16px;
+      border-radius: 18px;
+      font-weight: bold;
+      font-size: 16px;
+      transition: var(--transition-standard);
+
+      &:hover {
+        background: rgba(var(--accent-color-rgb), 0.18);
+        border-color: rgba(var(--accent-color-rgb), 0.4);
+        box-shadow: var(--shadow-light);
+      }
+    }
+  }
+
+  // Overlay Pages
   .overlay {
     position: absolute;
     top: 0;
@@ -110,9 +154,7 @@
     box-shadow: var(--box-shadow);
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    z-index: 2;
+    z-index: 10;
 
     .overlay-header {
       display: flex;
@@ -124,76 +166,122 @@
       width: calc(100% - 16px);
     }
 
-    .credits {
-      color: var(--app-text-color);
-      display: flex;
-      flex-direction: column;
-      justify-content: start;
-      align-items: baseline;
-      gap: 10px;
-    }
-
     .overlay-content {
-      width: 94%;
-      flex-grow: 1;
-      padding-block-start: 16px;
+      flex: 1;
+      padding: var(--modal-padding);
+      overflow: auto;
 
-      .rclone-info {
-        
-        h3 {
-          margin-top: 0;
-          margin-bottom: 16px;
+      // Credits Section
+      &.credits {
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
+        gap: 16px;
+
+        strong {
+          font-size: 18px;
+          font-weight: 600;
+          color: var(--app-text-color);
         }
-        
+      }
+
+      // Rclone Information Section
+      .rclone-info {
+        h3 {
+          font-size: 20px;
+          font-weight: 600;
+          color: var(--app-text-color);
+          margin: 0 0 20px 0;
+        }
+
         .loading,
         .error {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 12px;
+          padding: 16px;
+          border-radius: var(--button-border-radius);
           margin: 16px 0;
+          font-size: 15px;
+        }
+
+        .loading {
+          background: rgba(var(--primary-color-rgb), 0.08);
+          color: var(--primary-color);
+          border: 1px solid rgba(var(--primary-color-rgb), 0.2);
         }
 
         .error {
+          background: rgba(var(--warn-color-rgb), 0.08);
           color: var(--warn-color);
+          border: 1px solid rgba(var(--warn-color-rgb), 0.2);
         }
-        
+
         .rclone-details {
-          margin-bottom: 16px;
-          padding-inline: 16px;
-          
+          background: var(--button-background);
+          border: 1px solid var(--surface-border);
+          border-radius: var(--button-border-radius);
+          padding: 20px;
+          margin-bottom: 20px;
+
           .detail-row {
             display: flex;
-            margin: 8px 0;
-            
+            align-items: center;
+            margin: 12px 0;
+            font-size: 15px;
+
             &.warning {
               color: var(--warn-color);
+              background: rgba(var(--warn-color-rgb), 0.08);
+              border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+              padding: 12px;
+              border-radius: 8px;
               margin-top: 16px;
+              gap: 8px;
             }
 
             .detail-label {
-              font-weight: 500;
-              min-width: 100px;
+              font-weight: 600;
+              color: var(--app-text-color);
+              min-width: 120px;
+              margin-right: 16px;
             }
 
             .detail-value {
-              color: var(--text-secondary-color);
+              color: var(--secondary-text-color);
+              font-family: "SF Mono", "Menlo", "Monaco", "Roboto Mono",
+                monospace;
+              font-size: 14px;
+              background: rgba(var(--app-text-color-rgb), 0.05);
+              padding: 4px 8px;
+              border-radius: 6px;
+              border: 1px solid var(--surface-border);
             }
           }
         }
       }
 
+      // Legal Section
+      p {
+        font-size: 15px;
+        line-height: 1.6;
+        color: var(--secondary-text-color);
+        margin: 0;
+      }
+
       a {
         color: var(--accent-color);
-        text-decoration: underline;
         font-weight: 500;
         cursor: pointer;
+        transition: var(--transition-quick);
+        border-bottom: 1px solid rgba(var(--accent-color-rgb), 0.3);
+
+        &:hover {
+          color: var(--primary-color);
+          border-bottom-color: var(--primary-color);
+        }
       }
     }
-  }
-
-  .back-btn {
-    position: absolute;
-    left: 10px;
-    top: 10px;
   }
 }

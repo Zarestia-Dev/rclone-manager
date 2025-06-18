@@ -130,10 +130,10 @@
                   <div class="detail-label">Job ID</div>
                   <div class="detail-value">{{currentJobId || 'N/A'}}</div>
                 </div>
-                @if (stats.startTime) {
+                @if (jobStats.startTime) {
                 <div class="job-detail-item">
                   <div class="detail-label">Started</div>
-                  <div class="detail-value">{{stats.startTime | date:'medium'}}</div>
+                  <div class="detail-value">{{jobStats.startTime | date:'medium'}}</div>
                 </div>
                 }
                 <div class="job-detail-item">
@@ -145,7 +145,7 @@
           </mat-card>
 
           <!-- Statistics Panel -->
-          <mat-card class="detail-panel stats-panel">
+          <mat-card class="detail-panel jobStats-panel">
             <mat-card-header class="panel-header">
               <mat-card-title class="panel-title-content">
                 <mat-icon svgIcon="chart" class="panel-icon"></mat-icon>
@@ -153,17 +153,17 @@
               </mat-card-title>
             </mat-card-header>
             <mat-card-content class="panel-content">
-              <div class="stats-grid" [ngClass]="operationClass">
+              <div class="jobStats-grid" [ngClass]="operationClass">
                 <div class="stat-item primary">
                   <div class="stat-header">
-                    <div class="stat-value">{{stats.bytes | filesize}}</div>
+                    <div class="stat-value">{{jobStats.bytes | filesize}}</div>
                     <div class="stat-label">Transferred</div>
                   </div>
                   <mat-progress-bar [color]="operationColor" mode="determinate"
-                    [value]="(stats.bytes / stats.totalBytes) * 100" class="stat-progress"></mat-progress-bar>
+                    [value]="(jobStats.bytes / jobStats.totalBytes) * 100" class="stat-progress"></mat-progress-bar>
                 </div>
                 <div class="stat-item">
-                  <div class="stat-value">{{stats.totalBytes | filesize}}</div>
+                  <div class="stat-value">{{jobStats.totalBytes | filesize}}</div>
                   <div class="stat-label">Total Size</div>
                 </div>
                 <div class="stat-item">
@@ -171,21 +171,21 @@
                   <div class="stat-label">Speed</div>
                 </div>
                 <div class="stat-item">
-                  <div class="stat-value">{{stats.elapsedTime | formatTime}}</div>
+                  <div class="stat-value">{{jobStats.elapsedTime | formatTime}}</div>
                   <div class="stat-label">Elapsed Time</div>
                 </div>
                 <div class="stat-item primary">
                   <div class="stat-header">
-                    <div class="stat-value">{{stats.eta | formatTime}}</div>
+                    <div class="stat-value">{{jobStats.eta | formatTime}}</div>
                     <div class="stat-label">ETA</div>
                   </div>
                   <mat-progress-bar [color]="operationColor" mode="determinate"
-                    [value]="(stats.elapsedTime / (stats.elapsedTime + stats.eta)) * 100"
+                    [value]="(jobStats.elapsedTime / (jobStats.elapsedTime + jobStats.eta)) * 100"
                     class="stat-progress"></mat-progress-bar>
                 </div>
-                <div class="stat-item" [class.has-error]="stats.errors > 0"
-                  [matTooltip]="'Last Error: ' + stats.lastError" [matTooltipDisabled]="!stats.lastError">
-                  <div class="stat-value">{{stats.errors}}</div>
+                <div class="stat-item" [class.has-error]="jobStats.errors > 0"
+                  [matTooltip]="'Last Error: ' + jobStats.lastError" [matTooltipDisabled]="!jobStats.lastError">
+                  <div class="stat-value">{{jobStats.errors}}</div>
                   <div class="stat-label">Errors</div>
                 </div>
               </div>

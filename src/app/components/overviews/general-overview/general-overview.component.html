@@ -1,29 +1,29 @@
 <div class="general-overview" @fadeInOut>
-  <div class="overview-header">
+  <div class="overview-header" role="banner">
     <div class="header-content">
-      <div class="title-section">
-        <mat-icon svgIcon="rclone-2" class="app-icon"></mat-icon>
-        <h2>RClone Manager</h2>
+      <div class="title-section" aria-label="Application title">
+        <mat-icon svgIcon="rclone-2" class="app-icon" aria-hidden="true"></mat-icon>
+        <h2 id="app-title">RClone Manager</h2>
       </div>
-      <div class="header-divider"></div>
+      <div class="header-divider" aria-hidden="true"></div>
     </div>
   </div>
 
-  <div class="overview-content">
+  <div class="overview-content" role="main">
     <mat-accordion multi>
       <!-- Quick Remote Access Panel -->
-      <mat-card class="remotes-panel">
+      <mat-card class="remotes-panel" role="region" aria-labelledby="remotes-panel-title">
         <mat-card-header class="remotes-header">
-          <mat-card-title class="panel-title-content">
-            <mat-icon svgIcon="cloud" class="remotes-icon"></mat-icon>
+          <mat-card-title id="remotes-panel-title" class="panel-title-content">
+            <mat-icon svgIcon="cloud" class="remotes-icon" aria-hidden="true"></mat-icon>
             <span>Quick Remote Access</span>
-            <span class="remote-count">{{ remotes.length }}</span>
+            <span class="remote-count" aria-label="Number of remotes">{{ remotes.length }}</span>
           </mat-card-title>
         </mat-card-header>
 
         <mat-card-content class="remotes-content">
-          <div class="remotes-grid">
-            @for (remote of remotes; track remote.remoteSpecs.name) {
+          <div class="remotes-grid" role="grid" aria-readonly="true">
+            @for (remote of remotes; track trackByRemoteName($index, remote)) {
             <mat-card 
               class="remote-card" 
               [class.mounted]="remote.mountState?.mounted"
@@ -33,6 +33,11 @@
               (click)="selectRemote.emit(remote)" 
               (mouseenter)="onRemoteHover(remote)" 
               (mouseleave)="onRemoteLeave()"
+              role="gridcell"
+              [attr.aria-label]="getRemoteAriaLabel(remote)"
+              [attr.aria-busy]="isRemoteBusy(remote)"
+              tabindex="0"
+              (keydown.enter)="selectRemote.emit(remote)"
             >
               <mat-card-header class="remote-header">
                 <div class="remote-info">
@@ -40,6 +45,7 @@
                     <mat-icon 
                       [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"
                       class="remote-type-icon"
+                      aria-hidden="true"
                     ></mat-icon>
                   </div>
                   <div class="remote-details">
@@ -47,27 +53,27 @@
                     <span class="remote-type">{{ remote.remoteSpecs.type | titlecase }}</span>
                   </div>
                 </div>
-                <div class="remote-status-indicators">
+                <div class="remote-status-indicators" aria-hidden="true">
                   @if (remote.mountState?.mounted) {
                     <div class="status-badge mounted">
-                      <mat-icon svgIcon="mount" class="status-icon"></mat-icon>
+                      <mat-icon svgIcon="mount" class="status-icon" aria-label="Mounted"></mat-icon>
                     </div>
                   }
                   @if (remote.syncState?.isOnSync) {
                     <div class="status-badge syncing">
-                      <mat-icon svgIcon="refresh" class="status-icon"></mat-icon>
+                      <mat-icon svgIcon="refresh" class="status-icon" aria-label="Syncing"></mat-icon>
                     </div>
                   }
                   @if (remote.copyState?.isOnCopy) {
                     <div class="status-badge copying">
-                      <mat-icon svgIcon="copy" class="status-icon"></mat-icon>
+                      <mat-icon svgIcon="copy" class="status-icon" aria-label="Copying"></mat-icon>
                     </div>
                   }
                 </div>
               </mat-card-header>
 
               <mat-card-content class="remote-content">
-                <div class="quick-actions">
+                <div class="quick-actions" role="toolbar" [attr.aria-label]="'Actions for ' + remote.remoteSpecs.name">
                   @if (!remote.mountState?.mounted) {
                     <button 
                       mat-mini-fab 
@@ -76,11 +82,12 @@
                       [disabled]="isMounting(remote.remoteSpecs.name)"
                       (click)="onQuickAction($event, remote.remoteSpecs.name, 'mount')" 
                       class="action-btn mount-btn"
+                      aria-label="Mount remote"
                     >
                       @if (isMounting(remote.remoteSpecs.name)) {
-                        <mat-spinner diameter="20"></mat-spinner>
+                        <mat-spinner diameter="20" aria-label="Mounting in progress"></mat-spinner>
                       } @else {
-                        <mat-icon svgIcon="mount"></mat-icon>
+                        <mat-icon svgIcon="mount" aria-hidden="true"></mat-icon>
                       }
                     </button>
                   } @else {
@@ -91,11 +98,12 @@
                       [disabled]="isUnmounting(remote.remoteSpecs.name)"
                       (click)="onQuickAction($event, remote.remoteSpecs.name, 'unmount')" 
                       class="action-btn unmount-btn"
+                      aria-label="Unmount remote"
                     >
                       @if (isUnmounting(remote.remoteSpecs.name)) {
-                        <mat-spinner diameter="20"></mat-spinner>
+                        <mat-spinner diameter="20" aria-label="Unmounting in progress"></mat-spinner>
                       } @else {
-                        <mat-icon svgIcon="eject"></mat-icon>
+                        <mat-icon svgIcon="eject" aria-hidden="true"></mat-icon>
                       }
                     </button>
                   }
@@ -108,11 +116,12 @@
                       [disabled]="isSyncing(remote.remoteSpecs.name)"
                       (click)="onQuickAction($event, remote.remoteSpecs.name, 'sync')" 
                       class="action-btn sync-btn"
+                      aria-label="Start sync"
                     >
                       @if (isSyncing(remote.remoteSpecs.name)) {
-                        <mat-spinner diameter="20"></mat-spinner>
+                        <mat-spinner diameter="20" aria-label="Sync starting in progress"></mat-spinner>
                       } @else {
-                        <mat-icon svgIcon="sync"></mat-icon>
+                        <mat-icon svgIcon="sync" aria-hidden="true"></mat-icon>
                       }
                     </button>
                   } @else {
@@ -123,11 +132,12 @@
                       [disabled]="isStoppingSyncing(remote.remoteSpecs.name)"
                       (click)="onQuickAction($event, remote.remoteSpecs.name, 'stop-sync')" 
                       class="action-btn stop-btn"
+                      aria-label="Stop sync"
                     >
                       @if (isStoppingSyncing(remote.remoteSpecs.name)) {
-                        <mat-spinner diameter="20"></mat-spinner>
+                        <mat-spinner diameter="20" aria-label="Sync stopping in progress"></mat-spinner>
                       } @else {
-                        <mat-icon svgIcon="stop"></mat-icon>
+                        <mat-icon svgIcon="stop" aria-hidden="true"></mat-icon>
                       }
                     </button>
                   }
@@ -139,11 +149,12 @@
                       [disabled]="isCopying(remote.remoteSpecs.name)"
                       (click)="onQuickAction($event, remote.remoteSpecs.name, 'copy')" 
                       class="action-btn copy-btn"
+                      aria-label="Start copy"
                     >
                       @if (isCopying(remote.remoteSpecs.name)) {
-                        <mat-spinner diameter="20"></mat-spinner>
+                        <mat-spinner diameter="20" aria-label="Copy starting in progress"></mat-spinner>
                       } @else {
-                        <mat-icon svgIcon="copy"></mat-icon>
+                        <mat-icon svgIcon="copy" aria-hidden="true"></mat-icon>
                       }
                     </button>
                   } @else {
@@ -154,11 +165,12 @@
                       [disabled]="isStoppingCopying(remote.remoteSpecs.name)"
                       (click)="onQuickAction($event, remote.remoteSpecs.name, 'stop-copy')" 
                       class="action-btn stop-btn"
+                      aria-label="Stop copy"
                     >
                       @if (isStoppingCopying(remote.remoteSpecs.name)) {
-                        <mat-spinner diameter="20"></mat-spinner>
+                        <mat-spinner diameter="20" aria-label="Copy stopping in progress"></mat-spinner>
                       } @else {
-                        <mat-icon svgIcon="stop"></mat-icon>
+                        <mat-icon svgIcon="stop" aria-hidden="true"></mat-icon>
                       }
                     </button>
                   }
@@ -169,35 +181,41 @@
                     matTooltip="Browse (B)"
                     (click)="onQuickAction($event, remote.remoteSpecs.name, 'browse')" 
                     class="action-btn browse-btn"
+                    aria-label="Browse remote"
                   >
                     @if (isBrowsing(remote.remoteSpecs.name)) {
-                      <mat-spinner diameter="20"></mat-spinner>
+                      <mat-spinner diameter="20" aria-label="Browsing in progress"></mat-spinner>
                     } @else {
-                      <mat-icon svgIcon="folder"></mat-icon>
+                      <mat-icon svgIcon="folder" aria-hidden="true"></mat-icon>
                     }
                   </button>
                 </div>
               </mat-card-content>
             </mat-card>
+            } @empty {
+              <div class="no-remotes-message" role="alert">
+                <mat-icon svgIcon="cloud-off" aria-hidden="true"></mat-icon>
+                <span>No remotes configured</span>
+              </div>
             }
           </div>
         </mat-card-content>
       </mat-card>
 
       <!-- Bandwidth Limit Panel -->
-      <mat-expansion-panel [(expanded)]="bandwidthPanelOpenState" class="bandwidth-panel">
+      <mat-expansion-panel [(expanded)]="bandwidthPanelOpenState" class="bandwidth-panel" role="region">
         <mat-expansion-panel-header>
           <mat-panel-title>
             <div class="panel-title-content">
-              <mat-icon svgIcon="right-left" class="bandwidth-icon"></mat-icon>
+              <mat-icon svgIcon="right-left" class="bandwidth-icon" aria-hidden="true"></mat-icon>
               <span>Bandwidth Limit</span>
             </div>
           </mat-panel-title>
           <mat-panel-description>
             @if (isLoadingBandwidth) {
-              <span>Loading...</span>
+              <span aria-busy="true">Loading...</span>
             } @else if (bandwidthError) {
-              <span>Error loading bandwidth info</span>
+              <span class="error-text">Error loading bandwidth info</span>
             } @else {
               <span>{{ bandwidthDisplayValue }}</span>
             }
@@ -205,22 +223,22 @@
         </mat-expansion-panel-header>
 
         @if (isLoadingBandwidth) {
-          <div class="bandwidth-loading">
-            <mat-spinner diameter="24"></mat-spinner>
+          <div class="bandwidth-loading" aria-live="polite">
+            <mat-spinner diameter="24" aria-label="Loading bandwidth information"></mat-spinner>
             <span>Loading bandwidth information...</span>
           </div>
         } @else if (bandwidthError) {
-          <div class="bandwidth-error">
-            <mat-icon color="warn" svgIcon="circle-exclamation"></mat-icon>
+          <div class="bandwidth-error" role="alert">
+            <mat-icon color="warn" svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
             <span>{{ bandwidthError }}</span>
-            <button mat-icon-button (click)="loadBandwidthLimit()" matTooltip="Retry">
-              <mat-icon color="primary" svgIcon="refresh"></mat-icon>
+            <button mat-icon-button (click)="loadBandwidthLimit()" matTooltip="Retry" aria-label="Retry loading bandwidth">
+              <mat-icon color="primary" svgIcon="refresh" aria-hidden="true"></mat-icon>
             </button>
           </div>
         } @else {
           <div class="bandwidth-content">
             <div class="bandwidth-status" [class.limited]="isBandwidthLimited" [class.unlimited]="!isBandwidthLimited">
-              <div class="status-indicator"></div>
+              <div class="status-indicator" aria-hidden="true"></div>
               <span class="status-text">{{ bandwidthDisplayValue }}</span>
             </div>
 
@@ -245,60 +263,60 @@
       </mat-expansion-panel>
 
       <!-- System Info Panel -->
-      <mat-expansion-panel [(expanded)]="systemInfoPanelOpenState" class="system-info-panel">
+      <mat-expansion-panel [(expanded)]="systemInfoPanelOpenState" class="system-info-panel" role="region">
         <mat-expansion-panel-header>
           <mat-panel-title>
             <div class="panel-title-content">
-              <mat-icon svgIcon="question" class="info-icon"></mat-icon>
+              <mat-icon svgIcon="question" class="info-icon" aria-hidden="true"></mat-icon>
               <span>System Information</span>
             </div>
           </mat-panel-title>
           <mat-panel-description>
-            <div class="status-indicator-small" [ngClass]="systemStatusColor"></div>
+            <div class="status-indicator-small" [ngClass]="rcloneStatus" aria-hidden="true"></div>
             {{ rcloneStatus | titlecase }}
           </mat-panel-description>
         </mat-expansion-panel-header>
 
         @if (isLoadingStats) {
-          <div class="info-loading">
-            <mat-spinner diameter="24"></mat-spinner>
+          <div class="info-loading" aria-live="polite">
+            <mat-spinner diameter="24" aria-label="Loading system information"></mat-spinner>
             <span>Loading system information...</span>
           </div>
         } @else {
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="label">RClone Status:</span>
-              <span class="value" [ngClass]="systemStatusColor">
-                <div class="status-dot" [class.active]="rcloneStatus === 'active'"></div>
+          <div class="info-grid" role="grid">
+            <div class="info-item" role="row">
+              <span class="label" role="gridcell">RClone Status:</span>
+              <span class="value" [ngClass]="rcloneStatus" role="gridcell">
+                <div class="status-dot" [ngClass]="rcloneStatus" aria-hidden="true"></div>
                 {{ rcloneStatus | titlecase }}
               </span>
             </div>
-            <div class="info-item">
-              <span class="label">Total Remotes:</span>
-              <span class="value">{{ totalRemotes }}</span>
+            <div class="info-item" role="row">
+              <span class="label" role="gridcell">Total Remotes:</span>
+              <span class="value" role="gridcell">{{ totalRemotes }}</span>
             </div>
-            <div class="info-item">
-              <span class="label">Active Jobs:</span>
-              <span class="value">{{ activeJobsCount }}</span>
+            <div class="info-item" role="row">
+              <span class="label" role="gridcell">Active Jobs:</span>
+              <span class="value" role="gridcell">{{ activeJobsCount }}</span>
             </div>
-            <div class="info-item">
-              <span class="label">Memory Usage:</span>
-              <span class="value">{{ systemStats.memoryUsage }}</span>
+            <div class="info-item" role="row">
+              <span class="label" role="gridcell">Memory Usage:</span>
+              <span class="value" role="gridcell">{{ systemStats.memoryUsage }}</span>
             </div>
-            <div class="info-item">
-              <span class="label">Uptime:</span>
-              <span class="value">{{ systemStats.uptime }}</span>
+            <div class="info-item" role="row">
+              <span class="label" role="gridcell">Uptime:</span>
+              <span class="value" role="gridcell">{{ systemStats.uptime }}</span>
             </div>
           </div>
         }
       </mat-expansion-panel>
 
       <!-- Job Information Panel -->
-      <mat-expansion-panel [(expanded)]="jobInfoPanelOpenState" class="job-info-panel">
+      <mat-expansion-panel [(expanded)]="jobInfoPanelOpenState" class="job-info-panel" role="region">
         <mat-expansion-panel-header>
           <mat-panel-title>
             <div class="panel-title-content">
-              <mat-icon svgIcon="jobs" class="job-icon"></mat-icon>
+              <mat-icon svgIcon="jobs" class="job-icon" aria-hidden="true"></mat-icon>
               <span>Global Job Information</span>
             </div>
           </mat-panel-title>
@@ -314,78 +332,82 @@
         </mat-expansion-panel-header>
 
         @if (isLoadingStats) {
-          <div class="info-loading">
-            <mat-spinner diameter="24"></mat-spinner>
+          <div class="info-loading" aria-live="polite">
+            <mat-spinner diameter="24" aria-label="Loading job information"></mat-spinner>
             <span>Loading job information...</span>
           </div>
         } @else {
-          <div class="job-grid">
+          <div class="job-grid" role="grid">
             @if (jobStats.totalBytes > 0) {
-              <div class="job-progress-section">
-                <div class="progress-header">
-                  <span class="label">Progress:</span>
-                  <span class="value">{{ jobCompletionPercentage | number:'1.0-1' }}%</span>
+              <div class="job-progress-section" role="rowgroup">
+                <div class="progress-header" role="row">
+                  <span class="label" role="gridcell">Progress:</span>
+                  <span class="value" role="gridcell">{{ jobCompletionPercentage | number:'1.0-1' }}%</span>
                 </div>
                 <mat-progress-bar 
                   mode="determinate" 
                   [value]="jobCompletionPercentage" 
                   color="primary"
+                  role="progressbar"
+                  [attr.aria-valuenow]="jobCompletionPercentage"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
                 ></mat-progress-bar>
-                <div class="progress-details">
-                  <span>{{ formatBytes(jobStats.bytes) }} of {{ formatBytes(jobStats.totalBytes) }}</span>
-                  <span>ETA: {{ formatEta(jobStats.eta) }}</span>
+                <div class="progress-details" role="row">
+                  <span role="gridcell">{{ formatBytes(jobStats.bytes) }} of {{ formatBytes(jobStats.totalBytes) }}</span>
+                  <span role="gridcell">ETA: {{ formatEta(jobStats.eta) }}</span>
                 </div>
               </div>
             }
 
-            <div class="job-stats-grid">
-              <div class="info-item">
-                <span class="label">Transfer Speed:</span>
-                <span class="value">{{ formatBytes(jobStats.speed) }}/s</span>
+            <div class="job-stats-grid" role="grid">
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Transfer Speed:</span>
+                <span class="value" role="gridcell">{{ formatBytes(jobStats.speed) }}/s</span>
               </div>
-              <div class="info-item">
-                <span class="label">Transfers:</span>
-                <span class="value">{{ jobStats.transfers }} / {{ jobStats.totalTransfers }}</span>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Transfers:</span>
+                <span class="value" role="gridcell">{{ jobStats.transfers }} / {{ jobStats.totalTransfers }}</span>
               </div>
-              <div class="info-item">
-                <span class="label">Checks:</span>
-                <span class="value">{{ jobStats.checks }} / {{ jobStats.totalChecks }}</span>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Checks:</span>
+                <span class="value" role="gridcell">{{ jobStats.checks }} / {{ jobStats.totalChecks }}</span>
               </div>
-              <div class="info-item">
-                <span class="label">Errors:</span>
-                <span class="value" [class.error]="jobStats.errors > 0">{{ jobStats.errors }}</span>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Errors:</span>
+                <span class="value" [class.error]="jobStats.errors > 0" role="gridcell">{{ jobStats.errors }}</span>
               </div>
-              <div class="info-item">
-                <span class="label">Deletes:</span>
-                <span class="value">{{ jobStats.deletes }}</span>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Deletes:</span>
+                <span class="value" role="gridcell">{{ jobStats.deletes }}</span>
               </div>
-              <div class="info-item">
-                <span class="label">Renames:</span>
-                <span class="value">{{ jobStats.renames }}</span>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Renames:</span>
+                <span class="value" role="gridcell">{{ jobStats.renames }}</span>
               </div>
-              <div class="info-item">
-                <span class="label">Server Copies:</span>
-                <span class="value">{{ jobStats.serverSideCopies }}</span>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Server Copies:</span>
+                <span class="value" role="gridcell">{{ jobStats.serverSideCopies }}</span>
               </div>
-              <div class="info-item">
-                <span class="label">Server Moves:</span>
-                <span class="value">{{ jobStats.serverSideMoves }}</span>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Server Moves:</span>
+                <span class="value" role="gridcell">{{ jobStats.serverSideMoves }}</span>
               </div>
             </div>
 
             @if (jobStats.lastError) {
-              <div class="error-section">
+              <div class="error-section" role="alert">
                 <div class="label">Last Error:</div>
                 <div class="error-message">
-                  <mat-icon color="warn" svgIcon="circle-exclamation" class="error-icon"></mat-icon>
+                  <mat-icon color="warn" svgIcon="circle-exclamation" class="error-icon" aria-hidden="true"></mat-icon>
                   <span>{{ jobStats.lastError }}</span>
                 </div>
               </div>
             }
 
             @if (activeJobsCount === 0) {
-              <div class="no-jobs-message">
-                <mat-icon svgIcon="circle-info"></mat-icon>
+              <div class="no-jobs-message" role="status">
+                <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                 <span>No active jobs are currently running.</span>
               </div>
             }

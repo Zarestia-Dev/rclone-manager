@@ -1,67 +1,434 @@
+// Component Variables - GNOME-like Design System for Keyboard Shortcuts Modal
+:host {
+  // Spacing
+  --modal-padding: 32px;
+  --modal-padding-mobile: 24px;
+  --content-gap: 24px;
+  --search-height: 56px;
+  --row-height: 56px;
+  --key-spacing: 8px;
+  --search-padding: 16px 24px;
+
+  // Border radius
+  --modal-border-radius: 16px;
+  --search-border-radius: 12px;
+  --key-border-radius: 8px;
+
+  // Shadows and effects
+  --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12),
+    0 4px 16px rgba(0, 0, 0, 0.08);
+  --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
+  --surface-border: rgba(var(--app-text-color-rgb), 0.08);
+  --key-background: rgba(var(--app-text-color-rgb), 0.08);
+  --key-border: rgba(var(--app-text-color-rgb), 0.15);
+
+  // Colors
+  --search-background: rgba(var(--app-background-rgb), 0.8);
+  --table-background: rgba(var(--app-background-rgb), 0.95);
+  --header-background: linear-gradient(
+    135deg,
+    rgba(var(--app-text-color-rgb), 0.03) 0%,
+    rgba(var(--app-text-color-rgb), 0.01) 100%
+  );
+
+  // Transitions
+  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-quick: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  // Typography
+  --title-font-size: 20px;
+  --search-font-size: 16px;
+  --key-font-size: 14px;
+  --description-font-size: 15px;
+}
+
 .modal-container {
   background: var(--app-background);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border-radius: var(--modal-border-radius);
+  box-shadow: var(--shadow-elevated);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   height: 100%;
+  position: relative;
 
-  .search-container {
+  // Glassmorphism background overlay
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      135deg,
+      rgba(var(--app-text-color-rgb), 0.02) 0%,
+      rgba(var(--app-text-color-rgb), 0.01) 50%,
+      rgba(var(--app-text-color-rgb), 0.02) 100%
+    );
+    pointer-events: none;
+  }
+
+  // Header styling
+  .modal-header {
     display: flex;
-    justify-content: space-between;
+    background: var(--secondary-background);
     align-items: center;
-    margin-bottom: 10px;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--surface-border);
+    position: relative;
+    z-index: 1;
 
-    input {
-      padding: 8px;
-      margin: 12px;
-      border-radius: var(--border-radius);
-      border: 1px solid #ddd;
-      font-size: 16px;
-      width: 100%;
+    p {
+      font-size: var(--title-font-size);
+      font-weight: 600;
+      color: var(--app-text-color);
+      margin: 0;
+      letter-spacing: -0.3px;
     }
   }
 
+  // Search container with animation
+  .search-container {
+    padding: var(--search-padding);
+    background: var(--secondary-background);
+    border-bottom: 1px solid var(--surface-border);
+
+    input {
+      width: calc(100% - 40px);
+      padding: 16px 20px;
+      border: 2px solid var(--surface-border);
+      border-radius: var(--search-border-radius);
+      background: rgba(var(--app-background-rgb), 0.8);
+      color: var(--app-text-color);
+      font-size: var(--search-font-size);
+      font-weight: 400;
+      transition: var(--transition-standard);
+      outline: none;
+
+      &::placeholder {
+        color: var(--secondary-text-color);
+        font-weight: 400;
+      }
+
+      &:focus {
+        border-color: var(--primary-color);
+        background: var(--app-background);
+        box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
+      }
+
+      &:hover:not(:focus) {
+        border-color: rgba(var(--app-text-color-rgb), 0.2);
+      }
+    }
+  }
+
+  // Main content area
   .modal-content {
-    border-radius: calc(var(--border-radius) * 2);
-    box-shadow: var(--box-shadow);
+    flex: 1;
+    overflow-y: auto;
     display: flex;
-    justify-content: center;
-    overflow: auto;
-    margin: 16px;
+    flex-direction: column;
+    position: relative;
+    z-index: 1;
 
     .shortcut-table {
-      width: 100%;
-      border-collapse: collapse;
-      background-color: var(--secondary-background);
+      background: var(--table-background);
+      border-radius: 0;
+      overflow: hidden;
 
-      th {
-        text-align: left;
-        padding: 6px;
-        font-size: 16px;
-        font-weight: bold;
-        background: #f5f5f5;
+      // Table rows
+      .mat-mdc-row {
+        border-bottom: 1px solid var(--surface-border);
+        height: var(--row-height);
+        transition: var(--transition-quick);
+
+        &:hover {
+          background: var(--surface-overlay);
+        }
+
+        &:last-child {
+          border-bottom: none;
+        }
       }
 
-      td {
-        padding: 8px;
-        font-size: 14px;
+      // Table cells
+      .mat-mdc-cell {
+        padding: 16px var(--modal-padding);
+        border: none;
+        vertical-align: middle;
+
+        // Keyboard shortcut keys
+        &.shortcut-key {
+          width: 40%;
+          padding-right: 32px;
+
+          .key {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 32px;
+            padding: 0 12px;
+            margin-right: var(--key-spacing);
+            background: var(--key-background);
+            border: 1px solid var(--key-border);
+            border-radius: var(--key-border-radius);
+            font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono",
+              monospace;
+            font-size: var(--key-font-size);
+            font-weight: 600;
+            color: var(--app-text-color);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+            transition: var(--transition-quick);
+            position: relative;
+
+            // 3D key effect
+            &::after {
+              content: "";
+              position: absolute;
+              bottom: -2px;
+              left: 2px;
+              right: 2px;
+              height: 2px;
+              background: rgba(0, 0, 0, 0.1);
+              border-radius: 0 0 var(--key-border-radius)
+                var(--key-border-radius);
+            }
+
+            &:last-child {
+              margin-right: 0;
+            }
+
+            // Special styling for different key types
+            &[data-key*="Ctrl"],
+            &[data-key*="Alt"],
+            &[data-key*="Shift"],
+            &[data-key*="Cmd"] {
+              background: linear-gradient(
+                135deg,
+                rgba(var(--primary-color-rgb), 0.15) 0%,
+                rgba(var(--primary-color-rgb), 0.08) 100%
+              );
+              border-color: rgba(var(--primary-color-rgb), 0.3);
+              color: var(--primary-color);
+            }
+
+            &[data-key="F1"],
+            &[data-key="F2"],
+            &[data-key="F3"],
+            &[data-key="F4"],
+            &[data-key="F5"],
+            &[data-key="F6"],
+            &[data-key="F7"],
+            &[data-key="F8"],
+            &[data-key="F9"],
+            &[data-key="F10"],
+            &[data-key="F11"],
+            &[data-key="F12"] {
+              background: linear-gradient(
+                135deg,
+                rgba(var(--accent-color-rgb), 0.12) 0%,
+                rgba(var(--accent-color-rgb), 0.06) 100%
+              );
+              border-color: rgba(var(--accent-color-rgb), 0.25);
+              color: var(--accent-color);
+            }
+
+            &[data-key="Enter"],
+            &[data-key="Space"],
+            &[data-key="Tab"],
+            &[data-key="Escape"],
+            &[data-key="Delete"] {
+              background: linear-gradient(
+                135deg,
+                rgba(var(--accent-color-rgb), 0.1) 0%,
+                rgba(var(--accent-color-rgb), 0.05) 100%
+              );
+              border-color: rgba(var(--accent-color-rgb), 0.2);
+              color: var(--accent-color);
+            }
+          }
+        }
+
+        // Description cell
+        &.shortcut-desc {
+          width: 60%;
+          font-size: var(--description-font-size);
+          font-weight: 400;
+          color: var(--secondary-text-color);
+          line-height: 1.5;
+        }
+      }
+    }
+
+    // Empty state styling
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 64px var(--modal-padding);
+      text-align: center;
+      color: var(--secondary-text-color);
+
+      .empty-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
       }
 
-      .shortcut-key {
+      h3 {
+        font-size: 18px;
+        font-weight: 600;
         color: var(--app-text-color);
-        font-weight: bold;
-        font-family: monospace;
-        text-align: left;
-        padding-right: 20px;
-        width: 40%;
+        margin: 0 0 8px 0;
       }
 
-      .shortcut-desc {
-        text-align: left;
-        width: 60%;
-        color: var(--secondary-text-color);
+      p {
+        font-size: 14px;
+        margin: 0 0 24px 0;
+        max-width: 300px;
+        line-height: 1.5;
+      }
+    }
+
+    // Key separator styling
+    .key-separator {
+      display: inline-flex;
+      align-items: center;
+      margin: 0 6px;
+      font-size: 12px;
+      color: var(--secondary-text-color);
+      font-weight: 400;
+    }
+  }
+}
+
+// Animations
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes keyPress {
+  0% {
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    transform: scale(0.95) translateY(1px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
+}
+
+// Component entrance animation
+.modal-container {
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// Row hover animation
+.shortcut-table .mat-mdc-row {
+  &:hover .key {
+    animation: keyPress 0.2s ease-out;
+  }
+}
+
+// Search focus enhancements
+.search-container input:focus {
+  &::before {
+    content: "";
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(var(--primary-color-rgb), 0.3),
+      transparent
+    );
+    background-size: 200px 100%;
+    animation: shimmer 2s infinite;
+    border-radius: calc(var(--search-border-radius) + 2px);
+    z-index: -1;
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  :host {
+    --modal-padding: var(--modal-padding-mobile);
+    --row-height: 64px;
+    --search-height: 48px;
+  }
+
+  .modal-container {
+    .modal-content .shortcut-table {
+      .mat-mdc-cell {
+        padding: 12px var(--modal-padding);
+
+        &.shortcut-key {
+          width: 45%;
+
+          .key {
+            height: 28px;
+            padding: 0 8px;
+            font-size: 12px;
+            margin-right: 6px;
+          }
+        }
+
+        &.shortcut-desc {
+          width: 55%;
+          font-size: 14px;
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-container {
+    .modal-content .shortcut-table {
+      .mat-mdc-cell {
+        &.shortcut-key {
+          width: 100%;
+          padding-bottom: 8px;
+        }
+
+        &.shortcut-desc {
+          width: 100%;
+          padding-top: 8px;
+          border-top: 1px solid var(--surface-border);
+        }
+      }
+
+      .mat-mdc-row {
+        height: auto;
+        display: block;
+        padding: 16px 0;
       }
     }
   }

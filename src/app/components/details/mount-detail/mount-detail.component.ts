@@ -19,6 +19,7 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatButtonModule } from "@angular/material/button";
 import {
   Remote,
+  RemoteAction,
   RemoteSettings,
   RemoteSettingsSection,
   SENSITIVE_KEYS,
@@ -46,14 +47,7 @@ export class MountDetailComponent implements OnDestroy {
   @Input() selectedRemote: Remote | null = null;
   @Input() iconService: any; // Consider creating an interface for this
   @Input() remoteSettings: RemoteSettings = {};
-  @Input() actionInProgress:
-    | "mount"
-    | "unmount"
-    | "sync"
-    | "copy"
-    | "stop"
-    | "open"
-    | null = null;
+  @Input() actionInProgress: RemoteAction | null = null;
   @Input() restrictMode!: boolean;
 
   @Output() openInFiles = new EventEmitter<{

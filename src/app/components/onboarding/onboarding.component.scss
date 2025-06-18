@@ -3,7 +3,7 @@
   // Layout variables
   --container-max-width: 600px;
   --container-max-height: 80vh;
-  --content-padding: 24px;
+  --panel-padding: 24px;
   --section-gap: 32px;
 
   // Visual elements
@@ -11,13 +11,6 @@
   --border-radius: 16px;
   --indicator-size: 8px;
   --button-height: 40px;
-
-  // Colors (following GNOME design)
-  --surface-color: var(--app-background);
-  --surface-variant: var(--secondary-background);
-  --primary-text: var(--app-text-color);
-  --secondary-text: var(--secondary-text-color);
-  --accent-color: var(--primary-color);
 
   // Shadows and effects
   --surface-shadow: 0 8px 32px rgba(0, 0, 0, 0.12),
@@ -66,7 +59,7 @@
     width: 100%;
     max-width: var(--container-max-width);
     max-height: var(--container-max-height);
-    background: var(--surface-color);
+    background: var(--app-background);
     border-radius: var(--border-radius);
     box-shadow: var(--surface-shadow);
     overflow: hidden;
@@ -119,14 +112,14 @@
       margin: 0;
       font-size: 1.5rem;
       font-weight: 500;
-      color: var(--primary-text);
+      color: var(--app-text-color);
       letter-spacing: -0.025em;
     }
     
     p {
       margin: 0;
       font-size: 1rem;
-      color: var(--secondary-text);
+      color: var(--secondary-text-color);
       opacity: 0.8;
     }
   }
@@ -137,7 +130,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--content-padding);
+  padding: var(--panel-padding);
   border-bottom: 1px solid rgba(var(--app-text-color-rgb), 0.06);
 
   .page-indicators {
@@ -157,7 +150,7 @@
       }
 
       &.completed {
-        background: rgba(var(--accent-color-rgb), 0.6);
+        background: rgba(var(--primary-color-rgb), 0.6);
       }
     }
   }
@@ -165,7 +158,7 @@
   .app-title {
     font-size: 1.5rem;
     font-weight: 500;
-    color: var(--primary-text);
+    color: var(--app-text-color);
     margin: 0;
     letter-spacing: -0.025em;
   }
@@ -176,7 +169,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: var(--content-padding);
+  padding: var(--panel-padding);
   overflow: auto;
 
   .card-content {
@@ -224,7 +217,7 @@
     .card-title {
       font-size: 1.75rem;
       font-weight: 500;
-      color: var(--primary-text);
+      color: var(--app-text-color);
       margin: 0 0 16px 0;
       letter-spacing: -0.025em;
       line-height: 1.3;
@@ -232,7 +225,7 @@
 
     .card-description {
       font-size: 1rem;
-      color: var(--secondary-text);
+      color: var(--secondary-text-color);
       line-height: 1.6;
       margin: 0;
       opacity: 0.9;
@@ -255,7 +248,7 @@
       .installation-option {
         display: flex;
         align-items: start;
-        background: rgba(var(--surface-variant-rgb), 0.5);
+        background: rgba(var(--secondary-background-rgb), 0.5);
         border: 1px solid rgba(var(--app-text-color-rgb), 0.08);
         border-radius: 12px;
         padding: 16px;
@@ -285,13 +278,13 @@
 
           .option-title {
             font-weight: 500;
-            color: var(--primary-text);
+            color: var(--app-text-color);
             font-size: 0.95rem;
           }
 
           .option-description {
             font-size: 0.85rem;
-            color: var(--secondary-text);
+            color: var(--secondary-text-color);
             opacity: 0.8;
           }
         }
@@ -303,7 +296,7 @@
         width: 100%;
 
         .mat-form-field-wrapper {
-          background: var(--surface-variant);
+          background: var(--secondary-background);
           border-radius: 8px;
         }
         
@@ -327,9 +320,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px var(--content-padding) var(--content-padding);
+  padding: 24px var(--panel-padding) var(--panel-padding);
   border-top: 1px solid rgba(var(--app-text-color-rgb), 0.06);
-  background: rgba(var(--surface-variant-rgb), 0.3);
+  background: rgba(var(--secondary-background-rgb), 0.3);
 
   .nav-left,
   .nav-right {
@@ -346,7 +339,7 @@
     transition: all 0.2s var(--motion-standard);
 
     &.secondary {
-      color: var(--secondary-text);
+      color: var(--secondary-text-color);
     }
 
     &.primary {
@@ -384,7 +377,7 @@
       opacity: 0.6;
       cursor: not-allowed;
       background: rgba(var(--secondary-text-color-rgb), 0.3) !important;
-      color: var(--secondary-text) !important;
+      color: var(--secondary-text-color) !important;
       
       mat-icon {
         opacity: 0.7;
@@ -496,7 +489,7 @@
 // Responsive Design
 @media (max-width: 768px) {
   :host {
-    --content-padding: 32px;
+    --panel-padding: 32px;
     --icon-size: 80px;
   }
 

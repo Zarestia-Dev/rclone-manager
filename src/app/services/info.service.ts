@@ -25,8 +25,9 @@ export class InfoService {
 
     return new Promise((resolve) => {
       const dialogRef = this.dialog.open(ConfirmModalComponent, {
-        width: "300px",
+        maxWidth: "480px",
         data: dialogData,
+        disableClose: true,
       });
       dialogRef.afterClosed().subscribe((result) => {
         resolve(result);
@@ -44,8 +45,9 @@ export class InfoService {
 
     // Open the confirmation dialog
     this.dialog.open(ConfirmModalComponent, {
-      width: "300px",
+      maxWidth: "480px",
       data: dialogData,
+      disableClose: true,
     });
   }
 

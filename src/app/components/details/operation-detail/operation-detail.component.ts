@@ -42,6 +42,7 @@ import {
   SENSITIVE_KEYS,
   GlobalStats,
   TransferFile,
+  DEFAULT_JOB_STATS,
 } from "../../../shared/components/types";
 
 @Pipe({ name: "formatTime", standalone: true })
@@ -144,7 +145,7 @@ export class OperationDetailComponent
   dataSource = new MatTableDataSource<TransferFile>([]);
   displayedColumns: string[] = ["name", "percentage", "speed", "size", "eta"];
 
-  stats: GlobalStats = this.getDefaultStats();
+  jobStats: GlobalStats = { ...DEFAULT_JOB_STATS };
   currentJobId?: number;
   isLoading = false;
   errorMessage = "";
@@ -243,18 +244,18 @@ export class OperationDetailComponent
   // Getters
   get transferSummary(): { total: number; completed: number; active: number } {
     return {
-      total: this.stats.totalTransfers || 0,
-      completed: (this.stats.totalTransfers || 0) - (this.stats.transfers || 0),
-      active: this.stats.transferring?.length || 0,
+      total: this.jobStats.totalTransfers || 0,
+      completed: (this.jobStats.totalTransfers || 0) - (this.jobStats.transfers || 0),
+      active: this.jobStats.transferring?.length || 0,
     };
   }
 
   get errorSummary(): string {
-    if (this.stats.fatalError) {
-      return this.stats.lastError || "Fatal error occurred";
+    if (this.jobStats.fatalError) {
+      return this.jobStats.lastError || "Fatal error occurred";
     }
-    if (this.stats.errors > 0) {
-      return `${this.stats.errors} error(s) occurred`;
+    if (this.jobStats.errors > 0) {
+      return `${this.jobStats.errors} error(s) occurred`;
     }
     return "";
   }
@@ -295,7 +296,7 @@ export class OperationDetailComponent
   }
 
   getFormattedSpeed(): string {
-    const { value, unit } = this.getSpeedUnitAndValue(this.stats.speed);
+    const { value, unit } = this.getSpeedUnitAndValue(this.jobStats.speed);
     return `${value.toFixed(2)} ${unit}`;
   }
 
@@ -351,35 +352,8 @@ export class OperationDetailComponent
     ];
   }
 
-  private getDefaultStats(): GlobalStats {
-    return {
-      bytes: 0,
-      checks: 0,
-      deletedDirs: 0,
-      deletes: 0,
-      elapsedTime: 0,
-      errors: 0,
-      eta: 0,
-      fatalError: false,
-      lastError: "",
-      renames: 0,
-      retryError: false,
-      serverSideCopies: 0,
-      serverSideCopyBytes: 0,
-      serverSideMoveBytes: 0,
-      serverSideMoves: 0,
-      speed: 0,
-      totalBytes: 0,
-      totalChecks: 0,
-      totalTransfers: 0,
-      transferTime: 0,
-      transferring: [],
-      transfers: 0,
-    };
-  }
-
   private handleSelectedRemoteChange(): void {
-    this.stats = this.getDefaultStats();
+    this.jobStats = DEFAULT_JOB_STATS;
     this.dataSource.data = [];
     this.currentJobId = this.getCurrentJobId();
     this.resetHistory();
@@ -455,7 +429,7 @@ export class OperationDetailComponent
   }
 
   private updateSpeedChart(): void {
-    const speedData = this.getSpeedUnitAndValue(this.stats.speed);
+    const speedData = this.getSpeedUnitAndValue(this.jobStats.speed);
     const speedInSelectedUnit = speedData.value;
 
     this.speedHistory.push(speedInSelectedUnit);
@@ -488,11 +462,11 @@ export class OperationDetailComponent
   private calculateProgress(): number {
     // Use file-specific total bytes if available
     const totalBytes =
-      this.stats.totalBytes ||
+      this.jobStats.totalBytes ||
       this.dataSource.data.reduce((sum, f) => sum + (f.size || 0), 0);
 
     return totalBytes > 0
-      ? Math.min(100, (this.stats.bytes / totalBytes) * 100)
+      ? Math.min(100, (this.jobStats.bytes / totalBytes) * 100)
       : 0;
   }
 
@@ -536,18 +510,18 @@ export class OperationDetailComponent
   }
 
   private updateStatsFromJob(job: any): void {
-    if (!job.stats) return;
+    if (!job.jobStats) return;
 
     const transferringFiles = this.processTransferringFiles(
-      job.stats.transferring
+      job.jobStats.transferring
     );
     const fileStats = this.getAggregatedStatsFromFiles(transferringFiles);
 
-    // Combine global stats with file-specific stats
+    // Combine global jobStats with file-specific jobStats
     const updatedStats = {
-      ...job.stats,
+      ...job.jobStats,
       transferring: transferringFiles,
-      // Override some stats with file-specific calculations
+      // Override some jobStats with file-specific calculations
       speed: fileStats.totalSpeed,
       eta: fileStats.totalEta,
       bytes: fileStats.totalBytes,
@@ -555,7 +529,7 @@ export class OperationDetailComponent
       transfers: fileStats.activeFiles,
     };
 
-    this.stats = updatedStats;
+    this.jobStats = updatedStats;
     this.updateRemoteStatusOnError(job);
     this.updateChartData();
     this.dataSource.data = transferringFiles;
@@ -574,7 +548,7 @@ export class OperationDetailComponent
   }
 
   private updateRemoteStatusOnError(job: any): void {
-    if (job.stats.fatalError && this.selectedRemote) {
+    if (job.jobStats.fatalError && this.selectedRemote) {
       const stateKey =
         this.operationType === "sync" ? "syncState" : "copyState";
 

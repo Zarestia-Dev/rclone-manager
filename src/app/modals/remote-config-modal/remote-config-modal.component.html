@@ -4,7 +4,7 @@
     <button aria-label="Help">
       <mat-icon svgIcon="question"></mat-icon>
     </button>
-    <p>
+    <p data-tauri-drag-region>
       <mat-icon svgIcon="hard-drive" aria-hidden="true"></mat-icon>
       {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
     </p>
@@ -41,12 +41,13 @@
               [sourceLoading]="pathSelectionService.getLoadingState(step + 'Config.source')"
               [destLoading]="pathSelectionService.getLoadingState(step + 'Config.dest')"
               [dynamicFlagFields]="dynamicFlagFields[step]" [selectedOptions]="selectedOptions[step]"
+              [isDisabled]="isLoading.saving || isLoading.authDisabled"
               (optionToggled)="toggleOption(step, $event)" (jsonValidated)="validateJson(step)"
               (jsonReset)="resetJson(step)" (remoteSelected)="onRemoteSelected($event, step + 'Config.dest')"
               (destOptionSelected)="onDestOptionSelectedField($event, step + 'Config.dest')"
               (sourceOptionSelected)="onSourceOptionSelectedField($event, step + 'Config.source')"
               (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
-              (remoteSelectionReset)="resetRemoteSelectionField($event)">
+              (remoteSelectionReset)="resetRemoteSelectionField($event)">>
             </app-flag-config-step>
           </section>
         }

@@ -13,9 +13,9 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatSelectModule } from "@angular/material/select";
 import { MatInputModule } from "@angular/material/input";
 import { MatDividerModule } from "@angular/material/divider";
-import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatIconModule } from "@angular/material/icon";
+import { MatExpansionModule } from "@angular/material/expansion";
 import { animate, style, transition, trigger } from "@angular/animations";
 import { RcloneService } from "../../services/rclone.service";
 import { SettingsService } from "../../services/settings.service";
@@ -28,6 +28,7 @@ import {
   RemoteSettings,
   RemoteType,
 } from "../../shared/remote-config/remote-config-types";
+import { MatCheckboxModule } from "@angular/material/checkbox";
 
 @Component({
   selector: "app-quick-add-remote",
@@ -38,10 +39,11 @@ import {
     MatInputModule,
     MatSelectModule,
     MatDividerModule,
-    MatSlideToggleModule,
+    MatCheckboxModule,
     MatProgressSpinnerModule,
     MatIconModule,
-    MatButtonModule
+    MatButtonModule,
+    MatExpansionModule
 ],
   templateUrl: "./quick-add-remote.component.html",
   styleUrls: ["./quick-add-remote.component.scss"],
@@ -125,33 +127,70 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         { value: "", disabled: this.isLoading.saving },
         Validators.required,
       ],
-      autoStart: [{ value: false, disabled: this.isLoading.saving }],
+      // Mount options
+      autoMount: [{ value: false, disabled: this.isLoading.saving }],
+      mountSource: [{ value: "", disabled: this.isLoading.saving }],
       mountPath: [{ value: "", disabled: this.isLoading.saving }],
+      // Sync options
+      autoSync: [{ value: false, disabled: this.isLoading.saving }],
+      syncSource: [{ value: "", disabled: this.isLoading.saving }],
+      syncDest: [{ value: "", disabled: this.isLoading.saving }],
+      // Copy options
+      autoCopy: [{ value: false, disabled: this.isLoading.saving }],
+      copySource: [{ value: "", disabled: this.isLoading.saving }],
+      copyDest: [{ value: "", disabled: this.isLoading.saving }],
     });
   }
 
   private setupFormListeners(): void {
+    // Mount path validation - only destination required
     const autoMountSub = this.quickAddForm
-      .get("autoStart")
-      ?.valueChanges.subscribe((autoStart: boolean) => {
+      .get("autoMount")
+      ?.valueChanges.subscribe((autoMount: boolean) => {
         const mountPathControl = this.quickAddForm.get("mountPath");
-        autoStart
+        autoMount
           ? mountPathControl?.setValidators([Validators.required])
           : mountPathControl?.clearValidators();
         mountPathControl?.updateValueAndValidity();
       });
 
-    if (autoMountSub) {
-      this.formSubscriptions.push(autoMountSub);
-    }
+    // Sync validation - only destination required
+    const autoSyncSub = this.quickAddForm
+      .get("autoSync")
+      ?.valueChanges.subscribe((autoSync: boolean) => {
+        const syncDestControl = this.quickAddForm.get("syncDest");
+        
+        if (autoSync) {
+          syncDestControl?.setValidators([Validators.required]);
+        } else {
+          syncDestControl?.clearValidators();
+        }
+        
+        syncDestControl?.updateValueAndValidity();
+      });
+
+    // Copy validation - only destination required
+    const autoCopySub = this.quickAddForm
+      .get("autoCopy")
+      ?.valueChanges.subscribe((autoCopy: boolean) => {
+        const copyDestControl = this.quickAddForm.get("copyDest");
+        
+        if (autoCopy) {
+          copyDestControl?.setValidators([Validators.required]);
+        } else {
+          copyDestControl?.clearValidators();
+        }
+        
+        copyDestControl?.updateValueAndValidity();
+      });
+
+    if (autoMountSub) this.formSubscriptions.push(autoMountSub);
+    if (autoSyncSub) this.formSubscriptions.push(autoSyncSub);
+    if (autoCopySub) this.formSubscriptions.push(autoCopySub);
   }
 
   private async initializeComponent(): Promise<void> {
     try {
-      // [this.existingRemotes, this.oauthSupportedRemotes] = await Promise.all([
-      //   this.rcloneService.getRemotes(),
-      //   this.rcloneService.getOAuthSupportedRemotes(),
-      // ]);
       const oauthSupportedRemotes =
         await this.rcloneService.getOAuthSupportedRemotes();
       console.log("OAuth Supported Remotes:", oauthSupportedRemotes);
@@ -188,11 +227,11 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     this.quickAddForm.patchValue({ remoteName: newName });
   }
 
-  async selectFolder(): Promise<void> {
+  async selectFolder(fieldName: string = 'mountPath'): Promise<void> {
     try {
       const selectedPath = await this.rcloneService.selectFolder(true);
       if (selectedPath) {
-        this.quickAddForm.patchValue({ mountPath: selectedPath });
+        this.quickAddForm.patchValue({ [fieldName]: selectedPath });
       }
     } catch (error) {
       console.error("Error selecting folder:", error);
@@ -218,7 +257,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   private async handleRemoteCreation(formValue: QuickAddForm): Promise<void> {
-    const { remoteName, remoteType, autoStart, mountPath } = formValue;
+    const { remoteName, remoteType, autoMount, mountSource, mountPath, autoSync, syncSource, syncDest, autoCopy, copySource, copyDest } = formValue;
 
     await this.rcloneService.createRemote(remoteName, {
       name: remoteName,
@@ -231,27 +270,43 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       showOnTray: true,
       mountConfig: {
         dest: mountPath || "",
-        source: remoteName + ":/",
-        autoStart: autoStart || false,
+        source: mountSource || remoteName + ":/",
+        autoStart: autoMount || false,
       },
       copyConfig: {
-        autoStart: false,
-        source: remoteName + ":/",
-        dest: "",
+        autoStart: autoCopy || false,
+        source: copySource || remoteName + ":/",
+        dest: copyDest || "",
       },
       syncConfig: {
-        autoStart: false,
-        source: remoteName + ":/",
-        dest: "",
+        autoStart: autoSync || false,
+        source: syncSource || remoteName + ":/",
+        dest: syncDest || "",
       },
       filterConfig: {},
     };
 
     await this.settingsService.saveRemoteSettings(remoteName, remoteSettings);
 
-    if (autoStart && mountPath) {
-      await this.rcloneService.mountRemote(remoteName, remoteName + ":/", mountPath);
+    // Auto-start operations based on user selections
+    if (autoMount && mountPath) {
+      const finalMountSource = mountSource || remoteName + ":/";
+      await this.rcloneService.mountRemote(remoteName, finalMountSource, mountPath);
       console.log("Remote mounted successfully!");
+    }
+
+    if (autoSync && syncDest) {
+      // Note: You may need to implement auto-sync starting logic
+      const finalSyncSource = syncSource || remoteName + ":/";
+      await this.rcloneService.startSync(remoteName, finalSyncSource, syncDest);
+      console.log("Auto-sync configured for:", { source: finalSyncSource, dest: syncDest });
+    }
+
+    if (autoCopy && copyDest) {
+      // Note: You may need to implement auto-copy starting logic
+      const finalCopySource = copySource || remoteName + ":/";
+      await this.rcloneService.startCopy(remoteName, finalCopySource, copyDest);
+      console.log("Auto-copy configured for:", { source: finalCopySource, dest: copyDest });
     }
   }
 
@@ -261,6 +316,18 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   private setFormState(disabled: boolean): void {
     disabled ? this.quickAddForm.disable() : this.quickAddForm.enable();
+  }
+
+  getSubmitButtonText(): string {
+    if (this.isLoading.saving && !this.isLoading.cancelled) {
+      return 'Adding Remote...';
+    }
+    return 'Create Remote';
+  }
+
+  onPanelToggle(operation: 'mount' | 'sync' | 'copy', isOpen: boolean): void {
+    const controlName = `auto${operation.charAt(0).toUpperCase() + operation.slice(1)}`;
+    this.quickAddForm.patchValue({ [controlName]: isOpen });
   }
 
   @HostListener("document:keydown.escape", ["$event"])

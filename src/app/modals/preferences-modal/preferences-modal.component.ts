@@ -45,8 +45,8 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
   styleUrls: ["./preferences-modal.component.scss"],
   animations: [
     trigger("slideToggle", [
-      state("hidden", style({ height: "0px", opacity: 0, overflow: "hidden" })),
-      state("visible", style({ height: "*", opacity: 1, overflow: "hidden" })),
+      state("hidden", style({ height: "0px", opacity: 0, padding: 0, overflow: "hidden" })),
+      state("visible", style({ height: "*", opacity: 1, padding: "*", overflow: "hidden" })),
       transition("hidden <=> visible", animate("300ms ease-in-out")),
     ]),
   ],
@@ -60,6 +60,7 @@ export class PreferencesModalComponent implements OnInit {
   searchQuery = "";
   searchVisible = false; // Controls the visibility of search field
   filteredTabs: any[] = [];
+  searchResults: Array<{category: string; key: string}> = [];
 
   tabs = [
     { label: "General", icon: "wrench", key: "general" },
@@ -214,25 +215,43 @@ export class PreferencesModalComponent implements OnInit {
 
   filterSettings(searchText: string) {
     this.searchQuery = searchText.toLowerCase();
+    this.searchResults = [];
+    
     if (!this.searchQuery) {
       this.filteredTabs = [...this.tabs];
       return;
     }
 
+    // Build unified search results across all categories
+    for (const category of Object.keys(this.settingsForm.controls)) {
+      const categoryControl = this.settingsForm.get(category);
+      if (!categoryControl) continue;
+
+      for (const key of Object.keys(categoryControl.value || {})) {
+        const meta = this.getMetadata(category, key);
+        
+        // Check if setting matches search query
+        if (
+          meta.display_name.toLowerCase().includes(this.searchQuery) ||
+          meta.help_text.toLowerCase().includes(this.searchQuery) ||
+          key.toLowerCase().includes(this.searchQuery)
+        ) {
+          this.searchResults.push({ category, key });
+        }
+      }
+    }
+
+    // Filter tabs based on whether they contain matching settings
     this.filteredTabs = this.tabs.filter(
       (tab) =>
         tab.label.toLowerCase().includes(this.searchQuery) ||
-        Object.keys(this.metadata).some(
-          (key) =>
-            key.startsWith(tab.key) &&
-            (this.metadata[key].display_name
-              .toLowerCase()
-              .includes(this.searchQuery) ||
-              this.metadata[key].help_text
-                .toLowerCase()
-                .includes(this.searchQuery))
-        )
+        this.searchResults.some(result => result.category === tab.key)
     );
+  }
+
+  getCategoryDisplayName(category: string): string {
+    const tab = this.tabs.find(tab => tab.key === category);
+    return tab ? tab.label : category.charAt(0).toUpperCase() + category.slice(1);
   }
 
   getMetadata(category: string, key: string) {
@@ -251,8 +270,10 @@ export class PreferencesModalComponent implements OnInit {
 
   async resetSettings() {
     try {
-      await this.settingsService.resetSettings();
-      await this.loadSettings();
+      const isReset = await this.settingsService.resetSettings();
+      if (isReset) {
+        await this.loadSettings();
+      }
     } catch (error) {
       console.error("Error resetting settings:", error);
     }

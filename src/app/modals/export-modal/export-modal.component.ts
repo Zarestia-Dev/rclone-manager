@@ -1,4 +1,3 @@
-
 import { Component, HostListener, Inject } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
@@ -48,6 +47,7 @@ export class ExportModalComponent {
   password: any = null;
   selectedRemoteName: any = "";
   remotes: any[] = [];
+  showPassword = false;
 
   exportOptions: Array<{ value: string; label: string }> = [
     { value: "all", label: "📦 Export All (Settings + Remotes + rclone.conf)" },
@@ -113,5 +113,47 @@ export class ExportModalComponent {
       this.withPassword ? this.password : null,
       this.selectedOption == 'specific-remote' ? this.selectedRemoteName : null
     );
+  }
+
+  /**
+   * Toggle password visibility
+   */
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
+  }
+
+  /**
+   * Check if export can be performed
+   */
+  canExport(): boolean {
+    const hasPath = !!this.exportPath;
+    const hasPassword = this.withPassword ? !!this.password : true;
+    const hasRemote = this.selectedOption === 'specific-remote' ? !!this.selectedRemoteName : true;
+    
+    return hasPath && hasPassword && hasRemote;
+  }
+
+  /**
+   * Get tooltip message for export button
+   */
+  getExportTooltip(): string {
+    if (!this.exportPath) {
+      return "Please select a folder to save the export";
+    }
+    if (this.withPassword && !this.password) {
+      return "Please enter a password for encryption";
+    }
+    if (this.selectedOption === 'specific-remote' && !this.selectedRemoteName) {
+      return "Please select a remote to export";
+    }
+    return "Export your settings to the selected folder";
+  }
+
+  /**
+   * Get selected option label for display
+   */
+  getSelectedOptionLabel(): string {
+    const option = this.exportOptions.find(opt => opt.value === this.selectedOption);
+    return option ? option.label.replace(/^[^\s]+\s/, '') : 'Settings'; // Remove emoji prefix
   }
 }

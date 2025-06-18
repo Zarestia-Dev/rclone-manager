@@ -8,6 +8,7 @@ import { CheckResult } from "../shared/components/types";
 })
 export class SettingsService {
   isMobile$: any;
+  restrictMode$: any;
   constructor(private infoService: InfoService) {}
 
   async loadSettings(): Promise<any> {
@@ -127,7 +128,7 @@ export class SettingsService {
     }
   }
 
-  async resetSettings(): Promise<void> {
+  async resetSettings(): Promise<boolean> {
     try {
       const result = await this.infoService.confirmModal(
         "Reset Settings",
@@ -136,9 +137,13 @@ export class SettingsService {
       if (result) {
         await invoke("reset_settings");
         console.log("Settings reset successfully.");
+        return true;
       }
+      console.log("Settings reset canceled by user.");
+      return false;
     } catch (error) {
       console.error("Failed to reset settings:", error);
+      return false;
     }
   }
 

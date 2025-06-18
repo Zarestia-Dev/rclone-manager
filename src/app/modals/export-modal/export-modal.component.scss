@@ -1,26 +1,158 @@
+:host {
+  // Core Layout
+  --modal-padding: 32px;
+  --content-gap: 20px;
+  --button-gap: 16px;
+  
+  // Border Radius
+  --field-radius: 12px;
+  
+  // Glassmorphism
+  --glass-border: rgba(var(--app-text-color-rgb), 0.08);
+  
+  // Transitions
+  --transition-quick: all 0.2s ease-out;
+  
+  // Colors
+  --text-muted: rgba(var(--app-text-color-rgb), 0.7);
+}
+
+// ===== MODAL CONTAINER =====
 .export-modal {
-  background: var(--app-background);
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  height: 100%;
+}
 
-  .modal-content {
-    padding: 16px;
-    overflow: auto;
-    position: relative;
-    height: 100%;
+// ===== MODAL HEADER =====
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--glass-border);
+  
+  p {
     display: flex;
-    flex-direction: column;
     align-items: center;
+    gap: 12px;
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--app-text-color);
   }
+}
 
-  .button-group {
+// ===== MODAL CONTENT =====
+.modal-content {
+  flex: 1;
+  padding: var(--modal-padding);
+  display: flex;
+  flex-direction: column;
+  gap: var(--content-gap);
+  overflow-y: auto;
+  max-height: 70vh;
+}
+
+// ===== FORM SECTIONS =====
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--app-text-color);
+  }
+  
+  .full-width {
+    width: 100%;
+  }
+}
+
+// ===== REMOTE OPTION =====
+.remote-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  
+  span {
+    color: var(--app-text-color);
+    font-weight: 500;
+  }
+}
+
+// ===== SECURITY SECTION =====
+.security-section {
+  padding: 20px;
+  background: rgba(var(--yellow-rgb), 0.05);
+  border: 2px solid rgba(var(--yellow-rgb), 0.2);
+  border-radius: var(--field-radius);
+  transition: var(--transition-quick);
+
+  &:hover {
+    background: rgba(var(--yellow-rgb), 0.1);
+    border-color: rgba(var(--yellow-rgb), 0.3);
+    transform: translateY(-2px);
+  }
+  
+  .security-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    
+    h3 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--app-text-color);
+    }
+    mat-icon {
+      color: var(--yellow);
+    }
+  }
+  
+  .security-description {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin: 0 0 16px 0;
+    line-height: 1.5;
+  }
+  
+  .security-controls {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    padding: 12px;
+    gap: 12px;
+    margin-bottom: 16px;
+    
+    .checkbox-label {
+      font-weight: 500;
+    }
   }
+  
+  .security-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background: rgba(var(--warn-color), 0.1);
+    border: 1px solid rgba(var(--warn-color), 0.3);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--warn-color);
+  }
+}
+
+// ===== BUTTON GROUP =====
+.button-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--button-gap);
+  padding: 16px;
+  border-top: 1px solid var(--glass-border);
 }

@@ -108,8 +108,18 @@ export interface RemoteSettings {
 export interface QuickAddForm {
   remoteName: string;
   remoteType: string;
+  // Mount options
+  mountSource: string;
   mountPath: string;
-  autoStart: boolean;
+  autoMount: boolean;
+  // Sync options
+  syncSource: string;
+  syncDest: string;
+  autoSync: boolean;
+  // Copy options
+  copySource: string;
+  copyDest: string;
+  autoCopy: boolean;
 }
 
 export const REMOTE_NAME_REGEX = /^[A-Za-z0-9_\-.\+@ ]+$/;

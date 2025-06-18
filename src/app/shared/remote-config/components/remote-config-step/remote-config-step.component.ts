@@ -1,5 +1,9 @@
-import { Component, EventEmitter, Input, Output } from "@angular/core";
-import { RemoteField, RemoteType, LinebreaksPipe } from "../../remote-config-types";
+import { Component, EventEmitter, Input, Output, OnInit } from "@angular/core";
+import {
+  RemoteField,
+  RemoteType,
+  LinebreaksPipe,
+} from "../../remote-config-types";
 import { FormGroup, ReactiveFormsModule } from "@angular/forms";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatDividerModule } from "@angular/material/divider";
@@ -8,12 +12,15 @@ import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { MatFormFieldModule } from "@angular/material/form-field";
+import { MatAutocompleteModule } from "@angular/material/autocomplete";
+import { CommonModule } from "@angular/common";
 
 import { SENSITIVE_KEYS } from "../../../components/types";
 
 @Component({
   selector: "app-remote-config-step",
   imports: [
+    CommonModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatSelectModule,
@@ -22,8 +29,9 @@ import { SENSITIVE_KEYS } from "../../../components/types";
     MatCardModule,
     MatDividerModule,
     MatProgressSpinnerModule,
-    LinebreaksPipe
-],
+    MatAutocompleteModule,
+    LinebreaksPipe,
+  ],
   templateUrl: "./remote-config-step.component.html",
   styleUrl: "./remote-config-step.component.scss",
 })
@@ -57,10 +65,11 @@ export class RemoteConfigStepComponent {
     this.remoteTypeChanged.emit();
   }
 
-  isSensitiveField(fieldName: string): boolean {    
-    return SENSITIVE_KEYS.some((key) =>
-      fieldName.toLowerCase().includes(key)
-    ) && this.restrictMode;
+  isSensitiveField(fieldName: string): boolean {
+    return (
+      SENSITIVE_KEYS.some((key) => fieldName.toLowerCase().includes(key)) &&
+      this.restrictMode
+    );
   }
 
   allowOnlyNumbers(event: KeyboardEvent): void {

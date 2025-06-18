@@ -8,6 +8,7 @@ export type RemoteAction =
   | "copy"
   | "stop"
   | "open"
+  | "delete"
   | null;
 
 export interface RemoteSpecs {
@@ -64,6 +65,32 @@ export interface GlobalStats {
   transfers: number;
   startTime?: string;
 }
+
+/** Default job stats */
+export const DEFAULT_JOB_STATS: GlobalStats = {
+  bytes: 0,
+  totalBytes: 0,
+  speed: 0,
+  eta: 0,
+  totalTransfers: 0,
+  transfers: 0,
+  errors: 0,
+  checks: 0,
+  totalChecks: 0,
+  deletedDirs: 0,
+  deletes: 0,
+  renames: 0,
+  serverSideCopies: 0,
+  serverSideMoves: 0,
+  elapsedTime: 0,
+  lastError: "",
+  fatalError: false,
+  retryError: false,
+  serverSideCopyBytes: 0,
+  serverSideMoveBytes: 0,
+  transferTime: 0,
+  transferring: [],
+};
 
 export interface JobInfo {
   jobid: number;

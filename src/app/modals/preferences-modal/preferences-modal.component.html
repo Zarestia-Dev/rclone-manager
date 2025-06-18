@@ -1,20 +1,22 @@
 <div class="modal">
-  <!-- 🔹 Modal Header (Top) -->
+  <!-- Modal Header -->
   <div class="modal-header" data-tauri-drag-region>
-    <button (click)="toggleSearch()">
+    <!-- Search Toggle Button -->
+    <button mat-icon-button (click)="toggleSearch()" aria-label="Toggle search">
       <mat-icon svgIcon="search"></mat-icon>
     </button>
 
+    <!-- Title (Mobile) or Desktop Tabs -->
     @if (bottomTabs) {
       <h2>Preferences</h2>
-    }
-
-    <!-- Tabs - Desktop Layout -->
-    @if (!bottomTabs) {
-      <div class="tabs desktop-tabs">
+    } @else {
+      <div class="desktop-tabs" data-tauri-drag-region>
         @for (tab of filteredTabs; track tab; let i = $index) {
-          <button mat-flat-button (click)="selectTab(i)"
-            [class.selected]="selectedTabIndex === i">
+          <button 
+            (click)="selectTab(i)"
+            [class.selected]="selectedTabIndex === i"
+            [attr.aria-selected]="selectedTabIndex === i"
+            role="tab">
             <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
             <span class="tab-label">{{ tab.label }}</span>
           </button>
@@ -22,111 +24,227 @@
       </div>
     }
 
-    <button class="close-button" (click)="close()" mat-icon-button aria-label="Close">
-      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    <!-- Close Button -->
+    <button mat-icon-button class="close-button" (click)="close()" aria-label="Close preferences">
+      <mat-icon svgIcon="close"></mat-icon>
     </button>
   </div>
 
   <!-- Search Box with Animation -->
   <div class="search-container" [@slideToggle]="searchVisible ? 'visible' : 'hidden'">
-    <input matInput class="search-input" placeholder="Search settings..." [(ngModel)]="searchQuery"
-      (ngModelChange)="filterSettings($event)">
+    <input 
+      class="search-input" 
+      placeholder="Search settings..." 
+      [(ngModel)]="searchQuery"
+      (ngModelChange)="filterSettings($event)"
+      [attr.aria-label]="'Search settings'">
   </div>
 
-  <!-- 🔹 Loading Indicator -->
+  <!-- Loading Indicator -->
   @if (isLoading) {
     <div class="loading-overlay">
       <mat-spinner diameter="50"></mat-spinner>
     </div>
   }
 
-  <!-- 🔹 Modal Content -->
+  <!-- Modal Content -->
   @if (!isLoading) {
     <div class="modal-content">
-      @for (category of getObjectKeys(settingsForm.controls); track category) {
-        @if (selectedTab === category) {
-          <div class="tab-content">
-            <div class="settings-list">
-              @for (key of getFilteredSettings(category); track key) {
-                <div class="setting-item">
-                  <!-- ✅ Fetch metadata -->
-                  @if (getMetadata(category, key); as meta) {
-                    <div class="setting-info">
-                      <strong>{{ meta.display_name }}</strong>
-                      <p>{{ meta.help_text }}</p>
-                    </div>
-                    <div class="setting-control">
-                      @if (getFormControl(category, key).invalid) {
-                        <mat-icon svgIcon="error" matSuffix color="warn"
-                          fontSet="material-icons" matTooltip="{{ getValidationMessage(category, key) }}"
-                          matTooltipPosition="above">
-                        </mat-icon>
-                      }
-                      <!-- ✅ Boolean Settings (Toggle) -->
-                      @if (meta.value_type === 'bool') {
-                        <mat-slide-toggle [formControl]="getFormControl(category, key)"
-                          (change)="updateSetting(category, key, getFormControl(category, key).value)">
-                        </mat-slide-toggle>
-                      }
-                      <!-- ✅ Number Input -->
-                      @if (meta.value_type === 'number') {
-                        <mat-form-field class="input-field" appearance="outline">
-                          <input matInput (blur)="updateSetting(category, key, getFormControl(category, key).value)"
-                            type="number" [formControl]="getFormControl(category, key)" [min]="meta.min_value || 0"
-                            [max]="meta.max_value" (keypress)="allowOnlyNumbers($event)">
-                          <mat-error>Invalid input</mat-error>
-                        </mat-form-field>
-                      }
-                      <!-- ✅ String Settings -->
-                      @if (meta.value_type === 'string') {
-                        <mat-form-field class="input-field" appearance="outline">
-                          <!-- ✅ Dropdown (Mat Select) -->
-                          @if (meta.options) {
-                            <mat-select [formControl]="getFormControl(category, key)"
-                              (selectionChange)="updateSetting(category, key, $event.value)">
-                              @for (option of meta.options; track option) {
-                                <mat-option [value]="option">
-                                  {{ option }}
-                                </mat-option>
-                              }
-                            </mat-select>
-                          }
-                          @if (!meta.options) {
-                            <input (blur)="updateSetting(category, key, getFormControl(category, key).value)" matInput [formControl]="getFormControl(category, key)">
-                          }
-                          <mat-error>Invalid input</mat-error>
-                        </mat-form-field>
-                      }
-                    </div>
-                  }
-                </div>
-              }
-              @if (selectedTab === 'general') {
-                <div class="actions">
-                  <button mat-raised-button color="warn" (click)="resetSettings()" class="reset-button">
-                    Reset All Settings
-                  </button>
-                </div>
-              }
-            </div>
+      <!-- Show unified search results if searching -->
+      @if (searchQuery && searchResults.length > 0) {
+        <div class="tab-content">
+          <div class="settings-list">
+            @for (result of searchResults; track result.category + '.' + result.key) {
+              <div class="setting-item">
+                @if (getMetadata(result.category, result.key); as meta) {
+                  <div class="setting-info">
+                    <strong>{{ meta.display_name }}</strong>
+                    <p>{{ meta.help_text }}</p>
+                    <small class="setting-category">{{ getCategoryDisplayName(result.category) }}</small>
+                  </div>
+                  <div class="setting-control">
+                    @if (getFormControl(result.category, result.key).invalid) {
+                      <mat-icon 
+                        svgIcon="error" 
+                        color="warn"
+                        [matTooltip]="getValidationMessage(result.category, result.key)"
+                        matTooltipPosition="above">
+                      </mat-icon>
+                    }
+                    
+                    <!-- Boolean Settings (Toggle) -->
+                    @if (meta.value_type === 'bool') {
+                      <mat-slide-toggle 
+                        [formControl]="getFormControl(result.category, result.key)"
+                        (change)="updateSetting(result.category, result.key, getFormControl(result.category, result.key).value)">
+                      </mat-slide-toggle>
+                    }
+                    
+                    <!-- Number Input -->
+                    @if (meta.value_type === 'number') {
+                      <mat-form-field class="input-field" appearance="outline">
+                        <input 
+                          matInput 
+                          type="number" 
+                          [formControl]="getFormControl(result.category, result.key)" 
+                          [min]="meta.min_value || 0"
+                          [max]="meta.max_value" 
+                          (blur)="updateSetting(result.category, result.key, getFormControl(result.category, result.key).value)"
+                          (keypress)="allowOnlyNumbers($event)">
+                        <mat-error>Invalid input</mat-error>
+                      </mat-form-field>
+                    }
+                    
+                    <!-- String Settings -->
+                    @if (meta.value_type === 'string') {
+                      <mat-form-field class="input-field" appearance="outline">
+                        <!-- Dropdown (Mat Select) -->
+                        @if (meta.options) {
+                          <mat-select 
+                            [formControl]="getFormControl(result.category, result.key)"
+                            (selectionChange)="updateSetting(result.category, result.key, $event.value)">
+                            @for (option of meta.options; track option) {
+                              <mat-option [value]="option">
+                                {{ option }}
+                              </mat-option>
+                            }
+                          </mat-select>
+                        }
+                        @if (!meta.options) {
+                          <input 
+                            matInput 
+                            [formControl]="getFormControl(result.category, result.key)"
+                            (blur)="updateSetting(result.category, result.key, getFormControl(result.category, result.key).value)">
+                        }
+                        <mat-error>Invalid input</mat-error>
+                      </mat-form-field>
+                    }
+                  </div>
+                }
+              </div>
+            }
           </div>
+        </div>
+      }
+      
+      <!-- Show regular tab content if not searching -->
+      @if (!searchQuery) {
+        @for (category of getObjectKeys(settingsForm.controls); track category) {
+          @if (selectedTab === category) {
+            <div class="tab-content">
+              <div class="settings-list">
+                @for (key of getFilteredSettings(category); track key) {
+                  <div class="setting-item">
+                    @if (getMetadata(category, key); as meta) {
+                      <div class="setting-info">
+                        <strong>{{ meta.display_name }}</strong>
+                        <p>{{ meta.help_text }}</p>
+                      </div>
+                      <div class="setting-control">
+                        @if (getFormControl(category, key).invalid) {
+                          <mat-icon 
+                            svgIcon="error" 
+                            color="warn"
+                            [matTooltip]="getValidationMessage(category, key)"
+                            matTooltipPosition="above">
+                          </mat-icon>
+                        }
+                        
+                        <!-- Boolean Settings (Toggle) -->
+                        @if (meta.value_type === 'bool') {
+                          <mat-slide-toggle 
+                            [formControl]="getFormControl(category, key)"
+                            (change)="updateSetting(category, key, getFormControl(category, key).value)">
+                          </mat-slide-toggle>
+                        }
+                        
+                        <!-- Number Input -->
+                        @if (meta.value_type === 'number') {
+                          <mat-form-field class="input-field" appearance="outline">
+                            <input 
+                              matInput 
+                              type="number" 
+                              [formControl]="getFormControl(category, key)" 
+                              [min]="meta.min_value || 0"
+                              [max]="meta.max_value" 
+                              (blur)="updateSetting(category, key, getFormControl(category, key).value)"
+                              (keypress)="allowOnlyNumbers($event)">
+                            <mat-error>Invalid input</mat-error>
+                          </mat-form-field>
+                        }
+                        
+                        <!-- String Settings -->
+                        @if (meta.value_type === 'string') {
+                          <mat-form-field class="input-field" appearance="outline">
+                            <!-- Dropdown (Mat Select) -->
+                            @if (meta.options) {
+                              <mat-select 
+                                [formControl]="getFormControl(category, key)"
+                                (selectionChange)="updateSetting(category, key, $event.value)">
+                                @for (option of meta.options; track option) {
+                                  <mat-option [value]="option">
+                                    {{ option }}
+                                  </mat-option>
+                                }
+                              </mat-select>
+                            }
+                            @if (!meta.options) {
+                              <input 
+                                matInput 
+                                [formControl]="getFormControl(category, key)"
+                                (blur)="updateSetting(category, key, getFormControl(category, key).value)">
+                            }
+                            <mat-error>Invalid input</mat-error>
+                          </mat-form-field>
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+                
+                <!-- Reset Button for General Tab -->
+                @if (selectedTab === 'general') {
+                  <div class="actions">
+                    <button mat-raised-button class="reset-button" (click)="resetSettings()">
+                      <mat-icon svgIcon="arrow-rotate-left"></mat-icon>
+                      Reset All Settings
+                    </button>
+                  </div>
+                }
+              </div>
+            </div>
+          }
         }
       }
-      @if (filteredTabs.length === 0) {
+      
+      <!-- No results state -->
+      @if (searchQuery && searchResults.length === 0) {
         <div class="no-results">
-          <mat-icon svgIcon="search-off"></mat-icon>
-          <p>No settings found matching "{{ searchQuery }}"</p>
+          <mat-icon svgIcon="search"></mat-icon>
+          <p>No settings found matching <strong>"{{ searchQuery }}"</strong></p>
+          <div class="search-suggestions">
+            <small>Try searching for:</small>
+            <div class="suggestion-chips">
+              <span class="chip" (click)="filterSettings('Api Port')">Api Port</span>
+              <span class="chip" (click)="filterSettings('Start on Startup')">Start on Startup</span>
+              <span class="chip" (click)="filterSettings('Debug')">Debug</span>
+              <span class="chip" (click)="filterSettings('Bandwidth')">Bandwidth</span>
+            </div>
+          </div>
         </div>
       }
     </div>
   }
 
-  <!-- 🔻 Bottom Tabs (if enabled) -->
+  <!-- Bottom Tabs (Mobile) -->
   @if (bottomTabs && filteredTabs.length > 0) {
-    <div class="tabs bottom-tabs">
+    <div class="bottom-tabs" role="tablist">
       @for (tab of filteredTabs; track tab; let i = $index) {
-        <button mat-flat-button (click)="selectTab(i)"
-          [class.selected]="selectedTabIndex === i">
+        <button 
+          (click)="selectTab(i)"
+          [class.selected]="selectedTabIndex === i"
+          [attr.aria-selected]="selectedTabIndex === i"
+          role="tab">
           <mat-icon svgIcon="{{tab.icon}}"></mat-icon>
           <span class="tab-label">{{ tab.label }}</span>
         </button>
