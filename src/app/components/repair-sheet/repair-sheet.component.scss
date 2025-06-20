@@ -30,10 +30,10 @@
   --transition-quick: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   
   // Typography
-  --title-font-size: 24px;
+  --title-font-size: var(--font-size-xl);
   --title-font-size-mobile: 20px;
-  --message-font-size: 16px;
-  --button-font-size: 16px;
+  --message-font-size: var(--font-size-base);
+  --button-font-size: var(--font-size-base);
 }
 
 .repair-sheet {
@@ -66,7 +66,7 @@
       animation: pulseRepair 2s ease-in-out infinite;
 
       mat-icon {
-        font-size: 28px;
+        font-size: var(--font-size-xl);
         width: 28px;
         height: 28px;
         color: var(--repair-primary);
@@ -106,7 +106,7 @@
           align-items: center;
           gap: 8px;
           margin-bottom: 8px;
-          font-size: 14px;
+          font-size: var(--font-size-sm);
           color: var(--secondary-text-color);
 
           &:last-child {
@@ -114,7 +114,7 @@
           }
 
           mat-icon {
-            font-size: 16px;
+            font-size: var(--font-size-base);
             width: 16px;
             height: 16px;
             color: var(--repair-primary);
@@ -238,7 +238,7 @@
 
       .repair-icon {
         mat-icon {
-          font-size: 24px;
+          font-size: var(--font-size-xl);
           width: 24px;
           height: 24px;
         }
@@ -249,7 +249,7 @@
           padding: 12px;
 
           .detail-item {
-            font-size: 13px;
+            font-size: var(--font-size-sm);
           }
         }
       }

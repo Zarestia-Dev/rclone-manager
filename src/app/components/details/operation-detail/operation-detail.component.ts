@@ -23,10 +23,8 @@ import { MatCardModule } from "@angular/material/card";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatButtonModule } from "@angular/material/button";
 import { MatTabsModule } from "@angular/material/tabs";
-import { IconService } from "../../../services/icon.service";
 import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { Subscription } from "rxjs";
-import { RcloneService } from "../../../services/rclone.service";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatFormFieldModule } from "@angular/material/form-field";
@@ -120,6 +118,8 @@ export class OperationDetailComponent
   @Input() selectedRemote: Remote | null = null;
   @Input() remoteSettings: RemoteSettings = {};
   @Input() restrictMode!: boolean;
+  @Input() iconService!: any; // Assuming iconService is provided externally
+  @Input() jobManagementService!: any; // Assuming jobManagementService is provided externally
 
   @Output() openRemoteConfigModal = new EventEmitter<{
     editTarget?: string;
@@ -164,10 +164,8 @@ export class OperationDetailComponent
   readonly POLLING_INTERVAL = 1000;
 
   constructor(
-    private rcloneService: RcloneService,
-    public iconService: IconService,
     private ngZone: NgZone,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
   ) {
     Chart.register(...registerables);
   }
@@ -499,14 +497,14 @@ export class OperationDetailComponent
   }
 
   private fetchJobStatus(): void {
-    this.rcloneService
+    this.jobManagementService
       .getJobStatus(this.currentJobId!)
-      .then((job) => {
+      .then((job: any) => {
         if (job) {
           this.ngZone.run(() => this.updateStatsFromJob(job));
         }
       })
-      .catch((error) => console.error("Error fetching job status:", error));
+      .catch((error: any) => console.error("Error fetching job status:", error));
   }
 
   private updateStatsFromJob(job: any): void {

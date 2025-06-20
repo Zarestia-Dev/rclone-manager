@@ -20,4 +20,31 @@ describe('OnboardingComponent', () => {
   it('should create', () => {
     expect(component).toBeTruthy();
   });
+
+  describe('selectCustomFolder event emitter', () => {
+    it('should have selectCustomFolder event emitter', () => {
+      expect(component.selectCustomFolder).toBeDefined();
+    });
+
+    it('should emit selectCustomFolder event when triggered', () => {
+      spyOn(component.selectCustomFolder, 'emit');
+      
+      component.selectCustomFolder.emit();
+      
+      expect(component.selectCustomFolder.emit).toHaveBeenCalled();
+    });
+  });
+
+  describe('component properties', () => {
+    it('should have customPath property', () => {
+      expect(component.customPath).toBeDefined();
+    });
+
+    it('should allow setting customPath', () => {
+      const testPath = '/home/hakan/Downloads';
+      component.customPath = testPath;
+      
+      expect(component.customPath).toBe(testPath);
+    });
+  });
 });

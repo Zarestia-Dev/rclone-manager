@@ -97,7 +97,7 @@
       border: 2px solid rgba(var(--primary-color-rgb), 0.2);
       
       mat-icon {
-        font-size: 32px;
+        font-size: var(--font-size-2xl);
         width: 32px;
         height: 32px;
         color: var(--primary-color);
@@ -110,7 +110,7 @@
     
     h2 {
       margin: 0;
-      font-size: 1.5rem;
+      font-size: var(--font-size-xl);
       font-weight: 500;
       color: var(--app-text-color);
       letter-spacing: -0.025em;
@@ -118,7 +118,7 @@
     
     p {
       margin: 0;
-      font-size: 1rem;
+      font-size: var(--font-size-base);
       color: var(--secondary-text-color);
       opacity: 0.8;
     }
@@ -156,7 +156,7 @@
   }
 
   .app-title {
-    font-size: 1.5rem;
+    font-size: var(--font-size-xl);
     font-weight: 500;
     color: var(--app-text-color);
     margin: 0;
@@ -224,7 +224,7 @@
     }
 
     .card-description {
-      font-size: 1rem;
+      font-size: var(--font-size-base);
       color: var(--secondary-text-color);
       line-height: 1.6;
       margin: 0;
@@ -354,7 +354,7 @@
     }
 
     mat-icon {
-      font-size: 18px;
+      font-size: var(--font-size-md);
       width: 18px;
       height: 18px;
     }
@@ -394,7 +394,7 @@
 
     mat-icon {
       margin-right: 8px;
-      font-size: 18px;
+      font-size: var(--font-size-md);
       width: 18px;
       height: 18px;
 
@@ -504,7 +504,7 @@
 
   .content-area {
     .text-content .card-title {
-      font-size: 1.5rem;
+      font-size: var(--font-size-xl);
     }
 
     .form-section {

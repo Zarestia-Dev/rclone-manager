@@ -66,7 +66,8 @@ export class FlagConfigStepComponent implements OnInit {
   @Output() optionToggled = new EventEmitter<FlagField>();
   @Output() jsonValidated = new EventEmitter<void>();
   @Output() jsonReset = new EventEmitter<void>();
-  @Output() remoteSelected = new EventEmitter<string>();
+  @Output() destRemoteSelected = new EventEmitter<string>();
+  @Output() sourceRemoteSelected = new EventEmitter<string>();
   @Output() destOptionSelected = new EventEmitter<string>();
   @Output() sourceOptionSelected = new EventEmitter<string>();
   @Output() folderSelected = new EventEmitter<
@@ -78,10 +79,7 @@ export class FlagConfigStepComponent implements OnInit {
   @Output() remoteSelectionReset = new EventEmitter<string>();
 
   ngOnInit(): void {
-    // Initialize filtering after a short delay to ensure form controls are ready
-    setTimeout(() => {
-      this.initializeFilteredRemotes();
-    }, 0);
+    this.initializeFilteredRemotes();
   }
 
   private initializeFilteredRemotes(): void {
@@ -162,16 +160,26 @@ export class FlagConfigStepComponent implements OnInit {
     this.jsonReset.emit();
   }
 
-  onRemoteSelected(remote: string): void {
-    this.remoteSelected.emit(remote);
-  }
-
   onDestOptionSelected(option: string): void {
-    this.destOptionSelected.emit(option);
+    // Check if this is a remote selection (contains :/ but no path after)
+    if (option.includes(':/') && (option.endsWith(':/') || option.match(/^[^:]+:\/$/))) {
+      // This is a remote selection - emit to destRemoteSelected
+      this.destRemoteSelected.emit(option);
+    } else {
+      // This is a path selection - emit to destOptionSelected
+      this.destOptionSelected.emit(option);
+    }
   }
 
   onSourceOptionSelected(option: string): void {
-    this.sourceOptionSelected.emit(option);
+    // Check if this is a remote selection (contains :/ but no path after)
+    if (option.includes(':/') && (option.endsWith(':/') || option.match(/^[^:]+:\/$/))) {
+      // This is a remote selection - emit to sourceRemoteSelected
+      this.sourceRemoteSelected.emit(option);
+    } else {
+      // This is a path selection - emit to sourceOptionSelected
+      this.sourceOptionSelected.emit(option);
+    }
   }
 
   onSelectFolder(formPath: string, requiredEmpty: boolean): void {

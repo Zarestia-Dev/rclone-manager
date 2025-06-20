@@ -1,17 +1,17 @@
 import { Injectable } from "@angular/core";
 import { FieldType, getDefaultValueForType, RemoteField, RemoteType } from "../remote-config-types";
-import { RcloneService } from "../../../services/rclone.service";
 import { AbstractControl, ValidationErrors, Validators } from "@angular/forms";
+import { RemoteManagementService } from "../../../services/features/remote-management.service";
 
 @Injectable({
   providedIn: "root",
 })
 export class RemoteConfigService {
-  constructor(private rcloneService: RcloneService) {}
+  constructor(private remoteManagementService: RemoteManagementService) {}
 
   async getRemoteTypes(): Promise<RemoteType[]> {
     try {
-      const providers = await this.rcloneService.getRemoteTypes();
+      const providers = await this.remoteManagementService.getRemoteTypes();
       return providers.map((provider) => ({
         value: provider.name,
         label: provider.description,

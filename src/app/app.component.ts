@@ -1,30 +1,29 @@
-import { Component, inject, OnInit, OnDestroy, ChangeDetectorRef } from "@angular/core";
+import {
+  Component,
+  inject,
+  OnInit,
+  OnDestroy,
+  ViewChild,
+} from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterOutlet } from "@angular/router";
 import { TitlebarComponent } from "./components/titlebar/titlebar.component";
 import { OnboardingComponent } from "./components/onboarding/onboarding.component";
 import { HomeComponent } from "./home/home.component";
-import { SettingsService } from "./services/settings.service";
-import { IconService } from "./services/icon.service";
-import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { IconService } from "./services/ui/icon.service";
+import { listen } from "@tauri-apps/api/event";
 import { RepairSheetComponent } from "./components/repair-sheet/repair-sheet.component";
 import {
   MatBottomSheet,
   MatBottomSheetModule,
 } from "@angular/material/bottom-sheet";
 import { TabsButtonsComponent } from "./components/tabs-buttons/tabs-buttons.component";
-import { Observable } from "rxjs";
-import { StateService } from "./services/state.service";
 import { invoke } from "@tauri-apps/api/core";
-import { MatToolbarModule } from "@angular/material/toolbar";
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from "@angular/animations";
-import { RcloneService } from "./services/rclone.service";
+import { UiStateService } from "./services/ui/ui-state.service";
+import { AppSettingsService } from "./services/features/app-settings.service";
+import { SystemInfoService } from "./services/features/system-info.service";
+import { FileSystemService } from "./services/features/file-system.service";
+import { AppTab } from "./shared/components/types";
 
 @Component({
   selector: "app-root",
@@ -36,79 +35,40 @@ import { RcloneService } from "./services/rclone.service";
     HomeComponent,
     MatBottomSheetModule,
     TabsButtonsComponent,
-    MatToolbarModule,
-  ],
-  animations: [
-    trigger("slideToggle", [
-      state("hidden", style({ height: "0px", opacity: 0, overflow: "hidden" })),
-      state("visible", style({ height: "*", opacity: 1, overflow: "hidden" })),
-      transition("hidden <=> visible", animate("300ms ease-in-out")),
-    ]),
   ],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss",
 })
 export class AppComponent implements OnInit, OnDestroy {
+  @ViewChild(OnboardingComponent) onboardingComponent!: OnboardingComponent;
+
   completedOnboarding: boolean = true;
   alreadyReported: boolean = false;
+  currentTab: AppTab = "general";
   private bottomSheet = inject(MatBottomSheet);
-  isMobile$: Observable<boolean>;
-  isMeteredConnection: boolean = false;
-  private unlistenNetworkStatus: UnlistenFn | null = null;
 
   constructor(
-    private settingsService: SettingsService,
-    private stateService: StateService,
-    private cdr: ChangeDetectorRef,
-    private rcloneService: RcloneService,
-    private iconService: IconService
+    private iconService: IconService,
+    public uiStateService: UiStateService,
+    public appSettingsService: AppSettingsService,
+    private systemInfoService: SystemInfoService,
+    private fileSystemService: FileSystemService
   ) {
     this.checkOnboardingStatus();
-    this.isMobile$ = this.stateService.isMobile$;
   }
 
   ngOnInit() {
-    this.checkMeteredConnection();
-    this.listenForNetworkStatus();
+    this.uiStateService.currentTab$.subscribe((tab) => {
+      this.currentTab = tab;
+    });
   }
 
   ngOnDestroy() {
-    if (this.unlistenNetworkStatus) {
-      this.unlistenNetworkStatus();
-      this.unlistenNetworkStatus = null;
-    }
-  }
-
-  async checkMeteredConnection() {
-    try {
-      const isMetered = await invoke("is_network_metered");
-      this.isMeteredConnection = !!isMetered;
-      if (isMetered) {
-        console.log("The network connection is metered.");
-      } else {
-        console.log("The network connection is not metered.");
-      }
-    } catch (e) {
-      console.error("Failed to check metered connection:", e);
-    }
-  }
-
-  private async listenForNetworkStatus() {
-    this.unlistenNetworkStatus = await listen("network-status-changed", (event: any) => {
-      const isMetered = event.payload?.isMetered;
-      this.isMeteredConnection = !!isMetered;
-      if (isMetered) {
-        console.log("Network is metered. Showing banner.");
-      } else {
-        console.log("Network is not metered. Hiding banner.");
-      }
-      this.cdr.detectChanges();
-    });
   }
 
   private async checkOnboardingStatus(): Promise<void> {
     this.completedOnboarding =
-      (await this.settingsService.load_setting_value(
+      (await this.appSettingsService.loadSettingValue(
         "core",
         "completed_onboarding"
       )) ?? false;
@@ -144,7 +104,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private listenForErrors() {
-    this.rcloneService.listenToRclonePathInvalid().subscribe(() => {
+    this.systemInfoService.listenToRclonePathInvalid().subscribe(() => {
       if (this.alreadyReported) {
         return;
       }
@@ -158,7 +118,7 @@ export class AppComponent implements OnInit, OnDestroy {
         },
         disableClose: true,
       });
-      this.rcloneService.listenToRcloneApiReady().subscribe(() => {
+      this.systemInfoService.listenToRcloneApiReady().subscribe(() => {
         this.alreadyReported = false;
         sheetRef.dismiss();
       });
@@ -168,7 +128,7 @@ export class AppComponent implements OnInit, OnDestroy {
   finishOnboarding() {
     this.completedOnboarding = true;
     // Save the onboarding status
-    this.settingsService
+    this.appSettingsService
       .saveSetting("core", "completed_onboarding", true)
       .then(() => {
         console.log("Onboarding completed status saved.");
@@ -178,21 +138,22 @@ export class AppComponent implements OnInit, OnDestroy {
       });
   }
 
-  // hideMenu() {
-  //   const menu = document.getElementById('custom-menu');
-  //   if (menu) {
-  //     menu.style.display = 'none';
-  //   }
-  // }
+  async setTab(tab: AppTab) {
+    if (this.currentTab === tab) {
+      return; // No need to change if already on the same tab
+    }
+    this.currentTab = tab;
+    this.uiStateService.setTab(tab);
+  }
 
-  // onOptionClick(option: string) {
-  //   alert(`You clicked: ${option}`);
-  //   this.hideMenu();
-  // }
-
-  // // Hide menu when clicking anywhere outside
-  // @HostListener('document:click')
-  // onClickOutside() {
-  //   this.hideMenu();
-  // }
+  async selectCustomPath(): Promise<void> {
+    try {
+      const path = await this.fileSystemService.selectFolder(false);
+      if (path && this.onboardingComponent) {
+        this.onboardingComponent.customPath = path;
+      }
+    } catch (error) {
+      console.error("Error selecting folder:", error);
+    }
+  }
 }

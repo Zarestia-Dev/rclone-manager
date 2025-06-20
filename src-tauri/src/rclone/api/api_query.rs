@@ -1,6 +1,5 @@
 use log::{debug, error, info};
 use serde_json::{Value, json};
-use std::time::Duration;
 use std::{collections::HashMap, process::Child, sync::Arc};
 use tauri::State;
 use tauri::command;
@@ -391,7 +390,13 @@ pub async fn get_remote_paths(
         remote, path, options
     );
     let mut params = serde_json::Map::new();
-    params.insert("fs".to_string(), serde_json::Value::String(remote));
+    // Ensure remote name ends with colon for proper rclone format
+    let fs_name = if remote.ends_with(':') {
+        remote
+    } else {
+        format!("{}:", remote)
+    };
+    params.insert("fs".to_string(), serde_json::Value::String(fs_name));
     params.insert(
         "remote".to_string(),
         serde_json::Value::String(path.unwrap_or_default()),
@@ -438,7 +443,6 @@ pub async fn get_bandwidth_limit(
     let response = state
         .client
         .post(&url)
-        .timeout(Duration::from_secs(10))
         .send()
         .await
         .map_err(|e| format!("Request failed: {}", e))?;
@@ -464,7 +468,6 @@ pub async fn get_rclone_info(state: State<'_, RcloneState>) -> Result<RcloneCore
     let response = state
         .client
         .post(&url)
-        .timeout(Duration::from_secs(10))
         .send()
         .await
         .map_err(|e| format!("Failed to get Rclone version: {}", e))?;
@@ -515,11 +518,10 @@ pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>
 #[tauri::command]
 pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
     let url = format!("{}/core/memstats", ENGINE_STATE.get_api().0);
-    
+
     let response = state
         .client
         .post(&url)
-        .timeout(Duration::from_secs(10))
         .send()
         .await
         .map_err(|e| format!("Failed to get memory stats: {}", e))?;
@@ -538,11 +540,10 @@ pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_jso
 #[tauri::command]
 pub async fn get_core_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
     let url = format!("{}/core/stats", ENGINE_STATE.get_api().0);
-    
+
     let response = state
         .client
         .post(&url)
-        .timeout(Duration::from_secs(10))
         .send()
         .await
         .map_err(|e| format!("Failed to get core stats: {}", e))?;

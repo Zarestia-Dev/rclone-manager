@@ -1,4 +1,4 @@
-// Component Variables - GNOME-like Design System for Keyboard Shortcuts Modal
+@use '../../styles/shared-modal';
 :host {
   // Spacing
   --modal-padding: 32px;
@@ -37,10 +37,10 @@
   --transition-quick: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 
   // Typography
-  --title-font-size: 20px;
-  --search-font-size: 16px;
-  --key-font-size: 14px;
-  --description-font-size: 15px;
+  --title-font-size: var(--font-size-lg);
+  --search-font-size: var(--font-size-base);
+  --key-font-size: var(--font-size-sm);
+  --description-font-size: var(--font-size-base);
 }
 
 .modal-container {
@@ -68,25 +68,6 @@
       rgba(var(--app-text-color-rgb), 0.02) 100%
     );
     pointer-events: none;
-  }
-
-  // Header styling
-  .modal-header {
-    display: flex;
-    background: var(--secondary-background);
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--surface-border);
-    position: relative;
-    z-index: 1;
-
-    p {
-      font-size: var(--title-font-size);
-      font-weight: 600;
-      color: var(--app-text-color);
-      margin: 0;
-      letter-spacing: -0.3px;
-    }
   }
 
   // Search container with animation
@@ -275,7 +256,7 @@
       color: var(--secondary-text-color);
 
       .empty-icon {
-        font-size: 48px;
+        font-size: var(--font-size-3xl);
         width: 48px;
         height: 48px;
         margin-bottom: 16px;
@@ -283,14 +264,14 @@
       }
 
       h3 {
-        font-size: 18px;
+        font-size: var(--font-size-md);
         font-weight: 600;
         color: var(--app-text-color);
         margin: 0 0 8px 0;
       }
 
       p {
-        font-size: 14px;
+        font-size: var(--font-size-sm);
         margin: 0 0 24px 0;
         max-width: 300px;
         line-height: 1.5;
@@ -302,7 +283,7 @@
       display: inline-flex;
       align-items: center;
       margin: 0 6px;
-      font-size: 12px;
+      font-size: var(--caption-font-size);
       color: var(--secondary-text-color);
       font-weight: 400;
     }
@@ -395,14 +376,14 @@
           .key {
             height: 28px;
             padding: 0 8px;
-            font-size: 12px;
+            font-size: var(--caption-font-size);
             margin-right: 6px;
           }
         }
 
         &.shortcut-desc {
           width: 55%;
-          font-size: 14px;
+          font-size: var(--font-size-sm);
         }
       }
     }

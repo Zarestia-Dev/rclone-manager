@@ -1,8 +1,8 @@
 import { Injectable } from "@angular/core";
-import { RcloneService } from "../../../services/rclone.service";
 import { BehaviorSubject } from "rxjs";
 import { Entry } from "../remote-config-types";
 import { AbstractControl } from "@angular/forms";
+import { RemoteManagementService } from "../../../services/features/remote-management.service";
 
 @Injectable({
   providedIn: "root",
@@ -15,17 +15,23 @@ export class PathSelectionService {
 
   private loadingStates: Record<string, BehaviorSubject<boolean>> = {};
 
-  constructor(private rcloneService: RcloneService) {}
+  constructor(private remoteManagementService: RemoteManagementService) {}
 
   async fetchEntriesForField(
     formPath: string,
     remoteName: string,
     path: string
   ): Promise<void> {
+    // Don't fetch if no remote name is provided
+    if (!remoteName || remoteName.trim() === "") {
+      this.setLoading(formPath, false);
+      return;
+    }
+
     this.setLoading(formPath, true);
     try {
       let cleanPath = this.cleanPath(path, remoteName);
-      const options = await this.rcloneService.getRemotePaths(
+      const options = await this.remoteManagementService.getRemotePaths(
         remoteName,
         cleanPath || "",
         {}
@@ -34,6 +40,10 @@ export class PathSelectionService {
       this.ensurePathState(formPath, remoteName);
       this.pathStates[formPath].currentPath = cleanPath;
       this.pathStates[formPath].options = options;
+    } catch (error) {
+      console.error(`Failed to fetch entries for ${remoteName}:`, error);
+      // Reset path state on error to avoid stuck state
+      this.resetPathSelection(formPath);
     } finally {
       this.setLoading(formPath, false);
     }
@@ -100,11 +110,9 @@ export class PathSelectionService {
   }
 
   resetPathSelection(formPath: string): void {
-    this.pathStates[formPath] = {
-      remoteName: "",
-      currentPath: "",
-      options: [],
-    };
+    // Instead of setting empty values, delete the path state entirely
+    // This ensures the template conditions work correctly
+    delete this.pathStates[formPath];
   }
 
   private ensurePathState(formPath: string, remoteName: string = "") {
@@ -140,7 +148,12 @@ export class PathSelectionService {
       return;
     }
     if (cleanedPath === "") {
-      await this.fetchEntriesForField(formPath, state?.remoteName ?? "", "");
+      // If input is cleared and no remote is selected, reset the path state completely
+      if (!state?.remoteName) {
+        this.resetPathSelection(formPath);
+        return;
+      }
+      await this.fetchEntriesForField(formPath, state.remoteName, "");
       return;
     }
     if (cleanedPath.includes(":/")) {

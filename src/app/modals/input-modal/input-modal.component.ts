@@ -6,8 +6,8 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
-import { RcloneService } from "../../services/rclone.service";
 import { MatButtonModule } from "@angular/material/button";
+import { FileSystemService } from "../../services/features/file-system.service";
 
 export type InputField = {
   name: string;
@@ -37,7 +37,7 @@ export class InputModalComponent {
 
   constructor(
     public dialogRef: MatDialogRef<InputModalComponent>,
-    private rcloneService: RcloneService,
+    private fileSystemService: FileSystemService,
     @Inject(MAT_DIALOG_DATA)
     public data: { title: string; description: string; fields: InputField[] }
   ) {
@@ -154,7 +154,7 @@ export class InputModalComponent {
 
   async selectFolder(field?: InputField) {
     try {
-      const selected = await this.rcloneService.selectFolder(false);
+      const selected = await this.fileSystemService.selectFolder(false);
       const fieldName = field ? field.name : "folder";
       this.formData[fieldName] = selected;
       

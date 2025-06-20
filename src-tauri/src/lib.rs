@@ -179,16 +179,16 @@ async fn kill_process(pid: u32) -> Result<(), String> {
         use windows_sys::Win32::System::Threading::PROCESS_TERMINATE;
         use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess};
 
-        unsafe {
-            let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
-            if handle == std::ptr::null_mut() {
-                return Err("Failed to open process".to_string());
-            }
-            let result = TerminateProcess(handle, 1);
-            CloseHandle(handle);
-            if result == 0 {
-                return Err("Failed to terminate process".to_string());
-            }
+        let handle = unsafe { OpenProcess(PROCESS_TERMINATE, 0, pid) };
+        if handle == std::ptr::null_mut() {
+            return Err("Failed to open process".to_string());
+        }
+        
+        let result = unsafe { TerminateProcess(handle, 1) };
+        unsafe { CloseHandle(handle) };
+        
+        if result == 0 {
+            return Err("Failed to terminate process".to_string());
         }
         Ok(())
     }

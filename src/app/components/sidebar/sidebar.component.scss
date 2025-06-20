@@ -8,18 +8,12 @@
   --card-margin: 16px;
   --card-padding: 20px;
   
-  // Border radius
-  --card-radius: 16px;
-  --search-radius: 12px;
-  --status-badge-radius: 8px;
-  
   // Spacing
   --header-gap: 12px;
   --card-gap: 16px;
   --status-gap: 8px;
   
   // Colors and effects
-  --header-background: var(--secondary-background);
   --card-hover-opacity: 0.05;
   --search-border-opacity: 0.1;
   --status-active-opacity: 0.15;
@@ -29,9 +23,6 @@
   --card-shadow: 0 2px 8px rgba(var(--app-text-color-rgb), 0.06), 0 1px 4px rgba(var(--app-text-color-rgb), 0.04);
   --card-hover-shadow: 0 4px 16px rgba(var(--app-text-color-rgb), 0.1), 0 2px 8px rgba(var(--app-text-color-rgb), 0.06);
   
-  // Transitions
-  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-quick: all 0.2s ease;
 }
 
 .sidebar {
@@ -44,13 +35,13 @@
   .sidebar-header {
     position: sticky;
     top: 0;
-    background: var(--header-background);
+    background: var(--secondary-background);
     padding: var(--header-padding);
     box-shadow: var(--card-shadow);
     transition: var(--transition-standard);
     
     &:hover {
-      background: rgba(var(--primary-color-rgb), var(--card-hover-opacity));
+      background: var(--bg-hover);
     }
 
     h3 {
@@ -74,7 +65,7 @@
     .search-input {
       padding: 12px 16px;
       border: 1px solid rgba(var(--app-text-color-rgb), var(--search-border-opacity));
-      border-radius: var(--search-radius);
+      border-radius: var(--panel-radius);
       background: var(--secondary-background);
       color: var(--app-text-color);
       font-size: 14px;
@@ -108,7 +99,7 @@
   .remote-card {
     margin: 0 var(--card-margin);
     padding: var(--card-padding);
-    border-radius: var(--card-radius);
+    border-radius: var(--modal-radius);
     background: var(--secondary-background);
     box-shadow: var(--card-shadow);
     transition: var(--transition-standard);
@@ -165,7 +156,7 @@
           display: flex;
           align-items: center;
           padding: 6px 10px;
-          border-radius: var(--status-badge-radius);
+          border-radius: var(--border-radius);
           font-size: 0.75rem;
           font-weight: 500;
           transition: var(--transition-quick);

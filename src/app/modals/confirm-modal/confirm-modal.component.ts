@@ -70,9 +70,19 @@ export class ConfirmModalComponent {
     }
   }
 
-  // Get the appropriate CSS class for the confirm button
-  getConfirmButtonClass(): string {
-    return this.isDestructiveAction() ? 'confirm-btn' : 'primary-btn';
+  // Get the appropriate color for the modal icon
+  getModalIconColor(): string {
+    return this.isDestructiveAction() ? 'warn' : 'primary';
+  }
+
+  // Get the appropriate color for the confirm button
+  getConfirmButtonColor(): string {
+    return this.isDestructiveAction() ? 'warn' : 'primary';
+  }
+
+  // Get the appropriate CSS class for the modal icon
+  getModalIconClass(): string {
+    return this.isDestructiveAction() ? 'destructive' : 'info';
   }
 
   // Get the appropriate icon for the confirm button
@@ -82,7 +92,7 @@ export class ConfirmModalComponent {
       if (confirmTextLower.includes('delete')) return 'trash';
       if (confirmTextLower.includes('kill')) return 'circle-exclamation';
       if (confirmTextLower.includes('remove')) return 'trash';
-      return 'warning';
+      return 'circle-exclamation';
     } else {
       const confirmTextLower = (this.data.confirmText || '').toLowerCase();
       if (confirmTextLower.includes('save')) return 'circle-check';

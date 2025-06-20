@@ -1,8 +1,13 @@
-import { Component, OnInit, OnDestroy, HostListener } from "@angular/core";
+import {
+  Component,
+  OnInit,
+  OnDestroy,
+  HostListener,
+} from "@angular/core";
 import { MatDialog } from "@angular/material/dialog";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { Observable, Subject, BehaviorSubject, Subscription } from "rxjs";
+import { Subject, BehaviorSubject, Subscription } from "rxjs";
 import { takeUntil, take } from "rxjs/operators";
 
 // Components
@@ -15,19 +20,18 @@ import { ExportModalComponent } from "../../modals/export-modal/export-modal.com
 import { InputModalComponent } from "../../modals/input-modal/input-modal.component";
 
 // Services
-import { StateService } from "../../services/state.service";
-import { SettingsService } from "../../services/settings.service";
-import { RcloneService } from "../../services/rclone.service";
 import { MatDividerModule } from "@angular/material/divider";
 import { MatIconModule } from "@angular/material/icon";
 import { CommonModule } from "@angular/common";
 import { MatMenuModule } from "@angular/material/menu";
-import { TabsButtonsComponent } from "../tabs-buttons/tabs-buttons.component";
 import { MatButtonModule } from "@angular/material/button";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { platform } from "@tauri-apps/plugin-os";
 import { CheckResult } from "../../shared/components/types";
+import { BackupRestoreService } from "../../services/features/backup-restore.service";
+import { FileSystemService } from "../../services/features/file-system.service";
+import { UiStateService } from "../../services/ui/ui-state.service";
+import { AppSettingsService } from "../../services/features/app-settings.service";
 
 type Theme = "light" | "dark" | "system";
 type ModalSize = {
@@ -57,7 +61,6 @@ const STANDARD_MODAL_SIZE: ModalSize = {
     MatDividerModule,
     CommonModule,
     MatIconModule,
-    TabsButtonsComponent,
     MatButtonModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
@@ -68,7 +71,6 @@ const STANDARD_MODAL_SIZE: ModalSize = {
 export class TitlebarComponent implements OnInit, OnDestroy {
   selectedTheme: Theme = "light";
   isMacOS: boolean = false;
-  isMobile$: Observable<boolean>;
   connectionStatus: ConnectionStatus = "online";
   connectionHistory: { timestamp: Date; result: CheckResult }[] = [];
   result?: CheckResult;
@@ -91,19 +93,19 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
   constructor(
     private dialog: MatDialog,
-    private stateService: StateService,
-    private rcloneService: RcloneService,
-    private settingsService: SettingsService
+    private backupRestoreService: BackupRestoreService,
+    private fileSystemService: FileSystemService,
+    private appSettingsService: AppSettingsService,
+    private uiStateService: UiStateService
   ) {
-    if (this.stateService.platform === "macos") {
+    if (this.uiStateService.platform === "macos") {
       this.isMacOS = true;
     }
-    this.isMobile$ = this.stateService.isMobile$;
   }
 
   async ngOnInit(): Promise<void> {
     try {
-      const theme = await this.settingsService.load_setting_value(
+      const theme = await this.appSettingsService.loadSettingValue(
         "general",
         "theme"
       );
@@ -162,7 +164,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
     if (!isInitialization) {
       try {
-        await this.settingsService.saveSetting("general", "theme", theme);
+        await this.appSettingsService.saveSetting("general", "theme", theme);
       } catch (error) {
         console.error("Failed to save theme preference");
       }
@@ -180,7 +182,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
     this.connectionStatus = "checking";
     try {
-      const links = await this.settingsService.load_setting_value(
+      const links = await this.appSettingsService.loadSettingValue(
         "core",
         "connection_check_urls"
       );
@@ -192,7 +194,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
       }
 
       try {
-        const result = await this.settingsService.checkInternetLinks(
+        const result = await this.appSettingsService.checkInternetLinks(
           links,
           2, // retries
           3 // delay in seconds
@@ -328,20 +330,20 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
   // Other Methods
   resetRemote(): void {
-    this.stateService.resetSelectedRemote();
+    this.uiStateService.resetSelectedRemote();
   }
 
   async restoreSettings(): Promise<void> {
-    const path = await this.rcloneService.selectFile();
+    const path = await this.fileSystemService.selectFile();
     if (!path) return;
 
-    const result = await this.settingsService.analyzeBackupFile(path);
+    const result = await this.backupRestoreService.analyzeBackupFile(path);
     if (!result) return;
 
     if (result.isEncrypted) {
       this.handleEncryptedBackup(path);
     } else {
-      await this.settingsService.restoreSettings(path);
+      await this.backupRestoreService.restoreSettings(path);
     }
   }
 
@@ -368,7 +370,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe(async (inputData) => {
         if (inputData?.password) {
-          await this.settingsService.restore_encrypted_settings(
+          await this.backupRestoreService.restoreEncryptedSettings(
             path,
             inputData.password
           );

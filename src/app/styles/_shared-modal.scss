@@ -1,0 +1,43 @@
+// ===== SHARED MODAL STYLES =====
+// Use this file to maintain consistent styling across all modal components
+// Import this file in each modal component SCSS: @use '../../styles/shared-modal';
+
+// Modal Header
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+
+  border-bottom: 1px solid var(--border-color);
+  font-weight: 600;
+  font-size: var(--font-size-md);
+
+  p {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 0;
+    font-weight: 600;
+    text-align: center;
+    flex: 1;
+  }
+
+  // Responsive adjustments
+  @media (max-width: 768px) {
+    font-size: var(--font-size-base);
+
+    p {
+      gap: 8px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    font-size: var(--font-size-sm);
+
+    p {
+      gap: 6px;
+    }
+  }
+}

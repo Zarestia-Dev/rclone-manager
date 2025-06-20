@@ -220,6 +220,8 @@ export interface BandwidthLimitResponse {
   bytesPerSecondRx: number;
   bytesPerSecondTx: number;
   rate: string;
+  loading: boolean;
+  error?: string;
 }
 
 export interface MemoryStats {

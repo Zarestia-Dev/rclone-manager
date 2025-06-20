@@ -8,7 +8,6 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
-  HostListener,
   TrackByFunction,
   OnChanges,
   SimpleChanges,
@@ -16,16 +15,13 @@ import {
 import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
-import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatExpansionModule } from "@angular/material/expansion";
 import { trigger, transition, style, animate } from "@angular/animations";
-import { Subject, timer, from, combineLatest, of } from "rxjs";
-import { takeUntil, switchMap, catchError, finalize } from "rxjs/operators";
+import { Subject, combineLatest, from, timer } from "rxjs";
+import { takeUntil } from "rxjs/operators";
 
-import { RcloneService } from "../../../services/rclone.service";
-import { InfoService } from "../../../services/info.service";
 import {
   BandwidthLimitResponse,
   MemoryStats,
@@ -35,16 +31,7 @@ import {
   RemoteActionProgress,
   DEFAULT_JOB_STATS,
 } from "../../../shared/components/types";
-
-/** Constants for remote actions */
-
-/** Keyboard shortcuts configuration */
-const KEYBOARD_SHORTCUTS = {
-  MOUNT: 'm',
-  SYNC: 's',
-  COPY: 'c',
-  BROWSE: 'b',
-} as const;
+import { listen, UnlistenFn } from "@tauri-apps/api/event";
 
 /** Polling interval for system stats in milliseconds */
 const POLLING_INTERVAL = 5000;
@@ -66,25 +53,6 @@ interface ActionEmitters {
 /** Rclone status type */
 type RcloneStatus = "active" | "inactive" | "error";
 
-/** Animation definitions */
-const ANIMATIONS = [
-  trigger("fadeInOut", [
-    transition(":enter", [
-      style({ opacity: 0, transform: "translateY(10px)" }),
-      animate(
-        "300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-        style({ opacity: 1, transform: "translateY(0)" })
-      ),
-    ]),
-    transition(":leave", [
-      animate(
-        "200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-        style({ opacity: 0, transform: "translateY(-10px)" })
-      ),
-    ]),
-  ]),
-];
-
 /**
  * GeneralOverviewComponent displays an overview of RClone remotes and system information
  */
@@ -96,14 +64,29 @@ const ANIMATIONS = [
     MatCardModule,
     MatIconModule,
     MatButtonModule,
-    MatTooltipModule,
     MatProgressSpinnerModule,
     MatExpansionModule,
     MatProgressBarModule,
   ],
   templateUrl: "./general-overview.component.html",
   styleUrls: ["./general-overview.component.scss"],
-  animations: ANIMATIONS,
+  animations: [
+    trigger("fadeInOut", [
+      transition(":enter", [
+        style({ opacity: 0, transform: "translateY(10px)" }),
+        animate(
+          "300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          style({ opacity: 1, transform: "translateY(0)" })
+        ),
+      ]),
+      transition(":leave", [
+        animate(
+          "200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          style({ opacity: 0, transform: "translateY(-10px)" })
+        ),
+      ]),
+    ]),
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
@@ -112,13 +95,17 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   @Input() jobs: JobInfo[] = [];
   @Input() iconService!: { getIconName: (type: string) => string };
   @Input() actionInProgress: RemoteActionProgress = {};
+  @Input() bandwidthLimit: BandwidthLimitResponse | null = null;
+  @Input() systemInfoService!: any; // Replace with actual type if available
 
   // Output events
   @Output() selectRemote = new EventEmitter<Remote>();
   @Output() mountRemote = new EventEmitter<string>();
   @Output() unmountRemote = new EventEmitter<string>();
-  @Output() syncRemote = new EventEmitter<string>();
-  @Output() copyRemote = new EventEmitter<string>();
+  @Output() startOperation = new EventEmitter<{
+    type: "sync" | "copy";
+    remoteName: string;
+  }>();
   @Output() stopJob = new EventEmitter<{
     type: "sync" | "copy";
     remoteName: string;
@@ -126,11 +113,8 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   @Output() browseRemote = new EventEmitter<string>();
 
   // State properties
-  bandwidthLimit: BandwidthLimitResponse | null = null;
-  isLoadingBandwidth = false;
-  bandwidthError: string | null = null;
   rcloneStatus: RcloneStatus = "inactive";
-  
+
   // Panel states
   bandwidthPanelOpenState = false;
   systemInfoPanelOpenState = false;
@@ -141,35 +125,39 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     memoryUsage: "0 MB",
     uptime: "0s",
   };
-  
+
   isLoadingStats = false;
   jobStats: GlobalStats = { ...DEFAULT_JOB_STATS };
-  
+
+  private unlistenBandwidthLimit: UnlistenFn | null = null;
+
   // Cache computed values to avoid recalculation
-  private _totalRemotes = 0;
-  private _activeJobsCount = 0;
-  private _jobCompletionPercentage = 0;
+  _totalRemotes = 0;
+  _activeJobsCount = 0;
+  _jobCompletionPercentage = 0;
 
   private destroy$ = new Subject<void>();
-  hoveredRemote: Remote | null = null;
   private isComponentVisible = true;
-  
+  private panelPollingInterval: any = null;
+
   // Track by function for better performance
-  readonly trackByRemoteName: TrackByFunction<Remote> = (_, remote) => remote.remoteSpecs.name;
+  readonly trackByRemoteName: TrackByFunction<Remote> = (_, remote) => {
+    return remote.remoteSpecs.name;
+  };
 
   // Action emitters map for cleaner event handling
   private readonly actionEmitters: ActionEmitters = {
-    "mount": (remoteName) => this.mountRemote.emit(remoteName),
-    "unmount": (remoteName) => this.unmountRemote.emit(remoteName),
-    "sync": (remoteName) => this.syncRemote.emit(remoteName),
-    "copy": (remoteName) => this.copyRemote.emit(remoteName),
-    "browse": (remoteName) => this.browseRemote.emit(remoteName),
+    mount: (remoteName) => this.mountRemote.emit(remoteName),
+    unmount: (remoteName) => this.unmountRemote.emit(remoteName),
+    sync: (remoteName) =>
+      this.startOperation.emit({ type: "sync", remoteName }),
+    copy: (remoteName) =>
+      this.startOperation.emit({ type: "copy", remoteName }),
+    browse: (remoteName) => this.browseRemote.emit(remoteName),
   };
 
   constructor(
-    private rcloneService: RcloneService,
-    private cdr: ChangeDetectorRef,
-    private infoService: InfoService
+    private cdr: ChangeDetectorRef
   ) {}
 
   /**
@@ -177,15 +165,40 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    */
   ngOnInit(): void {
     this.initializeComponent();
-    this.setupVisibilityListener();
+    // Load initial bandwidth limit
+    this.loadBandwidthLimit();
+    // Set up Tauri listeners for bandwidth limit changes
+    this.setupTauriListeners();    
+    // If any panels are initially open, start polling
+    if (this.shouldPollData) {
+      this.startPolling();
+    }
   }
 
   /**
    * Clean up on ngOnDestroy lifecycle hook
    */
   ngOnDestroy(): void {
+    this.stopPolling();
     this.destroy$.next();
     this.destroy$.complete();
+    if (this.unlistenBandwidthLimit) {
+      this.unlistenBandwidthLimit();
+      this.unlistenBandwidthLimit = null;
+      console.log("Unsubscribed from bandwidth limit changes");
+    }
+  }
+
+  private async setupTauriListeners(): Promise<void> {
+    // Bandwidth limit changed - update bandwidth limit state
+    this.unlistenBandwidthLimit = await listen<BandwidthLimitResponse>(
+      "bandwidth_limit_changed",
+      async (event) => {
+        console.log("Bandwidth limit changed:", event.payload);
+        this.bandwidthLimit = await this.systemInfoService.getBandwidthLimit();
+        this.cdr.markForCheck();
+      }
+    );
   }
 
   /**
@@ -193,7 +206,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * @param changes - SimpleChanges object containing changed properties
    */
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['remotes'] || changes['jobs']) {
+    if (changes["remotes"] || changes["jobs"]) {
       this.updateComputedValues();
       this.cdr.markForCheck();
     }
@@ -206,18 +219,39 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     this.loadInitialData();
     this.setupEventListeners();
     this.updateComputedValues();
-    this.startPolling();
+    // Don't start polling immediately - wait for panels to be opened
+    console.log("Component initialized - polling will start when panels are opened");
   }
 
   /**
-   * Set up visibility change listener to optimize polling
+   * Check if any expansion panels are open and need data polling
    */
-  private setupVisibilityListener(): void {
-    if (typeof document !== 'undefined') {
-      document.addEventListener('visibilitychange', () => {
-        this.isComponentVisible = !document.hidden;
-        this.startPolling(); // Restart polling with appropriate interval
-      });
+  private get shouldPollData(): boolean {
+    return (
+      this.isComponentVisible &&
+      (this.systemInfoPanelOpenState || this.jobInfoPanelOpenState)
+    );
+  }
+
+  /**
+   * Update polling based on component and panel visibility
+   */
+  private updatePollingBasedOnVisibility(): void {
+    if (this.shouldPollData) {
+      this.startPolling();
+    } else {
+      this.stopPolling();
+    }
+  }
+
+  /**
+   * Stop current polling
+   */
+  private stopPolling(): void {
+    if (this.panelPollingInterval) {
+      clearInterval(this.panelPollingInterval);
+      this.panelPollingInterval = null;
+      console.log("Stopped polling - panels closed or component not visible");
     }
   }
 
@@ -225,26 +259,41 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * Start polling for system stats with appropriate interval
    */
   private startPolling(): void {
-    const interval = this.isComponentVisible ? POLLING_INTERVAL : BACKGROUND_POLLING_INTERVAL;
-    
-    // Clear any existing polling
-    this.destroy$.next();
-    
-    timer(0, interval)
-      .pipe(
-        takeUntil(this.destroy$),
-        switchMap(() => from(this.loadSystemStats()))
-      )
-      .subscribe({
-        error: (err) => console.error("Error in system stats polling:", err),
-      });
+    // Stop any existing polling first
+    this.stopPolling();
+
+    if (!this.shouldPollData) {
+      console.log("Skipping polling - no relevant panels are open");
+      return;
+    }
+
+    const interval = this.isComponentVisible
+      ? POLLING_INTERVAL
+      : BACKGROUND_POLLING_INTERVAL;
+
+    console.log(`Starting polling with ${interval}ms interval`);
+
+    // Use setInterval for better control
+    this.panelPollingInterval = setInterval(() => {
+      if (this.shouldPollData) {
+        this.loadSystemStats().catch((err) =>
+          console.error("Error in system stats polling:", err)
+        );
+      } else {
+        this.stopPolling();
+      }
+    }, interval);
+
+    // Load initial data immediately
+    this.loadSystemStats().catch((err) =>
+      console.error("Error loading initial system stats:", err)
+    );
   }
 
   /**
    * Load initial data for the component
    */
   private loadInitialData(): void {
-    this.loadBandwidthLimit();
     this.checkRcloneStatus();
   }
 
@@ -252,7 +301,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * Set up event listeners for reactive data
    */
   private setupEventListeners(): void {
-    this.listenToBandwidthChanges();
     this.listenToRcloneStatusChanges();
   }
 
@@ -261,18 +309,21 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    */
   private updateComputedValues(): void {
     this._totalRemotes = this.remotes?.length || 0;
-    this._activeJobsCount = this.jobs?.filter((job) => job.status === "Running").length || 0;
-    
+    this._activeJobsCount =
+      this.jobs?.filter((job) => job.status === "Running").length || 0;
+
     const totalBytes = this.jobStats.totalBytes || 0;
     const bytes = this.jobStats.bytes || 0;
-    this._jobCompletionPercentage = totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
+    this._jobCompletionPercentage =
+      totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
   }
 
   /**
    * Check current RClone status
    */
   private checkRcloneStatus(): void {
-    this.rcloneService.getRcloneInfo()
+    this.systemInfoService
+      .getRcloneInfo()
       .then((status: any) => {
         this.rcloneStatus = status ? "active" : "inactive";
         this.cdr.markForCheck();
@@ -284,64 +335,27 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   /**
-   * Listen to bandwidth changes
-   */
-  private listenToBandwidthChanges(): void {
-    this.rcloneService.listenToBandwidthChanges()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => this.loadBandwidthLimit());
-  }
-
-  /**
    * Listen to RClone status changes
    */
   private listenToRcloneStatusChanges(): void {
-    const statusStreams$ = combineLatest([
-      this.rcloneService.listenToRcloneApiReady(),
-      this.rcloneService.listenToRcloneEngineFailed(),
-      this.rcloneService.listenToRclonePathInvalid(),
-    ]).pipe(takeUntil(this.destroy$));
+    // const statusStreams$ = combineLatest([
+    //   this.systemInfoService.listenToRcloneApiReady(),
+    //   this.systemInfoService.listenToRcloneEngineFailed(),
+    //   this.systemInfoService.listenToRclonePathInvalid(),
+    // ]).pipe(takeUntil(this.destroy$));
 
-    statusStreams$.subscribe(([isReady, hasFailed, isInvalidPath]: [boolean, boolean, boolean]) => {
-      if (hasFailed || isInvalidPath) {
-        this.rcloneStatus = "error";
-      } else if (isReady) {
-        this.rcloneStatus = "active";
-      } else {
-        this.rcloneStatus = "inactive";
-      }
-      this.cdr.markForCheck();
-    });
-  }
-
-  /**
-   * Load bandwidth limit information
-   */
-  loadBandwidthLimit(): void {
-    if (this.isLoadingBandwidth) {
-      return;
-    }
-    
-    this.isLoadingBandwidth = true;
-    this.bandwidthError = null;
-    this.cdr.markForCheck();
-
-    from(this.rcloneService.getBandwidthLimit())
-      .pipe(
-        takeUntil(this.destroy$),
-        catchError((error) => {
-          this.bandwidthError = "Failed to load bandwidth limit. Please try again.";
-          console.error("Error loading bandwidth limit:", error);
-          return of(null);
-        }),
-        finalize(() => {
-          this.isLoadingBandwidth = false;
-          this.cdr.markForCheck();
-        })
-      )
-      .subscribe((limit) => {
-        this.bandwidthLimit = limit;
-      });
+    // statusStreams$.subscribe(
+    //   ([isReady, hasFailed, isInvalidPath]: [boolean, boolean, boolean]) => {
+    //     if (hasFailed || isInvalidPath) {
+    //       this.rcloneStatus = "error";
+    //     } else if (isReady) {
+    //       this.rcloneStatus = "active";
+    //     } else {
+    //       this.rcloneStatus = "inactive";
+    //     }
+    //     this.cdr.markForCheck();
+    //   }
+    // );
   }
 
   /**
@@ -349,25 +363,32 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    */
   async loadSystemStats(): Promise<void> {
     if (this.isLoadingStats) {
+      console.log("System stats already loading, skipping duplicate request");
       return;
     }
-    
+
+    if (!this.shouldPollData) {
+      console.log("No panels open that need system stats, skipping load");
+      return;
+    }
+
+    console.log("Loading system stats...");
     this.isLoadingStats = true;
-    this.cdr.markForCheck();
 
     try {
+      this.cdr.markForCheck();
       const [memoryStats, coreStats] = await Promise.all([
-        this.rcloneService.getMemoryStats(), 
-        this.rcloneService.getCoreStats(),   
+        this.systemInfoService.getMemoryStats(),
+        this.systemInfoService.getCoreStats(),
       ]);
-      
+
       this.updateSystemStats(memoryStats, coreStats);
       this.updateComputedValues();
+      this.cdr.markForCheck();
     } catch (error) {
       console.error("Error loading system stats:", error);
     } finally {
       this.isLoadingStats = false;
-      this.cdr.markForCheck();
     }
   }
 
@@ -395,20 +416,109 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
-  // Formatting utilities
+  // Formatting utilities - Consolidated for better maintainability
+  private readonly formatUtils = {
+    bytes: (bytes: number): string => {
+      if (bytes === 0) return "0 B";
+      const units = ["B", "KB", "MB", "GB", "TB"];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(2))} ${
+        units[i]
+      }`;
+    },
+
+    bytesPerSecond: (bytes: number): string => {
+      if (bytes <= 0) return "Unlimited";
+      return `${this.formatUtils.bytes(bytes)}/s`;
+    },
+
+    duration: (seconds: number): string => {
+      if (seconds < 60) return `${Math.round(seconds)}s`;
+      if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
+      if (seconds < 86400) return `${Math.round(seconds / 3600)}h`;
+      return `${Math.round(seconds / 86400)}d`;
+    },
+
+    eta: (eta: number | string): string => {
+      if (typeof eta === "string") return eta;
+      if (eta <= 0 || !isFinite(eta)) return "Unknown";
+      return this.formatUtils.duration(eta);
+    },
+
+    memoryUsage: (memoryStats: MemoryStats | null): string => {
+      return memoryStats?.HeapAlloc
+        ? `${Math.round(memoryStats.HeapAlloc / 1024 / 1024)} MB`
+        : "Unknown";
+    },
+
+    rateValue: (rate: string): string => {
+      if (!rate || rate === "off" || rate === "") return "Unlimited";
+
+      // Handle combined rates like "10Ki:100Ki" (upload:download)
+      if (rate.includes(":")) {
+        const [uploadRate, downloadRate] = rate.split(":");
+        const uploadFormatted = this.formatUtils.parseRateString(uploadRate);
+        const downloadFormatted =
+          this.formatUtils.parseRateString(downloadRate);
+        return `↑ ${uploadFormatted} / ↓ ${downloadFormatted}`;
+      }
+
+      // Handle single rate
+      return `Limited to ${this.formatUtils.parseRateString(rate)}`;
+    },
+
+    parseRateString: (rateStr: string): string => {
+      if (!rateStr || rateStr === "off") return "Unlimited";
+
+      // Handle rclone's rate format (e.g., "10Ki", "1Mi", "100Ki")
+      const match = rateStr.match(/^(\d+(?:\.\d+)?)\s*([KMGT]?i?)$/i);
+      if (!match) return rateStr;
+
+      const [, value, unit] = match;
+      const numValue = parseFloat(value);
+
+      // Convert rclone units to bytes
+      const rcloneMultipliers = {
+        "": 1,
+        Ki: 1024,
+        Mi: 1024 ** 2,
+        Gi: 1024 ** 3,
+        Ti: 1024 ** 4,
+      };
+
+      const multiplier =
+        rcloneMultipliers[unit as keyof typeof rcloneMultipliers] || 1;
+      const bytes = numValue * multiplier;
+
+      return this.formatUtils.bytesPerSecond(bytes);
+    },
+
+    bandwidthDetails: (
+      bandwidthLimit: BandwidthLimitResponse
+    ): { upload: string; download: string; total: string } => {
+      const isUnlimited = (value: number) => value <= 0;
+
+      return {
+        upload: isUnlimited(bandwidthLimit.bytesPerSecondTx)
+          ? "Unlimited"
+          : this.formatUtils.bytesPerSecond(bandwidthLimit.bytesPerSecondTx),
+        download: isUnlimited(bandwidthLimit.bytesPerSecondRx)
+          ? "Unlimited"
+          : this.formatUtils.bytesPerSecond(bandwidthLimit.bytesPerSecondRx),
+        total: isUnlimited(bandwidthLimit.bytesPerSecond)
+          ? "Unlimited"
+          : this.formatUtils.bytesPerSecond(bandwidthLimit.bytesPerSecond),
+      };
+    },
+  };
+
   /**
    * Format bytes to human readable string
    * @param bytes - Number of bytes
    * @returns Formatted string with appropriate unit
    */
   formatBytes(bytes: number): string {
-    if (bytes === 0) return "0 B";
-
-    const k = 1024;
-    const sizes = ["B", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return this.formatUtils.bytes(bytes);
   }
 
   /**
@@ -417,9 +527,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * @returns Formatted memory usage string
    */
   private formatMemoryUsage(memoryStats: MemoryStats | null): string {
-    return memoryStats?.HeapAlloc
-      ? `${Math.round(memoryStats.HeapAlloc / 1024 / 1024)} MB`
-      : "Unknown";
+    return this.formatUtils.memoryUsage(memoryStats);
   }
 
   /**
@@ -428,18 +536,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * @returns Formatted uptime string
    */
   formatUptime(elapsedTimeSeconds: number): string {
-    if (!elapsedTimeSeconds) return "0s";
-
-    const totalSeconds = Math.floor(elapsedTimeSeconds);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    return hours > 0
-      ? `${hours}h ${minutes}m`
-      : minutes > 0
-      ? `${minutes}m ${seconds}s`
-      : `${seconds}s`;
+    return this.formatUtils.duration(elapsedTimeSeconds);
   }
 
   /**
@@ -448,33 +545,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * @returns Formatted ETA string
    */
   formatEta(eta: number | string): string {
-    if (!eta) return "0s";
-    if (typeof eta === "number") return `${Math.max(eta, 0)}s`;
-
-    const match = eta.match(/(?:(\d+)m)?(?:(\d+)s)?/);
-    return match
-      ? `${parseInt(match[1] || "0") * 60 + parseInt(match[2] || "0")}s`
-      : eta;
-  }
-
-  /**
-   * Format bytes per second to human readable string
-   * @param bytes - Bytes per second
-   * @returns Formatted string with appropriate unit
-   */
-  private formatBytesPerSecond(bytes: number): string {
-    if (bytes <= 0) return "Unlimited";
-
-    const units = ["B/s", "KB/s", "MB/s", "GB/s", "TB/s"];
-    let size = bytes;
-    let unitIndex = 0;
-
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex++;
-    }
-
-    return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+    return this.formatUtils.eta(eta);
   }
 
   /**
@@ -483,54 +554,52 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * @returns Formatted rate string
    */
   private formatRateValue(rate: string): string {
-    if (!rate || rate === "off") return "Unlimited";
-
-    const units = { Ki: "KB/s", Mi: "MB/s", Gi: "GB/s", Ti: "TB/s" };
-    const unit = Object.keys(units).find((u) => rate.endsWith(u));
-
-    if (unit) {
-      return `${rate.replace(unit, "")} ${units[unit as keyof typeof units]}`;
-    }
-
-    const numValue = parseInt(rate);
-    return isNaN(numValue) ? rate : this.formatBytesPerSecond(numValue);
-  }
-
-  // Computed properties
-  get totalRemotes(): number {
-    return this._totalRemotes;
-  }
-
-  get activeJobsCount(): number {
-    return this._activeJobsCount;
-  }
-
-  get jobCompletionPercentage(): number {
-    return this._jobCompletionPercentage;
+    return this.formatUtils.rateValue(rate);
   }
 
   get isBandwidthLimited(): boolean {
+    if (!this.bandwidthLimit) return false;
+
+    console.log("Checking if bandwidth is limited:", this.bandwidthLimit);
+
     return (
       !!this.bandwidthLimit &&
       this.bandwidthLimit.rate !== "off" &&
-      this.bandwidthLimit.rate !== ""
+      this.bandwidthLimit.rate !== "" &&
+      this.bandwidthLimit.bytesPerSecond > 0
     );
   }
 
   get formattedBandwidthRate(): string {
-    if (!this.bandwidthLimit || this.bandwidthLimit.rate === "off" || this.bandwidthLimit.rate === "") {
+    if (
+      !this.bandwidthLimit ||
+      this.bandwidthLimit.rate === "off" ||
+      this.bandwidthLimit.rate === "" ||
+      this.bandwidthLimit.bytesPerSecond <= 0
+    ) {
       return "Unlimited";
     }
     return this.formatRateValue(this.bandwidthLimit.rate);
   }
 
   get bandwidthDisplayValue(): string {
-    if (this.isLoadingBandwidth) return "Loading...";
-    if (this.bandwidthError) return "Error loading limit";
-    if (!this.bandwidthLimit || this.bandwidthLimit.rate === "off" || this.bandwidthLimit.rate === "") {
+    if (this.bandwidthLimit?.loading) return "Loading...";
+    if (this.bandwidthLimit?.error) return "Error loading limit";
+    if (
+      !this.bandwidthLimit ||
+      this.bandwidthLimit.rate === "off" ||
+      this.bandwidthLimit.rate === "" ||
+      this.bandwidthLimit.bytesPerSecond <= 0
+    ) {
       return "Unlimited";
     }
     return this.formatRateValue(this.bandwidthLimit.rate);
+  }
+
+  get bandwidthDetails() {
+    if (!this.bandwidthLimit)
+      return { upload: "Unknown", download: "Unknown", total: "Unknown" };
+    return this.formatUtils.bandwidthDetails(this.bandwidthLimit);
   }
 
   // Action Progress Utilities
@@ -553,27 +622,30 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     return !!this.actionInProgress[remoteName];
   }
 
-  // Specific action state checks
-  isMounting = (remoteName: string): boolean => 
-    this.isActionInProgress(remoteName, "mount");
+  // Specific action state checks - Using more concise arrow functions
+  private readonly actionCheckers = {
+    mounting: (remoteName: string) =>
+      this.isActionInProgress(remoteName, "mount"),
+    unmounting: (remoteName: string) =>
+      this.isActionInProgress(remoteName, "unmount"),
+    syncing: (remoteName: string) =>
+      this.isActionInProgress(remoteName, "sync"),
+    stopping: (remoteName: string) =>
+      this.isActionInProgress(remoteName, "stop"),
+    copying: (remoteName: string) =>
+      this.isActionInProgress(remoteName, "copy"),
+    browsing: (remoteName: string) =>
+      this.isActionInProgress(remoteName, "open"),
+  } as const;
 
-  isUnmounting = (remoteName: string): boolean => 
-    this.isActionInProgress(remoteName, "unmount");
-
-  isSyncing = (remoteName: string): boolean => 
-    this.isActionInProgress(remoteName, "sync");
-
-  isStoppingSyncing = (remoteName: string): boolean => 
-    this.isActionInProgress(remoteName, "stop");
-
-  isCopying = (remoteName: string): boolean => 
-    this.isActionInProgress(remoteName, "copy");
-
-  isStoppingCopying = (remoteName: string): boolean => 
-    this.isActionInProgress(remoteName, "stop");
-
-  isBrowsing = (remoteName: string): boolean => 
-    this.isActionInProgress(remoteName, "open");
+  // Public accessor methods for template usage
+  isMounting = this.actionCheckers.mounting;
+  isUnmounting = this.actionCheckers.unmounting;
+  isSyncing = this.actionCheckers.syncing;
+  isStoppingSyncing = this.actionCheckers.stopping;
+  isCopying = this.actionCheckers.copying;
+  isStoppingCopying = this.actionCheckers.stopping;
+  isBrowsing = this.actionCheckers.browsing;
 
   /**
    * Get ARIA label for a remote card
@@ -581,12 +653,28 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * @returns ARIA label string
    */
   getRemoteAriaLabel(remote: Remote): string {
-    const status = [];
-    if (remote.mountState?.mounted) status.push('Mounted');
-    if (remote.syncState?.isOnSync) status.push('Syncing');
-    if (remote.copyState?.isOnCopy) status.push('Copying');
-    
-    return `${remote.remoteSpecs.name} (${remote.remoteSpecs.type})${status.length ? ` - ${status.join(', ')}` : ''}`;
+    const statusChecks = [
+      { condition: remote.mountState?.mounted, label: "Mounted" },
+      { condition: remote.syncState?.isOnSync, label: "Syncing" },
+      { condition: remote.copyState?.isOnCopy, label: "Copying" },
+    ];
+
+    const activeStatuses = statusChecks
+      .filter((check) => check.condition)
+      .map((check) => check.label);
+
+    const statusSuffix = activeStatuses.length
+      ? ` - ${activeStatuses.join(", ")}`
+      : "";
+    return `${remote.remoteSpecs.name} (${remote.remoteSpecs.type})${statusSuffix}`;
+  }
+
+  getRemoteCardClasses(remote: Remote) {
+    return {
+      mounted: remote.mountState?.mounted,
+      syncing: remote.syncState?.isOnSync,
+      copying: remote.copyState?.isOnCopy,
+    };
   }
 
   /**
@@ -596,6 +684,36 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    */
   isRemoteBusy(remote: Remote): boolean {
     return this.isAnyActionInProgress(remote.remoteSpecs.name);
+  }
+
+  async loadBandwidthLimit(): Promise<void> {
+    try {
+      this.bandwidthLimit = {
+        bytesPerSecond: 0,
+        bytesPerSecondRx: 0,
+        bytesPerSecondTx: 0,
+        rate: "Loading...",
+        loading: true,
+      };
+      this.cdr.markForCheck();
+
+      const response = await this.systemInfoService.getBandwidthLimit();
+      console.log("HomeComponent: Bandwidth limit loaded:", response);
+
+      this.bandwidthLimit = response;
+    } catch (error) {
+      console.error("HomeComponent: Failed to load bandwidth limit:", error);
+      this.bandwidthLimit = {
+        bytesPerSecond: -1,
+        bytesPerSecondRx: -1,
+        bytesPerSecondTx: -1,
+        rate: "off",
+        loading: false,
+        error: `Failed to load bandwidth limit: ${error}`,
+      };
+    } finally {
+      this.cdr.markForCheck();
+    }
   }
 
   // Event handlers
@@ -608,114 +726,68 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   onQuickAction(event: Event, remoteName: string, action: string): void {
     event.stopPropagation();
 
+    // Handle regular actions
     const emitter = this.actionEmitters[action];
     if (emitter) {
       emitter(remoteName);
       return;
     }
 
-    // Handle stop actions
-    if (action === 'stop-sync') {
-      this.stopJob.emit({ type: "sync", remoteName });
-    } else if (action === 'stop-copy') {
-      this.stopJob.emit({ type: "copy", remoteName });
+    // Handle stop actions with a more elegant approach
+    const stopActions = {
+      "stop-sync": () => this.stopJob.emit({ type: "sync", remoteName }),
+      "stop-copy": () => this.stopJob.emit({ type: "copy", remoteName }),
+    } as const;
+
+    const stopHandler = stopActions[action as keyof typeof stopActions];
+    if (stopHandler) {
+      stopHandler();
     } else {
       console.warn("Unknown action:", action);
     }
   }
 
+  // Panel state change handlers
   /**
-   * Handle remote hover event
-   * @param remote - Hovered remote
+   * Handle bandwidth panel state change
    */
-  onRemoteHover(remote: Remote): void {
-    this.hoveredRemote = remote;
+  onBandwidthPanelStateChange(isOpen: boolean): void {
+    this.bandwidthPanelOpenState = isOpen;
+    console.log(`Bandwidth panel ${isOpen ? 'opened' : 'closed'}`);
+    // Bandwidth panel doesn't need polling, so no action needed
   }
 
   /**
-   * Handle remote leave event
+   * Handle system info panel state change
    */
-  onRemoteLeave(): void {
-    this.hoveredRemote = null;
-  }
-
-  /**
-   * Handle keyboard shortcuts
-   * @param event - Keyboard event
-   */
-  @HostListener("window:keydown", ["$event"])
-  onKeyDown(event: KeyboardEvent): void {
-    if (this.shouldIgnoreKeyEvent(event)) return;
-
-    const key = event.key.toLowerCase();
-    const remote = this.hoveredRemote!;
-    const remoteName = remote.remoteSpecs.name;
-
-    const keyAction = this.getKeyAction(key, remote);
-    if (keyAction) {
-      keyAction();
-      event.preventDefault();
+  onSystemInfoPanelStateChange(isOpen: boolean): void {
+    this.systemInfoPanelOpenState = isOpen;
+    console.log(`System info panel ${isOpen ? 'opened' : 'closed'}`);
+    
+    if (isOpen) {
+      // Load data immediately when panel opens
+      this.loadSystemStats().catch((err) =>
+        console.error("Error loading initial system stats:", err)
+      );
     }
+    
+    this.updatePollingBasedOnVisibility();
   }
 
   /**
-   * Check if key event should be ignored
-   * @param event - Keyboard event
-   * @returns True if event should be ignored
+   * Handle job info panel state change
    */
-  private shouldIgnoreKeyEvent(event: KeyboardEvent): boolean {
-    return (
-      event.target instanceof HTMLInputElement ||
-      event.target instanceof HTMLTextAreaElement ||
-      !this.hoveredRemote
-    );
-  }
-
-  /**
-   * Get action for keyboard shortcut
-   * @param key - Pressed key
-   * @param remote - Remote object
-   * @returns Action function or null
-   */
-  private getKeyAction(key: string, remote: Remote): (() => void) | null {
-    const remoteName = remote.remoteSpecs.name;
-
-    switch (key) {
-      case KEYBOARD_SHORTCUTS.MOUNT:
-        return () => {
-          remote.mountState?.mounted
-            ? this.unmountRemote.emit(remoteName)
-            : this.mountRemote.emit(remoteName);
-        };
-      
-      case KEYBOARD_SHORTCUTS.SYNC:
-        return () => {
-          remote.syncState?.isOnSync
-            ? this.stopJob.emit({ type: "sync", remoteName })
-            : this.syncRemote.emit(remoteName);
-        };
-      
-      case KEYBOARD_SHORTCUTS.COPY:
-        return () => {
-          remote.copyState?.isOnCopy
-            ? this.stopJob.emit({ type: "copy", remoteName })
-            : this.copyRemote.emit(remoteName);
-        };
-      
-      case KEYBOARD_SHORTCUTS.BROWSE:
-        return () => {
-          if (remote.mountState?.mounted) {
-            this.browseRemote.emit(remoteName);
-          } else {
-            this.infoService.openSnackBar(
-              "Remote is not mounted. Please mount it first.",
-              "Close"
-            );
-          }
-        };
-      
-      default:
-        return null;
+  onJobInfoPanelStateChange(isOpen: boolean): void {
+    this.jobInfoPanelOpenState = isOpen;
+    console.log(`Job info panel ${isOpen ? 'opened' : 'closed'}`);
+    
+    if (isOpen) {
+      // Load data immediately when panel opens
+      this.loadSystemStats().catch((err) =>
+        console.error("Error loading initial job stats:", err)
+      );
     }
+    
+    this.updatePollingBasedOnVisibility();
   }
 }

@@ -17,18 +17,21 @@ import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatIconModule } from "@angular/material/icon";
 import { MatExpansionModule } from "@angular/material/expansion";
 import { animate, style, transition, trigger } from "@angular/animations";
-import { RcloneService } from "../../services/rclone.service";
-import { SettingsService } from "../../services/settings.service";
 import { Subscription } from "rxjs";
-import { StateService } from "../../services/state.service";
 import { MatButtonModule } from "@angular/material/button";
 import {
-  LoadingState,
   QuickAddForm,
   RemoteSettings,
   RemoteType,
 } from "../../shared/remote-config/remote-config-types";
 import { MatCheckboxModule } from "@angular/material/checkbox";
+import { AuthStateService } from "../../services/ui/auth-state.service";
+import { RemoteManagementService } from "../../services/features/remote-management.service";
+import { JobManagementService } from "../../services/features/job-management.service";
+import { MountManagementService } from "../../services/features/mount-management.service";
+import { AppSettingsService } from "../../services/features/app-settings.service";
+import { FileSystemService } from "../../services/features/file-system.service";
+import { UiStateService } from "../../services/ui/ui-state.service";
 
 @Component({
   selector: "app-quick-add-remote",
@@ -64,21 +67,21 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   remoteTypes: RemoteType[] = [];
   existingRemotes: string[] = [];
 
-  isLoading: LoadingState = {
-    saving: false,
-    authDisabled: false,
-    cancelled: false,
-  };
+  isAuthInProgress = false;
+  isAuthCancelled = false;
 
-  private formSubscriptions: Subscription[] = [];
-  private authSubscriptions: Subscription[] = [];
+  private subscriptions: Subscription[] = [];
 
   constructor(
     private fb: FormBuilder,
     private dialogRef: MatDialogRef<QuickAddRemoteComponent>,
-    private rcloneService: RcloneService,
-    private settingsService: SettingsService,
-    private stateService: StateService
+        private authStateService: AuthStateService,
+        private remoteManagementService: RemoteManagementService,
+        private jobManagementService: JobManagementService,
+        private mountManagementService: MountManagementService,
+        private appSettingsService: AppSettingsService,
+        private fileSystemService: FileSystemService,
+        private uiStateService: UiStateService,
   ) {
     this.quickAddForm = this.createQuickAddForm();
     this.setupFormListeners();
@@ -90,16 +93,15 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   private setupAuthStateListeners(): void {
-    this.authSubscriptions.push(
-      this.stateService.isAuthInProgress$.subscribe((isInProgress) => {
-        this.isLoading.saving = isInProgress;
-        this.isLoading.authDisabled = isInProgress;
+    this.subscriptions.push(
+      this.authStateService.isAuthInProgress$.subscribe((isInProgress) => {
+        this.isAuthInProgress = isInProgress;
         this.setFormState(isInProgress);
       })
     );
-    this.authSubscriptions.push(
-      this.stateService.isAuthCancelled$.subscribe((isCancelled) => {
-        this.isLoading.cancelled = isCancelled;
+    this.subscriptions.push(
+      this.authStateService.isAuthCancelled$.subscribe((isCancelled) => {
+        this.isAuthCancelled = isCancelled;
         console.log("Auth cancelled:", isCancelled);
       })
     );
@@ -111,34 +113,26 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   private cleanupSubscriptions(): void {
-    this.formSubscriptions.forEach((sub) => sub.unsubscribe());
-    this.authSubscriptions.forEach((sub) => sub.unsubscribe());
-    this.formSubscriptions = [];
-    this.authSubscriptions = [];
+    this.subscriptions.forEach((sub) => sub.unsubscribe());
+    this.subscriptions = [];
   }
 
   private createQuickAddForm(): FormGroup {
     return this.fb.group({
-      remoteName: [
-        { value: "", disabled: this.isLoading.saving },
-        [Validators.required, this.validateRemoteName.bind(this)],
-      ],
-      remoteType: [
-        { value: "", disabled: this.isLoading.saving },
-        Validators.required,
-      ],
+      remoteName: ["", [Validators.required, this.validateRemoteName.bind(this)]],
+      remoteType: ["", Validators.required],
       // Mount options
-      autoMount: [{ value: false, disabled: this.isLoading.saving }],
-      mountSource: [{ value: "", disabled: this.isLoading.saving }],
-      mountPath: [{ value: "", disabled: this.isLoading.saving }],
+      autoMount: [false],
+      mountSource: [""],
+      mountPath: [""],
       // Sync options
-      autoSync: [{ value: false, disabled: this.isLoading.saving }],
-      syncSource: [{ value: "", disabled: this.isLoading.saving }],
-      syncDest: [{ value: "", disabled: this.isLoading.saving }],
+      autoSync: [false],
+      syncSource: [""],
+      syncDest: [""],
       // Copy options
-      autoCopy: [{ value: false, disabled: this.isLoading.saving }],
-      copySource: [{ value: "", disabled: this.isLoading.saving }],
-      copyDest: [{ value: "", disabled: this.isLoading.saving }],
+      autoCopy: [false],
+      copySource: [""],
+      copyDest: [""],
     });
   }
 
@@ -184,21 +178,21 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         copyDestControl?.updateValueAndValidity();
       });
 
-    if (autoMountSub) this.formSubscriptions.push(autoMountSub);
-    if (autoSyncSub) this.formSubscriptions.push(autoSyncSub);
-    if (autoCopySub) this.formSubscriptions.push(autoCopySub);
+    if (autoMountSub) this.subscriptions.push(autoMountSub);
+    if (autoSyncSub) this.subscriptions.push(autoSyncSub);
+    if (autoCopySub) this.subscriptions.push(autoCopySub);
   }
 
   private async initializeComponent(): Promise<void> {
     try {
       const oauthSupportedRemotes =
-        await this.rcloneService.getOAuthSupportedRemotes();
+        await this.remoteManagementService.getOAuthSupportedRemotes();
       console.log("OAuth Supported Remotes:", oauthSupportedRemotes);
       this.remoteTypes = oauthSupportedRemotes.map((remote: any) => ({
         value: remote.name,
         label: remote.description,
       }));
-      this.existingRemotes = await this.rcloneService.getRemotes();
+      this.existingRemotes = await this.remoteManagementService.getRemotes();
       console.log("OAuth Supported Remotes:", this.remoteTypes);
     } catch (error) {
       console.error("Error initializing component:", error);
@@ -229,7 +223,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   async selectFolder(fieldName: string = 'mountPath'): Promise<void> {
     try {
-      const selectedPath = await this.rcloneService.selectFolder(true);
+      const selectedPath = await this.fileSystemService.selectFolder(true);
       if (selectedPath) {
         this.quickAddForm.patchValue({ [fieldName]: selectedPath });
       }
@@ -239,27 +233,27 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   async onSubmit(): Promise<void> {
-    if (this.quickAddForm.invalid || this.isLoading.saving) return;
+    if (this.quickAddForm.invalid || this.isAuthInProgress) return;
 
     const formValue = this.quickAddForm.value as QuickAddForm;
-    await this.stateService.startAuth(formValue.remoteName, false);
+    await this.authStateService.startAuth(formValue.remoteName, false);
 
     try {
       await this.handleRemoteCreation(formValue);
-      if (!this.isLoading.cancelled) {
+      if (!this.isAuthCancelled) {
         this.dialogRef.close(true);
       }
     } catch (error) {
       console.error("Error in onSubmit:", error);
     } finally {
-      this.stateService.resetAuthState();
+      this.authStateService.resetAuthState();
     }
   }
 
   private async handleRemoteCreation(formValue: QuickAddForm): Promise<void> {
-    const { remoteName, remoteType, autoMount, mountSource, mountPath, autoSync, syncSource, syncDest, autoCopy, copySource, copyDest } = formValue;
+    const { remoteName, remoteType, autoMount, mountPath, autoSync, syncDest, autoCopy, copyDest } = formValue;
 
-    await this.rcloneService.createRemote(remoteName, {
+    await this.remoteManagementService.createRemote(remoteName, {
       name: remoteName,
       type: remoteType,
     });
@@ -270,48 +264,48 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       showOnTray: true,
       mountConfig: {
         dest: mountPath || "",
-        source: mountSource || remoteName + ":/",
+        source: remoteName + ":/",
         autoStart: autoMount || false,
       },
       copyConfig: {
         autoStart: autoCopy || false,
-        source: copySource || remoteName + ":/",
+        source: remoteName + ":/",
         dest: copyDest || "",
       },
       syncConfig: {
         autoStart: autoSync || false,
-        source: syncSource || remoteName + ":/",
+        source: remoteName + ":/",
         dest: syncDest || "",
       },
       filterConfig: {},
     };
 
-    await this.settingsService.saveRemoteSettings(remoteName, remoteSettings);
+    await this.appSettingsService.saveRemoteSettings(remoteName, remoteSettings);
 
     // Auto-start operations based on user selections
     if (autoMount && mountPath) {
-      const finalMountSource = mountSource || remoteName + ":/";
-      await this.rcloneService.mountRemote(remoteName, finalMountSource, mountPath);
+      const finalMountSource = remoteName + ":/";
+      await this.mountManagementService.mountRemote(remoteName, finalMountSource, mountPath);
       console.log("Remote mounted successfully!");
     }
 
     if (autoSync && syncDest) {
       // Note: You may need to implement auto-sync starting logic
-      const finalSyncSource = syncSource || remoteName + ":/";
-      await this.rcloneService.startSync(remoteName, finalSyncSource, syncDest);
+      const finalSyncSource =  remoteName + ":/";
+      await this.jobManagementService.startSync(remoteName, finalSyncSource, syncDest);
       console.log("Auto-sync configured for:", { source: finalSyncSource, dest: syncDest });
     }
 
     if (autoCopy && copyDest) {
       // Note: You may need to implement auto-copy starting logic
-      const finalCopySource = copySource || remoteName + ":/";
-      await this.rcloneService.startCopy(remoteName, finalCopySource, copyDest);
+      const finalCopySource = remoteName + ":/";
+      await this.jobManagementService.startCopy(remoteName, finalCopySource, copyDest);
       console.log("Auto-copy configured for:", { source: finalCopySource, dest: copyDest });
     }
   }
 
   async cancelAuth(): Promise<void> {
-    await this.stateService.cancelAuth();
+    await this.authStateService.cancelAuth();
   }
 
   private setFormState(disabled: boolean): void {
@@ -319,7 +313,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   getSubmitButtonText(): string {
-    if (this.isLoading.saving && !this.isLoading.cancelled) {
+    if (this.isAuthInProgress && !this.isAuthCancelled) {
       return 'Adding Remote...';
     }
     return 'Create Remote';
@@ -336,8 +330,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   private cleanup(): void {
-    this.formSubscriptions.forEach((sub) => sub.unsubscribe());
-    this.authSubscriptions.forEach((sub) => sub.unsubscribe());
+    this.subscriptions.forEach((sub) => sub.unsubscribe());
     this.cancelAuth();
   }
 }

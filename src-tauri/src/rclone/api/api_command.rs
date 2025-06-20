@@ -219,7 +219,6 @@ pub async fn create_remote(
     let response = state
         .client
         .post(&url)
-        .timeout(Duration::from_secs(30))
         .json(&body)
         .send()
         .await
@@ -307,7 +306,6 @@ pub async fn update_remote(
     let response = state
         .client
         .post(&url)
-        .timeout(Duration::from_secs(30))
         .json(&body)
         .send()
         .await
@@ -358,7 +356,6 @@ pub async fn delete_remote(
         .client
         .post(&url)
         .query(&[("name", &name)])
-        .timeout(Duration::from_secs(10))
         .send()
         .await
         .map_err(|e| format!("Request failed: {}", e))?;
@@ -458,7 +455,6 @@ pub async fn mount_remote(
     let response = state
         .client
         .post(&url)
-        .timeout(Duration::from_secs(30))
         .json(&payload)
         .send()
         .await
@@ -570,7 +566,6 @@ pub async fn unmount_remote(
     let response = state
         .client
         .post(&url)
-        .timeout(Duration::from_secs(10))
         .json(&payload)
         .send()
         .await
@@ -632,7 +627,6 @@ pub async fn unmount_all_remotes(
     let response = state
         .client
         .post(&url)
-        .timeout(Duration::from_secs(10))
         .send()
         .await
         .map_err(|e| format!("Request failed: {}", e))?;
@@ -709,7 +703,6 @@ pub async fn start_sync(
         .client
         .post(&url)
         .json(&Value::Object(body)) // send JSON body
-        .timeout(Duration::from_secs(30))
         .send()
         .await
         .map_err(|e| format!("Request failed: {}", e))?;
@@ -795,7 +788,6 @@ pub async fn stop_job(
     let response = state
         .client
         .post(&url)
-        .timeout(Duration::from_secs(10))
         .json(&payload)
         .send()
         .await
@@ -891,7 +883,6 @@ pub async fn start_copy(
         .client
         .post(&url)
         .json(&Value::Object(body)) // send JSON body
-        .timeout(Duration::from_secs(30))
         .send()
         .await
         .map_err(|e| format!("Request failed: {}", e))?;
@@ -992,13 +983,11 @@ async fn monitor_job(
         let status_fut = client
             .post(&job_status_url)
             .json(&json!({ "jobid": jobid }))
-            .timeout(Duration::from_secs(10))
             .send();
 
         let stats_fut = client
             .post(&stats_url)
             .json(&json!({ "jobid": jobid }))
-            .timeout(Duration::from_secs(10))
             .send();
 
         match tokio::try_join!(status_fut, stats_fut) {
@@ -1195,7 +1184,6 @@ pub async fn set_bandwidth_limit(
     let response = state
         .client
         .post(&url)
-        .timeout(Duration::from_secs(10))
         .json(&payload)
         .send()
         .await

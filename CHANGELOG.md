@@ -12,9 +12,10 @@
 - UI design has been improved.
 - Mount path selection not forced to select a path from the file browser anymore. You can also type the path manually but it will be validated.
 - Onboarding process has been improved.
+- Frontend services have been refactored to use a more modular approach.
 
-### Bug
-- UI lock himself randomly.
+### Bug Fixes
+- UI lock himself randomly. It is now fixed (Because of the massive SCSS files.).
 
 
 ## [beta-0.1.1] - 2025-04-06

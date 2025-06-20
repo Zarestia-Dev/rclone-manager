@@ -1,14 +1,15 @@
 <!-- app-overview.component.html -->
-<div class="app-overview" [ngClass]="mode + '-mode'">
-  <div class="overview-header">
+<div class="app-overview" [ngClass]="mode + '-mode'" @fadeInOut>
+  <!-- Header Section -->
+  <header class="overview-header" role="banner">
     <div class="header-content">
-      <div class="title-section">
-        <mat-icon [svgIcon]="mode" class="mode-icon"></mat-icon>
-        <h2>{{ title }}</h2>
+      <div class="title-section" aria-label="Application mode and title">
+        <mat-icon [svgIcon]="mode" class="mode-icon" aria-hidden="true"></mat-icon>
+        <h2 id="overview-title">{{ title }}</h2>
       </div>
-      <div class="header-divider"></div>
+      <div class="header-divider" aria-hidden="true"></div>
     </div>
-  </div>
+  </header>
 
   <div class="overview-content">
     <!-- Status Overview Panel -->

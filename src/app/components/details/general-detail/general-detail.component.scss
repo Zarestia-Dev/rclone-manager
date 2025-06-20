@@ -1,48 +1,3 @@
-// CSS Custom Properties
-:host {
-  // Spacing
-  --container-padding: 24px;
-  --container-gap: 32px;
-  --panel-gap: 24px;
-  --header-gap: 16px;
-  --content-gap: 20px;
-  --item-padding: 16px;
-  --panel-padding: 24px;
-  --panel-header-padding: 32px 32px 16px 32px;
-  --panel-content-padding: 24px 32px 32px 32px;
-  --panel-actions-padding: 16px 24px;
-  
-  // Border radius
-  --icon-radius: 16px;
-  --panel-radius: 16px;
-  --item-radius: 12px;
-  --badge-radius: 12px;
-  --divider-radius: 1px;
-  --status-radius: 12px;
-  --usage-bar-radius: 24px;
-  
-  // Icon sizes
-  --large-icon-size: 32px;
-  --medium-icon-size: 24px;
-  --small-icon-size: 18px;
-  --icon-container-size: 64px;
-  --status-icon-size: 18px;
-  
-  // Status colors and opacity
-  --panel-hover-opacity: 0.1;
-  --background-opacity: 0.03;
-  --border-opacity: 0.05;
-  --hover-opacity: 0.03;
-  --active-opacity: 0.1;
-  --inactive-opacity: 0.02;
-  --legend-opacity: 0.15;
-  
-  // Transitions
-  --default-transition: all 0.3s ease;
-  --quick-transition: all 0.2s ease;
-  --usage-transition: all 0.5s ease-in-out;
-}
-
 // Main Container
 .remote-details {
   display: flex;
@@ -98,7 +53,7 @@
           gap: 4px;
 
           .remote-name {
-            font-size: 28px;
+            font-size: var(--font-size-xl);
             font-weight: 500;
             margin: 0;
             color: var(--app-text-color);
@@ -110,7 +65,7 @@
           }
 
           .remote-type {
-            font-size: 16px;
+            font-size: var(--font-size-base);
             color: var(--secondary-text-color);
             font-weight: 400;
           }
@@ -134,7 +89,7 @@
           background: rgba(var(--app-text-color-rgb), var(--border-opacity));
           border: 1px solid rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
           transition: var(--default-transition);
-          font-size: 14px;
+          font-size: var(--font-size-sm);
           font-weight: 500;
 
           mat-icon {
@@ -144,7 +99,7 @@
           }
 
           .status-text {
-            font-size: 12px;
+            font-size: var(--caption-font-size);
             letter-spacing: 0.5px;
           }
 
@@ -227,7 +182,7 @@
           gap: 12px;
           color: var(--app-text-color);
           font-weight: 500;
-          font-size: 18px;
+          font-size: var(--font-size-md);
 
           .panel-icon {
             font-size: var(--medium-icon-size);
@@ -239,7 +194,7 @@
 
           .job-count {
             color: var(--secondary-text-color);
-            font-size: 0.9rem;
+            font-size: var(--font-size-base);
             font-weight: 400;
             background: rgba(var(--accent-color-rgb), var(--active-opacity));
             padding: 2px 8px;
@@ -298,7 +253,7 @@
         .usage-status-text {
           color: var(--secondary-text-color);
           font-weight: 500;
-          font-size: 14px;
+          font-size: var(--font-size-sm);
         }
 
         .usage-fill {
@@ -360,7 +315,7 @@
         }
 
         .legend-text {
-          font-size: 14px;
+          font-size: var(--font-size-sm);
           color: var(--app-text-color);
           font-weight: 500;
         }
@@ -389,7 +344,7 @@
       .mat-mdc-header-cell {
         color: var(--app-text-color);
         font-weight: 600;
-        font-size: 14px;
+        font-size: var(--font-size-sm);
       }
 
       .job-row {
@@ -424,7 +379,7 @@
         gap: 8px;
         padding: 6px 12px;
         border-radius: var(--badge-radius);
-        font-size: 12px;
+        font-size: var(--caption-font-size);
         font-weight: 600;
         letter-spacing: 0.5px;
 
@@ -501,7 +456,7 @@
         }
 
         .progress-text {
-          font-size: 12px;
+          font-size: var(--caption-font-size);
           color: var(--secondary-text-color);
           font-weight: 500;
         }
@@ -514,7 +469,7 @@
 
       .start-time {
         color: var(--app-text-color);
-        font-size: 14px;
+        font-size: var(--font-size-sm);
       }
 
       .job-actions {
@@ -560,14 +515,14 @@
             color: var(--secondary-text-color);
 
             .no-data-icon {
-              font-size: 48px;
+              font-size: var(--font-size-3xl);
               width: 48px;
               height: 48px;
               opacity: 0.5;
             }
 
             span {
-              font-size: 16px;
+              font-size: var(--font-size-base);
               font-weight: 500;
             }
           }
@@ -601,14 +556,14 @@
         }
 
         .spec-key {
-          font-size: 12px;
+          font-size: var(--caption-font-size);
           font-weight: 600;
           color: var(--secondary-text-color);
           letter-spacing: 0.5px;
         }
 
         .spec-value {
-          font-size: 14px;
+          font-size: var(--font-size-sm);
           color: var(--app-text-color);
           font-weight: 500;
           word-break: break-all;
@@ -637,7 +592,7 @@
 
             .remote-name {
               max-width: 250px;
-              font-size: 24px;
+              font-size: var(--font-size-xl);
             }
           }
         }

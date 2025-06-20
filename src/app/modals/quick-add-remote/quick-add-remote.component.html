@@ -20,7 +20,7 @@
     <!-- Remote Type Selection -->
     <div class="form-section">
       <h3 class="section-title">
-        <mat-icon svgIcon="remotes"></mat-icon>
+        <mat-icon svgIcon="remotes" color="primary"></mat-icon>
         Remote Type
       </h3>
       <mat-form-field class="full-width" appearance="fill">
@@ -43,15 +43,12 @@
     <!-- Remote Name Input -->
     <div class="form-section">
       <h3 class="section-title">
-        <mat-icon svgIcon="cloud"></mat-icon>
+        <mat-icon svgIcon="cloud" color="accent"></mat-icon>
         Remote Name
       </h3>
       <mat-form-field class="full-width" appearance="fill">
         <mat-label>Remote Name</mat-label>
-        <input matInput formControlName="remoteName" 
-               placeholder="Enter a unique name for this remote..." 
-               required />
-        <mat-icon matSuffix svgIcon="edit"></mat-icon>
+        <input matInput formControlName="remoteName" placeholder="Enter a unique name for this remote..." required />
         @if (quickAddForm.get('remoteName')?.hasError('required') && quickAddForm.get('remoteName')?.touched) {
         <mat-error>Remote name is required</mat-error>
         }
@@ -64,7 +61,7 @@
     <!-- Operation Options -->
     <div class="form-section">
       <h3 class="section-title">
-        <mat-icon svgIcon="wrench"></mat-icon>
+        <mat-icon svgIcon="wrench" color="accent"></mat-icon>
         Operation Options
       </h3>
       <p class="section-description">
@@ -72,10 +69,8 @@
       </p>
 
       <!-- Auto-Mount Expansion Panel -->
-      <mat-expansion-panel class="operation-panel" 
-        (opened)="onPanelToggle('mount', true)"
-        (closed)="onPanelToggle('mount', false)" 
-        [disabled]="isLoading.saving">
+      <mat-expansion-panel class="operation-panel" (opened)="onPanelToggle('mount', true)"
+        (closed)="onPanelToggle('mount', false)" [disabled]="isAuthInProgress">
         <mat-expansion-panel-header>
           <mat-panel-title>
             <mat-checkbox formControlName="autoMount">
@@ -86,38 +81,23 @@
 
         <!-- Mount Configuration -->
         <div class="operation-config">
-          <div class="path-pair">
-            <mat-form-field appearance="fill" class="full-width">
-              <mat-label>Mount Source (Optional)</mat-label>
-              <input matInput placeholder="Source path (e.g., remote:/ or remote:/folder)" 
-                     formControlName="mountSource" />
-              <mat-hint>Leave empty to use default: {{ quickAddForm.get('remoteName')?.value || 'remote' }}:/</mat-hint>
-            </mat-form-field>
-
-            <div class="mount-arrow">
-              <mat-icon svgIcon="right-arrow"></mat-icon>
-            </div>
-
-            <mat-form-field appearance="fill" class="full-width">
-              <mat-label>Mount Destination</mat-label>
-              <input matInput placeholder="Select a folder to mount the remote..." 
-                     formControlName="mountPath" />
-              <button type="button" mat-icon-button matSuffix (click)="selectFolder('mountPath')">
-                <mat-icon svgIcon="folder"></mat-icon>
-              </button>
-              @if (quickAddForm.get('autoMount')?.value && quickAddForm.get('mountPath')?.hasError('required') && quickAddForm.get('mountPath')?.touched) {
-              <mat-error>Mount destination is required when auto-mount is enabled</mat-error>
-              }
-            </mat-form-field>
-          </div>
+          <mat-form-field appearance="fill">
+            <mat-label>Mount Destination</mat-label>
+            <input matInput placeholder="Select a folder to mount the remote..." formControlName="mountPath" />
+            <button type="button" mat-icon-button matSuffix (click)="selectFolder('mountPath')">
+              <mat-icon svgIcon="folder" color="primary"></mat-icon>
+            </button>
+            @if (quickAddForm.get('autoMount')?.value && quickAddForm.get('mountPath')?.hasError('required') &&
+            quickAddForm.get('mountPath')?.touched) {
+            <mat-error>Mount destination is required when auto-mount is enabled</mat-error>
+            }
+          </mat-form-field>
         </div>
       </mat-expansion-panel>
 
       <!-- Auto-Sync Expansion Panel -->
-      <mat-expansion-panel class="operation-panel" 
-        (opened)="onPanelToggle('sync', true)"
-        (closed)="onPanelToggle('sync', false)" 
-        [disabled]="isLoading.saving">
+      <mat-expansion-panel class="operation-panel" (opened)="onPanelToggle('sync', true)"
+        (closed)="onPanelToggle('sync', false)" [disabled]="isAuthInProgress">
         <mat-expansion-panel-header>
           <mat-panel-title>
             <mat-checkbox formControlName="autoSync">
@@ -128,41 +108,24 @@
 
         <!-- Sync Configuration -->
         <div class="operation-config">
-          <div class="path-pair">
-            <mat-form-field appearance="fill" class="full-width">
-              <mat-label>Sync Source (Optional)</mat-label>
-              <input matInput placeholder="Source path (e.g., remote:/ or local folder)" 
-                     formControlName="syncSource" />
-              <mat-hint>Leave empty to use default: {{ quickAddForm.get('remoteName')?.value || 'remote' }}:/</mat-hint>
-              <button type="button" mat-icon-button matSuffix (click)="selectFolder('syncSource')">
-                <mat-icon svgIcon="folder"></mat-icon>
-              </button>
-            </mat-form-field>
-
-            <div class="sync-arrow">
-              <mat-icon svgIcon="right-arrow"></mat-icon>
-            </div>
-
-            <mat-form-field appearance="fill" class="full-width">
-              <mat-label>Sync Destination</mat-label>
-              <input matInput placeholder="Destination path (e.g., local folder or remote:/)" 
-                     formControlName="syncDest" />
-              <button type="button" mat-icon-button matSuffix (click)="selectFolder('syncDest')">
-                <mat-icon svgIcon="folder"></mat-icon>
-              </button>
-              @if (quickAddForm.get('autoSync')?.value && quickAddForm.get('syncDest')?.hasError('required') && quickAddForm.get('syncDest')?.touched) {
-              <mat-error>Sync destination is required when auto-sync is enabled</mat-error>
-              }
-            </mat-form-field>
-          </div>
+          <mat-form-field appearance="fill">
+            <mat-label>Sync Destination</mat-label>
+            <input matInput placeholder="Destination path (e.g., local folder or remote:/)"
+              formControlName="syncDest" />
+            <button type="button" mat-icon-button matSuffix (click)="selectFolder('syncDest')">
+              <mat-icon svgIcon="folder" color="primary"></mat-icon>
+            </button>
+            @if (quickAddForm.get('autoSync')?.value && quickAddForm.get('syncDest')?.hasError('required') &&
+            quickAddForm.get('syncDest')?.touched) {
+            <mat-error>Sync destination is required when auto-sync is enabled</mat-error>
+            }
+          </mat-form-field>
         </div>
       </mat-expansion-panel>
 
       <!-- Auto-Copy Expansion Panel -->
-      <mat-expansion-panel class="operation-panel" 
-        (opened)="onPanelToggle('copy', true)"
-        (closed)="onPanelToggle('copy', false)" 
-        [disabled]="isLoading.saving">
+      <mat-expansion-panel class="operation-panel" (opened)="onPanelToggle('copy', true)"
+        (closed)="onPanelToggle('copy', false)" [disabled]="isAuthInProgress">
         <mat-expansion-panel-header>
           <mat-panel-title>
             <mat-checkbox formControlName="autoCopy">
@@ -173,33 +136,18 @@
 
         <!-- Copy Configuration -->
         <div class="operation-config">
-          <div class="path-pair">
-            <mat-form-field appearance="fill" class="full-width">
-              <mat-label>Copy Source (Optional)</mat-label>
-              <input matInput placeholder="Source path (e.g., remote:/ or local folder)" 
-                     formControlName="copySource" />
-              <mat-hint>Leave empty to use default: {{ quickAddForm.get('remoteName')?.value || 'remote' }}:/</mat-hint>
-              <button type="button" mat-icon-button matSuffix (click)="selectFolder('copySource')">
-                <mat-icon svgIcon="folder"></mat-icon>
-              </button>
-            </mat-form-field>
-
-            <div class="copy-arrow">
-              <mat-icon svgIcon="right-arrow"></mat-icon>
-            </div>
-
-            <mat-form-field appearance="fill" class="full-width">
-              <mat-label>Copy Destination</mat-label>
-              <input matInput placeholder="Destination path (e.g., local folder or remote:/)" 
-                     formControlName="copyDest" />
-              <button type="button" mat-icon-button matSuffix (click)="selectFolder('copyDest')">
-                <mat-icon svgIcon="folder"></mat-icon>
-              </button>
-              @if (quickAddForm.get('autoCopy')?.value && quickAddForm.get('copyDest')?.hasError('required') && quickAddForm.get('copyDest')?.touched) {
-              <mat-error>Copy destination is required when auto-copy is enabled</mat-error>
-              }
-            </mat-form-field>
-          </div>
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>Copy Destination</mat-label>
+            <input matInput placeholder="Destination path (e.g., local folder or remote:/)"
+              formControlName="copyDest" />
+            <button type="button" mat-icon-button matSuffix (click)="selectFolder('copyDest')">
+              <mat-icon svgIcon="folder" color="primary"></mat-icon>
+            </button>
+            @if (quickAddForm.get('autoCopy')?.value && quickAddForm.get('copyDest')?.hasError('required') &&
+            quickAddForm.get('copyDest')?.touched) {
+            <mat-error>Copy destination is required when auto-copy is enabled</mat-error>
+            }
+          </mat-form-field>
         </div>
       </mat-expansion-panel>
     </div>
@@ -207,8 +155,8 @@
   <!-- Action Buttons -->
   <div class="button-group">
     <button (click)="onSubmit()" mat-raised-button color="primary"
-      [disabled]="isLoading.saving || quickAddForm.invalid || isLoading.authDisabled">
-      @if (isLoading.saving && !isLoading.cancelled) {
+      [disabled]="isAuthInProgress || quickAddForm.invalid">
+      @if (isAuthInProgress && !isAuthCancelled) {
       <mat-spinner diameter="20"></mat-spinner>
       } @else {
       <mat-icon svgIcon="add"></mat-icon>
@@ -217,16 +165,16 @@
     </button>
 
     <!-- Cancel Authentication Button -->
-    @if (isLoading.saving && !isLoading.cancelled) {
-    <button type="button" mat-raised-button color="warn" (click)="cancelAuth()"
-      [disabled]="!isLoading.saving" @slideInOut>
+    @if (isAuthInProgress && !isAuthCancelled) {
+    <button type="button" mat-raised-button color="warn" (click)="cancelAuth()" [disabled]="!isAuthInProgress"
+      @slideInOut>
       <mat-icon svgIcon="circle-xmark"></mat-icon>
       <span>Cancel Authentication</span>
     </button>
     }
 
     <!-- Cleanup Message -->
-    @if (isLoading.cancelled) {
+    @if (isAuthCancelled) {
     <div class="cleanup-message" @slideInOut>
       <mat-spinner diameter="20"></mat-spinner>
       <span>Cleaning up authentication process. Please wait...</span>
@@ -234,9 +182,9 @@
     }
 
     <!-- Authentication Message -->
-    @if (isLoading.saving && !isLoading.cancelled) {
+    @if (isAuthInProgress && !isAuthCancelled) {
     <div class="loading-message">
-      <mat-icon svgIcon="info"></mat-icon>
+      <mat-icon svgIcon="info" color="accent"></mat-icon>
       <span>A browser window may open for authentication. Please complete the process there.</span>
     </div>
     }

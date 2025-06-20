@@ -1,4 +1,4 @@
-// Component Variables - GNOME-like Design System for Input Modal
+@use '../../styles/shared-modal';
 :host {
   // Spacing
   --modal-padding: 20px;
@@ -35,11 +35,11 @@
   --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   
   // Typography
-  --title-font-size: 20px;
+  --title-font-size: var(--font-size-lg);
   --title-font-size-mobile: 18px;
-  --description-font-size: 16px;
-  --label-font-size: 14px;
-  --button-font-size: 16px;
+  --description-font-size: var(--font-size-base);
+  --label-font-size: var(--font-size-sm);
+  --button-font-size: var(--font-size-base);
 }
 
 .input-modal {
@@ -51,16 +51,6 @@
   overflow: hidden;
   height: 100%;
   position: relative;
-
-  // Header styling
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--surface-border);
-    position: relative;
-    z-index: 1;
-  }
 
   // Content area
   .modal-content {

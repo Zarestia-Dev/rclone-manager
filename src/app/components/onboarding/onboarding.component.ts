@@ -12,7 +12,6 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
 import { invoke } from "@tauri-apps/api/core";
 import { MatRadioModule } from "@angular/material/radio";
-import { RcloneService } from "../../services/rclone.service";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
@@ -93,6 +92,7 @@ import { listen } from "@tauri-apps/api/event";
 })
 export class OnboardingComponent implements OnInit {
   @Output() completed = new EventEmitter<void>();
+  @Output() selectCustomFolder = new EventEmitter<void>();
 
   installLocation: "default" | "custom" = "default";
   customPath: string = "";
@@ -125,7 +125,7 @@ export class OnboardingComponent implements OnInit {
   // Dynamic cards that will be added based on conditions
   cards = [...this.baseCards];
 
-  constructor(private rcloneService: RcloneService) {}
+  constructor() {}
 
   async ngOnInit(): Promise<void> {
     console.log("OnboardingComponent: ngOnInit started");
@@ -211,13 +211,6 @@ export class OnboardingComponent implements OnInit {
         title: "Ready to Go!",
         content: "Everything is set up and ready to use. RClone Manager will help you manage your cloud storage with ease. Click 'Get Started' to begin your journey.",
       });
-    }
-  }
-
-  async selectCustomPath(): Promise<void> {
-    const path = await this.rcloneService.selectFolder(false);
-    if (path) {
-      this.customPath = path;
     }
   }
 

@@ -1,14 +1,14 @@
 <div class="modal-container">
   <!-- Modal Header -->
   <header class="modal-header" data-tauri-drag-region>
-    <button aria-label="Help">
+    <button mat-icon-button aria-label="Help">
       <mat-icon svgIcon="question"></mat-icon>
     </button>
     <p data-tauri-drag-region>
       <mat-icon svgIcon="hard-drive" aria-hidden="true"></mat-icon>
       {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
     </p>
-    <button (click)="close()" aria-label="Close dialog">
+    <button mat-icon-button (click)="close()" aria-label="Close dialog">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </header>
@@ -23,7 +23,7 @@
           aria-labelledby="remote-config-heading">
           <h2 id="remote-config-heading" class="visually-hidden">Remote Configuration</h2>
           <app-remote-config-step [form]="remoteForm" [remoteFields]="dynamicRemoteFields" [remoteTypes]="remoteTypes"
-            [isLoading]="isLoading.remoteConfig ?? false" [existingRemotes]="existingRemotes"
+            [isLoading]="isRemoteConfigLoading" [existingRemotes]="existingRemotes"
             [restrictMode]="restrictMode"
             (remoteTypeChanged)="onRemoteTypeChange()">
           </app-remote-config-step>
@@ -41,9 +41,11 @@
               [sourceLoading]="pathSelectionService.getLoadingState(step + 'Config.source')"
               [destLoading]="pathSelectionService.getLoadingState(step + 'Config.dest')"
               [dynamicFlagFields]="dynamicFlagFields[step]" [selectedOptions]="selectedOptions[step]"
-              [isDisabled]="isLoading.saving || isLoading.authDisabled"
+              [isDisabled]="isAuthInProgress"
               (optionToggled)="toggleOption(step, $event)" (jsonValidated)="validateJson(step)"
-              (jsonReset)="resetJson(step)" (remoteSelected)="onRemoteSelected($event, step + 'Config.dest')"
+              (jsonReset)="resetJson(step)" 
+              (destRemoteSelected)="onRemoteSelected($event, step + 'Config.dest')"
+              (sourceRemoteSelected)="onRemoteSelected($event, step + 'Config.source')"
               (destOptionSelected)="onDestOptionSelectedField($event, step + 'Config.dest')"
               (sourceOptionSelected)="onSourceOptionSelectedField($event, step + 'Config.source')"
               (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
@@ -61,12 +63,12 @@
       <!-- Navigation Buttons -->
       @if (currentStep < TOTAL_STEPS && !editTarget) {
         <button mat-raised-button color="accent" (click)="nextStep()"
-          [disabled]="!remoteForm.valid || isLoading.saving" [@fadeInOut]>
+          [disabled]="!remoteForm.valid || isAuthInProgress" [@fadeInOut]>
           Next
         </button>
       }
       @if (currentStep > 1 && !editTarget) {
-        <button mat-raised-button color="accent" [disabled]="isLoading.saving"
+        <button mat-raised-button color="accent" [disabled]="isAuthInProgress"
           (click)="prevStep()" [@fadeInOut]>
           Back
         </button>
@@ -74,17 +76,17 @@
     </div>
 
     <div class="button-container-inner">
-      @if (isLoading.saving && !isLoading.cancelled) {
-        <button mat-raised-button [@fadeInOut] color="warn" (click)="cancelAuth()" [disabled]="!isLoading.saving"
+      @if (isAuthInProgress && !isAuthCancelled) {
+        <button mat-raised-button [@fadeInOut] color="warn" (click)="cancelAuth()" [disabled]="!isAuthInProgress"
           >
           Cancel
         </button>
       }
 
-      @if (isLoading.cancelled) {
+      @if (isAuthCancelled) {
         <p>
           Cleaning
-          @if (isLoading.cancelled) {
+          @if (isAuthCancelled) {
             <mat-spinner diameter="20"></mat-spinner>
           }
         </p>
@@ -93,9 +95,9 @@
       <!-- Save Buttons -->
       @if (currentStep > 1 && !editTarget) {
         <button mat-raised-button color="primary" (click)="onSubmit()"
-          [disabled]="isLoading.saving || !remoteConfigForm.valid || !remoteForm.valid" [@fadeInOut]
+          [disabled]="isAuthInProgress || !remoteConfigForm.valid || !remoteForm.valid" [@fadeInOut]
           aria-live="polite">
-          @if (isLoading.saving && !isLoading.cancelled) {
+          @if (isAuthInProgress && !isAuthCancelled) {
             <div class="saving-overlay">
               <mat-spinner diameter="20"></mat-spinner>
             </div>
@@ -105,9 +107,9 @@
 
         @if (editTarget) {
           <button mat-raised-button color="primary" (click)="onSubmit()"
-            [disabled]="isLoading.saving || (editTarget === 'remote' && !remoteForm.valid) || (['mount', 'copy', 'sync'].includes(editTarget) && !remoteConfigForm.valid)"
+            [disabled]="isAuthInProgress || (editTarget === 'remote' && !remoteForm.valid) || (['mount', 'copy', 'sync'].includes(editTarget) && !remoteConfigForm.valid)"
             [@fadeInOut] aria-live="polite">
-            @if (isLoading.saving && !isLoading.cancelled) {
+            @if (isAuthInProgress && !isAuthCancelled) {
               <div class="saving-overlay">
                 <mat-spinner diameter="20"></mat-spinner>
               </div>

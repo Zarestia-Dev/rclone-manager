@@ -1,11 +1,79 @@
-.home-container {
+.home-wrapper {
   display: flex;
+  flex-direction: column;
   height: var(--app-height);
   background-color: var(--app-background);
   color: var(--app-text-color);
   border-radius: 0 0 var(--home-bottom-radius, 16px)
     var(--home-bottom-radius, 16px);
+  overflow: hidden;
+}
 
+.development-banner {
+  font-size: 16px;
+  max-height: 44px;
+  padding: var(--banner-padding);
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--warn-color), var(--orange));
+  color: white;
+  text-align: center;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(var(--warn-color), 0.3);
+  border-bottom: 1px solid rgba(var(--secondary-background), 0.2);
+  display: flex;
+  text-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+
+  .banner-message {
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+  }
+
+  .banner-subtitle {
+    font-size: 11px;
+    opacity: 0.9;
+    margin-left: 8px;
+    font-weight: 400;
+  }
+  
+  @media (max-width: 600px) {
+    max-height: 52px;
+    font-size: 14px;
+  }
+}
+
+.metered-banner {
+  display: flex;
+  text-wrap: wrap;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+  max-height: 44px;
+  padding: var(--banner-padding);
+  font-size: 16px;
+  font-weight: 600;
+  background-color: var(--banner-background);
+  flex-shrink: 0;
+  
+  mat-icon {
+    margin-right: 8px;
+  }
+
+  @media (max-width: 600px) {
+    max-height: 52px;
+    font-size: 14px;
+  }
+}
+
+.home-container {
+  display: flex;
+  flex: 1;
+  background-color: var(--app-background);
+  color: var(--app-text-color);
   // Ensure content doesn't overflow rounded corners
   overflow: hidden;
 

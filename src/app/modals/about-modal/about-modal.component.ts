@@ -5,13 +5,13 @@ import { MatDialogRef } from "@angular/material/dialog";
 import { MatDividerModule } from "@angular/material/divider";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { MatIconModule } from "@angular/material/icon";
-import { InfoService } from "../../services/info.service";
 import { MatButtonModule } from "@angular/material/button";
-import { RcloneService } from "../../services/rclone.service";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { RcloneInfo } from "../../shared/components/types";
 import packageJson from "../../../../package.json";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { SystemInfoService } from "../../services/features/system-info.service";
+import { NotificationService } from "../../services/ui/notification.service";
 const rCloneManager = packageJson.version;
 
 @Component({
@@ -51,8 +51,8 @@ export class AboutModalComponent {
 
   constructor(
     private dialogRef: MatDialogRef<AboutModalComponent>,
-    private infoService: InfoService,
-    private rcloneService: RcloneService
+    private systemInfoService: SystemInfoService,
+    private notificationService: NotificationService
   ) {}
 
   rcloneInfo: RcloneInfo | null = null;
@@ -82,7 +82,7 @@ export class AboutModalComponent {
     this.loadingRclone = true;
     this.rcloneError = null;
     try {
-      this.rcloneInfo = await this.rcloneService.getRcloneInfo();
+      this.rcloneInfo = await this.systemInfoService.getRcloneInfo();
     } catch (error) {
       console.error("Error fetching rclone info:", error);
       this.rcloneError = "Failed to load rclone info.";
@@ -95,7 +95,7 @@ export class AboutModalComponent {
     this.loadingRclone = true;
     this.rcloneError = null;
     try {
-      const pid = await this.rcloneService.getRclonePID();
+      const pid = await this.systemInfoService.getRclonePID();
       if (this.rcloneInfo) {
         this.rcloneInfo = {
           ...this.rcloneInfo,
@@ -105,7 +105,7 @@ export class AboutModalComponent {
     } catch (error) {
       console.error("Error fetching rclone PID:", error);
       this.rcloneError = "Failed to load rclone PID.";
-      this.infoService.openSnackBar(this.rcloneError, "Close");
+      this.notificationService.openSnackBar(this.rcloneError, "Close");
     } finally {
       this.loadingRclone = false;
     }
@@ -113,9 +113,9 @@ export class AboutModalComponent {
 
   killProcess() {
     if (this.rcloneInfo?.pid) {
-      this.rcloneService.killProcess(this.rcloneInfo.pid).then(
+      this.systemInfoService.killProcess(this.rcloneInfo.pid).then(
         () => {
-          this.infoService.openSnackBar(
+          this.notificationService.openSnackBar(
             "Rclone process killed successfully",
             "Close"
           );
@@ -123,14 +123,14 @@ export class AboutModalComponent {
         },
         (error) => {
           console.error("Failed to kill rclone process:", error);
-          this.infoService.openSnackBar(
+          this.notificationService.openSnackBar(
             "Failed to kill rclone process",
             "Close"
           );
         }
       );
     } else {
-      this.infoService.openSnackBar("No rclone process to kill", "Close");
+      this.notificationService.openSnackBar("No rclone process to kill", "Close");
     }
   }
 
@@ -150,11 +150,11 @@ export class AboutModalComponent {
   copyToClipboard(text: string) {
     navigator.clipboard.writeText(text).then(
       () => {
-        this.infoService.openSnackBar("Copied to clipboard", "Close");
+        this.notificationService.openSnackBar("Copied to clipboard", "Close");
       },
       (err) => {
         console.error("Failed to copy to clipboard:", err);
-        this.infoService.openSnackBar("Failed to copy to clipboard", "Close");
+        this.notificationService.openSnackBar("Failed to copy to clipboard", "Close");
       }
     );
   }

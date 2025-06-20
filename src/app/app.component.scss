@@ -2,19 +2,6 @@
   position: relative;
 }
 
-.metered-banner {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 44px;
-  font-size: 16px;
-  font-weight: 600;
-  background-color: var(--banner-background);
-  mat-icon {
-    margin-right: 8px;
-  }
-}
-
 .onboarding {
   position: absolute;
   left: 0;
@@ -30,19 +17,28 @@
   overflow: hidden;
 }
 
-.mobile-tab-bar {
-  border-radius: 0 0 var(--tab-bar-bottom-radius, 0)
-    var(--tab-bar-bottom-radius, 0);
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  background-color: var(--app-background);
-  color: var(--app-text-color);
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 2;
+.tabs {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding-block: 6px;
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  @media (max-width: 600px) {
+    position: fixed;
+    border-radius: 0 0 var(--tab-bar-bottom-radius, 0)
+      var(--tab-bar-bottom-radius, 0);
+    bottom: 0;
+    top: auto;
+    transform: none;
+    width: 100%;
+    left: 0;
+    background-color: var(--app-background);
+    color: var(--app-text-color);
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 2;
+    padding-block: 6px;
+  }
 }

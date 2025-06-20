@@ -1,6 +1,6 @@
 import { Injectable } from "@angular/core";
 import { FieldType, FlagField, FlagType, getDefaultValueForType } from "../remote-config-types";
-import { RcloneService } from "../../../services/rclone.service";
+import { MountManagementService } from "../../../services/features/mount-management.service";
 
 @Injectable({
   providedIn: "root",
@@ -14,7 +14,7 @@ export class FlagConfigService {
     "vfs",
   ];
 
-  constructor(private rcloneService: RcloneService) {}
+  constructor(private mountManagementService: MountManagementService) {}
 
   async loadAllFlagFields(): Promise<Record<FlagType, FlagField[]>> {
     const result: Record<FlagType, FlagField[]> = {
@@ -37,8 +37,8 @@ export class FlagConfigService {
   private async loadFlagFields(type: FlagType): Promise<FlagField[]> {
     try {
       const methodName = `get${this.capitalizeFirstLetter(type)}Flags`;
-      if (typeof (this.rcloneService as any)[methodName] === "function") {
-        const flags = (await (this.rcloneService as any)[
+      if (typeof (this.mountManagementService as any)[methodName] === "function") {
+        const flags = (await (this.mountManagementService as any)[
           methodName
         ]()) as Promise<any[]>;
         console.log(`Loaded ${type} flags:`, flags);

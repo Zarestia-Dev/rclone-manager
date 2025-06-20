@@ -1,14 +1,14 @@
 <div class="tabs-buttons">
-    <button mat-icon-button matTooltip="General" (click)="setTab('general')" [class.selected]="currentTab === 'general'">
+    <button mat-icon-button matTooltip="General" (click)="tabSelected.emit('general')" [class.selected]="currentTab === 'general'">
         <mat-icon svgIcon="home"></mat-icon>
     </button>
-    <button mat-icon-button matTooltip="Mount" (click)="setTab('mount')" [class.selected]="currentTab === 'mount'">
+    <button mat-icon-button matTooltip="Mount" (click)="tabSelected.emit('mount')" [class.selected]="currentTab === 'mount'">
         <mat-icon svgIcon="mount"></mat-icon>
     </button>
-    <button mat-icon-button matTooltip="Sync" (click)="setTab('sync')" [class.selected]="currentTab === 'sync'">
+    <button mat-icon-button matTooltip="Sync" (click)="tabSelected.emit('sync')" [class.selected]="currentTab === 'sync'">
         <mat-icon svgIcon="sync"></mat-icon>
     </button>
-    <button mat-icon-button matTooltip="Copy" (click)="setTab('copy')" [class.selected]="currentTab === 'copy'">
+    <button mat-icon-button matTooltip="Copy" (click)="tabSelected.emit('copy')" [class.selected]="currentTab === 'copy'">
         <mat-icon svgIcon="copy"></mat-icon>
     </button>
 </div>

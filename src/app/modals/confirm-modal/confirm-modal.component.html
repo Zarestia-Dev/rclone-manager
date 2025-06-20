@@ -3,8 +3,8 @@
 
   <div class="modal-content">
     <!-- Contextual Icon -->
-    <div class="modal-icon" [class.info]="!isDestructiveAction()">
-      <mat-icon [svgIcon]="getModalIcon()" aria-hidden="true"></mat-icon>
+    <div class="modal-icon" [class]="getModalIconClass()">
+      <mat-icon [svgIcon]="getModalIcon()" [color]="getModalIconColor()" aria-hidden="true"></mat-icon>
     </div>
     
     <p class="modal-message">{{ data.message }}</p>
@@ -24,7 +24,7 @@
     @if (data.confirmText) {
       <button 
         mat-raised-button
-        [class]="getConfirmButtonClass()"
+        [color]="getConfirmButtonColor()"
         (click)="onConfirm()"
         [attr.aria-label]="'Confirm: ' + (data.confirmText || 'Yes')">
         {{ data.confirmText || "Confirm" }}

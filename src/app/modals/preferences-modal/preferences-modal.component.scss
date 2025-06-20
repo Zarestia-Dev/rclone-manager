@@ -1,3 +1,5 @@
+@use '../../styles/shared-modal';
+
 :host {
   // Spacing
   --modal-padding: 24px;
@@ -24,10 +26,10 @@
   --transition-quick: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   
   // Typography
-  --section-title-font-size: 18px;
-  --setting-title-font-size: 16px;
-  --setting-description-font-size: 14px;
-  --tab-font-size: 14px;
+  --section-title-font-size: var(--font-size-md);
+  --setting-title-font-size: var(--font-size-base);
+  --setting-description-font-size: var(--font-size-sm);
+  --tab-font-size: var(--font-size-sm);
 }
 
 .modal {
@@ -39,7 +41,7 @@
 
   // Global form error styling
   mat-error {
-    font-size: 12px;
+    font-size: var(--caption-font-size);
     font-weight: 500;
     color: var(--warn-color);
   }
@@ -58,25 +60,6 @@
     z-index: 1000;
   }
 
-  // Modal Header
-  .modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    border-bottom: 1px solid var(--surface-border);
-    position: relative;
-
-    h2 {
-      font-weight: 500;
-      color: var(--app-text-color);
-      letter-spacing: -0.5px;
-      margin: 0;
-      flex: 1;
-      text-align: center;
-    }
-
-  }
-
   // Search Container
   .search-container {
     padding: var(--search-padding);
@@ -90,7 +73,7 @@
       border-radius: var(--card-border-radius);
       background: var(--app-background);
       color: var(--app-text-color);
-      font-size: 16px;
+      font-size: var(--font-size-base);
       font-weight: 400;
       transition: var(--transition-standard);
       outline: none;
@@ -130,7 +113,7 @@
       transition: var(--transition-standard);
 
       mat-icon {
-        font-size: 18px;
+        font-size: var(--font-size-md);
         width: 18px;
         height: 18px;
       }
@@ -167,7 +150,6 @@
     padding: 16px;
     background: var(--secondary-background);
     border-top: 1px solid var(--surface-border);
-    backdrop-filter: blur(10px);
 
     button {
       display: flex;
@@ -179,13 +161,13 @@
       background: transparent;
       border: none;
       color: var(--secondary-text-color);
-      font-size: 12px;
+      font-size: var(--caption-font-size);
       font-weight: 500;
       transition: var(--transition-standard);
       min-width: 80px;
 
       mat-icon {
-        font-size: 20px;
+        font-size: var(--font-size-lg);
         width: 20px;
         height: 20px;
       }
@@ -279,7 +261,7 @@
             }
 
             .setting-category {
-              font-size: 12px;
+              font-size: var(--caption-font-size);
               color: var(--primary-color);
               font-weight: 500;
               background: rgba(var(--primary-color-rgb), 0.1);
@@ -326,7 +308,7 @@
             );
             color: white;
             font-weight: 500;
-            font-size: 16px;
+            font-size: var(--font-size-base);
             letter-spacing: 0.25px;
             border: none;
             box-shadow: var(--shadow-light);
@@ -371,7 +353,7 @@
             }
 
             mat-icon {
-              font-size: 18px;
+              font-size: var(--font-size-md);
               width: 18px;
               height: 18px;
             }
@@ -411,7 +393,7 @@
       }
 
       p {
-        font-size: 18px;
+        font-size: var(--font-size-md);
         font-weight: 400;
         margin: 0;
         line-height: 1.5;
@@ -430,7 +412,7 @@
         margin-top: 16px;
 
         small {
-          font-size: 14px;
+          font-size: var(--font-size-sm);
           color: var(--secondary-text-color);
           opacity: 0.8;
         }
@@ -446,7 +428,7 @@
             background: rgba(var(--primary-color-rgb), 0.1);
             color: var(--primary-color);
             border-radius: 16px;
-            font-size: 12px;
+            font-size: var(--caption-font-size);
             font-weight: 500;
             cursor: pointer;
             transition: var(--transition-quick);
@@ -487,7 +469,7 @@
 
     .modal-header {
       h2 {
-        font-size: 20px;
+        font-size: var(--font-size-lg);
       }
     }
 
@@ -522,7 +504,7 @@
 
     .modal-header {
       h2 {
-        font-size: 18px;
+        font-size: var(--font-size-md);
       }
     }
   }

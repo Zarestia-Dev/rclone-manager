@@ -19,12 +19,12 @@ import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { MatInputModule } from "@angular/material/input";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatDialogRef } from "@angular/material/dialog";
-import { SettingsService } from "../../services/settings.service";
 import { MatSelectModule } from "@angular/material/select";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
+import { AppSettingsService } from "../../services/features/app-settings.service";
 
 @Component({
   selector: "app-preferences-modal",
@@ -70,8 +70,8 @@ export class PreferencesModalComponent implements OnInit {
 
   constructor(
     private dialogRef: MatDialogRef<PreferencesModalComponent>,
-    private settingsService: SettingsService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private appSettingsService: AppSettingsService,
   ) {
     this.settingsForm = this.fb.group({});
     this.filteredTabs = [...this.tabs];
@@ -90,7 +90,7 @@ export class PreferencesModalComponent implements OnInit {
   async loadSettings() {
     try {
       this.isLoading = true;
-      const response = await this.settingsService.loadSettings();
+      const response = await this.appSettingsService.loadSettings();
       this.metadata = response.metadata;
 
       // Initialize form groups for each category
@@ -178,12 +178,12 @@ export class PreferencesModalComponent implements OnInit {
         if (value == 0) return;
       }
 
-      await this.settingsService.saveSetting(category, key, value);
+      await this.appSettingsService.saveSetting(category, key, value);
     } catch (error) {
       console.error("Error saving setting:", error);
 
       // // Revert to previous value
-      const currentValue = this.settingsService.load_setting_value(
+      const currentValue = this.appSettingsService.loadSettingValue(
         category,
         key
       );
@@ -270,7 +270,7 @@ export class PreferencesModalComponent implements OnInit {
 
   async resetSettings() {
     try {
-      const isReset = await this.settingsService.resetSettings();
+      const isReset = await this.appSettingsService.resetSettings();
       if (isReset) {
         await this.loadSettings();
       }

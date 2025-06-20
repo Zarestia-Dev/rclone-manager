@@ -4,14 +4,15 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/materia
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatSelectModule } from "@angular/material/select";
-import { RcloneService } from "../../services/rclone.service";
 import { MatInputModule } from "@angular/material/input";
-import { SettingsService } from "../../services/settings.service";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatCheckboxModule } from "@angular/material/checkbox";
 import { animate, style, transition, trigger } from "@angular/animations";
 import { MatButtonModule } from "@angular/material/button";
 import { ExportModalData } from "../../shared/components/types";
+import { BackupRestoreService } from "../../services/features/backup-restore.service";
+import { RemoteManagementService } from "../../services/features/remote-management.service";
+import { FileSystemService } from "../../services/features/file-system.service";
 
 @Component({
   selector: "app-export-modal",
@@ -41,13 +42,19 @@ import { ExportModalData } from "../../shared/components/types";
   styleUrl: "./export-modal.component.scss",
 })
 export class ExportModalComponent {
-  exportPath: string = "";
-  sevenZipSupported = false;
+  // Form data
+  exportPath = "";
+  selectedOption = "all"; // Default to export all
+  selectedRemoteName = "";
+  
+  // Security options
   withPassword = false;
-  password: any = null;
-  selectedRemoteName: any = "";
-  remotes: any[] = [];
+  password = "";
   showPassword = false;
+  
+  // Component state
+  sevenZipSupported = false;
+  remotes: string[] = [];
 
   exportOptions: Array<{ value: string; label: string }> = [
     { value: "all", label: "📦 Export All (Settings + Remotes + rclone.conf)" },
@@ -57,35 +64,31 @@ export class ExportModalComponent {
     { value: "specific-remote", label: "🔍 Specific Remote" },
   ];
 
-  selectedOption: string = this.exportOptions[0].value; // 👈 Default selection
-
   constructor(
     private dialogRef: MatDialogRef<ExportModalComponent>,
-    private rcloneService: RcloneService,
-    private settingsService: SettingsService,
+    private backupRestoreService: BackupRestoreService,
+    private remoteManagementService: RemoteManagementService,
+    private fileSystemService: FileSystemService,
     @Inject(MAT_DIALOG_DATA) public data: ExportModalData
   ) {}
 
   async ngOnInit(): Promise<void> {
-    this.settingsService.check7zSupport().then((supported) => {
-      this.sevenZipSupported = supported;
-      if (!supported) {
-        this.withPassword = false;
-      }
-    });
+    // Check 7-Zip support for password protection
+    this.sevenZipSupported = await this.backupRestoreService.check7zSupport();
+    if (!this.sevenZipSupported) {
+      this.withPassword = false;
+    }
 
     // Load available remotes
-    this.remotes = await this.rcloneService.getRemotes();
+    this.remotes = await this.remoteManagementService.getRemotes();
 
     // Handle input data
-    if (this.data) {
-      if (this.data.remoteName) {
-        this.selectedOption = 'specific-remote';
-        this.selectedRemoteName = this.data.remoteName;
-      }
-      if (this.data.defaultExportType) {
-        this.selectedOption = this.data.defaultExportType;
-      }
+    if (this.data?.remoteName) {
+      this.selectedOption = 'specific-remote';
+      this.selectedRemoteName = this.data.remoteName;
+    }
+    if (this.data?.defaultExportType) {
+      this.selectedOption = this.data.defaultExportType;
     }
   }
 
@@ -96,7 +99,7 @@ export class ExportModalComponent {
 
   async selectFolder() {
     try {
-      const selected = await this.rcloneService.selectFolder(false);
+      const selected = await this.fileSystemService.selectFolder(false);
 
       if (typeof selected === "string") {
         this.exportPath = selected;
@@ -107,11 +110,11 @@ export class ExportModalComponent {
   }
 
   async onExport() {
-    await this.settingsService.backupSettings(
+    await this.backupRestoreService.backupSettings(
       this.exportPath,
       this.selectedOption,
-      this.withPassword ? this.password : null,
-      this.selectedOption == 'specific-remote' ? this.selectedRemoteName : null
+      this.withPassword ? this.password || "" : "",
+      this.selectedOption === 'specific-remote' ? this.selectedRemoteName : ""
     );
   }
 
@@ -126,9 +129,9 @@ export class ExportModalComponent {
    * Check if export can be performed
    */
   canExport(): boolean {
-    const hasPath = !!this.exportPath;
-    const hasPassword = this.withPassword ? !!this.password : true;
-    const hasRemote = this.selectedOption === 'specific-remote' ? !!this.selectedRemoteName : true;
+    const hasPath = !!this.exportPath.trim();
+    const hasPassword = this.withPassword ? !!this.password.trim() : true;
+    const hasRemote = this.selectedOption === 'specific-remote' ? !!this.selectedRemoteName.trim() : true;
     
     return hasPath && hasPassword && hasRemote;
   }

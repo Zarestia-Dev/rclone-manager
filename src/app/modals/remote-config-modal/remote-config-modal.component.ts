@@ -25,20 +25,16 @@ import {
 } from "@angular/forms";
 import { MAT_DIALOG_DATA, MatDialogRef } from "@angular/material/dialog";
 import { MatInputModule } from "@angular/material/input";
-import { RcloneService } from "../../services/rclone.service";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatChipsModule } from "@angular/material/chips";
-import { SettingsService } from "../../services/settings.service";
 import { MatIconModule } from "@angular/material/icon";
 import { debounceTime, distinctUntilChanged, Subscription } from "rxjs";
-import { StateService } from "../../services/state.service";
 import { MatButtonModule } from "@angular/material/button";
 import {
   EditTarget,
   FieldType,
   FlagField,
   FlagType,
-  LoadingState,
   REMOTE_NAME_REGEX,
   RemoteField,
   RemoteType,
@@ -48,7 +44,13 @@ import { FlagConfigStepComponent } from "../../shared/remote-config/components/f
 import { RemoteConfigService } from "../../shared/remote-config/services/remote-config.service";
 import { FlagConfigService } from "../../shared/remote-config/services/flag-config.service";
 import { PathSelectionService } from "../../shared/remote-config/services/path-selection.service";
-import { platform } from "@tauri-apps/plugin-os";
+import { AuthStateService } from "../../services/ui/auth-state.service";
+import { RemoteManagementService } from "../../services/features/remote-management.service";
+import { JobManagementService } from "../../services/features/job-management.service";
+import { MountManagementService } from "../../services/features/mount-management.service";
+import { AppSettingsService } from "../../services/features/app-settings.service";
+import { FileSystemService } from "../../services/features/file-system.service";
+import { UiStateService } from "../../services/ui/ui-state.service";
 
 @Component({
   selector: "app-remote-config-modal",
@@ -118,8 +120,6 @@ export class RemoteConfigModalComponent implements OnInit {
 
   currentStep = 1;
   editTarget: EditTarget = null;
-  private subscriptions: Subscription[] = [];
-  private authSubscriptions: Subscription[] = [];
   showAdvancedOptions = false;
   restrictMode!: boolean;
   cloneTarget!: boolean;
@@ -128,10 +128,6 @@ export class RemoteConfigModalComponent implements OnInit {
   remoteConfigForm: FormGroup;
 
   remoteTypes: RemoteType[] = [];
-  // mountTypes: MountType[] = [
-  //   { value: "Native", label: "Native (Direct Mounting)" },
-  //   { value: "Systemd", label: "Systemd Service Mounting" },
-  // ];
   dynamicRemoteFields: RemoteField[] = [];
   existingRemotes: string[] = [];
 
@@ -151,23 +147,26 @@ export class RemoteConfigModalComponent implements OnInit {
     vfs: {},
   };
 
-  isLoading: LoadingState = {
-    remoteConfig: false,
-    mountConfig: false,
-    saving: false,
-    authDisabled: false,
-    cancelled: false,
-  };
+  // Simplified state management
+  isRemoteConfigLoading = false;
+  isAuthInProgress = false;
+  isAuthCancelled = false;
+
+  private subscriptions: Subscription[] = [];
 
   constructor(
     private fb: FormBuilder,
-    private rcloneService: RcloneService,
-    private settingsService: SettingsService,
     public dialogRef: MatDialogRef<RemoteConfigModalComponent>,
-    private stateService: StateService,
     private remoteConfigService: RemoteConfigService,
     public flagConfigService: FlagConfigService,
     public pathSelectionService: PathSelectionService,
+    private authStateService: AuthStateService,
+    private remoteManagementService: RemoteManagementService,
+    private jobManagementService: JobManagementService,
+    private mountManagementService: MountManagementService,
+    private appSettingsService: AppSettingsService,
+    private fileSystemService: FileSystemService,
+    private uiStateService: UiStateService,
     @Inject(MAT_DIALOG_DATA)
     public data: {
       editTarget?: EditTarget;
@@ -260,7 +259,7 @@ export class RemoteConfigModalComponent implements OnInit {
 
   ngOnDestroy(): void {
     this.cleanupSubscriptions();
-    this.stateService.cancelAuth();
+    this.authStateService.cancelAuth();
   }
 
   private async initializeComponent(): Promise<void> {
@@ -278,11 +277,11 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   async onRemoteTypeChange(): Promise<void> {
-    this.isLoading.remoteConfig = true;
+    this.isRemoteConfigLoading = true;
     try {
       const remoteName = this.remoteForm.get("name")?.value;
       const remoteType = this.remoteForm.get("type")?.value;
-      const response = await this.rcloneService.getRemoteConfigFields(
+      const response = await this.remoteManagementService.getRemoteConfigFields(
         remoteType
       );
 
@@ -295,7 +294,7 @@ export class RemoteConfigModalComponent implements OnInit {
     } catch (error) {
       console.error("Error loading remote config fields:", error);
     } finally {
-      this.isLoading.remoteConfig = false;
+      this.isRemoteConfigLoading = false;
     }
   }
 
@@ -310,16 +309,15 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   private setupAuthStateListeners(): void {
-    this.authSubscriptions.push(
-      this.stateService.isAuthInProgress$.subscribe((isInProgress) => {
-        this.isLoading.saving = isInProgress;
-        this.isLoading.authDisabled = isInProgress;
+    this.subscriptions.push(
+      this.authStateService.isAuthInProgress$.subscribe((isInProgress) => {
+        this.isAuthInProgress = isInProgress;
         this.setFormState(isInProgress);
       })
     );
-    this.authSubscriptions.push(
-      this.stateService.isAuthCancelled$.subscribe((isCancelled) => {
-        this.isLoading.cancelled = isCancelled;
+    this.subscriptions.push(
+      this.authStateService.isAuthCancelled$.subscribe((isCancelled) => {
+        this.isAuthCancelled = isCancelled;
       })
     );
   }
@@ -420,9 +418,7 @@ export class RemoteConfigModalComponent implements OnInit {
 
   private cleanupSubscriptions(): void {
     this.subscriptions.forEach((sub) => sub.unsubscribe());
-    this.authSubscriptions.forEach((sub) => sub.unsubscribe());
     this.subscriptions = [];
-    this.authSubscriptions = [];
   }
 
   private createRemoteForm(): FormGroup {
@@ -484,7 +480,7 @@ export class RemoteConfigModalComponent implements OnInit {
     const value = control.value;
     if (!value) return null;
     
-    if (this.stateService.platform === "windows") {
+    if (this.uiStateService.platform === "windows") {
       const winAbs = /^[a-zA-Z]:[\\/](?:[^:*?"<>|\r\n]*)?$/;
       if (winAbs.test(value)) return null;
     } else {
@@ -497,7 +493,7 @@ export class RemoteConfigModalComponent implements OnInit {
   //#region Remote Configuration Methods
   private async loadExistingRemotes(): Promise<void> {
     try {
-      this.existingRemotes = await this.rcloneService.getRemotes();
+      this.existingRemotes = await this.remoteManagementService.getRemotes();
     } catch (error) {
       console.error("Error loading existing remotes:", error);
     }
@@ -647,20 +643,20 @@ export class RemoteConfigModalComponent implements OnInit {
 
   //#region Form Submission Methods
   async onSubmit(): Promise<void> {
-    if (this.isLoading.saving || this.isLoading.authDisabled) return;
+    if (this.isAuthInProgress) return;
 
     try {
       const result = this.editTarget
         ? await this.handleEditMode()
         : await this.handleCreateMode();
 
-      if (result.success && !this.isLoading.cancelled) {
+      if (result.success && !this.isAuthCancelled) {
         this.close();
       }
     } catch (error) {
       console.error("Error during submission:", error);
     } finally {
-      this.stateService.resetAuthState();
+      this.authStateService.resetAuthState();
     }
   }
 
@@ -707,9 +703,9 @@ export class RemoteConfigModalComponent implements OnInit {
     const updatedConfig: any = {};
     const remoteName = this.getRemoteName();
 
-    await this.stateService.startAuth(remoteName, true);
+    await this.authStateService.startAuth(remoteName, true);
     await this.updateConfigBasedOnEditTarget(updatedConfig);
-    await this.settingsService.saveRemoteSettings(remoteName, updatedConfig);
+    await this.appSettingsService.saveRemoteSettings(remoteName, updatedConfig);
 
     return { success: true };
   }
@@ -770,9 +766,9 @@ export class RemoteConfigModalComponent implements OnInit {
       vfsConfig: this.safeJsonParse(configData.vfsConfig.options),
     };
 
-    await this.stateService.startAuth(remoteData.name, false);
-    await this.rcloneService.createRemote(remoteData.name, remoteData);
-    await this.settingsService.saveRemoteSettings(remoteData.name, finalConfig);
+    await this.authStateService.startAuth(remoteData.name, false);
+    await this.remoteManagementService.createRemote(remoteData.name, remoteData);
+    await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
 
     if (finalConfig.mountConfig.autoStart && finalConfig.mountConfig.dest) {
       const mountPath = finalConfig.mountConfig.dest;
@@ -780,7 +776,7 @@ export class RemoteConfigModalComponent implements OnInit {
       const source = finalConfig.mountConfig?.source;
       const mountOptions = finalConfig.mountConfig.options;
       const vfs = finalConfig.vfsConfig;
-      await this.rcloneService.mountRemote(
+      await this.mountManagementService.mountRemote(
         remoteName,
         source,
         mountPath,
@@ -794,7 +790,7 @@ export class RemoteConfigModalComponent implements OnInit {
       const copyDest = finalConfig.copyConfig.dest;
       const copyOptions = finalConfig.copyConfig.options;
       const filter = finalConfig.filterConfig;
-      await this.rcloneService.startCopy(
+      await this.jobManagementService.startCopy(
         remoteData.name,
         copySource,
         copyDest,
@@ -807,7 +803,7 @@ export class RemoteConfigModalComponent implements OnInit {
       const syncDest = finalConfig.syncConfig.dest;
       const syncOptions = finalConfig.syncConfig.options;
       const filter = finalConfig.filterConfig;
-      await this.rcloneService.startSync(
+      await this.jobManagementService.startSync(
         remoteData.name,
         syncSource,
         syncDest,
@@ -823,7 +819,7 @@ export class RemoteConfigModalComponent implements OnInit {
     const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
     updatedConfig.name = remoteData.name;
     updatedConfig.type = remoteData.type;
-    await this.rcloneService.updateRemote(remoteData.name, remoteData);
+    await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
   }
 
   private async handleMountUpdate(updatedConfig: any): Promise<void> {
@@ -1003,7 +999,7 @@ export class RemoteConfigModalComponent implements OnInit {
 
   //#region UI Helper Methods
   selectLocalFolder(whichFormPath: string, requireEmpty: boolean): void {
-    this.rcloneService.selectFolder(requireEmpty).then((selectedPath) => {
+    this.fileSystemService.selectFolder(requireEmpty).then((selectedPath) => {
       this.remoteConfigForm.get(whichFormPath)?.setValue(selectedPath);
     });
   }
@@ -1021,7 +1017,7 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   async cancelAuth(): Promise<void> {
-    await this.stateService.cancelAuth();
+    await this.authStateService.cancelAuth();
   }
 
   @HostListener("document:keydown.escape", ["$event"])
@@ -1032,7 +1028,7 @@ export class RemoteConfigModalComponent implements OnInit {
 
   // Add getters for Save button logic
   get isSaveDisabled(): boolean {
-    if (this.isLoading.saving) return true;
+    if (this.isAuthInProgress) return true;
     if (!this.editTarget) {
       // Creation mode: both forms must be valid
       return !this.remoteConfigForm.valid || !this.remoteForm.valid;
@@ -1049,7 +1045,7 @@ export class RemoteConfigModalComponent implements OnInit {
   }
 
   get saveButtonLabel(): string {
-    if (this.isLoading.saving && !this.isLoading.cancelled) {
+    if (this.isAuthInProgress && !this.isAuthCancelled) {
       return this.editTarget ? "Saving..." : "Saving";
     }
     return "Save";

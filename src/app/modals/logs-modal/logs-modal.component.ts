@@ -19,12 +19,12 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatSelectModule } from "@angular/material/select";
 import { CommonModule } from "@angular/common";
-import { RcloneService } from "../../services/rclone.service";
 import { MatInputModule } from "@angular/material/input";
 import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
 import { MatButtonModule } from "@angular/material/button";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { LogContext, RemoteLogEntry } from "../../shared/components/types";
+import { LoggingService } from "../../services/features/logging.service";
 
 @Component({
   selector: "app-logs-modal",
@@ -57,11 +57,11 @@ export class LogsModalComponent implements OnInit, OnDestroy {
   @ViewChild("terminalLogArea") terminalLogArea?: ElementRef<HTMLDivElement>;
 
   constructor(
-    private rcloneService: RcloneService,
     private dialogRef: MatDialogRef<LogsModalComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { remoteName: string },
     private snackBar: MatSnackBar,
-    private cdRef: ChangeDetectorRef
+    private cdRef: ChangeDetectorRef,
+    private loggingService: LoggingService
   ) {}
 
   ngOnInit() {
@@ -97,7 +97,7 @@ export class LogsModalComponent implements OnInit, OnDestroy {
   async loadLogs() {
     this.loading = true;
     try {
-      this.logs = (await this.rcloneService.getRemoteLogs(
+      this.logs = (await this.loggingService.getRemoteLogs(
         this.data.remoteName
       )) as unknown as RemoteLogEntry[];
     } finally {
@@ -108,7 +108,7 @@ export class LogsModalComponent implements OnInit, OnDestroy {
   async clearLogs() {
     this.loading = true;
     try {
-      await this.rcloneService.clearRemoteLogs(this.data.remoteName);
+      await this.loggingService.clearRemoteLogs(this.data.remoteName);
       this.logs = [];
     } finally {
       this.loading = false;

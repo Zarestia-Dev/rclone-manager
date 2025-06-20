@@ -1,21 +1,5 @@
-:host {
-  // Layout
-  --modal-padding: 32px;
-  --content-gap: 20px;
-  --button-gap: 16px;
-  
-  // Border Radius
-  --field-radius: 12px;
-  
-  // Colors
-  --glass-border: rgba(var(--app-text-color-rgb), 0.08);
-  --text-muted: rgba(var(--app-text-color-rgb), 0.7);
-  --bg-elevated: rgba(var(--app-text-color-rgb), 0.03);
-  --bg-hover: rgba(var(--app-text-color-rgb), 0.05);
-  
-  // Transitions
-  --transition-quick: all 0.2s ease-out;
-}
+// Use shared modal styles with modern Sass module system
+@use '../../styles/shared-modal';
 
 // ===== MODAL CONTAINER =====
 .quick-add-modal {
@@ -24,138 +8,72 @@
   height: 100%;
   width: 100%;
   overflow: hidden;
-}
 
-// ===== MODAL HEADER =====
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--glass-border);
-  
-  p {
+  // Modal header styles are now inherited from shared-modal.scss
+
+  // ===== FORM GROUP =====
+  .form-group {
+    flex: 1;
     display: flex;
-    align-items: center;
-    gap: 12px;
-    margin: 0;
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--app-text-color);
+    flex-direction: column;
+    gap: var(--content-gap);
+    padding: var(--modal-padding);
+    overflow-y: auto;
+
+    // ===== FORM SECTIONS =====
+    .form-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--app-text-color);
+      }
+
+      // ===== OPERATION EXPANSION PANELS =====
+      .operation-panel {
+        border-radius: var(--panel-radius) !important;
+        margin-bottom: 16px;
+      }
+    }
   }
-}
 
-// ===== FORM GROUP =====
-.form-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: var(--content-gap);
-  padding: var(--modal-padding);
-  overflow-y: auto;
-}
-
-// ===== FORM SECTIONS =====
-.form-section {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  
-  .section-title {
+  // ===== BUTTON GROUP =====
+  .button-group {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    color: var(--app-text-color);
-    
-    mat-icon {
+    flex-direction: column;
+    gap: var(--button-gap);
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
+
+    // ===== LOADING STATES =====
+    .loading-message {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px;
+      background: rgba(var(--accent-color-rgb), 0.1);
+      border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+      border-radius: var(--panel-radius);
+      font-size: var(--font-size-sm);
       color: var(--accent-color);
+      animation: pulseBlue 2s infinite;
     }
-  }
-}
 
-
-// ===== BUTTON GROUP =====
-.button-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--button-gap);
-  padding: 16px;
-  border-top: 1px solid var(--glass-border);
-}
-
-// ===== LOADING STATES =====
-.loading-message {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
-  background: rgba(var(--accent-color-rgb), 0.1);
-  border: 1px solid rgba(var(--accent-color-rgb), 0.2);
-  border-radius: var(--field-radius);
-  font-size: 14px;
-  color: var(--accent-color);
-
-  mat-icon {
-    color: var(--accent-color);
-  }
-}
-
-.cleanup-message {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px;
-  background: rgba(var(--orange-rgb), 0.1);
-  border: 1px solid rgba(var(--orange-rgb), 0.2);
-  border-radius: var(--field-radius);
-  font-size: 14px;
-  color: var(--orange-color);
-}
-
-.loading-message {
-  animation: pulseBlue 2s infinite;
-}
-
-// ===== OPERATION EXPANSION PANELS =====
-.operation-panel {
-  border-radius: var(--field-radius) !important;
-  margin-bottom: 16px;
-
-}
-
-// ===== PATH PAIRS =====
-.path-pair {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-  gap: 16px;
-  margin-bottom: 16px;
-  
-  .sync-arrow,
-  .copy-arrow,
-  .mount-arrow {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    background: var(--primary-color);
-    border-radius: 50%;
-    color: white;
-    flex-shrink: 0;
-    rotate: 90deg;
-    
-    mat-icon {
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
+    .cleanup-message {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px;
+      background: rgba(var(--orange-rgb), 0.1);
+      border: 1px solid rgba(var(--orange-rgb), 0.2);
+      border-radius: var(--panel-radius);
+      font-size: var(--font-size-sm);
+      color: var(--orange);
+      animation: pulseOrange 2s infinite;
     }
-  }
-  
-  .copy-arrow {
-    background: var(--yellow);
-  }
-  
-  .mount-arrow {
-    background: var(--accent-color);
   }
 }

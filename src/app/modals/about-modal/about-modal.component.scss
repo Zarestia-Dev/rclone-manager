@@ -1,24 +1,7 @@
 :host {
   // Spacing
   --modal-padding: 12px;
-  --content-gap: 24px;
   --icon-size: 140px;
-
-  // Border radius
-  --modal-border-radius: 16px;
-  --button-border-radius: 12px;
-  --badge-border-radius: 20px;
-  --overlay-border-radius: 16px;
-
-  // Colors
-  --badge-background: rgba(var(--accent-color-rgb), 0.12);
-  --badge-color: var(--accent-color);
-  --button-background: rgba(var(--app-text-color-rgb), 0.04);
-  --button-hover-background: rgba(var(--app-text-color-rgb), 0.08);
-
-  // Transitions
-  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .about-modal {
@@ -201,7 +184,7 @@
           align-items: center;
           gap: 12px;
           padding: 16px;
-          border-radius: var(--button-border-radius);
+          border-radius: var(--panel-radius);
           margin: 16px 0;
           font-size: 15px;
         }
@@ -221,7 +204,7 @@
         .rclone-details {
           background: var(--button-background);
           border: 1px solid var(--surface-border);
-          border-radius: var(--button-border-radius);
+          border-radius: var(--panel-radius);
           padding: 20px;
           margin-bottom: 20px;
 
