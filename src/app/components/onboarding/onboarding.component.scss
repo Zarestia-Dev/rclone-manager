@@ -3,25 +3,15 @@
   // Layout variables
   --container-max-width: 600px;
   --container-max-height: 80vh;
-  --panel-padding: 24px;
   --section-gap: 32px;
 
   // Visual elements
   --icon-size: 96px;
-  --border-radius: 16px;
   --indicator-size: 8px;
   --button-height: 40px;
 
-  // Shadows and effects
-  --surface-shadow: 0 8px 32px rgba(0, 0, 0, 0.12),
-    0 2px 8px rgba(0, 0, 0, 0.08);
-  --elevated-shadow: 0 16px 48px rgba(0, 0, 0, 0.16),
-    0 4px 16px rgba(0, 0, 0, 0.12);
-
   // Transitions
   --motion-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --motion-enter: cubic-bezier(0, 0, 0.2, 1);
-  --motion-exit: cubic-bezier(0.4, 0, 1, 1);
 }
 
 .onboarding-container {
@@ -51,7 +41,6 @@
       rgba(var(--app-background-rgb), 0.9) 0%,
       rgba(var(--secondary-background-rgb), 0.9) 100%
     );
-  padding: 24px;
 
   .card-container {
     display: flex;
@@ -61,7 +50,7 @@
     max-height: var(--container-max-height);
     background: var(--app-background);
     border-radius: var(--border-radius);
-    box-shadow: var(--surface-shadow);
+    box-shadow: var(--box-shadow);
     overflow: hidden;
     border: 1px solid rgba(var(--app-text-color-rgb), 0.08);
   }
@@ -97,20 +86,16 @@
       border: 2px solid rgba(var(--primary-color-rgb), 0.2);
       
       mat-icon {
-        font-size: var(--font-size-2xl);
+        font-size: 2rem;
         width: 32px;
         height: 32px;
         color: var(--primary-color);
-        
-        &.spinning {
-          animation: spin 1.5s linear infinite;
-        }
       }
     }
     
     h2 {
       margin: 0;
-      font-size: var(--font-size-xl);
+      font-size: 1.5rem;
       font-weight: 500;
       color: var(--app-text-color);
       letter-spacing: -0.025em;
@@ -118,7 +103,7 @@
     
     p {
       margin: 0;
-      font-size: var(--font-size-base);
+      font-size: 1rem;
       color: var(--secondary-text-color);
       opacity: 0.8;
     }
@@ -130,7 +115,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--panel-padding);
+  padding: 24px;
   border-bottom: 1px solid rgba(var(--app-text-color-rgb), 0.06);
 
   .page-indicators {
@@ -156,7 +141,7 @@
   }
 
   .app-title {
-    font-size: var(--font-size-xl);
+    font-size: 1.5rem;
     font-weight: 500;
     color: var(--app-text-color);
     margin: 0;
@@ -169,7 +154,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: var(--panel-padding);
+  padding: 24px;
   overflow: auto;
 
   .card-content {
@@ -224,7 +209,7 @@
     }
 
     .card-description {
-      font-size: var(--font-size-base);
+      font-size: 1rem;
       color: var(--secondary-text-color);
       line-height: 1.6;
       margin: 0;
@@ -307,10 +292,6 @@
         }
       }
       
-      // Add subtle animation to draw attention when path is required
-      &:empty + .path-field {
-        animation: subtlePulse 2s ease-in-out infinite;
-      }
     }
   }
 }
@@ -320,7 +301,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 24px var(--panel-padding) var(--panel-padding);
+  padding: 24px;
   border-top: 1px solid rgba(var(--app-text-color-rgb), 0.06);
   background: rgba(var(--secondary-background-rgb), 0.3);
 
@@ -349,12 +330,12 @@
       &:hover {
         background: rgba(var(--primary-color-rgb), 0.9);
         transform: translateY(-1px);
-        box-shadow: var(--elevated-shadow);
+        box-shadow: var(--box-shadow);
       }
     }
 
     mat-icon {
-      font-size: var(--font-size-md);
+      font-size: 1.125rem;
       width: 18px;
       height: 18px;
     }
@@ -366,12 +347,10 @@
     font-weight: 500;
     letter-spacing: 0.01em;
     padding: 0 24px;
-    transition: all 0.2s var(--motion-standard);
-
-    &:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: var(--elevated-shadow);
-    }
+    transition: all 0.2s var(--motion-standard);      &:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: var(--box-shadow);
+      }
 
     &:disabled {
       opacity: 0.6;
@@ -394,102 +373,17 @@
 
     mat-icon {
       margin-right: 8px;
-      font-size: var(--font-size-md);
+      font-size: 1.125rem;
       width: 18px;
       height: 18px;
-
-      &.spinning {
-        animation: spin 1s linear infinite;
-      }
     }
   }
 }
 
-// Background animations
-@keyframes backgroundGradientShift {
-  0% { 
-    background: 
-      radial-gradient(circle at 20% 50%, rgba(var(--primary-color-rgb), 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(var(--accent-color-rgb), 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 40% 80%, rgba(var(--primary-color-rgb), 0.1) 0%, transparent 50%),
-      linear-gradient(135deg, rgba(var(--app-background-rgb), 0.9) 0%, rgba(var(--secondary-background-rgb), 0.9) 100%);
-  }
-  20% { 
-    background: 
-      radial-gradient(circle at 30% 60%, rgba(var(--accent-color-rgb), 0.18) 0%, transparent 55%),
-      radial-gradient(circle at 70% 30%, rgba(var(--primary-color-rgb), 0.12) 0%, transparent 45%),
-      radial-gradient(circle at 50% 70%, rgba(var(--accent-color-rgb), 0.08) 0%, transparent 50%),
-      linear-gradient(135deg, rgba(var(--app-background-rgb), 0.9) 0%, rgba(var(--secondary-background-rgb), 0.9) 100%);
-  }
-  40% { 
-    background: 
-      radial-gradient(circle at 70% 40%, rgba(var(--primary-color-rgb), 0.16) 0%, transparent 48%),
-      radial-gradient(circle at 30% 70%, rgba(var(--accent-color-rgb), 0.14) 0%, transparent 52%),
-      radial-gradient(circle at 60% 30%, rgba(var(--primary-color-rgb), 0.09) 0%, transparent 47%),
-      linear-gradient(135deg, rgba(var(--app-background-rgb), 0.9) 0%, rgba(var(--secondary-background-rgb), 0.9) 100%);
-  }
-  60% { 
-    background: 
-      radial-gradient(circle at 40% 30%, rgba(var(--accent-color-rgb), 0.17) 0%, transparent 51%),
-      radial-gradient(circle at 80% 60%, rgba(var(--primary-color-rgb), 0.13) 0%, transparent 49%),
-      radial-gradient(circle at 20% 80%, rgba(var(--accent-color-rgb), 0.11) 0%, transparent 53%),
-      linear-gradient(135deg, rgba(var(--app-background-rgb), 0.9) 0%, rgba(var(--secondary-background-rgb), 0.9) 100%);
-  }
-  80% { 
-    background: 
-      radial-gradient(circle at 60% 70%, rgba(var(--primary-color-rgb), 0.14) 0%, transparent 46%),
-      radial-gradient(circle at 25% 40%, rgba(var(--accent-color-rgb), 0.16) 0%, transparent 54%),
-      radial-gradient(circle at 75% 25%, rgba(var(--primary-color-rgb), 0.12) 0%, transparent 48%),
-      linear-gradient(135deg, rgba(var(--app-background-rgb), 0.9) 0%, rgba(var(--secondary-background-rgb), 0.9) 100%);
-  }
-  100% { 
-    background: 
-      radial-gradient(circle at 20% 50%, rgba(var(--primary-color-rgb), 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(var(--accent-color-rgb), 0.15) 0%, transparent 50%),
-      radial-gradient(circle at 40% 80%, rgba(var(--primary-color-rgb), 0.1) 0%, transparent 50%),
-      linear-gradient(135deg, rgba(var(--app-background-rgb), 0.9) 0%, rgba(var(--secondary-background-rgb), 0.9) 100%);
-  }
-}
-
-@keyframes floatShape {
-  0%, 100% { 
-    transform: translateY(0px) translateX(0px) scale(1);
-    opacity: 0.6;
-  }
-  25% { 
-    transform: translateY(-15px) translateX(10px) scale(1.1);
-    opacity: 0.8;
-  }
-  50% { 
-    transform: translateY(-20px) translateX(-5px) scale(0.9);
-    opacity: 0.7;
-  }
-  75% { 
-    transform: translateY(-10px) translateX(-15px) scale(1.05);
-    opacity: 0.9;
-  }
-}
-
-// Subtle pulse animation for required path selection
-@keyframes subtlePulse {
-  0%, 100% { 
-    box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0.3);
-  }
-  50% { 
-    box-shadow: 0 0 0 4px rgba(var(--accent-color-rgb), 0.1);
-  }
-}
-
-// Spinning animation for loading
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
 
 // Responsive Design
 @media (max-width: 768px) {
   :host {
-    --panel-padding: 32px;
     --icon-size: 80px;
   }
 
@@ -504,7 +398,7 @@
 
   .content-area {
     .text-content .card-title {
-      font-size: var(--font-size-xl);
+      font-size: 1.5rem;
     }
 
     .form-section {

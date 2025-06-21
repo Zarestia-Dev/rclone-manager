@@ -1,0 +1,110 @@
+<div class="remote-details">
+  <div class="detail-header">
+    <div class="header-content">
+      <div class="remote-info-section">
+        <div [ngClass]="{
+          'icon-container': true,
+          'sync': selectedRemote?.syncState?.isOnSync,
+          'copy': selectedRemote?.copyState?.isOnCopy,
+          'mount': selectedRemote?.mountState?.mounted
+        }">
+          <mat-icon [svgIcon]="iconService.getIconName(selectedRemote?.remoteSpecs?.type)"
+            class="remote-type-icon"></mat-icon>
+        </div>
+        <div class="remote-text-info">
+          <h2 class="remote-name" matTooltip="{{ selectedRemote?.remoteSpecs?.name }}">
+            {{ selectedRemote?.remoteSpecs?.name }}
+          </h2>
+          <span class="remote-type">{{ selectedRemote?.remoteSpecs?.type | titlecase }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-divider"></div>
+  </div>
+
+  <div class="detail-content">
+    @if (isOperationType()) {
+    <!-- Operation Detail Content -->
+    <mat-tab-group [color]="operationColor" class="operation-tabs">
+      <mat-tab label="Monitoring">
+        <div class="operation-monitor">
+          <!-- Operation Control Panel -->
+          <app-operation-control 
+            [config]="getOperationControlConfig()"
+            (primaryAction)="handlePrimaryAction()"
+            (secondaryAction)="handleSecondaryAction()"
+            (openPath)="triggerOpenInFiles($event)">
+          </app-operation-control>
+
+          <!-- Job Information Panel -->
+          <app-job-info-panel [config]="getJobInfoConfig()"></app-job-info-panel>
+
+          <!-- Statistics Panel -->
+          <app-stats-panel [config]="getStatsConfig()"></app-stats-panel>
+
+          <!-- File Transfer Panel -->
+          <app-file-transfer-panel [config]="getFileTransferConfig()"></app-file-transfer-panel>
+
+          <!-- Performance Charts Panel -->
+          <div class="charts-grid">
+            <mat-card class="detail-panel chart-panel">
+              <mat-card-header class="panel-header">
+                <mat-card-title class="panel-title-content">
+                  <mat-icon svgIcon="chart" class="panel-icon"></mat-icon>
+                  <span>Transfer Speed</span>
+                </mat-card-title>
+              </mat-card-header>
+              <mat-card-content class="panel-content">
+                <div class="chart-container">
+                  <canvas #speedChart class="performance-chart"></canvas>
+                </div>
+              </mat-card-content>
+            </mat-card>
+
+            <mat-card class="detail-panel chart-panel">
+              <mat-card-header class="panel-header">
+                <mat-card-title class="panel-title-content">
+                  <mat-icon svgIcon="chart" class="panel-icon"></mat-icon>
+                  <span>Transfer Progress</span>
+                </mat-card-title>
+              </mat-card-header>
+              <mat-card-content class="panel-content">
+                <div class="chart-container">
+                  <canvas #progressChart class="performance-chart"></canvas>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab label="Configuration">
+        <div class="configuration-content">
+          @for (section of remoteSettingsSections; track section.key) {
+            <app-settings-panel 
+              [config]="getSettingsPanelConfig(section)"
+              (editSettings)="onEditSettings($event)">
+            </app-settings-panel>
+          }
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+    } @else {
+    <!-- Mount Control Panel -->
+    <app-operation-control 
+      [config]="getMountControlConfig()"
+      (primaryAction)="handlePrimaryAction()"
+      (secondaryAction)="handleSecondaryAction()"
+      (openPath)="triggerOpenInFiles($event)">
+    </app-operation-control>
+
+    <!-- Configuration Sections for Mount -->
+    @for (section of remoteSettingsSections; track section.key) {
+      <app-settings-panel 
+        [config]="getSettingsPanelConfig(section)"
+        (editSettings)="onEditSettings($event)">
+      </app-settings-panel>
+    }
+    }
+  </div>
+</div>

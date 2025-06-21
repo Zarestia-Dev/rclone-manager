@@ -1,0 +1,94 @@
+import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { ThemePalette } from '@angular/material/core';
+
+export interface PathDisplayConfig {
+  source: string;
+  destination: string;
+  sourceLabel?: string;
+  destinationLabel?: string;
+  showOpenButtons?: boolean;
+  operationColor?: ThemePalette;
+  isDestinationActive?: boolean;
+  actionInProgress?: string;
+}
+
+@Component({
+  selector: 'app-path-display',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatIconModule,
+    MatButtonModule,
+    MatProgressSpinnerModule,
+    MatTooltipModule
+  ],
+  styleUrls: ['./path-display.component.scss'],
+  template: `
+    <div class="path-section">
+      <div class="path-item source-path">
+        <div class="path-icon-container">
+          @if (config.showOpenButtons && isLocalPath(config.source)) {
+            <button mat-icon-button class="folder-button" 
+                    [color]="config.operationColor"
+                    (click)="onOpenPath(config.source)" 
+                    matTooltip="Open in file explorer">
+              <mat-icon svgIcon="folder"></mat-icon>
+            </button>
+          } @else {
+            <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
+          }
+        </div>
+        <div class="path-info" [matTooltip]="config.source">
+          <div class="path-label">{{ config.sourceLabel || 'Source' }}</div>
+          <div class="path-value">{{ config.source }}</div>
+        </div>
+      </div>
+
+      <div class="path-arrow">
+        <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+      </div>
+      <div class="path-item destination-path">
+        <div class="path-icon-container">
+          @if (config.showOpenButtons && isLocalPath(config.destination)) {
+            <button mat-icon-button 
+                    class="folder-button" 
+                    [class.active]="config.isDestinationActive"
+                    [class.inactive]="!config.isDestinationActive"
+                    [disabled]="config.actionInProgress === 'open' || !config.isDestinationActive"
+                    (click)="onOpenPath(config.destination)" 
+                    matTooltip="Open in file explorer">
+              @if (config.actionInProgress === 'open') {
+                <mat-spinner diameter="20"></mat-spinner>
+              } @else {
+                <mat-icon svgIcon="folder"></mat-icon>
+              }
+            </button>
+          } @else {
+            <mat-icon svgIcon="cloud-arrow-up" class="path-icon"></mat-icon>
+          }
+        </div>
+        <div class="path-info" [matTooltip]="config.destination">
+          <div class="path-label">{{ config.destinationLabel || 'Destination' }}</div>
+          <div class="path-value">{{ config.destination }}</div>
+        </div>
+      </div>
+    </div>
+  `,
+})
+export class PathDisplayComponent {
+  @Input() config!: PathDisplayConfig;
+  @Output() openPath = new EventEmitter<string>();
+
+  isLocalPath(path: string): boolean {
+    return !!(path && (path.startsWith("/") || path.match(/^[A-Za-z]:\\/)));
+  }
+
+  onOpenPath(path: string): void {
+    this.openPath.emit(path);
+  }
+}

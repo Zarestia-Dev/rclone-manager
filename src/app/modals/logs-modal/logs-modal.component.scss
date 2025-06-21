@@ -4,7 +4,6 @@
   // Spacing
   --modal-padding: 24px;
   --modal-padding-mobile: 16px;
-  --header-padding: 24px 32px;
   --content-gap: 24px;
   --content-gap-mobile: 16px;
   --toolbar-padding: 20px 24px;
@@ -14,21 +13,18 @@
   // Border radius
   --modal-border-radius: 16px;
   --card-border-radius: 12px;
-  --input-border-radius: 8px;
   --terminal-border-radius: 12px;
   --button-border-radius: 8px;
   
   // Shadows and effects
   --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
   --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
-  --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
   --surface-border: rgba(var(--app-text-color-rgb), 0.08);
   
   // Terminal colors
   --terminal-background: #1e1e1e;
   --terminal-text: #e0e0e0;
   --terminal-header-bg: var(--secondary-background);
-  --terminal-border: var(--surface-border);
   
   // Log level colors
   --log-info-color: var(--light-blue);
@@ -39,12 +35,9 @@
   --log-remote-color: var(--light-blue);
   
   // Transitions
-  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-quick: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   
   // Typography
-  --title-font-size: var(--font-size-lg);
-  --toolbar-font-size: var(--font-size-sm);
   --log-font-size: var(--font-size-sm);
   --log-timestamp-size: 11px;
 }
@@ -567,85 +560,78 @@
       }
     }
   }
+}
 
-  // Responsive Design
-  @media (max-width: 768px) {
-    :host {
-      --modal-padding: var(--modal-padding-mobile);
-      --content-gap: var(--content-gap-mobile);
-      --header-padding: 16px 20px;
-      --toolbar-padding: 16px 20px;
-      --terminal-padding: 12px;
-      --log-entry-padding: 8px 12px;
-    }
-
-    .log-modal {
-      .modal-header {
-        p {
-          font-size: var(--font-size-md);
-          padding: 0 12px;
-        }
-
-        button:first-child,
-        button:last-child {
-          width: 36px;
-          height: 36px;
-        }
-      }
-
-      .modal-content {
-        .terminal-container {
-          .terminal-header {
-            padding: 8px 12px;
-
-            .terminal-actions {
-              button {
-                width: 32px;
-                height: 32px;
-              }
-            }
-          }
-
-          .terminal-log-area {
-            .log-entry {
-              grid-template-columns: 1fr;
-              gap: 8px;
-              text-align: left;
-
-              .timestamp,
-              .level,
-              .remote-name {
-                justify-self: start;
-              }
-
-              .log-actions {
-                opacity: 1;
-                justify-self: end;
-                grid-column: 1;
-                grid-row: 1;
-              }
-
-              .message {
-                grid-column: 1;
-                margin-top: 4px;
-              }
-            }
-          }
-        }
-      }
-    }
+// Responsive Design - Move media queries outside to fix specificity issues
+@media (max-width: 768px) {
+  :host {
+    --modal-padding: var(--modal-padding-mobile);
+    --content-gap: var(--content-gap-mobile);
+    --toolbar-padding: 16px 20px;
+    --terminal-padding: 12px;
+    --log-entry-padding: 8px 12px;
   }
 
-  @media (max-width: 480px) {
-    .log-modal {
-      .modal-content {
-        .terminal-container {
-          .terminal-log-area {
-            .log-entry {
-              .level {
-                width: auto;
-                min-width: 50px;
-              }
+  .log-modal {
+    .modal-header {
+      p {
+        font-size: var(--font-size-md);
+        padding: 0 12px;
+      }
+
+      button:first-child,
+      button:last-child {
+        width: 36px;
+        height: 36px;
+      }
+    }
+
+    .modal-content {
+      .terminal-container {
+        .terminal-header {
+          padding: 8px 12px;
+
+          .terminal-actions {
+            button {
+              width: 32px;
+              height: 32px;
+            }
+          }
+        }
+
+        .terminal-log-area {
+          .log-entry {
+            gap: 8px;
+            text-align: left;
+            display: flex !important; /* Override the grid layout */
+            flex-direction: column;
+            grid-template-columns: none; /* Reset grid layout */
+            
+            .timestamp,
+            .level,
+            .remote-name {
+              justify-self: start;
+              align-self: flex-start;
+            }
+
+            .log-actions {
+              opacity: 1;
+              justify-self: end;
+              align-self: flex-end;
+              position: absolute;
+              top: 8px;
+              right: 8px;
+            }
+
+            .message {
+              grid-column: unset;
+              margin-top: 4px;
+              width: 100%;
+            }
+            
+            .log-context {
+              grid-column: unset;
+              width: 100%;
             }
           }
         }
@@ -654,3 +640,19 @@
   }
 }
 
+@media (max-width: 480px) {
+  .log-modal {
+    .modal-content {
+      .terminal-container {
+        .terminal-log-area {
+          .log-entry {
+            .level {
+              width: auto;
+              min-width: 50px;
+            }
+          }
+        }
+      }
+    }
+  }
+}

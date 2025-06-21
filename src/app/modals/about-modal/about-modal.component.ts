@@ -1,4 +1,3 @@
-import { animate, style, transition, trigger } from "@angular/animations";
 import { CommonModule } from "@angular/common";
 import { Component, HostListener } from "@angular/core";
 import { MatDialogRef } from "@angular/material/dialog";
@@ -12,6 +11,7 @@ import packageJson from "../../../../package.json";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { SystemInfoService } from "../../services/features/system-info.service";
 import { NotificationService } from "../../services/ui/notification.service";
+import { AnimationsService } from "../../shared/animations/animations.service";
 const rCloneManager = packageJson.version;
 
 @Component({
@@ -26,21 +26,7 @@ const rCloneManager = packageJson.version;
   templateUrl: "./about-modal.component.html",
   styleUrl: "./about-modal.component.scss",
   animations: [
-    trigger("slideOverlay", [
-      transition(":enter", [
-        style({ transform: "translateX(100%)" }),
-        animate(
-          "200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          style({ transform: "translateX(0%)" })
-        ),
-      ]),
-      transition(":leave", [
-        animate(
-          "200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          style({ transform: "translateX(100%)" })
-        ),
-      ]),
-    ]),
+    AnimationsService.slideOverlay(),
   ],
 })
 export class AboutModalComponent {

@@ -1,11 +1,3 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from "@angular/animations";
-
 import { Component, HostListener } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
@@ -14,6 +6,7 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatTableModule } from "@angular/material/table";
+import { AnimationsService } from "../../shared/animations/animations.service";
 
 @Component({
   selector: "app-keyboard-shortcuts-modal",
@@ -28,11 +21,7 @@ import { MatTableModule } from "@angular/material/table";
   templateUrl: "./keyboard-shortcuts-modal.component.html",
   styleUrl: "./keyboard-shortcuts-modal.component.scss",
   animations: [
-    trigger("slideToggle", [
-      state("hidden", style({ height: "0px", opacity: 0, padding: 0, overflow: "hidden" })),
-      state("visible", style({ height: "*", opacity: 1, padding: "*", overflow: "hidden" })),
-      transition("hidden <=> visible", animate("300ms ease-in-out")),
-    ]),
+    AnimationsService.slideToggle(),
   ],
 })
 export class KeyboardShortcutsModalComponent {

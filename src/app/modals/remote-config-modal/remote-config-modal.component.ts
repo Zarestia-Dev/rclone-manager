@@ -7,14 +7,7 @@ import {
   ViewChild,
 } from "@angular/core";
 import { CommonModule } from "@angular/common";
-import {
-  animate,
-  group,
-  query,
-  style,
-  transition,
-  trigger,
-} from "@angular/animations";
+import { AnimationsService } from "../../shared/animations/animations.service";
 import {
   AbstractControl,
   FormBuilder,
@@ -67,50 +60,9 @@ import { UiStateService } from "../../services/ui/ui-state.service";
   templateUrl: "./remote-config-modal.component.html",
   styleUrl: "./remote-config-modal.component.scss",
   animations: [
-    trigger("slideAnimation", [
-      transition("* => *", [
-        query(":leave", [style({ position: "absolute", width: "100%" })], {
-          optional: true,
-        }),
-        group([
-          query(
-            ":enter",
-            [
-              style({ transform: "translateX(-100%)", opacity: 0 }),
-              animate(
-                "300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-                style({ transform: "translateX(0)", opacity: 1 })
-              ),
-            ],
-            { optional: true }
-          ),
-          query(
-            ":leave",
-            [
-              animate(
-                "300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-                style({ transform: "translateX(-100%)", opacity: 0 })
-              ),
-            ],
-            { optional: true }
-          ),
-        ]),
-      ]),
-    ]),
-    trigger("fadeInOut", [
-      transition(":enter", [
-        style({ opacity: 0, transform: "translateY(10px)" }), // Start slightly below
-        animate(
-          "300ms ease-out",
-          style({ opacity: 1, transform: "translateY(0)" })
-        ),
-      ]),
-      transition(":leave", [
-        animate(
-          "200ms ease-in",
-          style({ opacity: 0, transform: "translateY(-10px)" })
-        ),
-      ]),
+    AnimationsService.getAnimations([
+      "slideAnimation",
+      "fadeInOutWithMove",
     ]),
   ],
 })

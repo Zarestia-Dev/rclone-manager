@@ -169,37 +169,10 @@
         </mat-card-content>
       </mat-card>
 
-      <!-- Remote Specifications Panel -->
-      <mat-card class="detail-panel specs-panel">
-        <mat-card-header class="panel-header">
-          <mat-card-title class="panel-title-content">
-            <mat-icon svgIcon="wrench" class="panel-icon"></mat-icon>
-            <span>Remote Configuration</span>
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content class="panel-content">
-          <div class="specs-container">
-            <div class="specs-grid">
-              @for (spec of selectedRemote.remoteSpecs | keyvalue; track spec.key) {
-              <div class="spec-item">
-                <div class="spec-key">{{ spec.key }}</div>
-                <div class="spec-value"
-                  [matTooltip]="isSensitiveKey(spec.key, restrictMode) ? '[RESTRICTED]' : (spec.value | json)"
-                  matTooltipPosition="above" [matTooltipHideDelay]="500">
-                  {{ maskSensitiveValue(spec.key, spec.value) }}
-                </div>
-              </div>
-              }
-            </div>
-          </div>
-        </mat-card-content>
-        <mat-card-actions class="panel-actions">
-          <button mat-raised-button color="primary" class="edit-config-button"
-            (click)="openRemoteConfigModal.emit({editTarget: 'remote', existingConfig: selectedRemote.remoteSpecs})">
-            <mat-icon svgIcon="pen"></mat-icon>
-            <span>Edit Configuration</span>
-          </button>
-        </mat-card-actions>
-      </mat-card>
+      <!-- Remote Configuration Panel -->
+      <app-settings-panel 
+        [config]="getRemoteConfigurationPanelConfig()"
+        (editSettings)="onEditRemoteConfiguration()">
+      </app-settings-panel>
     </div>
   </div>

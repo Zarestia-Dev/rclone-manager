@@ -5,8 +5,8 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatSidenavModule } from "@angular/material/sidenav";
 import { FormsModule } from "@angular/forms";
 import { Remote } from "../../shared/components/types";
-import { animate, state, style, transition, trigger } from "@angular/animations";
 import { MatTooltipModule } from "@angular/material/tooltip";
+import { AnimationsService } from "../../shared/animations/animations.service";
 
 @Component({
   selector: "app-sidebar",
@@ -19,11 +19,7 @@ import { MatTooltipModule } from "@angular/material/tooltip";
     MatTooltipModule
   ],
   animations: [
-    trigger("slideToggle", [
-      state("hidden", style({ height: "0px", opacity: 0, padding: "10px", overflow: "hidden" })),
-      state("visible", style({ height: "*", opacity: 1, padding: "*", overflow: "hidden" })),
-      transition("hidden <=> visible", animate("300ms ease-in-out")),
-    ]),
+    AnimationsService.slideToggle(),
   ],
   templateUrl: "./sidebar.component.html",
   styleUrl: "./sidebar.component.scss",

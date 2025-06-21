@@ -1,0 +1,89 @@
+.status-badge {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--badge-radius);
+  font-size: var(--caption-font-size);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: var(--default-transition);
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  &.active {
+    background: rgba(var(--primary-color-rgb), var(--active-opacity));
+    color: var(--primary-color);
+    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+
+    .status-dot {
+      background: var(--primary-color);
+    }
+  }
+
+  &.error {
+    background: rgba(var(--warn-color-rgb), var(--active-opacity));
+    color: var(--warn-color);
+    border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+
+    .status-dot {
+      background: var(--warn-color);
+    }
+  }
+
+  &.inactive {
+    background: rgba(var(--app-text-color-rgb), var(--inactive-opacity));
+    color: var(--secondary-text-color);
+    border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+
+    .status-dot {
+      background: var(--secondary-text-color);
+    }
+  }
+
+  /* Operation specific styles */
+  &.active-sync {
+    background: rgba(var(--primary-color-rgb), var(--active-opacity));
+    color: var(--primary-color);
+    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+
+    .status-dot {
+      background: var(--primary-color);
+    }
+  }
+
+  &.active-copy {
+    background: rgba(var(--accent-color-rgb), var(--active-opacity));
+    color: var(--accent-color);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+
+    .status-dot {
+      background: var(--accent-color);
+    }
+  }
+
+  &.mounted {
+    background: rgba(var(--accent-color-rgb), var(--active-opacity));
+    color: var(--accent-color);
+    border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+
+    .status-dot {
+      background: var(--accent-color);
+    }
+  }
+
+  &.unmounted {
+    background: rgba(var(--app-text-color-rgb), var(--inactive-opacity));
+    color: var(--secondary-text-color);
+    border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+
+    .status-dot {
+      background: var(--secondary-text-color);
+    }
+  }
+}

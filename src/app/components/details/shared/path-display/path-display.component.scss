@@ -1,0 +1,113 @@
+.path-section {
+  display: flex;
+  align-items: stretch;
+  gap: var(--panel-gap);
+  flex-wrap: wrap;
+}
+
+.path-item {
+  display: flex;
+  align-items: center;
+  gap: var(--header-gap);
+  flex: 1;
+  min-width: 250px;
+  padding: var(--item-padding);
+  background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+  border-radius: var(--item-radius);
+  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+  transition: var(--quick-transition);
+
+  &:hover {
+    background: rgba(var(--primary-color-rgb), var(--background-opacity));
+    border-color: rgba(var(--primary-color-rgb), var(--active-opacity));
+  }
+}
+
+.path-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--icon-radius);
+  background: rgba(var(--primary-color-rgb), var(--background-opacity));
+
+  .path-icon {
+    color: var(--primary-color);
+    font-size: var(--medium-icon-size);
+    width: var(--medium-icon-size);
+    height: var(--medium-icon-size);
+  }
+
+  .folder-button {
+
+    &.active {
+      background: rgba(var(--accent-color-rgb), var(--active-opacity));
+      color: var(--accent-color);
+    }
+
+    &.inactive {
+      background: rgba(var(--app-text-color-rgb), var(--inactive-opacity));
+      color: var(--secondary-text-color);
+    }
+
+    mat-icon {
+      font-size: var(--medium-icon-size);
+      width: var(--medium-icon-size);
+      height: var(--medium-icon-size);
+    }
+  }
+}
+
+.path-info {
+  flex: 1;
+  min-width: 0;
+
+  .path-label {
+    font-size: var(--caption-font-size);
+    color: var(--secondary-text-color);
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .path-value {
+    font-size: var(--font-size-base);
+    color: var(--app-text-color);
+    font-weight: 400;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+}
+
+.path-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .arrow-icon {
+    color: var(--secondary-text-color);
+    font-size: var(--large-icon-size);
+    width: var(--large-icon-size);
+    height: var(--large-icon-size);
+  }
+}
+
+@media (max-width: 768px) {
+  .path-section {
+    flex-direction: column;
+    gap: var(--header-gap);
+
+    .path-item {
+      min-width: 0;
+      .path-value {
+        width: 44vw;
+      }
+    }
+
+    .path-arrow {
+      transform: rotate(90deg);
+    }
+  }
+}

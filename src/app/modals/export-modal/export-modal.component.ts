@@ -7,12 +7,12 @@ import { MatSelectModule } from "@angular/material/select";
 import { MatInputModule } from "@angular/material/input";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { MatCheckboxModule } from "@angular/material/checkbox";
-import { animate, style, transition, trigger } from "@angular/animations";
 import { MatButtonModule } from "@angular/material/button";
 import { ExportModalData } from "../../shared/components/types";
 import { BackupRestoreService } from "../../services/features/backup-restore.service";
 import { RemoteManagementService } from "../../services/features/remote-management.service";
 import { FileSystemService } from "../../services/features/file-system.service";
+import { AnimationsService } from "../../shared/animations/animations.service";
 
 @Component({
   selector: "app-export-modal",
@@ -28,15 +28,7 @@ import { FileSystemService } from "../../services/features/file-system.service";
     MatButtonModule
 ],
   animations: [
-    trigger("slideInOut", [
-      transition(":enter", [
-        style({ height: "0px", opacity: 0 }),
-        animate("200ms ease-out", style({ height: "*", opacity: 1 })),
-      ]),
-      transition(":leave", [
-        animate("200ms ease-in", style({ height: "0px", opacity: 0 })),
-      ]),
-    ]),
+    AnimationsService.slideInOut(),
   ],
   templateUrl: "./export-modal.component.html",
   styleUrl: "./export-modal.component.scss",

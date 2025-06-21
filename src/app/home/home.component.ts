@@ -26,8 +26,7 @@ import { Subject, takeUntil } from "rxjs";
 import { SidebarComponent } from "../components/sidebar/sidebar.component";
 import { RemoteConfigModalComponent } from "../modals/remote-config-modal/remote-config-modal.component";
 import { QuickAddRemoteComponent } from "../modals/quick-add-remote/quick-add-remote.component";
-import { MountDetailComponent } from "../components/details/mount-detail/mount-detail.component";
-import { OperationDetailComponent } from "../components/details/operation-detail/operation-detail.component";
+import { AppDetailComponent } from "../components/details/app-detail/app-detail.component";
 import { LogsModalComponent } from "../modals/logs-modal/logs-modal.component";
 import { ExportModalComponent } from "../modals/export-modal/export-modal.component";
 
@@ -57,13 +56,7 @@ import { SystemInfoService } from "../services/features/system-info.service";
 import { NotificationService } from "../services/ui/notification.service";
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { invoke } from "@tauri-apps/api/core";
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from "@angular/animations";
+import { AnimationsService } from "../shared/animations/animations.service";
 
 @Component({
   selector: "app-home",
@@ -82,19 +75,14 @@ import {
     SidebarComponent,
     GeneralDetailComponent,
     GeneralOverviewComponent,
-    MountDetailComponent,
-    OperationDetailComponent,
+    AppDetailComponent,
     AppOverviewComponent,
   ],
   templateUrl: "./home.component.html",
   styleUrls: ["./home.component.scss"],
   changeDetection: ChangeDetectionStrategy.Default, // Temporarily change to Default
   animations: [
-    trigger("slideToggle", [
-      state("hidden", style({ height: "0px", opacity: 0, padding: 0, overflow: "hidden" })),
-      state("visible", style({ height: "*", opacity: 1, padding: "*", overflow: "hidden" })),
-      transition("hidden <=> visible", animate("300ms ease-in-out")),
-    ]),
+    AnimationsService.slideToggle(),
   ],
 })
 export class HomeComponent implements OnInit, OnDestroy {

@@ -1,4 +1,3 @@
-
 import { Component, HostListener, Inject } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MAT_DIALOG_DATA, MatDialogRef } from "@angular/material/dialog";
@@ -8,14 +7,7 @@ import { MatInputModule } from "@angular/material/input";
 import { MatSelectModule } from "@angular/material/select";
 import { MatButtonModule } from "@angular/material/button";
 import { FileSystemService } from "../../services/features/file-system.service";
-
-export type InputField = {
-  name: string;
-  label: string;
-  type: "text" | "password" | "number" | "select" | "folder";
-  required: boolean;
-  options?: string[]; // for select type
-};
+import { InputField } from "../../shared/components/types";
 
 @Component({
   selector: "app-input-modal",

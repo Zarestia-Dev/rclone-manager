@@ -259,3 +259,11 @@ export const SENSITIVE_KEYS = [
   "client_id",
   "api_key",
 ];
+
+export type InputField = {
+  name: string;
+  label: string;
+  type: "text" | "password" | "number" | "select" | "folder";
+  required: boolean;
+  options?: string[]; // for select type
+};

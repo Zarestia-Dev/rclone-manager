@@ -112,41 +112,21 @@
       <!-- Remote Detail View -->
       @if (selectedRemote && !isLoading) {
       @switch (currentTab) {
-      @case ('mount') {
-      <app-mount-detail [iconService]="iconService" [selectedRemote]="selectedRemote"
-        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" [restrictMode]="restrictMode"
-        [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" (unmountRemote)="unmountRemote($event)"
-        (mountRemote)="mountRemote($event)"
-        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">
-      </app-mount-detail>
-      }
-      @case ('sync') {
-      <app-operation-detail [operationType]="currentTab" [selectedRemote]="selectedRemote"
-        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" [iconService]="iconService"
-        [restrictMode]="restrictMode"
-        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        (startOperation)="startOperation($event.type, $event.remoteName)"
-        (stopOperation)="stopOperation($event.type, $event.remoteName)"
-        (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">
-      </app-operation-detail>
-      }
-      @case ('copy') {
-      <app-operation-detail [operationType]="currentTab" [selectedRemote]="selectedRemote"
-        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" [restrictMode]="restrictMode"
-        [iconService]="iconService" [jobManagementService]="jobManagementService"
-        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        (startOperation)="startOperation($event.type, $event.remoteName)"
-        (stopOperation)="stopOperation($event.type, $event.remoteName)"
-        (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">
-      </app-operation-detail>
-      }
       @case ('general') {
       <app-general-detail [restrictMode]="restrictMode" [jobs]="getJobsForRemote(selectedRemote.remoteSpecs.name)"
         (stopOperation)="stopOperation($event.type, $event.remoteName)"
         (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
         [iconService]="iconService" [selectedRemote]="selectedRemote" (deleteJob)="deleteJob($event)">
       </app-general-detail>
+      }
+      @default {
+      <app-app-detail [operationType]="currentTab" [iconService]="iconService" [selectedRemote]="selectedRemote"
+        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" [restrictMode]="restrictMode"
+        [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" (primaryAction)="handlePrimaryAction(currentTab, $event)"
+        (secondaryAction)="handleSecondaryAction(currentTab, $event)"
+        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
+        (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">
+      </app-app-detail>
       }
       }
       }

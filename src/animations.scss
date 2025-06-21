@@ -1,0 +1,312 @@
+// ===== LOADING & UTILITY ANIMATIONS =====
+
+@keyframes diskLoadingShimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes breathing {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.7;
+  }
+}
+
+// ===== PULSE ANIMATIONS =====
+// Large ripple effect animations
+
+@keyframes pulseBlue {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(var(--accent-color-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0);
+  }
+}
+
+@keyframes pulseGreen {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--light-green-rgb), 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(var(--light-green-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--light-green-rgb), 0);
+  }
+}
+
+@keyframes pulseYellow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--yellow-rgb), 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(var(--yellow-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--yellow-rgb), 0);
+  }
+}
+
+@keyframes pulseOrange {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--light-orange-rgb), 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(var(--light-orange-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--light-orange-rgb), 0);
+  }
+}
+
+@keyframes pulseRed {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--warn-color-rgb), 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(var(--warn-color-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--warn-color-rgb), 0);
+  }
+}
+
+@keyframes pulseMode {
+  0% {
+    box-shadow: 0 0 0 0
+      rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 16px
+      rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0
+      rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0);
+  }
+}
+
+// ===== ICON PULSE ANIMATIONS =====
+// Smaller, more subtle pulse effects for icons with scaling
+
+@keyframes iconPulseRed {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--warn-color-rgb), 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(var(--warn-color-rgb), 0.1);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes iconPulseGreen {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(var(--primary-color-rgb), 0.1);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes iconPulseBlue {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(var(--accent-color-rgb), 0.1);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes iconPulseYellow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--yellow-rgb), 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(var(--yellow-rgb), 0.1);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes iconPulseOrange {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--light-orange-rgb), 0.4);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(var(--light-orange-rgb), 0.1);
+    transform: scale(1.05);
+  }
+}
+
+// ===== ANIMATION UTILITY CLASSES =====
+// Easy-to-use classes for applying animations
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-pulse-blue {
+  animation: pulseBlue 2s infinite;
+}
+
+.animate-pulse-green {
+  animation: pulseGreen 2s infinite;
+}
+
+.animate-pulse-yellow {
+  animation: pulseYellow 2s infinite;
+}
+
+.animate-pulse-orange {
+  animation: pulseOrange 2s infinite;
+}
+
+.animate-pulse-red {
+  animation: pulseRed 2s infinite;
+}
+
+.animate-pulse-mode {
+  animation: pulseMode 2s infinite;
+}
+
+.animate-icon-pulse-red {
+  animation: iconPulseRed 1.5s infinite;
+}
+
+.animate-icon-pulse-green {
+  animation: iconPulseGreen 1.5s infinite;
+}
+
+.animate-icon-pulse-blue {
+  animation: iconPulseBlue 1.5s infinite;
+}
+
+.animate-icon-pulse-yellow {
+  animation: iconPulseYellow 1.5s infinite;
+}
+
+.animate-icon-pulse-orange {
+  animation: iconPulseOrange 1.5s infinite;
+}
+
+.animate-breathing {
+  animation: breathing 2s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: diskLoadingShimmer 1.5s infinite linear;
+  background: linear-gradient(
+    90deg,
+    rgba(var(--app-text-color-rgb), 0.1) 25%,
+    rgba(var(--app-text-color-rgb), 0.2) 50%,
+    rgba(var(--app-text-color-rgb), 0.1) 75%
+  );
+  background-size: 200% 100%;
+}
+
+// ===== ANIMATION DURATION MODIFIERS =====
+// Quick modifiers for different animation speeds
+
+.animate-slow {
+  animation-duration: 3s;
+}
+
+.animate-fast {
+  animation-duration: 0.5s;
+}
+
+.animate-pause {
+  animation-play-state: paused;
+}
+
+.animate-delay-1 {
+  animation-delay: 0.1s;
+}
+
+.animate-delay-2 {
+  animation-delay: 0.2s;
+}
+
+.animate-delay-3 {
+  animation-delay: 0.3s;
+}
+
+// ===== HOVER ANIMATIONS =====
+// Animations triggered on hover
+
+.hover-pulse-blue:hover {
+  animation: iconPulseBlue 0.6s ease-out;
+}
+
+.hover-pulse-green:hover {
+  animation: iconPulseGreen 0.6s ease-out;
+}
+
+.hover-pulse-red:hover {
+  animation: iconPulseRed 0.6s ease-out;
+}
+
+.hover-breathing:hover {
+  animation: breathing 1s ease-in-out;
+}
+
+// ===== RESPONSIVE ANIMATIONS =====
+// Disable animations on devices that prefer reduced motion
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .animate-spin,
+  .animate-pulse-blue,
+  .animate-pulse-green,
+  .animate-pulse-yellow,
+  .animate-pulse-orange,
+  .animate-pulse-red,
+  .animate-pulse-mode,
+  .animate-icon-pulse-red,
+  .animate-icon-pulse-green,
+  .animate-icon-pulse-blue,
+  .animate-icon-pulse-yellow,
+  .animate-icon-pulse-orange,
+  .animate-breathing,
+  .animate-shimmer {
+    animation: none !important;
+  }
+}

@@ -7,7 +7,7 @@
   <div class="loading-container" [@loadingSpinner]>
     <div class="loading-content">
       <div class="loading-spinner">
-        <mat-icon svgIcon="refresh" class="spinning"></mat-icon>
+        <mat-icon svgIcon="refresh" class="animate-spin"></mat-icon>
       </div>
       <h2>Initializing RClone Manager</h2>
       <p>Checking system configuration...</p>
@@ -94,14 +94,14 @@
         <button mat-raised-button color="primary" (click)="installRclone()" [disabled]="!canInstallRclone()"
           class="action-button"
           [matTooltip]="installLocation === 'custom' && customPath.trim().length === 0 ? 'Please select an installation path first' : ''">
-          <mat-icon [svgIcon]="installing ? 'refresh' : 'download'" [class.spinning]="installing"></mat-icon>
+          <mat-icon [svgIcon]="installing ? 'refresh' : 'download'" [class.animate-spin]="installing"></mat-icon>
           {{ getInstallButtonText() }}
         </button>
         } @else if (shouldShowInstallPluginButton()) {
         <button mat-raised-button color="primary" (click)="installMountPlugin()" [disabled]="downloadingPlugin"
           class="action-button">
           <mat-icon [svgIcon]="downloadingPlugin ? 'refresh' : 'download'"
-            [class.spinning]="downloadingPlugin"></mat-icon>
+            [class.animate-spin]="downloadingPlugin"></mat-icon>
           {{ downloadingPlugin ? 'Installing...' : 'Install Plugin' }}
         </button>
         } @else if (cards[currentCardIndex].title === 'Ready to Go!') {

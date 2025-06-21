@@ -32,7 +32,7 @@ pub async fn get_folder_location(
     {
         // If the selected path is a drive root (e.g., D:\), prevent selection and show error
 
-        use std::path::{Path, Component};
+        use std::path::{Component, Path};
         let path = Path::new(&folder);
         if let Some(drive) = path.components().next() {
             if matches!(drive, Component::Prefix(_)) && path.parent().is_none() {
@@ -78,13 +78,24 @@ pub async fn get_folder_location(
 }
 
 #[command]
-pub async fn open_in_files(app: tauri::AppHandle, path: String) -> Result<String, String> {
-    if path.is_empty() {
+pub async fn open_in_files(
+    app: tauri::AppHandle,
+    path: std::path::PathBuf,
+) -> Result<String, String> {
+    if path.as_os_str().is_empty() {
         return Err("Invalid path: Path cannot be empty.".to_string());
     }
 
-    match app.opener().open_path(path.clone(), None::<&str>) {
-        Ok(_) => Ok(format!("Opened file manager at {}", path)),
+    if !path.exists() {
+        return Err(format!("Path not exist: {}", path.display()));
+    }
+
+    let path_str = path
+        .to_str()
+        .ok_or_else(|| format!("Invalid path: {}", path.display()))?
+        .to_string();
+    match app.opener().open_path(path_str, None::<String>) {
+        Ok(_) => Ok(format!("Opened file manager at {}", path.display())),
         Err(e) => Err(format!("Failed to open file manager: {}", e)),
     }
 }

@@ -18,9 +18,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatExpansionModule } from "@angular/material/expansion";
-import { trigger, transition, style, animate } from "@angular/animations";
-import { Subject, combineLatest, from, timer } from "rxjs";
-import { takeUntil } from "rxjs/operators";
+import { Subject } from "rxjs";
 
 import {
   BandwidthLimitResponse,
@@ -32,6 +30,7 @@ import {
   DEFAULT_JOB_STATS,
 } from "../../../shared/components/types";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { AnimationsService } from "../../../shared/animations/animations.service";
 
 /** Polling interval for system stats in milliseconds */
 const POLLING_INTERVAL = 5000;
@@ -71,21 +70,7 @@ type RcloneStatus = "active" | "inactive" | "error";
   templateUrl: "./general-overview.component.html",
   styleUrls: ["./general-overview.component.scss"],
   animations: [
-    trigger("fadeInOut", [
-      transition(":enter", [
-        style({ opacity: 0, transform: "translateY(10px)" }),
-        animate(
-          "300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          style({ opacity: 1, transform: "translateY(0)" })
-        ),
-      ]),
-      transition(":leave", [
-        animate(
-          "200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          style({ opacity: 0, transform: "translateY(-10px)" })
-        ),
-      ]),
-    ]),
+    AnimationsService.fadeInOut(),
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

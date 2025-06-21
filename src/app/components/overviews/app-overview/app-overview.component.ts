@@ -18,7 +18,7 @@ import {
   RemoteAction,
   RemoteActionProgress,
 } from "../../../shared/components/types";
-import { animate, style, transition, trigger } from "@angular/animations";
+import { AnimationsService } from "../../../shared/animations/animations.service";
 
 @Component({
   selector: "app-app-overview",
@@ -31,23 +31,7 @@ import { animate, style, transition, trigger } from "@angular/animations";
     MatProgressSpinnerModule,
     MatButtonModule,
   ],
-  animations: [
-    trigger("fadeInOut", [
-      transition(":enter", [
-        style({ opacity: 0, transform: "translateY(10px)" }),
-        animate(
-          "300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          style({ opacity: 1, transform: "translateY(0)" })
-        ),
-      ]),
-      transition(":leave", [
-        animate(
-          "200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          style({ opacity: 0, transform: "translateY(-10px)" })
-        ),
-      ]),
-    ]),
-  ],
+  animations: [AnimationsService.fadeInOut()],
   templateUrl: "./app-overview.component.html",
   styleUrl: "./app-overview.component.scss",
   changeDetection: ChangeDetectionStrategy.OnPush,

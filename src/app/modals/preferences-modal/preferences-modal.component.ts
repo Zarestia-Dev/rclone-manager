@@ -1,10 +1,3 @@
-import {
-  animate,
-  state,
-  style,
-  transition,
-  trigger,
-} from "@angular/animations";
 import { Component, HostListener, OnInit } from "@angular/core";
 import {
   FormBuilder,
@@ -25,6 +18,7 @@ import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { AppSettingsService } from "../../services/features/app-settings.service";
+import { AnimationsService } from "../../shared/animations/animations.service";
 
 @Component({
   selector: "app-preferences-modal",
@@ -44,11 +38,7 @@ import { AppSettingsService } from "../../services/features/app-settings.service
   templateUrl: "./preferences-modal.component.html",
   styleUrls: ["./preferences-modal.component.scss"],
   animations: [
-    trigger("slideToggle", [
-      state("hidden", style({ height: "0px", opacity: 0, padding: 0, overflow: "hidden" })),
-      state("visible", style({ height: "*", opacity: 1, padding: "*", overflow: "hidden" })),
-      transition("hidden <=> visible", animate("300ms ease-in-out")),
-    ]),
+    AnimationsService.slideToggle(),
   ],
 })
 export class PreferencesModalComponent implements OnInit {

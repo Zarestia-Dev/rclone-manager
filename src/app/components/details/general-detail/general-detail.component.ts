@@ -14,6 +14,10 @@ import { CommonModule } from "@angular/common";
 import { MatProgressBarModule } from "@angular/material/progress-bar";
 import { MatTableModule } from "@angular/material/table";
 import { MatSortModule } from "@angular/material/sort";
+import { 
+  SettingsPanelComponent, 
+  SettingsPanelConfig,
+} from "../shared";
 
 @Component({
   selector: "app-general-detail",
@@ -29,6 +33,7 @@ import { MatSortModule } from "@angular/material/sort";
     MatTableModule,
     MatTooltipModule,
     MatSortModule,
+    SettingsPanelComponent,
   ],
   templateUrl: "./general-detail.component.html",
   styleUrl: "./general-detail.component.scss",
@@ -107,6 +112,31 @@ export class GeneralDetailComponent {
     );
 
     return total > 0 ? (used / total) * 100 : 0;
+  }
+
+  // Configuration methods for shared components
+  getRemoteConfigurationPanelConfig(): SettingsPanelConfig {
+    return {
+      section: {
+        key: 'remote-config',
+        title: 'Remote Configuration',
+        icon: 'wrench'
+      },
+      settings: this.selectedRemote.remoteSpecs,
+      hasSettings: Object.keys(this.selectedRemote.remoteSpecs).length > 0,
+      restrictMode: this.restrictMode,
+      buttonColor: 'primary',
+      buttonLabel: 'Edit Configuration',
+      sensitiveKeys: SENSITIVE_KEYS
+    };
+  }
+
+  // Event handlers for shared components
+  onEditRemoteConfiguration(): void {
+    this.openRemoteConfigModal.emit({
+      editTarget: 'remote', 
+      existingConfig: this.selectedRemote.remoteSpecs
+    });
   }
 
   // Private Helpers
@@ -199,37 +229,4 @@ export class GeneralDetailComponent {
     return value * (units[unit] || 1);
   }
 
-  isSensitiveKey(key: string, restrictMode: boolean): boolean {
-    return (
-      SENSITIVE_KEYS.some((sensitive) =>
-        key.toLowerCase().includes(sensitive)
-      ) && restrictMode
-    );
-  }
-
-  maskSensitiveValue(key: string, value: any): string {
-    return this.isSensitiveKey(key, this.restrictMode)
-      ? "RESTRICTED"
-      : this.truncateValue(value, 15);
-  }
-
-  private truncateValue(value: any, length: number): string {
-    if (value === null || value === undefined) return "";
-
-    if (typeof value === "object") {
-      try {
-        const jsonString = JSON.stringify(value);
-        return jsonString.length > length
-          ? `${jsonString.slice(0, length)}...`
-          : jsonString;
-      } catch {
-        return "[Invalid JSON]";
-      }
-    }
-
-    const stringValue = String(value);
-    return stringValue.length > length
-      ? `${stringValue.slice(0, length)}...`
-      : stringValue;
-  }
 }

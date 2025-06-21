@@ -32,6 +32,7 @@ import { MountManagementService } from "../../services/features/mount-management
 import { AppSettingsService } from "../../services/features/app-settings.service";
 import { FileSystemService } from "../../services/features/file-system.service";
 import { UiStateService } from "../../services/ui/ui-state.service";
+import { AnimationsService } from "../../shared/animations/animations.service";
 
 @Component({
   selector: "app-quick-add-remote",
@@ -51,16 +52,8 @@ import { UiStateService } from "../../services/ui/ui-state.service";
   templateUrl: "./quick-add-remote.component.html",
   styleUrls: ["./quick-add-remote.component.scss"],
   animations: [
-    trigger("slideInOut", [
-      transition(":enter", [
-        style({ height: "0px", opacity: 0 }),
-        animate("200ms ease-out", style({ height: "*", opacity: 1 })),
-      ]),
-      transition(":leave", [
-        animate("200ms ease-in", style({ height: "0px", opacity: 0 })),
-      ]),
-    ]),
-  ],
+    AnimationsService.slideInOut(),
+  ]
 })
 export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   quickAddForm: FormGroup;

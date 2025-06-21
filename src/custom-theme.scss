@@ -5,6 +5,9 @@
 @use "sass:color";
 // Plus imports for other components in your app.
 
+// Import centralized animations
+@use "animations";
+
 // Include the common styles for Angular Material. We include this here so that you only
 // have to load a single css file for Angular Material in your app.
 // Be sure that you only ever include this mixin once!
@@ -656,152 +659,6 @@ button {
   width: 100%;
 }
 
-// Animations
-
-@keyframes diskLoadingShimmer {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes pulseBlue {
-  0% {
-    box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 16px rgba(var(--accent-color-rgb), 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0);
-  }
-}
-
-@keyframes pulseGreen {
-  0% {
-    box-shadow: 0 0 0 0 rgba(var(--light-green-rgb), 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 16px rgba(var(--light-green-rgb), 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--light-green-rgb), 0);
-  }
-}
-
-@keyframes pulseYellow {
-  0% {
-    box-shadow: 0 0 0 0 rgba(var(--yellow-rgb), 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 16px rgba(var(--yellow-rgb), 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--yellow-rgb), 0);
-  }
-}
-
-@keyframes pulseMode {
-  0% {
-    box-shadow: 0 0 0 0
-      rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 16px
-      rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0
-      rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0);
-  }
-}
-
-@keyframes pulseOrange {
-  0% {
-    box-shadow: 0 0 0 0 rgba(var(--light-orange-rgb), 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 16px rgba(var(--light-orange-rgb), 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--light-orange-rgb), 0);
-  }
-}
-
-@keyframes pulseRed {
-  0% {
-    box-shadow: 0 0 0 0 rgba(var(--warn-color-rgb), 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 16px rgba(var(--warn-color-rgb), 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(var(--warn-color-rgb), 0);
-  }
-}
-
-
-// Pulse animations
-@keyframes iconPulseRed {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(var(--warn-color-rgb), 0.4);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(var(--warn-color-rgb), 0.1);
-    transform: scale(1.05);
-  }
-}
-
-@keyframes iconPulseGreen {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.4);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 0 10px rgba(var(--primary-color-rgb), 0.1);
-    transform: scale(1.05);
-  }
-}
-
-@keyframes breathing {
-  0% {
-    transform: scale(0.9);
-    opacity: 0.7;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0.9);
-    opacity: 0.7;
-  }
-}
-
-// Animations
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 // DETAILS
 
 :root {
@@ -835,7 +692,7 @@ button {
 
   // Status colors and opacity
   --panel-hover-opacity: 0.1;
-  --background-opacity: 0.03;
+  --background-opacity: 0.05;
   --border-opacity: 0.05;
   --hover-opacity: 0.03;
   --active-opacity: 0.1;

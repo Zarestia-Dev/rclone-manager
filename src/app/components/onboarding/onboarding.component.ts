@@ -1,4 +1,3 @@
-import { animate, style, transition, trigger } from "@angular/animations";
 import { CommonModule } from "@angular/common";
 import {
   Component,
@@ -17,6 +16,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatTooltipModule } from "@angular/material/tooltip";
 import { listen } from "@tauri-apps/api/event";
+import { AnimationsService } from "../../shared/animations/animations.service";
 
 @Component({
   selector: "app-onboarding",
@@ -33,59 +33,12 @@ import { listen } from "@tauri-apps/api/event";
     MatTooltipModule,
   ],
   animations: [
-    // Onboarding entrance animation
-    trigger("onboardingEntrance", [
-      transition(":enter", [
-        style({ opacity: 0, transform: "scale(0.95)" }),
-        animate(
-          "600ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          style({ opacity: 1, transform: "scale(1)" })
-        ),
-      ]),
-      transition(":leave", [
-        animate(
-          "400ms cubic-bezier(0.55, 0.06, 0.68, 0.19)",
-          style({ opacity: 0, transform: "scale(0.95)" })
-        ),
-      ]),
-    ]),
-    // Content fade-in after initialization
-    trigger("contentFadeIn", [
-      transition(":enter", [
-        style({ opacity: 0, transform: "translateY(20px)" }),
-        animate(
-          "500ms 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          style({ opacity: 1, transform: "translateY(0)" })
-        ),
-      ]),
-    ]),
-    // Loading spinner
-    trigger("loadingSpinner", [
-      transition(":enter", [
-        style({ opacity: 0, transform: "scale(0.8)" }),
-        animate(
-          "300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          style({ opacity: 1, transform: "scale(1)" })
-        ),
-      ]),
-      transition(":leave", [
-        animate(
-          "200ms cubic-bezier(0.55, 0.06, 0.68, 0.19)",
-          style({ opacity: 0, transform: "scale(0.8)" })
-        ),
-      ]),
-    ]),
-    trigger("slideInOut", [
-      transition(":enter", [
-        style({ height: "0px", opacity: 0, transform: "translateY(-10px)" }),
-        animate("300ms cubic-bezier(0.25, 0.46, 0.45, 0.94)", 
-                style({ height: "*", opacity: 1, transform: "translateY(0)" })),
-      ]),
-      transition(":leave", [
-        animate("200ms cubic-bezier(0.55, 0.06, 0.68, 0.19)", 
-                style({ height: "0px", opacity: 0, transform: "translateY(-10px)" })),
-      ]),
-    ]),
+    AnimationsService.getAnimations(
+      ["onboardingEntrance",
+      "contentFadeIn",
+      "loadingSpinner",
+      "slideInOut"],
+    ),
   ],
   templateUrl: "./onboarding.component.html",
   styleUrls: ["./onboarding.component.scss"],

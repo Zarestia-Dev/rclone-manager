@@ -42,7 +42,6 @@
             width: var(--large-icon-size);
             height: var(--large-icon-size);
             color: var(--primary-color);
-            filter: drop-shadow(0 0 4px rgba(var(--primary-color-rgb), 0.3));
           }
         }
 
@@ -189,7 +188,6 @@
             width: var(--medium-icon-size);
             height: var(--medium-icon-size);
             color: var(--primary-color);
-            filter: drop-shadow(0 0 4px rgba(var(--primary-color-rgb), 0.3));
           }
 
           .job-count {
@@ -532,48 +530,6 @@
   }
 }
 
-// Specs Panel
-.specs-panel {
-  .specs-container {
-    .specs-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: var(--header-gap);
-
-      .spec-item {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        padding: var(--item-padding);
-        background: rgba(var(--app-text-color-rgb), var(--background-opacity));
-        border-radius: 8px;
-        border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-        transition: var(--quick-transition);
-
-        &:hover {
-          background: rgba(var(--primary-color-rgb), var(--border-opacity));
-          border-color: rgba(var(--primary-color-rgb), 0.2);
-        }
-
-        .spec-key {
-          font-size: var(--caption-font-size);
-          font-weight: 600;
-          color: var(--secondary-text-color);
-          letter-spacing: 0.5px;
-        }
-
-        .spec-value {
-          font-size: var(--font-size-sm);
-          color: var(--app-text-color);
-          font-weight: 500;
-          word-break: break-all;
-          line-height: 1.4;
-        }
-      }
-    }
-  }
-}
-
 // Responsive Design
 @media (max-width: 768px) {
   .remote-details {
@@ -633,14 +589,6 @@
       .jobs-panel {
         .jobs-table-container {
           overflow-x: auto;
-        }
-      }
-
-      .specs-panel {
-        .specs-container {
-          .specs-grid {
-            grid-template-columns: 1fr;
-          }
         }
       }
     }
