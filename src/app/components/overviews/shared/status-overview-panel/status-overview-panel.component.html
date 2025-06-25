@@ -1,0 +1,43 @@
+<mat-card class="status-panel">
+  <mat-card-header class="status-header">
+    <mat-card-title class="panel-title-content">
+      <mat-icon [svgIcon]="mode" class="status-icon"></mat-icon>
+      <span>{{ title }}</span>
+      <span class="remote-count">{{ totalCount }}</span>
+    </mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content class="status-content">
+    <div class="status-bar-container">
+      <div class="remotes-bar">
+        <div class="bar active-bar" [style.width.%]="activePercentage"></div>
+        <div class="bar inactive-bar" [style.width.%]="inactivePercentage"></div>
+        <div class="bar error-bar" [style.width.%]="errorPercentage"></div>
+      </div>
+
+      <!-- Legend -->
+      @if (hasData) {
+        <div class="legend">
+          @if (activeCount > 0) {
+            <div class="legend-item">
+              <span class="color-box active"></span>
+              {{ activeLabel }}: {{ activeCount }}
+            </div>
+          }
+          @if (inactiveCount > 0) {
+            <div class="legend-item">
+              <span class="color-box inactive"></span>
+              {{ inactiveLabel }}: {{ inactiveCount }}
+            </div>
+          }
+          @if (errorCount > 0) {
+            <div class="legend-item">
+              <span class="color-box error"></span>
+              Error: {{ errorCount }}
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </mat-card-content>
+</mat-card>

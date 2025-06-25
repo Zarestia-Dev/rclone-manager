@@ -1,35 +1,15 @@
 @use '../../styles/shared-modal';
 
 :host {
-  // Spacing
-  --modal-padding: 24px;
-  --modal-padding-mobile: 16px;
-  --content-gap: 24px;
-  --content-gap-mobile: 16px;
-  --setting-item-gap: 16px;
-  --setting-item-padding: 16px 20px;
-  --search-padding: 16px 24px;
+  // Component-specific spacing
+  --content-gap-mobile: var(--space-md);               // 16px
+  --setting-item-gap: var(--space-md);                 // 16px
+  --setting-item-padding: var(--space-md) var(--space-lg); // 16px 20px
+  --search-padding: var(--space-md) var(--space-xl);   // 16px 24px
   
-  // Border radius
-  --card-border-radius: 12px;
-  --input-border-radius: 8px;
-  --tab-border-radius: 12px;
-  
-  // Shadows and effects
-  --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
-  --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
-  --surface-border: rgba(var(--app-text-color-rgb), 0.08);
-  
-  // Transitions
-  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-quick: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  
-  // Typography
-  --section-title-font-size: var(--font-size-md);
-  --setting-title-font-size: var(--font-size-base);
-  --setting-description-font-size: var(--font-size-sm);
-  --tab-font-size: var(--font-size-sm);
+  // Component-specific border radius
+  --input-border-radius: var(--space-xs);              // 8px
+  --tab-border-radius: var(--card-border-radius);      // 12px
 }
 
 .modal {
@@ -60,41 +40,10 @@
     z-index: 1000;
   }
 
-  // Search Container
-  .search-container {
-    padding: var(--search-padding);
-    background: var(--secondary-background);
-    border-bottom: 1px solid var(--surface-border);
-
-    .search-input {
-      width: calc(100% - 40px);
-      padding: 16px 20px;
-      border: 2px solid var(--surface-border);
-      border-radius: var(--card-border-radius);
-      background: var(--app-background);
-      color: var(--app-text-color);
-      font-size: var(--font-size-base);
-      font-weight: 400;
-      transition: var(--transition-standard);
-      outline: none;
-
-      &::placeholder {
-        color: var(--secondary-text-color);
-        font-weight: 400;
-      }
-
-      &:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
-        background: var(--secondary-background);
-      }
-    }
-  }
-
   // Desktop Tabs
   .desktop-tabs {
     display: flex;
-    gap: 8px;
+    gap: var(--space-xs);
     align-items: center;
     justify-content: center;
     flex: 1;
@@ -102,8 +51,8 @@
     button {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px 20px;
+      gap: var(--space-xs);
+      padding: var(--space-sm) var(--space-md);
       border-radius: var(--tab-border-radius);
       background: transparent;
       border: 1px solid transparent;
@@ -147,7 +96,7 @@
   .bottom-tabs {
     display: flex;
     justify-content: space-evenly;
-    padding: 16px;
+    padding: var(--space-md);
     background: var(--secondary-background);
     border-top: 1px solid var(--surface-border);
 
@@ -155,8 +104,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 6px;
-      padding: 12px 16px;
+      gap: var(--space-xxs);
+      padding: var(--space-sm) var(--space-md);
       border-radius: var(--tab-border-radius);
       background: transparent;
       border: none;
@@ -167,7 +116,7 @@
       min-width: 80px;
 
       mat-icon {
-        font-size: var(--font-size-lg);
+        font-size: 18px;
         width: 20px;
         height: 20px;
       }
@@ -225,10 +174,10 @@
           background: var(--secondary-background);
           padding: var(--setting-item-padding);
           border-radius: var(--card-border-radius);
-          border: 1px solid var(--surface-border);
+          border: 1px solid var(--border-color);
           box-shadow: var(--shadow-light);
           transition: var(--transition-standard);
-          gap: 24px;
+          gap: var(--space-lg);
 
           &:hover {
             box-shadow: var(--shadow-elevated);
@@ -239,7 +188,7 @@
           .setting-info {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: var(--space-xs);
             flex: 1;
             min-width: 0; // Allow text truncation
 
@@ -265,8 +214,8 @@
               color: var(--primary-color);
               font-weight: 500;
               background: rgba(var(--primary-color-rgb), 0.1);
-              padding: 4px 8px;
-              border-radius: 6px;
+              padding: var(--space-xxs) var(--space-xs);
+              border-radius: var(--radius-xxs);
               letter-spacing: 0.25px;
               display: inline-block;
               margin-top: 4px;
@@ -276,7 +225,7 @@
           .setting-control {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: var(--space-sm);
             flex-shrink: 0;
 
             // Form field styling
@@ -291,15 +240,15 @@
         .actions {
           display: flex;
           justify-content: center;
-          padding: 32px 0 16px 0;
+          padding: var(--space-xl) 0 var(--space-md) 0;
           border-top: 1px solid var(--surface-border);
           margin-top: 32px;
 
           .reset-button {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 16px 32px;
+            gap: var(--space-xs);
+            padding: var(--space-md) var(--space-xl);
             border-radius: var(--card-border-radius);
             background: linear-gradient(
               135deg,
@@ -368,10 +317,10 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 64px 32px;
+      padding: var(--space-xxl) var(--space-xl);
       text-align: center;
       color: var(--secondary-text-color);
-      gap: 20px;
+      gap: var(--space-md);
       animation: fadeIn 0.3s ease-in-out;
 
       mat-icon {
@@ -386,7 +335,7 @@
           rgba(var(--secondary-text-color-rgb), 0.05) 100%
         );
         border-radius: 50%;
-        padding: 20px;
+        padding: var(--space-md);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -408,7 +357,7 @@
       .search-suggestions {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: var(--space-xs);
         margin-top: 16px;
 
         small {
@@ -419,15 +368,15 @@
 
         .suggestion-chips {
           display: flex;
-          gap: 8px;
+          gap: var(--space-xs);
           flex-wrap: wrap;
           justify-content: center;
 
           .chip {
-            padding: 6px 12px;
+            padding: var(--space-xxs) var(--space-sm);
             background: rgba(var(--primary-color-rgb), 0.1);
             color: var(--primary-color);
-            border-radius: 16px;
+            border-radius: var(--radius-md);
             font-size: var(--caption-font-size);
             font-weight: 500;
             cursor: pointer;
@@ -469,7 +418,7 @@
 
     .modal-header {
       h2 {
-        font-size: var(--font-size-lg);
+        font-size: 18px;
       }
     }
 
@@ -479,7 +428,7 @@
           .setting-item {
             flex-direction: column;
             align-items: stretch;
-            gap: 16px;
+            gap: var(--space-md);
             min-height: auto;
 
             .setting-control {

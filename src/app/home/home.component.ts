@@ -335,7 +335,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   async stopOperation(
-    type: "sync" | "copy",
+    type: "sync" | "copy" | "mount" | string,
     remoteName: string
   ): Promise<void> {
     await this.executeRemoteAction(
@@ -900,16 +900,21 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private getJobIdForOperation(
     remote: Remote | undefined,
-    type: "sync" | "copy"
+    type: "sync" | "copy" | "mount" | string
   ): number | undefined {
     if (!remote) return undefined;
+
+    // Mount operations don't have job IDs in the same way
+    if (type === "mount") {
+      return undefined; // Mount operations are handled differently
+    }
 
     const jobIdMap = {
       sync: remote.syncState?.syncJobID,
       copy: remote.copyState?.copyJobID,
     } as const;
 
-    return jobIdMap[type];
+    return jobIdMap[type as keyof typeof jobIdMap];
   }
 
   private handleRemoteDeletion(remoteName: string): void {

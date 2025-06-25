@@ -1,0 +1,57 @@
+:host {
+  display: block;
+  // Inherit mode colors from parent app-overview
+  --mode-primary-color: inherit;
+  --mode-primary-color-rgb: inherit;
+  --mode-light-color: inherit;
+  --mode-light-color-rgb: inherit;
+}
+
+.overview-header {
+  text-align: center;
+  margin-bottom: var(--panel-padding);
+
+  .header-content {
+    .title-section {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-md);
+      margin-bottom: 16px;
+
+      .mode-icon {
+        font-size: var(--icon-size-large);
+        width: var(--icon-size-large);
+        height: var(--icon-size-large);
+        color: var(--mode-primary-color, var(--primary-color));
+        transition: var(--transition-standard);
+        will-change: color;
+      }
+
+      h2 {
+        font-size: var(--font-size-2xl);
+        font-weight: 300;
+        margin: 0;
+        color: var(--app-text-color);
+        letter-spacing: -0.5px;
+      }
+    }
+
+    .header-divider {
+      height: 2px;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.3) 20%,
+        rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.6) 50%,
+        rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.3) 80%,
+        transparent 100%
+      );
+      margin: 0 auto;
+      max-width: 20vw;
+      border-radius: var(--radius-xxs);
+      transition: var(--transition-standard);
+      will-change: background;
+    }
+  }
+}

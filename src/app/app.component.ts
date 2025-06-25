@@ -18,12 +18,11 @@ import {
   MatBottomSheetModule,
 } from "@angular/material/bottom-sheet";
 import { TabsButtonsComponent } from "./components/tabs-buttons/tabs-buttons.component";
-import { invoke } from "@tauri-apps/api/core";
 import { UiStateService } from "./services/ui/ui-state.service";
 import { AppSettingsService } from "./services/features/app-settings.service";
 import { SystemInfoService } from "./services/features/system-info.service";
-import { FileSystemService } from "./services/features/file-system.service";
 import { AppTab } from "./shared/components/types";
+import { InstallationService } from "./services/features/installation.service";
 
 @Component({
   selector: "app-root",
@@ -40,7 +39,6 @@ import { AppTab } from "./shared/components/types";
   styleUrl: "./app.component.scss",
 })
 export class AppComponent implements OnInit, OnDestroy {
-  @ViewChild(OnboardingComponent) onboardingComponent!: OnboardingComponent;
 
   completedOnboarding: boolean = true;
   alreadyReported: boolean = false;
@@ -52,7 +50,7 @@ export class AppComponent implements OnInit, OnDestroy {
     public uiStateService: UiStateService,
     public appSettingsService: AppSettingsService,
     private systemInfoService: SystemInfoService,
-    private fileSystemService: FileSystemService
+    private installationService: InstallationService
   ) {
     this.checkOnboardingStatus();
   }
@@ -77,9 +75,8 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.completedOnboarding) {
       // Check mount plugin status
       try {
-        const mountPluginOk = await invoke<boolean>(
-          "check_mount_plugin_installed"
-        );
+        const mountPluginOk = await this.installationService.isMountPluginInstalled();
+
         console.log("Mount plugin status: ", mountPluginOk);
         if (!mountPluginOk) {
           this.bottomSheet.open(RepairSheetComponent, {
@@ -144,16 +141,5 @@ export class AppComponent implements OnInit, OnDestroy {
     }
     this.currentTab = tab;
     this.uiStateService.setTab(tab);
-  }
-
-  async selectCustomPath(): Promise<void> {
-    try {
-      const path = await this.fileSystemService.selectFolder(false);
-      if (path && this.onboardingComponent) {
-        this.onboardingComponent.customPath = path;
-      }
-    } catch (error) {
-      console.error("Error selecting folder:", error);
-    }
   }
 }

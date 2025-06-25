@@ -19,6 +19,11 @@ import {
   RemoteActionProgress,
 } from "../../../shared/components/types";
 import { AnimationsService } from "../../../shared/animations/animations.service";
+import {
+  OverviewHeaderComponent,
+  StatusOverviewPanelComponent,
+  RemotesPanelComponent,
+} from "../shared";
 
 @Component({
   selector: "app-app-overview",
@@ -30,6 +35,9 @@ import { AnimationsService } from "../../../shared/animations/animations.service
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatButtonModule,
+    OverviewHeaderComponent,
+    StatusOverviewPanelComponent,
+    RemotesPanelComponent,
   ],
   animations: [AnimationsService.fadeInOut()],
   templateUrl: "./app-overview.component.html",
@@ -142,32 +150,30 @@ export class AppOverviewComponent {
     return this.mode === "mount" ? "mount" : "play";
   }
 
-  getOpenButtonLabel(remoteName: string): string {
-    return this.getActionState(remoteName) === "open"
-      ? "Opening"
-      : "Open Files";
+  getActiveTitle(): string {
+    switch (this.mode) {
+      case 'mount':
+        return 'Mounted Remotes';
+      case 'sync':
+        return 'Syncing Remotes';
+      case 'copy':
+        return 'Copying Remotes';
+      default:
+        return 'Active Remotes';
+    }
   }
 
-  getStopButtonLabel(): string {
-    if (this.mode === "mount") return "Unmount";
-    if (this.mode === "sync") return "Stop Sync";
-    if (this.mode === "copy") return "Stop Copy";
-    return "Stop";
-  }
-
-  isOpening(remoteName: string): boolean {
-    return this.getActionState(remoteName) === "open";
-  }
-
-  isStopping(remoteName: string): boolean {
-    return this.getActionState(remoteName) === "stop";
-  }
-
-  shouldShowOpenButton(remote: any): boolean {
-    if (this.mode === "mount") return true;
-    if (this.mode === "sync") return remote.syncState?.isLocal;
-    if (this.mode === "copy") return remote.copyState?.isLocal;
-    return false;
+  getInactiveTitle(): string {
+    switch (this.mode) {
+      case 'mount':
+        return 'Unmounted Remotes';
+      case 'sync':
+        return 'Off Sync Remotes';
+      case 'copy':
+        return 'Not Copying Remotes';
+      default:
+        return 'Inactive Remotes';
+    }
   }
 
   selectRemote(remote: Remote): void {
@@ -190,9 +196,5 @@ export class AppOverviewComponent {
     if (remoteName) {
       this.secondaryAction.emit(remoteName);
     }
-  }
-
-  getActionState(remoteName: string | undefined): RemoteAction {
-    return remoteName ? this.actionInProgress[remoteName] : null;
   }
 }

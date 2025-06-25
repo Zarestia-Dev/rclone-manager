@@ -31,13 +31,13 @@ export interface FileTransferPanelConfig {
         <mat-card-title class="panel-title-content">
           <mat-icon svgIcon="file" class="panel-icon"></mat-icon>
           <span>Transfer Progress</span>
-          <span class="file-count">{{ config.dataSource.data.length || 0 }}</span>
+          <span class="count">{{ config.dataSource.data.length || 0 }}</span>
         </mat-card-title>
       </mat-card-header>
       
       <mat-card-content class="panel-content">
-        <div class="file-list-container">
-          <table mat-table [dataSource]="config.dataSource" matSort class="files-table">
+        <div class="list-container">
+          <table mat-table [dataSource]="config.dataSource" matSort>
             <!-- Filename Column -->
             <ng-container matColumnDef="name">
               <th class="filename-header" mat-header-cell *matHeaderCellDef mat-sort-header>

@@ -24,12 +24,12 @@
 .form-section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-sm);
 
   .section-title {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: var(--space-sm);
     margin: 0;
     font-size: var(--font-size-base);
     font-weight: 600;
@@ -45,7 +45,7 @@
 .remote-option {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-sm);
 
   span {
     color: var(--app-text-color);

@@ -115,7 +115,8 @@
 // Smaller, more subtle pulse effects for icons with scaling
 
 @keyframes iconPulseRed {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(var(--warn-color-rgb), 0.4);
     transform: scale(1);
   }
@@ -126,7 +127,8 @@
 }
 
 @keyframes iconPulseGreen {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(var(--primary-color-rgb), 0.4);
     transform: scale(1);
   }
@@ -137,7 +139,8 @@
 }
 
 @keyframes iconPulseBlue {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(var(--accent-color-rgb), 0.4);
     transform: scale(1);
   }
@@ -148,7 +151,8 @@
 }
 
 @keyframes iconPulseYellow {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(var(--yellow-rgb), 0.4);
     transform: scale(1);
   }
@@ -159,7 +163,8 @@
 }
 
 @keyframes iconPulseOrange {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 rgba(var(--light-orange-rgb), 0.4);
     transform: scale(1);
   }
@@ -292,7 +297,7 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  
+
   .animate-spin,
   .animate-pulse-blue,
   .animate-pulse-green,

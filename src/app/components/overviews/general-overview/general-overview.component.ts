@@ -26,11 +26,13 @@ import {
   GlobalStats,
   JobInfo,
   Remote,
+  RemoteAction,
   RemoteActionProgress,
   DEFAULT_JOB_STATS,
 } from "../../../shared/components/types";
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { AnimationsService } from "../../../shared/animations/animations.service";
+import { RemotesPanelComponent } from "../shared/remotes-panel/remotes-panel.component";
 
 /** Polling interval for system stats in milliseconds */
 const POLLING_INTERVAL = 5000;
@@ -42,11 +44,6 @@ const BACKGROUND_POLLING_INTERVAL = 30000;
 interface SystemStats {
   memoryUsage: string;
   uptime: string;
-}
-
-/** Action emitters mapping */
-interface ActionEmitters {
-  [key: string]: (remoteName: string) => void;
 }
 
 /** Rclone status type */
@@ -66,6 +63,7 @@ type RcloneStatus = "active" | "inactive" | "error";
     MatProgressSpinnerModule,
     MatExpansionModule,
     MatProgressBarModule,
+    RemotesPanelComponent,
   ],
   templateUrl: "./general-overview.component.html",
   styleUrls: ["./general-overview.component.scss"],
@@ -128,17 +126,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   // Track by function for better performance
   readonly trackByRemoteName: TrackByFunction<Remote> = (_, remote) => {
     return remote.remoteSpecs.name;
-  };
-
-  // Action emitters map for cleaner event handling
-  private readonly actionEmitters: ActionEmitters = {
-    mount: (remoteName) => this.mountRemote.emit(remoteName),
-    unmount: (remoteName) => this.unmountRemote.emit(remoteName),
-    sync: (remoteName) =>
-      this.startOperation.emit({ type: "sync", remoteName }),
-    copy: (remoteName) =>
-      this.startOperation.emit({ type: "copy", remoteName }),
-    browse: (remoteName) => this.browseRemote.emit(remoteName),
   };
 
   constructor(
@@ -607,31 +594,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     return !!this.actionInProgress[remoteName];
   }
 
-  // Specific action state checks - Using more concise arrow functions
-  private readonly actionCheckers = {
-    mounting: (remoteName: string) =>
-      this.isActionInProgress(remoteName, "mount"),
-    unmounting: (remoteName: string) =>
-      this.isActionInProgress(remoteName, "unmount"),
-    syncing: (remoteName: string) =>
-      this.isActionInProgress(remoteName, "sync"),
-    stopping: (remoteName: string) =>
-      this.isActionInProgress(remoteName, "stop"),
-    copying: (remoteName: string) =>
-      this.isActionInProgress(remoteName, "copy"),
-    browsing: (remoteName: string) =>
-      this.isActionInProgress(remoteName, "open"),
-  } as const;
-
-  // Public accessor methods for template usage
-  isMounting = this.actionCheckers.mounting;
-  isUnmounting = this.actionCheckers.unmounting;
-  isSyncing = this.actionCheckers.syncing;
-  isStoppingSyncing = this.actionCheckers.stopping;
-  isCopying = this.actionCheckers.copying;
-  isStoppingCopying = this.actionCheckers.stopping;
-  isBrowsing = this.actionCheckers.browsing;
-
   /**
    * Get ARIA label for a remote card
    * @param remote - Remote object
@@ -652,14 +614,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
       ? ` - ${activeStatuses.join(", ")}`
       : "";
     return `${remote.remoteSpecs.name} (${remote.remoteSpecs.type})${statusSuffix}`;
-  }
-
-  getRemoteCardClasses(remote: Remote) {
-    return {
-      mounted: remote.mountState?.mounted,
-      syncing: remote.syncState?.isOnSync,
-      copying: remote.copyState?.isOnCopy,
-    };
   }
 
   /**
@@ -701,37 +655,79 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
-  // Event handlers
   /**
-   * Handle quick action button clicks
-   * @param event - Click event
+   * Get the current action state for a remote
    * @param remoteName - Name of the remote
-   * @param action - Action to perform
+   * @returns The current action state
    */
-  onQuickAction(event: Event, remoteName: string, action: string): void {
-    event.stopPropagation();
+  getRemoteActionState(remoteName: string): RemoteAction {
+    return this.actionInProgress[remoteName] || null;
+  }
 
-    // Handle regular actions
-    const emitter = this.actionEmitters[action];
-    if (emitter) {
-      emitter(remoteName);
-      return;
+  /**
+   * Get the variant for a remote card based on its state
+   * @param remote - Remote object
+   * @returns The variant for the remote card
+   */
+  getRemoteVariant(remote: Remote): 'active' | 'inactive' | 'error' {
+    // Check if remote has any active operations
+    if (remote.mountState?.mounted || remote.syncState?.isOnSync || remote.copyState?.isOnCopy) {
+      return 'active';
     }
+    
+    // Check for error states (you can extend this logic based on your error handling)
+    // For now, we'll default to inactive
+    return 'inactive';
+  }
 
-    // Handle stop actions with a more elegant approach
-    const stopActions = {
-      "stop-sync": () => this.stopJob.emit({ type: "sync", remoteName }),
-      "stop-copy": () => this.stopJob.emit({ type: "copy", remoteName }),
-    } as const;
+  // Remotes categorization for panel view
+  get allRemotes(): Remote[] {
+    return this.remotes || [];
+  }
 
-    const stopHandler = stopActions[action as keyof typeof stopActions];
-    if (stopHandler) {
-      stopHandler();
-    } else {
-      console.warn("Unknown action:", action);
+  get mountedRemotes(): Remote[] {
+    return this.remotes.filter(remote => remote.mountState?.mounted === true);
+  }
+
+  get unmountedRemotes(): Remote[] {
+    return this.remotes.filter(remote => !remote.mountState?.mounted);
+  }
+
+  get syncingRemotes(): Remote[] {
+    return this.remotes.filter(remote => remote.syncState?.isOnSync === true);
+  }
+
+  get copyingRemotes(): Remote[] {
+    return this.remotes.filter(remote => remote.copyState?.isOnCopy === true);
+  }
+
+  // Event handlers for remotes panel
+  onRemoteSelectedFromPanel(remote: Remote): void {
+    this.selectRemote.emit(remote);
+  }
+
+  onOpenInFilesFromPanel(remoteName: string): void {
+    this.browseRemote.emit(remoteName);
+  }
+
+  onPrimaryActionFromPanel(remoteName: string): void {
+    // For general overview, primary action could be mount/unmount based on current state
+    const remote = this.remotes.find(r => r.remoteSpecs.name === remoteName);
+    if (remote) {
+      if (remote.mountState?.mounted) {
+        this.unmountRemote.emit(remoteName);
+      } else {
+        this.mountRemote.emit(remoteName);
+      }
     }
   }
 
+  onSecondaryActionFromPanel(remoteName: string): void {
+    // Secondary action could be sync operation
+    this.startOperation.emit({ type: 'sync', remoteName });
+  }
+
+  // Event handlers
   // Panel state change handlers
   /**
    * Handle bandwidth panel state change

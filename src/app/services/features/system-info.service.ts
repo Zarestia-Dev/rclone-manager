@@ -62,6 +62,13 @@ export class SystemInfoService extends TauriBaseService {
   }
 
   /**
+   * Check if rclone is available on the system
+   */
+  async isRcloneAvailable(): Promise<boolean> {
+    return this.invokeCommand<boolean>('is_rclone_available');
+  }
+
+  /**
    * Listen to rclone API ready events
    */
   listenToRcloneApiReady(): Observable<any> {

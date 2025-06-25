@@ -1,98 +1,53 @@
-.file-list-panel {
-  background: var(--secondary-background);
-  border-radius: var(--panel-radius);
-  box-shadow: var(--box-shadow);
-  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-  overflow: hidden;
-  transition: var(--default-transition);
-  margin-bottom: var(--panel-gap);
+@use '../../../../styles/shared_components';
 
-  &:hover {
-    box-shadow: 0 8px 32px
-      rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
-    transform: translateY(-2px);
-  }
-}
+// =============================================================================
+// TABLE CONTAINER & STRUCTURE
+// =============================================================================
 
-.panel-header {
-  padding: var(--panel-header-padding);
-  margin-bottom: 8px;
-}
-
-.panel-title-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 500;
-  font-size: var(--font-size-md);
-}
-
-.panel-icon {
-  color: var(--accent-color);
-  font-size: var(--medium-icon-size);
-  width: var(--medium-icon-size);
-  height: var(--medium-icon-size);
-}
-
-.file-count {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: var(--badge-radius);
-  font-size: var(--caption-font-size);
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  background: rgba(var(--primary-color-rgb), var(--active-opacity));
-  color: var(--primary-color);
-  border: 1px solid rgba(var(--primary-color-rgb), 0.2);
-}
-
-.panel-content {
-  padding: 0;
-}
-
-.file-list-container {
+.list-container {
   max-height: 400px;
   overflow-y: auto;
 }
 
-.files-table {
+table {
   width: 100%;
   background-color: transparent;
-
-  .filename-header,
-  .filename-cell {
-    width: 40%;
-  }
-
-  .file-header-row {
-    background-color: rgba(var(--app-text-color-rgb), 0.03);
-  }
-
-  .filename-header {
-    padding-left: 24px;
-    font-weight: 500;
-    color: var(--app-text-color);
-  }
-
-  .filename-cell {
-    padding-left: 24px;
-  }
 }
+
+// =============================================================================
+// TABLE HEADERS & CELLS
+// =============================================================================
+
+.file-header-row {
+  background-color: rgba(var(--app-text-color-rgb), 0.03);
+}
+
+.filename-header,
+.filename-cell {
+  width: 40%;
+  padding-left: 24px;
+}
+
+.filename-header {
+  color: var(--app-text-color);
+  font-weight: 500;
+}
+
+// =============================================================================
+// FILE INFO DISPLAY
+// =============================================================================
 
 .file-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-xs);
 }
 
 .file-icon {
+  color: var(--primary-color);
   font-size: var(--small-icon-size);
   width: var(--small-icon-size);
   height: var(--small-icon-size);
-  color: var(--primary-color);
 
   &.error-icon {
     color: var(--warn-color);
@@ -100,30 +55,34 @@
 }
 
 .file-name {
-  font-size: var(--font-size-sm);
   color: var(--app-text-color);
-  white-space: nowrap;
+  font-size: var(--font-size-sm);
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
+// =============================================================================
+// PROGRESS BAR COMPONENTS
+// =============================================================================
 
 .progress-container {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-xs);
 }
 
 .progress-bar-wrapper {
+  background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+  border-radius: var(--radius-xxs);
   flex: 1;
   height: 8px;
-  background: rgba(var(--app-text-color-rgb), var(--background-opacity));
-  border-radius: 4px;
   overflow: hidden;
 }
 
 .progress-bar {
   height: 100%;
-  border-radius: 3px;
+  border-radius: var(--radius-xxs);
   position: relative;
 
   &.sync-operation .progress-fill {
@@ -136,25 +95,33 @@
 }
 
 .progress-fill {
-  height: 100%;
   background: var(--primary-color);
+  height: 100%;
   transition: width 0.3s ease;
 }
 
 .progress-text {
-  font-size: var(--caption-font-size);
   color: var(--secondary-text-color);
+  font-size: var(--caption-font-size);
   font-weight: 500;
   min-width: 40px;
   text-align: right;
 }
 
+// =============================================================================
+// DATA DISPLAY VALUES
+// =============================================================================
+
 .speed-value,
 .size-value,
 .eta-value {
-  font-size: var(--font-size-sm);
   color: var(--app-text-color);
+  font-size: var(--font-size-sm);
 }
+
+// =============================================================================
+// ROW STATES & INTERACTIONS
+// =============================================================================
 
 .file-row {
   transition: background-color 0.2s ease;
@@ -168,21 +135,25 @@
   }
 }
 
+// =============================================================================
+// EMPTY STATE
+// =============================================================================
+
 .no-data-row {
   height: 200px;
 }
 
 .no-data-cell {
-  text-align: center;
   padding: var(--panel-gap);
+  text-align: center;
 }
 
 .no-data-content {
+  align-items: center;
+  color: var(--secondary-text-color);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: var(--secondary-text-color);
+  gap: var(--space-xs);
 }
 
 .no-data-icon {
@@ -191,6 +162,10 @@
   height: var(--large-icon-size);
   opacity: 0.5;
 }
+
+// =============================================================================
+// RESPONSIVE DESIGN
+// =============================================================================
 
 @media (max-width: 768px) {
   .file-list-container {
@@ -203,7 +178,7 @@
   }
 
   .progress-text {
-    min-width: 30px;
     font-size: 0.7rem;
+    min-width: 30px;
   }
 }

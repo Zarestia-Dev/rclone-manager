@@ -1,3 +1,5 @@
+@use '../../../../styles/shared_components';
+
 .settings-panel {
   background: var(--secondary-background);
   border-radius: var(--panel-radius);
@@ -12,30 +14,6 @@
       rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
     transform: translateY(-2px);
   }
-}
-
-.panel-header {
-  padding: var(--panel-header-padding);
-  margin-bottom: 8px;
-}
-
-.panel-title-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 500;
-  font-size: var(--font-size-md);
-}
-
-.panel-icon {
-  color: var(--accent-color);
-  font-size: var(--medium-icon-size);
-  width: var(--medium-icon-size);
-  height: var(--medium-icon-size);
-}
-
-.panel-content {
-  padding: var(--panel-padding);
 }
 
 .settings-container {
@@ -80,7 +58,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-xs);
   padding: var(--panel-gap);
   color: var(--secondary-text-color);
   text-align: center;

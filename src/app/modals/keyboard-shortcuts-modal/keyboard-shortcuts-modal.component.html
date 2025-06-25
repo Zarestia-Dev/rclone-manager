@@ -18,15 +18,13 @@
   </div>
 
   <!-- Search Box with Animation -->
-  <div class="search-container" [@slideToggle]="searchVisible ? 'visible' : 'hidden'">
-    <input 
-      matInput 
-      [(ngModel)]="searchText" 
-      (input)="filterShortcuts()"
-      placeholder="Search shortcuts or descriptions..."
-      aria-label="Search keyboard shortcuts"
-      #searchInput />
-  </div>
+  <app-search-container
+    [visible]="searchVisible"
+    [searchText]="searchText"
+    (searchTextChange)="onSearchTextChange($event)"
+    placeholder="Search shortcuts or descriptions..."
+    ariaLabel="Search keyboard shortcuts">
+  </app-search-container>
 
   <!-- Shortcuts Table -->
   <div class="modal-content">

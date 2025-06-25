@@ -11,20 +11,14 @@
   .left-section {
     display: flex;
     align-items: center;
-    gap: 10px;
-  }
-
-  .center-section {
-    position: absolute;
-    left: calc(50vw - 100px);
+    gap: var(--space-xs);
   }
 
   .right-section {
     display: flex;
-    gap: 5px;
+    gap: var(--space-xxs);
   }
 }
-
 .shortcut {
   margin-left: auto;
   opacity: 0.6;
@@ -33,15 +27,15 @@
 .theme-selector {
   display: flex;
   justify-content: center;
-  gap: 20px;
-  padding: 10px;
+  gap: var(--space-md);
+  padding: var(--space-xs);
 }
 .theme-button {
   width: 50px;
   height: 50px;
   border-radius: 50%;
   border: 2px solid var(--theme-border);
-  color: var(--selected-border);
+  color: var(--app-text-color);
   display: flex;
   align-items: end;
   position: relative;
@@ -84,7 +78,7 @@
     content: "";
     position: absolute;
     inset: 0;
-    background: var(--disabled-fade, rgba(255, 255, 255, 0.5));
+    background: var(--disabled-fade);
     border-radius: inherit;
     z-index: 1;
   }

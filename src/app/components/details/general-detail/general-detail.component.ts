@@ -17,6 +17,10 @@ import { MatSortModule } from "@angular/material/sort";
 import { 
   SettingsPanelComponent, 
   SettingsPanelConfig,
+  DiskUsagePanelComponent,
+  DiskUsageConfig,
+  JobsPanelComponent,
+  JobsPanelConfig,
 } from "../shared";
 
 @Component({
@@ -34,6 +38,9 @@ import {
     MatTooltipModule,
     MatSortModule,
     SettingsPanelComponent,
+    DiskUsagePanelComponent,
+    JobsPanelComponent,
+
   ],
   templateUrl: "./general-detail.component.html",
   styleUrl: "./general-detail.component.scss",
@@ -61,7 +68,7 @@ export class GeneralDetailComponent {
     remoteName: string;
   }>();
   @Output() stopOperation = new EventEmitter<{
-    type: "sync" | "copy";
+    type: "sync" | "copy" | "mount" | string;
     remoteName: string;
   }>();
   @Output() deleteJob = new EventEmitter<number>();
@@ -77,42 +84,6 @@ export class GeneralDetailComponent {
 
 
   constructor() {}
-
-  getDiskBarStyle(): { [key: string]: string } {
-    if (this.selectedRemote.mountState?.mounted === "error") {
-      return this.getErrorStyle();
-    }
-
-    // Check if we have disk usage data and it's not supported
-    if (this.selectedRemote.mountState?.diskUsage?.notSupported) {
-      return this.getUnsupportedStyle();
-    }
-
-    // Check if we're still loading disk usage
-    if (this.selectedRemote.mountState?.diskUsage?.loading) {
-      return this.getLoadingStyle();
-    }
-
-    return this.getMountedStyle();
-  }
-
-  getUsagePercentage(): number {
-    if (
-      !this.selectedRemote?.mountState?.diskUsage ||
-      this.selectedRemote.mountState.diskUsage.notSupported
-    ) {
-      return 0;
-    }
-
-    const used = this.parseSize(
-      this.selectedRemote.mountState.diskUsage.used_space || "0"
-    );
-    const total = this.parseSize(
-      this.selectedRemote.mountState.diskUsage.total_space || "1"
-    );
-
-    return total > 0 ? (used / total) * 100 : 0;
-  }
 
   // Configuration methods for shared components
   getRemoteConfigurationPanelConfig(): SettingsPanelConfig {
@@ -131,6 +102,20 @@ export class GeneralDetailComponent {
     };
   }
 
+  getDiskUsageConfig(): DiskUsageConfig {
+    return {
+      mounted: this.selectedRemote.mountState?.mounted || false,
+      diskUsage: this.selectedRemote.mountState?.diskUsage
+    };
+  }
+
+  getJobsPanelConfig(): JobsPanelConfig {
+    return {
+      jobs: this.getRemoteJobs,
+      displayedColumns: this.displayedColumns
+    };
+  }
+
   // Event handlers for shared components
   onEditRemoteConfiguration(): void {
     this.openRemoteConfigModal.emit({
@@ -139,94 +124,9 @@ export class GeneralDetailComponent {
     });
   }
 
-  // Private Helpers
-  private getErrorStyle(): { [key: string]: string } {
-    return {
-      backgroundColor: "var(--red)",
-      border: "3px solid transparent",
-      transition: "all 0.5s ease-in-out",
-    };
-  }
-
-  private getUnsupportedStyle(): { [key: string]: string } {
-    return {
-      backgroundColor: "var(--yellow)",
-      border: "3px solid transparent",
-      transition: "all 0.5s ease-in-out",
-    };
-  }
-
-  private getLoadingStyle(): { [key: string]: string } {
-    return {
-      backgroundColor: "var(--orange)",
-      border: "3px solid transparent",
-      backgroundImage:
-        "linear-gradient(120deg, rgba(255,255,255,0.15) 25%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.15) 75%)",
-      backgroundSize: "200% 100%",
-      animation: "diskLoadingShimmer 1.2s linear infinite",
-      transition: "all 0.5s ease-in-out",
-    };
-  }
-
-  private getMountedStyle(): { [key: string]: string } {
-    return {
-      backgroundColor: "#cecece",
-      border: "3px solid var(--light-blue)",
-      transition: "all 0.5s ease-in-out",
-    };
-  }
-
-  triggerOpenRemoteConfig(editTarget?: string, existingConfig?: any) {
-    this.openRemoteConfigModal.emit({ editTarget, existingConfig });
-  }
-
   get getRemoteJobs(): JobInfo[] {
     return this.jobs.filter(
       (job) => job.remote_name === this.selectedRemote?.remoteSpecs.name
     );
   }
-
-  getJobProgress(job: JobInfo): number {
-    if (!job.stats) return 0;
-    return (job.stats.bytes / job.stats.totalBytes) * 100;
-  }
-
-  getJobStatus(job: JobInfo): string {
-    switch (job.status) {
-      case "Running":
-        return "running";
-      case "Completed":
-        return "completed";
-      case "Failed":
-        return "failed";
-      case "Stopped":
-        return "stopped";
-      default:
-        return "unknown";
-    }
-  }
-
-  formatBytes(bytes: number): string {
-    if (bytes === 0) return "0 Bytes";
-    const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-  }
-
-  private parseSize(size: string): number {
-    const units: { [key: string]: number } = {
-      B: 1,
-      KB: 1024,
-      MB: 1024 ** 2,
-      GB: 1024 ** 3,
-      TB: 1024 ** 4,
-    };
-    const match = size.trim().match(/^([\d.]+)\s*([A-Za-z]+)?$/);
-    if (!match) return 0;
-    const value = parseFloat(match[1]);
-    const unit = (match[2] || "B").toUpperCase();
-    return value * (units[unit] || 1);
-  }
-
 }

@@ -1,0 +1,48 @@
+// search-container.component.scss
+.search-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--border-radius);
+  background-color: var(--background-secondary);
+  border: 1px solid var(--border-subtle);
+
+  .search-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+
+    .search-title {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .search-actions {
+      display: flex;
+      gap: var(--space-xs);
+    }
+  }
+
+  .search-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .search-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .search-results {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+}

@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit } from "@angular/core";
+import { Component, HostListener, OnInit, ViewChild } from "@angular/core";
 import {
   FormBuilder,
   FormControl,
@@ -19,6 +19,7 @@ import { MatButtonModule } from "@angular/material/button";
 import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
 import { AppSettingsService } from "../../services/features/app-settings.service";
 import { AnimationsService } from "../../shared/animations/animations.service";
+import { SearchContainerComponent } from "../../shared/components/search-container/search-container.component";
 
 @Component({
   selector: "app-preferences-modal",
@@ -33,7 +34,8 @@ import { AnimationsService } from "../../shared/animations/animations.service";
     MatTooltipModule,
     MatIconModule,
     MatButtonModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    SearchContainerComponent
 ],
   templateUrl: "./preferences-modal.component.html",
   styleUrls: ["./preferences-modal.component.scss"],
@@ -50,6 +52,9 @@ export class PreferencesModalComponent implements OnInit {
   searchQuery = "";
   searchVisible = false; // Controls the visibility of search field
   filteredTabs: any[] = [];
+  
+  @ViewChild(SearchContainerComponent) searchContainer!: SearchContainerComponent;
+  
   searchResults: Array<{category: string; key: string}> = [];
 
   tabs = [
@@ -239,6 +244,10 @@ export class PreferencesModalComponent implements OnInit {
     );
   }
 
+  onSearchTextChange(searchText: string) {
+    this.filterSettings(searchText);
+  }
+
   getCategoryDisplayName(category: string): string {
     const tab = this.tabs.find(tab => tab.key === category);
     return tab ? tab.label : category.charAt(0).toUpperCase() + category.slice(1);
@@ -275,6 +284,15 @@ export class PreferencesModalComponent implements OnInit {
 
   toggleSearch() {
     this.searchVisible = !this.searchVisible;
+    if (!this.searchVisible) {
+      this.searchQuery = "";
+      this.filterSettings("");
+      if (this.searchContainer) {
+        this.searchContainer.clear();
+      }
+    } else if (this.searchContainer) {
+      this.searchContainer.focus();
+    }
   }
 
   getFilteredSettings(category: string) {

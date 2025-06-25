@@ -1,4 +1,4 @@
-import { Component, HostListener } from "@angular/core";
+import { Component, HostListener, ViewChild } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialogRef } from "@angular/material/dialog";
@@ -6,6 +6,7 @@ import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatIconModule } from "@angular/material/icon";
 import { MatInputModule } from "@angular/material/input";
 import { MatTableModule } from "@angular/material/table";
+import { SearchContainerComponent } from "../../shared/components/search-container/search-container.component";
 import { AnimationsService } from "../../shared/animations/animations.service";
 
 @Component({
@@ -16,7 +17,8 @@ import { AnimationsService } from "../../shared/animations/animations.service";
     MatFormFieldModule,
     MatInputModule,
     FormsModule,
-    MatButtonModule
+    MatButtonModule,
+    SearchContainerComponent
 ],
   templateUrl: "./keyboard-shortcuts-modal.component.html",
   styleUrl: "./keyboard-shortcuts-modal.component.scss",
@@ -27,6 +29,9 @@ import { AnimationsService } from "../../shared/animations/animations.service";
 export class KeyboardShortcutsModalComponent {
   searchText = "";
   searchVisible = false; // Controls the visibility of search field
+  
+  @ViewChild(SearchContainerComponent) searchContainer!: SearchContainerComponent;
+  
   shortcuts = [
     { keys: "Ctrl + ,", description: "Open Preferences" },
     { keys: "Ctrl + ?", description: "Show Keyboard Shortcuts" },
@@ -61,14 +66,8 @@ export class KeyboardShortcutsModalComponent {
   onF3(event: KeyboardEvent) {
     event.preventDefault();
     this.toggleSearch();
-    if (this.searchVisible) {
-      // Focus search input after animation
-      setTimeout(() => {
-        const searchInput = document.querySelector('input[aria-label="Search keyboard shortcuts"]') as HTMLInputElement;
-        if (searchInput) {
-          searchInput.focus();
-        }
-      }, 300);
+    if (this.searchVisible && this.searchContainer) {
+      this.searchContainer.focus();
     }
   }
 
@@ -77,6 +76,11 @@ export class KeyboardShortcutsModalComponent {
     if (!this.searchVisible) {
       this.clearSearch();
     }
+  }
+
+  onSearchTextChange(searchText: string) {
+    this.searchText = searchText;
+    this.filterShortcuts();
   }
 
   filterShortcuts() {
@@ -101,6 +105,9 @@ export class KeyboardShortcutsModalComponent {
   clearSearch() {
     this.searchText = "";
     this.filteredShortcuts = [...this.shortcuts];
+    if (this.searchContainer) {
+      this.searchContainer.clear();
+    }
   }
 
   // Method to get category for a shortcut (for potential future categorization)

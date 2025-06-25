@@ -11,7 +11,7 @@
 <div class="app-wrapper">
   <router-outlet></router-outlet>
   @if (!completedOnboarding) {
-  <app-onboarding class="onboarding" (completed)="finishOnboarding()" (selectCustomFolder)="selectCustomPath()">
+  <app-onboarding class="onboarding" (completed)="finishOnboarding()">
   </app-onboarding>
   }
   <app-titlebar class="title-bar"></app-titlebar>

@@ -2,147 +2,108 @@
   display: flex;
   flex-direction: column;
   height: var(--app-height);
-  background-color: var(--app-background);
-  color: var(--app-text-color);
   border-radius: 0 0 var(--home-bottom-radius, 16px)
     var(--home-bottom-radius, 16px);
   overflow: hidden;
-}
 
-.development-banner {
-  font-size: 16px;
-  max-height: 44px;
-  padding: var(--banner-padding);
-  font-weight: 600;
-  background: linear-gradient(135deg, var(--warn-color), var(--orange));
-  color: white;
-  text-align: center;
-  font-weight: 500;
-  box-shadow: 0 2px 8px rgba(var(--warn-color), 0.3);
-  border-bottom: 1px solid rgba(var(--secondary-background), 0.2);
-  display: flex;
-  text-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-shrink: 0;
-
-  .banner-message {
+  mat-toolbar {
+    display: flex;
+    text-wrap: wrap;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    max-height: 44px;
+    padding: var(--banner-padding);
     font-weight: 600;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    font-size: 14px;
-  }
+    font-size: 16px;
 
-  .banner-subtitle {
-    font-size: 11px;
-    opacity: 0.9;
-    margin-left: 8px;
-    font-weight: 400;
-  }
-  
-  @media (max-width: 600px) {
-    max-height: 52px;
-    font-size: 14px;
-  }
-}
+    &.development-banner {
+      background: linear-gradient(135deg, var(--warn-color), var(--orange));
+      gap: 8px;
 
-.metered-banner {
-  display: flex;
-  text-wrap: wrap;
-  text-align: center;
-  align-items: center;
-  justify-content: center;
-  max-height: 44px;
-  padding: var(--banner-padding);
-  font-size: 16px;
-  font-weight: 600;
-  background-color: var(--banner-background);
-  flex-shrink: 0;
-  
-  mat-icon {
-    margin-right: 8px;
-  }
+      .banner-message {
+        font-size: 14px;
+      }
 
-  @media (max-width: 600px) {
-    max-height: 52px;
-    font-size: 14px;
-  }
-}
-
-.home-container {
-  display: flex;
-  flex: 1;
-  background-color: var(--app-background);
-  color: var(--app-text-color);
-  // Ensure content doesn't overflow rounded corners
-  overflow: hidden;
-
-  mat-sidenav {
-    width: var(--sidebar-width);
-  }
-
-  mat-sidenav-content {
-    flex: 1;
-
-    .ellipsis-button {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: absolute;
-      right: 20px;
-      top: 10px;
-    }
-
-    .empty-state {
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-
-      .empty-state-content {
-        text-align: center;
-        max-width: 500px;
-        padding: 24px;
-
-        .empty-state-icon {
-          width: 180px;
-          height: 180px;
-          margin-bottom: 16px;
-        }
-
-        h2 {
-          margin-bottom: 8px;
-        }
-
-        p {
-          margin-bottom: 24px;
-        }
-
-        .empty-state-actions {
-          display: flex;
-          gap: 16px;
-          justify-content: center;
-        }
+      .banner-subtitle {
+        font-size: 11px;
+        opacity: 0.9;
+        margin-left: 8px;
+        font-weight: 400;
       }
     }
 
-    .sidebar-button {
-      position: absolute;
-      left: 10px;
-      z-index: 10;
+    &.metered-banner {
+      background-color: var(--banner-background);
+    }
+  }
 
-      .toggle-sidebar {
-        position: sticky;
+  .home-container {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+
+    mat-sidenav {
+      width: var(--sidebar-width);
+    }
+
+    mat-sidenav-content {
+      flex: 1;
+
+      .sidebar-button {
+        position: absolute;
+        left: 20px;
         top: 10px;
+      }
+
+      .ellipsis-button {
+        position: absolute;
+        right: 20px;
+        top: 10px;
+      }
+
+      .empty-state {
+        height: 100%;
         display: flex;
         align-items: center;
         justify-content: center;
+
+        .empty-state-content {
+          text-align: center;
+          max-width: 500px;
+          padding: 24px;
+
+          .empty-state-icon {
+            width: 180px;
+            height: 180px;
+            margin-bottom: 16px;
+          }
+
+          h2 {
+            margin-bottom: 8px;
+          }
+
+          p {
+            margin-bottom: 24px;
+          }
+
+          .empty-state-actions {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+          }
+        }
       }
     }
   }
 }
 
 @media (max-width: 500px) {
+  .mat-toolbar {
+    max-height: 52px;
+    font-size: 14px;
+  }
+
   .empty-state {
     align-items: flex-start !important;
 

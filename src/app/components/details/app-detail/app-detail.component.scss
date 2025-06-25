@@ -86,7 +86,7 @@
           display: flex;
           flex-direction: column;
           align-items: flex-start;
-          gap: 4px;
+          gap: var(--space-xxs);
 
           .remote-name {
             font-size: var(--font-size-xl);
@@ -188,7 +188,7 @@
       .header-content {
         .remote-info-section {
           flex-direction: column;
-          gap: 10px;
+          gap: var(--space-xs);
         }
       }
     }

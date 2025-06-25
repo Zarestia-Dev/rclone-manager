@@ -1,110 +1,12 @@
 @use '../../styles/shared-modal';
-:host {
-  // Spacing
-  --modal-padding: 32px;
-  --modal-padding-mobile: 24px;
-  --content-gap: 24px;
-  --search-height: 56px;
-  --row-height: 56px;
-  --key-spacing: 8px;
-  --search-padding: 16px 24px;
-
-  // Border radius
-  --modal-border-radius: 16px;
-  --search-border-radius: 12px;
-  --key-border-radius: 8px;
-
-  // Shadows and effects
-  --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12),
-    0 4px 16px rgba(0, 0, 0, 0.08);
-  --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
-  --surface-border: rgba(var(--app-text-color-rgb), 0.08);
-  --key-background: rgba(var(--app-text-color-rgb), 0.08);
-  --key-border: rgba(var(--app-text-color-rgb), 0.15);
-
-  // Colors
-  --search-background: rgba(var(--app-background-rgb), 0.8);
-  --table-background: rgba(var(--app-background-rgb), 0.95);
-  --header-background: linear-gradient(
-    135deg,
-    rgba(var(--app-text-color-rgb), 0.03) 0%,
-    rgba(var(--app-text-color-rgb), 0.01) 100%
-  );
-
-  // Transitions
-  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-quick: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-
-  // Typography
-  --title-font-size: var(--font-size-lg);
-  --search-font-size: var(--font-size-base);
-  --key-font-size: var(--font-size-sm);
-  --description-font-size: var(--font-size-base);
-}
 
 .modal-container {
-  background: var(--app-background);
-  border-radius: var(--modal-border-radius);
-  box-shadow: var(--shadow-elevated);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   height: 100%;
   position: relative;
-
-  // Glassmorphism background overlay
-  &::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-      135deg,
-      rgba(var(--app-text-color-rgb), 0.02) 0%,
-      rgba(var(--app-text-color-rgb), 0.01) 50%,
-      rgba(var(--app-text-color-rgb), 0.02) 100%
-    );
-    pointer-events: none;
-  }
-
-  // Search container with animation
-  .search-container {
-    padding: var(--search-padding);
-    background: var(--secondary-background);
-    border-bottom: 1px solid var(--surface-border);
-
-    input {
-      width: calc(100% - 40px);
-      padding: 16px 20px;
-      border: 2px solid var(--surface-border);
-      border-radius: var(--search-border-radius);
-      background: rgba(var(--app-background-rgb), 0.8);
-      color: var(--app-text-color);
-      font-size: var(--search-font-size);
-      font-weight: 400;
-      transition: var(--transition-standard);
-      outline: none;
-
-      &::placeholder {
-        color: var(--secondary-text-color);
-        font-weight: 400;
-      }
-
-      &:focus {
-        border-color: var(--primary-color);
-        background: var(--app-background);
-        box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
-      }
-
-      &:hover:not(:focus) {
-        border-color: rgba(var(--app-text-color-rgb), 0.2);
-      }
-    }
-  }
-
+  
   // Main content area
   .modal-content {
     flex: 1;
@@ -115,18 +17,16 @@
     z-index: 1;
 
     .shortcut-table {
-      background: var(--table-background);
       border-radius: 0;
       overflow: hidden;
 
       // Table rows
       .mat-mdc-row {
-        border-bottom: 1px solid var(--surface-border);
-        height: var(--row-height);
+        border-bottom: 1px solid var(--border-color);
         transition: var(--transition-quick);
 
         &:hover {
-          background: var(--surface-overlay);
+          background: var(--bg-elevated);
         }
 
         &:last-child {
@@ -151,13 +51,11 @@
             justify-content: center;
             height: 32px;
             padding: 0 12px;
-            margin-right: var(--key-spacing);
-            background: var(--key-background);
-            border: 1px solid var(--key-border);
-            border-radius: var(--key-border-radius);
+            background: var(--border-color);
+            border: 1px solid rgba(var(--app-text-color-rgb), 0.15);
+            border-radius: var(--border-radius);
             font-family: "SF Mono", "Monaco", "Inconsolata", "Roboto Mono",
               monospace;
-            font-size: var(--key-font-size);
             font-weight: 600;
             color: var(--app-text-color);
             letter-spacing: 0.5px;
@@ -175,8 +73,8 @@
               right: 2px;
               height: 2px;
               background: rgba(0, 0, 0, 0.1);
-              border-radius: 0 0 var(--key-border-radius)
-                var(--key-border-radius);
+              border-radius: 0 0 var(--border-radius)
+                var(--border-radius);
             }
 
             &:last-child {
@@ -237,7 +135,6 @@
         // Description cell
         &.shortcut-desc {
           width: 60%;
-          font-size: var(--description-font-size);
           font-weight: 400;
           color: var(--secondary-text-color);
           line-height: 1.5;
@@ -314,15 +211,6 @@
   }
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200px 0;
-  }
-  100% {
-    background-position: 200px 0;
-  }
-}
-
 // Component entrance animation
 .modal-container {
   animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -335,34 +223,10 @@
   }
 }
 
-// Search focus enhancements
-.search-container input:focus {
-  &::before {
-    content: "";
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(var(--primary-color-rgb), 0.3),
-      transparent
-    );
-    background-size: 200px 100%;
-    animation: shimmer 2s infinite;
-    border-radius: calc(var(--search-border-radius) + 2px);
-    z-index: -1;
-  }
-}
-
 // Responsive Design
 @media (max-width: 768px) {
   :host {
     --modal-padding: var(--modal-padding-mobile);
-    --row-height: 64px;
-    --search-height: 48px;
   }
 
   .modal-container {
@@ -402,7 +266,7 @@
         &.shortcut-desc {
           width: 100%;
           padding-top: 8px;
-          border-top: 1px solid var(--surface-border);
+          border-top: 1px solid var(--border-color);
         }
       }
 

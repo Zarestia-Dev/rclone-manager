@@ -23,39 +23,21 @@
   }
 }
 
-.path-icon-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--icon-radius);
-  background: rgba(var(--primary-color-rgb), var(--background-opacity));
+.folder-button {
+  &.active {
+    background: rgba(var(--accent-color-rgb), var(--active-opacity));
+    color: var(--accent-color);
+  }
 
-  .path-icon {
-    color: var(--primary-color);
+  &.inactive {
+    background: rgba(var(--app-text-color-rgb), var(--inactive-opacity));
+    color: var(--secondary-text-color);
+  }
+
+  mat-icon {
     font-size: var(--medium-icon-size);
     width: var(--medium-icon-size);
     height: var(--medium-icon-size);
-  }
-
-  .folder-button {
-
-    &.active {
-      background: rgba(var(--accent-color-rgb), var(--active-opacity));
-      color: var(--accent-color);
-    }
-
-    &.inactive {
-      background: rgba(var(--app-text-color-rgb), var(--inactive-opacity));
-      color: var(--secondary-text-color);
-    }
-
-    mat-icon {
-      font-size: var(--medium-icon-size);
-      width: var(--medium-icon-size);
-      height: var(--medium-icon-size);
-    }
   }
 }
 

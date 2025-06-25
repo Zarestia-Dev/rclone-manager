@@ -493,33 +493,99 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --light-theme-color: #{map.get($adwaita-light-palette, 50)};
   --dark-theme-color: #{map.get($adwaita-light-palette, 900)};
 
-  --title-bar-radius: 16px;
-  --home-bottom-radius: 16px;
-  --tab-bar-bottom-radius: 0px;
+  /* ===== DESIGN SYSTEM TOKENS ===== */
+  
+  /* Spacing Scale */
+  --space-xxs: 4px;      // Extra small padding, gaps
+  --space-xs: 8px;     // Small padding, gaps
+  --space-sm: 12px;    // Medium padding, gaps  
+  --space-md: 16px;    // Default spacing unit
+  --space-lg: 20px;    // Large spacing
+  --space-xl: 24px;    // Extra large spacing
+  --space-2xl: 32px;   // Section spacing
+  
+  /* Border Radius Scale */
+  --radius-xs: 8px;    // Small elements (inputs, small buttons)
+  --radius-sm: 12px;   // Medium elements (cards, panels, buttons)  
+  --radius-md: 16px;   // Large elements (modals, containers)
+  --radius-lg: 24px;   // Special elements (usage bars)
+  
+  /* Component-specific Aliases (mapped to scale) */
+  --border-radius: var(--radius-xs);                    // 8px
+  --button-border-radius: var(--radius-sm);             // 12px  
+  --card-border-radius: var(--radius-sm);               // 12px
+  --panel-radius: var(--radius-sm);                     // 12px
+  --modal-radius: var(--radius-md);                     // 16px
+  --title-bar-radius: var(--radius-md);                 // 16px
+  --home-bottom-radius: var(--radius-md);               // 16px
+  --icon-radius: var(--radius-md);                      // 16px
+  --item-radius: var(--radius-sm);                      // 12px
+  --badge-radius: var(--radius-sm);                     // 12px  
+  --status-radius: var(--radius-sm);                    // 12px
+  --usage-bar-radius: var(--radius-lg);                 // 24px
+  --card-border-radius-large: var(--radius-md);         // 16px
+  --tab-bar-bottom-radius: 0px;                         // Special case
+  --divider-radius: 1px;                                // Special case
+  
+  /* Spacing Aliases (mapped to scale) */
+  --title-bar-padding: var(--space-xs);                 // 8px
+  --banner-padding: var(--space-sm);                    // 12px
+  --item-padding: var(--space-md);                      // 16px
+  --content-gap: var(--space-lg);                       // 20px
+  --container-padding: var(--space-xl);                 // 24px
+  --header-gap: var(--space-md);                        // 16px
+  --button-gap: var(--space-md);                        // 16px
+  --panel-gap: var(--space-xl);                         // 24px
+  --container-gap: var(--space-2xl);                    // 32px
+  --modal-gap: var(--space-xl);                         // 24px
+  --section-gap: var(--space-2xl);                      // 32px
+  --legend-gap: var(--space-xl);                        // 24px
+  
+  /* Padding Aliases */
+  --panel-padding: var(--space-xl);                     // 24px
+  --modal-padding: var(--space-2xl);                    // 32px
+  --content-padding: var(--space-2xl);                  // 32px
+  --step-padding: var(--space-md);                      // 16px
+  --button-padding: var(--space-md) 28px;               // 16px 28px
+  --panel-header-padding: var(--space-2xl) var(--space-2xl) var(--space-md) var(--space-2xl);
+  --panel-content-padding: var(--space-xl) var(--space-2xl) var(--space-2xl) var(--space-2xl);
+  --panel-actions-padding: var(--space-md) var(--space-xl);
+  
+  /* Mobile Responsive */
+  --panel-padding-mobile: var(--space-md);              // 16px
+  --modal-padding-mobile: var(--space-xl);              // 24px
+  --section-gap-mobile: var(--space-lg);                // 20px
+  --legend-gap-mobile: var(--space-sm);                 // 12px
 
-  /* Default values */
-  --border-radius: 8px;
-  --button-border-radius: 12px;
-  --title-bar-padding: 8px;
+  
+  /* Layout Constants */
   --titlebar-height: 40px;
-  --banner-padding: 12px;
   --sidebar-width: 250px;
-  --app-height: calc(
-    100vh - (var(--titlebar-height) + var(--title-bar-padding))
-  );
+  --status-bar-height: 48px;
+  --app-height: calc(100vh - (var(--titlebar-height) + var(--title-bar-padding)));
+
+  /* Global UI Variables */
+  --border-color: rgba(var(--app-text-color-rgb), 0.08);
+  --text-muted: rgba(var(--app-text-color-rgb), 0.7);
+  --bg-elevated: rgba(var(--app-text-color-rgb), 0.03);
+  --button-background: rgba(var(--app-text-color-rgb), 0.04);
+  --bg-hover: rgba(var(--app-text-color-rgb), 0.05);
+  --selected-border: var(--accent-color);
+  --disabled-fade: rgba(var(--app-text-color-rgb), 0.5);
+  --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
 
   .modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-weight: bold;
-    padding: 8px;
-    gap: 10px;
+    padding: var(--space-xs);
+    gap: var(--space-xs);
 
     p {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: var(--space-xs);
     }
   }
 }
@@ -591,7 +657,7 @@ button {
     text-wrap: nowrap;
     display: flex;
     flex-direction: row;
-    gap: 8px;
+    gap: var(--space-xs);
   }
 
   &.fix {
@@ -609,20 +675,20 @@ button {
 .mat-mdc-menu-item-text {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-sm);
 }
 
 .mat-mdc-menu-panel {
   background-color: var(--app-background) !important;
-  border-radius: 14px !important;
+  border-radius: var(--radius-sm) !important;
 }
 
 .mat-mdc-menu-item {
   color: var(--app-text-color) !important;
   min-height: 30px !important;
   width: calc(100% - 12px) !important;
-  margin: 6px !important;
-  border-radius: 10px !important;
+  margin: var(--space-xxs) !important;
+  border-radius: var(--radius-xs) !important;
   padding-inline: 10px !important;
 
   &:hover {
@@ -631,7 +697,7 @@ button {
 }
 
 .mat-mdc-dialog-container .mdc-dialog__surface {
-  border-radius: 16px !important;
+  border-radius: var(--radius-md) !important;
   color: var(--app-text-color) !important;
   background-color: var(--app-background) !important;
 }
@@ -659,38 +725,38 @@ button {
   width: 100%;
 }
 
-// DETAILS
-
+/* ===== ICON SIZES ===== */
 :root {
-  // Spacing
-  --container-padding: 24px;
-  --container-gap: 32px;
-  --panel-gap: 24px;
-  --header-gap: 16px;
-  --content-gap: 20px;
-  --item-padding: 16px;
-  --panel-padding: 24px;
-  --panel-header-padding: 32px 32px 16px 32px;
-  --panel-content-padding: 24px 32px 32px 32px;
-  --panel-actions-padding: 16px 24px;
+  // Icon size scale
+  --icon-size-xs: 14px;        // Small inline icons
+  --icon-size-sm: 18px;        // Status icons
+  --icon-size-md: 24px;        // Default icon size (buttons, etc.)
+  --icon-size-lg: 32px;        // Large icons
+  --icon-size-xl: 48px;        // Extra large icons (overview cards)
+  --icon-container-size: 64px; // Icon container size
 
-  // Border radius
-  --icon-radius: 16px;
-  --panel-radius: 16px;
-  --item-radius: 12px;
-  --badge-radius: 12px;
-  --divider-radius: 1px;
-  --status-radius: 12px;
-  --usage-bar-radius: 24px;
+  // Legacy aliases (for backward compatibility)
+  --small-icon-size: var(--icon-size-xs);     // 14px
+  --status-icon-size: var(--icon-size-sm);    // 18px
+  --medium-icon-size: var(--icon-size-md);    // 24px
+  --large-icon-size: var(--icon-size-lg);     // 32px
+  --icon-size: var(--icon-size-md);           // 24px (default)
+  --icon-size-small: var(--icon-size-xs);     // 14px
+  --icon-size-medium: var(--icon-size-md);    // 24px  
+  --icon-size-large: var(--icon-size-xl);     // 48px
+  --icon-size-mobile: 20px;                   // Mobile-optimized
 
-  // Icon sizes
-  --large-icon-size: 32px;
-  --medium-icon-size: 24px;
-  --small-icon-size: 18px;
-  --icon-container-size: 64px;
-  --status-icon-size: 18px;
+  /* ===== TYPOGRAPHY SCALE ===== */
+  // Font sizes
+  --font-size-3xl: 2rem;      // 32px
+  --font-size-2xl: 1.5rem;    // 24px
+  --font-size-xl: 1.25rem;    // 20px
+  --font-size-base: 1rem;     // 16px
+  --font-size-md: 0.875rem;   // 14px
+  --font-size-sm: 0.75rem;    // 12px
+  --caption-font-size: 0.75rem; // 12px - for captions and labels
 
-  // Status colors and opacity
+  /* ===== OPACITY SCALE ===== */
   --panel-hover-opacity: 0.1;
   --background-opacity: 0.05;
   --border-opacity: 0.05;
@@ -699,82 +765,43 @@ button {
   --inactive-opacity: 0.02;
   --legend-opacity: 0.15;
 
-  // Transitions
-  --default-transition: all 0.3s ease;
-  --quick-transition: all 0.2s ease;
-  --usage-transition: all 0.5s ease-in-out;
-}
+  /* ===== TRANSITION SCALE ===== */
+  --transition-instant: all 0.1s ease;
+  --transition-fast: all 0.2s ease;
+  --transition-standard: all 0.3s ease;
+  --transition-slow: all 0.5s ease;
+  --transition-cubic: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  // Legacy aliases
+  --default-transition: var(--transition-standard);
+  --quick-transition: var(--transition-fast);
+  --usage-transition: var(--transition-slow);
+  --transition-quick: var(--transition-fast);
 
-// OVERVIEWS
-:root {
-  // Layout Variables
-  --section-gap: 32px;
-  --section-gap-mobile: 20px;
-  --panel-padding: 24px;
-  --panel-padding-mobile: 16px;
-
-  // Visual Variables
-  --card-border-radius: 12px;
-  --card-border-radius-large: 16px;
-  --icon-size-small: 14px;
-  --icon-size-medium: 24px;
-  --icon-size-large: 48px;
-  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-fast: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  /* ===== SHADOW SCALE ===== */
   --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12),
-    0 4px 16px rgba(0, 0, 0, 0.08);
-  --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
+  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
 
-  // App Overview Specific Variables
-  --status-bar-height: 48px;
-  --legend-gap: 24px;
-  --legend-gap-mobile: 12px;
+  /* ===== COMPONENT-SPECIFIC VARIABLES ===== */
   --action-btn-scale: 0.85;
   --action-btn-scale-hover: 0.9;
   --action-btn-scale-active: 0.82;
   --action-btn-scale-disabled: 0.8;
+
 }
 
-// Quick Add Remote Modal
-:root {
-  // Layout
-  --modal-padding: 32px;
-  --content-gap: 20px;
-  --button-gap: 16px;
-
-  // Spacing
-  --modal-gap: 24px;
-  --content-padding: 32px;
-  --button-padding: 16px 28px;
-  --step-padding: 16px;
-
-  // Border radius
-  --modal-radius: 16px;
-  --panel-radius: 12px;
-
-  // Colors
-  --border-color: rgba(var(--app-text-color-rgb), 0.08);
-  --text-muted: rgba(var(--app-text-color-rgb), 0.7);
-  --bg-elevated: rgba(var(--app-text-color-rgb), 0.03);
-  --button-background: rgba(var(--app-text-color-rgb), 0.04);
-
-  --bg-hover: rgba(var(--app-text-color-rgb), 0.05);
-
-  // Transitions
-  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  --transition-quick: all 0.2s ease-out;
-
-  // Responsive adjustments
-  @media (max-width: 768px) {
-    --button-padding: 12px 16px;
-    --step-padding: 12px;
+/* ===== RESPONSIVE ADJUSTMENTS ===== */
+@media (max-width: 768px) {
+  :root {
+    --button-padding: var(--space-sm) var(--space-md); // 12px 16px
+    --step-padding: var(--space-sm);                   // 12px
   }
+}
 
-  @media (max-width: 480px) {
-    --button-padding: 8px 12px;
-    --step-padding: 8px;
+@media (max-width: 480px) {
+  :root {
+    --button-padding: var(--space-xs) var(--space-sm); // 8px 12px  
+    --step-padding: var(--space-xs);                   // 8px
   }
 }

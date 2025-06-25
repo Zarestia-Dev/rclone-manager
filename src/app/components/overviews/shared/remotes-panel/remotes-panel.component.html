@@ -1,0 +1,36 @@
+<mat-card class="remotes-panel" [ngClass]="variant + '-remotes-panel'">
+  <mat-card-header class="remotes-header">
+    <mat-card-title class="panel-title-content">
+      <mat-icon [svgIcon]="icon" [ngClass]="variant + '-icon'"></mat-icon>
+      <span>{{ title }}</span>
+      <span class="remote-count">{{ count }}</span>
+    </mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content class="remotes-content">
+    <div class="remotes-grid">
+      @for (remote of remotes; track remote.remoteSpecs.name) {
+        <app-remote-card
+          [remote]="remote"
+          [variant]="getCardVariant(remote)"
+          [mode]="mode"
+          [iconService]="iconService"
+          [actionState]="getActionState(remote.remoteSpecs.name)"
+          [showOpenButton]="shouldShowOpenButton(remote)"
+          [primaryActionLabel]="primaryActionLabel"
+          [activeIcon]="activeIcon"
+          (remoteClick)="onRemoteSelected($event)"
+          (openInFiles)="onOpenInFiles($event)"
+          (primaryAction)="onPrimaryAction($event)"
+          (secondaryAction)="onSecondaryAction($event)"
+          (mountAction)="onMountAction($event)"
+          (unmountAction)="onUnmountAction($event)"
+          (syncAction)="onSyncAction($event)"
+          (copyAction)="onCopyAction($event)"
+          (stopSyncAction)="onStopSyncAction($event)"
+          (stopCopyAction)="onStopCopyAction($event)"
+        ></app-remote-card>
+      }
+    </div>
+  </mat-card-content>
+</mat-card>

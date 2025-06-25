@@ -12,117 +12,29 @@
   <div class="overview-content" role="main">
     <mat-accordion multi>
       <!-- Quick Remote Access Panel -->
-      <mat-card class="remotes-panel" role="region" aria-labelledby="remotes-panel-title">
-        <mat-card-header class="remotes-header">
-          <mat-card-title id="remotes-panel-title" class="panel-title-content">
-            <mat-icon svgIcon="cloud" class="remotes-icon" aria-hidden="true"></mat-icon>
-            <span>Quick Remote Access</span>
-            <span class="remote-count" aria-label="Number of remotes">{{ remotes.length }}</span>
-          </mat-card-title>
-        </mat-card-header>
-
-        <mat-card-content class="remotes-content">
-          <div class="remotes-grid" role="grid" aria-readonly="true">
-            @for (remote of remotes; track trackByRemoteName($index, remote)) {
-            <mat-card class="remote-card" [ngClass]="getRemoteCardClasses(remote)" (click)="selectRemote.emit(remote)"
-              role="gridcell" [attr.aria-label]="getRemoteAriaLabel(remote)" [attr.aria-busy]="isRemoteBusy(remote)"
-              tabindex="0">
-              <mat-card-header class="remote-header">
-                <div class="remote-info">
-                  <div [ngClass]="{
-                    'icon-container': true,
-                    'mounted': remote.mountState?.mounted,
-                    'syncing': remote.syncState?.isOnSync,
-                    'copying': remote.copyState?.isOnCopy,
-                  }">
-                    <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)" class="remote-type-icon"
-                      aria-hidden="true"></mat-icon>
-                  </div>
-                  <div class="remote-details">
-                    <h4 class="remote-name">{{ remote.remoteSpecs.name }}</h4>
-                    <span class="remote-type">{{ remote.remoteSpecs.type | titlecase }}</span>
-                  </div>
-                </div>
-                <div class="remote-status-indicators" aria-hidden="true">
-                  @if (remote.mountState?.mounted) {
-                  <div class="status-badge mounted">
-                    <mat-icon svgIcon="mount" class="status-icon" aria-label="Mounted"></mat-icon>
-                  </div>
-                  }
-                  @if (remote.syncState?.isOnSync) {
-                  <div class="status-badge syncing">
-                    <mat-icon svgIcon="refresh" class="status-icon" aria-label="Syncing"></mat-icon>
-                  </div>
-                  }
-                  @if (remote.copyState?.isOnCopy) {
-                  <div class="status-badge copying">
-                    <mat-icon svgIcon="copy" class="status-icon" aria-label="Copying"></mat-icon>
-                  </div>
-                  }
-                </div>
-              </mat-card-header>
-
-              <mat-card-content class="remote-content">
-                <div class="quick-actions" role="toolbar" [attr.aria-label]="'Actions for ' + remote.remoteSpecs.name">
-                  <!-- Mount/Unmount Button -->
-                  <button mat-mini-fab [color]="remote.mountState?.mounted ? 'warn' : 'accent'"
-                    [disabled]="isMounting(remote.remoteSpecs.name) || isUnmounting(remote.remoteSpecs.name)"
-                    (click)="onQuickAction($event, remote.remoteSpecs.name, remote.mountState?.mounted ? 'unmount' : 'mount')"
-                    [class]="'action-btn ' + (remote.mountState?.mounted ? 'unmount-btn' : 'mount-btn')"
-                    [attr.aria-label]="remote.mountState?.mounted ? 'Unmount remote' : 'Mount remote'">
-                    @if (isMounting(remote.remoteSpecs.name) || isUnmounting(remote.remoteSpecs.name)) {
-                    <mat-spinner diameter="20"
-                      [attr.aria-label]="(remote.mountState?.mounted ? 'Unmounting' : 'Mounting') + ' in progress'"></mat-spinner>
-                    } @else {
-                    <mat-icon [svgIcon]="remote.mountState?.mounted ? 'eject' : 'mount'" aria-hidden="true"></mat-icon>
-                    }
-                  </button>
-
-                  <!-- Sync Button -->
-                  <button mat-mini-fab [color]="remote.syncState?.isOnSync ? 'warn' : 'primary'"
-                    [disabled]="isSyncing(remote.remoteSpecs.name) || isStoppingSyncing(remote.remoteSpecs.name)"
-                    (click)="onQuickAction($event, remote.remoteSpecs.name, remote.syncState?.isOnSync ? 'stop-sync' : 'sync')"
-                    [class]="'action-btn ' + (remote.syncState?.isOnSync ? 'stop-btn' : 'sync-btn')"
-                    [attr.aria-label]="remote.syncState?.isOnSync ? 'Stop sync' : 'Start sync'">
-                    @if (isSyncing(remote.remoteSpecs.name) || isStoppingSyncing(remote.remoteSpecs.name)) {
-                    <mat-spinner diameter="20"
-                      [attr.aria-label]="(remote.syncState?.isOnSync ? 'Sync stopping' : 'Sync starting') + ' in progress'"></mat-spinner>
-                    } @else {
-                    <mat-icon [svgIcon]="remote.syncState?.isOnSync ? 'stop' : 'sync'" aria-hidden="true"></mat-icon>
-                    }
-                  </button>
-
-                  <!-- Copy Button -->
-                  <button mat-mini-fab [color]="remote.copyState?.isOnCopy ? 'warn' : ''"
-                    [disabled]="isCopying(remote.remoteSpecs.name) || isStoppingCopying(remote.remoteSpecs.name)"
-                    (click)="onQuickAction($event, remote.remoteSpecs.name, remote.copyState?.isOnCopy ? 'stop-copy' : 'copy')"
-                    [class]="'action-btn ' + (remote.copyState?.isOnCopy ? 'stop-btn' : 'copy-btn')"
-                    [attr.aria-label]="remote.copyState?.isOnCopy ? 'Stop copy' : 'Start copy'">
-                    @if (isCopying(remote.remoteSpecs.name) || isStoppingCopying(remote.remoteSpecs.name)) {
-                    <mat-spinner diameter="20"
-                      [attr.aria-label]="(remote.copyState?.isOnCopy ? 'Copy stopping' : 'Copy starting') + ' in progress'"></mat-spinner>
-                    } @else {
-                    <mat-icon [svgIcon]="remote.copyState?.isOnCopy ? 'stop' : 'copy'" aria-hidden="true"></mat-icon>
-                    }
-                  </button>
-
-                  <!-- Browse Button -->
-                  <button mat-mini-fab [disabled]="!remote.mountState?.mounted || isBrowsing(remote.remoteSpecs.name)"
-                    (click)="onQuickAction($event, remote.remoteSpecs.name, 'browse')" class="action-btn browse-btn"
-                    aria-label="Browse remote">
-                    @if (isBrowsing(remote.remoteSpecs.name)) {
-                    <mat-spinner diameter="20" aria-label="Browsing in progress"></mat-spinner>
-                    } @else {
-                    <mat-icon svgIcon="folder" aria-hidden="true"></mat-icon>
-                    }
-                  </button>
-                </div>
-              </mat-card-content>
-            </mat-card>
-            }
-          </div>
-        </mat-card-content>
-      </mat-card>
+      <app-remotes-panel
+        [title]="'Quick Remote Access'"
+        [icon]="'cloud'"
+        [remotes]="allRemotes"
+        [variant]="'inactive'"
+        [mode]="'general'"
+        [iconService]="iconService"
+        [actionInProgress]="actionInProgress"
+        [primaryActionLabel]="'Mount'"
+        [activeIcon]="'mount'"
+        (remoteSelected)="onRemoteSelectedFromPanel($event)"
+        (openInFiles)="onOpenInFilesFromPanel($event)"
+        (primaryAction)="onPrimaryActionFromPanel($event)"
+        (secondaryAction)="onSecondaryActionFromPanel($event)"
+        (mountAction)="mountRemote.emit($event)"
+        (unmountAction)="unmountRemote.emit($event)"
+        (syncAction)="startOperation.emit({type: 'sync', remoteName: $event})"
+        (copyAction)="startOperation.emit({type: 'copy', remoteName: $event})"
+        (stopSyncAction)="stopJob.emit({type: 'sync', remoteName: $event})"
+        (stopCopyAction)="stopJob.emit({type: 'copy', remoteName: $event})"
+        role="region"
+        aria-labelledby="remotes-panel-title">
+      </app-remotes-panel>
 
       <!-- Bandwidth Limit Panel -->
       <mat-expansion-panel [(expanded)]="bandwidthPanelOpenState" (expandedChange)="onBandwidthPanelStateChange($event)"

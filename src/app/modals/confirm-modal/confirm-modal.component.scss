@@ -1,12 +1,9 @@
 :host {
   // Spacing
-  --modal-padding-mobile: 24px;
   --icon-size: 64px;
   --icon-size-mobile: 56px;  
 
   // Typography
-  --title-font-size: var(--font-size-lg);
-  --title-font-size-mobile: 18px;
   --message-font-size: var(--font-size-base);
   --button-font-size: var(--font-size-base);
 }
@@ -20,7 +17,7 @@
   
   // Title styling
   .modal-title {
-    font-size: var(--title-font-size);
+    font-size: 24px;
     font-weight: 600;
     color: var(--app-text-color);
     text-align: center;
@@ -85,9 +82,6 @@
     button {
       transition: var(--transition-standard);
       min-width: 120px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
 
       &:hover {
         transform: translateY(-2px);
@@ -108,20 +102,13 @@
 
 // Responsive Design
 @media (max-width: 768px) {
-  :host {
-    --modal-padding: var(--modal-padding-mobile);
-    --title-font-size: var(--title-font-size-mobile);
-    --icon-size: var(--icon-size-mobile);
-    --button-gap: 12px;
-  }
-
   .confirm-modal {
     .modal-content {
       .modal-icon {
         margin-bottom: 16px;
 
         mat-icon {
-          font-size: var(--font-size-xl);
+          font-size: 28px;
           width: 28px;
           height: 28px;
         }
@@ -137,20 +124,6 @@
         min-width: auto;
         padding: 14px 24px;
       }
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .confirm-modal {
-
-    .modal-content .modal-message {
-      font-size: var(--font-size-base);
-    }
-
-    .modal-actions button {
-      font-size: var(--font-size-base);
-      padding: 12px 20px;
     }
   }
 }

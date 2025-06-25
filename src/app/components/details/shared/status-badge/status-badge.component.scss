@@ -2,8 +2,8 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: var(--space-xs);
+  padding: var(--space-xxs) var(--space-sm);
   border-radius: var(--badge-radius);
   font-size: var(--caption-font-size);
   font-weight: 600;

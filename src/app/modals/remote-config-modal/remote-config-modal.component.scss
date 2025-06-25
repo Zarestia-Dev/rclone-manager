@@ -11,8 +11,6 @@
   color: var(--app-text-color);
   border-radius: var(--modal-radius);
 
-  // Modal header styles are now inherited from shared-modal.scss
-
   // Modal Content
   .modal-content {
     position: relative;
@@ -48,7 +46,7 @@
       
       // Responsive adjustments
       @media (max-width: 768px) {
-        font-size: var(--font-size-lg);
+        font-size: 18px;
         margin: 0 0 16px 0;
       }
       
@@ -68,18 +66,18 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--button-padding);
-    gap: 16px;
+    gap: var(--space-md);
 
     .button-container-inner {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: var(--space-sm);
 
       // Loading text with spinner
       p {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: var(--space-sm);
         margin: 0;
         font-size: var(--font-size-sm);
         font-weight: 500;
@@ -90,17 +88,17 @@
     
     // Responsive adjustments
     @media (max-width: 768px) {
-      gap: 12px;
+      gap: var(--space-sm);
       
       .button-container-inner {
-        gap: 8px;
+        gap: var(--space-xs);
       }
     }
     
     @media (max-width: 480px) {
       flex-direction: column;
       align-items: stretch;
-      gap: 8px;
+      gap: var(--space-xs);
       
       .button-container-inner {
         justify-content: center;

@@ -67,7 +67,7 @@
             <mat-form-field color="accent" class="path-field">
               <mat-label>Installation Path</mat-label>
               <input matInput [(ngModel)]="customPath" readonly placeholder="Choose folder...">
-              <button matSuffix mat-icon-button (click)="selectCustomFolder.emit()" matTooltip="Browse for folder">
+              <button matSuffix mat-icon-button (click)="selectCustomFolder()" matTooltip="Browse for folder">
                 <mat-icon svgIcon="folder"></mat-icon>
               </button>
             </mat-form-field>

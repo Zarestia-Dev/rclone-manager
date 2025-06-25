@@ -9,14 +9,15 @@ import {
 import { MatCardModule } from "@angular/material/card";
 import { MatFormFieldModule } from "@angular/material/form-field";
 import { MatInputModule } from "@angular/material/input";
-import { invoke } from "@tauri-apps/api/core";
 import { MatRadioModule } from "@angular/material/radio";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatIconModule } from "@angular/material/icon";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { listen } from "@tauri-apps/api/event";
 import { AnimationsService } from "../../shared/animations/animations.service";
+import { SystemInfoService } from "../../services/features/system-info.service";
+import { InstallationService } from "../../services/features/installation.service";
+import { FileSystemService } from "../../services/features/file-system.service";
 
 @Component({
   selector: "app-onboarding",
@@ -45,7 +46,6 @@ import { AnimationsService } from "../../shared/animations/animations.service";
 })
 export class OnboardingComponent implements OnInit {
   @Output() completed = new EventEmitter<void>();
-  @Output() selectCustomFolder = new EventEmitter<void>();
 
   installLocation: "default" | "custom" = "default";
   customPath: string = "";
@@ -78,7 +78,11 @@ export class OnboardingComponent implements OnInit {
   // Dynamic cards that will be added based on conditions
   cards = [...this.baseCards];
 
-  constructor() {}
+  constructor(
+    private systemInfoService: SystemInfoService,
+    private installationService: InstallationService,
+    private fileSystemService: FileSystemService
+  ) {}
 
   async ngOnInit(): Promise<void> {
     console.log("OnboardingComponent: ngOnInit started");
@@ -126,7 +130,7 @@ export class OnboardingComponent implements OnInit {
 
   async checkRclone(): Promise<void> {
     try {
-      this.rcloneInstalled = await invoke<boolean>("is_rclone_available");
+      this.rcloneInstalled = await this.systemInfoService.isRcloneAvailable();
       if (!this.rcloneInstalled) {
         this.cards.splice(3, 0, {
           image: "../assets/rclone.svg",
@@ -142,7 +146,7 @@ export class OnboardingComponent implements OnInit {
 
   async checkMountPlugin(): Promise<void> {
     try {
-      this.mountPluginInstalled = await invoke<boolean>("check_mount_plugin_installed");
+      this.mountPluginInstalled = await this.installationService.isMountPluginInstalled();
       if (!this.mountPluginInstalled) {
         // Add after install rclone card if it exists, otherwise at position 3
         const insertPosition = this.cards.length > 3 ? 4 : 3;
@@ -186,9 +190,11 @@ export class OnboardingComponent implements OnInit {
   async installMountPlugin(): Promise<void> {
     this.downloadingPlugin = true;
     try {
-      const filePath = await invoke<string>("install_mount_plugin");
+      const filePath = await this.installationService.installMountPlugin();
       console.log("Downloaded plugin at:", filePath);
-      listen("mount_plugin_installed", () => {
+      
+      // Listen for installation completion
+      this.installationService.listenToMountPluginInstalled().subscribe(() => {
         this.mountPluginInstalled = true;
         // Optionally move to next card after installation
         this.nextCard();
@@ -203,11 +209,8 @@ export class OnboardingComponent implements OnInit {
   async installRclone(): Promise<void> {
     this.installing = true;
     try {
-      const installPath =
-        this.installLocation === "default" ? null : this.customPath;
-      const result = await invoke<string>("provision_rclone", {
-        path: installPath,
-      });
+      const installPath = this.installLocation === "default" ? null : this.customPath;
+      const result = await this.installationService.installRclone(installPath);
       console.log("Installation result:", result);
       this.rcloneInstalled = true;
       // Move to next card after installation
@@ -274,6 +277,15 @@ export class OnboardingComponent implements OnInit {
     }
     
     return "Install RClone";
+  }
+
+  async selectCustomFolder(): Promise<void> {
+    try {
+      this.customPath = await this.fileSystemService.selectFolder();
+    } catch (error) {
+      console.error("Failed to select folder:", error);
+      // Handle error appropriately - could show a notification
+    }
   }
 
   completeOnboarding(): void {

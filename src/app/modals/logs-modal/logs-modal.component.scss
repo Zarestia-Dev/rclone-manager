@@ -1,25 +1,11 @@
 @use '../../styles/shared-modal';
 
 :host {
-  // Spacing
-  --modal-padding: 24px;
-  --modal-padding-mobile: 16px;
-  --content-gap: 24px;
-  --content-gap-mobile: 16px;
-  --toolbar-padding: 20px 24px;
-  --terminal-padding: 16px;
-  --log-entry-padding: 12px 16px;
-  
-  // Border radius
-  --modal-border-radius: 16px;
-  --card-border-radius: 12px;
-  --terminal-border-radius: 12px;
-  --button-border-radius: 8px;
-  
-  // Shadows and effects
-  --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
-  --surface-border: rgba(var(--app-text-color-rgb), 0.08);
+  // Component-specific spacing
+  --content-gap-mobile: var(--space-md);        // 16px
+  --toolbar-padding: var(--space-lg) var(--space-xl);  // 20px 24px
+  --terminal-padding: var(--space-md);          // 16px
+  --log-entry-padding: var(--space-sm) var(--space-md); // 12px 16px
   
   // Terminal colors
   --terminal-background: #1e1e1e;
@@ -34,11 +20,7 @@
   --log-timestamp-color: var(--light-green);
   --log-remote-color: var(--light-blue);
   
-  // Transitions
-  --transition-quick: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  
   // Typography
-  --log-font-size: var(--font-size-sm);
   --log-timestamp-size: 11px;
 }
 
@@ -48,7 +30,7 @@
   flex-direction: column;
   height: 100%;
   background: var(--app-background);
-  border-radius: var(--modal-border-radius);
+  border-radius: var(--modal-radius);
   box-shadow: var(--shadow-elevated);
 
   // Modal Content
@@ -64,19 +46,19 @@
     // Logs Toolbar
     .logs-toolbar {
       display: flex;
-      gap: 16px;
+      gap: var(--space-md);
       align-items: flex-end;
       flex-wrap: wrap;
       padding: var(--toolbar-padding);
       background: var(--secondary-background);
       border-radius: var(--card-border-radius);
-      border: 1px solid var(--surface-border);
+      border: 1px solid var(--border-color);
       box-shadow: var(--shadow-light);
     }
     // Terminal Container
     .terminal-container {
-      border: 1px solid var(--surface-border);
-      border-radius: var(--terminal-border-radius);
+      border: 1px solid var(--border-color);
+      border-radius: var(--card-border-radius);
       overflow: hidden;
       flex: 1;
       min-height: 300px;
@@ -95,13 +77,13 @@
         justify-content: space-between;
         align-items: center;
         background: var(--terminal-header-bg);
-        padding: 12px 16px;
-        border-bottom: 1px solid var(--surface-border);
+        padding: var(--space-sm) var(--space-md);
+        border-bottom: 1px solid var(--border-color);
     
         // Terminal Actions
         .terminal-actions {
           display: flex;
-          gap: 8px;
+          gap: var(--space-xs);
           align-items: center;
         }
       }
@@ -123,11 +105,11 @@
         align-items: center;
         justify-content: center;
         text-align: center;
-        padding: 64px 32px;
+        padding: var(--space-xxl) var(--space-xl);
         color: var(--secondary-text-color);
         background: var(--terminal-background);
         height: 100%;
-        gap: 20px;
+        gap: var(--space-md);
 
         mat-icon {
           font-size: 64px;
@@ -141,7 +123,7 @@
             rgba(var(--secondary-text-color-rgb), 0.05) 100%
           );
           border-radius: 50%;
-          padding: 20px;
+          padding: var(--space-md);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -172,7 +154,7 @@
         overflow-x: hidden;
         display: grid;
         flex-direction: column;
-        gap: 10px;
+        gap: var(--space-xs);
         min-height: 0;
         line-height: 1.4;
           
@@ -180,7 +162,7 @@
         .log-entry {
           display: grid;
           grid-template-columns: auto auto auto 1fr auto;
-          gap: 12px;
+          gap: var(--space-sm);
           align-items: center;
           padding: var(--log-entry-padding);
           border-radius: var(--button-border-radius);

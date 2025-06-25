@@ -1,0 +1,141 @@
+:host {
+  display: block;
+  // Inherit mode colors from parent app-overview
+  --mode-primary-color: inherit;
+  --mode-primary-color-rgb: inherit;
+  --mode-light-color: inherit;
+  --mode-light-color-rgb: inherit;
+}
+
+.remotes-panel {
+  margin-bottom: 2rem;
+  border-radius: var(--card-border-radius-large) !important;
+  box-shadow: var(--shadow-light);
+  max-height: 60vh;
+  transition: var(--transition-standard);
+  border: 1px solid var(--theme-border);
+  background: var(--secondary-background);
+  will-change: transform, box-shadow;
+
+  &:hover {
+    box-shadow: var(--shadow-elevated);
+    transform: translateY(-2px);
+  }
+
+  // Panel-Specific Styling Based on Remote Type
+  &.active-remotes-panel .panel-title-content .remote-count {
+    background: rgba(
+      var(--mode-primary-color-rgb, var(--primary-color-rgb)),
+      0.1
+    );
+    border: 1px solid
+      rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.2);
+  }
+
+  &.inactive-remotes-panel .panel-title-content .remote-count {
+    background: rgba(var(--purple-rgb), 0.1);
+    border: 1px solid rgba(var(--purple-rgb), 0.2);
+  }
+
+  &.error-remotes-panel .panel-title-content .remote-count {
+    background: rgba(var(--warn-color-rgb), 0.1);
+    border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+  }
+
+  // Remotes Panel Header
+  .remotes-header {
+    padding: var(--space-xl) var(--space-xl) var(--space-md) var(--space-xl);
+    margin-bottom: 8px;
+
+    .panel-title-content {
+      color: var(--app-text-color);
+      font-size: var(--font-size-md);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-weight: 500;
+
+      .active-icon {
+        color: var(--mode-primary-color, var(--primary-color));
+        font-size: var(--icon-size-medium);
+        width: var(--icon-size-medium);
+        height: var(--icon-size-medium);
+        transition: var(--transition-standard);
+        will-change: color;
+      }
+
+      .inactive-icon {
+        color: var(--purple);
+        font-size: var(--icon-size-medium);
+        width: var(--icon-size-medium);
+        height: var(--icon-size-medium);
+        transition: var(--transition-standard);
+        will-change: color;
+      }
+
+      .error-icon {
+        color: var(--warn-color);
+        font-size: var(--icon-size-medium);
+        width: var(--icon-size-medium);
+        height: var(--icon-size-medium);
+        transition: var(--transition-standard);
+        will-change: color;
+      }
+
+      .remote-count {
+        color: var(--secondary-text-color);
+        font-size: var(--font-size-base);
+        font-weight: 400;
+        padding: var(--space-xxs) var(--space-xs);
+        border-radius: var(--radius-sm);
+        transition: var(--transition-standard);
+        will-change: background, border;
+      }
+    }
+  }
+
+  // Remotes Panel Content
+  .remotes-content {
+    padding: var(--panel-padding) 32px 32px 32px;
+    overflow-y: auto;
+
+    .remotes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: var(--space-md);
+      margin-top: 8px;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .remotes-panel {
+    .remotes-header {
+      padding: var(--panel-padding) var(--panel-padding) 12px
+        var(--panel-padding);
+    }
+
+    .remotes-content {
+      padding: var(--panel-padding-mobile) var(--panel-padding)
+        var(--panel-padding) var(--panel-padding);
+    }
+
+    .remotes-grid {
+      grid-template-columns: 1fr;
+      gap: var(--panel-padding-mobile);
+    }
+  }
+}
+
+// 7.2 Mobile Styles (max-width: 480px)
+@media (max-width: 480px) {
+  .overview-content .remotes-panel {
+    .remotes-header {
+      padding: 20px 20px 12px 20px;
+    }
+
+    .remotes-content {
+      padding: 12px 20px 20px 20px;
+    }
+  }
+}

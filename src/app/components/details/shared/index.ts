@@ -6,3 +6,5 @@ export * from './stats-panel/stats-panel.component';
 export * from './operation-control/operation-control.component';
 export * from './job-info-panel/job-info-panel.component';
 export * from './file-transfer-panel/file-transfer-panel.component';
+export * from './disk-usage-panel/disk-usage-panel.component';
+export * from './jobs-panel/jobs-panel.component';

@@ -1,50 +1,27 @@
 @use '../../styles/shared-modal';
+
 :host {
-  // Spacing
-  --modal-padding: 20px;
-  --modal-padding-mobile: 24px;
-  --content-gap: 24px;
-  --field-gap: 20px;
-  --button-gap: 16px;
+  // Component-specific spacing overrides
+  --modal-padding: var(--space-lg);                    // 20px
+  --field-gap: var(--space-lg);                        // 20px
   
-  // Border radius
-  --modal-border-radius: 16px;
-  --field-border-radius: 12px;
-  --button-border-radius: 12px;
-  
-  // Shadows and effects
-  --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
-  --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
-  --surface-border: rgba(var(--app-text-color-rgb), 0.08);
-  --glassmorphism-bg: rgba(var(--app-background-rgb), 0.9);
+  // Component-specific styling
   --field-background: rgba(var(--app-background-rgb), 0.6);
   --field-border: rgba(var(--app-text-color-rgb), 0.12);
   --field-focus-border: var(--primary-color);
-  
-  // Colors
-  --primary-button-color: var(--primary-color);
-  --primary-button-color-rgb: var(--primary-color-rgb);
+  --glassmorphism-bg: rgba(var(--app-background-rgb), 0.9);
   --header-background: linear-gradient(135deg, 
     rgba(var(--app-text-color-rgb), 0.03) 0%,
     rgba(var(--app-text-color-rgb), 0.01) 100%);
   
-  // Transitions
-  --transition-standard: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-quick: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  
-  // Typography
-  --title-font-size: var(--font-size-lg);
+  // Component-specific typography
+  --title-font-size: 18px;
   --title-font-size-mobile: 18px;
-  --description-font-size: var(--font-size-base);
-  --label-font-size: var(--font-size-sm);
-  --button-font-size: var(--font-size-base);
 }
 
 .input-modal {
   background: var(--app-background);
-  border-radius: var(--modal-border-radius);
+  border-radius: var(--modal-radius);
   box-shadow: var(--shadow-elevated);
   display: flex;
   flex-direction: column;
@@ -65,7 +42,7 @@
 
     // Description text
     p {
-      font-size: var(--description-font-size);
+      font-size: var(--font-size-base);
       font-weight: 400;
       color: var(--secondary-text-color);
       line-height: 1.5;
@@ -95,7 +72,7 @@
       gap: var(--button-gap);
       margin-top: auto;
       padding-top: 20px;
-      border-top: 1px solid var(--surface-border);
+      border-top: 1px solid var(--border-color);
     }
   }
 }

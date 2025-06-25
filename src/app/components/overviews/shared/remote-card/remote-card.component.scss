@@ -1,0 +1,236 @@
+.remote-card {
+  position: relative;
+  transition: var(--transition-standard);
+  border-radius: var(--card-border-radius);
+  background: var(--app-background);
+  box-shadow: var(--shadow-light);
+  border: 1px solid var(--theme-border);
+  overflow: hidden;
+  animation: fadeIn 0.6s ease-out;
+  animation-fill-mode: both;
+  will-change: transform, box-shadow;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  &.mounted {
+    animation: pulseBlue 2s infinite;
+    border-color: rgba(var(--accent-color-rgb), 0.2);
+    will-change: box-shadow;
+
+    .remote-info .icon-container {
+      background: rgba(var(--accent-color-rgb), 0.1);
+      border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+
+      .remote-type-icon {
+        color: var(--accent-color);
+      }
+    }
+  }
+
+  &.syncing {
+    animation: pulseGreen 2s infinite;
+    border-color: rgba(var(--primary-color-rgb), 0.2);
+    will-change: box-shadow;
+
+    .remote-info .icon-container {
+      background: rgba(var(--primary-color-rgb), 0.1);
+      border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+
+      .remote-type-icon {
+        color: var(--primary-color);
+      }
+    }
+  }
+
+  &.copying {
+    animation: pulseYellow 2s infinite;
+    border-color: rgba(var(--yellow-rgb), 0.2);
+    will-change: box-shadow;
+
+    .remote-info .icon-container {
+      background: rgba(var(--yellow-rgb), 0.1);
+      border: 1px solid rgba(var(--yellow-rgb), 0.2);
+
+      .remote-type-icon {
+        color: var(--yellow);
+      }
+    }
+  }
+
+  &.inactive-remote {
+    border-color: rgba(var(--purple-rgb), 0.3);
+
+    .remote-info .icon-container {
+      background: rgba(var(--purple-rgb), 0.1);
+      border: 1px solid rgba(var(--purple-rgb), 0.2);
+
+      .remote-type-icon {
+        color: var(--purple);
+      }
+    }
+  }
+
+  &.error-remote {
+    animation: pulseRed 3s infinite;
+    border-color: rgba(var(--warn-color-rgb), 0.3);
+    will-change: box-shadow;
+
+    .remote-info .icon-container {
+      background: rgba(var(--warn-color-rgb), 0.1);
+      border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+
+      .remote-type-icon {
+        color: var(--warn-color);
+      }
+    }
+  }
+
+  // Remote Header
+  .remote-header {
+    padding: var(--space-md) var(--space-md) var(--space-sm) var(--space-md);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-md);
+  }
+
+  // Remote Info Section
+  .remote-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    flex: 1;
+    min-width: 0;
+
+    .icon-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      border-radius: var(--card-border-radius);
+      background: var(--hover-color);
+      border: 1px solid var(--theme-border);
+      transition: var(--transition-standard);
+
+      .remote-type-icon {
+        font-size: var(--icon-size-medium);
+        width: var(--icon-size-medium);
+        height: var(--icon-size-medium);
+        color: var(--secondary-text-color);
+      }
+    }
+
+    .remote-details {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xxs);
+      min-width: 0;
+      flex: 1;
+
+      .remote-name {
+        font-size: var(--font-size-base);
+        font-weight: 600;
+        margin: 0;
+        color: var(--app-text-color);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .remote-type {
+        font-size: var(--font-size-sm);
+        color: var(--secondary-text-color);
+        font-weight: 500;
+      }
+    }
+  }
+
+  // Remote Status Indicators
+  .remote-status-indicators {
+    display: flex;
+    flex-direction: row;
+    gap: var(--space-xs);
+    align-items: flex-end;
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      padding: var(--space-xxs)  var(--space-xs);
+      border-radius: var(--radius-md);
+
+      .status-icon {
+        font-size: var(--icon-size-small);
+        width: var(--icon-size-small);
+        height: var(--icon-size-small);
+      }
+
+      &.mounted {
+        background: rgba(var(--accent-color-rgb), 0.1);
+        color: var(--accent-color);
+        border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+      }
+
+      &.syncing {
+        background: rgba(var(--primary-color-rgb), 0.1);
+        color: var(--primary-color);
+        border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+
+        .status-icon {
+          animation: spin 2s linear infinite;
+        }
+      }
+
+      &.copying {
+        background: rgba(var(--yellow-rgb), 0.1);
+        color: var(--yellow);
+        border: 1px solid rgba(var(--yellow-rgb), 0.2);
+
+        .status-icon {
+          animation: breathing 2s ease-in-out infinite;
+        }
+      }
+    }
+  }
+
+  // Remote Content Section
+  .remote-content {
+    padding: var(--space-sm) var(--space-md) var(--space-md) var(--space-md);
+  }
+}
+
+// 7.1 Tablet Styles (max-width: 768px)
+@media (max-width: 768px) {
+  .remotes-panel {
+    .remotes-header {
+      padding: var(--panel-padding) var(--panel-padding) 12px
+        var(--panel-padding);
+    }
+
+    .remotes-content {
+      padding: var(--panel-padding-mobile) var(--panel-padding)
+        var(--panel-padding) var(--panel-padding);
+    }
+
+    .remotes-grid {
+      grid-template-columns: 1fr;
+      gap: var(--panel-padding-mobile);
+    }
+  }
+}
+
+// 7.2 Mobile Styles (max-width: 480px)
+@media (max-width: 480px) {
+  .remotes-panel {
+    .remotes-header {
+      padding: 20px 20px 12px 20px;
+    }
+
+    .remotes-content {
+      padding: 12px 20px 20px 20px;
+    }
+  }
+}

@@ -36,143 +36,15 @@
   </div>
 
   <div class="detail-content">
-    <div class="detail-content">
-      <!-- Disk Usage Panel -->
-      <mat-card class="detail-panel disk-panel">
-        <mat-card-header class="panel-header">
-          <mat-card-title class="panel-title-content">
-            <mat-icon svgIcon="hard-drive" class="panel-icon"></mat-icon>
-            <span>Disk Usage</span>
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content class="panel-content">
-          <div class="disk-usage-section">
-            <div class="usage-bar-container">
-              <div class="disk-usage-bar" [ngStyle]="getDiskBarStyle()">
-                @if (selectedRemote.mountState?.mounted === 'error' ||
-                selectedRemote.mountState?.diskUsage?.notSupported) {
-                <div class="usage-status-text">
-                  {{ selectedRemote.mountState?.diskUsage?.notSupported ? 'Not Supported' :
-                  (selectedRemote.mountState?.mounted === 'error' ? 'Error' : 'Unknown') }}
-                </div>
-                } @else {
-                <div class="usage-fill" [style.width]="getUsagePercentage() + '%'"></div>
-                }
-              </div>
-            </div>
-            @if (selectedRemote.mountState?.diskUsage && !selectedRemote.mountState?.diskUsage?.notSupported) {
-            <div class="usage-legend">
-              <div class="legend-item">
-                <div class="legend-color total"></div>
-                <span class="legend-text">Total: {{ selectedRemote.mountState?.diskUsage?.total_space }}</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-color used"></div>
-                <span class="legend-text">Used: {{ selectedRemote.mountState?.diskUsage?.used_space }}</span>
-              </div>
-              <div class="legend-item">
-                <div class="legend-color free"></div>
-                <span class="legend-text">Free: {{ selectedRemote.mountState?.diskUsage?.free_space }}</span>
-              </div>
-            </div>
-            }
-          </div>
-        </mat-card-content>
-      </mat-card>
+    <!-- Disk Usage Panel -->
+    <app-disk-usage-panel [config]="getDiskUsageConfig()"></app-disk-usage-panel>
 
-      <!-- Jobs Panel -->
-      <mat-card class="detail-panel jobs-panel">
-        <mat-card-header class="panel-header">
-          <mat-card-title class="panel-title-content">
-            <mat-icon svgIcon="jobs" class="panel-icon"></mat-icon>
-            <span>Active Jobs</span>
-            <span class="job-count">{{ getRemoteJobs.length }}</span>
-          </mat-card-title>
-        </mat-card-header>
-        <mat-card-content class="panel-content">
-          <div class="jobs-table-container">
-            <table mat-table [dataSource]="getRemoteJobs" matSort class="jobs-table">
-              <!-- Type Column -->
-              <ng-container matColumnDef="type">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>Type</th>
-                <td class="type-column" mat-cell *matCellDef="let job">
-                  <div class="job-type-info">
-                    <span class="job-type-text">{{ job.job_type | titlecase }}</span>
-                  </div>
-                </td>
-              </ng-container>
-              <!-- Status Column -->
-              <ng-container matColumnDef="status">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>Status</th>
-                <td mat-cell *matCellDef="let job">
-                  <div class="status-chip" [ngClass]="getJobStatus(job)">
-                    <div class="status-dot"></div>
-                    <span>{{ job.status | titlecase }}</span>
-                  </div>
-                </td>
-              </ng-container>
-              <!-- Progress Column -->
-              <ng-container matColumnDef="progress">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>Progress</th>
-                <td mat-cell *matCellDef="let job">
-                  @if (job.job_type !== 'mount' && job.stats) {
-                  <div class="progress-info">
-                    <mat-progress-bar mode="determinate" [value]="getJobProgress(job)"
-                      class="job-progress"></mat-progress-bar>
-                    <span class="progress-text">
-                      {{ formatBytes(job.stats.bytes) }} / {{ formatBytes(job.stats.totalBytes) }}
-                    </span>
-                  </div>
-                  } @else {
-                  <span class="no-progress">-</span>
-                  }
-                </td>
-              </ng-container>
-              <!-- Start Time Column -->
-              <ng-container matColumnDef="startTime">
-                <th mat-header-cell *matHeaderCellDef mat-sort-header>Started</th>
-                <td mat-cell *matCellDef="let job">
-                  <span class="start-time">{{ job.start_time | date:'short' }}</span>
-                </td>
-              </ng-container>
-              <!-- Actions Column -->
-              <ng-container matColumnDef="actions">
-                <th mat-header-cell *matHeaderCellDef>Actions</th>
-                <td mat-cell *matCellDef="let job">
-                  <div class="job-actions">
-                    @if (job.status === 'Running') {
-                    <button mat-icon-button class="action-button stop-button" matTooltip="Stop Job"
-                      (click)="stopOperation.emit({type: job.job_type, remoteName: job.remote_name})">
-                      <mat-icon svgIcon="stop"></mat-icon>
-                    </button>
-                    } @else {
-                    <button mat-icon-button class="action-button delete-button" matTooltip="Delete Job"
-                      (click)="deleteJob.emit(job.jobid)">
-                      <mat-icon svgIcon="trash"></mat-icon>
-                    </button>
-                    }
-                  </div>
-                </td>
-              </ng-container>
-              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-              <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="job-row"></tr>
-              <tr class="no-data-row" *matNoDataRow>
-                <td class="no-data-cell" colspan="5">
-                  <div class="no-data-content">
-                    <mat-icon svgIcon="jobs" class="no-data-icon"></mat-icon>
-                    <span>No active jobs</span>
-                  </div>
-                </td>
-              </tr>
-            </table>
-          </div>
-        </mat-card-content>
-      </mat-card>
+    <!-- Jobs Panel -->
+    <app-jobs-panel [config]="getJobsPanelConfig()" (stopOperation)="stopOperation.emit($event)"
+      (deleteJob)="deleteJob.emit($event)">
+    </app-jobs-panel>
 
-      <!-- Remote Configuration Panel -->
-      <app-settings-panel 
-        [config]="getRemoteConfigurationPanelConfig()"
-        (editSettings)="onEditRemoteConfiguration()">
-      </app-settings-panel>
-    </div>
+    <!-- Remote Configuration Panel -->
+    <app-settings-panel [config]="getRemoteConfigurationPanelConfig()" (editSettings)="onEditRemoteConfiguration()">
+    </app-settings-panel>
   </div>

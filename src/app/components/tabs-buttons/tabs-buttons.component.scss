@@ -3,8 +3,11 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: var(--space-xs);
+  
   .mat-mdc-icon-button {
+    color: var(--app-text-color);
+    
     &.selected {
       outline: none !important;
       background-color: var(--button-hover) !important;

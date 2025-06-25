@@ -1,3 +1,5 @@
+@use '../../../../styles/shared_components';
+
 .stats-panel {
   background: var(--secondary-background);
   border-radius: var(--panel-radius);
@@ -10,30 +12,6 @@
       rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
     transform: translateY(-2px);
   }
-}
-
-.panel-header {
-  padding: var(--panel-header-padding);
-  margin-bottom: 8px;
-}
-
-.panel-title-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 500;
-  font-size: var(--font-size-md);
-}
-
-.panel-icon {
-  color: var(--accent-color);
-  font-size: var(--medium-icon-size);
-  width: var(--medium-icon-size);
-  height: var(--medium-icon-size);
-}
-
-.panel-content {
-  padding: var(--panel-padding);
 }
 
 .stats-grid {
@@ -87,7 +65,7 @@
 }
 
 .stat-value {
-  font-size: var(--font-size-lg);
+  font-size: 18px;
   font-weight: 600;
   color: var(--app-text-color);
   margin-bottom: 4px;
@@ -104,17 +82,17 @@
 .stat-progress {
   height: 4px;
   margin-top: 8px;
-  border-radius: 2px;
+  border-radius: var(--radius-xxs);
 }
 
 @media (max-width: 768px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+    gap: var(--space-sm);
   }
 
   .stat-item {
-    padding: 12px;
+    padding: var(--space-sm);
   }
 
   .stat-value {

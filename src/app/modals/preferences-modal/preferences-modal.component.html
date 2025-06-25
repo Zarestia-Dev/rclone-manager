@@ -31,14 +31,13 @@
   </div>
 
   <!-- Search Box with Animation -->
-  <div class="search-container" [@slideToggle]="searchVisible ? 'visible' : 'hidden'">
-    <input 
-      class="search-input" 
-      placeholder="Search settings..." 
-      [(ngModel)]="searchQuery"
-      (ngModelChange)="filterSettings($event)"
-      [attr.aria-label]="'Search settings'">
-  </div>
+  <app-search-container
+    [visible]="searchVisible"
+    [searchText]="searchQuery"
+    (searchTextChange)="onSearchTextChange($event)"
+    placeholder="Search settings..."
+    ariaLabel="Search settings">
+  </app-search-container>
 
   <!-- Loading Indicator -->
   @if (isLoading) {
