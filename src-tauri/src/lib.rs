@@ -39,7 +39,8 @@ use crate::{
                 update_remote,
             },
             api_query::{
-                get_all_remote_configs, get_bandwidth_limit, get_core_stats, get_disk_usage,
+                get_all_remote_configs, get_bandwidth_limit, get_core_stats, get_core_stats_filtered,
+                get_completed_transfers, get_job_stats, get_disk_usage,
                 get_fs_info, get_memory_stats, get_mounted_remotes, get_oauth_supported_remotes,
                 get_rclone_info, get_rclone_pid, get_remote_config, get_remote_config_fields,
                 get_remote_paths, get_remote_types, get_remotes,
@@ -347,6 +348,9 @@ pub fn run() {
             // Rclone Command API
             get_all_remote_configs,
             get_core_stats,
+            get_core_stats_filtered,
+            get_completed_transfers,
+            get_job_stats,
             get_fs_info,
             get_disk_usage,
             get_memory_stats,

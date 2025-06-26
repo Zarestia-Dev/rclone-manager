@@ -181,6 +181,31 @@
   }
 }
 
+  .performance-graphs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+
+    .graph-card {
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+      h4 {
+        margin-top: 0;
+        margin-bottom: 12px;
+        font-size: 14px;
+        color: var(--app-text-color);
+      }
+
+      canvas {
+        width: 100% !important;
+        height: 200px !important;
+      }
+    }
+  }
+
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .remote-details {

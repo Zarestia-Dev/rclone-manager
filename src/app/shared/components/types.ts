@@ -38,6 +38,7 @@ export interface TransferFile {
   speedAvg: number;
   srcFs: string;
   isError?: boolean;
+  isCompleted?: boolean;
 }
 
 export interface GlobalStats {

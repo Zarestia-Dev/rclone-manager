@@ -116,6 +116,56 @@ export class JobManagementService extends TauriBaseService {
   }
 
   /**
+   * Get jobs for a specific remote
+   */
+  async getJobsForRemote(remoteName: string): Promise<JobInfo[]> {
+    const allJobs = await this.getJobs();
+    return allJobs.filter(job => job.remote_name === remoteName);
+  }
+
+  /**
+   * Get active jobs for a specific remote
+   */
+  async getActiveJobsForRemote(remoteName: string): Promise<JobInfo[]> {
+    const activeJobs = await this.getActiveJobs();
+    return activeJobs.filter(job => job.remote_name === remoteName);
+  }
+
+  /**
+   * Get job stats with group filtering (for remote-specific stats)
+   */
+  async getJobStatsWithGroup(jobid: number, group?: string): Promise<any | null> {
+    const params: any = { jobid };
+    if (group) {
+      params.group = group;
+    }
+    return this.invokeCommand('get_job_stats', params);
+  }
+
+  /**
+   * Get completed transfers for a job/remote (using core/transferred API)
+   */
+  async getCompletedTransfers(group?: string): Promise<any[]> {
+    const params: any = {};
+    if (group) {
+      params.group = group;
+    }
+    return this.invokeCommand('get_completed_transfers', params);
+  }
+
+  /**
+   * Get remote-specific core stats (filtered by group)
+   */
+  async getCoreStatsForRemote(remoteName: string, jobid?: number): Promise<any | null> {
+    const params: any = { remote_name: remoteName };
+    if (jobid) {
+      params.jobid = jobid;
+      params.group = `job/${jobid}`;
+    }
+    return this.invokeCommand('get_core_stats_filtered', params);
+  }
+
+  /**
    * Setup job event listeners
    */
   private setupJobListeners(): void {
