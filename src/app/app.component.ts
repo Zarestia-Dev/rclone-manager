@@ -1,28 +1,21 @@
-import {
-  Component,
-  inject,
-  OnInit,
-  OnDestroy,
-  ViewChild,
-} from "@angular/core";
+import { Component, inject, OnInit, OnDestroy } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { RouterOutlet } from "@angular/router";
-import { TitlebarComponent } from "./components/titlebar/titlebar.component";
-import { OnboardingComponent } from "./components/onboarding/onboarding.component";
+import { TitlebarComponent } from "./layout/titlebar/titlebar.component";
+import { OnboardingComponent } from "./features/onboarding/onboarding.component";
 import { HomeComponent } from "./home/home.component";
-import { IconService } from "./services/ui/icon.service";
 import { listen } from "@tauri-apps/api/event";
-import { RepairSheetComponent } from "./components/repair-sheet/repair-sheet.component";
 import {
   MatBottomSheet,
   MatBottomSheetModule,
 } from "@angular/material/bottom-sheet";
-import { TabsButtonsComponent } from "./components/tabs-buttons/tabs-buttons.component";
+import { TabsButtonsComponent } from "./layout/tabs-buttons/tabs-buttons.component";
 import { UiStateService } from "./services/ui/ui-state.service";
-import { AppSettingsService } from "./services/features/app-settings.service";
-import { SystemInfoService } from "./services/features/system-info.service";
+import { AppSettingsService } from "./services/settings/app-settings.service";
+import { SystemInfoService } from "./services/system/system-info.service";
 import { AppTab } from "./shared/components/types";
-import { InstallationService } from "./services/features/installation.service";
+import { InstallationService } from "./services/settings/installation.service";
+import { RepairSheetComponent } from "./features/components/repair-sheet/repair-sheet.component";
 
 @Component({
   selector: "app-root",
@@ -31,22 +24,20 @@ import { InstallationService } from "./services/features/installation.service";
     RouterOutlet,
     TitlebarComponent,
     OnboardingComponent,
-    HomeComponent,
     MatBottomSheetModule,
     TabsButtonsComponent,
+    HomeComponent,
   ],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss",
 })
 export class AppComponent implements OnInit, OnDestroy {
-
   completedOnboarding: boolean = true;
   alreadyReported: boolean = false;
   currentTab: AppTab = "general";
   private bottomSheet = inject(MatBottomSheet);
 
   constructor(
-    private iconService: IconService,
     public uiStateService: UiStateService,
     public appSettingsService: AppSettingsService,
     private systemInfoService: SystemInfoService,
@@ -61,8 +52,7 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnDestroy() {
-  }
+  ngOnDestroy() {}
 
   private async checkOnboardingStatus(): Promise<void> {
     this.completedOnboarding =
@@ -75,7 +65,8 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.completedOnboarding) {
       // Check mount plugin status
       try {
-        const mountPluginOk = await this.installationService.isMountPluginInstalled();
+        const mountPluginOk =
+          await this.installationService.isMountPluginInstalled();
 
         console.log("Mount plugin status: ", mountPluginOk);
         if (!mountPluginOk) {

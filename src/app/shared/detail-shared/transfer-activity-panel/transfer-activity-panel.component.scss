@@ -1,0 +1,91 @@
+@use "../../../styles/_shared_components";
+
+.transfer-activity-panel {
+  background: var(--secondary-background);
+  border-radius: var(--panel-radius);
+  box-shadow: var(--box-shadow);
+  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+  overflow: hidden;
+  transition: var(--default-transition);
+
+  &:hover {
+    box-shadow: 0 8px 32px
+      rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+    transform: translateY(-2px);
+  }
+
+  .panel-header {
+    .panel-title-content {
+      .transfer-summary {
+        display: flex;
+        gap: var(--space-sm);
+        align-items: center;
+
+        .summary-chip {
+          font-size: var(--caption-font-size);
+          height: 28px;
+          border-radius: var(--badge-radius);
+          font-weight: 600;
+
+          &.active {
+            background: rgba(var(--primary-color-rgb), var(--active-opacity));
+            color: var(--primary-color);
+            border: 1px solid rgba(var(--primary-color-rgb), 0.3);
+          }
+
+          &.completed {
+            background: rgba(var(--accent-color-rgb), var(--active-opacity));
+            color: var(--accent-color);
+            border: 1px solid rgba(var(--accent-color-rgb), 0.3);
+          }
+
+          .chip-label {
+            opacity: 0.8;
+            margin-right: var(--space-xs);
+          }
+
+          .chip-value {
+            font-weight: 700;
+          }
+        }
+      }
+    }
+  }
+  .panel-content {
+    .transfer-tabs {
+      .tab-content {
+        max-height: clamp(300px, 50vh, 600px); // Responsive between 300px-600px
+        overflow-y: auto;
+        overflow-x: hidden;
+        position: relative;
+      }
+    }
+  }
+
+  app-active-transfers-table {
+    display: block;
+    max-height: clamp(300px, 50vh, 600px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+  }
+}
+
+// Mobile responsive adjustments
+@media (max-width: 768px) {
+  .panel-content {
+    .transfer-tabs .tab-content,
+    app-active-transfers-table {
+      max-height: clamp(250px, 45vh, 500px); // Slightly smaller on mobile
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .panel-content {
+    .transfer-tabs .tab-content,
+    app-active-transfers-table {
+      max-height: clamp(200px, 40vh, 400px); // Even smaller on small screens
+    }
+  }
+}

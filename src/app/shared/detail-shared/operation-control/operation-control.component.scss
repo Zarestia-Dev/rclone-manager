@@ -1,0 +1,68 @@
+@use '../../../styles/_shared_components';
+
+.operation-control-panel {
+  background: var(--secondary-background);
+  border-radius: var(--panel-radius);
+  box-shadow: var(--box-shadow);
+  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+  overflow: hidden;
+  transition: var(--default-transition);
+  margin-bottom: var(--panel-gap);
+  border: 2px solid transparent;
+
+  &:hover {
+    box-shadow: 0 8px 32px
+      rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+    transform: translateY(-2px);
+  }
+
+  &.active {
+    .panel-header {
+      background: linear-gradient(
+        135deg,
+        rgba(var(--primary-color-rgb), 0.08) 0%,
+        rgba(var(--accent-color-rgb), 0.08) 100%
+      );
+    }
+  }
+
+  &.sync-operation.active {
+    background-color: rgba(var(--primary-color-rgb), var(--background-opacity));
+  }
+
+  &.copy-operation.active {
+    background-color: rgba(var(--accent-color-rgb), var(--background-opacity));
+  }
+
+  &.mount-operation.active {
+    background-color: rgba(var(--accent-color-rgb), var(--background-opacity));
+
+    .panel-header {
+      background: linear-gradient(
+        135deg,
+        rgba(var(--accent-color-rgb), 0.08) 0%,
+        rgba(var(--accent-color-rgb), 0.08) 100%
+      );
+    }
+  }
+}
+
+.panel-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--panel-actions-padding);
+  background: rgba(var(--app-text-color-rgb), var(--inactive-opacity));
+  border-top: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+}
+
+.operation-controls {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+@media (max-width: 768px) {
+  .operation-toggle-button {
+    height: 44px;
+    font-size: 0.875rem;
+  }
+}

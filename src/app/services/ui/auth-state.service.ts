@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, filter, firstValueFrom, take } from 'rxjs';
-import { RemoteManagementService } from '../features/remote-management.service';
+import { RemoteManagementService } from '../remote/remote-management.service';
 
 /**
  * Service for managing OAuth authentication state

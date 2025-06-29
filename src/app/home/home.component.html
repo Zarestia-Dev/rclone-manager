@@ -36,11 +36,11 @@
         <mat-menu #remoteOptionsMenu="matMenu">
           <!-- Show in Tray Menu (Toggle) -->
           <button mat-menu-item (click)="$event.stopPropagation()">
-            <p class="menu-item-label"><mat-slide-toggle
-                [checked]="getRemoteSettingValue(selectedRemote.remoteSpecs.name, 'showOnTray')"
-                (change)="saveRemoteSettings(selectedRemote.remoteSpecs.name, { showOnTray: $event.checked })">
-                Show in Tray Menu
-              </mat-slide-toggle></p>
+            <mat-checkbox labelPosition="before" [checked]="getRemoteSettingValue(selectedRemote.remoteSpecs.name, 'showOnTray')"
+              (change)="saveRemoteSettings(selectedRemote.remoteSpecs.name, { showOnTray: $event.checked })"
+              class="menu-checkbox">
+              <span class="menu-item-label">Show in Tray Menu</span>
+            </mat-checkbox>
           </button>
           <mat-divider></mat-divider>
           <!-- Remote Actions -->
@@ -122,7 +122,8 @@
       @default {
       <app-app-detail [operationType]="currentTab" [iconService]="iconService" [selectedRemote]="selectedRemote"
         [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" [restrictMode]="restrictMode"
-        [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]" (primaryAction)="handlePrimaryAction(currentTab, $event)"
+        [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]"
+        (primaryAction)="handlePrimaryAction(currentTab, $event)"
         (secondaryAction)="handleSecondaryAction(currentTab, $event)"
         (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
         (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">

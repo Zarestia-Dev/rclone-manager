@@ -1,0 +1,238 @@
+@use '../../../styles/_shared_components';
+
+.jobs-panel {
+  .jobs-table-container {
+    background: var(--app-background);
+    border-radius: var(--item-radius);
+    border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+    max-height: clamp(300px, 50vh, 600px);
+    overflow-y: auto;
+    position: relative;
+
+    .jobs-table {
+      width: 100%;
+      background: transparent;
+      // Smooth scrolling performance
+      contain: layout style paint;
+
+      .mat-mdc-header-row {
+        background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+        border-bottom: 1px solid
+          rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(8px);
+        transition: var(--transition-fast);
+      }
+
+      .mat-mdc-header-cell {
+        color: var(--app-text-color);
+        font-weight: 600;
+        font-size: var(--font-size-sm);
+        background: var(--app-background);
+      }
+
+      .job-row {
+        transition: var(--quick-transition);
+        border-bottom: 1px solid
+          rgba(var(--app-text-color-rgb), var(--border-opacity));
+
+        &:hover {
+          background: rgba(var(--primary-color-rgb), var(--background-opacity));
+          transition: var(--transition-fast);
+        }
+
+        &:last-child {
+          border-bottom: none;
+        }
+      }
+
+      .type-column {
+        .job-type-info {
+          display: flex;
+          align-items: center;
+          gap: var(--space-sm);
+
+          .job-type-text {
+            font-weight: 500;
+            color: var(--app-text-color);
+          }
+        }
+      }
+
+      .status-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-xs);
+        padding: var(--space-xxs) var(--space-sm);
+        border-radius: var(--badge-radius);
+        font-size: var(--caption-font-size);
+        font-weight: 600;
+        letter-spacing: 0.5px;
+
+        .status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+
+        &.running {
+          background: rgba(var(--primary-color-rgb), var(--active-opacity));
+          color: var(--primary-color);
+          border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+
+          .status-dot {
+            background: var(--primary-color);
+          }
+        }
+
+        &.completed {
+          background: rgba(var(--accent-color-rgb), var(--active-opacity));
+          color: var(--accent-color);
+          border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+
+          .status-dot {
+            background: var(--accent-color);
+          }
+        }
+
+        &.failed {
+          background: rgba(var(--warn-color-rgb), var(--active-opacity));
+          color: var(--warn-color);
+          border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+
+          .status-dot {
+            background: var(--warn-color);
+          }
+        }
+
+        &.stopped {
+          background: rgba(var(--orange-rgb), var(--active-opacity));
+          color: var(--orange);
+          border: 1px solid rgba(var(--orange-rgb), 0.2);
+
+          .status-dot {
+            background: var(--orange);
+          }
+        }
+
+        &.unknown {
+          background: rgba(var(--app-text-color-rgb), var(--border-opacity));
+          color: var(--secondary-text-color);
+          border: 1px solid
+            rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+
+          .status-dot {
+            background: var(--secondary-text-color);
+          }
+        }
+      }
+
+      .progress-info {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+
+        .job-progress {
+          height: 6px;
+          border-radius: var(--radius-xxs);
+          background: rgba(
+            var(--app-text-color-rgb),
+            var(--panel-hover-opacity)
+          );
+        }
+
+        .progress-text {
+          font-size: var(--caption-font-size);
+          color: var(--secondary-text-color);
+          font-weight: 500;
+        }
+      }
+
+      .no-progress {
+        color: var(--secondary-text-color);
+        font-style: italic;
+      }
+
+      .start-time {
+        color: var(--app-text-color);
+        font-size: var(--font-size-sm);
+      }
+
+      .job-actions {
+        display: flex;
+        gap: var(--space-xs);
+        justify-content: center;
+
+        .action-button {
+          transition: var(--quick-transition);
+
+          &.stop-button {
+            color: var(--warn-color);
+            background: rgba(var(--warn-color-rgb), var(--active-opacity));
+
+            &:hover {
+              background: rgba(var(--warn-color-rgb), 0.2);
+            }
+          }
+
+          &.delete-button {
+            color: var(--secondary-text-color);
+            background: rgba(var(--app-text-color-rgb), var(--border-opacity));
+
+            &:hover {
+              background: rgba(var(--warn-color-rgb), var(--active-opacity));
+              color: var(--warn-color);
+            }
+          }
+        }
+      }
+
+      .no-data-row {
+        .no-data-cell {
+          padding: 40px var(--panel-padding);
+          text-align: center;
+          border: none;
+
+          .no-data-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            color: var(--secondary-text-color);
+
+            .no-data-icon {
+              font-size: var(--font-size-3xl);
+              width: 48px;
+              height: 48px;
+              opacity: 0.5;
+            }
+
+            span {
+              font-size: var(--font-size-base);
+              font-weight: 500;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .jobs-panel {
+    .jobs-table-container {
+      overflow-x: auto;
+      max-height: clamp(250px, 45vh, 500px); // Slightly smaller on mobile
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .jobs-panel {
+    .jobs-table-container {
+      max-height: clamp(200px, 40vh, 400px); // Even smaller on small screens
+    }
+  }
+}

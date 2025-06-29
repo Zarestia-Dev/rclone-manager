@@ -1,0 +1,32 @@
+import { CommonModule } from '@angular/common';
+import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+import { AppTab } from '../../../shared/components/types';
+
+@Component({
+  selector: 'app-overview-header',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatIconModule,
+  ],
+  templateUrl: './overview-header.component.html',
+  styleUrl: './overview-header.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class OverviewHeaderComponent {
+  @Input() mode: AppTab = 'general';
+
+  get title(): string {
+    switch (this.mode) {
+      case 'mount':
+        return 'Mount Overview';
+      case 'sync':
+        return 'Sync Overview';
+      case 'copy':
+        return 'Copy Overview';
+      default:
+        return 'Remotes Overview';
+    }
+  }
+}

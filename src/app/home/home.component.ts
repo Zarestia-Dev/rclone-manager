@@ -15,7 +15,6 @@ import { MatDividerModule } from "@angular/material/divider";
 import { MatChipsModule } from "@angular/material/chips";
 import { MatDialog } from "@angular/material/dialog";
 import { MatTooltipModule } from "@angular/material/tooltip";
-import { MatSlideToggleModule } from "@angular/material/slide-toggle";
 import { MatMenuModule } from "@angular/material/menu";
 import { MatIconModule } from "@angular/material/icon";
 import { MatButtonModule } from "@angular/material/button";
@@ -23,16 +22,6 @@ import { listen, UnlistenFn } from "@tauri-apps/api/event";
 import { Subject, takeUntil } from "rxjs";
 
 // Components
-import { SidebarComponent } from "../components/sidebar/sidebar.component";
-import { RemoteConfigModalComponent } from "../modals/remote-config-modal/remote-config-modal.component";
-import { QuickAddRemoteComponent } from "../modals/quick-add-remote/quick-add-remote.component";
-import { AppDetailComponent } from "../components/details/app-detail/app-detail.component";
-import { LogsModalComponent } from "../modals/logs-modal/logs-modal.component";
-import { ExportModalComponent } from "../modals/export-modal/export-modal.component";
-
-// Services
-import { IconService } from "../services/ui/icon.service";
-import { AppOverviewComponent } from "../components/overviews/app-overview/app-overview.component";
 import {
   AppTab,
   BandwidthLimitResponse,
@@ -45,18 +34,27 @@ import {
   RemoteSettings,
   STANDARD_MODAL_SIZE,
 } from "../shared/components/types";
-import { GeneralDetailComponent } from "../components/details/general-detail/general-detail.component";
-import { GeneralOverviewComponent } from "../components/overviews/general-overview/general-overview.component";
-import { UiStateService } from "../services/ui/ui-state.service";
-import { MountManagementService } from "../services/features/mount-management.service";
-import { RemoteManagementService } from "../services/features/remote-management.service";
-import { JobManagementService } from "../services/features/job-management.service";
-import { AppSettingsService } from "../services/features/app-settings.service";
-import { SystemInfoService } from "../services/features/system-info.service";
-import { NotificationService } from "../services/ui/notification.service";
 import { MatToolbarModule } from "@angular/material/toolbar";
 import { invoke } from "@tauri-apps/api/core";
-import { AnimationsService } from "../shared/animations/animations.service";
+import { SidebarComponent } from "../layout/sidebar/sidebar.component";
+import { AnimationsService } from "../services/core/animations.service";
+import { UiStateService } from "../services/ui/ui-state.service";
+import { MountManagementService } from "../services/file-operations/mount-management.service";
+import { RemoteManagementService } from "../services/remote/remote-management.service";
+import { JobManagementService } from "../services/file-operations/job-management.service";
+import { SystemInfoService } from "../services/system/system-info.service";
+import { AppSettingsService } from "../services/settings/app-settings.service";
+import { IconService } from "../services/ui/icon.service";
+import { NotificationService } from "../services/ui/notification.service";
+import { GeneralDetailComponent } from "../features/components/dashboard/general-detail/general-detail.component";
+import { GeneralOverviewComponent } from "../features/components/dashboard/general-overview/general-overview.component";
+import { AppDetailComponent } from "../features/components/dashboard/app-detail/app-detail.component";
+import { AppOverviewComponent } from "../features/components/dashboard/app-overview/app-overview.component";
+import { LogsModalComponent } from "../features/modals/monitoring/logs-modal/logs-modal.component";
+import { ExportModalComponent } from "../features/modals/file-operations/export-modal/export-modal.component";
+import { RemoteConfigModalComponent } from "../features/modals/remote-management/remote-config-modal/remote-config-modal.component";
+import { QuickAddRemoteComponent } from "../features/modals/remote-management/quick-add-remote/quick-add-remote.component";
+import { MatCheckboxModule } from "@angular/material/checkbox";
 
 @Component({
   selector: "app-home",
@@ -67,7 +65,7 @@ import { AnimationsService } from "../shared/animations/animations.service";
     MatChipsModule,
     MatCardModule,
     MatTooltipModule,
-    MatSlideToggleModule,
+    MatCheckboxModule,
     MatMenuModule,
     MatIconModule,
     MatButtonModule,
@@ -81,9 +79,7 @@ import { AnimationsService } from "../shared/animations/animations.service";
   templateUrl: "./home.component.html",
   styleUrls: ["./home.component.scss"],
   changeDetection: ChangeDetectionStrategy.Default, // Temporarily change to Default
-  animations: [
-    AnimationsService.slideToggle(),
-  ],
+  animations: [AnimationsService.slideToggle()],
 })
 export class HomeComponent implements OnInit, OnDestroy {
   // UI State
@@ -120,7 +116,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     public systemInfoService: SystemInfoService,
     private appSettingsService: AppSettingsService,
     public iconService: IconService,
-    private notificationService: NotificationService,
+    private notificationService: NotificationService
   ) {
     this.restrictValue();
   }

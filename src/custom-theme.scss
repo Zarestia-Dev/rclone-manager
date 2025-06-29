@@ -505,6 +505,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --space-2xl: 32px;   // Section spacing
   
   /* Border Radius Scale */
+  --radius-xxs: 4px;    // Extra small elements (small buttons, icons)
   --radius-xs: 8px;    // Small elements (inputs, small buttons)
   --radius-sm: 12px;   // Medium elements (cards, panels, buttons)  
   --radius-md: 16px;   // Large elements (modals, containers)
