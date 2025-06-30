@@ -20,10 +20,15 @@ use crate::{
         check_binaries::{is_7z_available, is_rclone_available, read_rclone_path},
         event_listener::setup_event_listener,
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
-        settings::settings::{
-            analyze_backup_file, backup_settings, delete_remote_settings, get_remote_settings,
-            load_setting_value, load_settings, reset_settings, restore_encrypted_settings,
-            restore_settings, save_remote_settings, save_settings,
+        settings::{
+            backup::{
+                backup_manager::{analyze_backup_file, backup_settings},
+                restore_manager::{restore_encrypted_settings, restore_settings},
+            },
+            operations::core::{
+                load_setting_value, load_settings, reset_setting, reset_settings, save_settings,
+            },
+            remote::manager::{delete_remote_settings, get_remote_settings, save_remote_settings},
         },
         tray::actions::{
             handle_browse_remote, handle_copy_remote, handle_delete_remote, handle_mount_remote,
@@ -39,9 +44,9 @@ use crate::{
                 update_remote,
             },
             api_query::{
-                get_all_remote_configs, get_bandwidth_limit, get_core_stats, get_core_stats_filtered,
-                get_completed_transfers, get_job_stats, get_disk_usage,
-                get_fs_info, get_memory_stats, get_mounted_remotes, get_oauth_supported_remotes,
+                get_all_remote_configs, get_bandwidth_limit, get_completed_transfers,
+                get_core_stats, get_core_stats_filtered, get_disk_usage, get_fs_info,
+                get_job_stats, get_memory_stats, get_mounted_remotes, get_oauth_supported_remotes,
                 get_rclone_info, get_rclone_pid, get_remote_config, get_remote_config_fields,
                 get_remote_paths, get_remote_types, get_remotes,
             },
@@ -184,10 +189,10 @@ async fn kill_process(pid: u32) -> Result<(), String> {
         if handle == std::ptr::null_mut() {
             return Err("Failed to open process".to_string());
         }
-        
+
         let result = unsafe { TerminateProcess(handle, 1) };
         unsafe { CloseHandle(handle) };
-        
+
         if result == 0 {
             return Err("Failed to terminate process".to_string());
         }
@@ -383,6 +388,9 @@ pub fn run() {
             load_settings,
             load_setting_value,
             save_settings,
+            reset_settings,
+            reset_setting,
+            // Remote Settings
             save_remote_settings,
             get_remote_settings,
             delete_remote_settings,
@@ -390,7 +398,6 @@ pub fn run() {
             analyze_backup_file,
             restore_encrypted_settings,
             restore_settings,
-            reset_settings,
             // Network
             check_links,
             is_network_metered,

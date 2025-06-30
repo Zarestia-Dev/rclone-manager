@@ -21,7 +21,7 @@ export class BackupRestoreService extends TauriBaseService {
   async backupSettings(
     selectedPath: string,
     selectedOption: string,
-    password: string,
+    password: string | null,
     remoteName: string
   ): Promise<void> {
     try {

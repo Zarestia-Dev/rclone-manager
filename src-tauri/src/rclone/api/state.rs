@@ -7,10 +7,9 @@ use tauri::Manager;
 use tokio::sync::RwLock;
 
 use crate::{
-    core::settings::settings::get_remote_settings,
-    utils::types::{
+    core::settings::remote::manager::get_remote_settings, utils::types::{
         EngineState, JobCache, JobInfo, JobStatus, LogCache, LogEntry, MountedRemote, RcloneState, RemoteCache, SENSITIVE_KEYS
-    },
+    }
 };
 
 use super::api_query::{get_all_remote_configs, get_mounted_remotes, get_remotes};

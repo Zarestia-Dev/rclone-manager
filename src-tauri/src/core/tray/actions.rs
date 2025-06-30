@@ -6,15 +6,13 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::{
-    core::settings::settings::save_remote_settings,
-    rclone::api::{
+    core::settings::remote::manager::save_remote_settings, rclone::api::{
         api_command::{delete_remote, mount_remote, start_copy, start_sync, stop_job, unmount_remote},
         state::{CACHE, JOB_CACHE},
-    },
-    utils::{
+    }, utils::{
         builder::create_app_window, file_helper::get_folder_location,
         notification::send_notification, types::JobStatus,
-    },
+    }
 };
 
 fn notify(app: &AppHandle, title: &str, body: &str) {
@@ -53,9 +51,9 @@ async fn prompt_mount_point(app: &AppHandle, remote_name: &str) -> Option<String
             info!("⚠️ User selected an empty folder path for {}", remote_name);
             None
         }
-        Ok(None) => {
+        Ok(none) => {
             info!("❌ User didn't select a folder for {}", remote_name);
-            None
+            none
         }
         Err(err) => {
             error!("🚨 Error selecting folder for {}: {}", remote_name, err);
@@ -91,7 +89,7 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
         // Load settings with proper error handling
         let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
             Some(s) => s,
-            None => {
+            _ => {
                 error!("🚨 Remote {} not found in settings", remote_name);
                 return;
             }
@@ -126,9 +124,9 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
             .filter(|s| !s.is_empty())
         {
             Some(existing) => existing.to_string(),
-            None => match prompt_mount_point(&app, &remote_name).await {
+            _ => match prompt_mount_point(&app, &remote_name).await {
                 Some(path) => path,
-                None => {
+                _ => {
                     info!("❌ Mounting cancelled - no mount point selected");
                     return;
                 }
@@ -242,7 +240,7 @@ pub fn handle_sync_remote(app: AppHandle, id: &str) {
     tauri::async_runtime::spawn(async move {
         let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
             Some(s) => s,
-            None => {
+            _ => {
                 error!("🚨 Remote {} not found in settings", remote_name);
                 return;
             }
@@ -317,7 +315,7 @@ pub fn handle_copy_remote(app: AppHandle, id: &str) {
     tauri::async_runtime::spawn(async move {
         let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
             Some(s) => s,
-            None => {
+            _ => {
                 error!("🚨 Remote {} not found in settings", remote_name);
                 return;
             }

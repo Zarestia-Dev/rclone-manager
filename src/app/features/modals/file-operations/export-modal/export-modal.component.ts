@@ -105,7 +105,7 @@ export class ExportModalComponent {
     await this.backupRestoreService.backupSettings(
       this.exportPath,
       this.selectedOption,
-      this.withPassword ? this.password || "" : "",
+      this.withPassword ? this.password || "" : null,
       this.selectedOption === 'specific-remote' ? this.selectedRemoteName : ""
     );
   }
