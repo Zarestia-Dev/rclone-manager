@@ -79,15 +79,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   private systemTheme$ = new BehaviorSubject<"light" | "dark">(
     window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
   );
-  private shortcutMap = new Map<string, () => void>([
-    ["Control+,", () => this.openPreferencesModal()],
-    ["Control+r", () => this.openQuickAddRemoteModal()],
-    ["Control+n", () => this.openRemoteConfigModal()],
-    ["Control+?", () => this.openKeyboardShortcutsModal()],
-    ["Control+q", () => this.closeWindow()],
-    ["Control+w", () => this.closeWindow()],
-    ["Escape", () => this.resetRemote()],
-  ]);
 
   constructor(
     private dialog: MatDialog,
@@ -266,25 +257,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
       await appWindow.close();
     } catch (error) {
       console.error("Failed to close window");
-    }
-  }
-
-  // Keyboard Shortcuts
-  @HostListener("window:keydown", ["$event"])
-  handleKeyboardShortcuts(event: KeyboardEvent): void {
-    const keys = [];
-    if (event.ctrlKey || event.metaKey) keys.push("Control");
-    if (event.shiftKey) keys.push("Shift");
-    if (event.altKey) keys.push("Alt");
-    keys.push(event.key);
-
-    const shortcut = keys.join("+").toLowerCase();
-    const handler = this.shortcutMap.get(shortcut);
-
-    if (handler) {
-      event.preventDefault();
-      event.stopPropagation();
-      handler();
     }
   }
 

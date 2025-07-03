@@ -1,7 +1,7 @@
-import { Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
-import { TauriBaseService } from '../core/tauri-base.service';
-import { NotificationService } from '../ui/notification.service';
+import { Injectable } from "@angular/core";
+import { BehaviorSubject } from "rxjs";
+import { TauriBaseService } from "../core/tauri-base.service";
+import { NotificationService } from "../ui/notification.service";
 
 export interface MountOptions {
   [key: string]: string | number | boolean;
@@ -16,10 +16,9 @@ export interface VfsOptions {
  * Handles mount/unmount operations and mount state management
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: "root",
 })
 export class MountManagementService extends TauriBaseService {
-  
   private mountedRemotesCache = new BehaviorSubject<any[]>([]);
   public mountedRemotes$ = this.mountedRemotesCache.asObservable();
 
@@ -31,14 +30,16 @@ export class MountManagementService extends TauriBaseService {
    * List all mounted remotes
    */
   async listMounts(): Promise<string[]> {
-    return this.invokeCommand<string[]>('list_mounts');
+    return this.invokeCommand<string[]>("list_mounts");
   }
 
   /**
    * Get mounted remotes with details
    */
   async getMountedRemotes(): Promise<any[]> {
-    const mountedRemotes = await this.invokeCommand<any[]>('get_cached_mounted_remotes');
+    const mountedRemotes = await this.invokeCommand<any[]>(
+      "get_cached_mounted_remotes"
+    );
     this.mountedRemotesCache.next(mountedRemotes);
     return mountedRemotes;
   }
@@ -54,22 +55,26 @@ export class MountManagementService extends TauriBaseService {
     vfsOptions?: VfsOptions
   ): Promise<void> {
     if (!mountPoint) {
-      throw new Error('Mount point is required');
+      throw new Error("Mount point is required");
     }
 
     try {
-      await this.invokeCommand('mount_remote', {
+      await this.invokeCommand("mount_remote", {
         remoteName,
         source,
         mountPoint,
         mountOptions: mountOptions || {},
-        vfsOptions: vfsOptions || {}
+        vfsOptions: vfsOptions || {},
       });
-      
+
       await this.refreshMountedRemotes();
-      this.notificationService.showSuccess(`Successfully mounted ${remoteName}`);
+      this.notificationService.showSuccess(
+        `Successfully mounted ${remoteName}`
+      );
     } catch (error) {
-      this.notificationService.showError(`Failed to mount ${remoteName}: ${error}`);
+      this.notificationService.showError(
+        `Failed to mount ${remoteName}: ${error}`
+      );
       throw error;
     }
   }
@@ -79,11 +84,34 @@ export class MountManagementService extends TauriBaseService {
    */
   async unmountRemote(mountPoint: string, remoteName: string): Promise<void> {
     try {
-      await this.invokeCommand('unmount_remote', { mountPoint, remoteName });
+      await this.invokeCommand("unmount_remote", { mountPoint, remoteName });
       await this.refreshMountedRemotes();
-      this.notificationService.showSuccess(`Successfully unmounted ${remoteName}`);
+      this.notificationService.showSuccess(
+        `Successfully unmounted ${remoteName}`
+      );
     } catch (error) {
-      this.notificationService.showError(`Failed to unmount ${remoteName}: ${error}`);
+      this.notificationService.showError(
+        `Failed to unmount ${remoteName}: ${error}`
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Force check mounted remotes
+   */
+  async forceCheckMountedRemotes(): Promise<void> {
+    try {
+      await this.invokeCommand("force_check_mounted_remotes");
+      this.notificationService.openSnackBar(
+        "Force check mounted remotes completed successfully",
+        "Close"
+      );
+    } catch (error) {
+      this.notificationService.openSnackBar(
+        `Failed to force check mounted remotes: ${error}`,
+        "Close"
+      );
       throw error;
     }
   }
@@ -92,49 +120,49 @@ export class MountManagementService extends TauriBaseService {
    * Open mount point in file manager
    */
   async openInFiles(mountPoint: string): Promise<void> {
-    return this.invokeCommand('open_in_files', { path: mountPoint });
+    return this.invokeCommand("open_in_files", { path: mountPoint });
   }
 
   /**
    * Get mount flags
    */
   async getMountFlags(): Promise<any> {
-    return this.invokeCommand('get_mount_flags');
+    return this.invokeCommand("get_mount_flags");
   }
 
   /**
    * Get VFS flags
    */
   async getVfsFlags(): Promise<any> {
-    return this.invokeCommand('get_vfs_flags');
+    return this.invokeCommand("get_vfs_flags");
   }
 
-    /**
+  /**
    * Get sync flags
    */
   async getSyncFlags(): Promise<any> {
-    return this.invokeCommand('get_sync_flags');
+    return this.invokeCommand("get_sync_flags");
   }
 
   /**
    * Get copy flags
    */
   async getCopyFlags(): Promise<any> {
-    return this.invokeCommand('get_copy_flags');
+    return this.invokeCommand("get_copy_flags");
   }
 
   /**
    * Get filter flags
    */
   async getFilterFlags(): Promise<any> {
-    return this.invokeCommand('get_filter_flags');
+    return this.invokeCommand("get_filter_flags");
   }
 
   /**
    * Get global flags
    */
   async getGlobalFlags(): Promise<any> {
-    return this.invokeCommand('get_global_flags');
+    return this.invokeCommand("get_global_flags");
   }
 
   /**

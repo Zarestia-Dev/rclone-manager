@@ -1,12 +1,11 @@
-use crate::rclone::api::state::{
-    get_cached_mounted_remotes, get_cached_remotes, get_settings, JOB_CACHE,
-};
 use log::{error, warn};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     AppHandle,
 };
+
+use crate::rclone::state::{get_cached_mounted_remotes, get_cached_remotes, get_settings, JOB_CACHE};
 
 static OLD_MAX_TRAY_ITEMS: AtomicUsize = AtomicUsize::new(0);
 
@@ -91,8 +90,8 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                     format!("job_status-{}", remote),
                     match (active_sync_job, active_copy_job) {
                         (Some(_), Some(_)) => format!("Sync & Copy in progress"),
-                        (Some(_), None) => format!("Sync in progress"),
-                        (None, Some(_)) => format!("Copy in progress"),
+                        (Some(_), _) => format!("Sync in progress"),
+                        (_, Some(_)) => format!("Copy in progress"),
                         _ => "No active jobs".to_string(),
                     },
                     false,

@@ -14,5 +14,15 @@
   <!-- Enable App Sandbox (required for notarization) -->
   <key>com.apple.security.app-sandbox</key>
   <true/>
+
+  <!-- Allow accessibility features for global shortcuts -->
+  <key>com.apple.security.device.input-monitoring</key>
+  <true/>
+
+  <!-- Allow global shortcuts -->
+  <key>com.apple.security.temporary-exception.apple-events</key>
+  <array>
+    <string>com.apple.systemevents</string>
+  </array>
 </dict>
 </plist>

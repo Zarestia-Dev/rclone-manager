@@ -50,13 +50,7 @@ export class FlagConfigStepComponent implements OnInit {
   @Input() sourceLoading: boolean = false;
   @Input() destLoading: boolean = false;
   @Input() dynamicFlagFields: FlagField[] = [];
-  @Input() selectedOptions: Record<FlagType, Record<string, any>> = {
-    mount: {},
-    sync: {},
-    copy: {},
-    filter: {},
-    vfs: {},
-  };
+  @Input() selectedOptions: Record<string, any> = {};
   @Input() isDisabled: boolean = false;
 
   // Filtered observables for typeable autocomplete
@@ -144,8 +138,20 @@ export class FlagConfigStepComponent implements OnInit {
     return this.dynamicFlagFields;
   }
 
-  get getSelectedOptions(): Record<FlagType, Record<string, any>> {
+  get getSelectedOptions(): Record<string, any> {
     return this.selectedOptions;
+  }
+
+  /**
+   * Determines if folder selection should require empty folder
+   * For mount operations, checks if AllowNonEmpty is set to true
+   */
+  get shouldRequireEmptyFolder(): boolean {    
+    if (this.flagType === 'mount') {
+      const requireEmpty = !this.selectedOptions['AllowNonEmpty'];
+      return requireEmpty;
+    }
+    return false; // For non-mount operations, don't require empty folder
   }
 
   onToggleOption(field: FlagField): void {

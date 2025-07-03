@@ -55,6 +55,7 @@ import { ExportModalComponent } from "../features/modals/file-operations/export-
 import { RemoteConfigModalComponent } from "../features/modals/remote-management/remote-config-modal/remote-config-modal.component";
 import { QuickAddRemoteComponent } from "../features/modals/remote-management/quick-add-remote/quick-add-remote.component";
 import { MatCheckboxModule } from "@angular/material/checkbox";
+import { LoadingOverlayComponent } from "../shared/components/loading-overlay/loading-overlay.component";
 
 @Component({
   selector: "app-home",
@@ -75,6 +76,7 @@ import { MatCheckboxModule } from "@angular/material/checkbox";
     GeneralOverviewComponent,
     AppDetailComponent,
     AppOverviewComponent,
+    LoadingOverlayComponent,
   ],
   templateUrl: "./home.component.html",
   styleUrls: ["./home.component.scss"],
@@ -98,6 +100,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   actionInProgress: RemoteActionProgress = {};
   bandwidthLimit: BandwidthLimitResponse | null = null;
   private unlistenNetworkStatus: UnlistenFn | null = null;
+  
+  // Shutdown State
+  isShuttingDown = false;
 
   showDevelopmentBanner: boolean = isDevMode();
   isMeteredConnection: boolean = false;
@@ -967,6 +972,26 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private setupTauriListeners(): void {
+    // Global shortcut event for force checking mounted remotes
+    listen<string>("shutdown_sequence", async () => {
+      try {
+        console.log("Shutdown sequence initiated - Shutting down app");
+        this.isShuttingDown = true;
+        this.cdr.detectChanges();
+      }
+      catch (error) {
+        console.error("Error during shutdown sequence:", error);
+      }
+    });
+
+    // UI notifications from backend
+    listen<string>("notify_ui", (event) => {
+      const message = event.payload;
+      if (message) {
+        this.notificationService.openSnackBar(message, "Close");
+      }
+    });
+
     // Mount cache updated - only refresh mounts and update remote mount states
     listen<string>("mount_cache_updated", async () => {
       try {

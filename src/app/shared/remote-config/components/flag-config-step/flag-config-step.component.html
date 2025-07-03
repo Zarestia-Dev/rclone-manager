@@ -14,7 +14,7 @@
   <!-- Mount Path -->
   <mat-form-field appearance="fill">
     <mat-label>Mount Path</mat-label>
-    <button mat-icon-button matSuffix (click)="onSelectFolder('mountConfig.dest', true)" aria-label="Select folder">
+    <button mat-icon-button matSuffix (click)="onSelectFolder('mountConfig.dest', shouldRequireEmptyFolder)" aria-label="Select folder">
       <mat-icon svgIcon="folder"></mat-icon>
     </button>
     <input matInput formControlName="dest" id="dest" placeholder="Select a folder..." />

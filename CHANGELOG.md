@@ -7,10 +7,11 @@
 - Remote Clone feature added. Under the remote detail ellipsis button (Clones a remote with settings to new remote.).
 - Rclone pid watcher feature added with instant stop Rclone process functionality. Also listens for changes in the rclone process state and updates the UI accordingly. You can find it in `About RClone Manager > About Rclone`  (I see the core/pid rcd command and I want to make something for it. IDK why but I did it.)
 - Detecting the metered connection and showing a warning banner (Linux needed Network Manager. Its `nmcli` command is used to check for metered connections). Not supported on macOS because it does not support metered network detection (For now, it is only show the warning banner.).
+- Watcher for mounted remotes added. It will automatically unmount the remote if it is not mounted anymore. It will also update the UI accordingly (5 seconds interval). You can also force check the mounted remotes by this Shortcut: Ctrl + Shift + M.
 
 ### Changed
 - UI design has been improved.
-- Mount path selection not forced to select a path from the file browser anymore. You can also type the path manually but it will be validated.
+- Mount path selection not forced to select a path from the file browser anymore. You can also type the path manually but it will be validated. Also added support for AllowNonEmpty option in the mount step. This allows you to mount a remote to a non-empty folder if its true.
 - Onboarding process has been improved.
 - Frontend services have been refactored to use a more modular approach.
 

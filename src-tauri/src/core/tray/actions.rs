@@ -6,10 +6,7 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::{
-    core::settings::remote::manager::save_remote_settings, rclone::api::{
-        api_command::{delete_remote, mount_remote, start_copy, start_sync, stop_job, unmount_remote},
-        state::{CACHE, JOB_CACHE},
-    }, utils::{
+    core::settings::remote::manager::save_remote_settings, rclone::{commands::{mount_remote, start_copy, start_sync, stop_job, unmount_remote}, state::{CACHE, JOB_CACHE}}, utils::{
         builder::create_app_window, file_helper::get_folder_location,
         notification::send_notification, types::JobStatus,
     }
@@ -389,12 +386,9 @@ pub fn handle_copy_remote(app: AppHandle, id: &str) {
 pub fn handle_stop_sync(app: AppHandle, id: &str) {
     let remote_name = id.replace("stop_sync-", "");
     tauri::async_runtime::spawn(async move {
-        if let Some(job) = JOB_CACHE
-            .get_jobs()
-            .await
-            .iter()
-            .find(|j| j.remote_name == remote_name && j.job_type == "sync" && j.status == JobStatus::Running)
-        {
+        if let Some(job) = JOB_CACHE.get_jobs().await.iter().find(|j| {
+            j.remote_name == remote_name && j.job_type == "sync" && j.status == JobStatus::Running
+        }) {
             match stop_job(app.clone(), job.jobid, remote_name.clone(), app.state()).await {
                 Ok(_) => {
                     info!("🛑 Stopped sync job {} for {}", job.jobid, remote_name);
@@ -427,12 +421,9 @@ pub fn handle_stop_sync(app: AppHandle, id: &str) {
 pub fn handle_stop_copy(app: AppHandle, id: &str) {
     let remote_name = id.replace("stop_copy-", "");
     tauri::async_runtime::spawn(async move {
-        if let Some(job) = JOB_CACHE
-            .get_jobs()
-            .await
-            .iter()
-            .find(|j| j.remote_name == remote_name && j.job_type == "copy" && j.status == JobStatus::Running)
-        {
+        if let Some(job) = JOB_CACHE.get_jobs().await.iter().find(|j| {
+            j.remote_name == remote_name && j.job_type == "copy" && j.status == JobStatus::Running
+        }) {
             match stop_job(app.clone(), job.jobid, remote_name.clone(), app.state()).await {
                 Ok(_) => {
                     info!("🛑 Stopped copy job {} for {}", job.jobid, remote_name);
@@ -508,50 +499,50 @@ pub fn handle_browse_remote(app: &AppHandle, id: &str) {
     });
 }
 
-pub fn handle_delete_remote(app: AppHandle, id: &str) {
-    let remote = id.replace("delete-", "");
-    let app_clone = app.clone(); // Cloning the app
-    tauri::async_runtime::spawn(async move {
-        use tauri_plugin_dialog::DialogExt;
-        let _answer = app_clone
-            .dialog()
-            .message(format!(
-                "Are you sure you want to delete the remote {}?",
-                remote
-            ))
-            .title(format!("Delete Remote {}", remote))
-            .buttons(MessageDialogButtons::OkCancelCustom(
-                "Yes, Delete".to_owned(),
-                "Cancel".to_owned(),
-            ))
-            .kind(MessageDialogKind::Warning)
-            .show(move |result| {
-                let remote = remote.clone();
-                tauri::async_runtime::spawn(async move {
-                    if result {
-                        let state = app_clone.state();
-                        match delete_remote(app_clone.clone(), remote.clone(), state).await {
-                            Ok(_) => {
-                                info!("🗑️ Deleted remote {}", remote);
-                                notify(
-                                    &app_clone,
-                                    "Remote Deleted",
-                                    &format!("Successfully deleted remote {}", remote),
-                                );
-                            }
-                            Err(err) => {
-                                error!("🚨 Failed to delete remote {}: {}", remote, err);
-                                notify(
-                                    &app_clone,
-                                    "Deletion Failed",
-                                    &format!("Failed to delete remote {}: {}", remote, err),
-                                );
-                            }
-                        }
-                    } else {
-                        info!("❌ Cancelled deletion of remote {}", remote);
-                    }
-                });
-            });
-    });
-}
+// pub fn handle_delete_remote(app: AppHandle, id: &str) {
+//     let remote = id.replace("delete-", "");
+//     let app_clone = app.clone(); // Cloning the app
+//     tauri::async_runtime::spawn(async move {
+//         use tauri_plugin_dialog::DialogExt;
+//         let _answer = app_clone
+//             .dialog()
+//             .message(format!(
+//                 "Are you sure you want to delete the remote {}?",
+//                 remote
+//             ))
+//             .title(format!("Delete Remote {}", remote))
+//             .buttons(MessageDialogButtons::OkCancelCustom(
+//                 "Yes, Delete".to_owned(),
+//                 "Cancel".to_owned(),
+//             ))
+//             .kind(MessageDialogKind::Warning)
+//             .show(move |result| {
+//                 let remote = remote.clone();
+//                 tauri::async_runtime::spawn(async move {
+//                     if result {
+//                         let state = app_clone.state();
+//                         match delete_remote(app_clone.clone(), remote.clone(), state).await {
+//                             Ok(_) => {
+//                                 info!("🗑️ Deleted remote {}", remote);
+//                                 notify(
+//                                     &app_clone,
+//                                     "Remote Deleted",
+//                                     &format!("Successfully deleted remote {}", remote),
+//                                 );
+//                             }
+//                             Err(err) => {
+//                                 error!("🚨 Failed to delete remote {}: {}", remote, err);
+//                                 notify(
+//                                     &app_clone,
+//                                     "Deletion Failed",
+//                                     &format!("Failed to delete remote {}: {}", remote, err),
+//                                 );
+//                             }
+//                         }
+//                     } else {
+//                         info!("❌ Cancelled deletion of remote {}", remote);
+//                     }
+//                 });
+//             });
+//     });
+// }

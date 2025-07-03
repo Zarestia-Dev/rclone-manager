@@ -282,6 +282,12 @@ export class PreferencesModalComponent implements OnInit {
     return this.settingsForm.get(category)?.get(key) as FormControl;
   }
 
+  @HostListener('document:keydown.control.f', ['$event'])
+  handleCtrlF(event: KeyboardEvent) {
+    event.preventDefault();
+    this.toggleSearch();
+  }
+
   toggleSearch() {
     this.searchVisible = !this.searchVisible;
     if (!this.searchVisible) {

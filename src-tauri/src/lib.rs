@@ -31,45 +31,13 @@ use crate::{
             remote::manager::{delete_remote_settings, get_remote_settings, save_remote_settings},
         },
         tray::actions::{
-            handle_browse_remote, handle_copy_remote, handle_delete_remote, handle_mount_remote,
+            handle_browse_remote, handle_copy_remote, handle_mount_remote,
             handle_stop_all_jobs, handle_stop_copy, handle_stop_sync, handle_sync_remote,
             handle_unmount_remote, show_main_window,
         },
-    },
-    rclone::{
-        api::{
-            api_command::{
-                create_remote, delete_remote, mount_remote, quit_rclone_oauth, set_bandwidth_limit,
-                start_copy, start_sync, stop_job, unmount_all_remotes, unmount_remote,
-                update_remote,
-            },
-            api_query::{
-                get_all_remote_configs, get_bandwidth_limit, get_completed_transfers,
-                get_core_stats, get_core_stats_filtered, get_disk_usage, get_fs_info,
-                get_job_stats, get_memory_stats, get_mounted_remotes, get_oauth_supported_remotes,
-                get_rclone_info, get_rclone_pid, get_remote_config, get_remote_config_fields,
-                get_remote_paths, get_remote_types, get_remotes,
-            },
-            flags::{
-                get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags,
-                get_sync_flags, get_vfs_flags,
-            },
-            state::{
-                CACHE, ENGINE_STATE, clear_remote_logs, delete_job, get_active_jobs,
-                get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status,
-                get_jobs, get_remote_logs, get_settings,
-            },
-        },
-        mount::{check_mount_plugin_installed, install_mount_plugin},
-    },
-    utils::{
-        builder::{create_app_window, setup_tray},
-        file_helper::{get_file_location, get_folder_location, open_in_files},
-        log::init_logging,
-        network::{check_links, is_network_metered, monitor_network_changes},
-        rclone::provision::provision_rclone,
-        types::{AppSettings, RcApiEngine, RcloneState, SettingsState},
-    },
+    }, rclone::{commands::{create_remote, delete_remote, mount_remote, quit_rclone_oauth, set_bandwidth_limit, start_copy, start_sync, stop_job, unmount_all_remotes, unmount_remote, update_remote}, queries::{flags::{get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags, get_sync_flags, get_vfs_flags}, get_all_remote_configs, get_bandwidth_limit, get_completed_transfers, get_core_stats, get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info, get_rclone_pid, get_remote_config, get_remote_config_fields, get_remote_paths, get_remote_types, get_remotes}, state::{clear_remote_logs, delete_job, force_check_mounted_remotes, get_active_jobs, get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status, get_jobs, get_remote_logs, get_settings, CACHE, ENGINE_STATE}    }, utils::{
+        builder::{create_app_window, setup_tray}, file_helper::{get_file_location, get_folder_location, open_in_files}, log::init_logging, network::{check_links, is_network_metered, monitor_network_changes}, process::kill_process_by_pid, rclone::{mount::{check_mount_plugin_installed, install_mount_plugin}, provision::provision_rclone}, types::{AppSettings, RcApiEngine, RcloneState, SettingsState}
+    }
 };
 
 impl RcloneState {
@@ -135,6 +103,11 @@ async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
 
     setup_event_listener(&app_handle);
 
+    // TODO: Register global shortcuts once tauri-plugin-global-shortcut API is clarified
+    // if let Err(e) = register_global_shortcuts(&app_handle) {
+    //     error!("Failed to register global shortcuts: {}", e);
+    // }
+
     CACHE.refresh_all(app_handle.clone()).await;
     debug!("🔄 Cache refreshed");
 
@@ -160,43 +133,6 @@ async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
         {
             error!("Failed to set bandwidth limit: {e}");
         }
-    }
-}
-
-#[tauri::command]
-async fn kill_process(pid: u32) -> Result<(), String> {
-    #[cfg(target_family = "unix")]
-    {
-        use nix::libc::{SIGKILL, kill};
-
-        let result = unsafe { kill(pid as i32, SIGKILL) };
-        if result == 0 {
-            Ok(())
-        } else {
-            Err(format!(
-                "Failed to kill process: {}",
-                std::io::Error::last_os_error()
-            ))
-        }
-    }
-    #[cfg(target_family = "windows")]
-    {
-        use windows_sys::Win32::Foundation::CloseHandle;
-        use windows_sys::Win32::System::Threading::PROCESS_TERMINATE;
-        use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess};
-
-        let handle = unsafe { OpenProcess(PROCESS_TERMINATE, 0, pid) };
-        if handle == std::ptr::null_mut() {
-            return Err("Failed to open process".to_string());
-        }
-
-        let result = unsafe { TerminateProcess(handle, 1) };
-        unsafe { CloseHandle(handle) };
-
-        if result == 0 {
-            return Err("Failed to terminate process".to_string());
-        }
-        Ok(())
     }
 }
 
@@ -282,6 +218,44 @@ pub fn run() {
                 restrict_mode: Arc::new(std::sync::RwLock::new(settings.general.restrict)),
             });
 
+            // Setup global shortcuts
+            // #[cfg(desktop)]
+            // {
+            //     use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+            //     use crate::utils::shortcuts::handle_global_shortcut_event;
+
+            //     // Define shortcuts
+            //     let ctrl_q_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyQ);
+            //     let ctrl_shift_m_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyM);
+            //     let ctrl_shift_h_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyH);
+
+            //     // Setup global shortcut plugin with handler
+            //     app_handle.plugin(
+            //         tauri_plugin_global_shortcut::Builder::new().with_handler(move |app, shortcut, event| {
+            //             if let ShortcutState::Pressed = event.state() {
+            //                 handle_global_shortcut_event(app, shortcut.clone());
+            //             }
+            //         })
+            //         .build(),
+            //     )?;
+
+            //     // Register shortcuts
+            //     match app_handle.global_shortcut().register(ctrl_q_shortcut) {
+            //         Ok(_) => info!("Successfully registered Ctrl+Q shortcut"),
+            //         Err(e) => error!("Failed to register Ctrl+Q shortcut: {}", e),
+            //     }
+            //     match app_handle.global_shortcut().register(ctrl_shift_m_shortcut) {
+            //         Ok(_) => info!("Successfully registered Ctrl+Shift+M shortcut"),
+            //         Err(e) => error!("Failed to register Ctrl+Shift+M shortcut: {}", e),
+            //     }
+            //     match app_handle.global_shortcut().register(ctrl_shift_h_shortcut) {
+            //         Ok(_) => info!("Successfully registered Ctrl+Shift+H shortcut"),
+            //         Err(e) => error!("Failed to register Ctrl+Shift+H shortcut: {}", e),
+            //     }
+
+            //     info!("🔗 Global shortcuts registered successfully");
+            // }
+
             init_logging(settings.experimental.debug_logging)
                 .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
@@ -335,7 +309,7 @@ pub fn run() {
             id if id.starts_with("stop_sync-") => handle_stop_sync(app.clone(), id),
             id if id.starts_with("stop_copy-") => handle_stop_copy(app.clone(), id),
             id if id.starts_with("browse-") => handle_browse_remote(app, id),
-            id if id.starts_with("delete-") => handle_delete_remote(app.clone(), id),
+            // id if id.starts_with("delete-") => handle_delete_remote(app.clone(), id),
             _ => {}
         })
         .invoke_handler(tauri::generate_handler![
@@ -349,7 +323,7 @@ pub fn run() {
             provision_rclone,
             get_rclone_info,
             get_rclone_pid,
-            kill_process,
+            kill_process_by_pid,
             // Rclone Command API
             get_all_remote_configs,
             get_core_stats,
@@ -421,6 +395,10 @@ pub fn run() {
             get_job_status,
             stop_job,
             delete_job,
+            // Mount status
+            force_check_mounted_remotes,
+            // Application control
+            handle_shutdown,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

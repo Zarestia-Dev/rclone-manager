@@ -1,4 +1,13 @@
 <div class="home-wrapper">
+  <!-- Shutdown Overlay -->
+  <app-loading-overlay 
+    [isVisible]="isShuttingDown" 
+    title="Shutting Down" 
+    message="Please wait while the application shuts down safely..." 
+    icon="refresh"
+    overlayType="fullscreen">
+  </app-loading-overlay>
+
   @if (showDevelopmentBanner) {
   <mat-toolbar class="development-banner">
     <span class="warning-icon">🚧</span>

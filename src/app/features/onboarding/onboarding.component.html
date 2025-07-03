@@ -3,17 +3,13 @@
   <div class="floating-shape"></div>
 
   <!-- Loading State -->
-  @if (isInitializing) {
-  <div class="loading-container" [@loadingSpinner]>
-    <div class="loading-content">
-      <div class="loading-spinner">
-        <mat-icon svgIcon="refresh" class="animate-spin"></mat-icon>
-      </div>
-      <h2>Initializing RClone Manager</h2>
-      <p>Checking system configuration...</p>
-    </div>
-  </div>
-  }
+  <app-loading-overlay 
+    [isVisible]="isInitializing" 
+    title="Initializing RClone Manager" 
+    message="Checking system configuration..." 
+    icon="refresh"
+    overlayType="container">
+  </app-loading-overlay>
 
   <!-- Main Onboarding Content -->
   @if (!isInitializing && initializationComplete) {

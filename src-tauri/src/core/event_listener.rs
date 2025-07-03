@@ -4,17 +4,10 @@ use tauri::{AppHandle, Emitter, Listener, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
-    RcloneState,
     core::{
         check_binaries::read_rclone_path, lifecycle::shutdown::handle_shutdown,
         tray::tray::update_tray_menu,
-    },
-    rclone::api::{
-        api_command::set_bandwidth_limit,
-        engine::ENGINE,
-        state::{CACHE, ENGINE_STATE},
-    },
-    utils::{builder::setup_tray, log::update_log_level},
+    }, rclone::{commands::set_bandwidth_limit, engine::ENGINE, state::{CACHE, ENGINE_STATE}}, utils::{builder::setup_tray, log::update_log_level}, RcloneState
 };
 
 mod events {
@@ -328,10 +321,10 @@ fn handle_settings_changed(app: &AppHandle) {
                         let app_handle_clone = app_handle.clone();
                         tauri::async_runtime::spawn_blocking(move || {
                             if let Ok(mut engine) = ENGINE.lock() {
-                                if let Err(e) = engine.stop() {
+                                if let Err(e) = crate::rclone::engine::lifecycle::stop(&mut engine) {
                                     error!("Failed to stop Rclone process: {}", e);
                                 }
-                                engine.start(&app_handle_clone);
+                                crate::rclone::engine::lifecycle::start(&mut engine, &app_handle_clone);
                             }
                         });
                     }

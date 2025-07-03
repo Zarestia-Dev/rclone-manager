@@ -2,10 +2,8 @@ use log::{debug, error, info};
 use tauri::{AppHandle, Manager, Runtime};
 use tokio::join;
 
-use crate::rclone::api::{
-    api_command::{mount_remote, start_copy, start_sync},
-    state::{get_cached_remotes, get_settings},
-};
+use crate::rclone::{commands::{mount_remote, start_copy, start_sync}, state::{get_cached_remotes, get_settings, start_mounted_remote_watcher}};
+
 
 /// Main entry point for handling startup tasks.
 pub async fn handle_startup(app_handle: AppHandle) {
@@ -24,6 +22,10 @@ pub async fn handle_startup(app_handle: AppHandle) {
             handle_remote_startup(remote.to_string(), app_handle.clone()).await;
         }
     }
+
+    // Start the mounted remote watcher for continuous monitoring
+    info!("🔍 Starting mounted remote watcher...");
+    tokio::spawn(start_mounted_remote_watcher(app_handle.clone()));
 }
 
 /// Fetches the list of available remotes.

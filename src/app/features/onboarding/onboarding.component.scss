@@ -1,4 +1,3 @@
-// GNOME-inspired Onboarding Styles
 :host {
   --icon-size: 96px;
   --indicator-size: 8px;
@@ -42,60 +41,6 @@
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
     overflow: hidden;
-  }
-}
-
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  max-width: 600px;
-  height: 400px;
-
-  .loading-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 24px;
-    text-align: center;
-
-    .loading-spinner {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: linear-gradient(
-        135deg,
-        rgba(var(--primary-color-rgb), 0.1) 0%,
-        rgba(var(--accent-color-rgb), 0.1) 100%
-      );
-      border: 2px solid rgba(var(--primary-color-rgb), 0.2);
-
-      mat-icon {
-        font-size: 2rem;
-        width: 32px;
-        height: 32px;
-        color: var(--primary-color);
-      }
-    }
-
-    h2 {
-      margin: 0;
-      font-size: 1.5rem;
-      font-weight: 500;
-      color: var(--app-text-color);
-      letter-spacing: -0.025em;
-    }
-
-    p {
-      margin: 0;
-      font-size: 1rem;
-      color: var(--secondary-text-color);
-      opacity: 0.8;
-    }
   }
 }
 

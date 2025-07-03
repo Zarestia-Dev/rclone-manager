@@ -16,6 +16,7 @@ import { SystemInfoService } from "./services/system/system-info.service";
 import { AppTab } from "./shared/components/types";
 import { InstallationService } from "./services/settings/installation.service";
 import { RepairSheetComponent } from "./features/components/repair-sheet/repair-sheet.component";
+import { ShortcutHandlerDirective } from "./shared/directives/shortcut-handler.directive";
 
 @Component({
   selector: "app-root",
@@ -27,6 +28,7 @@ import { RepairSheetComponent } from "./features/components/repair-sheet/repair-
     MatBottomSheetModule,
     TabsButtonsComponent,
     HomeComponent,
+    ShortcutHandlerDirective,
   ],
   templateUrl: "./app.component.html",
   styleUrl: "./app.component.scss",

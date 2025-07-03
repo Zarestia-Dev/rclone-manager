@@ -1,0 +1,117 @@
+// Loading Overlay Component Styles
+.loading-overlay {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+
+  &.container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(
+        circle at 20% 50%,
+        rgba(var(--primary-color-rgb), 0.5) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 80% 20%,
+        rgba(var(--accent-color-rgb), 0.5) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 40% 80%,
+        rgba(var(--primary-color-rgb), 0.5) 0%,
+        transparent 50%
+      ),
+      linear-gradient(
+        135deg,
+        rgba(var(--app-background-rgb), 0.9) 0%,
+        rgba(var(--secondary-background-rgb), 0.9) 100%
+      );
+    backdrop-filter: blur(4px);
+  }
+
+  .loading-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    text-align: center;
+    padding: 32px;
+    background: var(--app-background);
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+    max-width: 400px;
+    width: 90%;
+
+    .loading-spinner {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(
+        135deg,
+        rgba(var(--primary-color-rgb), 0.1) 0%,
+        rgba(var(--accent-color-rgb), 0.1) 100%
+      );
+      border: 2px solid rgba(var(--primary-color-rgb), 0.2);
+
+      mat-icon {
+        font-size: 2rem;
+        width: 32px;
+        height: 32px;
+        color: var(--primary-color);
+      }
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 500;
+      color: var(--app-text-color);
+      letter-spacing: -0.025em;
+    }
+
+    p {
+      margin: 0;
+      font-size: 1rem;
+      color: var(--secondary-text-color);
+      opacity: 0.8;
+      max-width: 300px;
+      line-height: 1.5;
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .loading-overlay .loading-content {
+    padding: 24px;
+    margin-inline: 16px;
+
+    h2 {
+      font-size: 1.25rem;
+    }
+
+    p {
+      font-size: 0.9rem;
+    }
+
+    .loading-spinner {
+      width: 56px;
+      height: 56px;
+
+      mat-icon {
+        font-size: 1.75rem;
+        width: 28px;
+        height: 28px;
+      }
+    }
+  }
+}

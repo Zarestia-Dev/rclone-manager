@@ -18,6 +18,7 @@ import { AnimationsService } from "../../services/core/animations.service";
 import { SystemInfoService } from "../../services/system/system-info.service";
 import { InstallationService } from "../../services/settings/installation.service";
 import { FileSystemService } from "../../services/file-operations/file-system.service";
+import { LoadingOverlayComponent } from "../../shared/components/loading-overlay/loading-overlay.component";
 
 @Component({
   selector: "app-onboarding",
@@ -32,6 +33,7 @@ import { FileSystemService } from "../../services/file-operations/file-system.se
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
+    LoadingOverlayComponent,
   ],
   animations: [
     AnimationsService.getAnimations(

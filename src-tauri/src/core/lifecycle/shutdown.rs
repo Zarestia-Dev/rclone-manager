@@ -2,20 +2,20 @@ use log::{error, info, warn};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::task::spawn_blocking;
 
-use crate::rclone::api::{
-        api_command::{stop_job, unmount_all_remotes},
-        engine::ENGINE,
-        state::get_active_jobs,
-    };
+use crate::rclone::{
+    commands::{stop_job, unmount_all_remotes},
+    engine::ENGINE,
+    state::{get_active_jobs, stop_mounted_remote_watcher},
+};
+// use crate::utils::shortcuts::unregister_global_shortcuts;
 
 /// Main entry point for handling shutdown tasks
+#[tauri::command]
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("🔴 Beginning shutdown sequence...");
-
-    // Notify UI that shutdown is starting
-    if let Err(e) = app_handle.emit("shutdown_started", ()) {
-        error!("Failed to emit shutdown_started event: {}", e);
-    }
+    app_handle.emit("shutdown_sequence", ()).unwrap_or_else(|e| {
+        error!("Failed to emit shutdown_sequence event: {}", e);
+    });
 
     // Get active jobs before shutdown
     let active_jobs = match get_active_jobs().await {
@@ -30,10 +30,10 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     if !active_jobs.is_empty() {
         let job_count = active_jobs.len();
         info!("⚠️ Stopping {} active jobs during shutdown", job_count);
-        
+
         if let Err(e) = app_handle.emit(
-            "shutdown_jobs_notification", 
-            format!("Stopping {} active jobs", job_count)
+            "shutdown_jobs_notification",
+            format!("Stopping {} active jobs", job_count),
         ) {
             error!("Failed to emit jobs notification: {}", e);
         }
@@ -48,6 +48,19 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         ),
         stop_all_jobs(app_handle.clone())
     );
+
+    // Stop the mounted remote watcher
+    info!("🔍 Stopping mounted remote watcher...");
+    stop_mounted_remote_watcher();
+
+    // // Unregister global shortcuts
+    // #[cfg(desktop)]
+    // {
+    //     info!("⌨️ Unregistering global shortcuts...");
+    //     if let Err(e) = unregister_global_shortcuts(&app_handle) {
+    //         error!("Failed to unregister global shortcuts: {}", e);
+    //     }
+    // }
 
     // Handle unmount results
     match unmount_result {

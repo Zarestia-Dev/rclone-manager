@@ -1,4 +1,4 @@
-import { Component, HostListener, ViewChild } from "@angular/core";
+import { Component, HostListener, ViewChild, OnInit } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MatButtonModule } from "@angular/material/button";
 import { MatDialogRef } from "@angular/material/dialog";
@@ -26,29 +26,24 @@ import { AnimationsService } from "../../../../services/core/animations.service"
     AnimationsService.slideToggle(),
   ],
 })
-export class KeyboardShortcutsModalComponent {
+export class KeyboardShortcutsModalComponent implements OnInit {
   searchText = "";
   searchVisible = false; // Controls the visibility of search field
   
   @ViewChild(SearchContainerComponent) searchContainer!: SearchContainerComponent;
   
+  // Static list of shortcuts - much simpler than using a service
   shortcuts = [
-    { keys: "Ctrl + ,", description: "Open Preferences" },
-    { keys: "Ctrl + ?", description: "Show Keyboard Shortcuts" },
-    { keys: "Ctrl + Q", description: "Quit Application" },
-    { keys: "Ctrl + W", description: "Close Window" },
-    { keys: "Ctrl + F", description: "Toggle Search Field" },
-    { keys: "Ctrl + N", description: "Create New Remote (Detailed)" },
-    { keys: "Ctrl + R", description: "Create New Remote (Quick)" },
-    { keys: "Ctrl + O", description: "Open Remote Browser" },
-    { keys: "Ctrl + S", description: "Load Configuration" },
-    { keys: "Ctrl + E", description: "Export Configuration" },
-    { keys: "Ctrl + L", description: "View Logs" },
-    { keys: "Ctrl + T", description: "Toggle Terminal" },
-    { keys: "Ctrl + D", description: "Duplicate Remote" },
-    { keys: "Delete", description: "Delete Selected Remote" },
-    { keys: "Escape", description: "Close Dialog/Cancel Action" },
-    { keys: "Enter", description: "Confirm Action" }
+    { keys: "Ctrl + Q", description: "Quit Application", category: "Global" },
+    { keys: "Ctrl + ?", description: "Show Keyboard Shortcuts", category: "Application" },
+    { keys: "Ctrl + ,", description: "Open Preferences", category: "Application" },
+    { keys: "Ctrl + Shift + M", description: "Force Check Mounted Remotes", category: "Remote Management" },
+    { keys: "Ctrl + N", description: "Create New Remote (Detailed)", category: "Remote Management" },
+    { keys: "Ctrl + R", description: "Create New Remote (Quick)", category: "Remote Management" },
+    { keys: "Ctrl + I", description: "Load Configuration", category: "File Operations" },
+    { keys: "Ctrl + E", description: "Export Configuration", category: "File Operations" },
+    { keys: "Ctrl + F", description: "Toggle Search Field", category: "Navigation" },
+    { keys: "Escape", description: "Close Dialog/Cancel Action", category: "Navigation" },
   ];
 
   filteredShortcuts = [...this.shortcuts];
@@ -57,12 +52,16 @@ export class KeyboardShortcutsModalComponent {
     private dialogRef: MatDialogRef<KeyboardShortcutsModalComponent>
   ) {}
 
+  ngOnInit(): void {
+    // Nothing to do - shortcuts are static
+  }
+
   @HostListener("document:keydown.escape", ["$event"])
   close(event?: KeyboardEvent) {
     this.dialogRef.close();
   }
 
-  @HostListener("document:keydown.f3", ["$event"])
+  @HostListener('document:keydown.control.f', ['$event'])
   onF3(event: KeyboardEvent) {
     event.preventDefault();
     this.toggleSearch();

@@ -1,5 +1,12 @@
 import { CommonModule } from "@angular/common";
-import { Component, EventEmitter, Input, Output } from "@angular/core";
+import {
+  Component,
+  EventEmitter,
+  HostListener,
+  Input,
+  Output,
+  ViewChild,
+} from "@angular/core";
 import { MatCardModule } from "@angular/material/card";
 import { MatIconModule } from "@angular/material/icon";
 import { MatSidenavModule } from "@angular/material/sidenav";
@@ -31,6 +38,8 @@ export class SidebarComponent {
 
   searchTerm = "";
   searchVisible: boolean = false;
+  @ViewChild(SearchContainerComponent)
+  searchContainer!: SearchContainerComponent;
 
   onSearchTextChange(searchText: string) {
     this.searchTerm = searchText.trim().toLowerCase();
@@ -50,7 +59,26 @@ export class SidebarComponent {
     this.remoteSelected.emit(remote);
   }
 
+  @HostListener("document:keydown.control.f", ["$event"])
+  onControlF(event: KeyboardEvent) {
+    event.preventDefault();
+    this.toggleSearch();
+    if (this.searchVisible && this.searchContainer) {
+      this.searchContainer.focus();
+    }
+  }
+
   toggleSearch() {
     this.searchVisible = !this.searchVisible;
+    if (!this.searchVisible) {
+      this.clearSearch();
+    }
+  }
+
+  clearSearch() {
+    this.searchTerm = "";
+    if (this.searchContainer) {
+      this.searchContainer.clear();
+    }
   }
 }

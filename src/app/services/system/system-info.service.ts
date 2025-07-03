@@ -31,7 +31,7 @@ export class SystemInfoService extends TauriBaseService {
    * Kill a process by PID
    */
   async killProcess(pid: number): Promise<void> {
-    return this.invokeCommand('kill_process', { pid });
+    return this.invokeCommand('kill_process_by_pid', { pid });
   }
 
   /**
