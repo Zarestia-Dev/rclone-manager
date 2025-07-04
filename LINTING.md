@@ -5,21 +5,25 @@ This project uses a comprehensive linting and formatting setup to maintain code 
 ## Tools Used
 
 ### TypeScript/Angular
+
 - **ESLint**: Linting for TypeScript and Angular code
 - **Prettier**: Code formatting
 - **Angular ESLint**: Angular-specific linting rules
 
 ### Rust
+
 - **Clippy**: Official Rust linter
 - **Rustfmt**: Official Rust code formatter
 
 ### Git Hooks
+
 - **Husky**: Git hooks management
 - **lint-staged**: Run linters on staged files
 
 ## Available Scripts
 
 ### Frontend (Angular/TypeScript)
+
 ```bash
 npm run lint          # Run ESLint
 npm run lint:fix      # Run ESLint with auto-fix
@@ -28,6 +32,7 @@ npm run format:check  # Check if code is formatted
 ```
 
 ### Backend (Rust)
+
 ```bash
 npm run lint:rust        # Run Clippy
 npm run format:rust      # Format Rust code
@@ -35,6 +40,7 @@ npm run format:rust:check # Check Rust formatting
 ```
 
 ### Combined
+
 ```bash
 npm run lint:all  # Run all linters and formatters (check only)
 npm run fix:all   # Run all linters and formatters with auto-fix
@@ -43,6 +49,7 @@ npm run fix:all   # Run all linters and formatters with auto-fix
 ## Pre-commit Hooks
 
 The project automatically runs linting and formatting on staged files before each commit. This ensures:
+
 - Code quality standards are maintained
 - Consistent formatting across the codebase
 - Early detection of potential issues
@@ -59,6 +66,7 @@ The project automatically runs linting and formatting on staged files before eac
 ## VS Code Integration
 
 The project includes VS Code settings for:
+
 - Format on save
 - ESLint integration
 - Rust analyzer configuration
