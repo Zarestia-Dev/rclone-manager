@@ -1,0 +1,24 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": ["javascript", "typescript", "html"],
+  "typescript.preferences.quoteStyle": "single",
+  "html.format.enable": false,
+  "javascript.format.enable": false,
+  "typescript.format.enable": false,
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer",
+    "editor.formatOnSave": true
+  },
+  "rust-analyzer.rustfmt.extraArgs": ["+nightly"],
+  "rust-analyzer.checkOnSave.command": "clippy",
+  "files.associations": {
+    "*.rs": "rust",
+    "Cargo.toml": "toml",
+    "rustfmt.toml": "toml",
+    ".clippy.toml": "toml"
+  }
+}

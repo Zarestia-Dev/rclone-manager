@@ -1,0 +1,24 @@
+# Clippy configuration for Rust
+# See: https://rust-lang.github.io/rust-clippy/stable/index.html
+
+# Set thresholds for various lints
+cognitive-complexity-threshold = 30
+too-many-arguments-threshold = 7
+type-complexity-threshold = 250
+trivial-copy-size-limit = 128
+single-char-binding-names-threshold = 4
+too-many-lines-threshold = 100
+
+# Disallow certain unsafe patterns
+disallowed-methods = [
+    "std::env::set_var",
+    "std::ptr::write",
+    "std::mem::forget",
+]
+
+# Allow some patterns that might be overly restrictive
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+allow-dbg-in-tests = true
