@@ -3,17 +3,11 @@ import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { JobInfo } from '../../shared/components/types';
 
-export interface SyncOptions {
-  [key: string]: any;
-}
+export type SyncOptions = Record<string, any>;
 
-export interface CopyOptions {
-  [key: string]: any;
-}
+export type CopyOptions = Record<string, any>;
 
-export interface FilterOptions {
-  [key: string]: any;
-}
+export type FilterOptions = Record<string, any>;
 
 /**
  * Service for managing rclone jobs (sync, copy, etc.)

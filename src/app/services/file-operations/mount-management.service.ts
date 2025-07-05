@@ -3,13 +3,9 @@ import { BehaviorSubject } from "rxjs";
 import { TauriBaseService } from "../core/tauri-base.service";
 import { NotificationService } from "../ui/notification.service";
 
-export interface MountOptions {
-  [key: string]: string | number | boolean;
-}
+export type MountOptions = Record<string, string | number | boolean>;
 
-export interface VfsOptions {
-  [key: string]: string | number | boolean;
-}
+export type VfsOptions = Record<string, string | number | boolean>;
 
 /**
  * Service for managing rclone mounts

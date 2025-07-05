@@ -21,7 +21,7 @@ export class NotificationService {
   /**
    * Show success message
    */
-  showSuccess(message: string, action: string = 'OK', duration: number = 3000): void {
+  showSuccess(message: string, action = 'OK', duration = 3000): void {
     this.snackBar.open(message, action, {
       duration,
       panelClass: ['success-snackbar']
@@ -31,7 +31,7 @@ export class NotificationService {
   /**
    * Show error message
    */
-  showError(message: string, action: string = 'Close', duration: number = 5000): void {
+  showError(message: string, action = 'Close', duration = 5000): void {
     this.snackBar.open(message, action, {
       duration,
       panelClass: ['error-snackbar']
@@ -41,7 +41,7 @@ export class NotificationService {
   /**
    * Show info message
    */
-  showInfo(message: string, action: string = 'OK', duration: number = 3000): void {
+  showInfo(message: string, action = 'OK', duration = 3000): void {
     this.snackBar.open(message, action, {
       duration,
       panelClass: ['info-snackbar']
@@ -51,7 +51,7 @@ export class NotificationService {
   /**
    * Show warning message
    */
-  showWarning(message: string, action: string = 'OK', duration: number = 4000): void {
+  showWarning(message: string, action = 'OK', duration = 4000): void {
     this.snackBar.open(message, action, {
       duration,
       panelClass: ['warning-snackbar']
@@ -61,7 +61,7 @@ export class NotificationService {
   /**
    * Show a generic snackbar (for backward compatibility)
    */
-  openSnackBar(message: string, action: string, duration: number = 2000): void {
+  openSnackBar(message: string, action: string, duration = 2000): void {
     this.snackBar.open(message, action, { duration });
   }
 
@@ -71,8 +71,8 @@ export class NotificationService {
   confirmModal(
     title: string,
     message: string,
-    confirmText: string = 'Yes',
-    cancelText: string = 'No'
+    confirmText = 'Yes',
+    cancelText = 'No'
   ): Promise<boolean> {
     const dialogData: ConfirmDialogData = {
       title,
@@ -97,7 +97,7 @@ export class NotificationService {
   /**
    * Show alert modal
    */
-  alertModal(title: string, message: string, buttonText: string = 'OK'): Promise<void> {
+  alertModal(title: string, message: string, buttonText = 'OK'): Promise<void> {
     const dialogData: ConfirmDialogData = {
       title,
       message,

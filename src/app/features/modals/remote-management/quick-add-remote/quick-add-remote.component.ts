@@ -207,7 +207,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     this.quickAddForm.patchValue({ remoteName: newName });
   }
 
-  async selectFolder(fieldName: string = 'mountPath'): Promise<void> {
+  async selectFolder(fieldName = 'mountPath'): Promise<void> {
     try {
       const selectedPath = await this.fileSystemService.selectFolder(true);
       if (selectedPath) {

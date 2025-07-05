@@ -25,7 +25,7 @@ import { FileSystemService } from "../../../services/file-operations/file-system
 export class InputModalComponent {
   formData: Record<string, string> = {};
   fieldErrors: Record<string, string> = {};
-  showPassword: boolean = false;
+  showPassword = false;
 
   constructor(
     public dialogRef: MatDialogRef<InputModalComponent>,

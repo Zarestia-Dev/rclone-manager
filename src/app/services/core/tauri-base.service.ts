@@ -46,7 +46,7 @@ export class TauriBaseService {
    * Batch invoke multiple commands
    */
   protected async batchInvoke<T>(
-    commands: Array<{ command: string; args?: Record<string, any> }>
+    commands: { command: string; args?: Record<string, any> }[]
   ): Promise<T[]> {
     const promises = commands.map(({ command, args }) => 
       this.invokeCommand<T>(command, args)

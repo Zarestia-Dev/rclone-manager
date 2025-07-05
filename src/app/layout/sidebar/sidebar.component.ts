@@ -37,7 +37,7 @@ export class SidebarComponent {
   @Output() remoteSelected = new EventEmitter<Remote>();
 
   searchTerm = "";
-  searchVisible: boolean = false;
+  searchVisible = false;
   @ViewChild(SearchContainerComponent)
   searchContainer!: SearchContainerComponent;
 

@@ -99,14 +99,14 @@ export class SettingsPanelComponent {
     'password', 'token', 'key', 'secret', 'auth', 'credential'
   ];
 
-  getSettingsEntries(): Array<{key: string, value: any}> {
+  getSettingsEntries(): {key: string, value: any}[] {
     return Object.entries(this.config.settings || {}).map(([key, value]) => ({
       key,
       value
     }));
   }
 
-  getObjectEntries(obj: any): Array<{key: string, value: any}> {
+  getObjectEntries(obj: any): {key: string, value: any}[] {
     return Object.entries(obj || {}).map(([key, value]) => ({
       key,
       value

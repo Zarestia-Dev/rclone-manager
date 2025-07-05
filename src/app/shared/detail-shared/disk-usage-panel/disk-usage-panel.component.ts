@@ -69,7 +69,7 @@ export interface DiskUsageConfig {
 export class DiskUsagePanelComponent {
   @Input() config!: DiskUsageConfig;
 
-  getDiskBarStyle(): { [key: string]: string } {
+  getDiskBarStyle(): Record<string, string> {
     if (this.config.mounted === "error") {
       return this.getErrorStyle();
     }
@@ -96,7 +96,7 @@ export class DiskUsagePanelComponent {
     return total > 0 ? (used / total) * 100 : 0;
   }
 
-  private getErrorStyle(): { [key: string]: string } {
+  private getErrorStyle(): Record<string, string> {
     return {
       backgroundColor: "var(--red)",
       border: "3px solid transparent",
@@ -104,7 +104,7 @@ export class DiskUsagePanelComponent {
     };
   }
 
-  private getUnsupportedStyle(): { [key: string]: string } {
+  private getUnsupportedStyle(): Record<string, string> {
     return {
       backgroundColor: "var(--yellow)",
       border: "3px solid transparent",
@@ -112,7 +112,7 @@ export class DiskUsagePanelComponent {
     };
   }
 
-  private getLoadingStyle(): { [key: string]: string } {
+  private getLoadingStyle(): Record<string, string> {
     return {
       backgroundColor: "var(--orange)",
       border: "3px solid transparent",
@@ -124,7 +124,7 @@ export class DiskUsagePanelComponent {
     };
   }
 
-  private getMountedStyle(): { [key: string]: string } {
+  private getMountedStyle(): Record<string, string> {
     return {
       backgroundColor: "#cecece",
       border: "3px solid var(--light-blue)",
@@ -133,7 +133,7 @@ export class DiskUsagePanelComponent {
   }
 
   private parseSize(size: string): number {
-    const units: { [key: string]: number } = {
+    const units: Record<string, number> = {
       B: 1,
       KB: 1024,
       MB: 1024 ** 2,

@@ -47,7 +47,7 @@ export class RemoteConfigService {
 
   private getInitialValueForField(field: RemoteField): any {
     // Use field.Default if defined, otherwise field.Value, otherwise type default
-    let value =
+    const value =
       field.Default !== undefined
         ? field.Default
         : field.Value !== undefined

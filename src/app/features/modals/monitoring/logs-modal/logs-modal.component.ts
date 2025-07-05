@@ -48,9 +48,9 @@ import { LoggingService } from "../../../../services/system/logging.service";
 export class LogsModalComponent implements OnInit, OnDestroy {
   logs: RemoteLogEntry[] = [];
   loading = false;
-  selectedLevel: string = "";
-  searchText: string = "";
-  selectedRemote: string = "";
+  selectedLevel = "";
+  searchText = "";
+  selectedRemote = "";
   autoScroll = true;
   expandedLogs = new Set<string>();
 

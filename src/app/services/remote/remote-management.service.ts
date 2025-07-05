@@ -7,9 +7,7 @@ export interface RemoteProvider {
   description: string;
 }
 
-export interface RemoteConfig {
-  [key: string]: any;
-}
+export type RemoteConfig = Record<string, any>;
 
 /**
  * Service for managing rclone remotes
@@ -26,9 +24,7 @@ export class RemoteManagementService extends TauriBaseService {
    * Get all available remote types
    */
   async getRemoteTypes(): Promise<RemoteProvider[]> {
-    const response = await this.invokeCommand<{
-      [key: string]: { Name: string; Description: string }[];
-    }>("get_remote_types");
+    const response = await this.invokeCommand<Record<string, { Name: string; Description: string }[]>>("get_remote_types");
 
     return Object.values(response)
       .flat()
@@ -42,9 +38,7 @@ export class RemoteManagementService extends TauriBaseService {
    * Get OAuth-supported remote types
    */
   async getOAuthSupportedRemotes(): Promise<RemoteProvider[]> {
-    const response = await this.invokeCommand<{
-      [key: string]: { Name: string; Description: string }[];
-    }>("get_oauth_supported_remotes");
+    const response = await this.invokeCommand<Record<string, { Name: string; Description: string }[]>>("get_oauth_supported_remotes");
 
     return Object.values(response)
       .flat()

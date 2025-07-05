@@ -126,9 +126,7 @@ export interface Remote {
   };
 }
 
-export interface RemoteSettings {
-  [key: string]: { [key: string]: any };
-}
+export type RemoteSettings = Record<string, Record<string, any>>;
 
 export interface RemoteSettingsSection {
   key: string;
@@ -141,9 +139,7 @@ export interface MountedRemote {
   mount_point: string;
 }
 
-export interface RemoteActionProgress {
-  [remoteName: string]: RemoteAction;
-}
+export type RemoteActionProgress = Record<string, RemoteAction>;
 
 export interface ModalSize {
   width: string;
@@ -261,10 +257,10 @@ export const SENSITIVE_KEYS = [
   "api_key",
 ];
 
-export type InputField = {
+export interface InputField {
   name: string;
   label: string;
   type: "text" | "password" | "number" | "select" | "folder";
   required: boolean;
   options?: string[]; // for select type
-};
+}

@@ -34,8 +34,8 @@ import { ShortcutHandlerDirective } from "./shared/directives/shortcut-handler.d
   styleUrl: "./app.component.scss",
 })
 export class AppComponent implements OnInit, OnDestroy {
-  completedOnboarding: boolean = true;
-  alreadyReported: boolean = false;
+  completedOnboarding = true;
+  alreadyReported = false;
   currentTab: AppTab = "general";
   private bottomSheet = inject(MatBottomSheet);
 

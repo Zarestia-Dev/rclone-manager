@@ -1,4 +1,4 @@
-import { Component, HostListener, Inject } from "@angular/core";
+import { Component, HostListener, Inject, OnInit } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from "@angular/material/dialog";
 import { MatFormFieldModule } from "@angular/material/form-field";
@@ -33,7 +33,7 @@ import { ExportModalData } from "../../../../shared/components/types";
   templateUrl: "./export-modal.component.html",
   styleUrl: "./export-modal.component.scss",
 })
-export class ExportModalComponent {
+export class ExportModalComponent implements OnInit {
   // Form data
   exportPath = "";
   selectedOption = "all"; // Default to export all
@@ -48,7 +48,7 @@ export class ExportModalComponent {
   sevenZipSupported = false;
   remotes: string[] = [];
 
-  exportOptions: Array<{ value: string; label: string }> = [
+  exportOptions: { value: string; label: string }[] = [
     { value: "all", label: "📦 Export All (Settings + Remotes + rclone.conf)" },
     { value: "settings", label: "⚙️ Only App Settings" },
     { value: "remotes", label: "🗂 Only Remotes with rclone.conf" },

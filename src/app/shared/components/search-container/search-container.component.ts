@@ -26,10 +26,10 @@ import { AnimationsService } from '../../../services/core/animations.service';
   styleUrls: ['./search-container.component.scss']
 })
 export class SearchContainerComponent {
-  @Input() visible: boolean = false;
-  @Input() placeholder: string = 'Search...';
-  @Input() ariaLabel: string = 'Search';
-  @Input() searchText: string = '';
+  @Input() visible = false;
+  @Input() placeholder = 'Search...';
+  @Input() ariaLabel = 'Search';
+  @Input() searchText = '';
   
   @Output() searchTextChange = new EventEmitter<string>();
   @Output() visibilityChange = new EventEmitter<boolean>();

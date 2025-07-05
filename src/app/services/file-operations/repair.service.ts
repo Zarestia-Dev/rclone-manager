@@ -121,7 +121,7 @@ export class RepairService extends TauriBaseService {
    * Get repair details for display
    * @param repairType The type of repair
    */
-  getRepairDetails(repairType: string): Array<{icon: string, label: string, value: string}> | null {
+  getRepairDetails(repairType: string): {icon: string, label: string, value: string}[] | null {
     switch (repairType) {
       case 'rclone_path':
         return [

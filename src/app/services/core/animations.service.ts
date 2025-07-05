@@ -9,7 +9,7 @@ export class AnimationsService {
   /**
    * Fade animations
    */
-  static fadeIn(duration: string = '300ms', delay: string = '0ms'): AnimationTriggerMetadata {
+  static fadeIn(duration = '300ms', delay = '0ms'): AnimationTriggerMetadata {
     return trigger('fadeIn', [
       transition(':enter', [
         style({ opacity: 0 }),
@@ -18,7 +18,7 @@ export class AnimationsService {
     ]);
   }
 
-  static fadeOut(duration: string = '300ms'): AnimationTriggerMetadata {
+  static fadeOut(duration = '300ms'): AnimationTriggerMetadata {
     return trigger('fadeOut', [
       transition(':leave', [
         animate(`${duration} ease-in-out`, style({ opacity: 0 }))
@@ -26,7 +26,7 @@ export class AnimationsService {
     ]);
   }
 
-  static fadeInOut(duration: string = '300ms'): AnimationTriggerMetadata {
+  static fadeInOut(duration = '300ms'): AnimationTriggerMetadata {
     return trigger('fadeInOut', [
       transition(':enter', [
         style({ opacity: 0 }),
@@ -41,7 +41,7 @@ export class AnimationsService {
   /**
    * Scale animations
    */
-  static scaleIn(duration: string = '300ms', delay: string = '0ms'): AnimationTriggerMetadata {
+  static scaleIn(duration = '300ms', delay = '0ms'): AnimationTriggerMetadata {
     return trigger('scaleIn', [
       transition(':enter', [
         style({ opacity: 0, transform: 'scale(0.8)' }),
@@ -51,7 +51,7 @@ export class AnimationsService {
     ]);
   }
 
-  static scaleOut(duration: string = '200ms'): AnimationTriggerMetadata {
+  static scaleOut(duration = '200ms'): AnimationTriggerMetadata {
     return trigger('scaleOut', [
       transition(':leave', [
         animate(`${duration} cubic-bezier(0.55, 0.06, 0.68, 0.19)`, 
@@ -61,8 +61,8 @@ export class AnimationsService {
   }
 
   static scaleInOut(
-    enterDuration: string = '300ms', 
-    leaveDuration: string = '200ms'
+    enterDuration = '300ms', 
+    leaveDuration = '200ms'
   ): AnimationTriggerMetadata {
     return trigger('scaleInOut', [
       transition(':enter', [
@@ -80,7 +80,7 @@ export class AnimationsService {
   /**
    * Slide animations
    */
-  static slideInFromTop(duration: string = '300ms'): AnimationTriggerMetadata {
+  static slideInFromTop(duration = '300ms'): AnimationTriggerMetadata {
     return trigger('slideInFromTop', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateY(-20px)' }),
@@ -90,7 +90,7 @@ export class AnimationsService {
     ]);
   }
 
-  static slideInFromBottom(duration: string = '300ms'): AnimationTriggerMetadata {
+  static slideInFromBottom(duration = '300ms'): AnimationTriggerMetadata {
     return trigger('slideInFromBottom', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateY(20px)' }),
@@ -100,7 +100,7 @@ export class AnimationsService {
     ]);
   }
 
-  static slideInFromLeft(duration: string = '300ms'): AnimationTriggerMetadata {
+  static slideInFromLeft(duration = '300ms'): AnimationTriggerMetadata {
     return trigger('slideInFromLeft', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateX(-20px)' }),
@@ -110,7 +110,7 @@ export class AnimationsService {
     ]);
   }
 
-  static slideInFromRight(duration: string = '300ms'): AnimationTriggerMetadata {
+  static slideInFromRight(duration = '300ms'): AnimationTriggerMetadata {
     return trigger('slideInFromRight', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateX(20px)' }),
@@ -120,7 +120,7 @@ export class AnimationsService {
     ]);
   }
 
-  static slideOutToRight(duration: string = '200ms'): AnimationTriggerMetadata {
+  static slideOutToRight(duration = '200ms'): AnimationTriggerMetadata {
     return trigger('slideOutToRight', [
       transition(':leave', [
         animate(`${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
@@ -130,8 +130,8 @@ export class AnimationsService {
   }
 
   static slideInOut(
-    enterDuration: string = '300ms', 
-    leaveDuration: string = '200ms'
+    enterDuration = '300ms', 
+    leaveDuration = '200ms'
   ): AnimationTriggerMetadata {
     return trigger('slideInOut', [
       transition(':enter', [
@@ -149,7 +149,7 @@ export class AnimationsService {
   /**
    * Slide toggle animations (for collapsible content)
    */
-  static slideToggle(duration: string = '300ms'): AnimationTriggerMetadata {
+  static slideToggle(duration = '300ms'): AnimationTriggerMetadata {
     return trigger('slideToggle', [
       state('hidden', style({ 
         height: '0px', 
@@ -171,8 +171,8 @@ export class AnimationsService {
    * Overlay animations
    */
   static slideOverlay(
-    enterDuration: string = '200ms', 
-    leaveDuration: string = '200ms'
+    enterDuration = '200ms', 
+    leaveDuration = '200ms'
   ): AnimationTriggerMetadata {
     return trigger('slideOverlay', [
       transition(':enter', [
@@ -191,8 +191,8 @@ export class AnimationsService {
    * Complex entrance animations
    */
   static onboardingEntrance(
-    enterDuration: string = '600ms', 
-    leaveDuration: string = '400ms'
+    enterDuration = '600ms', 
+    leaveDuration = '400ms'
   ): AnimationTriggerMetadata {
     return trigger('onboardingEntrance', [
       transition(':enter', [
@@ -208,8 +208,8 @@ export class AnimationsService {
   }
 
   static contentFadeIn(
-    duration: string = '500ms', 
-    delay: string = '200ms'
+    duration = '500ms', 
+    delay = '200ms'
   ): AnimationTriggerMetadata {
     return trigger('contentFadeIn', [
       transition(':enter', [
@@ -224,8 +224,8 @@ export class AnimationsService {
    * Loading spinner animation
    */
   static loadingSpinner(
-    enterDuration: string = '300ms', 
-    leaveDuration: string = '200ms'
+    enterDuration = '300ms', 
+    leaveDuration = '200ms'
   ): AnimationTriggerMetadata {
     return trigger('loadingSpinner', [
       transition(':enter', [
@@ -243,7 +243,7 @@ export class AnimationsService {
   /**
    * Complex slide animation for multi-step components
    */
-  static slideAnimation(duration: string = '300ms'): AnimationTriggerMetadata {
+  static slideAnimation(duration = '300ms'): AnimationTriggerMetadata {
     return trigger('slideAnimation', [
       transition('* => *', [
         query(':leave', [style({ position: 'absolute', width: '100%' })], {
@@ -280,8 +280,8 @@ export class AnimationsService {
    * Enhanced fade in/out with slight vertical movement
    */
   static fadeInOutWithMove(
-    enterDuration: string = '300ms',
-    leaveDuration: string = '200ms'
+    enterDuration = '300ms',
+    leaveDuration = '200ms'
   ): AnimationTriggerMetadata {
     return trigger('fadeInOut', [
       transition(':enter', [

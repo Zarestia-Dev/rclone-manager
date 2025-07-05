@@ -37,7 +37,7 @@ fn parse_payload<T: for<'de> serde::Deserialize<'de>>(payload: Option<&str>) -> 
 async fn refresh_and_update_tray(app: AppHandle, max_items: usize) {
     CACHE.refresh_all(app.clone()).await;
     if let Err(e) = update_tray_menu(app, max_items).await {
-        error!("Failed to update tray menu: {}", e);
+        error!("Failed to update tray menu: {e}");
     }
 }
 
@@ -68,7 +68,7 @@ fn handle_rclone_api_url_updated(app: &AppHandle) {
             .await;
 
             if let Err(e) = result {
-                error!("Failed to update Rclone API port: {}", e);
+                error!("Failed to update Rclone API port: {e}");
             }
         });
     });

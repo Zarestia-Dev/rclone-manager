@@ -109,7 +109,7 @@ import { TransferFile } from '../../../shared/components/types';
 })
 export class ActiveTransfersTableComponent {
   @Input() transfers: TransferFile[] = [];
-  @Input() operationClass: string = '';
+  @Input() operationClass = '';
 
   displayedColumns: string[] = ['name', 'progress', 'speed', 'eta'];
 

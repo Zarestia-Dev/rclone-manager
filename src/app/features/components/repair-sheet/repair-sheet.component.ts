@@ -46,7 +46,7 @@ export class RepairSheetComponent {
     return this.repairService.getRepairButtonIcon(this.data.type);
   }
 
-  getRepairDetails(): Array<{icon: string, label: string, value: string}> | null {
+  getRepairDetails(): {icon: string, label: string, value: string}[] | null {
     return this.repairService.getRepairDetails(this.data.type);
   }
 

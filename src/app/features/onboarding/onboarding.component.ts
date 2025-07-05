@@ -50,7 +50,7 @@ export class OnboardingComponent implements OnInit {
   @Output() completed = new EventEmitter<void>();
 
   installLocation: "default" | "custom" = "default";
-  customPath: string = "";
+  customPath = "";
   mountPluginInstalled = false;
   downloadingPlugin = false;
   currentCardIndex = 0;
