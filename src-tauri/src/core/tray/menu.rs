@@ -5,7 +5,9 @@ use tauri::{
     AppHandle,
 };
 
-use crate::rclone::state::{get_cached_mounted_remotes, get_cached_remotes, get_settings, JOB_CACHE};
+use crate::rclone::state::{
+    get_cached_mounted_remotes, get_cached_remotes, get_settings, JOB_CACHE,
+};
 
 static OLD_MAX_TRAY_ITEMS: AtomicUsize = AtomicUsize::new(0);
 
@@ -206,8 +208,16 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                 let indicators = format!(
                     "{}{}{}",
                     if is_mounted { "🖴" } else { "" },
-                    if active_sync_job.is_some() { "🔄" } else { "" },
-                    if active_copy_job.is_some() { "📦" } else { "" }
+                    if active_sync_job.is_some() {
+                        "🔄"
+                    } else {
+                        ""
+                    },
+                    if active_copy_job.is_some() {
+                        "📦"
+                    } else {
+                        ""
+                    }
                 );
 
                 let remote_submenu = Submenu::with_items(

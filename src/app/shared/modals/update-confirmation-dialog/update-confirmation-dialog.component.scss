@@ -1,0 +1,184 @@
+@use "../../../styles/shared-modal";
+
+:host {
+  --icon-size: 64px;
+  --icon-size-mobile: 56px;
+}
+
+.update-modal {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 500px;
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  position: relative;
+  padding: var(--modal-padding);
+  gap: var(--content-gap);
+  overflow-y: auto;
+
+  .modal-icon-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-md);
+
+    .modal-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: calc(var(--icon-size) * 1.5);
+      height: calc(var(--icon-size) * 1.5);
+      margin: 0 auto 20px;
+      border-radius: 50%;
+      transition: var(--transition-standard);
+
+      mat-icon {
+        font-size: var(--font-size-2xl);
+        width: var(--icon-size);
+        height: var(--icon-size);
+      }
+
+      &.update {
+        background: rgba(var(--primary-color-rgb), 0.15);
+        border: 2px solid rgba(var(--primary-color-rgb), 0.3);
+        animation: pulseGreen 2s ease-in-out infinite;
+      }
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--app-text-color);
+      text-align: center;
+      margin: 0 0 var(--space-sm) 0;
+      letter-spacing: -0.3px;
+      line-height: 1.3;
+    }
+
+    .modal-message {
+      font-size: var(--font-size-base);
+      font-weight: 400;
+      color: var(--secondary-text-color);
+      line-height: 1.5;
+      max-width: 400px;
+      margin: 0 auto var(--space-lg) auto;
+    }
+  }
+
+  .version-info {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    background: rgba(var(--primary-color-rgb), 0.08);
+    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+    padding: var(--space-md);
+    border-radius: var(--border-radius);
+
+    .version-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .label {
+        font-weight: 500;
+        color: var(--secondary-text-color);
+        font-size: var(--font-size-sm);
+      }
+
+      .version {
+        font-family: var(--font-family-mono);
+        font-size: var(--font-size-sm);
+        padding: var(--space-xxs) var(--space-xs);
+        border-radius: var(--border-radius);
+        font-weight: 500;
+
+        &.current {
+          background: rgba(var(--secondary-text-color-rgb), 0.1);
+          color: var(--secondary-text-color);
+        }
+
+        &.latest {
+          background: rgba(var(--accent-color-rgb), 0.2);
+          color: var(--accent-color);
+          font-weight: 600;
+        }
+      }
+    }
+  }
+
+  .warning-section {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+    background: rgba(var(--warn-color-rgb), 0.08);
+    border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+    border-radius: var(--border-radius);
+
+    p {
+      font-size: var(--font-size-sm);
+      color: var(--secondary-text-color);
+      line-height: 1.4;
+      text-align: left;
+    }
+  }
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--button-gap);
+  padding: var(--space-md);
+  border-top: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+
+  button {
+    transition: var(--transition-standard);
+    min-width: 120px;
+
+    &:hover {
+      transform: translateY(-2px);
+    }
+
+    &.cancel-btn {
+      background: rgba(var(--secondary-text-color-rgb), 0.08);
+      color: var(--app-text-color);
+
+      &:hover {
+        background: rgba(var(--secondary-text-color-rgb), 0.12);
+      }
+    }
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .modal-content .modal-icon-container .modal-icon {
+    width: var(--icon-size-mobile);
+    height: var(--icon-size-mobile);
+
+    mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+    }
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: 12px;
+
+    button {
+      width: 100%;
+      min-width: auto;
+      padding: 14px 24px;
+    }
+  }
+}

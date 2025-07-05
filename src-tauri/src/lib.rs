@@ -1,8 +1,8 @@
 use std::{
     path::PathBuf,
     sync::{
-        Arc,
         atomic::{AtomicBool, Ordering},
+        Arc,
     },
 };
 
@@ -31,13 +31,46 @@ use crate::{
             remote::manager::{delete_remote_settings, get_remote_settings, save_remote_settings},
         },
         tray::actions::{
-            handle_browse_remote, handle_copy_remote, handle_mount_remote,
-            handle_stop_all_jobs, handle_stop_copy, handle_stop_sync, handle_sync_remote,
-            handle_unmount_remote, show_main_window,
+            handle_browse_remote, handle_copy_remote, handle_mount_remote, handle_stop_all_jobs,
+            handle_stop_copy, handle_stop_sync, handle_sync_remote, handle_unmount_remote,
+            show_main_window,
         },
-    }, rclone::{commands::{create_remote, delete_remote, mount_remote, quit_rclone_oauth, set_bandwidth_limit, start_copy, start_sync, stop_job, unmount_all_remotes, unmount_remote, update_remote}, queries::{flags::{get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags, get_sync_flags, get_vfs_flags}, get_all_remote_configs, get_bandwidth_limit, get_completed_transfers, get_core_stats, get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info, get_rclone_pid, get_remote_config, get_remote_config_fields, get_remote_paths, get_remote_types, get_remotes}, state::{clear_remote_logs, delete_job, force_check_mounted_remotes, get_active_jobs, get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status, get_jobs, get_remote_logs, get_settings, CACHE, ENGINE_STATE}    }, utils::{
-        builder::{create_app_window, setup_tray}, file_helper::{get_file_location, get_folder_location, open_in_files}, log::init_logging, network::{check_links, is_network_metered, monitor_network_changes}, process::kill_process_by_pid, rclone::{mount::{check_mount_plugin_installed, install_mount_plugin}, provision::provision_rclone}, types::{AppSettings, RcApiEngine, RcloneState, SettingsState}
-    }
+    },
+    rclone::{
+        commands::{
+            create_remote, delete_remote, mount_remote, quit_rclone_oauth, set_bandwidth_limit,
+            start_copy, start_sync, stop_job, unmount_all_remotes, unmount_remote, update_remote,
+        },
+        queries::{
+            check_rclone_update,
+            flags::{
+                get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags,
+                get_sync_flags, get_vfs_flags,
+            },
+            get_all_remote_configs, get_bandwidth_limit, get_completed_transfers, get_core_stats,
+            get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats,
+            get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info, get_rclone_pid,
+            get_rclone_update_info, get_remote_config, get_remote_config_fields, get_remote_paths,
+            get_remote_types, get_remotes, update_rclone,
+        },
+        state::{
+            clear_remote_logs, delete_job, force_check_mounted_remotes, get_active_jobs,
+            get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status, get_jobs,
+            get_remote_logs, get_settings, CACHE, ENGINE_STATE,
+        },
+    },
+    utils::{
+        builder::{create_app_window, setup_tray},
+        file_helper::{get_file_location, get_folder_location, open_in_files},
+        log::init_logging,
+        network::{check_links, is_network_metered, monitor_network_changes},
+        process::kill_process_by_pid,
+        rclone::{
+            mount::{check_mount_plugin_installed, install_mount_plugin},
+            provision::provision_rclone,
+        },
+        types::{AppSettings, RcApiEngine, RcloneState, SettingsState},
+    },
 };
 
 impl RcloneState {
@@ -154,12 +187,11 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .on_window_event(|window, event| match event {
             WindowEvent::CloseRequested { api, .. } => {
-                if let Err(e) = window.hide() {
-                    error!("Failed to hide window: {e}");
-                }
-
                 let state = window.app_handle().state::<RcloneState>();
                 if *state.tray_enabled.read().unwrap() {
+                    if let Err(e) = window.hide() {
+                        error!("Failed to hide window: {e}");
+                    }
                     api.prevent_close();
                 } else {
                     api.prevent_close();
@@ -184,7 +216,7 @@ pub fn run() {
         })
         .setup(|app| {
             let app_handle = app.handle();
-            let config_dir = setup_config_dir(&app_handle)?;
+            let config_dir = setup_config_dir(app_handle)?;
             let store_path = config_dir.join("settings.json");
 
             let store = Mutex::new(
@@ -214,7 +246,7 @@ pub fn run() {
                 notifications_enabled: Arc::new(std::sync::RwLock::new(
                     settings.general.notifications,
                 )),
-                rclone_path: Arc::new(std::sync::RwLock::new(read_rclone_path(&app_handle))),
+                rclone_path: Arc::new(std::sync::RwLock::new(read_rclone_path(app_handle))),
                 restrict_mode: Arc::new(std::sync::RwLock::new(settings.general.restrict)),
             });
 
@@ -259,7 +291,7 @@ pub fn run() {
             init_logging(settings.experimental.debug_logging)
                 .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
-            init_rclone_state(&app_handle, &settings)
+            init_rclone_state(app_handle, &settings)
                 .map_err(|e| format!("Rclone initialization failed: {e}"))?;
 
             // Async startup
@@ -323,6 +355,9 @@ pub fn run() {
             provision_rclone,
             get_rclone_info,
             get_rclone_pid,
+            check_rclone_update,
+            update_rclone,
+            get_rclone_update_info,
             kill_process_by_pid,
             // Rclone Command API
             get_all_remote_configs,

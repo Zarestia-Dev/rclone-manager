@@ -1,0 +1,72 @@
+<div class="update-status-container">
+  @if (updateStatus.checking) {
+    <div class="status-indicator checking">
+      <mat-spinner
+        diameter="16"
+        strokeWidth="2"
+        matTooltip="Checking for updates..."
+        matTooltipPosition="above"
+      ></mat-spinner>
+    </div>
+  } @else if (updateStatus.updating) {
+    <div class="status-indicator updating">
+      <mat-spinner
+        diameter="16"
+        strokeWidth="2"
+        matTooltip="Updating rclone..."
+        matTooltipPosition="above"
+      ></mat-spinner>
+    </div>
+  } @else if (updateStatus.available && updateStatus.updateInfo) {
+    <div class="status-indicator available">
+      <button
+        mat-icon-button
+        class="update-button"
+        color="primary"
+        (click)="showUpdateDialog()"
+        [matTooltip]="
+          'Update available: ' +
+          updateStatus.updateInfo.current_version_clean +
+          ' → ' +
+          updateStatus.updateInfo.latest_version_clean +
+          '.'
+        "
+        matTooltipPosition="above"
+      >
+        <mat-icon svgIcon="circle-up"></mat-icon>
+      </button>
+    </div>
+  } @else if (updateStatus.error) {
+    <div class="status-indicator error">
+      <button
+        mat-icon-button
+        color="warn"
+        class="error-button"
+        (click)="checkForUpdates()"
+        [matTooltip]="'Error checking for updates: ' + updateStatus.error + '. Click to retry.'"
+        matTooltipPosition="above"
+      >
+        <mat-icon svgIcon="circle-exclamation"></mat-icon>
+      </button>
+    </div>
+  } @else {
+    <div class="status-indicator up-to-date">
+      <button
+        mat-icon-button
+        color="accent"
+        class="check-button"
+        (click)="checkForUpdates()"
+        [matTooltip]="
+          'Rclone is up to date' +
+          (updateStatus.updateInfo
+            ? ' (v' + updateStatus.updateInfo.current_version_clean + ')'
+            : '') +
+          '. Click to check for updates.'
+        "
+        matTooltipPosition="above"
+      >
+        <mat-icon svgIcon="circle-check"></mat-icon>
+      </button>
+    </div>
+  }
+</div>

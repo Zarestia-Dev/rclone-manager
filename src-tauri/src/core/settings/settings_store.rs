@@ -1,7 +1,9 @@
 // use regex::Regex;
 use std::collections::HashMap;
 
-use crate::utils::types::{AppSettings, CoreSettings, ExperimentalSettings, GeneralSettings, SettingMetadata};
+use crate::utils::types::{
+    AppSettings, CoreSettings, ExperimentalSettings, GeneralSettings, SettingMetadata,
+};
 
 /// ✅ Default settings
 impl Default for AppSettings {
@@ -85,7 +87,7 @@ impl AppSettings {
                 display_name: "Enable Tray Icon".to_string(),
                 value_type: "bool".to_string(),
                 help_text: "Show an icon in the system tray. Also enables the background service."
-                .to_string(),
+                    .to_string(),
                 validation_pattern: None,
                 validation_message: None,
                 options: None,
@@ -119,7 +121,7 @@ impl AppSettings {
                 required: Some(false),
             },
         );
-        
+
         metadata.insert(
             "core.rclone_api_port".to_string(),
             SettingMetadata {
@@ -128,7 +130,7 @@ impl AppSettings {
                 help_text: "Port used for Rclone API communication (1024-65535).".to_string(),
                 validation_pattern: Some(
                     r"^(?:[1-9]\d{3,4}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$"
-                    .to_string(),
+                        .to_string(),
                 ),
                 validation_message: Some(
                     "Must be a valid port number between 1024 and 65535".to_string(),
@@ -137,7 +139,7 @@ impl AppSettings {
                 required: Some(true),
             },
         );
-        
+
         metadata.insert(
             "core.rclone_oauth_port".to_string(),
             SettingMetadata {
@@ -146,7 +148,7 @@ impl AppSettings {
                 help_text: "Port used for Rclone OAuth communication (1024-65535).".to_string(),
                 validation_pattern: Some(
                     r"^(?:[1-9]\d{3,4}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$"
-                    .to_string(),
+                        .to_string(),
                 ),
                 validation_message: Some(
                     "Must be a valid port number between 1024 and 65535".to_string(),
@@ -155,7 +157,7 @@ impl AppSettings {
                 required: Some(true),
             },
         );
-        
+
         metadata.insert(
             "core.connection_check_urls".to_string(),
             SettingMetadata {
@@ -166,10 +168,9 @@ impl AppSettings {
                 validation_message: Some("Must be valid URLs separated by semicolons".to_string()),
                 options: None,
                 required: Some(true),
-                
             },
         );
-        
+
         metadata.insert(
             "core.max_tray_items".to_string(),
             SettingMetadata {
@@ -182,7 +183,7 @@ impl AppSettings {
                 required: Some(true),
             },
         );
-                
+
         metadata.insert(
             "core.completed_onboarding".to_string(),
             SettingMetadata {
@@ -201,7 +202,8 @@ impl AppSettings {
             SettingMetadata {
                 display_name: "Rclone Config Path".to_string(),
                 value_type: "string".to_string(),
-                help_text: "Path to rclone config file. Leave empty to use default location.".to_string(),
+                help_text: "Path to rclone config file. Leave empty to use default location."
+                    .to_string(),
                 validation_pattern: None,
                 validation_message: None,
                 options: None,
@@ -230,7 +232,6 @@ impl AppSettings {
         //         help_text: "Choose between 'native' or 'systemd' mount methods.".to_string(),
         //     },
         // );
-
 
         metadata
     }

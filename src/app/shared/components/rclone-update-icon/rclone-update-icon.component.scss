@@ -1,0 +1,39 @@
+// GTK-style update status component
+.update-status-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .status-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    // Button styling for different states
+    .update-button {
+      transition: all 0.2s ease;
+
+      &:hover {
+        transform: translateY(-1px);
+      }
+    }
+
+    .error-button {
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: rgba(var(--warn-color-rgb), 0.2);
+        transform: translateY(-1px);
+      }
+    }
+
+    .check-button {
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: rgba(var(--accent-color-rgb), 0.2);
+        transform: translateY(-1px);
+      }
+    }
+  }
+}

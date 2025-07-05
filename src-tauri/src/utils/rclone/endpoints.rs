@@ -1,5 +1,5 @@
 /// Rclone Remote Control (RC) API endpoints
-/// 
+///
 /// This module provides organized access to all rclone RC API endpoints.
 /// The endpoints are categorized for easier management and discovery.
 
@@ -147,7 +147,7 @@ impl EndpointHelper {
     pub fn build_url(base_url: &str, endpoint: &str) -> String {
         format!("{}/{}", base_url.trim_end_matches('/'), endpoint)
     }
-    
+
     // /// Get all endpoints as a flat list for discovery
     // pub fn get_all_endpoints() -> Vec<&'static str> {
     //     vec![
@@ -155,78 +155,78 @@ impl EndpointHelper {
     //         core::STATS, core::VERSION, core::PID, core::QUIT, core::BWLIMIT,
     //         core::MEMSTATS, core::TRANSFERRED, core::COMMAND, core::DU, core::GC,
     //         core::GROUP_LIST, core::OBSCURE, core::STATS_DELETE, core::STATS_RESET,
-            
+
     //         // Config endpoints
     //         config::DUMP, config::GET, config::CREATE, config::UPDATE, config::DELETE,
     //         config::LISTREMOTES, config::PROVIDERS, config::PASSWORD, config::PATHS,
     //         config::SETPATH,
-            
+
     //         // Job endpoints
     //         job::LIST, job::STATUS, job::STOP, job::STOPGROUP,
-            
+
     //         // Mount endpoints
     //         mount::MOUNT, mount::UNMOUNT, mount::UNMOUNTALL, mount::LISTMOUNTS, mount::TYPES,
-            
+
     //         // Operations endpoints
     //         operations::ABOUT, operations::CHECK, operations::CLEANUP, operations::COPYFILE,
     //         operations::COPYURL, operations::DELETE, operations::DELETEFILE, operations::FSINFO,
     //         operations::HASHSUM, operations::LIST, operations::MKDIR, operations::MOVEFILE,
     //         operations::PUBLICLINK, operations::PURGE, operations::RMDIR, operations::RMDIRS,
     //         operations::SIZE, operations::STAT, operations::UPLOADFILE,
-            
+
     //         // Sync endpoints
     //         sync::SYNC, sync::COPY, sync::MOVE,
-            
+
     //         // VFS endpoints
     //         vfs::FORGET, vfs::POLL_INTERVAL, vfs::REFRESH, vfs::STATS,
-            
+
     //         // Backend endpoints
     //         backend::COMMAND,
-            
+
     //         // Debug endpoints
     //         debug::SET_BLOCK_PROFILE_RATE, debug::SET_GC_PERCENT,
     //         debug::SET_MUTEX_PROFILE_FRACTION, debug::SET_SOFT_MEMORY_LIMIT,
-            
+
     //         // FS Cache endpoints
     //         fscache::CLEAR, fscache::ENTRIES,
-            
+
     //         // Options endpoints
     //         options::BLOCKS, options::GET, options::INFO, options::SET,
-            
+
     //         // Plugins endpoints
     //         pluginsctl::ADD_PLUGIN, pluginsctl::GET_PLUGINS_FOR_TYPE,
     //         pluginsctl::LIST_PLUGINS, pluginsctl::LIST_TEST_PLUGINS,
     //         pluginsctl::REMOVE_PLUGIN, pluginsctl::REMOVE_TEST_PLUGIN,
-            
+
     //         // RC endpoints
     //         rc::ERROR, rc::LIST, rc::NOOP, rc::NOOPAUTH, rc::PID,
     //     ]
     // }
-    
+
     // /// Get endpoints grouped by category
     // pub fn get_endpoints_by_category() -> HashMap<&'static str, Vec<&'static str>> {
     //     let mut categories = HashMap::new();
-        
+
     //     categories.insert("core", vec![
     //         core::STATS, core::VERSION, core::PID, core::QUIT, core::BWLIMIT,
     //         core::MEMSTATS, core::TRANSFERRED, core::COMMAND, core::DU, core::GC,
     //         core::GROUP_LIST, core::OBSCURE, core::STATS_DELETE, core::STATS_RESET,
     //     ]);
-        
+
     //     categories.insert("config", vec![
     //         config::DUMP, config::GET, config::CREATE, config::UPDATE, config::DELETE,
     //         config::LISTREMOTES, config::PROVIDERS, config::PASSWORD, config::PATHS,
     //         config::SETPATH,
     //     ]);
-        
+
     //     categories.insert("job", vec![
     //         job::LIST, job::STATUS, job::STOP, job::STOPGROUP,
     //     ]);
-        
+
     //     categories.insert("mount", vec![
     //         mount::MOUNT, mount::UNMOUNT, mount::UNMOUNTALL, mount::LISTMOUNTS, mount::TYPES,
     //     ]);
-        
+
     //     categories.insert("operations", vec![
     //         operations::ABOUT, operations::CHECK, operations::CLEANUP, operations::COPYFILE,
     //         operations::COPYURL, operations::DELETE, operations::DELETEFILE, operations::FSINFO,
@@ -234,50 +234,50 @@ impl EndpointHelper {
     //         operations::PUBLICLINK, operations::PURGE, operations::RMDIR, operations::RMDIRS,
     //         operations::SIZE, operations::STAT, operations::UPLOADFILE,
     //     ]);
-        
+
     //     categories.insert("sync", vec![
     //         sync::SYNC, sync::COPY, sync::MOVE,
     //     ]);
-        
+
     //     categories.insert("vfs", vec![
     //         vfs::FORGET, vfs::POLL_INTERVAL, vfs::REFRESH, vfs::STATS,
     //     ]);
-        
+
     //     categories.insert("backend", vec![
     //         backend::COMMAND,
     //     ]);
-        
+
     //     categories.insert("debug", vec![
     //         debug::SET_BLOCK_PROFILE_RATE, debug::SET_GC_PERCENT,
     //         debug::SET_MUTEX_PROFILE_FRACTION, debug::SET_SOFT_MEMORY_LIMIT,
     //     ]);
-        
+
     //     categories.insert("fscache", vec![
     //         fscache::CLEAR, fscache::ENTRIES,
     //     ]);
-        
+
     //     categories.insert("options", vec![
     //         options::BLOCKS, options::GET, options::INFO, options::SET,
     //     ]);
-        
+
     //     categories.insert("pluginsctl", vec![
     //         pluginsctl::ADD_PLUGIN, pluginsctl::GET_PLUGINS_FOR_TYPE,
     //         pluginsctl::LIST_PLUGINS, pluginsctl::LIST_TEST_PLUGINS,
     //         pluginsctl::REMOVE_PLUGIN, pluginsctl::REMOVE_TEST_PLUGIN,
     //     ]);
-        
+
     //     categories.insert("rc", vec![
     //         rc::ERROR, rc::LIST, rc::NOOP, rc::NOOPAUTH, rc::PID,
     //     ]);
-        
+
     //     categories
     // }
-    
+
     // /// Check if an endpoint exists
     // pub fn endpoint_exists(endpoint: &str) -> bool {
     //     Self::get_all_endpoints().contains(&endpoint)
     // }
-    
+
     // /// Get category for an endpoint
     // pub fn get_endpoint_category(endpoint: &str) -> Option<&'static str> {
     //     if let Some(category) = endpoint.split('/').next() {

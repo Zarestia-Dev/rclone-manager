@@ -25,7 +25,7 @@
   <div class="detail-content">
     @if (isOperationType()) {
     <!-- Operation Detail Content -->
-    <mat-tab-group [color]="operationColor" class="operation-tabs">
+    <mat-tab-group [color]="operationColor" class="operation-tabs" (selectedTabChange)="onTabChange($event)">
       <mat-tab label="Monitoring">
         <div class="operation-monitor">
           <!-- Operation Control Panel -->

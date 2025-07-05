@@ -1,25 +1,20 @@
-import { Component, EventEmitter, Input, Output, OnInit } from "@angular/core";
-import { FormGroup, ReactiveFormsModule } from "@angular/forms";
-import {
-  Entry,
-  FlagField,
-  FlagType,
-  LinebreaksPipe,
-} from "../../remote-config-types";
-import { MatTooltipModule } from "@angular/material/tooltip";
-import { MatIconModule } from "@angular/material/icon";
-import { MatAutocompleteModule } from "@angular/material/autocomplete";
-import { MatChipsModule } from "@angular/material/chips";
-import { MatSlideToggleModule } from "@angular/material/slide-toggle";
-import { MatInputModule } from "@angular/material/input";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { CommonModule } from "@angular/common";
-import { MatButtonModule } from "@angular/material/button";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { Observable, map, startWith } from "rxjs";
+import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
+import { FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { Entry, FlagField, FlagType, LinebreaksPipe } from '../../remote-config-types';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatIconModule } from '@angular/material/icon';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { CommonModule } from '@angular/common';
+import { MatButtonModule } from '@angular/material/button';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Observable, map, startWith } from 'rxjs';
 
 @Component({
-  selector: "app-flag-config-step",
+  selector: 'app-flag-config-step',
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -35,8 +30,8 @@ import { Observable, map, startWith } from "rxjs";
     MatInputModule,
     LinebreaksPipe,
   ],
-  templateUrl: "./flag-config-step.component.html",
-  styleUrl: "./flag-config-step.component.scss",
+  templateUrl: './flag-config-step.component.html',
+  styleUrl: './flag-config-step.component.scss',
 })
 export class FlagConfigStepComponent implements OnInit {
   @Input() form!: FormGroup;
@@ -47,15 +42,15 @@ export class FlagConfigStepComponent implements OnInit {
     string,
     { remoteName: string; currentPath: string; options: Entry[] }
   > = {};
-  @Input() sourceLoading: boolean = false;
-  @Input() destLoading: boolean = false;
+  @Input() sourceLoading = false;
+  @Input() destLoading = false;
   @Input() dynamicFlagFields: FlagField[] = [];
   @Input() selectedOptions: Record<string, any> = {};
-  @Input() isDisabled: boolean = false;
+  @Input() isDisabled = false;
 
   // Filtered observables for typeable autocomplete
-  filteredDestRemotes$: Observable<string[]> = new Observable();
-  filteredSourceRemotes$: Observable<string[]> = new Observable();
+  filteredDestRemotes$ = new Observable<string[]>();
+  filteredSourceRemotes$ = new Observable<string[]>();
 
   @Output() optionToggled = new EventEmitter<FlagField>();
   @Output() jsonValidated = new EventEmitter<void>();
@@ -64,16 +59,15 @@ export class FlagConfigStepComponent implements OnInit {
   @Output() sourceRemoteSelected = new EventEmitter<string>();
   @Output() destOptionSelected = new EventEmitter<string>();
   @Output() sourceOptionSelected = new EventEmitter<string>();
-  @Output() folderSelected = new EventEmitter<
-  {
+  @Output() folderSelected = new EventEmitter<{
     formPath: string;
     requiredEmpty: boolean;
-  }
-  >();
+  }>();
   @Output() remoteSelectionReset = new EventEmitter<string>();
 
   ngOnInit(): void {
     this.initializeFilteredRemotes();
+    console.log(this.pathState);
   }
 
   private initializeFilteredRemotes(): void {
@@ -91,7 +85,7 @@ export class FlagConfigStepComponent implements OnInit {
       });
     }
 
-    // Initialize filtered remotes for source field  
+    // Initialize filtered remotes for source field
     const sourceControl = this.configGroup?.get('source');
     if (sourceControl) {
       this.filteredSourceRemotes$ = sourceControl.valueChanges.pipe(
@@ -111,11 +105,9 @@ export class FlagConfigStepComponent implements OnInit {
     if (!value || value.includes('://') || value.includes(':/')) {
       return this.existingRemotes;
     }
-    
+
     const filterValue = value.toLowerCase();
-    return this.existingRemotes.filter(remote => 
-      remote.toLowerCase().includes(filterValue)
-    );
+    return this.existingRemotes.filter(remote => remote.toLowerCase().includes(filterValue));
   }
 
   get configGroup(): FormGroup {
@@ -123,15 +115,15 @@ export class FlagConfigStepComponent implements OnInit {
   }
 
   get isMount(): boolean {
-    return this.flagType === "mount";
+    return this.flagType === 'mount';
   }
 
   get isSync(): boolean {
-    return this.flagType === "sync";
+    return this.flagType === 'sync';
   }
 
   get isCopy(): boolean {
-    return this.flagType === "copy";
+    return this.flagType === 'copy';
   }
 
   get getDynamicFlagFields(): FlagField[] {
@@ -146,7 +138,7 @@ export class FlagConfigStepComponent implements OnInit {
    * Determines if folder selection should require empty folder
    * For mount operations, checks if AllowNonEmpty is set to true
    */
-  get shouldRequireEmptyFolder(): boolean {    
+  get shouldRequireEmptyFolder(): boolean {
     if (this.flagType === 'mount') {
       const requireEmpty = !this.selectedOptions['AllowNonEmpty'];
       return requireEmpty;

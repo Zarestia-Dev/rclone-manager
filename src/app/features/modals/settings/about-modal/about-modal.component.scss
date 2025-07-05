@@ -171,11 +171,22 @@
 
       // Rclone Information Section
       .rclone-info {
-        h3 {
-          font-size: 20px;
-          font-weight: 600;
-          color: var(--app-text-color);
-          margin: 0 0 20px 0;
+        .rclone-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+
+          h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--app-text-color);
+            margin: 0;
+          }
+
+          app-rclone-update-icon {
+            flex-shrink: 0;
+          }
         }
 
         .loading,
@@ -238,6 +249,21 @@
               padding: 4px 8px;
               border-radius: 6px;
               border: 1px solid var(--surface-border);
+            }
+
+            .detail-value-with-actions {
+              display: flex;
+              align-items: center;
+              gap: var(--space-sm);
+
+              .detail-value {
+                color: var(--secondary-text-color);
+                font-size: 14px;
+                background: rgba(var(--app-text-color-rgb), 0.05);
+                padding: 4px 8px;
+                border-radius: 6px;
+                border: 1px solid var(--surface-border);
+              }
             }
           }
         }

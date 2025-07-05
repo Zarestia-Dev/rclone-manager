@@ -1,7 +1,7 @@
 use log::{error, info, warn};
 use serde_json::Value;
 use std::{
-    fs::{self, File, create_dir_all},
+    fs::{self, create_dir_all, File},
     io::Write,
 };
 use tauri::{AppHandle, Emitter, State};

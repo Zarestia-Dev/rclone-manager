@@ -139,8 +139,8 @@
 
     <!-- Flag Chips -->
     <div class="json-chip-set">
-      <label class="chip-set-label">{{ flagType | titlecase }} Flags</label>
-      <mat-chip-set [attr.aria-label]="flagType + ' configuration options'">
+      <label class="chip-set-label" for="flag-chip-set">{{ flagType | titlecase }} Flags</label>
+      <mat-chip-set id="flag-chip-set" [attr.aria-label]="flagType + ' configuration options'">
         @for (field of dynamicFlagFields; track field.name) {
         <mat-chip-option (click)="onToggleOption(field)" [selected]="getSelectedOptions.hasOwnProperty(field.name)"
           [disabled]="isDisabled" [matTooltip]="field.help | linebreaks" matTooltipPosition="above">

@@ -1,11 +1,9 @@
-use std::time::Duration;
 use log::debug;
+use std::time::Duration;
 
-use crate::{
-    utils::{
-        rclone::endpoints::{core, EndpointHelper},
-        types::RcApiEngine,
-    },
+use crate::utils::{
+    rclone::endpoints::{core, EndpointHelper},
+    types::RcApiEngine,
 };
 
 impl RcApiEngine {
@@ -16,11 +14,11 @@ impl RcApiEngine {
             debug!("🔍 Process is not alive");
             return false;
         }
-        
+
         // Then check if API is responding
         self.check_api_response()
     }
-    
+
     /// Check if the process is still alive (without checking API)
     pub fn is_process_alive(&mut self) -> bool {
         if let Some(child) = &mut self.process {
@@ -45,24 +43,26 @@ impl RcApiEngine {
             false
         }
     }
-    
+
     /// Check if the API is responding by making a simple request
     fn check_api_response(&self) -> bool {
         let base_url = format!("http://127.0.0.1:{}", self.current_api_port);
         let url = EndpointHelper::build_url(&base_url, core::VERSION);
-        
+
         // Use blocking client for synchronous check
         let client = reqwest::blocking::Client::new();
         match client.post(&url).timeout(Duration::from_secs(2)).send() {
             Ok(response) => {
                 let is_healthy = response.status().is_success();
-                debug!("🔍 API health check: {} (status: {})", 
-                       if is_healthy { "healthy" } else { "unhealthy" },
-                       response.status());
+                debug!(
+                    "🔍 API health check: {} (status: {})",
+                    if is_healthy { "healthy" } else { "unhealthy" },
+                    response.status()
+                );
                 is_healthy
             }
             Err(e) => {
-                debug!("🔍 API health check failed: {}", e);
+                debug!("🔍 API health check failed: {e}");
                 false
             }
         }
@@ -73,8 +73,8 @@ impl RcApiEngine {
         let timeout = Duration::from_secs(timeout_secs);
         let poll = Duration::from_millis(500); // Increased poll interval
 
-        debug!("🔍 Waiting for API to be ready (timeout: {}s)", timeout_secs);
-        
+        debug!("🔍 Waiting for API to be ready (timeout: {timeout_secs}s)");
+
         while start.elapsed() < timeout {
             if self.is_api_healthy() {
                 debug!("✅ API is healthy and ready");
@@ -83,7 +83,7 @@ impl RcApiEngine {
             std::thread::sleep(poll);
         }
 
-        debug!("⏰ API health check timed out after {}s", timeout_secs);
+        debug!("⏰ API health check timed out after {timeout_secs}s");
         false
     }
 }

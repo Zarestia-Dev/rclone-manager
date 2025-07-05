@@ -1,7 +1,7 @@
+use log::debug;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
-use log::debug;
 
 use tauri::{Emitter, State};
 
@@ -48,7 +48,7 @@ pub fn check_mount_plugin_installed() -> bool {
 #[tauri::command]
 pub async fn install_mount_plugin(
     window: tauri::Window,
-    state: State<'_, RcloneState>
+    state: State<'_, RcloneState>,
 ) -> Result<String, String> {
     let download_path = std::env::temp_dir().join("rclone_temp");
 
@@ -56,7 +56,10 @@ pub async fn install_mount_plugin(
         (
             "https://github.com/macos-fuse-t/fuse-t/releases/download/1.0.44/fuse-t-macos-installer-1.0.44.pkg",
             download_path.join("fuse-t-installer.pkg"),
-            format!("sudo installer -pkg {} -target /", download_path.join("fuse-t-installer.pkg").display()),
+            format!(
+                "sudo installer -pkg {} -target /",
+                download_path.join("fuse-t-installer.pkg").display()
+            ),
         )
     } else {
         (
@@ -91,7 +94,9 @@ pub async fn install_mount_plugin(
 
     match status {
         Ok(exit_status) if exit_status.success() => {
-            window.emit("mount_plugin_installed", ()).map_err(|e| e.to_string())?;
+            window
+                .emit("mount_plugin_installed", ())
+                .map_err(|e| e.to_string())?;
             Ok("Mount plugin installed successfully".to_string())
         }
         Ok(exit_status) => Err(format!(

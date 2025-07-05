@@ -20,5 +20,8 @@
     "Cargo.toml": "toml",
     "rustfmt.toml": "toml",
     ".clippy.toml": "toml"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   }
 }

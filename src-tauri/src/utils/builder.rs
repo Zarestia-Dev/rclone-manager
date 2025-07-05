@@ -48,17 +48,14 @@ pub async fn setup_tray(app: AppHandle, max_tray_items: usize) -> tauri::Result<
 }
 
 pub fn create_app_window(app_handle: AppHandle) {
-    let main_window = tauri::WebviewWindowBuilder::new(
-        &app_handle,
-        "main",
-        tauri::WebviewUrl::default(),
-    )
-    .title("Rclone Manager")
-    .inner_size(800.0, 630.0)
-    .resizable(true)
-    .center()
-    .shadow(false)
-    .min_inner_size(362.0, 240.0);
+    let main_window =
+        tauri::WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::default())
+            .title("Rclone Manager")
+            .inner_size(800.0, 630.0)
+            .resizable(true)
+            .center()
+            .shadow(false)
+            .min_inner_size(362.0, 240.0);
 
     // MacOS does not support transparent windows. So we set the title bar style to show
     // and remove the decorations.

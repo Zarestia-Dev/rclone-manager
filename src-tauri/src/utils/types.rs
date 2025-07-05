@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     path::PathBuf,
-    sync::{Arc, atomic::AtomicBool},
+    sync::{atomic::AtomicBool, Arc},
 };
 
 use chrono::{DateTime, Utc};
@@ -161,10 +161,8 @@ pub struct RemoteCache {
     pub mounted: RwLock<Vec<MountedRemote>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
-
 pub enum LogLevel {
     Error,
     Warn,
@@ -241,6 +239,6 @@ pub struct JobResponse {
 
 #[derive(Clone, Serialize)]
 pub struct NetworkStatusPayload {
-  #[serde(rename = "isMetered")]
-  pub is_metered: bool,
+    #[serde(rename = "isMetered")]
+    pub is_metered: bool,
 }

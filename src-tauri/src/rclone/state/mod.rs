@@ -5,8 +5,10 @@ pub mod log;
 pub mod watcher;
 
 // Re-export commonly used items for backwards compatibility
-pub use cache::{CACHE, get_cached_remotes, get_configs, get_settings, get_cached_mounted_remotes};
+pub use cache::{get_cached_mounted_remotes, get_cached_remotes, get_configs, get_settings, CACHE};
 pub use engine::ENGINE_STATE;
-pub use job::{JOB_CACHE, get_jobs, delete_job, get_job_status, get_active_jobs};
-pub use log::{LOG_CACHE, get_remote_logs, clear_remote_logs};
-pub use watcher::{start_mounted_remote_watcher, stop_mounted_remote_watcher, force_check_mounted_remotes};
+pub use job::{delete_job, get_active_jobs, get_job_status, get_jobs, JOB_CACHE};
+pub use log::{clear_remote_logs, get_remote_logs, LOG_CACHE};
+pub use watcher::{
+    force_check_mounted_remotes, start_mounted_remote_watcher, stop_mounted_remote_watcher,
+};

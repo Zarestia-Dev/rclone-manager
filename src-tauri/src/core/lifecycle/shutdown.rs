@@ -13,9 +13,11 @@ use crate::rclone::{
 #[tauri::command]
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("🔴 Beginning shutdown sequence...");
-    app_handle.emit("shutdown_sequence", ()).unwrap_or_else(|e| {
-        error!("Failed to emit shutdown_sequence event: {}", e);
-    });
+    app_handle
+        .emit("shutdown_sequence", ())
+        .unwrap_or_else(|e| {
+            error!("Failed to emit shutdown_sequence event: {}", e);
+        });
 
     // Get active jobs before shutdown
     let active_jobs = match get_active_jobs().await {

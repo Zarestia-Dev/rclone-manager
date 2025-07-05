@@ -1,14 +1,14 @@
-@use '../../../../styles/_shared-modal';
+@use "../../../../styles/_shared-modal";
 :host {
   // Component-specific spacing
-  --content-gap-mobile: var(--space-md);               // 16px
-  --setting-item-gap: var(--space-md);                 // 16px
+  --content-gap-mobile: var(--space-md); // 16px
+  --setting-item-gap: var(--space-md); // 16px
   --setting-item-padding: var(--space-md) var(--space-lg); // 16px 20px
-  --search-padding: var(--space-md) var(--space-xl);   // 16px 24px
-  
+  --search-padding: var(--space-md) var(--space-xl); // 16px 24px
+
   // Component-specific border radius
-  --input-border-radius: var(--space-xs);              // 8px
-  --tab-border-radius: var(--card-border-radius);      // 12px
+  --input-border-radius: var(--space-xs); // 8px
+  --tab-border-radius: var(--card-border-radius); // 12px
 }
 
 .modal {
@@ -66,11 +66,9 @@
         height: 18px;
       }
 
-
       &:hover {
         background: var(--surface-overlay);
         color: var(--app-text-color);
-        border-color: var(--surface-border);
         transform: translateY(-1px);
       }
 
@@ -266,7 +264,7 @@
             overflow: hidden;
 
             &::before {
-              content: '';
+              content: "";
               position: absolute;
               top: 0;
               left: -100%;
@@ -411,7 +409,7 @@
     :host {
       --modal-padding: var(--modal-padding-mobile);
       --content-gap: var(--content-gap-mobile);
-      --search-padding: 12px 20px;  
+      --search-padding: 12px 20px;
       --setting-item-padding: 16px 20px;
     }
 
@@ -432,7 +430,7 @@
 
             .setting-control {
               justify-content: center;
-              
+
               .input-field {
                 min-width: auto;
                 max-width: none;

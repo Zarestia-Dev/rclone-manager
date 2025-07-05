@@ -1,4 +1,4 @@
-import { CommonModule } from "@angular/common";
+import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
   ChangeDetectorRef,
@@ -7,26 +7,28 @@ import {
   EventEmitter,
   Input,
   NgZone,
+  OnChanges,
   OnDestroy,
   Output,
   SimpleChanges,
   ViewChild,
   OnInit,
-} from "@angular/core";
-import { MatIconModule } from "@angular/material/icon";
-import { MatTooltipModule } from "@angular/material/tooltip";
-import { Chart, registerables } from "chart.js";
-import { MatDividerModule } from "@angular/material/divider";
-import { MatCardModule } from "@angular/material/card";
-import { MatChipsModule } from "@angular/material/chips";
-import { MatButtonModule } from "@angular/material/button";
-import { MatTabsModule } from "@angular/material/tabs";
-import { Subscription } from "rxjs";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatProgressBarModule } from "@angular/material/progress-bar";
-import { MatTableDataSource } from "@angular/material/table";
-import { MatSort, MatSortModule } from "@angular/material/sort";
-import { ThemePalette } from "@angular/material/core";
+  inject,
+} from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Chart, registerables } from 'chart.js';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTabsModule } from '@angular/material/tabs';
+import { Subscription } from 'rxjs';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTableDataSource } from '@angular/material/table';
+import { MatSort, MatSortModule } from '@angular/material/sort';
+import { ThemePalette } from '@angular/material/core';
 import {
   DEFAULT_JOB_STATS,
   GlobalStats,
@@ -36,12 +38,27 @@ import {
   RemoteSettingsSection,
   SENSITIVE_KEYS,
   TransferFile,
-} from "../../../../shared/components/types";
-import { JobManagementService } from "../../../../services/file-operations/job-management.service";
-import { CompletedTransfer, JobInfoConfig, JobInfoPanelComponent, OperationControlComponent, OperationControlConfig, PathDisplayConfig, SettingsPanelComponent, SettingsPanelConfig, StatItem, StatsPanelComponent, StatsPanelConfig, TransferActivityPanelComponent, TransferActivityPanelConfig } from "../../../../shared/detail-shared";
+} from '../../../../shared/components/types';
+import { JobManagementService } from '../../../../services/file-operations/job-management.service';
+import {
+  CompletedTransfer,
+  JobInfoConfig,
+  JobInfoPanelComponent,
+  OperationControlComponent,
+  OperationControlConfig,
+  PathDisplayConfig,
+  SettingsPanelComponent,
+  SettingsPanelConfig,
+  StatItem,
+  StatsPanelComponent,
+  StatsPanelConfig,
+  TransferActivityPanelComponent,
+  TransferActivityPanelConfig,
+} from '../../../../shared/detail-shared';
+import { IconService } from '../../../../services/ui/icon.service';
 
 @Component({
-  selector: "app-app-detail",
+  selector: 'app-app-detail',
   standalone: true,
   imports: [
     CommonModule,
@@ -61,15 +78,15 @@ import { CompletedTransfer, JobInfoConfig, JobInfoPanelComponent, OperationContr
     SettingsPanelComponent,
     TransferActivityPanelComponent,
   ],
-  templateUrl: "./app-detail.component.html",
-  styleUrls: ["./app-detail.component.scss"],
+  templateUrl: './app-detail.component.html',
+  styleUrls: ['./app-detail.component.scss'],
 })
-export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
-  @Input() operationType?: "sync" | "copy" | "mount"; // Only for operation type
+export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
+  @Input() operationType?: 'sync' | 'copy' | 'mount'; // Only for operation type
   @Input() selectedRemote: Remote | null = null;
   @Input() remoteSettings: RemoteSettings = {};
   @Input() restrictMode!: boolean;
-  @Input() iconService!: any;
+  @Input() iconService!: IconService;
   @Input() actionInProgress?: RemoteAction | null; // Only for mount type
 
   // Operation specific outputs
@@ -79,7 +96,7 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   // Common outputs
   @Output() openRemoteConfigModal = new EventEmitter<{
     editTarget?: string;
-    existingConfig?: any;
+    existingConfig?: RemoteSettings;
   }>();
   @Output() openInFiles = new EventEmitter<{
     remoteName: string;
@@ -87,17 +104,17 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   }>();
 
   @ViewChild(MatSort) sort!: MatSort;
-  @ViewChild("speedChart") speedChartRef!: ElementRef;
-  @ViewChild("progressChart") progressChartRef!: ElementRef;
+  @ViewChild('speedChart') speedChartRef!: ElementRef;
+  @ViewChild('progressChart') progressChartRef!: ElementRef;
 
   // Operation specific properties
   dataSource = new MatTableDataSource<TransferFile>([]);
-  displayedColumns: string[] = ["name", "percentage", "speed", "size", "eta"];
+  displayedColumns: string[] = ['name', 'percentage', 'speed', 'size', 'eta'];
   jobStats: GlobalStats = { ...DEFAULT_JOB_STATS };
   currentJobId?: number;
   isLoading = false;
-  errorMessage = "";
-  lastSyncTime = "";
+  errorMessage = '';
+  lastSyncTime = '';
 
   // Track completed transfers to show in the panel
   private completedTransfers: TransferFile[] = [];
@@ -119,17 +136,17 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly MAX_HISTORY_LENGTH = 30;
   readonly POLLING_INTERVAL = 1000;
 
-  constructor(
-    private ngZone: NgZone,
-    private jobManagementService: JobManagementService,
-    private cdr: ChangeDetectorRef
-  ) {
+  private ngZone = inject(NgZone);
+  private jobManagementService = inject(JobManagementService);
+  private cdr = inject(ChangeDetectorRef);
+
+  constructor() {
     Chart.register(...registerables);
   }
 
   // // Type checking helpers
   isOperationType(): boolean {
-    return this.operationType === "sync" || this.operationType === "copy";
+    return this.operationType === 'sync' || this.operationType === 'copy';
   }
 
   // // Primary action handler (Start operation/Mount)
@@ -147,7 +164,7 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   formatTime(seconds: number): string {
-    if (isNaN(seconds) || seconds <= 0) return "-";
+    if (isNaN(seconds) || seconds <= 0) return '-';
 
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
@@ -158,19 +175,15 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     if (minutes > 0 || hours > 0) parts.push(`${minutes}m`);
     parts.push(`${secs}s`);
 
-    return parts.join(" ");
+    return parts.join(' ');
   }
 
-  formatFileSizePipe(
-    bytes: number = 0,
-    precision: number = 2,
-    mode: "size" | "speed" = "size"
-  ): string {
+  formatFileSizePipe(bytes = 0, precision = 2, mode: 'size' | 'speed' = 'size'): string {
     if (isNaN(parseFloat(String(bytes))) || !isFinite(bytes)) {
-      return mode === "speed" ? "0 B/s" : "0 B";
+      return mode === 'speed' ? '0 B/s' : '0 B';
     }
 
-    const units = ["B", "KB", "MB", "GB", "TB"];
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let unitIndex = 0;
 
     while (bytes >= 1024 && unitIndex < units.length - 1) {
@@ -178,18 +191,16 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
       unitIndex++;
     }
 
-    return `${bytes.toFixed(precision)} ${units[unitIndex]}${
-      mode === "speed" ? "/s" : ""
-    }`;
+    return `${bytes.toFixed(precision)} ${units[unitIndex]}${mode === 'speed' ? '/s' : ''}`;
   }
 
   // // Mount specific methods
   get mountDestination(): string {
-    return this.remoteSettings?.["mountConfig"]?.["dest"] || "Need to set!";
+    return this.remoteSettings?.['mountConfig']?.['dest'] || 'Need to set!';
   }
 
   get mountSource(): string {
-    return this.remoteSettings?.["mountConfig"]?.["source"] || "Need to set!";
+    return this.remoteSettings?.['mountConfig']?.['source'] || 'Need to set!';
   }
 
   // // Remote Settings Helpers
@@ -197,16 +208,16 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.isOperationType()) {
       this.remoteSettingsSections = [
         {
-          key: this.operationType!,
-          title: `${this.operationType} Options`,
-          icon: this.operationType!,
+          key: this.operationType ?? '',
+          title: `${this.operationType ?? ''} Options`,
+          icon: this.operationType ?? '',
         },
-        { key: "filter", title: "Filter Options", icon: "filter" },
+        { key: 'filter', title: 'Filter Options', icon: 'filter' },
       ];
     } else {
       this.remoteSettingsSections = [
-        { key: "mount", title: "Mount Options", icon: "mount" },
-        { key: "vfs", title: "VFS Options", icon: "vfs" },
+        { key: 'mount', title: 'Mount Options', icon: 'mount' },
+        { key: 'vfs', title: 'VFS Options', icon: 'vfs' },
       ];
     }
   }
@@ -214,17 +225,17 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   // // Configuration builders for child components
   getOperationControlConfig(): OperationControlConfig {
     const isActive =
-      this.operationType === "sync"
+      this.operationType === 'sync'
         ? !!this.selectedRemote?.syncState?.isOnSync
         : !!this.selectedRemote?.copyState?.isOnCopy;
 
     const isError =
-      this.operationType === "sync"
-        ? this.selectedRemote?.syncState?.isOnSync === "error"
-        : this.selectedRemote?.copyState?.isOnCopy === "error";
+      this.operationType === 'sync'
+        ? this.selectedRemote?.syncState?.isOnSync === 'error'
+        : this.selectedRemote?.copyState?.isOnCopy === 'error';
 
     return {
-      operationType: this.operationType!,
+      operationType: this.operationType ?? 'mount',
       isActive,
       isError,
       isLoading: this.isLoading,
@@ -240,23 +251,19 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   getMountControlConfig(): OperationControlConfig {
     const isActive = !!(
       this.selectedRemote?.mountState?.mounted &&
-      this.selectedRemote?.mountState?.mounted !== "error"
+      this.selectedRemote?.mountState?.mounted !== 'error'
     );
 
     return {
-      operationType: "mount",
+      operationType: 'mount',
       isActive,
-      isError: this.selectedRemote?.mountState?.mounted === "error",
-      isLoading:
-        this.actionInProgress === "mount" ||
-        this.actionInProgress === "unmount",
-      operationColor: "accent",
-      operationClass: "mount-operation",
+      isError: this.selectedRemote?.mountState?.mounted === 'error',
+      isLoading: this.actionInProgress === 'mount' || this.actionInProgress === 'unmount',
+      operationColor: 'accent',
+      operationClass: 'mount-operation',
       pathConfig: this.getMountPathDisplayConfig(),
-      primaryButtonLabel:
-        this.actionInProgress === "mount" ? "Mounting..." : "Mount",
-      secondaryButtonLabel:
-        this.actionInProgress === "unmount" ? "Unmounting..." : "Unmount",
+      primaryButtonLabel: this.actionInProgress === 'mount' ? 'Mounting...' : 'Mount',
+      secondaryButtonLabel: this.actionInProgress === 'unmount' ? 'Unmounting...' : 'Unmount',
       actionInProgress: this.actionInProgress?.toString(),
     };
   }
@@ -276,10 +283,10 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
       source: this.mountSource,
       destination: this.mountDestination,
       showOpenButtons: true,
-      operationColor: "accent",
+      operationColor: 'accent',
       isDestinationActive: !!(
         this.selectedRemote?.mountState?.mounted &&
-        this.selectedRemote?.mountState?.mounted !== "error"
+        this.selectedRemote?.mountState?.mounted !== 'error'
       ),
       actionInProgress: this.actionInProgress?.toString(),
     };
@@ -287,11 +294,9 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
   getJobInfoConfig(): JobInfoConfig {
     return {
-      operationType: this.operationType!,
+      operationType: this.operationType ?? 'mount',
       jobId: this.currentJobId,
-      startTime: this.jobStats.startTime
-        ? new Date(this.jobStats.startTime)
-        : undefined,
+      startTime: this.jobStats.startTime ? new Date(this.jobStats.startTime) : undefined,
       lastOperationTime: this.lastSyncTime
         ? new Date(this.lastSyncTime).toLocaleString()
         : undefined,
@@ -299,7 +304,7 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   getSettingsPanelConfig(section: RemoteSettingsSection): SettingsPanelConfig {
-    const configKey = section.key + "Config";
+    const configKey = section.key + 'Config';
     const settings = this.getRemoteSettings(configKey);
 
     return {
@@ -307,8 +312,8 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
       settings,
       hasSettings: this.hasSettings(configKey),
       restrictMode: this.restrictMode,
-      buttonColor: this.isOperationType() ? "primary" : "accent",
-      buttonLabel: "Edit Settings",
+      buttonColor: this.isOperationType() ? 'primary' : 'accent',
+      buttonLabel: 'Edit Settings',
       sensitiveKeys: SENSITIVE_KEYS,
     };
   }
@@ -317,43 +322,39 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     const stats: StatItem[] = [
       {
         value: this.formatBytes(this.jobStats.bytes, this.jobStats.totalBytes),
-        label: "Progress",
+        label: 'Progress',
         isPrimary: true,
         progress: this.calculateProgress(),
       },
       {
         value: this.formatSpeed(this.jobStats.speed),
-        label: "Speed",
+        label: 'Speed',
       },
       {
         value: this.formatTime(this.jobStats.eta),
-        label: "ETA",
+        label: 'ETA',
         isPrimary: true,
         progress: this.calculateEtaProgress(),
       },
       {
-        value: `${this.jobStats.transfers || 0}/${
-          this.jobStats.totalTransfers || 0
-        }`,
-        label: "Files",
+        value: `${this.jobStats.transfers || 0}/${this.jobStats.totalTransfers || 0}`,
+        label: 'Files',
       },
       {
         value: this.jobStats.errors || 0,
-        label: "Errors",
+        label: 'Errors',
         hasError: (this.jobStats.errors || 0) > 0,
-        tooltip: this.jobStats.lastError
-          ? `Last Error: ${this.jobStats.lastError}`
-          : undefined,
+        tooltip: this.jobStats.lastError ? `Last Error: ${this.jobStats.lastError}` : undefined,
       },
       {
         value: this.formatTime(this.jobStats.elapsedTime),
-        label: "Duration",
+        label: 'Duration',
       },
     ];
 
     return {
-      title: "Transfer Statistics",
-      icon: "chart",
+      title: 'Transfer Statistics',
+      icon: 'chart',
       stats,
       operationClass: this.operationClass,
       operationColor: this.operationColor,
@@ -363,9 +364,7 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   // Add these new helper methods to the component
   private formatBytes(bytes: number, totalBytes: number): string {
     if (totalBytes > 0) {
-      return `${this.formatFileSize(bytes)} / ${this.formatFileSize(
-        totalBytes
-      )}`;
+      return `${this.formatFileSize(bytes)} / ${this.formatFileSize(totalBytes)}`;
     }
     return this.formatFileSize(bytes);
   }
@@ -375,20 +374,16 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private formatFileSize(bytes: number): string {
-    if (bytes <= 0) return "0 B";
+    if (bytes <= 0) return '0 B';
 
-    const units = ["B", "KB", "MB", "GB", "TB"];
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 2 : 0)} ${units[i]}`;
   }
 
   private calculateEtaProgress(): number {
     if (this.jobStats.elapsedTime && this.jobStats.eta) {
-      return (
-        (this.jobStats.elapsedTime /
-          (this.jobStats.elapsedTime + this.jobStats.eta)) *
-        100
-      );
+      return (this.jobStats.elapsedTime / (this.jobStats.elapsedTime + this.jobStats.eta)) * 100;
     }
     return 0;
   }
@@ -398,14 +393,13 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
       activeTransfers: this.activeTransfers,
       completedTransfers: this.recentCompletedTransfers,
       operationClass: this.operationClass,
-      operationColor: this.operationType === "sync" ? "primary" : "accent",
-      remoteName: this.selectedRemote?.remoteSpecs?.name || "",
-      showHistory:
-        this.showTransferHistory && this.recentCompletedTransfers.length > 0,
+      operationColor: this.operationType === 'sync' ? 'primary' : 'accent',
+      remoteName: this.selectedRemote?.remoteSpecs?.name || '',
+      showHistory: this.showTransferHistory && this.recentCompletedTransfers.length > 0,
     };
   }
 
-  onEditSettings(event: { section: string; settings: any }): void {
+  onEditSettings(event: { section: string; settings: RemoteSettings }): void {
     this.triggerOpenRemoteConfig(event.section, event.settings);
   }
 
@@ -414,15 +408,34 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    this.initCharts();
     this.dataSource.sort = this.sort;
     this.handleSelectedRemoteChange();
+    // Initialize charts after view is stable if operation type requires charts
+    if (this.isOperationType()) {
+      // Use setTimeout to ensure the DOM is fully rendered
+      setTimeout(() => {
+        this.initChartsIfNeeded();
+      }, 0);
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes["operationType"] || changes["selectedRemote"]) {
+    if (changes['operationType'] || changes['selectedRemote']) {
       this.setupRemoteSettingsSections();
       this.handleSelectedRemoteChange();
+
+      // Handle chart lifecycle based on operation type changes
+      if (changes['operationType']) {
+        if (this.isOperationType()) {
+          // Initialize charts if switching to sync/copy
+          setTimeout(() => {
+            this.initChartsIfNeeded();
+          }, 0);
+        } else {
+          // Destroy charts if switching to mount
+          this.destroyCharts();
+        }
+      }
     }
   }
 
@@ -440,7 +453,7 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  triggerOpenRemoteConfig(editTarget?: string, existingConfig?: any): void {
+  triggerOpenRemoteConfig(editTarget?: string, existingConfig?: RemoteSettings): void {
     this.openRemoteConfigModal.emit({ editTarget, existingConfig });
   }
 
@@ -448,32 +461,29 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   get transferSummary(): { total: number; completed: number; active: number } {
     return {
       total: this.jobStats.totalTransfers || 0,
-      completed:
-        (this.jobStats.totalTransfers || 0) - (this.jobStats.transfers || 0),
+      completed: (this.jobStats.totalTransfers || 0) - (this.jobStats.transfers || 0),
       active: this.jobStats.transferring?.length || 0,
     };
   }
 
   get errorSummary(): string {
     if (this.jobStats.fatalError) {
-      return this.jobStats.lastError || "Fatal error occurred";
+      return this.jobStats.lastError || 'Fatal error occurred';
     }
     if (this.jobStats.errors > 0) {
       return `${this.jobStats.errors} error(s) occurred`;
     }
-    return "";
+    return '';
   }
 
   get operationDestination(): string {
     return (
-      (this.remoteSettings?.[`${this.operationType}Config`]?.[
-        "dest"
-      ] as string) || "Need to set!"
+      (this.remoteSettings?.[`${this.operationType}Config`]?.['dest'] as string) || 'Need to set!'
     );
   }
 
   get operationColor(): ThemePalette {
-    return this.operationType === "sync" ? "primary" : "accent";
+    return this.operationType === 'sync' ? 'primary' : 'accent';
   }
 
   get operationClass(): string {
@@ -482,9 +492,7 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
   get operationSource(): string {
     return (
-      (this.remoteSettings?.[`${this.operationType}Config`]?.[
-        "source"
-      ] as string) || "Need to set!"
+      (this.remoteSettings?.[`${this.operationType}Config`]?.['source'] as string) || 'Need to set!'
     );
   }
 
@@ -493,9 +501,9 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!path) return false;
     return (
       /^[a-zA-Z]:[\\/]/.test(path) ||
-      path.startsWith("/") ||
-      path.startsWith("~/") ||
-      path.startsWith("./")
+      path.startsWith('/') ||
+      path.startsWith('~/') ||
+      path.startsWith('./')
     );
   }
 
@@ -506,16 +514,12 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
   isSensitiveKey(key: string): boolean {
     return (
-      SENSITIVE_KEYS.some((sensitive) =>
-        key.toLowerCase().includes(sensitive)
-      ) && this.restrictMode
+      SENSITIVE_KEYS.some(sensitive => key.toLowerCase().includes(sensitive)) && this.restrictMode
     );
   }
 
-  maskSensitiveValue(key: string, value: any): string {
-    return this.isSensitiveKey(key)
-      ? "RESTRICTED"
-      : this.truncateValue(value, 15);
+  maskSensitiveValue(key: string, value: string): string {
+    return this.isSensitiveKey(key) ? 'RESTRICTED' : this.truncateValue(value, 15);
   }
 
   getRemoteSettings(sectionKey: string): RemoteSettings {
@@ -526,19 +530,19 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     return Object.keys(this.getRemoteSettings(sectionKey)).length > 0;
   }
 
-  isObjectButNotArray(value: any): boolean {
-    return value !== null && typeof value === "object" && !Array.isArray(value);
+  isObjectButNotArray(value: unknown): boolean {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
   }
 
   // Private methods
   private isOperationActive(): boolean {
-    return this.operationType === "sync"
+    return this.operationType === 'sync'
       ? !!this.selectedRemote?.syncState?.isOnSync
       : !!this.selectedRemote?.copyState?.isOnCopy;
   }
 
   private getCurrentJobId(): number | undefined {
-    return this.operationType === "sync"
+    return this.operationType === 'sync'
       ? this.selectedRemote?.syncState?.syncJobID
       : this.selectedRemote?.copyState?.copyJobID;
   }
@@ -561,18 +565,30 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   private initCharts(): void {
     this.speedChart = this.createChart(
       this.speedChartRef.nativeElement,
-      "Transfer Speed",
-      "#4285F4",
-      "Speed (B/s)"
+      'Transfer Speed',
+      '#4285F4',
+      'Speed (B/s)'
     );
 
     this.progressChart = this.createChart(
       this.progressChartRef.nativeElement,
-      "Overall Progress",
-      "#34A853",
-      "Progress (%)",
+      'Overall Progress',
+      '#34A853',
+      'Progress (%)',
       100
     );
+  }
+
+  private initChartsIfNeeded(): void {
+    // Only initialize charts if they don't exist and we can access the chart elements
+    if (
+      !this.speedChart &&
+      !this.progressChart &&
+      this.speedChartRef?.nativeElement &&
+      this.progressChartRef?.nativeElement
+    ) {
+      this.initCharts();
+    }
   }
 
   private createChart(
@@ -583,9 +599,9 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     max?: number
   ): Chart {
     return new Chart(element, {
-      type: "line",
+      type: 'line',
       data: {
-        labels: Array(this.MAX_HISTORY_LENGTH).fill(""),
+        labels: Array(this.MAX_HISTORY_LENGTH).fill(''),
         datasets: [
           {
             label,
@@ -614,11 +630,21 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private updateChartData(): void {
-    this.updateSpeedChart();
-    this.updateProgressChart();
+    // Initialize charts if they don't exist but should exist
+    if (this.isOperationType() && !this.speedChart && !this.progressChart) {
+      this.initChartsIfNeeded();
+    }
+
+    // Only update if charts exist
+    if (this.speedChart && this.progressChart) {
+      this.updateSpeedChart();
+      this.updateProgressChart();
+    }
   }
 
   private updateSpeedChart(): void {
+    if (!this.speedChart) return;
+
     const speedData = this.getSpeedUnitAndValue(this.jobStats.speed);
     const speedInSelectedUnit = speedData.value;
 
@@ -629,7 +655,7 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.speedChart.data.datasets[0].data = [...this.speedHistory];
 
-    const yScale = this.speedChart.options.scales?.["y"] as any;
+    const yScale = this.speedChart.options.scales?.['y'] as { title?: { text: string } };
     if (yScale?.title) {
       yScale.title.text = `Speed (${speedData.unit})`;
     }
@@ -638,6 +664,8 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private updateProgressChart(): void {
+    if (!this.progressChart) return;
+
     const progress = this.calculateProgress();
 
     this.progressHistory.push(progress);
@@ -659,7 +687,7 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     value: number;
     unit: string;
   } {
-    const units = ["B/s", "KB/s", "MB/s", "GB/s"];
+    const units = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
     let speed = speedInBps;
     let unitIndex = 0;
 
@@ -694,10 +722,7 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
 
     Promise.all([
       this.jobManagementService.getJobStatus(this.currentJobId),
-      this.jobManagementService.getCoreStatsForRemote(
-        remoteName,
-        this.currentJobId
-      ),
+      this.jobManagementService.getCoreStatsForRemote(remoteName, this.currentJobId),
       this.loadCompletedTransfers(group),
     ])
       .then(([job, remoteStats, completedTransfers]) => {
@@ -713,7 +738,7 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
               };
             }
 
-            console.log("Stats to use:", statsToUse);
+            console.log('Stats to use:', statsToUse);
             this.updateStatsFromJob(statsToUse);
             if (completedTransfers) {
               this.updateCompletedTransfers(completedTransfers);
@@ -721,61 +746,48 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
           });
         }
       })
-      .catch((error) =>
-        console.error("Error fetching remote-specific job status:", error)
-      );
+      .catch(error => console.error('Error fetching remote-specific job status:', error));
   }
 
-  public async loadCompletedTransfers(
-    group: string
-  ): Promise<CompletedTransfer[] | null> {
+  public async loadCompletedTransfers(group: string): Promise<CompletedTransfer[] | null> {
     try {
-      const response: any =
-        await this.jobManagementService.getCompletedTransfers(group);
-      if (
-        response &&
-        response.transferred &&
-        Array.isArray(response.transferred)
-      ) {
+      const response: any = await this.jobManagementService.getCompletedTransfers(group);
+      if (response && response.transferred && Array.isArray(response.transferred)) {
         this.showTransferHistory = true;
-        return response.transferred.map((transfer: any) =>
-          this.mapTransferFromApi(transfer)
-        );
+        return response.transferred.map((transfer: any) => this.mapTransferFromApi(transfer));
       } else if (response && Array.isArray(response)) {
         // Handle case where response is directly an array
         this.showTransferHistory = true;
-        return response.map((transfer: any) =>
-          this.mapTransferFromApi(transfer)
-        );
+        return response.map((transfer: any) => this.mapTransferFromApi(transfer));
       }
       return null;
     } catch (error) {
-      console.warn("Could not load completed transfers:", error);
+      console.warn('Could not load completed transfers:', error);
       return null;
     }
   }
 
   private mapTransferFromApi(transfer: any): CompletedTransfer {
     // Determine status based on API data
-    let status: "completed" | "checked" | "failed" | "partial" = "completed";
+    let status: 'completed' | 'checked' | 'failed' | 'partial' = 'completed';
 
-    if (transfer.error && transfer.error !== "") {
-      status = "failed";
+    if (transfer.error && transfer.error !== '') {
+      status = 'failed';
     } else if (transfer.checked === true) {
-      status = "checked";
+      status = 'checked';
     } else if (transfer.bytes > 0 && transfer.bytes < transfer.size) {
-      status = "partial";
+      status = 'partial';
     } else if (transfer.bytes === transfer.size && transfer.size > 0) {
-      status = "completed";
+      status = 'completed';
     }
 
     return {
-      name: transfer.name || "",
+      name: transfer.name || '',
       size: transfer.size || 0,
       bytes: transfer.bytes || 0,
       checked: transfer.checked || false,
-      error: transfer.error || "",
-      jobid: transfer.group ? parseInt(transfer.group.replace("job/", "")) : 0,
+      error: transfer.error || '',
+      jobid: transfer.group ? parseInt(transfer.group.replace('job/', '')) : 0,
       startedAt: transfer.started_at,
       completedAt: transfer.completed_at,
       srcFs: transfer.srcFs,
@@ -807,15 +819,9 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
       const activeNames = new Set(currentTransferring.map((f: any) => f.name));
 
       // Find files that were transferring but are no longer in the active list
-      const currentActiveTransfers = this.dataSource.data.filter(
-        (file) => !file.isCompleted
-      );
-      currentActiveTransfers.forEach((file) => {
-        if (
-          !activeNames.has(file.name) &&
-          file.percentage > 0 &&
-          file.percentage < 100
-        ) {
+      const currentActiveTransfers = this.dataSource.data.filter(file => !file.isCompleted);
+      currentActiveTransfers.forEach(file => {
+        if (!activeNames.has(file.name) && file.percentage > 0 && file.percentage < 100) {
           // This file was transferring but is no longer active, mark as completed
           const completedFile: TransferFile = {
             ...file,
@@ -827,7 +833,7 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
           };
 
           // Only add if not already in completed list
-          if (!this.completedTransfers.some((cf) => cf.name === file.name)) {
+          if (!this.completedTransfers.some(cf => cf.name === file.name)) {
             this.completedTransfers.push(completedFile);
           }
         }
@@ -840,17 +846,15 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
       ...job.stats,
       transferring: this.processTransferringFiles(job.stats.transferring),
     };
-    console.log("Updated Job Stats:", updatedStats);
-    console.log("Completed Transfers:", this.completedTransfers.length);
+    console.log('Updated Job Stats:', updatedStats);
+    console.log('Completed Transfers:', this.completedTransfers.length);
 
     this.jobStats = updatedStats;
     this.updateRemoteStatusOnError(job);
     this.updateChartData();
 
     // Process active transfers separately
-    const activeTransfers = this.processTransferringFiles(
-      job.stats.transferring
-    );
+    const activeTransfers = this.processTransferringFiles(job.stats.transferring);
 
     // Store active transfers separately for the enhanced panel
     this.activeTransfers = activeTransfers;
@@ -859,32 +863,28 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
     const allTransfers = [...activeTransfers, ...this.completedTransfers];
     this.dataSource.data = allTransfers;
 
-    console.log("Active transfers:", activeTransfers.length);
-    console.log("Completed transfers:", this.recentCompletedTransfers.length);
+    console.log('Active transfers:', activeTransfers.length);
+    console.log('Completed transfers:', this.recentCompletedTransfers.length);
 
     this.cdr.markForCheck();
   }
 
   private processTransferringFiles(files: any[] = []): TransferFile[] {
-    return (files as TransferFile[]).map((file) => ({
+    return (files as TransferFile[]).map(file => ({
       ...file,
-      percentage:
-        file.size > 0
-          ? Math.min(100, Math.round((file.bytes / file.size) * 100))
-          : 0,
+      percentage: file.size > 0 ? Math.min(100, Math.round((file.bytes / file.size) * 100)) : 0,
       isError: file.percentage === 100 && file.bytes < file.size,
     }));
   }
 
   private updateRemoteStatusOnError(job: any): void {
     if (job.stats.fatalError && this.selectedRemote) {
-      const stateKey =
-        this.operationType === "sync" ? "syncState" : "copyState";
+      const stateKey = this.operationType === 'sync' ? 'syncState' : 'copyState';
 
       this.selectedRemote = {
         ...this.selectedRemote,
         [stateKey]: {
-          isOnSync: "error",
+          isOnSync: 'error',
         },
       };
     }
@@ -921,22 +921,27 @@ export class AppDetailComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private truncateValue(value: any, length: number): string {
-    if (value == null) return "";
+    if (value == null) return '';
 
-    if (typeof value === "object") {
+    if (typeof value === 'object') {
       try {
         const jsonString = JSON.stringify(value);
-        return jsonString.length > length
-          ? `${jsonString.slice(0, length)}...`
-          : jsonString;
+        return jsonString.length > length ? `${jsonString.slice(0, length)}...` : jsonString;
       } catch {
-        return "[Invalid JSON]";
+        return '[Invalid JSON]';
       }
     }
 
     const stringValue = String(value);
-    return stringValue.length > length
-      ? `${stringValue.slice(0, length)}...`
-      : stringValue;
+    return stringValue.length > length ? `${stringValue.slice(0, length)}...` : stringValue;
+  }
+
+  onTabChange(event: { index: number }): void {
+    // When monitoring tab is selected (index 0), initialize charts if needed
+    if (event.index === 0 && this.isOperationType()) {
+      setTimeout(() => {
+        this.initChartsIfNeeded();
+      }, 0);
+    }
   }
 }

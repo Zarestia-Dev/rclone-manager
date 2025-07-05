@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../ui/notification.service';
 import { CheckResult } from '../../shared/components/types';
@@ -8,11 +8,12 @@ import { CheckResult } from '../../shared/components/types';
  * Handles settings CRUD operations and validation
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AppSettingsService extends TauriBaseService {
+  private notificationService = inject(NotificationService);
 
-  constructor(private notificationService: NotificationService) {
+  constructor() {
     super();
   }
 
@@ -35,6 +36,8 @@ export class AppSettingsService extends TauriBaseService {
    */
   async saveSetting(category: string, key: string, value: any): Promise<void> {
     const updatedSetting = { [category]: { [key]: value } };
+    console.log('Saving setting:', category, key, value);
+
     return this.invokeCommand('save_settings', { updatedSettings: updatedSetting });
   }
 
@@ -66,7 +69,7 @@ export class AppSettingsService extends TauriBaseService {
       this.notificationService.showSuccess('Settings reset successfully');
       return true;
     }
-    
+
     return false;
   }
 
@@ -89,7 +92,7 @@ export class AppSettingsService extends TauriBaseService {
     return this.invokeCommand<CheckResult>('check_links', {
       links,
       maxRetries,
-      retryDelaySecs
+      retryDelaySecs,
     });
   }
 }

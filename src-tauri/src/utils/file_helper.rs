@@ -1,5 +1,5 @@
 use log::{debug, error};
-use tauri::{AppHandle, Window, command};
+use tauri::{command, AppHandle, Window};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -22,7 +22,7 @@ pub async fn get_folder_location(
             return Ok(None);
         }
         Some(path) => path,
-        None => {
+        _ => {
             debug!("User cancelled folder selection");
             return Ok(None);
         }
@@ -50,7 +50,7 @@ pub async fn get_folder_location(
         match tokio::fs::read_dir(path).await {
             Ok(mut entries) => match entries.next_entry().await {
                 Ok(Some(_)) => return Err("Selected folder is not empty".into()),
-                Ok(None) => (), // Folder is empty
+                Ok(_) => (), // Folder is empty
                 Err(e) => {
                     error!("Error reading directory: {}", e);
                     return Err(format!("Error checking folder: {}", e));

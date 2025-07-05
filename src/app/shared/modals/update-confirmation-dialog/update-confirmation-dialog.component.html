@@ -1,0 +1,61 @@
+<div class="update-modal">
+  <!-- Modal Header -->
+  <div class="modal-header" data-tauri-drag-region>
+    <button mat-icon-button aria-label="Help information">
+      <mat-icon svgIcon="question"></mat-icon>
+    </button>
+    <p>
+      <mat-icon svgIcon="circle-up" aria-hidden="true"></mat-icon>
+      Update Rclone
+    </p>
+    <button mat-icon-button (click)="cancel()" aria-label="Close dialog">
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    </button>
+  </div>
+
+  <!-- Modal Content -->
+  <div class="modal-content">
+    <!-- Central Icon -->
+    <div class="modal-icon-container">
+      <div class="modal-icon update">
+        <mat-icon svgIcon="rclone" aria-hidden="true"></mat-icon>
+      </div>
+      <h1 class="modal-title">Update Available</h1>
+      <p class="modal-message">A new version of Rclone is available!</p>
+    </div>
+
+    <!-- Version Information -->
+    <div class="version-info">
+      <div class="version-row">
+        <span class="label">Current Version:</span>
+        <span class="version current">{{ data.updateInfo.current_version_clean }}</span>
+      </div>
+      <div class="version-row">
+        <span class="label">Latest Version:</span>
+        <span class="version latest">{{ data.updateInfo.latest_version_clean }}</span>
+      </div>
+      <mat-divider></mat-divider>
+      <button mat-stroked-button color="accent" (click)="openChangelog()">
+        <mat-icon svgIcon="open-link"></mat-icon>
+        View changelog
+      </button>
+    </div>
+
+    <!-- Warning Section -->
+    <div class="warning-section">
+      <mat-icon svgIcon="circle-exclamation" color="warn" aria-hidden="true"></mat-icon>
+      <p>
+        The rclone engine will be restarted after the update. Any ongoing operations will be
+        interrupted.
+      </p>
+    </div>
+  </div>
+
+  <!-- Modal Actions -->
+  <div class="modal-actions">
+    <button mat-raised-button color="primary" (click)="confirm()">
+      <mat-icon svgIcon="circle-up"></mat-icon>
+      Update Now
+    </button>
+  </div>
+</div>

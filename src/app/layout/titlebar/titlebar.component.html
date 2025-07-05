@@ -6,7 +6,11 @@
         <span>Quick Remote</span>
         <span class="shortcut" aria-hidden="true">Ctrl + R</span>
       </button>
-      <button mat-menu-item (click)="openRemoteConfigModal()" aria-label="Detailed remote configuration">
+      <button
+        mat-menu-item
+        (click)="openRemoteConfigModal()"
+        aria-label="Detailed remote configuration"
+      >
         <span>Detailed Remote</span>
         <span class="shortcut" aria-hidden="true">Ctrl + N</span>
       </button>
@@ -23,16 +27,24 @@
 
     <!-- Connection Status Indicator -->
     @if (connectionStatus === 'offline' || connectionStatus === 'checking') {
-      <button mat-icon-button
-        (click)="runInternetCheck()" [disabled]="connectionStatus === 'checking'" aria-label="Internet connection status"
-        matTooltip="{{ getInternetStatusTooltip() }}">
+      <button
+        mat-icon-button
+        (click)="runInternetCheck()"
+        [disabled]="connectionStatus === 'checking'"
+        aria-label="Internet connection status"
+        matTooltip="{{ getInternetStatusTooltip() }}"
+      >
         @if (connectionStatus !== 'checking') {
-          <mat-icon svgIcon="no-internet" aria-hidden="true">
-          </mat-icon>
+          <mat-icon svgIcon="no-internet" aria-hidden="true"> </mat-icon>
         }
         @if (connectionStatus === 'checking') {
-          <mat-progress-spinner color="accent" diameter="24" mode="indeterminate"
-            strokeWidth="4" aria-hidden="true">
+          <mat-progress-spinner
+            color="accent"
+            diameter="24"
+            mode="indeterminate"
+            strokeWidth="4"
+            aria-hidden="true"
+          >
           </mat-progress-spinner>
         }
       </button>
@@ -53,7 +65,12 @@
       <button mat-icon-button (click)="maximizeWindow()" aria-label="Maximize window">
         <mat-icon svgIcon="check_box" aria-hidden="true"></mat-icon>
       </button>
-      <button mat-icon-button (click)="closeWindow()" aria-label="Close window" class="close-button">
+      <button
+        mat-icon-button
+        (click)="closeWindow()"
+        aria-label="Close window"
+        class="close-button"
+      >
         <mat-icon svgIcon="close" aria-hidden="true"></mat-icon>
       </button>
     }
@@ -63,27 +80,38 @@
   <mat-menu #menu="matMenu">
     <!-- Theme Selector -->
     <div class="theme-selector" aria-label="Theme selection">
-      <button matTooltip="Not Supported" disabled class="theme-button system" [class.selected]="selectedTheme === 'system'"
-        (click)="setTheme('system', false, $event)" aria-label="System theme">
+      <button
+        matTooltip="Not Supported"
+        disabled
+        class="theme-button system"
+        [class.selected]="selectedTheme === 'system'"
+        (click)="setTheme('system', false, $event)"
+        aria-label="System theme"
+      >
         @if (selectedTheme === 'system') {
-          <mat-icon svgIcon="circle-check" class="checkmark"
-          aria-hidden="true"></mat-icon>
+          <mat-icon svgIcon="circle-check" class="checkmark" aria-hidden="true"></mat-icon>
         }
       </button>
 
-      <button class="theme-button light" [class.selected]="selectedTheme === 'light'"
-        (click)="setTheme('light', false, $event)" aria-label="Light theme">
+      <button
+        class="theme-button light"
+        [class.selected]="selectedTheme === 'light'"
+        (click)="setTheme('light', false, $event)"
+        aria-label="Light theme"
+      >
         @if (selectedTheme === 'light') {
-          <mat-icon svgIcon="circle-check" class="checkmark"
-          aria-hidden="true"></mat-icon>
+          <mat-icon svgIcon="circle-check" class="checkmark" aria-hidden="true"></mat-icon>
         }
       </button>
 
-      <button class="theme-button dark" [class.selected]="selectedTheme === 'dark'"
-        (click)="setTheme('dark', false, $event)" aria-label="Dark theme">
+      <button
+        class="theme-button dark"
+        [class.selected]="selectedTheme === 'dark'"
+        (click)="setTheme('dark', false, $event)"
+        aria-label="Dark theme"
+      >
         @if (selectedTheme === 'dark') {
-          <mat-icon svgIcon="circle-check" class="checkmark"
-          aria-hidden="true"></mat-icon>
+          <mat-icon svgIcon="circle-check" class="checkmark" aria-hidden="true"></mat-icon>
         }
       </button>
     </div>
@@ -109,7 +137,11 @@
       <span class="shortcut" aria-hidden="true">Ctrl + ,</span>
     </button>
 
-    <button mat-menu-item (click)="openKeyboardShortcutsModal()" aria-label="View keyboard shortcuts">
+    <button
+      mat-menu-item
+      (click)="openKeyboardShortcutsModal()"
+      aria-label="View keyboard shortcuts"
+    >
       <span>Keyboard Shortcuts</span>
       <span class="shortcut" aria-hidden="true">Ctrl + ?</span>
     </button>

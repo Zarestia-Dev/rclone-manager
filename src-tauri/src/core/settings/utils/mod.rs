@@ -1,5 +1,5 @@
 //! Settings utility functions module
-//! 
+//!
 //! This module contains utility functions shared across settings modules:
 //! - Path utilities
 //! - Helper functions

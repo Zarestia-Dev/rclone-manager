@@ -4,7 +4,11 @@ use tauri_plugin_notification::NotificationExt;
 use crate::RcloneState;
 
 pub fn send_notification(app: &tauri::AppHandle, title: &str, body: &str) {
-    let enabled = *app.state::<RcloneState>().notifications_enabled.read().unwrap();
+    let enabled = *app
+        .state::<RcloneState>()
+        .notifications_enabled
+        .read()
+        .unwrap();
     log::debug!("🔔 Notifications enabled: {}", enabled);
     if enabled {
         app.notification()

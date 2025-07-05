@@ -9,13 +9,7 @@ import { CompletedTransfer } from './transfer-activity-panel.component';
 @Component({
   selector: 'app-completed-transfers-table',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatTableModule,
-    MatIconModule,
-    MatTooltipModule,
-    MatChipsModule,
-  ],
+  imports: [CommonModule, MatTableModule, MatIconModule, MatTooltipModule, MatChipsModule],
   template: `
     <div class="completed-transfers-container">
       @if (transfers.length > 0) {
@@ -25,20 +19,39 @@ import { CompletedTransfer } from './transfer-activity-panel.component';
             <th mat-header-cell *matHeaderCellDef>File</th>
             <td mat-cell *matCellDef="let transfer" class="name-cell">
               <div class="file-info">
-                <mat-icon 
-                  svgIcon="file"
-                  class="file-icon"
-                  matTooltip="{{transfer.name}}">
+                <mat-icon svgIcon="file" class="file-icon" matTooltip="{{ transfer.name }}">
                 </mat-icon>
-                <span class="file-name" [title]="transfer.name">{{ getFileName(transfer.name) }}</span>
+                <span class="file-name" [title]="transfer.name">{{
+                  getFileName(transfer.name)
+                }}</span>
                 @if (transfer.status === 'failed') {
-                  <mat-icon svgIcon="circle-exclamation" class="error-icon" matTooltip="{{transfer.error}}" color="warn"></mat-icon>
+                  <mat-icon
+                    svgIcon="circle-exclamation"
+                    class="error-icon"
+                    matTooltip="{{ transfer.error }}"
+                    color="warn"
+                  ></mat-icon>
                 } @else if (transfer.status === 'checked') {
-                  <mat-icon svgIcon="circle-check" class="check-icon" matTooltip="File was checked/skipped" color="accent"></mat-icon>
+                  <mat-icon
+                    svgIcon="circle-check"
+                    class="check-icon"
+                    matTooltip="File was checked/skipped"
+                    color="accent"
+                  ></mat-icon>
                 } @else if (transfer.status === 'partial') {
-                  <mat-icon svgIcon="circle-exclamation" class="partial-icon" matTooltip="Partial transfer" color="warn"></mat-icon>
+                  <mat-icon
+                    svgIcon="circle-exclamation"
+                    class="partial-icon"
+                    matTooltip="Partial transfer"
+                    color="warn"
+                  ></mat-icon>
                 } @else {
-                  <mat-icon svgIcon="circle-check" class="success-icon" matTooltip="Transfer completed" color="primary"></mat-icon>
+                  <mat-icon
+                    svgIcon="circle-check"
+                    class="success-icon"
+                    matTooltip="Transfer completed"
+                    color="primary"
+                  ></mat-icon>
                 }
               </div>
             </td>
@@ -50,23 +63,31 @@ import { CompletedTransfer } from './transfer-activity-panel.component';
             <td mat-cell *matCellDef="let transfer" class="status-cell">
               @if (transfer.status === 'failed') {
                 <mat-chip class="status-chip error">
-                  <mat-icon svgIcon="circle-exclamation" class="chip-icon"></mat-icon>
-                  Failed
+                  <span>
+                    <mat-icon svgIcon="circle-exclamation" class="chip-icon"></mat-icon>
+                    Failed
+                  </span>
                 </mat-chip>
               } @else if (transfer.status === 'checked') {
                 <mat-chip class="status-chip checked">
-                  <mat-icon svgIcon="circle-check" class="chip-icon"></mat-icon>
-                  Checked
+                  <span>
+                    <mat-icon svgIcon="circle-check" class="chip-icon"></mat-icon>
+                    Checked
+                  </span>
                 </mat-chip>
               } @else if (transfer.status === 'partial') {
                 <mat-chip class="status-chip partial">
-                  <mat-icon svgIcon="circle-exclamation" class="chip-icon"></mat-icon>
-                  Partial
+                  <span>
+                    <mat-icon svgIcon="circle-exclamation" class="chip-icon"></mat-icon>
+                    Partial
+                  </span>
                 </mat-chip>
               } @else {
                 <mat-chip class="status-chip success">
-                  <mat-icon svgIcon="circle-check" class="chip-icon"></mat-icon>
-                  Completed
+                  <span>
+                    <mat-icon svgIcon="circle-check" class="chip-icon"></mat-icon>
+                    Completed
+                  </span>
                 </mat-chip>
               }
             </td>
@@ -79,7 +100,9 @@ import { CompletedTransfer } from './transfer-activity-panel.component';
               <div class="size-info">
                 <span class="size-value">{{ formatFileSize(transfer.size) }}</span>
                 @if (transfer.bytes !== transfer.size && transfer.bytes > 0) {
-                  <span class="size-transferred">({{ formatFileSize(transfer.bytes) }} transferred)</span>
+                  <span class="size-transferred"
+                    >({{ formatFileSize(transfer.bytes) }} transferred)</span
+                  >
                 }
                 @if (transfer.status === 'checked' && transfer.size > 0) {
                   <span class="size-note">(already existed)</span>
@@ -95,9 +118,13 @@ import { CompletedTransfer } from './transfer-activity-panel.component';
               <div class="path-info">
                 @if (transfer.srcFs && transfer.dstFs) {
                   <div class="src-dst">
-                    <span class="src" matTooltip="Source: {{transfer.srcFs}}">{{ getShortPath(transfer.srcFs) }}</span>
+                    <span class="src" matTooltip="Source: {{ transfer.srcFs }}">{{
+                      getShortPath(transfer.srcFs)
+                    }}</span>
                     <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                    <span class="dst" matTooltip="Destination: {{transfer.dstFs}}">{{ getShortPath(transfer.dstFs) }}</span>
+                    <span class="dst" matTooltip="Destination: {{ transfer.dstFs }}">{{
+                      getShortPath(transfer.dstFs)
+                    }}</span>
                   </div>
                 } @else {
                   <span class="no-path">-</span>
@@ -117,8 +144,12 @@ import { CompletedTransfer } from './transfer-activity-panel.component';
                 } @else {
                   <span class="time-value">-</span>
                 }
-                @if (transfer.startedAt && transfer.completedAt && transfer.status === 'completed') {
-                  <span class="duration">{{ getDuration(transfer.startedAt, transfer.completedAt) }}</span>
+                @if (
+                  transfer.startedAt && transfer.completedAt && transfer.status === 'completed'
+                ) {
+                  <span class="duration">{{
+                    getDuration(transfer.startedAt, transfer.completedAt)
+                  }}</span>
                 }
               </div>
             </td>
@@ -128,37 +159,41 @@ import { CompletedTransfer } from './transfer-activity-panel.component';
           <ng-container matColumnDef="jobid">
             <th mat-header-cell *matHeaderCellDef>Job</th>
             <td mat-cell *matCellDef="let transfer" class="jobid-cell">
-              <mat-chip class="job-chip" matTooltip="Job ID: {{transfer.jobid}}">
+              <mat-chip class="job-chip" matTooltip="Job ID: {{ transfer.jobid }}">
                 #{{ transfer.jobid }}
               </mat-chip>
             </td>
           </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;" 
-              class="completed-row" 
-              [ngClass]="{
-                'error': row.status === 'failed',
-                'checked': row.status === 'checked',
-                'partial': row.status === 'partial',
-                'success': row.status === 'completed'
-              }">
-          </tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: displayedColumns"
+            class="completed-row"
+            [ngClass]="{
+              error: row.status === 'failed',
+              checked: row.status === 'checked',
+              partial: row.status === 'partial',
+              success: row.status === 'completed',
+            }"
+          ></tr>
         </table>
       } @else {
         <div class="no-completed">
           <mat-icon svgIcon="circle-check" class="no-completed-icon"></mat-icon>
           <span>No recent completed transfers</span>
-          <p class="no-completed-description">Completed transfers will appear here once operations finish</p>
+          <p class="no-completed-description">
+            Completed transfers will appear here once operations finish
+          </p>
         </div>
       }
     </div>
   `,
-  styleUrls: ['./completed-transfers-table.component.scss']
+  styleUrls: ['./completed-transfers-table.component.scss'],
 })
 export class CompletedTransfersTableComponent {
   @Input() transfers: CompletedTransfer[] = [];
-  @Input() operationClass: string = '';
+  @Input() operationClass = '';
 
   displayedColumns: string[] = ['name', 'status', 'size', 'path', 'time', 'jobid'];
 
@@ -205,13 +240,13 @@ export class CompletedTransfersTableComponent {
     const start = new Date(startedAt).getTime();
     const end = new Date(completedAt).getTime();
     const diff = end - start;
-    
+
     if (diff < 1000) return '<1s';
-    
+
     const seconds = Math.floor(diff / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
-    
+
     if (hours > 0) return `${hours}h ${minutes % 60}m`;
     if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
     return `${seconds}s`;

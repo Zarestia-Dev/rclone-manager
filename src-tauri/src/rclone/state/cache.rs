@@ -1,14 +1,14 @@
-use std::sync::Arc;
 use log::{debug, error};
 use once_cell::sync::Lazy;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
+use std::sync::Arc;
 use tauri::Manager;
 use tokio::sync::RwLock;
 
 use crate::{
     core::settings::remote::manager::get_remote_settings,
     rclone::queries::{get_all_remote_configs, get_mounted_remotes, get_remotes},
-    utils::types::{MountedRemote, RcloneState, RemoteCache, SENSITIVE_KEYS}
+    utils::types::{MountedRemote, RcloneState, RemoteCache, SENSITIVE_KEYS},
 };
 
 fn redact_sensitive_values(

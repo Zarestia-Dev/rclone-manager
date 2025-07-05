@@ -5,7 +5,9 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::{
-    rclone::state::{get_cached_mounted_remotes, ENGINE_STATE, JOB_CACHE, force_check_mounted_remotes},
+    rclone::state::{
+        force_check_mounted_remotes, get_cached_mounted_remotes, ENGINE_STATE, JOB_CACHE,
+    },
     utils::{
         log::log_operation,
         rclone::endpoints::{mount, EndpointHelper},
@@ -285,7 +287,7 @@ pub async fn unmount_all_remotes(
     if context != "shutdown" {
         app.emit("remote_state_changed", "all")
             .map_err(|e| format!("Failed to emit event: {}", e))?;
-            
+
         // Force refresh mounted remotes after unmount all operation
         if let Err(e) = force_check_mounted_remotes(app).await {
             log::warn!("Failed to refresh mounted remotes after unmount all: {}", e);

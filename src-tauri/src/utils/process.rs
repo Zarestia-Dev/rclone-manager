@@ -1,14 +1,14 @@
-use log::{info, warn, error};
+use log::{error, info, warn};
 
 /// Kill a process by PID using platform-specific methods
 /// This is a more robust implementation than the basic shell commands
 #[tauri::command]
 pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
     info!("🔪 Attempting to kill process with PID: {}", pid);
-    
+
     #[cfg(target_family = "unix")]
     {
-        use nix::libc::{SIGKILL, kill};
+        use nix::libc::{kill, SIGKILL};
 
         let result = unsafe { kill(pid as i32, SIGKILL) };
         if result == 0 {
@@ -24,7 +24,7 @@ pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
             Err(error_msg)
         }
     }
-    
+
     #[cfg(target_family = "windows")]
     {
         use windows_sys::Win32::Foundation::CloseHandle;
@@ -46,7 +46,7 @@ pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
             error!("{}", error_msg);
             return Err(error_msg);
         }
-        
+
         info!("✅ Successfully killed process {}", pid);
         Ok(())
     }
@@ -55,21 +55,21 @@ pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
 /// Find and kill processes using a specific port
 pub fn kill_processes_on_port(port: u16) -> Result<(), String> {
     info!("🧹 Cleaning up processes using port {}", port);
-    
+
     let pids = find_pids_on_port(port)?;
-    
+
     if pids.is_empty() {
         info!("No processes found using port {}", port);
         return Ok(());
     }
-    
+
     for pid in pids {
         match kill_process_by_pid(pid) {
             Ok(_) => info!("✅ Killed process {} on port {}", pid, port),
             Err(e) => warn!("⚠️ Failed to kill process {} on port {}: {}", pid, port, e),
         }
     }
-    
+
     // Give some time for processes to die
     std::thread::sleep(std::time::Duration::from_millis(500));
     Ok(())
@@ -84,16 +84,16 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
             .args(&["-ti", &format!(":{}", port)])
             .output()
             .map_err(|e| format!("Failed to run lsof: {}", e))?;
-            
+
         let pids_str = String::from_utf8_lossy(&output.stdout);
         let pids: Vec<u32> = pids_str
             .lines()
             .filter_map(|line| line.trim().parse::<u32>().ok())
             .collect();
-            
+
         Ok(pids)
     }
-    
+
     #[cfg(windows)]
     {
         // Use netstat to find processes using the port
@@ -101,10 +101,10 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
             .args(&["-ano", "-p", "TCP"])
             .output()
             .map_err(|e| format!("Failed to run netstat: {}", e))?;
-            
+
         let netstat_output = String::from_utf8_lossy(&output.stdout);
         let mut pids = Vec::new();
-        
+
         for line in netstat_output.lines() {
             if line.contains(&format!(":{}", port)) && line.contains("LISTENING") {
                 if let Some(pid_str) = line.split_whitespace().last() {
@@ -114,7 +114,7 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
                 }
             }
         }
-        
+
         Ok(pids)
     }
 }
@@ -122,27 +122,27 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
 /// Kill all rclone rcd processes (emergency cleanup)
 pub fn kill_all_rclone_processes() -> Result<(), String> {
     info!("🧹 Emergency cleanup: killing all rclone processes");
-    
+
     #[cfg(unix)]
     {
         // Kill any rclone rcd processes
         let _ = std::process::Command::new("pkill")
             .args(&["-f", "rclone rcd"])
             .output();
-            
+
         std::thread::sleep(std::time::Duration::from_millis(500));
     }
-    
+
     #[cfg(windows)]
     {
         // Kill rclone.exe processes on Windows
         let _ = std::process::Command::new("taskkill")
             .args(&["/F", "/IM", "rclone.exe"])
             .output();
-            
+
         std::thread::sleep(std::time::Duration::from_millis(500));
     }
-    
+
     Ok(())
 }
 

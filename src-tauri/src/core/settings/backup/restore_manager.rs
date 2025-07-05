@@ -1,5 +1,7 @@
 use crate::{
-    core::settings::{backup::archive_utils::find_7z_executable, utils::path_utils::get_rclone_config_path},
+    core::settings::{
+        backup::archive_utils::find_7z_executable, utils::path_utils::get_rclone_config_path,
+    },
     utils::types::SettingsState,
 };
 use log::{debug, info};

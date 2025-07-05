@@ -1,19 +1,19 @@
+use log::{debug, error, warn};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
-use log::{debug, warn, error};
-use tauri::{AppHandle, Emitter, State, Manager};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::time;
 
+use super::cache::CACHE;
+use crate::rclone::queries::mount::get_mounted_remotes;
 use crate::utils::types::MountedRemote;
 use crate::RcloneState;
-use crate::rclone::queries::mount::get_mounted_remotes;
-use super::cache::CACHE;
 
 /// Global flag to control the mounted remote watcher
 static WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
 
 /// Background task that monitors mounted remotes for changes
-/// 
+///
 /// This task runs continuously and checks if any mounted remotes have been
 /// unmounted externally (outside of the app). If a remote is detected as
 /// unmounted, it updates the cache and emits an event to notify the frontend.
@@ -28,7 +28,7 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
 
     loop {
         interval.tick().await;
-        
+
         // Check if we should stop the watcher
         if !WATCHER_RUNNING.load(Ordering::SeqCst) {
             debug!("🔍 Stopping mounted remote watcher");
@@ -53,7 +53,7 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
                 cached_remotes
             }
         };
-        
+
         // If this is the first run, just store the current state
         if last_known_mounts.is_empty() {
             last_known_mounts = current_mounts;
@@ -63,11 +63,11 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
         // Check for changes: both unmounted and newly mounted remotes
         let unmounted_remotes = find_unmounted_remotes(&last_known_mounts, &current_mounts);
         let newly_mounted_remotes = find_unmounted_remotes(&current_mounts, &last_known_mounts);
-        
+
         // Handle unmounted remotes
         if !unmounted_remotes.is_empty() {
             debug!("🔍 Detected unmounted remotes: {:?}", unmounted_remotes);
-            
+
             // Refresh the cache to get the latest state
             if let Err(e) = CACHE.refresh_mounted_remotes(app_handle.clone()).await {
                 error!("❌ Failed to refresh mounted remotes cache: {}", e);
@@ -86,14 +86,20 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
                     warn!("⚠️ Failed to emit remote_state_changed event: {}", e);
                 }
 
-                debug!("📡 Emitted remote_state_changed event for unmounted: {}", remote.fs);
+                debug!(
+                    "📡 Emitted remote_state_changed event for unmounted: {}",
+                    remote.fs
+                );
             }
         }
 
         // Handle newly mounted remotes
         if !newly_mounted_remotes.is_empty() {
-            debug!("🔍 Detected newly mounted remotes: {:?}", newly_mounted_remotes);
-            
+            debug!(
+                "🔍 Detected newly mounted remotes: {:?}",
+                newly_mounted_remotes
+            );
+
             // Refresh the cache to get the latest state
             if let Err(e) = CACHE.refresh_mounted_remotes(app_handle.clone()).await {
                 error!("❌ Failed to refresh mounted remotes cache: {}", e);
@@ -112,7 +118,10 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
                     warn!("⚠️ Failed to emit remote_state_changed event: {}", e);
                 }
 
-                debug!("📡 Emitted remote_state_changed event for mounted: {}", remote.fs);
+                debug!(
+                    "📡 Emitted remote_state_changed event for mounted: {}",
+                    remote.fs
+                );
             }
         }
 
@@ -122,7 +131,9 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
 }
 
 /// Get mounted remotes from API using the existing function
-async fn get_mounted_remotes_from_api(app_handle: &AppHandle) -> Result<Vec<MountedRemote>, String> {
+async fn get_mounted_remotes_from_api(
+    app_handle: &AppHandle,
+) -> Result<Vec<MountedRemote>, String> {
     let state: State<RcloneState> = app_handle.state();
     get_mounted_remotes(state).await
 }
@@ -156,23 +167,23 @@ fn find_unmounted_remotes(
 #[tauri::command]
 pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), String> {
     debug!("🔍 Force checking mounted remotes");
-    
+
     // Get current state from cache
     let cached_mounts = CACHE.get_mounted_remotes().await;
-    
+
     // Get current state from live API using existing function
     let api_mounts = get_mounted_remotes_from_api(&app_handle).await?;
-    
+
     // Check for changes between cache and API
     let unmounted_remotes = find_unmounted_remotes(&cached_mounts, &api_mounts);
     let newly_mounted = find_unmounted_remotes(&api_mounts, &cached_mounts);
-    
+
     // If there are differences, update the cache
     if !unmounted_remotes.is_empty() || !newly_mounted.is_empty() {
         debug!("🔍 Detected mount changes - updating cache");
         CACHE.refresh_mounted_remotes(app_handle.clone()).await?;
     }
-    
+
     // Emit events for unmounted remotes
     for remote in unmounted_remotes {
         let event_payload = serde_json::json!({
@@ -184,10 +195,13 @@ pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), St
         if let Err(e) = app_handle.emit("remote_state_changed", &event_payload) {
             warn!("⚠️ Failed to emit remote_state_changed event: {}", e);
         }
-        
-        debug!("📡 Emitted remote_state_changed event for unmounted: {}", remote.fs);
+
+        debug!(
+            "📡 Emitted remote_state_changed event for unmounted: {}",
+            remote.fs
+        );
     }
-    
+
     // Emit events for newly mounted remotes
     for remote in newly_mounted {
         let event_payload = serde_json::json!({
@@ -195,13 +209,16 @@ pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), St
             "mount_point": remote.mount_point,
             "reason": "externally_mounted"
         });
-        
+
         if let Err(e) = app_handle.emit("remote_state_changed", &event_payload) {
             warn!("⚠️ Failed to emit remote_state_changed event: {}", e);
         }
-        
-        debug!("📡 Emitted remote_state_changed event for mounted: {}", remote.fs);
+
+        debug!(
+            "📡 Emitted remote_state_changed event for mounted: {}",
+            remote.fs
+        );
     }
-    
+
     Ok(())
 }

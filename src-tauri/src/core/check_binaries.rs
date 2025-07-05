@@ -139,7 +139,9 @@ pub fn read_rclone_path(app: &AppHandle) -> PathBuf {
             system_path
         }
         Err(_) => {
-            error!("❌ No valid Rclone binary found - neither configured path nor system rclone available");
+            error!(
+                "❌ No valid Rclone binary found - neither configured path nor system rclone available"
+            );
             configured_path // Return the original path anyway (will fail later with proper error)
         }
     }

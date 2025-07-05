@@ -62,7 +62,7 @@ pub async fn create_remote(
 
     let url = EndpointHelper::build_url(
         &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
-        config::CREATE
+        config::CREATE,
     );
 
     let response = state
@@ -148,7 +148,7 @@ pub async fn update_remote(
 
     let url = EndpointHelper::build_url(
         &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
-        config::UPDATE
+        config::UPDATE,
     );
     let body = json!({ "name": name, "parameters": parameters });
 

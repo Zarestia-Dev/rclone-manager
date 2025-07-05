@@ -1,4 +1,4 @@
-@use '../../../styles/_shared_components';
+@use "../../../styles/_shared_components";
 
 .completed-transfers-container {
   background: var(--app-background);
@@ -103,6 +103,12 @@
         font-weight: 600;
         letter-spacing: 0.5px;
 
+        span {
+          display: flex;
+          align-items: center;
+          gap: var(--space-xxs);
+        }
+
         .chip-icon {
           width: 14px;
           height: 14px;
@@ -135,7 +141,6 @@
     }
 
     .size-cell {
-
       .size-info {
         display: flex;
         flex-direction: column;
@@ -170,7 +175,8 @@
           gap: var(--space-xs);
           font-size: var(--font-size-sm);
 
-          .src, .dst {
+          .src,
+          .dst {
             font-family: var(--mono-font-family);
             padding: 2px var(--space-xs);
             border-radius: var(--badge-radius);

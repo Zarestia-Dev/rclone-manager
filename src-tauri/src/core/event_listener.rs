@@ -7,7 +7,14 @@ use crate::{
     core::{
         check_binaries::read_rclone_path, lifecycle::shutdown::handle_shutdown,
         tray::tray::update_tray_menu,
-    }, rclone::{commands::set_bandwidth_limit, engine::ENGINE, state::{CACHE, ENGINE_STATE}}, utils::{builder::setup_tray, log::update_log_level}, RcloneState
+    },
+    rclone::{
+        commands::set_bandwidth_limit,
+        engine::ENGINE,
+        state::{CACHE, ENGINE_STATE},
+    },
+    utils::{builder::setup_tray, log::update_log_level},
+    RcloneState,
 };
 
 mod events {
@@ -79,27 +86,21 @@ fn handle_rclone_path_updated(app: &AppHandle) {
                     let app_handle_clone = app_handle.clone();
                     let app_handle_clone2 = app_handle.clone();
                     let rclone_state = app_handle_clone2.state::<RcloneState>();
+                    let old_path = rclone_state.rclone_path.read().unwrap().clone();
                     let mut guard = rclone_state.rclone_path.write().unwrap();
                     *guard = read_rclone_path(&app_handle_clone2);
-                    tauri::async_runtime::spawn(async move {
-                        // Update the Rclone path in the state
-                        let result =
-                            tauri::async_runtime::spawn_blocking(move || match ENGINE.lock() {
-                                Ok(mut engine) => engine.update_path(&app_handle_clone),
-                                Err(poisoned) => {
-                                    error!("Mutex poisoned during path update");
-                                    let mut guard = poisoned.into_inner();
-                                    guard.update_path(&app_handle_clone)
-                                }
-                            })
-                            .await;
+                    let new_path = guard.clone();
+                    drop(guard); // Release the lock
 
-                        if let Err(e) = result {
-                            error!("Failed to update rclone path: {}", e);
-                            // let _ = app_handle_clone.emit("rclone_error",
-                            //     format!("Failed to update rclone path: {}", e));
-                        }
-                    });
+                    // Restart engine with new rclone path
+                    if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
+                        &app_handle_clone,
+                        "rclone_path",
+                        &old_path.to_string_lossy(),
+                        &new_path.to_string_lossy(),
+                    ) {
+                        error!("Failed to restart engine for rclone path change: {}", e);
+                    }
                 }
             }
             Err(e) => {
@@ -314,27 +315,42 @@ fn handle_settings_changed(app: &AppHandle) {
                     {
                         debug!("🔄 Rclone config path changed to: {}", config_path);
                         let rclone_state = app_handle.state::<RcloneState>();
+                        let old_config_path = rclone_state.config_path.read().unwrap().clone();
                         let mut guard = rclone_state.config_path.write().unwrap();
                         *guard = config_path.to_string();
+                        drop(guard); // Release the lock
 
-                        // Restart engine to apply new config path
-                        let app_handle_clone = app_handle.clone();
-                        tauri::async_runtime::spawn_blocking(move || {
-                            if let Ok(mut engine) = ENGINE.lock() {
-                                if let Err(e) = crate::rclone::engine::lifecycle::stop(&mut engine) {
-                                    error!("Failed to stop Rclone process: {}", e);
-                                }
-                                crate::rclone::engine::lifecycle::start(&mut engine, &app_handle_clone);
-                            }
-                        });
+                        // Restart engine with new config path
+                        if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
+                            &app_handle,
+                            "config_path",
+                            &old_config_path,
+                            config_path,
+                        ) {
+                            error!("Failed to restart engine for config path change: {}", e);
+                        }
                     }
 
                     if let Some(api_port) = core.get("rclone_api_port").and_then(|v| v.as_u64()) {
                         debug!("🔌 Rclone API Port changed to: {}", api_port);
+                        let old_port = ENGINE_STATE.get_api().1.to_string();
+
                         if let Err(e) = ENGINE_STATE
                             .set_api(format!("http://127.0.0.1:{}", api_port), api_port as u16)
                         {
                             error!("Failed to set Rclone API Port: {}", e);
+                        } else {
+                            // Restart engine with new API port
+                            if let Err(e) =
+                                crate::rclone::engine::lifecycle::restart_for_config_change(
+                                    &app_handle,
+                                    "api_port",
+                                    &old_port,
+                                    &api_port.to_string(),
+                                )
+                            {
+                                error!("Failed to restart engine for API port change: {}", e);
+                            }
                         }
                     }
 

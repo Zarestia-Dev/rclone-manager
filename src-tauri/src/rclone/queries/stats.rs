@@ -2,9 +2,9 @@ use log::{debug, error};
 use serde_json::json;
 use tauri::State;
 
-use crate::RcloneState;
 use crate::rclone::state::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{core, EndpointHelper};
+use crate::RcloneState;
 
 /// Get RClone core statistics  
 #[tauri::command]
@@ -36,9 +36,9 @@ pub async fn get_core_stats_filtered(
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
-    
+
     let mut payload = json!({});
-    
+
     if let Some(group) = group {
         payload["group"] = json!(group);
         debug!("📊 Getting core stats for group: {}", group);
@@ -50,7 +50,10 @@ pub async fn get_core_stats_filtered(
         debug!("📊 Getting global core stats");
     }
 
-    debug!("📡 Requesting core stats from: {} with payload: {}", url, payload);
+    debug!(
+        "📡 Requesting core stats from: {} with payload: {}",
+        url, payload
+    );
 
     let response = state
         .client
@@ -85,7 +88,7 @@ pub async fn get_completed_transfers(
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::TRANSFERRED);
-    
+
     let mut payload = json!({});
     if let Some(group) = group {
         payload["group"] = json!(group);
@@ -94,7 +97,10 @@ pub async fn get_completed_transfers(
         debug!("📋 Getting all completed transfers");
     }
 
-    debug!("📡 Requesting completed transfers from: {} with payload: {}", url, payload);
+    debug!(
+        "📡 Requesting completed transfers from: {} with payload: {}",
+        url, payload
+    );
 
     let response = state
         .client
@@ -111,7 +117,10 @@ pub async fn get_completed_transfers(
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        error!("❌ HTTP error getting completed transfers: {} - {}", status, body);
+        error!(
+            "❌ HTTP error getting completed transfers: {} - {}",
+            status, body
+        );
         return Err(format!("HTTP {}: {}", status, body));
     }
 
@@ -130,7 +139,7 @@ pub async fn get_job_stats(
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
-    
+
     let mut payload = json!({ "jobid": jobid });
     if let Some(group) = group {
         payload["group"] = json!(group);

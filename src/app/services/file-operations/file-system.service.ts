@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../ui/notification.service';
 
@@ -7,11 +7,12 @@ import { NotificationService } from '../ui/notification.service';
  * Handles file/folder selection and system integration
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class FileSystemService extends TauriBaseService {
+  private notificationService = inject(NotificationService);
 
-  constructor(private notificationService: NotificationService) {
+  constructor() {
     super();
   }
 
@@ -21,7 +22,7 @@ export class FileSystemService extends TauriBaseService {
   async selectFolder(requireEmpty?: boolean): Promise<string> {
     try {
       return await this.invokeCommand<string>('get_folder_location', {
-        requireEmpty: requireEmpty || false
+        requireEmpty: requireEmpty || false,
       });
     } catch (error) {
       this.notificationService.alertModal('Error', String(error));

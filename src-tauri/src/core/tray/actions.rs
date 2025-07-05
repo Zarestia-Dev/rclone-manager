@@ -6,10 +6,15 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::{
-    core::settings::remote::manager::save_remote_settings, rclone::{commands::{mount_remote, start_copy, start_sync, stop_job, unmount_remote}, state::{CACHE, JOB_CACHE}}, utils::{
+    core::settings::remote::manager::save_remote_settings,
+    rclone::{
+        commands::{mount_remote, start_copy, start_sync, stop_job, unmount_remote},
+        state::{CACHE, JOB_CACHE},
+    },
+    utils::{
         builder::create_app_window, file_helper::get_folder_location,
         notification::send_notification, types::JobStatus,
-    }
+    },
 };
 
 fn notify(app: &AppHandle, title: &str, body: &str) {

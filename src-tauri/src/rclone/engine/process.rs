@@ -1,12 +1,14 @@
-use std::{process::Command, time::Duration};
 use log::{error, info, warn};
 use reqwest::blocking::Client;
+use std::{process::Command, time::Duration};
 use tauri::AppHandle;
 
 use crate::{
     rclone::state::ENGINE_STATE,
     utils::{
-        process::{kill_process_by_pid, kill_processes_on_port, kill_all_rclone_processes, get_child_pid},
+        process::{
+            get_child_pid, kill_all_rclone_processes, kill_process_by_pid, kill_processes_on_port,
+        },
         rclone::endpoints::{core, EndpointHelper},
         types::RcApiEngine,
     },
@@ -52,7 +54,7 @@ impl RcApiEngine {
         if let Some(mut child) = self.process.take() {
             let quit_url = EndpointHelper::build_url(
                 &format!("http://127.0.0.1:{}", self.current_api_port),
-                core::QUIT
+                core::QUIT,
             );
 
             if self.running {
@@ -60,16 +62,55 @@ impl RcApiEngine {
                     "🔄 Attempting graceful shutdown of Rclone on port {}...",
                     self.current_api_port
                 );
-                if let Ok(_) = Client::new().post(&quit_url).send() {
-                    // Wait a bit for graceful shutdown
-                    std::thread::sleep(Duration::from_secs(1));
+
+                // Send graceful shutdown request
+                let graceful_success = Client::new()
+                    .post(&quit_url)
+                    .timeout(Duration::from_secs(2))
+                    .send()
+                    .is_ok();
+
+                if graceful_success {
+                    info!("📡 Graceful shutdown request sent, waiting up to 10 seconds...");
+
+                    // Wait up to 10 seconds for graceful shutdown
+                    let mut attempts = 0;
+                    const MAX_ATTEMPTS: u32 = 20; // 20 attempts * 500ms = 10 seconds
+
+                    while attempts < MAX_ATTEMPTS {
+                        match child.try_wait() {
+                            Ok(Some(status)) => {
+                                info!("✅ Rclone process exited gracefully with status: {status}");
+                                self.running = false;
+                                return Ok(());
+                            }
+                            Ok(None) => {
+                                // Process is still running, wait a bit more
+                                std::thread::sleep(Duration::from_millis(500));
+                                attempts += 1;
+                            }
+                            Err(e) => {
+                                warn!("⚠️ Error checking process status: {e}");
+                                break;
+                            }
+                        }
+                    }
+
+                    if attempts >= MAX_ATTEMPTS {
+                        warn!("⏰ Graceful shutdown timed out after 10 seconds, forcing kill...");
+                    }
+                } else {
+                    warn!("⚠️ Graceful shutdown request failed, proceeding to force kill...");
                 }
             }
 
             // Get the PID before force killing
             if let Some(pid) = get_child_pid(&child) {
-                info!("🛑 Force killing Rclone process {} on port {}...", pid, self.current_api_port);
-                
+                info!(
+                    "🛑 Force killing Rclone process {} on port {}...",
+                    pid, self.current_api_port
+                );
+
                 // Use our robust kill function instead of child.kill()
                 match kill_process_by_pid(pid) {
                     Ok(_) => info!("✅ Successfully killed Rclone process {}", pid),
@@ -89,10 +130,10 @@ impl RcApiEngine {
                     return Err(format!("Failed to kill Rclone process: {}", e));
                 }
             }
-            
+
             let _ = child.wait();
         }
-        
+
         info!("✅ Rclone process stopped.");
         self.running = false;
         Ok(())

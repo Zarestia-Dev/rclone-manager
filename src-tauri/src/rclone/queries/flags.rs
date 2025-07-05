@@ -2,17 +2,14 @@ use serde_json::{json, Value};
 use std::error::Error;
 use tauri::{command, State};
 
-use crate::{
-    rclone::state::ENGINE_STATE,
-    utils::rclone::endpoints::EndpointHelper,
-    RcloneState,
-};
+use crate::{rclone::state::ENGINE_STATE, utils::rclone::endpoints::EndpointHelper, RcloneState};
 
 async fn fetch_rclone_options(
     endpoint: &str,
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error>> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, &format!("options/{}", endpoint));
+    let url =
+        EndpointHelper::build_url(&ENGINE_STATE.get_api().0, &format!("options/{}", endpoint));
 
     let response = state
         .client

@@ -1,5 +1,8 @@
 use crate::{
-    core::settings::{backup::archive_utils::{find_7z_executable, is_7z_encrypted}, utils::path_utils::get_rclone_config_path},
+    core::settings::{
+        backup::archive_utils::{find_7z_executable, is_7z_encrypted},
+        utils::path_utils::get_rclone_config_path,
+    },
     utils::types::{BackupAnalysis, SettingsState},
 };
 use chrono::Local;
@@ -12,7 +15,7 @@ use std::{
     process::Command,
 };
 use tauri::{AppHandle, State};
-use zip::{ZipWriter, write::FileOptions};
+use zip::{write::FileOptions, ZipWriter};
 
 #[tauri::command]
 pub async fn backup_settings(

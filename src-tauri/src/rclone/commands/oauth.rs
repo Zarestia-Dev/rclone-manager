@@ -184,10 +184,7 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
         return Ok(());
     }
 
-    let url = EndpointHelper::build_url(
-        &format!("http://127.0.0.1:{}", port),
-        core::QUIT
-    );
+    let url = EndpointHelper::build_url(&format!("http://127.0.0.1:{}", port), core::QUIT);
 
     if let Err(e) = state.client.post(&url).send().await {
         warn!("⚠️ Failed to send quit request: {}", e);
