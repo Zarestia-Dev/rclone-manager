@@ -2,7 +2,7 @@ use log::{debug, error, info};
 use std::thread;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::{core::check_binaries::read_rclone_path, utils::types::RcApiEngine, RcloneState};
+use crate::{RcloneState, core::check_binaries::read_rclone_path, utils::types::RcApiEngine};
 
 impl RcApiEngine {
     pub fn init(&mut self, app: &AppHandle) {

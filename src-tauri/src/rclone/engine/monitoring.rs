@@ -2,7 +2,7 @@ use log::debug;
 use std::time::Duration;
 
 use crate::utils::{
-    rclone::endpoints::{core, EndpointHelper},
+    rclone::endpoints::{EndpointHelper, core},
     types::RcApiEngine,
 };
 
