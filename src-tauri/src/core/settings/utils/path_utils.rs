@@ -8,7 +8,6 @@ use tauri::{AppHandle, Manager};
 ///
 /// This module contains utility functions for path manipulation and
 /// path-related operations used throughout the settings system.
-
 /// **Get the rclone config file path**
 ///
 /// This function queries rclone to determine the location of its configuration file.
@@ -21,15 +20,15 @@ pub fn get_rclone_config_path(app: &AppHandle) -> Result<PathBuf, String> {
         .arg("config")
         .arg("file")
         .output()
-        .map_err(|e| format!("Failed to execute rclone: {}", e))?;
+        .map_err(|e| format!("Failed to execute rclone: {e}"))?;
 
-    debug!("Rclone config output: {:?}", output);
+    debug!("Rclone config output: {output:?}");
     if !output.status.success() {
         return Err("Failed to get rclone config path".to_string());
     }
 
-    let stdout = String::from_utf8(output.stdout)
-        .map_err(|e| format!("Invalid output from rclone: {}", e))?;
+    let stdout =
+        String::from_utf8(output.stdout).map_err(|e| format!("Invalid output from rclone: {e}"))?;
 
     let path_str = stdout
         .lines()
@@ -39,6 +38,6 @@ pub fn get_rclone_config_path(app: &AppHandle) -> Result<PathBuf, String> {
         .trim()
         .to_string();
 
-    debug!("Rclone config path: {}", path_str);
+    debug!("Rclone config path: {path_str}");
     Ok(PathBuf::from(path_str))
 }

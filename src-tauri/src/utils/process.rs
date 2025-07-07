@@ -4,15 +4,15 @@ use log::{error, info, warn};
 /// This is a more robust implementation than the basic shell commands
 #[tauri::command]
 pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
-    info!("🔪 Attempting to kill process with PID: {}", pid);
+    info!("🔪 Attempting to kill process with PID: {pid}");
 
     #[cfg(target_family = "unix")]
     {
-        use nix::libc::{kill, SIGKILL};
+        use nix::libc::{SIGKILL, kill};
 
         let result = unsafe { kill(pid as i32, SIGKILL) };
         if result == 0 {
-            info!("✅ Successfully killed process {}", pid);
+            info!("✅ Successfully killed process {pid}");
             Ok(())
         } else {
             let error_msg = format!(
@@ -20,7 +20,7 @@ pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
                 pid,
                 std::io::Error::last_os_error()
             );
-            error!("{}", error_msg);
+            error!("{error_msg}");
             Err(error_msg)
         }
     }
@@ -54,19 +54,19 @@ pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
 
 /// Find and kill processes using a specific port
 pub fn kill_processes_on_port(port: u16) -> Result<(), String> {
-    info!("🧹 Cleaning up processes using port {}", port);
+    info!("🧹 Cleaning up processes using port {port}");
 
     let pids = find_pids_on_port(port)?;
 
     if pids.is_empty() {
-        info!("No processes found using port {}", port);
+        info!("No processes found using port {port}");
         return Ok(());
     }
 
     for pid in pids {
         match kill_process_by_pid(pid) {
-            Ok(_) => info!("✅ Killed process {} on port {}", pid, port),
-            Err(e) => warn!("⚠️ Failed to kill process {} on port {}: {}", pid, port, e),
+            Ok(_) => info!("✅ Killed process {pid} on port {port}"),
+            Err(e) => warn!("⚠️ Failed to kill process {pid} on port {port}: {e}"),
         }
     }
 
@@ -81,9 +81,9 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
     {
         // Use lsof to find processes using the port
         let output = std::process::Command::new("lsof")
-            .args(&["-ti", &format!(":{}", port)])
+            .args(["-ti", &format!(":{port}")])
             .output()
-            .map_err(|e| format!("Failed to run lsof: {}", e))?;
+            .map_err(|e| format!("Failed to run lsof: {e}"))?;
 
         let pids_str = String::from_utf8_lossy(&output.stdout);
         let pids: Vec<u32> = pids_str
@@ -127,7 +127,7 @@ pub fn kill_all_rclone_processes() -> Result<(), String> {
     {
         // Kill any rclone rcd processes
         let _ = std::process::Command::new("pkill")
-            .args(&["-f", "rclone rcd"])
+            .args(["-f", "rclone rcd"])
             .output();
 
         std::thread::sleep(std::time::Duration::from_millis(500));

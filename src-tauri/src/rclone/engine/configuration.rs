@@ -2,7 +2,10 @@ use log::{error, info, warn};
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::{core::check_binaries::is_rclone_available, utils::types::RcApiEngine};
+use crate::{
+    core::check_binaries::{is_rclone_available, read_rclone_path},
+    utils::types::RcApiEngine,
+};
 
 impl RcApiEngine {
     pub fn get_config_path(&self, app: &AppHandle) -> Option<PathBuf> {
@@ -39,8 +42,8 @@ impl RcApiEngine {
 
         // Try falling back to system rclone
         if is_rclone_available(app.clone()) {
-            info!("🔄 Falling back to system-installed rclone");
-            self.rclone_path = PathBuf::from("rclone");
+            info!("🔄 Rclone is available. Getting the path...");
+            self.rclone_path = read_rclone_path(app);
         } else {
             warn!("🔄 Waiting for valid Rclone path...");
             if let Err(e) = app.emit(

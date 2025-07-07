@@ -21,28 +21,28 @@ pub async fn restore_settings(
     state: State<'_, SettingsState<tauri::Wry>>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
-    info!("Starting restore_settings from {:?}", backup_path);
+    info!("Starting restore_settings from {backup_path:?}");
 
-    let file = File::open(&backup_path).map_err(|e| format!("Failed to open backup: {}", e))?;
+    let file = File::open(&backup_path).map_err(|e| format!("Failed to open backup: {e}"))?;
     let mut archive =
-        ZipArchive::new(BufReader::new(file)).map_err(|e| format!("Invalid ZIP: {}", e))?;
+        ZipArchive::new(BufReader::new(file)).map_err(|e| format!("Invalid ZIP: {e}"))?;
 
-    let temp_dir = tempfile::tempdir().map_err(|e| format!("Temp dir error: {}", e))?;
+    let temp_dir = tempfile::tempdir().map_err(|e| format!("Temp dir error: {e}"))?;
 
     for i in 0..archive.len() {
         let mut file = archive
             .by_index(i)
-            .map_err(|e| format!("Zip read error: {}", e))?;
+            .map_err(|e| format!("Zip read error: {e}"))?;
         let out_path = temp_dir.path().join(file.name());
-        debug!("Extracting file: {:?}", out_path);
+        debug!("Extracting file: {out_path:?}");
 
         if let Some(parent) = out_path.parent() {
-            fs::create_dir_all(parent).map_err(|e| format!("Failed to create parent: {}", e))?;
+            fs::create_dir_all(parent).map_err(|e| format!("Failed to create parent: {e}"))?;
         }
 
         let mut outfile =
-            File::create(&out_path).map_err(|e| format!("Failed to create file: {}", e))?;
-        std::io::copy(&mut file, &mut outfile).map_err(|e| format!("Copy error: {}", e))?;
+            File::create(&out_path).map_err(|e| format!("Failed to create file: {e}"))?;
+        std::io::copy(&mut file, &mut outfile).map_err(|e| format!("Copy error: {e}"))?;
     }
 
     restore_settings_from_path(temp_dir.path(), state, app_handle).await
@@ -53,10 +53,7 @@ pub async fn restore_settings_from_path(
     state: State<'_, SettingsState<tauri::Wry>>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
-    info!(
-        "Restoring settings from extracted path: {:?}",
-        extracted_dir
-    );
+    info!("Restoring settings from extracted path: {extracted_dir:?}");
 
     let export_info_path = extracted_dir.join("export_info.json");
     let export_info: Option<serde_json::Value> = std::fs::read_to_string(&export_info_path)
@@ -107,34 +104,33 @@ pub async fn restore_settings_from_path(
                 let remote_name = name.trim_start_matches("remotes/");
                 let remotes_dir = state.config_dir.join("remotes");
                 fs::create_dir_all(&remotes_dir)
-                    .map_err(|e| format!("Failed to create remotes dir: {}", e))?;
+                    .map_err(|e| format!("Failed to create remotes dir: {e}"))?;
                 remotes_dir.join(remote_name)
             }
 
             "export_info.json" => state.config_dir.join("last_import_info.json"),
 
             _ => {
-                debug!("Skipping unknown file: {}", file_name);
+                debug!("Skipping unknown file: {file_name}");
                 continue;
             }
         };
 
         if let Some(parent) = out_path.parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create parent dir: {}", e))?;
+            fs::create_dir_all(parent).map_err(|e| format!("Failed to create parent dir: {e}"))?;
         }
 
         std::fs::copy(entry.path(), &out_path)
-            .map_err(|e| format!("Failed to copy to {:?}: {}", out_path, e))?;
+            .map_err(|e| format!("Failed to copy to {out_path:?}: {e}"))?;
 
-        info!("Restored: {:?}", out_path);
+        info!("Restored: {out_path:?}");
     }
     // Load the settings from the restored settings.json
     let settings_path = state.config_dir.join("settings.json");
     let settings_content = fs::read_to_string(&settings_path)
-        .map_err(|e| format!("Failed to read settings file: {}", e))?;
+        .map_err(|e| format!("Failed to read settings file: {e}"))?;
     let new_settings: serde_json::Value = serde_json::from_str(&settings_content)
-        .map_err(|e| format!("Failed to parse settings file: {}", e))?;
+        .map_err(|e| format!("Failed to parse settings file: {e}"))?;
 
     app_handle.emit("remote_presence_changed", json!({})).ok();
     app_handle
@@ -159,13 +155,13 @@ pub async fn restore_encrypted_settings(
     let out_path = temp_dir.path().to_str().unwrap();
 
     let seven_zip =
-        find_7z_executable().map_err(|e| format!("Failed to find 7z executable: {}", e))?;
+        find_7z_executable().map_err(|e| format!("Failed to find 7z executable: {e}"))?;
     let output = Command::new(seven_zip)
-        .args(&["x", path.to_str().unwrap()])
-        .arg(format!("-p{}", password))
-        .arg(format!("-o{}", out_path))
+        .args(["x", path.to_str().unwrap()])
+        .arg(format!("-p{password}"))
+        .arg(format!("-o{out_path}"))
         .output()
-        .map_err(|e| format!("Failed to extract archive: {}", e))?;
+        .map_err(|e| format!("Failed to extract archive: {e}"))?;
 
     if !output.status.success() {
         return Err(format!(

@@ -1,16 +1,16 @@
 use log::{error, info};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::{
-    rclone::state::{clear_remote_logs, ENGINE_STATE},
+    RcloneState,
+    rclone::state::{ENGINE_STATE, clear_remote_logs},
     utils::{
         log::log_operation,
-        rclone::endpoints::{config, EndpointHelper},
+        rclone::endpoints::{EndpointHelper, config},
         types::LogLevel,
     },
-    RcloneState,
 };
 
 use super::oauth::{ensure_oauth_process, redact_sensitive_values};
@@ -71,12 +71,12 @@ pub async fn create_remote(
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
-    println!("Response: {}", body);
+    println!("Response: {body}");
 
     if !status.is_success() {
         let error = if body.contains("failed to get oauth token") {
@@ -84,7 +84,7 @@ pub async fn create_remote(
         } else if body.contains("bind: address already in use") {
             format!("Port {} already in use", ENGINE_STATE.get_oauth().1)
         } else {
-            format!("HTTP {}: {}", status, body)
+            format!("HTTP {status}: {body}")
         };
 
         log_operation(
@@ -109,7 +109,7 @@ pub async fn create_remote(
     .await;
 
     app.emit("remote_presence_changed", &name)
-        .map_err(|e| format!("Failed to emit event: {}", e))?;
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(())
 }
@@ -158,13 +158,13 @@ pub async fn update_remote(
         .json(&body)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {}: {}", status, body);
+        let error = format!("HTTP {status}: {body}");
         log_operation(
             LogLevel::Error,
             Some(name.clone()),
@@ -186,7 +186,7 @@ pub async fn update_remote(
     .await;
 
     app.emit("remote_presence_changed", &name)
-        .map_err(|e| format!("Failed to emit event: {}", e))?;
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(())
 }
@@ -197,7 +197,7 @@ pub async fn delete_remote(
     name: String,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    info!("🗑️ Deleting remote: {}", name);
+    info!("🗑️ Deleting remote: {name}");
 
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::DELETE);
 
@@ -207,28 +207,28 @@ pub async fn delete_remote(
         .query(&[("name", &name)])
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
     if !status.is_success() {
-        let error = format!("HTTP {}: {}", status, body);
-        error!("❌ Failed to delete remote: {}", error);
+        let error = format!("HTTP {status}: {body}");
+        error!("❌ Failed to delete remote: {error}");
         return Err(error);
     }
 
     // Emit two events:
     // 1. The standard presence changed event
     app.emit("remote_presence_changed", &name)
-        .map_err(|e| format!("Failed to emit event: {}", e))?;
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     // 2. A new specific event for deletion
     app.emit("remote_deleted", &name)
-        .map_err(|e| format!("Failed to emit event: {}", e))?;
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     clear_remote_logs(Some(name.clone()))
         .await
         .unwrap_or_default();
-    info!("✅ Remote {} deleted successfully", name);
+    info!("✅ Remote {name} deleted successfully");
     Ok(())
 }

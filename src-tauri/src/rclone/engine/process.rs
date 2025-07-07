@@ -9,7 +9,7 @@ use crate::{
         process::{
             get_child_pid, kill_all_rclone_processes, kill_process_by_pid, kill_processes_on_port,
         },
-        rclone::endpoints::{core, EndpointHelper},
+        rclone::endpoints::{EndpointHelper, core},
         types::RcApiEngine,
     },
 };
@@ -25,7 +25,7 @@ impl RcApiEngine {
             engine_app.arg("--config").arg(config_path);
         }
 
-        engine_app.args(&[
+        engine_app.args([
             "rcd",
             "--rc-no-auth",
             "--rc-serve",
@@ -45,8 +45,8 @@ impl RcApiEngine {
         }
 
         engine_app.spawn().map_err(|e| {
-            error!("❌ Failed to spawn Rclone process: {}", e);
-            format!("Failed to spawn Rclone process: {}", e)
+            error!("❌ Failed to spawn Rclone process: {e}");
+            format!("Failed to spawn Rclone process: {e}")
         })
     }
 
@@ -84,7 +84,7 @@ impl RcApiEngine {
                                 self.running = false;
                                 return Ok(());
                             }
-                            Ok(None) => {
+                            Ok(_) => {
                                 // Process is still running, wait a bit more
                                 std::thread::sleep(Duration::from_millis(500));
                                 attempts += 1;
@@ -113,21 +113,21 @@ impl RcApiEngine {
 
                 // Use our robust kill function instead of child.kill()
                 match kill_process_by_pid(pid) {
-                    Ok(_) => info!("✅ Successfully killed Rclone process {}", pid),
+                    Ok(_) => info!("✅ Successfully killed Rclone process {pid}"),
                     Err(e) => {
-                        warn!("⚠️ Robust kill failed, trying fallback method: {}", e);
+                        warn!("⚠️ Robust kill failed, trying fallback method: {e}");
                         // Fallback to standard kill if our robust method fails
                         if let Err(e) = child.kill() {
-                            error!("❌ Fallback kill also failed: {}", e);
-                            return Err(format!("Failed to kill Rclone process: {}", e));
+                            error!("❌ Fallback kill also failed: {e}");
+                            return Err(format!("Failed to kill Rclone process: {e}"));
                         }
                     }
                 }
             } else {
                 // Fallback if we can't get PID
                 if let Err(e) = child.kill() {
-                    error!("❌ Failed to kill Rclone: {}", e);
-                    return Err(format!("Failed to kill Rclone process: {}", e));
+                    error!("❌ Failed to kill Rclone: {e}");
+                    return Err(format!("Failed to kill Rclone process: {e}"));
                 }
             }
 

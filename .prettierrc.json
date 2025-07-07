@@ -20,6 +20,12 @@
       "options": {
         "singleQuote": false
       }
+    },
+    {
+      "files": "*.rs",
+      "options": {
+        "tabWidth": 4
+      }
     }
   ]
 }

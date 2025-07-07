@@ -3,12 +3,12 @@ use serde_json::json;
 use std::process::Command;
 use tauri::{Emitter, Manager, State};
 
+use crate::RcloneState;
 use crate::rclone::state::ENGINE_STATE;
 use crate::utils::{
-    rclone::endpoints::{core, EndpointHelper},
+    rclone::endpoints::{EndpointHelper, core},
     types::{BandwidthLimitResponse, RcloneCoreVersion},
 };
-use crate::RcloneState;
 
 #[tauri::command]
 pub async fn get_bandwidth_limit(
@@ -22,18 +22,18 @@ pub async fn get_bandwidth_limit(
         .json(&json!({}))
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {}: {}", status, body);
+        let error = format!("HTTP {status}: {body}");
         return Err(error);
     }
 
     let response_data: BandwidthLimitResponse =
-        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
+        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
 
     Ok(response_data)
 }
@@ -47,16 +47,16 @@ pub async fn get_rclone_info(state: State<'_, RcloneState>) -> Result<RcloneCore
         .post(&url)
         .send()
         .await
-        .map_err(|e| format!("Failed to get Rclone version: {}", e))?;
+        .map_err(|e| format!("Failed to get Rclone version: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        return Err(format!("HTTP {}: {}", status, body));
+        return Err(format!("HTTP {status}: {body}"));
     }
 
-    serde_json::from_str(&body).map_err(|e| format!("Failed to parse version info: {}", e))
+    serde_json::from_str(&body).map_err(|e| format!("Failed to parse version info: {e}"))
 }
 
 #[tauri::command]
@@ -64,14 +64,14 @@ pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::PID);
     match state.client.post(&url).send().await {
         Ok(resp) => {
-            debug!("📡 Querying rclone /core/pid: {}", url);
+            debug!("📡 Querying rclone /core/pid: {url}");
             debug!("rclone /core/pid response status: {}", resp.status());
             if resp.status().is_success() {
                 match resp.json::<serde_json::Value>().await {
                     Ok(json) => Ok(json.get("pid").and_then(|v| v.as_u64()).map(|v| v as u32)),
                     Err(e) => {
-                        debug!("Failed to parse /core/pid response: {}", e);
-                        Err(format!("Failed to parse /core/pid response: {}", e))
+                        debug!("Failed to parse /core/pid response: {e}");
+                        Err(format!("Failed to parse /core/pid response: {e}"))
                     }
                 }
             } else {
@@ -79,14 +79,13 @@ pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>
                 let body = resp.text().await.unwrap_or_default();
                 debug!("rclone /core/pid returned non-success status");
                 Err(format!(
-                    "rclone /core/pid returned non-success status: {}: {}",
-                    status, body
+                    "rclone /core/pid returned non-success status: {status}: {body}"
                 ))
             }
         }
         Err(e) => {
-            debug!("Failed to query /core/pid: {}", e);
-            Err(format!("Failed to query /core/pid: {}", e))
+            debug!("Failed to query /core/pid: {e}");
+            Err(format!("Failed to query /core/pid: {e}"))
         }
     }
 }
@@ -101,16 +100,16 @@ pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_jso
         .post(&url)
         .send()
         .await
-        .map_err(|e| format!("Failed to get memory stats: {}", e))?;
+        .map_err(|e| format!("Failed to get memory stats: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        return Err(format!("HTTP {}: {}", status, body));
+        return Err(format!("HTTP {status}: {body}"));
     }
 
-    serde_json::from_str(&body).map_err(|e| format!("Failed to parse memory stats: {}", e))
+    serde_json::from_str(&body).map_err(|e| format!("Failed to parse memory stats: {e}"))
 }
 
 /// Check if a newer version of rclone is available

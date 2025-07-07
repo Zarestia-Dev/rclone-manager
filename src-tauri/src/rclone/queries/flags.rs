@@ -1,15 +1,14 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::error::Error;
-use tauri::{command, State};
+use tauri::{State, command};
 
-use crate::{rclone::state::ENGINE_STATE, utils::rclone::endpoints::EndpointHelper, RcloneState};
+use crate::{RcloneState, rclone::state::ENGINE_STATE, utils::rclone::endpoints::EndpointHelper};
 
 async fn fetch_rclone_options(
     endpoint: &str,
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error>> {
-    let url =
-        EndpointHelper::build_url(&ENGINE_STATE.get_api().0, &format!("options/{}", endpoint));
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, &format!("options/{endpoint}"));
 
     let response = state
         .client
@@ -114,7 +113,7 @@ pub async fn get_vfs_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, 
     let empty_vec = vec![];
     let vfs_flags = json["vfs"].as_array().unwrap_or(&empty_vec);
 
-    let ignored_flags = vec!["NONE"];
+    let ignored_flags = ["NONE"];
     let filtered_flags: Vec<Value> = vfs_flags
         .iter()
         .filter(|flag| {
@@ -136,7 +135,7 @@ pub async fn get_mount_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>
     let empty_vec = vec![];
     let mount_flags = json["mount"].as_array().unwrap_or(&empty_vec);
 
-    let ignored_flags = vec!["debug_fuse", "daemon", "daemon_timeout"];
+    let ignored_flags = ["debug_fuse", "daemon", "daemon_timeout"];
     let filtered_flags: Vec<Value> = mount_flags
         .iter()
         .filter(|flag| {

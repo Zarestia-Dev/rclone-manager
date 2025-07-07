@@ -2,8 +2,8 @@
   @if (updateStatus.checking) {
     <div class="status-indicator checking">
       <mat-spinner
-        diameter="16"
-        strokeWidth="2"
+        diameter="20"
+        strokeWidth="3"
         matTooltip="Checking for updates..."
         matTooltipPosition="above"
       ></mat-spinner>
@@ -11,8 +11,8 @@
   } @else if (updateStatus.updating) {
     <div class="status-indicator updating">
       <mat-spinner
-        diameter="16"
-        strokeWidth="2"
+        diameter="20"
+        strokeWidth="3"
         matTooltip="Updating rclone..."
         matTooltipPosition="above"
       ></mat-spinner>

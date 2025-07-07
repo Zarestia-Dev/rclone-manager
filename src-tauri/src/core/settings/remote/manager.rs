@@ -1,7 +1,7 @@
 use log::{error, info, warn};
 use serde_json::Value;
 use std::{
-    fs::{self, create_dir_all, File},
+    fs::{self, File, create_dir_all},
     io::Write,
 };
 use tauri::{AppHandle, Emitter, State};
@@ -14,7 +14,6 @@ use crate::utils::types::SettingsState;
 /// - Saving remote configurations  
 /// - Loading remote settings
 /// - Deleting remote configurations
-
 /// **Save remote settings (per remote)**
 #[tauri::command]
 pub async fn save_remote_settings(
@@ -29,29 +28,28 @@ pub async fn save_remote_settings(
 
     // **Ensure config directory exists**
     if state.config_dir.exists() && !state.config_dir.is_dir() {
-        fs::remove_file(&state.config_dir)
-            .map_err(|e| format!("❌ Failed to remove file: {}", e))?;
+        fs::remove_file(&state.config_dir).map_err(|e| format!("❌ Failed to remove file: {e}"))?;
     }
     create_dir_all(&state.config_dir)
-        .map_err(|e| format!("❌ Failed to create config dir: {}", e))?;
+        .map_err(|e| format!("❌ Failed to create config dir: {e}"))?;
 
     let remote_config_dir = state.config_dir.join("remotes");
-    let remote_config_path = remote_config_dir.join(format!("{}.json", remote_name));
+    let remote_config_path = remote_config_dir.join(format!("{remote_name}.json"));
 
     // **Ensure "remotes" directory exists**
     if remote_config_dir.exists() && !remote_config_dir.is_dir() {
         fs::remove_file(&remote_config_dir)
-            .map_err(|e| format!("❌ Failed to remove file: {}", e))?;
+            .map_err(|e| format!("❌ Failed to remove file: {e}"))?;
     }
     create_dir_all(&remote_config_dir)
-        .map_err(|e| format!("❌ Failed to create remotes directory: {}", e))?;
+        .map_err(|e| format!("❌ Failed to create remotes directory: {e}"))?;
 
     // **Merge new settings with existing ones**
     if remote_config_path.exists() {
         let existing_content = fs::read_to_string(&remote_config_path)
-            .map_err(|e| format!("❌ Failed to read existing settings: {}", e))?;
+            .map_err(|e| format!("❌ Failed to read existing settings: {e}"))?;
         let mut existing_settings: Value = serde_json::from_str(&existing_content)
-            .map_err(|e| format!("❌ Failed to parse existing settings: {}", e))?;
+            .map_err(|e| format!("❌ Failed to parse existing settings: {e}"))?;
 
         if let (Some(existing_obj), Some(new_obj)) =
             (existing_settings.as_object_mut(), settings.as_object_mut())
@@ -65,12 +63,12 @@ pub async fn save_remote_settings(
 
     // **Save to JSON file**
     let mut file = File::create(&remote_config_path)
-        .map_err(|e| format!("❌ Failed to create settings file: {}", e))?;
+        .map_err(|e| format!("❌ Failed to create settings file: {e}"))?;
 
     file.write_all(settings.to_string().as_bytes())
-        .map_err(|e| format!("❌ Failed to save settings: {}", e))?;
+        .map_err(|e| format!("❌ Failed to save settings: {e}"))?;
 
-    info!("✅ Remote settings saved at {:?}", remote_config_path);
+    info!("✅ Remote settings saved at {remote_config_path:?}");
 
     app_handle.emit("remote_presence_changed", remote_name).ok();
     Ok(())
@@ -86,22 +84,19 @@ pub async fn delete_remote_settings(
     let remote_config_path = state
         .config_dir
         .join("remotes")
-        .join(format!("{}.json", remote_name));
+        .join(format!("{remote_name}.json"));
 
     if !remote_config_path.exists() {
-        warn!("⚠️ Remote settings for '{}' not found.", remote_name);
-        return Err(format!(
-            "⚠️ Remote settings for '{}' not found.",
-            remote_name
-        ));
+        warn!("⚠️ Remote settings for '{remote_name}' not found.");
+        return Err(format!("⚠️ Remote settings for '{remote_name}' not found."));
     }
 
     fs::remove_file(&remote_config_path).map_err(|e| {
-        error!("❌ Failed to delete remote settings: {}", e);
-        format!("❌ Failed to delete remote settings: {}", e)
+        error!("❌ Failed to delete remote settings: {e}");
+        format!("❌ Failed to delete remote settings: {e}")
     })?;
 
-    info!("✅ Remote settings for '{}' deleted.", remote_name);
+    info!("✅ Remote settings for '{remote_name}' deleted.");
 
     app_handle.emit("remote_presence_changed", remote_name).ok();
     Ok(())
@@ -116,21 +111,18 @@ pub async fn get_remote_settings(
     let remote_config_path = state
         .config_dir
         .join("remotes")
-        .join(format!("{}.json", remote_name));
+        .join(format!("{remote_name}.json"));
 
     if !remote_config_path.exists() {
-        warn!("⚠️ Remote settings for '{}' not found.", remote_name);
-        return Err(format!(
-            "⚠️ Remote settings for '{}' not found.",
-            remote_name
-        ));
+        warn!("⚠️ Remote settings for '{remote_name}' not found.");
+        return Err(format!("⚠️ Remote settings for '{remote_name}' not found.",));
     }
 
     let file_content = fs::read_to_string(&remote_config_path)
-        .map_err(|e| format!("❌ Failed to read remote settings: {}", e))?;
+        .map_err(|e| format!("❌ Failed to read remote settings: {e}"))?;
     let settings: serde_json::Value = serde_json::from_str(&file_content)
-        .map_err(|e| format!("❌ Failed to parse remote settings: {}", e))?;
+        .map_err(|e| format!("❌ Failed to parse remote settings: {e}"))?;
 
-    info!("✅ Loaded settings for remote '{}'.", remote_name);
+    info!("✅ Loaded settings for remote '{remote_name}'.");
     Ok(settings)
 }

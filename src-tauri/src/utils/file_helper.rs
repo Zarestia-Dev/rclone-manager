@@ -1,5 +1,5 @@
 use log::{debug, error};
-use tauri::{command, AppHandle, Window};
+use tauri::{AppHandle, Window, command};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -43,7 +43,7 @@ pub async fn get_folder_location(
     }
 
     if require_empty {
-        debug!("Checking if folder is empty: {}", folder);
+        debug!("Checking if folder is empty: {folder}");
         let path = std::path::Path::new(&folder);
 
         // Check if folder exists and is empty
@@ -52,14 +52,14 @@ pub async fn get_folder_location(
                 Ok(Some(_)) => return Err("Selected folder is not empty".into()),
                 Ok(_) => (), // Folder is empty
                 Err(e) => {
-                    error!("Error reading directory: {}", e);
-                    return Err(format!("Error checking folder: {}", e));
+                    error!("Error reading directory: {e}");
+                    return Err(format!("Error checking folder: {e}"));
                 }
             },
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => (), // Folder doesn't exist
             Err(e) => {
-                error!("Error accessing folder: {}", e);
-                return Err(format!("Error accessing folder: {}", e));
+                error!("Error accessing folder: {e}");
+                return Err(format!("Error accessing folder: {e}"));
             }
         }
 
@@ -96,7 +96,7 @@ pub async fn open_in_files(
         .to_string();
     match app.opener().open_path(path_str, None::<String>) {
         Ok(_) => Ok(format!("Opened file manager at {}", path.display())),
-        Err(e) => Err(format!("Failed to open file manager: {}", e)),
+        Err(e) => Err(format!("Failed to open file manager: {e}")),
     }
 }
 
@@ -110,7 +110,7 @@ pub async fn get_file_location(window: Window) -> Result<Option<String>, String>
         .blocking_pick_file()
         .map(|path| path.to_string());
 
-    debug!("File location: {:?}", file_location);
+    debug!("File location: {file_location:?}");
 
     Ok(file_location)
 }

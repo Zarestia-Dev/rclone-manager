@@ -6,8 +6,7 @@ use std::{path::Path, process::Command};
 /// - 7z executable detection
 /// - Archive encryption detection
 /// - Cross-platform compatibility
-
-/// **Find 7z executable across different platforms**
+///   **Find 7z executable across different platforms**
 pub fn find_7z_executable() -> Result<String, String> {
     // Try common 7z executable names
     for cmd in ["7z", "7za", "7z.exe", "7za.exe"] {
@@ -73,14 +72,14 @@ pub fn find_7z_executable() -> Result<String, String> {
 /// **Check if a 7z archive is encrypted**
 pub fn is_7z_encrypted(path: &Path) -> Result<bool, String> {
     let seven_zip =
-        find_7z_executable().map_err(|e| format!("Failed to find 7z executable: {}", e))?;
+        find_7z_executable().map_err(|e| format!("Failed to find 7z executable: {e}"))?;
 
     let output = Command::new(seven_zip)
         .arg("l") // List contents
         .arg("-slt") // Show technical information
         .arg(path)
         .output()
-        .map_err(|e| format!("Failed to run 7z: {}", e))?;
+        .map_err(|e| format!("Failed to run 7z: {e}"))?;
 
     if !output.status.success() {
         // If listing fails, it might be encrypted

@@ -4,18 +4,16 @@ use reqwest;
 pub async fn download_rclone_zip(os_name: &str, arch: &str) -> Result<(String, Vec<u8>), String> {
     let version_txt = reqwest::get("https://downloads.rclone.org/version.txt")
         .await
-        .map_err(|e| format!("Failed to fetch version: {}", e))?
+        .map_err(|e| format!("Failed to fetch version: {e}"))?
         .text()
         .await
-        .map_err(|e| format!("Failed to read version text: {}", e))?;
+        .map_err(|e| format!("Failed to read version text: {e}"))?;
 
     let version = version_txt.trim().replace("rclone v", "");
-    let download_url = format!(
-        "https://downloads.rclone.org/v{}/rclone-v{}-{}-{}.zip",
-        version, version, os_name, arch
-    );
+    let download_url =
+        format!("https://downloads.rclone.org/v{version}/rclone-v{version}-{os_name}-{arch}.zip");
 
-    debug!("Download URL: {}", download_url);
+    debug!("Download URL: {download_url}");
 
     let mut retries = 3;
     while retries > 0 {
@@ -24,13 +22,13 @@ pub async fn download_rclone_zip(os_name: &str, arch: &str) -> Result<(String, V
                 let bytes = resp
                     .bytes()
                     .await
-                    .map_err(|e| format!("Read failed: {}", e))?;
+                    .map_err(|e| format!("Read failed: {e}"))?;
                 return Ok((version, bytes.to_vec()));
             }
             Err(e) => {
                 retries -= 1;
                 if retries == 0 {
-                    return Err(format!("Download failed after 3 tries: {}", e));
+                    return Err(format!("Download failed after 3 tries: {e}"));
                 }
             }
         }

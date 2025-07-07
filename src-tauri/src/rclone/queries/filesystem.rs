@@ -2,12 +2,12 @@ use log::debug;
 use serde_json::json;
 use tauri::State;
 
+use crate::RcloneState;
 use crate::rclone::state::ENGINE_STATE;
 use crate::utils::{
-    rclone::endpoints::{operations, EndpointHelper},
+    rclone::endpoints::{EndpointHelper, operations},
     types::{DiskUsage, ListOptions},
 };
-use crate::RcloneState;
 
 #[tauri::command]
 pub async fn get_fs_info(
@@ -20,11 +20,11 @@ pub async fn get_fs_info(
     let fs_name = if remote.ends_with(':') {
         remote
     } else {
-        format!("{}:", remote)
+        format!("{remote}:")
     };
 
     let fs_path = match path {
-        Some(p) if !p.is_empty() => format!("{}{}", fs_name, p),
+        Some(p) if !p.is_empty() => format!("{fs_name}{p}"),
         _ => fs_name,
     };
 
@@ -36,12 +36,12 @@ pub async fn get_fs_info(
         .json(&params)
         .send()
         .await
-        .map_err(|e| format!("❌ Failed to get fs info: {}", e))?;
+        .map_err(|e| format!("❌ Failed to get fs info: {e}"))?;
 
     let json: serde_json::Value = response
         .json()
         .await
-        .map_err(|e| format!("❌ Failed to parse response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     Ok(json)
 }
@@ -54,16 +54,13 @@ pub async fn get_remote_paths(
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::LIST);
-    debug!(
-        "📂 Listing remote paths: remote={}, path={:?}, options={:?}",
-        remote, path, options
-    );
+    debug!("📂 Listing remote paths: remote={remote}, path={path:?}, options={options:?}");
     let mut params = serde_json::Map::new();
     // Ensure remote name ends with colon for proper rclone format
     let fs_name = if remote.ends_with(':') {
         remote
     } else {
-        format!("{}:", remote)
+        format!("{remote}:")
     };
     params.insert("fs".to_string(), serde_json::Value::String(fs_name));
     params.insert(
@@ -84,12 +81,12 @@ pub async fn get_remote_paths(
         .json(&serde_json::Value::Object(params))
         .send()
         .await
-        .map_err(|e| format!("❌ Failed to list remote paths: {}", e))?;
+        .map_err(|e| format!("❌ Failed to list remote paths: {e}"))?;
 
     let json: serde_json::Value = response
         .json()
         .await
-        .map_err(|e| format!("❌ Failed to parse response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     Ok(json)
 }
@@ -105,11 +102,11 @@ pub async fn get_disk_usage(
     let fs_name = if remote.ends_with(':') {
         remote
     } else {
-        format!("{}:", remote)
+        format!("{remote}:")
     };
 
     let fs_path = match path {
-        Some(p) if !p.is_empty() => format!("{}{}", fs_name, p),
+        Some(p) if !p.is_empty() => format!("{fs_name}{p}"),
         _ => fs_name,
     };
 
@@ -121,12 +118,12 @@ pub async fn get_disk_usage(
         .json(&params)
         .send()
         .await
-        .map_err(|e| format!("❌ Failed to get disk usage: {}", e))?;
+        .map_err(|e| format!("❌ Failed to get disk usage: {e}"))?;
 
     let json: serde_json::Value = response
         .json()
         .await
-        .map_err(|e| format!("❌ Failed to parse response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     // Extract usage information
     let total = json["total"].as_u64();
@@ -134,12 +131,12 @@ pub async fn get_disk_usage(
     let free = json["free"].as_u64();
 
     let disk_usage = DiskUsage {
-        total: total.map(|t| format_size(t)).unwrap_or_default(),
-        used: used.map(|u| format_size(u)).unwrap_or_default(),
-        free: free.map(|f| format_size(f)).unwrap_or_default(),
+        total: total.map(format_size).unwrap_or_default(),
+        used: used.map(format_size).unwrap_or_default(),
+        free: free.map(format_size).unwrap_or_default(),
     };
 
-    debug!("💾 Disk Usage for {}: {:?}", fs_path, disk_usage);
+    debug!("💾 Disk Usage for {fs_path}: {disk_usage:?}");
     Ok(disk_usage)
 }
 

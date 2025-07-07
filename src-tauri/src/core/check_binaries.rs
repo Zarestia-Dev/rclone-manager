@@ -1,8 +1,9 @@
 use std::{path::PathBuf, process::Command};
 
-use log::{error, info};
-use serde_json::Value;
+use log::{debug, error, info};
 use tauri::{AppHandle, Manager};
+
+use crate::utils::types::RcloneState;
 
 #[tauri::command]
 pub fn is_7z_available() -> bool {
@@ -82,51 +83,28 @@ pub fn is_rclone_available(app: AppHandle) -> bool {
     which::which("rclone").is_ok()
 }
 
-fn core_config_path(app: &AppHandle) -> PathBuf {
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .expect("Failed to get app data dir");
-    app_data_dir.join("core.json")
-}
-
 pub fn read_rclone_path(app: &AppHandle) -> PathBuf {
-    let config_path = core_config_path(app);
+    // Get the rclone path from app state
+    let rclone_state = app.state::<RcloneState>();
+    let rclone_path = rclone_state.rclone_path.read().unwrap().clone();
+    debug!("🔄 Reading rclone path: {}", rclone_path.to_string_lossy());
 
-    // Try to read the configured path
-    let configured_path = match std::fs::read_to_string(&config_path) {
-        Ok(contents) => {
-            if let Ok(json) = serde_json::from_str::<Value>(&contents) {
-                if let Some(path) = json["core_options"]["rclone_path"].as_str() {
-                    if path == "system" {
-                        PathBuf::from("rclone") // System-wide installation
-                    } else {
-                        let bin = if cfg!(windows) {
-                            "rclone.exe"
-                        } else {
-                            "rclone"
-                        };
-                        PathBuf::from(path).join(bin)
-                    }
-                } else {
-                    PathBuf::from("rclone") // Default to system-wide
-                }
-            } else {
-                PathBuf::from("rclone") // Default to system-wide
-            }
+    // First try the configured path
+    if rclone_path.to_string_lossy() != "system" {
+        let bin = if cfg!(windows) {
+            "rclone.exe"
+        } else {
+            "rclone"
+        };
+        let configured_path = rclone_path.join(bin);
+
+        if configured_path.exists() {
+            debug!(
+                "🔄 Using configured rclone at {}",
+                configured_path.display()
+            );
+            return configured_path;
         }
-        Err(_) => PathBuf::from("rclone"),
-    };
-
-    // Check if the configured path exists and is runnable
-    if configured_path.exists()
-        && Command::new(&configured_path)
-            .arg("--version")
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
-    {
-        return configured_path;
     }
 
     // Fallback: try to find rclone in PATH
@@ -142,7 +120,7 @@ pub fn read_rclone_path(app: &AppHandle) -> PathBuf {
             error!(
                 "❌ No valid Rclone binary found - neither configured path nor system rclone available"
             );
-            configured_path // Return the original path anyway (will fail later with proper error)
+            PathBuf::from("rclone") // Return generic path (will fail later with proper error)
         }
     }
 }

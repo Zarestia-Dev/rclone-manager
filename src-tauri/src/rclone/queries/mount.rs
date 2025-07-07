@@ -2,10 +2,10 @@ use log::debug;
 use serde_json::Value;
 use tauri::State;
 
-use crate::rclone::state::ENGINE_STATE;
-use crate::utils::rclone::endpoints::{mount, EndpointHelper};
-use crate::utils::types::MountedRemote;
 use crate::RcloneState;
+use crate::rclone::state::ENGINE_STATE;
+use crate::utils::rclone::endpoints::{EndpointHelper, mount};
+use crate::utils::types::MountedRemote;
 
 #[tauri::command]
 pub async fn get_mounted_remotes(
@@ -18,7 +18,7 @@ pub async fn get_mounted_remotes(
         .post(&url)
         .send()
         .await
-        .map_err(|e| format!("❌ Failed to send request: {}", e))?;
+        .map_err(|e| format!("❌ Failed to send request: {e}"))?;
 
     if !response.status().is_success() {
         return Err(format!(
@@ -30,7 +30,7 @@ pub async fn get_mounted_remotes(
     let json: Value = response
         .json()
         .await
-        .map_err(|e| format!("❌ Failed to parse response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     let mounts = json["mountPoints"]
         .as_array()
@@ -44,6 +44,6 @@ pub async fn get_mounted_remotes(
         })
         .collect();
 
-    debug!("📂 Mounted Remotes: {:?}", mounts);
+    debug!("📂 Mounted Remotes: {mounts:?}");
     Ok(mounts)
 }

@@ -3,116 +3,159 @@
   <div class="floating-shape"></div>
 
   <!-- Loading State -->
-  <app-loading-overlay 
-    [isVisible]="isInitializing" 
-    title="Initializing RClone Manager" 
-    message="Checking system configuration..." 
+  <app-loading-overlay
+    [isVisible]="isInitializing"
+    title="Initializing RClone Manager"
+    message="Checking system configuration..."
     icon="refresh"
-    overlayType="container">
+    overlayType="container"
+  >
   </app-loading-overlay>
 
   <!-- Main Onboarding Content -->
   @if (!isInitializing && initializationComplete) {
-  <div class="card-container" [@contentFadeIn]>
-    <!-- Header Section -->
-    <div class="onboarding-header">
-      <div class="page-indicators">
-        @for (card of cards; track i; let i = $index) {
-        <div class="indicator" [class.active]="i === currentCardIndex" [class.completed]="i < currentCardIndex">
-        </div>
-        }
-      </div>
-    </div>
-
-    <!-- Main Content Area -->
-    <div class="content-area">
-      <div class="card-content">
-        <!-- Icon Section -->
-        <div class="icon-section">
-          <div class="icon-container">
-            <img [src]="cards[currentCardIndex].image" alt="Feature icon" />
-          </div>
-        </div>
-
-        <!-- Text Content -->
-        <div class="text-content">
-          <h2 class="card-title">{{ cards[currentCardIndex].title }}</h2>
-          <p class="card-description">{{ cards[currentCardIndex].content }}</p>
-        </div>
-
-        <!-- Form Content (if applicable) -->
-        @if (cards[currentCardIndex].title === 'Install RClone' && !rcloneInstalled) {
-        <div class="form-section" @slideInOut>
-          <mat-radio-group [(ngModel)]="installLocation" [disabled]="installing">
-            <mat-radio-button value="default" class="installation-option">
-              <div class="option-content">
-                <div class="option-title">Automatic Installation</div>
-                <div class="option-description">Install to the recommended system location</div>
-              </div>
-            </mat-radio-button>
-            <mat-radio-button value="custom" class="installation-option">
-              <div class="option-content">
-                <div class="option-title">Custom Location</div>
-                <div class="option-description">Choose where to install RClone</div>
-              </div>
-            </mat-radio-button>
-          </mat-radio-group>
-
-          @if (installLocation === 'custom') {
-          <div class="path-selector" @slideInOut>
-            <mat-form-field color="accent" class="path-field">
-              <mat-label>Installation Path</mat-label>
-              <input matInput [(ngModel)]="customPath" readonly placeholder="Choose folder...">
-              <button matSuffix mat-icon-button (click)="selectCustomFolder()" matTooltip="Browse for folder">
-                <mat-icon svgIcon="folder"></mat-icon>
-              </button>
-            </mat-form-field>
-          </div>
+    <div class="card-container" [@contentFadeIn]>
+      <!-- Header Section -->
+      <div class="onboarding-header">
+        <div class="page-indicators">
+          @for (card of cards; track i; let i = $index) {
+            <div
+              class="indicator"
+              [class.active]="i === currentCardIndex"
+              [class.completed]="i < currentCardIndex"
+            ></div>
           }
         </div>
-        }
-      </div>
-    </div>
-
-    <!-- Footer Navigation -->
-    <div class="footer-navigation">
-      <div class="nav-left">
-        @if (currentCardIndex > 0) {
-        <button mat-button (click)="previousCard()" class="nav-button secondary">
-          <mat-icon svgIcon="left-arrow"></mat-icon>
-          Back
-        </button>
-        }
       </div>
 
-      <div class="nav-right">
-        @if (shouldShowInstallRcloneButton()) {
-        <button mat-raised-button color="primary" (click)="installRclone()" [disabled]="!canInstallRclone()"
-          class="action-button"
-          [matTooltip]="installLocation === 'custom' && customPath.trim().length === 0 ? 'Please select an installation path first' : ''">
-          <mat-icon [svgIcon]="installing ? 'refresh' : 'download'" [class.animate-spin]="installing"></mat-icon>
-          {{ getInstallButtonText() }}
-        </button>
-        } @else if (shouldShowInstallPluginButton()) {
-        <button mat-raised-button color="primary" (click)="installMountPlugin()" [disabled]="downloadingPlugin"
-          class="action-button">
-          <mat-icon [svgIcon]="downloadingPlugin ? 'refresh' : 'download'"
-            [class.animate-spin]="downloadingPlugin"></mat-icon>
-          {{ downloadingPlugin ? 'Installing...' : 'Install Plugin' }}
-        </button>
-        } @else if (cards[currentCardIndex].title === 'Ready to Go!') {
-        <button mat-raised-button color="primary" (click)="completeOnboarding()" class="action-button finish-button">
-          <mat-icon svgIcon="circle-check"></mat-icon>
-          Get Started
-        </button>
-        } @else {
-        <button mat-raised-button color="primary" (click)="nextCard()" class="nav-button primary">
-          Next
-          <mat-icon svgIcon="right-arrow"></mat-icon>
-        </button>
-        }
+      <!-- Main Content Area -->
+      <div class="content-area">
+        <div class="card-content">
+          <!-- Icon Section -->
+          <div class="icon-section">
+            <div class="icon-container">
+              <img [src]="cards[currentCardIndex].image" alt="Feature icon" />
+            </div>
+          </div>
+
+          <!-- Text Content -->
+          <div class="text-content">
+            <h2 class="card-title">{{ cards[currentCardIndex].title }}</h2>
+            <p class="card-description">{{ cards[currentCardIndex].content }}</p>
+          </div>
+
+          <!-- Form Content (if applicable) -->
+          @if (cards[currentCardIndex].title === 'Install RClone' && !rcloneInstalled) {
+            <div class="form-section" @slideInOut>
+              <mat-radio-group [(ngModel)]="installLocation" [disabled]="installing">
+                <mat-radio-button value="default" class="installation-option">
+                  <div class="option-content">
+                    <div class="option-title">Automatic Installation</div>
+                    <div class="option-description">Install to the recommended system location</div>
+                  </div>
+                </mat-radio-button>
+                <mat-radio-button value="custom" class="installation-option">
+                  <div class="option-content">
+                    <div class="option-title">Custom Location</div>
+                    <div class="option-description">Choose where to install RClone</div>
+                  </div>
+                </mat-radio-button>
+              </mat-radio-group>
+
+              @if (installLocation === 'custom') {
+                <div class="path-selector" @slideInOut>
+                  <mat-form-field color="accent" class="path-field">
+                    <mat-label>Installation Path</mat-label>
+                    <input
+                      matInput
+                      [(ngModel)]="customPath"
+                      readonly
+                      placeholder="Choose folder..."
+                    />
+                    <button
+                      matSuffix
+                      mat-icon-button
+                      (click)="selectCustomFolder()"
+                      matTooltip="Browse for folder"
+                    >
+                      <mat-icon svgIcon="folder"></mat-icon>
+                    </button>
+                  </mat-form-field>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Footer Navigation -->
+      <div class="footer-navigation">
+        <div class="nav-left">
+          @if (currentCardIndex > 0) {
+            <button mat-button (click)="previousCard()" class="nav-button secondary">
+              <mat-icon svgIcon="left-arrow"></mat-icon>
+              Back
+            </button>
+          }
+        </div>
+
+        <div class="nav-right">
+          @if (shouldShowInstallRcloneButton()) {
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="installRclone()"
+              [disabled]="!canInstallRclone()"
+              class="action-button"
+              [matTooltip]="
+                installLocation === 'custom' && customPath.trim().length === 0
+                  ? 'Please select an installation path first'
+                  : ''
+              "
+            >
+              <mat-icon
+                [svgIcon]="installing ? 'refresh' : 'download'"
+                [class.animate-spin]="installing"
+              ></mat-icon>
+              {{ getInstallButtonText() }}
+            </button>
+          } @else if (shouldShowInstallPluginButton()) {
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="installMountPlugin()"
+              [disabled]="downloadingPlugin"
+              class="action-button"
+            >
+              <mat-icon
+                [svgIcon]="downloadingPlugin ? 'refresh' : 'download'"
+                [class.animate-spin]="downloadingPlugin"
+              ></mat-icon>
+              {{ downloadingPlugin ? 'Installing...' : 'Install Plugin' }}
+            </button>
+          } @else if (cards[currentCardIndex].title === 'Ready to Go!') {
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="completeOnboarding()"
+              class="action-button finish-button"
+            >
+              <mat-icon svgIcon="circle-check"></mat-icon>
+              Get Started
+            </button>
+          } @else {
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="nextCard()"
+              class="nav-button primary"
+            >
+              Next
+              <mat-icon svgIcon="right-arrow"></mat-icon>
+            </button>
+          }
+        </div>
       </div>
     </div>
-  </div>
   }
 </div>

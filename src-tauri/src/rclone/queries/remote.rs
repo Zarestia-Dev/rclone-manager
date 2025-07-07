@@ -1,11 +1,11 @@
 use log::debug;
 use serde_json::Value;
 use std::collections::HashMap;
-use tauri::{command, State};
+use tauri::{State, command};
 
-use crate::rclone::state::ENGINE_STATE;
-use crate::utils::rclone::endpoints::{config, EndpointHelper};
 use crate::RcloneState;
+use crate::rclone::state::ENGINE_STATE;
+use crate::utils::rclone::endpoints::{EndpointHelper, config};
 
 #[command]
 pub async fn get_all_remote_configs(
@@ -18,12 +18,12 @@ pub async fn get_all_remote_configs(
         .post(url)
         .send()
         .await
-        .map_err(|e| format!("❌ Failed to fetch remote configs: {}", e))?;
+        .map_err(|e| format!("❌ Failed to fetch remote configs: {e}"))?;
 
     let json: serde_json::Value = response
         .json()
         .await
-        .map_err(|e| format!("❌ Failed to parse response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     Ok(json)
 }
@@ -31,16 +31,16 @@ pub async fn get_all_remote_configs(
 #[command]
 pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::LISTREMOTES);
-    debug!("📡 Fetching remotes from: {}", url);
+    debug!("📡 Fetching remotes from: {url}");
 
     let response = state.client.post(url).send().await.map_err(|e| {
-        log::error!("❌ Failed to fetch remotes: {}", e);
-        format!("❌ Failed to fetch remotes: {}", e)
+        log::error!("❌ Failed to fetch remotes: {e}");
+        format!("❌ Failed to fetch remotes: {e}")
     })?;
 
     let json: Value = response.json().await.map_err(|e| {
-        log::error!("❌ Failed to parse remotes response: {}", e);
-        format!("❌ Failed to parse response: {}", e)
+        log::error!("❌ Failed to parse remotes response: {e}");
+        format!("❌ Failed to parse response: {e}")
     })?;
 
     let remotes: Vec<String> = json["remotes"]
@@ -68,12 +68,12 @@ pub async fn get_remote_config_fields(
         .query(&[("name", &remote_type)])
         .send()
         .await
-        .map_err(|e| format!("❌ Failed to fetch remote config fields: {}", e))?;
+        .map_err(|e| format!("❌ Failed to fetch remote config fields: {e}"))?;
 
     let json: serde_json::Value = response
         .json()
         .await
-        .map_err(|e| format!("❌ Failed to parse response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     Ok(json)
 }
@@ -91,12 +91,12 @@ pub async fn get_remote_config(
         .query(&[("name", &remote_name)])
         .send()
         .await
-        .map_err(|e| format!("❌ Failed to fetch remote config: {}", e))?;
+        .map_err(|e| format!("❌ Failed to fetch remote config: {e}"))?;
 
     let json: serde_json::Value = response
         .json()
         .await
-        .map_err(|e| format!("❌ Failed to parse response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     Ok(json)
 }
@@ -112,14 +112,14 @@ async fn fetch_remote_providers(
         .post(url)
         .send()
         .await
-        .map_err(|e| format!("❌ Failed to send request: {}", e))?;
+        .map_err(|e| format!("❌ Failed to send request: {e}"))?;
 
     let body = response
         .text()
         .await
-        .map_err(|e| format!("❌ Failed to read response: {}", e))?;
+        .map_err(|e| format!("❌ Failed to read response: {e}"))?;
     let providers: HashMap<String, Vec<Value>> =
-        serde_json::from_str(&body).map_err(|e| format!("❌ Failed to parse response: {}", e))?;
+        serde_json::from_str(&body).map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     Ok(providers)
 }
@@ -149,10 +149,10 @@ pub async fn get_oauth_supported_remotes(
                 remote
                     .get("Options")
                     .and_then(|options| options.as_array())
-                    .map_or(false, |opts| {
+                    .is_some_and(|opts| {
                         opts.iter().any(|opt| {
                             opt.get("Name").and_then(|n| n.as_str()) == Some("token")
-                                && opt.get("Help").and_then(|h| h.as_str()).map_or(false, |h| {
+                                && opt.get("Help").and_then(|h| h.as_str()).is_some_and(|h| {
                                     h.contains("OAuth Access Token as a JSON blob")
                                 })
                         })

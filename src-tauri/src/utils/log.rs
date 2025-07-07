@@ -1,10 +1,10 @@
 use chrono::Utc;
+use log::LevelFilter;
+use log::SetLoggerError;
 use log::debug;
 use log::error;
 use log::info;
 use log::warn;
-use log::LevelFilter;
-use log::SetLoggerError;
 use serde_json::Value;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -90,11 +90,11 @@ pub async fn log_operation(
 
     // Log to both console and cache
     match level.clone() {
-        LogLevel::Error => error!("{:?}", entry),
-        LogLevel::Warn => warn!("{:?}", entry),
-        LogLevel::Info => info!("{:?}", entry),
-        LogLevel::Debug => debug!("{:?}", entry),
-        LogLevel::Trace => debug!("{:?}", entry),
+        LogLevel::Error => error!("{entry:?}"),
+        LogLevel::Warn => warn!("{entry:?}"),
+        LogLevel::Info => info!("{entry:?}"),
+        LogLevel::Debug => debug!("{entry:?}"),
+        LogLevel::Trace => debug!("{entry:?}"),
     }
 
     LOG_CACHE.add_entry(entry).await;

@@ -9,7 +9,6 @@ use crate::utils::types::{AppSettings, SettingsState};
 /// This module handles the basic CRUD operations for application settings.
 /// It provides a clean interface for loading, saving, and updating settings
 /// while maintaining backward compatibility with existing APIs.
-
 /// **Load settings from store with improved error handling and lazy initialization**
 #[tauri::command]
 pub async fn load_settings<'a>(
@@ -37,8 +36,8 @@ pub async fn load_settings<'a>(
                     json!({})
                 }
                 _ => {
-                    println!("❌ Failed to reload settings store: {}", e);
-                    return Err(format!("Failed to reload settings store: {}", e));
+                    println!("❌ Failed to reload settings store: {e}");
+                    return Err(format!("Failed to reload settings store: {e}"));
                 }
             }
         }
@@ -55,7 +54,7 @@ pub async fn load_settings<'a>(
     if !stored_settings.is_null()
         && stored_settings
             .as_object()
-            .map_or(false, |obj| !obj.is_empty())
+            .is_some_and(|obj| !obj.is_empty())
     {
         if let Some(merged_obj) = merged_settings.as_object_mut() {
             for (category, values) in merged_obj.iter_mut() {
@@ -104,14 +103,11 @@ pub async fn load_setting_value<'a>(
                     if io_err.kind() == std::io::ErrorKind::NotFound =>
                 {
                     // File doesn't exist, return from defaults
-                    debug!(
-                        "📁 Settings file not found, using defaults for {}.{}",
-                        category, key
-                    );
+                    debug!("📁 Settings file not found, using defaults for {category}.{key}");
                     json!({})
                 }
                 _ => {
-                    return Err(format!("Failed to reload settings store: {}", e));
+                    return Err(format!("Failed to reload settings store: {e}"));
                 }
             }
         }
@@ -148,94 +144,101 @@ pub async fn save_settings(
             .unwrap_or_else(|_| "failed to serialize".to_string())
     );
 
-    let store = state.store.lock().await;
+    let (stored_settings, has_meaningful_changes, changed_settings) = {
+        let store = state.store.lock().await;
 
-    // Load current stored settings (not defaults)
-    let mut stored_settings = store.get("app_settings").unwrap_or_else(|| json!({}));
+        // Load current stored settings (not defaults)
+        let mut stored_settings = store.get("app_settings").unwrap_or_else(|| json!({}));
 
-    // Load defaults for comparison
-    let default_settings = serde_json::to_value(AppSettings::default()).unwrap();
+        // Load defaults for comparison
+        let default_settings = serde_json::to_value(AppSettings::default()).unwrap();
 
-    // Prepare a new object to store only changed values and track what actually changed
-    let mut changed_settings = serde_json::Map::new();
-    let mut has_meaningful_changes = false;
+        // Prepare a new object to store only changed values and track what actually changed
+        let mut changed_settings = serde_json::Map::new();
+        let mut has_meaningful_changes = false;
 
-    // Merge updates dynamically and track changes
-    if let Some(settings_obj) = updated_settings.as_object() {
-        for (category, new_values) in settings_obj.iter() {
-            if let Some(new_values_obj) = new_values.as_object() {
-                let mut category_changes = serde_json::Map::new();
+        // Merge updates dynamically and track changes
+        if let Some(settings_obj) = updated_settings.as_object() {
+            for (category, new_values) in settings_obj.iter() {
+                if let Some(new_values_obj) = new_values.as_object() {
+                    let mut category_changes = serde_json::Map::new();
 
-                // Ensure category exists in stored settings
-                if !stored_settings.as_object().unwrap().contains_key(category) {
-                    stored_settings.as_object_mut().unwrap().insert(
-                        category.clone(),
-                        serde_json::Value::Object(serde_json::Map::new()),
-                    );
-                }
+                    // Ensure category exists in stored settings
+                    if !stored_settings.as_object().unwrap().contains_key(category) {
+                        stored_settings.as_object_mut().unwrap().insert(
+                            category.clone(),
+                            serde_json::Value::Object(serde_json::Map::new()),
+                        );
+                    }
 
-                let stored_category = stored_settings.get_mut(category).unwrap();
-                let stored_obj = stored_category.as_object_mut().unwrap();
+                    let stored_category = stored_settings.get_mut(category).unwrap();
+                    let stored_obj = stored_category.as_object_mut().unwrap();
 
-                for (key, new_value) in new_values_obj.iter() {
-                    // Get the default value for this setting
-                    let default_value = default_settings.get(category).and_then(|cat| cat.get(key));
+                    for (key, new_value) in new_values_obj.iter() {
+                        // Get the default value for this setting
+                        let default_value =
+                            default_settings.get(category).and_then(|cat| cat.get(key));
 
-                    // Get the currently stored value
-                    let current_stored_value = stored_obj.get(key);
+                        // Get the currently stored value
+                        let current_stored_value = stored_obj.get(key);
 
-                    // Determine if we need to make a change
-                    let should_store = Some(new_value) != default_value;
-                    let value_changed = current_stored_value != Some(new_value);
+                        // Determine if we need to make a change
+                        let should_store = Some(new_value) != default_value;
+                        let value_changed = current_stored_value != Some(new_value);
 
-                    if should_store {
-                        // Value is different from default, store it
-                        if value_changed {
-                            stored_obj.insert(key.clone(), new_value.clone());
-                            category_changes.insert(key.clone(), new_value.clone());
-                            has_meaningful_changes = true;
-                        }
-                    } else {
-                        // Value is same as default, remove it from stored settings if it exists
-                        if stored_obj.remove(key).is_some() {
-                            // We removed a stored value, so emit the default value as the change
-                            if let Some(default_val) = default_value {
-                                category_changes.insert(key.clone(), default_val.clone());
+                        if should_store {
+                            // Value is different from default, store it
+                            if value_changed {
+                                stored_obj.insert(key.clone(), new_value.clone());
+                                category_changes.insert(key.clone(), new_value.clone());
+                                has_meaningful_changes = true;
                             }
-                            has_meaningful_changes = true;
+                        } else {
+                            // Value is same as default, remove it from stored settings if it exists
+                            if stored_obj.remove(key).is_some() {
+                                // We removed a stored value, so emit the default value as the change
+                                if let Some(default_val) = default_value {
+                                    category_changes.insert(key.clone(), default_val.clone());
+                                }
+                                has_meaningful_changes = true;
+                            }
                         }
                     }
-                }
 
-                // Only add category if there are changes
-                if !category_changes.is_empty() {
-                    changed_settings.insert(
-                        category.clone(),
-                        serde_json::Value::Object(category_changes),
-                    );
+                    // Only add category if there are changes
+                    if !category_changes.is_empty() {
+                        changed_settings.insert(
+                            category.clone(),
+                            serde_json::Value::Object(category_changes),
+                        );
+                    }
                 }
             }
         }
-    }
 
-    // Clean up empty categories
-    if let Some(stored_obj) = stored_settings.as_object_mut() {
-        stored_obj.retain(|_, v| {
-            if let Some(category_obj) = v.as_object() {
-                !category_obj.is_empty()
-            } else {
-                true
-            }
-        });
-    }
+        // Clean up empty categories
+        if let Some(stored_obj) = stored_settings.as_object_mut() {
+            stored_obj.retain(|_, v| {
+                if let Some(category_obj) = v.as_object() {
+                    !category_obj.is_empty()
+                } else {
+                    true
+                }
+            });
+        }
+
+        (stored_settings, has_meaningful_changes, changed_settings)
+    };
 
     // Only save if there are meaningful changes
     if has_meaningful_changes {
+        let store = state.store.lock().await;
         store.set("app_settings".to_string(), stored_settings);
         store.save().map_err(|e| {
-            error!("❌ Failed to save settings: {}", e);
+            error!("❌ Failed to save settings: {e}");
             e.to_string()
         })?;
+        drop(store); // Explicitly drop the lock
 
         debug!(
             "🟢 Emitting system_settings_changed with payload: {}",
@@ -247,7 +250,7 @@ pub async fn save_settings(
         app_handle
             .emit("system_settings_changed", changed_settings.clone())
             .map_err(|e| {
-                error!("❌ Failed to emit system_settings_changed event: {}", e);
+                error!("❌ Failed to emit system_settings_changed event: {e}");
                 e.to_string()
             })?;
 
@@ -270,7 +273,7 @@ pub async fn reset_settings(
 ) -> Result<(), String> {
     let default_settings = AppSettings::default();
     let default_settings_value = serde_json::to_value(default_settings)
-        .map_err(|e| format!("Failed to serialize default settings: {}", e.to_string()))?;
+        .map_err(|e| format!("Failed to serialize default settings: {e}"))?;
     save_settings(state, default_settings_value, app_handle.clone()).await?;
 
     app_handle.emit("remote_presence_changed", json!({})).ok();
@@ -309,7 +312,7 @@ pub async fn reset_setting(
     // Save the updated settings
     store.set("app_settings".to_string(), stored_settings);
     store.save().map_err(|e| {
-        error!("❌ Failed to save settings: {}", e);
+        error!("❌ Failed to save settings: {e}");
         e.to_string()
     })?;
 
@@ -327,7 +330,7 @@ pub async fn reset_setting(
         )
         .unwrap();
 
-    info!("✅ Setting {}.{} reset to default", category, key);
+    info!("✅ Setting {category}.{key} reset to default");
     Ok(default_value)
 }
 

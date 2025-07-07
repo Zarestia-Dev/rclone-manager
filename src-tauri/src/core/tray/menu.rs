@@ -1,12 +1,12 @@
 use log::{error, warn};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::{
-    menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     AppHandle,
+    menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
 };
 
 use crate::rclone::state::{
-    get_cached_mounted_remotes, get_cached_remotes, get_settings, JOB_CACHE,
+    JOB_CACHE, get_cached_mounted_remotes, get_cached_remotes, get_settings,
 };
 
 static OLD_MAX_TRAY_ITEMS: AtomicUsize = AtomicUsize::new(0);
@@ -39,14 +39,14 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
     let quit_item = MenuItem::with_id(&handle, "quit", "Quit", true, None::<&str>)?;
 
     let remotes = get_cached_remotes().await.unwrap_or_else(|err| {
-        error!("Failed to fetch cached remotes: {}", err);
+        error!("Failed to fetch cached remotes: {err}");
         vec![]
     });
 
     let mounted_remotes = match get_cached_mounted_remotes().await {
         Ok(remotes) => remotes,
         Err(err) => {
-            error!("Failed to fetch mounted remotes: {}", err);
+            error!("Failed to fetch mounted remotes: {err}");
             vec![]
         }
     };
@@ -75,8 +75,8 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                     let mounted_name = mounted.fs.trim_end_matches(':');
                     mounted_name == remote_name
                         || mounted_name == remote
-                        || mounted_name.starts_with(&format!("{}/", remote_name))
-                        || mounted_name.starts_with(&format!("{}:", remote_name))
+                        || mounted_name.starts_with(&format!("{remote_name}/"))
+                        || mounted_name.starts_with(&format!("{remote_name}:"))
                 });
 
                 // Check job status - separate sync and copy jobs
@@ -89,11 +89,11 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
 
                 let job_status = CheckMenuItem::with_id(
                     &handle,
-                    format!("job_status-{}", remote),
+                    format!("job_status-{remote}"),
                     match (active_sync_job, active_copy_job) {
-                        (Some(_), Some(_)) => format!("Sync & Copy in progress"),
-                        (Some(_), _) => format!("Sync in progress"),
-                        (_, Some(_)) => format!("Copy in progress"),
+                        (Some(_), Some(_)) => "Sync & Copy in progress".to_string(),
+                        (Some(_), _) => "Sync in progress".to_string(),
+                        (_, Some(_)) => "Copy in progress".to_string(),
                         _ => "No active jobs".to_string(),
                     },
                     false,
@@ -103,7 +103,7 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
 
                 let mount_status = CheckMenuItem::with_id(
                     &handle,
-                    format!("mount_status-{}", remote),
+                    format!("mount_status-{remote}"),
                     if is_mounted { "Mounted" } else { "Not Mounted" },
                     false,
                     is_mounted,
@@ -117,7 +117,7 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                 if is_mounted {
                     let unmount_item = MenuItem::with_id(
                         &handle,
-                        format!("unmount-{}", remote),
+                        format!("unmount-{remote}"),
                         "Unmount",
                         true,
                         None::<&str>,
@@ -126,7 +126,7 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                 } else {
                     let mount_item = MenuItem::with_id(
                         &handle,
-                        format!("mount-{}", remote),
+                        format!("mount-{remote}"),
                         "Mount",
                         true,
                         None::<&str>,
@@ -134,10 +134,10 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                     submenu_items.push(Box::new(mount_item));
                 }
 
-                if let Some(_) = active_sync_job {
+                if active_sync_job.is_some() {
                     let stop_sync_item = MenuItem::with_id(
                         &handle,
-                        format!("stop_sync-{}", remote),
+                        format!("stop_sync-{remote}"),
                         "Stop Sync",
                         true,
                         None::<&str>,
@@ -145,10 +145,10 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                     submenu_items.push(Box::new(stop_sync_item));
                 }
 
-                if let Some(_) = active_copy_job {
+                if active_copy_job.is_some() {
                     let stop_copy_item = MenuItem::with_id(
                         &handle,
-                        format!("stop_copy-{}", remote),
+                        format!("stop_copy-{remote}"),
                         "Stop Copy",
                         true,
                         None::<&str>,
@@ -159,7 +159,7 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                 if active_sync_job.is_none() {
                     let sync_item = MenuItem::with_id(
                         &handle,
-                        format!("sync-{}", remote),
+                        format!("sync-{remote}"),
                         "Start Sync",
                         true,
                         None::<&str>,
@@ -170,7 +170,7 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                 if active_copy_job.is_none() {
                     let copy_item = MenuItem::with_id(
                         &handle,
-                        format!("copy-{}", remote),
+                        format!("copy-{remote}"),
                         "Start Copy",
                         true,
                         None::<&str>,
@@ -183,14 +183,14 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                 // Common items
                 let browse_item = MenuItem::with_id(
                     &handle,
-                    format!("browse-{}", remote),
+                    format!("browse-{remote}"),
                     "Browse",
                     is_mounted,
                     None::<&str>,
                 )?;
                 let delete_item = MenuItem::with_id(
                     &handle,
-                    format!("delete-{}", remote),
+                    format!("delete-{remote}"),
                     "Delete",
                     true,
                     None::<&str>,
@@ -222,7 +222,7 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
 
                 let remote_submenu = Submenu::with_items(
                     &handle,
-                    &format!("{} {}", name, indicators),
+                    format!("{name} {indicators}"),
                     true,
                     &submenu_items
                         .iter()
@@ -233,7 +233,7 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                 remote_menus.push(remote_submenu);
             }
         } else {
-            warn!("No cached settings found for remote: {}", remote);
+            warn!("No cached settings found for remote: {remote}");
         }
     }
 

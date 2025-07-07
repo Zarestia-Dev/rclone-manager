@@ -1,8 +1,8 @@
 use std::{
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
@@ -17,7 +17,7 @@ mod utils;
 
 use crate::{
     core::{
-        check_binaries::{is_7z_available, is_rclone_available, read_rclone_path},
+        check_binaries::{is_7z_available, is_rclone_available},
         event_listener::setup_event_listener,
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
         settings::{
@@ -54,9 +54,9 @@ use crate::{
             get_remote_types, get_remotes, update_rclone,
         },
         state::{
-            clear_remote_logs, delete_job, force_check_mounted_remotes, get_active_jobs,
-            get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status, get_jobs,
-            get_remote_logs, get_settings, CACHE, ENGINE_STATE,
+            CACHE, ENGINE_STATE, clear_remote_logs, delete_job, force_check_mounted_remotes,
+            get_active_jobs, get_cached_mounted_remotes, get_cached_remotes, get_configs,
+            get_job_status, get_jobs, get_remote_logs, get_settings,
         },
     },
     utils::{
@@ -246,7 +246,9 @@ pub fn run() {
                 notifications_enabled: Arc::new(std::sync::RwLock::new(
                     settings.general.notifications,
                 )),
-                rclone_path: Arc::new(std::sync::RwLock::new(read_rclone_path(app_handle))),
+                rclone_path: Arc::new(std::sync::RwLock::new(
+                    settings.core.rclone_path.clone().into(),
+                )),
                 restrict_mode: Arc::new(std::sync::RwLock::new(settings.general.restrict)),
             });
 

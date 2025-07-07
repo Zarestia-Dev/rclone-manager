@@ -74,13 +74,13 @@ pub async fn install_mount_plugin(
 
     // Download the plugin
     if let Err(e) = fetch_and_save(state, url, &local_file).await {
-        return Err(format!("Failed to download plugin: {}", e));
+        return Err(format!("Failed to download plugin: {e}"));
     }
 
     // Install the plugin
     let status = if cfg!(target_os = "macos") {
         std::process::Command::new("osascript")
-            .args(&[
+            .args([
                 "-e",
                 &format!(
                     "do shell script \"installer -pkg '{}' -target /\" with administrator privileges",
@@ -99,17 +99,14 @@ pub async fn install_mount_plugin(
                 .map_err(|e| e.to_string())?;
             Ok("Mount plugin installed successfully".to_string())
         }
-        Ok(exit_status) => Err(format!(
-            "Installation failed with exit code: {}",
-            exit_status
-        )),
-        Err(e) => Err(format!("Failed to execute installer: {}", e)),
+        Ok(exit_status) => Err(format!("Installation failed with exit code: {exit_status}")),
+        Err(e) => Err(format!("Failed to execute installer: {e}")),
     }
 }
 
 fn execute_as_admin_powershell(msi_path: &str) -> std::io::Result<std::process::ExitStatus> {
     std::process::Command::new("powershell")
-        .args(&[
+        .args([
             "-Command",
             &format!(
                 "Start-Process -FilePath 'msiexec' -ArgumentList '/i \"{}\" /qn /norestart' -Verb RunAs",
@@ -129,17 +126,16 @@ async fn fetch_and_save(
         .get(url)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
     let bytes = response
         .bytes()
         .await
-        .map_err(|e| format!("Failed to read bytes: {}", e))?;
+        .map_err(|e| format!("Failed to read bytes: {e}"))?;
 
-    let mut file =
-        fs::File::create(file_path).map_err(|e| format!("File creation error: {}", e))?;
+    let mut file = fs::File::create(file_path).map_err(|e| format!("File creation error: {e}"))?;
     file.write_all(&bytes)
-        .map_err(|e| format!("Failed to write file: {}", e))?;
+        .map_err(|e| format!("Failed to write file: {e}"))?;
 
-    debug!("Downloaded and saved at {:?}", file_path);
+    debug!("Downloaded and saved at {file_path:?}");
     Ok(())
 }

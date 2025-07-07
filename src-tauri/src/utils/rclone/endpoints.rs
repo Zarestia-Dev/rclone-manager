@@ -2,9 +2,7 @@
 ///
 /// This module provides organized access to all rclone RC API endpoints.
 /// The endpoints are categorized for easier management and discovery.
-
 // use std::collections::HashMap;
-
 /// Core system endpoints
 pub mod core {
     pub const STATS: &str = "core/stats";

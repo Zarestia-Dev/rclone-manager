@@ -1,17 +1,17 @@
 use chrono::Utc;
 use log::debug;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::{
+    RcloneState,
     rclone::state::{ENGINE_STATE, JOB_CACHE},
     utils::{
         log::log_operation,
-        rclone::endpoints::{sync, EndpointHelper},
+        rclone::endpoints::{EndpointHelper, sync},
         types::{JobInfo, JobResponse, JobStatus, LogLevel},
     },
-    RcloneState,
 };
 
 use super::job::monitor_job;
@@ -31,7 +31,7 @@ pub async fn start_sync(
         LogLevel::Info,
         Some(remote_name.clone()),
         Some("Sync operation".to_string()),
-        format!("Starting sync from {} to {}", source, dest),
+        format!("Starting sync from {source} to {dest}"),
         Some(json!({
             "source": source,
             "destination": dest,
@@ -61,7 +61,7 @@ pub async fn start_sync(
         );
     }
 
-    debug!("Sync request body: {:#?}", body);
+    debug!("Sync request body: {body:#?}");
 
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, sync::SYNC);
 
@@ -71,13 +71,13 @@ pub async fn start_sync(
         .json(&Value::Object(body)) // send JSON body
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
 
     let status = response.status();
     let body_text = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {}: {}", status, body_text);
+        let error = format!("HTTP {status}: {body_text}");
         log_operation(
             LogLevel::Error,
             Some(remote_name.clone()),
@@ -90,7 +90,7 @@ pub async fn start_sync(
     }
 
     let job: JobResponse =
-        serde_json::from_str(&body_text).map_err(|e| format!("Failed to parse response: {}", e))?;
+        serde_json::from_str(&body_text).map_err(|e| format!("Failed to parse response: {e}"))?;
 
     log_operation(
         LogLevel::Info,
@@ -112,7 +112,7 @@ pub async fn start_sync(
             start_time: Utc::now(),
             status: JobStatus::Running,
             stats: None,
-            group: format!("job/{}", jobid),
+            group: format!("job/{jobid}"),
         })
         .await;
 
@@ -132,7 +132,7 @@ pub async fn start_sync(
     });
 
     app.emit("job_cache_changed", jobid)
-        .map_err(|e| format!("Failed to emit event: {}", e))?;
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
     Ok(job.jobid)
 }
 
@@ -151,7 +151,7 @@ pub async fn start_copy(
         LogLevel::Info,
         Some(remote_name.clone()),
         Some("Copy operation".to_string()),
-        format!("Starting copy from {} to {}", source, dest),
+        format!("Starting copy from {source} to {dest}"),
         Some(json!({
             "source": source,
             "destination": dest,
@@ -180,7 +180,7 @@ pub async fn start_copy(
         );
     }
 
-    debug!("Copy request body: {:#?}", body);
+    debug!("Copy request body: {body:#?}");
 
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, sync::COPY);
 
@@ -190,13 +190,13 @@ pub async fn start_copy(
         .json(&Value::Object(body)) // send JSON body
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {}: {}", status, body);
+        let error = format!("HTTP {status}: {body}");
         log_operation(
             LogLevel::Error,
             Some(remote_name.clone()),
@@ -205,14 +205,14 @@ pub async fn start_copy(
             Some(json!({"response": body})),
         )
         .await;
-        log::error!("❌ Failed to start copy job: {}", error);
+        log::error!("❌ Failed to start copy job: {error}");
         return Err(error);
     }
 
     let job: JobResponse =
-        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
+        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
 
-    let jobid = job.jobid.clone();
+    let jobid = job.jobid;
     JOB_CACHE
         .add_job(JobInfo {
             jobid,
@@ -223,7 +223,7 @@ pub async fn start_copy(
             start_time: Utc::now(),
             status: JobStatus::Running,
             stats: None,
-            group: format!("job/{}", jobid),
+            group: format!("job/{jobid}"),
         })
         .await;
     // Start monitoring the job
@@ -245,12 +245,12 @@ pub async fn start_copy(
         LogLevel::Info,
         Some(remote_name.clone()),
         Some("Copy operation".to_string()),
-        format!("Copy job started with ID {}", jobid),
+        format!("Copy job started with ID {jobid}"),
         Some(json!({"jobid": jobid})),
     )
     .await;
 
-    app.emit("job_cache_changed", jobid.clone())
-        .map_err(|e| format!("Failed to emit event: {}", e))?;
+    app.emit("job_cache_changed", jobid)
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
     Ok(job.jobid)
 }

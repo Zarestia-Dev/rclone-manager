@@ -25,8 +25,7 @@ async fn prompt_mount_point(app: &AppHandle, remote_name: &str) -> Option<String
     let response = app
         .dialog()
         .message(format!(
-            "No mount point specified for '{}'. Would you like to select one now?",
-            remote_name
+            "No mount point specified for '{remote_name}'. Would you like to select one now?"
         ))
         .title("Mount Point Required")
         .buttons(MessageDialogButtons::OkCancelCustom(
@@ -37,28 +36,25 @@ async fn prompt_mount_point(app: &AppHandle, remote_name: &str) -> Option<String
         .blocking_show();
 
     if !response {
-        info!(
-            "❌ User cancelled mount point selection for {}",
-            remote_name
-        );
+        info!("❌ User cancelled mount point selection for {remote_name}",);
         return None;
     }
 
     match get_folder_location(app.clone(), false).await {
         Ok(Some(path)) if !path.is_empty() => {
-            info!("📁 Selected mount point for {}: {}", remote_name, path);
+            info!("📁 Selected mount point for {remote_name}: {path}");
             Some(path)
         }
         Ok(Some(_)) => {
-            info!("⚠️ User selected an empty folder path for {}", remote_name);
+            info!("⚠️ User selected an empty folder path for {remote_name}");
             None
         }
         Ok(none) => {
-            info!("❌ User didn't select a folder for {}", remote_name);
+            info!("❌ User didn't select a folder for {remote_name}");
             none
         }
         Err(err) => {
-            error!("🚨 Error selecting folder for {}: {}", remote_name, err);
+            error!("🚨 Error selecting folder for {remote_name}: {err}");
             None
         }
     }
@@ -92,7 +88,7 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
         let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
             Some(s) => s,
             _ => {
-                error!("🚨 Remote {} not found in settings", remote_name);
+                error!("🚨 Remote {remote_name} not found in settings");
                 return;
             }
         };
@@ -155,15 +151,11 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
         .await
         {
             Ok(_) => {
-                info!("✅ Successfully mounted {}", remote_name);
+                info!("✅ Successfully mounted {remote_name}");
                 notify(
                     &app,
                     "Mount Successful",
-                    &format!(
-                        "Successfully mounted {} at {}",
-                        format!("{}:{}", remote_name, source),
-                        mount_point
-                    ),
+                    &format!("Successfully mounted {remote_name}:{source} at {mount_point}"),
                 );
                 // Save the mount point if it was newly selected
                 if settings
@@ -178,24 +170,16 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                         save_remote_settings(remote_name, new_settings, app.state(), app.clone())
                             .await
                     {
-                        error!("🚨 Failed to save mount point: {}", e);
+                        error!("🚨 Failed to save mount point: {e}");
                     }
                 }
             }
             Err(e) => {
-                error!(
-                    "🚨 Failed to mount {}: {}",
-                    format!("{}:{}", remote_name, source),
-                    e
-                );
+                error!("🚨 Failed to mount {remote_name}:{source}: {e}");
                 notify(
                     &app,
                     "Mount Failed",
-                    &format!(
-                        "Failed to mount {}: {}",
-                        format!("{}:{}", remote_name, source),
-                        e
-                    ),
+                    &format!("Failed to mount {remote_name}:{source}: {e}"),
                 );
             }
         }
@@ -210,7 +194,7 @@ pub fn handle_unmount_remote(app: AppHandle, id: &str) {
         let remote_name = remote.to_string();
         let settings_result = CACHE.settings.read().await;
         let settings = settings_result.get(&remote).cloned().unwrap_or_else(|| {
-            error!("🚨 Remote {} not found in cached settings", remote);
+            error!("🚨 Remote {remote} not found in cached settings");
             serde_json::Value::Null
         });
 
@@ -218,19 +202,19 @@ pub fn handle_unmount_remote(app: AppHandle, id: &str) {
         let state = app_clone.state();
         match unmount_remote(app_clone.clone(), mount_point, remote_name, state).await {
             Ok(_) => {
-                info!("🛑 Unmounted {}", remote);
+                info!("🛑 Unmounted {remote}");
                 notify(
                     &app_clone,
                     "Unmount Successful",
-                    &format!("Successfully unmounted {}", remote),
+                    &format!("Successfully unmounted {remote}"),
                 );
             }
             Err(err) => {
-                error!("🚨 Failed to unmount {}: {}", remote, err);
+                error!("🚨 Failed to unmount {remote}: {err}");
                 notify(
                     &app_clone,
                     "Unmount Failed",
-                    &format!("Failed to unmount {}: {}", remote, err),
+                    &format!("Failed to unmount {remote}: {err}"),
                 );
             }
         }
@@ -243,7 +227,7 @@ pub fn handle_sync_remote(app: AppHandle, id: &str) {
         let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
             Some(s) => s,
             _ => {
-                error!("🚨 Remote {} not found in settings", remote_name);
+                error!("🚨 Remote {remote_name} not found in settings");
                 return;
             }
         };
@@ -273,11 +257,11 @@ pub fn handle_sync_remote(app: AppHandle, id: &str) {
             .to_string();
 
         if dest.is_empty() {
-            error!("🚨 Sync configuration incomplete for {}", remote_name);
+            error!("🚨 Sync configuration incomplete for {remote_name}");
             notify(
                 &app,
                 "Sync Failed",
-                &format!("Sync configuration incomplete for {}", remote_name),
+                &format!("Sync configuration incomplete for {remote_name}"),
             );
             return;
         }
@@ -294,19 +278,19 @@ pub fn handle_sync_remote(app: AppHandle, id: &str) {
         .await
         {
             Ok(jobid) => {
-                info!("✅ Started sync for {} (Job ID: {})", remote_name, jobid);
+                info!("✅ Started sync for {remote_name} (Job ID: {jobid})");
                 notify(
                     &app,
                     "Sync Started",
-                    &format!("Started sync for {} (Job ID: {})", remote_name, jobid),
+                    &format!("Started sync for {remote_name} (Job ID: {jobid})"),
                 );
             }
             Err(e) => {
-                error!("🚨 Failed to start sync for {}: {}", remote_name, e);
+                error!("🚨 Failed to start sync for {remote_name}: {e}");
                 notify(
                     &app,
                     "Sync Failed",
-                    &format!("Failed to start sync for {}: {}", remote_name, e),
+                    &format!("Failed to start sync for {remote_name}: {e}"),
                 );
             }
         }
@@ -318,7 +302,7 @@ pub fn handle_copy_remote(app: AppHandle, id: &str) {
         let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
             Some(s) => s,
             _ => {
-                error!("🚨 Remote {} not found in settings", remote_name);
+                error!("🚨 Remote {remote_name} not found in settings");
                 return;
             }
         };
@@ -348,11 +332,11 @@ pub fn handle_copy_remote(app: AppHandle, id: &str) {
             .to_string();
 
         if dest.is_empty() {
-            error!("🚨 Copy configuration incomplete for {}", remote_name);
+            error!("🚨 Copy configuration incomplete for {remote_name}");
             notify(
                 &app,
                 "Copy Failed",
-                &format!("Copy configuration incomplete for {}", remote_name),
+                &format!("Copy configuration incomplete for {remote_name}"),
             );
             return;
         }
@@ -369,19 +353,19 @@ pub fn handle_copy_remote(app: AppHandle, id: &str) {
         .await
         {
             Ok(jobid) => {
-                info!("✅ Started copy for {} (Job ID: {})", remote_name, jobid);
+                info!("✅ Started copy for {remote_name} (Job ID: {jobid})");
                 notify(
                     &app,
                     "Copy Started",
-                    &format!("Started copy for {} (Job ID: {})", remote_name, jobid),
+                    &format!("Started copy for {remote_name} (Job ID: {jobid})"),
                 );
             }
             Err(e) => {
-                error!("🚨 Failed to start copy for {}: {}", remote_name, e);
+                error!("🚨 Failed to start copy for {remote_name}: {e}");
                 notify(
                     &app,
                     "Copy Failed",
-                    &format!("Failed to start copy for {}: {}", remote_name, e),
+                    &format!("Failed to start copy for {remote_name}: {e}"),
                 );
             }
         }
@@ -400,7 +384,7 @@ pub fn handle_stop_sync(app: AppHandle, id: &str) {
                     notify(
                         &app,
                         "Sync Stopped",
-                        &format!("Stopped sync job for {}", remote_name),
+                        &format!("Stopped sync job for {remote_name}"),
                     );
                 }
                 Err(e) => {
@@ -408,16 +392,16 @@ pub fn handle_stop_sync(app: AppHandle, id: &str) {
                     notify(
                         &app,
                         "Stop Sync Failed",
-                        &format!("Failed to stop sync job for {}: {}", remote_name, e),
+                        &format!("Failed to stop sync job for {remote_name}: {e}"),
                     );
                 }
             }
         } else {
-            error!("🚨 No active sync job found for {}", remote_name);
+            error!("🚨 No active sync job found for {remote_name}");
             notify(
                 &app,
                 "Stop Sync Failed",
-                &format!("No active sync job found for {}", remote_name),
+                &format!("No active sync job found for {remote_name}"),
             );
         }
     });
@@ -435,7 +419,7 @@ pub fn handle_stop_copy(app: AppHandle, id: &str) {
                     notify(
                         &app,
                         "Copy Stopped",
-                        &format!("Stopped copy job for {}", remote_name),
+                        &format!("Stopped copy job for {remote_name}"),
                     );
                 }
                 Err(e) => {
@@ -443,16 +427,16 @@ pub fn handle_stop_copy(app: AppHandle, id: &str) {
                     notify(
                         &app,
                         "Stop Copy Failed",
-                        &format!("Failed to stop copy job for {}: {}", remote_name, e),
+                        &format!("Failed to stop copy job for {remote_name}: {e}"),
                     );
                 }
             }
         } else {
-            error!("🚨 No active copy job found for {}", remote_name);
+            error!("🚨 No active copy job found for {remote_name}");
             notify(
                 &app,
                 "Stop Copy Failed",
-                &format!("No active copy job found for {}", remote_name),
+                &format!("No active copy job found for {remote_name}"),
             );
         }
     });
@@ -488,17 +472,17 @@ pub fn handle_browse_remote(app: &AppHandle, id: &str) {
     tauri::async_runtime::spawn(async move {
         let settings_result = CACHE.settings.read().await;
         let settings = settings_result.get(&remote).cloned().unwrap_or_else(|| {
-            error!("🚨 Remote {} not found in cached settings", remote);
+            error!("🚨 Remote {remote} not found in cached settings");
             serde_json::Value::Null
         });
         let mount_point = get_mount_point(&settings);
 
         match app_clone.opener().open_path(mount_point, None::<&str>) {
             Ok(_) => {
-                info!("📂 Opened file manager for {}", remote);
+                info!("📂 Opened file manager for {remote}");
             }
             Err(e) => {
-                error!("🚨 Failed to open file manager for {}: {}", remote, e);
+                error!("🚨 Failed to open file manager for {remote}: {e}");
             }
         }
     });

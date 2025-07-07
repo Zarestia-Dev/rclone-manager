@@ -9,7 +9,7 @@ pub fn send_notification(app: &tauri::AppHandle, title: &str, body: &str) {
         .notifications_enabled
         .read()
         .unwrap();
-    log::debug!("🔔 Notifications enabled: {}", enabled);
+    log::debug!("🔔 Notifications enabled: {enabled}");
     if enabled {
         app.notification()
             .builder()

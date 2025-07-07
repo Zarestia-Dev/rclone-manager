@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     path::PathBuf,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{Arc, atomic::AtomicBool},
 };
 
 use chrono::{DateTime, Utc};
@@ -56,6 +56,7 @@ pub struct CoreSettings {
     pub connection_check_urls: String,
     // pub default_mount_type: String,
     pub rclone_config_path: String,
+    pub rclone_path: String,
     pub bandwidth_limit: String,
     pub completed_onboarding: bool,
 }

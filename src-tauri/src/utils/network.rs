@@ -1,8 +1,8 @@
 use crate::utils::types::NetworkStatusPayload;
 use log::{debug, error, info};
 use std::collections::HashMap;
-use tauri::command;
 use tauri::Emitter;
+use tauri::command;
 
 use crate::utils::types::{CheckResult, LinkChecker};
 
@@ -132,7 +132,7 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     let connection = match Connection::system().await {
         Ok(c) => c,
         Err(e) => {
-            error!("Failed to connect to D-Bus: {}", e);
+            error!("Failed to connect to D-Bus: {e}");
             return;
         }
     };

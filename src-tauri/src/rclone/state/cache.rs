@@ -1,6 +1,6 @@
 use log::{debug, error};
 use once_cell::sync::Lazy;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::Arc;
 use tauri::Manager;
 use tokio::sync::RwLock;
@@ -12,7 +12,7 @@ use crate::{
 };
 
 fn redact_sensitive_values(
-    params: &Vec<String>,
+    params: &[String],
     restrict_mode: &Arc<std::sync::RwLock<bool>>,
 ) -> Value {
     params
@@ -75,8 +75,8 @@ impl RemoteCache {
             *remotes = remote_list;
             // Redact sensitive values in the remote list
             let state = app_handle.state::<RcloneState>();
-            let redacted_remotes = redact_sensitive_values(&*remotes, &state.restrict_mode);
-            debug!("🔄 Updated remotes: {:?}", redacted_remotes);
+            let redacted_remotes = redact_sensitive_values(&remotes, &state.restrict_mode);
+            debug!("🔄 Updated remotes: {redacted_remotes:?}");
             Ok(())
         } else {
             error!("Failed to fetch remotes");
@@ -90,8 +90,8 @@ impl RemoteCache {
             *configs = remote_list;
             // Redact sensitive values in the remote configs
             let state = app_handle.state::<RcloneState>();
-            let redacted_configs = redact_sensitive_json(&*configs, &state.restrict_mode);
-            debug!("🔄 Updated remotes configs: {:?}", redacted_configs);
+            let redacted_configs = redact_sensitive_json(&configs, &state.restrict_mode);
+            debug!("🔄 Updated remotes configs: {redacted_configs:?}");
             Ok(())
         } else {
             error!("Failed to fetch remotes config");
@@ -113,15 +113,15 @@ impl RemoteCache {
             {
                 all_settings.insert(remote.clone(), settings);
             } else {
-                error!("❌ Failed to fetch settings for remote: {}", remote);
+                error!("❌ Failed to fetch settings for remote: {remote}");
             }
         }
 
         *settings = serde_json::Value::Object(all_settings);
         // Redact sensitive values in the remote settings
         let state = app_handle.state::<RcloneState>();
-        let redacted_settings = redact_sensitive_json(&*settings, &state.restrict_mode);
-        debug!("🔄 Updated remotes settings: {:?}", redacted_settings);
+        let redacted_settings = redact_sensitive_json(&settings, &state.restrict_mode);
+        debug!("🔄 Updated remotes settings: {redacted_settings:?}");
         Ok(())
     }
 
@@ -137,7 +137,7 @@ impl RemoteCache {
                 Ok(())
             }
             Err(e) => {
-                error!("❌ Failed to refresh mounted remotes: {}", e);
+                error!("❌ Failed to refresh mounted remotes: {e}");
                 Err("Failed to refresh mounted remotes".into())
             }
         }

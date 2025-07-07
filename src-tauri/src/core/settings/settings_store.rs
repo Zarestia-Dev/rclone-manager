@@ -25,6 +25,7 @@ impl Default for AppSettings {
                 // default_mount_type: "native".to_string(),
                 bandwidth_limit: "".to_string(),
                 rclone_config_path: "".to_string(),
+                rclone_path: "".to_string(), // Empty means auto-detect
                 completed_onboarding: false,
             },
             experimental: ExperimentalSettings {
@@ -203,6 +204,20 @@ impl AppSettings {
                 display_name: "Rclone Config Path".to_string(),
                 value_type: "string".to_string(),
                 help_text: "Path to rclone config file. Leave empty to use default location."
+                    .to_string(),
+                validation_pattern: None,
+                validation_message: None,
+                options: None,
+                required: Some(false),
+            },
+        );
+
+        metadata.insert(
+            "core.rclone_path".to_string(),
+            SettingMetadata {
+                display_name: "Rclone Binary Path".to_string(),
+                value_type: "string".to_string(),
+                help_text: "Path to rclone binary or directory. Leave empty for auto-detection, use 'system' for system PATH."
                     .to_string(),
                 validation_pattern: None,
                 validation_message: None,

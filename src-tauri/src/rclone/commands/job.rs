@@ -1,17 +1,17 @@
 use log::{debug, error, info, warn};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
 use tokio::time::sleep;
 
 use crate::{
+    RcloneState,
     rclone::state::{ENGINE_STATE, JOB_CACHE},
     utils::{
         log::log_operation,
-        rclone::endpoints::{core, job, EndpointHelper},
+        rclone::endpoints::{EndpointHelper, core, job},
         types::{JobStatus, LogLevel},
     },
-    RcloneState,
 };
 
 use super::oauth::RcloneError;
@@ -26,7 +26,7 @@ pub async fn monitor_job(
     let job_status_url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, job::STATUS);
     let stats_url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
 
-    info!("Starting monitoring for job {} ({})", jobid, operation);
+    info!("Starting monitoring for job {jobid} ({operation})");
 
     let mut consecutive_errors = 0;
     const MAX_CONSECUTIVE_ERRORS: u8 = 3;
@@ -35,12 +35,12 @@ pub async fn monitor_job(
         // Check if job is still in cache and not stopped
         match JOB_CACHE.get_job(jobid).await {
             Some(job) if job.status == JobStatus::Stopped => {
-                debug!("Job {} was stopped, ending monitoring", jobid);
+                debug!("Job {jobid} was stopped, ending monitoring");
                 return Ok(());
             }
             Some(_) => {} // Continue monitoring
             _ => {
-                debug!("Job {} removed from cache, stopping monitoring", jobid);
+                debug!("Job {jobid} removed from cache, stopping monitoring");
                 return Ok(());
             }
         }
@@ -92,12 +92,11 @@ pub async fn monitor_job(
             Err(e) => {
                 consecutive_errors += 1;
                 warn!(
-                    "Error monitoring job {} (attempt {}/{}): {}",
-                    jobid, consecutive_errors, MAX_CONSECUTIVE_ERRORS, e
+                    "Error monitoring job {jobid} (attempt {consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}): {e}",
                 );
 
                 if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
-                    error!("Too many errors monitoring job {}, giving up", jobid);
+                    error!("Too many errors monitoring job {jobid}, giving up");
                     JOB_CACHE
                         .complete_job(jobid, false)
                         .await
@@ -105,8 +104,7 @@ pub async fn monitor_job(
                     app.emit("job_cache_changed", jobid)
                         .map_err(|e| RcloneError::JobError(e.to_string()))?;
                     return Err(RcloneError::JobError(format!(
-                        "Too many errors monitoring job {}: {}",
-                        jobid, e
+                        "Too many errors monitoring job {jobid}: {e}"
                     )));
                 }
             }
@@ -146,17 +144,17 @@ pub async fn handle_job_completion(
             LogLevel::Error,
             Some(remote_name.to_string()),
             Some(operation.to_string()),
-            format!("{} Job {} failed: {}", operation, jobid, error_msg),
+            format!("{operation} Job {jobid} failed: {error_msg}"),
             Some(json!({"jobid": jobid, "status": job_status})),
         )
         .await;
-        return Err(RcloneError::JobError(error_msg));
+        Err(RcloneError::JobError(error_msg))
     } else if success {
         log_operation(
             LogLevel::Info,
             Some(remote_name.to_string()),
             Some(operation.to_string()),
-            format!("{} Job {} completed successfully", operation, jobid),
+            format!("{operation} Job {jobid} completed successfully"),
             Some(json!({"jobid": jobid, "status": job_status})),
         )
         .await;
@@ -166,10 +164,7 @@ pub async fn handle_job_completion(
             LogLevel::Warn,
             Some(remote_name.to_string()),
             Some(operation.to_string()),
-            format!(
-                "{} Job {} completed without success but no error message",
-                operation, jobid
-            ),
+            format!("{operation} Job {jobid} completed without success but no error message"),
             Some(json!({"jobid": jobid, "status": job_status})),
         )
         .await;
@@ -200,7 +195,7 @@ pub async fn stop_job(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
@@ -212,14 +207,14 @@ pub async fn stop_job(
                 LogLevel::Warn,
                 Some(remote_name.clone()),
                 Some("Stop job".to_string()),
-                format!("Job {} not found, tagged as stopped", jobid),
+                format!("Job {jobid} not found, tagged as stopped"),
                 None,
             )
             .await;
-            warn!("Job {} not found, tagged as stopped.", jobid);
+            warn!("Job {jobid} not found, tagged as stopped.");
         } else {
-            let error = format!("HTTP {}: {}", status, body);
-            error!("❌ Failed to stop job {}: {}", jobid, error);
+            let error = format!("HTTP {status}: {body}");
+            error!("❌ Failed to stop job {jobid}: {error}");
             return Err(error);
         }
     }
@@ -228,14 +223,14 @@ pub async fn stop_job(
         LogLevel::Info,
         Some(remote_name.clone()),
         Some("Stop job".to_string()),
-        format!("Job {} stopped successfully", jobid),
+        format!("Job {jobid} stopped successfully"),
         None,
     )
     .await;
 
     app.emit("job_cache_changed", jobid)
-        .map_err(|e| format!("Failed to emit event: {}", e))?;
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
 
-    info!("✅ Stopped job {}", jobid);
+    info!("✅ Stopped job {jobid}");
     Ok(())
 }

@@ -1,19 +1,19 @@
 use chrono::Utc;
-use log::{debug, info, warn};
-use serde_json::{json, Value};
+use log::{debug, error, info, warn};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::{
+    RcloneState,
     rclone::state::{
-        force_check_mounted_remotes, get_cached_mounted_remotes, ENGINE_STATE, JOB_CACHE,
+        ENGINE_STATE, JOB_CACHE, force_check_mounted_remotes, get_cached_mounted_remotes,
     },
     utils::{
         log::log_operation,
-        rclone::endpoints::{mount, EndpointHelper},
+        rclone::endpoints::{EndpointHelper, mount},
         types::{JobInfo, JobResponse, JobStatus, LogLevel},
     },
-    RcloneState,
 };
 
 use super::{job::monitor_job, oauth::redact_sensitive_values};
@@ -40,13 +40,13 @@ pub async fn mount_remote(
             "Mount point {} is already in use by remote {}",
             mount_point, existing.fs
         );
-        warn!("{}", error_msg);
+        warn!("{error_msg}");
         return Err(error_msg);
     }
 
     // Check if remote is already mounted
     if mounted_remotes.iter().any(|m| m.fs == remote_name) {
-        info!("Remote {} already mounted", remote_name);
+        info!("Remote {remote_name} already mounted");
         return Ok(());
     }
 
@@ -62,7 +62,7 @@ pub async fn mount_remote(
         LogLevel::Info,
         Some(remote_name.clone()),
         Some("Mount remote".to_string()),
-        format!("Attempting to mount at {}", mount_point),
+        format!("Attempting to mount at {mount_point}"),
         Some(log_context),
     )
     .await;
@@ -74,7 +74,7 @@ pub async fn mount_remote(
         "_async": true,
     });
 
-    debug!("Mount request payload: {:#?}", payload);
+    debug!("Mount request payload: {payload:#?}");
 
     if let Some(opts) = mount_options {
         payload["mountOpt"] = json!(opts);
@@ -93,7 +93,7 @@ pub async fn mount_remote(
         .send()
         .await
         .map_err(|e| {
-            let error = format!("Mount request failed: {}", e);
+            let error = format!("Mount request failed: {e}");
             // Clone error for use in both places
             let error_for_log = error.clone();
             // Spawn an async task to log the error since we can't await here
@@ -117,12 +117,12 @@ pub async fn mount_remote(
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {}: {}", status, body);
+        let error = format!("HTTP {status}: {body}");
         log_operation(
             LogLevel::Error,
             Some(remote_name.clone()),
             Some("Mount remote".to_string()),
-            format!("Failed to mount remote: {}", error),
+            format!("Failed to mount remote: {error}"),
             Some(json!({"response": body})),
         )
         .await;
@@ -130,7 +130,7 @@ pub async fn mount_remote(
     }
 
     let job_response: JobResponse =
-        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
+        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
 
     log_operation(
         LogLevel::Info,
@@ -154,7 +154,7 @@ pub async fn mount_remote(
             start_time: Utc::now(),
             status: JobStatus::Running,
             stats: None,
-            group: format!("job/{}", jobid),
+            group: format!("job/{jobid}"),
         })
         .await;
 
@@ -163,16 +163,16 @@ pub async fn mount_remote(
     let remote_name_clone = remote_name.clone();
     let client = state.client.clone();
     if let Err(e) = monitor_job(remote_name_clone, "Mount remote", jobid, app_clone, client).await {
-        log::error!("Job {} returned an error: {}", jobid, e);
+        error!("Job {jobid} returned an error: {e}");
         return Err(e.to_string());
     }
 
     app.emit("remote_state_changed", &remote_name)
-        .map_err(|e| format!("Failed to emit event: {}", e))?;
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     // Force refresh mounted remotes after mount operation
     if let Err(e) = force_check_mounted_remotes(app).await {
-        log::warn!("Failed to refresh mounted remotes after mount: {}", e);
+        warn!("Failed to refresh mounted remotes after mount: {e}");
     }
 
     Ok(())
@@ -194,7 +194,7 @@ pub async fn unmount_remote(
         LogLevel::Info,
         Some(remote_name.clone()),
         Some("Unmount remote".to_string()),
-        format!("Attempting to unmount {}", mount_point),
+        format!("Attempting to unmount {mount_point}"),
         None,
     )
     .await;
@@ -208,23 +208,20 @@ pub async fn unmount_remote(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
         if status.as_u16() == 500 && body.contains("\"mount not found\"") {
-            warn!(
-                "🚨 Mount not found for {}, updating mount cache",
-                mount_point
-            );
+            warn!("🚨 Mount not found for {mount_point}, updating mount cache",);
             // Update the cached mounted remotes
             app.emit("remote_state_changed", &mount_point)
-                .map_err(|e| format!("Failed to emit event: {}", e))?;
+                .map_err(|e| format!("Failed to emit event: {e}"))?;
         }
 
-        let error = format!("HTTP {}: {}", status, body);
+        let error = format!("HTTP {status}: {body}");
         log_operation(
             LogLevel::Error,
             Some(remote_name.clone()),
@@ -233,7 +230,7 @@ pub async fn unmount_remote(
             Some(json!({"response": body})),
         )
         .await;
-        log::error!("❌ Failed to unmount {}: {}", mount_point, error);
+        error!("❌ Failed to unmount {mount_point}: {error}");
         return Err(error);
     }
 
@@ -241,20 +238,20 @@ pub async fn unmount_remote(
         LogLevel::Info,
         Some(remote_name.clone()),
         Some("Unmount remote".to_string()),
-        format!("Successfully unmounted {}", mount_point),
+        format!("Successfully unmounted {mount_point}"),
         None,
     )
     .await;
 
     app.emit("remote_state_changed", &mount_point)
-        .map_err(|e| format!("Failed to emit event: {}", e))?;
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     // Force refresh mounted remotes after unmount operation
     if let Err(e) = force_check_mounted_remotes(app).await {
-        log::warn!("Failed to refresh mounted remotes after unmount: {}", e);
+        warn!("Failed to refresh mounted remotes after unmount: {e}");
     }
 
-    Ok(format!("Successfully unmounted {}", mount_point))
+    Ok(format!("Successfully unmounted {mount_point}"))
 }
 
 /// Unmount all remotes
@@ -273,24 +270,24 @@ pub async fn unmount_all_remotes(
         .post(&url)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {}: {}", status, body);
-        log::error!("❌ Failed to unmount all remotes: {}", error);
+        let error = format!("HTTP {status}: {body}");
+        error!("❌ Failed to unmount all remotes: {error}");
         return Err(error);
     }
 
     if context != "shutdown" {
         app.emit("remote_state_changed", "all")
-            .map_err(|e| format!("Failed to emit event: {}", e))?;
+            .map_err(|e| format!("Failed to emit event: {e}"))?;
 
         // Force refresh mounted remotes after unmount all operation
         if let Err(e) = force_check_mounted_remotes(app).await {
-            log::warn!("Failed to refresh mounted remotes after unmount all: {}", e);
+            warn!("Failed to refresh mounted remotes after unmount all: {e}");
         }
     }
 

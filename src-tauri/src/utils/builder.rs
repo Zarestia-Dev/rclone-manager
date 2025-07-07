@@ -1,7 +1,7 @@
 use tauri::{
+    AppHandle, Emitter,
     image::Image,
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Emitter,
 };
 
 use crate::core::tray::{actions::show_main_window, menu::create_tray_menu};
@@ -29,16 +29,14 @@ pub async fn setup_tray(app: AppHandle, max_tray_items: usize) -> tauri::Result<
         .on_tray_icon_event(move |tray, event| {
             let app = tray.app_handle();
 
-            match event {
-                TrayIconEvent::Click {
-                    button: MouseButton::Left,
-                    button_state: MouseButtonState::Up,
-                    ..
-                } => {
-                    // Show the main window on left click
-                    show_main_window(app.clone());
-                }
-                _ => {}
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                // Show the main window on left click
+                show_main_window(app.clone());
             }
         })
         .build(&app_clone)?;
@@ -69,6 +67,6 @@ pub fn create_app_window(app_handle: AppHandle) {
     let main_window = main_window.build().expect("Failed to build main window");
 
     main_window.show().unwrap_or_else(|e| {
-        eprintln!("Failed to show main window: {}", e);
+        eprintln!("Failed to show main window: {e}");
     });
 }

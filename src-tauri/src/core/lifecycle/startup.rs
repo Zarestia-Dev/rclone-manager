@@ -43,7 +43,7 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
         .ok()
         .and_then(|settings| settings.get(&remote_name).cloned())
         .unwrap_or_else(|| {
-            error!("Remote {} not found in cached settings", remote_name);
+            error!("Remote {remote_name} not found in cached settings");
             serde_json::Value::Null
         });
 
@@ -80,10 +80,10 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
                     app_handle.clone(),
                 );
             } else {
-                error!("❌ Mount configuration incomplete for {}", remote_name);
+                error!("❌ Mount configuration incomplete for {remote_name}");
             }
         } else {
-            debug!("Skipping mount for {}: autoStart is not true", remote_name);
+            debug!("Skipping mount for {remote_name}: autoStart is not true");
         }
     }
 
@@ -119,10 +119,10 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
                     app_handle.clone(),
                 );
             } else {
-                error!("❌ Sync configuration incomplete for {}", remote_name);
+                error!("❌ Sync configuration incomplete for {remote_name}");
             }
         } else {
-            debug!("Skipping sync for {}: autoStart is not true", remote_name);
+            debug!("Skipping sync for {remote_name}: autoStart is not true");
         }
     }
 
@@ -158,10 +158,10 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
                     app_handle.clone(),
                 );
             } else {
-                error!("❌ Copy configuration incomplete for {}", remote_name);
+                error!("❌ Copy configuration incomplete for {remote_name}");
             }
         } else {
-            debug!("Skipping copy for {}: autoStart is not true", remote_name);
+            debug!("Skipping copy for {remote_name}: autoStart is not true");
         }
     }
 }
@@ -199,13 +199,9 @@ fn spawn_mount_task(
         .await
         {
             Ok(_) => {
-                info!("✅ Mounted {}", format!("{}:{}", remote_name, source));
+                info!("✅ Mounted {remote_name}:{source}");
             }
-            Err(err) => error!(
-                "❌ Failed to mount {}: {}",
-                format!("{}:{}", remote_name, source),
-                err
-            ),
+            Err(err) => error!("❌ Failed to mount {remote_name}:{source}: {err}",),
         }
     });
 }
@@ -243,13 +239,9 @@ fn spawn_sync_task(
         .await
         {
             Ok(_) => {
-                info!("✅ Synced {}", format!("{}:{}", remote_name, source));
+                info!("✅ Synced {remote_name}:{source}");
             }
-            Err(err) => error!(
-                "❌ Failed to sync {}: {}",
-                format!("{}:{}", remote_name, source),
-                err
-            ),
+            Err(err) => error!("❌ Failed to sync {remote_name}:{source}: {err}",),
         }
     });
 }
@@ -286,17 +278,9 @@ fn spawn_copy_task(
         .await
         {
             Ok(jobid) => {
-                info!(
-                    "✅ Started copy for {} (Job ID: {})",
-                    format!("{}:{}", remote_name, source),
-                    jobid
-                );
+                info!("✅ Started copy for {remote_name}:{source} (Job ID: {jobid})",);
             }
-            Err(err) => error!(
-                "❌ Failed to copy {}: {}",
-                format!("{}:{}", remote_name, source),
-                err
-            ),
+            Err(err) => error!("❌ Failed to copy {remote_name}:{source}: {err}",),
         }
     });
 }
@@ -314,7 +298,7 @@ async fn sync_all_remotes<R: Runtime>(_app_handle: &AppHandle<R>) -> Result<(), 
             if let Some(sync_config) = remote_settings.get("syncConfig") {
                 if let Some(auto_sync) = sync_config.get("autoStart").and_then(|v| v.as_bool()) {
                     if auto_sync {
-                        info!("🔄 Starting sync for remote: {}", remote);
+                        info!("🔄 Starting sync for remote: {remote}");
                         // The actual sync will be handled in handle_remote_startup
                     }
                 }
@@ -337,7 +321,7 @@ async fn copy_all_remotes<R: Runtime>(_app_handle: &AppHandle<R>) -> Result<(), 
             if let Some(copy_config) = remote_settings.get("copyConfig") {
                 if let Some(auto_copy) = copy_config.get("autoStart").and_then(|v| v.as_bool()) {
                     if auto_copy {
-                        info!("📋 Starting copy for remote: {}", remote);
+                        info!("📋 Starting copy for remote: {remote}");
                         // The actual copy will be handled in handle_remote_startup
                     }
                 }

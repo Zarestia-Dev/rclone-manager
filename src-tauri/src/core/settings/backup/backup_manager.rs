@@ -15,7 +15,7 @@ use std::{
     process::Command,
 };
 use tauri::{AppHandle, State};
-use zip::{write::FileOptions, ZipWriter};
+use zip::{ZipWriter, write::FileOptions};
 
 #[tauri::command]
 pub async fn backup_settings(
@@ -28,9 +28,9 @@ pub async fn backup_settings(
 ) -> Result<String, String> {
     let backup_path = PathBuf::from(&backup_dir);
     fs::create_dir_all(&backup_path)
-        .map_err(|e| format!("Failed to create backup directory: {}", e))?;
+        .map_err(|e| format!("Failed to create backup directory: {e}"))?;
 
-    let has_password = password.as_ref().map_or(false, |p| !p.trim().is_empty());
+    let has_password = password.as_ref().is_some_and(|p| !p.trim().is_empty());
     let timestamp = Local::now();
     let archive_name = match remote_name.clone() {
         Some(name) => format!(
@@ -48,7 +48,7 @@ pub async fn backup_settings(
     let archive_path = backup_path.join(archive_name);
 
     // Create a temporary folder and collect files
-    let tmp_dir = tempfile::tempdir().map_err(|e| format!("Failed to create temp dir: {}", e))?;
+    let tmp_dir = tempfile::tempdir().map_err(|e| format!("Failed to create temp dir: {e}"))?;
     let export_dir = tmp_dir.path();
 
     let mut exported_items = vec![];
@@ -102,11 +102,11 @@ pub async fn backup_settings(
         let resolved_config_path = match get_rclone_config_path(&app_handle) {
             Ok(path) => path,
             Err(e) => {
-                warn!("⚠️ Failed to get rclone config path: {}", e);
-                return Err(format!("⚠️ Failed to get rclone config path: {}", e));
+                warn!("⚠️ Failed to get rclone config path: {e}");
+                return Err(format!("⚠️ Failed to get rclone config path: {e}"));
             }
         };
-        debug!("Rclone config path: {:?}", resolved_config_path);
+        debug!("Rclone config path: {resolved_config_path:?}");
         if resolved_config_path.exists() {
             fs::copy(&resolved_config_path, export_dir.join("rclone.conf")).ok();
             exported_items.push("remotes");
@@ -125,22 +125,22 @@ pub async fn backup_settings(
             .unwrap_or_else(|| "".into()),
     });
     fs::write(export_dir.join("export_info.json"), export_info.to_string())
-        .map_err(|e| format!("Failed to write export_info.json: {}", e))?;
+        .map_err(|e| format!("Failed to write export_info.json: {e}"))?;
 
     // Create archive (same as before)
     if let Some(pw) = password.filter(|p| !p.trim().is_empty()) {
         // 7z encrypted
         let seven_zip =
-            find_7z_executable().map_err(|e| format!("Failed to find 7z executable: {}", e))?;
+            find_7z_executable().map_err(|e| format!("Failed to find 7z executable: {e}"))?;
         let status = Command::new(seven_zip)
             .current_dir(export_dir)
             .arg("a")
             .arg("-mhe=on")
-            .arg(format!("-p{}", pw))
+            .arg(format!("-p{pw}"))
             .arg(archive_path.to_string_lossy().to_string())
             .arg(".")
             .status()
-            .map_err(|e| format!("Failed to execute 7z: {}", e))?;
+            .map_err(|e| format!("Failed to execute 7z: {e}"))?;
 
         if !status.success() {
             return Err("7z failed to create encrypted archive.".into());
@@ -148,7 +148,7 @@ pub async fn backup_settings(
     } else {
         // Standard ZIP archive
         let file =
-            File::create(&archive_path).map_err(|e| format!("Failed to create zip file: {}", e))?;
+            File::create(&archive_path).map_err(|e| format!("Failed to create zip file: {e}"))?;
         let mut zip = ZipWriter::new(file);
         let options = FileOptions::<'static, ()>::default()
             .compression_method(zip::CompressionMethod::Stored);
@@ -161,17 +161,17 @@ pub async fn backup_settings(
             if path.is_file() {
                 let rel_path = path.strip_prefix(export_dir).unwrap();
                 zip.start_file(rel_path.to_string_lossy(), options)
-                    .map_err(|e| format!("Failed to start file in zip: {}", e))?;
+                    .map_err(|e| format!("Failed to start file in zip: {e}"))?;
                 zip.write_all(
                     &fs::read(path)
-                        .map_err(|e| format!("Failed to read file {}: {}", path.display(), e))?,
+                        .map_err(|e| format!("Failed to read file {}: {e}", path.display()))?,
                 )
-                .map_err(|e| format!("Failed to write file {} to zip: {}", path.display(), e))?;
+                .map_err(|e| format!("Failed to write file {} to zip: {e}", path.display()))?;
             }
         }
 
         zip.finish()
-            .map_err(|e| format!("Failed to finish zip archive: {}", e))?;
+            .map_err(|e| format!("Failed to finish zip archive: {e}"))?;
     }
 
     Ok(format!("Backup created at: {}", archive_path.display()))

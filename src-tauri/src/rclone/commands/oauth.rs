@@ -1,5 +1,5 @@
 use log::{debug, error, info, warn};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::{
     collections::HashMap,
     process::{Child, Command, Stdio},
@@ -11,13 +11,13 @@ use tokio::net::TcpStream;
 use tokio::{sync::Mutex, time::sleep};
 
 use crate::{
+    RcloneState,
     core::check_binaries::read_rclone_path,
     rclone::state::ENGINE_STATE,
     utils::{
-        rclone::endpoints::{core, EndpointHelper},
+        rclone::endpoints::{EndpointHelper, core},
         types::{BandwidthLimitResponse, SENSITIVE_KEYS},
     },
-    RcloneState,
 };
 
 lazy_static::lazy_static! {
@@ -47,10 +47,10 @@ impl From<serde_json::Error> for RcloneError {
 impl std::fmt::Display for RcloneError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RcloneError::RequestFailed(e) => write!(f, "Request failed: {}", e),
-            RcloneError::ParseError(e) => write!(f, "Parse error: {}", e),
-            RcloneError::JobError(e) => write!(f, "Job error: {}", e),
-            RcloneError::OAuthError(e) => write!(f, "OAuth error: {}", e),
+            RcloneError::RequestFailed(e) => write!(f, "Request failed: {e}"),
+            RcloneError::ParseError(e) => write!(f, "Parse error: {e}"),
+            RcloneError::JobError(e) => write!(f, "Job error: {e}"),
+            RcloneError::OAuthError(e) => write!(f, "OAuth error: {e}"),
         }
     }
 }
@@ -83,17 +83,14 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     // Check if process is already running (in memory or port open)
     let mut process_running = guard.is_some();
     if !process_running {
-        let addr = format!("127.0.0.1:{}", port);
+        let addr = format!("127.0.0.1:{port}");
         match TcpStream::connect(&addr).await {
             Ok(_) => {
                 process_running = true;
-                warn!(
-                    "Rclone OAuth process already running (port {} in use)",
-                    port
-                );
+                warn!("Rclone OAuth process already running (port {port} in use)",);
             }
             Err(_) => {
-                debug!("No existing OAuth process detected on port {}", port);
+                debug!("No existing OAuth process detected on port {port}");
             }
         }
     }
@@ -112,7 +109,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
             "--rc-no-auth",
             "--rc-serve",
             "--rc-addr",
-            &format!("127.0.0.1:{}", port),
+            &format!("127.0.0.1:{port}"),
         ])
         .stdout(Stdio::null())
         .stderr(Stdio::null());
@@ -131,8 +128,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
 
     let process = oauth_app.spawn().map_err(|e| {
         RcloneError::OAuthError(format!(
-            "Failed to start Rclone OAuth process: {}. Ensure Rclone is installed and in PATH.",
-            e
+            "Failed to start Rclone OAuth process: {e}. Ensure Rclone is installed and in PATH."
         ))
     })?;
 
@@ -143,19 +139,18 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let timeout = Duration::from_secs(5);
 
     while start_time.elapsed() < timeout {
-        if TcpStream::connect(&format!("127.0.0.1:{}", port))
+        if TcpStream::connect(&format!("127.0.0.1:{port}"))
             .await
             .is_ok()
         {
-            info!("OAuth process started successfully on port {}", port);
+            info!("OAuth process started successfully on port {port}");
             return Ok(());
         }
         sleep(Duration::from_millis(100)).await;
     }
 
     Err(RcloneError::OAuthError(format!(
-        "Timeout waiting for OAuth process to start on port {}",
-        port
+        "Timeout waiting for OAuth process to start on port {port}"
     )))
 }
 
@@ -173,7 +168,7 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
         found_process = true;
     } else {
         // Try to connect to the port to see if something is running
-        let addr = format!("127.0.0.1:{}", port);
+        let addr = format!("127.0.0.1:{port}");
         if TcpStream::connect(&addr).await.is_ok() {
             found_process = true;
         }
@@ -184,21 +179,21 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
         return Ok(());
     }
 
-    let url = EndpointHelper::build_url(&format!("http://127.0.0.1:{}", port), core::QUIT);
+    let url = EndpointHelper::build_url(&format!("http://127.0.0.1:{port}"), core::QUIT);
 
     if let Err(e) = state.client.post(&url).send().await {
-        warn!("⚠️ Failed to send quit request: {}", e);
+        warn!("⚠️ Failed to send quit request: {e}");
     }
 
     if let Some(mut process) = guard.take() {
         match process.wait() {
             Ok(status) => {
-                info!("✅ Rclone OAuth process exited with status: {:?}", status);
+                info!("✅ Rclone OAuth process exited with status: {status:?}");
             }
             Err(_) => {
                 if let Err(e) = process.kill() {
-                    error!("❌ Failed to kill process: {}", e);
-                    return Err(format!("Failed to kill process: {}", e));
+                    error!("❌ Failed to kill process: {e}");
+                    return Err(format!("Failed to kill process: {e}"));
                 }
                 info!("💀 Forcefully killed Rclone OAuth process");
             }
@@ -233,19 +228,19 @@ pub async fn set_bandwidth_limit(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Request failed: {}", e))?;
+        .map_err(|e| format!("Request failed: {e}"))?;
 
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let error = format!("HTTP {}: {}", status, body);
+        let error = format!("HTTP {status}: {body}");
         return Err(error);
     }
 
     let response_data: BandwidthLimitResponse =
-        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {}", e))?;
+        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
 
-    debug!("🪢 Bandwidth limit set: {:?}", response_data);
+    debug!("🪢 Bandwidth limit set: {response_data:?}");
     Ok(response_data)
 }
