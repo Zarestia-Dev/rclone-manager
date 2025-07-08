@@ -4,7 +4,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     core::check_binaries::{is_rclone_available, read_rclone_path},
-    utils::types::RcApiEngine,
+    utils::types::all_types::RcApiEngine,
 };
 
 impl RcApiEngine {

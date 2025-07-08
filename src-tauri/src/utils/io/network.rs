@@ -1,10 +1,10 @@
-use crate::utils::types::NetworkStatusPayload;
+use crate::utils::types::all_types::NetworkStatusPayload;
 use log::{debug, error, info};
 use std::collections::HashMap;
 use tauri::Emitter;
 use tauri::command;
 
-use crate::utils::types::{CheckResult, LinkChecker};
+use crate::utils::types::all_types::{CheckResult, LinkChecker};
 
 #[command]
 pub async fn check_links(

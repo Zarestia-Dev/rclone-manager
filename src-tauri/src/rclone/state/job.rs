@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 use serde_json::Value;
 use tokio::sync::RwLock;
 
-use crate::utils::types::{JobCache, JobInfo, JobStatus};
+use crate::utils::types::all_types::{JobCache, JobInfo, JobStatus};
 
 pub static JOB_CACHE: Lazy<JobCache> = Lazy::new(|| JobCache {
     jobs: RwLock::new(Vec::new()),

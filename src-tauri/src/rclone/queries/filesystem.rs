@@ -6,7 +6,7 @@ use crate::RcloneState;
 use crate::rclone::state::ENGINE_STATE;
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, operations},
-    types::{DiskUsage, ListOptions},
+    types::all_types::{DiskUsage, ListOptions},
 };
 
 #[tauri::command]

@@ -1,13 +1,7 @@
-use std::{
-    path::PathBuf,
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
-};
+use std::sync::{Arc, atomic::AtomicBool};
 
-use log::{debug, error, info};
-use tauri::{Manager, Theme, WindowEvent};
+use log::{debug, error};
+use tauri::{Manager, WindowEvent};
 use tauri_plugin_store::StoreBuilder;
 use tokio::sync::Mutex;
 
@@ -15,10 +9,11 @@ mod core;
 mod rclone;
 mod utils;
 
+// Import the functions we separated out
 use crate::{
     core::{
         check_binaries::{is_7z_available, is_rclone_available},
-        event_listener::setup_event_listener,
+        initialization::{async_startup, init_rclone_state, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
         settings::{
             backup::{
@@ -35,6 +30,7 @@ use crate::{
             handle_stop_copy, handle_stop_sync, handle_sync_remote, handle_unmount_remote,
             show_main_window,
         },
+        ui::set_theme,
     },
     rclone::{
         commands::{
@@ -54,120 +50,26 @@ use crate::{
             get_remote_types, get_remotes, update_rclone,
         },
         state::{
-            CACHE, ENGINE_STATE, clear_remote_logs, delete_job, force_check_mounted_remotes,
-            get_active_jobs, get_cached_mounted_remotes, get_cached_remotes, get_configs,
-            get_job_status, get_jobs, get_remote_logs, get_settings,
+            clear_remote_logs, delete_job, force_check_mounted_remotes, get_active_jobs,
+            get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status, get_jobs,
+            get_remote_logs, get_settings,
         },
     },
     utils::{
-        builder::{create_app_window, setup_tray},
-        file_helper::{get_file_location, get_folder_location, open_in_files},
-        log::init_logging,
-        network::{check_links, is_network_metered, monitor_network_changes},
-        process::kill_process_by_pid,
+        app::builder::create_app_window,
+        io::{
+            file_helper::{get_file_location, get_folder_location, open_in_files},
+            network::{check_links, is_network_metered, monitor_network_changes},
+        },
+        logging::log::init_logging,
+        process::process_manager::kill_process_by_pid,
         rclone::{
             mount::{check_mount_plugin_installed, install_mount_plugin},
             provision::provision_rclone,
         },
-        types::{AppSettings, RcApiEngine, RcloneState, SettingsState},
+        types::all_types::{AppSettings, RcloneState, SettingsState},
     },
 };
-
-impl RcloneState {
-    pub fn is_shutting_down(&self) -> bool {
-        self.is_shutting_down.load(Ordering::SeqCst)
-    }
-
-    pub fn set_shutting_down(&self) {
-        self.is_shutting_down.store(true, Ordering::SeqCst);
-    }
-}
-
-#[tauri::command]
-async fn set_theme(theme: String, window: tauri::Window) -> Result<(), String> {
-    let theme_enum = match theme.as_str() {
-        "dark" => Theme::Dark,
-        _ => Theme::Light,
-    };
-
-    if window.theme().unwrap_or(Theme::Light) != theme_enum {
-        window
-            .set_theme(Some(theme_enum))
-            .map_err(|e| format!("Failed to set theme: {e}"))?;
-    }
-
-    Ok(())
-}
-
-/// Initializes Rclone API and OAuth state, and launches the Rclone engine.
-fn init_rclone_state(app_handle: &tauri::AppHandle, settings: &AppSettings) -> Result<(), String> {
-    let api_url = format!("http://127.0.0.1:{}", settings.core.rclone_api_port);
-    let oauth_url = format!("http://127.0.0.1:{}", settings.core.rclone_oauth_port);
-
-    ENGINE_STATE
-        .set_api(api_url, settings.core.rclone_api_port)
-        .map_err(|e| format!("Failed to set Rclone API: {e}"))?;
-
-    ENGINE_STATE
-        .set_oauth(oauth_url, settings.core.rclone_oauth_port)
-        .map_err(|e| format!("Failed to set Rclone OAuth: {e}"))?;
-
-    let mut engine = RcApiEngine::lock_engine()?;
-    engine.init(app_handle);
-
-    info!("🔄 Rclone engine initialized");
-    Ok(())
-}
-
-fn setup_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let config_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("Failed to get app data directory: {e}"))?;
-
-    std::fs::create_dir_all(&config_dir)
-        .map_err(|e| format!("Failed to create config directory: {e}"))?;
-
-    Ok(config_dir)
-}
-
-async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
-    debug!("🚀 Starting async startup tasks");
-
-    setup_event_listener(&app_handle);
-
-    // TODO: Register global shortcuts once tauri-plugin-global-shortcut API is clarified
-    // if let Err(e) = register_global_shortcuts(&app_handle) {
-    //     error!("Failed to register global shortcuts: {}", e);
-    // }
-
-    CACHE.refresh_all(app_handle.clone()).await;
-    debug!("🔄 Cache refreshed");
-
-    if settings.general.tray_enabled {
-        debug!("🧊 Setting up tray");
-        if let Err(e) = setup_tray(app_handle.clone(), settings.core.max_tray_items).await {
-            error!("Failed to setup tray: {e}");
-        }
-    }
-
-    if !settings.core.bandwidth_limit.is_empty() {
-        debug!(
-            "🌐 Setting bandwidth limit: {}",
-            settings.core.bandwidth_limit
-        );
-        let rclone_state = app_handle.state::<RcloneState>();
-        if let Err(e) = set_bandwidth_limit(
-            app_handle.clone(),
-            Some(settings.core.bandwidth_limit.clone()),
-            rclone_state,
-        )
-        .await
-        {
-            error!("Failed to set bandwidth limit: {e}");
-        }
-    }
-}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -252,44 +154,6 @@ pub fn run() {
                 restrict_mode: Arc::new(std::sync::RwLock::new(settings.general.restrict)),
             });
 
-            // Setup global shortcuts
-            // #[cfg(desktop)]
-            // {
-            //     use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
-            //     use crate::utils::shortcuts::handle_global_shortcut_event;
-
-            //     // Define shortcuts
-            //     let ctrl_q_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyQ);
-            //     let ctrl_shift_m_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyM);
-            //     let ctrl_shift_h_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyH);
-
-            //     // Setup global shortcut plugin with handler
-            //     app_handle.plugin(
-            //         tauri_plugin_global_shortcut::Builder::new().with_handler(move |app, shortcut, event| {
-            //             if let ShortcutState::Pressed = event.state() {
-            //                 handle_global_shortcut_event(app, shortcut.clone());
-            //             }
-            //         })
-            //         .build(),
-            //     )?;
-
-            //     // Register shortcuts
-            //     match app_handle.global_shortcut().register(ctrl_q_shortcut) {
-            //         Ok(_) => info!("Successfully registered Ctrl+Q shortcut"),
-            //         Err(e) => error!("Failed to register Ctrl+Q shortcut: {}", e),
-            //     }
-            //     match app_handle.global_shortcut().register(ctrl_shift_m_shortcut) {
-            //         Ok(_) => info!("Successfully registered Ctrl+Shift+M shortcut"),
-            //         Err(e) => error!("Failed to register Ctrl+Shift+M shortcut: {}", e),
-            //     }
-            //     match app_handle.global_shortcut().register(ctrl_shift_h_shortcut) {
-            //         Ok(_) => info!("Successfully registered Ctrl+Shift+H shortcut"),
-            //         Err(e) => error!("Failed to register Ctrl+Shift+H shortcut: {}", e),
-            //     }
-
-            //     info!("🔗 Global shortcuts registered successfully");
-            // }
-
             init_logging(settings.experimental.debug_logging)
                 .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
@@ -343,7 +207,6 @@ pub fn run() {
             id if id.starts_with("stop_sync-") => handle_stop_sync(app.clone(), id),
             id if id.starts_with("stop_copy-") => handle_stop_copy(app.clone(), id),
             id if id.starts_with("browse-") => handle_browse_remote(app, id),
-            // id if id.starts_with("delete-") => handle_delete_remote(app.clone(), id),
             _ => {}
         })
         .invoke_handler(tauri::generate_handler![

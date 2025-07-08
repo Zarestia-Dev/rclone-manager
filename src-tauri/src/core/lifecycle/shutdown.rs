@@ -2,10 +2,13 @@ use log::{error, info, warn};
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::task::spawn_blocking;
 
-use crate::rclone::{
-    commands::{stop_job, unmount_all_remotes},
-    engine::ENGINE,
-    state::{get_active_jobs, stop_mounted_remote_watcher},
+use crate::{
+    rclone::{
+        commands::{stop_job, unmount_all_remotes},
+        engine::ENGINE,
+        state::{get_active_jobs, stop_mounted_remote_watcher},
+    },
+    utils::process::process_manager::kill_all_rclone_processes,
 };
 // use crate::utils::shortcuts::unregister_global_shortcuts;
 
@@ -122,7 +125,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         Err(_) => {
             error!("Engine shutdown timed out after 3 seconds, forcing cleanup");
             // Force kill any remaining rclone processes as a last resort
-            if let Err(e) = crate::utils::process::kill_all_rclone_processes() {
+            if let Err(e) = kill_all_rclone_processes() {
                 error!("Failed to force kill rclone processes: {e}");
             }
         }

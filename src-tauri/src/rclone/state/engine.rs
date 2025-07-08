@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 
-use crate::utils::types::EngineState;
+use crate::utils::types::all_types::EngineState;
 
 pub static ENGINE_STATE: Lazy<EngineState> = Lazy::new(|| EngineState {
     api_url: Mutex::new(String::new()),

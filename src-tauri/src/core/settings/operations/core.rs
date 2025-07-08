@@ -2,7 +2,7 @@ use log::{debug, error, info};
 use serde_json::json;
 use tauri::{Emitter, State};
 
-use crate::utils::types::{AppSettings, SettingsState};
+use crate::utils::types::all_types::{AppSettings, SettingsState};
 
 /// **Core settings operations - Load, Save, Update, Reset**
 ///

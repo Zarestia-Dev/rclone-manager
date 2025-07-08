@@ -12,8 +12,8 @@ use crate::{
         state::{CACHE, JOB_CACHE},
     },
     utils::{
-        builder::create_app_window, file_helper::get_folder_location,
-        notification::send_notification, types::JobStatus,
+        app::builder::create_app_window, app::notification::send_notification,
+        io::file_helper::get_folder_location, types::all_types::JobStatus,
     },
 };
 

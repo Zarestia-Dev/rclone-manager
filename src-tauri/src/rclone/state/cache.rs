@@ -8,7 +8,7 @@ use tokio::sync::RwLock;
 use crate::{
     core::settings::remote::manager::get_remote_settings,
     rclone::queries::{get_all_remote_configs, get_mounted_remotes, get_remotes},
-    utils::types::{MountedRemote, RcloneState, RemoteCache, SENSITIVE_KEYS},
+    utils::types::all_types::{MountedRemote, RcloneState, RemoteCache, SENSITIVE_KEYS},
 };
 
 fn redact_sensitive_values(

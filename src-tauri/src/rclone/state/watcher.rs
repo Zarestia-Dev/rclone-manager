@@ -7,7 +7,7 @@ use tokio::time;
 use super::cache::CACHE;
 use crate::RcloneState;
 use crate::rclone::queries::mount::get_mounted_remotes;
-use crate::utils::types::MountedRemote;
+use crate::utils::types::all_types::MountedRemote;
 
 /// Global flag to control the mounted remote watcher
 static WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
@@ -166,7 +166,7 @@ pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), St
     debug!("🔍 Force checking mounted remotes");
 
     // Get current state from cache
-    let cached_mounts = CACHE.get_mounted_remotes().await;
+    let cached_mounts = CACHE.get_mounted_remotes().await.to_vec();
 
     // Get current state from live API using existing function
     let api_mounts = get_mounted_remotes_from_api(&app_handle).await?;

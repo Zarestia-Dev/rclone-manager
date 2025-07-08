@@ -6,11 +6,11 @@ use tauri::AppHandle;
 use crate::{
     rclone::state::ENGINE_STATE,
     utils::{
-        process::{
+        process::process_manager::{
             get_child_pid, kill_all_rclone_processes, kill_process_by_pid, kill_processes_on_port,
         },
         rclone::endpoints::{EndpointHelper, core},
-        types::RcApiEngine,
+        types::all_types::RcApiEngine,
     },
 };
 

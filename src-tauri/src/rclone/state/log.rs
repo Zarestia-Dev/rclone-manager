@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 use tokio::sync::RwLock;
 
-use crate::utils::types::{LogCache, LogEntry};
+use crate::utils::types::all_types::{LogCache, LogEntry};
 
 pub static LOG_CACHE: Lazy<LogCache> = Lazy::new(|| LogCache::new(1000));
 

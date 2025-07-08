@@ -5,7 +5,7 @@ use tauri::State;
 use crate::RcloneState;
 use crate::rclone::state::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{EndpointHelper, mount};
-use crate::utils::types::MountedRemote;
+use crate::utils::types::all_types::MountedRemote;
 
 #[tauri::command]
 pub async fn get_mounted_remotes(

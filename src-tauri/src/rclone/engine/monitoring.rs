@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, core},
-    types::RcApiEngine,
+    types::all_types::RcApiEngine,
 };
 
 impl RcApiEngine {

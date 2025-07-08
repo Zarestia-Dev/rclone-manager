@@ -8,9 +8,9 @@ use crate::{
     RcloneState,
     rclone::state::{ENGINE_STATE, JOB_CACHE},
     utils::{
-        log::log_operation,
+        logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, core, job},
-        types::{JobStatus, LogLevel},
+        types::all_types::{JobStatus, LogLevel},
     },
 };
 

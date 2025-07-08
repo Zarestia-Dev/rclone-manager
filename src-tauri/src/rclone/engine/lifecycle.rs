@@ -2,7 +2,9 @@ use log::{debug, error, info};
 use std::thread;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::{RcloneState, core::check_binaries::read_rclone_path, utils::types::RcApiEngine};
+use crate::{
+    RcloneState, core::check_binaries::read_rclone_path, utils::types::all_types::RcApiEngine,
+};
 
 impl RcApiEngine {
     pub fn init(&mut self, app: &AppHandle) {
@@ -86,9 +88,6 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
     if let Err(e) = engine.kill_port_processes() {
         error!("Failed to clean up port processes: {e}");
     }
-
-    // Wait a bit more for port to be fully released
-    std::thread::sleep(std::time::Duration::from_secs(3));
 
     match engine.spawn_process(app) {
         Ok(child) => {
@@ -225,9 +224,6 @@ fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> Result<(), Str
             debug!("🔄 Generic restart for {change_type}");
         }
     }
-
-    // Step 3: Wait a moment for cleanup
-    std::thread::sleep(std::time::Duration::from_millis(500));
 
     // Step 4: Start the engine with new configuration
     debug!("🚀 Starting engine with new configuration...");

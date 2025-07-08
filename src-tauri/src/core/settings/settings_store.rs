@@ -1,7 +1,7 @@
 // use regex::Regex;
 use std::collections::HashMap;
 
-use crate::utils::types::{
+use crate::utils::types::all_types::{
     AppSettings, CoreSettings, ExperimentalSettings, GeneralSettings, SettingMetadata,
 };
 

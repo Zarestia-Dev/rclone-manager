@@ -3,7 +3,7 @@ use crate::{
         backup::archive_utils::{find_7z_executable, is_7z_encrypted},
         utils::path_utils::get_rclone_config_path,
     },
-    utils::types::{BackupAnalysis, SettingsState},
+    utils::types::all_types::{BackupAnalysis, SettingsState},
 };
 use chrono::Local;
 use log::{debug, warn};

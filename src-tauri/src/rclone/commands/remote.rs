@@ -7,9 +7,9 @@ use crate::{
     RcloneState,
     rclone::state::{ENGINE_STATE, clear_remote_logs},
     utils::{
-        log::log_operation,
+        logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, config},
-        types::LogLevel,
+        types::all_types::LogLevel,
     },
 };
 

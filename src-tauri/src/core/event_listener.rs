@@ -11,7 +11,7 @@ use crate::{
         engine::ENGINE,
         state::{CACHE, ENGINE_STATE},
     },
-    utils::{builder::setup_tray, log::update_log_level},
+    utils::{app::builder::setup_tray, logging::log::update_log_level},
 };
 
 mod events {

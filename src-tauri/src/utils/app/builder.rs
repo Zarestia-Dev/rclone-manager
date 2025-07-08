@@ -22,7 +22,7 @@ pub async fn setup_tray(app: AppHandle, max_tray_items: usize) -> tauri::Result<
 
     TrayIconBuilder::with_id("main-tray")
         .icon(Image::from_bytes(include_bytes!(
-            "../../icons/rclone_symbolic.png"
+            "../../../icons/rclone_symbolic.png"
         ))?)
         .tooltip("RClone Manager")
         .menu(&tray_menu)

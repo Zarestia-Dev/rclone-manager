@@ -9,9 +9,9 @@ use serde_json::Value;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::rclone::state::LOG_CACHE;
-use crate::utils::types::DynamicLogger;
-use crate::utils::types::LogEntry;
-use crate::utils::types::LogLevel;
+use crate::utils::types::all_types::DynamicLogger;
+use crate::utils::types::all_types::LogEntry;
+use crate::utils::types::all_types::LogLevel;
 
 static LOG_LEVEL: AtomicUsize = AtomicUsize::new(LevelFilter::Info as usize);
 

@@ -3,7 +3,7 @@ use std::{path::PathBuf, process::Command};
 use log::{debug, error, info};
 use tauri::{AppHandle, Manager};
 
-use crate::utils::types::RcloneState;
+use crate::utils::types::all_types::RcloneState;
 
 #[tauri::command]
 pub fn is_7z_available() -> bool {

@@ -16,7 +16,7 @@ use crate::{
     rclone::state::ENGINE_STATE,
     utils::{
         rclone::endpoints::{EndpointHelper, core},
-        types::{BandwidthLimitResponse, SENSITIVE_KEYS},
+        types::all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
     },
 };
 

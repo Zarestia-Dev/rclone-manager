@@ -7,7 +7,7 @@ use crate::RcloneState;
 use crate::rclone::state::ENGINE_STATE;
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, core},
-    types::{BandwidthLimitResponse, RcloneCoreVersion},
+    types::all_types::{BandwidthLimitResponse, RcloneCoreVersion},
 };
 
 #[tauri::command]

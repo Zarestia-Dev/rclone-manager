@@ -10,9 +10,9 @@ use crate::{
         ENGINE_STATE, JOB_CACHE, force_check_mounted_remotes, get_cached_mounted_remotes,
     },
     utils::{
-        log::log_operation,
+        logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, mount},
-        types::{JobInfo, JobResponse, JobStatus, LogLevel},
+        types::all_types::{JobInfo, JobResponse, JobStatus, LogLevel},
     },
 };
 

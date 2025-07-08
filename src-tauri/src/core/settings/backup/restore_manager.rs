@@ -2,7 +2,7 @@ use crate::{
     core::settings::{
         backup::archive_utils::find_7z_executable, utils::path_utils::get_rclone_config_path,
     },
-    utils::types::SettingsState,
+    utils::types::all_types::SettingsState,
 };
 use log::{debug, info};
 use serde_json::json;
