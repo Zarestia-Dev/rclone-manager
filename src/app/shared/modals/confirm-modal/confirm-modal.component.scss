@@ -1,7 +1,7 @@
 :host {
   // Spacing
   --icon-size: 64px;
-  --icon-size-mobile: 56px;  
+  --icon-size-mobile: 56px;
 
   // Typography
   --message-font-size: var(--font-size-base);
@@ -14,7 +14,7 @@
   position: relative;
   gap: var(--content-gap);
   padding: var(--modal-padding);
-  
+
   // Title styling
   .modal-title {
     font-size: 24px;

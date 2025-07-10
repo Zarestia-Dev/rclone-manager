@@ -4,30 +4,36 @@
   <div class="modal-content">
     <!-- Contextual Icon -->
     <div class="modal-icon" [class]="getModalIconClass()">
-      <mat-icon [svgIcon]="getModalIcon()" [color]="getModalIconColor()" aria-hidden="true"></mat-icon>
+      <mat-icon
+        [svgIcon]="getModalIcon()"
+        [color]="getModalIconColor()"
+        aria-hidden="true"
+      ></mat-icon>
     </div>
-    
+
     <p class="modal-message">{{ data.message }}</p>
   </div>
 
   <div class="modal-actions">
     @if (data.cancelText) {
-      <button 
+      <button
         mat-raised-button
         class="cancel-btn"
         (click)="onCancel()"
-        [attr.aria-label]="'Cancel: ' + (data.cancelText || 'No')">
-        {{ data.cancelText || "Cancel" }}
+        [attr.aria-label]="'Cancel: ' + (data.cancelText || 'No')"
+      >
+        {{ data.cancelText || 'Cancel' }}
       </button>
     }
-    
+
     @if (data.confirmText) {
-      <button 
+      <button
         mat-raised-button
         [color]="getConfirmButtonColor()"
         (click)="onConfirm()"
-        [attr.aria-label]="'Confirm: ' + (data.confirmText || 'Yes')">
-        {{ data.confirmText || "Confirm" }}
+        [attr.aria-label]="'Confirm: ' + (data.confirmText || 'Yes')"
+      >
+        {{ data.confirmText || 'Confirm' }}
       </button>
     }
   </div>

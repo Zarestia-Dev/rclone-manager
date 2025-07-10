@@ -1,26 +1,26 @@
-import { Pipe, PipeTransform } from "@angular/core";
+import { Pipe, PipeTransform } from '@angular/core';
 
-export type FlagType = "mount" | "copy" | "sync" | "filter" | "vfs";
-export type EditTarget = FlagType | "remote" | null;
+export type FlagType = 'mount' | 'copy' | 'sync' | 'filter' | 'vfs';
+export type EditTarget = FlagType | 'remote' | null;
 
 export type FieldType =
-  | "bool"
-  | "int"
-  | "Duration"
-  | "string"
-  | "stringArray"
-  | "CommaSeparatedList"
-  | "SizeSuffix"
-  | "int64"
-  | "uint32"
-  | "float"
-  | "password"
-  | "hidden"
-  | "option"
-  | "time"
-  | "date"
-  | "object"
-  | "json"
+  | 'bool'
+  | 'int'
+  | 'Duration'
+  | 'string'
+  | 'stringArray'
+  | 'CommaSeparatedList'
+  | 'SizeSuffix'
+  | 'int64'
+  | 'uint32'
+  | 'float'
+  | 'password'
+  | 'hidden'
+  | 'option'
+  | 'time'
+  | 'date'
+  | 'object'
+  | 'json'
   | string;
 
 export interface RemoteField {
@@ -119,7 +119,7 @@ export interface QuickAddForm {
   autoCopy: boolean;
 }
 
-export const REMOTE_NAME_REGEX = /^[A-Za-z0-9_\-.\+@ ]+$/;
+export const REMOTE_NAME_REGEX = /^[A-Za-z0-9_\-.+@ ]+$/;
 
 export interface Entry {
   ID: string;
@@ -133,32 +133,32 @@ export interface Entry {
 
 export function getDefaultValueForType(type: FieldType): any {
   switch (type) {
-    case "bool":
+    case 'bool':
       return false;
-    case "int":
-    case "int64":
-    case "uint32":
-    case "SizeSuffix":
+    case 'int':
+    case 'int64':
+    case 'uint32':
+    case 'SizeSuffix':
       return 0;
-    case "string":
-    case "Duration":
-    case "FileMode":
-    case "CacheMode":
-      return "";
-    case "stringArray":
-      return [""];
-    case "Tristate":
+    case 'string':
+    case 'Duration':
+    case 'FileMode':
+    case 'CacheMode':
+      return '';
+    case 'stringArray':
+      return [''];
+    case 'Tristate':
       return null;
-    case "HARD|SOFT|CAUTIOUS":
-      return "HARD";
+    case 'HARD|SOFT|CAUTIOUS':
+      return 'HARD';
     default:
       return null;
   }
 }
 
-@Pipe({ name: "linebreaks" })
+@Pipe({ name: 'linebreaks' })
 export class LinebreaksPipe implements PipeTransform {
   transform(value: string): string {
-    return value ? value.replace(/(?:\r\n|\r|\n)/g, "<br>") : "";
+    return value ? value.replace(/(?:\r\n|\r|\n)/g, '<br>') : '';
   }
 }

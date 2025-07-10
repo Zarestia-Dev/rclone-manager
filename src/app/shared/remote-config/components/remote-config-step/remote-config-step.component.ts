@@ -1,24 +1,20 @@
-import { Component, EventEmitter, Input, Output, OnInit } from "@angular/core";
-import {
-  RemoteField,
-  RemoteType,
-  LinebreaksPipe,
-} from "../../remote-config-types";
-import { FormGroup, ReactiveFormsModule } from "@angular/forms";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatDividerModule } from "@angular/material/divider";
-import { MatCardModule } from "@angular/material/card";
-import { MatSlideToggleModule } from "@angular/material/slide-toggle";
-import { MatInputModule } from "@angular/material/input";
-import { MatSelectModule } from "@angular/material/select";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatAutocompleteModule } from "@angular/material/autocomplete";
-import { CommonModule } from "@angular/common";
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { RemoteField, RemoteType, LinebreaksPipe } from '../../remote-config-types';
+import { FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatCardModule } from '@angular/material/card';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { CommonModule } from '@angular/common';
 
-import { SENSITIVE_KEYS } from "../../../components/types";
+import { SENSITIVE_KEYS } from '../../../components/types';
 
 @Component({
-  selector: "app-remote-config-step",
+  selector: 'app-remote-config-step',
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -32,8 +28,8 @@ import { SENSITIVE_KEYS } from "../../../components/types";
     MatAutocompleteModule,
     LinebreaksPipe,
   ],
-  templateUrl: "./remote-config-step.component.html",
-  styleUrl: "./remote-config-step.component.scss",
+  templateUrl: './remote-config-step.component.html',
+  styleUrl: './remote-config-step.component.scss',
 })
 export class RemoteConfigStepComponent {
   @Input() form!: FormGroup;
@@ -49,11 +45,11 @@ export class RemoteConfigStepComponent {
   showAdvancedOptions = false;
 
   get basicFields(): RemoteField[] {
-    return this.remoteFields.filter((f) => !f.Advanced);
+    return this.remoteFields.filter(f => !f.Advanced);
   }
 
   get advancedFields(): RemoteField[] {
-    return this.remoteFields.filter((f) => f.Advanced);
+    return this.remoteFields.filter(f => f.Advanced);
   }
 
   toggleAdvancedOptions(): void {
@@ -66,10 +62,7 @@ export class RemoteConfigStepComponent {
   }
 
   isSensitiveField(fieldName: string): boolean {
-    return (
-      SENSITIVE_KEYS.some((key) => fieldName.toLowerCase().includes(key)) &&
-      this.restrictMode
-    );
+    return SENSITIVE_KEYS.some(key => fieldName.toLowerCase().includes(key)) && this.restrictMode;
   }
 
   allowOnlyNumbers(event: KeyboardEvent): void {
@@ -82,7 +75,7 @@ export class RemoteConfigStepComponent {
   sanitizeNumberInput(fieldName: string): void {
     const value = this.form.get(fieldName)?.value;
     if (value && isNaN(value)) {
-      this.form.get(fieldName)?.setValue("");
+      this.form.get(fieldName)?.setValue('');
     }
   }
 }

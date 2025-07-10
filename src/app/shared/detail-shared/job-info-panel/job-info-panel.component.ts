@@ -13,11 +13,7 @@ export interface JobInfoConfig {
 @Component({
   selector: 'app-job-info-panel',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatCardModule,
-    MatIconModule
-  ],
+  imports: [CommonModule, MatCardModule, MatIconModule],
   styleUrls: ['./job-info-panel.component.scss'],
   template: `
     <mat-card class="detail-panel job-info-panel">
@@ -27,26 +23,26 @@ export interface JobInfoConfig {
           <span>Job Information</span>
         </mat-card-title>
       </mat-card-header>
-      
+
       <mat-card-content class="panel-content">
         <div class="job-details-grid">
           <div class="job-detail-item">
             <div class="detail-label">Job Type</div>
             <div class="detail-value">{{ config.operationType | titlecase }}</div>
           </div>
-          
+
           <div class="job-detail-item">
             <div class="detail-label">Job ID</div>
             <div class="detail-value">{{ config.jobId || 'N/A' }}</div>
           </div>
-          
+
           @if (config.startTime) {
             <div class="job-detail-item">
               <div class="detail-label">Started</div>
-              <div class="detail-value">{{ config.startTime | date:'medium' }}</div>
+              <div class="detail-value">{{ config.startTime | date: 'medium' }}</div>
             </div>
           }
-          
+
           <div class="job-detail-item">
             <div class="detail-label">Last Operation</div>
             <div class="detail-value">{{ config.lastOperationTime || 'N/A' }}</div>

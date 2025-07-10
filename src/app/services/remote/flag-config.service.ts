@@ -1,20 +1,18 @@
-import { Injectable } from "@angular/core";
-import { MountManagementService } from "../file-operations/mount-management.service";
-import { FieldType, FlagField, FlagType, getDefaultValueForType } from "../../shared/remote-config/remote-config-types";
+import { Injectable, inject } from '@angular/core';
+import { MountManagementService } from '../file-operations/mount-management.service';
+import {
+  FieldType,
+  FlagField,
+  FlagType,
+  getDefaultValueForType,
+} from '../../shared/remote-config/remote-config-types';
 
 @Injectable({
-  providedIn: "root",
+  providedIn: 'root',
 })
 export class FlagConfigService {
-  public readonly FLAG_TYPES: FlagType[] = [
-    "mount",
-    "copy",
-    "sync",
-    "filter",
-    "vfs",
-  ];
-
-  constructor(private mountManagementService: MountManagementService) {}
+  public readonly FLAG_TYPES: FlagType[] = ['mount', 'copy', 'sync', 'filter', 'vfs'];
+  private mountManagementService = inject(MountManagementService);
 
   async loadAllFlagFields(): Promise<Record<FlagType, FlagField[]>> {
     const result: Record<FlagType, FlagField[]> = {
@@ -26,7 +24,7 @@ export class FlagConfigService {
     };
 
     await Promise.all(
-      this.FLAG_TYPES.map(async (type) => {
+      this.FLAG_TYPES.map(async type => {
         result[type] = await this.loadFlagFields(type);
       })
     );
@@ -37,10 +35,8 @@ export class FlagConfigService {
   private async loadFlagFields(type: FlagType): Promise<FlagField[]> {
     try {
       const methodName = `get${this.capitalizeFirstLetter(type)}Flags`;
-      if (typeof (this.mountManagementService as any)[methodName] === "function") {
-        const flags = (await (this.mountManagementService as any)[
-          methodName
-        ]()) as Promise<any[]>;
+      if (typeof (this.mountManagementService as any)[methodName] === 'function') {
+        const flags = (await (this.mountManagementService as any)[methodName]()) as Promise<any[]>;
         console.log(`Loaded ${type} flags:`, flags);
         return this.mapFlagFields(await flags);
       }
@@ -52,13 +48,13 @@ export class FlagConfigService {
   }
 
   private mapFlagFields(fields: any[]): FlagField[] {
-    return fields.map((field) => ({
-      ValueStr: field.ValueStr ?? "",
+    return fields.map(field => ({
+      ValueStr: field.ValueStr ?? '',
       Value: field.Value ?? null,
       name: field.FieldName || field.Name,
       default: field.Default || null,
-      help: field.Help || "No description available",
-      type: field.Type || "string",
+      help: field.Help || 'No description available',
+      type: field.Type || 'string',
       required: field.Required || false,
       examples: field.Examples || [],
     }));
@@ -70,7 +66,7 @@ export class FlagConfigService {
     fieldName: string
   ): Record<string, any> {
     const newOptions = { ...selectedOptions };
-    const field = fields.find((f) => f.name === fieldName);
+    const field = fields.find(f => f.name === fieldName);
 
     if (!field) {
       return newOptions;
@@ -89,12 +85,12 @@ export class FlagConfigService {
       field.Value !== null
         ? field.Value
         : field.ValueStr !== undefined
-        ? field.ValueStr
-        : field.default !== null
-        ? field.default
-        : getDefaultValueForType(field.type as FieldType);
+          ? field.ValueStr
+          : field.default !== null
+            ? field.default
+            : getDefaultValueForType(field.type as FieldType);
 
-    if (field.type === "Tristate") {
+    if (field.type === 'Tristate') {
       value = false;
     }
 
@@ -110,17 +106,15 @@ export class FlagConfigService {
       const cleanedValue: Record<string, any> = {};
 
       for (const [key, value] of Object.entries(parsedValue)) {
-        const field = fields.find((f) => f.name === key);
+        const field = fields.find(f => f.name === key);
         if (field) {
-          cleanedValue[key] = this.coerceValueToType(
-            value,
-            field.type as FieldType
-          );
+          cleanedValue[key] = this.coerceValueToType(value, field.type as FieldType);
         }
       }
 
       return { valid: true, cleanedOptions: cleanedValue };
     } catch (error) {
+      console.error('Invalid JSON format:', error);
       return { valid: false };
     }
   }
@@ -130,51 +124,49 @@ export class FlagConfigService {
   }
 
   coerceValueToType(value: any, type: FieldType): any {
-    if (value === null || value === undefined || value === "") {
+    if (value === null || value === undefined || value === '') {
       return getDefaultValueForType(type);
     }
 
     try {
       switch (type) {
-        case "bool":
-          if (typeof value === "string") {
+        case 'bool':
+          if (typeof value === 'string') {
             const normalized = value.trim().toLowerCase();
-            if (normalized === "true") return true;
-            if (normalized === "false") return false;
+            if (normalized === 'true') return true;
+            if (normalized === 'false') return false;
           }
           return Boolean(value);
 
-        case "int":
-        case "int64":
-        case "uint32":
-        case "SizeSuffix":
+        case 'int':
+        case 'int64':
+        case 'uint32':
+        case 'SizeSuffix': {
           const intValue = parseInt(value, 10);
           return isNaN(intValue) ? getDefaultValueForType(type) : intValue;
+        }
 
-        case "stringArray":
-        case "CommaSeparatedList":
+        case 'stringArray':
+        case 'CommaSeparatedList':
           if (Array.isArray(value)) return value;
-          if (typeof value === "string") {
+          if (typeof value === 'string') {
             return value
-              .split(",")
-              .map((item) => item.trim())
-              .filter((item) => item);
+              .split(',')
+              .map(item => item.trim())
+              .filter(item => item);
           }
           return [String(value)];
 
-        case "Tristate":
-          if (value === "true") return true;
-          if (value === "false") return false;
+        case 'Tristate':
+          if (value === 'true') return true;
+          if (value === 'false') return false;
           return value;
 
         default:
           return value;
       }
     } catch (error) {
-      console.warn(
-        `Failed to coerce value '${value}' to type '${type}'`,
-        error
-      );
+      console.warn(`Failed to coerce value '${value}' to type '${type}'`, error);
       return getDefaultValueForType(type);
     }
   }

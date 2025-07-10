@@ -366,6 +366,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       JSON.parse(control.value);
       return null;
     } catch (e) {
+      console.error('Invalid JSON:', e);
       return { invalidJson: true };
     }
   }

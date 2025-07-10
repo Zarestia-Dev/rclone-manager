@@ -8,9 +8,8 @@ describe('FlagConfigStepComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [FlagConfigStepComponent]
-    })
-    .compileComponents();
+      imports: [FlagConfigStepComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(FlagConfigStepComponent);
     component = fixture.componentInstance;

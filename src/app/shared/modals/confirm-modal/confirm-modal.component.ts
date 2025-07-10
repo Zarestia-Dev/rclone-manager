@@ -1,20 +1,18 @@
-import { Component, Inject, HostListener } from '@angular/core';
+import { Component, HostListener, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { ConfirmDialogData } from '../../components/types';
 
 @Component({
-    selector: 'app-confirm-modal',
-    imports: [MatDialogModule, MatButtonModule, MatIconModule],
-    templateUrl: './confirm-modal.component.html',
-    styleUrl: './confirm-modal.component.scss'
+  selector: 'app-confirm-modal',
+  imports: [MatDialogModule, MatButtonModule, MatIconModule],
+  templateUrl: './confirm-modal.component.html',
+  styleUrl: './confirm-modal.component.scss',
 })
 export class ConfirmModalComponent {
-  constructor(
-    public dialogRef: MatDialogRef<ConfirmModalComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: ConfirmDialogData
-  ) {}
+  public dialogRef = inject(MatDialogRef<ConfirmModalComponent>);
+  public data = inject<ConfirmDialogData>(MAT_DIALOG_DATA);
 
   @HostListener('document:keydown.escape', ['$event'])
   onEscapeKey(event: KeyboardEvent) {
@@ -41,12 +39,21 @@ export class ConfirmModalComponent {
 
   // Determine if this is a destructive action based on title or button text
   isDestructiveAction(): boolean {
-    const destructiveKeywords = ['delete', 'remove', 'destroy', 'kill', 'terminate', 'clear', 'reset', 'wipe'];
+    const destructiveKeywords = [
+      'delete',
+      'remove',
+      'destroy',
+      'kill',
+      'terminate',
+      'clear',
+      'reset',
+      'wipe',
+    ];
     const titleLower = this.data.title.toLowerCase();
     const confirmTextLower = (this.data.confirmText || '').toLowerCase();
-    
-    return destructiveKeywords.some(keyword => 
-      titleLower.includes(keyword) || confirmTextLower.includes(keyword)
+
+    return destructiveKeywords.some(
+      keyword => titleLower.includes(keyword) || confirmTextLower.includes(keyword)
     );
   }
 
@@ -56,7 +63,8 @@ export class ConfirmModalComponent {
       // Check for specific destructive actions
       const titleLower = this.data.title.toLowerCase();
       if (titleLower.includes('delete')) return 'trash';
-      if (titleLower.includes('kill') || titleLower.includes('terminate')) return 'circle-exclamation';
+      if (titleLower.includes('kill') || titleLower.includes('terminate'))
+        return 'circle-exclamation';
       if (titleLower.includes('clear') || titleLower.includes('reset')) return 'arrow-rotate-left';
       return 'warning';
     } else {

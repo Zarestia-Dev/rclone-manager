@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../ui/notification.service';
 
@@ -7,11 +7,11 @@ import { NotificationService } from '../ui/notification.service';
  * Handles settings backup/restore with encryption support
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class BackupRestoreService extends TauriBaseService {
-
-  constructor(private notificationService: NotificationService) {
+  private notificationService = inject(NotificationService);
+  constructor() {
     super();
   }
 
@@ -29,9 +29,9 @@ export class BackupRestoreService extends TauriBaseService {
         backupDir: selectedPath,
         exportType: selectedOption,
         password,
-        remoteName
+        remoteName,
       });
-      
+
       this.notificationService.showSuccess(String(result));
     } catch (error) {
       this.notificationService.showError(String(error));
@@ -59,9 +59,9 @@ export class BackupRestoreService extends TauriBaseService {
     try {
       const result = await this.invokeCommand('restore_encrypted_settings', {
         path,
-        password
+        password,
       });
-      
+
       this.notificationService.showSuccess(String(result));
     } catch (error) {
       this.notificationService.showError(String(error));

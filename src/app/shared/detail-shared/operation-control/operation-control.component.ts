@@ -31,41 +31,45 @@ export interface OperationControlConfig {
     MatButtonModule,
     MatProgressSpinnerModule,
     StatusBadgeComponent,
-    PathDisplayComponent
+    PathDisplayComponent,
   ],
   styleUrls: ['./operation-control.component.scss'],
   template: `
-    <mat-card class="detail-panel operation-control-panel"
-              [class.active]="config.isActive"
-              [ngClass]="config.operationClass">
+    <mat-card
+      class="detail-panel operation-control-panel"
+      [class.active]="config.isActive"
+      [ngClass]="config.operationClass"
+    >
       <mat-card-header class="panel-header">
         <mat-card-title class="panel-title-content">
           <mat-icon [svgIcon]="getOperationIcon()" class="panel-icon"></mat-icon>
           <span>{{ config.operationType | titlecase }} Control</span>
         </mat-card-title>
       </mat-card-header>
-      
+
       <mat-card-content class="panel-content">
-        <app-path-display 
-        [config]="config.pathConfig"
-        (openPath)="onOpenPath($event)">
-      </app-path-display>
-    </mat-card-content>
-    
-    <mat-card-actions class="panel-actions">
-      <app-status-badge [config]="getStatusBadgeConfig()"></app-status-badge>
-      <div class="operation-controls">
-          <button mat-raised-button
-                  [color]="config.isActive ? 'warn' : config.operationColor"
-                  (click)="config.isActive ? onSecondaryAction() : onPrimaryAction()"
-                  [disabled]="config.isLoading"
-                  class="operation-toggle-button">
+        <app-path-display [config]="config.pathConfig" (openPath)="onOpenPath($event)">
+        </app-path-display>
+      </mat-card-content>
+
+      <mat-card-actions class="panel-actions">
+        <app-status-badge [config]="getStatusBadgeConfig()"></app-status-badge>
+        <div class="operation-controls">
+          <button
+            mat-raised-button
+            [color]="config.isActive ? 'warn' : config.operationColor"
+            (click)="config.isActive ? onSecondaryAction() : onPrimaryAction()"
+            [disabled]="config.isLoading"
+            class="operation-toggle-button"
+          >
             @if (config.isLoading) {
               <mat-spinner diameter="20"></mat-spinner>
             } @else {
               <mat-icon [svgIcon]="config.isActive ? 'stop' : 'play'"></mat-icon>
             }
-            <span>{{ config.isActive ? config.secondaryButtonLabel : config.primaryButtonLabel }}</span>
+            <span>{{
+              config.isActive ? config.secondaryButtonLabel : config.primaryButtonLabel
+            }}</span>
           </button>
         </div>
       </mat-card-actions>
@@ -80,25 +84,31 @@ export class OperationControlComponent {
 
   getOperationIcon(): string {
     switch (this.config.operationType) {
-      case 'sync': return 'sync';
-      case 'copy': return 'copy';
-      case 'mount': return 'mount';
-      default: return 'play';
+      case 'sync':
+        return 'sync';
+      case 'copy':
+        return 'copy';
+      case 'mount':
+        return 'mount';
+      default:
+        return 'play';
     }
   }
 
   getStatusBadgeConfig(): StatusBadgeConfig {
     const isOperationType = this.config.operationType !== 'mount';
-    
+
     return {
       isActive: this.config.isActive,
       isError: this.config.isError,
       isLoading: this.config.isLoading,
-      activeLabel: isOperationType ? 
-        (this.config.operationType === 'sync' ? 'Syncing' : 'Copying') : 
-        'Mounted',
+      activeLabel: isOperationType
+        ? this.config.operationType === 'sync'
+          ? 'Syncing'
+          : 'Copying'
+        : 'Mounted',
       inactiveLabel: isOperationType ? 'Stopped' : 'Not Mounted',
-      errorLabel: 'Error'
+      errorLabel: 'Error',
     };
   }
 

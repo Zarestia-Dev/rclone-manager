@@ -254,8 +254,7 @@ $adwaita-light-palette: (
   // dark-4
   900: #000000,
   // dark-5
-  contrast:
-    (
+  contrast: (
       50: rgba(black, 0.87),
       100: rgba(black, 0.87),
       200: rgba(black, 0.87),
@@ -280,19 +279,11 @@ $adwaita-theme-colors: (
 
 // Function to get additional colors
 @function adwaita-color($color-name, $hue: default) {
-  @return mat.get-color-from-palette(
-    map.get($adwaita-theme-colors, $color-name),
-    $hue
-  );
+  @return mat.get-color-from-palette(map.get($adwaita-theme-colors, $color-name), $hue);
 }
 
 // Then use it in your theme:
-$rclone-manager-warn: mat.m2-define-palette(
-  $adwaita-red-palette,
-  600,
-  500,
-  800
-);
+$rclone-manager-warn: mat.m2-define-palette($adwaita-red-palette, 600, 500, 800);
 
 // Use the custom palettes
 $rclone-manager-primary: mat.m2-define-palette($adwaita-green-palette);
@@ -316,12 +307,7 @@ $rclone-manager-theme: mat.m2-define-light-theme(
 // Define the palettes for the dark theme
 $rclone-manager-dark-primary: mat.m2-define-palette($adwaita-green-palette);
 $rclone-manager-dark-accent: mat.m2-define-palette($adwaita-blue-palette);
-$rclone-manager-dark-warn: mat.m2-define-palette(
-  $adwaita-red-palette,
-  600,
-  500,
-  800
-);
+$rclone-manager-dark-warn: mat.m2-define-palette($adwaita-red-palette, 600, 500, 800);
 
 // Create the dark theme object
 $rclone-manager-dark-theme: mat.m2-define-dark-theme(
@@ -345,8 +331,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
     --secondary-background: #ffffff;
     --banner-background: #d4d4d7; //rgba(212, 212, 215, 0.85);
     --sidebar-background: #f5f5f5;
-    --box-shadow: 0 0 0 1px rgba(232, 232, 233, 1),
-      0 0 4px 1px rgba(10, 10, 11, 0.06);
+    --box-shadow: 0 0 0 1px rgba(232, 232, 233, 1), 0 0 4px 1px rgba(10, 10, 11, 0.06);
     --selected-tab-color: #e6e6e7;
     --hover-color: rgb(200, 200, 200);
     --app-text-color: #000000;
@@ -393,88 +378,52 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
 }
 
 :root {
-  --accent-color-rgb: #{color.channel(
-        map.get($adwaita-blue-palette, 500),
-        "red",
-        $space: rgb
-      )},
+  --accent-color-rgb:
+    #{color.channel(map.get($adwaita-blue-palette, 500), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-blue-palette, 500), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-blue-palette, 500), "blue", $space: rgb)};
-  --warn-color-rgb: #{color.channel(
-        map.get($adwaita-red-palette, 400),
-        "red",
-        $space: rgb
-      )},
+  --warn-color-rgb:
+    #{color.channel(map.get($adwaita-red-palette, 400), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-red-palette, 400), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-red-palette, 400), "blue", $space: rgb)};
-  --primary-color-rgb: #{color.channel(
-        map.get($adwaita-green-palette, 500),
-        "red",
-        $space: rgb
-      )},
+  --primary-color-rgb:
+    #{color.channel(map.get($adwaita-green-palette, 500), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-green-palette, 500), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-green-palette, 500), "blue", $space: rgb)};
-  --purple-rgb: #{color.channel(
-        map.get($adwaita-purple-palette, 500),
-        "red",
-        $space: rgb
-      )},
+  --purple-rgb:
+    #{color.channel(map.get($adwaita-purple-palette, 500), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-purple-palette, 500), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-purple-palette, 500), "blue", $space: rgb)};
-  --orange-rgb: #{color.channel(
-        map.get($adwaita-orange-palette, 500),
-        "red",
-        $space: rgb
-      )},
+  --orange-rgb:
+    #{color.channel(map.get($adwaita-orange-palette, 500), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-orange-palette, 500), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-orange-palette, 500), "blue", $space: rgb)};
-  --yellow-rgb: #{color.channel(
-        map.get($adwaita-yellow-palette, 500),
-        "red",
-        $space: rgb
-      )},
+  --yellow-rgb:
+    #{color.channel(map.get($adwaita-yellow-palette, 500), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-yellow-palette, 500), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-yellow-palette, 500), "blue", $space: rgb)};
-  --light-green-rgb: #{color.channel(
-        map.get($adwaita-green-palette, 300),
-        "red",
-        $space: rgb
-      )},
+  --light-green-rgb:
+    #{color.channel(map.get($adwaita-green-palette, 300), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-green-palette, 300), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-green-palette, 300), "blue", $space: rgb)};
-  --light-orange-rgb: #{color.channel(
-        map.get($adwaita-orange-palette, 300),
-        "red",
-        $space: rgb
-      )},
+  --light-orange-rgb:
+    #{color.channel(map.get($adwaita-orange-palette, 300), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-orange-palette, 300), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-orange-palette, 300), "blue", $space: rgb)};
-  --light-blue-rgb: #{color.channel(
-        map.get($adwaita-blue-palette, 300),
-        "red",
-        $space: rgb
-      )},
+  --light-blue-rgb:
+    #{color.channel(map.get($adwaita-blue-palette, 300), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-blue-palette, 300), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-blue-palette, 300), "blue", $space: rgb)};
-  --red-rgb: #{color.channel(
-        map.get($adwaita-red-palette, 500),
-        "red",
-        $space: rgb
-      )},
+  --red-rgb:
+    #{color.channel(map.get($adwaita-red-palette, 500), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-red-palette, 500), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-red-palette, 500), "blue", $space: rgb)};
-  --light-theme-color-rgb: #{color.channel(
-        map.get($adwaita-light-palette, 50),
-        "red",
-        $space: rgb
-      )},
+  --light-theme-color-rgb:
+    #{color.channel(map.get($adwaita-light-palette, 50), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-light-palette, 50), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-light-palette, 50), "blue", $space: rgb)};
-  --dark-theme-color-rgb: #{color.channel(
-        map.get($adwaita-light-palette, 900),
-        "red",
-        $space: rgb
-      )},
+  --dark-theme-color-rgb:
+    #{color.channel(map.get($adwaita-light-palette, 900), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-light-palette, 900), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-light-palette, 900), "blue", $space: rgb)};
 
@@ -494,71 +443,70 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --dark-theme-color: #{map.get($adwaita-light-palette, 900)};
 
   /* ===== DESIGN SYSTEM TOKENS ===== */
-  
+
   /* Spacing Scale */
-  --space-xxs: 4px;      // Extra small padding, gaps
-  --space-xs: 8px;     // Small padding, gaps
-  --space-sm: 12px;    // Medium padding, gaps  
-  --space-md: 16px;    // Default spacing unit
-  --space-lg: 20px;    // Large spacing
-  --space-xl: 24px;    // Extra large spacing
-  --space-2xl: 32px;   // Section spacing
-  
+  --space-xxs: 4px; // Extra small padding, gaps
+  --space-xs: 8px; // Small padding, gaps
+  --space-sm: 12px; // Medium padding, gaps
+  --space-md: 16px; // Default spacing unit
+  --space-lg: 20px; // Large spacing
+  --space-xl: 24px; // Extra large spacing
+  --space-2xl: 32px; // Section spacing
+
   /* Border Radius Scale */
-  --radius-xxs: 4px;    // Extra small elements (small buttons, icons)
-  --radius-xs: 8px;    // Small elements (inputs, small buttons)
-  --radius-sm: 12px;   // Medium elements (cards, panels, buttons)  
-  --radius-md: 16px;   // Large elements (modals, containers)
-  --radius-lg: 24px;   // Special elements (usage bars)
-  
+  --radius-xxs: 4px; // Extra small elements (small buttons, icons)
+  --radius-xs: 8px; // Small elements (inputs, small buttons)
+  --radius-sm: 12px; // Medium elements (cards, panels, buttons)
+  --radius-md: 16px; // Large elements (modals, containers)
+  --radius-lg: 24px; // Special elements (usage bars)
+
   /* Component-specific Aliases (mapped to scale) */
-  --border-radius: var(--radius-xs);                    // 8px
-  --button-border-radius: var(--radius-sm);             // 12px  
-  --card-border-radius: var(--radius-sm);               // 12px
-  --panel-radius: var(--radius-sm);                     // 12px
-  --modal-radius: var(--radius-md);                     // 16px
-  --title-bar-radius: var(--radius-md);                 // 16px
-  --home-bottom-radius: var(--radius-md);               // 16px
-  --icon-radius: var(--radius-md);                      // 16px
-  --item-radius: var(--radius-sm);                      // 12px
-  --badge-radius: var(--radius-sm);                     // 12px  
-  --status-radius: var(--radius-sm);                    // 12px
-  --usage-bar-radius: var(--radius-lg);                 // 24px
-  --card-border-radius-large: var(--radius-md);         // 16px
-  --tab-bar-bottom-radius: 0px;                         // Special case
-  --divider-radius: 1px;                                // Special case
-  
+  --border-radius: var(--radius-xs); // 8px
+  --button-border-radius: var(--radius-sm); // 12px
+  --card-border-radius: var(--radius-sm); // 12px
+  --panel-radius: var(--radius-sm); // 12px
+  --modal-radius: var(--radius-md); // 16px
+  --title-bar-radius: var(--radius-md); // 16px
+  --home-bottom-radius: var(--radius-md); // 16px
+  --icon-radius: var(--radius-md); // 16px
+  --item-radius: var(--radius-sm); // 12px
+  --badge-radius: var(--radius-sm); // 12px
+  --status-radius: var(--radius-sm); // 12px
+  --usage-bar-radius: var(--radius-lg); // 24px
+  --card-border-radius-large: var(--radius-md); // 16px
+  --tab-bar-bottom-radius: 0px; // Special case
+  --divider-radius: 1px; // Special case
+
   /* Spacing Aliases (mapped to scale) */
-  --title-bar-padding: var(--space-xs);                 // 8px
-  --banner-padding: var(--space-sm);                    // 12px
-  --item-padding: var(--space-md);                      // 16px
-  --content-gap: var(--space-lg);                       // 20px
-  --container-padding: var(--space-xl);                 // 24px
-  --header-gap: var(--space-md);                        // 16px
-  --button-gap: var(--space-md);                        // 16px
-  --panel-gap: var(--space-xl);                         // 24px
-  --container-gap: var(--space-2xl);                    // 32px
-  --modal-gap: var(--space-xl);                         // 24px
-  --section-gap: var(--space-2xl);                      // 32px
-  --legend-gap: var(--space-xl);                        // 24px
-  
+  --title-bar-padding: var(--space-xs); // 8px
+  --banner-padding: var(--space-sm); // 12px
+  --item-padding: var(--space-md); // 16px
+  --content-gap: var(--space-lg); // 20px
+  --container-padding: var(--space-xl); // 24px
+  --header-gap: var(--space-md); // 16px
+  --button-gap: var(--space-md); // 16px
+  --panel-gap: var(--space-xl); // 24px
+  --container-gap: var(--space-2xl); // 32px
+  --modal-gap: var(--space-xl); // 24px
+  --section-gap: var(--space-2xl); // 32px
+  --legend-gap: var(--space-xl); // 24px
+
   /* Padding Aliases */
-  --panel-padding: var(--space-xl);                     // 24px
-  --modal-padding: var(--space-2xl);                    // 32px
-  --content-padding: var(--space-2xl);                  // 32px
-  --step-padding: var(--space-md);                      // 16px
-  --button-padding: var(--space-md) 28px;               // 16px 28px
+  --panel-padding: var(--space-xl); // 24px
+  --modal-padding: var(--space-2xl); // 32px
+  --content-padding: var(--space-2xl); // 32px
+  --step-padding: var(--space-md); // 16px
+  --button-padding: var(--space-md) 28px; // 16px 28px
   --panel-header-padding: var(--space-2xl) var(--space-2xl) var(--space-md) var(--space-2xl);
   --panel-content-padding: var(--space-xl) var(--space-2xl) var(--space-2xl) var(--space-2xl);
   --panel-actions-padding: var(--space-md) var(--space-xl);
-  
-  /* Mobile Responsive */
-  --panel-padding-mobile: var(--space-md);              // 16px
-  --modal-padding-mobile: var(--space-xl);              // 24px
-  --section-gap-mobile: var(--space-lg);                // 20px
-  --legend-gap-mobile: var(--space-sm);                 // 12px
 
-  
+  /* Mobile Responsive */
+  --panel-padding-mobile: var(--space-md); // 16px
+  --modal-padding-mobile: var(--space-xl); // 24px
+  --section-gap-mobile: var(--space-lg); // 20px
+  --legend-gap-mobile: var(--space-sm); // 12px
+
   /* Layout Constants */
   --titlebar-height: 40px;
   --sidebar-width: 250px;
@@ -608,7 +556,10 @@ body {
 * {
   user-select: none;
   cursor: default;
-  transition: background 0.5s ease, background-color 0.5s ease, color 0.05s ease;
+  transition:
+    background 0.5s ease,
+    background-color 0.5s ease,
+    color 0.05s ease;
   -webkit-user-drag: none;
 }
 
@@ -729,32 +680,32 @@ button {
 /* ===== ICON SIZES ===== */
 :root {
   // Icon size scale
-  --icon-size-xs: 14px;        // Small inline icons
-  --icon-size-sm: 18px;        // Status icons
-  --icon-size-md: 24px;        // Default icon size (buttons, etc.)
-  --icon-size-lg: 32px;        // Large icons
-  --icon-size-xl: 48px;        // Extra large icons (overview cards)
+  --icon-size-xs: 14px; // Small inline icons
+  --icon-size-sm: 18px; // Status icons
+  --icon-size-md: 24px; // Default icon size (buttons, etc.)
+  --icon-size-lg: 32px; // Large icons
+  --icon-size-xl: 48px; // Extra large icons (overview cards)
   --icon-container-size: 64px; // Icon container size
 
   // Legacy aliases (for backward compatibility)
-  --small-icon-size: var(--icon-size-xs);     // 14px
-  --status-icon-size: var(--icon-size-sm);    // 18px
-  --medium-icon-size: var(--icon-size-md);    // 24px
-  --large-icon-size: var(--icon-size-lg);     // 32px
-  --icon-size: var(--icon-size-md);           // 24px (default)
-  --icon-size-small: var(--icon-size-xs);     // 14px
-  --icon-size-medium: var(--icon-size-md);    // 24px  
-  --icon-size-large: var(--icon-size-xl);     // 48px
-  --icon-size-mobile: 20px;                   // Mobile-optimized
+  --small-icon-size: var(--icon-size-xs); // 14px
+  --status-icon-size: var(--icon-size-sm); // 18px
+  --medium-icon-size: var(--icon-size-md); // 24px
+  --large-icon-size: var(--icon-size-lg); // 32px
+  --icon-size: var(--icon-size-md); // 24px (default)
+  --icon-size-small: var(--icon-size-xs); // 14px
+  --icon-size-medium: var(--icon-size-md); // 24px
+  --icon-size-large: var(--icon-size-xl); // 48px
+  --icon-size-mobile: 20px; // Mobile-optimized
 
   /* ===== TYPOGRAPHY SCALE ===== */
   // Font sizes
-  --font-size-3xl: 2rem;      // 32px
-  --font-size-2xl: 1.5rem;    // 24px
-  --font-size-xl: 1.25rem;    // 20px
-  --font-size-base: 1rem;     // 16px
-  --font-size-md: 0.875rem;   // 14px
-  --font-size-sm: 0.75rem;    // 12px
+  --font-size-3xl: 2rem; // 32px
+  --font-size-2xl: 1.5rem; // 24px
+  --font-size-xl: 1.25rem; // 20px
+  --font-size-base: 1rem; // 16px
+  --font-size-md: 0.875rem; // 14px
+  --font-size-sm: 0.75rem; // 12px
   --caption-font-size: 0.75rem; // 12px - for captions and labels
 
   /* ===== OPACITY SCALE ===== */
@@ -773,7 +724,7 @@ button {
   --transition-slow: all 0.5s ease;
   --transition-cubic: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  
+
   // Legacy aliases
   --default-transition: var(--transition-standard);
   --quick-transition: var(--transition-fast);
@@ -789,20 +740,19 @@ button {
   --action-btn-scale-hover: 0.9;
   --action-btn-scale-active: 0.82;
   --action-btn-scale-disabled: 0.8;
-
 }
 
 /* ===== RESPONSIVE ADJUSTMENTS ===== */
 @media (max-width: 768px) {
   :root {
     --button-padding: var(--space-sm) var(--space-md); // 12px 16px
-    --step-padding: var(--space-sm);                   // 12px
+    --step-padding: var(--space-sm); // 12px
   }
 }
 
 @media (max-width: 480px) {
   :root {
-    --button-padding: var(--space-xs) var(--space-sm); // 8px 12px  
-    --step-padding: var(--space-xs);                   // 8px
+    --button-padding: var(--space-xs) var(--space-sm); // 8px 12px
+    --step-padding: var(--space-xs); // 8px
   }
 }

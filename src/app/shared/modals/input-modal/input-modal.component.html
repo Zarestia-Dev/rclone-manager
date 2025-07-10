@@ -17,98 +17,147 @@
     <!-- Form Fields -->
     <div class="form-fields">
       @for (field of data.fields; track field.name) {
-      <div class="form-field" [class.field-error]="isFieldInvalid(field)" [class.field-valid]="isFieldValid(field)">
-
-        @switch (field.type) {
-        <!-- Text Input -->
-        @case ('text') {
-        <mat-form-field appearance="fill" style="width: 100%;">
-          <mat-label>{{ field.label }}</mat-label>
-          <input matInput [(ngModel)]="formData[field.name]" [required]="field.required"
-            [placeholder]="getFieldPlaceholder(field)" (blur)="validateField(field)"
-            [attr.aria-label]="field.label + (field.required ? ' (required)' : '')" />
-          @if (isFieldInvalid(field) && fieldErrors[field.name]) {
-          <mat-error class="field-error-message" role="alert">
-            {{ fieldErrors[field.name] }}
-          </mat-error>
-          }
-        </mat-form-field>
-        }
-
-        <!-- Password Input -->
-        @case ('password') {
-        <mat-form-field appearance="fill" style="width: 100%;">
-          <mat-label>{{ field.label }}</mat-label>
-          <input matInput [(ngModel)]="formData[field.name]" [type]="showPassword ? 'text' : 'password'"
-            [required]="field.required" [placeholder]="getFieldPlaceholder(field)" (blur)="validateField(field)"
-            [attr.aria-label]="field.label + (field.required ? ' (required)' : '')" />
-          <button mat-icon-button matSuffix (click)="togglePasswordVisibility()"
-            [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'">
-            <mat-icon [svgIcon]="showPassword ? 'eye-slash' : 'eye'"></mat-icon>
-          </button>
-        </mat-form-field>
-        }
-
-        <!-- Number Input -->
-        @case ('number') {
-        <mat-form-field appearance="fill" style="width: 100%;">
-          <mat-label>{{ field.label }}</mat-label>
-          <input matInput type="number" [(ngModel)]="formData[field.name]" [required]="field.required"
-            [placeholder]="getFieldPlaceholder(field)" (blur)="validateField(field)"
-            [attr.aria-label]="field.label + (field.required ? ' (required)' : '')" />
-          @if (isFieldInvalid(field) && fieldErrors[field.name]) {
-          <mat-error class="field-error-message" role="alert">
-            {{ fieldErrors[field.name] }}
-          </mat-error>
-          }
-        </mat-form-field>
-        }
-
-        <!-- Select Dropdown -->
-        @case ('select') {
-        <mat-form-field appearance="fill" style="width: 100%;">
-          <mat-label>{{ field.label }}</mat-label>
-          <mat-select [(ngModel)]="formData[field.name]" [required]="field.required"
-            (selectionChange)="validateField(field)"
-            [attr.aria-label]="field.label + (field.required ? ' (required)' : '')">
-            @for (option of field.options; track option) {
-            <mat-option [value]="option">
-              {{ option }}
-            </mat-option>
+        <div
+          class="form-field"
+          [class.field-error]="isFieldInvalid(field)"
+          [class.field-valid]="isFieldValid(field)"
+        >
+          @switch (field.type) {
+            <!-- Text Input -->
+            @case ('text') {
+              <mat-form-field appearance="fill" style="width: 100%">
+                <mat-label>{{ field.label }}</mat-label>
+                <input
+                  matInput
+                  [(ngModel)]="formData[field.name]"
+                  [required]="field.required"
+                  [placeholder]="getFieldPlaceholder(field)"
+                  (blur)="validateField(field)"
+                  [attr.aria-label]="field.label + (field.required ? ' (required)' : '')"
+                />
+                @if (isFieldInvalid(field) && fieldErrors[field.name]) {
+                  <mat-error class="field-error-message" role="alert">
+                    {{ fieldErrors[field.name] }}
+                  </mat-error>
+                }
+              </mat-form-field>
             }
-          </mat-select>
-          @if (isFieldInvalid(field) && fieldErrors[field.name]) {
-          <mat-error class="field-error-message" role="alert">
-            {{ fieldErrors[field.name] }}
-          </mat-error>
-          }
-        </mat-form-field>
-        }
 
-        <!-- Folder Selector -->
-        @case ('folder') {
-        <div class="form-field folder-field">
-          <mat-form-field appearance="fill" style="width: 100%;">
-            <mat-label>{{ field.label }}</mat-label>
-              <input matInput [value]="formData[field.name] || ''" [placeholder]="getFieldPlaceholder(field)" readonly
-                [required]="field.required"
-                [attr.aria-label]="field.label + (field.required ? ' (required)' : '') + ' - Click folder button to select'" />
-              <button mat-icon-button matSuffix (click)="selectFolder(field)"
-                [attr.aria-label]="'Select folder for ' + field.label">
-                <mat-icon svgIcon="folder"></mat-icon>
-              </button>
-          </mat-form-field>
+            <!-- Password Input -->
+            @case ('password') {
+              <mat-form-field appearance="fill" style="width: 100%">
+                <mat-label>{{ field.label }}</mat-label>
+                <input
+                  matInput
+                  [(ngModel)]="formData[field.name]"
+                  [type]="showPassword ? 'text' : 'password'"
+                  [required]="field.required"
+                  [placeholder]="getFieldPlaceholder(field)"
+                  (blur)="validateField(field)"
+                  [attr.aria-label]="field.label + (field.required ? ' (required)' : '')"
+                />
+                <button
+                  mat-icon-button
+                  matSuffix
+                  (click)="togglePasswordVisibility()"
+                  [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+                >
+                  <mat-icon [svgIcon]="showPassword ? 'eye-slash' : 'eye'"></mat-icon>
+                </button>
+              </mat-form-field>
+            }
+
+            <!-- Number Input -->
+            @case ('number') {
+              <mat-form-field appearance="fill" style="width: 100%">
+                <mat-label>{{ field.label }}</mat-label>
+                <input
+                  matInput
+                  type="number"
+                  [(ngModel)]="formData[field.name]"
+                  [required]="field.required"
+                  [placeholder]="getFieldPlaceholder(field)"
+                  (blur)="validateField(field)"
+                  [attr.aria-label]="field.label + (field.required ? ' (required)' : '')"
+                />
+                @if (isFieldInvalid(field) && fieldErrors[field.name]) {
+                  <mat-error class="field-error-message" role="alert">
+                    {{ fieldErrors[field.name] }}
+                  </mat-error>
+                }
+              </mat-form-field>
+            }
+
+            <!-- Select Dropdown -->
+            @case ('select') {
+              <mat-form-field appearance="fill" style="width: 100%">
+                <mat-label>{{ field.label }}</mat-label>
+                <mat-select
+                  [(ngModel)]="formData[field.name]"
+                  [required]="field.required"
+                  (selectionChange)="validateField(field)"
+                  [attr.aria-label]="field.label + (field.required ? ' (required)' : '')"
+                >
+                  @for (option of field.options; track option) {
+                    <mat-option [value]="option">
+                      {{ option }}
+                    </mat-option>
+                  }
+                </mat-select>
+                @if (isFieldInvalid(field) && fieldErrors[field.name]) {
+                  <mat-error class="field-error-message" role="alert">
+                    {{ fieldErrors[field.name] }}
+                  </mat-error>
+                }
+              </mat-form-field>
+            }
+
+            <!-- Folder Selector -->
+            @case ('folder') {
+              <div class="form-field folder-field">
+                <mat-form-field appearance="fill" style="width: 100%">
+                  <mat-label>{{ field.label }}</mat-label>
+                  <input
+                    matInput
+                    [value]="formData[field.name] || ''"
+                    [placeholder]="getFieldPlaceholder(field)"
+                    readonly
+                    [required]="field.required"
+                    [attr.aria-label]="
+                      field.label +
+                      (field.required ? ' (required)' : '') +
+                      ' - Click folder button to select'
+                    "
+                  />
+                  <button
+                    mat-icon-button
+                    matSuffix
+                    (click)="selectFolder(field)"
+                    [attr.aria-label]="'Select folder for ' + field.label"
+                  >
+                    <mat-icon svgIcon="folder"></mat-icon>
+                  </button>
+                </mat-form-field>
+              </div>
+            }
+          }
         </div>
-        }
-        }
-      </div>
       }
     </div>
 
     <!-- Action Buttons -->
     <div class="modal-actions">
-      <button mat-raised-button color="primary" (click)="confirm()" [disabled]="!isFormValid()"
-        [attr.aria-label]="isFormValid() ? 'Confirm and submit form' : 'Form is incomplete - please fill required fields'">
+      <button
+        mat-raised-button
+        color="primary"
+        (click)="confirm()"
+        [disabled]="!isFormValid()"
+        [attr.aria-label]="
+          isFormValid()
+            ? 'Confirm and submit form'
+            : 'Form is incomplete - please fill required fields'
+        "
+      >
         <mat-icon svgIcon="circle-check" aria-hidden="true"></mat-icon>
         Confirm
       </button>

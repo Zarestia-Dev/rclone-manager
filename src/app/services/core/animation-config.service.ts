@@ -9,24 +9,24 @@ export const ANIMATION_CONSTANTS = {
     FAST: '200ms',
     NORMAL: '300ms',
     SLOW: '500ms',
-    EXTRA_SLOW: '600ms'
+    EXTRA_SLOW: '600ms',
   },
-  
+
   // Easing functions
   EASING: {
     EASE_IN_OUT: 'ease-in-out',
     EASE_IN: 'ease-in',
     EASE_OUT: 'ease-out',
     SMOOTH: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)',
-    SHARP: 'cubic-bezier(0.55, 0.06, 0.68, 0.19)'
+    SHARP: 'cubic-bezier(0.55, 0.06, 0.68, 0.19)',
   },
-  
+
   // Common delays
   DELAY: {
     SHORT: '100ms',
     MEDIUM: '200ms',
-    LONG: '300ms'
-  }
+    LONG: '300ms',
+  },
 };
 
 /**
@@ -39,10 +39,9 @@ export interface AnimationConfig {
 }
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AnimationConfigService {
-  
   /**
    * Get default configuration for different animation types
    */
@@ -52,25 +51,25 @@ export class AnimationConfigService {
         return {
           duration: ANIMATION_CONSTANTS.DURATION.NORMAL,
           delay: '0ms',
-          easing: ANIMATION_CONSTANTS.EASING.SMOOTH
+          easing: ANIMATION_CONSTANTS.EASING.SMOOTH,
         };
       case 'leave':
         return {
           duration: ANIMATION_CONSTANTS.DURATION.FAST,
           delay: '0ms',
-          easing: ANIMATION_CONSTANTS.EASING.SHARP
+          easing: ANIMATION_CONSTANTS.EASING.SHARP,
         };
       case 'toggle':
         return {
           duration: ANIMATION_CONSTANTS.DURATION.NORMAL,
           delay: '0ms',
-          easing: ANIMATION_CONSTANTS.EASING.EASE_IN_OUT
+          easing: ANIMATION_CONSTANTS.EASING.EASE_IN_OUT,
         };
       default:
         return {
           duration: ANIMATION_CONSTANTS.DURATION.NORMAL,
           delay: '0ms',
-          easing: ANIMATION_CONSTANTS.EASING.SMOOTH
+          easing: ANIMATION_CONSTANTS.EASING.SMOOTH,
         };
     }
   }
@@ -82,7 +81,7 @@ export class AnimationConfigService {
     return {
       duration: userConfig.duration || defaultConfig.duration,
       delay: userConfig.delay || defaultConfig.delay,
-      easing: userConfig.easing || defaultConfig.easing
+      easing: userConfig.easing || defaultConfig.easing,
     };
   }
 }

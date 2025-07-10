@@ -1,38 +1,39 @@
-import { Component, HostListener, Inject } from "@angular/core";
-import { FormsModule } from "@angular/forms";
-import { MAT_DIALOG_DATA, MatDialogRef } from "@angular/material/dialog";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatIconModule } from "@angular/material/icon";
-import { MatInputModule } from "@angular/material/input";
-import { MatSelectModule } from "@angular/material/select";
-import { MatButtonModule } from "@angular/material/button";
-import { InputField } from "../../components/types";
-import { FileSystemService } from "../../../services/file-operations/file-system.service";
+import { Component, HostListener, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatButtonModule } from '@angular/material/button';
+import { InputField } from '../../components/types';
+import { FileSystemService } from '../../../services/file-operations/file-system.service';
 
 @Component({
-  selector: "app-input-modal",
+  selector: 'app-input-modal',
   imports: [
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
     FormsModule,
     MatIconModule,
-    MatButtonModule
-],
-  templateUrl: "./input-modal.component.html",
-  styleUrl: "./input-modal.component.scss",
+    MatButtonModule,
+  ],
+  templateUrl: './input-modal.component.html',
+  styleUrl: './input-modal.component.scss',
 })
 export class InputModalComponent {
   formData: Record<string, string> = {};
   fieldErrors: Record<string, string> = {};
   showPassword = false;
 
-  constructor(
-    public dialogRef: MatDialogRef<InputModalComponent>,
-    private fileSystemService: FileSystemService,
-    @Inject(MAT_DIALOG_DATA)
-    public data: { title: string; description: string; fields: InputField[] }
-  ) {
+  public dialogRef = inject(MatDialogRef<InputModalComponent>);
+  private fileSystemService = inject(FileSystemService);
+  public data = inject<{ title: string; description: string; fields: InputField[] }>(
+    MAT_DIALOG_DATA
+  );
+
+  constructor() {
     // Initialize form data with empty values
     this.data.fields.forEach(field => {
       this.formData[field.name] = '';
@@ -40,11 +41,11 @@ export class InputModalComponent {
   }
 
   isFormValid(): boolean {
-    return this.data.fields.every((field) => {
+    return this.data.fields.every(field => {
       if (field.required && !this.formData[field.name]) {
         return false;
       }
-      if (field.type === "select" && field.options) {
+      if (field.type === 'select' && field.options) {
         return field.options.includes(this.formData[field.name]);
       }
       return true;
@@ -57,12 +58,12 @@ export class InputModalComponent {
   isFieldInvalid(field: InputField): boolean {
     const value = this.formData[field.name];
     const hasError = this.fieldErrors[field.name];
-    
+
     // Required field validation
     if (field.required && !value) {
       return true;
     }
-    
+
     return !!hasError;
   }
 
@@ -72,11 +73,11 @@ export class InputModalComponent {
   isFieldValid(field: InputField): boolean {
     const value = this.formData[field.name];
     const hasError = this.fieldErrors[field.name];
-    
+
     if (!value) {
       return false;
     }
-    
+
     return !hasError;
   }
 
@@ -89,9 +90,9 @@ export class InputModalComponent {
       password: `Enter ${field.label.toLowerCase()}`,
       number: `Enter ${field.label.toLowerCase()}`,
       select: `Select ${field.label.toLowerCase()}`,
-      folder: `Click folder button to select ${field.label.toLowerCase()}`
+      folder: `Click folder button to select ${field.label.toLowerCase()}`,
     };
-    
+
     return placeholders[field.type] || `Enter ${field.label.toLowerCase()}`;
   }
 
@@ -101,15 +102,15 @@ export class InputModalComponent {
   validateField(field: InputField): void {
     const value = this.formData[field.name];
     let error = '';
-    
+
     // Clear previous error
     delete this.fieldErrors[field.name];
-    
+
     // Required field validation
     if (field.required && !value) {
       error = `${field.label} is required`;
     }
-    
+
     // Type-specific validation
     if (value) {
       switch (field.type) {
@@ -131,7 +132,7 @@ export class InputModalComponent {
           break;
       }
     }
-    
+
     if (error) {
       this.fieldErrors[field.name] = error;
     }
@@ -147,33 +148,33 @@ export class InputModalComponent {
   async selectFolder(field?: InputField) {
     try {
       const selected = await this.fileSystemService.selectFolder(false);
-      const fieldName = field ? field.name : "folder";
+      const fieldName = field ? field.name : 'folder';
       this.formData[fieldName] = selected;
-      
+
       // Clear any validation errors for this field
       if (field) {
         delete this.fieldErrors[field.name];
       }
     } catch (err) {
-      console.error("Failed to select folder:", err);
+      console.error('Failed to select folder:', err);
     }
   }
 
   confirm(): void {
     // Validate all fields before confirming
     this.data.fields.forEach(field => this.validateField(field));
-    
+
     if (this.isFormValid()) {
       this.dialogRef.close(this.formData);
     }
   }
 
-  @HostListener("document:keydown.escape", ["$event"])
-  close(event?: KeyboardEvent) {
+  @HostListener('document:keydown.escape', ['$event'])
+  close() {
     this.dialogRef.close(undefined);
   }
 
-  @HostListener("document:keydown.enter", ["$event"])
+  @HostListener('document:keydown.enter', ['$event'])
   onEnterKey(event: KeyboardEvent) {
     // Only auto-submit if form is valid and we're not in a textarea
     const target = event.target as HTMLElement;

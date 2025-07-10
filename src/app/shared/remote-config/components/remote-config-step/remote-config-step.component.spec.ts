@@ -8,9 +8,8 @@ describe('RemoteConfigStepComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [RemoteConfigStepComponent]
-    })
-    .compileComponents();
+      imports: [RemoteConfigStepComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(RemoteConfigStepComponent);
     component = fixture.componentInstance;

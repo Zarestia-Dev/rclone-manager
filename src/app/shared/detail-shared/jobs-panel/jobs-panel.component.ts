@@ -25,7 +25,7 @@ export interface JobsPanelConfig {
     MatButtonModule,
     MatProgressBarModule,
     MatTooltipModule,
-    MatSortModule
+    MatSortModule,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   template: `
@@ -67,8 +67,11 @@ export interface JobsPanelConfig {
               <td mat-cell *matCellDef="let job">
                 @if (job.job_type !== 'mount' && job.stats) {
                   <div class="progress-info">
-                    <mat-progress-bar mode="determinate" [value]="getJobProgress(job)"
-                      class="job-progress"></mat-progress-bar>
+                    <mat-progress-bar
+                      mode="determinate"
+                      [value]="getJobProgress(job)"
+                      class="job-progress"
+                    ></mat-progress-bar>
                     <span class="progress-text">
                       {{ formatBytes(job.stats.bytes) }} / {{ formatBytes(job.stats.totalBytes) }}
                     </span>
@@ -83,7 +86,7 @@ export interface JobsPanelConfig {
             <ng-container matColumnDef="startTime">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Started</th>
               <td mat-cell *matCellDef="let job">
-                <span class="start-time">{{ job.start_time | date:'short' }}</span>
+                <span class="start-time">{{ job.start_time | date: 'short' }}</span>
               </td>
             </ng-container>
 
@@ -93,13 +96,21 @@ export interface JobsPanelConfig {
               <td mat-cell *matCellDef="let job">
                 <div class="job-actions">
                   @if (job.status === 'Running') {
-                    <button mat-icon-button class="action-button stop-button" matTooltip="Stop Job"
-                      (click)="onStopJob(job)">
+                    <button
+                      mat-icon-button
+                      class="action-button stop-button"
+                      matTooltip="Stop Job"
+                      (click)="onStopJob(job)"
+                    >
                       <mat-icon svgIcon="stop"></mat-icon>
                     </button>
                   } @else {
-                    <button mat-icon-button class="action-button delete-button" matTooltip="Delete Job"
-                      (click)="onDeleteJob(job.jobid)">
+                    <button
+                      mat-icon-button
+                      class="action-button delete-button"
+                      matTooltip="Delete Job"
+                      (click)="onDeleteJob(job.jobid)"
+                    >
                       <mat-icon svgIcon="trash"></mat-icon>
                     </button>
                   }
@@ -108,7 +119,7 @@ export interface JobsPanelConfig {
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="config.displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: config.displayedColumns;" class="job-row"></tr>
+            <tr mat-row *matRowDef="let row; columns: config.displayedColumns" class="job-row"></tr>
             <tr class="no-data-row" *matNoDataRow>
               <td class="no-data-cell" [attr.colspan]="config.displayedColumns.length">
                 <div class="no-data-content">
@@ -127,7 +138,7 @@ export class JobsPanelComponent {
   @Input() config!: JobsPanelConfig;
 
   @Output() stopOperation = new EventEmitter<{
-    type: "sync" | "copy" | "mount" | string;
+    type: 'sync' | 'copy' | 'mount' | string;
     remoteName: string;
   }>();
   @Output() deleteJob = new EventEmitter<number>();
@@ -135,7 +146,7 @@ export class JobsPanelComponent {
   onStopJob(job: JobInfo): void {
     this.stopOperation.emit({
       type: job.job_type,
-      remoteName: job.remote_name
+      remoteName: job.remote_name,
     });
   }
 
@@ -150,24 +161,24 @@ export class JobsPanelComponent {
 
   getJobStatus(job: JobInfo): string {
     switch (job.status) {
-      case "Running":
-        return "running";
-      case "Completed":
-        return "completed";
-      case "Failed":
-        return "failed";
-      case "Stopped":
-        return "stopped";
+      case 'Running':
+        return 'running';
+      case 'Completed':
+        return 'completed';
+      case 'Failed':
+        return 'failed';
+      case 'Stopped':
+        return 'stopped';
       default:
-        return "unknown";
+        return 'unknown';
     }
   }
 
   formatBytes(bytes: number): string {
-    if (bytes === 0) return "0 Bytes";
+    if (bytes === 0) return '0 Bytes';
     const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 }

@@ -1,11 +1,19 @@
 import { Injectable } from '@angular/core';
-import { AnimationTriggerMetadata, animate, style, transition, trigger, state, query, group } from '@angular/animations';
+import {
+  AnimationTriggerMetadata,
+  animate,
+  style,
+  transition,
+  trigger,
+  state,
+  query,
+  group,
+} from '@angular/animations';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AnimationsService {
-  
   /**
    * Fade animations
    */
@@ -13,16 +21,14 @@ export class AnimationsService {
     return trigger('fadeIn', [
       transition(':enter', [
         style({ opacity: 0 }),
-        animate(`${duration} ${delay} ease-in-out`, style({ opacity: 1 }))
-      ])
+        animate(`${duration} ${delay} ease-in-out`, style({ opacity: 1 })),
+      ]),
     ]);
   }
 
   static fadeOut(duration = '300ms'): AnimationTriggerMetadata {
     return trigger('fadeOut', [
-      transition(':leave', [
-        animate(`${duration} ease-in-out`, style({ opacity: 0 }))
-      ])
+      transition(':leave', [animate(`${duration} ease-in-out`, style({ opacity: 0 }))]),
     ]);
   }
 
@@ -30,11 +36,9 @@ export class AnimationsService {
     return trigger('fadeInOut', [
       transition(':enter', [
         style({ opacity: 0 }),
-        animate(`${duration} ease-in-out`, style({ opacity: 1 }))
+        animate(`${duration} ease-in-out`, style({ opacity: 1 })),
       ]),
-      transition(':leave', [
-        animate(`${duration} ease-in-out`, style({ opacity: 0 }))
-      ])
+      transition(':leave', [animate(`${duration} ease-in-out`, style({ opacity: 0 }))]),
     ]);
   }
 
@@ -45,35 +49,40 @@ export class AnimationsService {
     return trigger('scaleIn', [
       transition(':enter', [
         style({ opacity: 0, transform: 'scale(0.8)' }),
-        animate(`${duration} ${delay} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ opacity: 1, transform: 'scale(1)' }))
-      ])
+        animate(
+          `${duration} ${delay} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ opacity: 1, transform: 'scale(1)' })
+        ),
+      ]),
     ]);
   }
 
   static scaleOut(duration = '200ms'): AnimationTriggerMetadata {
     return trigger('scaleOut', [
       transition(':leave', [
-        animate(`${duration} cubic-bezier(0.55, 0.06, 0.68, 0.19)`, 
-                style({ opacity: 0, transform: 'scale(0.8)' }))
-      ])
+        animate(
+          `${duration} cubic-bezier(0.55, 0.06, 0.68, 0.19)`,
+          style({ opacity: 0, transform: 'scale(0.8)' })
+        ),
+      ]),
     ]);
   }
 
-  static scaleInOut(
-    enterDuration = '300ms', 
-    leaveDuration = '200ms'
-  ): AnimationTriggerMetadata {
+  static scaleInOut(enterDuration = '300ms', leaveDuration = '200ms'): AnimationTriggerMetadata {
     return trigger('scaleInOut', [
       transition(':enter', [
         style({ opacity: 0, transform: 'scale(0.8)' }),
-        animate(`${enterDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ opacity: 1, transform: 'scale(1)' }))
+        animate(
+          `${enterDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ opacity: 1, transform: 'scale(1)' })
+        ),
       ]),
       transition(':leave', [
-        animate(`${leaveDuration} cubic-bezier(0.55, 0.06, 0.68, 0.19)`, 
-                style({ opacity: 0, transform: 'scale(0.8)' }))
-      ])
+        animate(
+          `${leaveDuration} cubic-bezier(0.55, 0.06, 0.68, 0.19)`,
+          style({ opacity: 0, transform: 'scale(0.8)' })
+        ),
+      ]),
     ]);
   }
 
@@ -84,9 +93,11 @@ export class AnimationsService {
     return trigger('slideInFromTop', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateY(-20px)' }),
-        animate(`${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ opacity: 1, transform: 'translateY(0)' }))
-      ])
+        animate(
+          `${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ opacity: 1, transform: 'translateY(0)' })
+        ),
+      ]),
     ]);
   }
 
@@ -94,9 +105,11 @@ export class AnimationsService {
     return trigger('slideInFromBottom', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateY(20px)' }),
-        animate(`${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ opacity: 1, transform: 'translateY(0)' }))
-      ])
+        animate(
+          `${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ opacity: 1, transform: 'translateY(0)' })
+        ),
+      ]),
     ]);
   }
 
@@ -104,9 +117,11 @@ export class AnimationsService {
     return trigger('slideInFromLeft', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateX(-20px)' }),
-        animate(`${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ opacity: 1, transform: 'translateX(0)' }))
-      ])
+        animate(
+          `${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ opacity: 1, transform: 'translateX(0)' })
+        ),
+      ]),
     ]);
   }
 
@@ -114,35 +129,40 @@ export class AnimationsService {
     return trigger('slideInFromRight', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateX(20px)' }),
-        animate(`${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ opacity: 1, transform: 'translateX(0)' }))
-      ])
+        animate(
+          `${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ opacity: 1, transform: 'translateX(0)' })
+        ),
+      ]),
     ]);
   }
 
   static slideOutToRight(duration = '200ms'): AnimationTriggerMetadata {
     return trigger('slideOutToRight', [
       transition(':leave', [
-        animate(`${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ transform: 'translateX(100%)' }))
-      ])
+        animate(
+          `${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ transform: 'translateX(100%)' })
+        ),
+      ]),
     ]);
   }
 
-  static slideInOut(
-    enterDuration = '300ms', 
-    leaveDuration = '200ms'
-  ): AnimationTriggerMetadata {
+  static slideInOut(enterDuration = '300ms', leaveDuration = '200ms'): AnimationTriggerMetadata {
     return trigger('slideInOut', [
       transition(':enter', [
         style({ height: '0px', opacity: 0, transform: 'translateY(-10px)' }),
-        animate(`${enterDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ height: '*', opacity: 1, transform: 'translateY(0)' }))
+        animate(
+          `${enterDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ height: '*', opacity: 1, transform: 'translateY(0)' })
+        ),
       ]),
       transition(':leave', [
-        animate(`${leaveDuration} cubic-bezier(0.55, 0.06, 0.68, 0.19)`, 
-                style({ height: '0px', opacity: 0, transform: 'translateY(-10px)' }))
-      ])
+        animate(
+          `${leaveDuration} cubic-bezier(0.55, 0.06, 0.68, 0.19)`,
+          style({ height: '0px', opacity: 0, transform: 'translateY(-10px)' })
+        ),
+      ]),
     ]);
   }
 
@@ -151,39 +171,46 @@ export class AnimationsService {
    */
   static slideToggle(duration = '300ms'): AnimationTriggerMetadata {
     return trigger('slideToggle', [
-      state('hidden', style({ 
-        height: '0px', 
-        opacity: 0, 
-        padding: 0, 
-        overflow: 'hidden' 
-      })),
-      state('visible', style({ 
-        height: '*', 
-        opacity: 1, 
-        padding: '*', 
-        overflow: 'hidden' 
-      })),
-      transition('hidden <=> visible', animate(`${duration} ease-in-out`))
+      state(
+        'hidden',
+        style({
+          height: '0px',
+          opacity: 0,
+          padding: 0,
+          overflow: 'hidden',
+        })
+      ),
+      state(
+        'visible',
+        style({
+          height: '*',
+          opacity: 1,
+          padding: '*',
+          overflow: 'hidden',
+        })
+      ),
+      transition('hidden <=> visible', animate(`${duration} ease-in-out`)),
     ]);
   }
 
   /**
    * Overlay animations
    */
-  static slideOverlay(
-    enterDuration = '200ms', 
-    leaveDuration = '200ms'
-  ): AnimationTriggerMetadata {
+  static slideOverlay(enterDuration = '200ms', leaveDuration = '200ms'): AnimationTriggerMetadata {
     return trigger('slideOverlay', [
       transition(':enter', [
         style({ transform: 'translateX(100%)' }),
-        animate(`${enterDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ transform: 'translateX(0%)' }))
+        animate(
+          `${enterDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ transform: 'translateX(0%)' })
+        ),
       ]),
       transition(':leave', [
-        animate(`${leaveDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ transform: 'translateX(100%)' }))
-      ])
+        animate(
+          `${leaveDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ transform: 'translateX(100%)' })
+        ),
+      ]),
     ]);
   }
 
@@ -191,32 +218,35 @@ export class AnimationsService {
    * Complex entrance animations
    */
   static onboardingEntrance(
-    enterDuration = '600ms', 
+    enterDuration = '600ms',
     leaveDuration = '400ms'
   ): AnimationTriggerMetadata {
     return trigger('onboardingEntrance', [
       transition(':enter', [
         style({ opacity: 0, transform: 'scale(0.95)' }),
-        animate(`${enterDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ opacity: 1, transform: 'scale(1)' }))
+        animate(
+          `${enterDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ opacity: 1, transform: 'scale(1)' })
+        ),
       ]),
       transition(':leave', [
-        animate(`${leaveDuration} cubic-bezier(0.55, 0.06, 0.68, 0.19)`, 
-                style({ opacity: 0, transform: 'scale(0.95)' }))
-      ])
+        animate(
+          `${leaveDuration} cubic-bezier(0.55, 0.06, 0.68, 0.19)`,
+          style({ opacity: 0, transform: 'scale(0.95)' })
+        ),
+      ]),
     ]);
   }
 
-  static contentFadeIn(
-    duration = '500ms', 
-    delay = '200ms'
-  ): AnimationTriggerMetadata {
+  static contentFadeIn(duration = '500ms', delay = '200ms'): AnimationTriggerMetadata {
     return trigger('contentFadeIn', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateY(20px)' }),
-        animate(`${duration} ${delay} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ opacity: 1, transform: 'translateY(0)' }))
-      ])
+        animate(
+          `${duration} ${delay} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ opacity: 1, transform: 'translateY(0)' })
+        ),
+      ]),
     ]);
   }
 
@@ -224,19 +254,23 @@ export class AnimationsService {
    * Loading spinner animation
    */
   static loadingSpinner(
-    enterDuration = '300ms', 
+    enterDuration = '300ms',
     leaveDuration = '200ms'
   ): AnimationTriggerMetadata {
     return trigger('loadingSpinner', [
       transition(':enter', [
         style({ opacity: 0, transform: 'scale(0.8)' }),
-        animate(`${enterDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`, 
-                style({ opacity: 1, transform: 'scale(1)' }))
+        animate(
+          `${enterDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          style({ opacity: 1, transform: 'scale(1)' })
+        ),
       ]),
       transition(':leave', [
-        animate(`${leaveDuration} cubic-bezier(0.55, 0.06, 0.68, 0.19)`, 
-                style({ opacity: 0, transform: 'scale(0.8)' }))
-      ])
+        animate(
+          `${leaveDuration} cubic-bezier(0.55, 0.06, 0.68, 0.19)`,
+          style({ opacity: 0, transform: 'scale(0.8)' })
+        ),
+      ]),
     ]);
   }
 
@@ -286,16 +320,10 @@ export class AnimationsService {
     return trigger('fadeInOut', [
       transition(':enter', [
         style({ opacity: 0, transform: 'translateY(10px)' }),
-        animate(
-          `${enterDuration} ease-out`,
-          style({ opacity: 1, transform: 'translateY(0)' })
-        ),
+        animate(`${enterDuration} ease-out`, style({ opacity: 1, transform: 'translateY(0)' })),
       ]),
       transition(':leave', [
-        animate(
-          `${leaveDuration} ease-in`,
-          style({ opacity: 0, transform: 'translateY(-10px)' })
-        ),
+        animate(`${leaveDuration} ease-in`, style({ opacity: 0, transform: 'translateY(-10px)' })),
       ]),
     ]);
   }
@@ -305,7 +333,7 @@ export class AnimationsService {
    */
   static getAnimations(animationNames: string[]): AnimationTriggerMetadata[] {
     const animations: AnimationTriggerMetadata[] = [];
-    
+
     animationNames.forEach(name => {
       switch (name) {
         case 'fadeIn':
@@ -367,7 +395,7 @@ export class AnimationsService {
           break;
       }
     });
-    
+
     return animations;
   }
 }

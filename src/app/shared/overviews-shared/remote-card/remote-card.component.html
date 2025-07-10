@@ -1,10 +1,11 @@
-<mat-card class="remote-card"
-  [ngClass]="remoteCardClasses"
-  (click)="onRemoteClick()">
+<mat-card class="remote-card" [ngClass]="remoteCardClasses" (click)="onRemoteClick()">
   <mat-card-header class="remote-header">
     <div class="remote-info">
       <div class="icon-container">
-        <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)" class="remote-type-icon"></mat-icon>
+        <mat-icon
+          [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"
+          class="remote-type-icon"
+        ></mat-icon>
       </div>
       <div class="remote-details">
         <h4 class="remote-name" [matTooltip]="remote.remoteSpecs.name">
@@ -17,25 +18,28 @@
     <!-- Status indicators showing actual remote states -->
     <div class="remote-status-indicators" aria-hidden="true">
       @if (remote.mountState?.mounted) {
-      <div class="status-badge mounted">
-        <mat-icon svgIcon="mount" class="status-icon" aria-label="Mounted"></mat-icon>
-      </div>
+        <div class="status-badge mounted">
+          <mat-icon svgIcon="mount" class="status-icon" aria-label="Mounted"></mat-icon>
+        </div>
       }
       @if (remote.syncState?.isOnSync) {
-      <div class="status-badge syncing">
-        <mat-icon svgIcon="refresh" class="status-icon" aria-label="Syncing"></mat-icon>
-      </div>
+        <div class="status-badge syncing">
+          <mat-icon svgIcon="refresh" class="status-icon" aria-label="Syncing"></mat-icon>
+        </div>
       }
       @if (remote.copyState?.isOnCopy) {
-      <div class="status-badge copying">
-        <mat-icon svgIcon="copy" class="status-icon" aria-label="Copying"></mat-icon>
-      </div>
+        <div class="status-badge copying">
+          <mat-icon svgIcon="copy" class="status-icon" aria-label="Copying"></mat-icon>
+        </div>
       }
     </div>
   </mat-card-header>
 
   <mat-card-content class="remote-content">
-    <app-quick-action-buttons [buttons]="getActionButtons()" (buttonClick)="onActionButtonClick($event)">
+    <app-quick-action-buttons
+      [buttons]="getActionButtons()"
+      (buttonClick)="onActionButtonClick($event)"
+    >
     </app-quick-action-buttons>
   </mat-card-content>
 </mat-card>

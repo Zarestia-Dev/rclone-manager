@@ -7,22 +7,23 @@
   --search-padding: 16px 24px;
   --card-margin: 16px;
   --card-padding: 20px;
-  
+
   // Spacing
   --header-gap: 12px;
   --card-gap: 16px;
   --status-gap: 8px;
-  
+
   // Colors and effects
   --card-hover-opacity: 0.05;
   --search-border-opacity: 0.1;
   --status-active-opacity: 0.15;
   --status-inactive-opacity: 0.08;
-  
+
   // Shadows
-  --card-shadow: 0 2px 8px rgba(var(--app-text-color-rgb), 0.06), 0 1px 4px rgba(var(--app-text-color-rgb), 0.04);
-  --card-hover-shadow: 0 4px 16px rgba(var(--app-text-color-rgb), 0.1), 0 2px 8px rgba(var(--app-text-color-rgb), 0.06);
-  
+  --card-shadow:
+    0 2px 8px rgba(var(--app-text-color-rgb), 0.06), 0 1px 4px rgba(var(--app-text-color-rgb), 0.04);
+  --card-hover-shadow:
+    0 4px 16px rgba(var(--app-text-color-rgb), 0.1), 0 2px 8px rgba(var(--app-text-color-rgb), 0.06);
 }
 
 .sidebar {
@@ -30,16 +31,17 @@
   flex-direction: column;
   height: 100%;
   background: var(--app-background);
+  overflow: hidden; // Prevent scrollbar on main container
 
   // Header Section
   .sidebar-header {
-    position: sticky;
-    top: 0;
+    flex-shrink: 0; // Prevent header from shrinking
     background: var(--secondary-background);
     padding: var(--header-padding);
     box-shadow: var(--card-shadow);
     transition: var(--transition-standard);
-    
+    z-index: 1; // Ensure header stays above content
+
     &:hover {
       background: var(--bg-hover);
     }
@@ -57,15 +59,27 @@
     }
   }
 
-  // Remote List
-  ul {
+  // Search Container
+  app-search-container {
+    flex-shrink: 0; // Prevent search from shrinking
+  }
+
+  // Scrollable Content Area
+  .content-area {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0; // Important for flex child to be scrollable
+  }
+
+  // Remote List
+  ul {
     list-style: none;
     padding: 0 0 var(--sidebar-padding) 0;
     margin: 0;
     display: flex;
     flex-direction: column;
+    min-height: min-content;
   }
 
   // Remote Card
@@ -186,7 +200,8 @@
     color: var(--secondary-text-color);
     font-size: 0.95rem;
     font-weight: 500;
-    flex: 1;
+    height: 100%; // Take full height of content area
+    min-height: 200px; // Minimum height for good UX
 
     mat-icon {
       font-size: 48px;

@@ -24,12 +24,8 @@
 
   // Panel-Specific Styling Based on Remote Type
   &.active-remotes-panel .panel-title-content .remote-count {
-    background: rgba(
-      var(--mode-primary-color-rgb, var(--primary-color-rgb)),
-      0.1
-    );
-    border: 1px solid
-      rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.2);
+    background: rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.1);
+    border: 1px solid rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.2);
   }
 
   &.inactive-remotes-panel .panel-title-content .remote-count {
@@ -111,13 +107,12 @@
 @media (max-width: 768px) {
   .remotes-panel {
     .remotes-header {
-      padding: var(--panel-padding) var(--panel-padding) 12px
-        var(--panel-padding);
+      padding: var(--panel-padding) var(--panel-padding) 12px var(--panel-padding);
     }
 
     .remotes-content {
-      padding: var(--panel-padding-mobile) var(--panel-padding)
-        var(--panel-padding) var(--panel-padding);
+      padding: var(--panel-padding-mobile) var(--panel-padding) var(--panel-padding)
+        var(--panel-padding);
     }
 
     .remotes-grid {

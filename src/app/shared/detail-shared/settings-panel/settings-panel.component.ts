@@ -25,13 +25,7 @@ export interface SettingsPanelConfig {
 @Component({
   selector: 'app-settings-panel',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatCardModule,
-    MatIconModule,
-    MatButtonModule,
-    MatTooltipModule
-  ],
+  imports: [CommonModule, MatCardModule, MatIconModule, MatButtonModule, MatTooltipModule],
   styleUrls: ['./settings-panel.component.scss'],
   template: `
     <mat-card class="detail-panel settings-panel">
@@ -41,7 +35,7 @@ export interface SettingsPanelConfig {
           <span>{{ config.section.title }}</span>
         </mat-card-title>
       </mat-card-header>
-      
+
       <mat-card-content class="panel-content">
         <div class="settings-container">
           @if (config.hasSettings) {
@@ -51,9 +45,11 @@ export interface SettingsPanelConfig {
                   @for (subSetting of getObjectEntries(setting.value); track subSetting.key) {
                     <div class="setting-item">
                       <div class="setting-key">{{ subSetting.key }}</div>
-                      <div class="setting-value"
-                           [matTooltip]="getTooltip(subSetting.key, subSetting.value)"
-                           [matTooltipHideDelay]="500">
+                      <div
+                        class="setting-value"
+                        [matTooltip]="getTooltip(subSetting.key, subSetting.value)"
+                        [matTooltipHideDelay]="500"
+                      >
                         {{ getDisplayValue(subSetting.key, subSetting.value) }}
                       </div>
                     </div>
@@ -61,9 +57,11 @@ export interface SettingsPanelConfig {
                 } @else {
                   <div class="setting-item">
                     <div class="setting-key">{{ setting.key }}</div>
-                    <div class="setting-value"
-                         [matTooltip]="getTooltip(setting.key, setting.value)"
-                         [matTooltipHideDelay]="500">
+                    <div
+                      class="setting-value"
+                      [matTooltip]="getTooltip(setting.key, setting.value)"
+                      [matTooltipHideDelay]="500"
+                    >
                       {{ getDisplayValue(setting.key, setting.value) }}
                     </div>
                   </div>
@@ -78,12 +76,14 @@ export interface SettingsPanelConfig {
           }
         </div>
       </mat-card-content>
-      
+
       <mat-card-actions class="panel-actions">
-        <button mat-raised-button 
-                [color]="config.buttonColor || 'primary'" 
-                class="edit-settings-button"
-                (click)="onEditSettings()">
+        <button
+          mat-raised-button
+          [color]="config.buttonColor || 'primary'"
+          class="edit-settings-button"
+          (click)="onEditSettings()"
+        >
           <mat-icon svgIcon="pen"></mat-icon>
           <span>{{ config.buttonLabel || 'Edit Settings' }}</span>
         </button>
@@ -95,38 +95,37 @@ export class SettingsPanelComponent {
   @Input() config!: SettingsPanelConfig;
   @Output() editSettings = new EventEmitter<{ section: string; settings: any }>();
 
-  private readonly SENSITIVE_KEYS = [
-    'password', 'token', 'key', 'secret', 'auth', 'credential'
-  ];
+  private readonly SENSITIVE_KEYS = ['password', 'token', 'key', 'secret', 'auth', 'credential'];
 
-  getSettingsEntries(): {key: string, value: any}[] {
+  getSettingsEntries(): { key: string; value: any }[] {
     return Object.entries(this.config.settings || {}).map(([key, value]) => ({
       key,
-      value
+      value,
     }));
   }
 
-  getObjectEntries(obj: any): {key: string, value: any}[] {
+  getObjectEntries(obj: any): { key: string; value: any }[] {
     return Object.entries(obj || {}).map(([key, value]) => ({
       key,
-      value
+      value,
     }));
   }
 
   isObjectButNotArray(value: any): boolean {
-    return value !== null && typeof value === "object" && !Array.isArray(value);
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
   }
 
   isSensitiveKey(key: string): boolean {
     const sensitiveKeys = this.config.sensitiveKeys || this.SENSITIVE_KEYS;
-    return sensitiveKeys.some((sensitive) =>
-      key.toLowerCase().includes(sensitive)
-    ) && this.config.restrictMode;
+    return (
+      sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive)) &&
+      this.config.restrictMode
+    );
   }
 
   getDisplayValue(key: string, value: any): string {
     if (this.isSensitiveKey(key)) {
-      return "RESTRICTED";
+      return 'RESTRICTED';
     }
     return this.truncateValue(value, 15);
   }
@@ -143,29 +142,25 @@ export class SettingsPanelComponent {
   }
 
   private truncateValue(value: any, length: number): string {
-    if (value === null || value === undefined) return "";
+    if (value === null || value === undefined) return '';
 
-    if (typeof value === "object") {
+    if (typeof value === 'object') {
       try {
         const jsonString = JSON.stringify(value);
-        return jsonString.length > length
-          ? `${jsonString.slice(0, length)}...`
-          : jsonString;
+        return jsonString.length > length ? `${jsonString.slice(0, length)}...` : jsonString;
       } catch {
-        return "[Invalid JSON]";
+        return '[Invalid JSON]';
       }
     }
 
     const stringValue = String(value);
-    return stringValue.length > length
-      ? `${stringValue.slice(0, length)}...`
-      : stringValue;
+    return stringValue.length > length ? `${stringValue.slice(0, length)}...` : stringValue;
   }
 
   onEditSettings(): void {
     this.editSettings.emit({
       section: this.config.section.key,
-      settings: this.config.settings
+      settings: this.config.settings,
     });
   }
 }

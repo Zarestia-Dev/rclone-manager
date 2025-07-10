@@ -3,16 +3,14 @@ import { Observable } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { RcloneInfo } from '../../shared/components/types';
 
-
 /**
  * Service for system information and rclone engine management
  * Handles system stats, process management, and rclone info
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class SystemInfoService extends TauriBaseService {
-
   /**
    * Get rclone information
    */

@@ -10,25 +10,36 @@
       <p>{{ data.message || 'A problem was detected. You can try repairing it below.' }}</p>
 
       @if (getRepairDetails()) {
-      <div class="repair-details">
-        @for (detail of getRepairDetails(); track $index) {
-        <div class="detail-item">
-          <mat-icon svgIcon="{{detail.icon}}"></mat-icon>
-          <span><strong>{{detail.label}}:</strong> {{detail.value}}</span>
+        <div class="repair-details">
+          @for (detail of getRepairDetails(); track $index) {
+            <div class="detail-item">
+              <mat-icon svgIcon="{{ detail.icon }}"></mat-icon>
+              <span
+                ><strong>{{ detail.label }}:</strong> {{ detail.value }}</span
+              >
+            </div>
+          }
         </div>
-        }
-      </div>
       }
     </div>
   </div>
 
   <!-- Actions Section -->
   <div class="sheet-actions">
-    <button mat-raised-button [disabled]="installing" class="repair-button" (click)="repair()" [disabled]="installing"
-      [attr.aria-label]="installing ? 'Repairing in progress' : 'Start repair process'">
+    <button
+      mat-raised-button
+      [disabled]="installing"
+      class="repair-button"
+      (click)="repair()"
+      [disabled]="installing"
+      [attr.aria-label]="installing ? 'Repairing in progress' : 'Start repair process'"
+    >
       @if (installing) {
         <ng-container>
-          <mat-icon [svgIcon]="installing ? 'refresh' : 'download'" [class.animate-spin]="installing"></mat-icon>
+          <mat-icon
+            [svgIcon]="installing ? 'refresh' : 'download'"
+            [class.animate-spin]="installing"
+          ></mat-icon>
           {{ getRepairProgressText() }}
         </ng-container>
       } @else {

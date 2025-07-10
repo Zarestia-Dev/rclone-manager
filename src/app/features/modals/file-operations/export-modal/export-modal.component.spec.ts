@@ -8,9 +8,8 @@ describe('ExportModalComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ExportModalComponent]
-    })
-    .compileComponents();
+      imports: [ExportModalComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(ExportModalComponent);
     component = fixture.componentInstance;

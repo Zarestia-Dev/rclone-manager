@@ -1,23 +1,16 @@
-import { CommonModule } from "@angular/common";
-import {
-  Component,
-  EventEmitter,
-  HostListener,
-  Input,
-  Output,
-  ViewChild,
-} from "@angular/core";
-import { MatCardModule } from "@angular/material/card";
-import { MatIconModule } from "@angular/material/icon";
-import { MatSidenavModule } from "@angular/material/sidenav";
-import { FormsModule } from "@angular/forms";
-import { Remote } from "../../shared/components/types";
-import { MatTooltipModule } from "@angular/material/tooltip";
-import { AnimationsService } from "../../services/core/animations.service";
-import { SearchContainerComponent } from "../../shared/components/search-container/search-container.component";
+import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, HostListener, Input, Output, ViewChild } from '@angular/core';
+import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { FormsModule } from '@angular/forms';
+import { Remote } from '../../shared/components/types';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { AnimationsService } from '../../services/core/animations.service';
+import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
 @Component({
-  selector: "app-sidebar",
+  selector: 'app-sidebar',
   imports: [
     CommonModule,
     MatSidenavModule,
@@ -28,15 +21,15 @@ import { SearchContainerComponent } from "../../shared/components/search-contain
     SearchContainerComponent,
   ],
   animations: [AnimationsService.slideToggle()],
-  templateUrl: "./sidebar.component.html",
-  styleUrl: "./sidebar.component.scss",
+  templateUrl: './sidebar.component.html',
+  styleUrl: './sidebar.component.scss',
 })
 export class SidebarComponent {
   @Input() remotes: Remote[] = [];
   @Input() iconService: any;
   @Output() remoteSelected = new EventEmitter<Remote>();
 
-  searchTerm = "";
+  searchTerm = '';
   searchVisible = false;
   @ViewChild(SearchContainerComponent)
   searchContainer!: SearchContainerComponent;
@@ -49,7 +42,7 @@ export class SidebarComponent {
     const term = this.searchTerm.trim().toLowerCase();
     if (!term) return this.remotes;
     return this.remotes.filter(
-      (remote) =>
+      remote =>
         remote.remoteSpecs.name.toLowerCase().includes(term) ||
         remote.remoteSpecs.type.toLowerCase().includes(term)
     );
@@ -59,7 +52,7 @@ export class SidebarComponent {
     this.remoteSelected.emit(remote);
   }
 
-  @HostListener("document:keydown.control.f", ["$event"])
+  @HostListener('document:keydown.control.f', ['$event'])
   onControlF(event: KeyboardEvent) {
     event.preventDefault();
     this.toggleSearch();
@@ -76,7 +69,7 @@ export class SidebarComponent {
   }
 
   clearSearch() {
-    this.searchTerm = "";
+    this.searchTerm = '';
     if (this.searchContainer) {
       this.searchContainer.clear();
     }

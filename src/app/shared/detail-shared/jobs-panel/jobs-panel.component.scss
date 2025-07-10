@@ -1,4 +1,4 @@
-@use '../../../styles/_shared_components';
+@use "../../../styles/_shared_components";
 
 .jobs-panel {
   .jobs-table-container {
@@ -17,8 +17,7 @@
 
       .mat-mdc-header-row {
         background: rgba(var(--app-text-color-rgb), var(--background-opacity));
-        border-bottom: 1px solid
-          rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+        border-bottom: 1px solid rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
         position: sticky;
         top: 0;
         z-index: 10;
@@ -35,8 +34,7 @@
 
       .job-row {
         transition: var(--quick-transition);
-        border-bottom: 1px solid
-          rgba(var(--app-text-color-rgb), var(--border-opacity));
+        border-bottom: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
 
         &:hover {
           background: rgba(var(--primary-color-rgb), var(--background-opacity));
@@ -120,8 +118,7 @@
         &.unknown {
           background: rgba(var(--app-text-color-rgb), var(--border-opacity));
           color: var(--secondary-text-color);
-          border: 1px solid
-            rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+          border: 1px solid rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
 
           .status-dot {
             background: var(--secondary-text-color);
@@ -137,10 +134,7 @@
         .job-progress {
           height: 6px;
           border-radius: var(--radius-xxs);
-          background: rgba(
-            var(--app-text-color-rgb),
-            var(--panel-hover-opacity)
-          );
+          background: rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
         }
 
         .progress-text {

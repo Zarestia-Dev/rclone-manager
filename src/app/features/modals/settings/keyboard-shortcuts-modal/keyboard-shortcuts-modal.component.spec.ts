@@ -8,10 +8,9 @@ describe('KeyboardShortcutsModalComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [KeyboardShortcutsModalComponent]
-    })
-    .compileComponents();
-    
+      imports: [KeyboardShortcutsModalComponent],
+    }).compileComponents();
+
     fixture = TestBed.createComponent(KeyboardShortcutsModalComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();

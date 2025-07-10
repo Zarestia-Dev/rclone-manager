@@ -8,10 +8,9 @@ import { RepairData } from '../../shared/components/types';
  * plugin installation, config restoration, and API engine restart
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class RepairService extends TauriBaseService {
-
   /**
    * Install or provision rclone binary
    * @param path Optional custom installation path. If null, uses default location
@@ -121,27 +120,27 @@ export class RepairService extends TauriBaseService {
    * Get repair details for display
    * @param repairType The type of repair
    */
-  getRepairDetails(repairType: string): {icon: string, label: string, value: string}[] | null {
+  getRepairDetails(repairType: string): { icon: string; label: string; value: string }[] | null {
     switch (repairType) {
       case 'rclone_path':
         return [
           { icon: 'circle-info', label: 'Issue', value: 'Rclone binary not found' },
-          { icon: 'download', label: 'Action', value: 'Download and install rclone' }
+          { icon: 'download', label: 'Action', value: 'Download and install rclone' },
         ];
       case 'mount_plugin':
         return [
           { icon: 'circle-info', label: 'Issue', value: 'Mount plugin missing' },
-          { icon: 'puzzle-piece', label: 'Action', value: 'Install mount support plugin' }
+          { icon: 'puzzle-piece', label: 'Action', value: 'Install mount support plugin' },
         ];
       case 'config_corrupt':
         return [
           { icon: 'circle-info', label: 'Issue', value: 'Configuration file corrupted' },
-          { icon: 'arrow-rotate-left', label: 'Action', value: 'Restore from backup' }
+          { icon: 'arrow-rotate-left', label: 'Action', value: 'Restore from backup' },
         ];
       case 'backend_unreachable':
         return [
           { icon: 'circle-info', label: 'Issue', value: 'API backend not responding' },
-          { icon: 'refresh', label: 'Action', value: 'Restart API engine' }
+          { icon: 'refresh', label: 'Action', value: 'Restart API engine' },
         ];
       default:
         return null;

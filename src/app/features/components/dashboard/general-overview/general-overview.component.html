@@ -28,17 +28,22 @@
         (secondaryAction)="onSecondaryActionFromPanel($event)"
         (mountAction)="mountRemote.emit($event)"
         (unmountAction)="unmountRemote.emit($event)"
-        (syncAction)="startOperation.emit({type: 'sync', remoteName: $event})"
-        (copyAction)="startOperation.emit({type: 'copy', remoteName: $event})"
-        (stopSyncAction)="stopJob.emit({type: 'sync', remoteName: $event})"
-        (stopCopyAction)="stopJob.emit({type: 'copy', remoteName: $event})"
+        (syncAction)="startOperation.emit({ type: 'sync', remoteName: $event })"
+        (copyAction)="startOperation.emit({ type: 'copy', remoteName: $event })"
+        (stopSyncAction)="stopJob.emit({ type: 'sync', remoteName: $event })"
+        (stopCopyAction)="stopJob.emit({ type: 'copy', remoteName: $event })"
         role="region"
-        aria-labelledby="remotes-panel-title">
+        aria-labelledby="remotes-panel-title"
+      >
       </app-remotes-panel>
 
       <!-- Bandwidth Limit Panel -->
-      <mat-expansion-panel [(expanded)]="bandwidthPanelOpenState" (expandedChange)="onBandwidthPanelStateChange($event)"
-        class="bandwidth-panel" role="region">
+      <mat-expansion-panel
+        [(expanded)]="bandwidthPanelOpenState"
+        (expandedChange)="onBandwidthPanelStateChange($event)"
+        class="bandwidth-panel"
+        role="region"
+      >
         <mat-expansion-panel-header>
           <mat-panel-title>
             <div class="panel-title-content">
@@ -48,59 +53,75 @@
           </mat-panel-title>
           <mat-panel-description>
             @if (bandwidthLimit?.loading) {
-            <span aria-busy="true">Loading...</span>
+              <span aria-busy="true">Loading...</span>
             } @else if (bandwidthLimit?.error) {
-            <span class="error-text">Error loading bandwidth info</span>
+              <span class="error-text">Error loading bandwidth info</span>
             } @else {
-            <span>{{ bandwidthDisplayValue }}</span>
+              <span>{{ bandwidthDisplayValue }}</span>
             }
           </mat-panel-description>
         </mat-expansion-panel-header>
 
         @if (bandwidthLimit?.loading) {
-        <div class="bandwidth-loading" aria-live="polite">
-          <mat-spinner diameter="24" aria-label="Loading bandwidth information"></mat-spinner>
-          <span>Loading bandwidth information...</span>
-        </div>
+          <div class="bandwidth-loading" aria-live="polite">
+            <mat-spinner diameter="24" aria-label="Loading bandwidth information"></mat-spinner>
+            <span>Loading bandwidth information...</span>
+          </div>
         } @else if (bandwidthLimit?.error) {
-        <div class="bandwidth-error" role="alert">
-          <mat-icon color="warn" svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
-          <span>{{ bandwidthLimit?.error }}</span>
-          <button mat-icon-button (click)="loadBandwidthLimit()" matTooltip="Retry"
-            aria-label="Retry loading bandwidth">
-            <mat-icon color="primary" svgIcon="refresh" aria-hidden="true"></mat-icon>
-          </button>
-        </div>
+          <div class="bandwidth-error" role="alert">
+            <mat-icon color="warn" svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
+            <span>{{ bandwidthLimit?.error }}</span>
+            <button
+              mat-icon-button
+              (click)="loadBandwidthLimit()"
+              matTooltip="Retry"
+              aria-label="Retry loading bandwidth"
+            >
+              <mat-icon color="primary" svgIcon="refresh" aria-hidden="true"></mat-icon>
+            </button>
+          </div>
         } @else {
-        <div class="bandwidth-content">
-          <div class="bandwidth-status" [class.limited]="isBandwidthLimited" [class.unlimited]="!isBandwidthLimited">
-            <div class="status-indicator" aria-hidden="true"></div>
-            <span class="status-text">{{ bandwidthDisplayValue }}</span>
-          </div>
+          <div class="bandwidth-content">
+            <div
+              class="bandwidth-status"
+              [class.limited]="isBandwidthLimited"
+              [class.unlimited]="!isBandwidthLimited"
+            >
+              <div class="status-indicator" aria-hidden="true"></div>
+              <span class="status-text">{{ bandwidthDisplayValue }}</span>
+            </div>
 
-          @if (isBandwidthLimited) {
-          <div class="bandwidth-details">
-            <div class="detail-item">
-              <span class="label">Upload:</span>
-              <span class="value">{{ formatBytes(bandwidthLimit?.bytesPerSecondTx ?? 0) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Download:</span>
-              <span class="value">{{ formatBytes(bandwidthLimit?.bytesPerSecondRx ?? 0) }}</span>
-            </div>
-            <div class="detail-item">
-              <span class="label">Total:</span>
-              <span class="value">{{ formatBytes(bandwidthLimit?.bytesPerSecond ?? 0) }}</span>
-            </div>
+            @if (isBandwidthLimited) {
+              <div class="bandwidth-details">
+                <div class="detail-item">
+                  <span class="label">Upload:</span>
+                  <span class="value">{{
+                    formatBytes(bandwidthLimit?.bytesPerSecondTx ?? 0)
+                  }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Download:</span>
+                  <span class="value">{{
+                    formatBytes(bandwidthLimit?.bytesPerSecondRx ?? 0)
+                  }}</span>
+                </div>
+                <div class="detail-item">
+                  <span class="label">Total:</span>
+                  <span class="value">{{ formatBytes(bandwidthLimit?.bytesPerSecond ?? 0) }}</span>
+                </div>
+              </div>
+            }
           </div>
-          }
-        </div>
         }
       </mat-expansion-panel>
 
       <!-- System Info Panel -->
-      <mat-expansion-panel [(expanded)]="systemInfoPanelOpenState"
-        (expandedChange)="onSystemInfoPanelStateChange($event)" class="system-info-panel" role="region">
+      <mat-expansion-panel
+        [(expanded)]="systemInfoPanelOpenState"
+        (expandedChange)="onSystemInfoPanelStateChange($event)"
+        class="system-info-panel"
+        role="region"
+      >
         <mat-expansion-panel-header>
           <mat-panel-title>
             <div class="panel-title-content">
@@ -115,42 +136,46 @@
         </mat-expansion-panel-header>
 
         @if (isLoadingStats) {
-        <div class="info-loading" aria-live="polite">
-          <mat-spinner diameter="24" aria-label="Loading system information"></mat-spinner>
-          <span>Loading system information...</span>
-        </div>
+          <div class="info-loading" aria-live="polite">
+            <mat-spinner diameter="24" aria-label="Loading system information"></mat-spinner>
+            <span>Loading system information...</span>
+          </div>
         } @else {
-        <div class="info-grid" role="grid">
-          <div class="info-item" role="row">
-            <span class="label" role="gridcell">RClone Status:</span>
-            <span class="value" [ngClass]="rcloneStatus" role="gridcell">
-              <div class="status-dot" [ngClass]="rcloneStatus" aria-hidden="true"></div>
-              {{ rcloneStatus | titlecase }}
-            </span>
+          <div class="info-grid" role="grid">
+            <div class="info-item" role="row">
+              <span class="label" role="gridcell">RClone Status:</span>
+              <span class="value" [ngClass]="rcloneStatus" role="gridcell">
+                <div class="status-dot" [ngClass]="rcloneStatus" aria-hidden="true"></div>
+                {{ rcloneStatus | titlecase }}
+              </span>
+            </div>
+            <div class="info-item" role="row">
+              <span class="label" role="gridcell">Total Remotes:</span>
+              <span class="value" role="gridcell">{{ _totalRemotes }}</span>
+            </div>
+            <div class="info-item" role="row">
+              <span class="label" role="gridcell">Active Jobs:</span>
+              <span class="value" role="gridcell">{{ _activeJobsCount }}</span>
+            </div>
+            <div class="info-item" role="row">
+              <span class="label" role="gridcell">Memory Usage:</span>
+              <span class="value" role="gridcell">{{ systemStats.memoryUsage }}</span>
+            </div>
+            <div class="info-item" role="row">
+              <span class="label" role="gridcell">Uptime:</span>
+              <span class="value" role="gridcell">{{ systemStats.uptime }}</span>
+            </div>
           </div>
-          <div class="info-item" role="row">
-            <span class="label" role="gridcell">Total Remotes:</span>
-            <span class="value" role="gridcell">{{ _totalRemotes }}</span>
-          </div>
-          <div class="info-item" role="row">
-            <span class="label" role="gridcell">Active Jobs:</span>
-            <span class="value" role="gridcell">{{ _activeJobsCount }}</span>
-          </div>
-          <div class="info-item" role="row">
-            <span class="label" role="gridcell">Memory Usage:</span>
-            <span class="value" role="gridcell">{{ systemStats.memoryUsage }}</span>
-          </div>
-          <div class="info-item" role="row">
-            <span class="label" role="gridcell">Uptime:</span>
-            <span class="value" role="gridcell">{{ systemStats.uptime }}</span>
-          </div>
-        </div>
         }
       </mat-expansion-panel>
 
       <!-- Job Information Panel -->
-      <mat-expansion-panel [(expanded)]="jobInfoPanelOpenState" (expandedChange)="onJobInfoPanelStateChange($event)"
-        class="job-info-panel" role="region">
+      <mat-expansion-panel
+        [(expanded)]="jobInfoPanelOpenState"
+        (expandedChange)="onJobInfoPanelStateChange($event)"
+        class="job-info-panel"
+        role="region"
+      >
         <mat-expansion-panel-header>
           <mat-panel-title>
             <div class="panel-title-content">
@@ -160,87 +185,112 @@
           </mat-panel-title>
           <mat-panel-description>
             <span [ngClass]="{ 'active-jobs-indicator': _activeJobsCount > 0 }">
-              {{ _activeJobsCount > 0 ?
-              (_activeJobsCount + ' active job' + (_activeJobsCount !== 1 ? 's' : '')) :
-              'No active jobs' }}
+              {{
+                _activeJobsCount > 0
+                  ? _activeJobsCount + ' active job' + (_activeJobsCount !== 1 ? 's' : '')
+                  : 'No active jobs'
+              }}
             </span>
           </mat-panel-description>
         </mat-expansion-panel-header>
 
         @if (isLoadingStats) {
-        <div class="info-loading" aria-live="polite">
-          <mat-spinner diameter="24" aria-label="Loading job information"></mat-spinner>
-          <span>Loading job information...</span>
-        </div>
+          <div class="info-loading" aria-live="polite">
+            <mat-spinner diameter="24" aria-label="Loading job information"></mat-spinner>
+            <span>Loading job information...</span>
+          </div>
         } @else {
-        <div class="job-grid" role="grid">
-          @if (jobStats.totalBytes > 0) {
-          <div class="job-progress-section" role="rowgroup">
-            <div class="progress-header" role="row">
-              <span class="label" role="gridcell">Progress:</span>
-              <span class="value" role="gridcell">{{ _jobCompletionPercentage | number:'1.0-1' }}%</span>
-            </div>
-            <mat-progress-bar mode="determinate" [value]="_jobCompletionPercentage" color="primary" role="progressbar"
-              [attr.aria-valuenow]="_jobCompletionPercentage" aria-valuemin="0" aria-valuemax="100"></mat-progress-bar>
-            <div class="progress-details" role="row">
-              <span role="gridcell">{{ formatBytes(jobStats.bytes) }} of {{ formatBytes(jobStats.totalBytes) }}</span>
-              <span role="gridcell">ETA: {{ formatEta(jobStats.eta) }}</span>
-            </div>
-          </div>
-          }
+          <div class="job-grid" role="grid">
+            @if (jobStats.totalBytes > 0) {
+              <div class="job-progress-section" role="rowgroup">
+                <div class="progress-header" role="row">
+                  <span class="label" role="gridcell">Progress:</span>
+                  <span class="value" role="gridcell"
+                    >{{ _jobCompletionPercentage | number: '1.0-1' }}%</span
+                  >
+                </div>
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="_jobCompletionPercentage"
+                  color="primary"
+                  role="progressbar"
+                  [attr.aria-valuenow]="_jobCompletionPercentage"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                ></mat-progress-bar>
+                <div class="progress-details" role="row">
+                  <span role="gridcell"
+                    >{{ formatBytes(jobStats.bytes) }} of
+                    {{ formatBytes(jobStats.totalBytes) }}</span
+                  >
+                  <span role="gridcell">ETA: {{ formatEta(jobStats.eta) }}</span>
+                </div>
+              </div>
+            }
 
-          <div class="job-stats-grid" role="grid">
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">Transfer Speed:</span>
-              <span class="value" role="gridcell">{{ formatBytes(jobStats.speed) }}/s</span>
+            <div class="job-stats-grid" role="grid">
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Transfer Speed:</span>
+                <span class="value" role="gridcell">{{ formatBytes(jobStats.speed) }}/s</span>
+              </div>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Transfers:</span>
+                <span class="value" role="gridcell"
+                  >{{ jobStats.transfers }} / {{ jobStats.totalTransfers }}</span
+                >
+              </div>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Checks:</span>
+                <span class="value" role="gridcell"
+                  >{{ jobStats.checks }} / {{ jobStats.totalChecks }}</span
+                >
+              </div>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Errors:</span>
+                <span class="value" [class.error]="jobStats.errors > 0" role="gridcell">{{
+                  jobStats.errors
+                }}</span>
+              </div>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Deletes:</span>
+                <span class="value" role="gridcell">{{ jobStats.deletes }}</span>
+              </div>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Renames:</span>
+                <span class="value" role="gridcell">{{ jobStats.renames }}</span>
+              </div>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Server Copies:</span>
+                <span class="value" role="gridcell">{{ jobStats.serverSideCopies }}</span>
+              </div>
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">Server Moves:</span>
+                <span class="value" role="gridcell">{{ jobStats.serverSideMoves }}</span>
+              </div>
             </div>
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">Transfers:</span>
-              <span class="value" role="gridcell">{{ jobStats.transfers }} / {{ jobStats.totalTransfers }}</span>
-            </div>
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">Checks:</span>
-              <span class="value" role="gridcell">{{ jobStats.checks }} / {{ jobStats.totalChecks }}</span>
-            </div>
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">Errors:</span>
-              <span class="value" [class.error]="jobStats.errors > 0" role="gridcell">{{ jobStats.errors }}</span>
-            </div>
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">Deletes:</span>
-              <span class="value" role="gridcell">{{ jobStats.deletes }}</span>
-            </div>
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">Renames:</span>
-              <span class="value" role="gridcell">{{ jobStats.renames }}</span>
-            </div>
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">Server Copies:</span>
-              <span class="value" role="gridcell">{{ jobStats.serverSideCopies }}</span>
-            </div>
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">Server Moves:</span>
-              <span class="value" role="gridcell">{{ jobStats.serverSideMoves }}</span>
-            </div>
-          </div>
 
-          @if (jobStats.lastError) {
-          <div class="error-section" role="alert">
-            <div class="label">Last Error:</div>
-            <div class="error-message">
-              <mat-icon color="warn" svgIcon="circle-exclamation" class="error-icon" aria-hidden="true"></mat-icon>
-              <span>{{ jobStats.lastError }}</span>
-            </div>
-          </div>
-          }
+            @if (jobStats.lastError) {
+              <div class="error-section" role="alert">
+                <div class="label">Last Error:</div>
+                <div class="error-message">
+                  <mat-icon
+                    color="warn"
+                    svgIcon="circle-exclamation"
+                    class="error-icon"
+                    aria-hidden="true"
+                  ></mat-icon>
+                  <span>{{ jobStats.lastError }}</span>
+                </div>
+              </div>
+            }
 
-          @if (_activeJobsCount === 0) {
-          <div class="no-jobs-message" role="status">
-            <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
-            <span>No active jobs are currently running.</span>
+            @if (_activeJobsCount === 0) {
+              <div class="no-jobs-message" role="status">
+                <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                <span>No active jobs are currently running.</span>
+              </div>
+            }
           </div>
-          }
-        </div>
         }
       </mat-expansion-panel>
     </mat-accordion>

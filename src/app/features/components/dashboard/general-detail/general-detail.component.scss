@@ -86,8 +86,7 @@
           padding: var(--space-xs) var(--header-gap);
           border-radius: var(--status-radius);
           background: rgba(var(--app-text-color-rgb), var(--border-opacity));
-          border: 1px solid
-            rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+          border: 1px solid rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
           transition: var(--default-transition);
           font-size: var(--font-size-sm);
           font-weight: 500;

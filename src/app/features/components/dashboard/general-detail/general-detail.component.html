@@ -3,8 +3,10 @@
     <div class="header-content">
       <div class="remote-info-section">
         <div class="icon-container">
-          <mat-icon [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"
-            class="remote-type-icon"></mat-icon>
+          <mat-icon
+            [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"
+            class="remote-type-icon"
+          ></mat-icon>
         </div>
         <div class="remote-text-info">
           <h2 class="remote-name" matTooltip="{{ selectedRemote.remoteSpecs.name }}">
@@ -15,20 +17,44 @@
       </div>
       <!-- Status Indicators -->
       <div class="remote-status-indicators">
-        <div [ngClass]="['status-indicator', 'mount', selectedRemote.mountState?.mounted ? 'active' : 'inactive']"
-          aria-label="Mount status">
+        <div
+          [ngClass]="[
+            'status-indicator',
+            'mount',
+            selectedRemote.mountState?.mounted ? 'active' : 'inactive',
+          ]"
+          aria-label="Mount status"
+        >
           <mat-icon svgIcon="mount"></mat-icon>
-          <span class="status-text">{{ selectedRemote.mountState?.mounted ? 'Mounted' : 'Not Mounted' }}</span>
+          <span class="status-text">{{
+            selectedRemote.mountState?.mounted ? 'Mounted' : 'Not Mounted'
+          }}</span>
         </div>
-        <div [ngClass]="['status-indicator', 'sync', selectedRemote.syncState?.isOnSync ? 'active' : 'inactive']"
-          aria-label="Sync status">
+        <div
+          [ngClass]="[
+            'status-indicator',
+            'sync',
+            selectedRemote.syncState?.isOnSync ? 'active' : 'inactive',
+          ]"
+          aria-label="Sync status"
+        >
           <mat-icon svgIcon="sync"></mat-icon>
-          <span class="status-text">{{ selectedRemote.syncState?.isOnSync ? 'Syncing' : 'Idle' }}</span>
+          <span class="status-text">{{
+            selectedRemote.syncState?.isOnSync ? 'Syncing' : 'Idle'
+          }}</span>
         </div>
-        <div [ngClass]="['status-indicator', 'copy', selectedRemote.copyState?.isOnCopy ? 'active' : 'inactive']"
-          aria-label="Copy status">
+        <div
+          [ngClass]="[
+            'status-indicator',
+            'copy',
+            selectedRemote.copyState?.isOnCopy ? 'active' : 'inactive',
+          ]"
+          aria-label="Copy status"
+        >
           <mat-icon svgIcon="copy"></mat-icon>
-          <span class="status-text">{{ selectedRemote.copyState?.isOnCopy ? 'Copying' : 'Idle' }}</span>
+          <span class="status-text">{{
+            selectedRemote.copyState?.isOnCopy ? 'Copying' : 'Idle'
+          }}</span>
         </div>
       </div>
     </div>
@@ -40,11 +66,18 @@
     <app-disk-usage-panel [config]="getDiskUsageConfig()"></app-disk-usage-panel>
 
     <!-- Jobs Panel -->
-    <app-jobs-panel [config]="getJobsPanelConfig()" (stopOperation)="stopOperation.emit($event)"
-      (deleteJob)="deleteJob.emit($event)">
+    <app-jobs-panel
+      [config]="getJobsPanelConfig()"
+      (stopOperation)="stopOperation.emit($event)"
+      (deleteJob)="deleteJob.emit($event)"
+    >
     </app-jobs-panel>
 
     <!-- Remote Configuration Panel -->
-    <app-settings-panel [config]="getRemoteConfigurationPanelConfig()" (editSettings)="onEditRemoteConfiguration()">
+    <app-settings-panel
+      [config]="getRemoteConfigurationPanelConfig()"
+      (editSettings)="onEditRemoteConfiguration()"
+    >
     </app-settings-panel>
   </div>
+</div>

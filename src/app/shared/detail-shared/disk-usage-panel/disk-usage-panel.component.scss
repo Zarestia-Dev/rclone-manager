@@ -1,4 +1,4 @@
-@use '../../../styles/_shared_components';
+@use "../../../styles/_shared_components";
 
 .disk-panel {
   .disk-usage-section {
@@ -18,8 +18,7 @@
         position: relative;
         overflow: hidden;
         background: rgba(var(--app-text-color-rgb), var(--border-opacity));
-        border: 2px solid
-          rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+        border: 2px solid rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
         display: flex;
         align-items: center;
         justify-content: center;
@@ -36,11 +35,7 @@
           left: 0;
           top: 0;
           height: 100%;
-          background: linear-gradient(
-            135deg,
-            var(--primary-color) 0%,
-            var(--accent-color) 100%
-          );
+          background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
           transition: var(--usage-transition);
           border-radius: var(--radius-lg);
         }
@@ -77,11 +72,7 @@
           }
 
           &.used {
-            background: linear-gradient(
-              135deg,
-              var(--primary-color) 0%,
-              var(--accent-color) 100%
-            );
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
           }
 
           &.free {

@@ -159,7 +159,7 @@
     .status-badge {
       display: flex;
       align-items: center;
-      padding: var(--space-xxs)  var(--space-xs);
+      padding: var(--space-xxs) var(--space-xs);
       border-radius: var(--radius-md);
 
       .status-icon {
@@ -206,13 +206,12 @@
 @media (max-width: 768px) {
   .remotes-panel {
     .remotes-header {
-      padding: var(--panel-padding) var(--panel-padding) 12px
-        var(--panel-padding);
+      padding: var(--panel-padding) var(--panel-padding) 12px var(--panel-padding);
     }
 
     .remotes-content {
-      padding: var(--panel-padding-mobile) var(--panel-padding)
-        var(--panel-padding) var(--panel-padding);
+      padding: var(--panel-padding-mobile) var(--panel-padding) var(--panel-padding)
+        var(--panel-padding);
     }
 
     .remotes-grid {

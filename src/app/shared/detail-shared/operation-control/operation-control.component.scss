@@ -1,4 +1,4 @@
-@use '../../../styles/_shared_components';
+@use "../../../styles/_shared_components";
 
 .operation-control-panel {
   background: var(--secondary-background);
@@ -11,8 +11,7 @@
   border: 2px solid transparent;
 
   &:hover {
-    box-shadow: 0 8px 32px
-      rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+    box-shadow: 0 8px 32px rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
     transform: translateY(-2px);
   }
 

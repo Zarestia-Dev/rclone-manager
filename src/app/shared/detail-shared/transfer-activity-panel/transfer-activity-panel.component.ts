@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -20,11 +20,11 @@ export interface CompletedTransfer {
   checked: boolean;
   error: string;
   jobid: number;
-  startedAt?: string;  // ISO timestamp from API
+  startedAt?: string; // ISO timestamp from API
   completedAt?: string; // ISO timestamp from API
-  srcFs?: string;      // Source filesystem
-  dstFs?: string;      // Destination filesystem
-  group?: string;      // Job group
+  srcFs?: string; // Source filesystem
+  dstFs?: string; // Destination filesystem
+  group?: string; // Job group
   status: 'completed' | 'checked' | 'failed' | 'partial';
 }
 
@@ -74,7 +74,7 @@ export interface TransferActivityPanelConfig {
           </div>
         </mat-card-title>
       </mat-card-header>
-      
+
       <mat-card-content class="panel-content">
         @if (config.showHistory && config.completedTransfers.length > 0) {
           <mat-tab-group class="transfer-tabs" animationDuration="200ms">
@@ -84,38 +84,39 @@ export interface TransferActivityPanelConfig {
                 <span>Active ({{ config.activeTransfers.length }})</span>
               </ng-template>
               <div class="tab-content">
-                <app-active-transfers-table [transfers]="config.activeTransfers" [operationClass]="config.operationClass"></app-active-transfers-table>
+                <app-active-transfers-table
+                  [transfers]="config.activeTransfers"
+                  [operationClass]="config.operationClass"
+                ></app-active-transfers-table>
               </div>
             </mat-tab>
-            
+
             <!-- Completed Transfers Tab -->
             <mat-tab>
               <ng-template mat-tab-label>
                 <span>Recent ({{ config.completedTransfers.length }})</span>
               </ng-template>
               <div class="tab-content">
-                <app-completed-transfers-table [transfers]="config.completedTransfers" [operationClass]="config.operationClass"></app-completed-transfers-table>
+                <app-completed-transfers-table
+                  [transfers]="config.completedTransfers"
+                  [operationClass]="config.operationClass"
+                ></app-completed-transfers-table>
               </div>
             </mat-tab>
           </mat-tab-group>
         } @else {
           <!-- Show only active transfers when no history -->
-          <app-active-transfers-table [transfers]="config.activeTransfers" [operationClass]="config.operationClass"></app-active-transfers-table>
+          <app-active-transfers-table
+            [transfers]="config.activeTransfers"
+            [operationClass]="config.operationClass"
+          ></app-active-transfers-table>
         }
       </mat-card-content>
     </mat-card>
   `,
-  styleUrls: ['./transfer-activity-panel.component.scss']
+  styleUrls: ['./transfer-activity-panel.component.scss'],
 })
-export class TransferActivityPanelComponent implements OnInit, OnDestroy {
+export class TransferActivityPanelComponent {
   @Input() config!: TransferActivityPanelConfig;
   @Output() refreshTransfers = new EventEmitter<void>();
-
-  ngOnInit(): void {
-    // Setup any initialization logic
-  }
-
-  ngOnDestroy(): void {
-    // Cleanup logic
-  }
 }

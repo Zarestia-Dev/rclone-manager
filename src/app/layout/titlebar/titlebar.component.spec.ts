@@ -8,10 +8,9 @@ describe('TitlebarComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TitlebarComponent]
-    })
-    .compileComponents();
-    
+      imports: [TitlebarComponent],
+    }).compileComponents();
+
     fixture = TestBed.createComponent(TitlebarComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();

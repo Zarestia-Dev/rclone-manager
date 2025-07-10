@@ -1,5 +1,4 @@
-@use '../../../styles/_shared_components';
-
+@use "../../../styles/_shared_components";
 
 .job-info-panel {
   background: var(--secondary-background);
@@ -11,8 +10,7 @@
   margin-bottom: var(--panel-gap);
 
   &:hover {
-    box-shadow: 0 8px 32px
-      rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
+    box-shadow: 0 8px 32px rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
     transform: translateY(-2px);
   }
 }

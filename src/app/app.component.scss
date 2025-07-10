@@ -28,8 +28,7 @@
 
   @media (max-width: 600px) {
     position: fixed;
-    border-radius: 0 0 var(--tab-bar-bottom-radius, 0)
-      var(--tab-bar-bottom-radius, 0);
+    border-radius: 0 0 var(--tab-bar-bottom-radius, 0) var(--tab-bar-bottom-radius, 0);
     bottom: 0;
     top: auto;
     transform: none;

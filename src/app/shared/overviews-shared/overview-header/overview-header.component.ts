@@ -6,10 +6,7 @@ import { AppTab } from '../../../shared/components/types';
 @Component({
   selector: 'app-overview-header',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatIconModule,
-  ],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './overview-header.component.html',
   styleUrl: './overview-header.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

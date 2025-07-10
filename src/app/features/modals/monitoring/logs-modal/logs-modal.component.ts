@@ -3,31 +3,27 @@ import {
   ElementRef,
   OnInit,
   ViewChild,
-  Inject,
   HostListener,
   ChangeDetectorRef,
-  OnDestroy,
-} from "@angular/core";
-import { FormsModule } from "@angular/forms";
-import {
-  MAT_DIALOG_DATA,
-  MatDialogRef,
-} from "@angular/material/dialog";
-import { MatListModule } from "@angular/material/list";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatIconModule } from "@angular/material/icon";
-import { MatFormFieldModule } from "@angular/material/form-field";
-import { MatSelectModule } from "@angular/material/select";
-import { CommonModule } from "@angular/common";
-import { MatInputModule } from "@angular/material/input";
-import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
-import { MatButtonModule } from "@angular/material/button";
-import { MatTooltipModule } from "@angular/material/tooltip";
-import { LogContext, RemoteLogEntry } from "../../../../shared/components/types";
-import { LoggingService } from "../../../../services/system/logging.service";
+  inject,
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MatListModule } from '@angular/material/list';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatIconModule } from '@angular/material/icon';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { CommonModule } from '@angular/common';
+import { MatInputModule } from '@angular/material/input';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { LogContext, RemoteLogEntry } from '../../../../shared/components/types';
+import { LoggingService } from '../../../../services/system/logging.service';
 
 @Component({
-  selector: "app-logs-modal",
+  selector: 'app-logs-modal',
   standalone: true,
   imports: [
     CommonModule,
@@ -42,36 +38,29 @@ import { LoggingService } from "../../../../services/system/logging.service";
     MatButtonModule,
     MatTooltipModule,
   ],
-  templateUrl: "./logs-modal.component.html",
-  styleUrl: "./logs-modal.component.scss",
+  templateUrl: './logs-modal.component.html',
+  styleUrl: './logs-modal.component.scss',
 })
-export class LogsModalComponent implements OnInit, OnDestroy {
+export class LogsModalComponent implements OnInit {
   logs: RemoteLogEntry[] = [];
   loading = false;
-  selectedLevel = "";
-  searchText = "";
-  selectedRemote = "";
+  selectedLevel = '';
+  searchText = '';
+  selectedRemote = '';
   autoScroll = true;
   expandedLogs = new Set<string>();
+  @ViewChild('terminalLogArea') terminalLogArea?: ElementRef<HTMLDivElement>;
 
-  @ViewChild("terminalLogArea") terminalLogArea?: ElementRef<HTMLDivElement>;
+  private dialogRef = inject(MatDialogRef<LogsModalComponent>);
+  public data = inject(MAT_DIALOG_DATA) as { remoteName: string };
+  private snackBar = inject(MatSnackBar);
+  private cdRef = inject(ChangeDetectorRef);
+  private loggingService = inject(LoggingService);
 
-  constructor(
-    private dialogRef: MatDialogRef<LogsModalComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: { remoteName: string },
-    private snackBar: MatSnackBar,
-    private cdRef: ChangeDetectorRef,
-    private loggingService: LoggingService
-  ) {}
-
-  ngOnInit() {
+  ngOnInit(): void {
     this.loadSavedFilters();
     this.loadLogs();
   }
-
-  ngOnDestroy() {
-  }
-
   get uniqueRemotes(): string[] {
     return [...new Set(this.logs.map(log => log.remote_name).filter(Boolean))] as string[];
   }
@@ -79,22 +68,23 @@ export class LogsModalComponent implements OnInit, OnDestroy {
   get filteredLogs(): RemoteLogEntry[] {
     let logs = this.logs;
     if (this.selectedLevel) {
-      logs = logs.filter((log) => log.level === this.selectedLevel);
+      logs = logs.filter(log => log.level === this.selectedLevel);
     }
     if (this.selectedRemote) {
-      logs = logs.filter((log) => log.remote_name === this.selectedRemote);
+      logs = logs.filter(log => log.remote_name === this.selectedRemote);
     }
     if (this.searchText) {
       const searchLower = this.searchText.toLowerCase();
-      logs = logs.filter((log) =>
-        log.message.toLowerCase().includes(searchLower) ||
-        (log.context && JSON.stringify(log.context).toLowerCase().includes(searchLower))
+      logs = logs.filter(
+        log =>
+          log.message.toLowerCase().includes(searchLower) ||
+          (log.context && JSON.stringify(log.context).toLowerCase().includes(searchLower))
       );
     }
     return logs;
   }
 
-  async loadLogs() {
+  async loadLogs(): Promise<void> {
     this.loading = true;
     try {
       this.logs = (await this.loggingService.getRemoteLogs(
@@ -105,7 +95,7 @@ export class LogsModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  async clearLogs() {
+  async clearLogs(): Promise<void> {
     this.loading = true;
     try {
       await this.loggingService.clearRemoteLogs(this.data.remoteName);
@@ -141,22 +131,23 @@ export class LogsModalComponent implements OnInit, OnDestroy {
       }
       return JSON.stringify(context, null, 2);
     } catch (e) {
+      console.error('Failed to parse context:', e);
       return JSON.stringify(context, null, 2);
     }
   }
 
-  copyLog(log: RemoteLogEntry) {
-    const text = log.context 
+  copyLog(log: RemoteLogEntry): void {
+    const text = log.context
       ? `${log.timestamp} [${log.level.toUpperCase()}] ${log.message}\n${this.formatContext(log.context)}`
       : `${log.timestamp} [${log.level.toUpperCase()}] ${log.message}`;
-    
+
     navigator.clipboard.writeText(text);
     this.snackBar.open('Log copied to clipboard', 'Dismiss', {
       duration: 2000,
     });
   }
 
-  private loadSavedFilters() {
+  private loadSavedFilters(): void {
     const savedFilters = localStorage.getItem('logFilters');
     if (savedFilters) {
       const filters = JSON.parse(savedFilters);
@@ -166,11 +157,11 @@ export class LogsModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  saveFilters() {
+  saveFilters(): void {
     const filters = {
       level: this.selectedLevel,
       remote: this.selectedRemote,
-      search: this.searchText
+      search: this.searchText,
     };
     localStorage.setItem('logFilters', JSON.stringify(filters));
   }
@@ -181,14 +172,14 @@ export class LogsModalComponent implements OnInit, OnDestroy {
   //   }
   // }
 
-  scrollToBottom() {
+  scrollToBottom(): void {
     if (this.terminalLogArea) {
       const el = this.terminalLogArea.nativeElement;
       el.scrollTop = el.scrollHeight;
     }
   }
 
-  scrollToTop() {
+  scrollToTop(): void {
     if (this.terminalLogArea) {
       const el = this.terminalLogArea.nativeElement;
       el.scrollTop = 0;
@@ -196,7 +187,7 @@ export class LogsModalComponent implements OnInit, OnDestroy {
   }
 
   @HostListener('document:keydown.escape', ['$event'])
-  close(event?: KeyboardEvent) {
+  close(): void {
     this.saveFilters();
     this.dialogRef.close();
   }

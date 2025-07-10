@@ -67,11 +67,7 @@
 }
 
 .system {
-  background: linear-gradient(
-    45deg,
-    var(--dark-theme-color) 50%,
-    var(--light-theme-color) 50%
-  );
+  background: linear-gradient(45deg, var(--dark-theme-color) 50%, var(--light-theme-color) 50%);
 
   // Tauri does not support system theme detection yet
   &::after {

@@ -1,23 +1,17 @@
-import { CommonModule } from "@angular/common";
-import {
-  Component,
-  EventEmitter,
-  Input,
-  Output,
-  ChangeDetectionStrategy,
-} from "@angular/core";
-import { MatButtonModule } from "@angular/material/button";
-import { MatCardModule } from "@angular/material/card";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatTooltipModule } from "@angular/material/tooltip";
-import { QuickActionButton, QuickActionButtonsComponent } from "../../../shared/components";
-import { AppTab, Remote, RemoteAction } from "../../../shared/components/types";
+import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { QuickActionButton, QuickActionButtonsComponent } from '../../../shared/components';
+import { AppTab, Remote, RemoteAction } from '../../../shared/components/types';
 
-export type RemoteCardVariant = "active" | "inactive" | "error";
+export type RemoteCardVariant = 'active' | 'inactive' | 'error';
 
 @Component({
-  selector: "app-remote-card",
+  selector: 'app-remote-card',
   standalone: true,
   imports: [
     CommonModule,
@@ -28,19 +22,19 @@ export type RemoteCardVariant = "active" | "inactive" | "error";
     MatTooltipModule,
     QuickActionButtonsComponent,
   ],
-  templateUrl: "./remote-card.component.html",
-  styleUrl: "./remote-card.component.scss",
+  templateUrl: './remote-card.component.html',
+  styleUrl: './remote-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RemoteCardComponent {
   @Input() remote!: Remote;
-  @Input() variant: RemoteCardVariant = "inactive";
-  @Input() mode: AppTab = "general";
+  @Input() variant: RemoteCardVariant = 'inactive';
+  @Input() mode: AppTab = 'general';
   @Input() iconService: any;
   @Input() actionState: RemoteAction = null;
   @Input() showOpenButton = false;
-  @Input() primaryActionLabel = "Start";
-  @Input() activeIcon = "circle-check";
+  @Input() primaryActionLabel = 'Start';
+  @Input() activeIcon = 'circle-check';
 
   @Output() remoteClick = new EventEmitter<Remote>();
   @Output() openInFiles = new EventEmitter<string>();
@@ -54,11 +48,11 @@ export class RemoteCardComponent {
   @Output() stopCopyAction = new EventEmitter<string>();
 
   get isOpening(): boolean {
-    return this.actionState === "open";
+    return this.actionState === 'open';
   }
 
   get isStopping(): boolean {
-    return this.actionState === "stop";
+    return this.actionState === 'stop';
   }
 
   get isLoading(): boolean {
@@ -66,69 +60,69 @@ export class RemoteCardComponent {
   }
 
   get primaryActionIcon(): string {
-    return this.mode === "mount" ? "mount" : "play";
+    return this.mode === 'mount' ? 'mount' : 'play';
   }
 
   get secondaryActionIcon(): string {
-    return this.mode === "mount" ? "eject" : "stop";
+    return this.mode === 'mount' ? 'eject' : 'stop';
   }
 
   get secondaryActionTooltip(): string {
-    if (this.mode === "mount") return "Unmount";
-    if (this.mode === "sync") return "Stop Sync";
-    if (this.mode === "copy") return "Stop Copy";
-    return "Stop";
+    if (this.mode === 'mount') return 'Unmount';
+    if (this.mode === 'sync') return 'Stop Sync';
+    if (this.mode === 'copy') return 'Stop Copy';
+    return 'Stop';
   }
 
   getActionButtons(): QuickActionButton[] {
     const buttons: QuickActionButton[] = [];
 
     // General mode shows all operations (for general-overview)
-    if (this.mode === "general") {
+    if (this.mode === 'general') {
       return this.getGeneralActionButtons();
     }
 
-    if (this.variant === "active") {
+    if (this.variant === 'active') {
       // Open/Browse button for active remotes
       if (this.showOpenButton) {
         buttons.push({
-          id: "open",
-          icon: "folder",
-          tooltip: "Browse (B)",
-          color: "accent",
+          id: 'open',
+          icon: 'folder',
+          tooltip: 'Browse (B)',
+          color: 'accent',
           isLoading: this.isOpening,
           isDisabled: this.isOpening,
-          cssClass: "browse-btn",
+          cssClass: 'browse-btn',
         });
       }
 
       // Secondary action button (stop/unmount)
       buttons.push({
-        id: "secondary",
+        id: 'secondary',
         icon: this.secondaryActionIcon,
         tooltip: this.secondaryActionTooltip,
-        color: "warn",
+        color: 'warn',
         isLoading: this.isStopping,
         isDisabled: this.isStopping,
-        cssClass: "stop-btn",
+        cssClass: 'stop-btn',
       });
-    } else if (this.variant === "inactive") {
+    } else if (this.variant === 'inactive') {
       // Primary action button for inactive remotes
       buttons.push({
-        id: "primary",
+        id: 'primary',
         icon: this.primaryActionIcon,
         tooltip: this.primaryActionLabel,
         isLoading: this.isLoading,
         isDisabled: this.isLoading,
         cssClass: `${this.mode}-btn`,
       });
-    } else if (this.variant === "error") {
+    } else if (this.variant === 'error') {
       // Fix button for error remotes
       buttons.push({
-        id: "fix",
-        icon: "wrench",
-        tooltip: "Fix Issues",
-        cssClass: "fix-btn",
+        id: 'fix',
+        icon: 'wrench',
+        tooltip: 'Fix Issues',
+        cssClass: 'fix-btn',
       });
     }
 
@@ -139,54 +133,50 @@ export class RemoteCardComponent {
     const buttons: QuickActionButton[] = [];
 
     // Mount/Unmount Button
-    const isMountAction =
-      this.actionState === "mount" || this.actionState === "unmount";
+    const isMountAction = this.actionState === 'mount' || this.actionState === 'unmount';
     buttons.push({
-      id: "mount",
-      icon: this.remote.mountState?.mounted ? "eject" : "mount",
-      tooltip: this.remote.mountState?.mounted ? "Unmount" : "Mount",
-      color: this.remote.mountState?.mounted ? "warn" : "accent",
+      id: 'mount',
+      icon: this.remote.mountState?.mounted ? 'eject' : 'mount',
+      tooltip: this.remote.mountState?.mounted ? 'Unmount' : 'Mount',
+      color: this.remote.mountState?.mounted ? 'warn' : 'accent',
       isLoading: isMountAction,
       isDisabled: isMountAction,
-      cssClass: this.remote.mountState?.mounted ? "unmount-btn" : "mount-btn",
+      cssClass: this.remote.mountState?.mounted ? 'unmount-btn' : 'mount-btn',
     });
 
     // Sync Button
-    const isSyncAction =
-      this.actionState === "sync" || this.actionState === "stop";
+    const isSyncAction = this.actionState === 'sync' || this.actionState === 'stop';
     buttons.push({
-      id: "sync",
-      icon: this.remote.syncState?.isOnSync ? "stop" : "sync",
-      tooltip: this.remote.syncState?.isOnSync ? "Stop Sync" : "Start Sync",
-      color: this.remote.syncState?.isOnSync ? "warn" : "primary",
+      id: 'sync',
+      icon: this.remote.syncState?.isOnSync ? 'stop' : 'sync',
+      tooltip: this.remote.syncState?.isOnSync ? 'Stop Sync' : 'Start Sync',
+      color: this.remote.syncState?.isOnSync ? 'warn' : 'primary',
       isLoading: isSyncAction && !!this.remote.syncState?.isOnSync,
       isDisabled: isSyncAction,
-      cssClass: this.remote.syncState?.isOnSync ? "stop-btn" : "sync-btn",
+      cssClass: this.remote.syncState?.isOnSync ? 'stop-btn' : 'sync-btn',
     });
 
     // Copy Button
-    const isCopyAction =
-      this.actionState === "copy" || this.actionState === "stop";
+    const isCopyAction = this.actionState === 'copy' || this.actionState === 'stop';
     buttons.push({
-      id: "copy",
-      icon: this.remote.copyState?.isOnCopy ? "stop" : "copy",
-      tooltip: this.remote.copyState?.isOnCopy ? "Stop Copy" : "Start Copy",
-      color: this.remote.copyState?.isOnCopy ? "warn" : undefined,
+      id: 'copy',
+      icon: this.remote.copyState?.isOnCopy ? 'stop' : 'copy',
+      tooltip: this.remote.copyState?.isOnCopy ? 'Stop Copy' : 'Start Copy',
+      color: this.remote.copyState?.isOnCopy ? 'warn' : undefined,
       isLoading: isCopyAction && !!this.remote.copyState?.isOnCopy,
       isDisabled: isCopyAction,
-      cssClass: this.remote.copyState?.isOnCopy ? "stop-btn" : "copy-btn",
+      cssClass: this.remote.copyState?.isOnCopy ? 'stop-btn' : 'copy-btn',
     });
 
     // Browse Button
     buttons.push({
-      id: "browse",
-      icon: "folder",
-      tooltip: "Browse",
-      color: "accent",
-      isLoading: this.actionState === "open",
-      isDisabled:
-        !this.remote.mountState?.mounted || this.actionState === "open",
-      cssClass: "browse-btn",
+      id: 'browse',
+      icon: 'folder',
+      tooltip: 'Browse',
+      color: 'accent',
+      isLoading: this.actionState === 'open',
+      isDisabled: !this.remote.mountState?.mounted || this.actionState === 'open',
+      cssClass: 'browse-btn',
     });
 
     return buttons;
@@ -196,16 +186,16 @@ export class RemoteCardComponent {
     action.event.stopPropagation();
 
     switch (action.id) {
-      case "open":
+      case 'open':
         this.onOpenInFiles(action.event);
         break;
-      case "primary":
+      case 'primary':
         this.onPrimaryAction(action.event);
         break;
-      case "secondary":
+      case 'secondary':
         this.onSecondaryAction(action.event);
         break;
-      case "mount":
+      case 'mount':
         // Handle mount/unmount based on current state
         if (this.remote.mountState?.mounted) {
           this.onUnmountAction(action.event); // unmount
@@ -213,7 +203,7 @@ export class RemoteCardComponent {
           this.onMountAction(action.event); // mount
         }
         break;
-      case "sync":
+      case 'sync':
         // Handle sync/stop-sync based on current state
         if (this.remote.syncState?.isOnSync) {
           this.onStopSyncAction(action.event); // stop-sync
@@ -221,7 +211,7 @@ export class RemoteCardComponent {
           this.onSyncAction(action.event); // sync
         }
         break;
-      case "copy":
+      case 'copy':
         // Handle copy/stop-copy based on current state
         if (this.remote.copyState?.isOnCopy) {
           this.onStopCopyAction(action.event); // stop-copy
@@ -229,10 +219,10 @@ export class RemoteCardComponent {
           this.onCopyAction(action.event); // copy
         }
         break;
-      case "browse":
+      case 'browse':
         this.onBrowseAction(action.event);
         break;
-      case "fix":
+      case 'fix':
         // Handle fix action
         break;
     }

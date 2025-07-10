@@ -28,12 +28,8 @@
           width: var(--icon-container-size);
           height: var(--icon-container-size);
           border-radius: var(--icon-radius);
-          background: rgba(
-            var(--app-text-color-rgb),
-            var(--background-opacity)
-          );
-          border: 2px solid
-            rgba(var(--app-text-color-rgb), var(--border-opacity));
+          background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+          border: 2px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
           transition: var(--default-transition);
 
           .remote-type-icon {
@@ -41,7 +37,8 @@
             width: var(--large-icon-size);
             height: var(--large-icon-size);
             color: var(--secondary-text-color);
-            transition: var(--default-transition),
+            transition:
+              var(--default-transition),
               filter var(--default-transition);
           }
 

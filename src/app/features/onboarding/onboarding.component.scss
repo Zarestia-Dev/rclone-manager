@@ -10,21 +10,10 @@
   min-height: 100vh;
   width: 100%;
   backdrop-filter: blur(4px);
-  background: radial-gradient(
-      circle at 20% 50%,
-      rgba(var(--primary-color-rgb), 0.5) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 80% 20%,
-      rgba(var(--accent-color-rgb), 0.5) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      circle at 40% 80%,
-      rgba(var(--primary-color-rgb), 0.5) 0%,
-      transparent 50%
-    ),
+  background:
+    radial-gradient(circle at 20% 50%, rgba(var(--primary-color-rgb), 0.5) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(var(--accent-color-rgb), 0.5) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(var(--primary-color-rgb), 0.5) 0%, transparent 50%),
     linear-gradient(
       135deg,
       rgba(var(--app-background-rgb), 0.9) 0%,
@@ -267,7 +256,7 @@
 
   .action-button {
     transition: all 0.2s ease;
-    
+
     &:hover:not(:disabled) {
       transform: translateY(-1px);
       box-shadow: var(--box-shadow);

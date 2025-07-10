@@ -8,10 +8,7 @@ import { AnimationsService } from '../../../services/core/animations.service';
   imports: [MatIconModule],
   templateUrl: './loading-overlay.component.html',
   styleUrls: ['./loading-overlay.component.scss'],
-  animations: [
-    AnimationsService.fadeInOut(),
-    AnimationsService.loadingSpinner()
-  ]
+  animations: [AnimationsService.fadeInOut(), AnimationsService.loadingSpinner()],
 })
 export class LoadingOverlayComponent {
   @Input() isVisible = false;

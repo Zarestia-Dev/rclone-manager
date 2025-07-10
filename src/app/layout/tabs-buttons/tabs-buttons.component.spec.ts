@@ -8,9 +8,8 @@ describe('TabsButtonsComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TabsButtonsComponent]
-    })
-    .compileComponents();
+      imports: [TabsButtonsComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(TabsButtonsComponent);
     component = fixture.componentInstance;
@@ -29,7 +28,7 @@ describe('TabsButtonsComponent', () => {
     it('should accept currentTab input', () => {
       const testTab: AppTab = 'mount';
       component.currentTab = testTab;
-      
+
       expect(component.currentTab).toBe(testTab);
     });
 
@@ -42,9 +41,9 @@ describe('TabsButtonsComponent', () => {
     it('should emit tabSelected event when triggered', () => {
       spyOn(component.tabSelected, 'emit');
       const testTab: AppTab = 'sync';
-      
+
       component.tabSelected.emit(testTab);
-      
+
       expect(component.tabSelected.emit).toHaveBeenCalledWith(testTab);
     });
   });

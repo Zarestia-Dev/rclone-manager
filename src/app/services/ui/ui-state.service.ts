@@ -1,4 +1,4 @@
-import { Injectable, NgZone } from '@angular/core';
+import { inject, Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { listen } from '@tauri-apps/api/event';
@@ -15,10 +15,9 @@ export interface ToastMessage {
  * Handles window state, responsive design, and UI notifications
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class UiStateService {
-
   // Tab management
   private currentTab = new BehaviorSubject<AppTab>('general' as AppTab);
   public currentTab$ = this.currentTab.asObservable();
@@ -66,7 +65,9 @@ export class UiStateService {
     },
   };
 
-  constructor(private ngZone: NgZone) {
+  private ngZone = inject(NgZone);
+
+  constructor() {
     this.initializeWindowListeners();
     this.updateViewportSettings();
     this.setupRemoteDeletionListener();
@@ -131,7 +132,7 @@ export class UiStateService {
 
   private async setupRemoteDeletionListener(): Promise<void> {
     try {
-      await listen<string>('remote_deleted', (event) => {
+      await listen<string>('remote_deleted', event => {
         this.ngZone.run(() => {
           const deletedRemoteName = event.payload;
           const currentRemote = this.selectedRemoteSource.value;
@@ -196,14 +197,8 @@ export class UiStateService {
     }
 
     // Apply the settings
-    document.documentElement.style.setProperty(
-      '--home-bottom-radius',
-      settings.radii.homeBottom
-    );
-    document.documentElement.style.setProperty(
-      '--title-bar-radius',
-      settings.radii.titleBar
-    );
+    document.documentElement.style.setProperty('--home-bottom-radius', settings.radii.homeBottom);
+    document.documentElement.style.setProperty('--title-bar-radius', settings.radii.titleBar);
     document.documentElement.style.setProperty(
       '--tab-bar-bottom-radius',
       settings.radii.tabBarBottom

@@ -8,10 +8,9 @@ describe('OnboardingComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [OnboardingComponent]
-    })
-    .compileComponents();
-    
+      imports: [OnboardingComponent],
+    }).compileComponents();
+
     fixture = TestBed.createComponent(OnboardingComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
@@ -29,9 +28,9 @@ describe('OnboardingComponent', () => {
 
     it('should call selectCustomFolder method', async () => {
       spyOn(component, 'selectCustomFolder').and.returnValue(Promise.resolve());
-      
+
       await component.selectCustomFolder();
-      
+
       expect(component.selectCustomFolder).toHaveBeenCalled();
     });
   });
@@ -44,7 +43,7 @@ describe('OnboardingComponent', () => {
     it('should allow setting customPath', () => {
       const testPath = '/home/hakan/Downloads';
       component.customPath = testPath;
-      
+
       expect(component.customPath).toBe(testPath);
     });
   });

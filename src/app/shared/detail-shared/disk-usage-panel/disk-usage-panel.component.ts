@@ -17,11 +17,7 @@ export interface DiskUsageConfig {
 @Component({
   selector: 'app-disk-usage-panel',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatCardModule,
-    MatIconModule
-  ],
+  imports: [CommonModule, MatCardModule, MatIconModule],
   styleUrls: ['./disk-usage-panel.component.scss'],
   template: `
     <mat-card class="detail-panel disk-panel">
@@ -37,8 +33,13 @@ export interface DiskUsageConfig {
             <div class="disk-usage-bar" [ngStyle]="getDiskBarStyle()">
               @if (config.mounted === 'error' || config.diskUsage?.notSupported) {
                 <div class="usage-status-text">
-                  {{ config.diskUsage?.notSupported ? 'Not Supported' :
-                     (config.mounted === 'error' ? 'Error' : 'Unknown') }}
+                  {{
+                    config.diskUsage?.notSupported
+                      ? 'Not Supported'
+                      : config.mounted === 'error'
+                        ? 'Error'
+                        : 'Unknown'
+                  }}
                 </div>
               } @else {
                 <div class="usage-fill" [style.width]="getUsagePercentage() + '%'"></div>
@@ -70,7 +71,7 @@ export class DiskUsagePanelComponent {
   @Input() config!: DiskUsageConfig;
 
   getDiskBarStyle(): Record<string, string> {
-    if (this.config.mounted === "error") {
+    if (this.config.mounted === 'error') {
       return this.getErrorStyle();
     }
 
@@ -90,45 +91,45 @@ export class DiskUsagePanelComponent {
       return 0;
     }
 
-    const used = this.parseSize(this.config.diskUsage.used_space || "0");
-    const total = this.parseSize(this.config.diskUsage.total_space || "1");
+    const used = this.parseSize(this.config.diskUsage.used_space || '0');
+    const total = this.parseSize(this.config.diskUsage.total_space || '1');
 
     return total > 0 ? (used / total) * 100 : 0;
   }
 
   private getErrorStyle(): Record<string, string> {
     return {
-      backgroundColor: "var(--red)",
-      border: "3px solid transparent",
-      transition: "all 0.5s ease-in-out",
+      backgroundColor: 'var(--red)',
+      border: '3px solid transparent',
+      transition: 'all 0.5s ease-in-out',
     };
   }
 
   private getUnsupportedStyle(): Record<string, string> {
     return {
-      backgroundColor: "var(--yellow)",
-      border: "3px solid transparent",
-      transition: "all 0.5s ease-in-out",
+      backgroundColor: 'var(--yellow)',
+      border: '3px solid transparent',
+      transition: 'all 0.5s ease-in-out',
     };
   }
 
   private getLoadingStyle(): Record<string, string> {
     return {
-      backgroundColor: "var(--orange)",
-      border: "3px solid transparent",
+      backgroundColor: 'var(--orange)',
+      border: '3px solid transparent',
       backgroundImage:
-        "linear-gradient(120deg, rgba(255,255,255,0.15) 25%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.15) 75%)",
-      backgroundSize: "200% 100%",
-      animation: "diskLoadingShimmer 1.2s linear infinite",
-      transition: "all 0.5s ease-in-out",
+        'linear-gradient(120deg, rgba(255,255,255,0.15) 25%, rgba(255,255,255,0.35) 50%, rgba(255,255,255,0.15) 75%)',
+      backgroundSize: '200% 100%',
+      animation: 'diskLoadingShimmer 1.2s linear infinite',
+      transition: 'all 0.5s ease-in-out',
     };
   }
 
   private getMountedStyle(): Record<string, string> {
     return {
-      backgroundColor: "#cecece",
-      border: "3px solid var(--light-blue)",
-      transition: "all 0.5s ease-in-out",
+      backgroundColor: '#cecece',
+      border: '3px solid var(--light-blue)',
+      transition: 'all 0.5s ease-in-out',
     };
   }
 
@@ -143,7 +144,7 @@ export class DiskUsagePanelComponent {
     const match = size.trim().match(/^([\d.]+)\s*([A-Za-z]+)?$/);
     if (!match) return 0;
     const value = parseFloat(match[1]);
-    const unit = (match[2] || "B").toUpperCase();
+    const unit = (match[2] || 'B').toUpperCase();
     return value * (units[unit] || 1);
   }
 }

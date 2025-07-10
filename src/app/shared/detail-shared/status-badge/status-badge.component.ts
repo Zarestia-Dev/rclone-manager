@@ -18,11 +18,14 @@ export interface StatusBadgeConfig {
   imports: [CommonModule, MatProgressSpinnerModule],
   styleUrls: ['./status-badge.component.scss'],
   template: `
-    <div class="status-badge" [ngClass]="{
-      'active': config.isActive && !config.isError,
-      'error': config.isError,
-      'inactive': !config.isActive && !config.isError
-    }">
+    <div
+      class="status-badge"
+      [ngClass]="{
+        active: config.isActive && !config.isError,
+        error: config.isError,
+        inactive: !config.isActive && !config.isError,
+      }"
+    >
       <div class="status-dot"></div>
       <span>{{ getStatusLabel() }}</span>
       @if (config.isLoading) {

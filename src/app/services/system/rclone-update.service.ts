@@ -144,6 +144,12 @@ export class RcloneUpdateService {
           available: false,
           updateInfo: null,
         });
+
+        // Log the successful update with path info if available
+        if ('path' in result) {
+          console.log('Rclone updated successfully at:', result.path);
+        }
+
         return true;
       } else {
         this.updateStatus({

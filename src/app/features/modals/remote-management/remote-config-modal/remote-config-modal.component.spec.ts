@@ -8,10 +8,9 @@ describe('RemoteConfigModalComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [RemoteConfigModalComponent]
-    })
-    .compileComponents();
-    
+      imports: [RemoteConfigModalComponent],
+    }).compileComponents();
+
     fixture = TestBed.createComponent(RemoteConfigModalComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();

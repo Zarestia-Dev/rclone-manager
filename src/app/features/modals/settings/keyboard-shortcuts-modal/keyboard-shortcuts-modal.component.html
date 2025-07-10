@@ -1,18 +1,16 @@
 <div class="modal-container">
   <!-- Header -->
   <div class="modal-header" data-tauri-drag-region>
-    <button 
+    <button
       (click)="toggleSearch()"
       mat-icon-button
       [attr.aria-label]="searchVisible ? 'Hide search' : 'Show search'"
-      [attr.aria-expanded]="searchVisible">
+      [attr.aria-expanded]="searchVisible"
+    >
       <mat-icon svgIcon="search"></mat-icon>
     </button>
     <p>Keyboard Shortcuts</p>
-    <button 
-      mat-icon-button
-      (click)="close()"
-      aria-label="Close shortcuts dialog">
+    <button mat-icon-button (click)="close()" aria-label="Close shortcuts dialog">
       <mat-icon svgIcon="close"></mat-icon>
     </button>
   </div>
@@ -23,12 +21,19 @@
     [searchText]="searchText"
     (searchTextChange)="onSearchTextChange($event)"
     placeholder="Search shortcuts or descriptions..."
-    ariaLabel="Search keyboard shortcuts">
+    ariaLabel="Search keyboard shortcuts"
+  >
   </app-search-container>
 
   <!-- Shortcuts Table -->
   <div class="modal-content">
-    <table mat-table [dataSource]="filteredShortcuts" class="shortcut-table" role="table" aria-label="Keyboard shortcuts list">
+    <table
+      mat-table
+      [dataSource]="filteredShortcuts"
+      class="shortcut-table"
+      role="table"
+      aria-label="Keyboard shortcuts list"
+    >
       <ng-container matColumnDef="keys">
         <td mat-cell *matCellDef="let shortcut" class="shortcut-key" role="gridcell">
           @for (key of shortcut.keys.split('+'); track key; let isLast = $last) {
@@ -46,7 +51,7 @@
         </td>
       </ng-container>
 
-      <tr mat-row *matRowDef="let row; columns: ['keys', 'description'];" role="row"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['keys', 'description']" role="row"></tr>
     </table>
 
     <!-- Empty state when no shortcuts match search -->
@@ -55,9 +60,7 @@
         <mat-icon svgIcon="search" class="empty-icon"></mat-icon>
         <h3>No shortcuts found</h3>
         <p>Try searching for a different term or clear your search.</p>
-        <button mat-raised-button color="accent" (click)="clearSearch()">
-          Clear Search
-        </button>
+        <button mat-raised-button color="accent" (click)="clearSearch()">Clear Search</button>
       </div>
     }
   </div>

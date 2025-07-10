@@ -115,11 +115,7 @@
 
       // Primary repair button
       &.repair-button {
-        background: linear-gradient(
-          135deg,
-          var(--warn-color) 0%,
-          var(--orange) 100%
-        );
+        background: linear-gradient(135deg, var(--warn-color) 0%, var(--orange) 100%);
         color: white;
 
         &:hover:not(:disabled) {

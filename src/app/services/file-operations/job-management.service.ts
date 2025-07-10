@@ -14,10 +14,9 @@ export type FilterOptions = Record<string, any>;
  * Handles job creation, monitoring, and lifecycle management
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class JobManagementService extends TauriBaseService {
-
   private activeJobsSubject = new BehaviorSubject<JobInfo[]>([]);
   public activeJobs$ = this.activeJobsSubject.asObservable();
 
@@ -43,7 +42,7 @@ export class JobManagementService extends TauriBaseService {
       source,
       dest,
       syncOptions: syncOptions || {},
-      filterOptions: filterOptions || {}
+      filterOptions: filterOptions || {},
     });
 
     return parseInt(jobId, 10);
@@ -66,7 +65,7 @@ export class JobManagementService extends TauriBaseService {
       source,
       dest,
       copyOptions: copyOptions || {},
-      filterOptions: filterOptions || {}
+      filterOptions: filterOptions || {},
     });
 
     return parseInt(jobId, 10);
@@ -164,7 +163,7 @@ export class JobManagementService extends TauriBaseService {
    */
   private setupJobListeners(): void {
     // Listen for job updates
-    this.listenToEvent<any>('ui_job_update').subscribe((payload) => {
+    this.listenToEvent<any>('ui_job_update').subscribe(payload => {
       const jobs = this.activeJobsSubject.value;
       const jobIndex = jobs.findIndex(j => j.jobid === payload.jobid);
 
@@ -175,7 +174,7 @@ export class JobManagementService extends TauriBaseService {
     });
 
     // Listen for job completion
-    this.listenToEvent<any>('ui_job_completed').subscribe((payload) => {
+    this.listenToEvent<any>('ui_job_completed').subscribe(payload => {
       const jobs = this.activeJobsSubject.value;
       const jobIndex = jobs.findIndex(j => j.jobid === payload.jobid);
 

@@ -8,17 +8,13 @@ import { Observable } from 'rxjs';
  * Handles common patterns for invoking Tauri commands and listening to events
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class TauriBaseService {
-
   /**
    * Invoke a Tauri command with error handling
    */
-  protected async invokeCommand<T>(
-    command: string, 
-    args?: Record<string, any>
-  ): Promise<T> {
+  protected async invokeCommand<T>(command: string, args?: Record<string, any>): Promise<T> {
     try {
       return await invoke<T>(command, args || {});
     } catch (error) {
@@ -31,11 +27,11 @@ export class TauriBaseService {
    * Listen to Tauri events with automatic cleanup
    */
   protected listenToEvent<T>(eventName: string): Observable<T> {
-    return new Observable((observer) => {
-      const unlisten = listen<T>(eventName, (event) => {
+    return new Observable(observer => {
+      const unlisten = listen<T>(eventName, event => {
         observer.next(event.payload);
       });
-      
+
       return () => {
         unlisten.then(f => f());
       };
@@ -48,9 +44,7 @@ export class TauriBaseService {
   protected async batchInvoke<T>(
     commands: { command: string; args?: Record<string, any> }[]
   ): Promise<T[]> {
-    const promises = commands.map(({ command, args }) => 
-      this.invokeCommand<T>(command, args)
-    );
+    const promises = commands.map(({ command, args }) => this.invokeCommand<T>(command, args));
     return Promise.all(promises);
   }
 }

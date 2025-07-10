@@ -1,20 +1,33 @@
-import { Component, EventEmitter, Input, Output } from "@angular/core";
-import { MatButtonModule } from "@angular/material/button";
-import { MatChipsModule } from "@angular/material/chips";
-import { MatTooltipModule } from "@angular/material/tooltip";
-import { MatDividerModule } from "@angular/material/divider";
-import { MatIconModule } from "@angular/material/icon";
-import { MatCardModule } from "@angular/material/card";
-import { CommonModule } from "@angular/common";
-import { MatProgressBarModule } from "@angular/material/progress-bar";
-import { MatTableModule } from "@angular/material/table";
-import { MatSortModule } from "@angular/material/sort";
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCardModule } from '@angular/material/card';
+import { CommonModule } from '@angular/common';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatSortModule } from '@angular/material/sort';
 
-import { JobInfo, Remote, SENSITIVE_KEYS } from "../../../../shared/components/types";
-import { DiskUsageConfig, DiskUsagePanelComponent, JobsPanelComponent, JobsPanelConfig, SettingsPanelComponent, SettingsPanelConfig } from "../../../../shared/detail-shared";
+import {
+  JobInfo,
+  Remote,
+  RemoteSettings,
+  SENSITIVE_KEYS,
+} from '../../../../shared/components/types';
+import {
+  DiskUsageConfig,
+  DiskUsagePanelComponent,
+  JobsPanelComponent,
+  JobsPanelConfig,
+  SettingsPanelComponent,
+  SettingsPanelConfig,
+} from '../../../../shared/detail-shared';
+import { IconService } from '../../../../services/ui/icon.service';
 
 @Component({
-  selector: "app-general-detail",
+  selector: 'app-general-detail',
   imports: [
     CommonModule,
     MatCardModule,
@@ -30,50 +43,33 @@ import { DiskUsageConfig, DiskUsagePanelComponent, JobsPanelComponent, JobsPanel
     SettingsPanelComponent,
     DiskUsagePanelComponent,
     JobsPanelComponent,
-
   ],
-  templateUrl: "./general-detail.component.html",
-  styleUrl: "./general-detail.component.scss",
+  templateUrl: './general-detail.component.html',
+  styleUrl: './general-detail.component.scss',
 })
 export class GeneralDetailComponent {
   @Input() selectedRemote!: Remote;
-  @Input() iconService: any;
+  @Input() iconService!: IconService;
   @Input() jobs: JobInfo[] = [];
-  @Input() actionInProgress:
-    | "mount"
-    | "unmount"
-    | "sync"
-    | "copy"
-    | "stop"
-    | "open"
-    | null = null;
+  @Input() actionInProgress: 'mount' | 'unmount' | 'sync' | 'copy' | 'stop' | 'open' | null = null;
   @Input() restrictMode!: boolean;
 
   @Output() openRemoteConfigModal = new EventEmitter<{
     editTarget?: string;
-    existingConfig?: any;
+    existingConfig?: RemoteSettings;
   }>();
   @Output() startOperation = new EventEmitter<{
-    type: "sync" | "copy";
+    type: 'sync' | 'copy';
     remoteName: string;
   }>();
   @Output() stopOperation = new EventEmitter<{
-    type: "sync" | "copy" | "mount" | string;
+    type: 'sync' | 'copy' | 'mount' | string;
     remoteName: string;
   }>();
   @Output() deleteJob = new EventEmitter<number>();
 
   // For jobs table
-  displayedColumns: string[] = [
-    "type",
-    "status",
-    "progress",
-    "startTime",
-    "actions",
-  ];
-
-
-  constructor() {}
+  displayedColumns: string[] = ['type', 'status', 'progress', 'startTime', 'actions'];
 
   // Configuration methods for shared components
   getRemoteConfigurationPanelConfig(): SettingsPanelConfig {
@@ -81,42 +77,40 @@ export class GeneralDetailComponent {
       section: {
         key: 'remote-config',
         title: 'Remote Configuration',
-        icon: 'wrench'
+        icon: 'wrench',
       },
       settings: this.selectedRemote.remoteSpecs,
       hasSettings: Object.keys(this.selectedRemote.remoteSpecs).length > 0,
       restrictMode: this.restrictMode,
       buttonColor: 'primary',
       buttonLabel: 'Edit Configuration',
-      sensitiveKeys: SENSITIVE_KEYS
+      sensitiveKeys: SENSITIVE_KEYS,
     };
   }
 
   getDiskUsageConfig(): DiskUsageConfig {
     return {
       mounted: this.selectedRemote.mountState?.mounted || false,
-      diskUsage: this.selectedRemote.mountState?.diskUsage
+      diskUsage: this.selectedRemote.mountState?.diskUsage,
     };
   }
 
   getJobsPanelConfig(): JobsPanelConfig {
     return {
       jobs: this.getRemoteJobs,
-      displayedColumns: this.displayedColumns
+      displayedColumns: this.displayedColumns,
     };
   }
 
   // Event handlers for shared components
   onEditRemoteConfiguration(): void {
     this.openRemoteConfigModal.emit({
-      editTarget: 'remote', 
-      existingConfig: this.selectedRemote.remoteSpecs
+      editTarget: 'remote',
+      existingConfig: this.selectedRemote.remoteSpecs,
     });
   }
 
   get getRemoteJobs(): JobInfo[] {
-    return this.jobs.filter(
-      (job) => job.remote_name === this.selectedRemote?.remoteSpecs.name
-    );
+    return this.jobs.filter(job => job.remote_name === this.selectedRemote?.remoteSpecs.name);
   }
 }

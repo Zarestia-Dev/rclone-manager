@@ -9,13 +9,7 @@ import { TransferFile } from '../../../shared/components/types';
 @Component({
   selector: 'app-active-transfers-table',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatTableModule,
-    MatProgressBarModule,
-    MatIconModule,
-    MatTooltipModule,
-  ],
+  imports: [CommonModule, MatTableModule, MatProgressBarModule, MatIconModule, MatTooltipModule],
   template: `
     <div class="transfers-table-container">
       @if (transfers.length > 0) {
@@ -25,17 +19,26 @@ import { TransferFile } from '../../../shared/components/types';
             <th mat-header-cell *matHeaderCellDef>File</th>
             <td mat-cell *matCellDef="let transfer" class="name-cell">
               <div class="file-info">
-                <mat-icon 
-                  svgIcon="file"
-                  class="file-icon"
-                  matTooltip="{{transfer.name}}">
+                <mat-icon svgIcon="file" class="file-icon" matTooltip="{{ transfer.name }}">
                 </mat-icon>
-                <span class="file-name" [title]="transfer.name">{{ getFileName(transfer.name) }}</span>
+                <span class="file-name" [title]="transfer.name">{{
+                  getFileName(transfer.name)
+                }}</span>
                 @if (transfer.isError) {
-                  <mat-icon svgIcon="circle-exclamation" class="error-icon" matTooltip="Transfer error" color="warn"></mat-icon>
+                  <mat-icon
+                    svgIcon="circle-exclamation"
+                    class="error-icon"
+                    matTooltip="Transfer error"
+                    color="warn"
+                  ></mat-icon>
                 }
                 @if (transfer.isCompleted) {
-                  <mat-icon svgIcon="circle-check" class="success-icon" matTooltip="Transfer completed" color="primary"></mat-icon>
+                  <mat-icon
+                    svgIcon="circle-check"
+                    class="success-icon"
+                    matTooltip="Transfer completed"
+                    color="primary"
+                  ></mat-icon>
                 }
               </div>
             </td>
@@ -48,13 +51,17 @@ import { TransferFile } from '../../../shared/components/types';
               <div class="progress-info">
                 <div class="progress-header">
                   <span class="progress-text">{{ transfer.percentage }}%</span>
-                  <span class="size-text">{{ formatFileSize(transfer.bytes) }} / {{ formatFileSize(transfer.size) }}</span>
+                  <span class="size-text"
+                    >{{ formatFileSize(transfer.bytes) }} /
+                    {{ formatFileSize(transfer.size) }}</span
+                  >
                 </div>
-                <mat-progress-bar 
-                  mode="determinate" 
+                <mat-progress-bar
+                  mode="determinate"
                   [value]="transfer.percentage"
                   [color]="getProgressColor(transfer)"
-                  class="progress-bar">
+                  class="progress-bar"
+                >
                 </mat-progress-bar>
               </div>
             </td>
@@ -88,14 +95,16 @@ import { TransferFile } from '../../../shared/components/types';
           </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;" 
-              class="transfer-row" 
-              [ngClass]="{
-                'completed': row.isCompleted,
-                'error': row.isError,
-                'active': !row.isCompleted && !row.isError
-              }">
-          </tr>
+          <tr
+            mat-row
+            *matRowDef="let row; columns: displayedColumns"
+            class="transfer-row"
+            [ngClass]="{
+              completed: row.isCompleted,
+              error: row.isError,
+              active: !row.isCompleted && !row.isError,
+            }"
+          ></tr>
         </table>
       } @else {
         <div class="no-transfers">
@@ -105,7 +114,7 @@ import { TransferFile } from '../../../shared/components/types';
       }
     </div>
   `,
-  styleUrls: ['./active-transfers-table.component.scss']
+  styleUrls: ['./active-transfers-table.component.scss'],
 })
 export class ActiveTransfersTableComponent {
   @Input() transfers: TransferFile[] = [];
@@ -138,7 +147,7 @@ export class ActiveTransfersTableComponent {
 
   formatTime(seconds: number): string {
     if (isNaN(seconds) || seconds <= 0) return '-';
-    
+
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);

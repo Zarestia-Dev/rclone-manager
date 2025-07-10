@@ -1,14 +1,14 @@
-export type AppTab = "mount" | "sync" | "copy" | "general";
-export type JobType = "sync" | "copy" | "move" | "check";
-export type JobStatus = "Running" | "Completed" | "Failed" | "Stopped";
+export type AppTab = 'mount' | 'sync' | 'copy' | 'general';
+export type JobType = 'sync' | 'copy' | 'move' | 'check';
+export type JobStatus = 'Running' | 'Completed' | 'Failed' | 'Stopped';
 export type RemoteAction =
-  | "mount"
-  | "unmount"
-  | "sync"
-  | "copy"
-  | "stop"
-  | "open"
-  | "delete"
+  | 'mount'
+  | 'unmount'
+  | 'sync'
+  | 'copy'
+  | 'stop'
+  | 'open'
+  | 'delete'
   | null;
 
 export interface RemoteSpecs {
@@ -84,7 +84,7 @@ export const DEFAULT_JOB_STATS: GlobalStats = {
   serverSideCopies: 0,
   serverSideMoves: 0,
   elapsedTime: 0,
-  lastError: "",
+  lastError: '',
   fatalError: false,
   retryError: false,
   serverSideCopyBytes: 0,
@@ -112,15 +112,15 @@ export interface Remote {
   remoteSpecs: RemoteSpecs;
   mountState?: {
     diskUsage?: DiskUsage;
-    mounted?: boolean | "error";
+    mounted?: boolean | 'error';
   };
   syncState?: {
-    isOnSync?: boolean | "error";
+    isOnSync?: boolean | 'error';
     syncJobID?: number;
     isLocal?: boolean;
   };
   copyState?: {
-    isOnCopy?: boolean | "error";
+    isOnCopy?: boolean | 'error';
     copyJobID?: number;
     isLocal?: boolean;
   };
@@ -150,11 +150,11 @@ export interface ModalSize {
 }
 
 export const STANDARD_MODAL_SIZE: ModalSize = {
-  width: "90vw",
-  maxWidth: "642px",
-  minWidth: "360px",
-  height: "80vh",
-  maxHeight: "600px",
+  width: '90vw',
+  maxWidth: '642px',
+  minWidth: '360px',
+  height: '80vh',
+  maxHeight: '600px',
 };
 
 export interface RcloneInfo {
@@ -203,11 +203,7 @@ export interface RemoteLogEntry {
 }
 
 export interface RepairData {
-  type:
-    | "rclone_path"
-    | "mount_plugin"
-    | "config_corrupt"
-    | "backend_unreachable";
+  type: 'rclone_path' | 'mount_plugin' | 'config_corrupt' | 'backend_unreachable';
   title?: string;
   message?: string;
 }
@@ -245,22 +241,22 @@ export interface MemoryStats {
 }
 
 export const SENSITIVE_KEYS = [
-  "password",
-  "secret",
-  "endpoint",
-  "token",
-  "key",
-  "credentials",
-  "auth",
-  "client_secret",
-  "client_id",
-  "api_key",
+  'password',
+  'secret',
+  'endpoint',
+  'token',
+  'key',
+  'credentials',
+  'auth',
+  'client_secret',
+  'client_id',
+  'api_key',
 ];
 
 export interface InputField {
   name: string;
   label: string;
-  type: "text" | "password" | "number" | "select" | "folder";
+  type: 'text' | 'password' | 'number' | 'select' | 'folder';
   required: boolean;
   options?: string[]; // for select type
 }

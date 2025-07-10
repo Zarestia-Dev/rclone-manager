@@ -57,11 +57,7 @@
       min-height: 300px;
       display: flex;
       flex-direction: column;
-      background: linear-gradient(
-        135deg,
-        var(--primary-color) 0%,
-        var(--accent-color) 100%
-      );
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
       box-shadow: var(--shadow-light);
 
       // Terminal Header
@@ -434,8 +430,7 @@
             border-bottom: 1px solid rgba(var(--primary-color-rgb), 0.3);
             font-size: calc(var(--log-font-size) - 1px);
             color: var(--light-green);
-            border-radius: 0 0 var(--button-border-radius)
-              var(--button-border-radius);
+            border-radius: 0 0 var(--button-border-radius) var(--button-border-radius);
             position: relative;
 
             pre {
@@ -478,12 +473,7 @@
             border-bottom-color: rgba(var(--red-rgb), 0.5);
 
             &::before {
-              background: linear-gradient(
-                90deg,
-                transparent 0%,
-                var(--red) 50%,
-                transparent 100%
-              );
+              background: linear-gradient(90deg, transparent 0%, var(--red) 50%, transparent 100%);
             }
 
             pre {
@@ -518,12 +508,7 @@
             border-bottom-color: rgba(158, 158, 158, 0.5);
 
             &::before {
-              background: linear-gradient(
-                90deg,
-                transparent 0%,
-                #9e9e9e 50%,
-                transparent 100%
-              );
+              background: linear-gradient(90deg, transparent 0%, #9e9e9e 50%, transparent 100%);
             }
 
             pre {

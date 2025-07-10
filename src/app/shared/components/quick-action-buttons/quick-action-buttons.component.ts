@@ -29,8 +29,8 @@ export interface QuickActionButton {
   template: `
     <div class="quick-actions">
       @for (button of buttons; track button.id) {
-        <button 
-          mat-mini-fab 
+        <button
+          mat-mini-fab
           [color]="button.color"
           [matTooltip]="button.tooltip"
           [disabled]="button.isDisabled"
@@ -51,8 +51,8 @@ export interface QuickActionButton {
 })
 export class QuickActionButtonsComponent {
   @Input() buttons: QuickActionButton[] = [];
-  
-  @Output() buttonClick = new EventEmitter<{id: string, event: Event}>();
+
+  @Output() buttonClick = new EventEmitter<{ id: string; event: Event }>();
 
   onButtonClick(buttonId: string, event: Event): void {
     event.stopPropagation();

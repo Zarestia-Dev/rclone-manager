@@ -8,12 +8,7 @@ import { AppTab, Remote, RemoteActionProgress } from '../../components/types';
 @Component({
   selector: 'app-remotes-panel',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatCardModule,
-    MatIconModule,
-    RemoteCardComponent,
-  ],
+  imports: [CommonModule, MatCardModule, MatIconModule, RemoteCardComponent],
   templateUrl: './remotes-panel.component.html',
   styleUrl: './remotes-panel.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -100,22 +95,26 @@ export class RemotesPanelComponent {
     // For general mode, determine variant based on remote state
     if (this.mode === 'general') {
       // Check if remote has any active operations
-      if (remote.mountState?.mounted === true || 
-          remote.syncState?.isOnSync === true || 
-          remote.copyState?.isOnCopy === true) {
+      if (
+        remote.mountState?.mounted === true ||
+        remote.syncState?.isOnSync === true ||
+        remote.copyState?.isOnCopy === true
+      ) {
         return 'active';
       }
-      
+
       // Check for error states (extend this logic based on your error handling)
-      if (remote.mountState?.mounted === 'error' || 
-          remote.syncState?.isOnSync === 'error' || 
-          remote.copyState?.isOnCopy === 'error') {
+      if (
+        remote.mountState?.mounted === 'error' ||
+        remote.syncState?.isOnSync === 'error' ||
+        remote.copyState?.isOnCopy === 'error'
+      ) {
         return 'error';
       }
-      
+
       return 'inactive';
     }
-    
+
     // For specific modes, use the provided variant
     return this.variant;
   }

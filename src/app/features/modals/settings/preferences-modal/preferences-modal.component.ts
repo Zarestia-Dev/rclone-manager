@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, ViewChild } from '@angular/core';
+import { Component, HostListener, OnInit, ViewChild, inject } from '@angular/core';
 import {
   FormBuilder,
   FormControl,
@@ -61,11 +61,11 @@ export class PreferencesModalComponent implements OnInit {
     { label: 'Experimental', icon: 'flask', key: 'experimental' },
   ];
 
-  constructor(
-    private dialogRef: MatDialogRef<PreferencesModalComponent>,
-    private fb: FormBuilder,
-    private appSettingsService: AppSettingsService
-  ) {
+  private dialogRef = inject(MatDialogRef<PreferencesModalComponent>);
+  private fb = inject(FormBuilder);
+  private appSettingsService = inject(AppSettingsService);
+
+  constructor() {
     this.settingsForm = this.fb.group({});
     this.filteredTabs = [...this.tabs];
   }

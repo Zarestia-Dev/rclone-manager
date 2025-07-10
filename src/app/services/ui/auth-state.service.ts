@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject, filter, firstValueFrom, take } from 'rxjs';
 import { RemoteManagementService } from '../remote/remote-management.service';
 
@@ -7,10 +7,9 @@ import { RemoteManagementService } from '../remote/remote-management.service';
  * Handles authentication lifecycle and cleanup
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class AuthStateService {
-
   // Authentication state
   private _isAuthInProgress$ = new BehaviorSubject<boolean>(false);
   private _currentRemoteName$ = new BehaviorSubject<string | null>(null);
@@ -24,7 +23,7 @@ export class AuthStateService {
   public currentRemoteName$ = this._currentRemoteName$.asObservable();
   public cleanupInProgress$ = this._cleanupInProgress$.asObservable();
 
-  constructor(private remoteManagementService: RemoteManagementService) {}
+  private remoteManagementService = inject(RemoteManagementService);
 
   /**
    * Start authentication process
@@ -34,7 +33,7 @@ export class AuthStateService {
       console.log('Waiting for previous cleanup to complete');
       await firstValueFrom(
         this._cleanupInProgress$.pipe(
-          filter((inProgress) => !inProgress),
+          filter(inProgress => !inProgress),
           take(1)
         )
       );
@@ -44,13 +43,8 @@ export class AuthStateService {
     this._currentRemoteName$.next(remoteName);
     this._isAuthCancelled$.next(false);
     this._isEditMode$.next(isEditMode);
-    
-    console.log(
-      'Starting auth for remote:',
-      remoteName,
-      'in edit mode:',
-      isEditMode
-    );
+
+    console.log('Starting auth for remote:', remoteName, 'in edit mode:', isEditMode);
   }
 
   /**
@@ -63,18 +57,13 @@ export class AuthStateService {
     }
 
     this._cleanupInProgress$.next(true);
-    
+
     try {
       this._isAuthCancelled$.next(true);
       const remoteName = this._currentRemoteName$.value;
       const isEditMode = this._isEditMode$.value;
-      
-      console.log(
-        'Cancelling auth for remote:',
-        remoteName,
-        'in edit mode:',
-        isEditMode
-      );
+
+      console.log('Cancelling auth for remote:', remoteName, 'in edit mode:', isEditMode);
 
       await this.remoteManagementService.quitOAuth();
 
@@ -119,7 +108,7 @@ export class AuthStateService {
       remoteName: this._currentRemoteName$.value,
       isCancelled: this._isAuthCancelled$.value,
       isEditMode: this._isEditMode$.value,
-      cleanupInProgress: this._cleanupInProgress$.value
+      cleanupInProgress: this._cleanupInProgress$.value,
     };
   }
 }

@@ -7,11 +7,7 @@ import { AppTab } from '../../components/types';
 @Component({
   selector: 'app-status-overview-panel',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatCardModule,
-    MatIconModule,
-  ],
+  imports: [CommonModule, MatCardModule, MatIconModule],
   templateUrl: './status-overview-panel.component.html',
   styleUrl: './status-overview-panel.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

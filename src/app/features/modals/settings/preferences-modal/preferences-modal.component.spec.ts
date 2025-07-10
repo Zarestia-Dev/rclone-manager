@@ -8,10 +8,9 @@ describe('PreferencesModalComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [PreferencesModalComponent]
-    })
-    .compileComponents();
-    
+      imports: [PreferencesModalComponent],
+    }).compileComponents();
+
     fixture = TestBed.createComponent(PreferencesModalComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();

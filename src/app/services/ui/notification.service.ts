@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm-modal.component';
@@ -9,14 +9,11 @@ import { ConfirmDialogData } from '../../shared/components/types';
  * Centralizes snackbar, modal, and toast notifications
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class NotificationService {
-
-  constructor(
-    private snackBar: MatSnackBar,
-    private dialog: MatDialog
-  ) { }
+  private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
 
   /**
    * Show success message
@@ -24,7 +21,7 @@ export class NotificationService {
   showSuccess(message: string, action = 'OK', duration = 3000): void {
     this.snackBar.open(message, action, {
       duration,
-      panelClass: ['success-snackbar']
+      panelClass: ['success-snackbar'],
     });
   }
 
@@ -34,7 +31,7 @@ export class NotificationService {
   showError(message: string, action = 'Close', duration = 5000): void {
     this.snackBar.open(message, action, {
       duration,
-      panelClass: ['error-snackbar']
+      panelClass: ['error-snackbar'],
     });
   }
 
@@ -44,7 +41,7 @@ export class NotificationService {
   showInfo(message: string, action = 'OK', duration = 3000): void {
     this.snackBar.open(message, action, {
       duration,
-      panelClass: ['info-snackbar']
+      panelClass: ['info-snackbar'],
     });
   }
 
@@ -54,7 +51,7 @@ export class NotificationService {
   showWarning(message: string, action = 'OK', duration = 4000): void {
     this.snackBar.open(message, action, {
       duration,
-      panelClass: ['warning-snackbar']
+      panelClass: ['warning-snackbar'],
     });
   }
 
@@ -81,14 +78,14 @@ export class NotificationService {
       confirmText,
     };
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const dialogRef = this.dialog.open(ConfirmModalComponent, {
         maxWidth: '480px',
         data: dialogData,
         disableClose: true,
       });
-      
-      dialogRef.afterClosed().subscribe((result) => {
+
+      dialogRef.afterClosed().subscribe(result => {
         resolve(!!result);
       });
     });
@@ -104,13 +101,13 @@ export class NotificationService {
       cancelText: buttonText,
     };
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const dialogRef = this.dialog.open(ConfirmModalComponent, {
         maxWidth: '480px',
         data: dialogData,
         disableClose: true,
       });
-      
+
       dialogRef.afterClosed().subscribe(() => {
         resolve();
       });

@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { DomSanitizer } from '@angular/platform-browser';
 import { MatIconRegistry } from '@angular/material/icon';
 
@@ -6,13 +6,12 @@ import { MatIconRegistry } from '@angular/material/icon';
   providedIn: 'root',
 })
 export class IconService {
+  private iconRegistry = inject(MatIconRegistry);
+  private sanitizer = inject(DomSanitizer);
   private icons: Record<string, string> = {};
   private fallbackIcon = 'hard-drive';
 
-  constructor(
-    private iconRegistry: MatIconRegistry,
-    private sanitizer: DomSanitizer
-  ) {
+  constructor() {
     this.registerIcons();
   }
 

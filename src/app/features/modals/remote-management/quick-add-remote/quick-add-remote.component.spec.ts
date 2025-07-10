@@ -8,9 +8,8 @@ describe('QuickAddRemoteComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [QuickAddRemoteComponent]
-    })
-    .compileComponents();
+      imports: [QuickAddRemoteComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(QuickAddRemoteComponent);
     component = fixture.componentInstance;

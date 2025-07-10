@@ -1,4 +1,4 @@
-@use '../../../styles/_shared_components';
+@use "../../../styles/_shared_components";
 
 .settings-container {
   width: 100%;
@@ -61,7 +61,6 @@
   background: rgba(var(--app-text-color-rgb), var(--inactive-opacity));
   border-top: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
 }
-
 
 @media (max-width: 480px) {
   .settings-grid {

@@ -8,32 +8,31 @@ import { AnimationsService } from '../../../services/core/animations.service';
   selector: 'app-search-container',
   standalone: true,
   imports: [CommonModule, FormsModule, MatInputModule],
-  animations: [
-    AnimationsService.slideToggle(),
-  ],
+  animations: [AnimationsService.slideToggle()],
   template: `
     <div class="search-container" [@slideToggle]="visible ? 'visible' : 'hidden'">
-      <input 
+      <input
         #searchInput
-        matInput 
-        [(ngModel)]="searchText" 
+        matInput
+        [(ngModel)]="searchText"
         (ngModelChange)="onSearchTextChange($event)"
         [placeholder]="placeholder"
         [attr.aria-label]="ariaLabel"
-        class="search-input" />
+        class="search-input"
+      />
     </div>
   `,
-  styleUrls: ['./search-container.component.scss']
+  styleUrls: ['./search-container.component.scss'],
 })
 export class SearchContainerComponent {
   @Input() visible = false;
   @Input() placeholder = 'Search...';
   @Input() ariaLabel = 'Search';
   @Input() searchText = '';
-  
+
   @Output() searchTextChange = new EventEmitter<string>();
   @Output() visibilityChange = new EventEmitter<boolean>();
-  
+
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
 
   onSearchTextChange(value: string): void {

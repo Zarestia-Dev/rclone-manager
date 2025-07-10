@@ -1,19 +1,21 @@
-@use '../../../styles/_shared-modal';
+@use "../../../styles/_shared-modal";
 
 :host {
   // Component-specific spacing overrides
-  --modal-padding: var(--space-lg);                    // 20px
-  --field-gap: var(--space-lg);                        // 20px
-  
+  --modal-padding: var(--space-lg); // 20px
+  --field-gap: var(--space-lg); // 20px
+
   // Component-specific styling
   --field-background: rgba(var(--app-background-rgb), 0.6);
   --field-border: rgba(var(--app-text-color-rgb), 0.12);
   --field-focus-border: var(--primary-color);
   --glassmorphism-bg: rgba(var(--app-background-rgb), 0.9);
-  --header-background: linear-gradient(135deg, 
+  --header-background: linear-gradient(
+    135deg,
     rgba(var(--app-text-color-rgb), 0.03) 0%,
-    rgba(var(--app-text-color-rgb), 0.01) 100%);
-  
+    rgba(var(--app-text-color-rgb), 0.01) 100%
+  );
+
   // Component-specific typography
   --title-font-size: 18px;
   --title-font-size-mobile: 18px;

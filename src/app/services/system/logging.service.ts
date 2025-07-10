@@ -6,10 +6,9 @@ import { TauriBaseService } from '../core/tauri-base.service';
  * Handles log retrieval and cleanup operations
  */
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class LoggingService extends TauriBaseService {
-
   /**
    * Get logs for a specific remote
    */
@@ -23,21 +22,5 @@ export class LoggingService extends TauriBaseService {
   async clearRemoteLogs(remoteName: string): Promise<void> {
     await this.invokeCommand('clear_logs_for_remote', { remoteName });
     console.log(`Logs for ${remoteName} cleared successfully.`);
-  }
-
-  /**
-   * Get all logs (if such functionality exists)
-   */
-  async getAllLogs(): Promise<Record<string, string[]>> {
-    // This would need to be implemented in the backend if needed
-    throw new Error('getAllLogs not implemented yet');
-  }
-
-  /**
-   * Export logs to file
-   */
-  async exportLogs(remoteName: string, filePath: string): Promise<void> {
-    // This would need to be implemented in the backend if needed
-    throw new Error('exportLogs not implemented yet');
   }
 }

@@ -25,7 +25,7 @@ export interface PathDisplayConfig {
     MatIconModule,
     MatButtonModule,
     MatProgressSpinnerModule,
-    MatTooltipModule
+    MatTooltipModule,
   ],
   styleUrls: ['./path-display.component.scss'],
   template: `
@@ -33,10 +33,13 @@ export interface PathDisplayConfig {
       <div class="path-item source-path">
         <div class="path-icon-container">
           @if (config.showOpenButtons && isLocalPath(config.source)) {
-            <button mat-icon-button class="folder-button" 
-                    [color]="config.operationColor"
-                    (click)="onOpenPath(config.source)" 
-                    matTooltip="Open in file explorer">
+            <button
+              mat-icon-button
+              class="folder-button"
+              [color]="config.operationColor"
+              (click)="onOpenPath(config.source)"
+              matTooltip="Open in file explorer"
+            >
               <mat-icon svgIcon="folder"></mat-icon>
             </button>
           } @else {
@@ -55,13 +58,15 @@ export interface PathDisplayConfig {
       <div class="path-item destination-path">
         <div class="path-icon-container">
           @if (config.showOpenButtons && isLocalPath(config.destination)) {
-            <button mat-icon-button 
-                    class="folder-button" 
-                    [class.active]="config.isDestinationActive"
-                    [class.inactive]="!config.isDestinationActive"
-                    [disabled]="config.actionInProgress === 'open' || !config.isDestinationActive"
-                    (click)="onOpenPath(config.destination)" 
-                    matTooltip="Open in file explorer">
+            <button
+              mat-icon-button
+              class="folder-button"
+              [class.active]="config.isDestinationActive"
+              [class.inactive]="!config.isDestinationActive"
+              [disabled]="config.actionInProgress === 'open' || !config.isDestinationActive"
+              (click)="onOpenPath(config.destination)"
+              matTooltip="Open in file explorer"
+            >
               @if (config.actionInProgress === 'open') {
                 <mat-spinner diameter="20"></mat-spinner>
               } @else {
@@ -85,7 +90,7 @@ export class PathDisplayComponent {
   @Output() openPath = new EventEmitter<string>();
 
   isLocalPath(path: string): boolean {
-    return !!(path && (path.startsWith("/") || path.match(/^[A-Za-z]:\\/)));
+    return !!(path && (path.startsWith('/') || path.match(/^[A-Za-z]:\\/)));
   }
 
   onOpenPath(path: string): void {

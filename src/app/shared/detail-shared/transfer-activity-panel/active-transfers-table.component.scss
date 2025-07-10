@@ -1,4 +1,4 @@
-@use '../../../styles/_shared_components';
+@use "../../../styles/_shared_components";
 
 .transfers-table-container {
   background: var(--app-background);
@@ -202,7 +202,8 @@
 }
 
 @keyframes speed-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }

@@ -1,29 +1,40 @@
 <div class="home-wrapper">
   <!-- Shutdown Overlay -->
-  <app-loading-overlay 
-    [isVisible]="isShuttingDown" 
-    title="Shutting Down" 
-    message="Please wait while the application shuts down safely..." 
+  <app-loading-overlay
+    [isVisible]="isShuttingDown"
+    title="Shutting Down"
+    message="Please wait while the application shuts down safely..."
     icon="refresh"
-    overlayType="fullscreen">
+    overlayType="fullscreen"
+  >
   </app-loading-overlay>
 
   @if (showDevelopmentBanner) {
-  <mat-toolbar class="development-banner">
-    <span class="warning-icon">🚧</span>
-    <span class="banner-message">Development Build</span>
-    <span class="banner-subtitle">Features may be unstable • Data loss possible • Not for production use</span>
-  </mat-toolbar>
+    <mat-toolbar class="development-banner">
+      <span class="warning-icon">🚧</span>
+      <span class="banner-message">Development Build</span>
+      <span class="banner-subtitle"
+        >Features may be unstable • Data loss possible • Not for production use</span
+      >
+    </mat-toolbar>
   }
 
-  <mat-toolbar [@slideToggle]="isMeteredConnection ? 'visible' : 'hidden'" class="metered-banner" role="alert">
+  <mat-toolbar
+    [@slideToggle]="isMeteredConnection ? 'visible' : 'hidden'"
+    class="metered-banner"
+    role="alert"
+  >
     You are on a metered connection. Some features may use extra data.
   </mat-toolbar>
 
   <mat-sidenav-container class="home-container">
     <!-- Sidebar -->
     <mat-sidenav #sidenav [(opened)]="isSidebarOpen" [mode]="sidebarMode">
-      <app-sidebar [iconService]="iconService" [remotes]="remotes" (remoteSelected)="selectRemote($event)">
+      <app-sidebar
+        [iconService]="iconService"
+        [remotes]="remotes"
+        (remoteSelected)="selectRemote($event)"
+      >
       </app-sidebar>
     </mat-sidenav>
 
@@ -38,107 +49,149 @@
 
       <!-- Remote Options Menu -->
       @if (selectedRemote) {
-      <div class="ellipsis-button-container">
-        <button mat-icon-button class="ellipsis-button" [matMenuTriggerFor]="remoteOptionsMenu">
-          <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
-        </button>
-        <mat-menu #remoteOptionsMenu="matMenu">
-          <!-- Show in Tray Menu (Toggle) -->
-          <button mat-menu-item (click)="$event.stopPropagation()">
-            <mat-checkbox labelPosition="before" [checked]="getRemoteSettingValue(selectedRemote.remoteSpecs.name, 'showOnTray')"
-              (change)="saveRemoteSettings(selectedRemote.remoteSpecs.name, { showOnTray: $event.checked })"
-              class="menu-checkbox">
-              <span class="menu-item-label">Show in Tray Menu</span>
-            </mat-checkbox>
+        <div class="ellipsis-button-container">
+          <button mat-icon-button class="ellipsis-button" [matMenuTriggerFor]="remoteOptionsMenu">
+            <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
           </button>
-          <mat-divider></mat-divider>
-          <!-- Remote Actions -->
-          <button mat-menu-item (click)="openLogsModal(selectedRemote.remoteSpecs.name)">
-            <span>View Logs</span>
-          </button>
-          <button mat-menu-item (click)="cloneRemote(selectedRemote.remoteSpecs.name)">
-            <span>Clone Remote</span>
-          </button>
-          <mat-divider></mat-divider>
-          <button mat-menu-item (click)="openExportModal(selectedRemote.remoteSpecs.name)">
-            <span>Export Configuration</span>
-          </button>
-          <button mat-menu-item (click)="resetRemoteSettings()">
-            <span>Reset Settings</span>
-          </button>
-          <mat-divider></mat-divider>
-          <!-- Delete Remote -->
-          <button mat-menu-item class="delete-option" (click)="deleteRemote(selectedRemote.remoteSpecs.name)">
-            <span>Delete Remote</span>
-          </button>
-        </mat-menu>
-      </div>
+          <mat-menu #remoteOptionsMenu="matMenu">
+            <!-- Show in Tray Menu (Toggle) -->
+            <button mat-menu-item (click)="$event.stopPropagation()">
+              <mat-checkbox
+                labelPosition="before"
+                [checked]="getRemoteSettingValue(selectedRemote.remoteSpecs.name, 'showOnTray')"
+                (change)="
+                  saveRemoteSettings(selectedRemote.remoteSpecs.name, {
+                    showOnTray: $event.checked,
+                  })
+                "
+                class="menu-checkbox"
+              >
+                <span class="menu-item-label">Show in Tray Menu</span>
+              </mat-checkbox>
+            </button>
+            <mat-divider></mat-divider>
+            <!-- Remote Actions -->
+            <button mat-menu-item (click)="openLogsModal(selectedRemote.remoteSpecs.name)">
+              <span>View Logs</span>
+            </button>
+            <button mat-menu-item (click)="cloneRemote(selectedRemote.remoteSpecs.name)">
+              <span>Clone Remote</span>
+            </button>
+            <mat-divider></mat-divider>
+            <button mat-menu-item (click)="openExportModal(selectedRemote.remoteSpecs.name)">
+              <span>Export Configuration</span>
+            </button>
+            <button mat-menu-item (click)="resetRemoteSettings()">
+              <span>Reset Settings</span>
+            </button>
+            <mat-divider></mat-divider>
+            <!-- Delete Remote -->
+            <button
+              mat-menu-item
+              class="delete-option"
+              (click)="deleteRemote(selectedRemote.remoteSpecs.name)"
+            >
+              <span>Delete Remote</span>
+            </button>
+          </mat-menu>
+        </div>
       }
 
       <!-- Empty State -->
       @if (remotes.length === 0 && !isLoading) {
-      <div class="empty-state">
-        <div class="empty-state-content">
-          <mat-icon svgIcon="rclone-2" class="empty-state-icon"></mat-icon>
-          <h2>RClone Manager</h2>
-          <p>Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for a fast and simple
-            setup.</p>
-          <div class="empty-state-actions">
-            <button mat-raised-button color="primary" (click)="openQuickAddRemoteModal()">
-              <mat-icon svgIcon="add"></mat-icon>
-              Add Quick Remote
-            </button>
-            <button mat-raised-button color="accent" (click)="openRemoteConfigModal()">
-              <mat-icon svgIcon="add"></mat-icon>
-              Add Detailed Remote
-            </button>
+        <div class="empty-state">
+          <div class="empty-state-content">
+            <mat-icon svgIcon="rclone-2" class="empty-state-icon"></mat-icon>
+            <h2>RClone Manager</h2>
+            <p>
+              Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for
+              a fast and simple setup.
+            </p>
+            <div class="empty-state-actions">
+              <button mat-raised-button color="primary" (click)="openQuickAddRemoteModal()">
+                <mat-icon svgIcon="add"></mat-icon>
+                Add Quick Remote
+              </button>
+              <button mat-raised-button color="accent" (click)="openRemoteConfigModal()">
+                <mat-icon svgIcon="add"></mat-icon>
+                Add Detailed Remote
+              </button>
+            </div>
           </div>
         </div>
-      </div>
       }
 
       <!-- Overview Components -->
       @if (remotes.length > 0 && !selectedRemote && !isLoading) {
-      @switch (currentTab) {
-      @case ('general') {
-      <app-general-overview [remotes]="remotes" [jobs]="jobs" [iconService]="iconService"
-        [actionInProgress]="actionInProgress" [bandwidthLimit]="bandwidthLimit" [systemInfoService]="systemInfoService"
-        (mountRemote)="mountRemote($event)" (unmountRemote)="unmountRemote($event)"
-        (stopJob)="stopOperation($event.type, $event.remoteName)" (browseRemote)="openRemoteInFiles($event, 'mount')"
-        (startOperation)="startOperation($event.type, $event.remoteName)" (selectRemote)="selectRemote($event)">
-      </app-general-overview>
-      }
-      @default {
-      <app-app-overview [mode]="currentTab" [iconService]="iconService" [remotes]="remotes"
-        (remoteSelected)="selectRemote($event)" (primaryAction)="handlePrimaryAction(currentTab, $event)"
-        (secondaryAction)="handleSecondaryAction(currentTab, $event)"
-        (openInFiles)="openRemoteInFiles($event, currentTab)" [actionInProgress]="actionInProgress">
-      </app-app-overview>
-      }
-      }
+        @switch (currentTab) {
+          @case ('general') {
+            <app-general-overview
+              [remotes]="remotes"
+              [jobs]="jobs"
+              [iconService]="iconService"
+              [actionInProgress]="actionInProgress"
+              [bandwidthLimit]="bandwidthLimit"
+              [systemInfoService]="systemInfoService"
+              (mountRemote)="mountRemote($event)"
+              (unmountRemote)="unmountRemote($event)"
+              (stopJob)="stopOperation($event.type, $event.remoteName)"
+              (browseRemote)="openRemoteInFiles($event, 'mount')"
+              (startOperation)="startOperation($event.type, $event.remoteName)"
+              (selectRemote)="selectRemote($event)"
+            >
+            </app-general-overview>
+          }
+          @default {
+            <app-app-overview
+              [mode]="currentTab"
+              [iconService]="iconService"
+              [remotes]="remotes"
+              (remoteSelected)="selectRemote($event)"
+              (primaryAction)="handlePrimaryAction(currentTab, $event)"
+              (secondaryAction)="handleSecondaryAction(currentTab, $event)"
+              (openInFiles)="openRemoteInFiles($event, currentTab)"
+              [actionInProgress]="actionInProgress"
+            >
+            </app-app-overview>
+          }
+        }
       }
 
       <!-- Remote Detail View -->
       @if (selectedRemote && !isLoading) {
-      @switch (currentTab) {
-      @case ('general') {
-      <app-general-detail [restrictMode]="restrictMode" [jobs]="getJobsForRemote(selectedRemote.remoteSpecs.name)"
-        (stopOperation)="stopOperation($event.type, $event.remoteName)"
-        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        [iconService]="iconService" [selectedRemote]="selectedRemote" (deleteJob)="deleteJob($event)">
-      </app-general-detail>
-      }
-      @default {
-      <app-app-detail [operationType]="currentTab" [iconService]="iconService" [selectedRemote]="selectedRemote"
-        [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)" [restrictMode]="restrictMode"
-        [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]"
-        (primaryAction)="handlePrimaryAction(currentTab, $event)"
-        (secondaryAction)="handleSecondaryAction(currentTab, $event)"
-        (openRemoteConfigModal)="openRemoteConfigModal($event.editTarget, $event.existingConfig)"
-        (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)">
-      </app-app-detail>
-      }
-      }
+        @switch (currentTab) {
+          @case ('general') {
+            <app-general-detail
+              [restrictMode]="restrictMode"
+              [jobs]="getJobsForRemote(selectedRemote.remoteSpecs.name)"
+              (stopOperation)="stopOperation($event.type, $event.remoteName)"
+              (openRemoteConfigModal)="
+                openRemoteConfigModal($event.editTarget, $event.existingConfig)
+              "
+              [iconService]="iconService"
+              [selectedRemote]="selectedRemote"
+              (deleteJob)="deleteJob($event)"
+            >
+            </app-general-detail>
+          }
+          @default {
+            <app-app-detail
+              [operationType]="currentTab"
+              [iconService]="iconService"
+              [selectedRemote]="selectedRemote"
+              [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
+              [restrictMode]="restrictMode"
+              [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]"
+              (primaryAction)="handlePrimaryAction(currentTab, $event)"
+              (secondaryAction)="handleSecondaryAction(currentTab, $event)"
+              (openRemoteConfigModal)="
+                openRemoteConfigModal($event.editTarget, $event.existingConfig)
+              "
+              (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)"
+            >
+            </app-app-detail>
+          }
+        }
       }
     </mat-sidenav-content>
   </mat-sidenav-container>

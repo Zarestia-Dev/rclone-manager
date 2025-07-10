@@ -1,25 +1,20 @@
-import { CommonModule } from "@angular/common";
-import {
-  Component,
-  EventEmitter,
-  Input,
-  Output,
-  ChangeDetectionStrategy,
-} from "@angular/core";
-import { MatButtonModule } from "@angular/material/button";
-import { MatCardModule } from "@angular/material/card";
-import { MatDividerModule } from "@angular/material/divider";
-import { MatIconModule } from "@angular/material/icon";
-import { MatProgressSpinnerModule } from "@angular/material/progress-spinner";
-import { MatTooltipModule } from "@angular/material/tooltip";
-import { AppTab, Remote, RemoteActionProgress } from "../../../../shared/components/types";
-import { AnimationsService } from "../../../../services/core/animations.service";
-import { OverviewHeaderComponent } from "../../../../shared/overviews-shared/overview-header/overview-header.component";
-import { StatusOverviewPanelComponent } from "../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component";
-import { RemotesPanelComponent } from "../../../../shared/overviews-shared/remotes-panel/remotes-panel.component";
+import { CommonModule } from '@angular/common';
+import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { AppTab, Remote, RemoteActionProgress } from '../../../../shared/components/types';
+import { AnimationsService } from '../../../../services/core/animations.service';
+import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
+import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
+import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
+import { IconService } from '../../../../services/ui/icon.service';
 
 @Component({
-  selector: "app-app-overview",
+  selector: 'app-app-overview',
   imports: [
     MatCardModule,
     MatDividerModule,
@@ -33,15 +28,15 @@ import { RemotesPanelComponent } from "../../../../shared/overviews-shared/remot
     RemotesPanelComponent,
   ],
   animations: [AnimationsService.fadeInOut()],
-  templateUrl: "./app-overview.component.html",
-  styleUrl: "./app-overview.component.scss",
+  templateUrl: './app-overview.component.html',
+  styleUrl: './app-overview.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppOverviewComponent {
-  @Input() mode: AppTab = "general"; // Default to 'general' mode
+  @Input() mode: AppTab = 'general'; // Default to 'general' mode
   @Input() remotes: Remote[] = [];
   @Input() selectedRemote: Remote | null = null;
-  @Input() iconService: any;
+  @Input() iconService!: IconService;
   @Input() actionInProgress: RemoteActionProgress = {};
 
   @Output() remoteSelected = new EventEmitter<Remote>();
@@ -52,12 +47,12 @@ export class AppOverviewComponent {
 
   // Computed properties based on mode
   get activeRemotes(): Remote[] {
-    return this.remotes.filter((remote) => {
-      if (this.mode === "mount") {
+    return this.remotes.filter(remote => {
+      if (this.mode === 'mount') {
         return remote.mountState?.mounted === true;
-      } else if (this.mode === "sync") {
+      } else if (this.mode === 'sync') {
         return remote.syncState?.isOnSync === true;
-      } else if (this.mode === "copy") {
+      } else if (this.mode === 'copy') {
         return remote.copyState?.isOnCopy === true;
       }
       return false;
@@ -65,12 +60,12 @@ export class AppOverviewComponent {
   }
 
   get inactiveRemotes(): Remote[] {
-    return this.remotes.filter((remote) => {
-      if (this.mode === "mount") {
+    return this.remotes.filter(remote => {
+      if (this.mode === 'mount') {
         return !remote.mountState?.mounted;
-      } else if (this.mode === "sync") {
+      } else if (this.mode === 'sync') {
         return !remote.syncState?.isOnSync;
-      } else if (this.mode === "copy") {
+      } else if (this.mode === 'copy') {
         return !remote.copyState?.isOnCopy;
       }
       return false;
@@ -78,13 +73,13 @@ export class AppOverviewComponent {
   }
 
   get errorRemotes(): Remote[] {
-    return this.remotes.filter((remote) => {
-      if (this.mode === "mount") {
-        return remote.mountState?.mounted === "error";
-      } else if (this.mode === "sync") {
-        return remote.syncState?.isOnSync === "error";
-      } else if (this.mode === "copy") {
-        return remote.copyState?.isOnCopy === "error";
+    return this.remotes.filter(remote => {
+      if (this.mode === 'mount') {
+        return remote.mountState?.mounted === 'error';
+      } else if (this.mode === 'sync') {
+        return remote.syncState?.isOnSync === 'error';
+      } else if (this.mode === 'copy') {
+        return remote.copyState?.isOnCopy === 'error';
       }
       return false;
     });
@@ -103,44 +98,44 @@ export class AppOverviewComponent {
   }
 
   get title(): string {
-    if (this.mode === "mount") {
-      return "Mount Overview";
-    } else if (this.mode === "sync") {
-      return "Sync Overview";
-    } else if (this.mode === "copy") {
-      return "Copy Overview";
+    if (this.mode === 'mount') {
+      return 'Mount Overview';
+    } else if (this.mode === 'sync') {
+      return 'Sync Overview';
+    } else if (this.mode === 'copy') {
+      return 'Copy Overview';
     }
-    return "Remotes Overview";
+    return 'Remotes Overview';
   }
 
   get primaryActionLabel(): string {
     switch (this.mode) {
-      case "mount":
-        return "Mount";
-      case "sync":
-        return "Start Sync";
-      case "copy":
-        return "Start Copy";
+      case 'mount':
+        return 'Mount';
+      case 'sync':
+        return 'Start Sync';
+      case 'copy':
+        return 'Start Copy';
       default:
-        return "Start";
+        return 'Start';
     }
   }
 
   get activeIcon(): string {
     switch (this.mode) {
-      case "mount":
-        return "mount";
-      case "sync":
-        return "sync";
-      case "copy":
-        return "copy";
+      case 'mount':
+        return 'mount';
+      case 'sync':
+        return 'sync';
+      case 'copy':
+        return 'copy';
       default:
-        return "circle-check";
+        return 'circle-check';
     }
   }
 
   get primaryActionIcon(): string {
-    return this.mode === "mount" ? "mount" : "play";
+    return this.mode === 'mount' ? 'mount' : 'play';
   }
 
   getActiveTitle(): string {

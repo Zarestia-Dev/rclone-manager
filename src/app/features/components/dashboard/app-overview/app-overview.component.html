@@ -10,7 +10,8 @@
       [totalCount]="remotes.length"
       [activeCount]="activeCount"
       [inactiveCount]="inactiveCount"
-      [errorCount]="errorCount">
+      [errorCount]="errorCount"
+    >
     </app-status-overview-panel>
 
     <!-- Active Remotes Panel -->
@@ -28,7 +29,8 @@
         (remoteSelected)="selectRemote($event)"
         (openInFiles)="triggerOpenInFiles($event)"
         (primaryAction)="triggerPrimaryAction($event)"
-        (secondaryAction)="triggerSecondaryAction($event)">
+        (secondaryAction)="triggerSecondaryAction($event)"
+      >
       </app-remotes-panel>
     }
 
@@ -47,7 +49,8 @@
         (remoteSelected)="selectRemote($event)"
         (openInFiles)="triggerOpenInFiles($event)"
         (primaryAction)="triggerPrimaryAction($event)"
-        (secondaryAction)="triggerSecondaryAction($event)">
+        (secondaryAction)="triggerSecondaryAction($event)"
+      >
       </app-remotes-panel>
     }
 
@@ -66,7 +69,8 @@
         (remoteSelected)="selectRemote($event)"
         (openInFiles)="triggerOpenInFiles($event)"
         (primaryAction)="triggerPrimaryAction($event)"
-        (secondaryAction)="triggerSecondaryAction($event)">
+        (secondaryAction)="triggerSecondaryAction($event)"
+      >
       </app-remotes-panel>
     }
   </div>
