@@ -41,7 +41,7 @@ impl RcApiEngine {
         );
 
         // Try falling back to system rclone
-        if is_rclone_available(app.clone()) {
+        if is_rclone_available(app.clone(), "") {
             info!("🔄 Rclone is available. Getting the path...");
             self.rclone_path = read_rclone_path(app);
         } else {

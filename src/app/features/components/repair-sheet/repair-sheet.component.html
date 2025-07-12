@@ -1,38 +1,82 @@
 <mat-nav-list class="repair-sheet" [class.repairing]="installing">
   <!-- Header Section with Icon and Content -->
   <div class="sheet-header">
-    <div class="repair-icon">
-      <mat-icon [svgIcon]="getRepairIcon()"></mat-icon>
+    <!-- Top section with icon and main content -->
+    <div class="repair-header-top">
+      <div class="repair-icon">
+        <mat-icon [svgIcon]="getRepairIcon()"></mat-icon>
+      </div>
+
+      <div class="repair-content">
+        <h3>{{ data.title || 'Repair Required' }}</h3>
+        <p>{{ data.message || 'A problem was detected. You can try repairing it below.' }}</p>
+      </div>
     </div>
 
-    <div class="sheet-content">
-      <h3>{{ data.title || 'Repair Required' }}</h3>
-      <p>{{ data.message || 'A problem was detected. You can try repairing it below.' }}</p>
+    @if (getRepairDetails()) {
+      <div class="repair-details">
+        @for (detail of getRepairDetails(); track $index) {
+          <div class="detail-item">
+            <mat-icon svgIcon="{{ detail.icon }}"></mat-icon>
+            <span
+              ><strong>{{ detail.label }}:</strong> {{ detail.value }}</span
+            >
+          </div>
+        }
+      </div>
+    }
 
-      @if (getRepairDetails()) {
-        <div class="repair-details">
-          @for (detail of getRepairDetails(); track $index) {
-            <div class="detail-item">
-              <mat-icon svgIcon="{{ detail.icon }}"></mat-icon>
-              <span
-                ><strong>{{ detail.label }}:</strong> {{ detail.value }}</span
-              >
-            </div>
-          }
-        </div>
+    <!-- Advanced Options for Rclone Path Repair -->
+    @if (isRclonePathRepair()) {
+      <div class="advanced-toggle">
+        <button mat-raised-button color="accent" (click)="toggleAdvanced()" [disabled]="installing">
+          <mat-icon
+            svgIcon="caret-down"
+            [style.transform]="showAdvanced ? 'rotate(180deg)' : 'rotate(0deg)'"
+            style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+          ></mat-icon>
+          {{ showAdvanced ? 'Hide' : 'Show' }} Advanced Options
+        </button>
+      </div>
+
+      @if (showAdvanced) {
+        <app-installation-options
+          [disabled]="installing"
+          (dataChange)="onInstallationOptionsChange($event)"
+          (validChange)="onInstallationValidChange($event)"
+        >
+        </app-installation-options>
       }
-    </div>
+    }
   </div>
 
   <!-- Actions Section -->
   <div class="sheet-actions">
     <button
       mat-raised-button
-      [disabled]="installing"
+      [disabled]="!canRepair()"
       class="repair-button"
       (click)="repair()"
-      [disabled]="installing"
       [attr.aria-label]="installing ? 'Repairing in progress' : 'Start repair process'"
+      [matTooltip]="
+        !canRepair() && !installing
+          ? installationData.installLocation === 'custom' &&
+            installationData.customPath.trim().length === 0
+            ? 'Please select an installation path first'
+            : installationData.installLocation === 'existing' &&
+                installationData.existingBinaryPath.trim().length === 0
+              ? 'Please select a binary file first'
+              : installationData.installLocation === 'existing' &&
+                  installationData.binaryTestResult === 'invalid'
+                ? 'The selected file is not a valid rclone binary'
+                : installationData.installLocation === 'existing' &&
+                    installationData.binaryTestResult === 'untested'
+                  ? 'Please test the selected binary first'
+                  : !installationValid
+                    ? 'Please fix validation errors'
+                    : ''
+          : ''
+      "
     >
       @if (installing) {
         <ng-container>

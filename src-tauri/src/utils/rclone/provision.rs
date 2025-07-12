@@ -27,7 +27,7 @@ pub async fn provision_rclone(
             .expect("Failed to get app data directory"),
     };
 
-    if is_rclone_available(app_handle.clone()) {
+    if is_rclone_available(app_handle.clone(), "") {
         if let Err(e) = save_settings(
             app_handle.state(),
             serde_json::json!({

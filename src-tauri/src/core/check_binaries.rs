@@ -64,23 +64,34 @@ pub fn is_7z_available() -> bool {
 // }
 
 #[tauri::command]
-pub fn is_rclone_available(app: AppHandle) -> bool {
-    // Try configured path if app is provided
-    let rclone_path = read_rclone_path(&app);
+pub fn is_rclone_available(app: AppHandle, path: &str) -> bool {
+    let rclone_path = if !path.is_empty() {
+        // Use the explicit path if provided
+        get_rclone_binary_path(&PathBuf::from(path))
+    } else {
+        // Read the configured path from app state
+        read_rclone_path(&app)
+    };
+
+    // Check if the path exists and can execute --version
     if rclone_path.exists() {
-        // Try to launch rclone --version
-        if Command::new(&rclone_path)
+        Command::new(&rclone_path)
             .arg("--version")
             .output()
             .map(|o| o.status.success())
             .unwrap_or(false)
-        {
-            return true;
-        }
+    } else {
+        false
     }
+}
 
-    // Fallback: check system PATH
-    which::which("rclone").is_ok()
+fn get_rclone_binary_path(base_path: &std::path::Path) -> PathBuf {
+    let bin = if cfg!(windows) {
+        "rclone.exe"
+    } else {
+        "rclone"
+    };
+    base_path.join(bin)
 }
 
 pub fn read_rclone_path(app: &AppHandle) -> PathBuf {
@@ -91,12 +102,7 @@ pub fn read_rclone_path(app: &AppHandle) -> PathBuf {
 
     // First try the configured path
     if rclone_path.to_string_lossy() != "system" {
-        let bin = if cfg!(windows) {
-            "rclone.exe"
-        } else {
-            "rclone"
-        };
-        let configured_path = rclone_path.join(bin);
+        let configured_path = get_rclone_binary_path(&rclone_path);
 
         if configured_path.exists() {
             debug!(

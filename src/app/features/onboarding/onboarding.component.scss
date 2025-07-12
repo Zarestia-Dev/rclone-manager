@@ -10,15 +10,7 @@
   min-height: 100vh;
   width: 100%;
   backdrop-filter: blur(4px);
-  background:
-    radial-gradient(circle at 20% 50%, rgba(var(--primary-color-rgb), 0.5) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(var(--accent-color-rgb), 0.5) 0%, transparent 50%),
-    radial-gradient(circle at 40% 80%, rgba(var(--primary-color-rgb), 0.5) 0%, transparent 50%),
-    linear-gradient(
-      135deg,
-      rgba(var(--app-background-rgb), 0.9) 0%,
-      rgba(var(--secondary-background-rgb), 0.9) 100%
-    );
+  background: var(--onboarding-background);
 
   .card-container {
     display: flex;
@@ -135,77 +127,6 @@
   .form-section {
     width: 100%;
     max-width: 400px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-
-    mat-radio-group {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-
-      .installation-option {
-        display: flex;
-        align-items: start;
-        background: rgba(var(--secondary-background-rgb), 0.5);
-        border: 1px solid rgba(var(--app-text-color-rgb), 0.08);
-        border-radius: 12px;
-        padding: 16px;
-        transition: all 0.2s ease;
-
-        &:hover {
-          background: rgba(var(--primary-color-rgb), 0.04);
-          border-color: rgba(var(--primary-color-rgb), 0.2);
-        }
-
-        &.mat-radio-checked {
-          background: rgba(var(--primary-color-rgb), 0.08);
-          border-color: var(--accent-color);
-          box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.2);
-        }
-
-        .mat-radio-label-content {
-          width: 100%;
-          margin-left: 12px;
-        }
-
-        .option-content {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 4px;
-
-          .option-title {
-            font-weight: 500;
-            color: var(--app-text-color);
-            font-size: 0.95rem;
-          }
-
-          .option-description {
-            font-size: 0.85rem;
-            color: var(--secondary-text-color);
-            opacity: 0.8;
-          }
-        }
-      }
-    }
-
-    .path-selector {
-      .path-field {
-        width: 100%;
-
-        .mat-form-field-wrapper {
-          background: var(--secondary-background);
-          border-radius: 8px;
-        }
-
-        &.mat-focused {
-          .mat-form-field-wrapper {
-            box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.2);
-          }
-        }
-      }
-    }
   }
 }
 
@@ -218,57 +139,17 @@
   border-top: 1px solid rgba(var(--app-text-color-rgb), 0.06);
   background: rgba(var(--secondary-background-rgb), 0.3);
 
-  .nav-left,
-  .nav-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .nav-button {
-    height: 40px;
-    border-radius: 20px;
+  .secondary {
+    color: var(--secondary-text-color);
     font-weight: 500;
-    letter-spacing: 0.01em;
-    transition: all 0.2s ease;
-
-    &.secondary {
-      color: var(--secondary-text-color);
-    }
-
-    &.primary {
-      background: var(--accent-color);
-      color: white;
-
-      &:hover {
-        background: rgba(var(--primary-color-rgb), 0.9);
-        transform: translateY(-1px);
-        box-shadow: var(--box-shadow);
-      }
-    }
-
-    mat-icon {
-      font-size: 1.125rem;
-      width: 18px;
-      height: 18px;
-    }
   }
 
-  .action-button {
-    transition: all 0.2s ease;
-
-    &:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: var(--box-shadow);
-    }
-
-    &.finish-button {
-      background: linear-gradient(
-        135deg,
-        var(--accent-color) 0%,
-        rgba(var(--primary-color-rgb), 0.9) 100%
-      );
-    }
+  &.finish-button {
+    background: linear-gradient(
+      135deg,
+      var(--accent-color) 0%,
+      rgba(var(--primary-color-rgb), 0.9) 100%
+    );
   }
 }
 
@@ -294,17 +175,6 @@
 
     .form-section {
       max-width: none;
-    }
-  }
-
-  .footer-navigation {
-    flex-direction: column;
-    gap: 16px;
-    align-items: stretch;
-
-    .nav-left,
-    .nav-right {
-      justify-content: center;
     }
   }
 }

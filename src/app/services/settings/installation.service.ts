@@ -19,37 +19,6 @@ export class InstallationService extends TauriBaseService {
   }
 
   /**
-   * Test if a given rclone path is valid and working
-   * @param rclonePath Path to the rclone executable to test
-   */
-  async testRclonePath(rclonePath: string): Promise<boolean> {
-    return this.invokeCommand<boolean>('test_rclone_path', { rclonePath });
-  }
-
-  /**
-   * Set a custom rclone path and save it to settings
-   * @param rclonePath Path to the rclone executable
-   */
-  async setRclonePath(rclonePath: string): Promise<string> {
-    return this.invokeCommand<string>('set_rclone_path', { rclonePath });
-  }
-
-  /**
-   * Get the default rclone config path
-   */
-  async getDefaultRcloneConfigPath(): Promise<string> {
-    return this.invokeCommand<string>('get_default_rclone_config_path');
-  }
-
-  /**
-   * Set rclone config path and save it to settings
-   * @param configPath Path to the rclone config file
-   */
-  async setRcloneConfigPath(configPath: string): Promise<string> {
-    return this.invokeCommand<string>('set_rclone_config_path', { configPath });
-  }
-
-  /**
    * Check if mount plugin is installed
    */
   async isMountPluginInstalled(): Promise<boolean> {

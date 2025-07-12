@@ -47,42 +47,13 @@
           <!-- Form Content (if applicable) -->
           @if (cards[currentCardIndex].title === 'Install RClone' && !rcloneInstalled) {
             <div class="form-section" @slideInOut>
-              <mat-radio-group [(ngModel)]="installLocation" [disabled]="installing">
-                <mat-radio-button value="default" class="installation-option">
-                  <div class="option-content">
-                    <div class="option-title">Automatic Installation</div>
-                    <div class="option-description">Install to the recommended system location</div>
-                  </div>
-                </mat-radio-button>
-                <mat-radio-button value="custom" class="installation-option">
-                  <div class="option-content">
-                    <div class="option-title">Custom Location</div>
-                    <div class="option-description">Choose where to install RClone</div>
-                  </div>
-                </mat-radio-button>
-              </mat-radio-group>
-
-              @if (installLocation === 'custom') {
-                <div class="path-selector" @slideInOut>
-                  <mat-form-field color="accent" class="path-field">
-                    <mat-label>Installation Path</mat-label>
-                    <input
-                      matInput
-                      [(ngModel)]="customPath"
-                      readonly
-                      placeholder="Choose folder..."
-                    />
-                    <button
-                      matSuffix
-                      mat-icon-button
-                      (click)="selectCustomFolder()"
-                      matTooltip="Browse for folder"
-                    >
-                      <mat-icon svgIcon="folder"></mat-icon>
-                    </button>
-                  </mat-form-field>
-                </div>
-              }
+              <app-installation-options
+                [disabled]="installing"
+                [tabOptions]="onboardingTabOptions"
+                (dataChange)="onInstallationOptionsChange($event)"
+                (validChange)="onInstallationValidChange($event)"
+              >
+              </app-installation-options>
             </div>
           }
         </div>
@@ -90,27 +61,24 @@
 
       <!-- Footer Navigation -->
       <div class="footer-navigation">
-        <div class="nav-left">
+        <div>
           @if (currentCardIndex > 0) {
-            <button mat-button (click)="previousCard()" class="nav-button secondary">
+            <button mat-button (click)="previousCard()" class="secondary">
               <mat-icon svgIcon="left-arrow"></mat-icon>
               Back
             </button>
           }
         </div>
 
-        <div class="nav-right">
+        <div>
           @if (shouldShowInstallRcloneButton()) {
             <button
               mat-raised-button
               color="primary"
               (click)="installRclone()"
               [disabled]="!canInstallRclone()"
-              class="action-button"
               [matTooltip]="
-                installLocation === 'custom' && customPath.trim().length === 0
-                  ? 'Please select an installation path first'
-                  : ''
+                !canInstallRclone() ? 'Please complete the installation options above' : ''
               "
             >
               <mat-icon
@@ -125,7 +93,6 @@
               color="primary"
               (click)="installMountPlugin()"
               [disabled]="downloadingPlugin"
-              class="action-button"
             >
               <mat-icon
                 [svgIcon]="downloadingPlugin ? 'refresh' : 'download'"
@@ -138,18 +105,13 @@
               mat-raised-button
               color="primary"
               (click)="completeOnboarding()"
-              class="action-button finish-button"
+              class="finish-button"
             >
               <mat-icon svgIcon="circle-check"></mat-icon>
               Get Started
             </button>
           } @else {
-            <button
-              mat-raised-button
-              color="primary"
-              (click)="nextCard()"
-              class="nav-button primary"
-            >
+            <button mat-raised-button color="primary" (click)="nextCard()">
               Next
               <mat-icon svgIcon="right-arrow"></mat-icon>
             </button>

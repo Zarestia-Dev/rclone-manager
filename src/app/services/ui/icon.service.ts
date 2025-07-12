@@ -98,6 +98,8 @@ export class IconService {
       'right-left': 'assets/icons/right-left.svg',
       'arrow-rotate-left': 'assets/icons/arrow-rotate-left.svg',
       gear: 'assets/icons/gear.svg',
+      bolt: 'assets/icons/bolt.svg',
+      star: 'assets/icons/star.svg',
     };
 
     this.icons = icons;

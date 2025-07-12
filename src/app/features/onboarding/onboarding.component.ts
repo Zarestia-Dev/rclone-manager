@@ -1,18 +1,19 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Output, OnInit, HostListener, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatRadioModule } from '@angular/material/radio';
-import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AnimationsService } from '../../services/core/animations.service';
 import { SystemInfoService } from '../../services/system/system-info.service';
 import { InstallationService } from '../../services/settings/installation.service';
-import { FileSystemService } from '../../services/file-operations/file-system.service';
+import { AppSettingsService } from '../../services/settings/app-settings.service';
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
+import {
+  InstallationOptionsComponent,
+  InstallationOptionsData,
+  InstallationTabOption,
+} from '../../shared/components/installation-options/installation-options.component';
 
 @Component({
   selector: 'app-onboarding',
@@ -20,14 +21,11 @@ import { LoadingOverlayComponent } from '../../shared/components/loading-overlay
   imports: [
     CommonModule,
     MatCardModule,
-    MatFormFieldModule,
-    FormsModule,
-    MatInputModule,
-    MatRadioModule,
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
     LoadingOverlayComponent,
+    InstallationOptionsComponent,
   ],
   animations: [
     AnimationsService.getAnimations([
@@ -43,8 +41,15 @@ import { LoadingOverlayComponent } from '../../shared/components/loading-overlay
 export class OnboardingComponent implements OnInit {
   @Output() completed = new EventEmitter<void>();
 
-  installLocation: 'default' | 'custom' = 'default';
-  customPath = '';
+  // Installation options data from shared component
+  installationData: InstallationOptionsData = {
+    installLocation: 'default',
+    customPath: '',
+    existingBinaryPath: '',
+    binaryTestResult: 'untested',
+  };
+  installationValid = true;
+
   mountPluginInstalled = false;
   downloadingPlugin = false;
   currentCardIndex = 0;
@@ -77,7 +82,13 @@ export class OnboardingComponent implements OnInit {
   // Inject services using inject() function
   private systemInfoService = inject(SystemInfoService);
   private installationService = inject(InstallationService);
-  private fileSystemService = inject(FileSystemService);
+  private appSettingsService = inject(AppSettingsService);
+
+  onboardingTabOptions: InstallationTabOption[] = [
+    { key: 'default', label: 'Recommended', icon: 'star' },
+    { key: 'custom', label: 'Custom', icon: 'folder' },
+    { key: 'existing', label: 'Existing', icon: 'file' },
+  ];
 
   async ngOnInit(): Promise<void> {
     console.log('OnboardingComponent: ngOnInit started');
@@ -131,7 +142,7 @@ export class OnboardingComponent implements OnInit {
           image: '../assets/rclone.svg',
           title: 'Install RClone',
           content:
-            "RClone is required for cloud storage operations. Choose your preferred installation location and we'll handle the setup automatically.",
+            "RClone is required for cloud storage operations. Choose your preferred installation location or binary location and we'll handle the setup automatically.",
         });
       }
     } catch (error) {
@@ -207,14 +218,29 @@ export class OnboardingComponent implements OnInit {
   async installRclone(): Promise<void> {
     this.installing = true;
     try {
-      const installPath = this.installLocation === 'default' ? null : this.customPath;
-      const result = await this.installationService.installRclone(installPath);
-      console.log('Installation result:', result);
+      if (this.installationData.installLocation === 'existing') {
+        // For existing binary, just save the path to settings
+        await this.appSettingsService.saveSetting(
+          'core',
+          'rclone_path',
+          this.installationData.existingBinaryPath
+        );
+        console.log('Configured rclone path:', this.installationData.existingBinaryPath);
+      } else {
+        // Regular installation
+        const installPath =
+          this.installationData.installLocation === 'default'
+            ? null
+            : this.installationData.customPath;
+        const result = await this.installationService.installRclone(installPath);
+        console.log('Installation result:', result);
+      }
+
       this.rcloneInstalled = true;
       // Move to next card after installation
       this.nextCard();
     } catch (error) {
-      console.error('RClone installation failed:', error);
+      console.error('RClone installation/configuration failed:', error);
     } finally {
       this.installing = false;
     }
@@ -249,39 +275,49 @@ export class OnboardingComponent implements OnInit {
       return false;
     }
 
-    // If default installation is selected, always allow
-    if (this.installLocation === 'default') {
-      return true;
-    }
-
-    // If custom installation is selected, require a path to be selected
-    if (this.installLocation === 'custom') {
-      return this.customPath.trim().length > 0;
-    }
-
-    return false;
+    // Use the installation validity from shared component
+    return this.installationValid;
   }
 
   // Get dynamic button text based on validation state
   getInstallButtonText(): string {
     if (this.installing) {
-      return 'Installing...';
+      return this.installationData.installLocation === 'existing'
+        ? 'Configuring...'
+        : 'Installing...';
     }
 
-    if (this.installLocation === 'custom' && this.customPath.trim().length === 0) {
-      return 'Select Path First';
+    if (this.installationData.installLocation === 'custom') {
+      if (this.installationData.customPath.trim().length === 0) {
+        return 'Select Path First';
+      }
+    }
+
+    if (this.installationData.installLocation === 'existing') {
+      if (this.installationData.existingBinaryPath.trim().length === 0) {
+        return 'Select Binary First';
+      }
+      if (this.installationData.binaryTestResult === 'invalid') {
+        return 'Invalid Binary';
+      }
+      if (this.installationData.binaryTestResult === 'testing') {
+        return 'Testing Binary...';
+      }
+      if (this.installationData.binaryTestResult === 'valid') {
+        return 'Use This Binary';
+      }
+      return 'Test Binary First';
     }
 
     return 'Install RClone';
   }
 
-  async selectCustomFolder(): Promise<void> {
-    try {
-      this.customPath = await this.fileSystemService.selectFolder();
-    } catch (error) {
-      console.error('Failed to select folder:', error);
-      // Handle error appropriately - could show a notification
-    }
+  onInstallationOptionsChange(data: InstallationOptionsData): void {
+    this.installationData = { ...data };
+  }
+
+  onInstallationValidChange(valid: boolean): void {
+    this.installationValid = valid;
   }
 
   completeOnboarding(): void {

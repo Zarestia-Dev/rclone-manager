@@ -1,0 +1,102 @@
+<div class="advanced-options" @slideInOut>
+  <div class="options-tabs">
+    @for (tab of tabOptions; track tab) {
+      <button
+        type="button"
+        class="option-tab"
+        [class.active]="installLocation === tab.key"
+        (click)="setInstallLocation(tab.key)"
+        [disabled]="disabled"
+      >
+        <mat-icon [svgIcon]="tab.icon"></mat-icon>
+        <span>{{ tab.label }}</span>
+      </button>
+    }
+  </div>
+
+  <div class="option-content">
+    @switch (installLocation) {
+      @case ('default') {
+        <div class="option-info">
+          <p>
+            Install rclone to the system location automatically.<br />
+            This is the recommended option for most users.
+          </p>
+        </div>
+      }
+      @case ('custom') {
+        <div class="option-info" @slideInOut>
+          <p>Choose a custom location to install rclone.</p>
+          <mat-form-field color="accent" appearance="outline" class="compact-field">
+            <mat-label>Installation Path</mat-label>
+            <input
+              matInput
+              [formControl]="customPathControl"
+              [(ngModel)]="customPath"
+              placeholder="/path/to/install"
+            />
+            <button
+              matSuffix
+              mat-icon-button
+              (click)="selectCustomFolder()"
+              matTooltip="Browse"
+              [disabled]="disabled"
+            >
+              <mat-icon svgIcon="folder"></mat-icon>
+            </button>
+            @if (customPathControl.invalid && customPathControl.touched) {
+              <mat-error>{{ getValidationMessage(customPathControl) }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      }
+      @case ('existing') {
+        <div class="option-info" @slideInOut>
+          <p>Select an existing rclone binary on your system.</p>
+          <mat-form-field color="accent" appearance="outline">
+            <mat-label>Binary Path</mat-label>
+            <input
+              matInput
+              [formControl]="existingBinaryControl"
+              [(ngModel)]="existingBinaryPath"
+              placeholder="/path/to/rclone"
+            />
+            <button
+              matSuffix
+              mat-icon-button
+              (click)="selectExistingBinary()"
+              matTooltip="Browse"
+              [disabled]="disabled"
+            >
+              <mat-icon svgIcon="folder"></mat-icon>
+            </button>
+            @if (existingBinaryControl.invalid && existingBinaryControl.touched) {
+              <mat-error>{{ getValidationMessage(existingBinaryControl) }}</mat-error>
+            }
+          </mat-form-field>
+
+          @if (existingBinaryPath.trim().length > 0) {
+            <div class="binary-status" [class]="binaryTestResult">
+              <mat-icon
+                [svgIcon]="getBinaryTestStatusIcon()"
+                [class.animate-spin]="binaryTestResult === 'testing'"
+              ></mat-icon>
+              <span>{{ getBinaryTestStatusText() }}</span>
+              @if (binaryTestResult !== 'valid') {
+                <button
+                  mat-stroked-button
+                  (click)="testSelectedBinary()"
+                  [disabled]="
+                    disabled || binaryTestResult === 'testing' || !existingBinaryPath.trim()
+                  "
+                >
+                  {{ binaryTestResult === 'testing' ? 'Testing...' : 'Test' }}
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+    }
+  </div>
+</div>
