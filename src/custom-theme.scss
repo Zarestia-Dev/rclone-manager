@@ -463,6 +463,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   /* Component-specific Aliases (mapped to scale) */
   --border-radius: var(--radius-xs); // 8px
   --button-border-radius: var(--radius-sm); // 12px
+  --input-border-radius: var(--radius-sm); // 12px - Border radius for input fields
   --card-border-radius: var(--radius-sm); // 12px
   --panel-radius: var(--radius-sm); // 12px
   --modal-radius: var(--radius-md); // 16px

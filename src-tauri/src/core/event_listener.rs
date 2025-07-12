@@ -289,13 +289,17 @@ fn handle_settings_changed(app: &AppHandle) {
                         let rclone_state = app_handle.state::<RcloneState>();
                         let old_rclone_path = rclone_state.rclone_path.read().unwrap().clone();
                         debug!("Old rclone path: {}", old_rclone_path.to_string_lossy());
+                        {
+                            let mut path_guard = rclone_state.rclone_path.write().unwrap();
+                            *path_guard = std::path::PathBuf::from(rclone_path);
+                        }
 
                         // Restart engine with new rclone path
                         if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
                             &app_handle,
                             "rclone_path",
                             &old_rclone_path.to_string_lossy(),
-                            &rclone_state.rclone_path.read().unwrap().to_string_lossy(),
+                            rclone_path,
                         ) {
                             error!("Failed to restart engine for rclone path change: {e}");
                         }

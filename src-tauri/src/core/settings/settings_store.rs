@@ -19,9 +19,11 @@ impl Default for AppSettings {
                 max_tray_items: 5,
                 rclone_api_port: 51900,   // change port to dynamic port
                 rclone_oauth_port: 51901, // change port to dynamic port
-                connection_check_urls:
-                    "https://www.google.com;https://www.dropbox.com;https://onedrive.live.com"
-                        .to_string(),
+                connection_check_urls: vec![
+                    "https://www.google.com".to_string(),
+                    "https://www.dropbox.com".to_string(),
+                    "https://onedrive.live.com".to_string(),
+                ],
                 // default_mount_type: "native".to_string(),
                 bandwidth_limit: "".to_string(),
                 rclone_config_path: "".to_string(),
@@ -56,16 +58,23 @@ impl Default for AppSettings {
 impl AppSettings {
     pub fn get_metadata() -> HashMap<String, SettingMetadata> {
         let mut metadata = HashMap::new();
+
         metadata.insert(
             "general.start_on_startup".to_string(),
             SettingMetadata {
                 display_name: "Start on Startup".to_string(),
                 value_type: "bool".to_string(),
                 help_text: "Automatically start the app when the system starts.".to_string(),
+                validation_type: None,
                 validation_pattern: None,
                 validation_message: None,
+                min_value: None,
+                max_value: None,
+                step: None,
+                placeholder: None,
                 options: None,
                 required: Some(true),
+                requires_restart: Some(false),
             },
         );
 
@@ -75,10 +84,16 @@ impl AppSettings {
                 display_name: "Enable Notifications".to_string(),
                 value_type: "bool".to_string(),
                 help_text: "Show notifications for mount events.".to_string(),
+                validation_type: None,
                 validation_pattern: None,
                 validation_message: None,
+                min_value: None,
+                max_value: None,
+                step: None,
+                placeholder: None,
                 options: None,
                 required: Some(true),
+                requires_restart: Some(false),
             },
         );
 
@@ -89,10 +104,16 @@ impl AppSettings {
                 value_type: "bool".to_string(),
                 help_text: "Show an icon in the system tray. Also enables the background service."
                     .to_string(),
+                validation_type: None,
                 validation_pattern: None,
                 validation_message: None,
+                min_value: None,
+                max_value: None,
+                step: None,
+                placeholder: None,
                 options: None,
                 required: Some(true),
+                requires_restart: Some(false),
             },
         );
 
@@ -101,12 +122,17 @@ impl AppSettings {
             SettingMetadata {
                 display_name: "Restrict Values".to_string(),
                 value_type: "bool".to_string(),
-                help_text: "Restrict some specific values for security purposes (e.g., Token, Client ID, etc.)"
-                    .to_string(),
+                help_text: "Restrict some specific values for security purposes (e.g., Token, Client ID, etc.)".to_string(),
+                validation_type: None,
                 validation_pattern: None,
                 validation_message: None,
+                min_value: None,
+                max_value: None,
+                step: None,
+                placeholder: None,
                 options: None,
                 required: Some(true),
+                requires_restart: Some(false),
             },
         );
 
@@ -116,10 +142,16 @@ impl AppSettings {
                 display_name: "Bandwidth Limit".to_string(),
                 value_type: "string".to_string(),
                 help_text: "Limit the bandwidth used by Rclone transfers. It can be specified as 'upload:download'".to_string(),
-                validation_pattern: Some(r"^(\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*)(:\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?(\|\d+(?:\.\d+)?([KMGkmg]|Mi|mi|Gi|gi|Ki|ki)?)*|)?$".to_string()),
+                validation_type: Some("frontend:bandwidthFormat".to_string()),
+                validation_pattern: None,
                 validation_message: Some("The bandwidth should be of the form 1M|2M|1G|1K|1.1K etc. Can also be specified as (upload:download). Keep it empty for no limit.".to_string()),
+                min_value: None,
+                max_value: None,
+                step: None,
+                placeholder: Some("e.g., 10M or 5M:2M".to_string()),
                 options: None,
                 required: Some(false),
+                requires_restart: Some(false),
             },
         );
 
@@ -129,15 +161,18 @@ impl AppSettings {
                 display_name: "Rclone API Port".to_string(),
                 value_type: "number".to_string(),
                 help_text: "Port used for Rclone API communication (1024-65535).".to_string(),
-                validation_pattern: Some(
-                    r"^(?:[1-9]\d{3,4}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$"
-                        .to_string(),
-                ),
+                validation_type: Some("frontend:portRange".to_string()),
+                validation_pattern: None,
                 validation_message: Some(
                     "Must be a valid port number between 1024 and 65535".to_string(),
                 ),
+                min_value: Some(1024),
+                max_value: Some(65535),
+                step: Some(1),
+                placeholder: Some("e.g., 51900".to_string()),
                 options: None,
                 required: Some(true),
+                requires_restart: Some(true),
             },
         );
 
@@ -147,15 +182,18 @@ impl AppSettings {
                 display_name: "Rclone OAuth Port".to_string(),
                 value_type: "number".to_string(),
                 help_text: "Port used for Rclone OAuth communication (1024-65535).".to_string(),
-                validation_pattern: Some(
-                    r"^(?:[1-9]\d{3,4}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d{2}|655[0-2]\d|6553[0-5])$"
-                        .to_string(),
-                ),
+                validation_type: Some("frontend:portRange".to_string()),
+                validation_pattern: None,
                 validation_message: Some(
                     "Must be a valid port number between 1024 and 65535".to_string(),
                 ),
+                min_value: Some(1024),
+                max_value: Some(65535),
+                step: Some(1),
+                placeholder: Some("e.g., 51901".to_string()),
                 options: None,
                 required: Some(true),
+                requires_restart: Some(false),
             },
         );
 
@@ -163,12 +201,18 @@ impl AppSettings {
             "core.connection_check_urls".to_string(),
             SettingMetadata {
                 display_name: "Connection Check URLs".to_string(),
-                value_type: "string".to_string(),
-                help_text: "Semicolon-separated list of URLs to check for internet connectivity (e.g., https://link1;http://link2)".to_string(),
-                validation_pattern: Some(r"^(https?://[^\s;]+)(;https?://[^\s;]+)*$".to_string()),
-                validation_message: Some("Must be valid URLs separated by semicolons".to_string()),
+                value_type: "array".to_string(),
+                help_text: "List of URLs to check for internet connectivity".to_string(),
+                validation_type: Some("frontend:urlList".to_string()),
+                validation_pattern: None,
+                validation_message: Some("All items must be valid URLs".to_string()),
+                min_value: None,
+                max_value: None,
+                step: None,
+                placeholder: Some("https://google.com".to_string()),
                 options: None,
                 required: Some(true),
+                requires_restart: Some(false),
             },
         );
 
@@ -178,10 +222,16 @@ impl AppSettings {
                 display_name: "Max Tray Items".to_string(),
                 value_type: "number".to_string(),
                 help_text: "Maximum number of items to show in the tray (1-40).".to_string(),
-                validation_pattern: Some(r"^(?:[1-9]|[1-3][0-9]|40)$".to_string()),
+                validation_type: Some("frontend:trayItemsRange".to_string()),
+                validation_pattern: None,
                 validation_message: Some("Must be between 1 and 40".to_string()),
+                min_value: Some(1),
+                max_value: Some(40),
+                step: Some(1),
+                placeholder: Some("e.g., 5".to_string()),
                 options: None,
                 required: Some(true),
+                requires_restart: Some(false),
             },
         );
 
@@ -191,10 +241,16 @@ impl AppSettings {
                 display_name: "Completed Onboarding".to_string(),
                 value_type: "bool".to_string(),
                 help_text: "Indicates if the onboarding process is completed.".to_string(),
+                validation_type: None,
                 validation_pattern: None,
                 validation_message: None,
+                min_value: None,
+                max_value: None,
+                step: None,
+                placeholder: None,
                 options: None,
                 required: Some(true),
+                requires_restart: Some(false),
             },
         );
 
@@ -202,13 +258,19 @@ impl AppSettings {
             "core.rclone_config_path".to_string(),
             SettingMetadata {
                 display_name: "Rclone Config Path".to_string(),
-                value_type: "string".to_string(),
+                value_type: "path".to_string(),
                 help_text: "Path to rclone config file. Leave empty to use default location."
                     .to_string(),
+                validation_type: Some("frontend:crossPlatformPath".to_string()),
                 validation_pattern: None,
-                validation_message: None,
+                validation_message: Some("Must be a valid file path".to_string()),
+                min_value: None,
+                max_value: None,
+                step: None,
+                placeholder: Some("e.g., /home/user/.config/rclone/rclone.conf".to_string()),
                 options: None,
                 required: Some(false),
+                requires_restart: Some(true),
             },
         );
 
@@ -216,13 +278,18 @@ impl AppSettings {
             "core.rclone_path".to_string(),
             SettingMetadata {
                 display_name: "Rclone Binary Path".to_string(),
-                value_type: "string".to_string(),
-                help_text: "Path to rclone binary or directory. Leave empty for auto-detection, use 'system' for system PATH."
-                    .to_string(),
+                value_type: "path".to_string(),
+                help_text: "Path to rclone binary or directory. Leave empty for auto-detection, use 'system' for system PATH.".to_string(),
+                validation_type: Some("frontend:crossPlatformPath".to_string()),
                 validation_pattern: None,
-                validation_message: None,
+                validation_message: Some("Must be a valid file or directory path".to_string()),
+                min_value: None,
+                max_value: None,
+                step: None,
+                placeholder: Some("e.g., /usr/bin/rclone or 'system'".to_string()),
                 options: None,
                 required: Some(false),
+                requires_restart: Some(true),
             },
         );
 
@@ -232,21 +299,18 @@ impl AppSettings {
                 display_name: "Enable Debug Logging".to_string(),
                 value_type: "bool".to_string(),
                 help_text: "Enable detailed logging for debugging.".to_string(),
+                validation_type: None,
                 validation_pattern: None,
                 validation_message: None,
+                min_value: None,
+                max_value: None,
+                step: None,
+                placeholder: None,
                 options: None,
                 required: Some(true),
+                requires_restart: Some(false),
             },
         );
-
-        // metadata.insert(
-        //     "core.default_mount_type".to_string(),
-        //     SettingMetadata {
-        //         display_name: "Default Mount Type".to_string(),
-        //         value_type: "string".to_string(),
-        //         help_text: "Choose between 'native' or 'systemd' mount methods.".to_string(),
-        //     },
-        // );
 
         metadata
     }

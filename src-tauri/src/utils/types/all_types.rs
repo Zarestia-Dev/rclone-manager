@@ -29,13 +29,25 @@ pub struct SettingMetadata {
     pub value_type: String,
     pub help_text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub validation_type: Option<String>, // 'regex' | 'frontend:<validatorName>' | other types
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub validation_pattern: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub validation_message: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub min_value: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_value: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub step: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub placeholder: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub required: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub requires_restart: Option<bool>,
 }
 
 /// General settings
@@ -53,7 +65,7 @@ pub struct CoreSettings {
     pub max_tray_items: usize,
     pub rclone_api_port: u16,
     pub rclone_oauth_port: u16,
-    pub connection_check_urls: String,
+    pub connection_check_urls: Vec<String>,
     // pub default_mount_type: String,
     pub rclone_config_path: String,
     pub rclone_path: String,

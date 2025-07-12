@@ -21,7 +21,6 @@
         position: sticky;
         top: 0;
         z-index: 10;
-        backdrop-filter: blur(8px);
         transition: var(--transition-fast);
       }
 
@@ -33,12 +32,10 @@
       }
 
       .job-row {
-        transition: var(--quick-transition);
         border-bottom: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
 
         &:hover {
           background: rgba(var(--primary-color-rgb), var(--background-opacity));
-          transition: var(--transition-fast);
         }
 
         &:last-child {

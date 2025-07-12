@@ -37,9 +37,7 @@
             width: var(--large-icon-size);
             height: var(--large-icon-size);
             color: var(--secondary-text-color);
-            transition:
-              var(--default-transition),
-              filter var(--default-transition);
+            transition: var(--default-transition);
           }
 
           &.mount {

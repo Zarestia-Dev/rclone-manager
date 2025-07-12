@@ -83,10 +83,6 @@
       transition: var(--transition-standard);
       min-width: 120px;
 
-      &:hover {
-        transform: translateY(-2px);
-      }
-
       // Cancel button styling
       &.cancel-btn {
         background: rgba(var(--secondary-text-color-rgb), 0.08);

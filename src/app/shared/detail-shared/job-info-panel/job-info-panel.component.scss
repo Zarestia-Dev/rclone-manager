@@ -11,7 +11,6 @@
 
   &:hover {
     box-shadow: 0 8px 32px rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
-    transform: translateY(-2px);
   }
 }
 
@@ -32,7 +31,6 @@
 
   &:hover {
     background: rgba(var(--app-text-color-rgb), var(--hover-opacity));
-    transform: translateY(-2px);
     box-shadow: var(--shadow-light);
   }
 }

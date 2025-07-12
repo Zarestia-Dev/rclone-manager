@@ -73,10 +73,6 @@ mat-accordion {
     margin-bottom: 16px;
     transition: var(--transition-standard);
 
-    &:hover {
-      transform: translateY(-2px);
-    }
-
     &.mat-expanded {
       box-shadow: var(--shadow-elevated);
     }

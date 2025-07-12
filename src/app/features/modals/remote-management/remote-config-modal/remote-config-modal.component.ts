@@ -8,14 +8,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  AbstractControl,
-  FormBuilder,
-  FormControl,
-  FormGroup,
-  ValidationErrors,
-  Validators,
-} from '@angular/forms';
+import { FormBuilder, FormControl, FormGroup, ValidatorFn, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -45,6 +38,7 @@ import { MountManagementService } from '../../../../services/file-operations/mou
 import { AppSettingsService } from '../../../../services/settings/app-settings.service';
 import { FileSystemService } from '../../../../services/file-operations/file-system.service';
 import { UiStateService } from '../../../../services/ui/ui-state.service';
+import { ValidatorRegistryService } from '../../../../services/core/validator-registry.service';
 
 @Component({
   selector: 'app-remote-config-modal',
@@ -76,6 +70,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   appSettingsService = inject(AppSettingsService);
   fileSystemService = inject(FileSystemService);
   uiStateService = inject(UiStateService);
+  validatorRegistry = inject(ValidatorRegistryService);
   data = inject(MAT_DIALOG_DATA) as {
     editTarget?: EditTarget;
     cloneTarget?: boolean;
@@ -220,6 +215,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       const remoteName = this.remoteForm.get('name')?.value;
       const remoteType = this.remoteForm.get('type')?.value;
       const response = await this.remoteManagementService.getRemoteConfigFields(remoteType);
+      console.log(response);
 
       this.remoteForm = this.createRemoteForm();
       this.remoteForm.patchValue({ name: remoteName, type: remoteType });
@@ -259,9 +255,12 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.remoteConfigForm.get('mountConfig.autoStart')?.valueChanges.subscribe(enabled => {
       const destCtrl = this.remoteConfigForm.get('mountConfig.dest');
       if (enabled) {
-        destCtrl?.setValidators([Validators.required, this.crossPlatformPathValidator]);
+        destCtrl?.setValidators([
+          Validators.required,
+          this.validatorRegistry.getValidator('crossPlatformPath')!,
+        ]);
       } else {
-        destCtrl?.setValidators([this.crossPlatformPathValidator]);
+        destCtrl?.setValidators([this.validatorRegistry.getValidator('crossPlatformPath')!]);
       }
       destCtrl?.updateValueAndValidity();
     });
@@ -335,56 +334,42 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     return this.fb.group({
       mountConfig: this.fb.group({
         autoStart: [false],
-        dest: ['', [this.crossPlatformPathValidator]],
+        dest: ['', [this.validatorRegistry.getValidator('crossPlatformPath')!]],
         source: [''],
-        options: ['{}', [this.jsonValidator]],
+        options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
       copyConfig: this.fb.group({
         autoStart: [false],
         source: [''],
         dest: [''],
-        options: ['{}', [this.jsonValidator]],
+        options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
       syncConfig: this.fb.group({
         autoStart: [false],
         source: [''],
         dest: [''],
-        options: ['{}', [this.jsonValidator]],
+        options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
       filterConfig: this.fb.group({
-        options: ['{}', [this.jsonValidator]],
+        options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
       vfsConfig: this.fb.group({
-        options: ['{}', [this.jsonValidator]],
+        options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
     });
   }
 
-  // Custom JSON validator
-  private jsonValidator(control: AbstractControl): ValidationErrors | null {
-    try {
-      JSON.parse(control.value);
-      return null;
-    } catch (e) {
-      console.error('Invalid JSON:', e);
-      return { invalidJson: true };
-    }
+  // Platform-aware path validator: validates based on detected OS
+  // Note: This method is now deprecated. Use validatorRegistry.getValidator('crossPlatformPath') instead
+  private get crossPlatformPathValidator(): ValidatorFn {
+    return this.validatorRegistry.getValidator('crossPlatformPath')!;
   }
 
-  // Platform-aware path validator: validates based on detected OS
-  private crossPlatformPathValidator = (control: AbstractControl): ValidationErrors | null => {
-    const value = control.value;
-    if (!value) return null;
-
-    if (this.uiStateService.platform === 'windows') {
-      const winAbs = /^[a-zA-Z]:[\\/](?:[^:*?"<>|\r\n]*)?$/;
-      if (winAbs.test(value)) return null;
-    } else {
-      const unixAbs = /^(\/[^\0]*)$/;
-      if (unixAbs.test(value)) return null;
-    }
-    return { invalidPath: true };
-  };
+  // JSON validator
+  // Note: This method is now deprecated. Use validatorRegistry.getValidator('json') instead
+  private get jsonValidator(): ValidatorFn {
+    return this.validatorRegistry.getValidator('json')!;
+  }
 
   //#region Remote Configuration Methods
   private async loadExistingRemotes(): Promise<void> {
@@ -777,28 +762,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   //#endregion
 
   //#region Utility Methods
-  private validateRemoteNameFactory() {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const value = control.value?.trimEnd();
-      if (!value) return null;
-
-      // Check allowed characters
-      if (!REMOTE_NAME_REGEX.test(value)) {
-        return { invalidChars: true };
-      }
-
-      // Check start character
-      if (value.startsWith('-') || value.startsWith(' ')) {
-        return { invalidStart: true };
-      }
-
-      // Check end character
-      if (control.value.endsWith(' ')) {
-        return { invalidEnd: true };
-      }
-
-      return this.existingRemotes.includes(value) ? { nameTaken: true } : null;
-    };
+  private validateRemoteNameFactory(): ValidatorFn {
+    return this.validatorRegistry.createRemoteNameValidator(
+      this.existingRemotes,
+      REMOTE_NAME_REGEX
+    );
   }
 
   private cleanFormData(formData: any): any {

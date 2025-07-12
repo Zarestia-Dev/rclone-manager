@@ -143,10 +143,6 @@
     transition: var(--transition-standard);
     min-width: 120px;
 
-    &:hover {
-      transform: translateY(-2px);
-    }
-
     &.cancel-btn {
       background: rgba(var(--secondary-text-color-rgb), 0.08);
       color: var(--app-text-color);
