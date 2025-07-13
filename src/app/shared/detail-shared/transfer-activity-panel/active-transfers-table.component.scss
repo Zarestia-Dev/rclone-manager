@@ -5,14 +5,14 @@
   border-radius: var(--item-radius);
   overflow-y: auto;
 
+  .transfers-viewport {
+    height: 300px;
+    width: 100%;
+  }
+
   .transfers-table {
     width: 100%;
     background: transparent;
-
-    .mat-mdc-header-row {
-      background: rgba(var(--app-text-color-rgb), var(--background-opacity));
-      border-bottom: 1px solid rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
-    }
 
     .mat-mdc-header-cell {
       color: var(--app-text-color);

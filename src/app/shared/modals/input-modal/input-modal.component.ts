@@ -20,7 +20,7 @@ import { FileSystemService } from '../../../services/file-operations/file-system
     MatButtonModule,
   ],
   templateUrl: './input-modal.component.html',
-  styleUrl: './input-modal.component.scss',
+  styleUrls: ['./input-modal.component.scss', '../../../styles/_shared-modal.scss'],
 })
 export class InputModalComponent {
   formData: Record<string, string> = {};

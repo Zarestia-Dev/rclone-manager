@@ -15,7 +15,7 @@
     @if (bottomTabs) {
       <h2 class="modal-title">Preferences</h2>
     } @else {
-      <div class="desktop-tabs" data-tauri-drag-region role="tablist">
+      <div class="tabs desktop-tabs" data-tauri-drag-region role="tablist">
         @for (tab of filteredTabs; track tab; let i = $index) {
           <button
             (click)="selectTab(i)"
@@ -60,7 +60,7 @@
 
   <!-- Modal Content -->
   @if (!isLoading) {
-    <div class="modal-content" role="main">
+    <main class="modal-content">
       <!-- Search Results Section -->
       @if (hasSearchResults) {
         <div class="tab-content">
@@ -213,12 +213,12 @@
           </div>
         </div>
       }
-    </div>
+    </main>
   }
 
   <!-- Bottom Tabs (Mobile) -->
   @if (bottomTabs && filteredTabs.length > 0) {
-    <div class="bottom-tabs" role="tablist" aria-label="Settings categories">
+    <div class="tabs bottom-tabs" role="tablist" aria-label="Settings categories">
       @for (tab of filteredTabs; track tab; let i = $index) {
         <button
           (click)="selectTab(i)"

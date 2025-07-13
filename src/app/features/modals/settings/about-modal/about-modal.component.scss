@@ -50,9 +50,11 @@
 
   // Modal Header
   .modal-header {
+    padding: var(--space-xs);
+    gap: var(--space-xs);
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
     position: relative;
     z-index: 1;
     transition: var(--transition-standard);

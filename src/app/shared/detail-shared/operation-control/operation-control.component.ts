@@ -17,7 +17,9 @@ export interface OperationControlConfig {
   operationClass: string;
   pathConfig: PathDisplayConfig;
   primaryButtonLabel: string;
+  primaryIcon: string;
   secondaryButtonLabel: string;
+  secondaryIcon: string;
   actionInProgress?: string;
 }
 
@@ -65,7 +67,9 @@ export interface OperationControlConfig {
             @if (config.isLoading) {
               <mat-spinner diameter="20"></mat-spinner>
             } @else {
-              <mat-icon [svgIcon]="config.isActive ? 'stop' : 'play'"></mat-icon>
+              <mat-icon
+                [svgIcon]="config.isActive ? config.secondaryIcon : config.primaryIcon"
+              ></mat-icon>
             }
             <span>{{
               config.isActive ? config.secondaryButtonLabel : config.primaryButtonLabel

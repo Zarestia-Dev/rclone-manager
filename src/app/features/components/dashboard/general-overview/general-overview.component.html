@@ -52,18 +52,20 @@
             </div>
           </mat-panel-title>
           <mat-panel-description>
-            @if (bandwidthLimit?.loading) {
-              <span aria-busy="true">Loading...</span>
-            } @else if (bandwidthLimit?.error) {
-              <span class="error-text">Error loading bandwidth info</span>
-            } @else {
-              <span>{{ bandwidthDisplayValue }}</span>
-            }
+            <span aria-live="polite">
+              @if (bandwidthLimit?.loading) {
+                <span aria-busy="true">Loading...</span>
+              } @else if (bandwidthLimit?.error) {
+                <span class="error-text">Error loading bandwidth info</span>
+              } @else {
+                <span>{{ bandwidthDisplayValue }}</span>
+              }
+            </span>
           </mat-panel-description>
         </mat-expansion-panel-header>
 
         @if (bandwidthLimit?.loading) {
-          <div class="bandwidth-loading" aria-live="polite">
+          <div class="bandwidth-loading fade-in" aria-live="polite">
             <mat-spinner diameter="24" aria-label="Loading bandwidth information"></mat-spinner>
             <span>Loading bandwidth information...</span>
           </div>
@@ -86,6 +88,7 @@
               class="bandwidth-status"
               [class.limited]="isBandwidthLimited"
               [class.unlimited]="!isBandwidthLimited"
+              aria-live="polite"
             >
               <div class="status-indicator" aria-hidden="true"></div>
               <span class="status-text">{{ bandwidthDisplayValue }}</span>
@@ -93,22 +96,19 @@
 
             @if (isBandwidthLimited) {
               <div class="bandwidth-details">
-                <div class="detail-item">
-                  <span class="label">Upload:</span>
-                  <span class="value">{{
-                    formatBytes(bandwidthLimit?.bytesPerSecondTx ?? 0)
-                  }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="label">Download:</span>
-                  <span class="value">{{
-                    formatBytes(bandwidthLimit?.bytesPerSecondRx ?? 0)
-                  }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="label">Total:</span>
-                  <span class="value">{{ formatBytes(bandwidthLimit?.bytesPerSecond ?? 0) }}</span>
-                </div>
+                @for (
+                  detail of [
+                    { label: 'Upload:', value: bandwidthDetails.upload },
+                    { label: 'Download:', value: bandwidthDetails.download },
+                    { label: 'Total:', value: bandwidthDetails.total },
+                  ];
+                  track trackByIndex($index)
+                ) {
+                  <div class="detail-item">
+                    <span class="label">{{ detail.label }}</span>
+                    <span class="value">{{ detail.value }}</span>
+                  </div>
+                }
               </div>
             }
           </div>
@@ -136,35 +136,29 @@
         </mat-expansion-panel-header>
 
         @if (isLoadingStats) {
-          <div class="info-loading" aria-live="polite">
+          <div class="info-loading fade-in" aria-live="polite">
             <mat-spinner diameter="24" aria-label="Loading system information"></mat-spinner>
             <span>Loading system information...</span>
           </div>
         } @else {
           <div class="info-grid" role="grid">
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">RClone Status:</span>
-              <span class="value" [ngClass]="rcloneStatus" role="gridcell">
-                <div class="status-dot" [ngClass]="rcloneStatus" aria-hidden="true"></div>
-                {{ rcloneStatus | titlecase }}
-              </span>
-            </div>
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">Total Remotes:</span>
-              <span class="value" role="gridcell">{{ _totalRemotes }}</span>
-            </div>
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">Active Jobs:</span>
-              <span class="value" role="gridcell">{{ _activeJobsCount }}</span>
-            </div>
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">Memory Usage:</span>
-              <span class="value" role="gridcell">{{ systemStats.memoryUsage }}</span>
-            </div>
-            <div class="info-item" role="row">
-              <span class="label" role="gridcell">Uptime:</span>
-              <span class="value" role="gridcell">{{ systemStats.uptime }}</span>
-            </div>
+            @for (
+              item of [
+                { label: 'RClone Status:', value: rcloneStatus | titlecase, status: rcloneStatus },
+                { label: 'Total Remotes:', value: _totalRemotes },
+                { label: 'Active Jobs:', value: _activeJobsCount },
+                { label: 'Memory Usage:', value: systemStats.memoryUsage },
+                { label: 'Uptime:', value: systemStats.uptime },
+              ];
+              track trackByIndex($index)
+            ) {
+              <div class="info-item" role="row">
+                <span class="label" role="gridcell">{{ item.label }}</span>
+                <span class="value" [ngClass]="item.status || ''" role="gridcell">{{
+                  item.value
+                }}</span>
+              </div>
+            }
           </div>
         }
       </mat-expansion-panel>
@@ -195,7 +189,7 @@
         </mat-expansion-panel-header>
 
         @if (isLoadingStats) {
-          <div class="info-loading" aria-live="polite">
+          <div class="info-loading fade-in" aria-live="polite">
             <mat-spinner diameter="24" aria-label="Loading job information"></mat-spinner>
             <span>Loading job information...</span>
           </div>
@@ -229,44 +223,29 @@
             }
 
             <div class="job-stats-grid" role="grid">
-              <div class="info-item" role="row">
-                <span class="label" role="gridcell">Transfer Speed:</span>
-                <span class="value" role="gridcell">{{ formatBytes(jobStats.speed) }}/s</span>
-              </div>
-              <div class="info-item" role="row">
-                <span class="label" role="gridcell">Transfers:</span>
-                <span class="value" role="gridcell"
-                  >{{ jobStats.transfers }} / {{ jobStats.totalTransfers }}</span
-                >
-              </div>
-              <div class="info-item" role="row">
-                <span class="label" role="gridcell">Checks:</span>
-                <span class="value" role="gridcell"
-                  >{{ jobStats.checks }} / {{ jobStats.totalChecks }}</span
-                >
-              </div>
-              <div class="info-item" role="row">
-                <span class="label" role="gridcell">Errors:</span>
-                <span class="value" [class.error]="jobStats.errors > 0" role="gridcell">{{
-                  jobStats.errors
-                }}</span>
-              </div>
-              <div class="info-item" role="row">
-                <span class="label" role="gridcell">Deletes:</span>
-                <span class="value" role="gridcell">{{ jobStats.deletes }}</span>
-              </div>
-              <div class="info-item" role="row">
-                <span class="label" role="gridcell">Renames:</span>
-                <span class="value" role="gridcell">{{ jobStats.renames }}</span>
-              </div>
-              <div class="info-item" role="row">
-                <span class="label" role="gridcell">Server Copies:</span>
-                <span class="value" role="gridcell">{{ jobStats.serverSideCopies }}</span>
-              </div>
-              <div class="info-item" role="row">
-                <span class="label" role="gridcell">Server Moves:</span>
-                <span class="value" role="gridcell">{{ jobStats.serverSideMoves }}</span>
-              </div>
+              @for (
+                item of [
+                  { label: 'Transfer Speed:', value: formatBytes(jobStats.speed) + '/s' },
+                  {
+                    label: 'Transfers:',
+                    value: jobStats.transfers + ' / ' + jobStats.totalTransfers,
+                  },
+                  { label: 'Checks:', value: jobStats.checks + ' / ' + jobStats.totalChecks },
+                  { label: 'Errors:', value: jobStats.errors, error: jobStats.errors > 0 },
+                  { label: 'Deletes:', value: jobStats.deletes },
+                  { label: 'Renames:', value: jobStats.renames },
+                  { label: 'Server Copies:', value: jobStats.serverSideCopies },
+                  { label: 'Server Moves:', value: jobStats.serverSideMoves },
+                ];
+                track trackByIndex($index)
+              ) {
+                <div class="info-item" role="row">
+                  <span class="label" role="gridcell">{{ item.label }}</span>
+                  <span class="value" [class.error]="item.error" role="gridcell">{{
+                    item.value
+                  }}</span>
+                </div>
+              }
             </div>
 
             @if (jobStats.lastError) {

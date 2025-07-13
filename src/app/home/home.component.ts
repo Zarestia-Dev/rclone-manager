@@ -80,7 +80,7 @@ import { LoadingOverlayComponent } from '../shared/components/loading-overlay/lo
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
-  changeDetection: ChangeDetectionStrategy.Default, // Temporarily change to Default
+  changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [AnimationsService.slideToggle()],
 })
 export class HomeComponent implements OnInit, OnDestroy {
@@ -187,7 +187,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       } else {
         console.log('Network is not metered. Hiding banner.');
       }
-      await this.uiStateService.updateViewportOnBannerChange();
       this.cdr.detectChanges();
     });
   }
@@ -877,14 +876,14 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (!remoteName) return;
 
     try {
-      this.actionInProgress[remoteName] = action;
+      this.actionInProgress = { ...this.actionInProgress, [remoteName]: action };
       this.cdr.markForCheck();
 
       await operation();
     } catch (error) {
       this.handleError(errorMessage, error);
     } finally {
-      this.actionInProgress[remoteName] = null;
+      this.actionInProgress = { ...this.actionInProgress, [remoteName]: null };
       this.cdr.markForCheck();
     }
   }
@@ -940,6 +939,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         console.log('Remote cache updated - refreshing remotes');
         await this.loadRemotes();
         await this.getRemoteSettings();
+        await this.restrictValue();
         this.cdr.markForCheck();
       } catch (error) {
         this.handleError('Error handling remote_cache_updated', error);

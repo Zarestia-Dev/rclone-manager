@@ -12,6 +12,7 @@ import {
   OnChanges,
   SimpleChanges,
   inject,
+  NgZone,
 } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,7 +20,19 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { Subject } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  EMPTY,
+  filter,
+  from,
+  retry,
+  Subject,
+  Subscription,
+  switchMap,
+  takeUntil,
+  timer,
+} from 'rxjs';
 
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import {
@@ -35,6 +48,7 @@ import {
 import { AnimationsService } from '../../../../services/core/animations.service';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 import { SystemInfoService } from '../../../../services/system/system-info.service';
+import { formatUtils } from '../../../../shared/utils/format-utils';
 
 /** Polling interval for system stats in milliseconds */
 const POLLING_INTERVAL = 5000;
@@ -50,6 +64,18 @@ interface SystemStats {
 
 /** Rclone status type */
 type RcloneStatus = 'active' | 'inactive' | 'error';
+
+export interface PanelState {
+  bandwidth: boolean;
+  system: boolean;
+  jobs: boolean;
+}
+
+export interface BandwidthDetails {
+  upload: string;
+  download: string;
+  total: string;
+}
 
 /**
  * GeneralOverviewComponent displays an overview of RClone remotes and system information
@@ -73,7 +99,7 @@ type RcloneStatus = 'active' | 'inactive' | 'error';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
-  // Input properties
+  // === Input/Output Properties ===
   @Input() remotes: Remote[] = [];
   @Input() jobs: JobInfo[] = [];
   @Input() iconService!: { getIconName: (type: string) => string };
@@ -81,58 +107,78 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   @Input() bandwidthLimit: BandwidthLimitResponse | null = null;
   @Input() systemInfoService!: SystemInfoService;
 
-  // Output events
   @Output() selectRemote = new EventEmitter<Remote>();
   @Output() mountRemote = new EventEmitter<string>();
   @Output() unmountRemote = new EventEmitter<string>();
-  @Output() startOperation = new EventEmitter<{
-    type: 'sync' | 'copy';
-    remoteName: string;
-  }>();
-  @Output() stopJob = new EventEmitter<{
-    type: 'sync' | 'copy';
-    remoteName: string;
-  }>();
+  @Output() startOperation = new EventEmitter<{ type: 'sync' | 'copy'; remoteName: string }>();
+  @Output() stopJob = new EventEmitter<{ type: 'sync' | 'copy'; remoteName: string }>();
   @Output() browseRemote = new EventEmitter<string>();
 
-  // State properties
+  // === Component State ===
   rcloneStatus: RcloneStatus = 'inactive';
+  systemStats: SystemStats = { memoryUsage: '0 MB', uptime: '0s' };
+  jobStats: GlobalStats = { ...DEFAULT_JOB_STATS };
+  isLoadingStats = false;
 
   // Panel states
   bandwidthPanelOpenState = false;
   systemInfoPanelOpenState = false;
   jobInfoPanelOpenState = false;
 
-  // Computed properties
-  systemStats: SystemStats = {
-    memoryUsage: '0 MB',
-    uptime: '0s',
-  };
-
-  isLoadingStats = false;
-  jobStats: GlobalStats = { ...DEFAULT_JOB_STATS };
-
-  private unlistenBandwidthLimit: UnlistenFn | null = null;
-
-  // Cache computed values to avoid recalculation
+  // Computed properties cache
   _totalRemotes = 0;
   _activeJobsCount = 0;
   _jobCompletionPercentage = 0;
+
+  // === Private Members ===
+  private readonly PANEL_STATE_KEY = 'dashboard_panel_states';
+  private unlistenBandwidthLimit: UnlistenFn | null = null;
   private destroy$ = new Subject<void>();
   private isComponentVisible = true;
-  private panelPollingInterval: ReturnType<typeof setInterval> | null = null;
+  private pollingSubscription: Subscription | null = null;
+  private updateStatsSubject = new Subject<void>();
+
+  // === Services ===
+  private cdr = inject(ChangeDetectorRef);
+  private ngZone = inject(NgZone);
 
   // Track by function for better performance
   readonly trackByRemoteName: TrackByFunction<Remote> = (_, remote) => {
     return remote.remoteSpecs.name;
   };
 
-  private cdr = inject(ChangeDetectorRef);
+  // Panel state memory
+  private pollingDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
+  private handleVisibilityChange: () => void = () => {
+    this.isComponentVisible = !document.hidden;
+    this.updatePollingBasedOnVisibility();
+  };
 
+  // For expand/collapse all
+  expandAllPanels(): void {
+    this.bandwidthPanelOpenState = true;
+    this.systemInfoPanelOpenState = true;
+    this.jobInfoPanelOpenState = true;
+    this.savePanelStates();
+    this.updatePollingBasedOnVisibility();
+  }
+  collapseAllPanels(): void {
+    this.bandwidthPanelOpenState = false;
+    this.systemInfoPanelOpenState = false;
+    this.jobInfoPanelOpenState = false;
+    this.savePanelStates();
+    this.updatePollingBasedOnVisibility();
+  }
+
+  // Panel order customization stub
+  panelOrder: string[] = ['remotes', 'bandwidth', 'system', 'jobs'];
+  // TODO: Implement drag-and-drop and persist order
   /**
    * Initialize component on ngOnInit lifecycle hook
    */
   ngOnInit(): void {
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    this.restorePanelStates();
     this.initializeComponent();
     // Load initial bandwidth limit
     this.loadBandwidthLimit();
@@ -142,12 +188,17 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     if (this.shouldPollData) {
       this.startPolling();
     }
+
+    this.updateStatsSubject.pipe(debounceTime(300), takeUntil(this.destroy$)).subscribe(() => {
+      this.cdr.markForCheck();
+    });
   }
 
   /**
    * Clean up on ngOnDestroy lifecycle hook
    */
   ngOnDestroy(): void {
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
     this.stopPolling();
     this.destroy$.next();
     this.destroy$.complete();
@@ -203,21 +254,25 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * Update polling based on component and panel visibility
    */
   private updatePollingBasedOnVisibility(): void {
-    if (this.shouldPollData) {
-      this.startPolling();
-    } else {
-      this.stopPolling();
+    if (this.pollingDebounceTimeout) {
+      clearTimeout(this.pollingDebounceTimeout);
     }
+    this.pollingDebounceTimeout = setTimeout(() => {
+      if (this.shouldPollData) {
+        this.startPolling();
+      } else {
+        this.stopPolling();
+      }
+    }, 200);
   }
 
   /**
    * Stop current polling
    */
   private stopPolling(): void {
-    if (this.panelPollingInterval) {
-      clearInterval(this.panelPollingInterval);
-      this.panelPollingInterval = null;
-      console.log('Stopped polling - panels closed or component not visible');
+    if (this.pollingSubscription) {
+      this.pollingSubscription.unsubscribe();
+      this.pollingSubscription = null;
     }
   }
 
@@ -225,7 +280,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * Start polling for system stats with appropriate interval
    */
   private startPolling(): void {
-    // Stop any existing polling first
     this.stopPolling();
 
     if (!this.shouldPollData) {
@@ -235,19 +289,27 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
 
     const interval = this.isComponentVisible ? POLLING_INTERVAL : BACKGROUND_POLLING_INTERVAL;
 
-    console.log(`Starting polling with ${interval}ms interval`);
-
-    // Use setInterval for better control
-    this.panelPollingInterval = setInterval(() => {
-      if (this.shouldPollData) {
-        this.loadSystemStats().catch(err => console.error('Error in system stats polling:', err));
-      } else {
-        this.stopPolling();
-      }
-    }, interval);
-
-    // Load initial data immediately
-    this.loadSystemStats().catch(err => console.error('Error loading initial system stats:', err));
+    this.pollingSubscription = timer(0, interval)
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(() => this.shouldPollData && !this.isLoadingStats),
+        switchMap(() =>
+          from(this.loadSystemStats()).pipe(
+            catchError(err => {
+              console.error('Error in system stats polling:', err);
+              return EMPTY;
+            })
+          )
+        ),
+        retry({
+          count: 3,
+          delay: error => {
+            console.error('Retrying after error:', error);
+            return timer(1000);
+          },
+        })
+      )
+      .subscribe();
   }
 
   /**
@@ -319,31 +381,33 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * Load system statistics
    */
   async loadSystemStats(): Promise<void> {
-    if (this.isLoadingStats) {
-      console.log('System stats already loading, skipping duplicate request');
+    if (this.isLoadingStats || !this.shouldPollData) {
       return;
     }
 
-    if (!this.shouldPollData) {
-      console.log('No panels open that need system stats, skipping load');
-      return;
-    }
-
-    console.log('Loading system stats...');
     this.isLoadingStats = true;
+    this.updateStatsSubject.next(); // Trigger UI update
 
     try {
-      this.cdr.markForCheck();
       const [memoryStats, coreStats] = await Promise.all([
         this.systemInfoService.getMemoryStats(),
-        this.systemInfoService.getCoreStats(),
+        this.systemInfoService.getCoreStats().catch(err => {
+          console.error('Error loading core stats:', err);
+          return null;
+        }),
       ]);
 
-      this.updateSystemStats(memoryStats, coreStats);
-      this.updateComputedValues();
-      this.cdr.markForCheck();
+      this.ngZone.run(() => {
+        this.updateSystemStats(memoryStats, coreStats);
+        this.updateComputedValues();
+      });
     } catch (error) {
       console.error('Error loading system stats:', error);
+      this.ngZone.run(() => {
+        this.jobStats = { ...DEFAULT_JOB_STATS };
+        this.systemStats = { memoryUsage: 'Error', uptime: 'Error' };
+        this.cdr.markForCheck();
+      });
     } finally {
       this.isLoadingStats = false;
     }
@@ -356,18 +420,19 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    */
   private updateSystemStats(memoryStats: MemoryStats | null, coreStats: GlobalStats | null): void {
     if (coreStats) {
-      this.jobStats = { ...coreStats };
-      this.systemStats = {
-        memoryUsage: this.formatMemoryUsage(memoryStats),
-        uptime: this.formatUptime(coreStats.elapsedTime || 0),
-      };
+      if (!this.jobStats) this.jobStats = { ...DEFAULT_JOB_STATS };
+      Object.assign(this.jobStats, coreStats);
+      if (!this.systemStats) this.systemStats = { memoryUsage: '0 MB', uptime: '0s' };
+      this.systemStats.memoryUsage = this.formatMemoryUsage(memoryStats);
+      this.systemStats.uptime = this.formatUptime(coreStats.elapsedTime || 0);
     } else {
-      this.jobStats = { ...DEFAULT_JOB_STATS };
-      this.systemStats = {
-        memoryUsage: this.formatMemoryUsage(memoryStats),
-        uptime: '0s',
-      };
+      if (!this.jobStats) this.jobStats = { ...DEFAULT_JOB_STATS };
+      Object.assign(this.jobStats, DEFAULT_JOB_STATS);
+      if (!this.systemStats) this.systemStats = { memoryUsage: '0 MB', uptime: '0s' };
+      this.systemStats.memoryUsage = this.formatMemoryUsage(memoryStats);
+      this.systemStats.uptime = '0s';
     }
+    this.cdr.markForCheck();
   }
 
   // Formatting utilities - Consolidated for better maintainability
@@ -468,7 +533,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * @returns Formatted string with appropriate unit
    */
   formatBytes(bytes: number): string {
-    return this.formatUtils.bytes(bytes);
+    return formatUtils.bytes(bytes);
   }
 
   /**
@@ -477,7 +542,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * @returns Formatted memory usage string
    */
   private formatMemoryUsage(memoryStats: MemoryStats | null): string {
-    return this.formatUtils.memoryUsage(memoryStats);
+    return formatUtils.memoryUsage(memoryStats);
   }
 
   /**
@@ -486,7 +551,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * @returns Formatted uptime string
    */
   formatUptime(elapsedTimeSeconds: number): string {
-    return this.formatUtils.duration(elapsedTimeSeconds);
+    return formatUtils.duration(elapsedTimeSeconds);
   }
 
   /**
@@ -495,7 +560,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * @returns Formatted ETA string
    */
   formatEta(eta: number | string): string {
-    return this.formatUtils.eta(eta);
+    return formatUtils.eta(eta);
   }
 
   /**
@@ -504,14 +569,11 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    * @returns Formatted rate string
    */
   private formatRateValue(rate: string): string {
-    return this.formatUtils.rateValue(rate);
+    return formatUtils.rateValue(rate);
   }
 
   get isBandwidthLimited(): boolean {
     if (!this.bandwidthLimit) return false;
-
-    console.log('Checking if bandwidth is limited:', this.bandwidthLimit);
-
     return (
       !!this.bandwidthLimit &&
       this.bandwidthLimit.rate !== 'off' &&
@@ -548,7 +610,12 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
 
   get bandwidthDetails(): { upload: string; download: string; total: string } {
     if (!this.bandwidthLimit) return { upload: 'Unknown', download: 'Unknown', total: 'Unknown' };
-    return this.formatUtils.bandwidthDetails(this.bandwidthLimit);
+    return formatUtils.bandwidthDetails(this.bandwidthLimit);
+  }
+
+  // TrackBy for job stats/info grids
+  trackByIndex(index: number): number {
+    return index;
   }
 
   // Action Progress Utilities
@@ -689,8 +756,10 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     if (remote) {
       if (remote.mountState?.mounted) {
         this.unmountRemote.emit(remoteName);
+        this.cdr.markForCheck();
       } else {
         this.mountRemote.emit(remoteName);
+        this.cdr.markForCheck();
       }
     }
   }
@@ -707,8 +776,8 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    */
   onBandwidthPanelStateChange(isOpen: boolean): void {
     this.bandwidthPanelOpenState = isOpen;
-    console.log(`Bandwidth panel ${isOpen ? 'opened' : 'closed'}`);
-    // Bandwidth panel doesn't need polling, so no action needed
+    this.savePanelStates();
+    this.updatePollingBasedOnVisibility();
   }
 
   /**
@@ -716,16 +785,11 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    */
   onSystemInfoPanelStateChange(isOpen: boolean): void {
     this.systemInfoPanelOpenState = isOpen;
-    console.log(`System info panel ${isOpen ? 'opened' : 'closed'}`);
-
-    if (isOpen) {
-      // Load data immediately when panel opens
-      this.loadSystemStats().catch(err =>
-        console.error('Error loading initial system stats:', err)
-      );
-    }
-
+    this.savePanelStates();
     this.updatePollingBasedOnVisibility();
+    if (isOpen) {
+      this.loadSystemStats();
+    }
   }
 
   /**
@@ -733,13 +797,35 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
    */
   onJobInfoPanelStateChange(isOpen: boolean): void {
     this.jobInfoPanelOpenState = isOpen;
-    console.log(`Job info panel ${isOpen ? 'opened' : 'closed'}`);
-
-    if (isOpen) {
-      // Load data immediately when panel opens
-      this.loadSystemStats().catch(err => console.error('Error loading initial job stats:', err));
-    }
-
+    this.savePanelStates();
     this.updatePollingBasedOnVisibility();
+    if (isOpen) {
+      this.loadSystemStats();
+    }
+  }
+
+  // Panel state memory
+  private savePanelStates(): void {
+    const state: PanelState = {
+      bandwidth: this.bandwidthPanelOpenState,
+      system: this.systemInfoPanelOpenState,
+      jobs: this.jobInfoPanelOpenState,
+    };
+    localStorage.setItem(this.PANEL_STATE_KEY, JSON.stringify(state));
+  }
+
+  private restorePanelStates(): void {
+    const state = localStorage.getItem(this.PANEL_STATE_KEY);
+    if (state) {
+      try {
+        const parsed = JSON.parse(state) as PanelState;
+        this.bandwidthPanelOpenState = parsed.bandwidth ?? false;
+        this.systemInfoPanelOpenState = parsed.system ?? false;
+        this.jobInfoPanelOpenState = parsed.jobs ?? false;
+      } catch (err) {
+        console.error('Failed to parse panel state:', err);
+        localStorage.removeItem(this.PANEL_STATE_KEY);
+      }
+    }
   }
 }

@@ -1,4 +1,13 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import {
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  ChangeDetectionStrategy,
+  OnInit,
+  ChangeDetectorRef,
+  inject,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,6 +21,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { ActiveTransfersTableComponent } from './active-transfers-table.component';
 import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
 import { TransferFile } from '../../../shared/components/types';
+import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
 export interface CompletedTransfer {
   name: string;
@@ -54,6 +64,7 @@ export interface TransferActivityPanelConfig {
     ActiveTransfersTableComponent,
     CompletedTransfersTableComponent,
   ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <mat-card class="detail-panel transfer-activity-panel" [ngClass]="config.operationClass">
       <mat-card-header class="panel-header">
@@ -100,6 +111,7 @@ export interface TransferActivityPanelConfig {
                 <app-completed-transfers-table
                   [transfers]="config.completedTransfers"
                   [operationClass]="config.operationClass"
+                  [trackBy]="trackByCompletedTransfer"
                 ></app-completed-transfers-table>
               </div>
             </mat-tab>
@@ -109,6 +121,7 @@ export interface TransferActivityPanelConfig {
           <app-active-transfers-table
             [transfers]="config.activeTransfers"
             [operationClass]="config.operationClass"
+            [trackBy]="trackByActiveTransfer"
           ></app-active-transfers-table>
         }
       </mat-card-content>
@@ -116,7 +129,31 @@ export interface TransferActivityPanelConfig {
   `,
   styleUrls: ['./transfer-activity-panel.component.scss'],
 })
-export class TransferActivityPanelComponent {
+export class TransferActivityPanelComponent implements OnInit {
   @Input() config!: TransferActivityPanelConfig;
   @Output() refreshTransfers = new EventEmitter<void>();
+
+  private update$ = new Subject<void>();
+
+  private cdr = inject(ChangeDetectorRef);
+
+  trackByActiveTransfer(index: number, transfer: TransferFile): string {
+    return transfer.name + transfer.percentage;
+  }
+
+  trackByCompletedTransfer(index: number, transfer: CompletedTransfer): string {
+    return transfer.name + transfer.completedAt;
+  }
+
+  ngOnInit(): void {
+    this.update$
+      .pipe(
+        debounceTime(200), // Wait 200ms after last update
+        distinctUntilChanged()
+      )
+      .subscribe(() => {
+        // Force change detection if needed
+        this.cdr.markForCheck();
+      });
+  }
 }

@@ -53,7 +53,7 @@ import { ValidatorRegistryService } from '../../../../services/core/validator-re
     FlagConfigStepComponent,
   ],
   templateUrl: './remote-config-modal.component.html',
-  styleUrl: './remote-config-modal.component.scss',
+  styleUrls: ['./remote-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   animations: [AnimationsService.getAnimations(['slideAnimation', 'fadeInOutWithMove'])],
 })
 export class RemoteConfigModalComponent implements OnInit, OnDestroy {

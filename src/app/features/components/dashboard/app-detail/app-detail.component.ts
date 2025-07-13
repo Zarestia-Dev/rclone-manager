@@ -244,6 +244,8 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
       pathConfig: this.getPathDisplayConfig(),
       primaryButtonLabel: `Start ${this.operationType}`,
       secondaryButtonLabel: `Stop ${this.operationType}`,
+      primaryIcon: 'play',
+      secondaryIcon: 'stop',
       actionInProgress: this.actionInProgress?.toString(),
     };
   }
@@ -263,7 +265,9 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
       operationClass: 'mount-operation',
       pathConfig: this.getMountPathDisplayConfig(),
       primaryButtonLabel: this.actionInProgress === 'mount' ? 'Mounting...' : 'Mount',
+      primaryIcon: 'mount',
       secondaryButtonLabel: this.actionInProgress === 'unmount' ? 'Unmounting...' : 'Unmount',
+      secondaryIcon: 'eject',
       actionInProgress: this.actionInProgress?.toString(),
     };
   }
@@ -580,13 +584,8 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   }
 
   private initChartsIfNeeded(): void {
-    // Only initialize charts if they don't exist and we can access the chart elements
-    if (
-      !this.speedChart &&
-      !this.progressChart &&
-      this.speedChartRef?.nativeElement &&
-      this.progressChartRef?.nativeElement
-    ) {
+    this.destroyCharts();
+    if (this.speedChartRef?.nativeElement && this.progressChartRef?.nativeElement) {
       this.initCharts();
     }
   }
@@ -630,51 +629,41 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   }
 
   private updateChartData(): void {
-    // Initialize charts if they don't exist but should exist
-    if (this.isOperationType() && !this.speedChart && !this.progressChart) {
-      this.initChartsIfNeeded();
-    }
-
-    // Only update if charts exist
-    if (this.speedChart && this.progressChart) {
-      this.updateSpeedChart();
-      this.updateProgressChart();
-    }
-  }
-
-  private updateSpeedChart(): void {
-    if (!this.speedChart) return;
-
-    const speedData = this.getSpeedUnitAndValue(this.jobStats.speed);
-    const speedInSelectedUnit = speedData.value;
-
-    this.speedHistory.push(speedInSelectedUnit);
-    if (this.speedHistory.length > this.MAX_HISTORY_LENGTH) {
-      this.speedHistory.shift();
-    }
-
-    this.speedChart.data.datasets[0].data = [...this.speedHistory];
-
-    const yScale = this.speedChart.options.scales?.['y'] as { title?: { text: string } };
-    if (yScale?.title) {
-      yScale.title.text = `Speed (${speedData.unit})`;
-    }
-
-    this.speedChart.update();
-  }
-
-  private updateProgressChart(): void {
-    if (!this.progressChart) return;
+    // Only update charts if they exist and data changed
+    if (!this.speedChart || !this.progressChart) return;
 
     const progress = this.calculateProgress();
+    const speedData = this.getSpeedUnitAndValue(this.jobStats.speed);
 
-    this.progressHistory.push(progress);
-    if (this.progressHistory.length > this.MAX_HISTORY_LENGTH) {
-      this.progressHistory.shift();
+    // Check if values actually changed before updating
+    const lastProgress = this.progressHistory[this.progressHistory.length - 1] || 0;
+    const lastSpeed = this.speedHistory[this.speedHistory.length - 1] || 0;
+
+    if (Math.abs(progress - lastProgress) > 0.5) {
+      // Only update if significant change
+      this.progressHistory.push(progress);
+      if (this.progressHistory.length > this.MAX_HISTORY_LENGTH) {
+        this.progressHistory.shift();
+      }
+      this.progressChart.data.datasets[0].data = [...this.progressHistory];
+      this.progressChart.update('none'); // 'none' prevents animation
     }
 
-    this.progressChart.data.datasets[0].data = [...this.progressHistory];
-    this.progressChart.update();
+    if (Math.abs(speedData.value - lastSpeed) > 0.5) {
+      // Only update if significant change
+      this.speedHistory.push(speedData.value);
+      if (this.speedHistory.length > this.MAX_HISTORY_LENGTH) {
+        this.speedHistory.shift();
+      }
+      this.speedChart.data.datasets[0].data = [...this.speedHistory];
+
+      const yScale = this.speedChart.options.scales?.['y'] as { title?: { text: string } };
+      if (yScale?.title) {
+        yScale.title.text = `Speed (${speedData.unit})`;
+      }
+
+      this.speedChart.update('none'); // 'none' prevents animation
+    }
   }
 
   private calculateProgress(): number {
@@ -702,15 +691,19 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   private simulateLiveData(): void {
     this.clearDataInterval();
 
-    this.dataInterval = window.setInterval(() => {
-      if (!this.isOperationActive() || !this.currentJobId) {
-        return;
-      }
+    // Run outside Angular zone to prevent unnecessary change detection
+    this.ngZone.runOutsideAngular(() => {
+      this.dataInterval = window.setInterval(() => {
+        if (!this.isOperationActive() || !this.currentJobId) {
+          return;
+        }
 
-      this.fetchJobStatus();
-    }, this.POLLING_INTERVAL);
+        // Only run change detection when we have new data
+        this.fetchJobStatus();
+        this.cdr.detectChanges();
+      }, this.POLLING_INTERVAL);
+    });
   }
-
   private fetchJobStatus(): void {
     if (!this.currentJobId || !this.selectedRemote?.remoteSpecs?.name) {
       return;
@@ -798,14 +791,17 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   }
 
   private updateCompletedTransfers(transfers: CompletedTransfer[]): void {
-    // Keep only the most recent 20 completed transfers
-    this.recentCompletedTransfers = transfers
-      .sort((a, b) => {
-        const aTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
-        const bTime = b.completedAt ? new Date(b.completedAt).getTime() : 0;
-        return bTime - aTime; // Most recent first
-      })
-      .slice(0, 20);
+    // Only update if there are actual changes
+    if (JSON.stringify(transfers) !== JSON.stringify(this.recentCompletedTransfers)) {
+      this.recentCompletedTransfers = transfers
+        .sort((a, b) => {
+          const aTime = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+          const bTime = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+          return bTime - aTime;
+        })
+        .slice(0, 20);
+      this.cdr.markForCheck();
+    }
   }
 
   private updateStatsFromJob(job: any): void {

@@ -1,26 +1,11 @@
-@use "../../../../styles/_shared-modal";
-
-:host {
-  // Component-specific spacing
-  --content-gap-mobile: var(--space-md); // 16px
-  --setting-item-gap: var(--space-md); // 16px
-  --setting-item-padding: var(--space-md) var(--space-lg); // 16px 20px
-  --search-padding: var(--space-md) var(--space-xl); // 16px 24px
-}
-
 .modal {
   background: var(--app-background);
   display: flex;
   flex-direction: column;
   position: relative;
+  height: 100vh;
+  box-sizing: border-box;
   overflow: hidden;
-
-  // Global form error styling
-  mat-error {
-    font-size: var(--caption-font-size);
-    font-weight: 500;
-    color: var(--warn-color);
-  }
 
   // Loading overlay
   .loading-overlay {
@@ -80,7 +65,6 @@
       font-size: 20px;
       width: 20px;
       height: 20px;
-      animation: wiggle 2s ease-in-out infinite;
     }
 
     .pending-count {
@@ -97,62 +81,11 @@
     }
   }
 
-  // Desktop Tabs
-  .desktop-tabs {
+  // Tabs
+  .tabs {
     display: flex;
-    gap: var(--space-xs);
     align-items: center;
-    justify-content: center;
-    flex: 1;
-
-    button {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-      padding: var(--space-sm) var(--space-md);
-      border-radius: var(--card-border-radius);
-      background: transparent;
-      border: 1px solid transparent;
-      color: var(--secondary-text-color);
-      font-size: var(--tab-font-size);
-      font-weight: 500;
-      transition: var(--transition-standard);
-
-      mat-icon {
-        font-size: var(--font-size-md);
-        width: 18px;
-        height: 18px;
-      }
-
-      &:hover {
-        background: var(--surface-overlay);
-        color: var(--app-text-color);
-      }
-
-      &.selected {
-        background: linear-gradient(
-          135deg,
-          rgba(var(--primary-color-rgb), 0.1) 0%,
-          rgba(var(--accent-color-rgb), 0.15) 100%
-        );
-        border-color: rgba(var(--primary-color-rgb), 0.3);
-        color: var(--primary-color);
-        box-shadow: 0 2px 8px rgba(var(--primary-color-rgb), 0.15);
-
-        mat-icon {
-          color: var(--primary-color);
-        }
-      }
-    }
-  }
-
-  // Bottom Tabs (Mobile)
-  .bottom-tabs {
-    display: flex;
     justify-content: space-evenly;
-    padding: var(--space-md);
-    background: var(--secondary-background);
-    border-top: 1px solid var(--surface-border);
 
     button {
       display: flex;
@@ -173,11 +106,6 @@
         font-size: 18px;
         width: 20px;
         height: 20px;
-      }
-
-      .tab-label {
-        font-weight: inherit;
-        text-align: center;
       }
 
       &:hover {
@@ -201,6 +129,32 @@
     }
   }
 
+  // Desktop Tabs
+  .desktop-tabs {
+    gap: var(--space-xs);
+    justify-content: center;
+    flex: 1;
+
+    button {
+      gap: var(--space-xs);
+      border: 1px solid transparent;
+      font-size: var(--tab-font-size);
+
+      mat-icon {
+        font-size: var(--font-size-md);
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+
+  // Bottom Tabs (Mobile)
+  .bottom-tabs {
+    padding: var(--space-xs);
+    background: var(--secondary-background);
+    border-top: 1px solid var(--surface-border);
+  }
+
   // Modal Content
   .modal-content {
     flex: 1;
@@ -218,7 +172,7 @@
       .settings-list {
         display: flex;
         flex-direction: column;
-        gap: var(--setting-item-gap);
+        gap: var(--space-md);
 
         .has-input {
           display: flex;
@@ -232,16 +186,6 @@
           align-items: flex-start;
           justify-content: space-between;
           gap: var(--space-md);
-
-          .setting-info {
-            flex: 1;
-            min-width: 0; // Allow text truncation
-          }
-
-          button {
-            flex-shrink: 0;
-            margin-top: var(--space-xxs); // Align with title
-          }
         }
 
         // Setting Item Card
@@ -250,7 +194,7 @@
           align-items: center;
           justify-content: space-between;
           background: var(--secondary-background);
-          padding: var(--setting-item-padding);
+          padding: var(--space-md) var(--space-lg);
           border-radius: var(--card-border-radius);
           border: 1px solid var(--border-color);
           box-shadow: var(--shadow-light);
@@ -504,6 +448,7 @@
       );
       padding: var(--space-lg);
       border-bottom: 1px solid rgba(var(--warn-color-rgb), 0.2);
+      border-radius: var(--card-border-radius) var(--card-border-radius) 0 0;
 
       .header-info {
         display: flex;
@@ -711,19 +656,6 @@
 
   // Responsive Design
   @media (max-width: 768px) {
-    :host {
-      --modal-padding: var(--modal-padding-mobile);
-      --content-gap: var(--content-gap-mobile);
-      --search-padding: 12px 20px;
-      --setting-item-padding: 16px 20px;
-    }
-
-    .modal-header {
-      h2 {
-        font-size: 18px;
-      }
-    }
-
     .floating-pending-indicator {
       top: 10px;
       right: 10px;
@@ -758,17 +690,17 @@
         }
       }
     }
+
+    .pending-changes-section {
+      .pending-changes-actions {
+        flex-direction: column;
+      }
+    }
   }
 
   @media (max-width: 540px) {
     .desktop-tabs {
       display: none;
-    }
-
-    .modal-header {
-      h2 {
-        font-size: var(--font-size-md);
-      }
     }
 
     .floating-pending-indicator {

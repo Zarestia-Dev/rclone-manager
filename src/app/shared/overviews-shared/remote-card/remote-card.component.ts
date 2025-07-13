@@ -7,6 +7,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { QuickActionButton, QuickActionButtonsComponent } from '../../../shared/components';
 import { AppTab, Remote, RemoteAction } from '../../../shared/components/types';
+import { IconService } from '../../../services/ui/icon.service';
 
 export type RemoteCardVariant = 'active' | 'inactive' | 'error';
 
@@ -30,7 +31,7 @@ export class RemoteCardComponent {
   @Input() remote!: Remote;
   @Input() variant: RemoteCardVariant = 'inactive';
   @Input() mode: AppTab = 'general';
-  @Input() iconService: any;
+  @Input() iconService!: IconService;
   @Input() actionState: RemoteAction = null;
   @Input() showOpenButton = false;
   @Input() primaryActionLabel = 'Start';
@@ -228,12 +229,12 @@ export class RemoteCardComponent {
     }
   }
 
-  get remoteCardClasses() {
+  get remoteCardClasses(): Record<string, boolean> {
     return {
       [`${this.variant}-remote`]: true,
-      mounted: this.remote.mountState?.mounted,
-      syncing: this.remote.syncState?.isOnSync,
-      copying: this.remote.copyState?.isOnCopy,
+      mounted: !!this.remote.mountState?.mounted,
+      syncing: !!this.remote.syncState?.isOnSync,
+      copying: !!this.remote.copyState?.isOnCopy,
     };
   }
 

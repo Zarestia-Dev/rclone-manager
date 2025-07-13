@@ -69,7 +69,7 @@ interface SearchResult {
     SearchContainerComponent,
   ],
   templateUrl: './preferences-modal.component.html',
-  styleUrls: ['./preferences-modal.component.scss'],
+  styleUrls: ['./preferences-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   animations: [AnimationsService.slideToggle()],
 })
 export class PreferencesModalComponent implements OnInit {

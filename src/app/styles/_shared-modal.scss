@@ -4,6 +4,8 @@
 
 // Modal Header
 .modal-header {
+  padding: var(--space-xs);
+  gap: var(--space-xs);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -17,7 +19,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-sm);
+    gap: var(--space-xs);
     margin: 0;
     font-weight: 600;
     text-align: center;

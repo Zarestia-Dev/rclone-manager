@@ -10,15 +10,13 @@
 - Watcher for mounted remotes added. It will automatically unmount the remote if it is not mounted anymore. It will also update the UI accordingly (5 seconds interval). You can also force check the mounted remotes by this Shortcut: Ctrl + Shift + M.
 - Linting and formatting scripts added for the frontend and backend. It uses ESLint, Prettier, Clippy, and Rustfmt.
 - Rclone update check feature added. It will check for the latest version of Rclone. Under the `About RClone Manager > About Rclone` section, you can find the update status and the update button.
+- Rclone binary location selection feature added. You can select the Rclone binary location in the settings, onboard and the repair sheet. It will be used for the Rclone operations. If you don't select it, it will use the default location.
 
 ### Changed
 - UI design has been improved.
 - Mount path selection not forced to select a path from the file browser anymore. You can also type the path manually but it will be validated. Also added support for AllowNonEmpty option in the mount step. This allows you to mount a remote to a non-empty folder if its true.
 - Onboarding process has been improved.
 - Frontend services have been refactored to use a more modular approach.
-
-### Bug Fixes
-- UI lock himself randomly. It is now fixed (Because of the massive SCSS files.).
 
 
 ## [beta-0.1.1] - 2025-04-06

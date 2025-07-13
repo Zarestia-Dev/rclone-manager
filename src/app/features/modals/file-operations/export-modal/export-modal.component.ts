@@ -29,7 +29,7 @@ import { ExportModalData } from '../../../../shared/components/types';
   ],
   animations: [AnimationsService.slideInOut()],
   templateUrl: './export-modal.component.html',
-  styleUrl: './export-modal.component.scss',
+  styleUrls: ['./export-modal.component.scss', '../../../../styles/_shared-modal.scss'],
 })
 export class ExportModalComponent implements OnInit {
   // Injected services

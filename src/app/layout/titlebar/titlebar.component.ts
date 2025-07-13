@@ -101,8 +101,8 @@ export class TitlebarComponent implements OnInit, OnDestroy {
       await this.runInternetCheck();
     } catch (error) {
       console.error('Initialization error:', error);
-      this.selectedTheme = 'system';
-      this.applyTheme(this.systemTheme$.value);
+      this.selectedTheme = 'light';
+      this.applyTheme('light');
     }
   }
 

@@ -21,7 +21,7 @@ import { AnimationsService } from '../../../../services/core/animations.service'
     SearchContainerComponent,
   ],
   templateUrl: './keyboard-shortcuts-modal.component.html',
-  styleUrl: './keyboard-shortcuts-modal.component.scss',
+  styleUrls: ['./keyboard-shortcuts-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   animations: [AnimationsService.slideToggle()],
 })
 export class KeyboardShortcutsModalComponent {

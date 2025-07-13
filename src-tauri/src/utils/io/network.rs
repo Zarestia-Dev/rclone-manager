@@ -8,7 +8,7 @@ use crate::utils::types::all_types::{CheckResult, LinkChecker};
 
 #[command]
 pub async fn check_links(
-    links: String,
+    links: Vec<String>,
     max_retries: usize,
     retry_delay_secs: u64,
 ) -> Result<CheckResult, String> {
@@ -30,13 +30,11 @@ impl LinkChecker {
         }
     }
 
-    async fn check_links(&self, links: &str) -> Result<CheckResult, Box<dyn std::error::Error>> {
-        let links_vec: Vec<String> = links
-            .split(';')
-            .map(|s| s.trim())
-            .filter(|s| !s.is_empty())
-            .map(|s| s.to_string())
-            .collect();
+    async fn check_links(
+        &self,
+        links: &[String],
+    ) -> Result<CheckResult, Box<dyn std::error::Error>> {
+        let links_vec = links.to_vec();
 
         let successful = std::sync::Arc::new(tokio::sync::Mutex::new(Vec::new()));
         let failed = std::sync::Arc::new(tokio::sync::Mutex::new(HashMap::new()));

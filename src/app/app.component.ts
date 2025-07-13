@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet } from '@angular/router';
+// import { RouterOutlet } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { TitlebarComponent } from './layout/titlebar/titlebar.component';
 import { OnboardingComponent } from './features/onboarding/onboarding.component';
@@ -23,7 +23,7 @@ import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.d
   selector: 'app-root',
   imports: [
     CommonModule,
-    RouterOutlet,
+    // RouterOutlet,
     TitlebarComponent,
     OnboardingComponent,
     MatBottomSheetModule,

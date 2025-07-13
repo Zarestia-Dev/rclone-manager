@@ -1,6 +1,6 @@
 [package]
 name = "rclone-manager"
-version = "0.1.1"
+version = "0.1.2"
 description = "Rclone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"

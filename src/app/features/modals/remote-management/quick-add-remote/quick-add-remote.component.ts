@@ -48,7 +48,7 @@ import { FileSystemService } from '../../../../services/file-operations/file-sys
     MatExpansionModule,
   ],
   templateUrl: './quick-add-remote.component.html',
-  styleUrls: ['./quick-add-remote.component.scss'],
+  styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
   animations: [AnimationsService.slideInOut()],
 })
 export class QuickAddRemoteComponent implements OnInit, OnDestroy {

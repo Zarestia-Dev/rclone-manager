@@ -39,7 +39,7 @@ import { LoggingService } from '../../../../services/system/logging.service';
     MatTooltipModule,
   ],
   templateUrl: './logs-modal.component.html',
-  styleUrl: './logs-modal.component.scss',
+  styleUrls: ['./logs-modal.component.scss', '../../../../styles/_shared-modal.scss'],
 })
 export class LogsModalComponent implements OnInit {
   logs: RemoteLogEntry[] = [];

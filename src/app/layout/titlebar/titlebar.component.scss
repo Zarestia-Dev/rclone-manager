@@ -3,10 +3,8 @@
   justify-content: space-between;
   align-items: center;
   height: var(--titlebar-height);
-  background: var(--app-background);
   color: var(--app-text-color);
   padding: 4px var(--title-bar-padding);
-  border-radius: var(--title-bar-radius, 16px) var(--title-bar-radius, 16px) 0 0;
 
   .left-section {
     display: flex;

@@ -477,15 +477,13 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --card-border-radius: var(--radius-sm); // 12px
   --panel-radius: var(--radius-sm); // 12px
   --modal-radius: var(--radius-md); // 16px
-  --title-bar-radius: var(--radius-md); // 16px
-  --home-bottom-radius: var(--radius-md); // 16px
+  --app-border-radius: var(--radius-md); // 16px
   --icon-radius: var(--radius-md); // 16px
   --item-radius: var(--radius-sm); // 12px
   --badge-radius: var(--radius-sm); // 12px
   --status-radius: var(--radius-sm); // 12px
   --usage-bar-radius: var(--radius-lg); // 24px
   --card-border-radius-large: var(--radius-md); // 16px
-  --tab-bar-bottom-radius: 0px; // Special case
   --divider-radius: 1px; // Special case
 
   /* Spacing Aliases (mapped to scale) */
@@ -522,7 +520,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --titlebar-height: 40px;
   --sidebar-width: 250px;
   --status-bar-height: 48px;
-  --app-height: calc(100vh - (var(--titlebar-height) + var(--title-bar-padding)));
+  // --app-height: calc(100vh - (var(--titlebar-height) + var(--title-bar-padding)));
 
   /* Global UI Variables */
   --border-color: rgba(var(--app-text-color-rgb), 0.08);
@@ -533,29 +531,12 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --selected-border: var(--accent-color);
   --disabled-fade: rgba(var(--app-text-color-rgb), 0.5);
   --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: bold;
-    padding: var(--space-xs);
-    gap: var(--space-xs);
-
-    p {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-    }
-  }
 }
 
 html,
 body {
   height: 100%;
   --mat-menu-container-shape: 16px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(128, 128, 128, 0.5) transparent;
 }
 
 body {
@@ -671,15 +652,15 @@ button {
 
 .cdk-overlay-pane,
 .cdk-overlay-dark-backdrop {
-  border-radius: var(--title-bar-radius) !important;
+  border-radius: var(--app-border-radius) !important;
 }
 
 .mat-bottom-sheet-container {
   box-shadow: none !important;
-  border-radius: var(--title-bar-radius) var(--title-bar-radius) 0 0 !important;
+  border-radius: var(--app-border-radius) var(--app-border-radius) 0 0 !important;
 
   @media (max-width: 960px) {
-    border-radius: var(--title-bar-radius) !important;
+    border-radius: var(--app-border-radius) !important;
   }
 }
 

@@ -1,9 +1,8 @@
 .home-wrapper {
   display: flex;
   flex-direction: column;
-  height: var(--app-height);
-  border-radius: 0 0 var(--home-bottom-radius, 16px) var(--home-bottom-radius, 16px);
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 
   mat-toolbar {
     display: flex;
