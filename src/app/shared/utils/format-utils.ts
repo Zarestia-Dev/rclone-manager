@@ -34,7 +34,11 @@ export const formatUtils = {
     if (!rate || rate === 'off' || rate === '') return 'Unlimited';
     if (rate.includes(':')) {
       // Handle combined rates like "10Ki:100Ki" (upload:download)
-      return rate.split(':').map(formatUtils.parseRateString).join(' / ');
+      const [upload, download] = rate.split(':');
+      const parts = [];
+      if (download) parts.push(`↓ ${formatUtils.parseRateString(download)}`);
+      if (upload) parts.push(`↑ ${formatUtils.parseRateString(upload)}`);
+      return parts.join(' ');
     }
     return `Limited to ${formatUtils.parseRateString(rate)}`;
   },

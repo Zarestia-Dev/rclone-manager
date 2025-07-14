@@ -6,6 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { CompletedTransfer } from './transfer-activity-panel.component';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { TruncatePathPipe } from '../../pipes/truncate-path.pipe';
 
 @Component({
   selector: 'app-completed-transfers-table',
@@ -16,6 +17,7 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
     MatTooltipModule,
     MatChipsModule,
     ScrollingModule,
+    TruncatePathPipe,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -128,11 +130,11 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
                   @if (transfer.srcFs && transfer.dstFs) {
                     <div class="src-dst">
                       <span class="src" matTooltip="Source: {{ transfer.srcFs }}">{{
-                        getShortPath(transfer.srcFs)
+                        transfer.srcFs | truncatePath
                       }}</span>
                       <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
                       <span class="dst" matTooltip="Destination: {{ transfer.dstFs }}">{{
-                        getShortPath(transfer.dstFs)
+                        transfer.dstFs | truncatePath
                       }}</span>
                     </div>
                   } @else {
@@ -239,16 +241,6 @@ export class CompletedTransfersTableComponent {
     if (hours > 0) return `${hours}h ago`;
     if (minutes > 0) return `${minutes}m ago`;
     return 'Just now';
-  }
-
-  getShortPath(path: string): string {
-    if (!path) return '';
-    // Extract the remote name from the path (e.g., "remote:" or "remote:/path")
-    const parts = path.split(':');
-    if (parts.length > 1) {
-      return parts[0] + ':';
-    }
-    return path;
   }
 
   getDuration(startedAt: string, completedAt: string): string {

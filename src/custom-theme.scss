@@ -442,6 +442,9 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --light-theme-color: #{map.get($adwaita-light-palette, 50)};
   --dark-theme-color: #{map.get($adwaita-light-palette, 900)};
 
+  --scroller-color: #90939980;
+  -webkit-font-smoothing: antialiased;
+
   --onboarding-background:
     radial-gradient(circle at 20% 50%, rgba(var(--primary-color-rgb), 0.5) 0%, transparent 50%),
     radial-gradient(circle at 80% 20%, rgba(var(--accent-color-rgb), 0.5) 0%, transparent 50%),
@@ -553,6 +556,17 @@ body {
     background-color 0.5s ease,
     color 0.05s ease;
   -webkit-user-drag: none;
+
+  ::-webkit-scrollbar {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--scroller-color);
+    border-radius: 10px;
+    border: 3px solid transparent;
+    background-clip: content-box;
+  }
 }
 
 input,
