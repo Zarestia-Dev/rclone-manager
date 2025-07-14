@@ -41,7 +41,6 @@
       transition: var(--transition-standard);
 
       mat-icon {
-        font-size: var(--font-size-2xl);
         width: var(--icon-size);
         height: var(--icon-size);
       }
@@ -161,7 +160,6 @@
     height: var(--icon-size-mobile);
 
     mat-icon {
-      font-size: 28px;
       width: 28px;
       height: 28px;
     }

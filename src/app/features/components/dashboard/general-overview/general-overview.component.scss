@@ -21,8 +21,7 @@
         gap: 16px;
         margin-bottom: 16px;
 
-        .app-icon {
-          font-size: var(--icon-size-large);
+        mat-icon {
           width: var(--icon-size-large);
           height: var(--icon-size-large);
         }
@@ -432,7 +431,6 @@ mat-accordion {
 
       .title-section {
         .app-icon {
-          font-size: 28px;
           width: 28px;
           height: 28px;
         }

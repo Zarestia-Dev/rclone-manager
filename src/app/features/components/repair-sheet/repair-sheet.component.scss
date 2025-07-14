@@ -1,9 +1,3 @@
-:host {
-  // Use design system variables with fallbacks only where needed
-  --repair-icon-size: var(--icon-size-xl);
-  --repair-icon-size-mobile: var(--icon-size-lg);
-}
-
 .repair-sheet {
   display: flex;
   flex-direction: column;
@@ -29,8 +23,8 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: var(--repair-icon-size);
-        height: var(--repair-icon-size);
+        width: var(--icon-size-xl);
+        height: var(--icon-size-xl);
         border-radius: var(--icon-radius);
         background: linear-gradient(
           135deg,
@@ -42,7 +36,6 @@
         animation: pulseRed 3s ease-in-out infinite;
 
         mat-icon {
-          font-size: var(--icon-size-lg);
           width: var(--icon-size-lg);
           height: var(--icon-size-lg);
           color: var(--warn-color);
@@ -91,7 +84,6 @@
         }
 
         mat-icon {
-          font-size: var(--icon-size-sm);
           width: var(--icon-size-sm);
           height: var(--icon-size-sm);
           color: var(--warn-color);
@@ -156,10 +148,6 @@
 
 // Responsive Design
 @media (max-width: 768px) {
-  :host {
-    --repair-icon-size: var(--repair-icon-size-mobile);
-  }
-
   .repair-sheet {
     .sheet-header {
       padding: var(--panel-padding-mobile);
@@ -170,7 +158,6 @@
         margin-bottom: var(--space-lg);
 
         .repair-icon mat-icon {
-          font-size: var(--icon-size-md);
           width: var(--icon-size-md);
           height: var(--icon-size-md);
         }
@@ -197,7 +184,6 @@
           mat-icon {
             width: var(--icon-size-sm);
             height: var(--icon-size-sm);
-            font-size: var(--icon-size-sm);
           }
 
           span {

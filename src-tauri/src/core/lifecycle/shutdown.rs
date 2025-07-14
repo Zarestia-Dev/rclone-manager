@@ -70,13 +70,15 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     stop_mounted_remote_watcher();
 
     // // Unregister global shortcuts
-    // #[cfg(desktop)]
-    // {
-    //     info!("⌨️ Unregistering global shortcuts...");
-    //     if let Err(e) = unregister_global_shortcuts(&app_handle) {
-    //         error!("Failed to unregister global shortcuts: {e}");
-    //     }
-    // }
+    #[cfg(desktop)]
+    {
+        use crate::utils::shortcuts::unregister_global_shortcuts;
+
+        info!("⌨️ Unregistering global shortcuts...");
+        if let Err(e) = unregister_global_shortcuts(&app_handle) {
+            error!("Failed to unregister global shortcuts: {e}");
+        }
+    }
 
     // Handle unmount results
     match unmount_result {

@@ -20,7 +20,6 @@
       margin-bottom: 16px;
 
       .app-icon {
-        font-size: var(--icon-size-large);
         width: var(--icon-size-large);
         height: var(--icon-size-large);
         color: var(--mode-primary-color, var(--primary-color));
@@ -63,7 +62,6 @@
 
     .title-section {
       .app-icon {
-        font-size: 28px;
         width: 28px;
         height: 28px;
       }

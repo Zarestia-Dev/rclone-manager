@@ -1,10 +1,8 @@
 use log::{debug, error};
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
-use crate::{
-    core::lifecycle::shutdown::handle_shutdown, rclone::state::CACHE, utils::types::RcloneState,
-};
+use crate::{core::lifecycle::shutdown::handle_shutdown, utils::types::all_types::RcloneState};
 
 /// Handle global shortcut events
 pub fn handle_global_shortcut_event(app: &AppHandle, shortcut: Shortcut) {
@@ -21,30 +19,30 @@ pub fn handle_global_shortcut_event(app: &AppHandle, shortcut: Shortcut) {
             });
         }
 
-        // Ctrl+Shift+M - Force check mounted remotes
-        (mods, Code::KeyM)
-            if mods.contains(Modifiers::CONTROL) && mods.contains(Modifiers::SHIFT) =>
-        {
-            debug!("Global shortcut triggered: Force check mounted remotes");
+        // // Ctrl+Shift+M - Force check mounted remotes
+        // (mods, Code::KeyM)
+        //     if mods.contains(Modifiers::CONTROL) && mods.contains(Modifiers::SHIFT) =>
+        // {
+        //     debug!("Global shortcut triggered: Force check mounted remotes");
 
-            // Notify UI about the action only if refresh is successful
-            let app_clone = app.clone();
-            tauri::async_runtime::spawn(async move {
-                match CACHE.refresh_mounted_remotes(app_clone.clone()).await {
-                    Ok(_) => {
-                        if let Err(e) = app_clone.emit("notify_ui", "Refreshed mounted remotes") {
-                            error!("Failed to emit notify_ui event: {}", e);
-                        }
-                        if let Err(e) = app_clone.emit("mount_cache_updated", ()) {
-                            error!("Failed to emit mount_cache_updated event: {}", e);
-                        }
-                    }
-                    Err(e) => {
-                        error!("Failed to refresh mounted remotes: {}", e);
-                    }
-                }
-            });
-        }
+        //     // Notify UI about the action only if refresh is successful
+        //     let app_clone = app.clone();
+        //     tauri::async_runtime::spawn(async move {
+        //         match CACHE.refresh_mounted_remotes(app_clone.clone()).await {
+        //             Ok(_) => {
+        //                 if let Err(e) = app_clone.emit("notify_ui", "Refreshed mounted remotes") {
+        //                     error!("Failed to emit notify_ui event: {e}");
+        //                 }
+        //                 if let Err(e) = app_clone.emit("mount_cache_updated", ()) {
+        //                     error!("Failed to emit mount_cache_updated event: {e}");
+        //                 }
+        //             }
+        //             Err(e) => {
+        //                 error!("Failed to refresh mounted remotes: {e}");
+        //             }
+        //         }
+        //     });
+        // }
         _ => {
             debug!(
                 "Unhandled global shortcut: {:?} + {:?}",
@@ -65,10 +63,10 @@ pub fn unregister_global_shortcuts(app: &AppHandle) -> Result<(), Box<dyn std::e
 
     // Unregister them
     if let Err(e) = app.global_shortcut().unregister(quit_shortcut) {
-        error!("Failed to unregister Ctrl+Q shortcut: {}", e);
+        error!("Failed to unregister Ctrl+Q shortcut: {e}");
     }
     if let Err(e) = app.global_shortcut().unregister(force_check_shortcut) {
-        error!("Failed to unregister Ctrl+Shift+M shortcut: {}", e);
+        error!("Failed to unregister Ctrl+Shift+M shortcut: {e}");
     }
     debug!("Global shortcuts cleanup completed");
     Ok(())

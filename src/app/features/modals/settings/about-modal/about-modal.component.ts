@@ -8,13 +8,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
-import packageJson from '../../../../../../package.json';
+import { version as appVersion } from '../../../../../../package.json';
 import { RcloneInfo } from '../../../../shared/components/types';
 import { AnimationsService } from '../../../../services/core/animations.service';
 import { SystemInfoService } from '../../../../services/system/system-info.service';
 import { NotificationService } from '../../../../services/ui/notification.service';
 import { RcloneUpdateIconComponent } from '../../../../shared/components/rclone-update-icon/rclone-update-icon.component';
-const rCloneManager = packageJson.version;
 
 @Component({
   selector: 'app-about-modal',
@@ -31,12 +30,13 @@ const rCloneManager = packageJson.version;
   animations: [AnimationsService.slideOverlay()],
 })
 export class AboutModalComponent implements OnInit, OnDestroy {
+  readonly rCloneManagerVersion = appVersion;
+
   dialogRef = inject(MatDialogRef<AboutModalComponent>);
   systemInfoService = inject(SystemInfoService);
   notificationService = inject(NotificationService);
 
   currentPage = 'main';
-  rCloneManagerVersion = rCloneManager;
 
   scrolled = false;
 

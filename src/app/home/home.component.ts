@@ -80,7 +80,7 @@ import { LoadingOverlayComponent } from '../shared/components/loading-overlay/lo
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
+  changeDetection: ChangeDetectionStrategy.Default,
   animations: [AnimationsService.slideToggle()],
 })
 export class HomeComponent implements OnInit, OnDestroy {
@@ -205,6 +205,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       'mount',
       async () => {
         const settings = this.loadRemoteSettings(remoteName);
+        if (!settings || !settings.mountConfig) {
+          throw new Error(`Mount configuration missing for remote '${remoteName}'`);
+        }
         await this.mountManagementService.mountRemote(
           remoteName,
           settings.mountConfig.source,
@@ -731,6 +734,7 @@ export class HomeComponent implements OnInit, OnDestroy {
           diskUsage: { ...remote.mountState?.diskUsage },
         },
       };
+      this.cdr.markForCheck();
     }
   }
 
@@ -769,6 +773,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       const remoteJobs = jobs.filter(j => j.remote_name === remote.remoteSpecs.name);
       return this.updateRemoteWithJobs(remote, remoteJobs);
     });
+    this.cdr.markForCheck();
   }
 
   private updateRemoteWithJobs(remote: Remote, jobs: any[]): Remote {
@@ -803,6 +808,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     if (updatedRemote) {
       this.selectedRemote = { ...updatedRemote };
+      this.cdr.markForCheck();
     }
   }
 
@@ -990,6 +996,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.selectedRemote = { ...updatedRemote };
       }
     }
+    this.cdr.markForCheck();
   }
 
   private cleanup(): void {

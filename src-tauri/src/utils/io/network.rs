@@ -1,5 +1,4 @@
 use crate::utils::types::all_types::NetworkStatusPayload;
-use log::{debug, error, info};
 use std::collections::HashMap;
 use tauri::Emitter;
 use tauri::command;
@@ -127,6 +126,8 @@ use {futures_lite::stream::StreamExt, zbus::Connection};
 
 #[cfg(target_os = "linux")]
 pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+    use log::{debug, error, info};
+
     let connection = match Connection::system().await {
         Ok(c) => c,
         Err(e) => {
@@ -160,6 +161,7 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
 
 #[cfg(target_os = "macos")]
 pub fn is_metered() -> bool {
+    use log::info;
     // macOS does not support metered network detection.
     // Always return false.
     info!("is_metered: macOS does not support metered network detection, returning false.");

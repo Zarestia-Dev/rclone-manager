@@ -1,8 +1,6 @@
 <div class="onboarding-container" data-tauri-drag-region [@onboardingEntrance]>
-  <!-- Additional floating shape for depth -->
   <div class="floating-shape"></div>
 
-  <!-- Loading State -->
   <app-loading-overlay
     [isVisible]="isInitializing"
     title="Initializing RClone Manager"
@@ -12,10 +10,8 @@
   >
   </app-loading-overlay>
 
-  <!-- Main Onboarding Content -->
   @if (!isInitializing && initializationComplete) {
     <div class="card-container" [@contentFadeIn]>
-      <!-- Header Section -->
       <div class="onboarding-header">
         <div class="page-indicators">
           @for (card of cards; track i; let i = $index) {
@@ -28,23 +24,17 @@
         </div>
       </div>
 
-      <!-- Main Content Area -->
       <div class="content-area">
         <div class="card-content">
-          <!-- Icon Section -->
-          <div class="icon-section">
-            <div class="icon-container">
-              <img [src]="cards[currentCardIndex].image" alt="Feature icon" />
-            </div>
+          <div class="icon-container">
+            <mat-icon [svgIcon]="cards[currentCardIndex].image"></mat-icon>
           </div>
 
-          <!-- Text Content -->
           <div class="text-content">
             <h2 class="card-title">{{ cards[currentCardIndex].title }}</h2>
             <p class="card-description">{{ cards[currentCardIndex].content }}</p>
           </div>
 
-          <!-- Form Content (if applicable) -->
           @if (cards[currentCardIndex].title === 'Install RClone' && !rcloneInstalled) {
             <div class="form-section" @slideInOut>
               <app-installation-options
@@ -59,7 +49,6 @@
         </div>
       </div>
 
-      <!-- Footer Navigation -->
       <div class="footer-navigation">
         <div>
           @if (currentCardIndex > 0) {

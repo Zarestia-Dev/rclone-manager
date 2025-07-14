@@ -2,10 +2,6 @@
   // Spacing
   --icon-size: 64px;
   --icon-size-mobile: 56px;
-
-  // Typography
-  --message-font-size: var(--font-size-base);
-  --button-font-size: var(--font-size-base);
 }
 
 .confirm-modal {
@@ -43,7 +39,6 @@
       transition: var(--transition-standard);
 
       mat-icon {
-        font-size: var(--font-size-2xl);
         width: 32px;
         height: 32px;
       }
@@ -64,7 +59,6 @@
     }
 
     .modal-message {
-      font-size: var(--message-font-size);
       font-weight: 400;
       color: var(--secondary-text-color);
       line-height: 1.5;
@@ -104,7 +98,6 @@
         margin-bottom: 16px;
 
         mat-icon {
-          font-size: 28px;
           width: 28px;
           height: 28px;
         }

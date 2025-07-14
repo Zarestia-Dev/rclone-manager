@@ -63,13 +63,13 @@ export class OnboardingComponent implements OnInit {
   // Base cards that are always shown
   private baseCards = [
     {
-      image: '../assets/rclone.svg',
+      image: 'rclone',
       title: 'Welcome to RClone Manager',
       content:
         'Your modern cloud storage management solution. RClone Manager provides an intuitive interface to sync, mount, and manage all your cloud remotes effortlessly.',
     },
     {
-      image: '../assets/rclone.svg',
+      image: 'rclone',
       title: 'Powerful Features',
       content:
         'Seamlessly sync files, mount cloud storage as local drives, manage multiple remotes, and monitor transfer operations - all from one beautiful interface.',

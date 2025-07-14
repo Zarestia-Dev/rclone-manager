@@ -9,7 +9,7 @@
   >
   </app-loading-overlay>
 
-  @if (showDevelopmentBanner) {
+  <!-- @if (showDevelopmentBanner) {
     <mat-toolbar class="development-banner">
       <span class="warning-icon">🚧</span>
       <span class="banner-message">Development Build</span>
@@ -17,7 +17,7 @@
         >Features may be unstable • Data loss possible • Not for production use</span
       >
     </mat-toolbar>
-  }
+  } -->
 
   <mat-toolbar
     [@slideToggle]="isMeteredConnection ? 'visible' : 'hidden'"
@@ -101,7 +101,9 @@
       @if (remotes.length === 0 && !isLoading) {
         <div class="empty-state">
           <div class="empty-state-content">
-            <mat-icon svgIcon="rclone-2" class="empty-state-icon"></mat-icon>
+            <div class="icon-container">
+              <mat-icon svgIcon="rclone" class="empty-state-icon"></mat-icon>
+            </div>
             <h2>RClone Manager</h2>
             <p>
               Easily manage your RClone remotes. If you're new to RClone, use "Add Quick Remote" for

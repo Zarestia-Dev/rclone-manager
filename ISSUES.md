@@ -7,10 +7,10 @@
 
 On **Windows**, you may see a **brief terminal window flash** either:
 
-- When **starting Rclone Manager**, or
+- When **starting RClone Manager**, or
 - When running certain Rclone operations like **mounting remotes** or **OAuth authentication**.
 
-This is **not a bug in Rclone Manager**, but a side effect of how the **official Rclone binary** is compiled:
+This is **not a bug in RClone Manager**, but a side effect of how the **official Rclone binary** is compiled:
 
 > ⚙️ **Rclone is compiled as a console application using Go**, and on Windows, such binaries always open a terminal window when executed — even if launched from a GUI app.
 
@@ -35,7 +35,7 @@ Any approach will ensure full CLI compatibility is preserved.
 
 ### 2️⃣ Linux: Sleep Inhibition with Mounted Remotes
 
-On some Linux systems (e.g., GNOME desktop), it has been observed that after mounting a remote, the system may be prevented from sleeping or suspending. It is unclear if this is caused by Rclone Manager, the file manager, or another process.
+On some Linux systems (e.g., GNOME desktop), it has been observed that after mounting a remote, the system may be prevented from sleeping or suspending. It is unclear if this is caused by RClone Manager, the file manager, or another process.
 
 #### 🐧 User Observations
 
@@ -90,11 +90,11 @@ On some Linux systems (e.g., GNOME desktop), it has been observed that after mou
 
 - Currently, the app does not appear to directly inhibit sleep.
 - The cause may be related to the file manager or how the remote is mounted.
-- Further investigation is needed to determine if this is an upstream issue or if Rclone Manager can/should handle sleep inhibition explicitly.
+- Further investigation is needed to determine if this is an upstream issue or if RClone Manager can/should handle sleep inhibition explicitly.
 
 If you experience this issue, please provide details about your Linux distribution, desktop environment, and steps to reproduce.
 
 ---
 
 > **Note:**
-> It is currently unclear whether this sleep inhibition is caused by Rclone Manager, the file manager, or another process involved in mounting and accessing remotes. Any help, insights, or suggestions from the community are appreciated! If you have encountered similar issues or have ideas for troubleshooting, please comment or open an issue.
+> It is currently unclear whether this sleep inhibition is caused by RClone Manager, the file manager, or another process involved in mounting and accessing remotes. Any help, insights, or suggestions from the community are appreciated! If you have encountered similar issues or have ideas for troubleshooting, please comment or open an issue.

@@ -41,7 +41,6 @@
   <em>Both light and dark modes are shown with a diagonal split for visual comparison.</em>
 </p>
 
-
 ---
 
 ## 🚀 Features
@@ -75,6 +74,7 @@
 👉 Get the latest release from:
 
 - 🔗 [GitHub Releases](https://github.com/Hakanbaban53/rclone-manager/releases)
+
 ---
 
 ## 🛠️ Installation
@@ -89,6 +89,12 @@ Make sure you have the following installed:
 - **[Node.js](https://nodejs.org/en/download/):** Required for Angular development and running the frontend.
 - **[Rust](https://www.rust-lang.org/tools/install):** Required for Tauri (backend) development.
 - **[Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html):** Rust’s package manager, required for Tauri.
+
+### 🔒 Secure Export with 7z Encryption
+
+If you want to protect your exported app configuration, **RClone Manager** supports encrypting exports using [7z](https://www.7-zip.org/). When exporting your configuration, you can choose to encrypt the file with a password for added security.
+
+> **Note:** Make sure you have `7z` (7-Zip) installed on your system to use this feature.
 
 ### 💻 Development Setup
 
@@ -118,8 +124,8 @@ npm run tauri build
 
 Known bugs and technical limitations are tracked in two places:
 
-* 📄 See [**ISSUES.md**](ISSUES.md) for detailed explanations of platform-specific issues (e.g. Windows terminal flash)
-* 📌 Visit our [**GitHub Project Board**](https://github.com/users/Hakanbaban53/projects/6) for open bugs and upcoming fixes
+- 📄 See [**ISSUES.md**](ISSUES.md) for detailed explanations of platform-specific issues (e.g. Windows terminal flash)
+- 📌 Visit our [**GitHub Project Board**](https://github.com/users/Hakanbaban53/projects/6) for open bugs and upcoming fixes
 
 ---
 
@@ -129,10 +135,10 @@ We organize development on [**GitHub Projects**](https://github.com/users/Hakanb
 
 The board includes:
 
-* 🔜 **Short-Term Goals** (UI improvements, packaging, sync/copy GUI)
-* 🚀 **Long-Term Features** (mobile support, performance, localization)
-* 🧩 **Open Tasks & Suggestions** from the community
-* 🐛 **Known Issues & Workarounds** not yet fixed
+- 🔜 **Short-Term Goals** (UI improvements, packaging, sync/copy GUI)
+- 🚀 **Long-Term Features** (mobile support, performance, localization)
+- 🧩 **Open Tasks & Suggestions** from the community
+- 🐛 **Known Issues & Workarounds** not yet fixed
 
 > 🧠 Want to follow progress or help shape direction? Watch the board and leave your ideas!
 
@@ -143,8 +149,8 @@ The board includes:
 We welcome contributors of all experience levels!
 You can help by:
 
-* 🐛 Reporting bugs & submitting suggestions in [**GitHub Issues**](https://github.com/Hakanbaban53/rclone-manager/issues)
-* 🛠️ Submitting pull requests — see the [CONTRIBUTING.md](CONTRIBUTING.md) guide (coming soon)
+- 🐛 Reporting bugs & submitting suggestions in [**GitHub Issues**](https://github.com/Hakanbaban53/rclone-manager/issues)
+- 🛠️ Submitting pull requests — see the [CONTRIBUTING.md](CONTRIBUTING.md) guide (coming soon)
 
 ---
 

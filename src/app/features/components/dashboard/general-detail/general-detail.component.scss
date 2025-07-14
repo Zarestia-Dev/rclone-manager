@@ -38,7 +38,6 @@
           border: 2px solid rgba(var(--primary-color-rgb), 0.2);
 
           .remote-type-icon {
-            font-size: var(--large-icon-size);
             width: var(--large-icon-size);
             height: var(--large-icon-size);
             color: var(--primary-color);
@@ -92,7 +91,6 @@
           font-weight: 500;
 
           mat-icon {
-            font-size: var(--status-icon-size);
             width: var(--status-icon-size);
             height: var(--status-icon-size);
           }

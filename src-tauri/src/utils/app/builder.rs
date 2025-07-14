@@ -48,7 +48,7 @@ pub async fn setup_tray(app: AppHandle, max_tray_items: usize) -> tauri::Result<
 pub fn create_app_window(app_handle: AppHandle) {
     let main_window =
         tauri::WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::default())
-            .title("Rclone Manager")
+            .title("RClone Manager")
             .inner_size(800.0, 630.0)
             .resizable(true)
             .center()

@@ -49,10 +49,6 @@ export class MountManagementService extends TauriBaseService {
     mountOptions?: MountOptions,
     vfsOptions?: VfsOptions
   ): Promise<void> {
-    if (!mountPoint) {
-      throw new Error('Mount point is required');
-    }
-
     try {
       await this.invokeCommand('mount_remote', {
         remoteName,

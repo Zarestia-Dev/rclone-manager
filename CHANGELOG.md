@@ -1,7 +1,7 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [beta-0.1.2] - 2025-07-15
 ### Added
 - General tab added.
 - Remote Clone feature added. Under the remote detail ellipsis button (Clones a remote with settings to new remote.).
@@ -16,7 +16,7 @@
 - UI design has been improved.
 - Mount path selection not forced to select a path from the file browser anymore. You can also type the path manually but it will be validated. Also added support for AllowNonEmpty option in the mount step. This allows you to mount a remote to a non-empty folder if its true.
 - Onboarding process has been improved.
-- Frontend services have been refactored to use a more modular approach.
+- Frontend and backend services have been refactored to use a more modular approach.
 
 
 ## [beta-0.1.1] - 2025-04-06

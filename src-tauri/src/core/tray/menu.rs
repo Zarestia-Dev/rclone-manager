@@ -207,7 +207,7 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
 
                 let indicators = format!(
                     "{}{}{}",
-                    if is_mounted { "🖴" } else { "" },
+                    if is_mounted { "🗃️" } else { "" },
                     if active_sync_job.is_some() {
                         "🔄"
                     } else {

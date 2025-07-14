@@ -14,59 +14,56 @@
   </header>
 
   <!-- Modal Content -->
-  <main class="modal-content">
-    <!-- Animation Wrapper -->
-    <div [@slideAnimation]="currentStep" class="animation-wrapper">
-      <!-- Step 1: Remote Configuration -->
-      @if (editTarget === 'remote' || (!editTarget && currentStep === 1)) {
-        <section class="step-container" aria-labelledby="remote-config-heading">
-          <h2 id="remote-config-heading" class="visually-hidden">Remote Configuration</h2>
-          <app-remote-config-step
-            [form]="remoteForm"
-            [remoteFields]="dynamicRemoteFields"
-            [remoteTypes]="remoteTypes"
-            [isLoading]="isRemoteConfigLoading"
+  <main class="modal-content" [@slideAnimation]="currentStep">
+    <!-- Step 1: Remote Configuration -->
+    @if (editTarget === 'remote' || (!editTarget && currentStep === 1)) {
+      <section class="step-container" aria-labelledby="remote-config-heading">
+        <h2 id="remote-config-heading" class="visually-hidden">Remote Configuration</h2>
+        <app-remote-config-step
+          [form]="remoteForm"
+          [remoteFields]="dynamicRemoteFields"
+          [remoteTypes]="remoteTypes"
+          [isLoading]="isRemoteConfigLoading"
+          [existingRemotes]="existingRemotes"
+          [restrictMode]="restrictMode"
+          (remoteTypeChanged)="onRemoteTypeChange()"
+        >
+        </app-remote-config-step>
+      </section>
+    }
+
+    <!-- Steps 2-6: Flags and Mount Configurations -->
+    @for (step of flagConfigService.FLAG_TYPES; track step; let i = $index) {
+      @if (editTarget === step || (!editTarget && currentStep === i + 2)) {
+        <section class="step-container" [attr.aria-labelledby]="step + '-config-heading'">
+          <h2 [id]="step + '-config-heading'" class="visually-hidden">
+            {{ step | titlecase }} Configuration
+          </h2>
+          <app-flag-config-step
+            [form]="remoteConfigForm"
+            [flagType]="step"
+            [isEditMode]="!!editTarget"
             [existingRemotes]="existingRemotes"
-            [restrictMode]="restrictMode"
-            (remoteTypeChanged)="onRemoteTypeChange()"
-          >
-          </app-remote-config-step>
+            [pathState]="pathSelectionService.getPathState"
+            [sourceLoading]="pathSelectionService.getLoadingState(step + 'Config.source')"
+            [destLoading]="pathSelectionService.getLoadingState(step + 'Config.dest')"
+            [dynamicFlagFields]="dynamicFlagFields[step]"
+            [selectedOptions]="selectedOptions[step]"
+            [isDisabled]="isAuthInProgress"
+            (optionToggled)="toggleOption(step, $event)"
+            (jsonValidated)="validateJson(step)"
+            (jsonReset)="resetJson(step)"
+            (destRemoteSelected)="onRemoteSelected($event, step + 'Config.dest')"
+            (sourceRemoteSelected)="onRemoteSelected($event, step + 'Config.source')"
+            (destOptionSelected)="onDestOptionSelectedField($event, step + 'Config.dest')"
+            (sourceOptionSelected)="onSourceOptionSelectedField($event, step + 'Config.source')"
+            (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
+            (remoteSelectionReset)="resetRemoteSelectionField($event)"
+            >>
+          </app-flag-config-step>
         </section>
       }
-
-      <!-- Steps 2-6: Flags and Mount Configurations -->
-      @for (step of flagConfigService.FLAG_TYPES; track step; let i = $index) {
-        @if (editTarget === step || (!editTarget && currentStep === i + 2)) {
-          <section class="step-container" [attr.aria-labelledby]="step + '-config-heading'">
-            <h2 [id]="step + '-config-heading'" class="visually-hidden">
-              {{ step | titlecase }} Configuration
-            </h2>
-            <app-flag-config-step
-              [form]="remoteConfigForm"
-              [flagType]="step"
-              [isEditMode]="!!editTarget"
-              [existingRemotes]="existingRemotes"
-              [pathState]="pathSelectionService.getPathState"
-              [sourceLoading]="pathSelectionService.getLoadingState(step + 'Config.source')"
-              [destLoading]="pathSelectionService.getLoadingState(step + 'Config.dest')"
-              [dynamicFlagFields]="dynamicFlagFields[step]"
-              [selectedOptions]="selectedOptions[step]"
-              [isDisabled]="isAuthInProgress"
-              (optionToggled)="toggleOption(step, $event)"
-              (jsonValidated)="validateJson(step)"
-              (jsonReset)="resetJson(step)"
-              (destRemoteSelected)="onRemoteSelected($event, step + 'Config.dest')"
-              (sourceRemoteSelected)="onRemoteSelected($event, step + 'Config.source')"
-              (destOptionSelected)="onDestOptionSelectedField($event, step + 'Config.dest')"
-              (sourceOptionSelected)="onSourceOptionSelectedField($event, step + 'Config.source')"
-              (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
-              (remoteSelectionReset)="resetRemoteSelectionField($event)"
-              >>
-            </app-flag-config-step>
-          </section>
-        }
-      }
-    </div>
+    }
   </main>
 
   <!-- Footer Buttons -->

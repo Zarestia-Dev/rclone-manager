@@ -15,7 +15,6 @@
 
   // Colors and effects
   --card-hover-opacity: 0.05;
-  --search-border-opacity: 0.1;
   --status-active-opacity: 0.15;
   --status-inactive-opacity: 0.08;
 
@@ -35,12 +34,12 @@
 
   // Header Section
   .sidebar-header {
-    flex-shrink: 0; // Prevent header from shrinking
+    flex-shrink: 0;
     background: var(--secondary-background);
     padding: var(--header-padding);
     box-shadow: var(--card-shadow);
     transition: var(--transition-standard);
-    z-index: 1; // Ensure header stays above content
+    z-index: 1;
 
     &:hover {
       background: var(--bg-hover);
@@ -195,16 +194,13 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 48px 24px;
     text-align: center;
     color: var(--secondary-text-color);
-    font-size: 0.95rem;
     font-weight: 500;
-    height: 100%; // Take full height of content area
-    min-height: 200px; // Minimum height for good UX
+    height: 100%;
+    min-height: 200px;
 
     mat-icon {
-      font-size: 48px;
       width: 48px;
       height: 48px;
       margin-bottom: 16px;

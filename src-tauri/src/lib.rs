@@ -154,6 +154,38 @@ pub fn run() {
                 restrict_mode: Arc::new(std::sync::RwLock::new(settings.general.restrict)),
             });
 
+            // Setup global shortcuts
+            #[cfg(desktop)]
+            {
+                use crate::utils::shortcuts::handle_global_shortcut_event;
+                use log::info;
+                use tauri_plugin_global_shortcut::{
+                    Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
+                };
+
+                // Define shortcuts
+                let ctrl_q_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyQ);
+
+                // Setup global shortcut plugin with handler
+                app_handle.plugin(
+                    tauri_plugin_global_shortcut::Builder::new()
+                        .with_handler(move |app, shortcut, event| {
+                            if let ShortcutState::Pressed = event.state() {
+                                handle_global_shortcut_event(app, *shortcut);
+                            }
+                        })
+                        .build(),
+                )?;
+
+                // Register shortcuts
+                match app_handle.global_shortcut().register(ctrl_q_shortcut) {
+                    Ok(_) => info!("Successfully registered Ctrl+Q shortcut"),
+                    Err(e) => error!("Failed to register Ctrl+Q shortcut: {e}"),
+                }
+
+                info!("🔗 Global shortcuts registered successfully");
+            }
+
             init_logging(settings.experimental.debug_logging)
                 .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
