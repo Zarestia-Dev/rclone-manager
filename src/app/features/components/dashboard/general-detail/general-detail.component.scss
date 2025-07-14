@@ -38,8 +38,8 @@
           border: 2px solid rgba(var(--primary-color-rgb), 0.2);
 
           .remote-type-icon {
-            width: var(--large-icon-size);
-            height: var(--large-icon-size);
+            width: var(--icon-size-lg);
+            height: var(--icon-size-lg);
             color: var(--primary-color);
           }
         }
@@ -86,13 +86,13 @@
           border-radius: var(--status-radius);
           background: rgba(var(--app-text-color-rgb), var(--border-opacity));
           border: 1px solid rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
-          transition: var(--default-transition);
+          transition: var(--transition-standard);
           font-size: var(--font-size-sm);
           font-weight: 500;
 
           mat-icon {
-            width: var(--status-icon-size);
-            height: var(--status-icon-size);
+            width: var(--icon-size-sm);
+            height: var(--icon-size-sm);
           }
 
           .status-text {

@@ -156,9 +156,9 @@
       border-radius: var(--radius-md);
 
       .status-icon {
-        font-size: var(--icon-size-small);
-        width: var(--icon-size-small);
-        height: var(--icon-size-small);
+        font-size: var(--icon-size-xs);
+        width: var(--icon-size-xs);
+        height: var(--icon-size-xs);
       }
 
       &.mounted {

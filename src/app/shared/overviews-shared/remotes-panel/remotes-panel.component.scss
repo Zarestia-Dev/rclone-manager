@@ -52,26 +52,26 @@
 
       .active-icon {
         color: var(--mode-primary-color, var(--primary-color));
-        width: var(--icon-size-medium);
-        height: var(--icon-size-medium);
+        width: var(--icon-size-md);
+        height: var(--icon-size-md);
         transition: var(--transition-standard);
         will-change: color;
       }
 
       .inactive-icon {
         color: var(--purple);
-        font-size: var(--icon-size-medium);
-        width: var(--icon-size-medium);
-        height: var(--icon-size-medium);
+        font-size: var(--icon-size-md);
+        width: var(--icon-size-md);
+        height: var(--icon-size-md);
         transition: var(--transition-standard);
         will-change: color;
       }
 
       .error-icon {
         color: var(--warn-color);
-        font-size: var(--icon-size-medium);
-        width: var(--icon-size-medium);
-        height: var(--icon-size-medium);
+        font-size: var(--icon-size-md);
+        width: var(--icon-size-md);
+        height: var(--icon-size-md);
         transition: var(--transition-standard);
         will-change: color;
       }

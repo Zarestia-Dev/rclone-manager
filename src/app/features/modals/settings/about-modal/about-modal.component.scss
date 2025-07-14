@@ -284,7 +284,7 @@
         color: var(--accent-color);
         font-weight: 500;
         cursor: pointer;
-        transition: var(--transition-quick);
+        transition: var(--transition-fast);
         border-bottom: 1px solid rgba(var(--accent-color-rgb), 0.3);
 
         &:hover {

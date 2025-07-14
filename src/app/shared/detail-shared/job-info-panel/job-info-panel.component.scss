@@ -6,7 +6,7 @@
   box-shadow: var(--box-shadow);
   border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
   overflow: hidden;
-  transition: var(--default-transition);
+  transition: var(--transition-standard);
   margin-bottom: var(--panel-gap);
 
   &:hover {
@@ -27,7 +27,7 @@
   background: rgba(var(--app-text-color-rgb), var(--background-opacity));
   border-radius: var(--item-radius);
   border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-  transition: var(--default-transition);
+  transition: var(--transition-standard);
 
   &:hover {
     background: rgba(var(--app-text-color-rgb), var(--hover-opacity));

@@ -4,7 +4,7 @@
   box-shadow: var(--box-shadow);
   border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
   overflow: hidden;
-  transition: var(--default-transition);
+  transition: var(--transition-standard);
 
   &:hover {
     box-shadow: 0 8px 32px rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
@@ -23,8 +23,8 @@
       font-size: var(--font-size-md);
 
       .panel-icon {
-        width: var(--medium-icon-size);
-        height: var(--medium-icon-size);
+        width: var(--icon-size-md);
+        height: var(--icon-size-md);
         color: var(--primary-color);
       }
 

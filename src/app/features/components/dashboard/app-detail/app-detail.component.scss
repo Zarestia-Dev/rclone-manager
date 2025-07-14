@@ -30,13 +30,13 @@
           border-radius: var(--icon-radius);
           background: rgba(var(--app-text-color-rgb), var(--background-opacity));
           border: 2px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-          transition: var(--default-transition);
+          transition: var(--transition-standard);
 
           .remote-type-icon {
-            width: var(--large-icon-size);
-            height: var(--large-icon-size);
+            width: var(--icon-size-lg);
+            height: var(--icon-size-lg);
             color: var(--secondary-text-color);
-            transition: var(--default-transition);
+            transition: var(--transition-standard);
           }
 
           &.mount {

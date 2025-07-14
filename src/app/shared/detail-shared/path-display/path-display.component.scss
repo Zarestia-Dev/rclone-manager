@@ -15,7 +15,7 @@
   background: rgba(var(--app-text-color-rgb), var(--background-opacity));
   border-radius: var(--item-radius);
   border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-  transition: var(--quick-transition);
+  transition: var(--transition-fast);
 
   &:hover {
     background: rgba(var(--primary-color-rgb), var(--background-opacity));
@@ -35,8 +35,8 @@
   }
 
   mat-icon {
-    width: var(--medium-icon-size);
-    height: var(--medium-icon-size);
+    width: var(--icon-size-md);
+    height: var(--icon-size-md);
   }
 }
 
@@ -69,8 +69,8 @@
 
   .arrow-icon {
     color: var(--secondary-text-color);
-    width: var(--large-icon-size);
-    height: var(--large-icon-size);
+    width: var(--icon-size-lg);
+    height: var(--icon-size-lg);
   }
 }
 

@@ -1,6 +1,3 @@
-// =============================================
-// 1. ROOT CONTAINER (.general-overview)
-// =============================================
 .general-overview {
   display: flex;
   flex-direction: column;
@@ -22,16 +19,17 @@
         margin-bottom: 16px;
 
         mat-icon {
-          width: var(--icon-size-large);
-          height: var(--icon-size-large);
+          width: var(--icon-size-xl);
+          height: var(--icon-size-xl);
         }
 
         h2 {
-          font-size: 32px;
+          font-size: clamp(20px, 4vw, 32px);
           font-weight: 300;
           margin: 0;
           color: var(--app-text-color);
           letter-spacing: -0.5px;
+          text-align: center;
         }
       }
 
@@ -46,7 +44,8 @@
           transparent 100%
         );
         margin: 0 auto;
-        max-width: 20vw;
+        max-width: min(20vw, 200px);
+        min-width: 100px;
         border-radius: 1px;
       }
     }
@@ -60,6 +59,7 @@
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -70,35 +70,22 @@ mat-accordion {
   .mat-expansion-panel {
     border-radius: var(--card-border-radius) !important;
     margin-bottom: 16px;
-    transition: var(--transition-standard);
 
     &.mat-expanded {
       box-shadow: var(--shadow-elevated);
     }
 
     .mat-expansion-panel-header {
-      min-height: 72px;
-      padding: 0 32px;
-      transition: var(--transition-standard);
-
-      &:hover,
-      &.mat-expanded {
-        border-bottom-color: rgba(var(--secondary-background-rgb), 0.1);
-      }
+      min-height: 64px;
+      padding: 0 clamp(16px, 4vw, 32px);
     }
 
     .mat-expansion-panel-header-description {
-      color: var(--app-text-color);
-      opacity: 0.8;
       justify-content: flex-end;
       align-items: center;
       display: flex;
       gap: 12px;
-      font-size: 14px;
-    }
-
-    .mat-expansion-panel-body {
-      padding: 0 32px 32px 32px;
+      font-size: clamp(12px, 2vw, 14px);
     }
   }
 }
@@ -109,17 +96,6 @@ mat-accordion {
 
 // 3.1 Bandwidth Limit Panel (.bandwidth-panel)
 .bandwidth-panel {
-  // 3.1.1 Bandwidth Loading State
-  .bandwidth-loading {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px;
-    border-radius: 8px;
-    margin-top: 16px;
-    background-color: var(--surface-overlay);
-  }
-
   // 3.1.2 Bandwidth Error State
   .bandwidth-error {
     display: flex;
@@ -130,10 +106,6 @@ mat-accordion {
     margin-top: 16px;
     background-color: rgba(var(--warn-color-rgb), 0.1);
     border: 1px solid rgba(var(--warn-color-rgb), 0.2);
-
-    span {
-      flex: 1;
-    }
   }
 
   // 3.1.3 Bandwidth Content
@@ -186,7 +158,7 @@ mat-accordion {
     // 3.1.3.2 Bandwidth Details
     .bandwidth-details {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
       gap: 16px;
     }
   }
@@ -194,24 +166,22 @@ mat-accordion {
 
 // 3.2 System Information Panel (.system-info-panel)
 .system-info-panel {
-  // 3.2.1 System Info Loading State
-  .info-loading {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 16px;
-    background-color: var(--surface-overlay);
-    border-radius: 8px;
-    margin-top: 16px;
-  }
-
   // 3.2.2 System Info Grid
   .info-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     gap: 16px;
     margin-top: 16px;
   }
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  background-color: var(--surface-overlay);
 }
 
 // 3.3 Global Job Information Panel (.job-info-panel)
@@ -229,7 +199,6 @@ mat-accordion {
       border-radius: 8px;
       padding: 16px;
       border: 1px solid rgba(var(--app-text-color), 0.05);
-
       .progress-header {
         display: flex;
         justify-content: space-between;
@@ -246,7 +215,7 @@ mat-accordion {
         display: flex;
         justify-content: space-between;
         margin-top: 8px;
-        font-size: 12px;
+        font-size: clamp(10px, 2vw, 12px);
         opacity: 0.8;
       }
     }
@@ -254,7 +223,7 @@ mat-accordion {
     // 3.3.1.2 Job Stats Grid
     .job-stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 16px;
     }
 
@@ -271,7 +240,7 @@ mat-accordion {
 
       .error-message {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 8px;
         margin-top: 8px;
 
@@ -329,7 +298,7 @@ mat-accordion {
   border-radius: 8px;
 
   .label {
-    font-size: 12px;
+    font-size: clamp(10px, 2vw, 12px);
     color: var(--app-text-color);
     opacity: 0.7;
   }
@@ -339,7 +308,8 @@ mat-accordion {
     align-items: center;
     gap: 8px;
     font-weight: 500;
-    font-size: 16px;
+    font-size: clamp(14px, 2.5vw, 16px);
+    min-width: 0;
 
     // Status-based coloring
     &.success {
@@ -391,7 +361,7 @@ mat-accordion {
   color: var(--primary-color);
   padding: 4px 12px;
   border-radius: 16px;
-  font-size: 12px;
+  font-size: clamp(10px, 2vw, 12px);
   font-weight: 600;
   box-shadow: 0 2px 4px rgba(var(--primary-color-rgb), 0.2);
 }
@@ -411,38 +381,44 @@ mat-accordion {
   // Mat-accordion adjustments
   mat-accordion {
     .mat-expansion-panel {
+      margin-bottom: 12px;
+
       .mat-expansion-panel-header {
         padding: 0 16px;
+        min-height: 56px;
 
-        .mat-expansion-panel-body {
-          padding: 0 16px 16px 16px;
+        .mat-expansion-panel-header-description {
+          font-size: 12px;
+          gap: 8px;
         }
+      }
+
+      .mat-expansion-panel-body {
+        padding: 0 16px 16px 16px;
       }
     }
   }
 
   // General overview adjustments
   .general-overview {
-    padding: var(--panel-padding-mobile);
-    gap: var(--section-gap-mobile);
+    padding: var(--panel-padding-mobile, 16px);
+    gap: var(--section-gap-mobile, 12px);
 
     .overview-header {
-      margin-bottom: var(--panel-padding-mobile);
+      margin-bottom: var(--panel-padding-mobile, 16px);
 
       .title-section {
-        .app-icon {
+        gap: 12px;
+
+        mat-icon {
           width: 28px;
           height: 28px;
         }
 
         h2 {
-          font-size: 24px;
+          font-size: clamp(18px, 5vw, 24px);
         }
       }
-    }
-
-    .overview-content {
-      gap: var(--panel-padding-mobile);
     }
   }
 }
@@ -457,7 +433,7 @@ mat-accordion {
       gap: 8px;
 
       h2 {
-        font-size: 20px;
+        font-size: clamp(16px, 6vw, 20px);
       }
     }
   }

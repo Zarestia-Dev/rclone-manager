@@ -7,7 +7,7 @@ use crate::rclone::state::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{EndpointHelper, core};
 
 /// Utility to normalize Windows extended-length paths (e.g., //?/C:/path or \\?\C:\path) to C:/path, only on Windows
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 fn normalize_windows_path(path: &str) -> String {
     let mut p = path;
     if p.starts_with("//?/") || p.starts_with(r"\\?\") {
@@ -126,31 +126,30 @@ pub async fn get_completed_transfers(
     }
 
     debug!("✅ Completed transfers response: {body}");
-    // Parse the response and normalize paths in transferred array if present
+
+    #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
     let mut value: serde_json::Value = serde_json::from_str(&body).map_err(|e| {
         error!("❌ Failed to parse completed transfers: {e}");
         format!("Failed to parse completed transfers: {e}")
     })?;
 
-    // Only normalize on Windows, else send as-is
-    if cfg!(windows) {
+    // Only normalize on Windows
+    #[cfg(target_os = "windows")]
+    {
         debug!("📊 Normalizing paths in completed transfers response: {value}");
-        // If the response is an object with a "transferred" array, normalize paths
         if let Some(transferred) = value.get_mut("transferred").and_then(|v| v.as_array_mut()) {
             for transfer in transferred.iter_mut() {
-                if let Some(dst_fs) = transfer.get_mut("dstFs") {
-                    if let Some(s) = dst_fs.as_str() {
-                        *dst_fs = serde_json::Value::String(normalize_windows_path(s));
-                    }
-                }
-                if let Some(src_fs) = transfer.get_mut("srcFs") {
-                    if let Some(s) = src_fs.as_str() {
-                        *src_fs = serde_json::Value::String(normalize_windows_path(s));
+                for field in ["dstFs", "srcFs"] {
+                    if let Some(fs_value) = transfer.get_mut(field) {
+                        if let Some(path_str) = fs_value.as_str() {
+                            *fs_value = serde_json::Value::String(normalize_windows_path(path_str));
+                        }
                     }
                 }
             }
         }
     }
+
     Ok(value)
 }
 

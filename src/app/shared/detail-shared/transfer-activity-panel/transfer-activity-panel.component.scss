@@ -6,7 +6,7 @@
   box-shadow: var(--box-shadow);
   border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
   overflow: hidden;
-  transition: var(--default-transition);
+  transition: var(--transition-standard);
 
   &:hover {
     box-shadow: 0 8px 32px rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));

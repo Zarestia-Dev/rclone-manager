@@ -393,7 +393,7 @@
             font-size: var(--caption-font-size);
             font-weight: 500;
             cursor: pointer;
-            transition: var(--transition-quick);
+            transition: var(--transition-fast);
             border: 1px solid rgba(var(--primary-color-rgb), 0.2);
 
             &:hover {

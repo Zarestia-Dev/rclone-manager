@@ -56,7 +56,7 @@
   background: rgba(var(--yellow-rgb), 0.05);
   border: 2px solid rgba(var(--yellow-rgb), 0.2);
   border-radius: var(--panel-radius);
-  transition: var(--transition-quick);
+  transition: var(--transition-fast);
 
   &:hover {
     background: rgba(var(--yellow-rgb), 0.08);

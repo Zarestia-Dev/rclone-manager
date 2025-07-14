@@ -152,7 +152,7 @@
           align-items: center;
           padding: var(--log-entry-padding);
           border-radius: var(--button-border-radius);
-          transition: var(--transition-quick);
+          transition: var(--transition-fast);
           position: relative;
           font-size: var(--log-font-size);
 
@@ -375,7 +375,7 @@
             cursor: pointer;
             padding: 4px 8px;
             border-radius: var(--button-border-radius);
-            transition: var(--transition-quick);
+            transition: var(--transition-fast);
             line-height: 1.5;
 
             &:hover {
@@ -389,7 +389,7 @@
             display: flex;
             margin-left: auto;
             opacity: 0;
-            transition: var(--transition-quick);
+            transition: var(--transition-fast);
 
             button {
               display: flex;
@@ -401,7 +401,7 @@
               background: transparent;
               border: 1px solid transparent;
               color: var(--secondary-text-color);
-              transition: var(--transition-quick);
+              transition: var(--transition-fast);
               padding: 0;
 
               &:hover {

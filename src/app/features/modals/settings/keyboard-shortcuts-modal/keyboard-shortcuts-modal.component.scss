@@ -21,7 +21,7 @@
       // Table rows
       .mat-mdc-row {
         border-bottom: 1px solid var(--border-color);
-        transition: var(--transition-quick);
+        transition: var(--transition-fast);
 
         &:hover {
           background: var(--bg-elevated);
@@ -57,7 +57,7 @@
             letter-spacing: 0.5px;
             text-transform: uppercase;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-            transition: var(--transition-quick);
+            transition: var(--transition-fast);
             position: relative;
 
             // 3D key effect

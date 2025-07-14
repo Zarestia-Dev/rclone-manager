@@ -157,7 +157,7 @@
         justify-content: center;
 
         .action-button {
-          transition: var(--quick-transition);
+          transition: var(--transition-fast);
 
           &.stop-button {
             color: var(--warn-color);

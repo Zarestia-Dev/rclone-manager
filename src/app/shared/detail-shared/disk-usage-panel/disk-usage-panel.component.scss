@@ -22,7 +22,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: var(--usage-transition);
+        transition: var(--transition-slow);
 
         .usage-status-text {
           color: var(--secondary-text-color);
@@ -36,7 +36,7 @@
           top: 0;
           height: 100%;
           background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
-          transition: var(--usage-transition);
+          transition: var(--transition-slow);
           border-radius: var(--radius-lg);
         }
       }

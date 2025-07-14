@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { BehaviorSubject, interval } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 
 export interface RcloneUpdateInfo {
   current_version: string;
@@ -68,10 +68,6 @@ export class RcloneUpdateService {
 
   constructor() {
     this.setupEventListeners();
-    // Check for updates every 6 hours
-    interval(6 * 60 * 60 * 1000).subscribe(() => {
-      this.checkForUpdates();
-    });
   }
 
   private setupEventListeners(): void {

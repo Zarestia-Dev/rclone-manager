@@ -556,17 +556,8 @@ body {
     background-color 0.5s ease,
     color 0.05s ease;
   -webkit-user-drag: none;
-
-  ::-webkit-scrollbar {
-    background: transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: var(--scroller-color);
-    border-radius: 10px;
-    border: 3px solid transparent;
-    background-clip: content-box;
-  }
+  scrollbar-width: thin;
+  -webkit-scrollbar-width: thin;
 }
 
 input,
@@ -616,17 +607,6 @@ button {
     display: flex;
     flex-direction: row;
     gap: var(--space-xs);
-  }
-
-  &.fix {
-    color: white !important;
-    background-color: var(--orange) !important;
-  }
-
-  &.edit,
-  &.back {
-    color: white !important;
-    background-color: var(--purple) !important;
   }
 }
 
@@ -693,17 +673,6 @@ button {
   --icon-size-xl: 48px; // Extra large icons (overview cards)
   --icon-container-size: 64px; // Icon container size
 
-  // Legacy aliases (for backward compatibility)
-  --small-icon-size: var(--icon-size-xs); // 14px
-  --status-icon-size: var(--icon-size-sm); // 18px
-  --medium-icon-size: var(--icon-size-md); // 24px
-  --large-icon-size: var(--icon-size-lg); // 32px
-  --icon-size: var(--icon-size-md); // 24px (default)
-  --icon-size-small: var(--icon-size-xs); // 14px
-  --icon-size-medium: var(--icon-size-md); // 24px
-  --icon-size-large: var(--icon-size-xl); // 48px
-  --icon-size-mobile: 20px; // Mobile-optimized
-
   /* ===== TYPOGRAPHY SCALE ===== */
   // Font sizes
   --font-size-3xl: 2rem; // 32px
@@ -731,12 +700,6 @@ button {
   --transition-cubic: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
-  // Legacy aliases
-  --default-transition: var(--transition-standard);
-  --quick-transition: var(--transition-fast);
-  --usage-transition: var(--transition-slow);
-  --transition-quick: var(--transition-fast);
-
   /* ===== SHADOW SCALE ===== */
   --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
   --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
@@ -746,19 +709,4 @@ button {
   --action-btn-scale-hover: 0.9;
   --action-btn-scale-active: 0.82;
   --action-btn-scale-disabled: 0.8;
-}
-
-/* ===== RESPONSIVE ADJUSTMENTS ===== */
-@media (max-width: 768px) {
-  :root {
-    --button-padding: var(--space-sm) var(--space-md); // 12px 16px
-    --step-padding: var(--space-sm); // 12px
-  }
-}
-
-@media (max-width: 480px) {
-  :root {
-    --button-padding: var(--space-xs) var(--space-sm); // 8px 12px
-    --step-padding: var(--space-xs); // 8px
-  }
 }

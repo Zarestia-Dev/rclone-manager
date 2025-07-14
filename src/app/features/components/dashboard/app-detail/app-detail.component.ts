@@ -114,7 +114,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   currentJobId?: number;
   isLoading = false;
   errorMessage = '';
-  lastSyncTime = '';
+  private lastSyncDate?: Date;
 
   // Track completed transfers to show in the panel
   private completedTransfers: TransferFile[] = [];
@@ -301,9 +301,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
       operationType: this.operationType ?? 'mount',
       jobId: this.currentJobId,
       startTime: this.jobStats.startTime ? new Date(this.jobStats.startTime) : undefined,
-      lastOperationTime: this.lastSyncTime
-        ? new Date(this.lastSyncTime).toLocaleString()
-        : undefined,
+      lastOperationTime: this.lastSyncDate?.toLocaleString() || undefined,
     };
   }
 
@@ -558,7 +556,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
     if (this.isOperationActive()) {
       this.simulateLiveData();
-      this.lastSyncTime = new Date().toLocaleString();
+      this.lastSyncDate = new Date();
     } else {
       this.clearDataInterval();
     }

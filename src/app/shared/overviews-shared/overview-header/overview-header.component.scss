@@ -20,8 +20,8 @@
       margin-bottom: 16px;
 
       .app-icon {
-        width: var(--icon-size-large);
-        height: var(--icon-size-large);
+        width: var(--icon-size-xl);
+        height: var(--icon-size-xl);
         color: var(--mode-primary-color, var(--primary-color));
         transition: var(--transition-standard);
         will-change: color;

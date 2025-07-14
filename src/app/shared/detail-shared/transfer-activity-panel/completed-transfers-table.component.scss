@@ -23,7 +23,7 @@
     }
 
     .completed-row {
-      transition: var(--quick-transition);
+      transition: var(--transition-fast);
       border-bottom: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
 
       &:hover {
