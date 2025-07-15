@@ -19,14 +19,14 @@ jobs:
             args: '--target x86_64-apple-darwin'
             arch: 'silicon'
             type: 'x86_64'
-          - platform: 'ubuntu-22.04' 
+          - platform: 'ubuntu-22.04'
             args: ''
           - platform: 'windows-latest'
             args: '--target x86_64-pc-windows-msvc'
             arch: 'arm64'
             type: 'x86_64'
-          - platform: "windows-latest"
-            args: "--target aarch64-pc-windows-msvc"
+          - platform: 'windows-latest'
+            args: '--target aarch64-pc-windows-msvc'
             arch: 'arm64'
             type: 'aarch64'
 
@@ -51,12 +51,12 @@ jobs:
         if: matrix.platform == 'macos-latest'
         with:
           targets: ${{ matrix.type == 'aarch64' && 'aarch64-apple-darwin' || 'x86_64-apple-darwin' }}
-          
+
       - name: install Rust stable (windows only)
         uses: dtolnay/rust-toolchain@stable
         if: matrix.platform == 'windows-latest'
         with:
-            targets: ${{ matrix.type == 'aarch64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
+          targets: ${{ matrix.type == 'aarch64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -70,7 +70,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.TAURI_TOKEN }}
         with:
-          tagName: app-v__VERSION__
+          tagName: v__VERSION__-beta
           releaseName: 'RClone Manager v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true

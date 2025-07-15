@@ -3,6 +3,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  border-radius: var(--app-border-radius);
   z-index: 9999;
 
   &.container {

@@ -9,7 +9,7 @@
   >
   </app-loading-overlay>
 
-  <!-- @if (showDevelopmentBanner) {
+  @if (showDevelopmentBanner) {
     <mat-toolbar class="development-banner">
       <span class="warning-icon">🚧</span>
       <span class="banner-message">Development Build</span>
@@ -17,7 +17,7 @@
         >Features may be unstable • Data loss possible • Not for production use</span
       >
     </mat-toolbar>
-  } -->
+  }
 
   <mat-toolbar
     [@slideToggle]="isMeteredConnection ? 'visible' : 'hidden'"

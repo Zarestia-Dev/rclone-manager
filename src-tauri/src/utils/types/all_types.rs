@@ -147,6 +147,7 @@ pub struct RcApiEngine {
     pub process: Option<std::process::Child>,
     pub should_exit: bool,
     pub running: bool,
+    pub updating: bool,
     pub rclone_path: PathBuf,
     pub current_api_port: u16,
 }

@@ -228,7 +228,7 @@
 
     <!-- Cleanup Message -->
     @if (isAuthCancelled) {
-      <div class="cleanup-message" @slideInOut>
+      <div class="message cleanup" @slideInOut>
         <mat-spinner diameter="20"></mat-spinner>
         <span>Cleaning up authentication process. Please wait...</span>
       </div>
@@ -236,7 +236,7 @@
 
     <!-- Authentication Message -->
     @if (isAuthInProgress && !isAuthCancelled) {
-      <div class="loading-message">
+      <div class="message loading">
         <mat-icon svgIcon="info" color="accent"></mat-icon>
         <span
           >A browser window may open for authentication. Please complete the process there.</span

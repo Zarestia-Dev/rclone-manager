@@ -5,15 +5,13 @@
   height: 100%;
   width: 100%;
   overflow: hidden;
-
-  // Modal header styles are now inherited from shared-modal.scss
+  box-sizing: border-box;
 
   // ===== FORM GROUP =====
   .form-group {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    gap: var(--content-gap);
+    gap: var(--space-md);
     padding: var(--modal-padding);
     overflow-y: auto;
 
@@ -47,30 +45,28 @@
     border-top: 1px solid var(--border-color);
 
     // ===== LOADING STATES =====
-    .loading-message {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      padding: var(--space-xs);
-      background: rgba(var(--accent-color-rgb), 0.1);
-      border: 1px solid rgba(var(--accent-color-rgb), 0.2);
-      border-radius: var(--panel-radius);
-      font-size: var(--font-size-sm);
-      color: var(--accent-color);
-      animation: pulseBlue 2s infinite;
-    }
 
-    .cleanup-message {
+    .message {
       display: flex;
       align-items: center;
       gap: var(--space-sm);
       padding: var(--space-xs);
-      background: rgba(var(--orange-rgb), 0.1);
-      border: 1px solid rgba(var(--orange-rgb), 0.2);
       border-radius: var(--panel-radius);
       font-size: var(--font-size-sm);
-      color: var(--orange);
-      animation: pulseOrange 2s infinite;
+
+      &.loading {
+        color: var(--accent-color);
+        animation: pulseBlue 2s infinite;
+        background: rgba(var(--accent-color-rgb), 0.1);
+        border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+      }
+
+      &.cleanup {
+        color: var(--orange);
+        animation: pulseOrange 2s infinite;
+        background: rgba(var(--orange-rgb), 0.1);
+        border: 1px solid rgba(var(--orange-rgb), 0.2);
+      }
     }
   }
 }

@@ -113,17 +113,10 @@ export class RemoteCardComponent {
         id: 'primary',
         icon: this.primaryActionIcon,
         tooltip: this.primaryActionLabel,
+        color: this.mode === 'mount' ? 'accent' : 'primary',
         isLoading: this.isLoading,
         isDisabled: this.isLoading,
         cssClass: `${this.mode}-btn`,
-      });
-    } else if (this.variant === 'error') {
-      // Fix button for error remotes
-      buttons.push({
-        id: 'fix',
-        icon: 'wrench',
-        tooltip: 'Fix Issues',
-        cssClass: 'fix-btn',
       });
     }
 

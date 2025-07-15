@@ -19,7 +19,7 @@
       .remote-info-section {
         display: flex;
         align-items: center;
-        gap: var(--content-gap);
+        gap: var(--space-md);
 
         .icon-container {
           display: flex;
@@ -166,7 +166,7 @@
       transform 0.2s,
       opacity 0.3s;
     opacity: 0;
-    animation: fadeIn 0.5s forwards;
+    // animation: fadeIn 0.5s forwards;
 
     &:hover {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
@@ -184,12 +184,6 @@
       width: 100% !important;
       height: 200px !important;
     }
-  }
-}
-
-@keyframes fadeIn {
-  to {
-    opacity: 1;
   }
 }
 

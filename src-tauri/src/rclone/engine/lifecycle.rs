@@ -65,6 +65,12 @@ impl RcApiEngine {
 }
 
 pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
+    // If engine is not running and updating is true, do not start
+    if !engine.running && engine.updating {
+        debug!("⏸️ Engine is in updating state, not starting until updating is false");
+        return;
+    }
+
     // First check if API is already healthy (avoid unnecessary restarts)
     if engine.is_api_healthy() {
         debug!("✅ API is already healthy, skipping restart");

@@ -1,21 +1,17 @@
 :host {
-  // Spacing
-  --modal-padding: 12px;
   --icon-size: 140px;
 }
 
 .about-modal {
   height: 100%;
-  background: var(--app-background);
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
   // Navigation List
   .about-list {
-    margin-top: var(--content-gap);
+    margin-top: var(--space-md);
     display: flex;
     width: 100%;
     max-width: 400px;
@@ -78,7 +74,7 @@
   // Main Content Area
   .modal-content {
     flex: 1;
-    padding: var(--modal-padding);
+    padding: var(--space-sm);
     overflow: auto;
     display: flex;
     flex-direction: column;
@@ -112,11 +108,10 @@
 
     // Version Badge
     .version-badge {
-      display: inline-block;
       background: color-mix(in srgb, var(--accent-color) 15%, transparent);
       color: var(--accent-color);
       padding: 6px 16px;
-      border-radius: 18px;
+      border-radius: var(--radius-md);
       font-weight: bold;
       font-size: 16px;
       transition: var(--transition-standard);
@@ -186,10 +181,6 @@
             color: var(--app-text-color);
             margin: 0;
           }
-
-          app-rclone-update-icon {
-            flex-shrink: 0;
-          }
         }
 
         .loading,
@@ -250,8 +241,7 @@
               font-size: 14px;
               background: rgba(var(--app-text-color-rgb), 0.05);
               padding: 4px 8px;
-              border-radius: 6px;
-              border: 1px solid var(--surface-border);
+              border-radius: var(--radius-xs);
             }
 
             .detail-value-with-actions {
@@ -264,8 +254,7 @@
                 font-size: 14px;
                 background: rgba(var(--app-text-color-rgb), 0.05);
                 padding: 4px 8px;
-                border-radius: 6px;
-                border: 1px solid var(--surface-border);
+                border-radius: var(--radius-xs);
               }
             }
           }

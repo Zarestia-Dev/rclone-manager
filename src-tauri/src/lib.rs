@@ -38,7 +38,6 @@ use crate::{
             start_copy, start_sync, stop_job, unmount_all_remotes, unmount_remote, update_remote,
         },
         queries::{
-            check_rclone_update,
             flags::{
                 get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags,
                 get_sync_flags, get_vfs_flags,
@@ -46,8 +45,8 @@ use crate::{
             get_all_remote_configs, get_bandwidth_limit, get_completed_transfers, get_core_stats,
             get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats,
             get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info, get_rclone_pid,
-            get_rclone_update_info, get_remote_config, get_remote_config_fields, get_remote_paths,
-            get_remote_types, get_remotes, update_rclone,
+            get_remote_config, get_remote_config_fields, get_remote_paths, get_remote_types,
+            get_remotes,
         },
         state::{
             clear_remote_logs, delete_job, force_check_mounted_remotes, get_active_jobs,
@@ -66,6 +65,7 @@ use crate::{
         rclone::{
             mount::{check_mount_plugin_installed, install_mount_plugin},
             provision::provision_rclone,
+            updater::{check_rclone_update, update_rclone},
         },
         types::all_types::{AppSettings, RcloneState, SettingsState},
     },
@@ -254,7 +254,7 @@ pub fn run() {
             get_rclone_pid,
             check_rclone_update,
             update_rclone,
-            get_rclone_update_info,
+            // get_rclone_update_info,
             kill_process_by_pid,
             // Rclone Command API
             get_all_remote_configs,

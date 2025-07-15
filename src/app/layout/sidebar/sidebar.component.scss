@@ -1,20 +1,11 @@
 // CSS Custom Properties
 :host {
   // Layout
-  --sidebar-padding: 24px;
-  --sidebar-gap: 20px;
   --header-padding: 20px 24px;
   --search-padding: 16px 24px;
-  --card-margin: 16px;
-  --card-padding: 20px;
-
-  // Spacing
-  --header-gap: 12px;
-  --card-gap: 16px;
-  --status-gap: 8px;
 
   // Colors and effects
-  --card-hover-opacity: 0.05;
+  --card-hover-opacity: 0.02;
   --status-active-opacity: 0.15;
   --status-inactive-opacity: 0.08;
 
@@ -30,7 +21,7 @@
   flex-direction: column;
   height: 100%;
   background: var(--app-background);
-  overflow: hidden; // Prevent scrollbar on main container
+  overflow: hidden;
 
   // Header Section
   .sidebar-header {
@@ -49,7 +40,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: var(--header-gap);
+      gap: var(--space-xs);
       margin: 0;
       font-size: 1.25rem;
       font-weight: 500;
@@ -58,23 +49,16 @@
     }
   }
 
-  // Search Container
-  app-search-container {
-    flex-shrink: 0; // Prevent search from shrinking
-  }
-
-  // Scrollable Content Area
   .content-area {
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    min-height: 0; // Important for flex child to be scrollable
   }
 
   // Remote List
   ul {
     list-style: none;
-    padding: 0 0 var(--sidebar-padding) 0;
+    padding: 0 0 var(--space-xl) 0;
     margin: 0;
     display: flex;
     flex-direction: column;
@@ -83,9 +67,9 @@
 
   // Remote Card
   .remote-card {
-    margin: var(--card-margin);
+    margin: var(--space-md);
     margin-bottom: 0;
-    padding: var(--card-padding);
+    padding: var(--space-lg);
     border-radius: var(--modal-radius);
     background: var(--secondary-background);
     box-shadow: var(--card-shadow);
@@ -93,7 +77,11 @@
     border: 1px solid rgba(var(--app-text-color-rgb), 0.02);
 
     &:hover {
-      background: rgba(var(--primary-color-rgb), var(--card-hover-opacity));
+      background: linear-gradient(
+        135deg,
+        rgba(var(--primary-color-rgb), var(--card-hover-opacity)),
+        rgba(var(--accent-color-rgb), var(--card-hover-opacity))
+      );
       box-shadow: var(--card-hover-shadow);
       transform: translateY(-1px);
     }
@@ -106,7 +94,7 @@
       padding: 0;
       display: flex;
       flex-direction: column;
-      gap: var(--card-gap);
+      gap: var(--space-sm);
 
       // Remote Name
       h4 {
@@ -125,7 +113,7 @@
       .remote-type {
         display: flex;
         align-items: center;
-        gap: var(--status-gap);
+        gap: var(--space-xs);
         color: var(--secondary-text-color);
         font-size: 0.9rem;
         font-weight: 500;
@@ -136,27 +124,24 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: var(--status-gap);
-        margin-top: 4px;
+        gap: var(--space-xs);
 
         .status-badge {
           display: flex;
           align-items: center;
           padding: 6px 10px;
           border-radius: var(--border-radius);
-          font-size: 0.75rem;
-          font-weight: 500;
           transition: var(--transition-fast);
+          border: 1px solid rgba(var(--app-text-color-rgb), var(--status-inactive-opacity));
+          color: var(--secondary-text-color);
+          background: rgba(var(--app-text-color-rgb), var(--status-inactive-opacity));
 
           // Mount Status
           &.mount {
             &.active {
               color: var(--accent-color);
               background: rgba(var(--accent-color-rgb), var(--status-active-opacity));
-            }
-            &.passive {
-              color: var(--secondary-text-color);
-              background: rgba(var(--app-text-color-rgb), var(--status-inactive-opacity));
+              border: 1px solid rgba(var(--accent-color-rgb), var(--status-active-opacity));
             }
           }
 
@@ -166,10 +151,6 @@
               color: var(--primary-color);
               background: rgba(var(--primary-color-rgb), var(--status-active-opacity));
             }
-            &.passive {
-              color: var(--secondary-text-color);
-              background: rgba(var(--app-text-color-rgb), var(--status-inactive-opacity));
-            }
           }
 
           // Copy Status
@@ -177,10 +158,6 @@
             &.active {
               color: var(--yellow);
               background: rgba(var(--yellow-rgb), var(--status-active-opacity));
-            }
-            &.passive {
-              color: var(--secondary-text-color);
-              background: rgba(var(--app-text-color-rgb), var(--status-inactive-opacity));
             }
           }
         }

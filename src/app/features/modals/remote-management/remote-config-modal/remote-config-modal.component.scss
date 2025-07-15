@@ -4,9 +4,6 @@
   overflow: hidden;
   width: 100%;
   box-sizing: border-box;
-  background: var(--app-background);
-  color: var(--app-text-color);
-  border-radius: var(--modal-radius);
 
   // Modal Content
   .modal-content {
@@ -14,12 +11,11 @@
     height: 100vh;
     overflow-x: hidden;
     overflow-y: auto;
-    background: var(--app-background);
 
     h2 {
       display: flex;
       justify-content: center;
-      margin: 0 0 24px 0;
+      margin: var(--space-md);
       font-size: var(--font-size-xl);
       font-weight: 500;
       color: var(--app-text-color);
@@ -27,13 +23,8 @@
 
       // Responsive adjustments
       @media (max-width: 768px) {
-        font-size: 18px;
-        margin: 0 0 16px 0;
-      }
-
-      @media (max-width: 480px) {
-        font-size: var(--font-size-md);
-        margin: 0 0 12px 0;
+        font-size: var(--font-size-lg);
+        margin: var(--space-sm);
       }
     }
   }

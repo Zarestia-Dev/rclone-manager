@@ -1,14 +1,18 @@
+::ng-deep .mat-bottom-sheet-container {
+  background: var(--app-background) !important;
+}
+
 .repair-sheet {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--app-background);
-  border-radius: var(--modal-radius) var(--modal-radius) 0 0;
+  border-radius: var(--app-border-radius) var(--app-border-radius) 0 0 !important;
 
   .sheet-header {
     flex: 1;
     display: flex;
     flex-direction: column;
+    gap: var(--space-md);
     padding: var(--container-padding);
     padding-bottom: var(--space-sm);
     overflow-y: auto;
@@ -17,7 +21,6 @@
       display: flex;
       align-items: flex-start;
       gap: var(--space-xl);
-      margin-bottom: var(--space-xl);
 
       .repair-icon {
         display: flex;
@@ -32,7 +35,6 @@
           rgba(var(--orange-rgb), 0.12)
         );
         border: 2px solid rgba(var(--warn-color-rgb), 0.25);
-        flex-shrink: 0;
         animation: pulseRed 3s ease-in-out infinite;
 
         mat-icon {
@@ -65,23 +67,20 @@
     }
 
     .repair-details {
-      margin-bottom: var(--space-lg);
       padding: var(--space-lg);
       background: rgba(var(--warn-color-rgb), 0.04);
       border-radius: var(--card-border-radius);
       border: 1px solid rgba(var(--warn-color-rgb), 0.15);
+      gap: var(--space-sm);
+      display: flex;
+      flex-direction: column;
 
       .detail-item {
         display: flex;
         align-items: center;
         gap: var(--space-sm);
-        margin-bottom: var(--space-sm);
         font-size: var(--font-size-md);
         color: var(--secondary-text-color);
-
-        &:last-child {
-          margin-bottom: 0;
-        }
 
         mat-icon {
           width: var(--icon-size-sm);
@@ -96,17 +95,6 @@
         }
       }
     }
-
-    .advanced-toggle {
-      margin-bottom: var(--space-md);
-    }
-
-    .advanced-options {
-      background: var(--bg-elevated);
-      border-radius: var(--card-border-radius);
-      border: 1px solid var(--border-color);
-      overflow: hidden;
-    }
   }
 
   .sheet-actions {
@@ -115,16 +103,10 @@
     justify-content: flex-end;
     gap: var(--space-sm);
     padding: var(--container-padding);
-    padding-top: var(--space-md);
     border-top: 1px solid var(--border-color);
-    background: rgba(var(--app-background-rgb), 0.95);
-    position: sticky;
-    bottom: 0;
-    z-index: 10;
 
     button.repair-button {
       background: linear-gradient(135deg, var(--warn-color), var(--orange));
-      color: white;
       box-shadow: var(--shadow-light);
       transition: var(--transition-fast);
 
@@ -154,9 +136,6 @@
       padding-bottom: var(--space-sm);
 
       .repair-header-top {
-        gap: var(--space-md);
-        margin-bottom: var(--space-lg);
-
         .repair-icon mat-icon {
           width: var(--icon-size-md);
           height: var(--icon-size-md);
@@ -174,7 +153,6 @@
 
       .repair-details {
         padding: var(--space-md);
-        margin-bottom: var(--space-md);
       }
 
       .advanced-options {
@@ -213,10 +191,6 @@
       align-items: center;
       text-align: center;
       gap: var(--space-sm);
-
-      .repair-icon {
-        margin-bottom: var(--space-xs);
-      }
     }
   }
 }

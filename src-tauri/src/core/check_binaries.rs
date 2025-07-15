@@ -85,7 +85,7 @@ pub fn is_rclone_available(app: AppHandle, path: &str) -> bool {
     }
 }
 
-fn get_rclone_binary_path(base_path: &std::path::Path) -> PathBuf {
+pub fn get_rclone_binary_path(base_path: &std::path::Path) -> PathBuf {
     let bin = if cfg!(windows) {
         "rclone.exe"
     } else {

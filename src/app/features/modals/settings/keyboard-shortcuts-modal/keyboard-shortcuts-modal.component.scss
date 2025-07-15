@@ -20,15 +20,10 @@
 
       // Table rows
       .mat-mdc-row {
-        border-bottom: 1px solid var(--border-color);
         transition: var(--transition-fast);
 
         &:hover {
           background: var(--bg-elevated);
-        }
-
-        &:last-child {
-          border-bottom: none;
         }
       }
 

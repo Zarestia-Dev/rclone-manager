@@ -493,7 +493,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --title-bar-padding: var(--space-xs); // 8px
   --banner-padding: var(--space-sm); // 12px
   --item-padding: var(--space-md); // 16px
-  --content-gap: var(--space-lg); // 20px
+  --space-md: var(--space-lg); // 20px
   --container-padding: var(--space-xl); // 24px
   --header-gap: var(--space-md); // 16px
   --button-gap: var(--space-md); // 16px
@@ -532,7 +532,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   --button-background: rgba(var(--app-text-color-rgb), 0.04);
   --bg-hover: rgba(var(--app-text-color-rgb), 0.05);
   --selected-border: var(--accent-color);
-  --disabled-fade: rgba(var(--app-text-color-rgb), 0.5);
+  --disabled-fade: rgba(255, 255, 255, 0.5);
   --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
 }
 
@@ -600,13 +600,17 @@ button {
   flex-direction: row !important;
   justify-content: center;
   background-color: transparent;
-  color: var(--app-text-color);
 
   span {
     text-wrap: nowrap;
     display: flex;
     flex-direction: row;
     gap: var(--space-xs);
+  }
+
+  &.copy-btn {
+    color: white !important;
+    background: var(--yellow) !important;
   }
 }
 
@@ -634,12 +638,6 @@ button {
   }
 }
 
-.mat-mdc-dialog-container .mdc-dialog__surface {
-  border-radius: var(--radius-md) !important;
-  color: var(--app-text-color) !important;
-  background-color: var(--app-background) !important;
-}
-
 .mdc-text-field--filled:not(.mdc-text-field--disabled) {
   background-color: var(--faint-blue) !important;
 }
@@ -661,6 +659,12 @@ button {
 // ===== FORM FIELDS =====
 .mat-mdc-form-field {
   width: 100%;
+}
+
+.mat-mdc-dialog-container .mdc-dialog__surface {
+  background: var(--app-background) !important;
+  color: var(--app-text-color) !important;
+  border-radius: var(--modal-radius) !important;
 }
 
 /* ===== ICON SIZES ===== */

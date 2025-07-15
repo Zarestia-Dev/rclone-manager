@@ -42,9 +42,7 @@
       0 8px 32px rgba(var(--warn-color-rgb), 0.4),
       0 4px 16px rgba(0, 0, 0, 0.2);
     z-index: 9999;
-    animation:
-      slideInFromRight 0.5s ease-out,
-      pulseGlow 3s ease-in-out infinite 1s;
+    animation: slideInFromRight 0.5s ease-out;
     backdrop-filter: blur(10px);
     transition: var(--transition-standard);
     font-family: inherit;
@@ -797,19 +795,5 @@
   to {
     opacity: 1;
     transform: translateX(0) scale(1);
-  }
-}
-
-@keyframes pulseGlow {
-  0%,
-  100% {
-    box-shadow:
-      0 8px 32px rgba(var(--warn-color-rgb), 0.4),
-      0 4px 16px rgba(0, 0, 0, 0.2);
-  }
-  50% {
-    box-shadow:
-      0 12px 48px rgba(var(--warn-color-rgb), 0.6),
-      0 6px 24px rgba(0, 0, 0, 0.3);
   }
 }

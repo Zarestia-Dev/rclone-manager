@@ -4,7 +4,7 @@
   .disk-usage-section {
     display: flex;
     flex-direction: column;
-    gap: var(--content-gap);
+    gap: var(--space-md);
 
     .usage-bar-container {
       display: flex;

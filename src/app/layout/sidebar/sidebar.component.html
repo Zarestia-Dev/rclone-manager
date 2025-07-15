@@ -47,7 +47,6 @@
                   <div
                     class="status-badge mount"
                     [class.active]="remote.mountState.mounted"
-                    [class.passive]="!remote.mountState.mounted"
                     [matTooltip]="remote.mountState.mounted ? 'Mounted' : 'Not Mounted'"
                     aria-label="Mount status"
                   >
@@ -59,7 +58,6 @@
                   <div
                     class="status-badge sync"
                     [class.active]="remote.syncState.isOnSync"
-                    [class.passive]="!remote.syncState.isOnSync"
                     [matTooltip]="remote.syncState.isOnSync ? 'Syncing' : 'Sync Idle'"
                     aria-label="Sync status"
                   >
@@ -71,7 +69,6 @@
                   <div
                     class="status-badge copy"
                     [class.active]="remote.copyState.isOnCopy"
-                    [class.passive]="!remote.copyState.isOnCopy"
                     [matTooltip]="remote.copyState.isOnCopy ? 'Copying' : 'Copy Idle'"
                     aria-label="Copy status"
                   >

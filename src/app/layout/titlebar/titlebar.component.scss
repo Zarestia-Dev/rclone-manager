@@ -38,10 +38,6 @@
   align-items: end;
   position: relative;
   justify-content: left;
-  padding-block-end: 3px;
-  padding-block-start: 2px;
-  padding-inline-end: 6px;
-  padding-inline-start: 6px;
   transition: all 200ms ease-in-out;
 
   .checkmark {
@@ -65,7 +61,7 @@
 }
 
 .system {
-  background: linear-gradient(45deg, var(--dark-theme-color) 50%, var(--light-theme-color) 50%);
+  background: linear-gradient(45deg, black 50%, white 50%);
 
   // Tauri does not support system theme detection yet
   &::after {

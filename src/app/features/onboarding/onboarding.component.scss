@@ -110,7 +110,6 @@
     mat-icon {
       width: 64px;
       height: 64px;
-      z-index: 1;
     }
 
     &:hover {
@@ -138,11 +137,6 @@
       margin: 0;
       opacity: 0.9;
     }
-  }
-
-  .form-section {
-    width: 100%;
-    max-width: 400px;
   }
 }
 
@@ -177,20 +171,11 @@
 
   .onboarding-container {
     padding: 16px;
-
-    .card-container {
-      max-height: calc(100vh - 48px);
-      min-height: calc(100vh - 32px);
-    }
   }
 
   .content-area {
     .text-content .card-title {
       font-size: 1.5rem;
-    }
-
-    .form-section {
-      max-width: none;
     }
   }
 }
