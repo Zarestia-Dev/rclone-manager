@@ -478,13 +478,26 @@ async fn download_latest_rclone(dest_path: &Path) -> Result<(), String> {
 async fn perform_rclone_selfupdate(rclone_path: &Path) -> Result<serde_json::Value, String> {
     log::info!("Performing selfupdate on rclone at: {rclone_path:?}");
 
-    let output = Command::new(rclone_path)
-        .arg("selfupdate")
-        .output()
-        .map_err(|e| {
-            log::error!("Failed to execute rclone selfupdate: {e}");
-            format!("Failed to execute rclone selfupdate: {e}")
-        })?;
+    let mut update_rclone = Command::new(rclone_path);
+
+    update_rclone.arg("selfupdate");
+
+    // This is a workaround for Windows to avoid showing a console window
+    // when starting the Rclone process.
+    // It uses the CREATE_NO_WINDOW and DETACHED_PROCESS flags.
+    // But it may not work in all cases. Like when app build for terminal
+    // and not for GUI. Rclone may still try to open a console window.
+    // You can see the flashing of the console window when starting the app.
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        update_rclone.creation_flags(0x08000000 | 0x00200000);
+    }
+
+    let output = update_rclone.output().map_err(|e| {
+        log::error!("Failed to execute rclone selfupdate: {e}");
+        format!("Failed to execute rclone selfupdate: {e}")
+    })?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
