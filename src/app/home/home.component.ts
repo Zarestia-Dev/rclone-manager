@@ -5,7 +5,6 @@ import {
   HostListener,
   OnDestroy,
   OnInit,
-  isDevMode,
   inject,
 } from '@angular/core';
 
@@ -35,9 +34,7 @@ import {
   STANDARD_MODAL_SIZE,
 } from '../shared/components/types';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { invoke } from '@tauri-apps/api/core';
 import { SidebarComponent } from '../layout/sidebar/sidebar.component';
-import { AnimationsService } from '../services/core/animations.service';
 import { UiStateService } from '../services/ui/ui-state.service';
 import { MountManagementService } from '../services/file-operations/mount-management.service';
 import { RemoteManagementService } from '../services/remote/remote-management.service';
@@ -81,7 +78,6 @@ import { LoadingOverlayComponent } from '../shared/components/loading-overlay/lo
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
   changeDetection: ChangeDetectionStrategy.Default,
-  animations: [AnimationsService.slideToggle()],
 })
 export class HomeComponent implements OnInit, OnDestroy {
   // UI State
@@ -103,9 +99,6 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   // Shutdown State
   isShuttingDown = false;
-
-  showDevelopmentBanner: boolean = isDevMode();
-  isMeteredConnection = false;
 
   // Cleanup
   private destroy$ = new Subject<void>();
@@ -142,12 +135,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.setupTauriListeners();
       console.log('HomeComponent: setupTauriListeners completed');
 
-      this.checkMeteredConnection();
-      console.log('HomeComponent: checkMeteredConnection completed');
-
-      this.listenForNetworkStatus();
-      console.log('HomeComponent: listenForNetworkStatus completed');
-
       console.log('HomeComponent: ngOnInit completed');
     } catch (error) {
       console.error('HomeComponent: ngOnInit failed', error);
@@ -162,33 +149,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   @HostListener('window:resize')
   onResize(): void {
     this.updateSidebarMode();
-  }
-
-  async checkMeteredConnection() {
-    try {
-      const isMetered = await invoke('is_network_metered');
-      this.isMeteredConnection = !!isMetered;
-      if (isMetered) {
-        console.log('The network connection is metered.');
-      } else {
-        console.log('The network connection is not metered.');
-      }
-    } catch (e) {
-      console.error('Failed to check metered connection:', e);
-    }
-  }
-
-  private async listenForNetworkStatus() {
-    this.unlistenNetworkStatus = await listen('network-status-changed', async (event: any) => {
-      const isMetered = event.payload?.isMetered;
-      this.isMeteredConnection = !!isMetered;
-      if (isMetered) {
-        console.log('Network is metered. Showing banner.');
-      } else {
-        console.log('Network is not metered. Hiding banner.');
-      }
-      this.cdr.detectChanges();
-    });
   }
 
   // Remote Selection

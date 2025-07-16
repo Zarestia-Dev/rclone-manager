@@ -1,0 +1,17 @@
+@if (showDevelopmentBanner) {
+  <mat-toolbar class="development-banner">
+    <span class="warning-icon">🚧</span>
+    <span class="banner-message">Development Build</span>
+    <span class="banner-subtitle"
+      >Features may be unstable • Data loss possible • Not for production use</span
+    >
+  </mat-toolbar>
+}
+
+<mat-toolbar
+  [@slideToggle]="isMeteredConnection ? 'visible' : 'hidden'"
+  class="metered-banner"
+  role="alert"
+>
+  You are on a metered connection. Some features may use extra data.
+</mat-toolbar>

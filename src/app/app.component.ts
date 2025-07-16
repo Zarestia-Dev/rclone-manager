@@ -18,6 +18,7 @@ import { AppTab } from './shared/components/types';
 import { InstallationService } from './services/settings/installation.service';
 import { RepairSheetComponent } from './features/components/repair-sheet/repair-sheet.component';
 import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
+import { BannerComponent } from './layout/banners/banner.component';
 
 @Component({
   selector: 'app-root',
@@ -30,6 +31,7 @@ import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.d
     TabsButtonsComponent,
     HomeComponent,
     ShortcutHandlerDirective,
+    BannerComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',

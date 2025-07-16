@@ -5,38 +5,6 @@
   overflow-x: hidden;
   overflow-y: auto;
 
-  mat-toolbar {
-    display: flex;
-    text-wrap: wrap;
-    text-align: center;
-    align-items: center;
-    justify-content: center;
-    max-height: 44px;
-    padding: var(--banner-padding);
-    font-weight: 600;
-    font-size: 16px;
-
-    &.development-banner {
-      background: linear-gradient(135deg, var(--warn-color), var(--orange));
-      gap: 8px;
-
-      .banner-message {
-        font-size: 14px;
-      }
-
-      .banner-subtitle {
-        font-size: 11px;
-        opacity: 0.9;
-        margin-left: 8px;
-        font-weight: 400;
-      }
-    }
-
-    &.metered-banner {
-      background-color: var(--banner-background);
-    }
-  }
-
   .home-container {
     flex: 1;
     display: flex;

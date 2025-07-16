@@ -1,20 +1,3 @@
-:host {
-  // Component-specific spacing overrides
-  --modal-padding: var(--space-lg); // 20px
-  --field-gap: var(--space-lg); // 20px
-
-  // Component-specific styling
-  --field-background: rgba(var(--app-background-rgb), 0.6);
-  --field-border: rgba(var(--app-text-color-rgb), 0.12);
-  --field-focus-border: var(--primary-color);
-  --glassmorphism-bg: rgba(var(--app-background-rgb), 0.9);
-  --header-background: linear-gradient(
-    135deg,
-    rgba(var(--app-text-color-rgb), 0.03) 0%,
-    rgba(var(--app-text-color-rgb), 0.01) 100%
-  );
-}
-
 .input-modal {
   background: var(--app-background);
   border-radius: var(--modal-radius);
@@ -28,7 +11,7 @@
   // Content area
   .modal-content {
     flex: 1;
-    padding: var(--modal-padding);
+    padding: var(--space-lg);
     overflow: auto;
     display: flex;
     flex-direction: column;
@@ -51,7 +34,7 @@
     .form-fields {
       display: flex;
       flex-direction: column;
-      gap: var(--field-gap);
+      gap: var(--space-lg);
       width: 100%;
     }
 
