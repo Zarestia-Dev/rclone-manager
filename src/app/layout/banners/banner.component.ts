@@ -8,11 +8,8 @@ import {
   OnInit,
 } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { invoke } from '@tauri-apps/api/core';
-import { listen, Event } from '@tauri-apps/api/event';
-interface NetworkStatusPayload {
-  isMetered: boolean;
-}
+import { EventListenersService } from '../../services/system/event-listeners.service';
+import { SystemInfoService } from '../../services/system/system-info.service';
 import { Subject } from 'rxjs';
 import { AnimationsService } from '../../services/core/animations.service';
 
@@ -29,25 +26,28 @@ export class BannerComponent implements OnInit, OnDestroy {
   showDevelopmentBanner = isDevMode();
   private cdr = inject(ChangeDetectorRef);
   private destroy$ = new Subject<void>();
-  private unlistenNetworkStatus: (() => void) | null = null;
+  private eventListenersService = inject(EventListenersService);
 
   async ngOnInit(): Promise<void> {
     await this.checkMeteredConnection();
-    await this.listenForNetworkStatus();
+    this.eventListenersService.listenToNetworkStatusChanged().subscribe({
+      next: payload => {
+        this.isMeteredConnection = !!payload?.isMetered;
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    if (this.unlistenNetworkStatus) {
-      this.unlistenNetworkStatus();
-      this.unlistenNetworkStatus = null;
-    }
   }
+
+  private systemInfoService = inject(SystemInfoService);
 
   private async checkMeteredConnection(): Promise<void> {
     try {
-      const isMetered = await invoke('is_network_metered');
+      const isMetered = await this.systemInfoService.isNetworkMetered();
       this.isMeteredConnection = !!isMetered;
       console.log('Metered connection status:', this.isMeteredConnection);
       this.cdr.markForCheck();
@@ -55,16 +55,5 @@ export class BannerComponent implements OnInit, OnDestroy {
       console.error('Failed to check metered connection:', e);
       this.isMeteredConnection = false;
     }
-  }
-
-  private async listenForNetworkStatus(): Promise<void> {
-    this.unlistenNetworkStatus = await listen<NetworkStatusPayload>(
-      'network-status-changed',
-      (event: Event<NetworkStatusPayload>) => {
-        const isMetered = event.payload?.isMetered;
-        this.isMeteredConnection = !!isMetered;
-        this.cdr.markForCheck();
-      }
-    );
   }
 }

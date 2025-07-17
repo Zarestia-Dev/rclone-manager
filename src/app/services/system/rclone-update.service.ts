@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
+import { TauriBaseService } from '../core/tauri-base.service';
+import { EventListenersService } from './event-listeners.service';
+import { inject } from '@angular/core';
 import { BehaviorSubject, interval } from 'rxjs';
 
 export interface RcloneUpdateInfo {
@@ -23,38 +24,15 @@ export interface UpdateStatus {
   updateInfo: RcloneUpdateInfo | null;
 }
 
-interface TauriEvent<T = unknown> {
-  payload: T;
-  windowLabel: string;
-  event: string;
-}
-
 interface UpdateResult {
   success: boolean;
   message?: string;
 }
 
-// Declare Tauri API functions
-declare global {
-  interface Window {
-    __TAURI__: {
-      tauri: {
-        invoke: <T = unknown>(command: string, args?: Record<string, unknown>) => Promise<T>;
-      };
-      event: {
-        listen: <T = unknown>(
-          event: string,
-          handler: (event: TauriEvent<T>) => void
-        ) => Promise<void>;
-      };
-    };
-  }
-}
-
 @Injectable({
   providedIn: 'root',
 })
-export class RcloneUpdateService {
+export class RcloneUpdateService extends TauriBaseService {
   private updateStatusSubject = new BehaviorSubject<UpdateStatus>({
     checking: false,
     updating: false,
@@ -66,7 +44,10 @@ export class RcloneUpdateService {
 
   public updateStatus$ = this.updateStatusSubject.asObservable();
 
+  private eventListenersService = inject(EventListenersService);
+
   constructor() {
+    super();
     this.setupEventListeners();
     // Check for updates every 6 hours
     interval(6 * 60 * 60 * 1000).subscribe(() => {
@@ -75,25 +56,26 @@ export class RcloneUpdateService {
   }
 
   private setupEventListeners(): void {
-    if (!window.__TAURI__) return; // Ensure Tauri API is available
-    // Listen for engine update events
-    listen('engine_update_started', () => {
+    // Listen for engine update started
+    this.eventListenersService.listenToEngineUpdateStarted().subscribe(() => {
       this.updateStatus({ updating: true });
     });
 
-    listen<UpdateResult>('engine_update_completed', event => {
+    // Listen for engine update completed
+    this.eventListenersService.listenToEngineUpdateCompleted().subscribe(event => {
       this.updateStatus({
         updating: false,
-        available: !event.payload.success, // If update succeeded, no longer available
+        available: !event.payload.success,
       });
       if (event.payload.success) {
-        this.checkForUpdates(); // Refresh status after successful update
+        this.checkForUpdates();
       }
     });
 
-    listen<{ reason: string }>('engine_restarted', event => {
+    // Listen for engine restarted
+    this.eventListenersService.listenToEngineRestarted().subscribe(event => {
       if (event.payload.reason === 'rclone_update') {
-        this.checkForUpdates(); // Check status after restart
+        this.checkForUpdates();
       }
     });
   }
@@ -102,7 +84,7 @@ export class RcloneUpdateService {
     this.updateStatus({ checking: true, error: null });
 
     try {
-      const updateInfo = await invoke<RcloneUpdateInfo>('check_rclone_update');
+      const updateInfo = await this.invokeCommand<RcloneUpdateInfo>('check_rclone_update');
 
       this.updateStatus({
         checking: false,
@@ -125,7 +107,7 @@ export class RcloneUpdateService {
 
   async getDetailedUpdateInfo(): Promise<RcloneUpdateInfo> {
     try {
-      return await invoke<RcloneUpdateInfo>('get_rclone_update_info');
+      return await this.invokeCommand<RcloneUpdateInfo>('get_rclone_update_info');
     } catch (error) {
       console.error('Failed to get detailed update info:', error);
       throw error;
@@ -136,7 +118,7 @@ export class RcloneUpdateService {
     this.updateStatus({ updating: true, error: null });
 
     try {
-      const result = await invoke<UpdateResult>('update_rclone');
+      const result = await this.invokeCommand<UpdateResult>('update_rclone');
 
       if (result.success) {
         this.updateStatus({

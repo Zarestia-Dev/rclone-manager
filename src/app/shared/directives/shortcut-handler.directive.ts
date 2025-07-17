@@ -1,7 +1,7 @@
 import { Directive, HostListener, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { invoke } from '@tauri-apps/api/core';
-import { emit } from '@tauri-apps/api/event';
+import { WindowService } from '../../services/ui/window.service';
+import { RemoteManagementService } from '../../services/remote/remote-management.service';
 import { NotificationService } from '../../services/ui/notification.service';
 import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
 import { QuickAddRemoteComponent } from '../../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
@@ -17,6 +17,8 @@ import { STANDARD_MODAL_SIZE } from '../components/types';
 export class ShortcutHandlerDirective {
   private dialog = inject(MatDialog);
   private notificationService = inject(NotificationService);
+  private windowService = inject(WindowService);
+  private remoteManagementService = inject(RemoteManagementService);
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
@@ -112,25 +114,19 @@ export class ShortcutHandlerDirective {
   private async quitApplication(): Promise<void> {
     try {
       console.log('Quitting application via keyboard shortcut');
-      await invoke('handle_shutdown');
+      await this.windowService.quitApplication();
     } catch (error) {
-      console.error('Failed to quit application:', error);
-      try {
-        window.close();
-      } catch (fallbackError) {
-        this.notificationService.showError('Failed to quit application: ' + fallbackError);
-      }
+      this.notificationService.showError('Failed to quit application: ' + error);
     }
   }
 
   private async forceRefreshMountedRemotes(): Promise<void> {
     try {
       console.log('Refreshing mounted remotes via keyboard shortcut');
-      await emit('remote_state_changed');
+      await this.remoteManagementService.forceRefreshMountedRemotes();
       this.notificationService.showSuccess('Mounted remotes refreshed successfully');
     } catch (error) {
-      console.error('Failed to refresh mounted remotes:', error);
-      this.notificationService.showError('Failed to refresh mounted remotes');
+      this.notificationService.showError('Failed to refresh mounted remotes: ' + error);
     }
   }
 

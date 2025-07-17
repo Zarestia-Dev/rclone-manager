@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { RcloneInfo } from '../../shared/components/types';
 
@@ -11,6 +10,12 @@ import { RcloneInfo } from '../../shared/components/types';
   providedIn: 'root',
 })
 export class SystemInfoService extends TauriBaseService {
+  /**
+   * Check if network is metered
+   */
+  async isNetworkMetered(): Promise<boolean> {
+    return this.invokeCommand<boolean>('is_network_metered');
+  }
   /**
    * Get rclone information
    */
@@ -65,26 +70,5 @@ export class SystemInfoService extends TauriBaseService {
    */
   async isRcloneAvailable(path = ''): Promise<boolean> {
     return this.invokeCommand<boolean>('is_rclone_available', { path });
-  }
-
-  /**
-   * Listen to rclone API ready events
-   */
-  listenToRcloneApiReady(): Observable<any> {
-    return this.listenToEvent<any>('rclone_api_ready');
-  }
-
-  /**
-   * Listen to rclone engine failure events
-   */
-  listenToRcloneEngineFailed(): Observable<any> {
-    return this.listenToEvent<any>('rclone_engine_failed');
-  }
-
-  /**
-   * Listen to rclone path invalid events
-   */
-  listenToRclonePathInvalid(): Observable<any> {
-    return this.listenToEvent<any>('rclone_path_invalid');
   }
 }

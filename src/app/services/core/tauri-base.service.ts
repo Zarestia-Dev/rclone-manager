@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { emit } from '@tauri-apps/api/event';
+import { getCurrentWindow, Window } from '@tauri-apps/api/window';
 import { Observable } from 'rxjs';
 
 /**
@@ -11,6 +13,23 @@ import { Observable } from 'rxjs';
   providedIn: 'root',
 })
 export class TauriBaseService {
+  /**
+   * Get the current Tauri window instance
+   */
+  protected getCurrentTauriWindow(): Window {
+    return getCurrentWindow();
+  }
+  /**
+   * Emit a Tauri event
+   */
+  protected async emitEvent<T>(eventName: string, payload?: T): Promise<void> {
+    try {
+      await emit(eventName, payload);
+    } catch (error) {
+      console.error(`Error emitting event ${eventName}:`, error);
+      throw error;
+    }
+  }
   /**
    * Invoke a Tauri command with error handling
    */

@@ -101,6 +101,26 @@ export class OperationControlComponent {
 
   getStatusBadgeConfig(): StatusBadgeConfig {
     const isOperationType = this.config.operationType !== 'mount';
+    let badgeClass = '';
+    if (this.config.isActive && !this.config.isError) {
+      switch (this.config.operationType) {
+        case 'sync':
+          badgeClass = 'active-sync';
+          break;
+        case 'copy':
+          badgeClass = 'active-copy';
+          break;
+        case 'mount':
+          badgeClass = 'mounted';
+          break;
+        default:
+          badgeClass = '';
+      }
+    } else if (!this.config.isActive && !this.config.isError) {
+      badgeClass = isOperationType ? 'inactive' : 'unmounted';
+    } else if (this.config.isError) {
+      badgeClass = 'error';
+    }
 
     return {
       isActive: this.config.isActive,
@@ -113,6 +133,8 @@ export class OperationControlComponent {
         : 'Mounted',
       inactiveLabel: isOperationType ? 'Stopped' : 'Not Mounted',
       errorLabel: 'Error',
+      // Pass the badgeClass for ngClass
+      badgeClass,
     };
   }
 

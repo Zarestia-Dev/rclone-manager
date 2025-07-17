@@ -19,6 +19,7 @@ import { InstallationService } from './services/settings/installation.service';
 import { RepairSheetComponent } from './features/components/repair-sheet/repair-sheet.component';
 import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
 import { BannerComponent } from './layout/banners/banner.component';
+import { EventListenersService } from './services/system/event-listeners.service';
 
 @Component({
   selector: 'app-root',
@@ -47,6 +48,7 @@ export class AppComponent implements OnInit, OnDestroy {
   public uiStateService = inject(UiStateService);
   public appSettingsService = inject(AppSettingsService);
   private systemInfoService = inject(SystemInfoService);
+  private eventListenersService = inject(EventListenersService);
 
   // Subscription management
   private destroy$ = new Subject<void>();
@@ -126,9 +128,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
     this.activeBottomSheets.push(sheetRef);
 
-    // Setup event listener for mount plugin installation using InstallationService
+    // Setup event listener for mount plugin installation using EventListenersService
     try {
-      this.installationService
+      this.eventListenersService
         .listenToMountPluginInstalled()
         .pipe(takeUntil(this.destroy$))
         .subscribe(() => {
@@ -141,7 +143,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private setupErrorListeners(): void {
     // Listen for rclone path invalid errors with proper cleanup
-    this.systemInfoService
+    this.eventListenersService
       .listenToRclonePathInvalid()
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
@@ -167,7 +169,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.activeBottomSheets.push(sheetRef);
 
     // Listen for rclone API ready to dismiss the error sheet
-    this.systemInfoService
+    this.eventListenersService
       .listenToRcloneApiReady()
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {

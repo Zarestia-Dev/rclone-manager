@@ -22,8 +22,10 @@ export class ValidatorsService {
       if (!value) return null;
 
       if (this.uiStateService.platform === 'windows') {
-        // Windows absolute path pattern: C:\ or C:/ followed by optional path
-        const winAbs = /^[a-zA-Z]:[\\/](?:[^:*?"<>|\r\n]*)?$/;
+        // Windows absolute path pattern: C:, C:\, C:/, C: followed by optional path
+        // Matches drive letters (C:, D:), UNC paths (\\server\share\...), and extended-length paths (\\?\C:\...)
+        const winAbs =
+          /^(?:[a-zA-Z]:(?:[\\/].*)?|\\\\[?]?[\\]?[^\\/]+[\\/][^\\/]+|\\\\[a-zA-Z0-9_\-.]+[\\/][^\\/]+.*)$/;
         if (winAbs.test(value)) return null;
       } else {
         // Unix/Linux/macOS absolute path pattern: starts with / followed by any valid characters

@@ -16,16 +16,6 @@
     border-radius: 50%;
   }
 
-  &.active {
-    background: rgba(var(--primary-color-rgb), var(--active-opacity));
-    color: var(--primary-color);
-    border: 1px solid rgba(var(--primary-color-rgb), 0.2);
-
-    .status-dot {
-      background: var(--primary-color);
-    }
-  }
-
   &.error {
     background: rgba(var(--warn-color-rgb), var(--active-opacity));
     color: var(--warn-color);
@@ -58,12 +48,12 @@
   }
 
   &.active-copy {
-    background: rgba(var(--accent-color-rgb), var(--active-opacity));
-    color: var(--accent-color);
-    border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+    background: rgba(var(--yellow-rgb), var(--active-opacity));
+    color: var(--yellow);
+    border: 1px solid rgba(var(--yellow-rgb), 0.2);
 
     .status-dot {
-      background: var(--accent-color);
+      background: var(--yellow);
     }
   }
 

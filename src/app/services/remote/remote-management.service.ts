@@ -17,6 +17,14 @@ export type RemoteConfig = Record<string, any>;
   providedIn: 'root',
 })
 export class RemoteManagementService extends TauriBaseService {
+  async forceRefreshMountedRemotes(): Promise<void> {
+    try {
+      await this.emitEvent('remote_state_changed');
+    } catch (error) {
+      console.error('Failed to refresh mounted remotes:', error);
+      throw error;
+    }
+  }
   private remotesCache = new BehaviorSubject<string[]>([]);
   public remotes$ = this.remotesCache.asObservable();
 

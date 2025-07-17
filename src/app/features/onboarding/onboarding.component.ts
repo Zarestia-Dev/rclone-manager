@@ -7,6 +7,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { AnimationsService } from '../../services/core/animations.service';
 import { SystemInfoService } from '../../services/system/system-info.service';
 import { InstallationService } from '../../services/settings/installation.service';
+import { EventListenersService } from '../../services/system/event-listeners.service';
 import { AppSettingsService } from '../../services/settings/app-settings.service';
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
 import {
@@ -83,6 +84,7 @@ export class OnboardingComponent implements OnInit {
   private systemInfoService = inject(SystemInfoService);
   private installationService = inject(InstallationService);
   private appSettingsService = inject(AppSettingsService);
+  private eventListenersService = inject(EventListenersService);
 
   onboardingTabOptions: InstallationTabOption[] = [
     { key: 'default', label: 'Recommended', icon: 'star' },
@@ -203,7 +205,7 @@ export class OnboardingComponent implements OnInit {
       console.log('Downloaded plugin at:', filePath);
 
       // Listen for installation completion
-      this.installationService.listenToMountPluginInstalled().subscribe(() => {
+      this.eventListenersService.listenToMountPluginInstalled().subscribe(() => {
         this.mountPluginInstalled = true;
         // Optionally move to next card after installation
         this.nextCard();

@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 
 /**
@@ -30,12 +29,5 @@ export class InstallationService extends TauriBaseService {
    */
   async installMountPlugin(): Promise<string> {
     return this.invokeCommand<string>('install_mount_plugin');
-  }
-
-  /**
-   * Listen to mount plugin installation events
-   */
-  listenToMountPluginInstalled(): Observable<unknown> {
-    return this.listenToEvent<unknown>('mount_plugin_installed');
   }
 }

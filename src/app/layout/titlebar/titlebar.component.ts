@@ -1,7 +1,6 @@
 import { Component, OnInit, OnDestroy, inject, Type } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { invoke } from '@tauri-apps/api/core';
+import { WindowService } from '../../services/ui/window.service';
 import { Subject, BehaviorSubject, Subscription } from 'rxjs';
 import { takeUntil, take } from 'rxjs/operators';
 import { InputModalComponent } from '../../shared/modals/input-modal/input-modal.component';
@@ -37,7 +36,6 @@ interface ModalSize {
 
 type ConnectionStatus = 'online' | 'offline' | 'checking';
 
-const appWindow = getCurrentWindow();
 const STANDARD_MODAL_SIZE: ModalSize = {
   width: '90vw',
   maxWidth: '642px',
@@ -67,6 +65,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   fileSystemService = inject(FileSystemService);
   appSettingsService = inject(AppSettingsService);
   uiStateService = inject(UiStateService);
+  windowService = inject(WindowService);
 
   selectedTheme: Theme = 'light';
   isMacOS = false;
@@ -149,8 +148,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   }
 
   private applyTheme(theme: 'light' | 'dark'): void {
-    document.documentElement.setAttribute('class', theme);
-    invoke('set_theme', { theme }).catch(console.error);
+    this.windowService.applyTheme(theme);
   }
 
   // Connection Checking
@@ -219,27 +217,15 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
   // Window Controls
   async minimizeWindow(): Promise<void> {
-    try {
-      await appWindow.minimize();
-    } catch (error) {
-      console.error('Failed to minimize window:', error);
-    }
+    await this.windowService.minimize();
   }
 
   async maximizeWindow(): Promise<void> {
-    try {
-      await appWindow.toggleMaximize();
-    } catch (error) {
-      console.error('Failed to toggle maximize:', error);
-    }
+    await this.windowService.maximize();
   }
 
   async closeWindow(): Promise<void> {
-    try {
-      await appWindow.close();
-    } catch (error) {
-      console.error('Failed to close window:', error);
-    }
+    await this.windowService.close();
   }
 
   // Modal Methods

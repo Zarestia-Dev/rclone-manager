@@ -1,7 +1,7 @@
 import { inject, Injectable, NgZone } from '@angular/core';
+import { WindowService } from './window.service';
 import { BehaviorSubject } from 'rxjs';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { listen } from '@tauri-apps/api/event';
+import { EventListenersService } from '../system/event-listeners.service';
 import { platform } from '@tauri-apps/plugin-os';
 import { AppTab } from '../../shared/components/types';
 
@@ -34,8 +34,8 @@ export class UiStateService {
   public showToast$ = this._showToast$.asObservable();
 
   // Window and platform
-  private appWindow = getCurrentWindow();
   public platform = platform();
+  private windowService = inject(WindowService);
 
   // Viewport settings configuration
   private viewportSettings = {
@@ -52,6 +52,8 @@ export class UiStateService {
   };
 
   private ngZone = inject(NgZone);
+
+  private eventListenersService = inject(EventListenersService);
 
   constructor() {
     this.initializeMaximizeListener();
@@ -96,30 +98,25 @@ export class UiStateService {
   private async initializeMaximizeListener(): Promise<void> {
     try {
       // Initial state
-      await this.updateMaximizedState();
+      await this.windowService.updateMaximizedState(
+        this._isMaximized,
+        this.applyViewportSettings.bind(this),
+        this.platform
+      );
 
       // Listen for maximize/unmaximize events
-      await listen('tauri://resize', async () => {
+      this.eventListenersService.listenToWindowResize().subscribe(() => {
         this.ngZone.run(async () => {
-          await this.updateMaximizedState();
+          await this.windowService.updateMaximizedState(
+            this._isMaximized,
+            this.applyViewportSettings.bind(this),
+            this.platform
+          );
         });
       });
     } catch (error) {
       console.warn('Tauri window events not available:', error);
     }
-  }
-
-  private async updateMaximizedState(): Promise<void> {
-    if (this.platform === 'macos') {
-      // macOS always gets zero-radius styling
-      this._isMaximized.next(true);
-      this.applyViewportSettings(true);
-      return;
-    }
-
-    const isMaximized = await this.appWindow.isMaximized();
-    this._isMaximized.next(isMaximized);
-    this.applyViewportSettings(isMaximized);
   }
 
   private applyViewportSettings(isMaximized: boolean): void {
@@ -131,7 +128,7 @@ export class UiStateService {
   // === Remote Deletion Listener ===
   private async setupRemoteDeletionListener(): Promise<void> {
     try {
-      await listen<string>('remote_deleted', event => {
+      this.eventListenersService.listenToRemoteDeleted().subscribe(event => {
         this.ngZone.run(() => {
           const deletedRemoteName = event.payload;
           const currentRemote = this.selectedRemoteSource.value;

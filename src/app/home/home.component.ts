@@ -17,7 +17,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
+import { EventListenersService } from '../services/system/event-listeners.service';
 import { Subject, takeUntil } from 'rxjs';
 
 // Components
@@ -95,7 +95,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   remoteSettings: RemoteSettings = {};
   actionInProgress: RemoteActionProgress = {};
   bandwidthLimit: BandwidthLimitResponse | null = null;
-  private unlistenNetworkStatus: UnlistenFn | null = null;
 
   // Shutdown State
   isShuttingDown = false;
@@ -114,6 +113,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   appSettingsService = inject(AppSettingsService);
   iconService = inject(IconService);
   notificationService = inject(NotificationService);
+  private eventListenersService = inject(EventListenersService);
 
   constructor() {
     this.restrictValue();
@@ -869,72 +869,102 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private setupTauriListeners(): void {
     // Global shortcut event for force checking mounted remotes
-    listen<string>('shutdown_sequence', async () => {
-      try {
-        console.log('Shutdown sequence initiated - Shutting down app');
-        this.isShuttingDown = true;
-        this.cdr.detectChanges();
-      } catch (error) {
-        console.error('Error during shutdown sequence:', error);
-      }
-    });
+    this.eventListenersService
+      .listenToShutdownSequence()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: async () => {
+          try {
+            console.log('Shutdown sequence initiated - Shutting down app');
+            this.isShuttingDown = true;
+            this.cdr.detectChanges();
+          } catch (error) {
+            console.error('Error during shutdown sequence:', error);
+          }
+        },
+      });
 
     // UI notifications from backend
-    listen<string>('notify_ui', event => {
-      const message = event.payload;
-      if (message) {
-        this.notificationService.openSnackBar(message, 'Close');
-      }
-    });
+    this.eventListenersService
+      .listenToNotifyUi()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: event => {
+          const message = event.payload;
+          if (message) {
+            this.notificationService.openSnackBar(message, 'Close');
+          }
+        },
+      });
 
     // Mount cache updated - only refresh mounts and update remote mount states
-    listen<string>('mount_cache_updated', async () => {
-      try {
-        console.log('Mount cache updated - refreshing mounts');
-        await this.refreshMounts();
-        this.updateRemoteMountStates();
-        this.cdr.markForCheck();
-      } catch (error) {
-        this.handleError('Error handling mount_cache_updated', error);
-      }
-    });
+    this.eventListenersService
+      .listenToMountCacheUpdated()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: async () => {
+          try {
+            console.log('Mount cache updated - refreshing mounts');
+            await this.refreshMounts();
+            this.updateRemoteMountStates();
+            this.cdr.markForCheck();
+          } catch (error) {
+            this.handleError('Error handling mount_cache_updated', error);
+          }
+        },
+      });
 
     // Remote cache updated - refresh remotes and settings
-    listen<string>('remote_cache_updated', async () => {
-      try {
-        console.log('Remote cache updated - refreshing remotes');
-        await this.loadRemotes();
-        await this.getRemoteSettings();
-        await this.restrictValue();
-        this.cdr.markForCheck();
-      } catch (error) {
-        this.handleError('Error handling remote_cache_updated', error);
-      }
-    });
+    this.eventListenersService
+      .listenToRemoteCacheUpdated()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: async () => {
+          try {
+            console.log('Remote cache updated - refreshing remotes');
+            await this.loadRemotes();
+            await this.getRemoteSettings();
+            await this.restrictValue();
+            this.cdr.markForCheck();
+          } catch (error) {
+            this.handleError('Error handling remote_cache_updated', error);
+          }
+        },
+      });
 
     // Rclone API ready - full refresh needed
-    listen<string>('rclone_api_ready', async () => {
-      try {
-        console.log('Rclone API ready - full refresh');
-        await this.refreshData();
-        await this.restrictValue();
-        this.cdr.markForCheck();
-      } catch (error) {
-        this.handleError('Error handling rclone_api_ready', error);
-      }
-    });
+    this.eventListenersService
+      .listenToRcloneApiReady()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: async () => {
+          try {
+            console.log('Rclone API ready - full refresh');
+            await this.refreshData();
+            await this.restrictValue();
+            this.cdr.markForCheck();
+          } catch (error) {
+            this.handleError('Error handling rclone_api_ready', error);
+          }
+        },
+      });
 
     // Job cache changed - only refresh jobs and update job states
-    listen<string>('job_cache_changed', async () => {
-      try {
-        console.log('Job cache changed - refreshing jobs');
-        await this.loadJobs();
-        await this.loadActiveJobs();
-        this.cdr.markForCheck();
-      } catch (error) {
-        this.handleError('Error handling job_cache_changed', error);
-      }
-    });
+    this.eventListenersService
+      .listenToJobCacheChanged()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: async () => {
+          try {
+            console.log('Job cache changed - refreshing jobs');
+            await this.loadJobs();
+            await this.loadActiveJobs();
+            this.cdr.markForCheck();
+          } catch (error) {
+            this.handleError('Error handling job_cache_changed', error);
+          }
+        },
+      });
   }
 
   // Helper method to update remote mount states without full reload
@@ -964,9 +994,5 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
     this.resizeObserver?.disconnect();
     this.uiStateService.resetSelectedRemote();
-    if (this.unlistenNetworkStatus) {
-      this.unlistenNetworkStatus();
-      this.unlistenNetworkStatus = null;
-    }
   }
 }

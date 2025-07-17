@@ -1,6 +1,5 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 export interface StatusBadgeConfig {
   isActive: boolean;
@@ -10,27 +9,18 @@ export interface StatusBadgeConfig {
   inactiveLabel: string;
   errorLabel?: string;
   loadingLabel?: string;
+  badgeClass?: string;
 }
 
 @Component({
   selector: 'app-status-badge',
   standalone: true,
-  imports: [CommonModule, MatProgressSpinnerModule],
+  imports: [CommonModule],
   styleUrls: ['./status-badge.component.scss'],
   template: `
-    <div
-      class="status-badge"
-      [ngClass]="{
-        active: config.isActive && !config.isError,
-        error: config.isError,
-        inactive: !config.isActive && !config.isError,
-      }"
-    >
+    <div class="status-badge" [ngClass]="config.badgeClass">
       <div class="status-dot"></div>
       <span>{{ getStatusLabel() }}</span>
-      @if (config.isLoading) {
-        <mat-spinner diameter="16"></mat-spinner>
-      }
     </div>
   `,
 })

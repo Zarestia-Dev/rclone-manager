@@ -33,7 +33,7 @@ import {
   timer,
 } from 'rxjs';
 
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
+import { EventListenersService } from '../../../../services/system/event-listeners.service';
 import {
   BandwidthLimitResponse,
   DEFAULT_JOB_STATS,
@@ -128,7 +128,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
 
   // Private members
   private readonly PANEL_STATE_KEY = 'dashboard_panel_states';
-  private unlistenBandwidthLimit: UnlistenFn | null = null;
+  private eventListenersService = inject(EventListenersService);
   private destroy$ = new Subject<void>();
   private pollingSubscription: Subscription | null = null;
   private panelStateChange$ = new Subject<void>();
@@ -209,11 +209,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     this.stopPolling();
     this.destroy$.next();
     this.destroy$.complete();
-
-    if (this.unlistenBandwidthLimit) {
-      this.unlistenBandwidthLimit();
-      this.unlistenBandwidthLimit = null;
-    }
   }
 
   private setupPolling(): void {
@@ -317,14 +312,16 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     this._jobCompletionPercentage = totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
   }
 
-  private async setupTauriListeners(): Promise<void> {
-    this.unlistenBandwidthLimit = await listen<BandwidthLimitResponse>(
-      'bandwidth_limit_changed',
-      async () => {
-        this.bandwidthLimit = await this.systemInfoService.getBandwidthLimit();
-        this.statsUpdateDebounce$.next();
-      }
-    );
+  private setupTauriListeners(): void {
+    this.eventListenersService
+      .listenToBandwidthLimitChanged()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: async () => {
+          this.bandwidthLimit = await this.systemInfoService.getBandwidthLimit();
+          this.statsUpdateDebounce$.next();
+        },
+      });
   }
 
   private savePanelStates(): void {

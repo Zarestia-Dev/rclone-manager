@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
+import { EventListenersService } from '../../../../services/system/event-listeners.service';
 import { version as appVersion } from '../../../../../../package.json';
 import { RcloneInfo } from '../../../../shared/components/types';
 import { AnimationsService } from '../../../../services/core/animations.service';
@@ -29,7 +29,7 @@ import { RcloneUpdateIconComponent } from '../../../../shared/components/rclone-
   styleUrl: './about-modal.component.scss',
   animations: [AnimationsService.slideOverlay()],
 })
-export class AboutModalComponent implements OnInit, OnDestroy {
+export class AboutModalComponent implements OnInit {
   readonly rCloneManagerVersion = appVersion;
 
   dialogRef = inject(MatDialogRef<AboutModalComponent>);
@@ -43,24 +43,18 @@ export class AboutModalComponent implements OnInit, OnDestroy {
   rcloneInfo: RcloneInfo | null = null;
   loadingRclone = false;
   rcloneError: string | null = null;
-  private unlistenRcloneApiReady: UnlistenFn | null = null;
+  private eventListenersService = inject(EventListenersService);
 
   async ngOnInit(): Promise<void> {
     await this.loadRcloneInfo();
     await this.loadRclonePID();
 
-    // Listen for rclone_api_ready event and store the unlisten function
-    this.unlistenRcloneApiReady = await listen('rclone_api_ready', async () => {
-      await this.loadRcloneInfo();
-      await this.loadRclonePID();
+    this.eventListenersService.listenToRcloneApiReady().subscribe({
+      next: async () => {
+        await this.loadRcloneInfo();
+        await this.loadRclonePID();
+      },
     });
-  }
-
-  ngOnDestroy(): void {
-    if (this.unlistenRcloneApiReady) {
-      this.unlistenRcloneApiReady();
-      this.unlistenRcloneApiReady = null;
-    }
   }
 
   async loadRcloneInfo(): Promise<void> {

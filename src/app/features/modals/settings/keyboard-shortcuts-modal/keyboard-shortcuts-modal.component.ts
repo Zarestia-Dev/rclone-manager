@@ -57,12 +57,12 @@ export class KeyboardShortcutsModalComponent {
   private dialogRef = inject(MatDialogRef<KeyboardShortcutsModalComponent>);
 
   @HostListener('document:keydown.escape', ['$event'])
-  close() {
+  close(): void {
     this.dialogRef.close();
   }
 
   @HostListener('document:keydown.control.f', ['$event'])
-  onF3(event: KeyboardEvent) {
+  onF3(event: KeyboardEvent): void {
     event.preventDefault();
     this.toggleSearch();
     if (this.searchVisible && this.searchContainer) {
@@ -70,19 +70,19 @@ export class KeyboardShortcutsModalComponent {
     }
   }
 
-  toggleSearch() {
+  toggleSearch(): void {
     this.searchVisible = !this.searchVisible;
     if (!this.searchVisible) {
       this.clearSearch();
     }
   }
 
-  onSearchTextChange(searchText: string) {
+  onSearchTextChange(searchText: string): void {
     this.searchText = searchText;
     this.filterShortcuts();
   }
 
-  filterShortcuts() {
+  filterShortcuts(): void {
     const searchTerm = this.searchText.toLowerCase().trim();
 
     if (!searchTerm) {
@@ -99,7 +99,7 @@ export class KeyboardShortcutsModalComponent {
     );
   }
 
-  clearSearch() {
+  clearSearch(): void {
     this.searchText = '';
     this.filteredShortcuts = [...this.shortcuts];
     if (this.searchContainer) {
