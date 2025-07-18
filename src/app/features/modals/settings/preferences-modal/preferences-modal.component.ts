@@ -20,9 +20,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
-import { AppSettingsService } from '../../../../services/settings/app-settings.service';
-import { FileSystemService } from '../../../../services/file-operations/file-system.service';
-import { ValidatorRegistryService } from '../../../../services/core/validator-registry.service';
+
+// Services
+import { ValidatorRegistryService } from '../../../../shared/services/validator-registry.service';
+import { AppSettingsService } from '@app/services';
+import { FileSystemService } from '@app/services';
 
 interface SettingTab {
   label: string;

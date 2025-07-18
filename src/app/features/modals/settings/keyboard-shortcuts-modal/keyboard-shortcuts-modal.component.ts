@@ -7,7 +7,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
-import { AnimationsService } from '../../../../services/core/animations.service';
+
+import { AnimationsService } from '../../../../shared/services/animations.service';
 
 @Component({
   selector: 'app-keyboard-shortcuts-modal',

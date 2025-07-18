@@ -1,11 +1,9 @@
 import { Component, OnInit, OnDestroy, inject, Type } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { WindowService } from '../../services/ui/window.service';
 import { Subject, BehaviorSubject, Subscription } from 'rxjs';
 import { takeUntil, take } from 'rxjs/operators';
 import { InputModalComponent } from '../../shared/modals/input-modal/input-modal.component';
 
-// Services
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { CommonModule } from '@angular/common';
@@ -14,16 +12,19 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { CheckResult } from '../../shared/components/types';
-import { BackupRestoreService } from '../../services/settings/backup-restore.service';
-import { FileSystemService } from '../../services/file-operations/file-system.service';
-import { AppSettingsService } from '../../services/settings/app-settings.service';
-import { UiStateService } from '../../services/ui/ui-state.service';
 import { ExportModalComponent } from '../../features/modals/file-operations/export-modal/export-modal.component';
 import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
 import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
 import { AboutModalComponent } from '../../features/modals/settings/about-modal/about-modal.component';
 import { QuickAddRemoteComponent } from '../../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
 import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
+
+// Services
+import { WindowService } from '@app/services';
+import { BackupRestoreService } from '@app/services';
+import { FileSystemService } from '@app/services';
+import { AppSettingsService } from '@app/services';
+import { UiStateService } from '@app/services';
 
 type Theme = 'light' | 'dark' | 'system';
 interface ModalSize {

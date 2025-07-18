@@ -24,7 +24,9 @@ import {
   SettingsPanelComponent,
   SettingsPanelConfig,
 } from '../../../../shared/detail-shared';
-import { IconService } from '../../../../services/ui/icon.service';
+
+// Services
+import { IconService } from '../../../../shared/services/icon.service';
 
 @Component({
   selector: 'app-general-detail',

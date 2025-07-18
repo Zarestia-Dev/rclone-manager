@@ -17,7 +17,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
-import { EventListenersService } from '../services/system/event-listeners.service';
 import { Subject, takeUntil } from 'rxjs';
 
 // Components
@@ -35,14 +34,6 @@ import {
 } from '../shared/components/types';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { SidebarComponent } from '../layout/sidebar/sidebar.component';
-import { UiStateService } from '../services/ui/ui-state.service';
-import { MountManagementService } from '../services/file-operations/mount-management.service';
-import { RemoteManagementService } from '../services/remote/remote-management.service';
-import { JobManagementService } from '../services/file-operations/job-management.service';
-import { SystemInfoService } from '../services/system/system-info.service';
-import { AppSettingsService } from '../services/settings/app-settings.service';
-import { IconService } from '../services/ui/icon.service';
-import { NotificationService } from '../services/ui/notification.service';
 import { GeneralDetailComponent } from '../features/components/dashboard/general-detail/general-detail.component';
 import { GeneralOverviewComponent } from '../features/components/dashboard/general-overview/general-overview.component';
 import { AppDetailComponent } from '../features/components/dashboard/app-detail/app-detail.component';
@@ -53,6 +44,18 @@ import { RemoteConfigModalComponent } from '../features/modals/remote-management
 import { QuickAddRemoteComponent } from '../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { LoadingOverlayComponent } from '../shared/components/loading-overlay/loading-overlay.component';
+
+// Services
+import { IconService } from '../shared/services/icon.service';
+
+import { EventListenersService } from '@app/services';
+import { UiStateService } from '@app/services';
+import { MountManagementService } from '@app/services';
+import { RemoteManagementService } from '@app/services';
+import { JobManagementService } from '@app/services';
+import { SystemInfoService } from '@app/services';
+import { AppSettingsService } from '@app/services';
+import { NotificationService } from '../shared/services/notification.service';
 
 @Component({
   selector: 'app-home',

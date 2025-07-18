@@ -7,7 +7,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { QuickActionButton, QuickActionButtonsComponent } from '../../../shared/components';
 import { AppTab, Remote, RemoteAction } from '../../../shared/components/types';
-import { IconService } from '../../../services/ui/icon.service';
+
+// Services
+import { IconService } from '../../services/icon.service';
 
 export type RemoteCardVariant = 'active' | 'inactive' | 'error';
 

@@ -45,6 +45,14 @@
               ],
               "outputHashing": "all"
             },
+            "headless": {
+              "fileReplacements": [
+                {
+                  "replace": "src/app/services/index.ts",
+                  "with": "src/app/services-headless/index.ts"
+                }
+              ]
+            },
             "development": {
               "optimization": false,
               "extractLicenses": false,
@@ -64,6 +72,9 @@
             },
             "development": {
               "buildTarget": "rclone-manager:build:development"
+            },
+            "headless": {
+              "buildTarget": "rclone-manager:build:headless"
             }
           },
           "defaultConfiguration": "development"

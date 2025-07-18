@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { NotificationService } from '../ui/notification.service';
+import { NotificationService } from '../../shared/services/notification.service';
 
 export type MountOptions = Record<string, string | number | boolean>;
 

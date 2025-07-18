@@ -3,11 +3,11 @@ import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { JobInfo } from '../../shared/components/types';
 
-export type SyncOptions = Record<string, any>;
+export type SyncOptions = Record<string, object>;
 
-export type CopyOptions = Record<string, any>;
+export type CopyOptions = Record<string, object>;
 
-export type FilterOptions = Record<string, any>;
+export type FilterOptions = Record<string, object>;
 
 /**
  * Service for managing rclone jobs (sync, copy, etc.)
@@ -90,7 +90,7 @@ export class JobManagementService extends TauriBaseService {
   /**
    * Get job status
    */
-  async getJobStatus(jobid: number): Promise<any | null> {
+  async getJobStatus(jobid: number): Promise<JobInfo | null> {
     return this.invokeCommand('get_job_status', { jobid });
   }
 

@@ -1,6 +1,8 @@
 import { Component, Input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { AnimationsService } from '../../../services/core/animations.service';
+
+// Services
+import { AnimationsService } from '../../services/animations.service';
 
 @Component({
   selector: 'app-loading-overlay',

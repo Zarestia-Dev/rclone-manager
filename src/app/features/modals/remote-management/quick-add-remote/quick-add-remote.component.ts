@@ -24,13 +24,15 @@ import {
   RemoteSettings,
   RemoteType,
 } from '../../../../shared/remote-config/remote-config-types';
-import { AnimationsService } from '../../../../services/core/animations.service';
-import { AuthStateService } from '../../../../services/ui/auth-state.service';
-import { RemoteManagementService } from '../../../../services/remote/remote-management.service';
-import { JobManagementService } from '../../../../services/file-operations/job-management.service';
-import { MountManagementService } from '../../../../services/file-operations/mount-management.service';
-import { AppSettingsService } from '../../../../services/settings/app-settings.service';
-import { FileSystemService } from '../../../../services/file-operations/file-system.service';
+
+// Services
+import { AnimationsService } from '../../../../shared/services/animations.service';
+import { AuthStateService } from '../../../../shared/services/auth-state.service';
+import { RemoteManagementService } from '@app/services';
+import { JobManagementService } from '@app/services';
+import { MountManagementService } from '@app/services';
+import { AppSettingsService } from '@app/services';
+import { FileSystemService } from '@app/services';
 
 @Component({
   selector: 'app-quick-add-remote',

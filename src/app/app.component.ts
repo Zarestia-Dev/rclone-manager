@@ -11,15 +11,17 @@ import {
   MatBottomSheetRef,
 } from '@angular/material/bottom-sheet';
 import { TabsButtonsComponent } from './layout/tabs-buttons/tabs-buttons.component';
-import { UiStateService } from './services/ui/ui-state.service';
-import { AppSettingsService } from './services/settings/app-settings.service';
-import { SystemInfoService } from './services/system/system-info.service';
 import { AppTab } from './shared/components/types';
-import { InstallationService } from './services/settings/installation.service';
 import { RepairSheetComponent } from './features/components/repair-sheet/repair-sheet.component';
 import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
 import { BannerComponent } from './layout/banners/banner.component';
-import { EventListenersService } from './services/system/event-listeners.service';
+
+// Services
+import { UiStateService } from '@app/services';
+import { AppSettingsService } from '@app/services';
+import { SystemInfoService } from '@app/services';
+import { InstallationService } from '@app/services';
+import { EventListenersService } from '@app/services';
 
 @Component({
   selector: 'app-root',

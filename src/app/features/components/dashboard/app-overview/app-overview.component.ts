@@ -7,11 +7,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AppTab, Remote, RemoteActionProgress } from '../../../../shared/components/types';
-import { AnimationsService } from '../../../../services/core/animations.service';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
-import { IconService } from '../../../../services/ui/icon.service';
+
+// Services
+import { IconService } from '../../../../shared/services/icon.service';
+import { AnimationsService } from '../../../../shared/services/animations.service';
 
 @Component({
   selector: 'app-app-overview',

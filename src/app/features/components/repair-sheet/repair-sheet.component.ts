@@ -9,13 +9,15 @@ import { MatRadioModule } from '@angular/material/radio';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RepairData } from '../../../shared/components/types';
-import { RepairService } from '../../../services/file-operations/repair.service';
-import { AppSettingsService } from '../../../services/settings/app-settings.service';
-import { AnimationsService } from '../../../services/core/animations.service';
 import {
   InstallationOptionsComponent,
   InstallationOptionsData,
 } from '../../../shared/components/installation-options/installation-options.component';
+
+// Services
+import { RepairService } from '@app/services';
+import { AppSettingsService } from '@app/services';
+import { AnimationsService } from '../../../shared/services/animations.service';
 
 @Component({
   selector: 'app-repair-sheet',

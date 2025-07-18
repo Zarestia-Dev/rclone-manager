@@ -8,11 +8,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
-import { AnimationsService } from '../../../../services/core/animations.service';
-import { BackupRestoreService } from '../../../../services/settings/backup-restore.service';
-import { RemoteManagementService } from '../../../../services/remote/remote-management.service';
-import { FileSystemService } from '../../../../services/file-operations/file-system.service';
 import { ExportModalData } from '../../../../shared/components/types';
+
+// Services
+import { AnimationsService } from '../../../../shared/services/animations.service';
+import { BackupRestoreService } from '@app/services';
+import { RemoteManagementService } from '@app/services';
+import { FileSystemService } from '@app/services';
 
 @Component({
   selector: 'app-export-modal',

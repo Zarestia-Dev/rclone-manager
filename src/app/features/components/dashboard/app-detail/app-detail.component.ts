@@ -39,7 +39,6 @@ import {
   SENSITIVE_KEYS,
   TransferFile,
 } from '../../../../shared/components/types';
-import { JobManagementService } from '../../../../services/file-operations/job-management.service';
 import {
   CompletedTransfer,
   JobInfoConfig,
@@ -55,7 +54,9 @@ import {
   TransferActivityPanelComponent,
   TransferActivityPanelConfig,
 } from '../../../../shared/detail-shared';
-import { IconService } from '../../../../services/ui/icon.service';
+
+import { IconService } from '../../../../shared/services/icon.service';
+import { JobManagementService } from '@app/services';
 
 @Component({
   selector: 'app-app-detail',

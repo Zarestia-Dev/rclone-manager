@@ -6,8 +6,10 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { FormsModule } from '@angular/forms';
 import { Remote } from '../../shared/components/types';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AnimationsService } from '../../services/core/animations.service';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
+
+// Services
+import { AnimationsService } from '../../shared/services/animations.service';
 
 @Component({
   selector: 'app-sidebar',

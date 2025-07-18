@@ -27,18 +27,20 @@ import {
   RemoteField,
   RemoteType,
 } from '../../../../shared/remote-config/remote-config-types';
-import { AnimationsService } from '../../../../services/core/animations.service';
-import { RemoteConfigService } from '../../../../services/remote/remote-config.service';
-import { FlagConfigService } from '../../../../services/remote/flag-config.service';
-import { PathSelectionService } from '../../../../services/remote/path-selection.service';
-import { AuthStateService } from '../../../../services/ui/auth-state.service';
-import { RemoteManagementService } from '../../../../services/remote/remote-management.service';
-import { JobManagementService } from '../../../../services/file-operations/job-management.service';
-import { MountManagementService } from '../../../../services/file-operations/mount-management.service';
-import { AppSettingsService } from '../../../../services/settings/app-settings.service';
-import { FileSystemService } from '../../../../services/file-operations/file-system.service';
-import { UiStateService } from '../../../../services/ui/ui-state.service';
-import { ValidatorRegistryService } from '../../../../services/core/validator-registry.service';
+
+// Services
+import { AnimationsService } from '../../../../shared/services/animations.service';
+import { AuthStateService } from '../../../../shared/services/auth-state.service';
+import { ValidatorRegistryService } from '../../../../shared/services/validator-registry.service';
+import { RemoteConfigService } from '@app/services';
+import { FlagConfigService } from '@app/services';
+import { PathSelectionService } from '@app/services';
+import { RemoteManagementService } from '@app/services';
+import { JobManagementService } from '@app/services';
+import { MountManagementService } from '@app/services';
+import { AppSettingsService } from '@app/services';
+import { FileSystemService } from '@app/services';
+import { UiStateService } from '@app/services';
 
 @Component({
   selector: 'app-remote-config-modal',

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
-import { UiStateService } from '../ui/ui-state.service';
+import { UiStateService } from '../../services/ui/ui-state.service';
 
 @Injectable({
   providedIn: 'root',

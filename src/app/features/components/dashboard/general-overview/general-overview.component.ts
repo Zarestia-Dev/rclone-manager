@@ -33,7 +33,6 @@ import {
   timer,
 } from 'rxjs';
 
-import { EventListenersService } from '../../../../services/system/event-listeners.service';
 import {
   BandwidthLimitResponse,
   DEFAULT_JOB_STATS,
@@ -44,10 +43,13 @@ import {
   RemoteAction,
   RemoteActionProgress,
 } from '../../../../shared/components/types';
-import { AnimationsService } from '../../../../services/core/animations.service';
-import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
-import { SystemInfoService } from '../../../../services/system/system-info.service';
 import { formatUtils } from '../../../../shared/utils/format-utils';
+import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
+
+// Services
+import { AnimationsService } from '../../../../shared/services/animations.service';
+import { EventListenersService } from '@app/services';
+import { SystemInfoService } from '@app/services';
 
 /** Polling interval for system stats in milliseconds */
 const POLLING_INTERVAL = 5000;

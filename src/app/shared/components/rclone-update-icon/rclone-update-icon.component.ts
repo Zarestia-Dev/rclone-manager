@@ -6,11 +6,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { Subject, takeUntil } from 'rxjs';
-import { RcloneUpdateService, UpdateStatus } from '../../../services/system/rclone-update.service';
 import {
   UpdateConfirmationDialogComponent,
   UpdateConfirmationData,
 } from '../../modals/update-confirmation-dialog/update-confirmation-dialog.component';
+
+// Services
+import { RcloneUpdateService, UpdateStatus } from '@app/services';
 
 @Component({
   selector: 'app-rclone-update-icon',

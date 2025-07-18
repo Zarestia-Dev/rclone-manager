@@ -7,7 +7,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { InputField } from '../../components/types';
-import { FileSystemService } from '../../../services/file-operations/file-system.service';
+
+// Services
+import { FileSystemService } from '@app/services';
 
 @Component({
   selector: 'app-input-modal',

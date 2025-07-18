@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { NotificationService } from '../ui/notification.service';
+import { NotificationService } from '../../shared/services/notification.service';
 import { CheckResult } from '../../shared/components/types';
 
 /**

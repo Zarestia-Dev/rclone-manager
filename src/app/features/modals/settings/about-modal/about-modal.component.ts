@@ -6,14 +6,15 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-
-import { EventListenersService } from '../../../../services/system/event-listeners.service';
 import { version as appVersion } from '../../../../../../package.json';
 import { RcloneInfo } from '../../../../shared/components/types';
-import { AnimationsService } from '../../../../services/core/animations.service';
-import { SystemInfoService } from '../../../../services/system/system-info.service';
-import { NotificationService } from '../../../../services/ui/notification.service';
 import { RcloneUpdateIconComponent } from '../../../../shared/components/rclone-update-icon/rclone-update-icon.component';
+
+// Services
+import { AnimationsService } from '../../../../shared/services/animations.service';
+import { EventListenersService } from '@app/services';
+import { SystemInfoService } from '@app/services';
+import { NotificationService } from 'src/app/shared/services/notification.service';
 
 @Component({
   selector: 'app-about-modal',

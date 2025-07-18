@@ -7,10 +7,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { FileSystemService } from '../../../services/file-operations/file-system.service';
-import { SystemInfoService } from '../../../services/system/system-info.service';
-import { ValidatorRegistryService } from '../../../services/core/validator-registry.service';
-import { AnimationsService } from '../../../services/core/animations.service';
+
+// Services
+import { FileSystemService } from '@app/services';
+import { SystemInfoService } from '@app/services';
+import { AnimationsService } from '../../services/animations.service';
+import { ValidatorRegistryService } from '../../services/validator-registry.service';
 
 export interface InstallationOptionsData {
   installLocation: 'default' | 'custom' | 'existing';

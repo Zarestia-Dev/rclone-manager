@@ -4,9 +4,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { RcloneUpdateInfo } from '../../../services/system/rclone-update.service';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { MatDividerModule } from '@angular/material/divider';
+
+// Services
+import { RcloneUpdateInfo } from '@app/services';
 
 export interface UpdateConfirmationData {
   updateInfo: RcloneUpdateInfo;

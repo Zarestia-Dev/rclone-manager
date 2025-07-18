@@ -1,14 +1,16 @@
 import { Directive, HostListener, inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { WindowService } from '../../services/ui/window.service';
-import { RemoteManagementService } from '../../services/remote/remote-management.service';
-import { NotificationService } from '../../services/ui/notification.service';
 import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
 import { QuickAddRemoteComponent } from '../../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
 import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
 import { ExportModalComponent } from '../../features/modals/file-operations/export-modal/export-modal.component';
 import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
 import { STANDARD_MODAL_SIZE } from '../components/types';
+
+// Services
+import { WindowService } from '@app/services';
+import { RemoteManagementService } from '@app/services';
+import { NotificationService } from '../services/notification.service';
 
 @Directive({
   selector: '[appShortcutHandler]',

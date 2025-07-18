@@ -8,10 +8,12 @@ import {
   OnInit,
 } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { EventListenersService } from '../../services/system/event-listeners.service';
-import { SystemInfoService } from '../../services/system/system-info.service';
 import { Subject } from 'rxjs';
-import { AnimationsService } from '../../services/core/animations.service';
+
+// Services
+import { AnimationsService } from '../../shared/services/animations.service';
+import { EventListenersService } from '@app/services';
+import { SystemInfoService } from '@app/services';
 
 @Component({
   selector: 'app-banner',

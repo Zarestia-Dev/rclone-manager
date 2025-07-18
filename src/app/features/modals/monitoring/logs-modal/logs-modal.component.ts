@@ -20,7 +20,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { LogContext, RemoteLogEntry } from '../../../../shared/components/types';
-import { LoggingService } from '../../../../services/system/logging.service';
+
+import { LoggingService } from '@app/services';
 
 @Component({
   selector: 'app-logs-modal',

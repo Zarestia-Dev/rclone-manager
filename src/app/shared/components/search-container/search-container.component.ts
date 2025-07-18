@@ -2,7 +2,9 @@ import { Component, Input, Output, EventEmitter, ViewChild, ElementRef } from '@
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
-import { AnimationsService } from '../../../services/core/animations.service';
+
+// Services
+import { AnimationsService } from '../../services/animations.service';
 
 @Component({
   selector: 'app-search-container',
