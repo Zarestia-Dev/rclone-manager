@@ -79,7 +79,7 @@ pub mod operations {
 pub mod sync {
     pub const SYNC: &str = "sync/sync";
     pub const COPY: &str = "sync/copy";
-    // pub const BISYNC: &str = "sync/bisync";
+    pub const BISYNC: &str = "sync/bisync";
     // pub const MOVE: &str = "sync/move";
 }
 

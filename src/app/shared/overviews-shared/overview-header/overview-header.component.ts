@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { AppTab } from '../../../shared/components/types';
@@ -6,7 +5,7 @@ import { AppTab } from '../../../shared/components/types';
 @Component({
   selector: 'app-overview-header',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [MatIconModule],
   templateUrl: './overview-header.component.html',
   styleUrl: './overview-header.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

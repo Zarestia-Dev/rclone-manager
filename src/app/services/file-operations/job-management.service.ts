@@ -71,6 +71,28 @@ export class JobManagementService extends TauriBaseService {
     return parseInt(jobId, 10);
   }
 
+  async startBisync(
+    remoteName: string,
+    source: string,
+    dest: string,
+    copyOptions?: CopyOptions,
+    filterOptions?: FilterOptions,
+    resync?: boolean
+  ): Promise<number> {
+    this.validatePaths(source, dest);
+
+    const jobId = await this.invokeCommand<string>('start_bisync', {
+      remoteName,
+      source,
+      dest,
+      copyOptions: copyOptions || {},
+      filterOptions: filterOptions || {},
+      resync: resync || true,
+    });
+
+    return parseInt(jobId, 10);
+  }
+
   /**
    * Get all jobs
    */

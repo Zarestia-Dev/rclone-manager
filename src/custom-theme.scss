@@ -12,7 +12,6 @@
 // have to load a single css file for Angular Material in your app.
 // Be sure that you only ever include this mixin once!
 @include mat.elevation-classes();
-@include mat.app-background();
 
 // Adwaita Green Primary Palette
 $adwaita-green-palette: (

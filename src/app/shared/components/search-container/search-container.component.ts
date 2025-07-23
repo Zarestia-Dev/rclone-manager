@@ -1,5 +1,5 @@
 import { Component, Input, Output, EventEmitter, ViewChild, ElementRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
 
@@ -9,7 +9,7 @@ import { AnimationsService } from '../../services/animations.service';
 @Component({
   selector: 'app-search-container',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatInputModule],
+  imports: [FormsModule, MatInputModule],
   animations: [AnimationsService.slideToggle()],
   template: `
     <div class="search-container" [@slideToggle]="visible ? 'visible' : 'hidden'">

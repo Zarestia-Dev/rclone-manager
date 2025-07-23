@@ -5,6 +5,45 @@ use crate::utils::types::all_types::{
     AppSettings, CoreSettings, ExperimentalSettings, GeneralSettings, SettingMetadata,
 };
 
+pub fn default_terminal_apps() -> Vec<String> {
+    #[cfg(target_os = "linux")]
+    {
+        vec![
+            // GNOME-based terminals
+            "gnome-terminal -- bash -c '{}'".to_string(),
+            "kgx -- bash -c '{}'".to_string(),
+            // KDE
+            "konsole -e bash -c '{}'".to_string(),
+            // XFCE
+            "xfce4-terminal -e bash -c '{}'".to_string(),
+            // Modern terminals
+            "alacritty -e bash -c '{}'".to_string(),
+            "kitty bash -c '{}'".to_string(),
+            "terminator -e bash -c '{}'".to_string(),
+            // Fallbacks
+            "x-terminal-emulator -e bash -c '{}'".to_string(),
+            "xterm -e bash -c '{}'".to_string(),
+        ]
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        vec![
+            "osascript -e 'tell application \"Terminal\" to do script \"{}\"'".to_string(),
+            "osascript -e 'tell application \"iTerm\" to create window with default profile command \"{}\"'".to_string(),
+        ]
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        vec![
+            "wt cmd /c \"{}\"".to_string(),
+            "cmd /c \"{}\"".to_string(),
+            "powershell -Command \"{}\"".to_string(),
+        ]
+    }
+}
+
 /// ✅ Default settings
 impl Default for AppSettings {
     fn default() -> Self {
@@ -29,6 +68,7 @@ impl Default for AppSettings {
                 rclone_config_path: "".to_string(),
                 rclone_path: "".to_string(), // Empty means auto-detect
                 completed_onboarding: false,
+                terminal_apps: default_terminal_apps(),
             },
             experimental: ExperimentalSettings {
                 debug_logging: false,
@@ -290,6 +330,25 @@ impl AppSettings {
                 options: None,
                 required: Some(false),
                 requires_restart: Some(true),
+            },
+        );
+
+        metadata.insert(
+            "core.terminal_apps".to_string(),
+            SettingMetadata {
+                display_name: "Preferred Terminal Apps".to_string(),
+                value_type: "array".to_string(),
+                help_text: "List of terminal applications to use for commands.".to_string(),
+                validation_type: None,
+                validation_pattern: None,
+                validation_message: Some("All items must be valid terminal app names".to_string()),
+                min_value: None,
+                max_value: None,
+                step: None,
+                placeholder: Some("e.g., gnome-terminal, x-terminal-emulator".to_string()),
+                options: None,
+                required: Some(true),
+                requires_restart: Some(false),
             },
         );
 

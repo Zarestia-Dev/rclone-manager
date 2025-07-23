@@ -351,6 +351,18 @@ fn handle_settings_changed(app: &AppHandle) {
                             }
                         });
                     }
+
+                    if let Some(terminal_apps) =
+                        core.get("terminal_apps").and_then(|v| v.as_array())
+                    {
+                        debug!("🖥️ Terminal apps changed: {terminal_apps:?}");
+                        let rclone_state = app_handle.state::<RcloneState>();
+                        let mut terminal_apps_guard = rclone_state.terminal_apps.write().unwrap();
+                        *terminal_apps_guard = terminal_apps
+                            .iter()
+                            .filter_map(|v| v.as_str().map(String::from))
+                            .collect::<Vec<String>>();
+                    }
                 }
 
                 if let Some(experimental) = settings.get("experimental") {

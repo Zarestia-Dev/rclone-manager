@@ -35,7 +35,8 @@ use crate::{
     rclone::{
         commands::{
             create_remote, delete_remote, mount_remote, quit_rclone_oauth, set_bandwidth_limit,
-            start_copy, start_sync, stop_job, unmount_all_remotes, unmount_remote, update_remote,
+            start_bisync, start_copy, start_sync, stop_job, unmount_all_remotes, unmount_remote,
+            update_remote,
         },
         queries::{
             flags::{
@@ -59,6 +60,7 @@ use crate::{
         io::{
             file_helper::{get_file_location, get_folder_location, open_in_files},
             network::{check_links, is_network_metered, monitor_network_changes},
+            terminal::open_terminal_config,
         },
         logging::log::init_logging,
         process::process_manager::kill_process_by_pid,
@@ -152,6 +154,9 @@ pub fn run() {
                     settings.core.rclone_path.clone().into(),
                 )),
                 restrict_mode: Arc::new(std::sync::RwLock::new(settings.general.restrict)),
+                terminal_apps: Arc::new(std::sync::RwLock::new(
+                    settings.core.terminal_apps.clone(),
+                )),
             });
 
             // Setup global shortcuts
@@ -273,6 +278,7 @@ pub fn run() {
             get_mounted_remotes,
             start_sync,
             start_copy,
+            start_bisync,
             set_bandwidth_limit,
             // Rclone Query API
             mount_remote,
@@ -331,6 +337,7 @@ pub fn run() {
             force_check_mounted_remotes,
             // Application control
             handle_shutdown,
+            open_terminal_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

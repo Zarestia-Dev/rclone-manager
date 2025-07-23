@@ -19,6 +19,7 @@ pub struct RcloneState {
     pub notifications_enabled: Arc<std::sync::RwLock<bool>>,
     pub rclone_path: Arc<std::sync::RwLock<PathBuf>>,
     pub restrict_mode: Arc<std::sync::RwLock<bool>>,
+    pub terminal_apps: Arc<std::sync::RwLock<Vec<String>>>,
 }
 
 /// Represents metadata for a setting
@@ -71,6 +72,7 @@ pub struct CoreSettings {
     pub rclone_path: String,
     pub bandwidth_limit: String,
     pub completed_onboarding: bool,
+    pub terminal_apps: Vec<String>,
 }
 
 /// Experimental settings

@@ -1,5 +1,5 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -20,13 +20,7 @@ export interface PathDisplayConfig {
 @Component({
   selector: 'app-path-display',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatIconModule,
-    MatButtonModule,
-    MatProgressSpinnerModule,
-    MatTooltipModule,
-  ],
+  imports: [MatIconModule, MatButtonModule, MatProgressSpinnerModule, MatTooltipModule],
   styleUrls: ['./path-display.component.scss'],
   template: `
     <div class="path-section">

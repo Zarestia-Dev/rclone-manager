@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 // import { RouterOutlet } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { TitlebarComponent } from './layout/titlebar/titlebar.component';
@@ -26,8 +26,6 @@ import { EventListenersService } from '@app/services';
 @Component({
   selector: 'app-root',
   imports: [
-    CommonModule,
-    // RouterOutlet,
     TitlebarComponent,
     OnboardingComponent,
     MatBottomSheetModule,

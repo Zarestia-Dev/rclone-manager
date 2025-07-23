@@ -6,7 +6,7 @@ import { InputModalComponent } from '../../shared/modals/input-modal/input-modal
 
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
-import { CommonModule } from '@angular/common';
+
 import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -20,11 +20,12 @@ import { QuickAddRemoteComponent } from '../../features/modals/remote-management
 import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
 
 // Services
-import { WindowService } from '@app/services';
+import { RemoteManagementService, WindowService } from '@app/services';
 import { BackupRestoreService } from '@app/services';
 import { FileSystemService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { UiStateService } from '@app/services';
+import { NotificationService } from 'src/app/shared/services/notification.service';
 
 type Theme = 'light' | 'dark' | 'system';
 interface ModalSize {
@@ -51,7 +52,6 @@ const STANDARD_MODAL_SIZE: ModalSize = {
   imports: [
     MatMenuModule,
     MatDividerModule,
-    CommonModule,
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
@@ -67,6 +67,8 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   appSettingsService = inject(AppSettingsService);
   uiStateService = inject(UiStateService);
   windowService = inject(WindowService);
+  remoteManagementService = inject(RemoteManagementService);
+  notificationService = inject(NotificationService);
 
   selectedTheme: Theme = 'light';
   isMacOS = false;
@@ -270,6 +272,18 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   // Other Methods
   resetRemote(): void {
     this.uiStateService.resetSelectedRemote();
+  }
+
+  async openRemoteConfigTerminal(): Promise<void> {
+    try {
+      await this.remoteManagementService.openRcloneConfigTerminal();
+    } catch (error) {
+      console.error('Error opening Rclone config terminal:', error);
+      this.notificationService.openSnackBar(
+        `Failed to open Rclone config terminal: ${error}`,
+        'OK'
+      );
+    }
   }
 
   async restoreSettings(): Promise<void> {

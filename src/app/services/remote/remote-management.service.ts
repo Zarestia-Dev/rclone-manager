@@ -159,4 +159,16 @@ export class RemoteManagementService extends TauriBaseService {
     const remotes = await this.getRemotes();
     this.remotesCache.next(remotes);
   }
+
+  /**
+   * Open the Rclone configuration terminal
+   */
+  async openRcloneConfigTerminal(): Promise<void> {
+    try {
+      await this.invokeCommand('open_terminal_config');
+    } catch (error) {
+      console.error('Error opening Rclone config terminal:', error);
+      throw error;
+    }
+  }
 }
