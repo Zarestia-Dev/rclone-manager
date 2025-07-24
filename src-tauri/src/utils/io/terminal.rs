@@ -130,8 +130,7 @@ async fn open_macos_terminal(command: &str, preferred_terminals: &[String]) -> R
     let mut last_error = None;
 
     for terminal_cmd in preferred_terminals {
-        let escaped_command = shell_escape(command);
-        let full_cmd = terminal_cmd.replace("{}", &escaped_command);
+        let full_cmd = terminal_cmd.replace("{}", command);
         info!("Trying macOS terminal command: {}", full_cmd);
 
         match try_open_macos_terminal(&full_cmd).await {
@@ -154,17 +153,10 @@ async fn open_linux_terminal(command: &str, preferred_terminals: &[String]) -> R
     let mut last_error = None;
 
     for terminal_cmd in preferred_terminals {
-        let escaped_command = shell_escape(command);
-        let full_cmd = terminal_cmd.replace("{}", &escaped_command);
+        let full_cmd = terminal_cmd.replace("{}", command);
 
         // Extract the terminal binary name to check if it exists
         let terminal_binary = full_cmd.split_whitespace().next().unwrap_or("");
-
-        // Check if the terminal binary exists
-        if !command_exists(terminal_binary) {
-            last_error = Some(format!("Terminal '{terminal_binary}' not found"));
-            continue;
-        }
 
         info!("Trying Linux terminal command: {full_cmd}");
 
@@ -217,39 +209,31 @@ async fn try_open_macos_terminal(full_command: &str) -> Result<(), String> {
     info!("Executing macOS terminal command: {full_command}");
 
     // For osascript commands
-    if full_command.starts_with("osascript ") {
-        let args_str = &full_command[10..]; // Remove "osascript "
-        let args = parse_args(args_str);
+    let parts: Vec<&str> = full_command.splitn(2, ' ').collect();
+    let (program, args_str) = match parts.as_slice() {
+        [prog] => (*prog, ""),
+        [prog, args] => (*prog, *args),
+        _ => return Err("Invalid command format".to_string()),
+    };
 
-        match TokioCommand::new("osascript")
-            .args(&args)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::piped())
-            .spawn()
-        {
-            Ok(mut child) => {
-                // Wait a bit to see if osascript succeeds
-                match tokio::time::timeout(std::time::Duration::from_secs(3), child.wait()).await {
-                    Ok(Ok(status)) => {
-                        if status.success() {
-                            Ok(())
-                        } else {
-                            Err(format!("osascript failed with status: {status}"))
-                        }
-                    }
-                    Ok(Err(e)) => Err(format!("Failed to wait for osascript: {e}")),
-                    Err(_) => {
-                        // Timeout - kill the process and assume it worked
-                        let _ = child.kill().await;
-                        Ok(())
-                    }
-                }
-            }
-            Err(e) => Err(format!("Failed to spawn osascript: {e}")),
-        }
+    let args = if args_str.is_empty() {
+        Vec::new()
     } else {
-        Err("Unsupported macOS terminal command format".to_string())
+        parse_args(args_str)
+    };
+
+    match TokioCommand::new(program)
+        .args(&args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        Ok(_) => {
+            // For macOS terminals, we assume success if we can spawn
+            Ok(())
+        }
+        Err(e) => Err(format!("Failed to spawn terminal: {e}")),
     }
 }
 
@@ -283,57 +267,6 @@ async fn try_open_linux_terminal(full_command: &str) -> Result<(), String> {
         }
         Err(e) => Err(format!("Failed to spawn terminal: {e}")),
     }
-}
-
-//Not used in Windows
-fn command_exists(cmd: &str) -> bool {
-    #[cfg(target_os = "windows")]
-    {
-        Command::new("where")
-            .arg(cmd)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .map(|status| status.success())
-            .unwrap_or(false)
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
-        // Try 'which' first (most common)
-        if let Ok(status) = Command::new("which")
-            .arg(cmd)
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-        {
-            if status.success() {
-                return true;
-            }
-        }
-
-        // Try 'command -v' as fallback (POSIX compliant)
-        if let Ok(status) = Command::new("sh")
-            .args(["-c", &format!("command -v {cmd}")])
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-        {
-            if status.success() {
-                return true;
-            }
-        }
-
-        false
-    }
-}
-
-// not used in Windows
-fn shell_escape(s: &str) -> String {
-    // For terminal commands, we often don't need complex escaping
-    // since the command is already properly formatted
-    // Just return the command as-is for most cases
-    s.to_string()
 }
 
 // Improved argument parser
