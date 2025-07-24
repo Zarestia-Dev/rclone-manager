@@ -37,9 +37,12 @@ pub fn default_terminal_apps() -> Vec<String> {
     #[cfg(target_os = "windows")]
     {
         vec![
-            "wt cmd /c \"{}\"".to_string(),
-            "cmd /c \"{}\"".to_string(),
-            "powershell -Command \"{}\"".to_string(),
+            // Windows Terminal
+            "wt new-tab --title \"Rclone Config\" -- cmd /K \"{}\"".to_string(),
+            // Command Prompt (always open new window)
+            "cmd /C start cmd /K \"{}\"".to_string(),
+            // PowerShell (always open new window)
+            "cmd /C start powershell -NoExit -Command \"{}\"".to_string(),
         ]
     }
 }

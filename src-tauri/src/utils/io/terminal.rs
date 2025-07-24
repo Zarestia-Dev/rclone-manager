@@ -101,22 +101,28 @@ async fn open_windows_terminal(
     let mut last_error = None;
 
     for terminal_cmd in preferred_terminals {
-        let full_cmd = terminal_cmd.replace("{}", command);
+        // Escape the command properly for Windows
+        let escaped_command = if command.contains(' ') {
+            format!("\"{}\"", command.replace('\"', "\"\""))
+        } else {
+            command.to_string()
+        };
+
+        let full_cmd = terminal_cmd.replace("{}", &escaped_command);
         info!("Trying Windows terminal command: {}", full_cmd);
 
         match try_open_windows_terminal(&full_cmd).await {
-            Ok(_) => {
-                info!("Successfully opened Windows terminal");
-                return Ok(());
-            }
+            Ok(_) => return Ok(()),
             Err(e) => {
-                info!("Failed to open terminal with command '{}': {}", full_cmd, e);
                 last_error = Some(e);
+                continue;
             }
         }
     }
 
-    Err(last_error.unwrap_or_else(|| "No suitable terminal found on Windows".to_string()))
+    Err(last_error.unwrap_or_else(|| {
+        "No working terminal found. Tried all configured terminals.".to_string()
+    }))
 }
 
 #[cfg(target_os = "macos")]
@@ -179,58 +185,30 @@ async fn open_linux_terminal(command: &str, preferred_terminals: &[String]) -> R
 
 #[cfg(target_os = "windows")]
 async fn try_open_windows_terminal(full_command: &str) -> Result<(), String> {
-    info!("Executing Windows terminal command: {}", full_command);
+    info!("Executing Windows terminal command: {full_command}");
 
-    // For Windows Terminal (wt) or cmd, we need to handle them differently
-    if full_command.starts_with("wt ") {
-        // Windows Terminal
-        let args_str = &full_command[3..]; // Remove "wt "
-        let args = parse_args(args_str);
+    let parts: Vec<&str> = full_command.splitn(2, ' ').collect();
+    let (program, args_str) = match parts.as_slice() {
+        [prog] => (*prog, ""),
+        [prog, args] => (*prog, *args),
+        _ => return Err("Invalid command format".to_string()),
+    };
 
-        match TokioCommand::new("wt")
-            .args(&args)
-            .stdin(Stdio::null())
-            .spawn()
-        {
-            Ok(mut child) => {
-                // For Windows Terminal, we don't wait as it should open in a new window
-                match child.try_wait() {
-                    Ok(Some(status)) if !status.success() => {
-                        return Err(format!("Windows Terminal failed immediately: {status}"));
-                    }
-                    _ => return Ok(()),
-                }
-            }
-            Err(e) => return Err(format!("Failed to spawn Windows Terminal: {e}")),
-        }
-    } else if full_command.starts_with("cmd ") {
-        // Command Prompt
-        let args_str = &full_command[4..]; // Remove "cmd "
-        let args = parse_args(args_str);
-
-        match TokioCommand::new("cmd")
-            .args(&args)
-            .stdin(Stdio::null())
-            .spawn()
-        {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!("Failed to spawn cmd: {e}")),
-        }
-    } else if full_command.starts_with("powershell ") {
-        // PowerShell
-        let args_str = &full_command[11..]; // Remove "powershell "
-        let args = parse_args(args_str);
-
-        match TokioCommand::new("powershell")
-            .args(&args)
-            .stdin(Stdio::null())
-            .spawn()
-        {
-            Ok(_) => Ok(()),
-            Err(e) => Err(format!("Failed to spawn PowerShell: {e}")),
-        }
+    let args = if args_str.is_empty() {
+        Vec::new()
     } else {
-        Err("Unsupported Windows terminal command format".to_string())
+        parse_args(args_str)
+    };
+
+    match TokioCommand::new(program)
+        .args(&args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+    {
+        Ok(_) => Ok(()),
+        Err(e) => Err(format!("Failed to spawn terminal: {e}")),
     }
 }
 
@@ -307,6 +285,7 @@ async fn try_open_linux_terminal(full_command: &str) -> Result<(), String> {
     }
 }
 
+//Not used in Windows
 fn command_exists(cmd: &str) -> bool {
     #[cfg(target_os = "windows")]
     {
@@ -349,6 +328,7 @@ fn command_exists(cmd: &str) -> bool {
     }
 }
 
+// not used in Windows
 fn shell_escape(s: &str) -> String {
     // For terminal commands, we often don't need complex escaping
     // since the command is already properly formatted
