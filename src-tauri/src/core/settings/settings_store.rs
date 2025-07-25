@@ -30,13 +30,10 @@ pub fn default_terminal_apps() -> Vec<String> {
     #[cfg(target_os = "macos")]
     {
         vec![
-                // Terminal.app (built-in)
-                "osascript -e 'tell application \"Terminal\" to do script \"{}\"'".to_string(),
-                // iTerm2
-                "osascript -e 'tell application \"iTerm2\" to create window with default profile command \"{}\"'".to_string(),
-                // Legacy iTerm
-                "osascript -e 'tell application \"iTerm\" to create window with default profile command \"{}\"'".to_string(),
-            ]
+            // Terminal.app (built-in)
+            "osascript -e \"tell application \\\"Terminal\\\" to do script \\\"{}\\\"\""
+                .to_string(),
+        ]
     }
     #[cfg(target_os = "windows")]
     {
