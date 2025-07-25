@@ -10,39 +10,48 @@ pub fn default_terminal_apps() -> Vec<String> {
     {
         vec![
             // GNOME-based terminals
-            "gnome-terminal -- bash -c '{}'".to_string(),
-            "kgx -- bash -c '{}'".to_string(),
+            "gnome-terminal -- bash -c \"{}\"".to_string(),
+            "kgx -- bash -c \"{}\"".to_string(),
             // KDE
-            "konsole -e bash -c '{}'".to_string(),
+            "konsole -e bash -c \"{}\"".to_string(),
             // XFCE
-            "xfce4-terminal -e bash -c '{}'".to_string(),
+            "xfce4-terminal -e 'bash -c \"{}\"'".to_string(),
             // Modern terminals
-            "alacritty -e bash -c '{}'".to_string(),
-            "kitty bash -c '{}'".to_string(),
-            "terminator -e bash -c '{}'".to_string(),
+            "alacritty -e bash -c \"{}\"".to_string(),
+            "kitty bash -c \"{}\"".to_string(),
+            "terminator -e 'bash -c \"{}\"'".to_string(),
+            "tilix -e 'bash -c \"{}\"'".to_string(),
             // Fallbacks
-            "x-terminal-emulator -e bash -c '{}'".to_string(),
-            "xterm -e bash -c '{}'".to_string(),
+            "x-terminal-emulator -e bash -c \"{}\"".to_string(),
+            "xterm -e bash -c \"{}\"".to_string(),
+            "urxvt -e bash -c \"{}\"".to_string(),
         ]
     }
-
     #[cfg(target_os = "macos")]
     {
         vec![
-            "osascript -e 'tell application \"Terminal\" to do script \"{}\"'".to_string(),
-            "osascript -e 'tell application \"iTerm\" to create window with default profile command \"{}\"'".to_string(),
-        ]
+                // Terminal.app (built-in)
+                "osascript -e 'tell application \"Terminal\" to do script \"{}\"'".to_string(),
+                // iTerm2
+                "osascript -e 'tell application \"iTerm2\" to create window with default profile command \"{}\"'".to_string(),
+                // Legacy iTerm
+                "osascript -e 'tell application \"iTerm\" to create window with default profile command \"{}\"'".to_string(),
+            ]
     }
-
     #[cfg(target_os = "windows")]
     {
         vec![
-            // Windows Terminal
-            "wt new-tab --title \"Rclone Config\" -- cmd /K \"{}\"".to_string(),
-            // Command Prompt (always open new window)
-            "cmd /C start cmd /K \"{}\"".to_string(),
-            // PowerShell (always open new window)
-            "cmd /C start powershell -NoExit -Command \"{}\"".to_string(),
+            // Windows Terminal (modern, cmd)
+            "wt new-tab --title 'Rclone Config' -- cmd /K {}".to_string(),
+            // Windows Terminal (modern, PowerShell)
+            "wt new-tab --title 'Rclone Config' -- \"\" powershell -NoExit -Command \"& {}\""
+                .to_string(),
+            // Command Prompt (always available)
+            "cmd /C start cmd /K {}".to_string(),
+            // PowerShell
+            "cmd /C start \"\" powershell -NoExit -Command \"& {}\"".to_string(),
+            // PowerShell Core (if available)
+            "cmd /C start \"\" pwsh -NoExit -Command \"& {}\"".to_string(),
         ]
     }
 }

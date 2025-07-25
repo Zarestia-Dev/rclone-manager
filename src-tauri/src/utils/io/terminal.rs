@@ -1,7 +1,7 @@
-use log::{error, info};
+use log::{debug, error, info};
 use serde_json::json;
-use std::process::{Command, Stdio};
-use tauri::{AppHandle, Manager, State};
+use std::process::Stdio;
+use tauri::{AppHandle, Manager};
 use tokio::process::Command as TokioCommand;
 
 use crate::{
@@ -16,13 +16,17 @@ use crate::{
 pub async fn open_terminal_config(
     app: AppHandle,
     remote_name: Option<String>,
-    _state: State<'_, RcloneState>,
 ) -> Result<(), String> {
     // Get rclone binary path from state
     let rclone_path = read_rclone_path(&app);
+
+    // Escape the path
+    let escaped_rclone_path = escape_path(&rclone_path.to_string_lossy());
+    debug!("Using rclone path: {escaped_rclone_path}");
+
     let config_command = match remote_name.clone() {
-        Some(name) => format!("{} config update {}", rclone_path.display(), name),
-        _ => format!("{} config", rclone_path.display()),
+        Some(name) => format!("{escaped_rclone_path} config update {name}"),
+        _ => format!("{escaped_rclone_path} config"),
     };
 
     info!("🖥️ Opening terminal for rclone config: {config_command}");
@@ -90,7 +94,7 @@ async fn open_terminal_with_command(command: &str, app: AppHandle) -> Result<(),
     return open_linux_terminal(command, &preferred_terminals).await;
 
     #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
-    return Err("Unsupported operating system".to_string());
+    Err("Unsupported operating system".to_string())
 }
 
 #[cfg(target_os = "windows")]
@@ -102,14 +106,14 @@ async fn open_windows_terminal(
 
     for terminal_cmd in preferred_terminals {
         // Escape the command properly for Windows
-        let escaped_command = if command.contains(' ') {
-            format!("\"{}\"", command.replace('\"', "\"\""))
-        } else {
-            command.to_string()
-        };
+        // let escaped_command = if command.contains(' ') {
+        //     format!("\"{}\"", command.replace('\"', "\"\""))
+        // } else {
+        //     command.to_string()
+        // };
 
-        let full_cmd = terminal_cmd.replace("{}", &escaped_command);
-        info!("Trying Windows terminal command: {}", full_cmd);
+        let full_cmd = terminal_cmd.replace("{}", command);
+        info!("Trying Windows terminal command: {full_cmd}");
 
         match try_open_windows_terminal(&full_cmd).await {
             Ok(_) => return Ok(()),
@@ -131,7 +135,7 @@ async fn open_macos_terminal(command: &str, preferred_terminals: &[String]) -> R
 
     for terminal_cmd in preferred_terminals {
         let full_cmd = terminal_cmd.replace("{}", command);
-        info!("Trying macOS terminal command: {}", full_cmd);
+        info!("Trying macOS terminal command: {full_cmd}");
 
         match try_open_macos_terminal(&full_cmd).await {
             Ok(_) => {
@@ -139,7 +143,7 @@ async fn open_macos_terminal(command: &str, preferred_terminals: &[String]) -> R
                 return Ok(());
             }
             Err(e) => {
-                info!("Failed to open terminal with command '{}': {}", full_cmd, e);
+                info!("Failed to open terminal with command '{full_cmd}': {e}");
                 last_error = Some(e);
             }
         }
@@ -154,9 +158,6 @@ async fn open_linux_terminal(command: &str, preferred_terminals: &[String]) -> R
 
     for terminal_cmd in preferred_terminals {
         let full_cmd = terminal_cmd.replace("{}", command);
-
-        // Extract the terminal binary name to check if it exists
-        let terminal_binary = full_cmd.split_whitespace().next().unwrap_or("");
 
         info!("Trying Linux terminal command: {full_cmd}");
 
@@ -179,19 +180,9 @@ async fn open_linux_terminal(command: &str, preferred_terminals: &[String]) -> R
 async fn try_open_windows_terminal(full_command: &str) -> Result<(), String> {
     info!("Executing Windows terminal command: {full_command}");
 
-    let parts: Vec<&str> = full_command.splitn(2, ' ').collect();
-    let (program, args_str) = match parts.as_slice() {
-        [prog] => (*prog, ""),
-        [prog, args] => (*prog, *args),
-        _ => return Err("Invalid command format".to_string()),
-    };
-
-    let args = if args_str.is_empty() {
-        Vec::new()
-    } else {
-        parse_args(args_str)
-    };
-
+    let (program, args) = parse_command(full_command)?;
+    debug!("Parsed command: program = {program}, args = {args:?}");
+    debug!("Full command: {program} {}", args.join(" "));
     match TokioCommand::new(program)
         .args(&args)
         .stdin(Stdio::null())
@@ -207,20 +198,7 @@ async fn try_open_windows_terminal(full_command: &str) -> Result<(), String> {
 #[cfg(target_os = "macos")]
 async fn try_open_macos_terminal(full_command: &str) -> Result<(), String> {
     info!("Executing macOS terminal command: {full_command}");
-
-    // For osascript commands
-    let parts: Vec<&str> = full_command.splitn(2, ' ').collect();
-    let (program, args_str) = match parts.as_slice() {
-        [prog] => (*prog, ""),
-        [prog, args] => (*prog, *args),
-        _ => return Err("Invalid command format".to_string()),
-    };
-
-    let args = if args_str.is_empty() {
-        Vec::new()
-    } else {
-        parse_args(args_str)
-    };
+    let (program, args) = parse_command(full_command)?;
 
     match TokioCommand::new(program)
         .args(&args)
@@ -241,18 +219,7 @@ async fn try_open_macos_terminal(full_command: &str) -> Result<(), String> {
 async fn try_open_linux_terminal(full_command: &str) -> Result<(), String> {
     info!("Executing Linux terminal command: {full_command}");
 
-    let parts: Vec<&str> = full_command.splitn(2, ' ').collect();
-    let (program, args_str) = match parts.as_slice() {
-        [prog] => (*prog, ""),
-        [prog, args] => (*prog, *args),
-        _ => return Err("Invalid command format".to_string()),
-    };
-
-    let args = if args_str.is_empty() {
-        Vec::new()
-    } else {
-        parse_args(args_str)
-    };
+    let (program, args) = parse_command(full_command)?;
 
     match TokioCommand::new(program)
         .args(&args)
@@ -269,7 +236,6 @@ async fn try_open_linux_terminal(full_command: &str) -> Result<(), String> {
     }
 }
 
-// Improved argument parser
 fn parse_args(args_str: &str) -> Vec<String> {
     let mut args = Vec::new();
     let mut current_arg = String::new();
@@ -286,8 +252,15 @@ fn parse_args(args_str: &str) -> Vec<String> {
         }
 
         match ch {
-            '\\' if in_quotes => {
-                escape_next = true;
+            '\\' => {
+                // Windows-specific handling: only treat backslash as escape in quotes
+                // and only if the next character is the same quote character
+                if in_quotes && chars.peek() == Some(&quote_char) {
+                    escape_next = true;
+                } else {
+                    // Otherwise, treat backslash as a literal character (important for Windows paths)
+                    current_arg.push(ch);
+                }
             }
             '"' | '\'' if !in_quotes => {
                 in_quotes = true;
@@ -321,4 +294,30 @@ fn parse_args(args_str: &str) -> Vec<String> {
     }
 
     args
+}
+
+fn escape_path(path: &str) -> String {
+    if path.contains(' ') {
+        format!("'{}'", path.replace('"', "\\\""))
+    } else {
+        path.to_string()
+    }
+}
+
+/// Parses a full command string into program and arguments
+fn parse_command(full_command: &str) -> Result<(&str, Vec<String>), String> {
+    let parts: Vec<&str> = full_command.splitn(2, ' ').collect();
+    let (program, args_str) = match parts.as_slice() {
+        [prog] => (*prog, ""),
+        [prog, args] => (*prog, *args),
+        _ => return Err("Invalid command format".to_string()),
+    };
+
+    let args = if args_str.is_empty() {
+        Vec::new()
+    } else {
+        parse_args(args_str)
+    };
+
+    Ok((program, args))
 }
