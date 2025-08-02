@@ -35,23 +35,6 @@
         letter-spacing: -0.5px;
       }
     }
-
-    .header-divider {
-      height: 2px;
-      background: linear-gradient(
-        90deg,
-        transparent 0%,
-        rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.3) 20%,
-        rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.6) 50%,
-        rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.3) 80%,
-        transparent 100%
-      );
-      margin: 0 auto;
-      max-width: 20vw;
-      border-radius: var(--radius-xxs);
-      transition: var(--transition-standard);
-      will-change: background;
-    }
   }
 }
 

@@ -82,4 +82,31 @@ form {
       }
     }
   }
+
+  .bisync-options,
+  .move-options,
+  .copy-sync-options {
+    margin: 16px 0;
+    padding: 16px;
+    border: 1px solid var(--mat-divider-color);
+    border-radius: 8px;
+    background-color: var(--secondary-background);
+
+    h4 {
+      margin: 0 0 16px 0;
+      color: var(--mat-primary-color);
+      font-weight: 500;
+    }
+
+    mat-form-field,
+    mat-slide-toggle {
+      margin-bottom: 12px;
+      width: 100%;
+    }
+
+    mat-slide-toggle {
+      display: block;
+      margin-bottom: 16px;
+    }
+  }
 }

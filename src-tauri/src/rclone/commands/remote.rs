@@ -13,7 +13,7 @@ use crate::{
     },
 };
 
-use super::oauth::{ensure_oauth_process, redact_sensitive_values};
+use super::system::{ensure_oauth_process, redact_sensitive_values};
 
 /// Create a new remote configuration
 #[tauri::command]

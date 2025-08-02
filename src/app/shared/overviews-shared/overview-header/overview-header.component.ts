@@ -19,8 +19,8 @@ export class OverviewHeaderComponent {
         return 'Mount Overview';
       case 'sync':
         return 'Sync Overview';
-      case 'copy':
-        return 'Copy Overview';
+      case 'files':
+        return 'Files Overview';
       default:
         return 'Remotes Overview';
     }

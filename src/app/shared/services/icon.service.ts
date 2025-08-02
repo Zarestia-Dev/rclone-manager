@@ -19,7 +19,7 @@ export class IconService {
     const icons: Record<string, string> = {
       // ------------------- Titlebar Icons -------------------
       add: 'assets/icons/titlebar/add.svg',
-      check_box: 'assets/icons/titlebar/check_box.svg',
+      'check-box': 'assets/icons/titlebar/check-box.svg',
       close: 'assets/icons/titlebar/close.svg',
       'ellipsis-vertical': 'assets/icons/titlebar/ellipsis-vertical.svg',
       'menu-bar': 'assets/icons/titlebar/menu-bar.svg',
@@ -57,8 +57,10 @@ export class IconService {
       remotes: 'assets/icons/remotes.svg',
       rclone: 'assets/rclone.svg',
       'rclone-symbolic': 'assets/rclone-symbolic.svg',
+      'file-operations': 'assets/icons/file-operations.svg',
       stop: 'assets/icons/stop.svg',
       sync: 'assets/icons/folder-sync.svg',
+      move: 'assets/icons/move.svg',
       terminal: 'assets/icons/terminal.svg',
       trash: 'assets/icons/trash.svg',
       vfs: 'assets/icons/vfs.svg',

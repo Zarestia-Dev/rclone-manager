@@ -31,8 +31,8 @@ pub mod config {
     pub const LISTREMOTES: &str = "config/listremotes";
     pub const PROVIDERS: &str = "config/providers";
     // pub const PASSWORD: &str = "config/password";
-    // pub const PATHS: &str = "config/paths";
-    // pub const SETPATH: &str = "config/setpath";
+    pub const PATHS: &str = "config/paths";
+    pub const SETPATH: &str = "config/setpath";
 }
 
 /// Job management endpoints
@@ -80,7 +80,7 @@ pub mod sync {
     pub const SYNC: &str = "sync/sync";
     pub const COPY: &str = "sync/copy";
     pub const BISYNC: &str = "sync/bisync";
-    // pub const MOVE: &str = "sync/move";
+    pub const MOVE: &str = "sync/move";
 }
 
 // /// Virtual File System (VFS) endpoints

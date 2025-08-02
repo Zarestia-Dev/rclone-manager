@@ -451,12 +451,7 @@ export class PreferencesModalComponent implements OnInit {
   async openFilePicker(category: string, key: string): Promise<void> {
     try {
       let result: string | null = null;
-
-      if (key === 'rclone_config_path') {
-        result = await this.fileSystemService.selectFile();
-      } else {
-        result = await this.fileSystemService.selectFolder();
-      }
+      result = await this.fileSystemService.selectFile();
 
       if (result) {
         const control = this.getFormControl(category, key);
@@ -468,6 +463,23 @@ export class PreferencesModalComponent implements OnInit {
     } catch (error) {
       console.error('Error selecting file:', error);
     }
+  }
+
+  openFolderPicker(category: string, key: string): void {
+    this.fileSystemService
+      .selectFolder()
+      .then(result => {
+        if (result) {
+          const control = this.getFormControl(category, key);
+          control.setValue(result);
+          // Trigger validation after setting the value
+          control.updateValueAndValidity();
+          this.updateSetting(category, key, result);
+        }
+      })
+      .catch(error => {
+        console.error('Error selecting folder:', error);
+      });
   }
 
   private arrayItemsPatternValidator(pattern: string): ValidatorFn {

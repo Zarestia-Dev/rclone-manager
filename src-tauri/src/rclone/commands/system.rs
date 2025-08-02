@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::net::TcpStream;
 use tokio::{sync::Mutex, time::sleep};
 
@@ -15,7 +15,7 @@ use crate::{
     core::check_binaries::read_rclone_path,
     rclone::state::ENGINE_STATE,
     utils::{
-        rclone::endpoints::{EndpointHelper, core},
+        rclone::endpoints::{EndpointHelper, config, core},
         types::all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
     },
 };
@@ -209,7 +209,7 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
 
 #[tauri::command]
 pub async fn set_bandwidth_limit(
-    _app: AppHandle,
+    app: AppHandle,
     rate: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<BandwidthLimitResponse, String> {
@@ -242,5 +242,37 @@ pub async fn set_bandwidth_limit(
         serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
 
     debug!("🪢 Bandwidth limit set: {response_data:?}");
+    if let Err(e) = app.emit("bandwidth_limit_changed", response_data.clone()) {
+        error!("❌ Failed to emit bandwidth limit changed event: {e}",);
+    }
     Ok(response_data)
+}
+
+#[tauri::command]
+pub async fn set_rclone_config_path(app: AppHandle, config_path: String) -> Result<(), String> {
+    let state = app.state::<RcloneState>();
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::SETPATH);
+
+    let payload = json!({ "path": config_path });
+
+    let response = state
+        .client
+        .post(&url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        let error = format!("HTTP {status}: {body}");
+        return Err(error);
+    }
+
+    app.emit("remote_presence_changed", json!({}))
+        .map_err(|e| format!("Failed to emit remote presence changed event: {e}"))?;
+
+    Ok(())
 }

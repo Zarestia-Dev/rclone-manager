@@ -222,10 +222,10 @@ fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> Result<(), Str
             debug!("🔄 API port updated in ENGINE_STATE");
             // Port is already updated in ENGINE_STATE by the caller
         }
-        "config_path" => {
-            debug!("🔄 Config path updated in RcloneState");
-            // Config path is already updated in RcloneState by the caller
-        }
+        // "config_path" => {
+        //     debug!("🔄 Config path updated in RcloneState");
+        //     // Config path is already updated in RcloneState by the caller
+        // }
         _ => {
             debug!("🔄 Generic restart for {change_type}");
         }

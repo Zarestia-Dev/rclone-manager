@@ -7,7 +7,7 @@ use crate::{
     RcloneState,
     core::{lifecycle::shutdown::handle_shutdown, tray::core::update_tray_menu},
     rclone::{
-        commands::set_bandwidth_limit,
+        commands::{set_bandwidth_limit, set_rclone_config_path},
         engine::ENGINE,
         state::{CACHE, ENGINE_STATE},
     },
@@ -76,6 +76,7 @@ fn handle_rclone_api_ready(app: &AppHandle) {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
             refresh_and_update_tray(app, 0).await;
+            // apply_core_settings(&app, &app.state::<RcloneState>().settings).await;
         });
     });
 }
@@ -240,24 +241,13 @@ fn handle_settings_changed(app: &AppHandle) {
                             // Get the RcloneState from tauri's state management
                             let app_clone = app.clone();
                             let rclone_state = app.state::<RcloneState>();
-                            if let Err(e) = {
-                                if let Err(e) = set_bandwidth_limit(
-                                    app_clone.clone(),
-                                    bandwidth_limit_opt.clone(),
-                                    rclone_state,
-                                )
-                                .await
-                                {
-                                    error!("Failed to set bandwidth limit: {e:?}");
-                                }
-                                app_clone
-                                    .emit("bandwidth_limit_changed", bandwidth_limit_opt)
-                                    .map_err(|e| {
-                                        error!(
-                                            "❌ Failed to emit bandwidth limit changed event: {e}",
-                                        );
-                                    })
-                            } {
+                            if let Err(e) = set_bandwidth_limit(
+                                app_clone.clone(),
+                                bandwidth_limit_opt.clone(),
+                                rclone_state,
+                            )
+                            .await
+                            {
                                 error!("Failed to set bandwidth limit: {e:?}");
                             }
                         });
@@ -267,21 +257,20 @@ fn handle_settings_changed(app: &AppHandle) {
                         core.get("rclone_config_path").and_then(|v| v.as_str())
                     {
                         debug!("🔄 Rclone config path changed to: {config_path}");
-                        let rclone_state = app_handle.state::<RcloneState>();
-                        let old_config_path = rclone_state.config_path.read().unwrap().clone();
-                        let mut guard = rclone_state.config_path.write().unwrap();
-                        *guard = config_path.to_string();
-                        drop(guard); // Release the lock
+                        // let rclone_state = app_handle.state::<RcloneState>();
+                        // let mut guard = rclone_state.config_path.write().unwrap();
+                        // *guard = config_path.to_string();
+                        // drop(guard); // Release the lock
 
-                        // Restart engine with new config path
-                        if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
-                            &app_handle,
-                            "config_path",
-                            &old_config_path,
-                            config_path,
-                        ) {
-                            error!("Failed to restart engine for config path change: {e}");
-                        }
+                        let config_path = config_path.to_string();
+                        let app_handle_clone = app_handle.clone();
+                        tauri::async_runtime::spawn(async move {
+                            if let Err(e) =
+                                set_rclone_config_path(app_handle_clone, config_path).await
+                            {
+                                error!("Failed to set Rclone config path: {e}");
+                            }
+                        });
                     }
 
                     if let Some(rclone_path) = core.get("rclone_path").and_then(|v| v.as_str()) {

@@ -29,8 +29,6 @@ export class StatusOverviewPanelComponent {
         return 'Mounted';
       case 'sync':
         return 'Syncing';
-      case 'copy':
-        return 'Copying';
       default:
         return 'Active';
     }
@@ -42,8 +40,6 @@ export class StatusOverviewPanelComponent {
         return 'Unmounted';
       case 'sync':
         return 'Off Sync';
-      case 'copy':
-        return 'Not Copying';
       default:
         return 'Inactive';
     }

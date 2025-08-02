@@ -13,7 +13,7 @@ use tokio::sync::{Mutex, RwLock};
 
 pub struct RcloneState {
     pub client: reqwest::Client,
-    pub config_path: Arc<std::sync::RwLock<String>>,
+    // pub config_path: Arc<std::sync::RwLock<String>>,
     pub tray_enabled: Arc<std::sync::RwLock<bool>>,
     pub is_shutting_down: AtomicBool,
     pub notifications_enabled: Arc<std::sync::RwLock<bool>>,
@@ -68,7 +68,7 @@ pub struct CoreSettings {
     pub rclone_oauth_port: u16,
     pub connection_check_urls: Vec<String>,
     // pub default_mount_type: String,
-    pub rclone_config_path: String,
+    pub rclone_config_file: String,
     pub rclone_path: String,
     pub bandwidth_limit: String,
     pub completed_onboarding: bool,
@@ -121,7 +121,7 @@ pub struct ListOptions {
     pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BandwidthLimitResponse {
     pub bytes_per_second: i64,
@@ -257,4 +257,13 @@ pub struct JobResponse {
 pub struct NetworkStatusPayload {
     #[serde(rename = "isMetered")]
     pub is_metered: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ExportType {
+    All,
+    Settings,
+    Remotes,
+    RemoteConfigs,
+    SpecificRemote,
 }

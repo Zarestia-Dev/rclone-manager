@@ -114,16 +114,15 @@ export class FlagConfigStepComponent implements OnInit {
     return this.form.get(`${this.flagType}Config`) as FormGroup;
   }
 
-  get isMount(): boolean {
-    return this.flagType === 'mount';
-  }
-
-  get isSync(): boolean {
-    return this.flagType === 'sync';
-  }
-
-  get isCopy(): boolean {
-    return this.flagType === 'copy';
+  /**
+   * Returns true if the current flagType matches the given type(s).
+   * Usage: this.isType('mount') or this.isType(['sync', 'copy'])
+   */
+  isType(type: FlagType | FlagType[]): boolean {
+    if (Array.isArray(type)) {
+      return type.includes(this.flagType);
+    }
+    return this.flagType === type;
   }
 
   get getDynamicFlagFields(): FlagField[] {
@@ -139,11 +138,12 @@ export class FlagConfigStepComponent implements OnInit {
    * For mount operations, checks if AllowNonEmpty is set to true
    */
   get shouldRequireEmptyFolder(): boolean {
-    if (this.flagType === 'mount') {
+    if (this.isType('mount')) {
       const requireEmpty = !this.selectedOptions['AllowNonEmpty'];
       return requireEmpty;
     }
-    return false; // For non-mount operations, don't require empty folder
+    // Extend here for other types if needed
+    return false;
   }
 
   onToggleOption(field: FlagField): void {

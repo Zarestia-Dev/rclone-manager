@@ -32,49 +32,38 @@
         @for (remote of filteredRemotes; track remote.remoteSpecs.name) {
           <mat-card class="remote-card" (click)="selectRemote(remote)">
             <mat-card-content class="card-content">
-              <!-- Remote Name -->
-              <h4>{{ remote.remoteSpecs.name }}</h4>
+              <!-- Remote Name with Status Indicators -->
+              <div class="remote-header">
+                <h4 [matTooltip]="remote.remoteSpecs.name">{{ remote.remoteSpecs.name }}</h4>
+                <div class="status-indicators">
+                  @if (remote.mountState) {
+                    <div
+                      class="status-dot mount"
+                      [class.active]="remote.mountState.mounted"
+                      [matTooltip]="remote.mountState.mounted ? 'Mounted' : 'Not Mounted'"
+                      aria-label="Mount status"
+                    >
+                      <mat-icon svgIcon="mount"></mat-icon>
+                    </div>
+                  }
+
+                  @if (hasSyncOperations(remote)) {
+                    <div
+                      class="status-dot sync-operations"
+                      [class.active]="isAnySyncOperationActive(remote)"
+                      [matTooltip]="getSyncOperationsTooltip(remote)"
+                      aria-label="Sync operations status"
+                    >
+                      <mat-icon [svgIcon]="getActiveSyncOperationIcon(remote)"></mat-icon>
+                    </div>
+                  }
+                </div>
+              </div>
 
               <!-- Remote Type -->
               <div class="remote-type">
                 <mat-icon [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"></mat-icon>
                 {{ remote.remoteSpecs.type | titlecase }}
-              </div>
-
-              <!-- Status Badges -->
-              <div class="remote-status">
-                @if (remote.mountState) {
-                  <div
-                    class="status-badge mount"
-                    [class.active]="remote.mountState.mounted"
-                    [matTooltip]="remote.mountState.mounted ? 'Mounted' : 'Not Mounted'"
-                    aria-label="Mount status"
-                  >
-                    <mat-icon svgIcon="mount"></mat-icon>
-                  </div>
-                }
-
-                @if (remote.syncState) {
-                  <div
-                    class="status-badge sync"
-                    [class.active]="remote.syncState.isOnSync"
-                    [matTooltip]="remote.syncState.isOnSync ? 'Syncing' : 'Sync Idle'"
-                    aria-label="Sync status"
-                  >
-                    <mat-icon svgIcon="sync"></mat-icon>
-                  </div>
-                }
-
-                @if (remote.copyState) {
-                  <div
-                    class="status-badge copy"
-                    [class.active]="remote.copyState.isOnCopy"
-                    [matTooltip]="remote.copyState.isOnCopy ? 'Copying' : 'Copy Idle'"
-                    aria-label="Copy status"
-                  >
-                    <mat-icon svgIcon="copy"></mat-icon>
-                  </div>
-                }
               </div>
             </mat-card-content>
           </mat-card>

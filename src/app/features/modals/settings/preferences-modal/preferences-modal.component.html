@@ -329,7 +329,7 @@
     }
 
     <!-- Path Settings -->
-    @if (meta.value_type === 'path') {
+    @if (meta.value_type === 'file') {
       <div class="has-input">
         <ng-container
           [ngTemplateOutlet]="settingInfo"
@@ -338,7 +338,24 @@
         </ng-container>
         <div class="setting-control">
           <ng-container
-            [ngTemplateOutlet]="pathControl"
+            [ngTemplateOutlet]="fileControl"
+            [ngTemplateOutletContext]="{ category: category, key: key }"
+          >
+          </ng-container>
+        </div>
+      </div>
+    }
+
+    @if (meta.value_type === 'folder') {
+      <div class="has-input">
+        <ng-container
+          [ngTemplateOutlet]="settingInfo"
+          [ngTemplateOutletContext]="{ meta: meta, category: category, showCategory: showCategory }"
+        >
+        </ng-container>
+        <div class="setting-control">
+          <ng-container
+            [ngTemplateOutlet]="folderControl"
             [ngTemplateOutletContext]="{ category: category, key: key }"
           >
           </ng-container>
@@ -484,8 +501,8 @@
     </div>
   </ng-template>
 
-  <!-- Path Control Template -->
-  <ng-template #pathControl let-category="category" let-key="key">
+  <!-- file Control Template -->
+  <ng-template #fileControl let-category="category" let-key="key">
     <div class="path-input-container">
       <mat-form-field appearance="outline" class="input-field">
         <input
@@ -500,6 +517,33 @@
           mat-icon-button
           matSuffix
           (click)="openFilePicker(category, key)"
+          [attr.aria-label]="'Browse for ' + getMetadata(category, key).display_name"
+        >
+          <mat-icon svgIcon="file"></mat-icon>
+        </button>
+        @if (getFormControl(category, key).invalid) {
+          <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
+        }
+      </mat-form-field>
+    </div>
+  </ng-template>
+
+  <!-- folder Control Template -->
+  <ng-template #folderControl let-category="category" let-key="key">
+    <div class="path-input-container">
+      <mat-form-field appearance="outline" class="input-field">
+        <input
+          matInput
+          [formControl]="getFormControl(category, key)"
+          (input)="onPathInput(category, key)"
+          (focus)="storeOriginalValue(category, key)"
+          (blur)="onInputBlur(category, key)"
+          [attr.aria-label]="'Folder path for ' + getMetadata(category, key).display_name"
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          (click)="openFolderPicker(category, key)"
           [attr.aria-label]="'Browse for ' + getMetadata(category, key).display_name"
         >
           <mat-icon svgIcon="folder"></mat-icon>

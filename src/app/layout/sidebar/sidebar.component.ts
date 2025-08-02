@@ -76,4 +76,51 @@ export class SidebarComponent {
       this.searchContainer.clear();
     }
   }
+
+  // Consolidated sync operations methods
+  hasSyncOperations(remote: Remote): boolean {
+    return !!(remote.syncState || remote.copyState || remote.moveState || remote.bisyncState);
+  }
+
+  isAnySyncOperationActive(remote: Remote): boolean {
+    return !!(
+      remote.syncState?.isOnSync ||
+      remote.copyState?.isOnCopy ||
+      remote.moveState?.isOnMove ||
+      remote.bisyncState?.isOnBisync
+    );
+  }
+
+  getActiveSyncOperationIcon(remote: Remote): string {
+    // Return icon of the currently active operation, or default sync icon
+    if (remote.syncState?.isOnSync) return 'refresh';
+    if (remote.copyState?.isOnCopy) return 'copy';
+    if (remote.moveState?.isOnMove) return 'move';
+    if (remote.bisyncState?.isOnBisync) return 'right-left';
+    return 'sync'; // Default icon for sync operations
+  }
+
+  getSyncOperationsTooltip(remote: Remote): string {
+    const activeOperations: string[] = [];
+
+    if (remote.syncState?.isOnSync) activeOperations.push('Syncing');
+    if (remote.copyState?.isOnCopy) activeOperations.push('Copying');
+    if (remote.moveState?.isOnMove) activeOperations.push('Moving');
+    if (remote.bisyncState?.isOnBisync) activeOperations.push('BiSyncing');
+
+    if (activeOperations.length > 0) {
+      return activeOperations.join(', ');
+    }
+
+    // Show available operations when idle
+    const availableOperations: string[] = [];
+    if (remote.syncState) availableOperations.push('Sync');
+    if (remote.copyState) availableOperations.push('Copy');
+    if (remote.moveState) availableOperations.push('Move');
+    if (remote.bisyncState) availableOperations.push('BiSync');
+
+    return availableOperations.length > 0
+      ? `${availableOperations.join(', ')} Available`
+      : 'Sync Operations Available';
+  }
 }

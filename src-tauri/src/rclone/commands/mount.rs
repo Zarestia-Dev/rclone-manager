@@ -16,7 +16,7 @@ use crate::{
     },
 };
 
-use super::{job::monitor_job, oauth::redact_sensitive_values};
+use super::{job::monitor_job, system::redact_sensitive_values};
 
 /// Mount a remote filesystem
 #[tauri::command]

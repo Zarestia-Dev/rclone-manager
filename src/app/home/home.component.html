@@ -125,14 +125,27 @@
             >
             </app-general-overview>
           }
+          @case ('files') {
+            <div class="under-construction-wrapper">
+              <div class="icon-container">
+                <mat-icon svgIcon="wrench" class="construction-icon"></mat-icon>
+              </div>
+              <h2>Under Construction</h2>
+              <p>
+                This feature is currently being built.<br />
+                Please check back soon!
+              </p>
+              <div class="construction-bar">
+                <div class="bar"></div>
+              </div>
+            </div>
+          }
           @default {
             <app-app-overview
               [mode]="currentTab"
               [iconService]="iconService"
               [remotes]="remotes"
               (remoteSelected)="selectRemote($event)"
-              (primaryAction)="handlePrimaryAction(currentTab, $event)"
-              (secondaryAction)="handleSecondaryAction(currentTab, $event)"
               (openInFiles)="openRemoteInFiles($event, currentTab)"
               [actionInProgress]="actionInProgress"
             >
@@ -158,20 +171,40 @@
             >
             </app-general-detail>
           }
+          @case ('files') {
+            <div class="under-construction-wrapper">
+              <div class="icon-container">
+                <mat-icon svgIcon="wrench" class="construction-icon"></mat-icon>
+              </div>
+              <h2>Under Construction</h2>
+              <p>
+                This feature is currently being built.<br />
+                Please check back soon!
+              </p>
+              <div class="construction-bar">
+                <div class="bar"></div>
+              </div>
+            </div>
+          }
           @default {
             <app-app-detail
-              [operationType]="currentTab"
+              [mainOperationType]="currentTab"
               [iconService]="iconService"
               [selectedRemote]="selectedRemote"
               [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
               [restrictMode]="restrictMode"
               [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]"
-              (primaryAction)="handlePrimaryAction(currentTab, $event)"
-              (secondaryAction)="handleSecondaryAction(currentTab, $event)"
+              (primaryAction)="
+                handlePrimaryAction($event.mainType, $event.remoteName, $event.subType)
+              "
+              (secondaryAction)="
+                handleSecondaryAction($event.mainType, $event.remoteName, $event.subType)
+              "
               (openRemoteConfigModal)="
                 openRemoteConfigModal($event.editTarget, $event.existingConfig)
               "
               (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)"
+              (extendedData)="handleExtendedData($event)"
             >
             </app-app-detail>
           }

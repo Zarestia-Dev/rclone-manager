@@ -6,7 +6,12 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AppTab, Remote, RemoteActionProgress } from '../../../../shared/components/types';
+import {
+  AppTab,
+  Remote,
+  RemoteActionProgress,
+  RemotePrimaryActions,
+} from '../../../../shared/components/types';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
@@ -35,7 +40,7 @@ import { AnimationsService } from '../../../../shared/services/animations.servic
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppOverviewComponent {
-  @Input() mode: AppTab = 'general'; // Default to 'general' mode
+  @Input() mode: AppTab = 'mount'; // Default to 'mount' mode
   @Input() remotes: Remote[] = [];
   @Input() selectedRemote: Remote | null = null;
   @Input() iconService!: IconService;
@@ -46,6 +51,17 @@ export class AppOverviewComponent {
   @Output() primaryAction = new EventEmitter<string>();
   @Output() secondaryActionClicked = new EventEmitter<string>();
   @Output() secondaryAction = new EventEmitter<string>();
+  @Output() mountAction = new EventEmitter<string>();
+  @Output() unmountAction = new EventEmitter<string>();
+  @Output() syncAction = new EventEmitter<string>();
+  @Output() copyAction = new EventEmitter<string>();
+  @Output() moveAction = new EventEmitter<string>();
+  @Output() bisyncAction = new EventEmitter<string>();
+  @Output() stopSyncAction = new EventEmitter<string>();
+  @Output() stopCopyAction = new EventEmitter<string>();
+  @Output() stopMoveAction = new EventEmitter<string>();
+  @Output() stopBisyncAction = new EventEmitter<string>();
+  @Output() configurePrimaryActions = new EventEmitter<RemotePrimaryActions>();
 
   // Computed properties based on mode
   get activeRemotes(): Remote[] {
@@ -53,9 +69,12 @@ export class AppOverviewComponent {
       if (this.mode === 'mount') {
         return remote.mountState?.mounted === true;
       } else if (this.mode === 'sync') {
-        return remote.syncState?.isOnSync === true;
-      } else if (this.mode === 'copy') {
-        return remote.copyState?.isOnCopy === true;
+        return (
+          remote.syncState?.isOnSync === true ||
+          remote.copyState?.isOnCopy === true ||
+          remote.moveState?.isOnMove === true ||
+          remote.bisyncState?.isOnBisync === true
+        );
       }
       return false;
     });
@@ -66,9 +85,12 @@ export class AppOverviewComponent {
       if (this.mode === 'mount') {
         return !remote.mountState?.mounted;
       } else if (this.mode === 'sync') {
-        return !remote.syncState?.isOnSync;
-      } else if (this.mode === 'copy') {
-        return !remote.copyState?.isOnCopy;
+        return (
+          !remote.syncState?.isOnSync &&
+          !remote.copyState?.isOnCopy &&
+          !remote.moveState?.isOnMove &&
+          !remote.bisyncState?.isOnBisync
+        );
       }
       return false;
     });
@@ -79,9 +101,12 @@ export class AppOverviewComponent {
       if (this.mode === 'mount') {
         return remote.mountState?.mounted === 'error';
       } else if (this.mode === 'sync') {
-        return remote.syncState?.isOnSync === 'error';
-      } else if (this.mode === 'copy') {
-        return remote.copyState?.isOnCopy === 'error';
+        return (
+          remote.syncState?.isOnSync === 'error' ||
+          remote.copyState?.isOnCopy === 'error' ||
+          remote.moveState?.isOnMove === 'error' ||
+          remote.bisyncState?.isOnBisync === 'error'
+        );
       }
       return false;
     });
@@ -103,9 +128,7 @@ export class AppOverviewComponent {
     if (this.mode === 'mount') {
       return 'Mount Overview';
     } else if (this.mode === 'sync') {
-      return 'Sync Overview';
-    } else if (this.mode === 'copy') {
-      return 'Copy Overview';
+      return 'Sync Operations Overview';
     }
     return 'Remotes Overview';
   }
@@ -116,8 +139,6 @@ export class AppOverviewComponent {
         return 'Mount';
       case 'sync':
         return 'Start Sync';
-      case 'copy':
-        return 'Start Copy';
       default:
         return 'Start';
     }
@@ -129,8 +150,6 @@ export class AppOverviewComponent {
         return 'mount';
       case 'sync':
         return 'sync';
-      case 'copy':
-        return 'copy';
       default:
         return 'circle-check';
     }
@@ -145,9 +164,9 @@ export class AppOverviewComponent {
       case 'mount':
         return 'Mounted Remotes';
       case 'sync':
-        return 'Syncing Remotes';
-      case 'copy':
-        return 'Copying Remotes';
+        return 'Active Sync Operations';
+      // case 'files':
+      //   return 'Copying Remotes';
       default:
         return 'Active Remotes';
     }
@@ -158,11 +177,20 @@ export class AppOverviewComponent {
       case 'mount':
         return 'Unmounted Remotes';
       case 'sync':
-        return 'Off Sync Remotes';
-      case 'copy':
-        return 'Not Copying Remotes';
+        return 'Inactive Remotes';
       default:
         return 'Inactive Remotes';
+    }
+  }
+
+  getErrorTitle(): string {
+    switch (this.mode) {
+      case 'mount':
+        return 'Remotes with Mount Errors';
+      case 'sync':
+        return 'Remotes with Sync Errors';
+      default:
+        return 'Remotes with Problems';
     }
   }
 
@@ -186,5 +214,49 @@ export class AppOverviewComponent {
     if (remoteName) {
       this.secondaryAction.emit(remoteName);
     }
+  }
+
+  onMountAction(remoteName: string): void {
+    this.mountAction.emit(remoteName);
+  }
+
+  onUnmountAction(remoteName: string): void {
+    this.unmountAction.emit(remoteName);
+  }
+
+  onSyncAction(remoteName: string): void {
+    this.syncAction.emit(remoteName);
+  }
+
+  onCopyAction(remoteName: string): void {
+    this.copyAction.emit(remoteName);
+  }
+
+  onMoveAction(remoteName: string): void {
+    this.moveAction.emit(remoteName);
+  }
+
+  onBisyncAction(remoteName: string): void {
+    this.bisyncAction.emit(remoteName);
+  }
+
+  onStopSyncAction(remoteName: string): void {
+    this.stopSyncAction.emit(remoteName);
+  }
+
+  onStopCopyAction(remoteName: string): void {
+    this.stopCopyAction.emit(remoteName);
+  }
+
+  onStopMoveAction(remoteName: string): void {
+    this.stopMoveAction.emit(remoteName);
+  }
+
+  onStopBisyncAction(remoteName: string): void {
+    this.stopBisyncAction.emit(remoteName);
+  }
+
+  onConfigurePrimaryActions(config: RemotePrimaryActions): void {
+    this.configurePrimaryActions.emit(config);
   }
 }

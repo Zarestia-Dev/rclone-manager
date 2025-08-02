@@ -3,7 +3,7 @@ import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from 
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { RemoteCardComponent, RemoteCardVariant } from '../remote-card/remote-card.component';
-import { AppTab, Remote, RemoteActionProgress } from '../../components/types';
+import { AppTab, Remote, RemoteActionProgress, RemotePrimaryActions } from '../../components/types';
 
 @Component({
   selector: 'app-remotes-panel',
@@ -34,6 +34,11 @@ export class RemotesPanelComponent {
   @Output() copyAction = new EventEmitter<string>();
   @Output() stopSyncAction = new EventEmitter<string>();
   @Output() stopCopyAction = new EventEmitter<string>();
+  @Output() moveAction = new EventEmitter<string>();
+  @Output() bisyncAction = new EventEmitter<string>();
+  @Output() stopMoveAction = new EventEmitter<string>();
+  @Output() stopBisyncAction = new EventEmitter<string>();
+  @Output() configurePrimaryActions = new EventEmitter<RemotePrimaryActions>();
 
   get count(): number {
     return this.remotes.length;
@@ -79,14 +84,41 @@ export class RemotesPanelComponent {
     this.stopCopyAction.emit(remoteName);
   }
 
+  onMoveAction(remoteName: string): void {
+    this.moveAction.emit(remoteName);
+  }
+
+  onStopMoveAction(remoteName: string): void {
+    this.stopMoveAction.emit(remoteName);
+  }
+
+  onBisyncAction(remoteName: string): void {
+    this.bisyncAction.emit(remoteName);
+  }
+
+  onStopBisyncAction(remoteName: string): void {
+    this.stopBisyncAction.emit(remoteName);
+  }
+
+  onConfigurePrimaryActions(config: RemotePrimaryActions): void {
+    this.configurePrimaryActions.emit(config);
+  }
+
   getActionState(remoteName: string): any {
     return this.actionInProgress[remoteName] || null;
   }
 
   shouldShowOpenButton(remote: Remote): boolean {
     if (this.mode === 'mount') return true;
-    if (this.mode === 'sync') return remote.syncState?.isLocal || false;
-    if (this.mode === 'copy') return remote.copyState?.isLocal || false;
+    if (this.mode === 'sync') {
+      return (
+        remote.syncState?.isLocal ||
+        remote.copyState?.isLocal ||
+        remote.moveState?.isLocal ||
+        remote.bisyncState?.isLocal ||
+        false
+      );
+    }
     if (this.mode === 'general') return remote.mountState?.mounted === true;
     return false;
   }
@@ -98,16 +130,20 @@ export class RemotesPanelComponent {
       if (
         remote.mountState?.mounted === true ||
         remote.syncState?.isOnSync === true ||
-        remote.copyState?.isOnCopy === true
+        remote.copyState?.isOnCopy === true ||
+        remote.moveState?.isOnMove === true ||
+        remote.bisyncState?.isOnBisync === true
       ) {
         return 'active';
       }
 
-      // Check for error states (extend this logic based on your error handling)
+      // Check for error states
       if (
         remote.mountState?.mounted === 'error' ||
         remote.syncState?.isOnSync === 'error' ||
-        remote.copyState?.isOnCopy === 'error'
+        remote.copyState?.isOnCopy === 'error' ||
+        remote.moveState?.isOnMove === 'error' ||
+        remote.bisyncState?.isOnBisync === 'error'
       ) {
         return 'error';
       }

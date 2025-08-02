@@ -102,6 +102,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     sync: [],
     filter: [],
     vfs: [],
+    bisync: [],
+    move: [],
   };
 
   selectedOptions: Record<FlagType, Record<string, any>> = {
@@ -110,6 +112,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     sync: {},
     filter: {},
     vfs: {},
+    bisync: {},
+    move: {},
   };
 
   // Simplified state management
@@ -156,6 +160,22 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
           ? this.data.existingConfig['source']
           : ''
       );
+    } else if (this.editTarget === 'bisync') {
+      await this.pathSelectionService.fetchEntriesForField(
+        'bisyncConfig.source',
+        this.data?.name ?? '',
+        typeof this.data?.existingConfig?.['source'] === 'string'
+          ? this.data.existingConfig['source']
+          : ''
+      );
+    } else if (this.editTarget === 'move') {
+      await this.pathSelectionService.fetchEntriesForField(
+        'moveConfig.source',
+        this.data?.name ?? '',
+        typeof this.data?.existingConfig?.['source'] === 'string'
+          ? this.data.existingConfig['source']
+          : ''
+      );
     }
     const subs = [
       this.remoteConfigForm
@@ -188,6 +208,18 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         .subscribe(value =>
           this.pathSelectionService.onInputChanged('syncConfig.dest', value ?? '')
         ),
+      this.remoteConfigForm
+        .get('bisyncConfig.dest')
+        ?.valueChanges.pipe(debounceTime(300), distinctUntilChanged())
+        .subscribe(value =>
+          this.pathSelectionService.onInputChanged('bisyncConfig.dest', value ?? '')
+        ),
+      this.remoteConfigForm
+        .get('moveConfig.dest')
+        ?.valueChanges.pipe(debounceTime(300), distinctUntilChanged())
+        .subscribe(value =>
+          this.pathSelectionService.onInputChanged('moveConfig.dest', value ?? '')
+        ),
     ].filter((sub): sub is Subscription => !!sub);
     this.subscriptions.push(...subs);
   }
@@ -204,6 +236,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }
     this.loadRemoteTypes();
     this.dynamicFlagFields = await this.flagConfigService.loadAllFlagFields();
+
+    // Make move and bisync use the same flags as copy
+    this.dynamicFlagFields.move = this.dynamicFlagFields.copy;
+    this.dynamicFlagFields.bisync = this.dynamicFlagFields.copy;
   }
 
   // Remote Config Service
@@ -288,6 +324,28 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       }
       destCtrl?.updateValueAndValidity();
     });
+
+    // Bisync source/dest required if autoStart is enabled
+    this.remoteConfigForm.get('bisyncConfig.autoStart')?.valueChanges.subscribe(enabled => {
+      const destCtrl = this.remoteConfigForm.get('bisyncConfig.dest');
+      if (enabled) {
+        destCtrl?.setValidators([Validators.required]);
+      } else {
+        destCtrl?.clearValidators();
+      }
+      destCtrl?.updateValueAndValidity();
+    });
+
+    // Move source/dest required if autoStart is enabled
+    this.remoteConfigForm.get('moveConfig.autoStart')?.valueChanges.subscribe(enabled => {
+      const destCtrl = this.remoteConfigForm.get('moveConfig.dest');
+      if (enabled) {
+        destCtrl?.setValidators([Validators.required]);
+      } else {
+        destCtrl?.clearValidators();
+      }
+      destCtrl?.updateValueAndValidity();
+    });
   }
 
   async onSourceOptionSelectedField(entryName: string, formPath: string): Promise<void> {
@@ -337,19 +395,52 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       mountConfig: this.fb.group({
         autoStart: [false],
         dest: ['', [this.validatorRegistry.getValidator('crossPlatformPath')!]],
-        source: [''],
+        source: [],
+        type: [],
         options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
       copyConfig: this.fb.group({
         autoStart: [false],
-        source: [''],
-        dest: [''],
+        source: [],
+        dest: [],
+        createEmptySrcDirs: [false],
         options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
       syncConfig: this.fb.group({
         autoStart: [false],
-        source: [''],
-        dest: [''],
+        source: [],
+        dest: [],
+        createEmptySrcDirs: [false],
+        options: ['{}', [this.validatorRegistry.getValidator('json')!]],
+      }),
+      bisyncConfig: this.fb.group({
+        autoStart: [],
+        source: [],
+        dest: [],
+        dryRun: [],
+        resync: [],
+        checkAccess: [],
+        checkFilename: [],
+        maxDelete: [],
+        force: [],
+        checkSync: [],
+        createEmptySrcDirs: [],
+        removeEmptyDirs: [],
+        filtersFile: [],
+        ignoreListingChecksum: [],
+        resilient: [],
+        workdir: [],
+        backupdir1: [],
+        backupdir2: [],
+        noCleanup: [],
+        options: ['{}', [this.validatorRegistry.getValidator('json')!]],
+      }),
+      moveConfig: this.fb.group({
+        autoStart: [false],
+        source: [],
+        dest: [],
+        createEmptySrcDirs: [],
+        deleteEmptySrcDirs: [],
         options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
       filterConfig: this.fb.group({
@@ -359,18 +450,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
     });
-  }
-
-  // Platform-aware path validator: validates based on detected OS
-  // Note: This method is now deprecated. Use validatorRegistry.getValidator('crossPlatformPath') instead
-  private get crossPlatformPathValidator(): ValidatorFn {
-    return this.validatorRegistry.getValidator('crossPlatformPath')!;
-  }
-
-  // JSON validator
-  // Note: This method is now deprecated. Use validatorRegistry.getValidator('json') instead
-  private get jsonValidator(): ValidatorFn {
-    return this.validatorRegistry.getValidator('json')!;
   }
 
   //#region Remote Configuration Methods
@@ -442,6 +521,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       this.populateFlagBasedForm('mount', config.mountConfig || {});
       this.populateFlagBasedForm('copy', config.copyConfig || {});
       this.populateFlagBasedForm('sync', config.syncConfig || {});
+      this.populateFlagBasedForm('bisync', config.bisyncConfig || {});
+      this.populateFlagBasedForm('move', config.moveConfig || {});
       this.populateFlagForm('filter', config.filterConfig || {});
       this.populateFlagForm('vfs', config.vfsConfig || {});
     } else {
@@ -449,6 +530,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         case 'mount':
         case 'copy':
         case 'sync':
+        case 'bisync':
+        case 'move':
           this.populateFlagBasedForm(this.editTarget, config);
           break;
         case 'filter':
@@ -479,12 +562,61 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (!source || source.trim() === '') {
       source = `${this.getRemoteName()}:/`;
     }
+
+    const baseConfig = {
+      autoStart: config.autoStart ?? false,
+      source: source,
+      dest: config.dest || '',
+      options: JSON.stringify(config.options || {}, null, 2),
+    };
+
+    // Add specific fields based on flagType
+    let specificConfig = {};
+
+    switch (flagType) {
+      case 'mount':
+        specificConfig = {
+          type: config.type || '',
+        };
+        break;
+      case 'copy':
+      case 'sync':
+        specificConfig = {
+          createEmptySrcDirs: config.createEmptySrcDirs ?? false,
+        };
+        break;
+      case 'move':
+        specificConfig = {
+          createEmptySrcDirs: config.createEmptySrcDirs ?? false,
+          deleteEmptySrcDirs: config.deleteEmptySrcDirs ?? false,
+        };
+        break;
+      case 'bisync':
+        specificConfig = {
+          dryRun: config.dryRun,
+          resync: config.resync,
+          checkAccess: config.checkAccess,
+          checkFilename: config.checkFilename,
+          maxDelete: config.maxDelete,
+          force: config.force,
+          checkSync: config.checkSync,
+          createEmptySrcDirs: config.createEmptySrcDirs,
+          removeEmptyDirs: config.removeEmptyDirs,
+          filtersFile: config.filtersFile,
+          ignoreListingChecksum: config.ignoreListingChecksum,
+          resilient: config.resilient,
+          workdir: config.workdir,
+          backupdir1: config.backupdir1,
+          backupdir2: config.backupdir2,
+          noCleanup: config.noCleanup,
+        };
+        break;
+    }
+
     this.remoteConfigForm.patchValue({
       [`${flagType}Config`]: {
-        autoStart: config.autoStart ?? false,
-        source: source,
-        dest: config.dest || '',
-        options: JSON.stringify(config.options || {}, null, 2),
+        ...baseConfig,
+        ...specificConfig,
       },
     });
     this.syncSelectedOptionsFromJson(flagType);
@@ -591,6 +723,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     const updateHandlers = {
       remote: this.handleRemoteUpdate.bind(this),
       mount: this.handleMountUpdate.bind(this),
+      bisync: this.handleBisyncUpdate.bind(this),
+      move: this.handleMoveUpdate.bind(this),
       copy: this.handleCopyUpdate.bind(this),
       sync: this.handleSyncUpdate.bind(this),
       filter: this.handleFlagUpdate.bind(this),
@@ -611,6 +745,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         autoStart: configData.mountConfig.autoStart,
         dest: configData.mountConfig.dest,
         source: configData.mountConfig.source || `${remoteData.name}:/`,
+        type: configData.mountConfig.type,
         options: {
           ...this.safeJsonParse(configData.mountConfig.options),
         },
@@ -619,6 +754,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         autoStart: configData.copyConfig.autoStart,
         source: configData.copyConfig.source || `${remoteData.name}:/`,
         dest: configData.copyConfig.dest,
+        createEmptySrcDirs: configData.copyConfig.createEmptySrcDirs,
         options: {
           ...this.safeJsonParse(configData.copyConfig.options),
         },
@@ -627,8 +763,43 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         autoStart: configData.syncConfig.autoStart,
         source: configData.syncConfig.source || `${remoteData.name}:/`,
         dest: configData.syncConfig.dest,
+        createEmptySrcDirs: configData.syncConfig.createEmptySrcDirs,
         options: {
           ...this.safeJsonParse(configData.syncConfig.options),
+        },
+      },
+      bisyncConfig: {
+        autoStart: configData.bisyncConfig.autoStart,
+        source: configData.bisyncConfig.source || `${remoteData.name}:/`,
+        dest: configData.bisyncConfig.dest,
+        dryRun: configData.bisyncConfig.dryRun,
+        resync: configData.bisyncConfig.resync,
+        checkAccess: configData.bisyncConfig.checkAccess,
+        checkFilename: configData.bisyncConfig.checkFilename,
+        maxDelete: configData.bisyncConfig.maxDelete,
+        force: configData.bisyncConfig.force,
+        checkSync: configData.bisyncConfig.checkSync,
+        createEmptySrcDirs: configData.bisyncConfig.createEmptySrcDirs,
+        removeEmptyDirs: configData.bisyncConfig.removeEmptyDirs,
+        filtersFile: configData.bisyncConfig.filtersFile,
+        ignoreListingChecksum: configData.bisyncConfig.ignoreListingChecksum,
+        resilient: configData.bisyncConfig.resilient,
+        workdir: configData.bisyncConfig.workdir,
+        backupdir1: configData.bisyncConfig.backupdir1,
+        backupdir2: configData.bisyncConfig.backupdir2,
+        noCleanup: configData.bisyncConfig.noCleanup,
+        options: {
+          ...this.safeJsonParse(configData.bisyncConfig.options),
+        },
+      },
+      moveConfig: {
+        autoStart: configData.moveConfig.autoStart,
+        source: configData.moveConfig.source || `${remoteData.name}:/`,
+        dest: configData.moveConfig.dest,
+        createEmptySrcDirs: configData.moveConfig.createEmptySrcDirs,
+        deleteEmptySrcDirs: configData.moveConfig.deleteEmptySrcDirs,
+        options: {
+          ...this.safeJsonParse(configData.moveConfig.options),
         },
       },
       filterConfig: this.safeJsonParse(configData.filterConfig.options),
@@ -680,7 +851,23 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         filter
       );
     }
-
+    if (finalConfig.bisyncConfig.autoStart && finalConfig.bisyncConfig.dest) {
+      const bisyncSource = finalConfig.bisyncConfig.source;
+      const bisyncDest = finalConfig.bisyncConfig.dest;
+      const bisyncOptions = finalConfig.bisyncConfig.options;
+      await this.jobManagementService.startBisync(
+        remoteData.name,
+        bisyncSource,
+        bisyncDest,
+        bisyncOptions
+      );
+    }
+    if (finalConfig.moveConfig.autoStart && finalConfig.moveConfig.dest) {
+      const moveSource = finalConfig.moveConfig.source;
+      const moveDest = finalConfig.moveConfig.dest;
+      const moveOptions = finalConfig.moveConfig.options;
+      await this.jobManagementService.startMove(remoteData.name, moveSource, moveDest, moveOptions);
+    }
     return { success: true };
   }
 
@@ -702,8 +889,61 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       autoStart: mountData.autoStart,
       dest: mountData.dest,
       source: mountData.source,
+      type: mountData.type,
       options: {
         ...this.safeJsonParse(mountData.options),
+      },
+    };
+  }
+
+  private async handleBisyncUpdate(updatedConfig: any): Promise<void> {
+    const bisyncData = this.cleanFormData(this.remoteConfigForm.getRawValue().bisyncConfig);
+    // If source is empty, set to remoteName:/
+    if (!bisyncData.source || bisyncData.source.trim() === '') {
+      const remoteName = this.getRemoteName();
+      bisyncData.source = `${remoteName}:/`;
+    }
+    updatedConfig.bisyncConfig = {
+      autoStart: bisyncData.autoStart,
+      source: bisyncData.source,
+      dest: bisyncData.dest,
+      dryRun: bisyncData.dryRun,
+      resync: bisyncData.resync,
+      checkAccess: bisyncData.checkAccess,
+      checkFilename: bisyncData.checkFilename,
+      maxDelete: bisyncData.maxDelete,
+      force: bisyncData.force,
+      checkSync: bisyncData.checkSync,
+      createEmptySrcDirs: bisyncData.createEmptySrcDirs,
+      removeEmptyDirs: bisyncData.removeEmptyDirs,
+      filtersFile: bisyncData.filtersFile,
+      ignoreListingChecksum: bisyncData.ignoreListingChecksum,
+      resilient: bisyncData.resilient,
+      workdir: bisyncData.workdir,
+      backupdir1: bisyncData.backupdir1,
+      backupdir2: bisyncData.backupdir2,
+      noCleanup: bisyncData.noCleanup,
+      options: {
+        ...this.safeJsonParse(bisyncData.options),
+      },
+    };
+  }
+
+  private async handleMoveUpdate(updatedConfig: any): Promise<void> {
+    const moveData = this.cleanFormData(this.remoteConfigForm.getRawValue().moveConfig);
+    // If source is empty, set to remoteName:/
+    if (!moveData.source || moveData.source.trim() === '') {
+      const remoteName = this.getRemoteName();
+      moveData.source = `${remoteName}:/`;
+    }
+    updatedConfig.moveConfig = {
+      autoStart: moveData.autoStart,
+      source: moveData.source,
+      dest: moveData.dest,
+      createEmptySrcDirs: moveData.createEmptySrcDirs,
+      deleteEmptySrcDirs: moveData.deleteEmptySrcDirs,
+      options: {
+        ...this.safeJsonParse(moveData.options),
       },
     };
   }
@@ -719,6 +959,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       autoStart: copyData.autoStart,
       source: copyData.source,
       dest: copyData.dest,
+      createEmptySrcDirs: copyData.createEmptySrcDirs,
       options: {
         ...this.safeJsonParse(copyData.options),
       },
@@ -732,6 +973,15 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       const remoteName = this.getRemoteName();
       syncData.source = `${remoteName}:/`;
     }
+    updatedConfig.syncConfig = {
+      autoStart: syncData.autoStart,
+      source: syncData.source,
+      dest: syncData.dest,
+      createEmptySrcDirs: syncData.createEmptySrcDirs,
+      options: {
+        ...this.safeJsonParse(syncData.options),
+      },
+    };
     updatedConfig.syncConfig = {
       autoStart: syncData.autoStart,
       source: syncData.source,
@@ -869,7 +1119,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (this.editTarget === 'remote') {
       return !this.remoteForm.valid;
     }
-    if (['mount', 'copy', 'sync'].includes(this.editTarget)) {
+    if (['mount', 'copy', 'sync', 'move', 'bisync'].includes(this.editTarget)) {
       return !this.remoteConfigForm.valid;
     }
     // For filter/vfs, only config form is relevant

@@ -1,8 +1,6 @@
 use crate::{
-    core::settings::{
-        backup::archive_utils::find_7z_executable, utils::path_utils::get_rclone_config_path,
-    },
-    utils::types::all_types::SettingsState,
+    core::settings::backup::archive_utils::find_7z_executable,
+    rclone::queries::get_rclone_config_path, utils::types::all_types::SettingsState,
 };
 use log::{debug, info};
 use serde_json::json;
@@ -94,7 +92,8 @@ pub async fn restore_settings_from_path(
                     if let Some(custom) = custom_path {
                         PathBuf::from(custom)
                     } else {
-                        get_rclone_config_path(&app_handle)
+                        get_rclone_config_path(app_handle.clone())
+                            .await
                             .unwrap_or_else(|_| state.config_dir.join("rclone.conf"))
                     }
                 }

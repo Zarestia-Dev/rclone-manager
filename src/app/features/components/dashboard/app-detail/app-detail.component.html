@@ -5,9 +5,9 @@
         <div
           [ngClass]="{
             'icon-container': true,
-            sync: selectedRemote?.syncState?.isOnSync,
-            copy: selectedRemote?.copyState?.isOnCopy,
+            sync: isSyncType() && getOperationActiveState(),
             mount: selectedRemote?.mountState?.mounted,
+            error: getOperationErrorState(),
           }"
         >
           <mat-icon
@@ -26,81 +26,120 @@
     <div class="header-divider"></div>
   </div>
 
+  <!-- Main Content Area -->
   <div class="detail-content">
-    @if (isOperationType()) {
-      <!-- Operation Detail Content -->
-      <mat-tab-group
-        [color]="operationColor"
-        class="operation-tabs"
-        (selectedTabChange)="onTabChange($event)"
-      >
-        <mat-tab label="Monitoring">
-          <div class="operation-monitor">
-            <!-- Operation Control Panel -->
-            <app-operation-control
-              [config]="getOperationControlConfig()"
-              (primaryAction)="handlePrimaryAction()"
-              (secondaryAction)="handleSecondaryAction()"
-              (openPath)="triggerOpenInFiles($event)"
+    @if (mainOperationType === 'sync') {
+      <div class="sync-operation-wrapper">
+        <div class="operation-buttons">
+          @for (operation of syncOperations; track operation.type) {
+            <button
+              mat-raised-button
+              [class]="
+                'operation-button ' +
+                operation.type +
+                (selectedSyncOperation === operation.type ? ' active' : '')
+              "
+              [color]="selectedSyncOperation === operation.type ? operation.color : undefined"
+              (click)="onSyncOperationChange(operation.type)"
+              matTooltip="{{ operation.description }}"
             >
-            </app-operation-control>
+              <mat-icon svgIcon="{{ operation.icon }}"></mat-icon>
+              <span>{{ operation.label }}</span>
+            </button>
+          }
+        </div>
 
-            <!-- Job Information Panel -->
-            <app-job-info-panel [config]="getJobInfoConfig()"></app-job-info-panel>
-
-            <!-- Statistics Panel -->
-            <app-stats-panel [config]="getStatsConfig()"></app-stats-panel>
-
-            <!-- Transfer Activity Panel -->
-            <app-transfer-activity-panel
-              [config]="getTransferActivityConfig()"
-            ></app-transfer-activity-panel>
-
-            <!-- Performance Charts Panel -->
-            <div class="performance-graphs">
-              <mat-card class="graph-card">
-                <h4>Transfer Speed</h4>
-                <canvas #speedChart></canvas>
-              </mat-card>
-              <mat-card class="graph-card">
-                <h4>Transfer Progress</h4>
-                <canvas #progressChart></canvas>
-              </mat-card>
-            </div>
-          </div>
-        </mat-tab>
-
-        <mat-tab label="Configuration">
-          <div class="configuration-content">
-            @for (section of remoteSettingsSections; track section.key) {
-              <app-settings-panel
-                [config]="getSettingsPanelConfig(section)"
-                (editSettings)="onEditSettings($event)"
-              >
-              </app-settings-panel>
-            }
-          </div>
-        </mat-tab>
-      </mat-tab-group>
-    } @else {
-      <!-- Mount Control Panel -->
-      <div class="configuration-content">
-        <app-operation-control
-          [config]="getMountControlConfig()"
-          (primaryAction)="handlePrimaryAction()"
-          (secondaryAction)="handleSecondaryAction()"
-          (openPath)="triggerOpenInFiles($event)"
-        >
-        </app-operation-control>
-
-        <!-- Configuration Sections for Mount -->
-        @for (section of remoteSettingsSections; track section.key) {
-          <app-settings-panel
-            [config]="getSettingsPanelConfig(section)"
-            (editSettings)="onEditSettings($event)"
+        <!-- Sync Operation Content -->
+        <div class="sync-operation-content">
+          <mat-tab-group
+            [color]="getCurrentOperationColor()"
+            class="operation-tabs"
+            (selectedTabChange)="onMainTabChange($event)"
           >
-          </app-settings-panel>
-        }
+            <mat-tab label="Monitoring">
+              <div class="operation-monitor">
+                <!-- Operation Control Panel -->
+                <app-operation-control
+                  [config]="getOperationControlConfig()"
+                  (primaryAction)="handlePrimaryAction()"
+                  (secondaryAction)="handleSecondaryAction()"
+                  (openPath)="triggerOpenInFiles($event)"
+                  (data)="handleExtendedData($event)"
+                >
+                </app-operation-control>
+
+                <!-- Job Information Panel -->
+                <app-job-info-panel [config]="getJobInfoConfig()"></app-job-info-panel>
+
+                <!-- Statistics Panel -->
+                <app-stats-panel [config]="getStatsConfig()"></app-stats-panel>
+
+                <!-- Transfer Activity Panel -->
+                <app-transfer-activity-panel
+                  [config]="getTransferActivityConfig()"
+                ></app-transfer-activity-panel>
+
+                <!-- Performance Charts Panel -->
+                <div class="performance-graphs">
+                  <mat-card class="graph-card">
+                    <mat-card-header>
+                      <mat-card-title>Transfer Speed</mat-card-title>
+                    </mat-card-header>
+                    <mat-card-content>
+                      <canvas #speedChart></canvas>
+                    </mat-card-content>
+                  </mat-card>
+                  <mat-card class="graph-card">
+                    <mat-card-header>
+                      <mat-card-title>Transfer Progress</mat-card-title>
+                    </mat-card-header>
+                    <mat-card-content>
+                      <canvas #progressChart></canvas>
+                    </mat-card-content>
+                  </mat-card>
+                </div>
+              </div>
+            </mat-tab>
+
+            <mat-tab label="Configuration">
+              <div class="configuration-content">
+                @for (section of remoteSettingsSections; track section.key) {
+                  <app-settings-panel
+                    [config]="getSettingsPanelConfig(section)"
+                    (editSettings)="onEditSettings($event)"
+                  >
+                  </app-settings-panel>
+                }
+              </div>
+            </mat-tab>
+          </mat-tab-group>
+        </div>
+      </div>
+    }
+
+    <!-- MOUNT Operations (existing functionality) -->
+    @else {
+      <div class="mount-operation-wrapper">
+        <div class="configuration-content">
+          <!-- Mount Control Panel -->
+          <app-operation-control
+            [config]="getMountControlConfig()"
+            (primaryAction)="handlePrimaryAction()"
+            (secondaryAction)="handleSecondaryAction()"
+            (openPath)="triggerOpenInFiles($event)"
+            (data)="extendedData.emit($event)"
+          >
+          </app-operation-control>
+
+          <!-- Configuration Sections for Mount -->
+          @for (section of remoteSettingsSections; track section.key) {
+            <app-settings-panel
+              [config]="getSettingsPanelConfig(section)"
+              (editSettings)="onEditSettings($event)"
+            >
+            </app-settings-panel>
+          }
+        </div>
       </div>
     }
   </div>

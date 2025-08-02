@@ -5,7 +5,7 @@ use tauri::Manager;
 use crate::{
     core::event_listener::setup_event_listener,
     rclone::{
-        commands::set_bandwidth_limit,
+        commands::{set_bandwidth_limit, set_rclone_config_path},
         state::{CACHE, ENGINE_STATE},
     },
     utils::{
@@ -71,12 +71,17 @@ pub async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) 
         }
     }
 
+    apply_core_settings(&app_handle, &settings).await;
+}
+
+pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSettings) {
     if !settings.core.bandwidth_limit.is_empty() {
         debug!(
             "🌐 Setting bandwidth limit: {}",
             settings.core.bandwidth_limit
         );
         let rclone_state = app_handle.state::<RcloneState>();
+
         if let Err(e) = set_bandwidth_limit(
             app_handle.clone(),
             Some(settings.core.bandwidth_limit.clone()),
@@ -85,6 +90,19 @@ pub async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) 
         .await
         {
             error!("Failed to set bandwidth limit: {e}");
+        }
+    }
+
+    if !settings.core.rclone_config_file.is_empty() {
+        debug!(
+            "🔗 Setting Rclone config path: {}",
+            settings.core.rclone_config_file
+        );
+        if let Err(e) =
+            set_rclone_config_path(app_handle.clone(), settings.core.rclone_config_file.clone())
+                .await
+        {
+            error!("Failed to set Rclone config path: {e}");
         }
     }
 }

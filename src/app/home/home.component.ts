@@ -31,6 +31,7 @@ import {
   RemoteActionProgress,
   RemoteSettings,
   STANDARD_MODAL_SIZE,
+  UsePath,
 } from '../shared/components/types';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { SidebarComponent } from '../layout/sidebar/sidebar.component';
@@ -39,7 +40,7 @@ import { GeneralOverviewComponent } from '../features/components/dashboard/gener
 import { AppDetailComponent } from '../features/components/dashboard/app-detail/app-detail.component';
 import { AppOverviewComponent } from '../features/components/dashboard/app-overview/app-overview.component';
 import { LogsModalComponent } from '../features/modals/monitoring/logs-modal/logs-modal.component';
-import { ExportModalComponent } from '../features/modals/file-operations/export-modal/export-modal.component';
+import { ExportModalComponent } from '../features/modals/settings/export-modal/export-modal.component';
 import { RemoteConfigModalComponent } from '../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
 import { QuickAddRemoteComponent } from '../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -56,6 +57,7 @@ import { JobManagementService } from '@app/services';
 import { SystemInfoService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { NotificationService } from '../shared/services/notification.service';
+import { MainOperationType, SyncOperationType } from '../shared/detail-shared';
 
 @Component({
   selector: 'app-home',
@@ -87,6 +89,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   isSidebarOpen = false;
   sidebarMode: MatDrawerMode = 'side';
   currentTab: AppTab = 'general';
+  UsePath: UsePath = 'mount';
   isLoading = false;
   restrictMode = true;
   jobs: JobInfo[] = [];
@@ -117,6 +120,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   iconService = inject(IconService);
   notificationService = inject(NotificationService);
   private eventListenersService = inject(EventListenersService);
+  private extendedData: { resync: boolean } | null = null;
 
   constructor() {
     this.restrictValue();
@@ -146,6 +150,10 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.cleanup();
+  }
+
+  handleExtendedData($event: { resync: boolean }): void {
+    this.extendedData = $event;
   }
 
   // UI Event Handlers
@@ -200,12 +208,12 @@ export class HomeComponent implements OnInit, OnDestroy {
     );
   }
 
-  async openRemoteInFiles(remoteName: string, appTab: AppTab): Promise<void> {
+  async openRemoteInFiles(remoteName: string, UsePath: UsePath): Promise<void> {
     await this.executeRemoteAction(
       remoteName,
       'open',
       async () => {
-        const path = this.getPathForOperation(remoteName, appTab);
+        const path = this.getPathForOperation(remoteName, UsePath);
         await this.mountManagementService.openInFiles(path || '');
       },
       `Failed to open ${remoteName}`
@@ -252,46 +260,74 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   // Operation Control
-  async startOperation(type: 'sync' | 'copy', remoteName: string): Promise<void> {
+  async startOperation(operationType: SyncOperationType, remoteName: string): Promise<void> {
     await this.executeRemoteAction(
       remoteName,
-      type,
+      operationType as RemoteAction,
       async () => {
         const settings = this.loadRemoteSettings(remoteName);
-
-        // Determine config and options keys
-        const configKey = `${type}Config`;
-        const optionsKey = 'options'; // always 'options' inside config
+        const configKey = `${operationType}Config`;
+        console.log(
+          `Starting ${operationType} for ${remoteName} with config:`,
+          settings[configKey]
+        );
 
         const config = settings[configKey] || {};
         const source = config.source;
         const dest = config.dest;
-        const options = config[optionsKey] || {};
+        const options = config.options || {};
         const filterConfig = settings.filterConfig || {};
 
-        if (type === 'sync') {
-          await this.jobManagementService.startSync(
-            remoteName,
-            source,
-            dest,
-            options,
-            filterConfig
-          );
-        } else {
-          await this.jobManagementService.startCopy(
-            remoteName,
-            source,
-            dest,
-            options,
-            filterConfig
-          );
+        switch (operationType) {
+          case 'sync':
+            await this.jobManagementService.startSync(
+              remoteName,
+              source,
+              dest,
+              options,
+              filterConfig
+            );
+            break;
+          case 'copy':
+            await this.jobManagementService.startCopy(
+              remoteName,
+              source,
+              dest,
+              options,
+              filterConfig
+            );
+            break;
+          case 'bisync':
+            await this.jobManagementService.startBisync(
+              remoteName,
+              source,
+              dest,
+              options,
+              filterConfig,
+              this.extendedData?.resync
+            );
+            break;
+          case 'move':
+            // You'll need to implement this in your JobManagementService
+            await this.jobManagementService.startMove(
+              remoteName,
+              source,
+              dest,
+              options,
+              filterConfig
+            );
+            break;
+          default:
+            throw new Error(`Unsupported sync operation: ${operationType}`);
         }
       },
-      `Failed to start ${type} for ${remoteName}`
+      `Failed to start ${operationType} for ${remoteName}`
     );
   }
-
-  async stopOperation(type: 'sync' | 'copy' | 'mount' | string, remoteName: string): Promise<void> {
+  async stopOperation(
+    type: 'sync' | 'copy' | 'mount' | 'bisync' | 'move' | string,
+    remoteName: string
+  ): Promise<void> {
     await this.executeRemoteAction(
       remoteName,
       'stop',
@@ -302,7 +338,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         if (!jobId) {
           throw new Error(`No ${type} job ID found for ${remoteName}`);
         }
-
+        console.log(`Stopping ${type} for ${remoteName} with job ID:`, jobId);
         await this.jobManagementService.stopJob(jobId, remoteName);
       },
       `Failed to stop ${type} for ${remoteName}`
@@ -485,31 +521,37 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   // Action handlers for cleaner template logic
-  handlePrimaryAction(tab: AppTab, remoteName: string): void {
-    const actionMap = {
-      mount: () => this.mountRemote(remoteName),
-      sync: () => this.startOperation('sync', remoteName),
-      copy: () => this.startOperation('copy', remoteName),
-      general: () => undefined, // No primary action for general tab
-    } as const;
-
-    const action = actionMap[tab];
-    if (action) {
-      action();
+  handlePrimaryAction(
+    mainType: MainOperationType,
+    remoteName: string,
+    subType?: SyncOperationType
+  ): void {
+    switch (mainType) {
+      case 'sync':
+        if (subType) {
+          this.startOperation(subType, remoteName);
+        }
+        break;
+      case 'mount':
+        this.mountRemote(remoteName);
+        break;
     }
   }
 
-  handleSecondaryAction(tab: AppTab, remoteName: string): void {
-    const actionMap = {
-      mount: () => this.unmountRemote(remoteName),
-      sync: () => this.stopOperation('sync', remoteName),
-      copy: () => this.stopOperation('copy', remoteName),
-      general: () => undefined, // No secondary action for general tab
-    } as const;
-
-    const action = actionMap[tab];
-    if (action) {
-      action();
+  handleSecondaryAction(
+    mainType: MainOperationType,
+    remoteName: string,
+    subType?: SyncOperationType
+  ): void {
+    switch (mainType) {
+      case 'sync':
+        if (subType) {
+          this.stopOperation(subType, remoteName);
+        }
+        break;
+      case 'mount':
+        this.unmountRemote(remoteName);
+        break;
     }
   }
 
@@ -627,6 +669,16 @@ export class HomeComponent implements OnInit, OnDestroy {
         copyJobID: 0,
         isLocal: this.isLocalPath(this.remoteSettings[name]?.['copyConfig']?.dest || ''),
       },
+      bisyncState: {
+        isOnBisync: false,
+        bisyncJobID: 0,
+        isLocal: this.isLocalPath(this.remoteSettings[name]?.['bisyncConfig']?.dest || ''),
+      },
+      moveState: {
+        isOnMove: false,
+        moveJobID: 0,
+        isLocal: this.isLocalPath(this.remoteSettings[name]?.['moveConfig']?.dest || ''),
+      },
     }));
   }
 
@@ -742,6 +794,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   private updateRemoteWithJobs(remote: Remote, jobs: any[]): Remote {
     const runningSyncJob = jobs.find(j => j.status === 'Running' && j.job_type === 'sync');
     const runningCopyJob = jobs.find(j => j.status === 'Running' && j.job_type === 'copy');
+    const runningBisyncJob = jobs.find(j => j.status === 'Running' && j.job_type === 'bisync');
+    const runningMoveJob = jobs.find(j => j.status === 'Running' && j.job_type === 'move');
 
     return {
       ...remote,
@@ -757,6 +811,20 @@ export class HomeComponent implements OnInit, OnDestroy {
         copyJobID: runningCopyJob?.jobid,
         isLocal: this.isLocalPath(
           this.remoteSettings[remote.remoteSpecs.name]?.['copyConfig']?.dest || ''
+        ),
+      },
+      bisyncState: {
+        isOnBisync: !!runningBisyncJob,
+        bisyncJobID: runningBisyncJob?.jobid,
+        isLocal: this.isLocalPath(
+          this.remoteSettings[remote.remoteSpecs.name]?.['bisyncConfig']?.dest || ''
+        ),
+      },
+      moveState: {
+        isOnMove: !!runningMoveJob,
+        moveJobID: runningMoveJob?.jobid,
+        isLocal: this.isLocalPath(
+          this.remoteSettings[remote.remoteSpecs.name]?.['moveConfig']?.dest || ''
         ),
       },
     };
@@ -789,26 +857,26 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  private getPathForOperation(remoteName: string, appTab: AppTab): string | undefined {
+  private getPathForOperation(remoteName: string, UsePath: UsePath): string | undefined {
     const settings = this.loadRemoteSettings(remoteName);
     const configMap = {
       mount: () => settings?.mountConfig?.dest,
       sync: () => settings?.syncConfig?.dest,
       copy: () => settings?.copyConfig?.dest,
+      bisync: () => settings?.bisyncConfig?.dest,
+      move: () => settings?.moveConfig?.dest,
       general: () => undefined,
     } as const;
-
-    const getPath = configMap[appTab];
+    const getPath = configMap[UsePath];
     if (!getPath) {
-      throw new Error(`Invalid app tab: ${appTab}`);
+      throw new Error(`Invalid UsePath: ${UsePath}`);
     }
-
     return getPath();
   }
 
   private getJobIdForOperation(
     remote: Remote | undefined,
-    type: 'sync' | 'copy' | 'mount' | string
+    type: 'sync' | 'copy' | 'mount' | 'bisync' | 'move' | string
   ): number | undefined {
     if (!remote) return undefined;
 
@@ -820,6 +888,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     const jobIdMap = {
       sync: remote.syncState?.syncJobID,
       copy: remote.copyState?.copyJobID,
+      bisync: remote.bisyncState?.bisyncJobID,
+      move: remote.moveState?.moveJobID,
+      mount: undefined,
     } as const;
 
     return jobIdMap[type as keyof typeof jobIdMap];

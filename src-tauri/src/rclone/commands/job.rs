@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-use super::oauth::RcloneError;
+use super::system::RcloneError;
 
 pub async fn monitor_job(
     remote_name: String,

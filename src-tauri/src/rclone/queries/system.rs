@@ -1,9 +1,11 @@
 use log::debug;
 use serde_json::json;
-use tauri::State;
+use std::path::PathBuf;
+use tauri::{AppHandle, Manager, State};
 
 use crate::RcloneState;
 use crate::rclone::state::ENGINE_STATE;
+use crate::utils::rclone::endpoints::config;
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, core},
     types::all_types::{BandwidthLimitResponse, RcloneCoreVersion},
@@ -109,4 +111,43 @@ pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_jso
     }
 
     serde_json::from_str(&body).map_err(|e| format!("Failed to parse memory stats: {e}"))
+}
+
+#[tauri::command]
+pub async fn get_rclone_config_path(app: AppHandle) -> Result<PathBuf, String> {
+    let state = app.state::<RcloneState>();
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::PATHS);
+
+    let response = state
+        .client
+        .post(&url)
+        .json(&json!({}))
+        .send()
+        .await
+        .map_err(|e| format!("Failed to execute API request: {e}"))?;
+
+    debug!("Rclone config paths response: {response:?}");
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "API request failed with status: {}",
+            response.status()
+        ));
+    }
+
+    let body = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response body: {e}"))?;
+
+    let paths: serde_json::Value =
+        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
+
+    let config_path = paths
+        .get("config")
+        .and_then(|v| v.as_str())
+        .ok_or("No config path in response")?;
+
+    debug!("Rclone config path from API: {config_path}");
+    Ok(PathBuf::from(config_path))
 }

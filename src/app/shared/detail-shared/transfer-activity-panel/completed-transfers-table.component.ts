@@ -7,6 +7,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { CompletedTransfer } from './transfer-activity-panel.component';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { TruncatePathPipe } from '../../pipes/truncate-path.pipe';
+import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 
 @Component({
   selector: 'app-completed-transfers-table',
@@ -109,10 +110,10 @@ import { TruncatePathPipe } from '../../pipes/truncate-path.pipe';
               <th mat-header-cell *matHeaderCellDef>Size</th>
               <td mat-cell *matCellDef="let transfer" class="size-cell">
                 <div class="size-info">
-                  <span class="size-value">{{ formatFileSize(transfer.size) }}</span>
+                  <span class="size-value">{{ FormatFileSizePipe.transform(transfer.size) }}</span>
                   @if (transfer.bytes !== transfer.size && transfer.bytes > 0) {
                     <span class="size-transferred"
-                      >({{ formatFileSize(transfer.bytes) }} transferred)</span
+                      >({{ FormatFileSizePipe.transform(transfer.bytes) }} transferred)</span
                     >
                   }
                   @if (transfer.status === 'checked' && transfer.size > 0) {
@@ -208,7 +209,9 @@ export class CompletedTransfersTableComponent {
   @Input() operationClass = '';
   @Input() trackBy?: (index: number, transfer: CompletedTransfer) => string;
 
-  defaultTrackBy(index: number, transfer: CompletedTransfer): string {
+  FormatFileSizePipe = new FormatFileSizePipe();
+
+  defaultTrackBy(_index: number, transfer: CompletedTransfer): string {
     return transfer.name + transfer.completedAt;
   }
 
@@ -216,13 +219,6 @@ export class CompletedTransfersTableComponent {
 
   getFileName(path: string): string {
     return path.split('/').pop() || path;
-  }
-
-  formatFileSize(bytes: number): string {
-    if (bytes <= 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 2 : 0)} ${units[i]}`;
   }
 
   formatTime(timestamp: string): string {

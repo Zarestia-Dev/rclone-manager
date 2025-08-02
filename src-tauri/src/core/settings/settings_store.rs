@@ -74,7 +74,7 @@ impl Default for AppSettings {
                 ],
                 // default_mount_type: "native".to_string(),
                 bandwidth_limit: "".to_string(),
-                rclone_config_path: "".to_string(),
+                rclone_config_file: "".to_string(),
                 rclone_path: "".to_string(), // Empty means auto-detect
                 completed_onboarding: false,
                 terminal_apps: default_terminal_apps(),
@@ -304,10 +304,10 @@ impl AppSettings {
         );
 
         metadata.insert(
-            "core.rclone_config_path".to_string(),
+            "core.rclone_config_file".to_string(),
             SettingMetadata {
-                display_name: "Rclone Config Path".to_string(),
-                value_type: "path".to_string(),
+                display_name: "Rclone Config File".to_string(),
+                value_type: "file".to_string(),
                 help_text: "Path to rclone config file. Leave empty to use default location."
                     .to_string(),
                 validation_type: Some("frontend:crossPlatformPath".to_string()),
@@ -319,7 +319,7 @@ impl AppSettings {
                 placeholder: Some("e.g., /home/user/.config/rclone/rclone.conf".to_string()),
                 options: None,
                 required: Some(false),
-                requires_restart: Some(true),
+                requires_restart: Some(true), // Requires restart to apply to default rclone config because we cant reset it via API
             },
         );
 
@@ -327,7 +327,7 @@ impl AppSettings {
             "core.rclone_path".to_string(),
             SettingMetadata {
                 display_name: "Rclone Binary Path".to_string(),
-                value_type: "path".to_string(),
+                value_type: "folder".to_string(),
                 help_text: "Path to rclone binary or directory. Leave empty for auto-detection, use 'system' for system PATH.".to_string(),
                 validation_type: Some("frontend:crossPlatformPath".to_string()),
                 validation_pattern: None,

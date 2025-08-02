@@ -11,7 +11,15 @@ import {
   providedIn: 'root',
 })
 export class FlagConfigService {
-  public readonly FLAG_TYPES: FlagType[] = ['mount', 'copy', 'sync', 'filter', 'vfs'];
+  public readonly FLAG_TYPES: FlagType[] = [
+    'mount',
+    'copy',
+    'sync',
+    'filter',
+    'vfs',
+    'bisync',
+    'move',
+  ];
   private mountManagementService = inject(MountManagementService);
 
   async loadAllFlagFields(): Promise<Record<FlagType, FlagField[]>> {
@@ -21,6 +29,8 @@ export class FlagConfigService {
       sync: [],
       filter: [],
       vfs: [],
+      bisync: [],
+      move: [],
     };
 
     await Promise.all(

@@ -7,7 +7,20 @@ export type SyncOptions = Record<string, object>;
 
 export type CopyOptions = Record<string, object>;
 
+export type BisyncOptions = Record<string, object>;
+
+export type MoveOptions = Record<string, object>;
+
 export type FilterOptions = Record<string, object>;
+
+export interface BisyncParams {
+  remote_name: string;
+  source: string;
+  dest: string;
+  bisync_options: BisyncOptions | null;
+  filter_options: FilterOptions | null;
+  resync: boolean;
+}
 
 /**
  * Service for managing rclone jobs (sync, copy, etc.)
@@ -75,21 +88,43 @@ export class JobManagementService extends TauriBaseService {
     remoteName: string,
     source: string,
     dest: string,
-    copyOptions?: CopyOptions,
+    bisyncOptions?: BisyncOptions,
     filterOptions?: FilterOptions,
     resync?: boolean
   ): Promise<number> {
     this.validatePaths(source, dest);
 
+    const params: BisyncParams = {
+      remote_name: remoteName,
+      source,
+      dest,
+      bisync_options: bisyncOptions || null,
+      filter_options: filterOptions || null,
+      resync: resync ?? false,
+    };
+
     const jobId = await this.invokeCommand<string>('start_bisync', {
+      params,
+    });
+
+    return parseInt(jobId, 10);
+  }
+
+  async startMove(
+    remoteName: string,
+    source: string,
+    dest: string,
+    moveOptions?: MoveOptions,
+    filterOptions?: FilterOptions
+  ): Promise<number> {
+    this.validatePaths(source, dest);
+    const jobId = await this.invokeCommand<string>('start_move', {
       remoteName,
       source,
       dest,
-      copyOptions: copyOptions || {},
+      moveOptions: moveOptions || {},
       filterOptions: filterOptions || {},
-      resync: resync || true,
     });
-
     return parseInt(jobId, 10);
   }
 

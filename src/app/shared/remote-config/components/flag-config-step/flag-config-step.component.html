@@ -3,16 +3,22 @@
   @if (flagType !== 'vfs' && flagType !== 'filter') {
     <mat-slide-toggle class="slide-toggle" formControlName="autoStart">
       {{
-        isMount
+        isType('mount')
           ? 'Auto-Mount after creation and on startup'
-          : isSync
+          : isType('sync')
             ? 'Auto-Sync after creation and on startup'
-            : 'Auto-Copy after creation and on startup'
+            : isType('copy')
+              ? 'Auto-Copy after creation and on startup'
+              : isType('move')
+                ? 'Auto-Move after creation and on startup'
+                : isType('bisync')
+                  ? 'Auto-Bisync after creation and on startup'
+                  : 'Auto-Action after creation and on startup'
       }}
     </mat-slide-toggle>
   }
 
-  @if (isMount) {
+  @if (isType('mount')) {
     <!-- Mount Path -->
     <mat-form-field appearance="fill">
       <mat-label>Mount Path</mat-label>
@@ -35,7 +41,7 @@
   }
 
   <!-- Destination Path -->
-  @if (flagType !== 'mount' && flagType !== 'vfs' && flagType !== 'filter') {
+  @if (!isType(['mount', 'vfs', 'filter'])) {
     <mat-form-field appearance="fill">
       <mat-label>{{ flagType | titlecase }} Destination</mat-label>
       <input
@@ -116,7 +122,7 @@
   }
 
   <!-- Source Path -->
-  @if (isEditMode && flagType !== 'vfs' && flagType !== 'filter') {
+  @if (isEditMode && !isType(['vfs', 'filter'])) {
     <mat-form-field appearance="fill">
       <mat-label>{{ flagType | titlecase }} Source</mat-label>
       <input
@@ -188,6 +194,99 @@
         }
       </mat-autocomplete>
     </mat-form-field>
+  }
+
+  <!-- Bisync Specific Options -->
+  @if (isType('bisync')) {
+    <div class="bisync-options">
+      <h4>Bisync Options</h4>
+
+      <mat-slide-toggle formControlName="dryRun"> Dry Run Mode </mat-slide-toggle>
+
+      <mat-slide-toggle formControlName="resync"> Perform Resync Run </mat-slide-toggle>
+
+      <mat-slide-toggle formControlName="checkAccess">
+        Abort if RCLONE_TEST files not found
+      </mat-slide-toggle>
+
+      @if (configGroup.get('checkAccess')?.value) {
+        <mat-form-field appearance="fill">
+          <mat-label>Check Filename</mat-label>
+          <input matInput formControlName="checkFilename" placeholder="RCLONE_TEST" />
+        </mat-form-field>
+      }
+
+      <mat-form-field appearance="fill">
+        <mat-label>Max Delete Percentage</mat-label>
+        <input matInput type="number" formControlName="maxDelete" placeholder="50" />
+      </mat-form-field>
+
+      <mat-slide-toggle formControlName="force"> Bypass maxDelete safety check </mat-slide-toggle>
+
+      <mat-slide-toggle formControlName="createEmptySrcDirs">
+        Create Empty Source Directories
+      </mat-slide-toggle>
+
+      <mat-slide-toggle formControlName="removeEmptyDirs">
+        Remove Empty Directories
+      </mat-slide-toggle>
+
+      <mat-slide-toggle formControlName="ignoreListingChecksum">
+        Ignore Listing Checksum
+      </mat-slide-toggle>
+
+      <mat-slide-toggle formControlName="resilient">
+        Resilient Mode (Use at your own risk!)
+      </mat-slide-toggle>
+
+      <mat-slide-toggle formControlName="noCleanup"> Retain Working Files </mat-slide-toggle>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Work Directory</mat-label>
+        <input matInput formControlName="workdir" placeholder="~/.cache/rclone/bisync" />
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Backup Directory 1</mat-label>
+        <input matInput formControlName="backupdir1" placeholder="Backup dir for Path1" />
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Backup Directory 2</mat-label>
+        <input matInput formControlName="backupdir2" placeholder="Backup dir for Path2" />
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Filters File</mat-label>
+        <input matInput formControlName="filtersFile" placeholder="Path to filters file" />
+      </mat-form-field>
+    </div>
+  }
+
+  <!-- Move Specific Options -->
+  @if (isType('move')) {
+    <div class="move-options">
+      <h4>Move Options</h4>
+
+      <mat-slide-toggle formControlName="createEmptySrcDirs">
+        Create Empty Source Directories
+      </mat-slide-toggle>
+
+      <mat-slide-toggle formControlName="deleteEmptySrcDirs">
+        Delete Empty Source Directories
+      </mat-slide-toggle>
+    </div>
+  }
+
+  <!-- Copy/Sync Specific Options -->
+  @if (isType(['copy', 'sync'])) {
+    <div class="copy-sync-options">
+      <h4>{{ flagType | titlecase }} Options</h4>
+
+      <mat-slide-toggle formControlName="createEmptySrcDirs">
+        Create Empty Source Directories
+      </mat-slide-toggle>
+    </div>
   }
 
   <!-- JSON Configuration Section -->

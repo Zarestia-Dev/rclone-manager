@@ -1,0 +1,218 @@
+<div
+  class="export-modal"
+  role="dialog"
+  aria-labelledby="export-modal-title"
+  aria-describedby="export-modal-description"
+>
+  <!-- Modal Header -->
+  <div class="modal-header" data-tauri-drag-region>
+    <button mat-icon-button aria-label="Help information" [disabled]="isExporting()">
+      <mat-icon svgIcon="question"></mat-icon>
+    </button>
+    <p id="export-modal-title">
+      <mat-icon svgIcon="export" aria-hidden="true"></mat-icon>
+      Export Settings
+    </p>
+    <button mat-icon-button (click)="close()" [disabled]="isExporting()" aria-label="Close dialog">
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    </button>
+  </div>
+
+  <!-- Loading Indicator -->
+  @if (isLoading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading export options...</p>
+    </div>
+  } @else {
+    <!-- Modal Content -->
+    <div class="modal-content" id="export-modal-description">
+      <!-- Export Type Selection -->
+      <div class="form-section">
+        <h3 class="section-title">
+          <mat-icon color="accent" svgIcon="wrench" aria-hidden="true"></mat-icon>
+          What would you like to export?
+        </h3>
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Export Option</mat-label>
+          <mat-select
+            [ngModel]="selectedOption()"
+            (ngModelChange)="onExportOptionChange($event)"
+            name="exportOption"
+            aria-label="Select export option"
+            [disabled]="isExporting()"
+            required
+          >
+            @for (option of exportOptions; track trackByExportOption($index, option)) {
+              <mat-option
+                [value]="option.value"
+                [attr.aria-label]="option.label + ' - ' + option.description"
+              >
+                <div class="export-option">
+                  <span class="option-label">{{ option.label }}</span>
+                  <small class="option-description">{{ option.description }}</small>
+                </div>
+              </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <!-- Specific Remote Selection -->
+      @if (showSpecificRemoteSection()) {
+        <div class="form-section" @slideInOut>
+          <h3 class="section-title">
+            <mat-icon color="accent" svgIcon="hard-drive" aria-hidden="true"></mat-icon>
+            Select Remote
+          </h3>
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>Choose Remote</mat-label>
+            <mat-select
+              [ngModel]="selectedRemoteName()"
+              (ngModelChange)="onRemoteSelectionChange($event)"
+              name="selectedRemote"
+              aria-label="Select specific remote to export"
+              [disabled]="isExporting()"
+              required
+            >
+              @if (remotes().length === 0) {
+                <mat-option disabled>
+                  <em>No remotes available</em>
+                </mat-option>
+              }
+              @for (remote of remotes(); track trackByRemote($index, remote)) {
+                <mat-option [value]="remote" [attr.aria-label]="'Export ' + remote + ' remote'">
+                  <div class="remote-option">
+                    <mat-icon svgIcon="hard-drive" class="remote-icon"></mat-icon>
+                    <span>{{ remote }}</span>
+                  </div>
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+      }
+
+      <!-- Export Destination -->
+      <div class="form-section">
+        <h3 class="section-title">
+          <mat-icon color="accent" svgIcon="folder" aria-hidden="true"></mat-icon>
+          Export Destination
+        </h3>
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Save Export To</mat-label>
+          <input
+            matInput
+            [value]="exportPath()"
+            placeholder="Select a folder to save the export..."
+            readonly
+            name="exportPath"
+            aria-label="Export destination folder"
+            [attr.aria-invalid]="!exportPath() ? 'true' : 'false'"
+            [disabled]="isExporting()"
+            required
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            (click)="selectFolder()"
+            [disabled]="isExporting() || folderSelectionInProgress()"
+            [attr.aria-label]="
+              folderSelectionInProgress() ? 'Selecting folder...' : 'Browse for export folder'
+            "
+          >
+            @if (folderSelectionInProgress()) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              <mat-icon svgIcon="folder" color="primary"></mat-icon>
+            }
+          </button>
+        </mat-form-field>
+      </div>
+
+      <!-- Security Options -->
+      <div class="security-section">
+        <div class="security-header">
+          <mat-icon svgIcon="lock" aria-hidden="true"></mat-icon>
+          <h3>Security Options</h3>
+        </div>
+        <p class="security-description">
+          Encrypt your export file with a password for additional security. Requires 7-Zip to be
+          installed.
+        </p>
+
+        <div class="security-controls">
+          <mat-checkbox
+            [ngModel]="withPassword()"
+            (ngModelChange)="onPasswordProtectionChange($event)"
+            [disabled]="!sevenZipSupported() || isExporting()"
+            name="withPassword"
+            matTooltipPosition="above"
+            aria-label="Encrypt backup with password"
+          >
+            <span class="checkbox-label">Encrypt Export</span>
+          </mat-checkbox>
+
+          @if (showSecurityWarning()) {
+            <div class="security-warning">
+              <mat-icon color="warn" svgIcon="warning" aria-hidden="true"></mat-icon>
+              <span>7-Zip not found. Password protection unavailable.</span>
+            </div>
+          }
+        </div>
+
+        <!-- Password Field -->
+        @if (showPasswordField()) {
+          <div @slideInOut>
+            <mat-form-field appearance="fill" class="full-width">
+              <mat-label>Export Password</mat-label>
+              <input
+                matInput
+                [ngModel]="password()"
+                (input)="onPasswordInput($event)"
+                [type]="showPassword() ? 'text' : 'password'"
+                name="password"
+                placeholder="Enter a strong password..."
+                aria-label="Password for encrypting export"
+                [attr.aria-invalid]="withPassword() && !password() ? 'true' : 'false'"
+                [disabled]="isExporting()"
+                autocomplete="new-password"
+                required
+              />
+              <button
+                type="button"
+                mat-icon-button
+                matSuffix
+                (click)="togglePasswordVisibility()"
+                [matTooltip]="showPassword() ? 'Hide password' : 'Show password'"
+                matTooltipPosition="above"
+                [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                [disabled]="isExporting()"
+              >
+                <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+              </button>
+              @if (withPassword() && !password()) {
+                <mat-error role="alert">Password is required for encryption.</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Modal Actions -->
+    <div class="button-group">
+      <button mat-raised-button color="primary" (click)="onExport()" [disabled]="!canExport()">
+        @if (isExporting()) {
+          <mat-spinner diameter="16" class="button-spinner"></mat-spinner>
+          <span>Exporting...</span>
+        } @else {
+          <ng-container>
+            <mat-icon svgIcon="export" aria-hidden="true"></mat-icon>
+            <span>Export</span>
+          </ng-container>
+        }
+      </button>
+    </div>
+  }
+</div>

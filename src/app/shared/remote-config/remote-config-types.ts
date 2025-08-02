@@ -1,6 +1,6 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
-export type FlagType = 'mount' | 'copy' | 'sync' | 'filter' | 'vfs';
+export type FlagType = 'mount' | 'bisync' | 'move' | 'copy' | 'sync' | 'filter' | 'vfs';
 export type EditTarget = FlagType | 'remote' | null;
 
 export type FieldType =
@@ -65,14 +65,16 @@ export interface MountConfig {
   autoStart: boolean;
   dest: string;
   source: string;
+  type: string;
   options?: any;
-  [key: string]: any; // Only if you expect extra keys
+  [key: string]: any;
 }
 
 export interface CopyConfig {
   autoStart: boolean;
   source: string;
   dest: string;
+  createEmptySrcDirs?: boolean;
   options?: any;
   [key: string]: any;
 }
@@ -81,6 +83,7 @@ export interface SyncConfig {
   autoStart: boolean;
   source: string;
   dest: string;
+  createEmptySrcDirs?: boolean;
   options?: any;
   [key: string]: any;
 }
@@ -95,11 +98,47 @@ export interface VfsConfig {
   [key: string]: any;
 }
 
+export interface MoveConfig {
+  autoStart: boolean;
+  source: string;
+  dest: string;
+  createEmptySrcDirs?: boolean;
+  deleteEmptySrcDirs?: boolean;
+  options?: any;
+  [key: string]: any;
+}
+
+export interface BisyncConfig {
+  autoStart: boolean;
+  source: string;
+  dest: string;
+  dryRun?: boolean;
+  resync?: boolean;
+  checkAccess?: boolean;
+  checkFilename?: string;
+  maxDelete?: number;
+  force?: boolean;
+  checkSync?: boolean | 'only';
+  createEmptySrcDirs?: boolean;
+  removeEmptyDirs?: boolean;
+  filtersFile?: string;
+  ignoreListingChecksum?: boolean;
+  resilient?: boolean;
+  workdir?: string;
+  backupdir1?: string;
+  backupdir2?: string;
+  noCleanup?: boolean;
+  options?: any;
+  [key: string]: any;
+}
+
 export interface RemoteSettings {
   [remoteName: string]: any;
   mountConfig: MountConfig;
   copyConfig: CopyConfig;
   syncConfig: SyncConfig;
+  moveConfig: MoveConfig;
+  bisyncConfig: BisyncConfig;
   filterConfig: FilterConfig;
   vfsConfig: VfsConfig;
   showOnTray: boolean;
@@ -117,6 +156,12 @@ export interface QuickAddForm {
   // Copy options
   copyDest: string;
   autoCopy: boolean;
+  // Move options
+  moveDest?: string;
+  autoMove?: boolean;
+  // Bisync options
+  bisyncDest?: string;
+  autoBisync?: boolean;
 }
 
 export const REMOTE_NAME_REGEX = /^[A-Za-z0-9_\-.+@ ]+$/;

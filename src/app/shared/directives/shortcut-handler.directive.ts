@@ -3,7 +3,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
 import { QuickAddRemoteComponent } from '../../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
 import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
-import { ExportModalComponent } from '../../features/modals/file-operations/export-modal/export-modal.component';
+import { ExportModalComponent } from '../../features/modals/settings/export-modal/export-modal.component';
 import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
 import { STANDARD_MODAL_SIZE } from '../components/types';
 
@@ -45,12 +45,6 @@ export class ShortcutHandlerDirective {
       return true;
     }
 
-    // Help shortcuts
-    if (ctrlKey && !shiftKey && !altKey && (key === '?' || key === '/')) {
-      this.showKeyboardShortcuts();
-      return true;
-    }
-
     if (ctrlKey && shiftKey && !altKey && key.toLowerCase() === '?') {
       this.showKeyboardShortcuts();
       return true;
@@ -69,6 +63,11 @@ export class ShortcutHandlerDirective {
 
     if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'r') {
       this.createNewRemoteQuick();
+      return true;
+    }
+
+    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 't') {
+      this.createNewRemoteTerminal();
       return true;
     }
 
@@ -138,6 +137,10 @@ export class ShortcutHandlerDirective {
 
   private createNewRemoteDetailed(): void {
     this.dialog.open(RemoteConfigModalComponent, STANDARD_MODAL_SIZE);
+  }
+
+  private createNewRemoteTerminal(): void {
+    this.remoteManagementService.openRcloneConfigTerminal();
   }
 
   private createNewRemoteQuick(): void {

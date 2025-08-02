@@ -35,8 +35,8 @@ use crate::{
     rclone::{
         commands::{
             create_remote, delete_remote, mount_remote, quit_rclone_oauth, set_bandwidth_limit,
-            start_bisync, start_copy, start_sync, stop_job, unmount_all_remotes, unmount_remote,
-            update_remote,
+            start_bisync, start_copy, start_move, start_sync, stop_job, unmount_all_remotes,
+            unmount_remote, update_remote,
         },
         queries::{
             flags::{
@@ -142,9 +142,9 @@ pub fn run() {
 
             app.manage(RcloneState {
                 client: reqwest::Client::new(),
-                config_path: Arc::new(std::sync::RwLock::new(
-                    settings.core.rclone_config_path.clone(),
-                )),
+                // config_path: Arc::new(std::sync::RwLock::new(
+                //     settings.core.rclone_config_path.clone(),
+                // )),
                 tray_enabled: Arc::new(std::sync::RwLock::new(settings.general.tray_enabled)),
                 is_shutting_down: AtomicBool::new(false),
                 notifications_enabled: Arc::new(std::sync::RwLock::new(
@@ -276,10 +276,12 @@ pub fn run() {
             get_oauth_supported_remotes,
             get_remote_config_fields,
             get_mounted_remotes,
+            set_bandwidth_limit,
+            // Rclone Sync API
             start_sync,
             start_copy,
             start_bisync,
-            set_bandwidth_limit,
+            start_move,
             // Rclone Query API
             mount_remote,
             unmount_remote,

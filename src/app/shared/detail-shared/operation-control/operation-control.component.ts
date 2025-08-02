@@ -4,15 +4,20 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { ThemePalette } from '@angular/material/core';
 import { StatusBadgeComponent, StatusBadgeConfig } from '../status-badge/status-badge.component';
 import { PathDisplayComponent, PathDisplayConfig } from '../path-display/path-display.component';
 
+export type SyncOperationType = 'sync' | 'bisync' | 'move' | 'copy';
+export type MainOperationType = 'sync' | 'mount';
+
 export interface OperationControlConfig {
-  operationType: 'sync' | 'copy' | 'mount';
+  operationType: 'sync' | 'files' | 'mount';
   isActive: boolean;
   isError?: boolean;
   isLoading: boolean;
+  subOperationType?: SyncOperationType;
   operationColor: ThemePalette;
   operationClass: string;
   pathConfig: PathDisplayConfig;
@@ -21,6 +26,11 @@ export interface OperationControlConfig {
   secondaryButtonLabel: string;
   secondaryIcon: string;
   actionInProgress?: string;
+  operationDescription?: string;
+  // Bisync specific options
+  resyncEnabled?: boolean;
+  resyncRequired?: boolean;
+  showResyncToggle?: boolean;
 }
 
 @Component({
@@ -32,6 +42,7 @@ export interface OperationControlConfig {
     MatIconModule,
     MatButtonModule,
     MatProgressSpinnerModule,
+    MatSlideToggleModule,
     StatusBadgeComponent,
     PathDisplayComponent,
   ],
@@ -45,13 +56,35 @@ export interface OperationControlConfig {
       <mat-card-header class="panel-header">
         <mat-card-title class="panel-title-content">
           <mat-icon [svgIcon]="getOperationIcon()" class="panel-icon"></mat-icon>
-          <span>{{ config.operationType | titlecase }} Control</span>
+          <span>{{ config.subOperationType | titlecase }} Control</span>
         </mat-card-title>
       </mat-card-header>
 
       <mat-card-content class="panel-content">
         <app-path-display [config]="config.pathConfig" (openPath)="onOpenPath($event)">
         </app-path-display>
+
+        <!-- Resync Toggle for Bisync -->
+        @if (shouldShowResyncToggle()) {
+          <div class="resync-control" [class.required]="config.resyncRequired">
+            <mat-slide-toggle
+              [checked]="config.resyncEnabled || false"
+              [disabled]="config.isActive || config.isLoading"
+              (change)="onResyncToggle($event.checked)"
+            >
+              <span class="resync-label">
+                <mat-icon svgIcon="refresh" class="resync-icon"></mat-icon>
+                Force Resync
+                @if (config.resyncRequired) {
+                  <span class="required-indicator">(Required)</span>
+                }
+              </span>
+            </mat-slide-toggle>
+            <div class="resync-description">
+              Performs a full resynchronization, rebuilding the sync database
+            </div>
+          </div>
+        }
       </mat-card-content>
 
       <mat-card-actions class="panel-actions">
@@ -85,13 +118,27 @@ export class OperationControlComponent {
   @Output() primaryAction = new EventEmitter<void>();
   @Output() secondaryAction = new EventEmitter<void>();
   @Output() openPath = new EventEmitter<string>();
+  @Output() data = new EventEmitter<{ resync: boolean }>();
 
   getOperationIcon(): string {
+    // Use subOperationType for sync operations
+    if (this.config.operationType === 'sync' && this.config.subOperationType) {
+      switch (this.config.subOperationType) {
+        case 'sync':
+          return 'refresh';
+        case 'bisync':
+          return 'right-left';
+        case 'move':
+          return 'move';
+        case 'copy':
+          return 'copy';
+        default:
+          return 'sync';
+      }
+    }
     switch (this.config.operationType) {
-      case 'sync':
-        return 'sync';
-      case 'copy':
-        return 'copy';
+      case 'files':
+        return 'files';
       case 'mount':
         return 'mount';
       default:
@@ -103,18 +150,19 @@ export class OperationControlComponent {
     const isOperationType = this.config.operationType !== 'mount';
     let badgeClass = '';
     if (this.config.isActive && !this.config.isError) {
-      switch (this.config.operationType) {
-        case 'sync':
-          badgeClass = 'active-sync';
-          break;
-        case 'copy':
-          badgeClass = 'active-copy';
-          break;
-        case 'mount':
-          badgeClass = 'mounted';
-          break;
-        default:
-          badgeClass = '';
+      if (this.config.operationType === 'sync' && this.config.subOperationType) {
+        badgeClass = `active-${this.config.subOperationType}`;
+      } else {
+        switch (this.config.operationType) {
+          case 'files':
+            badgeClass = 'active-files';
+            break;
+          case 'mount':
+            badgeClass = 'mounted';
+            break;
+          default:
+            badgeClass = '';
+        }
       }
     } else if (!this.config.isActive && !this.config.isError) {
       badgeClass = isOperationType ? 'inactive' : 'unmounted';
@@ -122,18 +170,37 @@ export class OperationControlComponent {
       badgeClass = 'error';
     }
 
+    let activeLabel = 'Active';
+    if (this.config.operationType === 'sync' && this.config.subOperationType) {
+      switch (this.config.subOperationType) {
+        case 'sync':
+          activeLabel = 'Syncing';
+          break;
+        case 'bisync':
+          activeLabel = 'BiSyncing';
+          break;
+        case 'move':
+          activeLabel = 'Moving';
+          break;
+        case 'copy':
+          activeLabel = 'Copying';
+          break;
+        default:
+          activeLabel = 'Syncing';
+      }
+    } else if (this.config.operationType === 'mount') {
+      activeLabel = 'Mounted';
+    } else if (this.config.operationType === 'files') {
+      activeLabel = 'Browsing';
+    }
+
     return {
       isActive: this.config.isActive,
       isError: this.config.isError,
       isLoading: this.config.isLoading,
-      activeLabel: isOperationType
-        ? this.config.operationType === 'sync'
-          ? 'Syncing'
-          : 'Copying'
-        : 'Mounted',
+      activeLabel,
       inactiveLabel: isOperationType ? 'Stopped' : 'Not Mounted',
       errorLabel: 'Error',
-      // Pass the badgeClass for ngClass
       badgeClass,
     };
   }
@@ -148,5 +215,14 @@ export class OperationControlComponent {
 
   onOpenPath(path: string): void {
     this.openPath.emit(path);
+  }
+
+  shouldShowResyncToggle(): boolean {
+    return this.config.subOperationType === 'bisync' && (this.config.showResyncToggle ?? true);
+  }
+
+  onResyncToggle(checked: boolean): void {
+    console.log('Re-sync toggle changed:', checked);
+    this.data.emit({ resync: checked });
   }
 }

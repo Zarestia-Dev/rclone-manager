@@ -29,6 +29,8 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableDataSource } from '@angular/material/table';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { ThemePalette } from '@angular/material/core';
+import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
+import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import {
   DEFAULT_JOB_STATS,
   GlobalStats,
@@ -43,6 +45,7 @@ import {
   CompletedTransfer,
   JobInfoConfig,
   JobInfoPanelComponent,
+  MainOperationType,
   OperationControlComponent,
   OperationControlConfig,
   PathDisplayConfig,
@@ -51,12 +54,21 @@ import {
   StatItem,
   StatsPanelComponent,
   StatsPanelConfig,
+  SyncOperationType,
   TransferActivityPanelComponent,
   TransferActivityPanelConfig,
 } from '../../../../shared/detail-shared';
 
 import { IconService } from '../../../../shared/services/icon.service';
 import { JobManagementService } from '@app/services';
+
+interface SyncOperation {
+  type: SyncOperationType;
+  label: string;
+  icon: string;
+  color: ThemePalette;
+  description: string;
+}
 
 @Component({
   selector: 'app-app-detail',
@@ -83,16 +95,26 @@ import { JobManagementService } from '@app/services';
   styleUrls: ['./app-detail.component.scss'],
 })
 export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
-  @Input() operationType?: 'sync' | 'copy' | 'mount'; // Only for operation type
+  @Input() mainOperationType: MainOperationType = 'mount';
+  @Input() selectedSyncOperation: SyncOperationType = 'sync';
   @Input() selectedRemote: Remote | null = null;
   @Input() remoteSettings: RemoteSettings = {};
   @Input() restrictMode!: boolean;
   @Input() iconService!: IconService;
-  @Input() actionInProgress?: RemoteAction | null; // Only for mount type
+  @Input() actionInProgress?: RemoteAction | null;
 
   // Operation specific outputs
-  @Output() primaryAction = new EventEmitter<string>();
-  @Output() secondaryAction = new EventEmitter<string>();
+  @Output() primaryAction = new EventEmitter<{
+    mainType: MainOperationType;
+    subType?: SyncOperationType;
+    remoteName: string;
+  }>();
+  @Output() secondaryAction = new EventEmitter<{
+    mainType: MainOperationType;
+    subType?: SyncOperationType;
+    remoteName: string;
+  }>();
+  @Output() syncOperationChange = new EventEmitter<SyncOperationType>();
 
   // Common outputs
   @Output() openRemoteConfigModal = new EventEmitter<{
@@ -102,6 +124,9 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   @Output() openInFiles = new EventEmitter<{
     remoteName: string;
     path: string;
+  }>();
+  @Output() extendedData = new EventEmitter<{
+    resync: boolean;
   }>();
 
   @ViewChild(MatSort) sort!: MatSort;
@@ -115,6 +140,8 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   currentJobId?: number;
   isLoading = false;
   errorMessage = '';
+  FormatFileSizePipe = new FormatFileSizePipe();
+  FormatTimePipe = new FormatTimePipe();
   private lastSyncDate?: Date;
 
   // Track completed transfers to show in the panel
@@ -145,109 +172,113 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     Chart.register(...registerables);
   }
 
-  // // Type checking helpers
-  isOperationType(): boolean {
-    return this.operationType === 'sync' || this.operationType === 'copy';
+  syncOperations: SyncOperation[] = [
+    {
+      type: 'sync',
+      label: 'Sync',
+      icon: 'refresh',
+      color: 'primary',
+      description: 'One-way synchronization - makes destination match source',
+    },
+    {
+      type: 'bisync',
+      label: 'BiSync',
+      icon: 'right-left',
+      color: 'accent',
+      description: 'Bidirectional sync - keeps both locations synchronized',
+    },
+    {
+      type: 'move',
+      label: 'Move',
+      icon: 'move',
+      color: 'warn',
+      description: 'Move files - transfer from source to destination (deletes from source)',
+    },
+    {
+      type: 'copy',
+      label: 'Copy',
+      icon: 'copy',
+      color: 'primary',
+      description: 'Copy files - duplicate from source to destination (preserves source)',
+    },
+  ];
+
+  handleExtendedData($event: { resync: boolean }): void {
+    this.extendedData.emit($event);
   }
 
-  // // Primary action handler (Start operation/Mount)
+  isSyncType(): boolean {
+    return this.mainOperationType === 'sync';
+  }
+
+  isMountType(): boolean {
+    return this.mainOperationType === 'mount';
+  }
+
+  hasCharts(): boolean {
+    return this.isSyncType();
+  }
+
+  // Get current operation configuration
+  getCurrentOperationConfig(): SyncOperation | null {
+    if (!this.isSyncType()) return null;
+    return this.syncOperations.find(op => op.type === this.selectedSyncOperation) || null;
+  }
+
+  // Handle sync operation change
+  onSyncOperationChange(operation: SyncOperationType): void {
+    this.selectedSyncOperation = operation;
+    this.syncOperationChange.emit(operation);
+    this.handleOperationChange();
+  }
+
+  // Primary action handler - updated for new structure
   handlePrimaryAction(): void {
+    console.log(
+      'Primary action triggered for:',
+      this.mainOperationType,
+      this.selectedSyncOperation
+    );
+
     if (this.selectedRemote?.remoteSpecs?.name) {
-      this.primaryAction.emit(this.selectedRemote.remoteSpecs.name);
+      this.primaryAction.emit({
+        mainType: this.mainOperationType,
+        subType: this.isSyncType() ? this.selectedSyncOperation : undefined,
+        remoteName: this.selectedRemote.remoteSpecs.name,
+      });
     }
   }
 
-  // // Secondary action handler (Stop operation/Unmount)
+  // Secondary action handler - updated for new structure
   handleSecondaryAction(): void {
     if (this.selectedRemote?.remoteSpecs?.name) {
-      this.secondaryAction.emit(this.selectedRemote.remoteSpecs.name);
+      this.secondaryAction.emit({
+        mainType: this.mainOperationType,
+        subType: this.isSyncType() ? this.selectedSyncOperation : undefined,
+        remoteName: this.selectedRemote.remoteSpecs.name,
+      });
     }
   }
 
-  formatTime(seconds: number): string {
-    if (isNaN(seconds) || seconds <= 0) return '-';
-
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-
-    const parts = [];
-    if (hours > 0) parts.push(`${hours}h`);
-    if (minutes > 0 || hours > 0) parts.push(`${minutes}m`);
-    parts.push(`${secs}s`);
-
-    return parts.join(' ');
-  }
-
-  formatFileSizePipe(bytes = 0, precision = 2, mode: 'size' | 'speed' = 'size'): string {
-    if (isNaN(parseFloat(String(bytes))) || !isFinite(bytes)) {
-      return mode === 'speed' ? '0 B/s' : '0 B';
-    }
-
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    let unitIndex = 0;
-
-    while (bytes >= 1024 && unitIndex < units.length - 1) {
-      bytes /= 1024;
-      unitIndex++;
-    }
-
-    return `${bytes.toFixed(precision)} ${units[unitIndex]}${mode === 'speed' ? '/s' : ''}`;
-  }
-
-  // // Mount specific methods
-  get mountDestination(): string {
-    return this.remoteSettings?.['mountConfig']?.['dest'] || 'Need to set!';
-  }
-
-  get mountSource(): string {
-    return this.remoteSettings?.['mountConfig']?.['source'] || 'Need to set!';
-  }
-
-  // // Remote Settings Helpers
-  setupRemoteSettingsSections(): void {
-    if (this.isOperationType()) {
-      this.remoteSettingsSections = [
-        {
-          key: this.operationType ?? '',
-          title: `${this.operationType ?? ''} Options`,
-          icon: this.operationType ?? '',
-        },
-        { key: 'filter', title: 'Filter Options', icon: 'filter' },
-      ];
-    } else {
-      this.remoteSettingsSections = [
-        { key: 'mount', title: 'Mount Options', icon: 'mount' },
-        { key: 'vfs', title: 'VFS Options', icon: 'vfs' },
-      ];
-    }
-  }
-
-  // // Configuration builders for child components
+  // Updated configuration builders
   getOperationControlConfig(): OperationControlConfig {
-    const isActive =
-      this.operationType === 'sync'
-        ? !!this.selectedRemote?.syncState?.isOnSync
-        : !!this.selectedRemote?.copyState?.isOnCopy;
-
-    const isError =
-      this.operationType === 'sync'
-        ? this.selectedRemote?.syncState?.isOnSync === 'error'
-        : this.selectedRemote?.copyState?.isOnCopy === 'error';
+    const currentOp = this.getCurrentOperationConfig();
 
     return {
-      operationType: this.operationType ?? 'mount',
-      isActive,
-      isError,
+      operationType: this.mainOperationType,
+      subOperationType: this.isSyncType() ? this.selectedSyncOperation : undefined,
+      isActive: this.getOperationActiveState(),
+      isError: this.getOperationErrorState(),
       isLoading: this.isLoading,
-      operationColor: this.operationColor,
-      operationClass: this.operationClass,
+      operationColor: currentOp?.color || 'primary',
+      operationClass: this.getOperationClass(),
       pathConfig: this.getPathDisplayConfig(),
-      primaryButtonLabel: `Start ${this.operationType}`,
-      secondaryButtonLabel: `Stop ${this.operationType}`,
-      primaryIcon: 'play',
+      primaryButtonLabel: `Start ${currentOp?.label || this.mainOperationType}`,
+      secondaryButtonLabel: `Stop ${currentOp?.label || this.mainOperationType}`,
+      primaryIcon: currentOp?.icon || 'play',
       secondaryIcon: 'stop',
       actionInProgress: this.actionInProgress?.toString(),
+      operationDescription: currentOp?.description,
     };
   }
 
@@ -275,11 +306,11 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
   getPathDisplayConfig(): PathDisplayConfig {
     return {
-      source: this.operationSource,
-      destination: this.operationDestination,
+      source: this.getOperationSource(),
+      destination: this.getOperationDestination(),
       showOpenButtons: true,
-      operationColor: this.operationColor,
-      isDestinationActive: true, // For operations, destination is always accessible
+      operationColor: this.getCurrentOperationColor(),
+      isDestinationActive: true,
     };
   }
 
@@ -297,9 +328,193 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     };
   }
 
+  // Updated settings sections
+  setupRemoteSettingsSections(): void {
+    if (this.isSyncType()) {
+      this.remoteSettingsSections = [
+        {
+          key: this.selectedSyncOperation,
+          title: `${this.getCurrentOperationConfig()?.label} Options`,
+          icon: this.getCurrentOperationConfig()?.icon || 'sync',
+        },
+        { key: 'filter', title: 'Filter Options', icon: 'filter' },
+      ];
+    } else {
+      // Mount type
+      this.remoteSettingsSections = [
+        { key: 'mount', title: 'Mount Options', icon: 'folder' },
+        { key: 'vfs', title: 'VFS Options', icon: 'vfs' },
+      ];
+    }
+  }
+
+  // Helper methods for operation state
+  getOperationActiveState(): boolean {
+    switch (this.mainOperationType) {
+      case 'sync':
+        return this.getSyncOperationState(this.selectedSyncOperation);
+      case 'mount':
+        return !!this.selectedRemote?.mountState?.mounted;
+      default:
+        return false;
+    }
+  }
+
+  getOperationErrorState(): boolean {
+    switch (this.mainOperationType) {
+      case 'sync':
+        return this.getSyncOperationErrorState(this.selectedSyncOperation);
+      case 'mount':
+        return this.selectedRemote?.mountState?.mounted === 'error';
+      default:
+        return false;
+    }
+  }
+
+  private getSyncOperationState(operation: SyncOperationType): boolean {
+    // You'll need to update your Remote interface to include states for each operation
+    switch (operation) {
+      case 'sync':
+        return !!this.selectedRemote?.syncState?.isOnSync;
+      case 'bisync':
+        return !!this.selectedRemote?.bisyncState?.isOnBisync;
+      case 'move':
+        return !!this.selectedRemote?.moveState?.isOnMove;
+      case 'copy':
+        return !!this.selectedRemote?.copyState?.isOnCopy;
+      default:
+        return false;
+    }
+  }
+
+  private getSyncOperationErrorState(operation: SyncOperationType): boolean {
+    switch (operation) {
+      case 'sync':
+        return this.selectedRemote?.syncState?.isOnSync === 'error';
+      case 'bisync':
+        return this.selectedRemote?.bisyncState?.isOnBisync === 'error';
+      case 'move':
+        return this.selectedRemote?.moveState?.isOnMove === 'error';
+      case 'copy':
+        return this.selectedRemote?.copyState?.isOnCopy === 'error';
+      default:
+        return false;
+    }
+  }
+
+  getCurrentOperationColor(): ThemePalette {
+    if (this.isSyncType()) {
+      return this.getCurrentOperationConfig()?.color || 'primary';
+    }
+    return this.mainOperationType === 'mount' ? 'accent' : 'primary';
+  }
+
+  private getOperationClass(): string {
+    if (this.isSyncType()) {
+      return `sync-${this.selectedSyncOperation}-operation`;
+    }
+    return `${this.mainOperationType}-operation`;
+  }
+
+  private getOperationSource(): string {
+    const configKey = this.isSyncType()
+      ? `${this.selectedSyncOperation}Config`
+      : `${this.mainOperationType}Config`;
+    return (this.remoteSettings?.[configKey]?.['source'] as string) || 'Need to set!';
+  }
+
+  private getOperationDestination(): string {
+    const configKey = this.isSyncType()
+      ? `${this.selectedSyncOperation}Config`
+      : `${this.mainOperationType}Config`;
+    return (this.remoteSettings?.[configKey]?.['dest'] as string) || 'Need to set!';
+  }
+
+  // Mount-specific getters (unchanged)
+  get mountDestination(): string {
+    return this.remoteSettings?.['mountConfig']?.['dest'] || 'Need to set!';
+  }
+
+  get mountSource(): string {
+    return this.remoteSettings?.['mountConfig']?.['source'] || 'Need to set!';
+  }
+
+  // Handle operation changes
+  private handleOperationChange(): void {
+    this.setupRemoteSettingsSections();
+    this.handleSelectedRemoteChange();
+
+    if (this.hasCharts()) {
+      setTimeout(() => {
+        this.initChartsIfNeeded();
+      }, 0);
+    } else {
+      this.destroyCharts();
+    }
+  }
+
+  // Tab change handler for main tabs
+  onMainTabChange(event: { index: number }): void {
+    // Handle main tab changes if needed
+    if (event.index === 0 && this.hasCharts()) {
+      setTimeout(() => {
+        this.initChartsIfNeeded();
+      }, 0);
+    }
+  }
+
+  ngOnInit(): void {
+    this.setupRemoteSettingsSections();
+  }
+
+  ngAfterViewInit(): void {
+    this.dataSource.sort = this.sort;
+    this.handleSelectedRemoteChange();
+    if (this.hasCharts()) {
+      setTimeout(() => {
+        this.initChartsIfNeeded();
+      }, 0);
+    }
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (
+      changes['mainOperationType'] ||
+      changes['selectedSyncOperation'] ||
+      changes['selectedRemote']
+    ) {
+      this.handleOperationChange();
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.cleanUp();
+  }
+
+  private getCurrentJobId(): number | undefined {
+    if (!this.isSyncType()) return undefined;
+
+    switch (this.selectedSyncOperation) {
+      case 'sync':
+        return this.selectedRemote?.syncState?.syncJobID;
+      case 'bisync':
+        return this.selectedRemote?.bisyncState?.bisyncJobID;
+      case 'move':
+        return this.selectedRemote?.moveState?.moveJobID;
+      case 'copy':
+        return this.selectedRemote?.copyState?.copyJobID;
+      default:
+        return undefined;
+    }
+  }
+
+  private isOperationActive(): boolean {
+    return this.getOperationActiveState();
+  }
+
   getJobInfoConfig(): JobInfoConfig {
     return {
-      operationType: this.operationType ?? 'mount',
+      operationType: this.mainOperationType ?? 'mount',
       jobId: this.currentJobId,
       startTime: this.jobStats.startTime ? new Date(this.jobStats.startTime) : undefined,
       lastOperationTime: this.lastSyncDate?.toLocaleString() || undefined,
@@ -315,7 +530,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
       settings,
       hasSettings: this.hasSettings(configKey),
       restrictMode: this.restrictMode,
-      buttonColor: this.isOperationType() ? 'primary' : 'accent',
+      buttonColor: this.mainOperationType === 'sync' ? 'primary' : 'accent',
       buttonLabel: 'Edit Settings',
       sensitiveKeys: SENSITIVE_KEYS,
     };
@@ -334,7 +549,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
         label: 'Speed',
       },
       {
-        value: this.formatTime(this.jobStats.eta),
+        value: this.FormatTimePipe.transform(this.jobStats.eta),
         label: 'ETA',
         isPrimary: true,
         progress: this.calculateEtaProgress(),
@@ -350,7 +565,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
         tooltip: this.jobStats.lastError ? `Last Error: ${this.jobStats.lastError}` : undefined,
       },
       {
-        value: this.formatTime(this.jobStats.elapsedTime),
+        value: this.FormatTimePipe.transform(this.jobStats.elapsedTime),
         label: 'Duration',
       },
     ];
@@ -364,24 +579,15 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     };
   }
 
-  // Add these new helper methods to the component
   private formatBytes(bytes: number, totalBytes: number): string {
     if (totalBytes > 0) {
-      return `${this.formatFileSize(bytes)} / ${this.formatFileSize(totalBytes)}`;
+      return `${this.FormatFileSizePipe.transform(bytes)} / ${this.FormatFileSizePipe.transform(totalBytes)}`;
     }
-    return this.formatFileSize(bytes);
+    return this.FormatFileSizePipe.transform(bytes);
   }
 
   private formatSpeed(speed: number): string {
-    return `${this.formatFileSize(speed)}/s`;
-  }
-
-  private formatFileSize(bytes: number): string {
-    if (bytes <= 0) return '0 B';
-
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 2 : 0)} ${units[i]}`;
+    return `${this.FormatFileSizePipe.transform(speed)}/s`;
   }
 
   private calculateEtaProgress(): number {
@@ -396,7 +602,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
       activeTransfers: this.activeTransfers,
       completedTransfers: this.recentCompletedTransfers,
       operationClass: this.operationClass,
-      operationColor: this.operationType === 'sync' ? 'primary' : 'accent',
+      operationColor: this.mainOperationType === 'sync' ? 'primary' : 'accent',
       remoteName: this.selectedRemote?.remoteSpecs?.name || '',
       showHistory: this.showTransferHistory && this.recentCompletedTransfers.length > 0,
     };
@@ -404,46 +610,6 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
   onEditSettings(event: { section: string; settings: RemoteSettings }): void {
     this.triggerOpenRemoteConfig(event.section, event.settings);
-  }
-
-  ngOnInit(): void {
-    this.setupRemoteSettingsSections();
-  }
-
-  ngAfterViewInit(): void {
-    this.dataSource.sort = this.sort;
-    this.handleSelectedRemoteChange();
-    // Initialize charts after view is stable if operation type requires charts
-    if (this.isOperationType()) {
-      // Use setTimeout to ensure the DOM is fully rendered
-      setTimeout(() => {
-        this.initChartsIfNeeded();
-      }, 0);
-    }
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['operationType'] || changes['selectedRemote']) {
-      this.setupRemoteSettingsSections();
-      this.handleSelectedRemoteChange();
-
-      // Handle chart lifecycle based on operation type changes
-      if (changes['operationType']) {
-        if (this.isOperationType()) {
-          // Initialize charts if switching to sync/copy
-          setTimeout(() => {
-            this.initChartsIfNeeded();
-          }, 0);
-        } else {
-          // Destroy charts if switching to mount
-          this.destroyCharts();
-        }
-      }
-    }
-  }
-
-  ngOnDestroy(): void {
-    this.cleanUp();
   }
 
   // Public methods
@@ -481,21 +647,23 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
   get operationDestination(): string {
     return (
-      (this.remoteSettings?.[`${this.operationType}Config`]?.['dest'] as string) || 'Need to set!'
+      (this.remoteSettings?.[`${this.mainOperationType}Config`]?.['dest'] as string) ||
+      'Need to set!'
     );
   }
 
   get operationColor(): ThemePalette {
-    return this.operationType === 'sync' ? 'primary' : 'accent';
+    return this.mainOperationType === 'sync' ? 'primary' : 'accent';
   }
 
   get operationClass(): string {
-    return `${this.operationType}-operation`;
+    return `${this.mainOperationType}-operation`;
   }
 
   get operationSource(): string {
     return (
-      (this.remoteSettings?.[`${this.operationType}Config`]?.['source'] as string) || 'Need to set!'
+      (this.remoteSettings?.[`${this.mainOperationType}Config`]?.['source'] as string) ||
+      'Need to set!'
     );
   }
 
@@ -535,19 +703,6 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
   isObjectButNotArray(value: unknown): boolean {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
-  }
-
-  // Private methods
-  private isOperationActive(): boolean {
-    return this.operationType === 'sync'
-      ? !!this.selectedRemote?.syncState?.isOnSync
-      : !!this.selectedRemote?.copyState?.isOnCopy;
-  }
-
-  private getCurrentJobId(): number | undefined {
-    return this.operationType === 'sync'
-      ? this.selectedRemote?.syncState?.syncJobID
-      : this.selectedRemote?.copyState?.copyJobID;
   }
 
   private handleSelectedRemoteChange(): void {
@@ -874,7 +1029,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
   private updateRemoteStatusOnError(job: any): void {
     if (job.stats.fatalError && this.selectedRemote) {
-      const stateKey = this.operationType === 'sync' ? 'syncState' : 'copyState';
+      const stateKey = this.mainOperationType === 'sync' ? 'syncState' : 'copyState';
 
       this.selectedRemote = {
         ...this.selectedRemote,
@@ -933,7 +1088,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
   onTabChange(event: { index: number }): void {
     // When monitoring tab is selected (index 0), initialize charts if needed
-    if (event.index === 0 && this.isOperationType()) {
+    if (event.index === 0 && this.mainOperationType === 'sync') {
       setTimeout(() => {
         this.initChartsIfNeeded();
       }, 0);

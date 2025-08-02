@@ -5,6 +5,18 @@
 ### Added
 - Native console support for the native terminal. You can now open the remote configuration in the native terminal by clicking the "Remote Terminal" button in the top left add button. It will use the preferred terminal app from the settings. Also, you can set the preferred terminal app in the settings.
 
+- Implemented the `bisync` and `move` operations for remotes.
+  - Bisync: This operation synchronizes two remotes in both directions, ensuring that changes made in either remote are reflected in the other.
+  - Move: This operation moves files from one remote to another, effectively transferring data without leaving duplicates.
+- Added other configs for operations. (e.g. mountType, createEmptySrcDirs etc.)
+
+### Changed
+- Rclone configuration file path is now set with api call instead of directly accessing the state.
+
+### Need Fix
+- After engine restart, need the apply the startup settings again. (e.g. config file path, bw limit, etc.)
+- Remote updates not working properly. When you update a some settings to default, it does not update the remote. I know whats the problem.
+
 ## [beta-0.1.2] - 2025-07-15
 ### Added
 - General tab added.

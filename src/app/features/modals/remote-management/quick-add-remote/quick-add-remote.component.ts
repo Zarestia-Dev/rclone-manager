@@ -258,6 +258,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         dest: mountPath || '',
         source: remoteName + ':/',
         autoStart: autoMount || false,
+        type: 'mount',
       },
       copyConfig: {
         autoStart: autoCopy || false,
@@ -270,6 +271,16 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         dest: syncDest || '',
       },
       filterConfig: {},
+      moveConfig: {
+        autoStart: false,
+        source: remoteName + ':/',
+        dest: '',
+      },
+      bisyncConfig: {
+        autoStart: false,
+        source: remoteName + ':/',
+        dest: '',
+      },
     };
 
     await this.appSettingsService.saveRemoteSettings(remoteName, remoteSettings);

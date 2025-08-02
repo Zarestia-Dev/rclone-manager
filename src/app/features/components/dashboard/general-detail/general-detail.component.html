@@ -18,43 +18,63 @@
       <!-- Status Indicators -->
       <div class="remote-status-indicators">
         <div
-          [ngClass]="[
-            'status-indicator',
-            'mount',
-            selectedRemote.mountState?.mounted ? 'active' : 'inactive',
-          ]"
+          class="status-chip mount"
+          [class.active]="selectedRemote.mountState?.mounted"
+          [matTooltip]="selectedRemote.mountState?.mounted ? 'Mounted' : 'Not Mounted'"
           aria-label="Mount status"
         >
-          <mat-icon svgIcon="mount"></mat-icon>
-          <span class="status-text">{{
-            selectedRemote.mountState?.mounted ? 'Mounted' : 'Not Mounted'
-          }}</span>
+          <div class="status-dot">
+            <mat-icon svgIcon="mount"></mat-icon>
+          </div>
+          <span class="status-label">Mount</span>
         </div>
+
         <div
-          [ngClass]="[
-            'status-indicator',
-            'sync',
-            selectedRemote.syncState?.isOnSync ? 'active' : 'inactive',
-          ]"
+          class="status-chip sync"
+          [class.active]="selectedRemote.syncState?.isOnSync"
+          [matTooltip]="selectedRemote.syncState?.isOnSync ? 'Syncing' : 'Idle'"
           aria-label="Sync status"
         >
-          <mat-icon svgIcon="sync"></mat-icon>
-          <span class="status-text">{{
-            selectedRemote.syncState?.isOnSync ? 'Syncing' : 'Idle'
-          }}</span>
+          <div class="status-dot">
+            <mat-icon svgIcon="sync"></mat-icon>
+          </div>
+          <span class="status-label">Sync</span>
         </div>
+
         <div
-          [ngClass]="[
-            'status-indicator',
-            'copy',
-            selectedRemote.copyState?.isOnCopy ? 'active' : 'inactive',
-          ]"
+          class="status-chip copy"
+          [class.active]="selectedRemote.copyState?.isOnCopy"
+          [matTooltip]="selectedRemote.copyState?.isOnCopy ? 'Copying' : 'Idle'"
           aria-label="Copy status"
         >
-          <mat-icon svgIcon="copy"></mat-icon>
-          <span class="status-text">{{
-            selectedRemote.copyState?.isOnCopy ? 'Copying' : 'Idle'
-          }}</span>
+          <div class="status-dot">
+            <mat-icon svgIcon="copy"></mat-icon>
+          </div>
+          <span class="status-label">Copy</span>
+        </div>
+
+        <div
+          class="status-chip move"
+          [class.active]="selectedRemote.moveState?.isOnMove"
+          [matTooltip]="selectedRemote.moveState?.isOnMove ? 'Moving' : 'Idle'"
+          aria-label="Move status"
+        >
+          <div class="status-dot">
+            <mat-icon svgIcon="move"></mat-icon>
+          </div>
+          <span class="status-label">Move</span>
+        </div>
+
+        <div
+          class="status-chip bisync"
+          [class.active]="selectedRemote.bisyncState?.isOnBisync"
+          [matTooltip]="selectedRemote.bisyncState?.isOnBisync ? 'Bisync Active' : 'Idle'"
+          aria-label="Bisync status"
+        >
+          <div class="status-dot">
+            <mat-icon svgIcon="right-left"></mat-icon>
+          </div>
+          <span class="status-label">Bisync</span>
         </div>
       </div>
     </div>

@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TransferFile } from '../../../shared/components/types';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 
 @Component({
   selector: 'app-active-transfers-table',
@@ -62,8 +63,8 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
                   <div class="progress-header">
                     <span class="progress-text">{{ transfer.percentage }}%</span>
                     <span class="size-text"
-                      >{{ formatFileSize(transfer.bytes) }} /
-                      {{ formatFileSize(transfer.size) }}</span
+                      >{{ FormatFileSizePipe.transform(transfer.bytes) }} /
+                      {{ FormatFileSizePipe.transform(transfer.size) }}</span
                     >
                   </div>
                   <mat-progress-bar
@@ -83,7 +84,9 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
               <td mat-cell *matCellDef="let transfer" class="speed-cell">
                 <div class="speed-info">
                   @if (transfer.speed > 0) {
-                    <span class="speed-value">{{ formatFileSize(transfer.speed) }}/s</span>
+                    <span class="speed-value"
+                      >{{ FormatFileSizePipe.transform(transfer.speed) }}/s</span
+                    >
                     <div class="speed-indicator" [ngClass]="getSpeedClass(transfer.speed)"></div>
                   } @else {
                     <span class="speed-idle">-</span>
@@ -132,7 +135,9 @@ export class ActiveTransfersTableComponent {
   @Input() operationClass = '';
   @Input() trackBy?: (index: number, transfer: TransferFile) => string;
 
-  defaultTrackBy(index: number, transfer: TransferFile): string {
+  FormatFileSizePipe = new FormatFileSizePipe();
+
+  defaultTrackBy(_index: number, transfer: TransferFile): string {
     return transfer.name + transfer.percentage;
   }
 
@@ -152,13 +157,6 @@ export class ActiveTransfersTableComponent {
     if (speed > 10 * 1024 * 1024) return 'speed-fast'; // > 10MB/s
     if (speed > 1 * 1024 * 1024) return 'speed-medium'; // > 1MB/s
     return 'speed-slow';
-  }
-
-  formatFileSize(bytes: number): string {
-    if (bytes <= 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 2 : 0)} ${units[i]}`;
   }
 
   formatTime(seconds: number): string {

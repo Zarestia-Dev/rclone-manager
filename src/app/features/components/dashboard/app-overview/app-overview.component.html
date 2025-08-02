@@ -30,6 +30,17 @@
         (openInFiles)="triggerOpenInFiles($event)"
         (primaryAction)="triggerPrimaryAction($event)"
         (secondaryAction)="triggerSecondaryAction($event)"
+        (mountAction)="onMountAction($event)"
+        (unmountAction)="onUnmountAction($event)"
+        (syncAction)="onSyncAction($event)"
+        (copyAction)="onCopyAction($event)"
+        (moveAction)="onMoveAction($event)"
+        (bisyncAction)="onBisyncAction($event)"
+        (stopSyncAction)="onStopSyncAction($event)"
+        (stopCopyAction)="onStopCopyAction($event)"
+        (stopMoveAction)="onStopMoveAction($event)"
+        (stopBisyncAction)="onStopBisyncAction($event)"
+        (configurePrimaryActions)="onConfigurePrimaryActions($event)"
       >
       </app-remotes-panel>
     }
@@ -50,6 +61,17 @@
         (openInFiles)="triggerOpenInFiles($event)"
         (primaryAction)="triggerPrimaryAction($event)"
         (secondaryAction)="triggerSecondaryAction($event)"
+        (mountAction)="onMountAction($event)"
+        (unmountAction)="onUnmountAction($event)"
+        (syncAction)="onSyncAction($event)"
+        (copyAction)="onCopyAction($event)"
+        (moveAction)="onMoveAction($event)"
+        (bisyncAction)="onBisyncAction($event)"
+        (stopSyncAction)="onStopSyncAction($event)"
+        (stopCopyAction)="onStopCopyAction($event)"
+        (stopMoveAction)="onStopMoveAction($event)"
+        (stopBisyncAction)="onStopBisyncAction($event)"
+        (configurePrimaryActions)="onConfigurePrimaryActions($event)"
       >
       </app-remotes-panel>
     }
@@ -57,7 +79,7 @@
     <!-- Error Remotes Panel -->
     @if (errorCount > 0) {
       <app-remotes-panel
-        [title]="'Remotes with Problems'"
+        [title]="getErrorTitle()"
         [icon]="'circle-exclamation'"
         [remotes]="errorRemotes"
         [variant]="'error'"
@@ -70,6 +92,17 @@
         (openInFiles)="triggerOpenInFiles($event)"
         (primaryAction)="triggerPrimaryAction($event)"
         (secondaryAction)="triggerSecondaryAction($event)"
+        (mountAction)="onMountAction($event)"
+        (unmountAction)="onUnmountAction($event)"
+        (syncAction)="onSyncAction($event)"
+        (copyAction)="onCopyAction($event)"
+        (moveAction)="onMoveAction($event)"
+        (bisyncAction)="onBisyncAction($event)"
+        (stopSyncAction)="onStopSyncAction($event)"
+        (stopCopyAction)="onStopCopyAction($event)"
+        (stopMoveAction)="onStopMoveAction($event)"
+        (stopBisyncAction)="onStopBisyncAction($event)"
+        (configurePrimaryActions)="onConfigurePrimaryActions($event)"
       >
       </app-remotes-panel>
     }

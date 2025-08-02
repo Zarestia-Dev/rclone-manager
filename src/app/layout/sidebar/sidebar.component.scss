@@ -96,17 +96,31 @@
       flex-direction: column;
       gap: var(--space-sm);
 
-      // Remote Name
-      h4 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--app-text-color);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 100%;
-        letter-spacing: -0.1px;
+      // Remote Header with Status
+      .remote-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-xs);
+
+        h4 {
+          margin: 0;
+          font-size: 1.1rem;
+          font-weight: 600;
+          color: var(--app-text-color);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          flex: 1;
+          letter-spacing: -0.1px;
+        }
+
+        .status-indicators {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
+        }
       }
 
       // Remote Type
@@ -119,45 +133,67 @@
         font-weight: 500;
       }
 
-      // Status Section
-      .remote-status {
+      // Modern Status Dots
+      .status-dot {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: var(--space-xs);
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        transition: all var(--transition-fast);
+        background: rgba(var(--app-text-color-rgb), 0.06);
+        border: 1.5px solid rgba(var(--app-text-color-rgb), 0.12);
 
-        .status-badge {
-          display: flex;
-          align-items: center;
-          padding: 6px 10px;
-          border-radius: var(--border-radius);
-          transition: var(--transition-fast);
-          border: 1px solid rgba(var(--app-text-color-rgb), var(--status-inactive-opacity));
+        mat-icon {
+          width: 12px;
+          height: 12px;
+          font-size: 12px;
           color: var(--secondary-text-color);
-          background: rgba(var(--app-text-color-rgb), var(--status-inactive-opacity));
+          transition: color var(--transition-fast);
+        }
 
-          // Mount Status
-          &.mount {
-            &.active {
+        // Hover effect
+        &:hover {
+          background: rgba(var(--app-text-color-rgb), 0.1);
+          border-color: rgba(var(--app-text-color-rgb), 0.2);
+          transform: scale(1.08);
+        }
+
+        // Mount Status
+        &.mount {
+          &.active {
+            background: rgba(var(--accent-color-rgb), 0.12);
+            border-color: rgba(var(--accent-color-rgb), 0.4);
+            box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.15);
+
+            mat-icon {
               color: var(--accent-color);
-              background: rgba(var(--accent-color-rgb), var(--status-active-opacity));
-              border: 1px solid rgba(var(--accent-color-rgb), var(--status-active-opacity));
+            }
+
+            &:hover {
+              background: rgba(var(--accent-color-rgb), 0.18);
+              box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.25);
+              transform: scale(1.12);
             }
           }
+        }
 
-          // Sync Status
-          &.sync {
-            &.active {
+        // Sync Operations Status
+        &.sync-operations {
+          &.active {
+            background: rgba(var(--primary-color-rgb), 0.12);
+            border-color: rgba(var(--primary-color-rgb), 0.4);
+            box-shadow: 0 0 0 1px rgba(var(--primary-color-rgb), 0.15);
+
+            mat-icon {
               color: var(--primary-color);
-              background: rgba(var(--primary-color-rgb), var(--status-active-opacity));
             }
-          }
 
-          // Copy Status
-          &.copy {
-            &.active {
-              color: var(--yellow);
-              background: rgba(var(--yellow-rgb), var(--status-active-opacity));
+            &:hover {
+              background: rgba(var(--primary-color-rgb), 0.18);
+              box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.25);
+              transform: scale(1.12);
             }
           }
         }
@@ -180,6 +216,7 @@
     mat-icon {
       width: 48px;
       height: 48px;
+      font-size: 48px;
       margin-bottom: 16px;
       opacity: 0.5;
     }

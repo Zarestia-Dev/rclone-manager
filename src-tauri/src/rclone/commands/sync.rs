@@ -272,44 +272,39 @@ pub async fn start_bisync(
     params: BisyncParams,
     state: State<'_, RcloneState>,
 ) -> Result<u64, String> {
-    let BisyncParams {
-        remote_name,
-        source,
-        dest,
-        bisync_options,
-        filter_options,
-        resync,
-    } = params;
     log_operation(
         LogLevel::Info,
-        Some(remote_name.clone()),
+        Some(params.remote_name.clone()),
         Some("Bisync operation".to_string()),
-        format!("Starting bisync between {source} and {dest}"),
+        format!(
+            "Starting bisync between {} and {}",
+            params.source, params.dest
+        ),
         Some(json!({
-            "path1": source,
-            "path2": dest,
-            "bisync_options": bisync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
-            "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
-            "resync": resync
+            "path1": params.source,
+            "path2": params.dest,
+            "bisync_options": params.bisync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
+            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
+            "resync": params.resync
         })),
     )
     .await;
 
     // Construct the JSON body
     let mut body = Map::new();
-    body.insert("path1".to_string(), Value::String(source.clone()));
-    body.insert("path2".to_string(), Value::String(dest.clone()));
+    body.insert("path1".to_string(), Value::String(params.source.clone()));
+    body.insert("path2".to_string(), Value::String(params.dest.clone()));
     body.insert("_async".to_string(), Value::Bool(true));
-    body.insert("resync".to_string(), Value::Bool(resync));
+    body.insert("resync".to_string(), Value::Bool(params.resync));
 
-    if let Some(opts) = bisync_options {
+    if let Some(opts) = params.bisync_options {
         body.insert(
             "_config".to_string(),
             Value::Object(opts.into_iter().collect()),
         );
     }
 
-    if let Some(filters) = filter_options {
+    if let Some(filters) = params.filter_options {
         body.insert(
             "_filter".to_string(),
             Value::Object(filters.into_iter().collect()),
@@ -335,7 +330,7 @@ pub async fn start_bisync(
         let error = format!("HTTP {status}: {body_text}");
         log_operation(
             LogLevel::Error,
-            Some(remote_name.clone()),
+            Some(params.remote_name.clone()),
             Some("Bisync operation".to_string()),
             "Failed to start bisync job".to_string(),
             Some(json!({"response": body_text})),
@@ -349,7 +344,7 @@ pub async fn start_bisync(
 
     log_operation(
         LogLevel::Info,
-        Some(remote_name.clone()),
+        Some(params.remote_name.clone()),
         Some("Bisync operation".to_string()),
         format!("Bisync job started with ID {}", job.jobid),
         Some(json!({"jobid": job.jobid})),
@@ -361,9 +356,9 @@ pub async fn start_bisync(
         .add_job(JobInfo {
             jobid,
             job_type: "bisync".to_string(),
-            remote_name: remote_name.clone(),
-            source: source.clone(),
-            destination: dest.clone(),
+            remote_name: params.remote_name.clone(),
+            source: params.source.clone(),
+            destination: params.dest.clone(),
             start_time: Utc::now(),
             status: JobStatus::Running,
             stats: None,
@@ -374,7 +369,7 @@ pub async fn start_bisync(
     // Start monitoring the job
     let app_clone = app.clone();
     let client = state.client.clone();
-    let remote_name_clone = remote_name.clone();
+    let remote_name_clone = params.remote_name.clone();
     tauri::async_runtime::spawn(async move {
         let _ = monitor_job(
             remote_name_clone,
@@ -386,6 +381,113 @@ pub async fn start_bisync(
         .await;
     });
 
+    app.emit("job_cache_changed", jobid)
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    Ok(job.jobid)
+}
+
+/// Start a move operation
+#[tauri::command]
+pub async fn start_move(
+    app: AppHandle,
+    remote_name: String,
+    source: String,
+    dest: String,
+    move_options: Option<HashMap<String, Value>>,
+    filter_options: Option<HashMap<String, Value>>,
+    state: State<'_, RcloneState>,
+) -> Result<u64, String> {
+    log_operation(
+        LogLevel::Info,
+        Some(remote_name.clone()),
+        Some("Move operation".to_string()),
+        format!("Starting move from {source} to {dest}"),
+        Some(json!({
+            "source": source,
+            "destination": dest,
+            "move_options": move_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
+            "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
+        })),
+    )
+    .await;
+    let mut body = Map::new();
+    body.insert("srcFs".to_string(), Value::String(source.clone()));
+    body.insert("dstFs".to_string(), Value::String(dest.clone()));
+    body.insert("_async".to_string(), Value::Bool(true));
+    if let Some(opts) = move_options {
+        body.insert(
+            "_config".to_string(),
+            Value::Object(opts.into_iter().collect()),
+        );
+    }
+
+    if let Some(filters) = filter_options {
+        body.insert(
+            "_filter".to_string(),
+            Value::Object(filters.into_iter().collect()),
+        );
+    }
+    debug!("Move request body: {body:#?}");
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, sync::MOVE);
+    let response = state
+        .client
+        .post(&url)
+        .json(&Value::Object(body)) // send JSON body
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+    if !status.is_success() {
+        let error = format!("HTTP {status}: {body}");
+        log_operation(
+            LogLevel::Error,
+            Some(remote_name.clone()),
+            Some("Move operation".to_string()),
+            "Failed to start move job".to_string(),
+            Some(json!({"response": body})),
+        )
+        .await;
+        return Err(error);
+    }
+    let job: JobResponse =
+        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
+    let jobid = job.jobid;
+    JOB_CACHE
+        .add_job(JobInfo {
+            jobid,
+            job_type: "move".to_string(),
+            remote_name: remote_name.clone(),
+            source: source.clone(),
+            destination: dest.clone(),
+            start_time: Utc::now(),
+            status: JobStatus::Running,
+            stats: None,
+            group: format!("job/{jobid}"),
+        })
+        .await;
+    // Start monitoring the job
+    let app_clone = app.clone();
+    let client = state.client.clone();
+    let remote_name_clone = remote_name.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = monitor_job(
+            remote_name_clone,
+            "Move operation",
+            jobid,
+            app_clone,
+            client,
+        )
+        .await;
+    });
+    log_operation(
+        LogLevel::Info,
+        Some(remote_name.clone()),
+        Some("Move operation".to_string()),
+        format!("Move job started with ID {jobid}"),
+        Some(json!({"jobid": jobid})),
+    )
+    .await;
     app.emit("job_cache_changed", jobid)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
     Ok(job.jobid)

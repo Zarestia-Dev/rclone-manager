@@ -1,15 +1,27 @@
-export type AppTab = 'mount' | 'sync' | 'copy' | 'general';
-export type JobType = 'sync' | 'copy' | 'move' | 'check';
+export type AppTab = 'mount' | 'sync' | 'files' | 'general';
+export type JobType = 'sync' | 'copy' | 'move' | 'bisync' | 'check';
+export type UsePath = 'mount' | 'bisync' | 'move' | 'copy' | 'sync';
 export type JobStatus = 'Running' | 'Completed' | 'Failed' | 'Stopped';
 export type RemoteAction =
   | 'mount'
   | 'unmount'
   | 'sync'
   | 'copy'
+  | 'move'
+  | 'bisync'
   | 'stop'
   | 'open'
   | 'delete'
   | null;
+
+export type SyncOperationType = 'sync' | 'copy' | 'move' | 'bisync';
+
+export interface RemotePrimaryActions {
+  remoteName: string;
+  actions: SyncOperationType[];
+  availableActions?: SyncOperationType[];
+  currentDefaults?: SyncOperationType[];
+}
 
 export interface RemoteSpecs {
   name: string;
@@ -124,6 +136,16 @@ export interface Remote {
     copyJobID?: number;
     isLocal?: boolean;
   };
+  bisyncState?: {
+    isOnBisync?: boolean | 'error';
+    bisyncJobID?: number;
+    isLocal?: boolean;
+  };
+  moveState?: {
+    isOnMove?: boolean | 'error';
+    moveJobID?: number;
+    isLocal?: boolean;
+  };
 }
 
 export type RemoteSettings = Record<string, Record<string, any>>;
@@ -183,9 +205,23 @@ export interface ConfirmDialogData {
   cancelText?: string; // Optional: Defaults to "No"
 }
 
+export enum ExportType {
+  All = 'All',
+  Settings = 'Settings',
+  Remotes = 'Remotes',
+  RemoteConfigs = 'RemoteConfigs',
+  SpecificRemote = 'SpecificRemote',
+}
+
 export interface ExportModalData {
   remoteName?: string; // Optional remote name to pre-select
-  defaultExportType?: string; // Optional default export type
+  defaultExportType?: ExportType; // Optional default export type
+}
+
+export interface ExportOption {
+  readonly value: ExportType;
+  readonly label: string;
+  readonly description: string;
 }
 
 export interface LogContext {
