@@ -1,14 +1,15 @@
 use log::{error, info, warn};
 use std::{process::Command, time::Duration};
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 
 use crate::{
+    core::security::{detect_password_error, get_password_error_message, CredentialStore, EnvironmentManager},
     rclone::state::ENGINE_STATE,
     utils::{
         process::process_manager::{
             get_child_pid, kill_all_rclone_processes, kill_process_by_pid, kill_processes_on_port,
         },
-        rclone::endpoints::{EndpointHelper, core},
+        rclone::endpoints::{core, EndpointHelper},
         types::all_types::RcApiEngine,
     },
 };
@@ -20,9 +21,22 @@ impl RcApiEngine {
 
         let mut engine_app = Command::new(&self.rclone_path);
 
-        if let Some(config_path) = self.get_config_path(app) {
-            engine_app.arg("--config").arg(config_path);
+        // Check if we have a stored password and set it as environment variable
+        let credential_store = CredentialStore::new();
+        if let Ok(password) = credential_store.get_config_password() {
+            info!("🔑 Using stored rclone config password");
+            EnvironmentManager::set_config_password_env(&password);
+        } else {
+            info!("ℹ️ No stored password found, rclone will prompt if needed");
+            // Emit event to UI that password might be needed
+            let _ = app.emit("rclone_password_required", serde_json::json!({
+                "message": "Rclone configuration password may be required"
+            }));
         }
+
+        // if let Some(config_path) = self.get_config_path(app) {
+        //     engine_app.arg("--config").arg(config_path);
+        // }
 
         engine_app.args([
             "rcd",
@@ -30,6 +44,12 @@ impl RcApiEngine {
             "--rc-serve",
             &format!("--rc-addr=127.0.0.1:{}", self.current_api_port),
         ]);
+
+        // Set all rclone environment variables
+        let env_vars = EnvironmentManager::get_rclone_env_vars();
+        for (key, value) in env_vars {
+            engine_app.env(key, value);
+        }
 
         // This is a workaround for Windows to avoid showing a console window
         // when starting the Rclone process.
@@ -43,10 +63,27 @@ impl RcApiEngine {
             engine_app.creation_flags(0x08000000 | 0x00200000);
         }
 
-        engine_app.spawn().map_err(|e| {
-            error!("❌ Failed to spawn Rclone process: {e}");
-            format!("Failed to spawn Rclone process: {e}")
-        })
+        match engine_app.spawn() {
+            Ok(child) => {
+                info!("✅ Rclone process spawned successfully");
+                Ok(child)
+            }
+            Err(e) => {
+                error!("❌ Failed to spawn Rclone process: {e}");
+                
+                // Check if the error might be password-related
+                let error_str = e.to_string();
+                if let Some(password_error) = detect_password_error(&error_str) {
+                    let message = get_password_error_message(&password_error);
+                    let _ = app.emit("rclone_password_error", serde_json::json!({
+                        "error_type": password_error,
+                        "message": message
+                    }));
+                }
+                
+                Err(format!("Failed to spawn Rclone process: {e}"))
+            }
+        }
     }
 
     pub fn kill_process(&mut self) -> Result<(), String> {

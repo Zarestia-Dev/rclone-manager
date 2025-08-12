@@ -23,6 +23,7 @@ pub async fn start_sync(
     remote_name: String,
     source: String,
     dest: String,
+    create_empty_src_dirs: bool,
     sync_options: Option<HashMap<String, Value>>,
     filter_options: Option<HashMap<String, Value>>,
     state: State<'_, RcloneState>,
@@ -35,6 +36,7 @@ pub async fn start_sync(
         Some(json!({
             "source": source,
             "destination": dest,
+            "create_empty_src_dirs": create_empty_src_dirs,
             "sync_options": sync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
             "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
         })),
@@ -45,6 +47,7 @@ pub async fn start_sync(
     let mut body = Map::new();
     body.insert("srcFs".to_string(), Value::String(source.clone()));
     body.insert("dstFs".to_string(), Value::String(dest.clone()));
+    body.insert("createEmptySrcDirs".to_string(), Value::Bool(create_empty_src_dirs));
     body.insert("_async".to_string(), Value::Bool(true));
 
     if let Some(opts) = sync_options {
@@ -143,6 +146,7 @@ pub async fn start_copy(
     remote_name: String,
     source: String,
     dest: String,
+    create_empty_src_dirs: bool,
     copy_options: Option<HashMap<String, Value>>,
     filter_options: Option<HashMap<String, Value>>,
     state: State<'_, RcloneState>,
@@ -155,6 +159,7 @@ pub async fn start_copy(
         Some(json!({
             "source": source,
             "destination": dest,
+            "create_empty_src_dirs": create_empty_src_dirs,
             "copy_options": copy_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
             "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
         })),
@@ -164,6 +169,10 @@ pub async fn start_copy(
     let mut body = Map::new();
     body.insert("srcFs".to_string(), Value::String(source.clone()));
     body.insert("dstFs".to_string(), Value::String(dest.clone()));
+    body.insert(
+        "createEmptySrcDirs".to_string(),
+        Value::Bool(create_empty_src_dirs),
+    );
     body.insert("_async".to_string(), Value::Bool(true));
 
     if let Some(opts) = copy_options {
@@ -393,6 +402,8 @@ pub async fn start_move(
     remote_name: String,
     source: String,
     dest: String,
+    create_empty_src_dirs: bool,
+    delete_empty_src_dirs: bool,
     move_options: Option<HashMap<String, Value>>,
     filter_options: Option<HashMap<String, Value>>,
     state: State<'_, RcloneState>,
@@ -413,6 +424,14 @@ pub async fn start_move(
     let mut body = Map::new();
     body.insert("srcFs".to_string(), Value::String(source.clone()));
     body.insert("dstFs".to_string(), Value::String(dest.clone()));
+    body.insert(
+        "createEmptySrcDirs".to_string(),
+        Value::Bool(create_empty_src_dirs),
+    );
+    body.insert(
+        "deleteEmptySrcDirs".to_string(),
+        Value::Bool(delete_empty_src_dirs),
+    );
     body.insert("_async".to_string(), Value::Bool(true));
     if let Some(opts) = move_options {
         body.insert(

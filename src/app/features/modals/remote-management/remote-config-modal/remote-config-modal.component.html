@@ -50,6 +50,7 @@
             [dynamicFlagFields]="dynamicFlagFields[step]"
             [selectedOptions]="selectedOptions[step]"
             [isDisabled]="isAuthInProgress"
+            [mountTypes]="mountTypes"
             (optionToggled)="toggleOption(step, $event)"
             (jsonValidated)="validateJson(step)"
             (jsonReset)="resetJson(step)"

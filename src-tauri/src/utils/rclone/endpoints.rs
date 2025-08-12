@@ -49,7 +49,7 @@ pub mod mount {
     pub const UNMOUNT: &str = "mount/unmount";
     pub const UNMOUNTALL: &str = "mount/unmountall";
     pub const LISTMOUNTS: &str = "mount/listmounts";
-    // pub const TYPES: &str = "mount/types";
+    pub const TYPES: &str = "mount/types";
 }
 
 /// File operations endpoints

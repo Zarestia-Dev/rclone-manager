@@ -22,6 +22,8 @@ import { AppSettingsService } from '@app/services';
 import { SystemInfoService } from '@app/services';
 import { InstallationService } from '@app/services';
 import { EventListenersService } from '@app/services';
+import { RclonePasswordService } from '@app/services';
+import { AutoPasswordDetectionService } from '@app/services';
 
 @Component({
   selector: 'app-root',
@@ -47,8 +49,10 @@ export class AppComponent implements OnInit, OnDestroy {
   private installationService = inject(InstallationService);
   public uiStateService = inject(UiStateService);
   public appSettingsService = inject(AppSettingsService);
-  private systemInfoService = inject(SystemInfoService);
+  // private systemInfoService = inject(SystemInfoService);
   private eventListenersService = inject(EventListenersService);
+  private rclonePasswordService = inject(RclonePasswordService);
+  // private autoPasswordDetection = inject(AutoPasswordDetectionService);
 
   // Subscription management
   private destroy$ = new Subject<void>();
@@ -94,6 +98,8 @@ export class AppComponent implements OnInit, OnDestroy {
       if (this.completedOnboarding) {
         await this.checkMountPluginStatus();
         this.setupErrorListeners();
+        // Initialize password management
+        await this.rclonePasswordService.initializePassword();
       }
     } catch (error) {
       console.error('Error checking onboarding status:', error);

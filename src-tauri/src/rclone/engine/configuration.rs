@@ -1,6 +1,5 @@
 use log::{error, info, warn};
-use std::path::PathBuf;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter};
 
 use crate::{
     core::check_binaries::{is_rclone_available, read_rclone_path},
@@ -8,17 +7,17 @@ use crate::{
 };
 
 impl RcApiEngine {
-    pub fn get_config_path(&self, app: &AppHandle) -> Option<PathBuf> {
-        let app_data_dir = app.path().app_data_dir().ok()?;
-        let rclone_config_dir = app_data_dir.join("rclone");
-        let rclone_config_file = rclone_config_dir.join("rclone.conf");
+    // pub fn get_config_path(&self, app: &AppHandle) -> Option<PathBuf> {
+    //     let app_data_dir = app.path().app_data_dir().ok()?;
+    //     let rclone_config_dir = app_data_dir.join("rclone");
+    //     let rclone_config_file = rclone_config_dir.join("rclone.conf");
 
-        if rclone_config_file.exists() {
-            Some(rclone_config_file)
-        } else {
-            None
-        }
-    }
+    //     if rclone_config_file.exists() {
+    //         Some(rclone_config_file)
+    //     } else {
+    //         None
+    //     }
+    // }
 
     pub fn update_port(&mut self, app: &AppHandle, new_port: u16) {
         info!(

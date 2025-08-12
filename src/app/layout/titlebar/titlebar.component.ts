@@ -26,6 +26,7 @@ import { FileSystemService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { UiStateService } from '@app/services';
 import { NotificationService } from 'src/app/shared/services/notification.service';
+import { PasswordManagerModalComponent } from 'src/app/features/modals/password-manager-modal/password-manager-modal.component';
 
 type Theme = 'light' | 'dark' | 'system';
 interface ModalSize {
@@ -250,6 +251,10 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
   openExportModal(): void {
     this.openModal(ExportModalComponent, STANDARD_MODAL_SIZE);
+  }
+
+  openPasswordManager(): void {
+    this.openModal(PasswordManagerModalComponent, STANDARD_MODAL_SIZE);
   }
 
   openAboutModal(): void {

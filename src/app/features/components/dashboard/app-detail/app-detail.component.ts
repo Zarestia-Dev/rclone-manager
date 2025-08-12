@@ -125,9 +125,9 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     remoteName: string;
     path: string;
   }>();
-  @Output() extendedData = new EventEmitter<{
-    resync: boolean;
-  }>();
+  // @Output() extendedData = new EventEmitter<{
+  //   resync: boolean;
+  // }>();
 
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild('speedChart') speedChartRef!: ElementRef;
@@ -203,9 +203,9 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     },
   ];
 
-  handleExtendedData($event: { resync: boolean }): void {
-    this.extendedData.emit($event);
-  }
+  // handleExtendedData($event: { resync: boolean }): void {
+  //   this.extendedData.emit($event);
+  // }
 
   isSyncType(): boolean {
     return this.mainOperationType === 'sync';

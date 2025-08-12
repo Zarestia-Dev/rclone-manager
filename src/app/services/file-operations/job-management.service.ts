@@ -19,7 +19,22 @@ export interface BisyncParams {
   dest: string;
   bisync_options: BisyncOptions | null;
   filter_options: FilterOptions | null;
-  resync: boolean;
+  resync?: boolean;
+  dryRun?: boolean;
+  checkAccess?: boolean;
+  checkFilename?: string;
+  maxDelete?: number;
+  force?: boolean;
+  checkSync?: boolean | 'only';
+  createEmptySrcDirs?: boolean;
+  removeEmptyDirs?: boolean;
+  filtersFile?: string;
+  ignoreListingChecksum?: boolean;
+  resilient?: boolean;
+  workdir?: string;
+  backupdir1?: string;
+  backupdir2?: string;
+  noCleanup?: boolean;
 }
 
 /**
@@ -45,6 +60,7 @@ export class JobManagementService extends TauriBaseService {
     remoteName: string,
     source: string,
     dest: string,
+    createEmptySrcDirs?: boolean,
     syncOptions?: SyncOptions,
     filterOptions?: FilterOptions
   ): Promise<number> {
@@ -54,6 +70,7 @@ export class JobManagementService extends TauriBaseService {
       remoteName,
       source,
       dest,
+      createEmptySrcDirs: createEmptySrcDirs || false,
       syncOptions: syncOptions || {},
       filterOptions: filterOptions || {},
     });
@@ -68,6 +85,7 @@ export class JobManagementService extends TauriBaseService {
     remoteName: string,
     source: string,
     dest: string,
+    createEmptySrcDirs?: boolean,
     copyOptions?: CopyOptions,
     filterOptions?: FilterOptions
   ): Promise<number> {
@@ -77,6 +95,7 @@ export class JobManagementService extends TauriBaseService {
       remoteName,
       source,
       dest,
+      createEmptySrcDirs: createEmptySrcDirs || false,
       copyOptions: copyOptions || {},
       filterOptions: filterOptions || {},
     });
@@ -90,7 +109,22 @@ export class JobManagementService extends TauriBaseService {
     dest: string,
     bisyncOptions?: BisyncOptions,
     filterOptions?: FilterOptions,
-    resync?: boolean
+    dryRun?: boolean,
+    resync?: boolean,
+    checkAccess?: boolean,
+    checkFilename?: string,
+    maxDelete?: number,
+    force?: boolean,
+    checkSync?: boolean | 'only',
+    createEmptySrcDirs?: boolean,
+    removeEmptyDirs?: boolean,
+    filtersFile?: string,
+    ignoreListingChecksum?: boolean,
+    resilient?: boolean,
+    workdir?: string,
+    backupdir1?: string,
+    backupdir2?: string,
+    noCleanup?: boolean
   ): Promise<number> {
     this.validatePaths(source, dest);
 
@@ -100,7 +134,22 @@ export class JobManagementService extends TauriBaseService {
       dest,
       bisync_options: bisyncOptions || null,
       filter_options: filterOptions || null,
-      resync: resync ?? false,
+      resync: resync || false,
+      dryRun: dryRun || false,
+      checkAccess: checkAccess || false,
+      checkFilename: checkFilename || '',
+      maxDelete: maxDelete || 0,
+      force: force || false,
+      checkSync: checkSync || false,
+      createEmptySrcDirs: createEmptySrcDirs || false,
+      removeEmptyDirs: removeEmptyDirs || false,
+      filtersFile: filtersFile || '',
+      ignoreListingChecksum: ignoreListingChecksum || false,
+      resilient: resilient || false,
+      workdir: workdir || '',
+      backupdir1: backupdir1 || '',
+      backupdir2: backupdir2 || '',
+      noCleanup: noCleanup || false,
     };
 
     const jobId = await this.invokeCommand<string>('start_bisync', {
@@ -114,6 +163,8 @@ export class JobManagementService extends TauriBaseService {
     remoteName: string,
     source: string,
     dest: string,
+    createEmptySrcDirs?: boolean,
+    deleteEmptySrcDirs?: boolean,
     moveOptions?: MoveOptions,
     filterOptions?: FilterOptions
   ): Promise<number> {
@@ -122,6 +173,8 @@ export class JobManagementService extends TauriBaseService {
       remoteName,
       source,
       dest,
+      createEmptySrcDirs: createEmptySrcDirs || false,
+      deleteEmptySrcDirs: deleteEmptySrcDirs || false,
       moveOptions: moveOptions || {},
       filterOptions: filterOptions || {},
     });

@@ -13,7 +13,7 @@ export type SyncOperationType = 'sync' | 'bisync' | 'move' | 'copy';
 export type MainOperationType = 'sync' | 'mount';
 
 export interface OperationControlConfig {
-  operationType: 'sync' | 'files' | 'mount';
+  operationType: 'sync' | 'mount';
   isActive: boolean;
   isError?: boolean;
   isLoading: boolean;
@@ -27,10 +27,6 @@ export interface OperationControlConfig {
   secondaryIcon: string;
   actionInProgress?: string;
   operationDescription?: string;
-  // Bisync specific options
-  resyncEnabled?: boolean;
-  resyncRequired?: boolean;
-  showResyncToggle?: boolean;
 }
 
 @Component({
@@ -65,26 +61,23 @@ export interface OperationControlConfig {
         </app-path-display>
 
         <!-- Resync Toggle for Bisync -->
-        @if (shouldShowResyncToggle()) {
-          <div class="resync-control" [class.required]="config.resyncRequired">
+        <!-- @if (shouldShowResyncToggle()) {
+          <div class="resync-control">
             <mat-slide-toggle
-              [checked]="config.resyncEnabled || false"
+              [checked]="false"
               [disabled]="config.isActive || config.isLoading"
               (change)="onResyncToggle($event.checked)"
             >
               <span class="resync-label">
                 <mat-icon svgIcon="refresh" class="resync-icon"></mat-icon>
                 Force Resync
-                @if (config.resyncRequired) {
-                  <span class="required-indicator">(Required)</span>
-                }
               </span>
             </mat-slide-toggle>
             <div class="resync-description">
               Performs a full resynchronization, rebuilding the sync database
             </div>
           </div>
-        }
+        } -->
       </mat-card-content>
 
       <mat-card-actions class="panel-actions">
@@ -118,7 +111,10 @@ export class OperationControlComponent {
   @Output() primaryAction = new EventEmitter<void>();
   @Output() secondaryAction = new EventEmitter<void>();
   @Output() openPath = new EventEmitter<string>();
-  @Output() data = new EventEmitter<{ resync: boolean }>();
+  // @Output() data = new EventEmitter<{ resync: boolean; dryRun: boolean }>();
+
+  // resync = false;
+  // dryRun = false;
 
   getOperationIcon(): string {
     // Use subOperationType for sync operations
@@ -137,8 +133,6 @@ export class OperationControlComponent {
       }
     }
     switch (this.config.operationType) {
-      case 'files':
-        return 'files';
       case 'mount':
         return 'mount';
       default:
@@ -154,9 +148,6 @@ export class OperationControlComponent {
         badgeClass = `active-${this.config.subOperationType}`;
       } else {
         switch (this.config.operationType) {
-          case 'files':
-            badgeClass = 'active-files';
-            break;
           case 'mount':
             badgeClass = 'mounted';
             break;
@@ -190,8 +181,6 @@ export class OperationControlComponent {
       }
     } else if (this.config.operationType === 'mount') {
       activeLabel = 'Mounted';
-    } else if (this.config.operationType === 'files') {
-      activeLabel = 'Browsing';
     }
 
     return {
@@ -218,11 +207,11 @@ export class OperationControlComponent {
   }
 
   shouldShowResyncToggle(): boolean {
-    return this.config.subOperationType === 'bisync' && (this.config.showResyncToggle ?? true);
+    return this.config.subOperationType === 'bisync';
   }
 
-  onResyncToggle(checked: boolean): void {
-    console.log('Re-sync toggle changed:', checked);
-    this.data.emit({ resync: checked });
-  }
+  // onResyncToggle(checked: boolean): void {
+  //   console.log('Re-sync toggle changed:', checked);
+  //   this.resync = checked;
+  // }
 }

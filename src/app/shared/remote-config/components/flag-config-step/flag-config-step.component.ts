@@ -8,6 +8,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -20,6 +21,7 @@ import { Observable, map, startWith } from 'rxjs';
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatSlideToggleModule,
     MatChipsModule,
     MatAutocompleteModule,
@@ -47,6 +49,7 @@ export class FlagConfigStepComponent implements OnInit {
   @Input() dynamicFlagFields: FlagField[] = [];
   @Input() selectedOptions: Record<string, any> = {};
   @Input() isDisabled = false;
+  @Input() mountTypes: string[] = [];
 
   // Filtered observables for typeable autocomplete
   filteredDestRemotes$ = new Observable<string[]>();
@@ -67,7 +70,6 @@ export class FlagConfigStepComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeFilteredRemotes();
-    console.log(this.pathState);
   }
 
   private initializeFilteredRemotes(): void {

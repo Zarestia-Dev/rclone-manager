@@ -25,6 +25,7 @@ pub async fn mount_remote(
     remote_name: String,
     source: String,
     mount_point: String,
+    mount_type: String,
     mount_options: Option<HashMap<String, Value>>,
     vfs_options: Option<HashMap<String, Value>>,
     state: State<'_, RcloneState>,
@@ -54,6 +55,7 @@ pub async fn mount_remote(
     let log_context = json!({
         "mount_point": mount_point,
         "remote_name": remote_name,
+        "mount_type": mount_type,
         "mount_options": mount_options.as_ref().map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
         "vfs_options": vfs_options.as_ref().map(|opts| redact_sensitive_values(opts, &state.restrict_mode))
     });
@@ -71,6 +73,7 @@ pub async fn mount_remote(
     let mut payload = json!({
         "fs": source,
         "mountPoint": mount_point,
+        "mountType": mount_type,
         "_async": true,
     });
 

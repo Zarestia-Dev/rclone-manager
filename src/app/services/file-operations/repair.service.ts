@@ -54,6 +54,9 @@ export class RepairService extends TauriBaseService {
         return this.repairConfigCorrupt();
       case 'backend_unreachable':
         return this.repairBackendUnreachable();
+      case 'rclone_password':
+        // Password handling is done in the component, this is a no-op
+        return Promise.resolve();
       default:
         throw new Error(`Unknown repair type: ${repairData.type}`);
     }
@@ -73,6 +76,8 @@ export class RepairService extends TauriBaseService {
         return 'Restoring backup...';
       case 'backend_unreachable':
         return 'Restarting engine...';
+      case 'rclone_password':
+        return 'Applying password...';
       default:
         return 'Repairing...';
     }
@@ -92,6 +97,8 @@ export class RepairService extends TauriBaseService {
         return 'Restore Backup';
       case 'backend_unreachable':
         return 'Restart Engine';
+      case 'rclone_password':
+        return 'Submit Password';
       default:
         return 'Repair';
     }
@@ -111,6 +118,8 @@ export class RepairService extends TauriBaseService {
         return 'arrow-rotate-left';
       case 'backend_unreachable':
         return 'refresh';
+      case 'rclone_password':
+        return 'key';
       default:
         return 'wrench';
     }
@@ -141,6 +150,11 @@ export class RepairService extends TauriBaseService {
         return [
           { icon: 'circle-info', label: 'Issue', value: 'API backend not responding' },
           { icon: 'refresh', label: 'Action', value: 'Restart API engine' },
+        ];
+      case 'rclone_password':
+        return [
+          { icon: 'circle-info', label: 'Issue', value: 'Configuration password required' },
+          { icon: 'key', label: 'Action', value: 'Enter password to unlock configuration' },
         ];
       default:
         return null;

@@ -40,12 +40,20 @@ export class MountManagementService extends TauriBaseService {
   }
 
   /**
+   * Get mount types
+   */
+  async getMountTypes(): Promise<string[]> {
+    return this.invokeCommand<string[]>('get_mount_types');
+  }
+
+  /**
    * Mount a remote
    */
   async mountRemote(
     remoteName: string,
     source: string,
     mountPoint: string,
+    mountType: string,
     mountOptions?: MountOptions,
     vfsOptions?: VfsOptions
   ): Promise<void> {
@@ -54,6 +62,7 @@ export class MountManagementService extends TauriBaseService {
         remoteName,
         source,
         mountPoint,
+        mountType,
         mountOptions: mountOptions || {},
         vfsOptions: vfsOptions || {},
       });

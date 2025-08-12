@@ -288,7 +288,12 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     // Auto-start operations based on user selections
     if (autoMount && mountPath) {
       const finalMountSource = remoteName + ':/';
-      await this.mountManagementService.mountRemote(remoteName, finalMountSource, mountPath);
+      await this.mountManagementService.mountRemote(
+        remoteName,
+        finalMountSource,
+        mountPath,
+        'mount'
+      );
       console.log('Remote mounted successfully!');
     }
 

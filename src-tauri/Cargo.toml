@@ -48,6 +48,7 @@ regex = "1.11.1"
 nix = "0.30.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["sync-secret-service"] }
 zbus = "5.7.1"
 futures-lite = "2.6.0"
 
@@ -55,6 +56,10 @@ futures-lite = "2.6.0"
 windows-sys = { version = "0.59.0", features = ["Win32_System_Threading"] }
 windows = { version = "0.60.0", features = ["Networking_Connectivity"] }
 shellexpand = "3.1.1"
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"

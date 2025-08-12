@@ -19,6 +19,18 @@
   }
 
   @if (isType('mount')) {
+    <!-- Mount Type Selector -->
+    <mat-form-field appearance="fill">
+      <mat-label>Mount Type</mat-label>
+      <mat-select formControlName="type" placeholder="Select mount type">
+        @for (mountType of mountTypes; track mountType) {
+          <mat-option [value]="mountType">
+            {{ mountType | titlecase }}
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
     <!-- Mount Path -->
     <mat-form-field appearance="fill">
       <mat-label>Mount Path</mat-label>

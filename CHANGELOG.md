@@ -5,13 +5,23 @@
 ### Added
 - Native console support for the native terminal. You can now open the remote configuration in the native terminal by clicking the "Remote Terminal" button in the top left add button. It will use the preferred terminal app from the settings. Also, you can set the preferred terminal app in the settings.
 
+- **Encrypted configuration file support**: Added comprehensive support for rclone encrypted configuration files.
+  - Automatic detection of encrypted config files
+  - Secure password storage using system keyring/credential store
+  - Password validation with lockout protection to prevent brute force attacks
+  - Encrypt/decrypt configuration operations
+  - Change configuration password functionality using a reliable two-step approach
+  - Environment variable management for config passwords
+  - Cross-platform password command handling
+
 - Implemented the `bisync` and `move` operations for remotes.
   - Bisync: This operation synchronizes two remotes in both directions, ensuring that changes made in either remote are reflected in the other.
   - Move: This operation moves files from one remote to another, effectively transferring data without leaving duplicates.
 - Added other configs for operations. (e.g. mountType, createEmptySrcDirs etc.)
+- Added the `mountType` option for the mount type selection. It can be set to `mount`, `mount2`, or `NfsMount`. This types comes from the Rclone API. Default is `mount` (API handle this automatically).
 
 ### Changed
-- Rclone configuration file path is now set with api call instead of directly accessing the state.
+- Rclone configuration file path is now set with api call instead of using CLI arguments.
 
 ### Need Fix
 - After engine restart, need the apply the startup settings again. (e.g. config file path, bw limit, etc.)

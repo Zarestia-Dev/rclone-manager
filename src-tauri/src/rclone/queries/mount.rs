@@ -47,3 +47,39 @@ pub async fn get_mounted_remotes(
     debug!("📂 Mounted Remotes: {mounts:?}");
     Ok(mounts)
 }
+
+#[tauri::command]
+pub async fn get_mount_types(
+    state: State<'_, RcloneState>,
+) -> Result<Vec<String>, String> {
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::TYPES);
+
+    let response = state
+        .client
+        .post(&url)
+        .send()
+        .await
+        .map_err(|e| format!("❌ Failed to send request: {e}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "❌ Failed to fetch mount types: {:?}",
+            response.text().await
+        ));
+    }
+
+    let json: Value = response
+        .json()
+        .await
+        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+
+    let mount_types = json["mountTypes"]
+        .as_array()
+        .unwrap_or(&vec![]) // Default to an empty list if not found
+        .iter()
+        .filter_map(|mt| mt.as_str().map(String::from))
+        .collect();
+
+    debug!("📂 Mount Types: {mount_types:?}");
+    Ok(mount_types)
+}

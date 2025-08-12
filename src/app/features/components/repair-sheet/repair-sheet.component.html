@@ -26,6 +26,82 @@
       </div>
     }
 
+    <!-- Password Section for Password-Required Repairs -->
+    @if (requiresPassword()) {
+      <div class="password-section">
+        <div class="password-header">
+          <mat-icon class="header-icon" svgIcon="lock"></mat-icon>
+          <h4>Configuration Password Required</h4>
+        </div>
+
+        <p class="password-description">
+          {{
+            data.passwordDescription ||
+              'Your rclone configuration requires a password to access encrypted remotes.'
+          }}
+        </p>
+
+        <!-- Lockout Warning -->
+        @if (lockoutStatus?.is_locked) {
+          <div class="lockout-warning">
+            <mat-icon class="warning-icon">block</mat-icon>
+            <span>
+              Too many failed attempts. Please wait
+              <strong>{{ formatTime(lockoutStatus?.remaining_lockout_time || 0) }}</strong>
+              before trying again.
+            </span>
+          </div>
+        }
+
+        <!-- Failed Attempts Warning -->
+        @if (lockoutStatus && lockoutStatus.failed_attempts > 0 && !lockoutStatus.is_locked) {
+          <div class="attempts-warning">
+            <mat-icon class="warning-icon" svgIcon="warning"></mat-icon>
+            <span>
+              {{ lockoutStatus.failed_attempts }}/{{ lockoutStatus.max_attempts }} failed attempts.
+              {{ lockoutStatus.max_attempts - lockoutStatus.failed_attempts }} remaining.
+            </span>
+          </div>
+        }
+
+        <div class="password-form">
+          <mat-form-field appearance="outline" class="password-field">
+            <mat-label>Configuration Password</mat-label>
+            <input
+              matInput
+              type="password"
+              [(ngModel)]="password"
+              name="password"
+              [disabled]="isSubmittingPassword || installing || (lockoutStatus?.is_locked ?? false)"
+              placeholder="Enter your rclone config password"
+              required
+              autocomplete="current-password"
+            />
+            <mat-icon matSuffix svgIcon="key"></mat-icon>
+            @if (hasPasswordError) {
+              <mat-error>{{ passwordErrorMessage }}</mat-error>
+            }
+          </mat-form-field>
+
+          @if (data.showStoreOption) {
+            <div class="store-option">
+              <mat-checkbox
+                [(ngModel)]="storePassword"
+                name="storePassword"
+                [disabled]="isSubmittingPassword || installing"
+              >
+                Remember password securely in system keyring
+              </mat-checkbox>
+              <div class="store-info">
+                <mat-icon class="info-icon" svgIcon="circle-info"></mat-icon>
+                <span>Password will be stored using your system's secure credential store</span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
     <!-- Advanced Options for Rclone Path Repair -->
     @if (isRclonePathRepair()) {
       <div class="advanced-toggle">
@@ -59,32 +135,42 @@
       (click)="repair()"
       [attr.aria-label]="installing ? 'Repairing in progress' : 'Start repair process'"
       [matTooltip]="
-        !canRepair() && !installing
-          ? installationData.installLocation === 'custom' &&
-            installationData.customPath.trim().length === 0
-            ? 'Please select an installation path first'
-            : installationData.installLocation === 'existing' &&
-                installationData.existingBinaryPath.trim().length === 0
-              ? 'Please select a binary file first'
-              : installationData.installLocation === 'existing' &&
-                  installationData.binaryTestResult === 'invalid'
-                ? 'The selected file is not a valid rclone binary'
+        !canRepair() && !installing && !isSubmittingPassword
+          ? requiresPassword() && !password
+            ? 'Please enter the configuration password first'
+            : requiresPassword() && lockoutStatus?.is_locked
+              ? 'Account is temporarily locked due to failed attempts'
+              : installationData.installLocation === 'custom' &&
+                  installationData.customPath.trim().length === 0
+                ? 'Please select an installation path first'
                 : installationData.installLocation === 'existing' &&
-                    installationData.binaryTestResult === 'untested'
-                  ? 'Please test the selected binary first'
-                  : !installationValid
-                    ? 'Please fix validation errors'
-                    : ''
+                    installationData.existingBinaryPath.trim().length === 0
+                  ? 'Please select a binary file first'
+                  : installationData.installLocation === 'existing' &&
+                      installationData.binaryTestResult === 'invalid'
+                    ? 'The selected file is not a valid rclone binary'
+                    : installationData.installLocation === 'existing' &&
+                        installationData.binaryTestResult === 'untested'
+                      ? 'Please test the selected binary first'
+                      : !installationValid
+                        ? 'Please fix validation errors'
+                        : ''
           : ''
       "
     >
-      @if (installing) {
+      @if (installing || isSubmittingPassword) {
         <ng-container>
+          <mat-progress-spinner
+            *ngIf="isSubmittingPassword"
+            diameter="20"
+            mode="indeterminate"
+          ></mat-progress-spinner>
           <mat-icon
+            *ngIf="!isSubmittingPassword"
             [svgIcon]="installing ? 'refresh' : 'download'"
             [class.animate-spin]="installing"
           ></mat-icon>
-          {{ getRepairProgressText() }}
+          {{ isSubmittingPassword ? 'Validating Password...' : getRepairProgressText() }}
         </ng-container>
       } @else {
         <ng-container>

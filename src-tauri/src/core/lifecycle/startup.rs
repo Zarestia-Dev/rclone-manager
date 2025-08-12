@@ -70,10 +70,17 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
                 .map(|s| s.to_string())
                 .unwrap_or_default(); // Default to empty string if no source
 
+            let mount_type = mount_options
+                .as_ref()
+                .and_then(|opts| opts.get("type").and_then(|v| v.as_str()))
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "mount".to_string()); // Default to "mount" if not specified
+
             if let Some(dest) = mount_point {
                 spawn_mount_task(
                     remote_name.clone(),
                     source,
+                    mount_type,
                     dest,
                     mount_options,
                     vfs_options,
@@ -98,6 +105,11 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
                 .and_then(|opts| opts.get("source").and_then(|v| v.as_str()))
                 .map(|s| s.to_string());
 
+            let create_empty_src_dirs = sync_config
+                .as_ref()
+                .and_then(|opts| opts.get("createEmptySrcDirs").and_then(|v| v.as_bool()))
+                .unwrap_or(false);
+
             let dest_path = sync_config
                 .as_ref()
                 .and_then(|opts| opts.get("dest").and_then(|v| v.as_str()))
@@ -114,6 +126,7 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
                     remote_name.clone(),
                     source,
                     dest,
+                    create_empty_src_dirs,
                     sync_options,
                     filter_options.clone(),
                     app_handle.clone(),
@@ -142,6 +155,11 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
                 .and_then(|opts| opts.get("dest").and_then(|v| v.as_str()))
                 .map(|s| s.to_string());
 
+            let create_empty_src_dirs = copy_config
+                .as_ref()
+                .and_then(|opts| opts.get("createEmptySrcDirs").and_then(|v| v.as_bool()))
+                .unwrap_or(false);
+
             let copy_options = copy_config
                 .as_ref()
                 .and_then(|opts| opts.get("options").cloned());
@@ -153,6 +171,7 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
                     remote_name.clone(),
                     source,
                     dest,
+                    create_empty_src_dirs,
                     copy_options,
                     filter_options.clone(),
                     app_handle.clone(),
@@ -171,6 +190,7 @@ fn spawn_mount_task(
     remote_name: String,
     source: String,
     mount_point: String,
+    mount_type: String,
     mount_options: Option<serde_json::Value>,
     vfs_options: Option<serde_json::Value>,
     app_handle: AppHandle,
@@ -192,6 +212,7 @@ fn spawn_mount_task(
             remote_name.clone(),
             source.clone(),
             mount_point,
+            mount_type.clone(),
             mount_options_clone,
             vfs_options_clone,
             app_clone.state(),
@@ -211,6 +232,7 @@ fn spawn_sync_task(
     remote_name: String,
     source: String,
     dest_path: String,
+    create_empty_src_dirs: bool,
     sync_config: Option<serde_json::Value>,
     filter_options: Option<serde_json::Value>,
     app_handle: AppHandle,
@@ -232,6 +254,7 @@ fn spawn_sync_task(
             remote_name.clone(),
             source.clone(),
             dest_path,
+            create_empty_src_dirs,
             sync_config_map,
             filter_options_map,
             app_clone.state(),
@@ -250,6 +273,7 @@ fn spawn_copy_task(
     remote_name: String,
     source: String,
     dest_path: String,
+    create_empty_src_dirs: bool,
     copy_config: Option<serde_json::Value>,
     filter_options: Option<serde_json::Value>,
     app_handle: AppHandle,
@@ -271,6 +295,7 @@ fn spawn_copy_task(
             remote_name.clone(),
             source.clone(),
             dest_path,
+            create_empty_src_dirs,
             copy_config_map,
             filter_options_map,
             app_clone.state(),

@@ -95,6 +95,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   remoteTypes: RemoteType[] = [];
   dynamicRemoteFields: RemoteField[] = [];
   existingRemotes: string[] = [];
+  mountTypes: string[] = [];
 
   dynamicFlagFields: Record<FlagType, FlagField[]> = {
     mount: [],
@@ -135,6 +136,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     await this.initializeComponent();
     this.setupFormListeners();
+    this.mountTypes = await this.mountManagementService.getMountTypes();
+    console.log('Mount types loaded:', this.mountTypes);
     this.setupAuthStateListeners();
     if (this.editTarget === 'mount') {
       await this.pathSelectionService.fetchEntriesForField(
@@ -393,24 +396,25 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private createRemoteConfigForm(): FormGroup {
     return this.fb.group({
       mountConfig: this.fb.group({
-        autoStart: [false],
-        dest: ['', [this.validatorRegistry.getValidator('crossPlatformPath')!]],
+        autoStart: [],
+        // dest: ['', [this.validatorRegistry.getValidator('crossPlatformPath')!]],
+        dest: [],
         source: [],
         type: [],
         options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
       copyConfig: this.fb.group({
-        autoStart: [false],
+        autoStart: [],
         source: [],
         dest: [],
-        createEmptySrcDirs: [false],
+        createEmptySrcDirs: [],
         options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
       syncConfig: this.fb.group({
-        autoStart: [false],
+        autoStart: [],
         source: [],
         dest: [],
-        createEmptySrcDirs: [false],
+        createEmptySrcDirs: [],
         options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
       bisyncConfig: this.fb.group({
@@ -436,7 +440,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         options: ['{}', [this.validatorRegistry.getValidator('json')!]],
       }),
       moveConfig: this.fb.group({
-        autoStart: [false],
+        autoStart: [],
         source: [],
         dest: [],
         createEmptySrcDirs: [],
@@ -582,13 +586,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       case 'copy':
       case 'sync':
         specificConfig = {
-          createEmptySrcDirs: config.createEmptySrcDirs ?? false,
+          createEmptySrcDirs: config.createEmptySrcDirs,
         };
         break;
       case 'move':
         specificConfig = {
-          createEmptySrcDirs: config.createEmptySrcDirs ?? false,
-          deleteEmptySrcDirs: config.deleteEmptySrcDirs ?? false,
+          createEmptySrcDirs: config.createEmptySrcDirs,
+          deleteEmptySrcDirs: config.deleteEmptySrcDirs,
         };
         break;
       case 'bisync':
@@ -828,12 +832,14 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (finalConfig.copyConfig.autoStart && finalConfig.copyConfig.dest) {
       const copySource = finalConfig.copyConfig.source;
       const copyDest = finalConfig.copyConfig.dest;
+      const createEmptySrcDirs = finalConfig.copyConfig.createEmptySrcDirs;
       const copyOptions = finalConfig.copyConfig.options;
       const filter = finalConfig.filterConfig;
       await this.jobManagementService.startCopy(
         remoteData.name,
         copySource,
         copyDest,
+        createEmptySrcDirs,
         copyOptions,
         filter
       );
@@ -841,12 +847,14 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (finalConfig.syncConfig.autoStart && finalConfig.syncConfig.dest) {
       const syncSource = finalConfig.syncConfig.source;
       const syncDest = finalConfig.syncConfig.dest;
+      const createEmptySrcDirs = finalConfig.syncConfig.createEmptySrcDirs;
       const syncOptions = finalConfig.syncConfig.options;
       const filter = finalConfig.filterConfig;
       await this.jobManagementService.startSync(
         remoteData.name,
         syncSource,
         syncDest,
+        createEmptySrcDirs,
         syncOptions,
         filter
       );
@@ -865,8 +873,17 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (finalConfig.moveConfig.autoStart && finalConfig.moveConfig.dest) {
       const moveSource = finalConfig.moveConfig.source;
       const moveDest = finalConfig.moveConfig.dest;
+      const deleteEmptySrcDirs = finalConfig.moveConfig.deleteEmptySrcDirs;
+      const createEmptySrcDirs = finalConfig.moveConfig.createEmptySrcDirs;
       const moveOptions = finalConfig.moveConfig.options;
-      await this.jobManagementService.startMove(remoteData.name, moveSource, moveDest, moveOptions);
+      await this.jobManagementService.startMove(
+        remoteData.name,
+        moveSource,
+        moveDest,
+        createEmptySrcDirs,
+        deleteEmptySrcDirs,
+        moveOptions
+      );
     }
     return { success: true };
   }
@@ -978,14 +995,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       source: syncData.source,
       dest: syncData.dest,
       createEmptySrcDirs: syncData.createEmptySrcDirs,
-      options: {
-        ...this.safeJsonParse(syncData.options),
-      },
-    };
-    updatedConfig.syncConfig = {
-      autoStart: syncData.autoStart,
-      source: syncData.source,
-      dest: syncData.dest,
       options: {
         ...this.safeJsonParse(syncData.options),
       },

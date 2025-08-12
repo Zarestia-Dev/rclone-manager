@@ -138,12 +138,20 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
+        let mount_type = settings
+            .get("mountConfig")
+            .and_then(|v| v.get("type"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("mount")
+            .to_string();
+
         // Mount the remote
         match mount_remote(
             app.clone(),
             remote_name.clone(),
             source.to_owned(),
             mount_point.clone(),
+            mount_type.clone(),
             mount_options,
             vfs_options,
             app.state(),
@@ -256,6 +264,12 @@ pub fn handle_sync_remote(app: AppHandle, id: &str) {
             .unwrap_or("")
             .to_string();
 
+        let create_empty_src_dirs = settings
+            .get("syncConfig")
+            .and_then(|v| v.get("createEmptySrcDirs"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
         if dest.is_empty() {
             error!("🚨 Sync configuration incomplete for {remote_name}");
             notify(
@@ -271,6 +285,7 @@ pub fn handle_sync_remote(app: AppHandle, id: &str) {
             remote_name.clone(),
             source,
             dest,
+            create_empty_src_dirs,
             sync_config,
             filter_config,
             app.state(),
@@ -331,6 +346,12 @@ pub fn handle_copy_remote(app: AppHandle, id: &str) {
             .unwrap_or("")
             .to_string();
 
+        let create_empty_src_dirs = settings
+            .get("copyConfig")
+            .and_then(|v| v.get("createEmptySrcDirs"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
         if dest.is_empty() {
             error!("🚨 Copy configuration incomplete for {remote_name}");
             notify(
@@ -346,6 +367,7 @@ pub fn handle_copy_remote(app: AppHandle, id: &str) {
             remote_name.clone(),
             source,
             dest,
+            create_empty_src_dirs,
             copy_config,
             filter_config,
             app.state(),

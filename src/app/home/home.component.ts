@@ -120,7 +120,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   iconService = inject(IconService);
   notificationService = inject(NotificationService);
   private eventListenersService = inject(EventListenersService);
-  private extendedData: { resync: boolean } | null = null;
+  // private extendedData: { resync: boolean } | null = null;
 
   constructor() {
     this.restrictValue();
@@ -152,9 +152,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.cleanup();
   }
 
-  handleExtendedData($event: { resync: boolean }): void {
-    this.extendedData = $event;
-  }
+  // handleExtendedData($event: { resync: boolean }): void {
+  //   this.extendedData = $event;
+  // }
 
   // UI Event Handlers
   @HostListener('window:resize')
@@ -183,6 +183,7 @@ export class HomeComponent implements OnInit, OnDestroy {
           remoteName,
           settings.mountConfig.source,
           settings.mountConfig.dest,
+          settings.mountConfig.type,
           settings.mountConfig.options,
           settings.vfsConfig || {}
         );
@@ -272,11 +273,12 @@ export class HomeComponent implements OnInit, OnDestroy {
           settings[configKey]
         );
 
-        const config = settings[configKey] || {};
+        const config = settings[configKey];
         const source = config.source;
         const dest = config.dest;
-        const options = config.options || {};
-        const filterConfig = settings.filterConfig || {};
+        const createEmptySrcDirs = config.createEmptySrcDirs;
+        const options = config.options;
+        const filterConfig = settings.filterConfig;
 
         switch (operationType) {
           case 'sync':
@@ -284,6 +286,7 @@ export class HomeComponent implements OnInit, OnDestroy {
               remoteName,
               source,
               dest,
+              createEmptySrcDirs,
               options,
               filterConfig
             );
@@ -293,6 +296,7 @@ export class HomeComponent implements OnInit, OnDestroy {
               remoteName,
               source,
               dest,
+              createEmptySrcDirs,
               options,
               filterConfig
             );
@@ -303,20 +307,24 @@ export class HomeComponent implements OnInit, OnDestroy {
               source,
               dest,
               options,
-              filterConfig,
-              this.extendedData?.resync
+              filterConfig
+              // this.extendedData?.resync
             );
             break;
-          case 'move':
-            // You'll need to implement this in your JobManagementService
+          case 'move': // You'll need to implement this in your JobManagementService
+          {
+            const deleteEmptySrcDirs = config.deleteEmptySrcDirs;
             await this.jobManagementService.startMove(
               remoteName,
               source,
               dest,
+              createEmptySrcDirs,
+              deleteEmptySrcDirs,
               options,
               filterConfig
             );
             break;
+          }
           default:
             throw new Error(`Unsupported sync operation: ${operationType}`);
         }
