@@ -46,8 +46,11 @@ impl RcApiEngine {
         } else {
             warn!("🔄 Waiting for valid Rclone path...");
             if let Err(e) = app.emit(
-                "rclone_path_invalid",
-                self.rclone_path.to_string_lossy().to_string(),
+                "rclone_engine",
+                serde_json::json!({
+                    "status": "path_error",
+                    "message": "Rclone binary not found",
+                }),
             ) {
                 error!("Failed to emit event: {e}");
             }

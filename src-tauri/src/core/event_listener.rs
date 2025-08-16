@@ -15,7 +15,7 @@ use crate::{
 };
 
 mod events {
-    pub const RCLONE_API_READY: &str = "rclone_api_ready";
+    pub const RCLONE_ENGINE: &str = "rclone_engine";
     pub const RCLONE_API_URL_UPDATED: &str = "rclone_api_url_updated";
     pub const REMOTE_STATE_CHANGED: &str = "remote_state_changed";
     pub const REMOTE_PRESENCE_CHANGED: &str = "remote_presence_changed";
@@ -72,11 +72,34 @@ fn handle_rclone_api_url_updated(app: &AppHandle) {
 
 fn handle_rclone_api_ready(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen(events::RCLONE_API_READY, move |_| {
+    app.listen(events::RCLONE_ENGINE, move |event| {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            refresh_and_update_tray(app, 0).await;
-            // apply_core_settings(&app, &app.state::<RcloneState>().settings).await;
+            debug!("RCLONE_ENGINE event received! Payload: {:?}", event.payload());
+            
+            // Parse the payload as JSON
+            if let Ok(payload) = parse_payload::<serde_json::Value>(Some(event.payload())) {
+                match payload.get("status").and_then(|s| s.as_str()) {
+                    Some("ready") => {
+                        debug!("RCLONE_ENGINE is ready");
+                        if let Some(port) = payload.get("port") {
+                            debug!("API ready on port: {}", port);
+                        }
+                        refresh_and_update_tray(app, 0).await;
+                    }
+                    Some("error") => {
+                        if let Some(message) = payload.get("message").and_then(|m| m.as_str()) {
+                            error!("RCLONE_ENGINE error: {}", message);
+                        } else {
+                            error!("RCLONE_ENGINE encountered an error");
+                        }
+                    }
+                    Some(status) => {
+                        debug!("RCLONE_ENGINE unknown status: {}", status);
+                    }
+                    None => {}
+                }
+            }
         });
     });
 }

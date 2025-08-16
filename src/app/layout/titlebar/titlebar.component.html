@@ -154,12 +154,18 @@
       <span class="shortcut" aria-hidden="true">Ctrl + ?</span>
     </button>
 
-    <button mat-menu-item (click)="openAboutModal()" aria-label="About application">
-      <span>About RClone Manager</span>
+    <mat-divider></mat-divider>
+
+    <!-- Security -->
+    <button mat-menu-item (click)="openPasswordManager()" aria-label="Open password manager">
+      <span>Password Manager</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + P</span>
     </button>
 
-    <button mat-menu-item (click)="openPasswordManager()" aria-label="View application logs">
-      <span>View Logs</span>
+    <mat-divider></mat-divider>
+
+    <button mat-menu-item (click)="openAboutModal()" aria-label="About application">
+      <span>About RClone Manager</span>
     </button>
   </mat-menu>
 </div>

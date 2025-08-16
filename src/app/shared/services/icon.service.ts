@@ -47,6 +47,8 @@ export class IconService {
       info: 'assets/icons/info.svg',
       jobs: 'assets/icons/jobs.svg',
       lock: 'assets/icons/lock.svg',
+      'lock-open': 'assets/icons/lock-open.svg',
+      shield: 'assets/icons/shield.svg',
       key: 'assets/icons/key.svg',
       mount: 'assets/icons/mount.svg',
       pause: 'assets/icons/pause.svg',

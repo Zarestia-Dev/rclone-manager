@@ -311,8 +311,8 @@ export class HomeComponent implements OnInit, OnDestroy {
               // this.extendedData?.resync
             );
             break;
-          case 'move': // You'll need to implement this in your JobManagementService
-          {
+          case 'move': {
+            // You'll need to implement this in your JobManagementService
             const deleteEmptySrcDirs = config.deleteEmptySrcDirs;
             await this.jobManagementService.startMove(
               remoteName,
@@ -952,14 +952,19 @@ export class HomeComponent implements OnInit, OnDestroy {
   private setupTauriListeners(): void {
     // Global shortcut event for force checking mounted remotes
     this.eventListenersService
-      .listenToShutdownSequence()
+      .listenToAppEvents()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: async () => {
+        next: async event => {
           try {
-            console.log('Shutdown sequence initiated - Shutting down app');
-            this.isShuttingDown = true;
-            this.cdr.detectChanges();
+            console.log('Rclone Engine event payload:', event);
+
+            // Only handle if payload is 'ready'
+            if (typeof event === 'object' && event?.status === 'shutting_down') {
+              console.log('Shutdown sequence initiated - Shutting down app');
+              this.isShuttingDown = true;
+              this.cdr.detectChanges();
+            }
           } catch (error) {
             console.error('Error during shutdown sequence:', error);
           }
@@ -1014,19 +1019,26 @@ export class HomeComponent implements OnInit, OnDestroy {
         },
       });
 
-    // Rclone API ready - full refresh needed
+    // Rclone Engine ready - full refresh needed
     this.eventListenersService
-      .listenToRcloneApiReady()
+      .listenToRcloneEngine()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: async () => {
+        next: async event => {
           try {
-            console.log('Rclone API ready - full refresh');
-            await this.refreshData();
-            await this.restrictValue();
-            this.cdr.markForCheck();
+            console.log('Rclone Engine event payload:', event);
+
+            // Only handle if payload is 'ready'
+            if (typeof event === 'object' && event?.status === 'ready') {
+              console.log('Refreshing data for Rclone Engine');
+              await this.refreshData();
+              await this.restrictValue();
+              this.cdr.markForCheck();
+            } else {
+              console.log('Rclone Engine ready - payload not "ready":', event);
+            }
           } catch (error) {
-            this.handleError('Error handling rclone_api_ready', error);
+            this.handleError('Error handling rclone_engine', error);
           }
         },
       });

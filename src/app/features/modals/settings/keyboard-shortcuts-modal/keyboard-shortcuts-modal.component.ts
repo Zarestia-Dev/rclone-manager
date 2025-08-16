@@ -36,6 +36,7 @@ export class KeyboardShortcutsModalComponent {
     { keys: 'Ctrl + Q', description: 'Quit Application', category: 'Global' },
     { keys: 'Ctrl + ?', description: 'Show Keyboard Shortcuts', category: 'Application' },
     { keys: 'Ctrl + ,', description: 'Open Preferences', category: 'Application' },
+    { keys: 'Ctrl + P', description: 'Open Password Manager', category: 'Security' },
     {
       keys: 'Ctrl + Shift + M',
       description: 'Force Check Mounted Remotes',

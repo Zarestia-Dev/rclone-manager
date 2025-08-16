@@ -1,7 +1,21 @@
 import { Injectable } from '@angular/core';
-import { UpdateResult } from './rclone-update-clean.service';
 import { Observable } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
+
+export interface RcloneEngineEvent {
+  status: string;
+  port?: number;
+  timestamp?: string;
+  message?: string;
+}
+
+export interface UpdateResult {
+  success: boolean;
+  message?: string;
+}
+
+// Union type to handle both old string format and new object format
+export type RcloneEnginePayload = RcloneEngineEvent | string;
 
 /**
  * Service for handling installations of rclone and plugins
@@ -23,19 +37,6 @@ export class EventListenersService extends TauriBaseService {
    */
   listenToRemoteDeleted(): Observable<{ payload: string }> {
     return this.listenToEvent<{ payload: string }>('remote_deleted');
-  }
-  /**
-   * Listen to engine update started events
-   */
-  listenToEngineUpdateStarted(): Observable<unknown> {
-    return this.listenToEvent<unknown>('engine_update_started');
-  }
-
-  /**
-   * Listen to engine update completed events
-   */
-  listenToEngineUpdateCompleted(): Observable<{ payload: UpdateResult }> {
-    return this.listenToEvent<{ payload: UpdateResult }>('engine_update_completed');
   }
 
   /**
@@ -66,12 +67,6 @@ export class EventListenersService extends TauriBaseService {
   }
 
   /**
-   * Listen to shutdown sequence events
-   */
-  listenToShutdownSequence(): Observable<unknown> {
-    return this.listenToEvent<unknown>('shutdown_sequence');
-  }
-  /**
    * Listen to job cache changed events
    */
   listenToJobCacheChanged(): Observable<unknown> {
@@ -85,24 +80,17 @@ export class EventListenersService extends TauriBaseService {
   }
 
   /**
-   * Listen to rclone API ready events
+   * Listen to rclone engine events
    */
-  listenToRcloneApiReady(): Observable<any> {
-    return this.listenToEvent<any>('rclone_api_ready');
+  listenToRcloneEngine(): Observable<RcloneEnginePayload> {
+    return this.listenToEvent<RcloneEnginePayload>('rclone_engine');
   }
 
   /**
-   * Listen to rclone engine failure events
+   * Listen to app events
    */
-  listenToRcloneEngineFailed(): Observable<any> {
-    return this.listenToEvent<any>('rclone_engine_failed');
-  }
-
-  /**
-   * Listen to rclone path invalid events
-   */
-  listenToRclonePathInvalid(): Observable<any> {
-    return this.listenToEvent<any>('rclone_path_invalid');
+  listenToAppEvents(): Observable<RcloneEnginePayload> {
+    return this.listenToEvent<RcloneEnginePayload>('app_event');
   }
 
   /**
@@ -115,7 +103,7 @@ export class EventListenersService extends TauriBaseService {
   /**
    * Listen to bandwidth limit changed events
    */
-  listenToBandwidthLimitChanged(): Observable<any> {
-    return this.listenToEvent<any>('bandwidth_limit_changed');
+  listenToBandwidthLimitChanged(): Observable<unknown> {
+    return this.listenToEvent<unknown>('bandwidth_limit_changed');
   }
 }

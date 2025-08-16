@@ -165,9 +165,10 @@ pub async fn update_rclone(
     // Stop the engine before updating (to release the binary)
     app_handle
         .emit(
-            "engine_update_started",
+            "rclone_engine",
             json!({
-                "status": "stopping_engine"
+                "status": "updating",
+                "message": "Updating rclone to the latest version"
             }),
         )
         .map_err(|e| format!("Failed to emit update event: {e}"))?;
@@ -205,10 +206,10 @@ pub async fn update_rclone(
 
     app_handle
         .emit(
-            "engine_update_completed",
+            "rclone_engine",
             json!({
-                "status": "restarting_engine",
-                "success": success
+                "status": "updated",
+                "message": "Rclone has been updated successfully"
             }),
         )
         .map_err(|e| format!("Failed to emit update event: {e}"))?;
@@ -223,23 +224,21 @@ pub async fn update_rclone(
     }
 
     // If update was successful, restart engine with updated binary
-    if success {
-        if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
-            &app_handle,
-            "rclone_update",
-            update_check
-                .get("current_version")
-                .unwrap()
-                .as_str()
-                .unwrap_or("unknown"),
-            update_check
-                .get("latest_version")
-                .unwrap()
-                .as_str()
-                .unwrap_or("unknown"),
-        ) {
-            return Err(format!("Failed to restart engine after update: {e}"));
-        }
+    if success && let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
+        &app_handle,
+        "rclone_update",
+        update_check
+            .get("current_version")
+            .unwrap()
+            .as_str()
+            .unwrap_or("unknown"),
+        update_check
+            .get("latest_version")
+            .unwrap()
+            .as_str()
+            .unwrap_or("unknown"),
+    ) {
+        return Err(format!("Failed to restart engine after update: {e}"));
     }
 
     update_result

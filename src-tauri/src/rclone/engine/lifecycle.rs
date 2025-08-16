@@ -105,7 +105,9 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 engine.running = true;
                 let port = engine.current_api_port;
                 info!("✅ Rclone API started successfully on port {port}");
-                if let Err(e) = app.emit("rclone_api_ready", ()) {
+                if let Err(e) = app.emit("rclone_engine", serde_json::json!({
+                    "status": "ready"
+                })) {
                     error!("Failed to emit ready event: {e}");
                 }
             } else {
@@ -114,8 +116,11 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 engine.process = None;
                 engine.running = false;
                 if let Err(e) = app.emit(
-                    "rclone_engine_failed",
-                    "Failed to start Rclone API".to_string(),
+                    "rclone_engine",
+                    serde_json::json!({
+                        "status": "error",
+                        "message": "Failed to start Rclone API: {e}"
+                    }),
                 ) {
                     error!("Failed to emit event: {e}");
                 }
@@ -124,8 +129,11 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
         Err(e) => {
             error!("❌ Failed to spawn Rclone process: {e}");
             if let Err(e) = app.emit(
-                "rclone_engine_failed",
-                "Failed to spawn Rclone process".to_string(),
+                "rclone_engine",
+                serde_json::json!({
+                    "status": "error",
+                    "message": "Failed to spawn Rclone process: {e}"
+                }),
             ) {
                 error!("Failed to emit event: {e}");
             }
@@ -182,7 +190,7 @@ pub fn restart_for_config_change(
 
                 // Emit failure event
                 if let Err(emit_err) = app_handle.emit(
-                    "engine_restart_failed",
+                    "rclone_engine",
                     serde_json::json!({
                         "reason": change_type,
                         "old_value": old_value,

@@ -19,11 +19,9 @@ import { BannerComponent } from './layout/banners/banner.component';
 // Services
 import { UiStateService } from '@app/services';
 import { AppSettingsService } from '@app/services';
-import { SystemInfoService } from '@app/services';
 import { InstallationService } from '@app/services';
 import { EventListenersService } from '@app/services';
 import { RclonePasswordService } from '@app/services';
-import { AutoPasswordDetectionService } from '@app/services';
 
 @Component({
   selector: 'app-root',
@@ -148,12 +146,22 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private setupErrorListeners(): void {
-    // Listen for rclone path invalid errors with proper cleanup
+    // Listen for rclone engine errors with proper cleanup
     this.eventListenersService
-      .listenToRclonePathInvalid()
+      .listenToRcloneEngine()
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.handleRclonePathError();
+      .subscribe({
+        next: async event => {
+          try {
+            console.log('Rclone Engine event payload:', event);
+
+            if (typeof event === 'object' && event?.status === 'path_error') {
+              this.handleRclonePathError();
+            }
+          } catch (error) {
+            console.error('Error handling Rclone Engine event:', error);
+          }
+        },
       });
   }
 
@@ -176,11 +184,29 @@ export class AppComponent implements OnInit, OnDestroy {
 
     // Listen for rclone API ready to dismiss the error sheet
     this.eventListenersService
-      .listenToRcloneApiReady()
+      .listenToRcloneEngine()
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.alreadyReported = false;
-        this.closeBottomSheet(sheetRef);
+      .subscribe({
+        next: async event => {
+          try {
+            console.log('Rclone Engine event payload:', event);
+
+            // Handle both new structured payload and legacy string payload
+            let isReady = false;
+
+            if (typeof event === 'object' && event?.status === 'ready') {
+              // New structured payload
+              isReady = true;
+              console.log('Rclone API ready (new format):', event);
+            }
+            if (isReady) {
+              this.alreadyReported = false;
+              this.closeBottomSheet(sheetRef);
+            }
+          } catch (error) {
+            console.error('Error handling Rclone API ready event:', error);
+          }
+        },
       });
   }
 

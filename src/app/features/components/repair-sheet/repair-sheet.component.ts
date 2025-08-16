@@ -1,4 +1,4 @@
-import { Component, inject, NgZone, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, NgZone, OnInit } from '@angular/core';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,17 +10,14 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { RepairData } from '../../../shared/components/types';
 import {
   InstallationOptionsComponent,
   InstallationOptionsData,
 } from '../../../shared/components/installation-options/installation-options.component';
-import { invoke } from '@tauri-apps/api/core';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
 
 // Services
-import { RepairService } from '@app/services';
+import { RclonePasswordService, RepairService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { AnimationsService } from '../../../shared/services/animations.service';
 
@@ -52,7 +49,7 @@ interface PasswordLockoutStatus {
   templateUrl: './repair-sheet.component.html',
   styleUrl: './repair-sheet.component.scss',
 })
-export class RepairSheetComponent implements OnInit, OnDestroy {
+export class RepairSheetComponent implements OnInit {
   installing = false;
   showAdvanced = false;
 
@@ -78,19 +75,12 @@ export class RepairSheetComponent implements OnInit, OnDestroy {
   private zone = inject(NgZone);
   private repairService = inject(RepairService);
   private appSettingsService = inject(AppSettingsService);
-  private snackBar = inject(MatSnackBar);
-
-  private unlistenFns: UnlistenFn[] = [];
+  private passwordService = inject(RclonePasswordService);
 
   async ngOnInit(): Promise<void> {
     if (this.requiresPassword()) {
       await this.refreshLockoutStatus();
-      this.setupPasswordEventListeners();
     }
-  }
-
-  ngOnDestroy(): void {
-    this.unlistenFns.forEach(fn => fn());
   }
 
   async repair(): Promise<void> {
@@ -233,90 +223,9 @@ export class RepairSheetComponent implements OnInit, OnDestroy {
 
   private async refreshLockoutStatus(): Promise<void> {
     try {
-      this.lockoutStatus = await invoke('get_password_lockout_status');
+      this.lockoutStatus = await this.passwordService.getLockoutStatus();
     } catch (error) {
       console.error('Failed to get lockout status:', error);
-    }
-  }
-
-  private async setupPasswordEventListeners(): Promise<void> {
-    try {
-      // Listen for password validation results
-      const unlisten1 = await listen('password_validation_result', (event: any) => {
-        const result = event.payload;
-        this.handlePasswordValidationResult(result);
-      });
-
-      // Listen for lockout events
-      const unlisten2 = await listen('password_lockout', (event: any) => {
-        const lockout = event.payload;
-        this.lockoutStatus = {
-          is_locked: true,
-          failed_attempts: lockout.failed_attempts,
-          max_attempts: lockout.max_attempts,
-          remaining_lockout_time: lockout.remaining_time,
-        };
-        this.hasPasswordError = true;
-        this.passwordErrorMessage = `Account locked for ${this.formatTime(lockout.remaining_time)}`;
-        this.isSubmittingPassword = false;
-      });
-
-      // Listen for password stored events
-      const unlisten3 = await listen('password_stored', () => {
-        this.snackBar.open('✅ Password stored securely', 'Close', { duration: 3000 });
-      });
-
-      this.unlistenFns = [unlisten1, unlisten2, unlisten3];
-    } catch (error) {
-      console.error('Failed to setup password event listeners:', error);
-    }
-  }
-
-  private handlePasswordValidationResult(result: any): void {
-    this.isSubmittingPassword = false;
-
-    if (result.is_valid) {
-      // Password is valid, store it if requested
-      if (this.storePassword) {
-        this.storePasswordSecurely();
-      } else {
-        // Just proceed with the repair
-        this.proceedWithRepair();
-      }
-    } else {
-      // Password is invalid
-      this.hasPasswordError = true;
-      this.passwordErrorMessage = result.message || 'Invalid password';
-      this.password = ''; // Clear the password field
-      this.refreshLockoutStatus(); // Update lockout status
-    }
-  }
-
-  private async storePasswordSecurely(): Promise<void> {
-    try {
-      await invoke('store_config_password', { password: this.password });
-      this.proceedWithRepair();
-    } catch (error) {
-      console.error('Failed to store password:', error);
-      this.snackBar.open(
-        'Failed to store password, but it will be used for this session',
-        'Close',
-        { duration: 5000 }
-      );
-      this.proceedWithRepair();
-    }
-  }
-
-  private async proceedWithRepair(): Promise<void> {
-    // Set the password environment for immediate use
-    try {
-      await invoke('set_config_password_env', { password: this.password });
-      // Now proceed with the original repair
-      this.executeRepair();
-    } catch (error) {
-      console.error('Failed to set password environment:', error);
-      this.hasPasswordError = true;
-      this.passwordErrorMessage = 'Failed to apply password. Please try again.';
     }
   }
 
@@ -331,12 +240,32 @@ export class RepairSheetComponent implements OnInit, OnDestroy {
 
     try {
       // Validate the password
-      await invoke('validate_rclone_password', { password: this.password });
-      // The event listener will handle the response
+      await this.passwordService.validatePassword(this.password);
+
+      // If we get here, password validation was successful
+      // Store password if requested
+      if (this.storePassword) {
+        try {
+          await this.passwordService.storePassword(this.password);
+        } catch (error) {
+          console.warn('Failed to store password, but continuing with repair:', error);
+        }
+      }
+
+      // Set password in environment for the repair process
+      await this.passwordService.setConfigPasswordEnv(this.password);
+
+      // Clear the password form for security
+      this.password = '';
+
+      // Now proceed with the actual repair
+      await this.executeRepair();
     } catch (error) {
-      console.error('Failed to validate password:', error);
+      console.error('Password validation failed:', error);
       this.hasPasswordError = true;
-      this.passwordErrorMessage = 'Failed to validate password. Please try again.';
+      this.passwordErrorMessage = this.getPasswordErrorMessage(error);
+      await this.refreshLockoutStatus();
+    } finally {
       this.isSubmittingPassword = false;
     }
   }
@@ -352,6 +281,19 @@ export class RepairSheetComponent implements OnInit, OnDestroy {
 
   canSubmitPassword(): boolean {
     return !!(this.password && !this.isSubmittingPassword && !this.lockoutStatus?.is_locked);
+  }
+
+  private getPasswordErrorMessage(error: unknown): string {
+    if (error instanceof Error) {
+      if (error.message.includes('invalid') || error.message.includes('wrong')) {
+        return 'Invalid password. Please check your password and try again.';
+      }
+      if (error.message.includes('locked') || error.message.includes('attempt')) {
+        return 'Too many failed attempts. Please wait before trying again.';
+      }
+      return error.message;
+    }
+    return 'Failed to validate password. Please try again.';
   }
 
   private async executeRepair(): Promise<void> {

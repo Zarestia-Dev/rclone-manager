@@ -3,12 +3,26 @@ import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-shee
 import { BehaviorSubject, firstValueFrom } from 'rxjs';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { RepairSheetComponent } from '../features/components/repair-sheet/repair-sheet.component';
-import { RepairData } from '../shared/components/types';
+import { RepairSheetComponent } from '../../features/components/repair-sheet/repair-sheet.component';
+import { RepairData } from '../../shared/components/types';
 
 export interface PasswordPromptResult {
   password: string;
   stored: boolean;
+}
+
+export interface PasswordLockoutStatus {
+  is_locked: boolean;
+  failed_attempts: number;
+  max_attempts: number;
+  remaining_lockout_time?: number;
+}
+
+export interface PasswordLockoutStatus {
+  is_locked: boolean;
+  failed_attempts: number;
+  max_attempts: number;
+  remaining_lockout_time?: number;
 }
 
 @Injectable({
@@ -28,15 +42,24 @@ export class RclonePasswordService {
   private async setupEventListeners(): Promise<void> {
     try {
       // Listen for rclone password errors - this is what we see in your logs
-      await listen('rclone_password_required', () => {
-        this.handlePasswordRequired();
-      });
+      await listen('rclone_engine', (event: { payload: unknown }) => {
+        if (typeof event.payload === 'object' && event.payload !== null) {
+          const payload = event.payload as {
+            status?: string;
+            message?: string;
+            error_type?: string;
+          };
+          console.log('🔑 Rclone engine event:', payload);
 
-      // Listen for rclone process errors that indicate password issues
-      await listen('rclone_config_error', (event: any) => {
-        const error = event.payload;
-        if (this.isPasswordError(error)) {
-          this.handlePasswordRequired();
+          // Check for password errors - both old and new format
+          if (
+            payload.status === 'error' &&
+            (payload.error_type === 'password_required' || // New structured format
+              (payload.message && this.isPasswordError(payload.message))) // Legacy format
+          ) {
+            console.log('🔑 Password required detected from engine event');
+            this.handlePasswordRequired();
+          }
         }
       });
     } catch (error) {
@@ -50,6 +73,7 @@ export class RclonePasswordService {
       'Failed to read line: EOF',
       'configuration is encrypted',
       'password required',
+      'most likely wrong password.',
     ];
 
     return passwordErrorPatterns.some(pattern =>
@@ -136,6 +160,18 @@ export class RclonePasswordService {
   }
 
   /**
+   * Check if password is set in environment
+   */
+  async hasConfigPasswordEnv(): Promise<boolean> {
+    try {
+      return await invoke<boolean>('has_config_password_env');
+    } catch (error) {
+      console.error('Failed to check config password env:', error);
+      return false;
+    }
+  }
+
+  /**
    * Get stored password if available
    */
   async getStoredPassword(): Promise<string | null> {
@@ -174,7 +210,7 @@ export class RclonePasswordService {
   /**
    * Set password environment variable for current session
    */
-  async setPasswordEnvironment(password: string): Promise<boolean> {
+  async setConfigPasswordEnv(password: string): Promise<boolean> {
     try {
       await invoke('set_config_password_env', { password });
       return true;
@@ -218,19 +254,11 @@ export class RclonePasswordService {
   /**
    * Get lockout status
    */
-  async getLockoutStatus(): Promise<any> {
-    try {
-      return await invoke('get_password_lockout_status');
-    } catch (error) {
-      console.error('Failed to get lockout status:', error);
-      return null;
-    }
-  }
 
   /**
    * Reset password validator (clear failed attempts)
    */
-  async resetPasswordValidator(): Promise<boolean> {
+  async resetLockout(): Promise<boolean> {
     try {
       await invoke('reset_password_validator');
       return true;
@@ -253,6 +281,18 @@ export class RclonePasswordService {
   }
 
   /**
+   * Get lockout status
+   */
+  async getLockoutStatus(): Promise<PasswordLockoutStatus | null> {
+    try {
+      return await invoke('get_password_lockout_status');
+    } catch (error) {
+      console.error('Failed to get lockout status:', error);
+      return null;
+    }
+  }
+
+  /**
    * Is config encrypted?
    */
   async isConfigEncrypted(): Promise<boolean | unknown> {
@@ -263,6 +303,45 @@ export class RclonePasswordService {
       return result;
     } catch (error) {
       console.error(error);
+      throw error;
+    }
+  }
+
+  /**
+   * Encrypt the Rclone config
+   */
+  async encryptConfig(password: string): Promise<void> {
+    try {
+      await invoke('encrypt_config', { password: password });
+    } catch (error) {
+      console.error('Failed to encrypt config:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unencrypt the Rclone config
+   */
+  async unencryptConfig(password: string): Promise<void> {
+    try {
+      await invoke('unencrypt_config', { password: password });
+    } catch (error) {
+      console.error('Failed to unencrypt config:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Change the Rclone config password
+   */
+  async changeConfigPassword(currentPassword: string, newPassword: string): Promise<void> {
+    try {
+      await invoke('change_config_password', {
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+      });
+    } catch (error) {
+      console.error('Failed to change config password:', error);
       throw error;
     }
   }

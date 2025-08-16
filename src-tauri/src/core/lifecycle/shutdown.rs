@@ -1,4 +1,5 @@
 use log::{error, info, warn};
+use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::task::spawn_blocking;
 
@@ -21,9 +22,14 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     app_handle.state::<crate::RcloneState>().set_shutting_down();
 
     app_handle
-        .emit("shutdown_sequence", ())
+        .emit("app_event", 
+            json!({
+                "status": "shutting_down",
+                "message": "Shutting down RClone Manager"
+            }),
+    )
         .unwrap_or_else(|e| {
-            error!("Failed to emit shutdown_sequence event: {e}");
+            error!("Failed to emit an app_event: {e}");
         });
 
     // Get active jobs before shutdown
@@ -39,13 +45,6 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     if !active_jobs.is_empty() {
         let job_count = active_jobs.len();
         info!("⚠️ Stopping {job_count} active jobs during shutdown");
-
-        if let Err(e) = app_handle.emit(
-            "shutdown_jobs_notification",
-            format!("Stopping {job_count} active jobs"),
-        ) {
-            error!("Failed to emit jobs notification: {e}");
-        }
     }
 
     // Run cleanup tasks in parallel with individual timeouts

@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,15 +7,22 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { invoke } from '@tauri-apps/api/core';
-import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { RclonePasswordService } from '@app/services';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
 
 interface PasswordTab {
   label: string;
   icon: string;
-  key: string;
+  key: 'overview' | 'security' | 'advanced';
+}
+
+interface PasswordValidationState {
+  password: string;
+  confirmPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+  currentPassword: string;
 }
 
 interface PasswordLockoutStatus {
@@ -23,6 +30,26 @@ interface PasswordLockoutStatus {
   failed_attempts: number;
   max_attempts: number;
   remaining_lockout_time?: number;
+}
+
+interface PasswordErrors {
+  password: string;
+  confirmPassword: string;
+  newPassword: string;
+  confirmNewPassword: string;
+  currentPassword: string;
+}
+
+interface LoadingStates {
+  isValidating: boolean;
+  isEncrypting: boolean;
+  isUnencrypting: boolean;
+  isChangingPassword: boolean;
+  isStoringPassword: boolean;
+  isRemovingPassword: boolean;
+  isSettingEnv: boolean;
+  isClearingEnv: boolean;
+  isResettingLockout: boolean;
 }
 
 @Component({
@@ -35,327 +62,397 @@ interface PasswordLockoutStatus {
     MatInputModule,
     MatFormFieldModule,
     MatIconModule,
-    MatProgressSpinnerModule,
   ],
   templateUrl: './password-manager-modal.component.html',
-  styleUrls: ['./password-manager-modal.component.scss', '../../../styles/_shared-modal.scss'],
+  styleUrls: ['./password-manager-modal.component.scss'],
 })
-export class PasswordManagerModalComponent implements OnInit, OnDestroy {
-  selectedTabIndex = 0;
-  bottomTabs = false;
-
-  // State management
-  password = '';
-  newPassword = '';
-  currentPassword = '';
-  hasStoredPassword = false;
-  hasEnvPassword = false;
-  isConfigEncrypted: boolean | unknown = false;
-
-  // Loading states
-  isLoading = false;
-  isValidating = false;
-  isEncrypting = false;
-  isUnencrypting = false;
-  isChangingPassword = false;
-
-  lockoutStatus: PasswordLockoutStatus | null = null;
-  private unlistenFns: UnlistenFn[] = [];
+export class PasswordManagerModalComponent implements OnInit {
+  private readonly dialogRef = inject(MatDialogRef<PasswordManagerModalComponent>);
+  private readonly snackBar = inject(MatSnackBar);
+  private readonly passwordService = inject(RclonePasswordService);
 
   readonly tabs: PasswordTab[] = [
-    { label: 'Overview', icon: 'circle-info', key: 'overview' },
+    { label: 'Overview', icon: 'shield', key: 'overview' },
     { label: 'Security', icon: 'lock', key: 'security' },
     { label: 'Advanced', icon: 'wrench', key: 'advanced' },
   ];
 
-  trackByTab(index: number, tab: PasswordTab): string {
-    return tab.key;
-  }
+  selectedTabIndex = 0;
+  bottomTabs = false;
 
-  private dialogRef = inject(MatDialogRef<PasswordManagerModalComponent>);
-  private snackBar = inject(MatSnackBar);
-  private passwordService = inject(RclonePasswordService);
+  FormatTimePipe = new FormatTimePipe();
 
-  get selectedTab(): string {
+  // Form state
+  passwordState: PasswordValidationState = {
+    password: '',
+    confirmPassword: '',
+    newPassword: '',
+    confirmNewPassword: '',
+    currentPassword: '',
+  };
+
+  errors: PasswordErrors = {
+    password: '',
+    confirmPassword: '',
+    newPassword: '',
+    confirmNewPassword: '',
+    currentPassword: '',
+  };
+
+  loading: LoadingStates = {
+    isValidating: false,
+    isEncrypting: false,
+    isUnencrypting: false,
+    isChangingPassword: false,
+    isStoringPassword: false,
+    isRemovingPassword: false,
+    isSettingEnv: false,
+    isClearingEnv: false,
+    isResettingLockout: false,
+  };
+
+  // Status flags
+  hasStoredPassword = false;
+  hasEnvPassword = false;
+  isConfigEncrypted: boolean | unknown = false;
+  lockoutStatus: PasswordLockoutStatus | null = null;
+
+  get selectedTab(): PasswordTab['key'] {
     return this.tabs[this.selectedTabIndex]?.key || 'overview';
   }
 
-  ngOnInit(): void {
-    this.onResize();
-    this.refreshStatus();
-    this.setupEventListeners();
+  // Validation methods
+  private validatePassword(password: string): string {
+    if (!password) return 'Password is required';
+    if (password.length < 3) return 'Password must be at least 3 characters';
+    if (/['"]/.test(password)) return 'Password cannot contain quotes';
+    return '';
   }
 
-  ngOnDestroy(): void {
-    this.unlistenFns.forEach(fn => fn());
+  private validatePasswordMatch(password: string, confirmation: string): string {
+    if (!confirmation) return 'Please confirm your password';
+    if (password !== confirmation) return 'Passwords do not match';
+    return '';
   }
 
-  @HostListener('window:resize')
-  onResize(): void {
-    this.bottomTabs = window.innerWidth < 540;
-  }
-
-  selectTab(index: number): void {
-    this.selectedTabIndex = index;
-  }
-
-  close(): void {
-    this.dialogRef.close();
-  }
-
-  private async setupEventListeners(): Promise<void> {
-    try {
-      // Listen for password validation events
-      const unlisten1 = await listen(
-        'password_validation_result',
-        (event: { payload: { is_valid: boolean; message: string } }) => {
-          const result = event.payload;
-          if (result.is_valid) {
-            this.snackBar.open('✅ Password is valid!', 'Close', { duration: 3000 });
-          } else {
-            this.snackBar.open(`❌ ${result.message}`, 'Close', { duration: 5000 });
-          }
-        }
+  // Form change handlers with immediate validation
+  onPasswordChange(): void {
+    this.errors.password = this.validatePassword(this.passwordState.password);
+    // Re-validate confirmation if it exists
+    if (this.passwordState.confirmPassword) {
+      this.errors.confirmPassword = this.validatePasswordMatch(
+        this.passwordState.password,
+        this.passwordState.confirmPassword
       );
-
-      // Listen for lockout events
-      const unlisten2 = await listen(
-        'password_lockout',
-        (event: { payload: { remaining_time: number } }) => {
-          const lockout = event.payload;
-          this.snackBar.open(
-            `🔒 Account locked for ${this.formatTime(lockout.remaining_time)} due to failed attempts`,
-            'Close',
-            { duration: 8000 }
-          );
-          this.refreshStatus();
-        }
-      );
-
-      // Listen for password stored events
-      const unlisten3 = await listen('password_stored', () => {
-        this.snackBar.open('✅ Password stored securely', 'Close', { duration: 3000 });
-        this.refreshStatus();
-      });
-
-      // Listen for password removed events
-      const unlisten4 = await listen('password_removed', () => {
-        this.snackBar.open('🗑️ Password removed', 'Close', { duration: 3000 });
-        this.refreshStatus();
-      });
-
-      this.unlistenFns = [unlisten1, unlisten2, unlisten3, unlisten4];
-    } catch (error) {
-      console.error('Failed to setup event listeners:', error);
     }
   }
 
-  async refreshStatus(): Promise<void> {
-    try {
-      this.hasStoredPassword = await this.passwordService.hasStoredPassword();
-      this.hasEnvPassword = await invoke('has_config_password_env');
-      this.isConfigEncrypted = await this.passwordService.isConfigEncrypted();
-      this.lockoutStatus = await invoke('get_password_lockout_status');
-    } catch (error) {
-      console.error('Failed to refresh status:', error);
-      this.snackBar.open('Failed to refresh status', 'Close', { duration: 3000 });
+  onConfirmPasswordChange(): void {
+    this.errors.confirmPassword = this.validatePasswordMatch(
+      this.passwordState.password,
+      this.passwordState.confirmPassword
+    );
+  }
+
+  onNewPasswordChange(): void {
+    this.errors.newPassword = this.validatePassword(this.passwordState.newPassword);
+    // Re-validate confirmation if it exists
+    if (this.passwordState.confirmNewPassword) {
+      this.errors.confirmNewPassword = this.validatePasswordMatch(
+        this.passwordState.newPassword,
+        this.passwordState.confirmNewPassword
+      );
     }
   }
 
-  // Password actions
+  onConfirmNewPasswordChange(): void {
+    this.errors.confirmNewPassword = this.validatePasswordMatch(
+      this.passwordState.newPassword,
+      this.passwordState.confirmNewPassword
+    );
+  }
+
+  onCurrentPasswordChange(): void {
+    this.errors.currentPassword = this.validatePassword(this.passwordState.currentPassword);
+  }
+
+  // Validation state getters
+  get isPasswordValid(): boolean {
+    return !this.errors.password && this.passwordState.password.length > 0;
+  }
+
+  get isNewPasswordValid(): boolean {
+    return !this.errors.newPassword && this.passwordState.newPassword.length > 0;
+  }
+
+  get arePasswordsMatching(): boolean {
+    return (
+      !this.errors.confirmPassword &&
+      this.passwordState.confirmPassword.length > 0 &&
+      this.passwordState.password === this.passwordState.confirmPassword
+    );
+  }
+
+  get areNewPasswordsMatching(): boolean {
+    return (
+      !this.errors.confirmNewPassword &&
+      this.passwordState.confirmNewPassword.length > 0 &&
+      this.passwordState.newPassword === this.passwordState.confirmNewPassword
+    );
+  }
+
+  get isCurrentPasswordValid(): boolean {
+    return !this.errors.currentPassword && this.passwordState.currentPassword.length > 0;
+  }
+
+  // Form validation helpers for encryption
+  get canEncrypt(): boolean {
+    return this.isPasswordValid && this.arePasswordsMatching;
+  }
+
+  get canUnencrypt(): boolean {
+    return this.isPasswordValid;
+  }
+
+  get canChangePassword(): boolean {
+    return this.isCurrentPasswordValid && this.isNewPasswordValid && this.areNewPasswordsMatching;
+  }
+
+  get canStorePassword(): boolean {
+    return this.isPasswordValid;
+  }
+
+  // UI Actions
+  switchToSecurityTab(): void {
+    this.selectedTabIndex = this.tabs.findIndex(tab => tab.key === 'security');
+  }
+
+  learnMoreAboutEncryption(): void {
+    openUrl('https://rclone.org/docs/#configuration-encryption').catch(err => {
+      console.error('Failed to open URL:', err);
+      this.showError('Failed to open documentation');
+    });
+  }
+
+  // Core functionality
+  async validatePassword2(): Promise<void> {
+    if (this.errors.password || !this.passwordState.password) return;
+
+    this.loading.isValidating = true;
+    try {
+      await this.passwordService.validatePassword(this.passwordState.password);
+      this.showSuccess('Password is valid!');
+    } catch (error) {
+      this.errors.password = 'Invalid password';
+      this.showError(this.getErrorMessage(error));
+      console.error('Validation failed:', error);
+    } finally {
+      this.lockoutStatus = await this.passwordService.getLockoutStatus();
+      this.loading.isValidating = false;
+    }
+  }
+
   async storePassword(): Promise<void> {
-    this.isLoading = true;
-    try {
-      await this.passwordService.validatePassword(this.password);
-      await this.passwordService.storePassword(this.password);
-      this.password = '';
-      this.snackBar.open('✅ Password stored securely', 'Close', { duration: 3000 });
-    } catch (error) {
-      console.error(error);
-      this.snackBar.open(`${error}`, 'Close', { duration: 3000 });
-    } finally {
-      this.isLoading = false;
-      await this.refreshStatus();
-    }
-  }
+    if (!this.canStorePassword) return;
 
-  async validatePassword(): Promise<void> {
-    this.isValidating = true;
+    this.loading.isStoringPassword = true;
     try {
-      await this.passwordService.validatePassword(this.password);
-      this.snackBar.open('✅ Password is valid!', 'Close', { duration: 3000 });
+      await this.passwordService.validatePassword(this.passwordState.password);
+      await this.passwordService.storePassword(this.passwordState.password);
+      this.resetPasswordForm();
+      this.showSuccess('Password stored securely in system keychain');
     } catch (error) {
-      console.error(error);
-      this.snackBar.open(`${error}`, 'Close', { duration: 3000 });
+      console.error('Failed to store password:', error);
+      this.showError(`Failed to store password: ${this.getErrorMessage(error)}`);
     } finally {
-      this.isValidating = false;
+      this.loading.isStoringPassword = false;
       await this.refreshStatus();
     }
   }
 
   async removePassword(): Promise<void> {
-    this.isLoading = true;
+    this.loading.isRemovingPassword = true;
     try {
       await this.passwordService.removeStoredPassword();
-      this.snackBar.open('🗑️ Password removed', 'Close', { duration: 3000 });
+      this.showSuccess('Stored password removed from system keychain');
     } catch (error) {
       console.error('Failed to remove password:', error);
-      this.snackBar.open('Failed to remove password', 'Close', { duration: 3000 });
+      this.showError('Failed to remove stored password');
     } finally {
-      this.isLoading = false;
+      this.loading.isRemovingPassword = false;
       await this.refreshStatus();
     }
   }
 
-  // Encryption actions
   async encryptConfig(): Promise<void> {
-    if (!this.password) {
-      this.snackBar.open('Please enter a password', 'Close', { duration: 3000 });
-      return;
-    }
+    if (!this.canEncrypt) return;
 
-    this.isEncrypting = true;
+    this.loading.isEncrypting = true;
     try {
-      await invoke('encrypt_config', { password: this.password });
-      this.snackBar.open('✅ Configuration encrypted successfully', 'Close', { duration: 3000 });
-      this.password = '';
+      await this.passwordService.encryptConfig(this.passwordState.password);
+      this.showSuccess('Configuration encrypted successfully');
+      this.resetPasswordForm();
       await this.refreshStatus();
     } catch (error) {
       console.error('Failed to encrypt configuration:', error);
-      this.snackBar.open(`Failed to encrypt configuration: ${error}`, 'Close', { duration: 5000 });
+      this.showError(`Failed to encrypt configuration: ${this.getErrorMessage(error)}`);
     } finally {
-      this.isEncrypting = false;
+      this.loading.isEncrypting = false;
     }
   }
 
   async unencryptConfig(): Promise<void> {
-    if (!this.password) {
-      this.snackBar.open('Please enter the current password', 'Close', { duration: 3000 });
-      return;
-    }
+    if (!this.canUnencrypt) return;
 
-    this.isUnencrypting = true;
+    this.loading.isUnencrypting = true;
     try {
-      await invoke('unencrypt_config', { password: this.password });
-      this.snackBar.open('✅ Configuration unencrypted successfully', 'Close', { duration: 3000 });
-      this.password = '';
+      await this.passwordService.unencryptConfig(this.passwordState.password);
+      this.showSuccess('Configuration unencrypted successfully');
+      this.resetPasswordForm();
       await this.refreshStatus();
     } catch (error) {
       console.error('Failed to unencrypt configuration:', error);
-      this.snackBar.open(`Failed to unencrypt configuration: ${error}`, 'Close', {
-        duration: 5000,
-      });
+      this.showError(`Failed to unencrypt configuration: ${this.getErrorMessage(error)}`);
     } finally {
-      this.isUnencrypting = false;
+      this.loading.isUnencrypting = false;
     }
   }
 
   async changePassword(): Promise<void> {
-    if (!this.currentPassword || !this.newPassword) {
-      this.snackBar.open('Please enter both current and new passwords', 'Close', {
-        duration: 3000,
-      });
-      return;
-    }
+    if (!this.canChangePassword) return;
 
-    this.isChangingPassword = true;
+    this.loading.isChangingPassword = true;
     try {
-      await invoke('change_config_password', {
-        currentPassword: this.currentPassword,
-        newPassword: this.newPassword,
-      });
-      this.snackBar.open('✅ Password changed successfully', 'Close', { duration: 3000 });
-      this.currentPassword = '';
-      this.newPassword = '';
+      await this.passwordService.changeConfigPassword(
+        this.passwordState.currentPassword,
+        this.passwordState.newPassword
+      );
+      this.showSuccess('Password changed successfully');
+      this.resetPasswordForm();
       await this.refreshStatus();
     } catch (error) {
       console.error('Failed to change password:', error);
-      this.snackBar.open(`Failed to change password: ${error}`, 'Close', { duration: 5000 });
+      this.showError(`Failed to change password: ${this.getErrorMessage(error)}`);
     } finally {
-      this.isChangingPassword = false;
+      this.loading.isChangingPassword = false;
     }
   }
 
   // Environment actions
   async setEnvPassword(): Promise<void> {
-    this.isLoading = true;
+    this.loading.isSettingEnv = true;
     try {
       const storedPassword = await this.passwordService.getStoredPassword();
       if (storedPassword) {
-        await invoke('set_config_password_env', { password: storedPassword });
-        this.snackBar.open('✅ Environment variable set', 'Close', { duration: 3000 });
+        await this.passwordService.setConfigPasswordEnv(storedPassword);
+        this.showSuccess('Environment variable set');
       } else {
-        this.snackBar.open('No stored password found', 'Close', { duration: 3000 });
+        this.showError('No stored password found');
       }
       await this.refreshStatus();
     } catch (error) {
       console.error('Failed to set environment variable:', error);
-      this.snackBar.open('Failed to set environment variable', 'Close', { duration: 3000 });
+      this.showError('Failed to set environment variable');
     } finally {
-      this.isLoading = false;
+      this.loading.isSettingEnv = false;
     }
   }
 
   async clearEnvPassword(): Promise<void> {
-    this.isLoading = true;
+    this.loading.isClearingEnv = true;
     try {
-      await invoke('clear_config_password_env');
-      this.snackBar.open('✅ Environment variable cleared', 'Close', { duration: 3000 });
+      await this.passwordService.clearPasswordEnvironment();
+      this.showSuccess('Environment variable cleared');
       await this.refreshStatus();
     } catch (error) {
       console.error('Failed to clear environment variable:', error);
-      this.snackBar.open('Failed to clear environment variable', 'Close', { duration: 3000 });
+      this.showError('Failed to clear environment variable');
     } finally {
-      this.isLoading = false;
+      this.loading.isClearingEnv = false;
     }
   }
 
   // Advanced actions
-  async resetValidator(): Promise<void> {
-    this.isLoading = true;
+  async resetLockout(): Promise<void> {
+    this.loading.isResettingLockout = true;
     try {
-      await invoke('reset_password_validator');
-      this.snackBar.open('✅ Security status reset', 'Close', { duration: 3000 });
+      await this.passwordService.resetLockout();
+      this.showSuccess('Security status reset');
       await this.refreshStatus();
     } catch (error) {
-      console.error('Failed to reset validator:', error);
-      this.snackBar.open('Failed to reset security status', 'Close', { duration: 3000 });
+      console.error(error);
+      this.showError(this.getErrorMessage(error));
     } finally {
-      this.isLoading = false;
+      this.loading.isResettingLockout = false;
     }
   }
 
-  async clearAllCredentials(): Promise<void> {
-    this.isLoading = true;
+  // Utility methods
+  private async refreshStatus(): Promise<void> {
     try {
-      await invoke('clear_all_credentials');
-      this.snackBar.open('✅ All credentials cleared', 'Close', { duration: 3000 });
-      await this.refreshStatus();
+      this.hasStoredPassword = await this.passwordService.hasStoredPassword();
+      this.hasEnvPassword = await this.passwordService.hasConfigPasswordEnv();
+      this.isConfigEncrypted = await this.passwordService.isConfigEncrypted();
+      this.lockoutStatus = await this.passwordService.getLockoutStatus();
     } catch (error) {
-      console.error('Failed to clear credentials:', error);
-      this.snackBar.open('Failed to clear credentials', 'Close', { duration: 3000 });
-    } finally {
-      this.isLoading = false;
+      console.error(error);
+      this.showError(this.getErrorMessage(error));
     }
   }
 
-  // Utility functions
-  formatTime(seconds: number): string {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    if (minutes > 0) {
-      return `${minutes}m ${remainingSeconds}s`;
-    }
-    return `${remainingSeconds}s`;
+  private resetPasswordForm(): void {
+    this.passwordState = {
+      password: '',
+      confirmPassword: '',
+      newPassword: '',
+      confirmNewPassword: '',
+      currentPassword: '',
+    };
+    this.errors = {
+      password: '',
+      confirmPassword: '',
+      newPassword: '',
+      confirmNewPassword: '',
+      currentPassword: '',
+    };
   }
 
-  isTabDisabled(tabKey: string): boolean {
-    switch (tabKey) {
-      case 'encryption':
-        // Encryption tab needs a password to be entered
-        return !this.password && !this.isConfigEncrypted;
-      default:
-        return false;
-    }
+  private showSuccess(message: string): void {
+    this.snackBar.open(`✅ ${message}`, 'Close', {
+      duration: 3000,
+      panelClass: ['success-snackbar'],
+    });
+  }
+
+  private showError(message: string): void {
+    this.snackBar.open(`❌ ${message}`, 'Close', {
+      duration: 5000,
+      panelClass: ['error-snackbar'],
+    });
+  }
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  // Lifecycle hooks
+  async ngOnInit(): Promise<void> {
+    this.onResize();
+    await this.refreshStatus();
+  }
+
+  @HostListener('window:resize')
+  private onResize(): void {
+    this.bottomTabs = window.innerWidth < 540;
+  }
+
+  // UI Actions
+  selectTab(index: number): void {
+    this.selectedTabIndex = index;
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  close(): void {
+    this.dialogRef.close();
   }
 }

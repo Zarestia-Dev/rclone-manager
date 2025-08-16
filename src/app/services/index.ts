@@ -16,5 +16,4 @@ export * from './file-operations/job-management.service';
 export * from './file-operations/repair.service';
 export * from './file-operations/file-system.service';
 export * from './file-operations/mount-management.service';
-export * from './rclone-password.service';
-export * from './auto-password-detection.service';
+export * from './security/rclone-password.service';

@@ -1,8 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnDestroy } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { EventListenersService } from './event-listeners.service';
 import { inject } from '@angular/core';
-import { BehaviorSubject, interval } from 'rxjs';
+import { BehaviorSubject, interval, Subject, takeUntil } from 'rxjs';
 
 export interface RcloneUpdateInfo {
   current_version: string;
@@ -32,7 +32,7 @@ interface UpdateResult {
 @Injectable({
   providedIn: 'root',
 })
-export class RcloneUpdateService extends TauriBaseService {
+export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   private updateStatusSubject = new BehaviorSubject<UpdateStatus>({
     checking: false,
     updating: false,
@@ -41,6 +41,8 @@ export class RcloneUpdateService extends TauriBaseService {
     lastCheck: null,
     updateInfo: null,
   });
+
+  private destroy$ = new Subject<void>();
 
   public updateStatus$ = this.updateStatusSubject.asObservable();
 
@@ -55,22 +57,32 @@ export class RcloneUpdateService extends TauriBaseService {
     });
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   private setupEventListeners(): void {
     // Listen for engine update started
-    this.eventListenersService.listenToEngineUpdateStarted().subscribe(() => {
-      this.updateStatus({ updating: true });
-    });
+    this.eventListenersService
+      .listenToRcloneEngine()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: async event => {
+          try {
+            console.log('Rclone Engine event payload:', event);
 
-    // Listen for engine update completed
-    this.eventListenersService.listenToEngineUpdateCompleted().subscribe(event => {
-      this.updateStatus({
-        updating: false,
-        available: !event.payload.success,
+            if (typeof event === 'object' && event?.status === 'updating') {
+              this.updateStatus({ updating: true });
+            } else if (typeof event === 'object' && event?.status === 'updated') {
+              this.updateStatus({ updating: false });
+              this.checkForUpdates();
+            }
+          } catch (error) {
+            console.error('Error handling Rclone Engine event:', error);
+          }
+        },
       });
-      if (event.payload.success) {
-        this.checkForUpdates();
-      }
-    });
 
     // Listen for engine restarted
     this.eventListenersService.listenToEngineRestarted().subscribe(event => {

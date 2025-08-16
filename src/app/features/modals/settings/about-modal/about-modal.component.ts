@@ -50,10 +50,27 @@ export class AboutModalComponent implements OnInit {
     await this.loadRcloneInfo();
     await this.loadRclonePID();
 
-    this.eventListenersService.listenToRcloneApiReady().subscribe({
-      next: async () => {
-        await this.loadRcloneInfo();
-        await this.loadRclonePID();
+    this.eventListenersService.listenToRcloneEngine().subscribe({
+      next: async event => {
+        try {
+          console.log('Rclone Engine event payload:', event);
+
+          // Handle both new structured payload and legacy string payload
+          let isReady = false;
+
+          if (typeof event === 'object' && event?.status === 'ready') {
+            // New structured payload
+            isReady = true;
+            console.log('Rclone API ready (new format):', event);
+          }
+
+          if (isReady) {
+            await this.loadRcloneInfo();
+            await this.loadRclonePID();
+          }
+        } catch (error) {
+          console.error('Error handling Rclone API ready event:', error);
+        }
       },
     });
   }

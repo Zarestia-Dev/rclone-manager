@@ -137,6 +137,11 @@ pub fn run() {
             let password_validator = init_password_validator();
             app.manage(password_validator);
 
+            // Initialize safe environment manager
+            use crate::core::security::SafeEnvironmentManager;
+            let env_manager = SafeEnvironmentManager::new();
+            app.manage(env_manager);
+
             // Load settings with better error handling
             let settings_json = tauri::async_runtime::block_on(load_settings(
                 app.state::<SettingsState<tauri::Wry>>(),
