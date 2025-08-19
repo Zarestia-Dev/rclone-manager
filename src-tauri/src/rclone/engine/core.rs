@@ -14,6 +14,7 @@ impl RcApiEngine {
             should_exit: false,
             running: false,
             updating: false,
+            password_error_detected: false,
             rclone_path: std::path::PathBuf::new(),
             current_api_port: ENGINE_STATE.get_api().1, // Initialize with current port
         }

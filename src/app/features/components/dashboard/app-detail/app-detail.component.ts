@@ -34,18 +34,19 @@ import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import {
   DEFAULT_JOB_STATS,
   GlobalStats,
+  PrimaryActionType,
   Remote,
   RemoteAction,
   RemoteSettings,
   RemoteSettingsSection,
   SENSITIVE_KEYS,
+  SyncOperationType,
   TransferFile,
 } from '../../../../shared/components/types';
 import {
   CompletedTransfer,
   JobInfoConfig,
   JobInfoPanelComponent,
-  MainOperationType,
   OperationControlComponent,
   OperationControlConfig,
   PathDisplayConfig,
@@ -54,7 +55,6 @@ import {
   StatItem,
   StatsPanelComponent,
   StatsPanelConfig,
-  SyncOperationType,
   TransferActivityPanelComponent,
   TransferActivityPanelConfig,
 } from '../../../../shared/detail-shared';
@@ -95,28 +95,15 @@ interface SyncOperation {
   styleUrls: ['./app-detail.component.scss'],
 })
 export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
-  @Input() mainOperationType: MainOperationType = 'mount';
+  @Input() mainOperationType: PrimaryActionType = 'mount';
   @Input() selectedSyncOperation: SyncOperationType = 'sync';
-  @Input() selectedRemote: Remote | null = null;
+  @Input() selectedRemote!: Remote;
   @Input() remoteSettings: RemoteSettings = {};
   @Input() restrictMode!: boolean;
   @Input() iconService!: IconService;
   @Input() actionInProgress?: RemoteAction | null;
 
-  // Operation specific outputs
-  @Output() primaryAction = new EventEmitter<{
-    mainType: MainOperationType;
-    subType?: SyncOperationType;
-    remoteName: string;
-  }>();
-  @Output() secondaryAction = new EventEmitter<{
-    mainType: MainOperationType;
-    subType?: SyncOperationType;
-    remoteName: string;
-  }>();
   @Output() syncOperationChange = new EventEmitter<SyncOperationType>();
-
-  // Common outputs
   @Output() openRemoteConfigModal = new EventEmitter<{
     editTarget?: string;
     existingConfig?: RemoteSettings;
@@ -125,9 +112,9 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     remoteName: string;
     path: string;
   }>();
-  // @Output() extendedData = new EventEmitter<{
-  //   resync: boolean;
-  // }>();
+
+  @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
+  @Output() stopJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
 
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild('speedChart') speedChartRef!: ElementRef;
@@ -232,41 +219,12 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     this.handleOperationChange();
   }
 
-  // Primary action handler - updated for new structure
-  handlePrimaryAction(): void {
-    console.log(
-      'Primary action triggered for:',
-      this.mainOperationType,
-      this.selectedSyncOperation
-    );
-
-    if (this.selectedRemote?.remoteSpecs?.name) {
-      this.primaryAction.emit({
-        mainType: this.mainOperationType,
-        subType: this.isSyncType() ? this.selectedSyncOperation : undefined,
-        remoteName: this.selectedRemote.remoteSpecs.name,
-      });
-    }
-  }
-
-  // Secondary action handler - updated for new structure
-  handleSecondaryAction(): void {
-    if (this.selectedRemote?.remoteSpecs?.name) {
-      this.secondaryAction.emit({
-        mainType: this.mainOperationType,
-        subType: this.isSyncType() ? this.selectedSyncOperation : undefined,
-        remoteName: this.selectedRemote.remoteSpecs.name,
-      });
-    }
-  }
-
   // Updated configuration builders
   getOperationControlConfig(): OperationControlConfig {
     const currentOp = this.getCurrentOperationConfig();
 
     return {
       operationType: this.mainOperationType,
-      subOperationType: this.isSyncType() ? this.selectedSyncOperation : undefined,
       isActive: this.getOperationActiveState(),
       isError: this.getOperationErrorState(),
       isLoading: this.isLoading,

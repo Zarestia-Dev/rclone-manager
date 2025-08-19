@@ -138,6 +138,14 @@ impl RcApiEngine {
                                     "error_type": "password_required"
                                 }));
                                 
+                                // Mark engine state so startup logic knows this was a fatal
+                                // startup error and avoids emitting a spurious "ready".
+                                if let Ok(mut engine) = RcApiEngine::lock_engine() {
+                                    engine.password_error_detected = true;
+                                    // Also mark as not running to be safe
+                                    engine.running = false;
+                                }
+
                                 // Break after detecting password error to avoid spam
                                 break;
                             }

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, OnChanges } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -12,6 +12,7 @@ import { MatSortModule } from '@angular/material/sort';
 
 import {
   JobInfo,
+  PrimaryActionType,
   Remote,
   RemoteSettings,
   SENSITIVE_KEYS,
@@ -27,6 +28,7 @@ import {
 
 // Services
 import { IconService } from '../../../../shared/services/icon.service';
+import { AppSettingsService } from '../../../../services/settings/app-settings.service';
 
 @Component({
   selector: 'app-general-detail',
@@ -49,7 +51,9 @@ import { IconService } from '../../../../shared/services/icon.service';
   templateUrl: './general-detail.component.html',
   styleUrl: './general-detail.component.scss',
 })
-export class GeneralDetailComponent {
+export class GeneralDetailComponent implements OnChanges {
+  // Inject AppSettingsService to persist per-remote quick action choices
+  private appSettings = inject(AppSettingsService);
   @Input() selectedRemote!: Remote;
   @Input() iconService!: IconService;
   @Input() jobs: JobInfo[] = [];
@@ -60,18 +64,22 @@ export class GeneralDetailComponent {
     editTarget?: string;
     existingConfig?: RemoteSettings;
   }>();
-  @Output() startOperation = new EventEmitter<{
-    type: 'sync' | 'copy';
-    remoteName: string;
-  }>();
-  @Output() stopOperation = new EventEmitter<{
-    type: 'sync' | 'copy' | 'mount' | string;
+  @Output() stopJob = new EventEmitter<{
+    type: PrimaryActionType;
     remoteName: string;
   }>();
   @Output() deleteJob = new EventEmitter<number>();
+  @Output() togglePrimaryAction = new EventEmitter<PrimaryActionType>();
 
   // For jobs table
   displayedColumns: string[] = ['type', 'status', 'progress', 'startTime', 'actions'];
+  selectedActions = new Set<PrimaryActionType>();
+
+  ngOnChanges(): void {
+    if (this.selectedRemote?.primaryActions) {
+      this.selectedActions = new Set(this.selectedRemote.primaryActions);
+    }
+  }
 
   // Configuration methods for shared components
   getRemoteConfigurationPanelConfig(): SettingsPanelConfig {

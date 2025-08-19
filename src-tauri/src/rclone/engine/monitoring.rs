@@ -76,6 +76,12 @@ impl RcApiEngine {
         debug!("🔍 Waiting for API to be ready (timeout: {timeout_secs}s)");
 
         while start.elapsed() < timeout {
+            // If stderr monitor already detected a fatal startup error like a
+            // password prompt/requirement, abort early so we don't claim ready.
+            if self.password_error_detected {
+                debug!("❗ Detected password error during startup, aborting readiness wait");
+                return false;
+            }
             if self.is_api_healthy() {
                 debug!("✅ API is healthy and ready");
                 return true;

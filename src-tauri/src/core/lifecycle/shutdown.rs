@@ -1,4 +1,4 @@
-use log::{error, info, warn};
+use log::{error, info, warn, debug};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::task::spawn_blocking;
@@ -130,6 +130,21 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
                 error!("Failed to force kill rclone processes: {e}");
             }
         }
+    }
+
+    // Clear any in-memory config password (RCLONE_CONFIG_PASS) from our safe
+    // environment manager so it isn't leaked into future processes.
+    // Note: this is technically unnecessary because SafeEnvironmentManager
+    // lives in-process and will be dropped when the application exits, but
+    // we keep the explicit clear as a defensive measure — it documents intent
+    // and ensures no accidental late spawns during shutdown can read the
+    // secret. Do NOT remove the stored password from keyring here; that is
+    // managed separately by user actions.
+    if let Some(env_manager) = app_handle.try_state::<crate::core::security::SafeEnvironmentManager>() {
+        info!("🧹 Clearing in-memory RCLONE_CONFIG_PASS from SafeEnvironmentManager");
+        env_manager.clear_config_password();
+    } else {
+        debug!("SafeEnvironmentManager not available in app state during shutdown");
     }
 
     app_handle.exit(0);

@@ -17,63 +17,149 @@
       </div>
       <!-- Status Indicators -->
       <div class="remote-status-indicators">
+        <!-- Mount status (selectable as a quick action) -->
         <div
           class="status-chip mount"
+          role="button"
+          tabindex="0"
+          (click)="togglePrimaryAction.emit('mount')"
+          [class.selected]="selectedRemote.primaryActions?.includes('mount')"
           [class.active]="selectedRemote.mountState?.mounted"
-          [matTooltip]="selectedRemote.mountState?.mounted ? 'Mounted' : 'Not Mounted'"
-          aria-label="Mount status"
+          [matTooltip]="
+            selectedRemote.mountState?.mounted ? 'Mounted' : 'Toggle Mount as Quick Action'
+          "
+          [attr.aria-pressed]="selectedRemote.primaryActions?.includes('mount')"
         >
           <div class="status-dot">
             <mat-icon svgIcon="mount"></mat-icon>
           </div>
+          <span
+            *ngIf="selectedRemote.primaryActions?.includes('mount')"
+            class="selection-badge"
+            aria-hidden="true"
+            >{{ (selectedRemote.primaryActions?.indexOf('mount') ?? -1) + 1 }}</span
+          >
+          <span
+            class="cdk-visually-hidden"
+            *ngIf="selectedRemote.primaryActions?.includes('mount')"
+          >
+            Mount selected as quick action
+            {{ (selectedRemote.primaryActions?.indexOf('mount') ?? -1) + 1 }}
+          </span>
           <span class="status-label">Mount</span>
         </div>
 
+        <!-- Clickable chips to choose primary quick actions (max 2) -->
         <div
           class="status-chip sync"
-          [class.active]="selectedRemote.syncState?.isOnSync"
-          [matTooltip]="selectedRemote.syncState?.isOnSync ? 'Syncing' : 'Idle'"
-          aria-label="Sync status"
+          role="button"
+          tabindex="0"
+          (click)="togglePrimaryAction.emit('sync')"
+          [class.selected]="selectedRemote.primaryActions?.includes('sync')"
+          [matTooltip]="
+            selectedRemote.syncState?.isOnSync ? 'Syncing' : 'Toggle Sync as Quick Action'
+          "
+          [attr.aria-pressed]="selectedRemote.primaryActions?.includes('sync')"
         >
           <div class="status-dot">
             <mat-icon svgIcon="sync"></mat-icon>
           </div>
+          <span
+            *ngIf="selectedRemote.primaryActions?.includes('sync')"
+            class="selection-badge"
+            aria-hidden="true"
+            >{{ (selectedRemote.primaryActions?.indexOf('sync') ?? -1) + 1 }}</span
+          >
+          <span class="cdk-visually-hidden" *ngIf="selectedRemote.primaryActions?.includes('sync')">
+            Sync selected as quick action
+            {{ (selectedRemote.primaryActions?.indexOf('sync') ?? -1) + 1 }}
+          </span>
           <span class="status-label">Sync</span>
         </div>
 
         <div
           class="status-chip copy"
-          [class.active]="selectedRemote.copyState?.isOnCopy"
-          [matTooltip]="selectedRemote.copyState?.isOnCopy ? 'Copying' : 'Idle'"
-          aria-label="Copy status"
+          role="button"
+          tabindex="0"
+          (click)="togglePrimaryAction.emit('copy')"
+          [class.selected]="selectedRemote.primaryActions?.includes('copy')"
+          [matTooltip]="
+            selectedRemote.copyState?.isOnCopy ? 'Copying' : 'Toggle Copy as Quick Action'
+          "
+          [attr.aria-pressed]="selectedRemote.primaryActions?.includes('copy')"
         >
           <div class="status-dot">
             <mat-icon svgIcon="copy"></mat-icon>
           </div>
+          <span
+            *ngIf="selectedRemote.primaryActions?.includes('copy')"
+            class="selection-badge"
+            aria-hidden="true"
+            >{{ (selectedRemote.primaryActions?.indexOf('copy') ?? -1) + 1 }}</span
+          >
+          <span class="cdk-visually-hidden" *ngIf="selectedRemote.primaryActions?.includes('copy')">
+            Copy selected as quick action
+            {{ (selectedRemote.primaryActions?.indexOf('copy') ?? -1) + 1 }}
+          </span>
           <span class="status-label">Copy</span>
         </div>
 
         <div
           class="status-chip move"
-          [class.active]="selectedRemote.moveState?.isOnMove"
-          [matTooltip]="selectedRemote.moveState?.isOnMove ? 'Moving' : 'Idle'"
-          aria-label="Move status"
+          role="button"
+          tabindex="0"
+          (click)="togglePrimaryAction.emit('move')"
+          [class.selected]="selectedRemote.primaryActions?.includes('move')"
+          [matTooltip]="
+            selectedRemote.moveState?.isOnMove ? 'Moving' : 'Toggle Move as Quick Action'
+          "
+          [attr.aria-pressed]="selectedRemote.primaryActions?.includes('move')"
         >
           <div class="status-dot">
             <mat-icon svgIcon="move"></mat-icon>
           </div>
+          <span
+            *ngIf="selectedRemote.primaryActions?.includes('move')"
+            class="selection-badge"
+            aria-hidden="true"
+            >{{ (selectedRemote.primaryActions?.indexOf('move') ?? -1) + 1 }}</span
+          >
+          <span class="cdk-visually-hidden" *ngIf="selectedRemote.primaryActions?.includes('move')">
+            Move selected as quick action
+            {{ (selectedRemote.primaryActions?.indexOf('move') ?? -1) + 1 }}
+          </span>
           <span class="status-label">Move</span>
         </div>
 
         <div
           class="status-chip bisync"
-          [class.active]="selectedRemote.bisyncState?.isOnBisync"
-          [matTooltip]="selectedRemote.bisyncState?.isOnBisync ? 'Bisync Active' : 'Idle'"
-          aria-label="Bisync status"
+          role="button"
+          tabindex="0"
+          (click)="togglePrimaryAction.emit('bisync')"
+          [class.selected]="selectedRemote.primaryActions?.includes('bisync')"
+          [matTooltip]="
+            selectedRemote.bisyncState?.isOnBisync
+              ? 'Bisync Active'
+              : 'Toggle BiSync as Quick Action'
+          "
+          [attr.aria-pressed]="selectedRemote.primaryActions?.includes('bisync')"
         >
           <div class="status-dot">
             <mat-icon svgIcon="right-left"></mat-icon>
           </div>
+          <span
+            *ngIf="selectedRemote.primaryActions?.includes('bisync')"
+            class="selection-badge"
+            aria-hidden="true"
+            >{{ (selectedRemote.primaryActions?.indexOf('bisync') ?? -1) + 1 }}</span
+          >
+          <span
+            class="cdk-visually-hidden"
+            *ngIf="selectedRemote.primaryActions?.includes('bisync')"
+          >
+            Bisync selected as quick action
+            {{ (selectedRemote.primaryActions?.indexOf('bisync') ?? -1) + 1 }}
+          </span>
           <span class="status-label">Bisync</span>
         </div>
       </div>
@@ -88,7 +174,7 @@
     <!-- Jobs Panel -->
     <app-jobs-panel
       [config]="getJobsPanelConfig()"
-      (stopOperation)="stopOperation.emit($event)"
+      (stopJob)="stopJob.emit({ type: $event.type, remoteName: $event.remoteName })"
       (deleteJob)="deleteJob.emit($event)"
     >
     </app-jobs-panel>

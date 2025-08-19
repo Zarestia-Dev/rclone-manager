@@ -2,7 +2,7 @@ use crate::core::security::{
     CredentialStore, CredentialError, 
     test_rclone_password, SafeEnvironmentManager, PasswordValidatorState
 };
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, State, Emitter};
 use log::{info, error, debug, warn};
 
 /// Store the rclone config password securely
@@ -24,7 +24,7 @@ pub async fn store_config_password(
             if let Ok(mut validator) = password_state.lock() {
                 validator.record_success();
             }
-            
+
             info!("✅ Password stored successfully");
             Ok(())
         }
@@ -171,12 +171,18 @@ pub async fn reset_password_validator(
 /// Set the config password environment variable (for current session)
 #[tauri::command]
 pub async fn set_config_password_env(
+    app: AppHandle,
     env_manager: State<'_, SafeEnvironmentManager>,
     password: String,
 ) -> Result<(), String> {
     debug!("🔧 Setting config password environment variable");
     
     env_manager.set_config_password(password);
+                // Emit event so other parts (engine) can react and clear any
+            // startup password error state.
+            if let Err(e) = app.emit("rclone_engine", serde_json::json!({ "status": "password_stored" })) {
+                error!("Failed to emit password_stored event: {e}");
+            }
     
     debug!("✅ Environment variable set");
     Ok(())

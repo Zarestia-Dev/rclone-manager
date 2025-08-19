@@ -1,11 +1,4 @@
-<mat-card
-  class="remote-card"
-  [ngClass]="remoteCardClasses"
-  (click)="onRemoteClick()"
-  (contextmenu)="onRightClick($event, contextMenuTrigger)"
-  #contextMenuTrigger="matMenuTrigger"
-  [matMenuTriggerFor]="contextMenu"
->
+<mat-card class="remote-card" [ngClass]="remoteCardClasses" (click)="onRemoteClick()">
   <mat-card-header class="remote-header">
     <div class="remote-info">
       <div class="icon-container">
@@ -60,71 +53,3 @@
     </app-quick-action-buttons>
   </mat-card-content>
 </mat-card>
-
-<!-- Context Menu -->
-<mat-menu #contextMenu="matMenu">
-  <!-- Mount Operations (shown in all tabs except files) -->
-  @if (mode !== 'sync') {
-    <button
-      mat-menu-item
-      (click)="remote.mountState?.mounted ? onUnmountAction($event) : onMountAction($event)"
-    >
-      <mat-icon [svgIcon]="remote.mountState?.mounted ? 'eject' : 'mount'"></mat-icon>
-      <span>{{ remote.mountState?.mounted ? 'Unmount' : 'Mount' }}</span>
-    </button>
-
-    <mat-divider></mat-divider>
-  }
-
-  <!-- Sync Operations (shown in general and sync tabs) -->
-  @if (mode === 'general' || mode === 'sync') {
-    <button
-      mat-menu-item
-      (click)="remote.syncState?.isOnSync ? onStopSyncAction($event) : onSyncAction($event)"
-    >
-      <mat-icon [svgIcon]="remote.syncState?.isOnSync ? 'stop' : 'sync'"></mat-icon>
-      <span>{{ remote.syncState?.isOnSync ? 'Stop Sync' : 'Start Sync' }}</span>
-    </button>
-
-    <button
-      mat-menu-item
-      (click)="remote.copyState?.isOnCopy ? onStopCopyAction($event) : onCopyAction($event)"
-    >
-      <mat-icon [svgIcon]="remote.copyState?.isOnCopy ? 'stop' : 'copy'"></mat-icon>
-      <span>{{ remote.copyState?.isOnCopy ? 'Stop Copy' : 'Start Copy' }}</span>
-    </button>
-
-    <button
-      mat-menu-item
-      (click)="remote.moveState?.isOnMove ? onStopMoveAction($event) : onMoveAction($event)"
-    >
-      <mat-icon [svgIcon]="remote.moveState?.isOnMove ? 'stop' : 'move'"></mat-icon>
-      <span>{{ remote.moveState?.isOnMove ? 'Stop Move' : 'Start Move' }}</span>
-    </button>
-
-    <button
-      mat-menu-item
-      (click)="remote.bisyncState?.isOnBisync ? onStopBisyncAction($event) : onBisyncAction($event)"
-    >
-      <mat-icon [svgIcon]="remote.bisyncState?.isOnBisync ? 'stop' : 'right-left'"></mat-icon>
-      <span>{{ remote.bisyncState?.isOnBisync ? 'Stop BiSync' : 'Start BiSync' }}</span>
-    </button>
-
-    <mat-divider></mat-divider>
-  }
-
-  <!-- Browse (shown in all tabs) -->
-  <button mat-menu-item (click)="onBrowseAction($event)" [disabled]="!remote.mountState?.mounted">
-    <mat-icon svgIcon="folder"></mat-icon>
-    <span>Browse</span>
-  </button>
-
-  <!-- Configure Primary Actions (shown only in general tab) -->
-  <!-- <mat-divider></mat-divider>
-  @if (mode === 'general') {
-    <button mat-menu-item (click)="onConfigurePrimaryActions($event)">
-      <mat-icon svgIcon="cog"></mat-icon>
-      <span>Configure Quick Actions...</span>
-    </button>
-  } -->
-</mat-menu>

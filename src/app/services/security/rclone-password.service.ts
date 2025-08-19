@@ -1,15 +1,6 @@
-import { Injectable, inject } from '@angular/core';
-import { MatBottomSheet, MatBottomSheetRef } from '@angular/material/bottom-sheet';
-import { BehaviorSubject, firstValueFrom } from 'rxjs';
+import { Injectable } from '@angular/core';
+import { BehaviorSubject } from 'rxjs';
 import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
-import { RepairSheetComponent } from '../../features/components/repair-sheet/repair-sheet.component';
-import { RepairData } from '../../shared/components/types';
-
-export interface PasswordPromptResult {
-  password: string;
-  stored: boolean;
-}
 
 export interface PasswordLockoutStatus {
   is_locked: boolean;
@@ -29,123 +20,8 @@ export interface PasswordLockoutStatus {
   providedIn: 'root',
 })
 export class RclonePasswordService {
-  private bottomSheet = inject(MatBottomSheet);
-  private activePasswordSheet: MatBottomSheetRef<RepairSheetComponent> | null = null;
   private passwordRequiredSubject = new BehaviorSubject<boolean>(false);
-
   public passwordRequired$ = this.passwordRequiredSubject.asObservable();
-
-  constructor() {
-    this.setupEventListeners();
-  }
-
-  private async setupEventListeners(): Promise<void> {
-    try {
-      // Listen for rclone password errors - this is what we see in your logs
-      await listen('rclone_engine', (event: { payload: unknown }) => {
-        if (typeof event.payload === 'object' && event.payload !== null) {
-          const payload = event.payload as {
-            status?: string;
-            message?: string;
-            error_type?: string;
-          };
-          console.log('🔑 Rclone engine event:', payload);
-
-          // Check for password errors - both old and new format
-          if (
-            payload.status === 'error' &&
-            (payload.error_type === 'password_required' || // New structured format
-              (payload.message && this.isPasswordError(payload.message))) // Legacy format
-          ) {
-            console.log('🔑 Password required detected from engine event');
-            this.handlePasswordRequired();
-          }
-        }
-      });
-    } catch (error) {
-      console.error('Failed to setup password service event listeners:', error);
-    }
-  }
-
-  private isPasswordError(error: string): boolean {
-    const passwordErrorPatterns = [
-      'Enter configuration password',
-      'Failed to read line: EOF',
-      'configuration is encrypted',
-      'password required',
-      'most likely wrong password.',
-    ];
-
-    return passwordErrorPatterns.some(pattern =>
-      error.toLowerCase().includes(pattern.toLowerCase())
-    );
-  }
-
-  private handlePasswordRequired(): void {
-    this.passwordRequiredSubject.next(true);
-
-    // Only show one password sheet at a time
-    if (this.activePasswordSheet) {
-      return;
-    }
-
-    this.promptForPassword().catch(error => {
-      console.error('Error handling password prompt:', error);
-    });
-  }
-
-  /**
-   * Manually prompt for password (can be called from UI)
-   */
-  async promptForPassword(options?: {
-    title?: string;
-    description?: string;
-    showStoreOption?: boolean;
-    isRequired?: boolean;
-  }): Promise<PasswordPromptResult | null> {
-    // Close any existing sheet
-    if (this.activePasswordSheet) {
-      this.activePasswordSheet.dismiss();
-    }
-
-    const repairData: RepairData = {
-      type: 'rclone_password',
-      title: options?.title || 'Rclone Configuration Password Required',
-      message:
-        options?.description ||
-        'Your rclone configuration requires a password to access encrypted remotes.',
-      requiresPassword: true,
-      showStoreOption: options?.showStoreOption ?? true,
-      passwordDescription:
-        options?.description ||
-        'Your rclone configuration requires a password to access encrypted remotes.',
-    };
-
-    this.activePasswordSheet = this.bottomSheet.open(RepairSheetComponent, {
-      data: repairData,
-      disableClose: options?.isRequired ?? false,
-    });
-
-    try {
-      const result = await firstValueFrom(this.activePasswordSheet.afterDismissed());
-      this.activePasswordSheet = null;
-      this.passwordRequiredSubject.next(false);
-
-      if (result === 'success') {
-        // The password was successfully validated and applied
-        // We don't have direct access to the password here, but that's okay
-        // The repair sheet handles setting the environment variable
-        return { password: '', stored: false }; // Placeholder values
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Error in password prompt:', error);
-      this.activePasswordSheet = null;
-      this.passwordRequiredSubject.next(false);
-      return null;
-    }
-  }
 
   /**
    * Check if password is stored
@@ -232,28 +108,6 @@ export class RclonePasswordService {
       return false;
     }
   }
-
-  /**
-   * Initialize password on app startup
-   */
-  async initializePassword(): Promise<void> {
-    // try {
-    //   const hasStored = await this.hasStoredPassword();
-    //   if (hasStored) {
-    //     const password = await this.getStoredPassword();
-    //     if (password) {
-    //       await this.setPasswordEnvironment(password);
-    //       console.log('✅ Rclone password initialized from secure storage');
-    //     }
-    //   }
-    // } catch (error) {
-    //   console.error('Failed to initialize password:', error);
-    // }
-  }
-
-  /**
-   * Get lockout status
-   */
 
   /**
    * Reset password validator (clear failed attempts)

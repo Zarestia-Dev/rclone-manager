@@ -42,7 +42,6 @@
     "@angular/material": "^19.2.4",
     "@angular/platform-browser": "^19.2.3",
     "@angular/platform-browser-dynamic": "^19.2.3",
-    "@angular/router": "^19.2.3",
     "@tauri-apps/api": "^2.3.0",
     "@tauri-apps/plugin-autostart": "^2.2.0",
     "@tauri-apps/plugin-dialog": "^2.2.0",

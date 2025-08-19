@@ -150,6 +150,11 @@ pub struct RcApiEngine {
     pub should_exit: bool,
     pub running: bool,
     pub updating: bool,
+    /// Set to true when stderr monitoring detects a critical startup error
+    /// (for example: rclone configuration password required). This is used
+    /// to avoid emitting a spurious "ready" event when the binary will
+    /// immediately stop after startup.
+    pub password_error_detected: bool,
     pub rclone_path: PathBuf,
     pub current_api_port: u16,
 }

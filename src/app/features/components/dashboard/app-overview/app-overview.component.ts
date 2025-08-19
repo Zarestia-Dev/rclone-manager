@@ -8,9 +8,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import {
   AppTab,
+  PrimaryActionType,
   Remote,
   RemoteActionProgress,
-  RemotePrimaryActions,
 } from '../../../../shared/components/types';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
@@ -48,20 +48,8 @@ export class AppOverviewComponent {
 
   @Output() remoteSelected = new EventEmitter<Remote>();
   @Output() openInFiles = new EventEmitter<string>();
-  @Output() primaryAction = new EventEmitter<string>();
-  @Output() secondaryActionClicked = new EventEmitter<string>();
-  @Output() secondaryAction = new EventEmitter<string>();
-  @Output() mountAction = new EventEmitter<string>();
-  @Output() unmountAction = new EventEmitter<string>();
-  @Output() syncAction = new EventEmitter<string>();
-  @Output() copyAction = new EventEmitter<string>();
-  @Output() moveAction = new EventEmitter<string>();
-  @Output() bisyncAction = new EventEmitter<string>();
-  @Output() stopSyncAction = new EventEmitter<string>();
-  @Output() stopCopyAction = new EventEmitter<string>();
-  @Output() stopMoveAction = new EventEmitter<string>();
-  @Output() stopBisyncAction = new EventEmitter<string>();
-  @Output() configurePrimaryActions = new EventEmitter<RemotePrimaryActions>();
+  @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
+  @Output() stopJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
 
   // Computed properties based on mode
   get activeRemotes(): Remote[] {
@@ -202,61 +190,5 @@ export class AppOverviewComponent {
     if (remoteName) {
       this.openInFiles.emit(remoteName);
     }
-  }
-
-  triggerPrimaryAction(remoteName: string): void {
-    if (remoteName) {
-      this.primaryAction.emit(remoteName);
-    }
-  }
-
-  triggerSecondaryAction(remoteName: string): void {
-    if (remoteName) {
-      this.secondaryAction.emit(remoteName);
-    }
-  }
-
-  onMountAction(remoteName: string): void {
-    this.mountAction.emit(remoteName);
-  }
-
-  onUnmountAction(remoteName: string): void {
-    this.unmountAction.emit(remoteName);
-  }
-
-  onSyncAction(remoteName: string): void {
-    this.syncAction.emit(remoteName);
-  }
-
-  onCopyAction(remoteName: string): void {
-    this.copyAction.emit(remoteName);
-  }
-
-  onMoveAction(remoteName: string): void {
-    this.moveAction.emit(remoteName);
-  }
-
-  onBisyncAction(remoteName: string): void {
-    this.bisyncAction.emit(remoteName);
-  }
-
-  onStopSyncAction(remoteName: string): void {
-    this.stopSyncAction.emit(remoteName);
-  }
-
-  onStopCopyAction(remoteName: string): void {
-    this.stopCopyAction.emit(remoteName);
-  }
-
-  onStopMoveAction(remoteName: string): void {
-    this.stopMoveAction.emit(remoteName);
-  }
-
-  onStopBisyncAction(remoteName: string): void {
-    this.stopBisyncAction.emit(remoteName);
-  }
-
-  onConfigurePrimaryActions(config: RemotePrimaryActions): void {
-    this.configurePrimaryActions.emit(config);
   }
 }

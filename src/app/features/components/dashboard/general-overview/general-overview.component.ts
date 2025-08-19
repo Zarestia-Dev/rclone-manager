@@ -39,6 +39,7 @@ import {
   GlobalStats,
   JobInfo,
   MemoryStats,
+  PrimaryActionType,
   Remote,
   RemoteAction,
   RemoteActionProgress,
@@ -106,10 +107,14 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   @Input() systemInfoService!: SystemInfoService;
 
   @Output() selectRemote = new EventEmitter<Remote>();
-  @Output() mountRemote = new EventEmitter<string>();
-  @Output() unmountRemote = new EventEmitter<string>();
-  @Output() startOperation = new EventEmitter<{ type: 'sync' | 'copy'; remoteName: string }>();
-  @Output() stopJob = new EventEmitter<{ type: 'sync' | 'copy'; remoteName: string }>();
+  @Output() startJob = new EventEmitter<{
+    type: PrimaryActionType;
+    remoteName: string;
+  }>();
+  @Output() stopJob = new EventEmitter<{
+    type: PrimaryActionType;
+    remoteName: string;
+  }>();
   @Output() browseRemote = new EventEmitter<string>();
 
   // Component State
@@ -166,7 +171,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['remotes'] || changes['jobs']) {
+    if (changes['remotes'] || changes['jobs'] || changes['actionInProgress']) {
       this.updateComputedValues();
       this.statsUpdateDebounce$.next();
     }
@@ -540,22 +545,8 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     this.browseRemote.emit(remoteName);
   }
 
-  onPrimaryActionFromPanel(remoteName: string): void {
-    // For general overview, primary action could be mount/unmount based on current state
-    const remote = this.remotes.find(r => r.remoteSpecs.name === remoteName);
-    if (remote) {
-      if (remote.mountState?.mounted) {
-        this.unmountRemote.emit(remoteName);
-        this.cdr.markForCheck();
-      } else {
-        this.mountRemote.emit(remoteName);
-        this.cdr.markForCheck();
-      }
-    }
-  }
-
   onSecondaryActionFromPanel(remoteName: string): void {
     // Secondary action could be sync operation
-    this.startOperation.emit({ type: 'sync', remoteName });
+    this.startJob.emit({ type: 'sync', remoteName });
   }
 }

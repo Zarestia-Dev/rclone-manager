@@ -1,6 +1,13 @@
 import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormBuilder,
+  FormGroup,
+  Validators,
+  AbstractControl,
+  ValidationErrors,
+} from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -17,27 +24,11 @@ interface PasswordTab {
   key: 'overview' | 'security' | 'advanced';
 }
 
-interface PasswordValidationState {
-  password: string;
-  confirmPassword: string;
-  newPassword: string;
-  confirmNewPassword: string;
-  currentPassword: string;
-}
-
 interface PasswordLockoutStatus {
   is_locked: boolean;
   failed_attempts: number;
   max_attempts: number;
   remaining_lockout_time?: number;
-}
-
-interface PasswordErrors {
-  password: string;
-  confirmPassword: string;
-  newPassword: string;
-  confirmNewPassword: string;
-  currentPassword: string;
 }
 
 interface LoadingStates {
@@ -57,7 +48,7 @@ interface LoadingStates {
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
+    ReactiveFormsModule,
     MatButtonModule,
     MatInputModule,
     MatFormFieldModule,
@@ -70,6 +61,7 @@ export class PasswordManagerModalComponent implements OnInit {
   private readonly dialogRef = inject(MatDialogRef<PasswordManagerModalComponent>);
   private readonly snackBar = inject(MatSnackBar);
   private readonly passwordService = inject(RclonePasswordService);
+  private readonly fb = inject(FormBuilder);
 
   readonly tabs: PasswordTab[] = [
     { label: 'Overview', icon: 'shield', key: 'overview' },
@@ -82,22 +74,10 @@ export class PasswordManagerModalComponent implements OnInit {
 
   FormatTimePipe = new FormatTimePipe();
 
-  // Form state
-  passwordState: PasswordValidationState = {
-    password: '',
-    confirmPassword: '',
-    newPassword: '',
-    confirmNewPassword: '',
-    currentPassword: '',
-  };
-
-  errors: PasswordErrors = {
-    password: '',
-    confirmPassword: '',
-    newPassword: '',
-    confirmNewPassword: '',
-    currentPassword: '',
-  };
+  // Reactive Forms
+  overviewForm: FormGroup;
+  encryptionForm: FormGroup;
+  changePasswordForm: FormGroup;
 
   loading: LoadingStates = {
     isValidating: false,
@@ -117,109 +97,119 @@ export class PasswordManagerModalComponent implements OnInit {
   isConfigEncrypted: boolean | unknown = false;
   lockoutStatus: PasswordLockoutStatus | null = null;
 
+  constructor() {
+    this.overviewForm = this.createOverviewForm();
+    this.encryptionForm = this.createEncryptionForm();
+    this.changePasswordForm = this.createChangePasswordForm();
+  }
+
   get selectedTab(): PasswordTab['key'] {
     return this.tabs[this.selectedTabIndex]?.key || 'overview';
   }
 
-  // Validation methods
-  private validatePassword(password: string): string {
-    if (!password) return 'Password is required';
-    if (password.length < 3) return 'Password must be at least 3 characters';
-    if (/['"]/.test(password)) return 'Password cannot contain quotes';
-    return '';
+  // Form creation methods
+  private createOverviewForm(): FormGroup {
+    return this.fb.group({
+      password: ['', [Validators.required, this.createPasswordValidator()]],
+    });
   }
 
-  private validatePasswordMatch(password: string, confirmation: string): string {
-    if (!confirmation) return 'Please confirm your password';
-    if (password !== confirmation) return 'Passwords do not match';
-    return '';
-  }
-
-  // Form change handlers with immediate validation
-  onPasswordChange(): void {
-    this.errors.password = this.validatePassword(this.passwordState.password);
-    // Re-validate confirmation if it exists
-    if (this.passwordState.confirmPassword) {
-      this.errors.confirmPassword = this.validatePasswordMatch(
-        this.passwordState.password,
-        this.passwordState.confirmPassword
-      );
-    }
-  }
-
-  onConfirmPasswordChange(): void {
-    this.errors.confirmPassword = this.validatePasswordMatch(
-      this.passwordState.password,
-      this.passwordState.confirmPassword
+  private createEncryptionForm(): FormGroup {
+    return this.fb.group(
+      {
+        password: ['', [Validators.required, this.createPasswordValidator()]],
+        confirmPassword: ['', [Validators.required]],
+      },
+      { validators: this.passwordMatchValidator }
     );
   }
 
-  onNewPasswordChange(): void {
-    this.errors.newPassword = this.validatePassword(this.passwordState.newPassword);
-    // Re-validate confirmation if it exists
-    if (this.passwordState.confirmNewPassword) {
-      this.errors.confirmNewPassword = this.validatePasswordMatch(
-        this.passwordState.newPassword,
-        this.passwordState.confirmNewPassword
-      );
-    }
-  }
-
-  onConfirmNewPasswordChange(): void {
-    this.errors.confirmNewPassword = this.validatePasswordMatch(
-      this.passwordState.newPassword,
-      this.passwordState.confirmNewPassword
+  private createChangePasswordForm(): FormGroup {
+    return this.fb.group(
+      {
+        currentPassword: ['', [Validators.required, this.createPasswordValidator()]],
+        newPassword: ['', [Validators.required, this.createPasswordValidator()]],
+        confirmNewPassword: ['', [Validators.required]],
+      },
+      { validators: this.newPasswordMatchValidator }
     );
   }
 
-  onCurrentPasswordChange(): void {
-    this.errors.currentPassword = this.validatePassword(this.passwordState.currentPassword);
+  // Custom validators
+  private createPasswordValidator() {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = control.value;
+      if (!value) return null;
+
+      if (value.length < 3) {
+        return {
+          minLength: {
+            message: 'Password must be at least 3 characters',
+            actualLength: value.length,
+            requiredLength: 3,
+          },
+        };
+      }
+
+      if (/['"]/.test(value)) {
+        return { invalidChars: { message: 'Password cannot contain quotes' } };
+      }
+
+      return null;
+    };
   }
 
-  // Validation state getters
-  get isPasswordValid(): boolean {
-    return !this.errors.password && this.passwordState.password.length > 0;
-  }
+  private passwordMatchValidator = (group: AbstractControl): ValidationErrors | null => {
+    const password = group.get('password')?.value;
+    const confirmPassword = group.get('confirmPassword')?.value;
 
-  get isNewPasswordValid(): boolean {
-    return !this.errors.newPassword && this.passwordState.newPassword.length > 0;
-  }
+    if (!password || !confirmPassword) return null;
 
-  get arePasswordsMatching(): boolean {
+    return password === confirmPassword
+      ? null
+      : { passwordMismatch: { message: 'Passwords do not match' } };
+  };
+
+  private newPasswordMatchValidator = (group: AbstractControl): ValidationErrors | null => {
+    const newPassword = group.get('newPassword')?.value;
+    const confirmNewPassword = group.get('confirmNewPassword')?.value;
+
+    if (!newPassword || !confirmNewPassword) return null;
+
+    return newPassword === confirmNewPassword
+      ? null
+      : { passwordMismatch: { message: 'Passwords do not match' } };
+  };
+
+  // Form validation getters
+  get canValidatePassword(): boolean {
     return (
-      !this.errors.confirmPassword &&
-      this.passwordState.confirmPassword.length > 0 &&
-      this.passwordState.password === this.passwordState.confirmPassword
+      (this.overviewForm.get('password')?.valid && this.overviewForm.get('password')?.enabled) ||
+      false
     );
   }
 
-  get areNewPasswordsMatching(): boolean {
-    return (
-      !this.errors.confirmNewPassword &&
-      this.passwordState.confirmNewPassword.length > 0 &&
-      this.passwordState.newPassword === this.passwordState.confirmNewPassword
-    );
-  }
-
-  get isCurrentPasswordValid(): boolean {
-    return !this.errors.currentPassword && this.passwordState.currentPassword.length > 0;
-  }
-
-  // Form validation helpers for encryption
   get canEncrypt(): boolean {
-    return this.isPasswordValid && this.arePasswordsMatching;
+    return this.encryptionForm.valid && this.encryptionForm.enabled;
   }
 
   get canUnencrypt(): boolean {
-    return this.isPasswordValid;
+    return (
+      (this.encryptionForm.get('password')?.valid &&
+        this.encryptionForm.get('password')?.enabled) ||
+      false
+    );
   }
 
   get canChangePassword(): boolean {
-    return this.isCurrentPasswordValid && this.isNewPasswordValid && this.areNewPasswordsMatching;
+    return this.changePasswordForm.valid && this.changePasswordForm.enabled;
   }
 
   get canStorePassword(): boolean {
-    return this.isPasswordValid;
+    return (
+      (this.overviewForm.get('password')?.valid && this.overviewForm.get('password')?.enabled) ||
+      false
+    );
   }
 
   // UI Actions
@@ -236,14 +226,15 @@ export class PasswordManagerModalComponent implements OnInit {
 
   // Core functionality
   async validatePassword2(): Promise<void> {
-    if (this.errors.password || !this.passwordState.password) return;
+    const passwordControl = this.overviewForm.get('password');
+    if (!passwordControl?.valid || !passwordControl?.value) return;
 
     this.loading.isValidating = true;
     try {
-      await this.passwordService.validatePassword(this.passwordState.password);
+      await this.passwordService.validatePassword(passwordControl.value);
       this.showSuccess('Password is valid!');
     } catch (error) {
-      this.errors.password = 'Invalid password';
+      passwordControl.setErrors({ apiError: { message: 'Invalid password' } });
       this.showError(this.getErrorMessage(error));
       console.error('Validation failed:', error);
     } finally {
@@ -255,11 +246,14 @@ export class PasswordManagerModalComponent implements OnInit {
   async storePassword(): Promise<void> {
     if (!this.canStorePassword) return;
 
+    const passwordControl = this.overviewForm.get('password');
+    if (!passwordControl?.value) return;
+
     this.loading.isStoringPassword = true;
     try {
-      await this.passwordService.validatePassword(this.passwordState.password);
-      await this.passwordService.storePassword(this.passwordState.password);
-      this.resetPasswordForm();
+      await this.passwordService.validatePassword(passwordControl.value);
+      await this.passwordService.storePassword(passwordControl.value);
+      this.resetPasswordForms();
       this.showSuccess('Password stored securely in system keychain');
     } catch (error) {
       console.error('Failed to store password:', error);
@@ -287,11 +281,14 @@ export class PasswordManagerModalComponent implements OnInit {
   async encryptConfig(): Promise<void> {
     if (!this.canEncrypt) return;
 
+    const passwordControl = this.encryptionForm.get('password');
+    if (!passwordControl?.value) return;
+
     this.loading.isEncrypting = true;
     try {
-      await this.passwordService.encryptConfig(this.passwordState.password);
+      await this.passwordService.encryptConfig(passwordControl.value);
       this.showSuccess('Configuration encrypted successfully');
-      this.resetPasswordForm();
+      this.resetPasswordForms();
       await this.refreshStatus();
     } catch (error) {
       console.error('Failed to encrypt configuration:', error);
@@ -304,11 +301,14 @@ export class PasswordManagerModalComponent implements OnInit {
   async unencryptConfig(): Promise<void> {
     if (!this.canUnencrypt) return;
 
+    const passwordControl = this.encryptionForm.get('password');
+    if (!passwordControl?.value) return;
+
     this.loading.isUnencrypting = true;
     try {
-      await this.passwordService.unencryptConfig(this.passwordState.password);
+      await this.passwordService.unencryptConfig(passwordControl.value);
       this.showSuccess('Configuration unencrypted successfully');
-      this.resetPasswordForm();
+      this.resetPasswordForms();
       await this.refreshStatus();
     } catch (error) {
       console.error('Failed to unencrypt configuration:', error);
@@ -321,14 +321,19 @@ export class PasswordManagerModalComponent implements OnInit {
   async changePassword(): Promise<void> {
     if (!this.canChangePassword) return;
 
+    const currentPasswordControl = this.changePasswordForm.get('currentPassword');
+    const newPasswordControl = this.changePasswordForm.get('newPassword');
+
+    if (!currentPasswordControl?.value || !newPasswordControl?.value) return;
+
     this.loading.isChangingPassword = true;
     try {
       await this.passwordService.changeConfigPassword(
-        this.passwordState.currentPassword,
-        this.passwordState.newPassword
+        currentPasswordControl.value,
+        newPasswordControl.value
       );
       this.showSuccess('Password changed successfully');
-      this.resetPasswordForm();
+      this.resetPasswordForms();
       await this.refreshStatus();
     } catch (error) {
       console.error('Failed to change password:', error);
@@ -394,27 +399,19 @@ export class PasswordManagerModalComponent implements OnInit {
       this.hasEnvPassword = await this.passwordService.hasConfigPasswordEnv();
       this.isConfigEncrypted = await this.passwordService.isConfigEncrypted();
       this.lockoutStatus = await this.passwordService.getLockoutStatus();
+
+      // Update form states after getting lockout status
+      this.updateFormStatesBasedOnLockout();
     } catch (error) {
       console.error(error);
       this.showError(this.getErrorMessage(error));
     }
   }
 
-  private resetPasswordForm(): void {
-    this.passwordState = {
-      password: '',
-      confirmPassword: '',
-      newPassword: '',
-      confirmNewPassword: '',
-      currentPassword: '',
-    };
-    this.errors = {
-      password: '',
-      confirmPassword: '',
-      newPassword: '',
-      confirmNewPassword: '',
-      currentPassword: '',
-    };
+  private resetPasswordForms(): void {
+    this.overviewForm.reset();
+    this.encryptionForm.reset();
+    this.changePasswordForm.reset();
   }
 
   private showSuccess(message: string): void {
@@ -439,6 +436,22 @@ export class PasswordManagerModalComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     this.onResize();
     await this.refreshStatus();
+    this.updateFormStatesBasedOnLockout();
+  }
+
+  // Update form disabled states based on lockout status
+  private updateFormStatesBasedOnLockout(): void {
+    if (this.lockoutStatus?.is_locked) {
+      this.overviewForm.get('password')?.disable();
+      this.encryptionForm.get('password')?.disable();
+      this.encryptionForm.get('confirmPassword')?.disable();
+      this.changePasswordForm.disable();
+    } else {
+      this.overviewForm.get('password')?.enable();
+      this.encryptionForm.get('password')?.enable();
+      this.encryptionForm.get('confirmPassword')?.enable();
+      this.changePasswordForm.enable();
+    }
   }
 
   @HostListener('window:resize')

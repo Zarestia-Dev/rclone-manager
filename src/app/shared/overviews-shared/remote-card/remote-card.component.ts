@@ -4,17 +4,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { QuickActionButton, QuickActionButtonsComponent } from '../../../shared/components';
-import {
-  AppTab,
-  Remote,
-  RemoteAction,
-  SyncOperationType,
-  RemotePrimaryActions,
-} from '../../../shared/components/types';
+import { AppTab, PrimaryActionType, Remote, RemoteAction } from '../../../shared/components/types';
 
 // Services
 import { IconService } from '../../services/icon.service';
@@ -48,13 +42,13 @@ export class RemoteCardComponent {
   @Input() showOpenButton = false;
   @Input() primaryActionLabel = 'Start';
   @Input() activeIcon = 'circle-check';
-  @Input() primaryActions: SyncOperationType[] = []; // Will be set by getDefaultPrimaryActions()
-  @Input() userSelectedPrimaryActions?: SyncOperationType[]; // User's custom selection
+  @Input() primaryActions?: PrimaryActionType[] = [];
+  @Input() maxGeneralButtons = 3;
+  @Input() maxSyncButtons = 4;
+  @Input() maxMountButtons = 1;
 
   @Output() remoteClick = new EventEmitter<Remote>();
   @Output() openInFiles = new EventEmitter<string>();
-  @Output() primaryAction = new EventEmitter<string>();
-  @Output() secondaryAction = new EventEmitter<string>();
   @Output() mountAction = new EventEmitter<string>();
   @Output() unmountAction = new EventEmitter<string>();
   @Output() syncAction = new EventEmitter<string>();
@@ -65,7 +59,6 @@ export class RemoteCardComponent {
   @Output() bisyncAction = new EventEmitter<string>();
   @Output() stopMoveAction = new EventEmitter<string>();
   @Output() stopBisyncAction = new EventEmitter<string>();
-  @Output() configurePrimaryActions = new EventEmitter<RemotePrimaryActions>();
 
   get isOpening(): boolean {
     return this.actionState === 'open';
@@ -103,8 +96,16 @@ export class RemoteCardComponent {
 
     // Mount mode - simple mount/unmount logic
     if (this.mode === 'mount') {
+      // For mount mode, limit primary buttons to maxMountButtons and always show Browse last when mounted
       if (this.variant === 'active') {
-        // Open/Browse button for mounted remotes
+        // Create primary buttons (though mount mode usually has only mount-related action)
+        const primary = this.buildPrimaryActions(this.maxMountButtons, /*includeMount=*/ true);
+        for (const a of primary) {
+          const b = this.createOperationButton(a);
+          if (b) buttons.push(b);
+        }
+
+        // Open/Browse button for mounted remotes (always last)
         if (this.showOpenButton) {
           buttons.push({
             id: 'open',
@@ -116,29 +117,15 @@ export class RemoteCardComponent {
             cssClass: 'browse-btn',
           });
         }
-
-        // Unmount button
-        buttons.push({
-          id: 'secondary',
-          icon: 'eject',
-          tooltip: 'Unmount',
-          color: 'warn',
-          isLoading: this.isStopping,
-          isDisabled: this.isStopping,
-          cssClass: 'stop-btn',
-        });
       } else if (this.variant === 'inactive') {
-        // Mount button for unmounted remotes
-        buttons.push({
-          id: 'primary',
-          icon: 'mount',
-          tooltip: this.primaryActionLabel,
-          color: 'accent',
-          isLoading: this.isLoading,
-          isDisabled: this.isLoading,
-          cssClass: 'mount-btn',
-        });
+        // For inactive, show mount button as primary (respecting maxMountButtons)
+        const primary = this.buildPrimaryActions(this.maxMountButtons, /*includeMount=*/ true);
+        for (const a of primary) {
+          const b = this.createOperationButton(a);
+          if (b) buttons.push(b);
+        }
       }
+
       return buttons;
     }
 
@@ -216,65 +203,49 @@ export class RemoteCardComponent {
         });
       }
     } else if (this.variant === 'inactive') {
-      // For inactive remotes, show start buttons for available sync operations
-      const primaryActionsToShow =
-        this.primaryActions.length > 0 ? this.primaryActions : this.getDefaultPrimaryActions();
-
-      primaryActionsToShow.forEach(actionType => {
+      // For inactive remotes, show start buttons for available sync operations.
+      // Build an ordered, deduplicated list of actions (exclude 'mount' here)
+      const actionsToShow = this.buildPrimaryActions(this.maxSyncButtons, /*includeMount=*/ false);
+      actionsToShow.forEach(actionType => {
         const button = this.createStartSyncOperationButton(actionType);
-        if (button) {
-          buttons.push(button);
-        }
+        if (button) buttons.push(button);
       });
     }
 
     return buttons;
   }
 
-  private getDefaultPrimaryActions(): SyncOperationType[] {
+  private getDefaultPrimaryActions(): PrimaryActionType[] {
     // Return user's custom selection if available, otherwise use defaults
-    if (this.userSelectedPrimaryActions && this.userSelectedPrimaryActions.length > 0) {
-      return this.userSelectedPrimaryActions;
+    if (this.primaryActions && this.primaryActions.length > 0 && this.mode === 'general') {
+      return this.primaryActions;
     }
 
     // Default primary actions: Mount + Sync + BiSync (3 operations)
     // Note: Mount is handled separately, so we return sync operations only
     switch (this.mode) {
       case 'general':
-        return ['sync', 'bisync']; // Default for general tab
+        return ['mount', 'sync', 'bisync']; // Default for general tab
       case 'sync':
         return ['sync', 'bisync', 'copy', 'move']; // Sync-focused defaults
       case 'mount':
-        return ['sync']; // Mount tab only shows one sync operation
+        return ['mount']; // Mount tab only shows one sync operation
       default:
-        return ['sync', 'bisync'];
+        return ['mount', 'bisync'];
     }
   }
 
   private getGeneralActionButtons(): QuickActionButton[] {
     const buttons: QuickActionButton[] = [];
 
-    // Always show Mount/Unmount Button first
-    const isMountAction = this.actionState === 'mount' || this.actionState === 'unmount';
-    buttons.push({
-      id: 'mount',
-      icon: this.remote.mountState?.mounted ? 'eject' : 'mount',
-      tooltip: this.remote.mountState?.mounted ? 'Unmount' : 'Mount',
-      color: this.remote.mountState?.mounted ? 'warn' : 'accent',
-      isLoading: isMountAction,
-      isDisabled: isMountAction,
-      cssClass: this.remote.mountState?.mounted ? 'unmount-btn' : 'mount-btn',
-    });
-
-    // Get the primary actions to show (user selection or defaults)
-    const primaryActionsToShow = this.getDefaultPrimaryActions();
-
-    // Add primary sync operations based on configuration (limit to 3)
-    primaryActionsToShow.slice(0, 3).forEach(actionType => {
-      const button = this.createSyncOperationButton(actionType);
-      if (button) {
-        buttons.push(button);
-      }
+    // Build primary actions up to configured max for general
+    const selectedActions = this.buildPrimaryActions(
+      this.maxGeneralButtons,
+      /*includeMount=*/ true
+    );
+    selectedActions.forEach((actionType: PrimaryActionType) => {
+      const button = this.createOperationButton(actionType);
+      if (button) buttons.push(button);
     });
 
     // Always show Browse Button last
@@ -291,10 +262,55 @@ export class RemoteCardComponent {
     return buttons;
   }
 
-  private createSyncOperationButton(actionType: SyncOperationType): QuickActionButton | null {
+  /**
+   * Build an ordered, deduplicated list of primary actions.
+   * - Uses user-provided `primaryActions` when available, otherwise defaults.
+   * - Fills up to `slotCount` items by appending defaults not already present.
+   * - Optionally includes or excludes 'mount'.
+   */
+  private buildPrimaryActions(slotCount: number, includeMount = true): PrimaryActionType[] {
+    const result: PrimaryActionType[] = [];
+
+    const source =
+      this.primaryActions && this.primaryActions.length > 0 && this.mode === 'general'
+        ? [...this.primaryActions]
+        : this.getDefaultPrimaryActions();
+
+    // Add user/defaults in order, respecting includeMount flag and uniqueness
+    for (const a of source) {
+      if (result.length >= slotCount) break;
+      if (!includeMount && a === 'mount') continue;
+      if (!result.includes(a)) result.push(a);
+    }
+
+    if (result.length >= slotCount) return result;
+
+    // Fill remaining with defaults (excluding mount if requested)
+    const defaults = this.getDefaultPrimaryActions();
+    for (const d of defaults) {
+      if (result.length >= slotCount) break;
+      if (!includeMount && d === 'mount') continue;
+      if (!result.includes(d)) result.push(d);
+    }
+
+    return result;
+  }
+
+  private createOperationButton(actionType: PrimaryActionType): QuickActionButton | null {
     const isActionInProgress = this.actionState === actionType || this.actionState === 'stop';
 
     switch (actionType) {
+      case 'mount':
+        return {
+          id: 'mount',
+          icon: this.remote.mountState?.mounted ? 'eject' : 'mount',
+          tooltip: this.remote.mountState?.mounted ? 'Unmount' : 'Mount',
+          color: this.remote.mountState?.mounted ? 'warn' : 'accent',
+          isLoading: isActionInProgress,
+          isDisabled: isActionInProgress,
+          cssClass: this.remote.mountState?.mounted ? 'unmount-btn' : 'mount-btn',
+        };
+
       case 'sync':
         return {
           id: 'sync',
@@ -344,7 +360,7 @@ export class RemoteCardComponent {
     }
   }
 
-  private createStartSyncOperationButton(actionType: SyncOperationType): QuickActionButton | null {
+  private createStartSyncOperationButton(actionType: PrimaryActionType): QuickActionButton | null {
     const isActionInProgress = this.actionState === actionType;
 
     switch (actionType) {
@@ -403,12 +419,6 @@ export class RemoteCardComponent {
     switch (action.id) {
       case 'open':
         this.onOpenInFiles(action.event);
-        break;
-      case 'primary':
-        this.onPrimaryAction(action.event);
-        break;
-      case 'secondary':
-        this.onSecondaryAction(action.event);
         break;
       case 'mount':
         // Handle mount/unmount based on current state
@@ -474,35 +484,9 @@ export class RemoteCardComponent {
     this.remoteClick.emit(this.remote);
   }
 
-  onRightClick(event: MouseEvent, trigger: MatMenuTrigger): void {
-    event.preventDefault();
-    event.stopPropagation();
-    trigger.openMenu();
-
-    // Close the menu when user scrolls or clicks elsewhere
-    const closeMenu = (): void => {
-      trigger.closeMenu();
-      window.removeEventListener('scroll', closeMenu, true);
-      document.removeEventListener('click', closeMenu, true);
-    };
-
-    window.addEventListener('scroll', closeMenu, true);
-    document.addEventListener('click', closeMenu, true);
-  }
-
   onOpenInFiles(event: Event): void {
     event.stopPropagation();
     this.openInFiles.emit(this.remote.remoteSpecs.name);
-  }
-
-  onPrimaryAction(event: Event): void {
-    event.stopPropagation();
-    this.primaryAction.emit(this.remote.remoteSpecs.name);
-  }
-
-  onSecondaryAction(event: Event): void {
-    event.stopPropagation();
-    this.secondaryAction.emit(this.remote.remoteSpecs.name);
   }
 
   onMountAction(event: Event): void {
@@ -559,16 +543,4 @@ export class RemoteCardComponent {
     event.stopPropagation();
     this.stopBisyncAction.emit(this.remote.remoteSpecs.name);
   }
-
-  // onConfigurePrimaryActions(event: Event): void {
-  //   event.stopPropagation();
-
-  //   // Emit configuration event with current state and available options
-  //   this.configurePrimaryActions.emit({
-  //     remoteName: this.remote.remoteSpecs.name,
-  //     actions: this.getDefaultPrimaryActions(),
-  //     availableActions: ['sync', 'copy', 'move', 'bisync'] as SyncOperationType[],
-  //     currentDefaults: this.getDefaultPrimaryActions()
-  //   });
-  // }
 }

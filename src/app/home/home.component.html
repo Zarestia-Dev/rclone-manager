@@ -116,11 +116,9 @@
               [actionInProgress]="actionInProgress"
               [bandwidthLimit]="bandwidthLimit"
               [systemInfoService]="systemInfoService"
-              (mountRemote)="mountRemote($event)"
-              (unmountRemote)="unmountRemote($event)"
-              (stopJob)="stopOperation($event.type, $event.remoteName)"
+              (startJob)="startJob($event.type, $event.remoteName)"
+              (stopJob)="stopJob($event.type, $event.remoteName)"
               (browseRemote)="openRemoteInFiles($event, 'mount')"
-              (startOperation)="startOperation($event.type, $event.remoteName)"
               (selectRemote)="selectRemote($event)"
             >
             </app-general-overview>
@@ -145,9 +143,11 @@
               [mode]="currentTab"
               [iconService]="iconService"
               [remotes]="remotes"
+              [actionInProgress]="actionInProgress"
               (remoteSelected)="selectRemote($event)"
               (openInFiles)="openRemoteInFiles($event, currentTab)"
-              [actionInProgress]="actionInProgress"
+              (startJob)="startJob($event.type, $event.remoteName)"
+              (stopJob)="stopJob($event.type, $event.remoteName)"
             >
             </app-app-overview>
           }
@@ -161,13 +161,14 @@
             <app-general-detail
               [restrictMode]="restrictMode"
               [jobs]="getJobsForRemote(selectedRemote.remoteSpecs.name)"
-              (stopOperation)="stopOperation($event.type, $event.remoteName)"
+              [iconService]="iconService"
+              [selectedRemote]="selectedRemote"
+              (stopJob)="stopJob($event.type, $event.remoteName)"
               (openRemoteConfigModal)="
                 openRemoteConfigModal($event.editTarget, $event.existingConfig)
               "
-              [iconService]="iconService"
-              [selectedRemote]="selectedRemote"
               (deleteJob)="deleteJob($event)"
+              (togglePrimaryAction)="togglePrimaryAction($event)"
             >
             </app-general-detail>
           }
@@ -194,18 +195,13 @@
               [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
               [restrictMode]="restrictMode"
               [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]"
-              (primaryAction)="
-                handlePrimaryAction($event.mainType, $event.remoteName, $event.subType)
-              "
-              (secondaryAction)="
-                handleSecondaryAction($event.mainType, $event.remoteName, $event.subType)
-              "
               (openRemoteConfigModal)="
                 openRemoteConfigModal($event.editTarget, $event.existingConfig)
               "
               (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)"
+              (startJob)="startJob($event.type, $event.remoteName)"
+              (stopJob)="stopJob($event.type, $event.remoteName)"
             >
-              <!-- (extendedData)="handleExtendedData($event)" -->
             </app-app-detail>
           }
         }

@@ -1,7 +1,7 @@
 export type AppTab = 'mount' | 'sync' | 'files' | 'general';
 export type JobType = 'sync' | 'copy' | 'move' | 'bisync' | 'check';
-export type UsePath = 'mount' | 'bisync' | 'move' | 'copy' | 'sync';
 export type JobStatus = 'Running' | 'Completed' | 'Failed' | 'Stopped';
+
 export type RemoteAction =
   | 'mount'
   | 'unmount'
@@ -16,12 +16,7 @@ export type RemoteAction =
 
 export type SyncOperationType = 'sync' | 'copy' | 'move' | 'bisync';
 
-export interface RemotePrimaryActions {
-  remoteName: string;
-  actions: SyncOperationType[];
-  availableActions?: SyncOperationType[];
-  currentDefaults?: SyncOperationType[];
-}
+export type PrimaryActionType = SyncOperationType | 'mount';
 
 export interface RemoteSpecs {
   name: string;
@@ -107,7 +102,7 @@ export const DEFAULT_JOB_STATS: GlobalStats = {
 
 export interface JobInfo {
   jobid: number;
-  job_type: JobType;
+  job_type: PrimaryActionType;
   source: string;
   destination: string;
   start_time: string;
@@ -146,6 +141,8 @@ export interface Remote {
     moveJobID?: number;
     isLocal?: boolean;
   };
+
+  primaryActions?: PrimaryActionType[];
 }
 
 export type RemoteSettings = Record<string, Record<string, any>>;

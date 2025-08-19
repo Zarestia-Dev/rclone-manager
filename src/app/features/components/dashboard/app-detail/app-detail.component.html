@@ -6,20 +6,20 @@
           [ngClass]="{
             'icon-container': true,
             sync: isSyncType() && getOperationActiveState(),
-            mount: selectedRemote?.mountState?.mounted,
+            mount: selectedRemote.mountState?.mounted,
             error: getOperationErrorState(),
           }"
         >
           <mat-icon
-            [svgIcon]="iconService.getIconName(selectedRemote?.remoteSpecs?.type)"
+            [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"
             class="remote-type-icon"
           ></mat-icon>
         </div>
         <div class="remote-text-info">
-          <h2 class="remote-name" matTooltip="{{ selectedRemote?.remoteSpecs?.name }}">
-            {{ selectedRemote?.remoteSpecs?.name }}
+          <h2 class="remote-name" matTooltip="{{ selectedRemote.remoteSpecs.name }}">
+            {{ selectedRemote.remoteSpecs.name }}
           </h2>
-          <span class="remote-type">{{ selectedRemote?.remoteSpecs?.type | titlecase }}</span>
+          <span class="remote-type">{{ selectedRemote.remoteSpecs.type | titlecase }}</span>
         </div>
       </div>
     </div>
@@ -61,8 +61,12 @@
                 <!-- Operation Control Panel -->
                 <app-operation-control
                   [config]="getOperationControlConfig()"
-                  (primaryAction)="handlePrimaryAction()"
-                  (secondaryAction)="handleSecondaryAction()"
+                  (startJob)="
+                    startJob.emit({ type: $event, remoteName: selectedRemote.remoteSpecs.name })
+                  "
+                  (stopJob)="
+                    stopJob.emit({ type: $event, remoteName: selectedRemote.remoteSpecs.name })
+                  "
                   (openPath)="triggerOpenInFiles($event)"
                 >
                   <!-- (data)="handleExtendedData($event)" -->
@@ -124,11 +128,12 @@
           <!-- Mount Control Panel -->
           <app-operation-control
             [config]="getMountControlConfig()"
-            (primaryAction)="handlePrimaryAction()"
-            (secondaryAction)="handleSecondaryAction()"
+            (startJob)="
+              startJob.emit({ type: $event, remoteName: selectedRemote.remoteSpecs.name })
+            "
+            (stopJob)="stopJob.emit({ type: $event, remoteName: selectedRemote.remoteSpecs.name })"
             (openPath)="triggerOpenInFiles($event)"
           >
-            <!-- (data)="extendedData.emit($event)" -->
           </app-operation-control>
 
           <!-- Configuration Sections for Mount -->

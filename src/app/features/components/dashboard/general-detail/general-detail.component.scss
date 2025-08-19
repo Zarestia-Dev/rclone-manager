@@ -87,6 +87,8 @@
           background: rgba(var(--app-text-color-rgb), 0.04);
           border: 1.5px solid rgba(var(--app-text-color-rgb), 0.08);
           transition: var(--transition-standard);
+          position: relative;
+          isolation: isolate; // ensure badge shadows stay contained
 
           .status-dot {
             display: flex;
@@ -113,56 +115,22 @@
             letter-spacing: 0.2px;
           }
 
-          // Hover effect for inactive chips
-          &:not(.active):hover {
-            background: rgba(var(--app-text-color-rgb), 0.08);
-            border-color: rgba(var(--app-text-color-rgb), 0.15);
+          // Selected state (user has chosen this as a quick action)
+          &.selected {
+            background: linear-gradient(
+              135deg,
+              rgba(var(--primary-color-rgb), 0.18) 0%,
+              rgba(var(--accent-color-rgb), 0.18) 100%
+            );
+            border-color: rgba(var(--primary-color-rgb), 0.35);
+            box-shadow:
+              0 4px 14px -2px rgba(var(--primary-color-rgb), 0.25),
+              0 2px 6px -1px rgba(var(--accent-color-rgb), 0.15);
             transform: translateY(-1px);
 
             .status-dot {
-              background: rgba(var(--app-text-color-rgb), 0.12);
-              transform: scale(1.05);
-            }
-          }
-
-          // Mount Status
-          &.mount.active {
-            background: rgba(var(--accent-color-rgb), 0.08);
-            border-color: rgba(var(--accent-color-rgb), 0.25);
-            box-shadow: 0 2px 12px rgba(var(--accent-color-rgb), 0.15);
-
-            .status-dot {
-              background: rgba(var(--accent-color-rgb), 0.15);
-
-              mat-icon {
-                color: var(--accent-color);
-              }
-            }
-
-            .status-label {
-              color: var(--accent-color);
-            }
-
-            &:hover {
-              background: rgba(var(--accent-color-rgb), 0.12);
-              box-shadow: 0 4px 16px rgba(var(--accent-color-rgb), 0.2);
-              transform: translateY(-2px);
-
-              .status-dot {
-                background: rgba(var(--accent-color-rgb), 0.2);
-                transform: scale(1.1);
-              }
-            }
-          }
-
-          // Sync Status
-          &.sync.active {
-            background: rgba(var(--primary-color-rgb), 0.08);
-            border-color: rgba(var(--primary-color-rgb), 0.25);
-            box-shadow: 0 2px 12px rgba(var(--primary-color-rgb), 0.15);
-
-            .status-dot {
-              background: rgba(var(--primary-color-rgb), 0.15);
+              background: rgba(var(--primary-color-rgb), 0.25);
+              box-shadow: inset 0 0 0 1px rgba(var(--primary-color-rgb), 0.35);
 
               mat-icon {
                 color: var(--primary-color);
@@ -171,108 +139,196 @@
 
             .status-label {
               color: var(--primary-color);
-            }
-
-            &:hover {
-              background: rgba(var(--primary-color-rgb), 0.12);
-              box-shadow: 0 4px 16px rgba(var(--primary-color-rgb), 0.2);
-              transform: translateY(-2px);
-
-              .status-dot {
-                background: rgba(var(--primary-color-rgb), 0.2);
-                transform: scale(1.1);
-              }
+              font-weight: 600;
             }
           }
 
-          // Copy Status
-          &.copy.active {
-            background: rgba(var(--info-color-rgb), 0.08);
-            border-color: rgba(var(--info-color-rgb), 0.25);
-            box-shadow: 0 2px 12px rgba(var(--info-color-rgb), 0.15);
+          // numeric selection badge shows ordering of primary actions
+          .selection-badge {
+            position: absolute;
+            top: -6px;
+            right: -4px;
+            width: 18px;
+            height: 18px;
+            border-radius: 6px;
+            background: var(--background-elevated, #1e1e1e);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 0.5px;
+            box-shadow:
+              0 2px 6px rgba(var(--primary-color-rgb), 0.4),
+              0 0 0 1px rgba(var(--primary-color-rgb), 0.5);
+            animation: badge-pop 160ms var(--transition-ease);
+            z-index: 2;
+          }
 
+          @keyframes badge-pop {
+            0% {
+              transform: scale(0.4) rotate(-12deg);
+              opacity: 0;
+            }
+            60% {
+              transform: scale(1.1);
+              opacity: 1;
+            }
+            100% {
+              transform: scale(1) rotate(0);
+              opacity: 1;
+            }
+          }
+
+          // Active state (operation is currently running)
+          &.active {
             .status-dot {
-              background: rgba(var(--info-color-rgb), 0.15);
-
               mat-icon {
+                color: white;
+              }
+            }
+
+            // Type-specific active states
+            &.mount.active {
+              background: rgba(var(--accent-color-rgb), 0.08);
+              border-color: rgba(var(--accent-color-rgb), 0.25);
+              box-shadow: 0 2px 12px rgba(var(--accent-color-rgb), 0.15);
+
+              .status-dot {
+                background: var(--accent-color);
+              }
+
+              .status-label {
+                color: var(--accent-color);
+              }
+            }
+
+            &.sync.active {
+              background: rgba(var(--primary-color-rgb), 0.08);
+              border-color: rgba(var(--primary-color-rgb), 0.25);
+              box-shadow: 0 2px 12px rgba(var(--primary-color-rgb), 0.15);
+
+              .status-dot {
+                background: var(--primary-color);
+              }
+
+              .status-label {
+                color: var(--primary-color);
+              }
+            }
+
+            &.copy.active {
+              background: rgba(var(--info-color-rgb), 0.08);
+              border-color: rgba(var(--info-color-rgb), 0.25);
+              box-shadow: 0 2px 12px rgba(var(--info-color-rgb), 0.15);
+
+              .status-dot {
+                background: var(--info-color);
+              }
+
+              .status-label {
                 color: var(--info-color);
               }
             }
 
-            .status-label {
-              color: var(--info-color);
-            }
-
-            &:hover {
-              background: rgba(var(--info-color-rgb), 0.12);
-              box-shadow: 0 4px 16px rgba(var(--info-color-rgb), 0.2);
-              transform: translateY(-2px);
+            &.move.active {
+              background: rgba(var(--warning-color-rgb), 0.08);
+              border-color: rgba(var(--warning-color-rgb), 0.25);
+              box-shadow: 0 2px 12px rgba(var(--warning-color-rgb), 0.15);
 
               .status-dot {
-                background: rgba(var(--info-color-rgb), 0.2);
-                transform: scale(1.1);
+                background: var(--warning-color);
               }
-            }
-          }
 
-          // Move Status
-          &.move.active {
-            background: rgba(var(--warning-color-rgb), 0.08);
-            border-color: rgba(var(--warning-color-rgb), 0.25);
-            box-shadow: 0 2px 12px rgba(var(--warning-color-rgb), 0.15);
-
-            .status-dot {
-              background: rgba(var(--warning-color-rgb), 0.15);
-
-              mat-icon {
+              .status-label {
                 color: var(--warning-color);
               }
             }
 
-            .status-label {
-              color: var(--warning-color);
-            }
-
-            &:hover {
-              background: rgba(var(--warning-color-rgb), 0.12);
-              box-shadow: 0 4px 16px rgba(var(--warning-color-rgb), 0.2);
-              transform: translateY(-2px);
+            &.bisync.active {
+              background: rgba(var(--success-color-rgb), 0.08);
+              border-color: rgba(var(--success-color-rgb), 0.25);
+              box-shadow: 0 2px 12px rgba(var(--success-color-rgb), 0.15);
 
               .status-dot {
-                background: rgba(var(--warning-color-rgb), 0.2);
-                transform: scale(1.1);
+                background: var(--success-color);
+              }
+
+              .status-label {
+                color: var(--success-color);
               }
             }
           }
 
-          // Bisync Status
-          &.bisync.active {
-            background: rgba(var(--success-color-rgb), 0.08);
-            border-color: rgba(var(--success-color-rgb), 0.25);
-            box-shadow: 0 2px 12px rgba(var(--success-color-rgb), 0.15);
+          // Hover effects
+          &:hover {
+            transform: translateY(-1px);
+            transition: all 200ms var(--transition-ease);
 
-            .status-dot {
-              background: rgba(var(--success-color-rgb), 0.15);
+            // For unselected chips
+            &:not(.selected) {
+              background: rgba(var(--primary-color-rgb), 0.06);
+              border-color: rgba(var(--primary-color-rgb), 0.15);
+              box-shadow: 0 2px 8px rgba(var(--primary-color-rgb), 0.08);
 
-              mat-icon {
-                color: var(--success-color);
+              .status-dot {
+                background: rgba(var(--primary-color-rgb), 0.12);
+                transform: scale(1.05);
+
+                mat-icon {
+                  color: var(--primary-color);
+                }
+              }
+
+              .status-label {
+                color: var(--primary-color);
               }
             }
 
-            .status-label {
-              color: var(--success-color);
-            }
-
-            &:hover {
-              background: rgba(var(--success-color-rgb), 0.12);
-              box-shadow: 0 4px 16px rgba(var(--success-color-rgb), 0.2);
+            // For selected chips
+            &.selected {
+              box-shadow:
+                0 6px 20px -4px rgba(var(--primary-color-rgb), 0.35),
+                0 4px 12px -2px rgba(var(--accent-color-rgb), 0.25);
               transform: translateY(-2px);
 
               .status-dot {
-                background: rgba(var(--success-color-rgb), 0.2);
-                transform: scale(1.1);
+                transform: scale(1.05);
+                box-shadow: inset 0 0 0 1px rgba(var(--primary-color-rgb), 0.45);
+              }
+
+              .selection-badge {
+                transform: scale(1.05);
+                box-shadow:
+                  0 3px 8px rgba(var(--primary-color-rgb), 0.5),
+                  0 0 0 1px rgba(var(--primary-color-rgb), 0.6);
               }
             }
+
+            // For active (running) chips
+            &.active {
+              transform: translateY(-1px);
+
+              .status-dot {
+                transform: scale(1.05);
+              }
+            }
+          }
+
+          // Disabled state when max selections reached
+          &:not(.selected) {
+            &.max-selected {
+              opacity: 0.5;
+              pointer-events: none;
+            }
+          }
+
+          // Keyboard focus-visible outline for accessibility
+          &:focus-visible {
+            outline: 3px solid rgba(var(--primary-color-rgb), 0.16);
+            outline-offset: 2px;
           }
         }
       }

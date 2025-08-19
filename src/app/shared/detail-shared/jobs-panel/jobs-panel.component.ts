@@ -7,7 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSortModule } from '@angular/material/sort';
-import { JobInfo } from '../../../shared/components/types';
+import { JobInfo, PrimaryActionType } from '../../../shared/components/types';
 
 export interface JobsPanelConfig {
   jobs: JobInfo[];
@@ -100,7 +100,7 @@ export interface JobsPanelConfig {
                       mat-icon-button
                       class="action-button stop-button"
                       matTooltip="Stop Job"
-                      (click)="onStopJob(job)"
+                      (click)="stopJob.emit({ type: job.job_type, remoteName: job.remote_name })"
                     >
                       <mat-icon svgIcon="stop"></mat-icon>
                     </button>
@@ -109,7 +109,7 @@ export interface JobsPanelConfig {
                       mat-icon-button
                       class="action-button delete-button"
                       matTooltip="Delete Job"
-                      (click)="onDeleteJob(job.jobid)"
+                      (click)="deleteJob.emit(job.id)"
                     >
                       <mat-icon svgIcon="trash"></mat-icon>
                     </button>
@@ -137,22 +137,11 @@ export interface JobsPanelConfig {
 export class JobsPanelComponent {
   @Input() config!: JobsPanelConfig;
 
-  @Output() stopOperation = new EventEmitter<{
-    type: 'sync' | 'copy' | 'mount' | string;
+  @Output() stopJob = new EventEmitter<{
+    type: PrimaryActionType;
     remoteName: string;
   }>();
   @Output() deleteJob = new EventEmitter<number>();
-
-  onStopJob(job: JobInfo): void {
-    this.stopOperation.emit({
-      type: job.job_type,
-      remoteName: job.remote_name,
-    });
-  }
-
-  onDeleteJob(jobId: number): void {
-    this.deleteJob.emit(jobId);
-  }
 
   getJobProgress(job: JobInfo): number {
     if (!job.stats) return 0;

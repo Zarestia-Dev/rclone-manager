@@ -87,6 +87,18 @@ fn handle_rclone_api_ready(app: &AppHandle) {
                         }
                         refresh_and_update_tray(app, 0).await;
                     }
+                    Some("password_stored") => {
+                        debug!("RCLONE_ENGINE password_stored event received - clearing engine password error flag");
+                        // Clear the engine flag and attempt a restart if engine not running
+                        tauri::async_runtime::spawn_blocking(move || {
+                            let mut engine = match ENGINE.lock() {
+                                Ok(guard) => guard,
+                                Err(poisoned) => poisoned.into_inner(),
+                            };
+
+                            engine.password_error_detected = false;
+                        });
+                    }
                     Some("error") => {
                         if let Some(message) = payload.get("message").and_then(|m| m.as_str()) {
                             error!("RCLONE_ENGINE error: {}", message);
@@ -97,7 +109,7 @@ fn handle_rclone_api_ready(app: &AppHandle) {
                     Some(status) => {
                         debug!("RCLONE_ENGINE unknown status: {}", status);
                     }
-                    None => {}
+                    _ => {}
                 }
             }
         });
@@ -377,14 +389,13 @@ fn handle_settings_changed(app: &AppHandle) {
                     }
                 }
 
-                if let Some(experimental) = settings.get("experimental") {
-                    if let Some(debug_logging) =
+                if let Some(experimental) = settings.get("experimental") && let Some(debug_logging) =
                         experimental.get("debug_logging").and_then(|v| v.as_bool())
                     {
                         debug!("🐞 Debug logging changed to: {debug_logging}");
                         update_log_level(debug_logging);
                     }
-                }
+                
             }
             Err(e) => error!("❌ Failed to parse settings change: {e}"),
         }
