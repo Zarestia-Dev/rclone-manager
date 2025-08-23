@@ -1,4 +1,5 @@
 import { Component, inject, NgZone, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatListModule } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
@@ -32,6 +33,7 @@ interface PasswordLockoutStatus {
   selector: 'app-repair-sheet',
   standalone: true,
   imports: [
+    CommonModule,
     MatListModule,
     MatButtonModule,
     MatIconModule,

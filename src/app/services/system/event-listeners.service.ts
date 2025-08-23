@@ -87,6 +87,13 @@ export class EventListenersService extends TauriBaseService {
   }
 
   /**
+   * Listen to rclone OAuth events
+   */
+  listenToRcloneOAuth(): Observable<RcloneEnginePayload> {
+    return this.listenToEvent<RcloneEnginePayload>('rclone_oauth');
+  }
+
+  /**
    * Listen to app events
    */
   listenToAppEvents(): Observable<RcloneEnginePayload> {

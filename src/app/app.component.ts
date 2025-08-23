@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
-import { Subject, takeUntil, firstValueFrom } from 'rxjs';
+import { Subject, takeUntil, firstValueFrom, filter } from 'rxjs';
 import { TitlebarComponent } from './layout/titlebar/titlebar.component';
 import { OnboardingComponent } from './features/onboarding/onboarding.component';
 import { HomeComponent } from './home/home.component';
@@ -15,11 +15,13 @@ import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.d
 import { BannerComponent } from './layout/banners/banner.component';
 
 // Services
-import { UiStateService } from '@app/services';
-import { AppSettingsService } from '@app/services';
-import { InstallationService } from '@app/services';
-import { EventListenersService } from '@app/services';
-import { RclonePasswordService } from '@app/services';
+import {
+  UiStateService,
+  AppSettingsService,
+  InstallationService,
+  EventListenersService,
+  RclonePasswordService,
+} from '@app/services';
 
 export interface PasswordPromptResult {
   password: string;
@@ -30,6 +32,12 @@ interface RcloneEngineEvent {
   status?: string;
   message?: string;
   error_type?: string;
+}
+
+enum RepairSheetType {
+  MOUNT_PLUGIN = 'mount_plugin',
+  RCLONE_PASSWORD = 'rclone_password',
+  RCLONE_PATH = 'rclone_path',
 }
 
 @Component({
@@ -47,7 +55,7 @@ interface RcloneEngineEvent {
   styleUrl: './app.component.scss',
 })
 export class AppComponent implements OnInit, OnDestroy {
-  completedOnboarding = true;
+  completedOnboarding = false;
   alreadyReported = false;
   currentTab: AppTab = 'general';
 
@@ -62,10 +70,11 @@ export class AppComponent implements OnInit, OnDestroy {
   // Subscription management
   private destroy$ = new Subject<void>();
   private activeSheets = new Set<MatBottomSheetRef<RepairSheetComponent>>();
+  private passwordPromptInProgress = false; // Prevent multiple password prompts
 
   constructor() {
-    this.checkOnboardingStatus().catch(error => {
-      console.error('Error during onboarding status check:', error);
+    this.initializeApp().catch(error => {
+      console.error('Error during app initialization:', error);
     });
   }
 
@@ -79,6 +88,15 @@ export class AppComponent implements OnInit, OnDestroy {
     this.closeAllSheets();
   }
 
+  private async initializeApp(): Promise<void> {
+    try {
+      await this.checkOnboardingStatus();
+    } catch (error) {
+      console.error('App initialization failed:', error);
+      this.completedOnboarding = false;
+    }
+  }
+
   private closeAllSheets(): void {
     this.activeSheets.forEach(sheet => sheet.dismiss());
     this.activeSheets.clear();
@@ -90,13 +108,48 @@ export class AppComponent implements OnInit, OnDestroy {
       this.currentTab = tab;
     });
 
-    // Rclone engine events
+    // Single Rclone engine event listener (consolidated)
+    this.setupRcloneEngineListener();
+
+    // OAuth event listener
+    this.setupRcloneOAuthListener();
+  }
+
+  private setupRcloneEngineListener(): void {
     this.eventListenersService
       .listenToRcloneEngine()
-      .pipe(takeUntil(this.destroy$))
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(event => typeof event === 'object' && event !== null)
+      )
       .subscribe({
-        next: event => this.handleRcloneEngineEvent(event),
-        error: error => console.error('Rclone engine event error:', error),
+        next: async event => {
+          try {
+            await this.handleRcloneEngineEvent(event as RcloneEngineEvent);
+          } catch (error) {
+            console.error('Error in Rclone engine event handler:', error);
+          }
+        },
+        error: error => console.error('Rclone engine event subscription error:', error),
+      });
+  }
+
+  private setupRcloneOAuthListener(): void {
+    this.eventListenersService
+      .listenToRcloneOAuth()
+      .pipe(
+        takeUntil(this.destroy$),
+        filter(event => typeof event === 'object' && event !== null)
+      )
+      .subscribe({
+        next: async event => {
+          try {
+            await this.handleRcloneOAuthEvent(event as RcloneEngineEvent);
+          } catch (error) {
+            console.error('Error in OAuth event handler:', error);
+          }
+        },
+        error: error => console.error('OAuth event subscription error:', error),
       });
   }
 
@@ -104,30 +157,20 @@ export class AppComponent implements OnInit, OnDestroy {
     try {
       this.completedOnboarding =
         (await this.appSettingsService.loadSettingValue('core', 'completed_onboarding')) ?? false;
+
       console.log('Onboarding status: ', this.completedOnboarding);
 
       if (this.completedOnboarding) {
-        await this.checkMountPluginStatus();
-        this.setupErrorListeners();
-        // Initialize password management
-        // Some older versions exposed an initializer; call it if present.
-        // Some older versions exposed an initializer; call it if present.
-        const maybeInit = this.rclonePasswordService as unknown as {
-          initializePassword?: () => Promise<void>;
-        };
-        if (maybeInit.initializePassword) {
-          try {
-            await maybeInit.initializePassword();
-          } catch (e) {
-            console.debug('initializePassword() failed or is not available:', e);
-          }
-        }
+        await this.postOnboardingSetup();
       }
     } catch (error) {
       console.error('Error checking onboarding status:', error);
-      // Default to showing onboarding if we can't determine the status
       this.completedOnboarding = false;
     }
+  }
+
+  private async postOnboardingSetup(): Promise<void> {
+    await this.checkMountPluginStatus();
   }
 
   private async checkMountPluginStatus(): Promise<void> {
@@ -136,116 +179,139 @@ export class AppComponent implements OnInit, OnDestroy {
       console.log('Mount plugin status: ', mountPluginOk);
 
       if (!mountPluginOk) {
-        await this.showMountPluginRepairSheet();
+        await this.showRepairSheet({
+          type: RepairSheetType.MOUNT_PLUGIN,
+          title: 'Mount Plugin Problem',
+          message:
+            'The mount plugin could not be found or started. You can reinstall or repair it now.',
+        });
+
+        this.setupMountPluginInstallationListener();
       }
     } catch (error) {
       console.error('Error checking mount plugin status:', error);
     }
   }
 
-  private async showMountPluginRepairSheet(): Promise<void> {
-    const sheetRef = this.bottomSheet.open(RepairSheetComponent, {
-      data: {
-        type: 'mount_plugin',
-        title: 'Mount Plugin Problem',
-        message:
-          'The mount plugin could not be found or started. You can reinstall or repair it now.',
-      },
-      disableClose: true,
-    });
+  private setupMountPluginInstallationListener(): void {
+    this.eventListenersService
+      .listenToMountPluginInstalled()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
+      });
+  }
 
-    this.activeSheets.add(sheetRef);
+  private async handleRcloneEngineEvent(event: RcloneEngineEvent): Promise<void> {
+    console.log('Rclone Engine event:', event);
 
-    // Setup event listener for mount plugin installation using EventListenersService
     try {
-      this.eventListenersService
-        .listenToMountPluginInstalled()
-        .pipe(takeUntil(this.destroy$))
-        .subscribe(() => {
-          this.closeBottomSheet(sheetRef);
-        });
+      // Handle different event types
+      switch (event.status) {
+        case 'path_error':
+          if (this.completedOnboarding) {
+            this.handleRclonePathError();
+          }
+          break;
+
+        case 'error':
+          if (this.isPasswordErrorEvent(event)) {
+            console.log('🔑 Password required detected from engine event');
+            await this.handlePasswordRequired();
+          }
+          break;
+
+        case 'ready':
+          console.log('Rclone API ready');
+          this.handleRcloneReady();
+          break;
+
+        default:
+          // Log unknown events for debugging
+          if (event.status) {
+            console.log(`Unhandled Rclone event status: ${event.status}`);
+          }
+          break;
+      }
     } catch (error) {
-      console.error('Error setting up mount plugin event listener:', error);
+      console.error('Error handling Rclone Engine event:', error);
     }
   }
 
-  private handleRcloneEngineEvent(event: unknown): void {
+  private isPasswordErrorEvent(event: RcloneEngineEvent): boolean {
+    // Rely on the backend's error classification
+    return event.status === 'error' && event.error_type === 'password_required';
+  }
+
+  private async handleRcloneOAuthEvent(event: RcloneEngineEvent): Promise<void> {
+    console.log('OAuth event received:', event);
+
     try {
-      if (typeof event !== 'object' || event === null) return;
+      // Handle different OAuth event types
+      switch (event.status) {
+        case 'error':
+          if (event.error_type === 'password_required') {
+            console.log('🔑 OAuth password error detected:', event.message);
+            await this.handlePasswordRequired();
+          } else if (event.error_type === 'spawn_failed') {
+            console.error('🚫 OAuth process failed to start:', event.message);
+            // Could show a notification or repair sheet for OAuth spawn failures
+          } else if (event.error_type === 'startup_timeout') {
+            console.error('⏰ OAuth process startup timeout:', event.message);
+            // Could show a notification or repair sheet for OAuth timeouts
+          } else {
+            console.warn('Unknown OAuth error:', event.message);
+          }
+          break;
 
-      const payload = event as RcloneEngineEvent;
-      console.log('Rclone Engine event:', payload);
+        case 'success':
+          console.log('✅ OAuth process started successfully:', event.message);
+          break;
 
-      // Handle path errors
-      if (payload.status === 'path_error') {
-        this.handleRclonePathError();
-      }
-
-      // Handle password errors
-      if (this.isPasswordErrorEvent(payload)) {
-        console.log('🔑 Password required detected from engine event');
-        this.handlePasswordRequired().catch(error => {
-          console.error('Failed to handle password requirement:', error);
-        });
-      }
-
-      // Handle ready state
-      if (payload.status === 'ready') {
-        console.log('Rclone API ready');
-        this.handleRcloneReady();
+        default:
+          // Log unknown OAuth events for debugging
+          if (event.status) {
+            console.log(`Unhandled OAuth event status: ${event.status}`);
+          }
+          break;
       }
     } catch (error) {
-      console.error('Error handling Rclone event:', error);
+      console.error('Error handling OAuth event:', error);
     }
-  }
-
-  private isPasswordErrorEvent(payload: RcloneEngineEvent): boolean {
-    return !!(
-      payload.status === 'error' &&
-      (payload.error_type === 'password_required' ||
-        (payload.message && this.isPasswordError(payload.message)))
-    );
-  }
-
-  private isPasswordError(error: string): boolean {
-    const passwordErrorPatterns = [
-      'Enter configuration password',
-      'Failed to read line: EOF',
-      'configuration is encrypted',
-      'password required',
-      'most likely wrong password.',
-    ];
-
-    return passwordErrorPatterns.some(pattern =>
-      error.toLowerCase().includes(pattern.toLowerCase())
-    );
   }
 
   //#region Password Handling
   private async handlePasswordRequired(): Promise<void> {
-    // Check if we already have an active password sheet
-    const existingSheet = Array.from(this.activeSheets).find(
-      sheet =>
-        sheet.instance instanceof RepairSheetComponent &&
-        sheet.instance.data?.type === 'rclone_password'
-    );
+    // Prevent multiple concurrent password prompts
+    if (
+      this.passwordPromptInProgress ||
+      this.hasActiveSheetOfType(RepairSheetType.RCLONE_PASSWORD)
+    ) {
+      console.log('Password prompt already in progress, skipping...');
+      return;
+    }
 
-    if (existingSheet) return;
+    this.passwordPromptInProgress = true;
 
     try {
       const result = await this.promptForPassword();
       if (result?.password) {
         await this.rclonePasswordService.setConfigPasswordEnv(result.password);
+        console.log('Password set successfully');
+      } else {
+        console.log('Password prompt was cancelled or no password provided');
       }
     } catch (error) {
       console.error('Error handling password requirement:', error);
       throw error;
+    } finally {
+      this.passwordPromptInProgress = false;
     }
   }
 
-  async promptForPassword(): Promise<PasswordPromptResult | null> {
+  private async promptForPassword(): Promise<PasswordPromptResult | null> {
     const repairData: RepairData = {
-      type: 'rclone_password',
+      type: RepairSheetType.RCLONE_PASSWORD,
       title: 'Rclone Configuration Password Required',
       message: 'Your rclone configuration requires a password to access encrypted remotes.',
       requiresPassword: true,
@@ -254,22 +320,7 @@ export class AppComponent implements OnInit, OnDestroy {
         'Your rclone configuration requires a password to access encrypted remotes.',
     };
 
-    const sheetRef = this.bottomSheet.open(RepairSheetComponent, {
-      data: repairData,
-      disableClose: true,
-    });
-
-    this.activeSheets.add(sheetRef);
-
-    try {
-      const result = await firstValueFrom(sheetRef.afterDismissed());
-      return (result as PasswordPromptResult) ?? null;
-    } catch (error) {
-      console.error('Error in password prompt:', error);
-      return null;
-    } finally {
-      this.activeSheets.delete(sheetRef);
-    }
+    return this.openRepairSheetWithResult(repairData);
   }
   //#endregion
 
@@ -278,12 +329,24 @@ export class AppComponent implements OnInit, OnDestroy {
     if (this.alreadyReported) return;
 
     this.alreadyReported = true;
+    this.showRepairSheet({
+      type: RepairSheetType.RCLONE_PATH,
+      title: 'Rclone Path Problem',
+      message: 'The Rclone binary could not be found or started. You can reinstall it now.',
+    });
+  }
+
+  private handleRcloneReady(): void {
+    this.alreadyReported = false;
+    this.passwordPromptInProgress = false; // Reset password prompt flag
+    this.closeSheetsByTypes([RepairSheetType.RCLONE_PATH, RepairSheetType.RCLONE_PASSWORD]);
+  }
+  //#endregion
+
+  //#region Sheet Management Utilities
+  private async showRepairSheet(data: RepairData): Promise<void> {
     const sheetRef = this.bottomSheet.open(RepairSheetComponent, {
-      data: {
-        type: 'rclone_path',
-        title: 'Rclone Path Problem',
-        message: 'The Rclone binary could not be found or started. You can reinstall it now.',
-      },
+      data,
       disableClose: true,
     });
 
@@ -297,97 +360,76 @@ export class AppComponent implements OnInit, OnDestroy {
       });
   }
 
-  private handleRcloneReady(): void {
-    this.alreadyReported = false;
+  private async openRepairSheetWithResult(data: RepairData): Promise<PasswordPromptResult | null> {
+    const sheetRef = this.bottomSheet.open(RepairSheetComponent, {
+      data,
+      disableClose: true,
+    });
 
-    // Close any error sheets when Rclone is ready
+    this.activeSheets.add(sheetRef);
+
+    try {
+      const result = await firstValueFrom(sheetRef.afterDismissed());
+      return (result as PasswordPromptResult) ?? null;
+    } catch (error) {
+      console.error('Error in repair sheet:', error);
+      return null;
+    } finally {
+      this.activeSheets.delete(sheetRef);
+      // Reset password prompt flag when sheet is dismissed
+      if (data.type === RepairSheetType.RCLONE_PASSWORD) {
+        this.passwordPromptInProgress = false;
+      }
+    }
+  }
+
+  private hasActiveSheetOfType(type: RepairSheetType): boolean {
+    return Array.from(this.activeSheets).some(
+      sheet => sheet.instance instanceof RepairSheetComponent && sheet.instance.data?.type === type
+    );
+  }
+
+  private closeSheetsByType(type: RepairSheetType): void {
+    Array.from(this.activeSheets).forEach(sheet => {
+      if (sheet.instance instanceof RepairSheetComponent && sheet.instance.data?.type === type) {
+        sheet.dismiss();
+      }
+    });
+  }
+
+  private closeSheetsByTypes(types: RepairSheetType[]): void {
     Array.from(this.activeSheets).forEach(sheet => {
       if (
         sheet.instance instanceof RepairSheetComponent &&
-        ['rclone_path', 'rclone_password'].includes(sheet.instance.data?.type)
+        types.includes(sheet.instance.data?.type as RepairSheetType)
       ) {
         sheet.dismiss();
       }
     });
   }
+
   //#endregion
-
-  private setupErrorListeners(): void {
-    // Listen for rclone engine errors with proper cleanup
-    this.eventListenersService
-      .listenToRcloneEngine()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: async event => {
-          try {
-            console.log('Rclone Engine event payload:', event);
-
-            if (typeof event === 'object' && event?.status === 'path_error') {
-              this.handleRclonePathError();
-            }
-
-            if (typeof event === 'object' && event.status !== null) {
-              const payload = event as {
-                status?: string;
-                message?: string;
-                error_type?: string;
-              };
-              console.log('🔑 Rclone engine event:', payload);
-
-              // Check for password errors - both old and new format
-              if (
-                payload.status === 'error' &&
-                (payload.error_type === 'password_required' || // New structured format
-                  (payload.message && this.isPasswordError(payload.message))) // Legacy format
-              ) {
-                console.log('🔑 Password required detected from engine event');
-                this.handlePasswordRequired();
-              }
-            }
-          } catch (error) {
-            console.error('Error handling Rclone Engine event:', error);
-          }
-        },
-      });
-  }
-
-  private closeBottomSheet(sheetRef: MatBottomSheetRef<RepairSheetComponent>): void {
-    try {
-      if (sheetRef) {
-        sheetRef.dismiss();
-        // Remove from active sheets set
-        this.activeSheets.delete(sheetRef);
-      }
-    } catch (error) {
-      console.error('Error closing bottom sheet:', error);
-    }
-  }
 
   async finishOnboarding(): Promise<void> {
     try {
       this.completedOnboarding = true;
-
-      // Save the onboarding status
       await this.appSettingsService.saveSetting('core', 'completed_onboarding', true);
       console.log('Onboarding completed status saved.');
 
-      // Setup error listeners and check mount plugin after onboarding is complete
-      this.setupErrorListeners();
-      await this.checkMountPluginStatus();
+      await this.postOnboardingSetup();
     } catch (error) {
       console.error('Error saving onboarding status:', error);
-      // Revert the onboarding status if saving failed
       this.completedOnboarding = false;
-      throw error; // Re-throw to let the caller handle the error
+      throw error;
     }
   }
 
   async setTab(tab: AppTab): Promise<void> {
-    try {
-      if (this.currentTab === tab) {
-        return; // No need to change if already on the same tab
-      }
+    if (this.currentTab === tab) {
+      return;
+    }
 
+    try {
       this.currentTab = tab;
       this.uiStateService.setTab(tab);
     } catch (error) {

@@ -2,7 +2,7 @@ use log::{debug, error, info, warn};
 use serde_json::{Value, json};
 use std::{
     collections::HashMap,
-    process::{Child, Command, Stdio},
+    process::Child,
     sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
@@ -15,7 +15,10 @@ use crate::{
     core::check_binaries::read_rclone_path,
     rclone::state::ENGINE_STATE,
     utils::{
-        rclone::endpoints::{EndpointHelper, config, core},
+        rclone::{
+            endpoints::{EndpointHelper, config, core},
+            process_common::{create_rclone_command, spawn_stderr_monitor, emit_spawn_error, emit_success, emit_timeout_error},
+        },
         types::all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
     },
 };
@@ -101,38 +104,29 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
 
     // Start new process
     let rclone_path = read_rclone_path(app);
+    let port = ENGINE_STATE.get_oauth().1;
 
-    let mut oauth_app = Command::new(&rclone_path);
-    oauth_app
-        .args([
-            "rcd",
-            "--rc-no-auth",
-            "--rc-serve",
-            "--rc-addr",
-            &format!("127.0.0.1:{port}"),
-        ])
-        .stdout(Stdio::null())
-        .stderr(Stdio::null());
-
-    // This is a workaround for Windows to avoid showing a console window
-    // when starting the Rclone process.
-    // It uses the CREATE_NO_WINDOW and DETACHED_PROCESS flags.
-    // But it may not work in all cases. Like when app build for terminal
-    // and not for GUI. Rclone may still try to open a console window.
-    // You can see the flashing of the console window when starting the app.
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        oauth_app.creation_flags(0x08000000 | 0x00200000);
-    }
+    let mut oauth_app = match create_rclone_command(rclone_path.to_str().unwrap(), port, app, "OAuth") {
+        Ok(cmd) => cmd,
+        Err(e) => {
+            let error_msg = format!("Failed to create OAuth command: {e}");
+            emit_spawn_error(app, "rclone_oauth", &error_msg);
+            return Err(RcloneError::OAuthError(error_msg));
+        }
+    };
 
     let process = oauth_app.spawn().map_err(|e| {
-        RcloneError::OAuthError(format!(
-            "Failed to start Rclone OAuth process: {e}. Ensure Rclone is installed and in PATH."
-        ))
+        let error_msg = format!("Failed to start Rclone OAuth process: {e}. Ensure Rclone is installed and in PATH.");
+        emit_spawn_error(app, "rclone_oauth", &error_msg);
+        RcloneError::OAuthError(error_msg)
     })?;
 
-    *guard = Some(process);
+    info!("✅ Rclone OAuth process spawned successfully");
+
+    // Start monitoring stderr using shared utility
+    let monitored_process = spawn_stderr_monitor(process, app.clone(), "rclone_oauth", "OAuth");
+
+    *guard = Some(monitored_process);
 
     // Wait for process to start with timeout
     let start_time = Instant::now();
@@ -143,15 +137,16 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
             .await
             .is_ok()
         {
-            info!("OAuth process started successfully on port {port}");
+            let success_msg = format!("OAuth process started successfully on port {port}");
+            emit_success(app, "rclone_oauth", &success_msg);
             return Ok(());
         }
         sleep(Duration::from_millis(100)).await;
     }
 
-    Err(RcloneError::OAuthError(format!(
-        "Timeout waiting for OAuth process to start on port {port}"
-    )))
+    let timeout_error = format!("Timeout waiting for OAuth process to start on port {port}");
+    emit_timeout_error(app, "rclone_oauth", &timeout_error);
+    Err(RcloneError::OAuthError(timeout_error))
 }
 
 /// Clean up OAuth process

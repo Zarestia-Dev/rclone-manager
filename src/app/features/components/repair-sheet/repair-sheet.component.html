@@ -160,16 +160,15 @@
     >
       @if (installing || isSubmittingPassword) {
         <ng-container>
-          <mat-progress-spinner
-            *ngIf="isSubmittingPassword"
-            diameter="20"
-            mode="indeterminate"
-          ></mat-progress-spinner>
-          <mat-icon
-            *ngIf="!isSubmittingPassword"
-            [svgIcon]="installing ? 'refresh' : 'download'"
-            [class.animate-spin]="installing"
-          ></mat-icon>
+          @if (isSubmittingPassword) {
+            <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+          }
+          @if (!isSubmittingPassword) {
+            <mat-icon
+              [svgIcon]="installing ? 'refresh' : 'download'"
+              [class.animate-spin]="installing"
+            ></mat-icon>
+          }
           {{ isSubmittingPassword ? 'Validating Password...' : getRepairProgressText() }}
         </ng-container>
       } @else {

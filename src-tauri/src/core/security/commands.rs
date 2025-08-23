@@ -8,6 +8,7 @@ use log::{info, error, debug, warn};
 /// Store the rclone config password securely
 #[tauri::command]
 pub async fn store_config_password(
+    app: AppHandle,
     password_state: State<'_, PasswordValidatorState>,
     env_manager: State<'_, SafeEnvironmentManager>,
     password: String,
@@ -23,6 +24,11 @@ pub async fn store_config_password(
             // Reset password validator state on successful storage
             if let Ok(mut validator) = password_state.lock() {
                 validator.record_success();
+            }
+
+            // Emit event so OAuth can restart if needed
+            if let Err(e) = app.emit("rclone_engine", serde_json::json!({ "status": "password_stored" })) {
+                error!("Failed to emit password_stored event: {e}");
             }
 
             info!("✅ Password stored successfully");
