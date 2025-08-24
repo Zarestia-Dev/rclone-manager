@@ -1,33 +1,6 @@
 import { Injectable } from '@angular/core';
+import { LoadingStates, PasswordManagerState } from '@app/types';
 import { BehaviorSubject, Observable } from 'rxjs';
-
-interface PasswordLockoutStatus {
-  is_locked: boolean;
-  failed_attempts: number;
-  max_attempts: number;
-  remaining_lockout_time?: number;
-}
-
-interface LoadingStates {
-  isValidating: boolean;
-  isEncrypting: boolean;
-  isUnencrypting: boolean;
-  isChangingPassword: boolean;
-  isStoringPassword: boolean;
-  isRemovingPassword: boolean;
-  isSettingEnv: boolean;
-  isClearingEnv: boolean;
-  isResettingLockout: boolean;
-}
-
-interface PasswordManagerState {
-  hasStoredPassword: boolean;
-  hasEnvPassword: boolean;
-  isConfigEncrypted: boolean;
-  lockoutStatus: PasswordLockoutStatus | null;
-  loading: LoadingStates;
-  errors: string[];
-}
 
 @Injectable()
 export class PasswordManagerStateService {

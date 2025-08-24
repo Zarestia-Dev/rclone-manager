@@ -39,11 +39,14 @@ import {
   GlobalStats,
   JobInfo,
   MemoryStats,
+  PanelState,
   PrimaryActionType,
+  RcloneStatus,
   Remote,
   RemoteAction,
   RemoteActionProgress,
-} from '../../../../shared/components/types';
+  SystemStats,
+} from '@app/types';
 import { formatUtils } from '../../../../shared/utils/format-utils';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 
@@ -54,27 +57,6 @@ import { SystemInfoService } from '@app/services';
 
 /** Polling interval for system stats in milliseconds */
 const POLLING_INTERVAL = 5000;
-
-/** System stats interface */
-interface SystemStats {
-  memoryUsage: string;
-  uptime: string;
-}
-
-/** Rclone status type */
-type RcloneStatus = 'active' | 'inactive' | 'error';
-
-export interface PanelState {
-  bandwidth: boolean;
-  system: boolean;
-  jobs: boolean;
-}
-
-export interface BandwidthDetails {
-  upload: string;
-  download: string;
-  total: string;
-}
 
 /**
  * GeneralOverviewComponent displays an overview of RClone remotes and system information

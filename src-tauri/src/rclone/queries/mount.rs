@@ -49,9 +49,7 @@ pub async fn get_mounted_remotes(
 }
 
 #[tauri::command]
-pub async fn get_mount_types(
-    state: State<'_, RcloneState>,
-) -> Result<Vec<String>, String> {
+pub async fn get_mount_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::TYPES);
 
     let response = state

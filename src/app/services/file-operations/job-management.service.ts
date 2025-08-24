@@ -2,40 +2,17 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { JobInfo } from '../../shared/components/types';
-
-export type SyncOptions = Record<string, object>;
-
-export type CopyOptions = Record<string, object>;
-
-export type BisyncOptions = Record<string, object>;
-
-export type MoveOptions = Record<string, object>;
-
-export type FilterOptions = Record<string, object>;
-
-export interface BisyncParams {
-  remote_name: string;
-  source: string;
-  dest: string;
-  bisync_options: BisyncOptions | null;
-  filter_options: FilterOptions | null;
-  resync?: boolean;
-  dryRun?: boolean;
-  checkAccess?: boolean;
-  checkFilename?: string;
-  maxDelete?: number;
-  force?: boolean;
-  checkSync?: boolean | 'only';
-  createEmptySrcDirs?: boolean;
-  removeEmptyDirs?: boolean;
-  filtersFile?: string;
-  ignoreListingChecksum?: boolean;
-  resilient?: boolean;
-  workdir?: string;
-  backupdir1?: string;
-  backupdir2?: string;
-  noCleanup?: boolean;
-}
+import {
+  BisyncOptions,
+  BisyncParams,
+  CopyOptions,
+  CopyParams,
+  FilterOptions,
+  MoveOptions,
+  MoveParams,
+  SyncOptions,
+  SyncParams,
+} from '@app/types';
 
 /**
  * Service for managing rclone jobs (sync, copy, etc.)
@@ -66,14 +43,16 @@ export class JobManagementService extends TauriBaseService {
   ): Promise<number> {
     this.validatePaths(source, dest);
 
-    const jobId = await this.invokeCommand<string>('start_sync', {
-      remoteName,
+    const params: SyncParams = {
+      remote_name: remoteName,
       source,
       dest,
-      createEmptySrcDirs: createEmptySrcDirs || false,
-      syncOptions: syncOptions || {},
-      filterOptions: filterOptions || {},
-    });
+      create_empty_src_dirs: createEmptySrcDirs || false,
+      sync_options: syncOptions || {},
+      filter_options: filterOptions || {},
+    };
+
+    const jobId = await this.invokeCommand<string>('start_sync', { params });
 
     return parseInt(jobId, 10);
   }
@@ -91,14 +70,16 @@ export class JobManagementService extends TauriBaseService {
   ): Promise<number> {
     this.validatePaths(source, dest);
 
-    const jobId = await this.invokeCommand<string>('start_copy', {
-      remoteName,
+    const params: CopyParams = {
+      remote_name: remoteName,
       source,
       dest,
-      createEmptySrcDirs: createEmptySrcDirs || false,
-      copyOptions: copyOptions || {},
-      filterOptions: filterOptions || {},
-    });
+      create_empty_src_dirs: createEmptySrcDirs || false,
+      copy_options: copyOptions || {},
+      filter_options: filterOptions || {},
+    };
+
+    const jobId = await this.invokeCommand<string>('start_copy', { params });
 
     return parseInt(jobId, 10);
   }
@@ -169,15 +150,16 @@ export class JobManagementService extends TauriBaseService {
     filterOptions?: FilterOptions
   ): Promise<number> {
     this.validatePaths(source, dest);
-    const jobId = await this.invokeCommand<string>('start_move', {
-      remoteName,
+    const params: MoveParams = {
+      remote_name: remoteName,
       source,
       dest,
-      createEmptySrcDirs: createEmptySrcDirs || false,
-      deleteEmptySrcDirs: deleteEmptySrcDirs || false,
-      moveOptions: moveOptions || {},
-      filterOptions: filterOptions || {},
-    });
+      create_empty_src_dirs: createEmptySrcDirs || false,
+      delete_empty_src_dirs: deleteEmptySrcDirs || false,
+      move_options: moveOptions || {},
+      filter_options: filterOptions || {},
+    };
+    const jobId = await this.invokeCommand<string>('start_move', { params });
     return parseInt(jobId, 10);
   }
 

@@ -39,8 +39,10 @@ export class RemoteConfigStepComponent {
 
   @Output() advancedOptionsToggled = new EventEmitter<boolean>();
   @Output() remoteTypeChanged = new EventEmitter<void>();
+  @Output() interactiveModeToggled = new EventEmitter<boolean>();
 
   showAdvancedOptions = false;
+  useInteractiveMode = false;
 
   get basicFields(): RemoteField[] {
     return this.remoteFields.filter(f => !f.Advanced);
@@ -53,6 +55,11 @@ export class RemoteConfigStepComponent {
   toggleAdvancedOptions(): void {
     this.showAdvancedOptions = !this.showAdvancedOptions;
     this.advancedOptionsToggled.emit(this.showAdvancedOptions);
+  }
+
+  toggleInteractiveMode(): void {
+    this.useInteractiveMode = !this.useInteractiveMode;
+    this.interactiveModeToggled.emit(this.useInteractiveMode);
   }
 
   onRemoteTypeChange(): void {

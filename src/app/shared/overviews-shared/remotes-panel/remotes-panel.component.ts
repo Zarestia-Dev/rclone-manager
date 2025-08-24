@@ -2,8 +2,14 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { RemoteCardComponent, RemoteCardVariant } from '../remote-card/remote-card.component';
-import { AppTab, PrimaryActionType, Remote, RemoteActionProgress } from '../../components/types';
+import { RemoteCardComponent } from '../remote-card/remote-card.component';
+import {
+  AppTab,
+  PrimaryActionType,
+  Remote,
+  RemoteActionProgress,
+  RemoteCardVariant,
+} from '../../components/types';
 
 @Component({
   selector: 'app-remotes-panel',

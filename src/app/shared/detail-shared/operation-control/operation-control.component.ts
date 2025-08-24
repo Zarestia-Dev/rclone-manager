@@ -5,26 +5,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { ThemePalette } from '@angular/material/core';
-import { StatusBadgeComponent, StatusBadgeConfig } from '../status-badge/status-badge.component';
-import { PathDisplayComponent, PathDisplayConfig } from '../path-display/path-display.component';
+import { StatusBadgeComponent } from '../status-badge/status-badge.component';
+import { PathDisplayComponent } from '../path-display/path-display.component';
 import { PrimaryActionType } from '../../components/types';
-
-export interface OperationControlConfig {
-  operationType: PrimaryActionType;
-  isActive: boolean;
-  isError?: boolean;
-  isLoading: boolean;
-  operationColor: ThemePalette;
-  operationClass: string;
-  pathConfig: PathDisplayConfig;
-  primaryButtonLabel: string;
-  primaryIcon: string;
-  secondaryButtonLabel: string;
-  secondaryIcon: string;
-  actionInProgress?: string;
-  operationDescription?: string;
-}
+import { OperationControlConfig, StatusBadgeConfig } from '../../types';
 
 @Component({
   selector: 'app-operation-control',

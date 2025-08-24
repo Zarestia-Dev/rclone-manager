@@ -21,31 +21,8 @@ import { MatChipsModule } from '@angular/material/chips';
 import { ActiveTransfersTableComponent } from './active-transfers-table.component';
 import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
 import { TransferFile } from '../../../shared/components/types';
+import { CompletedTransfer, TransferActivityPanelConfig } from '../../types';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
-
-export interface CompletedTransfer {
-  name: string;
-  size: number;
-  bytes: number;
-  checked: boolean;
-  error: string;
-  jobid: number;
-  startedAt?: string; // ISO timestamp from API
-  completedAt?: string; // ISO timestamp from API
-  srcFs?: string; // Source filesystem
-  dstFs?: string; // Destination filesystem
-  group?: string; // Job group
-  status: 'completed' | 'checked' | 'failed' | 'partial';
-}
-
-export interface TransferActivityPanelConfig {
-  activeTransfers: TransferFile[];
-  completedTransfers: CompletedTransfer[];
-  operationClass: string;
-  operationColor: string;
-  remoteName: string;
-  showHistory: boolean;
-}
 
 @Component({
   selector: 'app-transfer-activity-panel',

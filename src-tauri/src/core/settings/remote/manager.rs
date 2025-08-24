@@ -87,8 +87,10 @@ pub async fn delete_remote_settings(
         .join(format!("{remote_name}.json"));
 
     if !remote_config_path.exists() {
-        warn!("⚠️ Remote settings for '{remote_name}' not found.");
-        return Err(format!("⚠️ Remote settings for '{remote_name}' not found."));
+        warn!("⚠️ Remote settings for '{remote_name}' not found, but that's okay.");
+        // Don't return an error - just emit the event and return success
+        app_handle.emit("remote_presence_changed", remote_name).ok();
+        return Ok(()); // Return success instead of error
     }
 
     fs::remove_file(&remote_config_path).map_err(|e| {

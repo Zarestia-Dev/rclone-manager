@@ -1,20 +1,9 @@
 import { Injectable } from '@angular/core';
+import { PasswordLockoutStatus } from '@app/types';
 import { BehaviorSubject } from 'rxjs';
 import { invoke } from '@tauri-apps/api/core';
 
-export interface PasswordLockoutStatus {
-  is_locked: boolean;
-  failed_attempts: number;
-  max_attempts: number;
-  remaining_lockout_time?: number;
-}
-
-export interface PasswordLockoutStatus {
-  is_locked: boolean;
-  failed_attempts: number;
-  max_attempts: number;
-  remaining_lockout_time?: number;
-}
+// PasswordLockoutStatus moved to shared types
 
 @Injectable({
   providedIn: 'root',
@@ -36,15 +25,38 @@ export class RclonePasswordService {
   }
 
   /**
-   * Check if password is set in environment
+   * Unlock the encrypted rclone config at runtime via RC API
    */
-  async hasConfigPasswordEnv(): Promise<boolean> {
+  async unlockConfig(password: string): Promise<void> {
     try {
-      return await invoke<boolean>('has_config_password_env');
+      await invoke('unlock_rclone_config', { password });
     } catch (error) {
-      console.error('Failed to check config password env:', error);
+      console.error('Failed to unlock rclone config:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Convenience: try unlocking using stored password if present
+   */
+  async tryUnlockWithStoredPassword(): Promise<boolean> {
+    try {
+      const has = await this.hasStoredPassword();
+      if (!has) return false;
+      const pw = await this.getStoredPassword();
+      if (!pw) return false;
+      await this.unlockConfig(pw);
+      return true;
+    } catch {
       return false;
     }
+  }
+
+  /**
+   * Check if password is set in environment (deprecated, always false)
+   */
+  async hasConfigPasswordEnv(): Promise<boolean> {
+    return false;
   }
 
   /**
@@ -84,29 +96,19 @@ export class RclonePasswordService {
   }
 
   /**
-   * Set password environment variable for current session
+   * Set password environment variable for current session (deprecated)
    */
   async setConfigPasswordEnv(password: string): Promise<boolean> {
-    try {
-      await invoke('set_config_password_env', { password });
-      return true;
-    } catch (error) {
-      console.error('Failed to set password environment:', error);
-      return false;
-    }
+    console.warn('setConfigPasswordEnv is deprecated; use unlockConfig instead');
+    await this.unlockConfig(password);
+    return true;
   }
 
   /**
-   * Clear password environment variable
+   * Clear password environment variable (deprecated no-op)
    */
   async clearPasswordEnvironment(): Promise<boolean> {
-    try {
-      await invoke('clear_config_password_env');
-      return true;
-    } catch (error) {
-      console.error('Failed to clear password environment:', error);
-      return false;
-    }
+    return true;
   }
 
   /**

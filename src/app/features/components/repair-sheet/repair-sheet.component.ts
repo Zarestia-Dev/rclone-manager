@@ -11,23 +11,17 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { RepairData } from '../../../shared/components/types';
 import {
-  InstallationOptionsComponent,
   InstallationOptionsData,
-} from '../../../shared/components/installation-options/installation-options.component';
+  PasswordLockoutStatus,
+  RepairData,
+} from '../../../shared/components/types';
+import { InstallationOptionsComponent } from '../../../shared/components/installation-options/installation-options.component';
 
 // Services
 import { RclonePasswordService, RepairService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { AnimationsService } from '../../../shared/services/animations.service';
-
-interface PasswordLockoutStatus {
-  is_locked: boolean;
-  failed_attempts: number;
-  max_attempts: number;
-  remaining_lockout_time?: number;
-}
 
 @Component({
   selector: 'app-repair-sheet',
@@ -254,8 +248,8 @@ export class RepairSheetComponent implements OnInit {
         }
       }
 
-      // Set password in environment for the repair process
-      await this.passwordService.setConfigPasswordEnv(this.password);
+      // Unlock rclone config at runtime via RC API
+      await this.passwordService.unlockConfig(this.password);
 
       // Clear the password form for security
       this.password = '';

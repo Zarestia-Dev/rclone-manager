@@ -5,7 +5,7 @@
 ### Added
 - Native console support for the native terminal. You can now open the remote configuration in the native terminal by clicking the "Remote Terminal" button in the top left add button. It will use the preferred terminal app from the settings. Also, you can set the preferred terminal app in the settings.
 
-- **Encrypted configuration file support**: Added comprehensive support for rclone encrypted configuration files.
+- **Encrypted configuration file support**: Added comprehensive support for rclone encrypted configuration files. Need Rclone V1.71.0 or later.
   - Automatic detection of encrypted config files
   - Secure password storage using system keyring/credential store
   - Password validation with lockout protection to prevent brute force attacks
@@ -22,12 +22,14 @@
 
 - Added primary action selection - choose up to 3 preferred actions (mount/sync/copy/etc.) per remote for quick access and overview visibility. You can select and deselect actions in the remote general details view.
 
+- Added interactive config support to Detailed Remote Modal. So we can make the post remote configuration. (Like Microsoft OneDrive)
+
 ### Changed
 - Rclone configuration file path is now set with api call instead of using CLI arguments.
 
 ### Need Fix
 - After engine restart, need the apply the startup settings again. (e.g. config file path, bw limit, etc.)
-- Remote updates not working properly. When you update a some settings to default, it does not update the remote. I know whats the problem.
+- Remote updates not working properly. When you update a some settings to default, it does not update the remote. I know whats the problem. (Fixed I think)
 
 ## [beta-0.1.2] - 2025-07-15
 ### Added

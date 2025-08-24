@@ -8,7 +8,14 @@ import {
   ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormControl, FormGroup, ValidatorFn, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  ValidatorFn,
+  Validators,
+  FormsModule,
+} from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -16,6 +23,9 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { debounceTime, distinctUntilChanged, Subscription } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/components/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/components/flag-config-step/flag-config-step.component';
 import {
@@ -26,6 +36,17 @@ import {
   REMOTE_NAME_REGEX,
   RemoteField,
   RemoteType,
+} from '../../../../shared/remote-config/remote-config-types';
+import { RcConfigQuestionResponse } from '@app/services';
+import { InteractiveConfigStepComponent } from '../../../../shared/remote-config/components/interactive-config-step/interactive-config-step.component';
+import {
+  MountConfig,
+  CopyConfig,
+  SyncConfig,
+  BisyncConfig,
+  MoveConfig,
+  FilterConfig,
+  VfsConfig,
 } from '../../../../shared/remote-config/remote-config-types';
 
 // Services
@@ -44,15 +65,21 @@ import { UiStateService } from '@app/services';
 
 @Component({
   selector: 'app-remote-config-modal',
+  standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MatProgressSpinnerModule,
     MatInputModule,
     MatChipsModule,
     MatIconModule,
     MatButtonModule,
+    MatFormFieldModule,
+    MatSelectModule,
+    MatSlideToggleModule,
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
+    InteractiveConfigStepComponent,
   ],
   templateUrl: './remote-config-modal.component.html',
   styleUrls: ['./remote-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -86,6 +113,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   currentStep = 1;
   editTarget: EditTarget = null;
   showAdvancedOptions = false;
+  useInteractiveMode = false; // Add this property to track interactive mode state
   restrictMode!: boolean;
   cloneTarget!: boolean;
 
@@ -121,6 +149,21 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   isRemoteConfigLoading = false;
   isAuthInProgress = false;
   isAuthCancelled = false;
+
+  // Non-interactive RC flow state
+  rcQuestion: RcConfigQuestionResponse | null = null;
+  rcAnswer: string | boolean | number | null = null;
+  isNonInteractiveActive = false;
+  private pendingFinalConfig: {
+    mountConfig: MountConfig;
+    copyConfig: CopyConfig;
+    syncConfig: SyncConfig;
+    bisyncConfig: BisyncConfig;
+    moveConfig: MoveConfig;
+    filterConfig: FilterConfig;
+    vfsConfig: VfsConfig;
+  } | null = null;
+  private pendingRemoteData: { name: string; type: string; [k: string]: unknown } | null = null;
 
   private subscriptions: Subscription[] = [];
 
@@ -270,6 +313,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }
   }
 
+  onInteractiveModeToggled(useInteractiveMode: boolean): void {
+    this.useInteractiveMode = useInteractiveMode;
+  }
+
   private addDynamicRemoteFieldsToForm(): void {
     this.dynamicRemoteFields.forEach(field => {
       const config = this.remoteConfigService.createFormControlConfig(field);
@@ -389,6 +436,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         [Validators.required, this.validateRemoteNameFactory()],
       ],
       type: [{ value: '', disabled: isEditMode }, [Validators.required]],
+      // Removed interactiveMode as it's now a component property, not form data
     });
     return form;
   }
@@ -711,10 +759,60 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     const remoteName = this.getRemoteName();
 
     await this.authStateService.startAuth(remoteName, true);
+
+    // Check if this is a remote edit with interactive mode
+    if (this.editTarget === 'remote' && this.useInteractiveMode) {
+      return await this.handleInteractiveRemoteEdit(updatedConfig);
+    }
+
     await this.updateConfigBasedOnEditTarget(updatedConfig);
     await this.appSettingsService.saveRemoteSettings(remoteName, updatedConfig);
 
     return { success: true };
+  }
+
+  private async handleInteractiveRemoteEdit(updatedConfig: any): Promise<{ success: boolean }> {
+    const remoteData = this.cleanFormData(this.remoteForm.getRawValue(), true, this.remoteForm);
+    const remoteName = this.getRemoteName();
+
+    // Store the updated config for later use
+    updatedConfig.name = remoteData.name;
+    updatedConfig.type = remoteData.type;
+
+    // Store config for finalization
+    this.pendingFinalConfig = {
+      ...updatedConfig,
+      mountConfig: {},
+      copyConfig: {},
+      syncConfig: {},
+      bisyncConfig: {},
+      moveConfig: {},
+      filterConfig: {},
+      vfsConfig: {},
+    };
+    this.pendingRemoteData = remoteData;
+
+    // Start interactive configuration for the remote
+    const { name, type, ...paramRest } = remoteData;
+    const startResp = await this.remoteManagementService.startRemoteConfigNonInteractive(
+      name,
+      type,
+      paramRest,
+      { nonInteractive: true }
+    );
+
+    if (!startResp || startResp.State === '') {
+      // No interactive steps needed, just update directly
+      await this.remoteManagementService.updateRemote(remoteName, remoteData);
+      await this.appSettingsService.saveRemoteSettings(remoteName, updatedConfig);
+      return { success: true };
+    }
+
+    // Interactive steps needed
+    this.isNonInteractiveActive = true;
+    this.rcQuestion = startResp;
+    this.rcAnswer = this.getDefaultAnswerFromQuestion(startResp);
+    return { success: false };
   }
 
   private getRemoteName(): string {
@@ -810,9 +908,40 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       vfsConfig: this.safeJsonParse(configData.vfsConfig.options),
     };
 
+    const interactive = this.useInteractiveMode; // Read from component property instead of form
+    if (!interactive) {
+      // Simple path: create the remote directly using provided fields
+      const toCreate = { ...remoteData } as Record<string, unknown>;
+      await this.authStateService.startAuth(remoteData.name, false);
+      await this.remoteManagementService.createRemote(remoteData.name, toCreate);
+      // Save settings and kick off any auto-actions
+      this.pendingFinalConfig = finalConfig;
+      this.pendingRemoteData = remoteData;
+      await this.finalizeRemoteCreation();
+      return { success: true };
+    }
+
+    // Interactive path: start non-interactive RC flow via rclone and guide user through Q/A
     await this.authStateService.startAuth(remoteData.name, false);
-    await this.remoteManagementService.createRemote(remoteData.name, remoteData);
-    await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
+    this.pendingFinalConfig = finalConfig;
+    this.pendingRemoteData = remoteData;
+
+    const { name, type, ...paramRest } = remoteData;
+    const startResp = await this.remoteManagementService.startRemoteConfigNonInteractive(
+      name,
+      type,
+      paramRest,
+      { nonInteractive: true }
+    );
+
+    if (!startResp || startResp.State === '') {
+      await this.finalizeRemoteCreation();
+      return { success: true };
+    }
+    this.isNonInteractiveActive = true;
+    this.rcQuestion = startResp;
+    this.rcAnswer = this.getDefaultAnswerFromQuestion(startResp);
+    return { success: false };
 
     if (finalConfig.mountConfig.autoStart && finalConfig.mountConfig.dest) {
       const mountPath = finalConfig.mountConfig.dest;
@@ -889,14 +1018,18 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private async handleRemoteUpdate(updatedConfig: any): Promise<void> {
-    const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
+    const remoteData = this.cleanFormData(this.remoteForm.getRawValue(), true, this.remoteForm);
     updatedConfig.name = remoteData.name;
     updatedConfig.type = remoteData.type;
     await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
   }
 
   private async handleMountUpdate(updatedConfig: any): Promise<void> {
-    const mountData = this.cleanFormData(this.remoteConfigForm.getRawValue().mountConfig);
+    const mountData = this.cleanFormData(
+      this.remoteConfigForm.getRawValue().mountConfig,
+      true,
+      this.remoteConfigForm.get('mountConfig') as FormGroup
+    );
     // If source is empty, set to remoteName:/
     if (!mountData.source || mountData.source.trim() === '') {
       const remoteName = this.getRemoteName();
@@ -914,7 +1047,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private async handleBisyncUpdate(updatedConfig: any): Promise<void> {
-    const bisyncData = this.cleanFormData(this.remoteConfigForm.getRawValue().bisyncConfig);
+    const bisyncData = this.cleanFormData(
+      this.remoteConfigForm.getRawValue().bisyncConfig,
+      true,
+      this.remoteConfigForm.get('bisyncConfig') as FormGroup
+    );
     // If source is empty, set to remoteName:/
     if (!bisyncData.source || bisyncData.source.trim() === '') {
       const remoteName = this.getRemoteName();
@@ -947,7 +1084,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private async handleMoveUpdate(updatedConfig: any): Promise<void> {
-    const moveData = this.cleanFormData(this.remoteConfigForm.getRawValue().moveConfig);
+    const moveData = this.cleanFormData(
+      this.remoteConfigForm.getRawValue().moveConfig,
+      true,
+      this.remoteConfigForm.get('moveConfig') as FormGroup
+    );
     // If source is empty, set to remoteName:/
     if (!moveData.source || moveData.source.trim() === '') {
       const remoteName = this.getRemoteName();
@@ -966,7 +1107,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private async handleCopyUpdate(updatedConfig: any): Promise<void> {
-    const copyData = this.cleanFormData(this.remoteConfigForm.getRawValue().copyConfig);
+    const copyData = this.cleanFormData(
+      this.remoteConfigForm.getRawValue().copyConfig,
+      true,
+      this.remoteConfigForm.get('copyConfig') as FormGroup
+    );
     // If source is empty, set to remoteName:/
     if (!copyData.source || copyData.source.trim() === '') {
       const remoteName = this.getRemoteName();
@@ -984,7 +1129,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private async handleSyncUpdate(updatedConfig: any): Promise<void> {
-    const syncData = this.cleanFormData(this.remoteConfigForm.getRawValue().syncConfig);
+    const syncData = this.cleanFormData(
+      this.remoteConfigForm.getRawValue().syncConfig,
+      true,
+      this.remoteConfigForm.get('syncConfig') as FormGroup
+    );
     // If source is empty, set to remoteName:/
     if (!syncData.source || syncData.source.trim() === '') {
       const remoteName = this.getRemoteName();
@@ -1009,7 +1158,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const mountData = this.cleanFormData(this.remoteConfigForm.getRawValue());
+    const mountData = this.cleanFormData(
+      this.remoteConfigForm.getRawValue(),
+      true,
+      this.remoteConfigForm
+    );
     const jsonValue = mountData[`${this.editTarget}Config`].options || '{}';
 
     // Handle each flag type specifically
@@ -1030,13 +1183,28 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     );
   }
 
-  private cleanFormData(formData: any): any {
+  /**
+   * Clean form data by removing null/empty values and optionally default values.
+   * In create mode: Filters out default values to avoid sending them to rcd (which doesn't know defaults)
+   * In edit mode: Only filters out default values if the field hasn't been modified by the user
+   */
+  private cleanFormData(formData: any, isEditMode = false, formControl?: FormGroup): any {
     return Object.entries(formData)
       .filter(([key, value]) => {
         if (value === null || value === 0 || value === '0') {
           return false;
         }
-        // Skip if value matches default
+
+        // In edit mode, include values that have been explicitly modified by the user
+        if (isEditMode && formControl) {
+          const control = formControl.get(key);
+          if (control && control.dirty) {
+            // Field has been modified by user, include it even if it matches default
+            return true;
+          }
+        }
+
+        // Skip if value matches default (for create mode or unmodified fields in edit mode)
         return !this.isDefaultValue(key, value);
       })
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
@@ -1109,6 +1277,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   async cancelAuth(): Promise<void> {
     await this.authStateService.cancelAuth();
+    // Reset interactive mode state when cancelling
+    this.isNonInteractiveActive = false;
+    this.rcQuestion = null;
+    this.rcAnswer = null;
   }
 
   @HostListener('document:keydown.escape', ['$event'])
@@ -1148,5 +1320,211 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }
     // Only show in creation mode after step 1
     return this.currentStep > 1 && !this.editTarget;
+  }
+
+  // Dev helper: Run a non-interactive config flow using defaults to validate OAuth after-config
+  async testNonInteractiveFlow(): Promise<void> {
+    try {
+      const name = this.remoteForm.get('name')?.value?.toString().trim();
+      const type = this.remoteForm.get('type')?.value?.toString().trim();
+      if (!name || !type) {
+        console.warn('Provide name and type before testing non-interactive flow.');
+        return;
+      }
+      console.log('[RC] start non-interactive', { name, type });
+      let resp = await this.remoteManagementService.startRemoteConfigNonInteractive(
+        name,
+        type,
+        {},
+        { nonInteractive: true }
+      );
+      console.log('[RC] response', resp);
+      // Loop until State is empty
+      while (resp && resp.State) {
+        // Answer with default or first example where possible
+        let answer: unknown = (resp.Option?.ValueStr ??
+          resp.Option?.DefaultStr ??
+          resp.Option?.Default ??
+          null) as unknown;
+        if (!answer && resp.Option?.Examples && resp.Option.Examples.length > 0) {
+          answer = resp.Option.Examples[0].Value;
+        }
+        // Coerce strings for bool types
+        if (resp.Option?.Type === 'bool') {
+          if (typeof answer === 'boolean') {
+            answer = answer ? 'true' : 'false';
+          } else if (typeof answer === 'string') {
+            answer = answer.toLowerCase() === 'true' ? 'true' : 'false';
+          } else {
+            answer = 'true';
+          }
+        }
+        console.log('[RC] continuing with', { state: resp.State, answer });
+        resp = await this.remoteManagementService.continueRemoteConfigNonInteractive(
+          name,
+          resp.State,
+          answer,
+          {},
+          { nonInteractive: true }
+        );
+        console.log('[RC] response', resp);
+        if (!resp || resp.State === '') break;
+      }
+      console.log('[RC] flow finished');
+    } catch (e) {
+      console.error('Non-interactive flow failed:', e);
+    }
+  }
+
+  // Helpers for non-interactive flow
+  private getDefaultAnswerFromQuestion(q: RcConfigQuestionResponse): string | boolean | number {
+    const opt = q.Option;
+    if (!opt) return '';
+    if (opt.Type === 'bool') {
+      // Prefer ValueStr/DefaultStr if provided
+      if (typeof opt.Value === 'boolean') return opt.Value;
+      if (opt.ValueStr !== undefined) return opt.ValueStr.toLowerCase() === 'true';
+      if (opt.DefaultStr !== undefined) return opt.DefaultStr.toLowerCase() === 'true';
+      if (typeof opt.Default === 'boolean') return opt.Default;
+      return true;
+    }
+    if (opt.ValueStr !== undefined) return opt.ValueStr as unknown as string;
+    if (opt.DefaultStr !== undefined) return opt.DefaultStr as unknown as string;
+    if (opt.Default !== undefined) return String(opt.Default);
+    if (opt.Examples && opt.Examples.length > 0) return opt.Examples[0].Value;
+    return '';
+  }
+
+  async submitRcAnswer(): Promise<void> {
+    if (!this.isNonInteractiveActive || !this.rcQuestion || !this.pendingRemoteData) return;
+    try {
+      const name = this.pendingRemoteData.name;
+      const stateToken = this.rcQuestion.State;
+      // Ensure we always send strings for bools per rclone examples
+      let result: unknown = this.rcAnswer;
+      if (this.rcQuestion?.Option?.Type === 'bool') {
+        if (typeof result === 'boolean') result = result ? 'true' : 'false';
+        else if (typeof result === 'string')
+          result = result.toLowerCase() === 'true' ? 'true' : 'false';
+        else result = 'true';
+      }
+
+      const { ...paramRest } = this.pendingRemoteData;
+      const resp = await this.remoteManagementService.continueRemoteConfigNonInteractive(
+        name,
+        stateToken,
+        result as unknown,
+        paramRest,
+        { nonInteractive: true }
+      );
+
+      if (!resp || resp.State === '') {
+        // Finished
+        this.isNonInteractiveActive = false;
+        this.rcQuestion = null;
+        await this.finalizeRemoteCreation();
+      } else {
+        this.rcQuestion = resp;
+        this.rcAnswer = this.getDefaultAnswerFromQuestion(resp);
+      }
+    } catch (e) {
+      console.error('Failed to continue config:', e);
+    }
+  }
+  // Inline interactive step (no dialog)
+
+  onInteractiveContinue(answer: string | number | boolean | null): void {
+    this.rcAnswer = answer;
+    void this.submitRcAnswer();
+  }
+
+  private async finalizeRemoteCreation(): Promise<void> {
+    if (!this.pendingRemoteData || !this.pendingFinalConfig) return;
+    const remoteData = this.pendingRemoteData;
+    const finalConfig = this.pendingFinalConfig;
+
+    // Check if this is edit mode for remote
+    if (this.editTarget === 'remote') {
+      // Update the remote instead of creating it
+      await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
+    }
+
+    // Save settings and run any requested actions
+    await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
+    await this.remoteManagementService.getRemotes();
+    this.authStateService.resetAuthState();
+
+    if (finalConfig.mountConfig.autoStart && finalConfig.mountConfig.dest) {
+      const mountPath = finalConfig.mountConfig.dest;
+      const remoteName = remoteData.name;
+      const source = finalConfig.mountConfig?.source;
+      const mountOptions = finalConfig.mountConfig.options;
+      const vfs = finalConfig.vfsConfig;
+      await this.mountManagementService.mountRemote(
+        remoteName,
+        source,
+        mountPath,
+        mountOptions,
+        vfs
+      );
+    }
+
+    if (finalConfig.copyConfig.autoStart && finalConfig.copyConfig.dest) {
+      const copySource = finalConfig.copyConfig.source;
+      const copyDest = finalConfig.copyConfig.dest;
+      const createEmptySrcDirs = finalConfig.copyConfig.createEmptySrcDirs;
+      const copyOptions = finalConfig.copyConfig.options;
+      const filter = finalConfig.filterConfig;
+      await this.jobManagementService.startCopy(
+        remoteData.name,
+        copySource,
+        copyDest,
+        createEmptySrcDirs,
+        copyOptions,
+        filter
+      );
+    }
+    if (finalConfig.syncConfig.autoStart && finalConfig.syncConfig.dest) {
+      const syncSource = finalConfig.syncConfig.source;
+      const syncDest = finalConfig.syncConfig.dest;
+      const createEmptySrcDirs = finalConfig.syncConfig.createEmptySrcDirs;
+      const syncOptions = finalConfig.syncConfig.options;
+      const filter = finalConfig.filterConfig;
+      await this.jobManagementService.startSync(
+        remoteData.name,
+        syncSource,
+        syncDest,
+        createEmptySrcDirs,
+        syncOptions,
+        filter
+      );
+    }
+    if (finalConfig.bisyncConfig.autoStart && finalConfig.bisyncConfig.dest) {
+      const bisyncSource = finalConfig.bisyncConfig.source;
+      const bisyncDest = finalConfig.bisyncConfig.dest;
+      const bisyncOptions = finalConfig.bisyncConfig.options;
+      await this.jobManagementService.startBisync(
+        remoteData.name,
+        bisyncSource,
+        bisyncDest,
+        bisyncOptions
+      );
+    }
+    if (finalConfig.moveConfig.autoStart && finalConfig.moveConfig.dest) {
+      const moveSource = finalConfig.moveConfig.source;
+      const moveDest = finalConfig.moveConfig.dest;
+      const deleteEmptySrcDirs = finalConfig.moveConfig.deleteEmptySrcDirs;
+      const createEmptySrcDirs = finalConfig.moveConfig.createEmptySrcDirs;
+      const moveOptions = finalConfig.moveConfig.options;
+      await this.jobManagementService.startMove(
+        remoteData.name,
+        moveSource,
+        moveDest,
+        createEmptySrcDirs,
+        deleteEmptySrcDirs,
+        moveOptions
+      );
+    }
+    this.close();
   }
 }

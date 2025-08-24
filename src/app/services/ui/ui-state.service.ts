@@ -3,12 +3,9 @@ import { WindowService } from './window.service';
 import { BehaviorSubject } from 'rxjs';
 import { EventListenersService } from '../system/event-listeners.service';
 import { platform } from '@tauri-apps/plugin-os';
-import { AppTab } from '../../shared/components/types';
+import { AppTab, ToastMessage, Remote } from '@app/types';
 
-export interface ToastMessage {
-  message: string;
-  type: 'success' | 'error' | 'info' | 'warning';
-}
+// ToastMessage moved to shared types
 
 /**
  * Service for managing UI state with focus on viewport settings
@@ -22,7 +19,7 @@ export class UiStateService {
   public currentTab$ = this.currentTab.asObservable();
 
   // Selected remote state
-  private selectedRemoteSource = new BehaviorSubject<any>(null);
+  private selectedRemoteSource = new BehaviorSubject<Remote | null>(null);
   public selectedRemote$ = this.selectedRemoteSource.asObservable();
 
   // Viewport state
@@ -70,7 +67,7 @@ export class UiStateService {
   }
 
   // === Remote Selection ===
-  setSelectedRemote(remote: any): void {
+  setSelectedRemote(remote: Remote | null): void {
     this.selectedRemoteSource.next(remote);
   }
 

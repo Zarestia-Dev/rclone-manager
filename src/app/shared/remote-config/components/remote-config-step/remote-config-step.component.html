@@ -53,6 +53,13 @@
         <span>({{ advancedFields.length }})</span>
       }
     </mat-slide-toggle>
+    <mat-slide-toggle
+      class="slide-toggle"
+      (change)="toggleInteractiveMode()"
+      [checked]="useInteractiveMode"
+    >
+      Use Interactive Configuration
+    </mat-slide-toggle>
   }
 
   <!-- Basic Fields -->

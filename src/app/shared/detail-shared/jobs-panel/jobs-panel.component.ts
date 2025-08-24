@@ -8,11 +8,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSortModule } from '@angular/material/sort';
 import { JobInfo, PrimaryActionType } from '../../../shared/components/types';
-
-export interface JobsPanelConfig {
-  jobs: JobInfo[];
-  displayedColumns: string[];
-}
+import { JobsPanelConfig } from '../../types';
 
 @Component({
   selector: 'app-jobs-panel',

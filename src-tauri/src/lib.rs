@@ -16,11 +16,10 @@ use crate::{
         initialization::{async_startup, init_rclone_state, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
         security::{
-            store_config_password, get_config_password, has_stored_password, remove_config_password,
-            validate_rclone_password, get_password_lockout_status, reset_password_validator,
-            set_config_password_env, clear_config_password_env,
-            has_config_password_env, is_config_encrypted, encrypt_config, unencrypt_config,
-            change_config_password,
+            change_config_password, encrypt_config, get_config_password,
+            get_password_lockout_status, has_stored_password, is_config_encrypted,
+            remove_config_password, reset_password_validator, store_config_password,
+            unencrypt_config, validate_rclone_password,
         },
         settings::{
             backup::{
@@ -41,15 +40,21 @@ use crate::{
     },
     rclone::{
         commands::{
-            create_remote, delete_remote, mount_remote, quit_rclone_oauth, set_bandwidth_limit,
-            start_bisync, start_copy, start_move, start_sync, stop_job, unmount_all_remotes,
-            unmount_remote, update_remote,
+            continue_remote_config_noninteractive, create_remote, delete_remote, mount_remote,
+            quit_rclone_oauth, set_bandwidth_limit, start_bisync, start_copy, start_move,
+            start_remote_config_noninteractive, start_sync, stop_job, unlock_rclone_config,
+            unmount_all_remotes, unmount_remote, update_remote,
         },
         queries::{
             flags::{
                 get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags,
                 get_sync_flags, get_vfs_flags,
-            }, get_all_remote_configs, get_bandwidth_limit, get_completed_transfers, get_core_stats, get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats, get_mount_types, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info, get_rclone_pid, get_remote_config, get_remote_config_fields, get_remote_paths, get_remote_types, get_remotes
+            },
+            get_all_remote_configs, get_bandwidth_limit, get_completed_transfers, get_core_stats,
+            get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats,
+            get_mount_types, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info,
+            get_rclone_pid, get_remote_config, get_remote_config_fields, get_remote_paths,
+            get_remote_types, get_remotes,
         },
         state::{
             clear_remote_logs, delete_job, force_check_mounted_remotes, get_active_jobs,
@@ -113,9 +118,10 @@ pub fn run() {
             }
             WindowEvent::Focused(true) => {
                 if let Some(win) = window.app_handle().get_webview_window("main")
-                    && let Err(e) = win.show() {
-                        error!("Failed to show window: {e}");
-                    }
+                    && let Err(e) = win.show()
+                {
+                    error!("Failed to show window: {e}");
+                }
             }
             _ => {}
         })
@@ -137,10 +143,7 @@ pub fn run() {
             let password_validator = init_password_validator();
             app.manage(password_validator);
 
-            // Initialize safe environment manager
-            use crate::core::security::SafeEnvironmentManager;
-            let env_manager = SafeEnvironmentManager::new();
-            app.manage(env_manager);
+            // SafeEnvironmentManager removed (using runtime RC unlock instead)
 
             // Load settings with better error handling
             let settings_json = tauri::async_runtime::block_on(load_settings(
@@ -297,6 +300,8 @@ pub fn run() {
             mount_remote,
             unmount_remote,
             create_remote,
+            start_remote_config_noninteractive,
+            continue_remote_config_noninteractive,
             update_remote,
             delete_remote,
             quit_rclone_oauth,
@@ -360,13 +365,12 @@ pub fn run() {
             validate_rclone_password,
             get_password_lockout_status,
             reset_password_validator,
-            set_config_password_env,
-            clear_config_password_env,
-            has_config_password_env,
             is_config_encrypted,
             encrypt_config,
             unencrypt_config,
-            change_config_password
+            change_config_password,
+            // Runtime unlock
+            unlock_rclone_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

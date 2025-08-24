@@ -32,43 +32,36 @@ import { ThemePalette } from '@angular/material/core';
 import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import {
+  CompletedTransfer,
   DEFAULT_JOB_STATS,
   GlobalStats,
+  JobInfoConfig,
+  OperationControlConfig,
+  PathDisplayConfig,
   PrimaryActionType,
   Remote,
   RemoteAction,
   RemoteSettings,
   RemoteSettingsSection,
   SENSITIVE_KEYS,
+  SettingsPanelConfig,
+  StatItem,
+  StatsPanelConfig,
+  SyncOperation,
   SyncOperationType,
+  TransferActivityPanelConfig,
   TransferFile,
 } from '../../../../shared/components/types';
 import {
-  CompletedTransfer,
-  JobInfoConfig,
   JobInfoPanelComponent,
   OperationControlComponent,
-  OperationControlConfig,
-  PathDisplayConfig,
   SettingsPanelComponent,
-  SettingsPanelConfig,
-  StatItem,
   StatsPanelComponent,
-  StatsPanelConfig,
   TransferActivityPanelComponent,
-  TransferActivityPanelConfig,
 } from '../../../../shared/detail-shared';
 
 import { IconService } from '../../../../shared/services/icon.service';
 import { JobManagementService } from '@app/services';
-
-interface SyncOperation {
-  type: SyncOperationType;
-  label: string;
-  icon: string;
-  color: ThemePalette;
-  description: string;
-}
 
 @Component({
   selector: 'app-app-detail',

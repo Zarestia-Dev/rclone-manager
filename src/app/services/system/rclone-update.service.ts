@@ -4,30 +4,7 @@ import { EventListenersService } from './event-listeners.service';
 import { inject } from '@angular/core';
 import { BehaviorSubject, interval, Subject, takeUntil } from 'rxjs';
 
-export interface RcloneUpdateInfo {
-  current_version: string;
-  latest_version: string;
-  update_available: boolean;
-  current_version_clean: string;
-  latest_version_clean: string;
-  release_notes?: string;
-  release_date?: string;
-  download_url?: string;
-}
-
-export interface UpdateStatus {
-  checking: boolean;
-  updating: boolean;
-  available: boolean;
-  error: string | null;
-  lastCheck: Date | null;
-  updateInfo: RcloneUpdateInfo | null;
-}
-
-interface UpdateResult {
-  success: boolean;
-  message?: string;
-}
+import { RcloneUpdateInfo, UpdateStatus, UpdateResult } from '@app/types';
 
 @Injectable({
   providedIn: 'root',

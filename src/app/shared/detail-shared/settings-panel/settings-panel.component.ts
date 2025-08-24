@@ -4,23 +4,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ThemePalette } from '@angular/material/core';
-
-export interface SettingsSection {
-  key: string;
-  title: string;
-  icon: string;
-}
-
-export interface SettingsPanelConfig {
-  section: SettingsSection;
-  settings: any;
-  hasSettings: boolean;
-  restrictMode: boolean;
-  buttonColor?: ThemePalette;
-  buttonLabel?: string;
-  sensitiveKeys?: string[];
-}
+import { SettingsPanelConfig } from '../../types';
 
 @Component({
   selector: 'app-settings-panel',

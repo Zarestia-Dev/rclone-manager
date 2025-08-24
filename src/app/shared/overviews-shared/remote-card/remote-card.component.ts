@@ -7,13 +7,20 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { QuickActionButton, QuickActionButtonsComponent } from '../../../shared/components';
-import { AppTab, PrimaryActionType, Remote, RemoteAction } from '../../../shared/components/types';
+import { QuickActionButtonsComponent } from '../../../shared/components';
+import {
+  AppTab,
+  PrimaryActionType,
+  QuickActionButton,
+  Remote,
+  RemoteAction,
+  RemoteCardVariant,
+} from '@app/types';
 
 // Services
 import { IconService } from '../../services/icon.service';
 
-export type RemoteCardVariant = 'active' | 'inactive' | 'error';
+// Variant moved to shared types
 
 @Component({
   selector: 'app-remote-card',

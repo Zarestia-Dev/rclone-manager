@@ -5,11 +5,9 @@ use tauri::{AppHandle, Emitter};
 use crate::{
     rclone::state::ENGINE_STATE,
     utils::{
-        process::process_manager::{
-            get_child_pid, kill_all_rclone_processes, kill_process_by_pid, kill_processes_on_port,
-        },
+        process::process_manager::{get_child_pid, kill_process_by_pid, kill_processes_on_port},
         rclone::{
-            endpoints::{core, EndpointHelper},
+            endpoints::{EndpointHelper, core},
             process_common::{create_rclone_command, spawn_stderr_monitor},
         },
         types::all_types::RcApiEngine,
@@ -21,40 +19,47 @@ impl RcApiEngine {
         let port = ENGINE_STATE.get_api().1;
         self.current_api_port = port;
 
-        let mut engine_app = match create_rclone_command(self.rclone_path.to_str().unwrap(), port, app, "Engine") {
-            Ok(cmd) => cmd,
-            Err(e) => {
-                let error_msg = format!("Failed to create engine command: {e}");
-                error!("❌ {}", error_msg);
-                let _ = app.emit("rclone_engine", serde_json::json!({
-                    "status": "error",
-                    "message": error_msg,
-                    "error_type": "spawn_failed"
-                }));
-                return Err(error_msg);
-            }
-        };
+        let mut engine_app =
+            match create_rclone_command(self.rclone_path.to_str().unwrap(), port, app, "Engine") {
+                Ok(cmd) => cmd,
+                Err(e) => {
+                    let error_msg = format!("Failed to create engine command: {e}");
+                    error!("❌ {}", error_msg);
+                    let _ = app.emit(
+                        "rclone_engine",
+                        serde_json::json!({
+                            "status": "error",
+                            "message": error_msg,
+                            "error_type": "spawn_failed"
+                        }),
+                    );
+                    return Err(error_msg);
+                }
+            };
 
-        // Override stdout for the main engine to capture output 
-        engine_app.stdout(std::process::Stdio::piped());
+        // Keep default stdout behavior (don't pipe) to avoid holding an unused pipe
 
         match engine_app.spawn() {
             Ok(child) => {
                 info!("✅ Rclone process spawned successfully");
-                
+
                 // Start monitoring stderr using shared utility
-                let monitored_child = spawn_stderr_monitor(child, app.clone(), "rclone_engine", "Engine");
-                
+                let monitored_child =
+                    spawn_stderr_monitor(child, app.clone(), "rclone_engine", "Engine");
+
                 Ok(monitored_child)
             }
             Err(e) => {
                 error!("❌ Failed to spawn Rclone process: {e}");
                 // Emit spawn error event
-                let _ = app.emit("rclone_engine", serde_json::json!({
-                    "status": "error",
-                    "message": format!("Failed to spawn Rclone process: {e}"),
-                    "error_type": "spawn_failed"
-                }));
+                let _ = app.emit(
+                    "rclone_engine",
+                    serde_json::json!({
+                        "status": "error",
+                        "message": format!("Failed to spawn Rclone process: {e}"),
+                        "error_type": "spawn_failed"
+                    }),
+                );
                 Err(format!("Failed to spawn Rclone process: {e}"))
             }
         }
@@ -135,6 +140,10 @@ impl RcApiEngine {
     }
 
     pub fn kill_all_rclone_rcd() -> Result<(), String> {
-        kill_all_rclone_processes()
+        // Only kill processes on the engine's API port, not all rclone processes
+        // This prevents accidentally killing the OAuth process running on a different port
+        let engine_port = ENGINE_STATE.get_api().1;
+        info!("🧹 Cleaning up rclone processes on engine port {engine_port} only");
+        kill_processes_on_port(engine_port)
     }
 }

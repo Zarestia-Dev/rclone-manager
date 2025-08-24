@@ -4,24 +4,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ThemePalette } from '@angular/material/core';
-
-export interface StatItem {
-  value: string | number;
-  label: string;
-  isPrimary?: boolean;
-  hasError?: boolean;
-  progress?: number;
-  tooltip?: string;
-}
-
-export interface StatsPanelConfig {
-  title: string;
-  icon: string;
-  stats: StatItem[];
-  operationClass?: string;
-  operationColor?: ThemePalette;
-}
+import { StatsPanelConfig } from '../../types';
 
 @Component({
   selector: 'app-stats-panel',

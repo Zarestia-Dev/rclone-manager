@@ -55,21 +55,21 @@ pub async fn load_settings<'a>(
         && stored_settings
             .as_object()
             .is_some_and(|obj| !obj.is_empty())
-        && let Some(merged_obj) = merged_settings.as_object_mut() {
-            for (category, values) in merged_obj.iter_mut() {
-                if let (Some(stored_category), Some(values_obj)) =
-                    (stored_settings.get(category), values.as_object_mut())
-                {
-                    for (key, default_value) in values_obj.iter_mut() {
-                        if let Some(stored_value) = stored_category.get(key) {
-                            *default_value = stored_value.clone();
-                        }
-                        // If not found in stored settings, keep the default value
+        && let Some(merged_obj) = merged_settings.as_object_mut()
+    {
+        for (category, values) in merged_obj.iter_mut() {
+            if let (Some(stored_category), Some(values_obj)) =
+                (stored_settings.get(category), values.as_object_mut())
+            {
+                for (key, default_value) in values_obj.iter_mut() {
+                    if let Some(stored_value) = stored_category.get(key) {
+                        *default_value = stored_value.clone();
                     }
+                    // If not found in stored settings, keep the default value
                 }
             }
         }
-    
+    }
 
     let response = json!({
         "settings": merged_settings,
@@ -297,7 +297,10 @@ pub async fn reset_setting(
     let default_value = get_effective_setting_value(&category, &key, &json!({}));
 
     // Remove the setting from stored settings (so it falls back to default)
-    if let Some(stored_obj) = stored_settings.get_mut(&category).and_then(|cat| cat.as_object_mut()) {
+    if let Some(stored_obj) = stored_settings
+        .get_mut(&category)
+        .and_then(|cat| cat.as_object_mut())
+    {
         stored_obj.remove(&key);
 
         // Remove empty categories

@@ -2,13 +2,7 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-
-export interface JobInfoConfig {
-  operationType: string;
-  jobId?: number;
-  startTime?: Date;
-  lastOperationTime?: string;
-}
+import { JobInfoConfig } from '../../types';
 
 @Component({
   selector: 'app-job-info-panel',

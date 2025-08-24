@@ -1,21 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-
-export interface RcloneEngineEvent {
-  status: string;
-  port?: number;
-  timestamp?: string;
-  message?: string;
-}
-
-export interface UpdateResult {
-  success: boolean;
-  message?: string;
-}
-
-// Union type to handle both old string format and new object format
-export type RcloneEnginePayload = RcloneEngineEvent | string;
+import { RcloneEnginePayload } from '@app/types';
 
 /**
  * Service for handling installations of rclone and plugins

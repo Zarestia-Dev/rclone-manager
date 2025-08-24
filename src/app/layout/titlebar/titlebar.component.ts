@@ -11,7 +11,13 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { CheckResult } from '../../shared/components/types';
+import {
+  CheckResult,
+  ConnectionStatus,
+  ModalSize,
+  STANDARD_MODAL_SIZE,
+  Theme,
+} from '../../shared/components/types';
 import { ExportModalComponent } from '../../features/modals/settings/export-modal/export-modal.component';
 import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
 import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
@@ -27,25 +33,6 @@ import { AppSettingsService } from '@app/services';
 import { UiStateService } from '@app/services';
 import { NotificationService } from 'src/app/shared/services/notification.service';
 import { PasswordManagerModalComponent } from 'src/app/features/modals/password-manager-modal/password-manager-modal.component';
-
-type Theme = 'light' | 'dark' | 'system';
-interface ModalSize {
-  width: string;
-  maxWidth: string;
-  minWidth: string;
-  height: string;
-  maxHeight: string;
-}
-
-type ConnectionStatus = 'online' | 'offline' | 'checking';
-
-const STANDARD_MODAL_SIZE: ModalSize = {
-  width: '90vw',
-  maxWidth: '642px',
-  minWidth: '360px',
-  height: '80vh',
-  maxHeight: '600px',
-};
 
 @Component({
   selector: 'app-titlebar',

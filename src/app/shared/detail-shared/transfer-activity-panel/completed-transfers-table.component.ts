@@ -4,10 +4,10 @@ import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
-import { CompletedTransfer } from './transfer-activity-panel.component';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { TruncatePathPipe } from '../../pipes/truncate-path.pipe';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
+import { CompletedTransfer } from '@app/types';
 
 @Component({
   selector: 'app-completed-transfers-table',

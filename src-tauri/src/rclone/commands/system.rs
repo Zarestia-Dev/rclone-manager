@@ -17,7 +17,10 @@ use crate::{
     utils::{
         rclone::{
             endpoints::{EndpointHelper, config, core},
-            process_common::{create_rclone_command, spawn_stderr_monitor, emit_spawn_error, emit_success, emit_timeout_error},
+            process_common::{
+                create_rclone_command, emit_spawn_error, emit_success, emit_timeout_error,
+                spawn_stderr_monitor,
+            },
         },
         types::all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
     },
@@ -106,17 +109,20 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let rclone_path = read_rclone_path(app);
     let port = ENGINE_STATE.get_oauth().1;
 
-    let mut oauth_app = match create_rclone_command(rclone_path.to_str().unwrap(), port, app, "OAuth") {
-        Ok(cmd) => cmd,
-        Err(e) => {
-            let error_msg = format!("Failed to create OAuth command: {e}");
-            emit_spawn_error(app, "rclone_oauth", &error_msg);
-            return Err(RcloneError::OAuthError(error_msg));
-        }
-    };
+    let mut oauth_app =
+        match create_rclone_command(rclone_path.to_str().unwrap(), port, app, "OAuth") {
+            Ok(cmd) => cmd,
+            Err(e) => {
+                let error_msg = format!("Failed to create OAuth command: {e}");
+                emit_spawn_error(app, "rclone_oauth", &error_msg);
+                return Err(RcloneError::OAuthError(error_msg));
+            }
+        };
 
     let process = oauth_app.spawn().map_err(|e| {
-        let error_msg = format!("Failed to start Rclone OAuth process: {e}. Ensure Rclone is installed and in PATH.");
+        let error_msg = format!(
+            "Failed to start Rclone OAuth process: {e}. Ensure Rclone is installed and in PATH."
+        );
         emit_spawn_error(app, "rclone_oauth", &error_msg);
         RcloneError::OAuthError(error_msg)
     })?;
@@ -269,5 +275,62 @@ pub async fn set_rclone_config_path(app: AppHandle, config_path: String) -> Resu
     app.emit("remote_presence_changed", json!({}))
         .map_err(|e| format!("Failed to emit remote presence changed event: {e}"))?;
 
+    Ok(())
+}
+/// Unlock the rclone config at runtime via RC API
+#[tauri::command]
+pub async fn unlock_rclone_config(
+    app: AppHandle,
+    state: State<'_, RcloneState>,
+    password: String,
+) -> Result<(), String> {
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::UNLOCK);
+    let payload = json!({ "config_password": password });
+
+    let response = state
+        .client
+        .post(&url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        let error = format!("HTTP {status}: {body}");
+        return Err(error);
+    }
+
+    // Validate unlock by calling config/listremotes
+    let list_url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::LISTREMOTES);
+    let list_resp = state
+        .client
+        .post(&list_url)
+        .send()
+        .await
+        .map_err(|e| format!("Post-unlock check failed: {e}"))?;
+
+    let list_status = list_resp.status();
+    let list_text = list_resp.text().await.unwrap_or_default();
+    if !list_status.is_success() {
+        return Err(format!("Unlock validation HTTP {list_status}: {list_text}"));
+    }
+
+    let parsed: Value = serde_json::from_str(&list_text)
+        .map_err(|e| format!("Unlock validation parse error: {e}; body: {list_text}"))?;
+    let remotes_ok = parsed
+        .get("remotes")
+        .and_then(|v| v.as_array())
+        .map(|a| !a.is_empty())
+        .unwrap_or(false);
+
+    if !remotes_ok {
+        return Err("Unlock appears unsuccessful (no remotes returned)".to_string());
+    }
+
+    // Notify UI listeners that unlock succeeded
+    let _ = app.emit("rclone_unlocked", json!({ "remotes": parsed["remotes"] }));
     Ok(())
 }

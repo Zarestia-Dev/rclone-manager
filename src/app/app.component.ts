@@ -9,10 +9,12 @@ import {
   MatBottomSheetRef,
 } from '@angular/material/bottom-sheet';
 import { TabsButtonsComponent } from './layout/tabs-buttons/tabs-buttons.component';
-import { AppTab, RepairData } from './shared/components/types';
+import { RepairData } from './shared/components/types';
+import { AppTab, RepairSheetType } from '@app/types';
 import { RepairSheetComponent } from './features/components/repair-sheet/repair-sheet.component';
 import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
 import { BannerComponent } from './layout/banners/banner.component';
+import { PasswordPromptResult, RcloneEngineEvent } from '@app/types';
 
 // Services
 import {
@@ -22,23 +24,6 @@ import {
   EventListenersService,
   RclonePasswordService,
 } from '@app/services';
-
-export interface PasswordPromptResult {
-  password: string;
-  stored: boolean;
-}
-
-interface RcloneEngineEvent {
-  status?: string;
-  message?: string;
-  error_type?: string;
-}
-
-enum RepairSheetType {
-  MOUNT_PLUGIN = 'mount_plugin',
-  RCLONE_PASSWORD = 'rclone_password',
-  RCLONE_PATH = 'rclone_path',
-}
 
 @Component({
   selector: 'app-root',
@@ -296,7 +281,7 @@ export class AppComponent implements OnInit, OnDestroy {
     try {
       const result = await this.promptForPassword();
       if (result?.password) {
-        await this.rclonePasswordService.setConfigPasswordEnv(result.password);
+        await this.rclonePasswordService.unlockConfig(result.password);
         console.log('Password set successfully');
       } else {
         console.log('Password prompt was cancelled or no password provided');

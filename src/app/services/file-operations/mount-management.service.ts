@@ -3,9 +3,7 @@ import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../../shared/services/notification.service';
 
-export type MountOptions = Record<string, string | number | boolean>;
-
-export type VfsOptions = Record<string, string | number | boolean>;
+import { MountOptions, VfsOptions, MountParams } from '@app/types';
 
 /**
  * Service for managing rclone mounts
@@ -58,14 +56,15 @@ export class MountManagementService extends TauriBaseService {
     vfsOptions?: VfsOptions
   ): Promise<void> {
     try {
-      await this.invokeCommand('mount_remote', {
-        remoteName,
+      const params: MountParams = {
+        remote_name: remoteName,
         source,
-        mountPoint,
-        mountType,
-        mountOptions: mountOptions || {},
-        vfsOptions: vfsOptions || {},
-      });
+        mount_point: mountPoint,
+        mount_type: mountType,
+        mount_options: mountOptions || {},
+        vfs_options: vfsOptions || {},
+      };
+      await this.invokeCommand('mount_remote', { params });
 
       await this.refreshMountedRemotes();
       this.notificationService.showSuccess(`Successfully mounted ${remoteName}`);

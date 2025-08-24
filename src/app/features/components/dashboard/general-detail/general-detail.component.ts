@@ -11,19 +11,19 @@ import { MatTableModule } from '@angular/material/table';
 import { MatSortModule } from '@angular/material/sort';
 
 import {
+  DiskUsageConfig,
   JobInfo,
+  JobsPanelConfig,
   PrimaryActionType,
   Remote,
   RemoteSettings,
   SENSITIVE_KEYS,
+  SettingsPanelConfig,
 } from '../../../../shared/components/types';
 import {
-  DiskUsageConfig,
   DiskUsagePanelComponent,
   JobsPanelComponent,
-  JobsPanelConfig,
   SettingsPanelComponent,
-  SettingsPanelConfig,
 } from '../../../../shared/detail-shared';
 
 // Services

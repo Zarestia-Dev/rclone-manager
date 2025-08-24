@@ -76,7 +76,7 @@ fn handle_rclone_api_ready(app: &AppHandle) {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
             debug!("RCLONE_ENGINE event received! Payload: {:?}", event.payload());
-            
+
             // Parse the payload as JSON
             if let Ok(payload) = parse_payload::<serde_json::Value>(Some(event.payload())) {
                 match payload.get("status").and_then(|s| s.as_str()) {
@@ -389,13 +389,13 @@ fn handle_settings_changed(app: &AppHandle) {
                     }
                 }
 
-                if let Some(experimental) = settings.get("experimental") && let Some(debug_logging) =
+                if let Some(experimental) = settings.get("experimental")
+                    && let Some(debug_logging) =
                         experimental.get("debug_logging").and_then(|v| v.as_bool())
-                    {
-                        debug!("🐞 Debug logging changed to: {debug_logging}");
-                        update_log_level(debug_logging);
-                    }
-                
+                {
+                    debug!("🐞 Debug logging changed to: {debug_logging}");
+                    update_log_level(debug_logging);
+                }
             }
             Err(e) => error!("❌ Failed to parse settings change: {e}"),
         }

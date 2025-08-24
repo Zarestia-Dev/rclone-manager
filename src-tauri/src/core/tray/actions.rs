@@ -146,18 +146,15 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
             .to_string();
 
         // Mount the remote
-        match mount_remote(
-            app.clone(),
-            remote_name.clone(),
-            source.to_owned(),
-            mount_point.clone(),
-            mount_type.clone(),
+        let params = crate::rclone::commands::mount::MountParams {
+            remote_name: remote_name.clone(),
+            source: source.to_owned(),
+            mount_point: mount_point.clone(),
+            mount_type: mount_type.clone(),
             mount_options,
             vfs_options,
-            app.state(),
-        )
-        .await
-        {
+        };
+        match mount_remote(app.clone(), params, app.state()).await {
             Ok(_) => {
                 info!("✅ Successfully mounted {remote_name}");
                 notify(
@@ -280,18 +277,15 @@ pub fn handle_sync_remote(app: AppHandle, id: &str) {
             return;
         }
 
-        match start_sync(
-            app.clone(),
-            remote_name.clone(),
+        let params = crate::rclone::commands::sync::SyncParams {
+            remote_name: remote_name.clone(),
             source,
             dest,
             create_empty_src_dirs,
-            sync_config,
-            filter_config,
-            app.state(),
-        )
-        .await
-        {
+            sync_options: sync_config,
+            filter_options: filter_config,
+        };
+        match start_sync(app.clone(), params, app.state()).await {
             Ok(jobid) => {
                 info!("✅ Started sync for {remote_name} (Job ID: {jobid})");
                 notify(
@@ -362,18 +356,15 @@ pub fn handle_copy_remote(app: AppHandle, id: &str) {
             return;
         }
 
-        match start_copy(
-            app.clone(),
-            remote_name.clone(),
+        let params = crate::rclone::commands::sync::CopyParams {
+            remote_name: remote_name.clone(),
             source,
             dest,
             create_empty_src_dirs,
-            copy_config,
-            filter_config,
-            app.state(),
-        )
-        .await
-        {
+            copy_options: copy_config,
+            filter_options: filter_config,
+        };
+        match start_copy(app.clone(), params, app.state()).await {
             Ok(jobid) => {
                 info!("✅ Started copy for {remote_name} (Job ID: {jobid})");
                 notify(

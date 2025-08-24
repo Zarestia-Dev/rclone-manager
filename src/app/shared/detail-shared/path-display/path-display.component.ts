@@ -4,18 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ThemePalette } from '@angular/material/core';
-
-export interface PathDisplayConfig {
-  source: string;
-  destination: string;
-  sourceLabel?: string;
-  destinationLabel?: string;
-  showOpenButtons?: boolean;
-  operationColor?: ThemePalette;
-  isDestinationActive?: boolean;
-  actionInProgress?: string;
-}
+import { PathDisplayConfig } from '../../types';
 
 @Component({
   selector: 'app-path-display',

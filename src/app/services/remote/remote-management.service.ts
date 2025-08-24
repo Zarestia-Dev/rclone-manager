@@ -1,13 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-
-export interface RemoteProvider {
-  name: string;
-  description: string;
-}
-
-export type RemoteConfig = Record<string, any>;
+import { RemoteProvider, RemoteConfig, RcConfigQuestionResponse } from '@app/types';
 
 /**
  * Service for managing rclone remotes
@@ -64,10 +58,30 @@ export class RemoteManagementService extends TauriBaseService {
   /**
    * Get configuration fields for a specific remote type
    */
-  async getRemoteConfigFields(type: string): Promise<any[]> {
-    const response = await this.invokeCommand<{ providers: any[] }>('get_remote_types');
-    const provider = response.providers.find(p => p.Name === type);
-    return provider ? provider.Options : [];
+  async getRemoteConfigFields(type: string): Promise<unknown[]> {
+    const response = await this.invokeCommand<unknown>('get_remote_types');
+
+    // Response can be either { providers: [...] } or a record of arrays
+    let providers: unknown[] = [];
+    if (
+      typeof response === 'object' &&
+      response !== null &&
+      'providers' in (response as Record<string, unknown>) &&
+      Array.isArray((response as Record<string, unknown>)['providers'] as unknown[])
+    ) {
+      providers = (response as Record<string, unknown>)['providers'] as unknown[];
+    } else if (typeof response === 'object' && response !== null) {
+      for (const v of Object.values(response as Record<string, unknown>)) {
+        if (Array.isArray(v)) providers = providers.concat(v as unknown[]);
+      }
+    }
+
+    const match = providers.find(
+      p => typeof p === 'object' && p !== null && (p as Record<string, unknown>)['Name'] === type
+    ) as Record<string, unknown> | undefined;
+
+    const options = match ? (match['Options'] as unknown) : undefined;
+    return Array.isArray(options) ? (options as unknown[]) : [];
   }
 
   /**
@@ -82,8 +96,8 @@ export class RemoteManagementService extends TauriBaseService {
   /**
    * Get all remote configurations
    */
-  async getAllRemoteConfigs(): Promise<Record<string, any>> {
-    return this.invokeCommand<Record<string, any>>('get_configs');
+  async getAllRemoteConfigs(): Promise<Record<string, unknown>> {
+    return this.invokeCommand<Record<string, unknown>>('get_configs');
   }
 
   /**
@@ -123,7 +137,7 @@ export class RemoteManagementService extends TauriBaseService {
   /**
    * Get filesystem info for a remote
    */
-  async getFsInfo(remote: string): Promise<any> {
+  async getFsInfo(remote: string): Promise<unknown> {
     return this.invokeCommand('get_fs_info', { remote });
   }
 
@@ -141,7 +155,11 @@ export class RemoteManagementService extends TauriBaseService {
   /**
    * Get remote paths
    */
-  async getRemotePaths(remote: string, path: string, options: Record<string, any>): Promise<any> {
+  async getRemotePaths(
+    remote: string,
+    path: string,
+    options: Record<string, unknown>
+  ): Promise<unknown> {
     return this.invokeCommand('get_remote_paths', { remote, path, options });
   }
 
@@ -170,5 +188,45 @@ export class RemoteManagementService extends TauriBaseService {
       console.error('Error opening Rclone config terminal:', error);
       throw error;
     }
+  }
+
+  /**
+   * Start non-interactive remote config. Returns a question or an empty state when finished.
+   */
+  async startRemoteConfigNonInteractive(
+    name: string,
+    type: string,
+    parameters?: Record<string, unknown>,
+    opt?: Record<string, unknown>
+  ): Promise<RcConfigQuestionResponse> {
+    return this.invokeCommand('start_remote_config_noninteractive', {
+      name,
+      // Send both casing variants for compatibility with different backend builds
+      rclone_type: type,
+      rcloneType: type,
+      parameters: parameters ?? {},
+      opt: opt ?? {},
+    });
+  }
+
+  /**
+   * Continue non-interactive remote config flow by passing state and user's answer (result).
+   */
+  async continueRemoteConfigNonInteractive(
+    name: string,
+    state: string,
+    result: unknown,
+    parameters?: Record<string, unknown>,
+    opt?: Record<string, unknown>
+  ): Promise<RcConfigQuestionResponse> {
+    return this.invokeCommand('continue_remote_config_noninteractive', {
+      name,
+      // Send both casing variants for compatibility
+      state_token: state,
+      stateToken: state,
+      result,
+      parameters: parameters ?? {},
+      opt: opt ?? {},
+    });
   }
 }

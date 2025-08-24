@@ -34,7 +34,11 @@ export class PathSelectionService {
 
       this.ensurePathState(formPath, remoteName);
       this.pathStates[formPath].currentPath = cleanPath;
-      this.pathStates[formPath].options = response.list || [];
+      const list =
+        response && typeof response === 'object' && 'list' in (response as Record<string, unknown>)
+          ? ((response as Record<string, unknown>)['list'] as unknown)
+          : undefined;
+      this.pathStates[formPath].options = Array.isArray(list) ? (list as Entry[]) : [];
     } catch (error) {
       console.error(`Failed to fetch entries for ${remoteName}:`, error);
       // Reset path state on error to avoid stuck state

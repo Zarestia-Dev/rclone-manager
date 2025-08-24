@@ -58,18 +58,21 @@ impl PasswordValidator {
 
     /// Check if we're currently in lockout period
     pub fn is_locked_out(&self) -> bool {
-        if let Some(last_attempt) = self.last_attempt 
-            && self.failed_attempts >= self.max_attempts {
-                let elapsed = last_attempt.elapsed();
-                return elapsed < self.lockout_duration;
-            }
-        
+        if let Some(last_attempt) = self.last_attempt
+            && self.failed_attempts >= self.max_attempts
+        {
+            let elapsed = last_attempt.elapsed();
+            return elapsed < self.lockout_duration;
+        }
+
         false
     }
 
     /// Get remaining lockout time
     pub fn remaining_lockout_time(&self) -> Option<Duration> {
-        if let Some(last_attempt) = self.last_attempt && self.failed_attempts >= self.max_attempts {
+        if let Some(last_attempt) = self.last_attempt
+            && self.failed_attempts >= self.max_attempts
+        {
             let elapsed = last_attempt.elapsed();
             if elapsed < self.lockout_duration {
                 return Some(self.lockout_duration - elapsed);
@@ -82,12 +85,17 @@ impl PasswordValidator {
     pub fn record_failure(&mut self) {
         self.failed_attempts += 1;
         self.last_attempt = Some(Instant::now());
-        
-        warn!("❌ Password attempt failed ({}/{})", self.failed_attempts, self.max_attempts);
-    
-        
+
+        warn!(
+            "❌ Password attempt failed ({}/{})",
+            self.failed_attempts, self.max_attempts
+        );
+
         if self.is_locked_out() {
-            error!("🔒 Account locked out for {} seconds", self.lockout_duration.as_secs());
+            error!(
+                "🔒 Account locked out for {} seconds",
+                self.lockout_duration.as_secs()
+            );
         }
     }
 
@@ -108,7 +116,6 @@ impl PasswordValidator {
 
 /// Test if a password works with rclone by attempting to connect
 pub async fn test_rclone_password(app: &AppHandle, password: &str) -> PasswordValidationResult {
-
     let rclone_path = read_rclone_path(app);
 
     // Try to run a simple rclone command to test the password, setting the env var only for this process
@@ -130,7 +137,7 @@ pub async fn test_rclone_password(app: &AppHandle, password: &str) -> PasswordVa
             } else {
                 let stderr = String::from_utf8_lossy(&output.stderr);
                 error!("❌ Password validation failed: {stderr}");
-                
+
                 if stderr.contains("wrong password") || stderr.contains("decrypt") {
                     PasswordValidationResult {
                         is_valid: false,

@@ -15,6 +15,134 @@ use crate::{
 
 use super::system::{ensure_oauth_process, redact_sensitive_values};
 
+/// Start non-interactive remote configuration
+/// This calls config/create with opt.nonInteractive=true and returns the raw JSON response
+#[tauri::command]
+pub async fn start_remote_config_noninteractive(
+    app: AppHandle,
+    name: String,
+    rclone_type: String,
+    parameters: Option<Value>,
+    opt: Option<Value>,
+    state: State<'_, RcloneState>,
+) -> Result<Value, String> {
+    // Ensure OAuth/RC helper is running (used for providers requiring OAuth)
+    ensure_oauth_process(&app)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let mut body = json!({
+        "name": name,
+        "type": rclone_type,
+    });
+
+    if let Some(params) = parameters {
+        body["parameters"] = params;
+    }
+
+    let mut opt_obj = json!({ "nonInteractive": true });
+    if let Some(extra) = opt {
+        // Merge provided options, overriding defaults
+        if let Some(map) = extra.as_object() {
+            for (k, v) in map.iter() {
+                opt_obj[k] = v.clone();
+            }
+        }
+    }
+    body["opt"] = opt_obj;
+
+    let url = EndpointHelper::build_url(
+        &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
+        config::CREATE,
+    );
+
+    let response = state
+        .client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    let status = response.status();
+    let body_text = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        return Err(format!("HTTP {status}: {body_text}"));
+    }
+
+    // Return the JSON payload as-is so the UI can drive the flow
+    let value: Value =
+        serde_json::from_str(&body_text).unwrap_or_else(|_| json!({ "raw": body_text }));
+    Ok(value)
+}
+
+/// Continue non-interactive remote configuration
+/// This calls config/update with opt.continue=true, passing state/result and returns the raw JSON response
+#[tauri::command]
+pub async fn continue_remote_config_noninteractive(
+    app: AppHandle,
+    name: String,
+    state_token: String,
+    result: Value,
+    parameters: Option<Value>,
+    opt: Option<Value>,
+    tauri_state: State<'_, RcloneState>,
+) -> Result<Value, String> {
+    // Ensure OAuth/RC helper is running
+    ensure_oauth_process(&app)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let mut body = json!({
+        "name": name,
+    });
+
+    if let Some(params) = parameters.clone() {
+        body["parameters"] = params;
+    }
+
+    // Build opt object with continue flow
+    let mut opt_obj = json!({
+        "continue": true,
+        "state": state_token,
+        "result": result,
+        "nonInteractive": true,
+    });
+    if let Some(extra) = opt
+        && let Some(map) = extra.as_object()
+    {
+        for (k, v) in map.iter() {
+            opt_obj[k] = v.clone();
+        }
+    }
+    body["opt"] = opt_obj;
+
+    let url = EndpointHelper::build_url(
+        &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
+        config::UPDATE,
+    );
+
+    let response = tauri_state
+        .client
+        .post(&url)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    let status = response.status();
+    let body_text = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        return Err(format!("HTTP {status}: {body_text}"));
+    }
+
+    let value: Value =
+        serde_json::from_str(&body_text).unwrap_or_else(|_| json!({ "raw": body_text }));
+    Ok(value)
+}
+
 /// Create a new remote configuration
 #[tauri::command]
 pub async fn create_remote(

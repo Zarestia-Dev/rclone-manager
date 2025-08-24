@@ -224,20 +224,22 @@ pub async fn update_rclone(
     }
 
     // If update was successful, restart engine with updated binary
-    if success && let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
-        &app_handle,
-        "rclone_update",
-        update_check
-            .get("current_version")
-            .unwrap()
-            .as_str()
-            .unwrap_or("unknown"),
-        update_check
-            .get("latest_version")
-            .unwrap()
-            .as_str()
-            .unwrap_or("unknown"),
-    ) {
+    if success
+        && let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
+            &app_handle,
+            "rclone_update",
+            update_check
+                .get("current_version")
+                .unwrap()
+                .as_str()
+                .unwrap_or("unknown"),
+            update_check
+                .get("latest_version")
+                .unwrap()
+                .as_str()
+                .unwrap_or("unknown"),
+        )
+    {
         return Err(format!("Failed to restart engine after update: {e}"));
     }
 

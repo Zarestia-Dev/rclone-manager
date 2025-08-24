@@ -17,31 +17,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { RclonePasswordService } from '@app/services';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
-
-interface PasswordTab {
-  label: string;
-  icon: string;
-  key: 'overview' | 'security' | 'advanced';
-}
-
-interface PasswordLockoutStatus {
-  is_locked: boolean;
-  failed_attempts: number;
-  max_attempts: number;
-  remaining_lockout_time?: number;
-}
-
-interface LoadingStates {
-  isValidating: boolean;
-  isEncrypting: boolean;
-  isUnencrypting: boolean;
-  isChangingPassword: boolean;
-  isStoringPassword: boolean;
-  isRemovingPassword: boolean;
-  isSettingEnv: boolean;
-  isClearingEnv: boolean;
-  isResettingLockout: boolean;
-}
+import { LoadingStates, PasswordLockoutStatus, PasswordTab } from '@app/types';
 
 @Component({
   selector: 'app-password-manager-modal',
@@ -86,14 +62,14 @@ export class PasswordManagerModalComponent implements OnInit {
     isChangingPassword: false,
     isStoringPassword: false,
     isRemovingPassword: false,
+    isResettingLockout: false,
     isSettingEnv: false,
     isClearingEnv: false,
-    isResettingLockout: false,
   };
 
   // Status flags
   hasStoredPassword = false;
-  hasEnvPassword = false;
+  // Env password controls removed; runtime unlock is used exclusively
   isConfigEncrypted: boolean | unknown = false;
   lockoutStatus: PasswordLockoutStatus | null = null;
 
@@ -344,38 +320,7 @@ export class PasswordManagerModalComponent implements OnInit {
   }
 
   // Environment actions
-  async setEnvPassword(): Promise<void> {
-    this.loading.isSettingEnv = true;
-    try {
-      const storedPassword = await this.passwordService.getStoredPassword();
-      if (storedPassword) {
-        await this.passwordService.setConfigPasswordEnv(storedPassword);
-        this.showSuccess('Environment variable set');
-      } else {
-        this.showError('No stored password found');
-      }
-      await this.refreshStatus();
-    } catch (error) {
-      console.error('Failed to set environment variable:', error);
-      this.showError('Failed to set environment variable');
-    } finally {
-      this.loading.isSettingEnv = false;
-    }
-  }
-
-  async clearEnvPassword(): Promise<void> {
-    this.loading.isClearingEnv = true;
-    try {
-      await this.passwordService.clearPasswordEnvironment();
-      this.showSuccess('Environment variable cleared');
-      await this.refreshStatus();
-    } catch (error) {
-      console.error('Failed to clear environment variable:', error);
-      this.showError('Failed to clear environment variable');
-    } finally {
-      this.loading.isClearingEnv = false;
-    }
-  }
+  // Env actions removed
 
   // Advanced actions
   async resetLockout(): Promise<void> {
@@ -396,7 +341,6 @@ export class PasswordManagerModalComponent implements OnInit {
   private async refreshStatus(): Promise<void> {
     try {
       this.hasStoredPassword = await this.passwordService.hasStoredPassword();
-      this.hasEnvPassword = await this.passwordService.hasConfigPasswordEnv();
       this.isConfigEncrypted = await this.passwordService.isConfigEncrypted();
       this.lockoutStatus = await this.passwordService.getLockoutStatus();
 

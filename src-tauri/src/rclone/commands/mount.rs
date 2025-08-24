@@ -18,16 +18,22 @@ use crate::{
 
 use super::{job::monitor_job, system::redact_sensitive_values};
 
+/// Parameters for mounting a remote filesystem
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct MountParams {
+    pub remote_name: String,
+    pub source: String,
+    pub mount_point: String,
+    pub mount_type: String,
+    pub mount_options: Option<HashMap<String, Value>>, // rc mount options
+    pub vfs_options: Option<HashMap<String, Value>>,   // vfs options
+}
+
 /// Mount a remote filesystem
 #[tauri::command]
 pub async fn mount_remote(
     app: AppHandle,
-    remote_name: String,
-    source: String,
-    mount_point: String,
-    mount_type: String,
-    mount_options: Option<HashMap<String, Value>>,
-    vfs_options: Option<HashMap<String, Value>>,
+    params: MountParams,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
     let mounted_remotes = get_cached_mounted_remotes().await?;
@@ -35,55 +41,61 @@ pub async fn mount_remote(
     // Check if mount point is in use
     if let Some(existing) = mounted_remotes
         .iter()
-        .find(|m| m.mount_point == mount_point)
+        .find(|m| m.mount_point == params.mount_point)
     {
         let error_msg = format!(
             "Mount point {} is already in use by remote {}",
-            mount_point, existing.fs
+            params.mount_point, existing.fs
         );
         warn!("{error_msg}");
         return Err(error_msg);
     }
 
     // Check if remote is already mounted
-    if mounted_remotes.iter().any(|m| m.fs == remote_name) {
-        info!("Remote {remote_name} already mounted");
+    if mounted_remotes.iter().any(|m| m.fs == params.remote_name) {
+        info!("Remote {} already mounted", params.remote_name);
         return Ok(());
     }
 
     // Prepare logging context
     let log_context = json!({
-        "mount_point": mount_point,
-        "remote_name": remote_name,
-        "mount_type": mount_type,
-        "mount_options": mount_options.as_ref().map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
-        "vfs_options": vfs_options.as_ref().map(|opts| redact_sensitive_values(opts, &state.restrict_mode))
+        "mount_point": params.mount_point,
+        "remote_name": params.remote_name,
+        "mount_type": params.mount_type,
+        "mount_options": params
+            .mount_options
+            .as_ref()
+            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+        "vfs_options": params
+            .vfs_options
+            .as_ref()
+            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode))
     });
 
     log_operation(
         LogLevel::Info,
-        Some(remote_name.clone()),
+        Some(params.remote_name.clone()),
         Some("Mount remote".to_string()),
-        format!("Attempting to mount at {mount_point}"),
+        format!("Attempting to mount at {}", params.mount_point),
         Some(log_context),
     )
     .await;
 
     // Prepare payload
     let mut payload = json!({
-        "fs": source,
-        "mountPoint": mount_point,
-        "mountType": mount_type,
+        "fs": params.source,
+        "mountPoint": params.mount_point,
+        "mountType": params.mount_type,
         "_async": true,
     });
 
     debug!("Mount request payload: {payload:#?}");
 
-    if let Some(opts) = mount_options {
+    if let Some(opts) = params.mount_options.clone() {
         payload["mountOpt"] = json!(opts);
     }
 
-    if let Some(opts) = vfs_options {
+    if let Some(opts) = params.vfs_options.clone() {
         payload["vfsOpt"] = json!(opts);
     }
 
@@ -100,7 +112,7 @@ pub async fn mount_remote(
             // Clone error for use in both places
             let error_for_log = error.clone();
             // Spawn an async task to log the error since we can't await here
-            let remote_name_clone = remote_name.clone();
+            let remote_name_clone = params.remote_name.clone();
             let payload_clone = payload.clone();
             tauri::async_runtime::spawn(async move {
                 log_operation(
@@ -123,7 +135,7 @@ pub async fn mount_remote(
         let error = format!("HTTP {status}: {body}");
         log_operation(
             LogLevel::Error,
-            Some(remote_name.clone()),
+            Some(params.remote_name.clone()),
             Some("Mount remote".to_string()),
             format!("Failed to mount remote: {error}"),
             Some(json!({"response": body})),
@@ -137,7 +149,7 @@ pub async fn mount_remote(
 
     log_operation(
         LogLevel::Info,
-        Some(remote_name.clone()),
+        Some(params.remote_name.clone()),
         Some("Mount remote".to_string()),
         format!("Mount job started with ID {}", job_response.jobid),
         Some(json!({"jobid": job_response.jobid})),
@@ -151,9 +163,9 @@ pub async fn mount_remote(
         .add_job(JobInfo {
             jobid,
             job_type: "mount".to_string(),
-            remote_name: remote_name.clone(),
-            source: source.clone(),
-            destination: mount_point.clone(),
+            remote_name: params.remote_name.clone(),
+            source: params.source.clone(),
+            destination: params.mount_point.clone(),
             start_time: Utc::now(),
             status: JobStatus::Running,
             stats: None,
@@ -163,14 +175,14 @@ pub async fn mount_remote(
 
     // Start monitoring
     let app_clone = app.clone();
-    let remote_name_clone = remote_name.clone();
+    let remote_name_clone = params.remote_name.clone();
     let client = state.client.clone();
     if let Err(e) = monitor_job(remote_name_clone, "Mount remote", jobid, app_clone, client).await {
         error!("Job {jobid} returned an error: {e}");
         return Err(e.to_string());
     }
 
-    app.emit("remote_state_changed", &remote_name)
+    app.emit("remote_state_changed", &params.remote_name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     // Force refresh mounted remotes after mount operation

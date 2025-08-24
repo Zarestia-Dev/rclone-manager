@@ -2,17 +2,7 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-
-export interface DiskUsageConfig {
-  mounted: boolean | string;
-  diskUsage?: {
-    total_space?: string;
-    used_space?: string;
-    free_space?: string;
-    notSupported?: boolean;
-    loading?: boolean;
-  };
-}
+import { DiskUsageConfig } from '../../types';
 
 @Component({
   selector: 'app-disk-usage-panel',

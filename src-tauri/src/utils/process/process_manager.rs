@@ -120,8 +120,9 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
 }
 
 /// Kill all rclone rcd processes (emergency cleanup)
+/// WARNING: This kills ALL rclone processes including OAuth. Only use during application shutdown.
 pub fn kill_all_rclone_processes() -> Result<(), String> {
-    info!("🧹 Emergency cleanup: killing all rclone processes");
+    info!("🧹 Emergency cleanup: killing ALL rclone processes (including OAuth)");
 
     #[cfg(unix)]
     {

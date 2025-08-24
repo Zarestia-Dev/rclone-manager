@@ -2,12 +2,6 @@ import { Injectable, inject } from '@angular/core';
 import { AbstractControl, ValidatorFn } from '@angular/forms';
 import { ValidatorsService } from './validators.service';
 
-export interface NamedValidator {
-  name: string;
-  validator: ValidatorFn;
-  description?: string;
-}
-
 @Injectable({
   providedIn: 'root',
 })

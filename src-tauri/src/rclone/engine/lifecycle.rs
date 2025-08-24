@@ -105,9 +105,12 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 engine.running = true;
                 let port = engine.current_api_port;
                 info!("✅ Rclone API started successfully on port {port}");
-                if let Err(e) = app.emit("rclone_engine", serde_json::json!({
-                    "status": "ready"
-                })) {
+                if let Err(e) = app.emit(
+                    "rclone_engine",
+                    serde_json::json!({
+                        "status": "ready"
+                    }),
+                ) {
                     error!("Failed to emit ready event: {e}");
                 }
             } else {

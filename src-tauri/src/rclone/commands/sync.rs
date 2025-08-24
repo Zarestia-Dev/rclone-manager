@@ -16,48 +16,57 @@ use crate::{
 
 use super::job::monitor_job;
 
+/// Parameters for starting a sync operation
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct SyncParams {
+    pub remote_name: String,
+    pub source: String,
+    pub dest: String,
+    pub create_empty_src_dirs: bool,
+    pub sync_options: Option<HashMap<String, Value>>,
+    pub filter_options: Option<HashMap<String, Value>>,
+}
+
 /// Start a sync operation
 #[tauri::command]
 pub async fn start_sync(
     app: AppHandle,
-    remote_name: String,
-    source: String,
-    dest: String,
-    create_empty_src_dirs: bool,
-    sync_options: Option<HashMap<String, Value>>,
-    filter_options: Option<HashMap<String, Value>>,
+    params: SyncParams,
     state: State<'_, RcloneState>,
 ) -> Result<u64, String> {
     log_operation(
         LogLevel::Info,
-        Some(remote_name.clone()),
+        Some(params.remote_name.clone()),
         Some("Sync operation".to_string()),
-        format!("Starting sync from {source} to {dest}"),
+        format!("Starting sync from {} to {}", params.source, params.dest),
         Some(json!({
-            "source": source,
-            "destination": dest,
-            "create_empty_src_dirs": create_empty_src_dirs,
-            "sync_options": sync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
-            "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
+            "source": params.source,
+            "destination": params.dest,
+            "create_empty_src_dirs": params.create_empty_src_dirs,
+            "sync_options": params.sync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
+            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
         })),
     )
     .await;
 
     // Construct the JSON body
     let mut body = Map::new();
-    body.insert("srcFs".to_string(), Value::String(source.clone()));
-    body.insert("dstFs".to_string(), Value::String(dest.clone()));
-    body.insert("createEmptySrcDirs".to_string(), Value::Bool(create_empty_src_dirs));
+    body.insert("srcFs".to_string(), Value::String(params.source.clone()));
+    body.insert("dstFs".to_string(), Value::String(params.dest.clone()));
+    body.insert(
+        "createEmptySrcDirs".to_string(),
+        Value::Bool(params.create_empty_src_dirs),
+    );
     body.insert("_async".to_string(), Value::Bool(true));
 
-    if let Some(opts) = sync_options {
+    if let Some(opts) = params.sync_options {
         body.insert(
             "_config".to_string(),
             Value::Object(opts.into_iter().collect()),
         );
     }
 
-    if let Some(filters) = filter_options {
+    if let Some(filters) = params.filter_options {
         body.insert(
             "_filter".to_string(),
             Value::Object(filters.into_iter().collect()),
@@ -83,7 +92,7 @@ pub async fn start_sync(
         let error = format!("HTTP {status}: {body_text}");
         log_operation(
             LogLevel::Error,
-            Some(remote_name.clone()),
+            Some(params.remote_name.clone()),
             Some("Sync operation".to_string()),
             "Failed to start sync job".to_string(),
             Some(json!({"response": body_text})),
@@ -97,7 +106,7 @@ pub async fn start_sync(
 
     log_operation(
         LogLevel::Info,
-        Some(remote_name.clone()),
+        Some(params.remote_name.clone()),
         Some("Sync operation".to_string()),
         format!("Sync job started with ID {}", job.jobid),
         Some(json!({"jobid": job.jobid})),
@@ -109,9 +118,9 @@ pub async fn start_sync(
         .add_job(JobInfo {
             jobid,
             job_type: "sync".to_string(),
-            remote_name: remote_name.clone(),
-            source: source.clone(),
-            destination: dest.clone(),
+            remote_name: params.remote_name.clone(),
+            source: params.source.clone(),
+            destination: params.dest.clone(),
             start_time: Utc::now(),
             status: JobStatus::Running,
             stats: None,
@@ -122,7 +131,7 @@ pub async fn start_sync(
     // Start monitoring the job
     let app_clone = app.clone();
     let client = state.client.clone();
-    let remote_name_clone = remote_name.clone();
+    let remote_name_clone = params.remote_name.clone();
     tauri::async_runtime::spawn(async move {
         let _ = monitor_job(
             remote_name_clone,
@@ -140,49 +149,54 @@ pub async fn start_sync(
 }
 
 /// Start a copy operation
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct CopyParams {
+    pub remote_name: String,
+    pub source: String,
+    pub dest: String,
+    pub create_empty_src_dirs: bool,
+    pub copy_options: Option<HashMap<String, Value>>,
+    pub filter_options: Option<HashMap<String, Value>>,
+}
+
 #[tauri::command]
 pub async fn start_copy(
     app: AppHandle,
-    remote_name: String,
-    source: String,
-    dest: String,
-    create_empty_src_dirs: bool,
-    copy_options: Option<HashMap<String, Value>>,
-    filter_options: Option<HashMap<String, Value>>,
+    params: CopyParams,
     state: State<'_, RcloneState>,
 ) -> Result<u64, String> {
     log_operation(
         LogLevel::Info,
-        Some(remote_name.clone()),
+        Some(params.remote_name.clone()),
         Some("Copy operation".to_string()),
-        format!("Starting copy from {source} to {dest}"),
+        format!("Starting copy from {} to {}", params.source, params.dest),
         Some(json!({
-            "source": source,
-            "destination": dest,
-            "create_empty_src_dirs": create_empty_src_dirs,
-            "copy_options": copy_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
-            "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
+            "source": params.source,
+            "destination": params.dest,
+            "create_empty_src_dirs": params.create_empty_src_dirs,
+            "copy_options": params.copy_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
+            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
         })),
     )
     .await;
 
     let mut body = Map::new();
-    body.insert("srcFs".to_string(), Value::String(source.clone()));
-    body.insert("dstFs".to_string(), Value::String(dest.clone()));
+    body.insert("srcFs".to_string(), Value::String(params.source.clone()));
+    body.insert("dstFs".to_string(), Value::String(params.dest.clone()));
     body.insert(
         "createEmptySrcDirs".to_string(),
-        Value::Bool(create_empty_src_dirs),
+        Value::Bool(params.create_empty_src_dirs),
     );
     body.insert("_async".to_string(), Value::Bool(true));
 
-    if let Some(opts) = copy_options {
+    if let Some(opts) = params.copy_options {
         body.insert(
             "_config".to_string(),
             Value::Object(opts.into_iter().collect()),
         );
     }
 
-    if let Some(filters) = filter_options {
+    if let Some(filters) = params.filter_options {
         body.insert(
             "_filter".to_string(),
             Value::Object(filters.into_iter().collect()),
@@ -208,7 +222,7 @@ pub async fn start_copy(
         let error = format!("HTTP {status}: {body}");
         log_operation(
             LogLevel::Error,
-            Some(remote_name.clone()),
+            Some(params.remote_name.clone()),
             Some("Copy operation".to_string()),
             "Failed to start copy job".to_string(),
             Some(json!({"response": body})),
@@ -226,9 +240,9 @@ pub async fn start_copy(
         .add_job(JobInfo {
             jobid,
             job_type: "copy".to_string(),
-            remote_name: remote_name.clone(),
-            source: source.clone(),
-            destination: dest.clone(),
+            remote_name: params.remote_name.clone(),
+            source: params.source.clone(),
+            destination: params.dest.clone(),
             start_time: Utc::now(),
             status: JobStatus::Running,
             stats: None,
@@ -238,7 +252,7 @@ pub async fn start_copy(
     // Start monitoring the job
     let app_clone = app.clone();
     let client = state.client.clone();
-    let remote_name_clone = remote_name.clone();
+    let remote_name_clone = params.remote_name.clone();
     tokio::spawn(async move {
         let _ = monitor_job(
             remote_name_clone,
@@ -252,7 +266,7 @@ pub async fn start_copy(
 
     log_operation(
         LogLevel::Info,
-        Some(remote_name.clone()),
+        Some(params.remote_name.clone()),
         Some("Copy operation".to_string()),
         format!("Copy job started with ID {jobid}"),
         Some(json!({"jobid": jobid})),
@@ -396,51 +410,58 @@ pub async fn start_bisync(
 }
 
 /// Start a move operation
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct MoveParams {
+    pub remote_name: String,
+    pub source: String,
+    pub dest: String,
+    pub create_empty_src_dirs: bool,
+    pub delete_empty_src_dirs: bool,
+    pub move_options: Option<HashMap<String, Value>>, // rclone move-specific options
+    pub filter_options: Option<HashMap<String, Value>>, // filter options
+}
+
 #[tauri::command]
 pub async fn start_move(
     app: AppHandle,
-    remote_name: String,
-    source: String,
-    dest: String,
-    create_empty_src_dirs: bool,
-    delete_empty_src_dirs: bool,
-    move_options: Option<HashMap<String, Value>>,
-    filter_options: Option<HashMap<String, Value>>,
+    params: MoveParams,
     state: State<'_, RcloneState>,
 ) -> Result<u64, String> {
     log_operation(
         LogLevel::Info,
-        Some(remote_name.clone()),
+        Some(params.remote_name.clone()),
         Some("Move operation".to_string()),
-        format!("Starting move from {source} to {dest}"),
+        format!("Starting move from {} to {}", params.source, params.dest),
         Some(json!({
-            "source": source,
-            "destination": dest,
-            "move_options": move_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
-            "filters": filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
+            "source": params.source,
+            "destination": params.dest,
+            "create_empty_src_dirs": params.create_empty_src_dirs,
+            "delete_empty_src_dirs": params.delete_empty_src_dirs,
+            "move_options": params.move_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
+            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
         })),
     )
     .await;
     let mut body = Map::new();
-    body.insert("srcFs".to_string(), Value::String(source.clone()));
-    body.insert("dstFs".to_string(), Value::String(dest.clone()));
+    body.insert("srcFs".to_string(), Value::String(params.source.clone()));
+    body.insert("dstFs".to_string(), Value::String(params.dest.clone()));
     body.insert(
         "createEmptySrcDirs".to_string(),
-        Value::Bool(create_empty_src_dirs),
+        Value::Bool(params.create_empty_src_dirs),
     );
     body.insert(
         "deleteEmptySrcDirs".to_string(),
-        Value::Bool(delete_empty_src_dirs),
+        Value::Bool(params.delete_empty_src_dirs),
     );
     body.insert("_async".to_string(), Value::Bool(true));
-    if let Some(opts) = move_options {
+    if let Some(opts) = params.move_options {
         body.insert(
             "_config".to_string(),
             Value::Object(opts.into_iter().collect()),
         );
     }
 
-    if let Some(filters) = filter_options {
+    if let Some(filters) = params.filter_options {
         body.insert(
             "_filter".to_string(),
             Value::Object(filters.into_iter().collect()),
@@ -461,7 +482,7 @@ pub async fn start_move(
         let error = format!("HTTP {status}: {body}");
         log_operation(
             LogLevel::Error,
-            Some(remote_name.clone()),
+            Some(params.remote_name.clone()),
             Some("Move operation".to_string()),
             "Failed to start move job".to_string(),
             Some(json!({"response": body})),
@@ -476,9 +497,9 @@ pub async fn start_move(
         .add_job(JobInfo {
             jobid,
             job_type: "move".to_string(),
-            remote_name: remote_name.clone(),
-            source: source.clone(),
-            destination: dest.clone(),
+            remote_name: params.remote_name.clone(),
+            source: params.source.clone(),
+            destination: params.dest.clone(),
             start_time: Utc::now(),
             status: JobStatus::Running,
             stats: None,
@@ -488,7 +509,7 @@ pub async fn start_move(
     // Start monitoring the job
     let app_clone = app.clone();
     let client = state.client.clone();
-    let remote_name_clone = remote_name.clone();
+    let remote_name_clone = params.remote_name.clone();
     tauri::async_runtime::spawn(async move {
         let _ = monitor_job(
             remote_name_clone,
@@ -501,7 +522,7 @@ pub async fn start_move(
     });
     log_operation(
         LogLevel::Info,
-        Some(remote_name.clone()),
+        Some(params.remote_name.clone()),
         Some("Move operation".to_string()),
         format!("Move job started with ID {jobid}"),
         Some(json!({"jobid": jobid})),

@@ -687,8 +687,14 @@ export class HomeComponent implements OnInit, OnDestroy {
       updateDiskUsageState({ loading: true });
 
       const fsInfo = await this.remoteManagementService.getFsInfo(remote.remoteSpecs.name);
+      const aboutFlag =
+        fsInfo &&
+        typeof fsInfo === 'object' &&
+        'Features' in (fsInfo as Record<string, unknown>) &&
+        typeof (fsInfo as Record<string, any>)['Features'] === 'object' &&
+        (fsInfo as Record<string, any>)['Features']?.About === false;
 
-      if (fsInfo?.Features?.About === false) {
+      if (aboutFlag) {
         updateDiskUsageState({
           total_space: 'Not supported',
           used_space: 'Not supported',

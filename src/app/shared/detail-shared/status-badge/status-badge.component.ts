@@ -1,16 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-export interface StatusBadgeConfig {
-  isActive: boolean;
-  isError?: boolean;
-  isLoading?: boolean;
-  activeLabel: string;
-  inactiveLabel: string;
-  errorLabel?: string;
-  loadingLabel?: string;
-  badgeClass?: string;
-}
+import { StatusBadgeConfig } from '../../types';
 
 @Component({
   selector: 'app-status-badge',

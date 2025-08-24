@@ -13,19 +13,7 @@ import { FileSystemService } from '@app/services';
 import { SystemInfoService } from '@app/services';
 import { AnimationsService } from '../../services/animations.service';
 import { ValidatorRegistryService } from '../../services/validator-registry.service';
-
-export interface InstallationOptionsData {
-  installLocation: 'default' | 'custom' | 'existing';
-  customPath: string;
-  existingBinaryPath: string;
-  binaryTestResult: 'untested' | 'testing' | 'valid' | 'invalid';
-}
-
-export interface InstallationTabOption {
-  key: 'default' | 'custom' | 'existing';
-  label: string;
-  icon: string;
-}
+import { InstallationOptionsData, InstallationTabOption } from '../../types';
 
 @Component({
   selector: 'app-installation-options',

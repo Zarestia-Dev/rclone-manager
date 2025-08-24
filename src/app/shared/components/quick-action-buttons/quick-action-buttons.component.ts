@@ -4,17 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ThemePalette } from '@angular/material/core';
-
-export interface QuickActionButton {
-  id: string;
-  icon: string;
-  tooltip: string;
-  color?: ThemePalette;
-  isLoading?: boolean;
-  isDisabled?: boolean;
-  cssClass?: string;
-}
+import { QuickActionButton } from '@app/types';
 
 @Component({
   selector: 'app-quick-action-buttons',

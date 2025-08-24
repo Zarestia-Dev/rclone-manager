@@ -1,7 +1,7 @@
 <div class="modal-container">
   <!-- Modal Header -->
   <header class="modal-header" data-tauri-drag-region>
-    <button mat-icon-button aria-label="Help">
+    <button mat-icon-button aria-label="Help" (click)="testNonInteractiveFlow()">
       <mat-icon svgIcon="question"></mat-icon>
     </button>
     <p data-tauri-drag-region>
@@ -15,54 +15,74 @@
 
   <!-- Modal Content -->
   <main class="modal-content" [@slideAnimation]="currentStep">
-    <!-- Step 1: Remote Configuration -->
-    @if (editTarget === 'remote' || (!editTarget && currentStep === 1)) {
-      <section class="step-container" aria-labelledby="remote-config-heading">
-        <h2 id="remote-config-heading" class="visually-hidden">Remote Configuration</h2>
-        <app-remote-config-step
-          [form]="remoteForm"
-          [remoteFields]="dynamicRemoteFields"
-          [remoteTypes]="remoteTypes"
-          [isLoading]="isRemoteConfigLoading"
-          [existingRemotes]="existingRemotes"
-          [restrictMode]="restrictMode"
-          (remoteTypeChanged)="onRemoteTypeChange()"
-        >
-        </app-remote-config-step>
+    @if (isNonInteractiveActive && rcQuestion) {
+      <section
+        class="step-container"
+        aria-live="polite"
+        aria-labelledby="interactive-config-heading"
+      >
+        <h2 id="interactive-config-heading" class="visually-hidden">Interactive Configuration</h2>
+        <app-interactive-config-step
+          [question]="rcQuestion"
+          [disabled]="isAuthInProgress"
+          [canceling]="isAuthCancelled"
+          (continue)="onInteractiveContinue($event)"
+          (cancelClick)="cancelAuth()"
+        />
       </section>
     }
 
-    <!-- Steps 2-6: Flags and Mount Configurations -->
-    @for (step of flagConfigService.FLAG_TYPES; track step; let i = $index) {
-      @if (editTarget === step || (!editTarget && currentStep === i + 2)) {
-        <section class="step-container" [attr.aria-labelledby]="step + '-config-heading'">
-          <h2 [id]="step + '-config-heading'" class="visually-hidden">
-            {{ step | titlecase }} Configuration
-          </h2>
-          <app-flag-config-step
-            [form]="remoteConfigForm"
-            [flagType]="step"
-            [isEditMode]="!!editTarget"
+    @if (!isNonInteractiveActive) {
+      <!-- Step 1: Remote Configuration -->
+      @if (editTarget === 'remote' || (!editTarget && currentStep === 1)) {
+        <section class="step-container" aria-labelledby="remote-config-heading">
+          <h2 id="remote-config-heading" class="visually-hidden">Remote Configuration</h2>
+          <app-remote-config-step
+            [form]="remoteForm"
+            [remoteFields]="dynamicRemoteFields"
+            [remoteTypes]="remoteTypes"
+            [isLoading]="isRemoteConfigLoading"
             [existingRemotes]="existingRemotes"
-            [pathState]="pathSelectionService.getPathState"
-            [sourceLoading]="pathSelectionService.getLoadingState(step + 'Config.source')"
-            [destLoading]="pathSelectionService.getLoadingState(step + 'Config.dest')"
-            [dynamicFlagFields]="dynamicFlagFields[step]"
-            [selectedOptions]="selectedOptions[step]"
-            [isDisabled]="isAuthInProgress"
-            [mountTypes]="mountTypes"
-            (optionToggled)="toggleOption(step, $event)"
-            (jsonValidated)="validateJson(step)"
-            (jsonReset)="resetJson(step)"
-            (destRemoteSelected)="onRemoteSelected($event, step + 'Config.dest')"
-            (sourceRemoteSelected)="onRemoteSelected($event, step + 'Config.source')"
-            (destOptionSelected)="onDestOptionSelectedField($event, step + 'Config.dest')"
-            (sourceOptionSelected)="onSourceOptionSelectedField($event, step + 'Config.source')"
-            (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
-            (remoteSelectionReset)="resetRemoteSelectionField($event)"
+            [restrictMode]="restrictMode"
+            (remoteTypeChanged)="onRemoteTypeChange()"
+            (interactiveModeToggled)="onInteractiveModeToggled($event)"
           >
-          </app-flag-config-step>
+          </app-remote-config-step>
         </section>
+      }
+
+      <!-- Steps 2-6: Flags and Mount Configurations -->
+      @for (step of flagConfigService.FLAG_TYPES; track step; let i = $index) {
+        @if (editTarget === step || (!editTarget && currentStep === i + 2)) {
+          <section class="step-container" [attr.aria-labelledby]="step + '-config-heading'">
+            <h2 [id]="step + '-config-heading'" class="visually-hidden">
+              {{ step | titlecase }} Configuration
+            </h2>
+            <app-flag-config-step
+              [form]="remoteConfigForm"
+              [flagType]="step"
+              [isEditMode]="!!editTarget"
+              [existingRemotes]="existingRemotes"
+              [pathState]="pathSelectionService.getPathState"
+              [sourceLoading]="pathSelectionService.getLoadingState(step + 'Config.source')"
+              [destLoading]="pathSelectionService.getLoadingState(step + 'Config.dest')"
+              [dynamicFlagFields]="dynamicFlagFields[step]"
+              [selectedOptions]="selectedOptions[step]"
+              [isDisabled]="isAuthInProgress"
+              [mountTypes]="mountTypes"
+              (optionToggled)="toggleOption(step, $event)"
+              (jsonValidated)="validateJson(step)"
+              (jsonReset)="resetJson(step)"
+              (destRemoteSelected)="onRemoteSelected($event, step + 'Config.dest')"
+              (sourceRemoteSelected)="onRemoteSelected($event, step + 'Config.source')"
+              (destOptionSelected)="onDestOptionSelectedField($event, step + 'Config.dest')"
+              (sourceOptionSelected)="onSourceOptionSelectedField($event, step + 'Config.source')"
+              (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
+              (remoteSelectionReset)="resetRemoteSelectionField($event)"
+            >
+            </app-flag-config-step>
+          </section>
+        }
       }
     }
   </main>
@@ -96,13 +116,13 @@
     </div>
 
     <div class="button-container-inner">
-      @if (isAuthInProgress && !isAuthCancelled) {
+      @if ((isAuthInProgress && !isAuthCancelled) || isNonInteractiveActive) {
         <button
           mat-raised-button
           [@fadeInOut]
           color="warn"
           (click)="cancelAuth()"
-          [disabled]="!isAuthInProgress"
+          [disabled]="!isAuthInProgress && !isNonInteractiveActive"
         >
           Cancel
         </button>
@@ -118,12 +138,17 @@
       }
 
       <!-- Save Buttons -->
-      @if (currentStep > 1 && !editTarget) {
+      @if (currentStep > 1 && !editTarget && !isNonInteractiveActive) {
         <button
           mat-raised-button
           color="primary"
           (click)="onSubmit()"
-          [disabled]="isAuthInProgress || !remoteConfigForm.valid || !remoteForm.valid"
+          [disabled]="
+            isAuthInProgress ||
+            isNonInteractiveActive ||
+            !remoteConfigForm.valid ||
+            !remoteForm.valid
+          "
           [@fadeInOut]
           aria-live="polite"
         >

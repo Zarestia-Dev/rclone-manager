@@ -207,18 +207,15 @@ fn spawn_mount_task(
         .map(|map| map.into_iter().collect());
 
     tauri::async_runtime::spawn(async move {
-        match mount_remote(
-            app_clone.clone(),
-            remote_name.clone(),
-            source.clone(),
+        let params = crate::rclone::commands::mount::MountParams {
+            remote_name: remote_name.clone(),
+            source: source.clone(),
             mount_point,
-            mount_type.clone(),
-            mount_options_clone,
-            vfs_options_clone,
-            app_clone.state(),
-        )
-        .await
-        {
+            mount_type: mount_type.clone(),
+            mount_options: mount_options_clone,
+            vfs_options: vfs_options_clone,
+        };
+        match mount_remote(app_clone.clone(), params, app_clone.state()).await {
             Ok(_) => {
                 info!("✅ Mounted {remote_name}:{source}");
             }
@@ -249,18 +246,15 @@ fn spawn_sync_task(
         .map(|map| map.into_iter().collect());
 
     tauri::async_runtime::spawn(async move {
-        match start_sync(
-            app_clone.clone(),
-            remote_name.clone(),
-            source.clone(),
-            dest_path,
+        let params = crate::rclone::commands::sync::SyncParams {
+            remote_name: remote_name.clone(),
+            source: source.clone(),
+            dest: dest_path,
             create_empty_src_dirs,
-            sync_config_map,
-            filter_options_map,
-            app_clone.state(),
-        )
-        .await
-        {
+            sync_options: sync_config_map,
+            filter_options: filter_options_map,
+        };
+        match start_sync(app_clone.clone(), params, app_clone.state()).await {
             Ok(_) => {
                 info!("✅ Synced {remote_name}:{source}");
             }
@@ -290,18 +284,15 @@ fn spawn_copy_task(
         .map(|map| map.into_iter().collect());
 
     tauri::async_runtime::spawn(async move {
-        match start_copy(
-            app_clone.clone(),
-            remote_name.clone(),
-            source.clone(),
-            dest_path,
+        let params = crate::rclone::commands::sync::CopyParams {
+            remote_name: remote_name.clone(),
+            source: source.clone(),
+            dest: dest_path,
             create_empty_src_dirs,
-            copy_config_map,
-            filter_options_map,
-            app_clone.state(),
-        )
-        .await
-        {
+            copy_options: copy_config_map,
+            filter_options: filter_options_map,
+        };
+        match start_copy(app_clone.clone(), params, app_clone.state()).await {
             Ok(jobid) => {
                 info!("✅ Started copy for {remote_name}:{source} (Job ID: {jobid})",);
             }
@@ -319,15 +310,13 @@ async fn sync_all_remotes<R: Runtime>(_app_handle: &AppHandle<R>) -> Result<(), 
     let settings = get_settings().await.map_err(|e| e.to_string())?;
 
     for remote in remotes {
-        if let Some(remote_settings) = settings.get(&remote) {
-            if let Some(sync_config) = remote_settings.get("syncConfig") {
-                if let Some(auto_sync) = sync_config.get("autoStart").and_then(|v| v.as_bool()) {
-                    if auto_sync {
-                        info!("🔄 Starting sync for remote: {remote}");
-                        // The actual sync will be handled in handle_remote_startup
-                    }
-                }
-            }
+        if let Some(remote_settings) = settings.get(&remote)
+            && let Some(sync_config) = remote_settings.get("syncConfig")
+            && let Some(auto_sync) = sync_config.get("autoStart").and_then(|v| v.as_bool())
+            && auto_sync
+        {
+            info!("🔄 Starting sync for remote: {remote}");
+            // The actual sync will be handled in handle_remote_startup
         }
     }
 
@@ -342,15 +331,13 @@ async fn copy_all_remotes<R: Runtime>(_app_handle: &AppHandle<R>) -> Result<(), 
     let settings = get_settings().await.map_err(|e| e.to_string())?;
 
     for remote in remotes {
-        if let Some(remote_settings) = settings.get(&remote) {
-            if let Some(copy_config) = remote_settings.get("copyConfig") {
-                if let Some(auto_copy) = copy_config.get("autoStart").and_then(|v| v.as_bool()) {
-                    if auto_copy {
-                        info!("📋 Starting copy for remote: {remote}");
-                        // The actual copy will be handled in handle_remote_startup
-                    }
-                }
-            }
+        if let Some(remote_settings) = settings.get(&remote)
+            && let Some(copy_config) = remote_settings.get("copyConfig")
+            && let Some(auto_copy) = copy_config.get("autoStart").and_then(|v| v.as_bool())
+            && auto_copy
+        {
+            info!("📋 Starting copy for remote: {remote}");
+            // The actual copy will be handled in handle_remote_startup
         }
     }
 

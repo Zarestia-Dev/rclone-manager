@@ -1,4 +1,4 @@
-use log::{error, info, warn, debug};
+use log::{error, info, warn};
 use serde_json::json;
 use tauri::{AppHandle, Emitter, Manager};
 use tokio::task::spawn_blocking;
@@ -22,12 +22,13 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     app_handle.state::<crate::RcloneState>().set_shutting_down();
 
     app_handle
-        .emit("app_event", 
+        .emit(
+            "app_event",
             json!({
                 "status": "shutting_down",
                 "message": "Shutting down RClone Manager"
             }),
-    )
+        )
         .unwrap_or_else(|e| {
             error!("Failed to emit an app_event: {e}");
         });
@@ -140,12 +141,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     // and ensures no accidental late spawns during shutdown can read the
     // secret. Do NOT remove the stored password from keyring here; that is
     // managed separately by user actions.
-    if let Some(env_manager) = app_handle.try_state::<crate::core::security::SafeEnvironmentManager>() {
-        info!("🧹 Clearing in-memory RCLONE_CONFIG_PASS from SafeEnvironmentManager");
-        env_manager.clear_config_password();
-    } else {
-        debug!("SafeEnvironmentManager not available in app state during shutdown");
-    }
+    // Environment manager removed; nothing to clear
 
     app_handle.exit(0);
 }

@@ -25,33 +25,7 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 import { ValidatorRegistryService } from '../../../../shared/services/validator-registry.service';
 import { AppSettingsService } from '@app/services';
 import { FileSystemService } from '@app/services';
-
-interface SettingTab {
-  label: string;
-  icon: string;
-  key: string;
-}
-
-interface SettingMetadata {
-  display_name: string;
-  help_text: string;
-  value_type: 'bool' | 'number' | 'string' | 'array' | 'path';
-  required?: boolean;
-  validation_type?: string; // 'regex' | 'frontend:<validatorName>' | other types
-  validation_pattern?: string;
-  validation_message?: string;
-  min_value?: number;
-  max_value?: number;
-  step?: number;
-  options?: string[];
-  placeholder?: string;
-  requires_restart?: boolean;
-}
-
-interface SearchResult {
-  category: string;
-  key: string;
-}
+import { SearchResult, SettingMetadata, SettingTab } from '@app/types';
 
 @Component({
   selector: 'app-preferences-modal',

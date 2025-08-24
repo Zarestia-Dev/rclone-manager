@@ -8,11 +8,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { MatDividerModule } from '@angular/material/divider';
 
 // Services
-import { RcloneUpdateInfo } from '@app/services';
-
-export interface UpdateConfirmationData {
-  updateInfo: RcloneUpdateInfo;
-}
+import { RcloneUpdateInfo } from '@app/types';
 
 @Component({
   selector: 'app-update-confirmation-dialog',
@@ -29,7 +25,7 @@ export interface UpdateConfirmationData {
 })
 export class UpdateConfirmationDialogComponent {
   private dialogRef = inject(MatDialogRef<UpdateConfirmationDialogComponent>);
-  public data = inject<UpdateConfirmationData>(MAT_DIALOG_DATA);
+  public data = inject<RcloneUpdateInfo>(MAT_DIALOG_DATA);
 
   confirm(): void {
     this.dialogRef.close(true);

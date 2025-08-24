@@ -4,11 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
-import {
-  InstallationOptionsComponent,
-  InstallationOptionsData,
-  InstallationTabOption,
-} from '../../shared/components/installation-options/installation-options.component';
+import { InstallationOptionsComponent } from '../../shared/components/installation-options/installation-options.component';
 
 // Services
 import { AnimationsService } from '../../shared/services/animations.service';
@@ -16,6 +12,7 @@ import { SystemInfoService } from '@app/services';
 import { InstallationService } from '@app/services';
 import { EventListenersService } from '@app/services';
 import { AppSettingsService } from '@app/services';
+import { InstallationOptionsData, InstallationTabOption } from '@app/types';
 
 @Component({
   selector: 'app-onboarding',

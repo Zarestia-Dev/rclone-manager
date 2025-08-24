@@ -72,11 +72,12 @@ pub async fn monitor_job(
                 }
 
                 // Process status
-                if let Ok(job_status) = serde_json::from_str::<Value>(&status_body) {
-                    if job_status
-                        .get("finished")
-                        .and_then(|v| v.as_bool())
-                        .unwrap_or(false)
+                match serde_json::from_str::<Value>(&status_body) {
+                    Ok(job_status)
+                        if job_status
+                            .get("finished")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false) =>
                     {
                         return handle_job_completion(
                             jobid,
@@ -87,6 +88,7 @@ pub async fn monitor_job(
                         )
                         .await;
                     }
+                    _ => {}
                 }
             }
             Err(e) => {

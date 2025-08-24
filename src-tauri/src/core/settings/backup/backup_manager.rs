@@ -101,7 +101,9 @@ pub async fn backup_settings(
                 if path.extension().and_then(|s| s.to_str()) == Some("json") {
                     // For specific remote, only copy that one
                     if export_type == ExportType::SpecificRemote {
-                        if let Some(name) = &remote_name && path.file_stem().unwrap().to_str().unwrap() == name {
+                        if let Some(name) = &remote_name
+                            && path.file_stem().unwrap().to_str().unwrap() == name
+                        {
                             fs::copy(&path, out_remotes.join(path.file_name().unwrap())).ok();
                             info!("Copied remote config for '{}': {}", name, path.display());
                             exported_items.push("remote-config");

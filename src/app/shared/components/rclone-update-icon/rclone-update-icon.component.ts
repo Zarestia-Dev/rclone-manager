@@ -6,10 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { Subject, takeUntil } from 'rxjs';
-import {
-  UpdateConfirmationDialogComponent,
-  UpdateConfirmationData,
-} from '../../modals/update-confirmation-dialog/update-confirmation-dialog.component';
+import { UpdateConfirmationDialogComponent } from '../../modals/update-confirmation-dialog/update-confirmation-dialog.component';
 
 // Services
 import { RcloneUpdateService, UpdateStatus } from '@app/services';
@@ -101,10 +98,11 @@ export class RcloneUpdateIconComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const info = this.updateStatus.updateInfo;
+    if (!info) return;
+
     const dialogRef = this.dialog.open(UpdateConfirmationDialogComponent, {
-      data: {
-        updateInfo: this.updateStatus.updateInfo,
-      } as UpdateConfirmationData,
+      data: info,
       disableClose: true,
       autoFocus: true,
       minWidth: '360px',

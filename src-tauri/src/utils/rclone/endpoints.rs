@@ -33,6 +33,7 @@ pub mod config {
     // pub const PASSWORD: &str = "config/password";
     pub const PATHS: &str = "config/paths";
     pub const SETPATH: &str = "config/setpath";
+    pub const UNLOCK: &str = "config/unlock";
 }
 
 /// Job management endpoints
