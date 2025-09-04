@@ -248,8 +248,8 @@ export class RepairSheetComponent implements OnInit {
         }
       }
 
-      // Unlock rclone config at runtime via RC API
-      await this.passwordService.unlockConfig(this.password);
+      // Set password in environment for the repair process
+      await this.passwordService.setConfigPasswordEnv(this.password);
 
       // Clear the password form for security
       this.password = '';

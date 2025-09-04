@@ -5,7 +5,9 @@ use tauri::{AppHandle, Emitter};
 use crate::{
     rclone::state::ENGINE_STATE,
     utils::{
-        process::process_manager::{get_child_pid, kill_process_by_pid, kill_processes_on_port},
+        process::process_manager::{
+            get_child_pid, kill_all_rclone_processes, kill_process_by_pid, kill_processes_on_port,
+        },
         rclone::{
             endpoints::{EndpointHelper, core},
             process_common::{create_rclone_command, spawn_stderr_monitor},
@@ -37,7 +39,8 @@ impl RcApiEngine {
                 }
             };
 
-        // Keep default stdout behavior (don't pipe) to avoid holding an unused pipe
+        // Override stdout for the main engine to capture output
+        engine_app.stdout(std::process::Stdio::piped());
 
         match engine_app.spawn() {
             Ok(child) => {
@@ -140,10 +143,6 @@ impl RcApiEngine {
     }
 
     pub fn kill_all_rclone_rcd() -> Result<(), String> {
-        // Only kill processes on the engine's API port, not all rclone processes
-        // This prevents accidentally killing the OAuth process running on a different port
-        let engine_port = ENGINE_STATE.get_api().1;
-        info!("🧹 Cleaning up rclone processes on engine port {engine_port} only");
-        kill_processes_on_port(engine_port)
+        kill_all_rclone_processes()
     }
 }

@@ -25,38 +25,15 @@ export class RclonePasswordService {
   }
 
   /**
-   * Unlock the encrypted rclone config at runtime via RC API
-   */
-  async unlockConfig(password: string): Promise<void> {
-    try {
-      await invoke('unlock_rclone_config', { password });
-    } catch (error) {
-      console.error('Failed to unlock rclone config:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Convenience: try unlocking using stored password if present
-   */
-  async tryUnlockWithStoredPassword(): Promise<boolean> {
-    try {
-      const has = await this.hasStoredPassword();
-      if (!has) return false;
-      const pw = await this.getStoredPassword();
-      if (!pw) return false;
-      await this.unlockConfig(pw);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Check if password is set in environment (deprecated, always false)
+   * Check if password is set in environment
    */
   async hasConfigPasswordEnv(): Promise<boolean> {
-    return false;
+    try {
+      return await invoke<boolean>('has_config_password_env');
+    } catch (error) {
+      console.error('Failed to check config password env:', error);
+      throw error;
+    }
   }
 
   /**
@@ -84,6 +61,18 @@ export class RclonePasswordService {
   }
 
   /**
+   * Clear password from environment variable
+   */
+  async clearPasswordEnvironment(): Promise<void> {
+    try {
+      await invoke('clear_config_password_env');
+    } catch (error) {
+      console.error('Failed to clear config password env:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Remove stored password
    */
   async removeStoredPassword(): Promise<void> {
@@ -99,16 +88,13 @@ export class RclonePasswordService {
    * Set password environment variable for current session (deprecated)
    */
   async setConfigPasswordEnv(password: string): Promise<boolean> {
-    console.warn('setConfigPasswordEnv is deprecated; use unlockConfig instead');
-    await this.unlockConfig(password);
-    return true;
-  }
-
-  /**
-   * Clear password environment variable (deprecated no-op)
-   */
-  async clearPasswordEnvironment(): Promise<boolean> {
-    return true;
+    try {
+      await invoke('set_config_password_env', { password });
+      return true;
+    } catch (error) {
+      console.error('Failed to set config password env:', error);
+      return false;
+    }
   }
 
   /**

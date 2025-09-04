@@ -69,7 +69,7 @@ export class PasswordManagerModalComponent implements OnInit {
 
   // Status flags
   hasStoredPassword = false;
-  // Env password controls removed; runtime unlock is used exclusively
+  hasEnvPassword = false;
   isConfigEncrypted: boolean | unknown = false;
   lockoutStatus: PasswordLockoutStatus | null = null;
 
@@ -320,7 +320,38 @@ export class PasswordManagerModalComponent implements OnInit {
   }
 
   // Environment actions
-  // Env actions removed
+  async setEnvPassword(): Promise<void> {
+    this.loading.isSettingEnv = true;
+    try {
+      const storedPassword = await this.passwordService.getStoredPassword();
+      if (storedPassword) {
+        await this.passwordService.setConfigPasswordEnv(storedPassword);
+        this.showSuccess('Environment variable set');
+      } else {
+        this.showError('No stored password found');
+      }
+      await this.refreshStatus();
+    } catch (error) {
+      console.error('Failed to set environment variable:', error);
+      this.showError('Failed to set environment variable');
+    } finally {
+      this.loading.isSettingEnv = false;
+    }
+  }
+
+  async clearEnvPassword(): Promise<void> {
+    this.loading.isClearingEnv = true;
+    try {
+      await this.passwordService.clearPasswordEnvironment();
+      this.showSuccess('Environment variable cleared');
+      await this.refreshStatus();
+    } catch (error) {
+      console.error('Failed to clear environment variable:', error);
+      this.showError('Failed to clear environment variable');
+    } finally {
+      this.loading.isClearingEnv = false;
+    }
+  }
 
   // Advanced actions
   async resetLockout(): Promise<void> {
@@ -341,6 +372,7 @@ export class PasswordManagerModalComponent implements OnInit {
   private async refreshStatus(): Promise<void> {
     try {
       this.hasStoredPassword = await this.passwordService.hasStoredPassword();
+      this.hasEnvPassword = await this.passwordService.hasConfigPasswordEnv();
       this.isConfigEncrypted = await this.passwordService.isConfigEncrypted();
       this.lockoutStatus = await this.passwordService.getLockoutStatus();
 

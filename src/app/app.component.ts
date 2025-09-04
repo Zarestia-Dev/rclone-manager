@@ -281,7 +281,7 @@ export class AppComponent implements OnInit, OnDestroy {
     try {
       const result = await this.promptForPassword();
       if (result?.password) {
-        await this.rclonePasswordService.unlockConfig(result.password);
+        await this.rclonePasswordService.setConfigPasswordEnv(result.password);
         console.log('Password set successfully');
       } else {
         console.log('Password prompt was cancelled or no password provided');

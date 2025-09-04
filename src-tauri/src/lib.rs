@@ -16,10 +16,11 @@ use crate::{
         initialization::{async_startup, init_rclone_state, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
         security::{
-            change_config_password, encrypt_config, get_config_password,
-            get_password_lockout_status, has_stored_password, is_config_encrypted,
-            remove_config_password, reset_password_validator, store_config_password,
-            unencrypt_config, validate_rclone_password,
+            change_config_password, clear_config_password_env, encrypt_config, get_config_password,
+            get_password_lockout_status, has_config_password_env, has_stored_password,
+            is_config_encrypted, remove_config_password, reset_password_validator,
+            set_config_password_env, store_config_password, unencrypt_config,
+            validate_rclone_password,
         },
         settings::{
             backup::{
@@ -40,10 +41,9 @@ use crate::{
     },
     rclone::{
         commands::{
-            continue_remote_config_noninteractive, create_remote, delete_remote, mount_remote,
-            quit_rclone_oauth, set_bandwidth_limit, start_bisync, start_copy, start_move,
-            start_remote_config_noninteractive, start_sync, stop_job, unlock_rclone_config,
-            unmount_all_remotes, unmount_remote, update_remote,
+            create_remote, delete_remote, mount_remote, quit_rclone_oauth, set_bandwidth_limit,
+            start_bisync, start_copy, start_move, start_sync, stop_job, unmount_all_remotes,
+            unmount_remote, update_remote,
         },
         queries::{
             flags::{
@@ -143,7 +143,10 @@ pub fn run() {
             let password_validator = init_password_validator();
             app.manage(password_validator);
 
-            // SafeEnvironmentManager removed (using runtime RC unlock instead)
+            // Initialize SafeEnvironmentManager for secure password handling
+            use crate::core::security::SafeEnvironmentManager;
+            let env_manager = SafeEnvironmentManager::new();
+            app.manage(env_manager);
 
             // Load settings with better error handling
             let settings_json = tauri::async_runtime::block_on(load_settings(
@@ -300,8 +303,6 @@ pub fn run() {
             mount_remote,
             unmount_remote,
             create_remote,
-            start_remote_config_noninteractive,
-            continue_remote_config_noninteractive,
             update_remote,
             delete_remote,
             quit_rclone_oauth,
@@ -369,8 +370,9 @@ pub fn run() {
             encrypt_config,
             unencrypt_config,
             change_config_password,
-            // Runtime unlock
-            unlock_rclone_config
+            set_config_password_env,
+            clear_config_password_env,
+            has_config_password_env,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

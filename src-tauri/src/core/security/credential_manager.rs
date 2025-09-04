@@ -1,10 +1,17 @@
 use keyring::{Entry, Error as KeyringError};
 use log::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
-// no longer using Arc/Mutex in this module
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 const SERVICE_NAME: &str = "rclone-manager";
 const CONFIG_PASSWORD_KEY: &str = "rclone_config_password";
+
+/// Thread-safe environment variable manager
+#[derive(Debug, Clone)]
+pub struct SafeEnvironmentManager {
+    env_vars: Arc<Mutex<HashMap<String, String>>>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CredentialStore {
@@ -120,4 +127,61 @@ impl Default for CredentialStore {
     }
 }
 
-// SafeEnvironmentManager removed – runtime RC unlock replaces env propagation
+/// Thread-safe environment manager that doesn't use global env vars
+impl SafeEnvironmentManager {
+    pub fn new() -> Self {
+        Self {
+            env_vars: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    /// Store password in internal safe storage instead of global env
+    pub fn set_config_password(&self, password: String) {
+        if let Ok(mut env_vars) = self.env_vars.lock() {
+            env_vars.insert("RCLONE_CONFIG_PASS".to_string(), password);
+            debug!("✅ RCLONE_CONFIG_PASS stored in safe environment manager");
+        }
+    }
+
+    /// Remove password from internal storage
+    pub fn clear_config_password(&self) {
+        if let Ok(mut env_vars) = self.env_vars.lock() {
+            env_vars.remove("RCLONE_CONFIG_PASS");
+            debug!("✅ RCLONE_CONFIG_PASS removed from safe environment manager");
+        }
+    }
+
+    /// Check if password is stored
+    pub fn has_config_password(&self) -> bool {
+        if let Ok(env_vars) = self.env_vars.lock() {
+            env_vars.contains_key("RCLONE_CONFIG_PASS")
+        } else {
+            false
+        }
+    }
+
+    /// Get all environment variables for spawning rclone process
+    pub fn get_env_vars(&self) -> HashMap<String, String> {
+        let mut result = HashMap::new();
+
+        // Add our managed variables
+        if let Ok(env_vars) = self.env_vars.lock() {
+            result.extend(env_vars.clone());
+        }
+
+        // Add system rclone env vars (excluding our managed ones)
+        for (key, value) in std::env::vars() {
+            if key.starts_with("RCLONE_") && !result.contains_key(&key) {
+                result.insert(key, value);
+            }
+        }
+
+        result
+    }
+}
+
+impl Default for SafeEnvironmentManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}

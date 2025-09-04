@@ -1,5 +1,6 @@
 use crate::core::security::{
-    CredentialError, CredentialStore, PasswordValidatorState, test_rclone_password,
+    CredentialError, CredentialStore, PasswordValidatorState, SafeEnvironmentManager,
+    test_rclone_password,
 };
 use log::{debug, error, info, warn};
 use tauri::{AppHandle, Emitter, State};
@@ -9,6 +10,7 @@ use tauri::{AppHandle, Emitter, State};
 pub async fn store_config_password(
     app: AppHandle,
     password_state: State<'_, PasswordValidatorState>,
+    env_manager: State<'_, SafeEnvironmentManager>,
     password: String,
 ) -> Result<(), String> {
     info!("🔑 Storing rclone config password");
@@ -16,8 +18,8 @@ pub async fn store_config_password(
     let credential_store = CredentialStore::new();
     match credential_store.store_config_password(&password) {
         Ok(()) => {
-            // No environment propagation; runtime unlock is used instead
-
+            // Set environment variable for current session using safe manager
+            env_manager.set_config_password(password.clone());
             // Reset password validator state on successful storage
             if let Ok(mut validator) = password_state.lock() {
                 validator.record_success();
@@ -74,13 +76,16 @@ pub async fn has_stored_password() -> Result<bool, String> {
 
 /// Remove the stored config password
 #[tauri::command]
-pub async fn remove_config_password() -> Result<(), String> {
+pub async fn remove_config_password(
+    env_manager: State<'_, SafeEnvironmentManager>,
+) -> Result<(), String> {
     info!("🗑️ Removing stored config password");
 
     let credential_store = CredentialStore::new();
     match credential_store.remove_config_password() {
         Ok(()) => {
-            // No environment to clear; runtime unlock is used instead
+            // Clear environment variable using safe manager
+            env_manager.clear_config_password();
 
             info!("✅ Password removed successfully");
             Ok(())
@@ -176,7 +181,50 @@ pub async fn reset_password_validator(
     }
 }
 
-// Removed env var helpers; using runtime RC unlock
+/// Set the config password environment variable (for current session)
+#[tauri::command]
+pub async fn set_config_password_env(
+    app: AppHandle,
+    env_manager: State<'_, SafeEnvironmentManager>,
+    password: String,
+) -> Result<(), String> {
+    debug!("🔧 Setting config password environment variable");
+
+    env_manager.set_config_password(password);
+    // Emit event so other parts (engine) can react and clear any
+    // startup password error state.
+    if let Err(e) = app.emit(
+        "rclone_engine",
+        serde_json::json!({ "status": "password_stored" }),
+    ) {
+        error!("Failed to emit password_stored event: {e}");
+    }
+
+    debug!("✅ Environment variable set");
+    Ok(())
+}
+
+/// Clear the config password environment variable
+#[tauri::command]
+pub async fn clear_config_password_env(
+    env_manager: State<'_, SafeEnvironmentManager>,
+) -> Result<(), String> {
+    debug!("🧹 Clearing config password environment variable");
+
+    env_manager.clear_config_password();
+
+    debug!("✅ Environment variable cleared");
+    Ok(())
+}
+
+/// Check if config password environment variable is set
+#[tauri::command]
+pub async fn has_config_password_env(
+    env_manager: State<'_, SafeEnvironmentManager>,
+) -> Result<bool, String> {
+    debug!("🔍 Checking config password environment variable");
+    Ok(env_manager.has_config_password())
+}
 
 /// Check if the rclone configuration is encrypted
 #[tauri::command]
@@ -239,6 +287,8 @@ pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
 pub async fn encrypt_config(
     app: AppHandle,
     password_state: State<'_, PasswordValidatorState>,
+    env_manager: State<'_, SafeEnvironmentManager>,
+
     password: String,
 ) -> Result<(), String> {
     use crate::core::check_binaries::read_rclone_path;
@@ -294,7 +344,8 @@ pub async fn encrypt_config(
             warn!("⚠️ Failed to store password after encryption: {:?}", e);
         }
 
-        // No environment propagation; runtime unlock is used instead
+        // Set environment variable for current session using safe manager
+        env_manager.set_config_password(password.clone());
 
         // Reset password validator state on successful encryption
         if let Ok(mut validator) = password_state.lock() {
@@ -321,7 +372,11 @@ pub async fn encrypt_config(
 
 /// Unencrypt (decrypt) the rclone configuration
 #[tauri::command]
-pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), String> {
+pub async fn unencrypt_config(
+    app: AppHandle,
+    env_manager: State<'_, SafeEnvironmentManager>,
+    password: String,
+) -> Result<(), String> {
     use crate::core::check_binaries::read_rclone_path;
     use std::process::Stdio;
     info!("🔓 Unencrypting rclone configuration (using password-command)");
@@ -375,7 +430,8 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
             );
         }
 
-        // No environment to clear; runtime unlock is used instead
+        // Clear environment variable using safe manager
+        env_manager.clear_config_password();
 
         info!("✅ Configuration unencrypted successfully");
         Ok(())
@@ -400,6 +456,8 @@ pub async fn unencrypt_config(app: AppHandle, password: String) -> Result<(), St
 pub async fn change_config_password(
     app: AppHandle,
     password_state: State<'_, PasswordValidatorState>,
+    env_manager: State<'_, SafeEnvironmentManager>,
+
     current_password: String,
     new_password: String,
 ) -> Result<(), String> {
@@ -407,15 +465,20 @@ pub async fn change_config_password(
 
     // Step 1: Remove encryption with current password
     debug!("🔓 Step 1: Removing current encryption");
-    unencrypt_config(app.clone(), current_password)
+    unencrypt_config(app.clone(), env_manager.clone(), current_password)
         .await
         .map_err(|e| format!("Failed to remove current encryption: {}", e))?;
 
     // Step 2: Encrypt with new password
     debug!("🔒 Step 2: Encrypting with new password");
-    encrypt_config(app.clone(), password_state.clone(), new_password.clone())
-        .await
-        .map_err(|e| format!("Failed to encrypt with new password: {}", e))?;
+    encrypt_config(
+        app.clone(),
+        password_state.clone(),
+        env_manager.clone(),
+        new_password.clone(),
+    )
+    .await
+    .map_err(|e| format!("Failed to encrypt with new password: {}", e))?;
 
     // Update stored password with new password
     let credential_store = CredentialStore::new();
@@ -423,7 +486,8 @@ pub async fn change_config_password(
         warn!("⚠️ Failed to store new password: {:?}", e);
     }
 
-    // No environment propagation; runtime unlock is used instead
+    // Update environment variable for current session using safe manager
+    env_manager.set_config_password(new_password.clone());
 
     // Reset password validator state on successful password change
     if let Ok(mut validator) = password_state.lock() {

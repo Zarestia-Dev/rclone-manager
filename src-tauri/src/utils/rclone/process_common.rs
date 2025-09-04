@@ -3,12 +3,12 @@ use serde_json::json;
 use std::io::{BufRead, BufReader};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
-use crate::core::security::CredentialStore;
+use crate::core::security::{CredentialStore, SafeEnvironmentManager};
 
 /// Common password error patterns used by both main engine and OAuth processes
 pub const PASSWORD_ERROR_PATTERNS: [&str; 6] = [
@@ -30,18 +30,33 @@ pub fn is_password_error(line: &str) -> bool {
 
 /// Setup environment variables for rclone processes (main engine or OAuth)
 pub fn setup_rclone_environment(
-    _app: &AppHandle,
-    _command: &mut std::process::Command,
+    app: &AppHandle,
+    command: &mut std::process::Command,
     process_type: &str,
 ) -> Result<(), String> {
     let credential_store = CredentialStore::new();
 
-    if let Ok(_password) = credential_store.get_config_password() {
+    if let Ok(password) = credential_store.get_config_password() {
         info!(
-            "🔑 Password found in keychain for {} — using RC runtime unlock, not env",
+            "🔑 Using stored rclone config password for {} process",
             process_type
         );
-        // Do not set RCLONE_CONFIG_PASS. Unlock is handled via RC API at runtime.
+
+        if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
+            env_manager.set_config_password(password.clone());
+
+            // Set rclone environment variables from our safe manager
+            let env_vars = env_manager.get_env_vars();
+            for (key, value) in env_vars {
+                command.env(key, value);
+            }
+        } else {
+            warn!(
+                "⚠️ SafeEnvironmentManager not available in app state, setting password directly"
+            );
+            // Fallback: set the password directly as environment variable
+            command.env("RCLONE_CONFIG_PASS", password);
+        }
     } else {
         info!("ℹ️ No stored password found for {} process", process_type);
     }
@@ -97,18 +112,11 @@ pub fn spawn_stderr_monitor(
 
         std::thread::spawn(move || {
             let reader = BufReader::new(stderr);
-            // Monitor behavior:
-            // - Engine: monitor for the lifetime of the process (no timeout)
-            // - Others (e.g., OAuth): monitor for a limited time to catch early startup issues
             let start_time = Instant::now();
-            let monitor_timeout = if process_type == "Engine" {
-                None
-            } else {
-                Some(Duration::from_secs(30))
-            };
+            let monitor_timeout = Duration::from_secs(30);
 
             for line in reader.lines().map_while(Result::ok) {
-                if monitor_timeout.is_some_and(|timeout| start_time.elapsed() > timeout) {
+                if start_time.elapsed() > monitor_timeout {
                     info!(
                         "⏰ Stopping {} stderr monitoring after timeout",
                         process_type
@@ -131,7 +139,10 @@ pub fn spawn_stderr_monitor(
                     }
 
                     // Clear from environment manager too
-                    // Nothing to clear; runtime unlock is used instead
+                    if let Some(env_manager) = app_handle.try_state::<SafeEnvironmentManager>() {
+                        env_manager.clear_config_password();
+                        info!("🧹 Cleared password from environment manager");
+                    }
 
                     // Mark engine state if this is the main engine
                     if process_type == "Engine" {
