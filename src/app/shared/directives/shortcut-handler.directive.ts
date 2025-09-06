@@ -5,12 +5,12 @@ import { QuickAddRemoteComponent } from '../../features/modals/remote-management
 import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
 import { ExportModalComponent } from '../../features/modals/settings/export-modal/export-modal.component';
 import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
-import { STANDARD_MODAL_SIZE } from '../components/types';
 
 // Services
 import { WindowService } from '@app/services';
 import { RemoteManagementService } from '@app/services';
 import { NotificationService } from '../services/notification.service';
+import { STANDARD_MODAL_SIZE } from '@app/types';
 
 @Directive({
   selector: '[appShortcutHandler]',

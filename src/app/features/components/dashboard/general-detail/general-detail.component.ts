@@ -19,7 +19,7 @@ import {
   RemoteSettings,
   SENSITIVE_KEYS,
   SettingsPanelConfig,
-} from '../../../../shared/components/types';
+} from '@app/types';
 import {
   DiskUsagePanelComponent,
   JobsPanelComponent,

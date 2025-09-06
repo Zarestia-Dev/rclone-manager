@@ -9,7 +9,7 @@ import {
   Remote,
   RemoteActionProgress,
   RemoteCardVariant,
-} from '../../components/types';
+} from '@app/types';
 
 @Component({
   selector: 'app-remotes-panel',

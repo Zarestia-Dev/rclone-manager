@@ -51,7 +51,7 @@ import {
   SyncOperationType,
   TransferActivityPanelConfig,
   TransferFile,
-} from '../../../../shared/components/types';
+} from '@app/types';
 import {
   JobInfoPanelComponent,
   OperationControlComponent,

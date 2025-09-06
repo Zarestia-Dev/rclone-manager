@@ -11,11 +11,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import {
-  InstallationOptionsData,
-  PasswordLockoutStatus,
-  RepairData,
-} from '../../../shared/components/types';
+import { InstallationOptionsData, PasswordLockoutStatus, RepairData } from '@app/types';
 import { InstallationOptionsComponent } from '../../../shared/components/installation-options/installation-options.component';
 
 // Services

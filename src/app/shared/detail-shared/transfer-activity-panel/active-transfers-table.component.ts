@@ -4,9 +4,9 @@ import { MatTableModule } from '@angular/material/table';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { TransferFile } from '../../../shared/components/types';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
+import { TransferFile } from '@app/types';
 
 @Component({
   selector: 'app-active-transfers-table',

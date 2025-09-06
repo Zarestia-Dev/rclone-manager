@@ -154,7 +154,7 @@ pub struct RcApiEngine {
     /// (for example: rclone configuration password required). This is used
     /// to avoid emitting a spurious "ready" event when the binary will
     /// immediately stop after startup.
-    pub password_error_detected: bool,
+    pub password_error: bool,
     pub rclone_path: PathBuf,
     pub current_api_port: u16,
 }

@@ -1,7 +1,7 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { AppTab } from '../../components/types';
+import { AppTab } from '@app/types';
 
 @Component({
   selector: 'app-status-overview-panel',

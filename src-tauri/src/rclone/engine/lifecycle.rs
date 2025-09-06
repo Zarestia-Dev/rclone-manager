@@ -14,7 +14,10 @@ impl RcApiEngine {
 
         let app_handle = app.clone();
 
-        start(self, app);
+        // Test Config before starting
+        if self.validate_config_sync(app) {
+            start(self, app);
+        }
 
         thread::spawn(move || {
             while !app_handle.state::<RcloneState>().is_shutting_down() {
@@ -35,6 +38,11 @@ impl RcApiEngine {
                         engine.handle_invalid_path(&app_handle);
                         continue;
                     }
+
+                    // if engine.password_error {
+                    //     engine.test_config_and_password(&app_handle);
+                    //     continue;
+                    // }
 
                     if !engine.is_api_healthy() && !engine.should_exit {
                         debug!("🔄 Rclone API not healthy, attempting restart...");
@@ -68,6 +76,19 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
     // If engine is not running and updating is true, do not start
     if !engine.running && engine.updating {
         debug!("⏸️ Engine is in updating state, not starting until updating is false");
+        return;
+    }
+
+    if engine.password_error {
+        debug!("⏸️ Engine has password error, not starting until resolved");
+        app.emit(
+            "rclone_engine",
+            serde_json::json!({
+                "status": "password_error",
+                "message": "Rclone password is required"
+            }),
+        )
+        .ok();
         return;
     }
 

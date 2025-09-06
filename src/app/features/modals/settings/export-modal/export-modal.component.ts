@@ -19,7 +19,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Subject } from 'rxjs';
 
-import { ExportModalData, ExportOption, ExportType } from '../../../../shared/components/types';
+import { ExportModalData, ExportOption, ExportType } from '@app/types';
 import { AnimationsService } from '../../../../shared/services/animations.service';
 import { BackupRestoreService } from '@app/services';
 import { RemoteManagementService } from '@app/services';

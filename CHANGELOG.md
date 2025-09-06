@@ -5,7 +5,7 @@
 ### Added
 - Native console support for the native terminal. You can now open the remote configuration in the native terminal by clicking the "Remote Terminal" button in the top left add button. It will use the preferred terminal app from the settings. Also, you can set the preferred terminal app in the settings.
 
-- **Encrypted configuration file support**: Added comprehensive support for rclone encrypted configuration files. Need Rclone V1.71.0 or later.
+- **Encrypted configuration file support**: Added comprehensive support for rclone encrypted configuration files.
   - Automatic detection of encrypted config files
   - Secure password storage using system keyring/credential store
   - Password validation with lockout protection to prevent brute force attacks

@@ -4,12 +4,12 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { FormsModule } from '@angular/forms';
-import { Remote } from '../../shared/components/types';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
 // Services
 import { AnimationsService } from '../../shared/services/animations.service';
+import { Remote } from '@app/types';
 
 @Component({
   selector: 'app-sidebar',

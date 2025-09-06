@@ -80,7 +80,7 @@
                     @for (ex of q.Option?.Examples; track trackByValue($index, ex)) {
                       <mat-option [value]="ex.Value">
                         <div class="option-content">
-                          <span class="option-value">{{ ex.Help || ex.Value }}</span>
+                          <span class="option-value">{{ ex.Help || ex.Value }} </span>
                           @if (ex.Help && ex.Help !== ex.Value) {
                             <span class="option-hint">{{ ex.Value }}</span>
                           }
@@ -144,14 +144,6 @@
           ></mat-icon>
           <span>{{ canceling ? 'Processing...' : 'Continue' }}</span>
         </button>
-
-        <!-- Progress indicator for canceling state -->
-        @if (canceling) {
-          <div class="status-indicator" role="status" aria-live="polite">
-            <mat-icon class="status-icon spinning" svgIcon="refresh"></mat-icon>
-            <span class="status-text">Processing your response...</span>
-          </div>
-        }
       </div>
     </div>
   </div>

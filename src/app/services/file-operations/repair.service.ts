@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { RepairData } from '../../shared/components/types';
+import { RepairData } from '@app/types';
 
 /**
  * Service for handling repair operations

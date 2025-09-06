@@ -9,8 +9,7 @@ import {
   MatBottomSheetRef,
 } from '@angular/material/bottom-sheet';
 import { TabsButtonsComponent } from './layout/tabs-buttons/tabs-buttons.component';
-import { RepairData } from './shared/components/types';
-import { AppTab, RepairSheetType } from '@app/types';
+import { AppTab, RepairData, RepairSheetType } from '@app/types';
 import { RepairSheetComponent } from './features/components/repair-sheet/repair-sheet.component';
 import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
 import { BannerComponent } from './layout/banners/banner.component';
@@ -110,6 +109,8 @@ export class AppComponent implements OnInit, OnDestroy {
       .subscribe({
         next: async event => {
           try {
+            console.log('Rclone engine event received:', event);
+
             await this.handleRcloneEngineEvent(event as RcloneEngineEvent);
           } catch (error) {
             console.error('Error in Rclone engine event handler:', error);
@@ -199,11 +200,9 @@ export class AppComponent implements OnInit, OnDestroy {
           }
           break;
 
-        case 'error':
-          if (this.isPasswordErrorEvent(event)) {
-            console.log('🔑 Password required detected from engine event');
-            await this.handlePasswordRequired();
-          }
+        case 'password_error':
+          console.log('🔑 Password required detected from engine event');
+          await this.handlePasswordRequired();
           break;
 
         case 'ready':
@@ -223,30 +222,25 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
-  private isPasswordErrorEvent(event: RcloneEngineEvent): boolean {
-    // Rely on the backend's error classification
-    return event.status === 'error' && event.error_type === 'password_required';
-  }
-
   private async handleRcloneOAuthEvent(event: RcloneEngineEvent): Promise<void> {
     console.log('OAuth event received:', event);
 
     try {
       // Handle different OAuth event types
       switch (event.status) {
-        case 'error':
-          if (event.error_type === 'password_required') {
-            console.log('🔑 OAuth password error detected:', event.message);
-            await this.handlePasswordRequired();
-          } else if (event.error_type === 'spawn_failed') {
-            console.error('🚫 OAuth process failed to start:', event.message);
-            // Could show a notification or repair sheet for OAuth spawn failures
-          } else if (event.error_type === 'startup_timeout') {
-            console.error('⏰ OAuth process startup timeout:', event.message);
-            // Could show a notification or repair sheet for OAuth timeouts
-          } else {
-            console.warn('Unknown OAuth error:', event.message);
-          }
+        case 'password_error':
+          console.log('🔑 OAuth password error detected:', event.message);
+          await this.handlePasswordRequired();
+          break;
+
+        case 'spawn_failed':
+          console.error('🚫 OAuth process failed to start:', event.message);
+          // Could show a notification or repair sheet for OAuth spawn failures
+          break;
+
+        case 'startup_timeout':
+          console.error('⏰ OAuth process startup timeout:', event.message);
+          // Could show a notification or repair sheet for OAuth timeouts
           break;
 
         case 'success':
@@ -257,6 +251,8 @@ export class AppComponent implements OnInit, OnDestroy {
           // Log unknown OAuth events for debugging
           if (event.status) {
             console.log(`Unhandled OAuth event status: ${event.status}`);
+          } else {
+            console.warn('Unknown OAuth error:', event.message);
           }
           break;
       }

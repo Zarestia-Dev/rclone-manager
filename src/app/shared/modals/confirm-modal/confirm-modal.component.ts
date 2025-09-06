@@ -2,7 +2,7 @@ import { Component, HostListener, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { ConfirmDialogData } from '../../components/types';
+import { ConfirmDialogData } from '@app/types';
 
 @Component({
   selector: 'app-confirm-modal',

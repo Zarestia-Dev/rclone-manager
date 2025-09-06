@@ -19,7 +19,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { LogContext, RemoteLogEntry } from '../../../../shared/components/types';
+import { LogContext, RemoteLogEntry } from '@app/types';
 
 import { LoggingService } from '@app/services';
 

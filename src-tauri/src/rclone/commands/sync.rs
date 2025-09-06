@@ -284,9 +284,24 @@ pub struct BisyncParams {
     pub remote_name: String,
     pub source: String,
     pub dest: String,
+    pub dry_run: Option<bool>,
+    pub resync: bool,
+    pub check_access: Option<bool>,
+    pub check_filename: Option<String>,
+    pub max_delete: Option<i64>,
+    pub force: Option<bool>,
+    pub check_sync: Option<String>, // "true", "false", or "only"
+    pub create_empty_src_dirs: Option<bool>,
+    pub remove_empty_dirs: Option<bool>,
+    pub filters_file: Option<String>,
+    pub ignore_listing_checksum: Option<bool>,
+    pub resilient: Option<bool>,
+    pub workdir: Option<String>,
+    pub backupdir1: Option<String>,
+    pub backupdir2: Option<String>,
+    pub no_cleanup: Option<bool>,
     pub bisync_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
-    pub resync: bool,
 }
 
 #[tauri::command]
@@ -304,21 +319,114 @@ pub async fn start_bisync(
             params.source, params.dest
         ),
         Some(json!({
-            "path1": params.source,
-            "path2": params.dest,
+            "source": params.source,
+            "destination": params.dest,
+            "dry_run": params.dry_run,
+            "resync": params.resync,
+            "check_access": params.check_access,
+            "check_filename": params.check_filename,
+            "max_delete": params.max_delete,
+            "force": params.force,
+            "check_sync": params.check_sync,
+            "create_empty_src_dirs": params.create_empty_src_dirs,
+            "remove_empty_dirs": params.remove_empty_dirs,
+            "filters_file": params.filters_file,
+            "ignore_listing_checksum": params.ignore_listing_checksum,
+            "resilient": params.resilient,
+            "workdir": params.workdir,
+            "backupdir1": params.backupdir1,
+            "backupdir2": params.backupdir2,
+            "no_cleanup": params.no_cleanup,
             "bisync_options": params.bisync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
-            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
-            "resync": params.resync
+            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
         })),
     )
     .await;
 
     // Construct the JSON body
     let mut body = Map::new();
-    body.insert("path1".to_string(), Value::String(params.source.clone()));
-    body.insert("path2".to_string(), Value::String(params.dest.clone()));
+    body.insert("srcFs".to_string(), Value::String(params.source.clone()));
+    body.insert("dstFs".to_string(), Value::String(params.dest.clone()));
     body.insert("_async".to_string(), Value::Bool(true));
     body.insert("resync".to_string(), Value::Bool(params.resync));
+    body.insert(
+        "createEmptySrcDirs".to_string(),
+        Value::Bool(params.create_empty_src_dirs.unwrap_or(false)),
+    );
+    body.insert(
+        "noCleanup".to_string(),
+        Value::Bool(params.no_cleanup.unwrap_or(false)),
+    );
+    body.insert(
+        "dryRun".to_string(),
+        Value::Bool(params.dry_run.unwrap_or(false)),
+    );
+    body.insert(
+        "checkAccess".to_string(),
+        Value::Bool(params.check_access.unwrap_or(false)),
+    );
+    body.insert(
+        "checkFilename".to_string(),
+        params
+            .check_filename
+            .as_ref()
+            .map_or(Value::Null, |s| Value::String(s.clone())),
+    );
+    body.insert(
+        "maxDelete".to_string(),
+        Value::Number(params.max_delete.unwrap_or(0).into()),
+    );
+    body.insert(
+        "force".to_string(),
+        Value::Bool(params.force.unwrap_or(false)),
+    );
+    body.insert(
+        "checkSync".to_string(),
+        params
+            .check_sync
+            .as_ref()
+            .map_or(Value::Null, |s| Value::String(s.clone())),
+    );
+    body.insert(
+        "filtersFile".to_string(),
+        params
+            .filters_file
+            .as_ref()
+            .map_or(Value::Null, |s| Value::String(s.clone())),
+    );
+    body.insert(
+        "ignoreListingChecksum".to_string(),
+        Value::Bool(params.ignore_listing_checksum.unwrap_or(false)),
+    );
+    body.insert(
+        "resilient".to_string(),
+        Value::Bool(params.resilient.unwrap_or(false)),
+    );
+    body.insert(
+        "workDir".to_string(),
+        params
+            .workdir
+            .as_ref()
+            .map_or(Value::Null, |s| Value::String(s.clone())),
+    );
+    body.insert(
+        "backupDir1".to_string(),
+        params
+            .backupdir1
+            .as_ref()
+            .map_or(Value::Null, |s| Value::String(s.clone())),
+    );
+    body.insert(
+        "backupDir2".to_string(),
+        params
+            .backupdir2
+            .as_ref()
+            .map_or(Value::Null, |s| Value::String(s.clone())),
+    );
+    body.insert(
+        "noCleanup".to_string(),
+        Value::Bool(params.no_cleanup.unwrap_or(false)),
+    );
 
     if let Some(opts) = params.bisync_options {
         body.insert(

@@ -10,7 +10,7 @@ use crate::{
         },
         rclone::{
             endpoints::{EndpointHelper, core},
-            process_common::{create_rclone_command, spawn_stderr_monitor},
+            process_common::create_rclone_command,
         },
         types::all_types::RcApiEngine,
     },
@@ -39,18 +39,11 @@ impl RcApiEngine {
                 }
             };
 
-        // Override stdout for the main engine to capture output
-        engine_app.stdout(std::process::Stdio::piped());
-
         match engine_app.spawn() {
             Ok(child) => {
                 info!("✅ Rclone process spawned successfully");
 
-                // Start monitoring stderr using shared utility
-                let monitored_child =
-                    spawn_stderr_monitor(child, app.clone(), "rclone_engine", "Engine");
-
-                Ok(monitored_child)
+                Ok(child)
             }
             Err(e) => {
                 error!("❌ Failed to spawn Rclone process: {e}");

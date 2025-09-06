@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { ConfirmModalComponent } from '../modals/confirm-modal/confirm-modal.component';
-import { ConfirmDialogData } from '../components/types';
+import { ConfirmDialogData } from '@app/types';
 
 /**
  * Service for handling user notifications and confirmations

@@ -9,8 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
-
-import { SENSITIVE_KEYS } from '../../../components/types';
+import { SENSITIVE_KEYS } from '@app/types';
 
 @Component({
   selector: 'app-remote-config-step',

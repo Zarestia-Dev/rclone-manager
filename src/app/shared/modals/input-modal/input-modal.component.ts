@@ -6,10 +6,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
-import { InputField } from '../../components/types';
 
 // Services
 import { FileSystemService } from '@app/services';
+import { InputField } from '@app/types';
 
 @Component({
   selector: 'app-input-modal',

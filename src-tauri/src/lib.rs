@@ -41,9 +41,10 @@ use crate::{
     },
     rclone::{
         commands::{
-            create_remote, delete_remote, mount_remote, quit_rclone_oauth, set_bandwidth_limit,
-            start_bisync, start_copy, start_move, start_sync, stop_job, unmount_all_remotes,
-            unmount_remote, update_remote,
+            continue_create_remote_interactive, create_remote, create_remote_interactive,
+            delete_remote, mount_remote, quit_rclone_oauth, set_bandwidth_limit, start_bisync,
+            start_copy, start_move, start_sync, stop_job, unmount_all_remotes, unmount_remote,
+            update_remote,
         },
         queries::{
             flags::{
@@ -302,6 +303,8 @@ pub fn run() {
             // Rclone Query API
             mount_remote,
             unmount_remote,
+            create_remote_interactive,
+            continue_create_remote_interactive,
             create_remote,
             update_remote,
             delete_remote,

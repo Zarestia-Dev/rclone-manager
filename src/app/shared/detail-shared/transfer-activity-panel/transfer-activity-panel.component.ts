@@ -20,8 +20,7 @@ import { MatSortModule } from '@angular/material/sort';
 import { MatChipsModule } from '@angular/material/chips';
 import { ActiveTransfersTableComponent } from './active-transfers-table.component';
 import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
-import { TransferFile } from '../../../shared/components/types';
-import { CompletedTransfer, TransferActivityPanelConfig } from '../../types';
+import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '../../types';
 import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
 @Component({

@@ -210,13 +210,6 @@
   &:hover {
     box-shadow: var(--shadow-elevated);
   }
-
-  &:focus-within {
-    border-color: var(--primary-color);
-    box-shadow:
-      var(--shadow-elevated),
-      0 0 0 3px rgba(var(--primary-color-rgb), 0.1);
-  }
 }
 
 .input-header {
@@ -277,53 +270,6 @@
     margin-left: var(--space-sm);
     color: var(--app-text-color);
     transition: var(--transition-fast);
-  }
-}
-
-// Form Fields
-.input-field {
-  width: 100%;
-
-  .mat-mdc-form-field-wrapper {
-    .mat-mdc-form-field-flex {
-      .mat-mdc-form-field-outline {
-        .mat-mdc-form-field-outline-start,
-        .mat-mdc-form-field-outline-end {
-          border-color: var(--border-color);
-          transition: var(--transition-fast);
-        }
-
-        .mat-mdc-form-field-outline-thick {
-          .mat-mdc-form-field-outline-start,
-          .mat-mdc-form-field-outline-end {
-            border-color: var(--primary-color);
-            border-width: 2px;
-          }
-        }
-      }
-    }
-  }
-
-  &.mat-focused {
-    .mat-mdc-form-field-outline {
-      .mat-mdc-form-field-outline-thick {
-        .mat-mdc-form-field-outline-start,
-        .mat-mdc-form-field-outline-end {
-          border-color: var(--primary-color) !important;
-        }
-      }
-    }
-  }
-
-  .mat-mdc-form-field-error {
-    color: var(--warn-color);
-    font-size: var(--font-size-xs);
-  }
-
-  .mat-mdc-form-field-hint {
-    color: var(--secondary-text-color);
-    font-size: var(--font-size-xs);
-    opacity: 0.8;
   }
 }
 
@@ -677,15 +623,4 @@
   .continue-button:hover {
     transform: none;
   }
-}
-
-// Focus visible styles for keyboard navigation
-.continue-button:focus-visible {
-  outline: 3px solid rgba(var(--primary-color-rgb), 0.5);
-  outline-offset: 2px;
-}
-
-.input-card:focus-within {
-  outline: 2px solid rgba(var(--primary-color-rgb), 0.3);
-  outline-offset: 1px;
 }

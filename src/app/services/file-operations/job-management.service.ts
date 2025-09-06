@@ -1,13 +1,13 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { JobInfo } from '../../shared/components/types';
 import {
   BisyncOptions,
   BisyncParams,
   CopyOptions,
   CopyParams,
   FilterOptions,
+  JobInfo,
   MoveOptions,
   MoveParams,
   SyncOptions,

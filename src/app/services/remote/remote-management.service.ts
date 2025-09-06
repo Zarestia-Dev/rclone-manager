@@ -199,7 +199,7 @@ export class RemoteManagementService extends TauriBaseService {
     parameters?: Record<string, unknown>,
     opt?: Record<string, unknown>
   ): Promise<RcConfigQuestionResponse> {
-    return this.invokeCommand('start_remote_config_noninteractive', {
+    return this.invokeCommand('create_remote_interactive', {
       name,
       // Send both casing variants for compatibility with different backend builds
       rclone_type: type,
@@ -219,7 +219,7 @@ export class RemoteManagementService extends TauriBaseService {
     parameters?: Record<string, unknown>,
     opt?: Record<string, unknown>
   ): Promise<RcConfigQuestionResponse> {
-    return this.invokeCommand('continue_remote_config_noninteractive', {
+    return this.invokeCommand('continue_create_remote_interactive', {
       name,
       // Send both casing variants for compatibility
       state_token: state,

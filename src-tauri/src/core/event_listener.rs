@@ -75,8 +75,6 @@ fn handle_rclone_api_ready(app: &AppHandle) {
     app.listen(events::RCLONE_ENGINE, move |event| {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            debug!("RCLONE_ENGINE event received! Payload: {:?}", event.payload());
-
             // Parse the payload as JSON
             if let Ok(payload) = parse_payload::<serde_json::Value>(Some(event.payload())) {
                 match payload.get("status").and_then(|s| s.as_str()) {
@@ -88,7 +86,6 @@ fn handle_rclone_api_ready(app: &AppHandle) {
                         refresh_and_update_tray(app, 0).await;
                     }
                     Some("password_stored") => {
-                        debug!("RCLONE_ENGINE password_stored event received - clearing engine password error flag");
                         // Clear the engine flag and attempt a restart if engine not running
                         tauri::async_runtime::spawn_blocking(move || {
                             let mut engine = match ENGINE.lock() {
@@ -96,7 +93,7 @@ fn handle_rclone_api_ready(app: &AppHandle) {
                                 Err(poisoned) => poisoned.into_inner(),
                             };
 
-                            engine.password_error_detected = false;
+                            engine.password_error = false;
                         });
                     }
                     Some("error") => {

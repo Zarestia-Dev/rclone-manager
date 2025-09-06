@@ -17,10 +17,7 @@ use crate::{
     utils::{
         rclone::{
             endpoints::{EndpointHelper, config, core},
-            process_common::{
-                create_rclone_command, emit_spawn_error, emit_success, emit_timeout_error,
-                spawn_stderr_monitor,
-            },
+            process_common::create_rclone_command,
         },
         types::all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
     },
@@ -114,7 +111,6 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
             Ok(cmd) => cmd,
             Err(e) => {
                 let error_msg = format!("Failed to create OAuth command: {e}");
-                emit_spawn_error(app, "rclone_oauth", &error_msg);
                 return Err(RcloneError::OAuthError(error_msg));
             }
         };
@@ -123,16 +119,12 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
         let error_msg = format!(
             "Failed to start Rclone OAuth process: {e}. Ensure Rclone is installed and in PATH."
         );
-        emit_spawn_error(app, "rclone_oauth", &error_msg);
         RcloneError::OAuthError(error_msg)
     })?;
 
     info!("✅ Rclone OAuth process spawned successfully");
 
-    // Start monitoring stderr using shared utility
-    let monitored_process = spawn_stderr_monitor(process, app.clone(), "rclone_oauth", "OAuth");
-
-    *guard = Some(monitored_process);
+    *guard = Some(process);
 
     // Wait for process to start with timeout
     let start_time = Instant::now();
@@ -143,15 +135,12 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
             .await
             .is_ok()
         {
-            let success_msg = format!("OAuth process started successfully on port {port}");
-            emit_success(app, "rclone_oauth", &success_msg);
             return Ok(());
         }
         sleep(Duration::from_millis(100)).await;
     }
 
     let timeout_error = format!("Timeout waiting for OAuth process to start on port {port}");
-    emit_timeout_error(app, "rclone_oauth", &timeout_error);
     Err(RcloneError::OAuthError(timeout_error))
 }
 

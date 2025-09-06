@@ -33,7 +33,7 @@ import {
   RemoteSettings,
   STANDARD_MODAL_SIZE,
   SyncOperationType,
-} from '../shared/components/types';
+} from '@app/types';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { SidebarComponent } from '../layout/sidebar/sidebar.component';
 import { GeneralDetailComponent } from '../features/components/dashboard/general-detail/general-detail.component';

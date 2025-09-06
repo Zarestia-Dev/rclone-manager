@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { RcloneInfo } from '../../shared/components/types';
+import { RcloneInfo } from '@app/types';
 
 /**
  * Service for system information and rclone engine management

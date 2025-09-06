@@ -1,6 +1,6 @@
 import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { AppTab } from '../../../shared/components/types';
+import { AppTab } from '@app/types';
 
 @Component({
   selector: 'app-overview-header',

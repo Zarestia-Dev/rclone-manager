@@ -7,8 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSortModule } from '@angular/material/sort';
-import { JobInfo, PrimaryActionType } from '../../../shared/components/types';
-import { JobsPanelConfig } from '../../types';
+import { JobInfo, JobsPanelConfig, PrimaryActionType } from '../../types';
 
 @Component({
   selector: 'app-jobs-panel',
