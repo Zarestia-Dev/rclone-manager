@@ -8,7 +8,10 @@ use tauri_plugin_opener::OpenerExt;
 use crate::{
     core::settings::remote::manager::save_remote_settings,
     rclone::{
-        commands::{mount_remote, start_copy, start_sync, stop_job, unmount_remote},
+        commands::{
+            mount_remote, start_bisync, start_copy, start_move, start_sync, stop_job,
+            unmount_remote,
+        },
         state::{CACHE, JOB_CACHE},
     },
     utils::{
@@ -548,3 +551,247 @@ pub fn handle_browse_remote(app: &AppHandle, id: &str) {
 //             });
 //     });
 // }
+
+pub fn handle_move_remote(app: AppHandle, id: &str) {
+    let remote_name = id.replace("move-", "");
+    tauri::async_runtime::spawn(async move {
+        // Load settings with proper error handling
+        let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
+            Some(s) => s,
+            _ => {
+                error!("🚨 Remote {remote_name} not found in settings");
+                return;
+            }
+        };
+
+        // Extract move options and source/dest paths
+        let move_config = settings.get("moveConfig").cloned().unwrap_or_default();
+        let source_path = move_config
+            .get("source")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let dest_path = move_config
+            .get("dest")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        if source_path.is_empty() || dest_path.is_empty() {
+            warn!("⚠️ Source or destination path is empty for move operation on {remote_name}");
+            notify(
+                &app,
+                "Move Failed",
+                &format!("Source or destination path is not configured for {remote_name}"),
+            );
+            return;
+        }
+
+        // Extract move options
+        let move_options = move_config
+            .get("options")
+            .and_then(|v| v.as_object())
+            .map(|obj| {
+                obj.iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect::<HashMap<String, serde_json::Value>>()
+            });
+
+        let state = app.state();
+        let move_params = crate::rclone::commands::MoveParams {
+            source: source_path.clone(),
+            dest: dest_path.clone(),
+            remote_name: remote_name.clone(),
+            create_empty_src_dirs: false,
+            delete_empty_src_dirs: false,
+            move_options,
+            filter_options: None,
+        };
+
+        info!("🔄 Starting move for {remote_name}: {source_path} -> {dest_path}");
+        match start_move(app.clone(), move_params, state).await {
+            Ok(_) => {
+                info!("✅ Move started for {remote_name}");
+                notify(
+                    &app,
+                    "Move Started",
+                    &format!("Move operation started for {remote_name}"),
+                );
+                CACHE.refresh_all(app).await;
+            }
+            Err(err) => {
+                error!("🚨 Failed to start move for {remote_name}: {err}");
+                notify(
+                    &app,
+                    "Move Failed",
+                    &format!("Failed to start move for {remote_name}: {err}"),
+                );
+            }
+        }
+    });
+}
+
+pub fn handle_bisync_remote(app: AppHandle, id: &str) {
+    let remote_name = id.replace("bisync-", "");
+    tauri::async_runtime::spawn(async move {
+        // Load settings with proper error handling
+        let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
+            Some(s) => s,
+            _ => {
+                error!("🚨 Remote {remote_name} not found in settings");
+                return;
+            }
+        };
+
+        // Extract bisync options and source/dest paths
+        let bisync_config = settings.get("bisyncConfig").cloned().unwrap_or_default();
+        let source_path = bisync_config
+            .get("source")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let dest_path = bisync_config
+            .get("dest")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        if source_path.is_empty() || dest_path.is_empty() {
+            warn!("⚠️ Source or destination path is empty for bisync operation on {remote_name}");
+            notify(
+                &app,
+                "BiSync Failed",
+                &format!("Source or destination path is not configured for {remote_name}"),
+            );
+            return;
+        }
+
+        // Extract bisync options
+        let bisync_options = bisync_config
+            .get("options")
+            .and_then(|v| v.as_object())
+            .map(|obj| {
+                obj.iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect::<HashMap<String, serde_json::Value>>()
+            });
+
+        let state = app.state();
+        let bisync_params = crate::rclone::commands::BisyncParams {
+            source: source_path.clone(),
+            dest: dest_path.clone(),
+            remote_name: remote_name.clone(),
+            dry_run: Some(false),
+            resync: false,
+            check_access: Some(false),
+            check_filename: None,
+            max_delete: Some(0),
+            force: Some(false),
+            check_sync: None,
+            create_empty_src_dirs: Some(false),
+            remove_empty_dirs: Some(false),
+            filters_file: None,
+            ignore_listing_checksum: Some(false),
+            resilient: Some(false),
+            workdir: None,
+            backupdir1: None,
+            backupdir2: None,
+            no_cleanup: Some(false),
+            bisync_options,
+            filter_options: None,
+        };
+
+        info!("🔄 Starting bisync for {remote_name}: {source_path} <-> {dest_path}");
+        match start_bisync(app.clone(), bisync_params, state).await {
+            Ok(_) => {
+                info!("✅ BiSync started for {remote_name}");
+                notify(
+                    &app,
+                    "BiSync Started",
+                    &format!("BiSync operation started for {remote_name}"),
+                );
+                CACHE.refresh_all(app).await;
+            }
+            Err(err) => {
+                error!("🚨 Failed to start bisync for {remote_name}: {err}");
+                notify(
+                    &app,
+                    "BiSync Failed",
+                    &format!("Failed to start bisync for {remote_name}: {err}"),
+                );
+            }
+        }
+    });
+}
+
+pub fn handle_stop_move(app: AppHandle, id: &str) {
+    let remote_name = id.replace("stop_move-", "");
+    tauri::async_runtime::spawn(async move {
+        info!("⏹️ Stopping move for {remote_name}");
+
+        let active_jobs = JOB_CACHE.get_active_jobs().await;
+        if let Some(job) = active_jobs
+            .iter()
+            .find(|j| j.remote_name == remote_name && j.job_type == "move")
+        {
+            let state = app.state();
+            match stop_job(app.clone(), job.jobid, "move".to_string(), state).await {
+                Ok(_) => {
+                    info!("✅ Move stopped for {remote_name}");
+                    notify(
+                        &app,
+                        "Move Stopped",
+                        &format!("Move stopped for {remote_name}"),
+                    );
+                    CACHE.refresh_all(app).await;
+                }
+                Err(err) => {
+                    error!("🚨 Failed to stop move for {remote_name}: {err}");
+                    notify(
+                        &app,
+                        "Stop Failed",
+                        &format!("Failed to stop move for {remote_name}: {err}"),
+                    );
+                }
+            }
+        } else {
+            warn!("⚠️ No active move job found for {remote_name}");
+        }
+    });
+}
+
+pub fn handle_stop_bisync(app: AppHandle, id: &str) {
+    let remote_name = id.replace("stop_bisync-", "");
+    tauri::async_runtime::spawn(async move {
+        info!("⏹️ Stopping bisync for {remote_name}");
+
+        let active_jobs = JOB_CACHE.get_active_jobs().await;
+        if let Some(job) = active_jobs
+            .iter()
+            .find(|j| j.remote_name == remote_name && j.job_type == "bisync")
+        {
+            let state = app.state();
+            match stop_job(app.clone(), job.jobid, "bisync".to_string(), state).await {
+                Ok(_) => {
+                    info!("✅ BiSync stopped for {remote_name}");
+                    notify(
+                        &app,
+                        "BiSync Stopped",
+                        &format!("BiSync stopped for {remote_name}"),
+                    );
+                    CACHE.refresh_all(app).await;
+                }
+                Err(err) => {
+                    error!("🚨 Failed to stop bisync for {remote_name}: {err}");
+                    notify(
+                        &app,
+                        "Stop Failed",
+                        &format!("Failed to stop bisync for {remote_name}: {err}"),
+                    );
+                }
+            }
+        } else {
+            warn!("⚠️ No active bisync job found for {remote_name}");
+        }
+    });
+}

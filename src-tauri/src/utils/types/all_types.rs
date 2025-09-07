@@ -157,6 +157,7 @@ pub struct RcApiEngine {
     pub password_error: bool,
     pub rclone_path: PathBuf,
     pub current_api_port: u16,
+    pub config_encrypted: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

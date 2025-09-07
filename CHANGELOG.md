@@ -10,9 +10,6 @@
   - Secure password storage using system keyring/credential store
   - Password validation with lockout protection to prevent brute force attacks
   - Encrypt/decrypt configuration operations
-  - Change configuration password functionality using a reliable two-step approach
-  - Environment variable management for config passwords
-  - Cross-platform password command handling
 
 - Implemented the `bisync` and `move` operations for remotes.
   - Bisync: This operation synchronizes two remotes in both directions, ensuring that changes made in either remote are reflected in the other.
@@ -20,7 +17,7 @@
 - Added other configs for operations. (e.g. mountType, createEmptySrcDirs etc.)
 - Added the `mountType` option for the mount type selection. It can be set to `mount`, `mount2`, or `NfsMount`. This types comes from the Rclone API. Default is `mount` (API handle this automatically).
 
-- Added primary action selection - choose up to 3 preferred actions (mount/sync/copy/etc.) per remote for quick access and overview visibility. You can select and deselect actions in the remote general details view.
+- Added primary action selection - choose up to 3 preferred actions (mount/sync/copy/etc.) per remote for quick access and overview visibility. You can select and deselect actions in the remote general details view. This also affects the tray menu.
 
 - Added interactive config support to Detailed Remote Modal. So we can make the post remote configuration. (Like Microsoft OneDrive)
 

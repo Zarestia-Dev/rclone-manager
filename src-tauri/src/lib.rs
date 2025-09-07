@@ -16,11 +16,12 @@ use crate::{
         initialization::{async_startup, init_rclone_state, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
         security::{
-            change_config_password, clear_config_password_env, encrypt_config, get_config_password,
+            change_config_password, clear_config_password_env, clear_encryption_cache,
+            encrypt_config, get_cached_encryption_status, get_config_password,
             get_password_lockout_status, has_config_password_env, has_stored_password,
-            is_config_encrypted, remove_config_password, reset_password_validator,
-            set_config_password_env, store_config_password, unencrypt_config,
-            validate_rclone_password,
+            is_config_encrypted, is_config_encrypted_cached, remove_config_password,
+            reset_password_validator, set_config_password_env, store_config_password,
+            unencrypt_config, validate_rclone_password,
         },
         settings::{
             backup::{
@@ -33,8 +34,9 @@ use crate::{
             remote::manager::{delete_remote_settings, get_remote_settings, save_remote_settings},
         },
         tray::actions::{
-            handle_browse_remote, handle_copy_remote, handle_mount_remote, handle_stop_all_jobs,
-            handle_stop_copy, handle_stop_sync, handle_sync_remote, handle_unmount_remote,
+            handle_bisync_remote, handle_browse_remote, handle_copy_remote, handle_mount_remote,
+            handle_move_remote, handle_stop_all_jobs, handle_stop_bisync, handle_stop_copy,
+            handle_stop_move, handle_stop_sync, handle_sync_remote, handle_unmount_remote,
             show_main_window,
         },
         ui::set_theme,
@@ -145,9 +147,19 @@ pub fn run() {
             app.manage(password_validator);
 
             // Initialize SafeEnvironmentManager for secure password handling
-            use crate::core::security::SafeEnvironmentManager;
+            use crate::core::security::{CredentialStore, SafeEnvironmentManager};
             let env_manager = SafeEnvironmentManager::new();
+
+            // Initialize CredentialStore once and manage as state
+            let credential_store = CredentialStore::new();
+
+            // Initialize with any stored credentials
+            if let Err(e) = env_manager.init_with_stored_credentials(&credential_store) {
+                error!("Failed to initialize environment manager with stored credentials: {e}");
+            }
+
             app.manage(env_manager);
+            app.manage(credential_store);
 
             // Load settings with better error handling
             let settings_json = tauri::async_runtime::block_on(load_settings(
@@ -158,12 +170,16 @@ pub fn run() {
             let settings: AppSettings = serde_json::from_value(settings_json["settings"].clone())
                 .map_err(|e| format!("Failed to parse settings: {e}"))?;
 
+            // Check if --tray argument is provided to override tray settings
+            let force_tray = std::env::args().any(|arg| arg == "--tray");
+            let tray_enabled = settings.general.tray_enabled || force_tray;
+
             app.manage(RcloneState {
                 client: reqwest::Client::new(),
                 // rclone_config_file: Arc::new(std::sync::RwLock::new(
                 //     settings.core.rclone_config_file.clone(),
                 // )),
-                tray_enabled: Arc::new(std::sync::RwLock::new(settings.general.tray_enabled)),
+                tray_enabled: Arc::new(std::sync::RwLock::new(tray_enabled)),
                 is_shutting_down: AtomicBool::new(false),
                 notifications_enabled: Arc::new(std::sync::RwLock::new(
                     settings.general.notifications,
@@ -259,8 +275,12 @@ pub fn run() {
             id if id.starts_with("unmount-") => handle_unmount_remote(app.clone(), id),
             id if id.starts_with("sync-") => handle_sync_remote(app.clone(), id),
             id if id.starts_with("copy-") => handle_copy_remote(app.clone(), id),
+            id if id.starts_with("move-") => handle_move_remote(app.clone(), id),
+            id if id.starts_with("bisync-") => handle_bisync_remote(app.clone(), id),
             id if id.starts_with("stop_sync-") => handle_stop_sync(app.clone(), id),
             id if id.starts_with("stop_copy-") => handle_stop_copy(app.clone(), id),
+            id if id.starts_with("stop_move-") => handle_stop_move(app.clone(), id),
+            id if id.starts_with("stop_bisync-") => handle_stop_bisync(app.clone(), id),
             id if id.starts_with("browse-") => handle_browse_remote(app, id),
             _ => {}
         })
@@ -370,6 +390,9 @@ pub fn run() {
             get_password_lockout_status,
             reset_password_validator,
             is_config_encrypted,
+            is_config_encrypted_cached,
+            get_cached_encryption_status,
+            clear_encryption_cache,
             encrypt_config,
             unencrypt_config,
             change_config_password,

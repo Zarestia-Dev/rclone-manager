@@ -12,6 +12,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { RclonePasswordService } from '@app/services';
@@ -29,6 +30,7 @@ import { LoadingStates, PasswordLockoutStatus, PasswordTab } from '@app/types';
     MatInputModule,
     MatFormFieldModule,
     MatIconModule,
+    MatProgressSpinnerModule,
   ],
   templateUrl: './password-manager-modal.component.html',
   styleUrls: ['./password-manager-modal.component.scss'],
@@ -70,8 +72,11 @@ export class PasswordManagerModalComponent implements OnInit {
   // Status flags
   hasStoredPassword = false;
   hasEnvPassword = false;
-  isConfigEncrypted: boolean | unknown = false;
+  isConfigEncrypted: boolean | null = null; // null = loading, true/false = actual state
   lockoutStatus: PasswordLockoutStatus | null = null;
+
+  // Loading state for initial data fetch
+  isInitialLoading = true;
 
   constructor() {
     this.overviewForm = this.createOverviewForm();
@@ -81,6 +86,19 @@ export class PasswordManagerModalComponent implements OnInit {
 
   get selectedTab(): PasswordTab['key'] {
     return this.tabs[this.selectedTabIndex]?.key || 'overview';
+  }
+
+  // Status helper getters
+  get isLoadingData(): boolean {
+    return this.isInitialLoading || this.isConfigEncrypted === null;
+  }
+
+  get isEncryptedConfig(): boolean {
+    return this.isConfigEncrypted === true;
+  }
+
+  get isUnencryptedConfig(): boolean {
+    return this.isConfigEncrypted === false;
   }
 
   // Form creation methods
@@ -201,7 +219,7 @@ export class PasswordManagerModalComponent implements OnInit {
   }
 
   // Core functionality
-  async validatePassword2(): Promise<void> {
+  async validatePassword(): Promise<void> {
     const passwordControl = this.overviewForm.get('password');
     if (!passwordControl?.valid || !passwordControl?.value) return;
 
@@ -231,12 +249,12 @@ export class PasswordManagerModalComponent implements OnInit {
       await this.passwordService.storePassword(passwordControl.value);
       this.resetPasswordForms();
       this.showSuccess('Password stored securely in system keychain');
+      await this.refreshStatus();
     } catch (error) {
       console.error('Failed to store password:', error);
       this.showError(`Failed to store password: ${this.getErrorMessage(error)}`);
     } finally {
       this.loading.isStoringPassword = false;
-      await this.refreshStatus();
     }
   }
 
@@ -245,12 +263,12 @@ export class PasswordManagerModalComponent implements OnInit {
     try {
       await this.passwordService.removeStoredPassword();
       this.showSuccess('Stored password removed from system keychain');
+      await this.refreshStatus();
     } catch (error) {
       console.error('Failed to remove password:', error);
       this.showError('Failed to remove stored password');
     } finally {
       this.loading.isRemovingPassword = false;
-      await this.refreshStatus();
     }
   }
 
@@ -263,6 +281,8 @@ export class PasswordManagerModalComponent implements OnInit {
     this.loading.isEncrypting = true;
     try {
       await this.passwordService.encryptConfig(passwordControl.value);
+      // Clear encryption cache since status changed
+      await this.passwordService.clearEncryptionCache();
       this.showSuccess('Configuration encrypted successfully');
       this.resetPasswordForms();
       await this.refreshStatus();
@@ -283,6 +303,8 @@ export class PasswordManagerModalComponent implements OnInit {
     this.loading.isUnencrypting = true;
     try {
       await this.passwordService.unencryptConfig(passwordControl.value);
+      // Clear encryption cache since status changed
+      await this.passwordService.clearEncryptionCache();
       this.showSuccess('Configuration unencrypted successfully');
       this.resetPasswordForms();
       await this.refreshStatus();
@@ -308,6 +330,8 @@ export class PasswordManagerModalComponent implements OnInit {
         currentPasswordControl.value,
         newPasswordControl.value
       );
+      // Clear encryption cache since password changed
+      await this.passwordService.clearEncryptionCache();
       this.showSuccess('Password changed successfully');
       this.resetPasswordForms();
       await this.refreshStatus();
@@ -327,10 +351,10 @@ export class PasswordManagerModalComponent implements OnInit {
       if (storedPassword) {
         await this.passwordService.setConfigPasswordEnv(storedPassword);
         this.showSuccess('Environment variable set');
+        await this.refreshStatus();
       } else {
         this.showError('No stored password found');
       }
-      await this.refreshStatus();
     } catch (error) {
       console.error('Failed to set environment variable:', error);
       this.showError('Failed to set environment variable');
@@ -361,7 +385,7 @@ export class PasswordManagerModalComponent implements OnInit {
       this.showSuccess('Security status reset');
       await this.refreshStatus();
     } catch (error) {
-      console.error(error);
+      console.error('Failed to reset lockout:', error);
       this.showError(this.getErrorMessage(error));
     } finally {
       this.loading.isResettingLockout = false;
@@ -371,16 +395,57 @@ export class PasswordManagerModalComponent implements OnInit {
   // Utility methods
   private async refreshStatus(): Promise<void> {
     try {
-      this.hasStoredPassword = await this.passwordService.hasStoredPassword();
-      this.hasEnvPassword = await this.passwordService.hasConfigPasswordEnv();
-      this.isConfigEncrypted = await this.passwordService.isConfigEncrypted();
-      this.lockoutStatus = await this.passwordService.getLockoutStatus();
+      // For initial load, show loading state
+      if (this.isInitialLoading) {
+        this.isConfigEncrypted = null; // null indicates loading
+      }
+
+      // First try to get cached encryption status for instant response
+      const cachedStatus = await this.passwordService.getCachedEncryptionStatus();
+      if (cachedStatus !== null && this.isInitialLoading) {
+        this.isConfigEncrypted = cachedStatus;
+        console.log('💾 Using cached encryption status for instant load:', cachedStatus);
+      }
+
+      // Set a reasonable timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Status check timeout')), 5000); // Reduced to 5 seconds
+      });
+
+      // Fetch all status information in parallel for better performance
+      const statusPromise = Promise.all([
+        this.passwordService.hasStoredPassword(),
+        this.passwordService.hasConfigPasswordEnv(),
+        this.passwordService.isConfigEncryptedCached(), // Always use cached version for better performance
+        this.passwordService.getLockoutStatus(),
+      ]);
+
+      const [hasStored, hasEnv, isEncrypted, lockout] = (await Promise.race([
+        statusPromise,
+        timeoutPromise,
+      ])) as [boolean, boolean, boolean, PasswordLockoutStatus | null];
+
+      this.hasStoredPassword = hasStored;
+      this.hasEnvPassword = hasEnv;
+      this.isConfigEncrypted = isEncrypted;
+      this.lockoutStatus = lockout;
 
       // Update form states after getting lockout status
       this.updateFormStatesBasedOnLockout();
     } catch (error) {
-      console.error(error);
-      this.showError(this.getErrorMessage(error));
+      console.error('Failed to refresh status:', error);
+
+      // Only show error if it's not a timeout and we don't have cached data
+      if (this.isConfigEncrypted === null) {
+        this.showError('Failed to load configuration status');
+        // Set safe defaults on error
+        this.isConfigEncrypted = false;
+      }
+
+      this.hasStoredPassword = false;
+      this.hasEnvPassword = false;
+    } finally {
+      this.isInitialLoading = false;
     }
   }
 
@@ -411,8 +476,30 @@ export class PasswordManagerModalComponent implements OnInit {
   // Lifecycle hooks
   async ngOnInit(): Promise<void> {
     this.onResize();
-    await this.refreshStatus();
+
+    // Try to load cached encryption status immediately for better UX
+    this.loadCachedStatusQuickly();
+
+    // Start loading full status in the background
+    this.refreshStatus().catch(error => {
+      console.error('Initial status load failed:', error);
+      this.isInitialLoading = false;
+    });
+
     this.updateFormStatesBasedOnLockout();
+  }
+
+  // Quick load cached status for instant UI updates
+  private async loadCachedStatusQuickly(): Promise<void> {
+    try {
+      const cachedStatus = await this.passwordService.getCachedEncryptionStatus();
+      if (cachedStatus !== null) {
+        this.isConfigEncrypted = cachedStatus;
+        console.log('🚀 Instant load with cached encryption status:', cachedStatus);
+      }
+    } catch (error) {
+      console.debug('No cached status available:', error);
+    }
   }
 
   // Update form disabled states based on lockout status
