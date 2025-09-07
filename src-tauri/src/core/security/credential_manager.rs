@@ -13,7 +13,7 @@ pub struct SafeEnvironmentManager {
     env_vars: Arc<Mutex<HashMap<String, String>>>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct CredentialStore {
     service_name: String,
 }
@@ -132,6 +132,33 @@ impl SafeEnvironmentManager {
     pub fn new() -> Self {
         Self {
             env_vars: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    /// Initialize with stored credentials from CredentialStore
+    pub fn init_with_stored_credentials(
+        &self,
+        credential_store: &CredentialStore,
+    ) -> Result<(), String> {
+        // Try to load stored password into environment manager
+        match credential_store.get_config_password() {
+            Ok(password) => {
+                self.set_config_password(password);
+                info!("✅ Initialized SafeEnvironmentManager with stored credentials");
+                Ok(())
+            }
+            Err(CredentialError::NotFound) => {
+                debug!("No stored credentials found during initialization");
+                Ok(())
+            }
+            Err(e) => {
+                warn!(
+                    "Failed to load stored credentials during initialization: {:?}",
+                    e
+                );
+                // Don't fail initialization if we can't load credentials
+                Ok(())
+            }
         }
     }
 

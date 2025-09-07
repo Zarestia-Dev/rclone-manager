@@ -64,8 +64,15 @@ pub async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) 
     CACHE.refresh_all(app_handle.clone()).await;
     debug!("🔄 Cache refreshed");
 
-    if settings.general.tray_enabled {
-        debug!("🧊 Setting up tray");
+    // Check if --tray argument is provided to override settings
+    let force_tray = std::env::args().any(|arg| arg == "--tray");
+
+    if settings.general.tray_enabled || force_tray {
+        if force_tray {
+            debug!("🧊 Setting up tray (forced by --tray argument)");
+        } else {
+            debug!("🧊 Setting up tray (enabled in settings)");
+        }
         if let Err(e) = setup_tray(app_handle.clone(), settings.core.max_tray_items).await {
             error!("Failed to setup tray: {e}");
         }

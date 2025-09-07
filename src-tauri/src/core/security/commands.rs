@@ -11,11 +11,11 @@ pub async fn store_config_password(
     app: AppHandle,
     password_state: State<'_, PasswordValidatorState>,
     env_manager: State<'_, SafeEnvironmentManager>,
+    credential_store: State<'_, CredentialStore>,
     password: String,
 ) -> Result<(), String> {
     info!("🔑 Storing rclone config password");
 
-    let credential_store = CredentialStore::new();
     match credential_store.store_config_password(&password) {
         Ok(()) => {
             // Set environment variable for current session using safe manager
@@ -45,10 +45,11 @@ pub async fn store_config_password(
 
 /// Retrieve the stored rclone config password
 #[tauri::command]
-pub async fn get_config_password() -> Result<String, String> {
+pub async fn get_config_password(
+    credential_store: State<'_, CredentialStore>,
+) -> Result<String, String> {
     debug!("🔍 Retrieving stored config password");
 
-    let credential_store = CredentialStore::new();
     match credential_store.get_config_password() {
         Ok(password) => {
             debug!("✅ Password retrieved successfully");
@@ -67,10 +68,11 @@ pub async fn get_config_password() -> Result<String, String> {
 
 /// Check if a config password is stored
 #[tauri::command]
-pub async fn has_stored_password() -> Result<bool, String> {
+pub async fn has_stored_password(
+    credential_store: State<'_, CredentialStore>,
+) -> Result<bool, String> {
     debug!("🔍 Checking if password is stored");
 
-    let credential_store = CredentialStore::new();
     Ok(credential_store.has_config_password())
 }
 
@@ -78,10 +80,10 @@ pub async fn has_stored_password() -> Result<bool, String> {
 #[tauri::command]
 pub async fn remove_config_password(
     env_manager: State<'_, SafeEnvironmentManager>,
+    credential_store: State<'_, CredentialStore>,
 ) -> Result<(), String> {
     info!("🗑️ Removing stored config password");
 
-    let credential_store = CredentialStore::new();
     match credential_store.remove_config_password() {
         Ok(()) => {
             // Clear environment variable using safe manager
@@ -227,58 +229,80 @@ pub async fn has_config_password_env(
 }
 
 /// Check if the rclone configuration is encrypted
+/// Get cached encryption status if available (faster, no I/O)
+#[tauri::command]
+pub fn get_cached_encryption_status() -> Option<bool> {
+    use crate::utils::rclone::process_common::get_cached_encryption_status;
+
+    debug!("⚡ Getting cached encryption status");
+    get_cached_encryption_status()
+}
+
+/// Clear cached encryption status (e.g., when config changes)
+#[tauri::command]
+pub fn clear_encryption_cache() {
+    use crate::utils::rclone::process_common::clear_encryption_cache;
+
+    debug!("🗑️ Clearing encryption cache");
+    clear_encryption_cache();
+}
+
+/// Check if config is encrypted (with caching for performance)
+#[tauri::command]
+pub async fn is_config_encrypted_cached(app: AppHandle) -> Result<bool, String> {
+    use crate::utils::rclone::process_common::get_cached_encryption_status;
+
+    debug!("🚀 Checking config encryption with cache");
+
+    // First try to get cached status
+    if let Some(cached_status) = get_cached_encryption_status() {
+        debug!("Using cached encryption status: {}", cached_status);
+        return Ok(cached_status);
+    }
+
+    // If not cached, fall back to full check
+    debug!("No cached status found, performing full encryption check");
+    is_config_encrypted(app).await
+}
+
 #[tauri::command]
 pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
     use crate::core::check_binaries::read_rclone_path;
     use std::process::Stdio;
-    use tokio::time;
 
-    debug!("🔍 Checking if rclone config is encrypted (using encryption check)");
+    debug!("🔍 Checking if rclone config is encrypted");
 
     let rclone_path = read_rclone_path(&app);
 
-    // Run 'rclone config encryption check' with RCLONE_CONFIG_PASS cleared
-    let mut cmd = tokio::process::Command::new(rclone_path);
-    cmd.args(["config", "encryption", "check"])
+    // Simple approach: try listremotes with --ask-password=false
+    // If encrypted: "unable to decrypt configuration and not allowed to ask for password"
+    // If not encrypted: succeeds and lists remotes
+    let output = tokio::process::Command::new(rclone_path)
+        .args(["listremotes", "--ask-password=false"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    // Remove RCLONE_CONFIG_PASS for this subprocess
-    cmd.env_remove("RCLONE_CONFIG_PASS");
+        .stderr(Stdio::piped())
+        .env_remove("RCLONE_CONFIG_PASS")
+        .output()
+        .await
+        .map_err(|e| format!("Failed to execute rclone listremotes: {e}"))?;
 
-    let result = time::timeout(std::time::Duration::from_secs(3), cmd.output()).await;
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    debug!("🔍 rclone listremotes stderr: {}", stderr.trim());
 
-    match result {
-        Ok(Ok(output)) => {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            debug!(
-                "✅ rclone config encryption check stdout: {}",
-                stdout.trim()
-            );
-            debug!(
-                "✅ rclone config encryption check stderr: {}",
-                stderr.trim()
-            );
-            // If stderr contains 'config file is NOT encrypted', config is NOT encrypted
-            if !output.status.success() && stderr.contains("config file is NOT encrypted") {
-                Ok(false)
-            } else {
-                // Otherwise, config is encrypted (prompt, hang, or other error)
-                Ok(true)
-            }
-        }
-        Ok(Err(e)) => {
-            error!("❌ Failed to execute rclone config encryption check: {e}");
-            Err(format!("Failed to check config encryption: {e}"))
-        }
-        Err(_timeout) => {
-            debug!(
-                "⏱️ rclone config encryption check timed out (likely waiting for password input)"
-            );
-            // Timeout indicates the command is waiting for password input = encrypted
-            Ok(true)
-        }
+    // Check for encryption error message
+    if stderr.contains("unable to decrypt configuration and not allowed to ask for password")
+        || stderr.contains("Failed to load config file") && stderr.contains("unable to decrypt")
+    {
+        debug!("🔒 Configuration is encrypted");
+        Ok(true)
+    } else if output.status.success() {
+        debug!("🔓 Configuration is NOT encrypted");
+        Ok(false)
+    } else {
+        // Other error - assume not encrypted if we can't determine
+        warn!("⚠️ Unexpected error checking encryption: {}", stderr);
+        Ok(false)
     }
 }
 
@@ -288,7 +312,7 @@ pub async fn encrypt_config(
     app: AppHandle,
     password_state: State<'_, PasswordValidatorState>,
     env_manager: State<'_, SafeEnvironmentManager>,
-
+    credential_store: State<'_, CredentialStore>,
     password: String,
 ) -> Result<(), String> {
     use crate::core::check_binaries::read_rclone_path;
@@ -339,7 +363,6 @@ pub async fn encrypt_config(
         || stdout.contains("Your configuration is encrypted")
     {
         // Store the password securely after successful encryption
-        let credential_store = CredentialStore::new();
         if let Err(e) = credential_store.store_config_password(&password) {
             warn!("⚠️ Failed to store password after encryption: {:?}", e);
         }
@@ -457,7 +480,7 @@ pub async fn change_config_password(
     app: AppHandle,
     password_state: State<'_, PasswordValidatorState>,
     env_manager: State<'_, SafeEnvironmentManager>,
-
+    credential_store: State<'_, CredentialStore>,
     current_password: String,
     new_password: String,
 ) -> Result<(), String> {
@@ -475,13 +498,13 @@ pub async fn change_config_password(
         app.clone(),
         password_state.clone(),
         env_manager.clone(),
+        credential_store.clone(),
         new_password.clone(),
     )
     .await
     .map_err(|e| format!("Failed to encrypt with new password: {}", e))?;
 
     // Update stored password with new password
-    let credential_store = CredentialStore::new();
     if let Err(e) = credential_store.store_config_password(&new_password) {
         warn!("⚠️ Failed to store new password: {:?}", e);
     }

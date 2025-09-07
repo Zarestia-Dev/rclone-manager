@@ -17,27 +17,33 @@ use crate::{
 };
 
 impl RcApiEngine {
-    pub fn spawn_process(&mut self, app: &AppHandle) -> Result<std::process::Child, String> {
+    pub async fn spawn_process(&mut self, app: &AppHandle) -> Result<std::process::Child, String> {
         let port = ENGINE_STATE.get_api().1;
         self.current_api_port = port;
 
-        let mut engine_app =
-            match create_rclone_command(self.rclone_path.to_str().unwrap(), port, app, "Engine") {
-                Ok(cmd) => cmd,
-                Err(e) => {
-                    let error_msg = format!("Failed to create engine command: {e}");
-                    error!("❌ {}", error_msg);
-                    let _ = app.emit(
-                        "rclone_engine",
-                        serde_json::json!({
-                            "status": "error",
-                            "message": error_msg,
-                            "error_type": "spawn_failed"
-                        }),
-                    );
-                    return Err(error_msg);
-                }
-            };
+        let mut engine_app = match create_rclone_command(
+            self.rclone_path.to_str().unwrap(),
+            port,
+            app,
+            "main_engine",
+        )
+        .await
+        {
+            Ok(cmd) => cmd,
+            Err(e) => {
+                let error_msg = format!("Failed to create engine command: {e}");
+                error!("❌ {}", error_msg);
+                let _ = app.emit(
+                    "rclone_engine",
+                    serde_json::json!({
+                        "status": "error",
+                        "message": error_msg,
+                        "error_type": "spawn_failed"
+                    }),
+                );
+                return Err(error_msg);
+            }
+        };
 
         match engine_app.spawn() {
             Ok(child) => {

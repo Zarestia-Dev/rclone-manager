@@ -116,8 +116,12 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
         error!("Failed to clean up port processes: {e}");
     }
 
-    match engine.spawn_process(app) {
-        Ok(child) => {
+    match tokio::runtime::Handle::try_current()
+        .map(|handle| handle.block_on(engine.spawn_process(app)))
+        .or_else(|_| {
+            tokio::runtime::Runtime::new().map(|rt| rt.block_on(engine.spawn_process(app)))
+        }) {
+        Ok(Ok(child)) => {
             // Store the process immediately so health checks can find it
             engine.process = Some(child);
 
@@ -150,13 +154,25 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 }
             }
         }
-        Err(e) => {
+        Ok(Err(e)) => {
             error!("❌ Failed to spawn Rclone process: {e}");
             if let Err(e) = app.emit(
                 "rclone_engine",
                 serde_json::json!({
                     "status": "error",
-                    "message": "Failed to spawn Rclone process: {e}"
+                    "message": format!("Failed to spawn Rclone process: {e}")
+                }),
+            ) {
+                error!("Failed to emit event: {e}");
+            }
+        }
+        Err(e) => {
+            error!("❌ Failed to create runtime for Rclone process: {e}");
+            if let Err(e) = app.emit(
+                "rclone_engine",
+                serde_json::json!({
+                    "status": "error",
+                    "message": format!("Failed to create runtime: {e}")
                 }),
             ) {
                 error!("Failed to emit event: {e}");

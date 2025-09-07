@@ -107,7 +107,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let port = ENGINE_STATE.get_oauth().1;
 
     let mut oauth_app =
-        match create_rclone_command(rclone_path.to_str().unwrap(), port, app, "OAuth") {
+        match create_rclone_command(rclone_path.to_str().unwrap(), port, app, "oauth").await {
             Ok(cmd) => cmd,
             Err(e) => {
                 let error_msg = format!("Failed to create OAuth command: {e}");

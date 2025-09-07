@@ -1,7 +1,6 @@
 use log::{debug, error, info, warn};
 use std::process::Stdio;
 use tauri::{AppHandle, Emitter, Manager};
-use tokio::time;
 
 use crate::{
     core::{
@@ -53,81 +52,47 @@ impl RcApiEngine {
         }
 
         // Run 'rclone listremotes' to test the password
-        let mut cmd = tokio::process::Command::new(&self.rclone_path);
-        cmd.arg("listremotes")
+        let output = tokio::process::Command::new(&self.rclone_path)
+            .args(["listremotes", "--ask-password=false"])
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .envs(&env_vars);
+            .envs(&env_vars)
+            .output()
+            .await
+            .map_err(|e| format!("Failed to execute rclone command: {}", e))?;
 
-        debug!("🧪 Testing password with: rclone listremotes");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
 
-        // Use shorter timeout since we know config is encrypted and we have a password
-        let result = time::timeout(std::time::Duration::from_secs(5), cmd.output()).await;
+        debug!("rclone listremotes stdout: {}", stdout.trim());
+        debug!("rclone listremotes stderr: {}", stderr.trim());
 
-        match result {
-            Ok(Ok(output)) => {
-                let stdout = String::from_utf8_lossy(&output.stdout);
-                let stderr = String::from_utf8_lossy(&output.stderr);
-
-                debug!("rclone listremotes stdout: {}", stdout.trim());
-                debug!("rclone listremotes stderr: {}", stderr.trim());
-
-                if output.status.success() {
-                    info!("✅ Rclone configuration and password validation successful");
-                    Ok(())
-                } else {
-                    // Check for specific error patterns
-                    if stderr.contains("Couldn't decrypt configuration")
-                        || stderr.contains("most likely wrong password")
-                        || stderr.contains("unable to decrypt configuration")
-                    {
-                        let error_msg = "Wrong password for encrypted rclone configuration";
-                        error!("❌ {}", error_msg);
-                        Err(error_msg.to_string())
-                    } else if stderr.contains("Failed to load config file") {
-                        let error_msg =
-                            format!("Failed to load rclone config file: {}", stderr.trim());
-                        error!("❌ {}", error_msg);
-                        Err(error_msg)
-                    } else if stderr.contains("CRITICAL:")
-                        && stderr.contains("using RCLONE_CONFIG_PASS env password")
-                    {
-                        let error_msg = "Invalid environment password for encrypted configuration";
-                        error!("❌ {}", error_msg);
-                        Err(error_msg.to_string())
-                    } else {
-                        // Unknown error, but we can still try to start the engine
-                        warn!(
-                            "⚠️ Unexpected rclone error, but attempting to continue: {}",
-                            stderr.trim()
-                        );
-                        Ok(())
-                    }
-                }
-            }
-            Ok(Err(e)) => {
-                error!("❌ Failed to execute rclone listremotes: {}", e);
-                Err(format!("Failed to execute rclone command: {}", e))
-            }
-            Err(_timeout) => {
-                // If we're here, the command timed out. This could mean:
-                // 1. The process is waiting for password input despite having RCLONE_CONFIG_PASS
-                // 2. The config requires interactive input for some other reason
-                // 3. The process is hanging for an unknown reason
-
-                // Let's check if it's specifically waiting for password input
-                let is_waiting = self.is_waiting_for_password_input().await;
-
-                if is_waiting {
-                    warn!(
-                        "🔒 rclone is waiting for password input despite having RCLONE_CONFIG_PASS - likely wrong password format"
-                    );
-                    Err("Encrypted configuration requires interactive password input - RCLONE_CONFIG_PASS might be in wrong format".to_string())
-                } else {
-                    warn!("⏱️ rclone listremotes timed out - unexpected delay");
-                    Err("Rclone command timed out unexpectedly".to_string())
-                }
+        if output.status.success() {
+            info!("✅ Rclone configuration and password validation successful");
+            Ok(())
+        } else {
+            // Check for specific error patterns
+            if stderr
+                .contains("unable to decrypt configuration and not allowed to ask for password")
+                || stderr.contains("Couldn't decrypt configuration")
+                || stderr.contains("most likely wrong password")
+                || stderr.contains("unable to decrypt configuration")
+            {
+                let error_msg = "Wrong password for encrypted rclone configuration";
+                error!("❌ {}", error_msg);
+                Err(error_msg.to_string())
+            } else if stderr.contains("Failed to load config file") {
+                let error_msg = format!("Failed to load rclone config file: {}", stderr.trim());
+                error!("❌ {}", error_msg);
+                Err(error_msg)
+            } else {
+                // Unknown error, but we can still try to start the engine
+                warn!(
+                    "⚠️ Unexpected rclone error, but attempting to continue: {}",
+                    stderr.trim()
+                );
+                Ok(())
             }
         }
     }
@@ -141,147 +106,40 @@ impl RcApiEngine {
             return false;
         }
 
-        // First method: Try direct check with encryption check command
-        let is_encrypted = self.check_encryption_status().await;
-
-        // If we got a definitive answer, return it
-        if let Some(encrypted) = is_encrypted {
-            return encrypted;
-        }
-
-        // Second method: Use a more reliable approach by checking for password prompt
-        let is_waiting_for_password = self.is_waiting_for_password_input().await;
-
-        if is_waiting_for_password {
-            debug!("🔒 Detected password prompt, configuration is encrypted");
-            return true;
-        }
-
-        // Default to false - if we can't detect encryption and no password prompt, assume not encrypted
-        debug!("✅ No encryption or password prompt detected, assuming not encrypted");
-        false
-    }
-
-    /// Direct check for encryption status using rclone command
-    async fn check_encryption_status(&self) -> Option<bool> {
-        let mut cmd = tokio::process::Command::new(&self.rclone_path);
-        cmd.args(["config", "encryption", "check"])
+        // Simple approach: try listremotes with --ask-password=false
+        let output = match tokio::process::Command::new(&self.rclone_path)
+            .args(["listremotes", "--ask-password=false"])
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .env_remove("RCLONE_CONFIG_PASS"); // Don't use any password for this check
-
-        let result = time::timeout(std::time::Duration::from_secs(1), cmd.output()).await;
-
-        match result {
-            Ok(Ok(output)) => {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                debug!("rclone config encryption check stderr: {}", stderr.trim());
-
-                // Definitive case: NOT encrypted
-                if !output.status.success() && stderr.contains("config file is NOT encrypted") {
-                    debug!("✅ Configuration is explicitly NOT encrypted");
-                    return Some(false);
-                }
-
-                // Definitive case: IS encrypted (some versions explicitly say this)
-                if stderr.contains("config file is encrypted") {
-                    debug!("🔒 Configuration is explicitly encrypted");
-                    return Some(true);
-                }
-
-                // Inconclusive - need to try other methods
-                None
-            }
-            _ => None, // Any error or timeout is inconclusive
-        }
-    }
-
-    /// Check if rclone is waiting for password input by monitoring the process
-    async fn is_waiting_for_password_input(&self) -> bool {
-        debug!("🔍 Checking if rclone is waiting for password input...");
-
-        let mut cmd = tokio::process::Command::new(&self.rclone_path);
-        cmd.args(["listremotes"])
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .env_remove("RCLONE_CONFIG_PASS"); // Ensure no password is provided
-
-        // Start the process
-        let mut child = match cmd.spawn() {
-            Ok(child) => child,
+            .env_remove("RCLONE_CONFIG_PASS")
+            .output()
+            .await
+        {
+            Ok(output) => output,
             Err(e) => {
-                warn!("Failed to spawn rclone process: {}", e);
+                warn!("Failed to execute rclone command: {}", e);
                 return false;
             }
         };
 
-        // Quick check - if the process exits immediately with success, it's not encrypted
-        match time::timeout(std::time::Duration::from_millis(100), child.wait()).await {
-            Ok(Ok(status)) => {
-                if status.success() {
-                    debug!("✅ Process exited successfully immediately - not waiting for password");
-                    return false;
-                }
-            }
-            _ => {
-                // Process is still running or exited with error - continue checking
-            }
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        debug!("🔍 rclone listremotes stderr: {}", stderr.trim());
+
+        // Check for encryption error message
+        if stderr.contains("unable to decrypt configuration and not allowed to ask for password")
+            || stderr.contains("Failed to load config file") && stderr.contains("unable to decrypt")
+        {
+            debug!("🔒 Configuration is encrypted");
+            true
+        } else if output.status.success() {
+            debug!("🔓 Configuration is NOT encrypted");
+            false
+        } else {
+            // Other error - assume not encrypted if we can't determine
+            warn!("⚠️ Unexpected error checking encryption: {}", stderr);
+            false
         }
-
-        // Check if stderr contains password prompt
-        // This needs to be done with care as we don't want to block
-        if let Some(stderr) = child.stderr.take() {
-            use tokio::io::AsyncReadExt;
-            let mut stderr_reader = tokio::io::BufReader::new(stderr);
-            let mut stderr_buf = Vec::new();
-
-            // Read a limited amount with timeout
-            match time::timeout(
-                std::time::Duration::from_millis(500),
-                stderr_reader.read_to_end(&mut stderr_buf),
-            )
-            .await
-            {
-                Ok(_) => {
-                    let stderr_str = String::from_utf8_lossy(&stderr_buf);
-                    debug!("Stderr content: {}", stderr_str.trim());
-
-                    if stderr_str.contains("Enter configuration password:")
-                        || stderr_str.contains("password:")
-                    {
-                        debug!("🔒 Password prompt detected in stderr");
-
-                        // Kill the process since we detected what we needed
-                        let _ = child.kill().await;
-                        return true;
-                    }
-                }
-                Err(_) => {
-                    // Timeout reading stderr - this often happens when waiting for password
-                    debug!("⏱️ Timeout reading stderr - likely waiting for input");
-                }
-            }
-        }
-
-        // Final check - if the process is still running after all these checks,
-        // it's very likely waiting for password input
-        let is_still_running = match child.try_wait() {
-            Ok(None) => true,     // Process still running
-            Ok(Some(_)) => false, // Process exited
-            Err(_) => false,      // Error checking process status
-        };
-
-        if is_still_running {
-            debug!("🔒 Process still running and waiting for input - likely password prompt");
-            // Kill the process since we're done with it
-            let _ = child.kill().await;
-            return true;
-        }
-
-        debug!("✅ No password prompt detected");
-        false
     }
 
     /// Test configuration and password without starting the engine (synchronous version for init)

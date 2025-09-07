@@ -135,6 +135,44 @@ export class RclonePasswordService {
   }
 
   /**
+   * Is config encrypted? (with caching for performance)
+   */
+  async isConfigEncryptedCached(): Promise<boolean> {
+    try {
+      const result = await invoke('is_config_encrypted_cached');
+      console.log('Cached encryption check result:', result);
+      return result as boolean;
+    } catch (error) {
+      console.error('Failed to check cached encryption status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get cached encryption status (no I/O, instant)
+   */
+  async getCachedEncryptionStatus(): Promise<boolean | null> {
+    try {
+      const result = await invoke('get_cached_encryption_status');
+      return result as boolean | null;
+    } catch (error) {
+      console.error('Failed to get cached encryption status:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Clear encryption cache (call when config changes)
+   */
+  async clearEncryptionCache(): Promise<void> {
+    try {
+      await invoke('clear_encryption_cache');
+    } catch (error) {
+      console.error('Failed to clear encryption cache:', error);
+    }
+  }
+
+  /**
    * Is config encrypted?
    */
   async isConfigEncrypted(): Promise<boolean | unknown> {

@@ -119,8 +119,9 @@ pub async fn test_rclone_password(app: &AppHandle, password: &str) -> PasswordVa
     let rclone_path = read_rclone_path(app);
 
     // Try to run a simple rclone command to test the password, setting the env var only for this process
+    // Use --ask-password=false to make it fail immediately instead of hanging
     let result = tokio::process::Command::new(rclone_path)
-        .args(["listremotes"])
+        .args(["listremotes", "--ask-password=false"])
         .env("RCLONE_CONFIG_PASS", password)
         .output()
         .await;
