@@ -14,9 +14,14 @@ impl RcApiEngine {
 
         let app_handle = app.clone();
 
-        // Test Config before starting
-        if self.validate_config_sync(app) {
-            start(self, app);
+        // Check if binary exists before validating config
+        if !self.rclone_path.exists() {
+            self.handle_invalid_path(app);
+        } else {
+            // Test Config before starting
+            if self.validate_config_sync(app) {
+                start(self, app);
+            }
         }
 
         thread::spawn(move || {
@@ -254,20 +259,26 @@ fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> Result<(), Str
             debug!("🔄 API port updated in ENGINE_STATE");
             // Port is already updated in ENGINE_STATE by the caller
         }
-        // "config_path" => {
-        //     debug!("🔄 Config path updated in RcloneState");
-        //     // Config path is already updated in RcloneState by the caller
-        // }
+        "config_path" => {
+            debug!("🔄 Config path updated in RcloneState");
+            // Config path is already updated in RcloneState by the caller
+        }
         _ => {
             debug!("🔄 Generic restart for {change_type}");
         }
     }
 
-    // Step 4: Start the engine with new configuration
+    // Step 4: Validate configuration before starting (including password check)
+    debug!("🔍 Validating configuration after changes...");
+    if !engine.validate_config_sync(app) {
+        return Err("Configuration validation failed after restart".to_string());
+    }
+
+    // Step 5: Start the engine with new configuration
     debug!("🚀 Starting engine with new configuration...");
     start(&mut engine, app);
 
-    // Step 5: Verify the restart was successful
+    // Step 6: Verify the restart was successful
     if engine.running {
         info!("✅ Engine restart completed successfully");
         Ok(())

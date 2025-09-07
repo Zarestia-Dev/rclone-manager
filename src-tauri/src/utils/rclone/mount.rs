@@ -24,7 +24,7 @@ fn check_mount_plugin_installed_linux() -> bool {
 fn check_winfsp_installed() -> bool {
     let winfsp_exists = PathBuf::from("C:\\Program Files\\WinFsp").exists()
         || PathBuf::from("C:\\Program Files (x86)\\WinFsp").exists();
-    debug!("Windows: WinFsp installed: {}", winfsp_exists);
+    debug!("Windows: WinFsp installed: {winfsp_exists}");
     winfsp_exists
 }
 

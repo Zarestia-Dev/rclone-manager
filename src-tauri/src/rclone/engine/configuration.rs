@@ -6,7 +6,7 @@ use tokio::time;
 use crate::{
     core::{
         check_binaries::{is_rclone_available, read_rclone_path},
-        security::SafeEnvironmentManager,
+        security::{CredentialStore, SafeEnvironmentManager},
     },
     utils::types::all_types::RcApiEngine,
 };
@@ -19,10 +19,13 @@ impl RcApiEngine {
 
         // Check if rclone binary exists and is available
         if !self.rclone_path.exists() {
-            return Err(format!(
-                "Rclone binary not found at: {}",
+            warn!(
+                "⚠️ Rclone binary not found at: {}",
                 self.rclone_path.display()
-            ));
+            );
+            // Don't return error here - let the path handling logic deal with this
+            // This prevents "path not found" from being interpreted as "password error"
+            return Ok(()); // Skip password validation if binary doesn't exist
         }
 
         // First, quickly check if config is encrypted
@@ -77,16 +80,40 @@ impl RcApiEngine {
         info!("🔐 Configuration is encrypted, testing password...");
 
         // Get environment variables from SafeEnvironmentManager
-        let env_vars = if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
+        let mut env_vars = if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
             env_manager.get_env_vars()
         } else {
             warn!("SafeEnvironmentManager not available, using system environment");
             std::env::vars().collect()
         };
 
-        // Check if we have a password to test
+        // Check if we have a password in memory first
         if !env_vars.contains_key("RCLONE_CONFIG_PASS") {
-            warn!("🔑 No password available for encrypted configuration");
+            debug!("🔍 No password in memory, checking stored credentials...");
+
+            // Try to get password from credential store
+            let credential_store = CredentialStore::new();
+            match credential_store.get_config_password() {
+                Ok(stored_password) => {
+                    info!("🔑 Found stored password, loading into environment");
+                    env_vars.insert("RCLONE_CONFIG_PASS".to_string(), stored_password.clone());
+
+                    // Also update the SafeEnvironmentManager if available
+                    if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
+                        env_manager.set_config_password(stored_password);
+                    }
+                }
+                Err(e) => {
+                    warn!("🔑 No stored password found: {:?}", e);
+                }
+            }
+        }
+
+        // Check if we have a password to test after checking both sources
+        if !env_vars.contains_key("RCLONE_CONFIG_PASS") {
+            warn!(
+                "🔑 No password available for encrypted configuration (checked both memory and keyring)"
+            );
             return Err("Configuration is encrypted but no password is available".to_string());
         }
 
@@ -195,6 +222,14 @@ impl RcApiEngine {
     /// Test configuration and password without starting the engine (synchronous version for init)
     pub fn validate_config_sync(&mut self, app: &AppHandle) -> bool {
         info!("🧪 Testing rclone configuration and password synchronously...");
+
+        // First check if binary exists - if not, handle it separately
+        if !self.rclone_path.exists() {
+            warn!("⚠️ Rclone binary not found, skipping password validation");
+            // Don't set password_error for missing binary - this is a path issue, not password issue
+            self.password_error = false;
+            return false; // Return false to trigger path handling in lifecycle
+        }
 
         // Use blocking call for synchronous validation
         let result = tauri::async_runtime::block_on(self.validate_config_before_start(app));

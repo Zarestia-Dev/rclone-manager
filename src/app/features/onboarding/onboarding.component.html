@@ -46,6 +46,93 @@
               </app-installation-options>
             </div>
           }
+
+          @if (cards[currentCardIndex].title === 'Configuration Setup' && configSelectionNeeded) {
+            <div class="form-section" @slideInOut>
+              <div class="config-selection">
+                <div class="radio-group">
+                  <label class="radio-option">
+                    <input
+                      type="radio"
+                      name="configChoice"
+                      value="default"
+                      [(ngModel)]="configFileChoice"
+                    />
+                    <span class="radio-label">
+                      <mat-icon>home</mat-icon>
+                      <div>
+                        <strong>Default Location</strong>
+                        <small>Use the default rclone configuration location</small>
+                      </div>
+                    </span>
+                  </label>
+
+                  <label class="radio-option">
+                    <input
+                      type="radio"
+                      name="configChoice"
+                      value="custom"
+                      [(ngModel)]="configFileChoice"
+                    />
+                    <span class="radio-label">
+                      <mat-icon>folder_open</mat-icon>
+                      <div>
+                        <strong>Custom Config File</strong>
+                        <small>Select an existing rclone configuration file</small>
+                      </div>
+                    </span>
+                  </label>
+                </div>
+
+                @if (configFileChoice === 'custom') {
+                  <div class="custom-config-section">
+                    <mat-form-field appearance="outline" class="full-width">
+                      <mat-label>Configuration File Path</mat-label>
+                      <input
+                        matInput
+                        [(ngModel)]="customConfigPath"
+                        placeholder="Select your rclone.conf file"
+                        readonly
+                      />
+                      <button
+                        mat-icon-button
+                        matSuffix
+                        (click)="selectConfigFile()"
+                        [disabled]="selectingConfigFile"
+                        type="button"
+                      >
+                        <mat-icon>{{ selectingConfigFile ? 'refresh' : 'folder_open' }}</mat-icon>
+                      </button>
+                    </mat-form-field>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          @if (cards[currentCardIndex].title === 'Configuration Password' && configNeedsPassword) {
+            <div class="form-section" @slideInOut>
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Configuration Password</mat-label>
+                <input
+                  matInput
+                  type="password"
+                  [(ngModel)]="configPassword"
+                  placeholder="Enter your rclone configuration password"
+                  [disabled]="submittingPassword"
+                  (keyup.enter)="submitConfigPassword()"
+                />
+                <mat-icon matSuffix>key</mat-icon>
+              </mat-form-field>
+
+              @if (passwordError) {
+                <div class="error-message">
+                  <mat-icon>error</mat-icon>
+                  <span>Invalid password. Please try again.</span>
+                </div>
+              }
+            </div>
+          }
         </div>
       </div>
 
@@ -75,6 +162,29 @@
                 [class.animate-spin]="installing"
               ></mat-icon>
               {{ getInstallButtonText() }}
+            </button>
+          } @else if (shouldShowConfigSelectionButton()) {
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="applyConfigSelection()"
+              [disabled]="!canApplyConfigSelection()"
+            >
+              <mat-icon svgIcon="circle-check"></mat-icon>
+              {{ getConfigButtonText() }}
+            </button>
+          } @else if (shouldShowConfigPasswordButton()) {
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="submitConfigPassword()"
+              [disabled]="submittingPassword || !configPassword.trim()"
+            >
+              <mat-icon
+                [svgIcon]="submittingPassword ? 'refresh' : 'key'"
+                [class.animate-spin]="submittingPassword"
+              ></mat-icon>
+              {{ submittingPassword ? 'Submitting...' : 'Submit Password' }}
             </button>
           } @else if (shouldShowInstallPluginButton()) {
             <button

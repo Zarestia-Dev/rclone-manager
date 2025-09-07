@@ -2,9 +2,6 @@ use log::info;
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Manager};
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
 use crate::core::security::{CredentialStore, SafeEnvironmentManager};
 
 /// Setup environment variables for rclone processes (main engine or OAuth)
@@ -17,10 +14,7 @@ pub fn setup_rclone_environment(
     if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
         let env_vars = env_manager.get_env_vars();
         if !env_vars.is_empty() {
-            info!(
-                "🔑 Using environment manager password for {} process",
-                process_type
-            );
+            info!("🔑 Using environment manager password for {process_type} process");
             for (key, value) in env_vars {
                 command.env(key, value);
             }
@@ -31,13 +25,10 @@ pub fn setup_rclone_environment(
     // Fallback to credential store if no password in environment manager
     let credential_store = CredentialStore::new();
     if let Ok(password) = credential_store.get_config_password() {
-        info!(
-            "🔑 Using stored rclone config password for {} process",
-            process_type
-        );
+        info!("🔑 Using stored rclone config password for {process_type} process");
         command.env("RCLONE_CONFIG_PASS", password);
     } else {
-        info!("ℹ️ No stored password found for {} process", process_type);
+        info!("ℹ️ No stored password found for {process_type} process");
     }
 
     Ok(())
@@ -57,7 +48,7 @@ pub fn create_rclone_command(
         "rcd",
         "--rc-no-auth",
         "--rc-serve",
-        &format!("--rc-addr=127.0.0.1:{}", port),
+        &format!("--rc-addr=127.0.0.1:{port}"),
     ]);
 
     // Configure stdio

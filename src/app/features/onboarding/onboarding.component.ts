@@ -1,10 +1,24 @@
-import { Component, EventEmitter, Output, OnInit, HostListener, inject } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Output,
+  OnInit,
+  OnDestroy,
+  HostListener,
+  inject,
+} from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatInputModule } from '@angular/material/input';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatRadioModule } from '@angular/material/radio';
+import { FormsModule } from '@angular/forms';
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
 import { InstallationOptionsComponent } from '../../shared/components/installation-options/installation-options.component';
+import { Subject } from 'rxjs';
+import { takeUntil, take } from 'rxjs/operators';
 
 // Services
 import { AnimationsService } from '../../shared/services/animations.service';
@@ -12,7 +26,14 @@ import { SystemInfoService } from '@app/services';
 import { InstallationService } from '@app/services';
 import { EventListenersService } from '@app/services';
 import { AppSettingsService } from '@app/services';
-import { InstallationOptionsData, InstallationTabOption } from '@app/types';
+import { RclonePasswordService } from '@app/services';
+import { FileSystemService } from '@app/services';
+import {
+  InstallationOptionsData,
+  InstallationTabOption,
+  RcloneEnginePayload,
+  RcloneEngineEvent,
+} from '@app/types';
 
 @Component({
   selector: 'app-onboarding',
@@ -22,6 +43,10 @@ import { InstallationOptionsData, InstallationTabOption } from '@app/types';
     MatButtonModule,
     MatIconModule,
     MatTooltipModule,
+    MatInputModule,
+    MatFormFieldModule,
+    MatRadioModule,
+    FormsModule,
     LoadingOverlayComponent,
     InstallationOptionsComponent,
   ],
@@ -36,8 +61,10 @@ import { InstallationOptionsData, InstallationTabOption } from '@app/types';
   templateUrl: './onboarding.component.html',
   styleUrls: ['./onboarding.component.scss'],
 })
-export class OnboardingComponent implements OnInit {
+export class OnboardingComponent implements OnInit, OnDestroy {
   @Output() completed = new EventEmitter<void>();
+
+  private destroy$ = new Subject<void>();
 
   // Installation options data from shared component
   installationData: InstallationOptionsData = {
@@ -53,6 +80,18 @@ export class OnboardingComponent implements OnInit {
   currentCardIndex = 0;
   rcloneInstalled = false;
   installing = false;
+
+  // Encrypted config state
+  configNeedsPassword = false;
+  configPassword = '';
+  submittingPassword = false;
+  passwordError = false;
+
+  // Config file selection state
+  configSelectionNeeded = false;
+  configFileChoice: 'default' | 'custom' = 'default';
+  customConfigPath = '';
+  selectingConfigFile = false;
 
   // Add initialization state
   isInitializing = true;
@@ -82,6 +121,8 @@ export class OnboardingComponent implements OnInit {
   private installationService = inject(InstallationService);
   private appSettingsService = inject(AppSettingsService);
   private eventListenersService = inject(EventListenersService);
+  private rclonePasswordService = inject(RclonePasswordService);
+  private fileSystemService = inject(FileSystemService);
 
   onboardingTabOptions: InstallationTabOption[] = [
     { key: 'default', label: 'Recommended', icon: 'star' },
@@ -91,6 +132,9 @@ export class OnboardingComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     console.log('OnboardingComponent: ngOnInit started');
+
+    // Setup event listeners for encrypted config detection
+    this.setupRcloneEngineListener();
 
     // Add a small delay for smooth entrance
     setTimeout(async () => {
@@ -143,6 +187,9 @@ export class OnboardingComponent implements OnInit {
           content:
             "RClone is required for cloud storage operations. Choose your preferred installation location or binary location and we'll handle the setup automatically.",
         });
+      } else {
+        // RClone is already available, add config selection card
+        this.addConfigSelectionCard();
       }
     } catch (error) {
       console.error('Error checking rclone:', error);
@@ -198,20 +245,48 @@ export class OnboardingComponent implements OnInit {
   async installMountPlugin(): Promise<void> {
     this.downloadingPlugin = true;
     try {
+      // Listen for installation completion BEFORE starting the installation
+      // Use take(1) to ensure we only listen once and automatically unsubscribe
+      this.eventListenersService
+        .listenToMountPluginInstalled()
+        .pipe(
+          take(1), // Only take the first event and auto-unsubscribe
+          takeUntil(this.destroy$) // Also unsubscribe if component is destroyed
+        )
+        .subscribe(() => {
+          console.log('Mount plugin installation completed successfully');
+          this.mountPluginInstalled = true;
+          this.downloadingPlugin = false;
+          // Move to next card after installation
+          this.nextCard();
+        });
+
       const filePath = await this.installationService.installMountPlugin();
       console.log('Downloaded plugin at:', filePath);
 
-      // Listen for installation completion
-      this.eventListenersService.listenToMountPluginInstalled().subscribe(() => {
-        this.mountPluginInstalled = true;
-        // Optionally move to next card after installation
-        this.nextCard();
-      });
+      // Note: The event listener above will handle the success case when the backend emits 'mount_plugin_installed'
+      // The downloadingPlugin flag will be reset in the subscription or catch block
     } catch (error) {
       console.error('Plugin installation failed:', error);
-    } finally {
       this.downloadingPlugin = false;
+
+      // Check if mount plugin is actually installed now (in case the error was just a UI issue)
+      try {
+        const isInstalled = await this.installationService.isMountPluginInstalled();
+        if (isInstalled) {
+          console.log('Mount plugin was actually installed despite the error');
+          this.mountPluginInstalled = true;
+          this.nextCard();
+        }
+      } catch (checkError) {
+        console.error('Failed to check mount plugin status after installation error:', checkError);
+      }
     }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   async installRclone(): Promise<void> {
@@ -236,7 +311,12 @@ export class OnboardingComponent implements OnInit {
       }
 
       this.rcloneInstalled = true;
-      // Move to next card after installation
+
+      // Add config selection card after rclone installation
+      this.addConfigSelectionCard();
+
+      // Move to next card after installation - but check for encrypted config first
+      // The engine restart will trigger password detection if needed
       this.nextCard();
     } catch (error) {
       console.error('RClone installation/configuration failed:', error);
@@ -245,7 +325,108 @@ export class OnboardingComponent implements OnInit {
     }
   }
 
-  // Add these methods to your component class
+  private setupRcloneEngineListener(): void {
+    this.eventListenersService
+      .listenToRcloneEngine()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: async (event: RcloneEnginePayload) => {
+          try {
+            console.log('Onboarding: Rclone engine event received:', event);
+
+            if (typeof event === 'object' && event !== null) {
+              await this.handleRcloneEngineEvent(event);
+            }
+          } catch (error) {
+            console.error('Error in onboarding Rclone engine event handler:', error);
+          }
+        },
+        error: error => console.error('Onboarding: Rclone engine event subscription error:', error),
+      });
+  }
+
+  private async handleRcloneEngineEvent(event: RcloneEngineEvent): Promise<void> {
+    switch (event.status) {
+      case 'password_error':
+        console.log('🔑 Password required detected during onboarding');
+        this.handlePasswordRequired();
+        break;
+      case 'ready':
+        console.log('Rclone API ready during onboarding');
+        this.handleRcloneReady();
+        break;
+      default:
+        // Log unknown events for debugging
+        if (event.status) {
+          console.log(`Onboarding: Unhandled Rclone event status: ${event.status}`);
+        }
+        break;
+    }
+  }
+
+  private handlePasswordRequired(): void {
+    if (this.configNeedsPassword) {
+      return; // Already handling password
+    }
+
+    console.log('Adding encrypted config password card to onboarding');
+    this.configNeedsPassword = true;
+
+    // Insert password card before the final card, but only if it doesn't already exist
+    const passwordCardExists = this.cards.some(card => card.title === 'Configuration Password');
+    if (!passwordCardExists) {
+      const finalCardIndex = this.cards.findIndex(card => card.title === 'Ready to Go!');
+      if (finalCardIndex !== -1) {
+        this.cards.splice(finalCardIndex, 0, {
+          image: '../assets/rclone.svg',
+          title: 'Configuration Password',
+          content:
+            'Your RClone configuration is encrypted and requires a password to access your cloud remotes. Please enter your configuration password to continue.',
+        });
+      }
+    }
+  }
+
+  private handleRcloneReady(): void {
+    this.passwordError = false;
+    // If we were on the password card and rclone is ready, move to next card
+    if (
+      this.configNeedsPassword &&
+      this.cards[this.currentCardIndex]?.title === 'Configuration Password'
+    ) {
+      this.nextCard();
+    }
+  }
+
+  async submitConfigPassword(): Promise<void> {
+    if (!this.configPassword.trim()) {
+      return;
+    }
+
+    this.submittingPassword = true;
+    this.passwordError = false;
+
+    try {
+      // Store the password persistently in the credential store AND set it in memory
+      await this.rclonePasswordService.storePassword(this.configPassword);
+      console.log(
+        'Config password stored successfully during onboarding (both memory and keyring)'
+      );
+
+      // Wait a moment for the engine to restart and verify the password
+      setTimeout(() => {
+        // If still on password card after a delay, the password might be wrong
+        if (this.cards[this.currentCardIndex]?.title === 'Configuration Password') {
+          this.passwordError = true;
+        }
+        this.submittingPassword = false;
+      }, 2000);
+    } catch (error) {
+      console.error('Error setting config password during onboarding:', error);
+      this.passwordError = true;
+      this.submittingPassword = false;
+    }
+  } // Add these methods to your component class
   shouldShowInstallRcloneButton(): boolean {
     return (
       this.currentCardIndex === this.cards.findIndex(c => c.title === 'Install RClone') &&
@@ -260,10 +441,26 @@ export class OnboardingComponent implements OnInit {
     );
   }
 
+  shouldShowConfigPasswordButton(): boolean {
+    return (
+      this.currentCardIndex === this.cards.findIndex(c => c.title === 'Configuration Password') &&
+      this.configNeedsPassword
+    );
+  }
+
+  shouldShowConfigSelectionButton(): boolean {
+    return (
+      this.currentCardIndex === this.cards.findIndex(c => c.title === 'Configuration Setup') &&
+      this.configSelectionNeeded
+    );
+  }
+
   shouldShowActionButton(): boolean {
     return (
       this.shouldShowInstallRcloneButton() ||
       this.shouldShowInstallPluginButton() ||
+      this.shouldShowConfigSelectionButton() ||
+      this.shouldShowConfigPasswordButton() ||
       this.cards[this.currentCardIndex].title === 'Ready to Go!'
     );
   }
@@ -311,6 +508,20 @@ export class OnboardingComponent implements OnInit {
     return 'Install RClone';
   }
 
+  canApplyConfigSelection(): boolean {
+    if (this.configFileChoice === 'default') {
+      return true;
+    }
+    return this.configFileChoice === 'custom' && this.customConfigPath.trim().length > 0;
+  }
+
+  getConfigButtonText(): string {
+    if (this.configFileChoice === 'custom' && !this.customConfigPath) {
+      return 'Select Config File First';
+    }
+    return 'Continue';
+  }
+
   onInstallationOptionsChange(data: InstallationOptionsData): void {
     this.installationData = { ...data };
   }
@@ -321,5 +532,75 @@ export class OnboardingComponent implements OnInit {
 
   completeOnboarding(): void {
     this.completed.emit();
+  }
+
+  private addConfigSelectionCard(): void {
+    // Only add if config selection card doesn't exist
+    const configCardExists = this.cards.some(card => card.title === 'Configuration Setup');
+    if (!configCardExists) {
+      console.log('Adding config selection card to onboarding');
+      this.configSelectionNeeded = true;
+
+      // Insert config selection card before password and final cards
+      const passwordCardIndex = this.cards.findIndex(
+        card => card.title === 'Configuration Password'
+      );
+      const finalCardIndex = this.cards.findIndex(card => card.title === 'Ready to Go!');
+
+      const insertIndex =
+        passwordCardIndex !== -1
+          ? passwordCardIndex
+          : finalCardIndex !== -1
+            ? finalCardIndex
+            : this.cards.length;
+
+      this.cards.splice(insertIndex, 0, {
+        image: '../assets/rclone.svg',
+        title: 'Configuration Setup',
+        content:
+          'Choose your RClone configuration location. You can use the default location or select an existing configuration file with your cloud remotes.',
+      });
+    }
+  }
+
+  async selectConfigFile(): Promise<void> {
+    if (this.selectingConfigFile) return;
+
+    this.selectingConfigFile = true;
+    try {
+      const filePath = await this.fileSystemService.selectFile();
+      if (filePath) {
+        this.customConfigPath = filePath;
+        console.log('Selected config file:', filePath);
+      }
+    } catch (error) {
+      console.error('Error selecting config file:', error);
+    } finally {
+      this.selectingConfigFile = false;
+    }
+  }
+
+  async applyConfigSelection(): Promise<void> {
+    try {
+      if (this.configFileChoice === 'custom' && this.customConfigPath) {
+        // Save the custom config path to settings
+        await this.appSettingsService.saveSetting(
+          'core',
+          'rclone_config_file',
+          this.customConfigPath
+        );
+        console.log('Applied custom config path:', this.customConfigPath);
+      } else {
+        // Clear any custom config path (use default)
+        await this.appSettingsService.saveSetting('core', 'rclone_config_file', '');
+        console.log('Using default config location');
+      }
+
+      // Move to next card and trigger config validation
+      // This will check if the config is encrypted and add password card if needed
+      this.nextCard();
+    } catch (error) {
+      console.error('Error applying config selection:', error);
+    }
   }
 }

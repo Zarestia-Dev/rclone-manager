@@ -202,7 +202,11 @@ export class AppComponent implements OnInit, OnDestroy {
 
         case 'password_error':
           console.log('🔑 Password required detected from engine event');
-          await this.handlePasswordRequired();
+          // Only handle password errors if onboarding is completed
+          // During onboarding, the onboarding component handles password events
+          if (this.completedOnboarding) {
+            await this.handlePasswordRequired();
+          }
           break;
 
         case 'ready':
@@ -230,7 +234,10 @@ export class AppComponent implements OnInit, OnDestroy {
       switch (event.status) {
         case 'password_error':
           console.log('🔑 OAuth password error detected:', event.message);
-          await this.handlePasswordRequired();
+          // Only handle password errors if onboarding is completed
+          if (this.completedOnboarding) {
+            await this.handlePasswordRequired();
+          }
           break;
 
         case 'spawn_failed':
