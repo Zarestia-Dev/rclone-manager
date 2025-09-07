@@ -183,8 +183,28 @@ export class AppComponent implements OnInit, OnDestroy {
     this.eventListenersService
       .listenToMountPluginInstalled()
       .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
+      .subscribe(async () => {
+        console.log('Mount plugin installation event received');
+
+        // Re-check mount plugin status after a short delay
+        setTimeout(async () => {
+          try {
+            const mountPluginOk = await this.installationService.isMountPluginInstalled(1);
+            console.log('Mount plugin re-check status:', mountPluginOk);
+
+            if (mountPluginOk) {
+              this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
+            } else {
+              console.warn(
+                'Mount plugin installation event received but plugin still not detected'
+              );
+            }
+          } catch (error) {
+            console.error('Error re-checking mount plugin status:', error);
+            // Still close the sheet as the installation event was received
+            this.closeSheetsByType(RepairSheetType.MOUNT_PLUGIN);
+          }
+        }, 1000);
       });
   }
 

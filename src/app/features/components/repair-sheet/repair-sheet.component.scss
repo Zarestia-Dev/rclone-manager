@@ -125,6 +125,22 @@
         box-shadow: none;
       }
     }
+
+    button.refresh-button {
+      border: 1px solid var(--border-color);
+      background: var(--surface-variant);
+      color: var(--on-surface-variant);
+      transition: var(--transition-fast);
+
+      &:hover:not(:disabled) {
+        background: var(--surface-variant-hover);
+        border-color: var(--accent-color);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+      }
+    }
   }
 }
 

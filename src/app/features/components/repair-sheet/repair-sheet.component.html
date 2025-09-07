@@ -128,6 +128,33 @@
 
   <!-- Actions Section -->
   <div class="sheet-actions">
+    @if (isMountPluginRepair()) {
+      <button
+        mat-stroked-button
+        [disabled]="isRefreshingStatus || installing"
+        class="refresh-button"
+        (click)="refreshMountPluginStatus()"
+        [attr.aria-label]="
+          isRefreshingStatus ? 'Checking status...' : 'Check if mount plugin is now installed'
+        "
+        [matTooltip]="
+          'Check if the mount plugin is now installed. Use this if you installed it manually or the automatic detection failed.'
+        "
+      >
+        @if (isRefreshingStatus) {
+          <ng-container>
+            <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
+            Checking Status...
+          </ng-container>
+        } @else {
+          <ng-container>
+            <mat-icon svgIcon="refresh"></mat-icon>
+            Check Status
+          </ng-container>
+        }
+      </button>
+    }
+
     <button
       mat-raised-button
       [disabled]="!canRepair()"

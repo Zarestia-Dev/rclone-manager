@@ -15,7 +15,7 @@ import { InstallationOptionsData, PasswordLockoutStatus, RepairData } from '@app
 import { InstallationOptionsComponent } from '../../../shared/components/installation-options/installation-options.component';
 
 // Services
-import { RclonePasswordService, RepairService } from '@app/services';
+import { RclonePasswordService, RepairService, InstallationService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { AnimationsService } from '../../../shared/services/animations.service';
 
@@ -62,12 +62,16 @@ export class RepairSheetComponent implements OnInit {
   passwordErrorMessage = '';
   lockoutStatus: PasswordLockoutStatus | null = null;
 
+  // Refresh status properties
+  isRefreshingStatus = false;
+
   public data = inject<RepairData>(MAT_BOTTOM_SHEET_DATA);
   private sheetRef = inject(MatBottomSheetRef<RepairSheetComponent>);
   private zone = inject(NgZone);
   private repairService = inject(RepairService);
   private appSettingsService = inject(AppSettingsService);
   private passwordService = inject(RclonePasswordService);
+  private installationService = inject(InstallationService);
 
   async ngOnInit(): Promise<void> {
     if (this.requiresPassword()) {
@@ -132,7 +136,7 @@ export class RepairSheetComponent implements OnInit {
   }
 
   canRepair(): boolean {
-    if (this.installing || this.isSubmittingPassword) {
+    if (this.installing || this.isSubmittingPassword || this.isRefreshingStatus) {
       return false;
     }
 
@@ -191,6 +195,35 @@ export class RepairSheetComponent implements OnInit {
 
   isRclonePathRepair(): boolean {
     return this.data.type === 'rclone_path';
+  }
+
+  isMountPluginRepair(): boolean {
+    return this.data.type === 'mount_plugin';
+  }
+
+  async refreshMountPluginStatus(): Promise<void> {
+    if (this.isRefreshingStatus) return;
+
+    this.isRefreshingStatus = true;
+
+    try {
+      const isInstalled = await this.installationService.isMountPluginInstalled(1);
+
+      if (isInstalled) {
+        // Plugin is now installed, close the repair sheet
+        this.sheetRef.dismiss('success');
+      } else {
+        // Update the message to indicate the status was checked
+        const currentTime = new Date().toLocaleTimeString();
+        this.data.message = `Mount plugin status checked at ${currentTime}. Plugin not detected. You may need to restart the application if you recently installed it manually.`;
+      }
+    } catch (error) {
+      console.error('Error refreshing mount plugin status:', error);
+      this.data.message =
+        'Error checking mount plugin status. Please try restarting the application.';
+    } finally {
+      this.isRefreshingStatus = false;
+    }
   }
 
   getRepairProgressText(): string {
@@ -315,13 +348,34 @@ export class RepairSheetComponent implements OnInit {
         await this.repairService.executeRepair(this.data);
       }
 
-      // Close the sheet after successful repair
-      setTimeout(() => {
-        this.sheetRef.dismiss('success');
-      }, 1000);
+      // For mount plugin installation, give extra time for the process to complete
+      if (this.data.type === 'mount_plugin') {
+        // Add additional delay for mount plugin installation
+        setTimeout(() => {
+          this.sheetRef.dismiss('success');
+        }, 2000);
+      } else {
+        // Close the sheet after successful repair
+        setTimeout(() => {
+          this.sheetRef.dismiss('success');
+        }, 1000);
+      }
     } catch (error) {
       console.error('Repair failed:', error);
-      // Show error state or keep sheet open for retry
+
+      // Show more specific error messages for mount plugin failures
+      if (this.data.type === 'mount_plugin') {
+        if (error instanceof Error) {
+          // Update the data to show the error
+          this.data.message = `Installation failed: ${error.message}. You may need administrator privileges or a system restart.`;
+        }
+      }
+
+      // Keep the sheet open for retry and show error state
+      this.zone.run(() => (this.installing = false));
+
+      // Don't throw the error to prevent the sheet from closing
+      return;
     }
 
     this.zone.run(() => (this.installing = false));

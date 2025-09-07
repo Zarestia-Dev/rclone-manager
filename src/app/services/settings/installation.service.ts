@@ -19,9 +19,31 @@ export class InstallationService extends TauriBaseService {
 
   /**
    * Check if mount plugin is installed
+   * @param retryCount Number of times to retry the check (for post-installation verification)
    */
-  async isMountPluginInstalled(): Promise<boolean> {
-    return this.invokeCommand<boolean>('check_mount_plugin_installed');
+  async isMountPluginInstalled(retryCount = 0): Promise<boolean> {
+    try {
+      const result = await this.invokeCommand<boolean>('check_mount_plugin_installed');
+
+      // If we got false but this is a retry (indicating we just installed),
+      // wait a bit and try again
+      if (!result && retryCount > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return this.invokeCommand<boolean>('check_mount_plugin_installed');
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error checking mount plugin installation:', error);
+
+      // If this is a retry attempt, don't retry again
+      if (retryCount > 0) {
+        throw error;
+      }
+
+      // For first attempt, assume not installed on error
+      return false;
+    }
   }
 
   /**

@@ -9,8 +9,28 @@ use crate::RcloneState;
 
 #[cfg(target_os = "macos")]
 fn check_fuse_t_installed() -> bool {
-    let fuse_t_exists = PathBuf::from("/Library/Application Support/fuse-t").exists();
-    debug!("macOS: FUSE-T installed: {}", fuse_t_exists);
+    // Check multiple indicators of FUSE-T installation
+    let fuse_t_app_support = PathBuf::from("/Library/Application Support/fuse-t").exists();
+    let fuse_t_framework = PathBuf::from("/Library/Frameworks/FuseT.framework").exists();
+    let fuse_t_bin = PathBuf::from("/usr/local/bin/mount_fuse-t").exists();
+
+    let fuse_t_exists = fuse_t_app_support || fuse_t_framework || fuse_t_bin;
+
+    if fuse_t_exists {
+        debug!("macOS: FUSE-T installation detected");
+        if fuse_t_app_support {
+            debug!("  - Application Support directory found");
+        }
+        if fuse_t_framework {
+            debug!("  - Framework found");
+        }
+        if fuse_t_bin {
+            debug!("  - Mount binary found");
+        }
+    } else {
+        debug!("macOS: FUSE-T not found");
+    }
+
     fuse_t_exists
 }
 
@@ -22,8 +42,40 @@ fn check_mount_plugin_installed_linux() -> bool {
 
 #[cfg(target_os = "windows")]
 fn check_winfsp_installed() -> bool {
-    let winfsp_exists = PathBuf::from("C:\\Program Files\\WinFsp").exists()
-        || PathBuf::from("C:\\Program Files (x86)\\WinFsp").exists();
+    // Check multiple potential installation paths
+    let possible_paths = [
+        "C:\\Program Files\\WinFsp",
+        "C:\\Program Files (x86)\\WinFsp",
+        // Also check for the driver files that indicate WinFsp is actually installed
+        "C:\\Windows\\System32\\drivers\\winfsp.sys",
+    ];
+
+    let mut winfsp_exists = false;
+    for path in &possible_paths {
+        if PathBuf::from(path).exists() {
+            winfsp_exists = true;
+            debug!("Windows: WinFsp found at: {}", path);
+            break;
+        }
+    }
+
+    // Additional check: try to query WinFsp service status
+    if !winfsp_exists {
+        // Check if WinFsp service is installed (indicates proper installation)
+        if let Ok(output) = std::process::Command::new("sc")
+            .args(["query", "WinFsp.Launcher"])
+            .output()
+        {
+            if output.status.success() {
+                let output_str = String::from_utf8_lossy(&output.stdout);
+                if output_str.contains("WinFsp.Launcher") {
+                    winfsp_exists = true;
+                    debug!("Windows: WinFsp service found via sc query");
+                }
+            }
+        }
+    }
+
     debug!("Windows: WinFsp installed: {}", winfsp_exists);
     winfsp_exists
 }
@@ -51,6 +103,11 @@ pub async fn install_mount_plugin(
     state: State<'_, RcloneState>,
 ) -> Result<String, String> {
     let download_path = std::env::temp_dir().join("rclone_temp");
+
+    // Ensure download directory exists
+    if let Err(e) = std::fs::create_dir_all(&download_path) {
+        return Err(format!("Failed to create download directory: {e}"));
+    }
 
     let (url, local_file, _install_command) = if cfg!(target_os = "macos") {
         (
@@ -92,12 +149,22 @@ pub async fn install_mount_plugin(
         execute_as_admin_powershell(local_file.to_str().unwrap())
     };
 
+    // Clean up the downloaded file
+    let _ = std::fs::remove_file(&local_file);
+
     match status {
         Ok(exit_status) if exit_status.success() => {
-            window
-                .emit("mount_plugin_installed", ())
-                .map_err(|e| e.to_string())?;
-            Ok("Mount plugin installed successfully".to_string())
+            // Verify installation completed successfully
+            let installation_verified = check_mount_plugin_installed();
+
+            if installation_verified {
+                window
+                    .emit("mount_plugin_installed", ())
+                    .map_err(|e| e.to_string())?;
+                Ok("Mount plugin installed successfully".to_string())
+            } else {
+                Err("Installation appeared to succeed but plugin verification failed. You may need to restart the application.".to_string())
+            }
         }
         Ok(exit_status) => Err(format!("Installation failed with exit code: {exit_status}")),
         Err(e) => Err(format!("Failed to execute installer: {e}")),
@@ -105,11 +172,12 @@ pub async fn install_mount_plugin(
 }
 
 fn execute_as_admin_powershell(msi_path: &str) -> std::io::Result<std::process::ExitStatus> {
+    // Use Start-Process with -Wait to ensure we wait for completion
     std::process::Command::new("powershell")
         .args([
             "-Command",
             &format!(
-                "Start-Process -FilePath 'msiexec' -ArgumentList '/i \"{}\" /qn /norestart' -Verb RunAs",
+                "Start-Process -FilePath 'msiexec' -ArgumentList '/i \"{}\" /qn /norestart' -Verb RunAs -Wait",
                 msi_path.replace("'", "''")
             ),
         ])

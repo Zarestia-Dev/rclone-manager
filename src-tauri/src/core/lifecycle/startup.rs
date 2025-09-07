@@ -1,6 +1,5 @@
 use log::{debug, error, info};
-use tauri::{AppHandle, Manager, Runtime};
-use tokio::join;
+use tauri::{AppHandle, Manager};
 
 use crate::rclone::{
     commands::{
@@ -13,12 +12,8 @@ use crate::rclone::{
 pub async fn handle_startup(app_handle: AppHandle) {
     info!("🚀 Checking startup options...");
 
-    // Run all tasks in parallel
-    let (remotes_result, _, _) = join!(
-        initialize_remotes(),
-        sync_all_remotes(&app_handle),
-        copy_all_remotes(&app_handle)
-    );
+    // Initialize remotes
+    let remotes_result = initialize_remotes().await;
 
     // Process remotes after retrieval
     if let Ok(remotes) = remotes_result {
@@ -537,47 +532,4 @@ fn spawn_bisync_task(params: BisyncParams, app_handle: AppHandle) {
             Err(err) => error!("❌ Failed to bisync {remote_name}:{source}: {err}",),
         }
     });
-}
-
-/// Runs sync jobs for all remotes.
-async fn sync_all_remotes<R: Runtime>(_app_handle: &AppHandle<R>) -> Result<(), String> {
-    info!("🔄 Starting remote sync tasks...");
-
-    // Get all remotes and their settings
-    let remotes = get_cached_remotes().await?;
-    let settings = get_settings().await.map_err(|e| e.to_string())?;
-
-    for remote in remotes {
-        if let Some(remote_settings) = settings.get(&remote)
-            && let Some(sync_config) = remote_settings.get("syncConfig")
-            && let Some(auto_sync) = sync_config.get("autoStart").and_then(|v| v.as_bool())
-            && auto_sync
-        {
-            info!("🔄 Starting sync for remote: {remote}");
-            // The actual sync will be handled in handle_remote_startup
-        }
-    }
-
-    Ok(())
-}
-
-async fn copy_all_remotes<R: Runtime>(_app_handle: &AppHandle<R>) -> Result<(), String> {
-    info!("📋 Starting remote copy tasks...");
-
-    // Get all remotes and their settings
-    let remotes = get_cached_remotes().await?;
-    let settings = get_settings().await.map_err(|e| e.to_string())?;
-
-    for remote in remotes {
-        if let Some(remote_settings) = settings.get(&remote)
-            && let Some(copy_config) = remote_settings.get("copyConfig")
-            && let Some(auto_copy) = copy_config.get("autoStart").and_then(|v| v.as_bool())
-            && auto_copy
-        {
-            info!("📋 Starting copy for remote: {remote}");
-            // The actual copy will be handled in handle_remote_startup
-        }
-    }
-
-    Ok(())
 }
