@@ -1,4 +1,6 @@
 name: 'Release Linux Arm builds'
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
