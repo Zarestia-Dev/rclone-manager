@@ -114,7 +114,7 @@ pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_jso
 }
 
 #[tauri::command]
-pub async fn get_rclone_config_path(app: AppHandle) -> Result<PathBuf, String> {
+pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
     let state = app.state::<RcloneState>();
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::PATHS);
 

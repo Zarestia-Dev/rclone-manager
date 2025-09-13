@@ -32,7 +32,7 @@ pub mod config {
     pub const PROVIDERS: &str = "config/providers";
     // pub const PASSWORD: &str = "config/password";
     pub const PATHS: &str = "config/paths";
-    pub const SETPATH: &str = "config/setpath";
+    // pub const SETPATH: &str = "config/setpath";
     // pub const UNLOCK: &str = "config/unlock";
 }
 

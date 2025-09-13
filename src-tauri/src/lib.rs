@@ -176,9 +176,9 @@ pub fn run() {
 
             app.manage(RcloneState {
                 client: reqwest::Client::new(),
-                // rclone_config_file: Arc::new(std::sync::RwLock::new(
-                //     settings.core.rclone_config_file.clone(),
-                // )),
+                rclone_config_file: Arc::new(std::sync::RwLock::new(
+                    settings.core.rclone_config_file.clone(),
+                )),
                 tray_enabled: Arc::new(std::sync::RwLock::new(tray_enabled)),
                 is_shutting_down: AtomicBool::new(false),
                 notifications_enabled: Arc::new(std::sync::RwLock::new(

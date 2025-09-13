@@ -1,6 +1,6 @@
 use crate::{
     core::settings::backup::archive_utils::find_7z_executable,
-    rclone::queries::get_rclone_config_path, utils::types::all_types::SettingsState,
+    rclone::queries::get_rclone_config_file, utils::types::all_types::SettingsState,
 };
 use log::{debug, info};
 use serde_json::json;
@@ -60,7 +60,7 @@ pub async fn restore_settings_from_path(
 
     let exported_rclone_path = export_info
         .as_ref()
-        .and_then(|info| info.get("rclone_config_path"))
+        .and_then(|info| info.get("rclone_config_file"))
         .and_then(|v| v.as_str())
         .filter(|s| !s.trim().is_empty())
         .map(PathBuf::from);
@@ -85,14 +85,14 @@ pub async fn restore_settings_from_path(
                     let settings = store.get("app_settings").unwrap_or_else(|| json!({}));
                     let custom_path = settings
                         .get("core")
-                        .and_then(|c| c.get("rclone_config_path"))
+                        .and_then(|c| c.get("rclone_config_file"))
                         .and_then(|p| p.as_str())
                         .filter(|s| !s.trim().is_empty());
 
                     if let Some(custom) = custom_path {
                         PathBuf::from(custom)
                     } else {
-                        get_rclone_config_path(app_handle.clone())
+                        get_rclone_config_file(app_handle.clone())
                             .await
                             .unwrap_or_else(|_| state.config_dir.join("rclone.conf"))
                     }

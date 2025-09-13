@@ -5,7 +5,7 @@ use tauri::Manager;
 use crate::{
     core::event_listener::setup_event_listener,
     rclone::{
-        commands::{set_bandwidth_limit, set_rclone_config_path},
+        commands::set_bandwidth_limit,
         state::{CACHE, ENGINE_STATE},
     },
     utils::{
@@ -77,8 +77,6 @@ pub async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) 
             error!("Failed to setup tray: {e}");
         }
     }
-
-    apply_core_settings(&app_handle, &settings).await;
 }
 
 pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSettings) {
@@ -100,16 +98,16 @@ pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSe
         }
     }
 
-    if !settings.core.rclone_config_file.is_empty() {
-        debug!(
-            "🔗 Setting Rclone config path: {}",
-            settings.core.rclone_config_file
-        );
-        if let Err(e) =
-            set_rclone_config_path(app_handle.clone(), settings.core.rclone_config_file.clone())
-                .await
-        {
-            error!("Failed to set Rclone config path: {e}");
-        }
-    }
+    // if !settings.core.rclone_config_file.is_empty() {
+    //     debug!(
+    //         "🔗 Setting Rclone config path: {}",
+    //         settings.core.rclone_config_file
+    //     );
+    //     if let Err(e) =
+    //         set_rclone_config_file(app_handle.clone(), settings.core.rclone_config_file.clone())
+    //             .await
+    //     {
+    //         error!("Failed to set Rclone config path: {e}");
+    //     }
+    // }
 }

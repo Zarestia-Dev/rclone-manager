@@ -13,7 +13,7 @@ use tokio::sync::{Mutex, RwLock};
 
 pub struct RcloneState {
     pub client: reqwest::Client,
-    // pub rclone_config_file: Arc<std::sync::RwLock<String>>,
+    pub rclone_config_file: Arc<std::sync::RwLock<String>>,
     pub tray_enabled: Arc<std::sync::RwLock<bool>>,
     pub is_shutting_down: AtomicBool,
     pub notifications_enabled: Arc<std::sync::RwLock<bool>>,

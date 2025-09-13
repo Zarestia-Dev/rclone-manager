@@ -7,7 +7,7 @@ use crate::{
     RcloneState,
     core::{lifecycle::shutdown::handle_shutdown, tray::core::update_tray_menu},
     rclone::{
-        commands::{set_bandwidth_limit, set_rclone_config_path},
+        commands::set_bandwidth_limit,
         engine::ENGINE,
         state::{CACHE, ENGINE_STATE},
     },
@@ -286,23 +286,37 @@ fn handle_settings_changed(app: &AppHandle) {
                     }
 
                     if let Some(config_path) =
-                        core.get("rclone_config_path").and_then(|v| v.as_str())
+                        core.get("rclone_config_file").and_then(|v| v.as_str())
                     {
                         debug!("🔄 Rclone config path changed to: {config_path}");
-                        // let rclone_state = app_handle.state::<RcloneState>();
-                        // let mut guard = rclone_state.config_path.write().unwrap();
-                        // *guard = config_path.to_string();
-                        // drop(guard); // Release the lock
+                        let rclone_state = app_handle.state::<RcloneState>();
+                        let old_rclone_config_file =
+                            rclone_state.rclone_config_file.read().unwrap().to_string();
+                        let mut guard = rclone_state.rclone_config_file.write().unwrap();
+                        *guard = config_path.to_string();
+                        drop(guard); // Release the lock
 
-                        let config_path = config_path.to_string();
-                        let app_handle_clone = app_handle.clone();
-                        tauri::async_runtime::spawn(async move {
-                            if let Err(e) =
-                                set_rclone_config_path(app_handle_clone, config_path).await
-                            {
-                                error!("Failed to set Rclone config path: {e}");
-                            }
-                        });
+                        // Restart engine with new rclone config file
+                        if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
+                            &app_handle,
+                            "rclone_config_file",
+                            &old_rclone_config_file,
+                            config_path,
+                        ) {
+                            error!("Failed to restart engine for rclone config file change: {e}");
+                        }
+                        info!(
+                            "Rclone config file updated to: {}",
+                            rclone_state.rclone_config_file.read().unwrap()
+                        );
+
+                        // let config_path = config_path.to_string();
+                        // let app_handle_clone = app_handle.clone();
+                        // tauri::async_runtime::spawn(async move {
+                        //     if let Err(e) = set_rclone_config_file(app_handle_clone.clone(), config_path).await {
+                        //         error!("Failed to set Rclone config path: {e}");
+                        //     }
+                        // });
                     }
 
                     if let Some(rclone_path) = core.get("rclone_path").and_then(|v| v.as_str()) {

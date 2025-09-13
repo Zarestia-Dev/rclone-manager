@@ -1,6 +1,6 @@
 use crate::{
     core::settings::backup::archive_utils::{find_7z_executable, is_7z_encrypted},
-    rclone::queries::get_rclone_config_path,
+    rclone::queries::get_rclone_config_file,
     utils::types::all_types::{BackupAnalysis, ExportType, SettingsState},
 };
 use chrono::Local;
@@ -129,7 +129,7 @@ pub async fn backup_settings(
 
     if export_type == ExportType::All || export_type == ExportType::Remotes {
         debug!("Attempting to resolve rclone config path for export.");
-        let resolved_config_path = match get_rclone_config_path(app_handle.clone()).await {
+        let resolved_config_path = match get_rclone_config_file(app_handle.clone()).await {
             Ok(path) => {
                 info!("Resolved rclone config path: {}", path.display());
                 path
@@ -152,7 +152,7 @@ pub async fn backup_settings(
         "exported": exported_items,
         "timestamp": timestamp.to_rfc3339(),
         "remote_name": remote_name,
-        "rclone_config_path": config_path
+        "rclone_config_file": config_path
     });
     debug!(
         "Writing export_info.json to: {}",

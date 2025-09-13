@@ -25,7 +25,7 @@
 - Rclone configuration file path is now set with api call instead of using CLI arguments.
 
 ### Need Fix
-- After engine restart, need the apply the startup settings again. (e.g. config file path, bw limit, etc.)
+- After engine restart, need the apply the startup settings again. (e.g. config file path, bw limit, etc.) (Fixed but need the config file implementation on the rclone)
 - Remote updates not working properly. When you update a some settings to default, it does not update the remote. I know whats the problem. (Fixed I think)
 
 ## [beta-0.1.2] - 2025-07-15

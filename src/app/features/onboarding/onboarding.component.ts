@@ -230,7 +230,7 @@ export class OnboardingComponent implements OnInit, OnDestroy {
       if (this.configSelection === 'custom' && this.customConfigPath) {
         await this.appSettingsService.saveSetting(
           'core',
-          'rclone_config_path',
+          'rclone_config_file',
           this.customConfigPath
         );
       }

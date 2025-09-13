@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, State};
 use tokio::net::TcpStream;
 use tokio::{sync::Mutex, time::sleep};
 
@@ -16,7 +16,7 @@ use crate::{
     rclone::state::ENGINE_STATE,
     utils::{
         rclone::{
-            endpoints::{EndpointHelper, config, core},
+            endpoints::{EndpointHelper, core},
             process_common::create_rclone_command,
         },
         types::all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
@@ -238,31 +238,30 @@ pub async fn set_bandwidth_limit(
     Ok(response_data)
 }
 
-#[tauri::command]
-pub async fn set_rclone_config_path(app: AppHandle, config_path: String) -> Result<(), String> {
-    let state = app.state::<RcloneState>();
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::SETPATH);
+// pub async fn set_rclone_config_file(app: AppHandle, config_path: String) -> Result<(), String> {
+//     let state = app.state::<RcloneState>();
+//     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::SETPATH);
 
-    let payload = json!({ "path": config_path });
+//     let payload = json!({ "path": config_path });
 
-    let response = state
-        .client
-        .post(&url)
-        .json(&payload)
-        .send()
-        .await
-        .map_err(|e| format!("Request failed: {e}"))?;
+//     let response = state
+//         .client
+//         .post(&url)
+//         .json(&payload)
+//         .send()
+//         .await
+//         .map_err(|e| format!("Request failed: {e}"))?;
 
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
+//     let status = response.status();
+//     let body = response.text().await.unwrap_or_default();
 
-    if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
-        return Err(error);
-    }
+//     if !status.is_success() {
+//         let error = format!("HTTP {status}: {body}");
+//         return Err(error);
+//     }
 
-    app.emit("remote_presence_changed", json!({}))
-        .map_err(|e| format!("Failed to emit remote presence changed event: {e}"))?;
+//     app.emit("remote_presence_changed", json!({}))
+//         .map_err(|e| format!("Failed to emit remote presence changed event: {e}"))?;
 
-    Ok(())
-}
+//     Ok(())
+// }

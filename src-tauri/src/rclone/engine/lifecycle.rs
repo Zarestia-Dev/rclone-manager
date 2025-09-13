@@ -1,9 +1,14 @@
 use log::{debug, error, info};
+use serde_json;
 use std::thread;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    RcloneState, core::check_binaries::read_rclone_path, utils::types::all_types::RcApiEngine,
+    RcloneState,
+    core::check_binaries::read_rclone_path,
+    core::initialization::apply_core_settings,
+    core::settings::operations::core::load_settings,
+    utils::types::all_types::{AppSettings, RcApiEngine, SettingsState},
 };
 
 impl RcApiEngine {
@@ -138,6 +143,18 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 ) {
                     error!("Failed to emit ready event: {e}");
                 }
+
+                // Reapply core settings after successful engine start
+                let app_handle = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    if let Ok(settings_json) =
+                        load_settings(app_handle.state::<SettingsState<tauri::Wry>>()).await
+                        && let Ok(settings) =
+                            serde_json::from_value::<AppSettings>(settings_json["settings"].clone())
+                    {
+                        apply_core_settings(&app_handle, &settings).await;
+                    }
+                });
             } else {
                 error!("❌ Failed to start Rclone API within timeout.");
                 // Clean up the failed process
@@ -270,10 +287,10 @@ fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> Result<(), Str
             debug!("🔄 API port updated in ENGINE_STATE");
             // Port is already updated in ENGINE_STATE by the caller
         }
-        // "config_path" => {
-        //     debug!("🔄 Config path updated in RcloneState");
-        //     // Config path is already updated in RcloneState by the caller
-        // }
+        "rclone_config_file" => {
+            debug!("🔄 Config file updated in RcloneState");
+            engine.validate_config_sync(app);
+        }
         _ => {
             debug!("🔄 Generic restart for {change_type}");
         }
