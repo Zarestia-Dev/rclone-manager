@@ -8,30 +8,37 @@ use tauri::{Emitter, State};
 use crate::RcloneState;
 
 #[cfg(target_os = "macos")]
-fn check_fuse_t_installed() -> bool {
-    // Check multiple indicators of FUSE-T installation
+/// Checks for the presence of any compatible FUSE implementation on macOS.
+/// Returns `Ok(detected_implementation_name)` if found, or `Err(` if none are found.
+fn check_fuse_installed() -> Result<String, String> {
+    // Check for FUSE-T (the preferred implementation)
     let fuse_t_app_support = PathBuf::from("/Library/Application Support/fuse-t").exists();
     let fuse_t_framework = PathBuf::from("/Library/Frameworks/FuseT.framework").exists();
     let fuse_t_bin = PathBuf::from("/usr/local/bin/mount_fuse-t").exists();
-
     let fuse_t_exists = fuse_t_app_support || fuse_t_framework || fuse_t_bin;
 
-    if fuse_t_exists {
-        debug!("macOS: FUSE-T installation detected");
-        if fuse_t_app_support {
-            debug!("  - Application Support directory found");
-        }
-        if fuse_t_framework {
-            debug!("  - Framework found");
-        }
-        if fuse_t_bin {
-            debug!("  - Mount binary found");
-        }
-    } else {
-        debug!("macOS: FUSE-T not found");
-    }
+    // Check for MacFUSE (a common alternative)
+    let macfuse_pkg_receipt = PathBuf::from("/Library/Receipts/MacFUSE.pkg").exists();
+    let macfuse_core = PathBuf::from("/Library/Filesystems/macfuse.fs").exists();
+    let macfuse_bin = PathBuf::from("/usr/local/bin/mount_macfuse").exists();
+    let macfuse_exists = macfuse_pkg_receipt || macfuse_core || macfuse_bin;
 
-    fuse_t_exists
+    match (fuse_t_exists, macfuse_exists) {
+        (true, _) => {
+            debug!("macOS: FUSE-T installation detected");
+            Ok("FUSE-T".to_string())
+        }
+        (_, true) => {
+            debug!("macOS: MacFUSE installation detected");
+            // MacFUSE was found. We will consider the system OK for now
+            // but might want to inform the user about preferred driver later.
+            Ok("MacFUSE".to_string())
+        }
+        _ => {
+            debug!("macOS: No compatible FUSE installation found (Checked for FUSE-T and MacFUSE)");
+            Err("No compatible FUSE library found. Please install FUSE-T.".to_string())
+        }
+    }
 }
 
 #[cfg(target_os = "linux")]

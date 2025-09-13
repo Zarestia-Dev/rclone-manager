@@ -157,31 +157,51 @@ impl RcApiEngine {
             }
             Err(e) => {
                 error!("❌ Rclone configuration validation failed: {}", e);
-                self.password_error = true;
 
-                // Provide a more user-friendly message based on the error
-                let user_message = if e.contains("Wrong password")
-                    || e.contains("Invalid environment password")
+                // Categorize the error type and set appropriate flags
+                let (status, user_message) = if e.contains("Rclone binary not found") {
+                    // This is a binary path issue, not a password issue
+                    self.password_error = false;
+                    (
+                        "path_error",
+                        "Rclone executable was not found. Please ensure rclone is installed correctly.",
+                    )
+                } else if e.contains("Wrong password") || e.contains("Invalid environment password")
                 {
-                    "The password for your encrypted rclone configuration is incorrect. Please update your password."
+                    // This is a password issue
+                    self.password_error = true;
+                    (
+                        "password_error",
+                        "The password for your encrypted rclone configuration is incorrect. Please update your password.",
+                    )
                 } else if e.contains("no password is available") {
-                    "Your rclone configuration is encrypted but no password was provided. Please set a password."
+                    // This is also a password issue (missing password)
+                    self.password_error = true;
+                    (
+                        "password_error",
+                        "Your rclone configuration is encrypted but no password was provided. Please set a password.",
+                    )
                 } else if e.contains("Failed to load rclone config file") {
-                    "Could not load your rclone configuration file. It may be corrupted or missing."
-                } else if e.contains("Rclone binary not found") {
-                    "Rclone executable was not found. Please ensure rclone is installed correctly."
+                    // This could be a config file issue, not necessarily password
+                    self.password_error = false;
+                    (
+                        "config_error",
+                        "Could not load your rclone configuration file. It may be corrupted or missing.",
+                    )
                 } else {
-                    &e // Use the original error message
+                    // Unknown error - don't assume it's a password issue
+                    self.password_error = false;
+                    ("error", e.as_str())
                 };
 
                 if let Err(emit_err) = app.emit(
                     "rclone_engine",
                     serde_json::json!({
-                        "status": "password_error",
+                        "status": status,
                         "message": user_message
                     }),
                 ) {
-                    error!("Failed to emit password error event: {emit_err}");
+                    error!("Failed to emit validation error event: {emit_err}");
                 }
                 false
             }

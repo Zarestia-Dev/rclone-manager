@@ -13,6 +13,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { InstallationOptionsData, PasswordLockoutStatus, RepairData } from '@app/types';
 import { InstallationOptionsComponent } from '../../../shared/components/installation-options/installation-options.component';
+import { PasswordManagerComponent } from '../../../shared/components/password-manager/password-manager.component';
 
 // Services
 import { RclonePasswordService, RepairService, InstallationService } from '@app/services';
@@ -36,6 +37,7 @@ import { AnimationsService } from '../../../shared/services/animations.service';
     ReactiveFormsModule,
     MatTooltipModule,
     InstallationOptionsComponent,
+    PasswordManagerComponent,
   ],
   animations: [AnimationsService.slideInOut()],
   templateUrl: './repair-sheet.component.html',

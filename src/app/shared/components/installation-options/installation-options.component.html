@@ -1,5 +1,8 @@
-<div class="advanced-options" @slideInOut>
-  <div class="options-tabs">
+<div class="advanced-options" [ngClass]="mode" @slideInOut>
+  <div
+    class="options-tabs"
+    [style.gridTemplateColumns]="'repeat(' + (tabOptions.length || 1) + ', 1fr)'"
+  >
     @for (tab of tabOptions; track tab) {
       <button
         type="button"
@@ -19,21 +22,42 @@
       @case ('default') {
         <div class="option-info">
           <p>
-            Install rclone to the system location automatically.<br />
-            This is the recommended option for most users.
+            {{
+              mode === 'config'
+                ? 'Use the default rclone config located in the standard path.'
+                : 'Install rclone to the system location automatically.'
+            }}
+            <br />
+            {{
+              mode === 'config'
+                ? 'Choose the default config unless you have a custom configuration file.'
+                : 'This is the recommended option for most users.'
+            }}
           </p>
         </div>
       }
+
       @case ('custom') {
         <div class="option-info" @slideInOut>
-          <p>Choose a custom location to install rclone.</p>
-          <mat-form-field color="accent" appearance="outline" class="compact-field">
-            <mat-label>Installation Path</mat-label>
+          <p>
+            {{
+              mode === 'config'
+                ? 'Select a custom rclone configuration file.'
+                : 'Choose a custom location to install rclone.'
+            }}
+          </p>
+          <mat-form-field
+            [color]="mode === 'config' ? 'accent' : 'primary'"
+            appearance="outline"
+            class="compact-field"
+          >
+            <mat-label>{{
+              mode === 'config' ? 'Configuration File' : 'Installation Path'
+            }}</mat-label>
             <input
               matInput
               [formControl]="customPathControl"
-              [(ngModel)]="customPath"
-              placeholder="/path/to/install"
+              [placeholder]="mode === 'config' ? '/path/to/rclone.conf' : '/path/to/install'"
             />
             <button
               matSuffix
@@ -42,7 +66,7 @@
               matTooltip="Browse"
               [disabled]="disabled"
             >
-              <mat-icon svgIcon="folder"></mat-icon>
+              <mat-icon [svgIcon]="mode === 'config' ? 'file' : 'folder'"></mat-icon>
             </button>
             @if (customPathControl.invalid && customPathControl.touched) {
               <mat-error>{{ getValidationMessage(customPathControl) }}</mat-error>
@@ -50,17 +74,19 @@
           </mat-form-field>
         </div>
       }
+
       @case ('existing') {
         <div class="option-info" @slideInOut>
-          <p>Select an existing rclone binary path on your system.</p>
-          <mat-form-field color="accent" appearance="outline">
-            <mat-label>Binary Path</mat-label>
-            <input
-              matInput
-              [formControl]="existingBinaryControl"
-              [(ngModel)]="existingBinaryPath"
-              placeholder="/path/to/rclone"
-            />
+          <p>
+            {{
+              mode === 'config'
+                ? 'If you have a custom rclone binary, select it here.'
+                : 'Select an existing rclone binary path on your system.'
+            }}
+          </p>
+          <mat-form-field [color]="mode === 'config' ? 'accent' : 'primary'" appearance="outline">
+            <mat-label>{{ mode === 'config' ? 'Binary (optional)' : 'Binary Path' }}</mat-label>
+            <input matInput [formControl]="existingBinaryControl" placeholder="/path/to/rclone" />
             <button
               matSuffix
               mat-icon-button
@@ -68,7 +94,7 @@
               matTooltip="Browse"
               [disabled]="disabled"
             >
-              <mat-icon svgIcon="folder"></mat-icon>
+              <mat-icon svgIcon="file"></mat-icon>
             </button>
             @if (existingBinaryControl.invalid && existingBinaryControl.touched) {
               <mat-error>{{ getValidationMessage(existingBinaryControl) }}</mat-error>

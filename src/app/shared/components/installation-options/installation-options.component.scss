@@ -6,7 +6,6 @@
 
   .options-tabs {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
     background: rgba(var(--secondary-background-rgb), 0.6);
 
     .option-tab {
@@ -102,6 +101,23 @@
           border-color: rgba(var(--warn-color-rgb), 0.15);
           color: var(--warn-color);
         }
+      }
+    }
+  }
+}
+
+.advanced-options.config {
+  .options-tabs {
+    background: rgba(var(--secondary-background-rgb), 0.6);
+    .option-tab {
+      &:hover:not(:disabled):not(.active) {
+        background: rgba(var(--accent-color-rgb), 0.08);
+        color: var(--accent-color);
+      }
+
+      &.active {
+        background: var(--accent-color);
+        color: white;
       }
     }
   }

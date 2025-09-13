@@ -1,6 +1,7 @@
 import { Component, Input, Output, EventEmitter, inject, OnInit } from '@angular/core';
 
 import { FormControl, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -21,6 +22,7 @@ import { InstallationOptionsData, InstallationTabOption } from '../../types';
   imports: [
     ReactiveFormsModule,
     FormsModule,
+    CommonModule,
     MatRadioModule,
     MatFormFieldModule,
     MatInputModule,
@@ -38,6 +40,7 @@ export class InstallationOptionsComponent implements OnInit {
   @Input() showExistingOption = true;
   @Input() customPathLabel = 'Custom Installation Path';
   @Input() existingBinaryLabel = 'Existing Binary Path';
+  @Input() mode: 'install' | 'config' = 'install';
 
   @Output() dataChange = new EventEmitter<InstallationOptionsData>();
   @Output() validChange = new EventEmitter<boolean>();
@@ -63,6 +66,11 @@ export class InstallationOptionsComponent implements OnInit {
   ngOnInit(): void {
     this.setupValidation();
     this.emitData();
+  }
+
+  // trackBy helper for ngFor
+  trackByIndex(index: number): number {
+    return index;
   }
 
   private setupValidation(): void {
@@ -120,7 +128,11 @@ export class InstallationOptionsComponent implements OnInit {
 
   async selectCustomFolder(): Promise<void> {
     try {
-      const selectedPath = await this.fileSystemService.selectFolder();
+      // For install mode we select a folder, for config mode we select a file
+      const selectedPath =
+        this.mode === 'config'
+          ? await this.fileSystemService.selectFile()
+          : await this.fileSystemService.selectFolder();
       if (selectedPath) {
         this.customPath = selectedPath;
         this.customPathControl.setValue(selectedPath);
@@ -133,8 +145,8 @@ export class InstallationOptionsComponent implements OnInit {
 
   async selectExistingBinary(): Promise<void> {
     try {
-      // const selectedPath = await this.fileSystemService.selectFile();
-      const selectedPath = await this.fileSystemService.selectFolder();
+      // Existing binary should be a file selection
+      const selectedPath = await this.fileSystemService.selectFile();
       if (selectedPath) {
         this.existingBinaryPath = selectedPath;
         this.existingBinaryControl.setValue(selectedPath);

@@ -10,17 +10,17 @@
   >
   </app-loading-overlay>
 
-  @if (!isInitializing && initializationComplete) {
+  <ng-container *ngIf="!isInitializing && initializationComplete">
     <div class="card-container" [@contentFadeIn]>
       <div class="onboarding-header">
         <div class="page-indicators">
-          @for (card of cards; track i; let i = $index) {
+          <ng-container *ngFor="let card of cards; let i = index; trackBy: trackByIndex">
             <div
               class="indicator"
               [class.active]="i === currentCardIndex"
               [class.completed]="i < currentCardIndex"
             ></div>
-          }
+          </ng-container>
         </div>
       </div>
 
@@ -35,7 +35,40 @@
             <p class="card-description">{{ cards[currentCardIndex].content }}</p>
           </div>
 
-          @if (cards[currentCardIndex].title === 'Install RClone' && !rcloneInstalled) {
+          <ng-container *ngIf="cards[currentCardIndex].title === 'Select RClone Config'">
+            <div class="form-section" @slideInOut>
+              <app-installation-options
+                [mode]="'config'"
+                [disabled]="installing"
+                [tabOptions]="[
+                  { key: 'default', label: 'Default', icon: 'file' },
+                  { key: 'custom', label: 'Custom', icon: 'folder' },
+                ]"
+                (dataChange)="onConfigOptionsChange($event)"
+                (validChange)="onConfigValidChange($event)"
+              ></app-installation-options>
+            </div>
+          </ng-container>
+
+          <ng-container *ngIf="cards[currentCardIndex].title === 'Configuration Password Required'">
+            <div class="form-section" @slideInOut>
+              <app-password-manager
+                [password]="configPassword"
+                [storePassword]="true"
+                [isSubmitting]="false"
+                [hasError]="!!passwordValidationError"
+                [errorMessage]="passwordValidationError || ''"
+                [lockoutStatus]="null"
+                [showStoreOption]="false"
+                (passwordChange)="configPassword = $event"
+                (unlock)="submitConfigPassword()"
+              ></app-password-manager>
+            </div>
+          </ng-container>
+
+          <ng-container
+            *ngIf="cards[currentCardIndex].title === 'Install RClone' && !rcloneInstalled"
+          >
             <div class="form-section" @slideInOut>
               <app-installation-options
                 [disabled]="installing"
@@ -45,22 +78,22 @@
               >
               </app-installation-options>
             </div>
-          }
+          </ng-container>
         </div>
       </div>
 
       <div class="footer-navigation">
         <div>
-          @if (currentCardIndex > 0) {
+          <ng-container *ngIf="currentCardIndex > 0">
             <button mat-button (click)="previousCard()" class="secondary">
               <mat-icon svgIcon="left-arrow"></mat-icon>
               Back
             </button>
-          }
+          </ng-container>
         </div>
 
         <div>
-          @if (shouldShowInstallRcloneButton()) {
+          <ng-container *ngIf="shouldShowInstallRcloneButton()">
             <button
               mat-raised-button
               color="primary"
@@ -76,7 +109,9 @@
               ></mat-icon>
               {{ getInstallButtonText() }}
             </button>
-          } @else if (shouldShowInstallPluginButton()) {
+          </ng-container>
+
+          <ng-container *ngIf="!shouldShowInstallRcloneButton() && shouldShowInstallPluginButton()">
             <button
               mat-raised-button
               color="primary"
@@ -89,7 +124,15 @@
               ></mat-icon>
               {{ downloadingPlugin ? 'Installing...' : 'Install Plugin' }}
             </button>
-          } @else if (cards[currentCardIndex].title === 'Ready to Go!') {
+          </ng-container>
+
+          <ng-container
+            *ngIf="
+              !shouldShowInstallRcloneButton() &&
+              !shouldShowInstallPluginButton() &&
+              cards[currentCardIndex].title === 'Ready to Go!'
+            "
+          >
             <button
               mat-raised-button
               color="primary"
@@ -99,14 +142,55 @@
               <mat-icon svgIcon="circle-check"></mat-icon>
               Get Started
             </button>
-          } @else {
+          </ng-container>
+
+          <ng-container
+            *ngIf="
+              !shouldShowInstallRcloneButton() &&
+              !shouldShowInstallPluginButton() &&
+              cards[currentCardIndex].title === 'Select RClone Config'
+            "
+          >
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="onConfigNext()"
+              [disabled]="!configValid"
+              [matTooltip]="
+                !configValid ? 'Please select or provide a valid config option first' : ''
+              "
+            >
+              Next
+              <mat-icon svgIcon="right-arrow"></mat-icon>
+            </button>
+          </ng-container>
+
+          <ng-container
+            *ngIf="
+              !shouldShowInstallRcloneButton() &&
+              !shouldShowInstallPluginButton() &&
+              cards[currentCardIndex].title === 'Configuration Password Required'
+            "
+          >
+            <button mat-raised-button color="primary" disabled>Unlock above</button>
+          </ng-container>
+
+          <ng-container
+            *ngIf="
+              !shouldShowInstallRcloneButton() &&
+              !shouldShowInstallPluginButton() &&
+              cards[currentCardIndex].title !== 'Ready to Go!' &&
+              cards[currentCardIndex].title !== 'Select RClone Config' &&
+              cards[currentCardIndex].title !== 'Configuration Password Required'
+            "
+          >
             <button mat-raised-button color="primary" (click)="nextCard()">
               Next
               <mat-icon svgIcon="right-arrow"></mat-icon>
             </button>
-          }
+          </ng-container>
         </div>
       </div>
     </div>
-  }
+  </ng-container>
 </div>
