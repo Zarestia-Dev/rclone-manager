@@ -12,7 +12,7 @@ mod utils;
 // Import the functions we separated out
 use crate::{
     core::{
-        check_binaries::{is_7z_available, is_rclone_available},
+        check_binaries::{check_rclone_available, is_7z_available},
         initialization::{async_startup, init_rclone_state, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
         security::{
@@ -364,7 +364,7 @@ pub fn run() {
             get_settings,
             get_cached_mounted_remotes,
             // Binaries
-            is_rclone_available,
+            check_rclone_available,
             is_7z_available,
             // Logs
             get_remote_logs,

@@ -1,6 +1,9 @@
-use crate::core::security::{
-    CredentialError, CredentialStore, PasswordValidatorState, SafeEnvironmentManager,
-    test_rclone_password,
+use crate::core::{
+    check_binaries::build_rclone_command,
+    security::{
+        CredentialError, CredentialStore, PasswordValidatorState, SafeEnvironmentManager,
+        test_rclone_password,
+    },
 };
 use log::{debug, error, info, warn};
 use tauri::{AppHandle, Emitter, State};
@@ -267,24 +270,22 @@ pub async fn is_config_encrypted_cached(app: AppHandle) -> Result<bool, String> 
 
 #[tauri::command]
 pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
-    use crate::core::check_binaries::read_rclone_path;
     use std::process::Stdio;
 
     debug!("🔍 Checking if rclone config is encrypted");
 
-    let rclone_path = read_rclone_path(&app);
+    let mut rclone_command = build_rclone_command(&app, None, None, None);
 
     // Simple approach: try listremotes with --ask-password=false
     // If encrypted: "unable to decrypt configuration and not allowed to ask for password"
     // If not encrypted: succeeds and lists remotes
-    let output = tokio::process::Command::new(rclone_path)
+    let output = rclone_command
         .args(["listremotes", "--ask-password=false"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .env_remove("RCLONE_CONFIG_PASS")
         .output()
-        .await
         .map_err(|e| format!("Failed to execute rclone listremotes: {e}"))?;
 
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -315,12 +316,11 @@ pub async fn encrypt_config(
     credential_store: State<'_, CredentialStore>,
     password: String,
 ) -> Result<(), String> {
-    use crate::core::check_binaries::read_rclone_path;
     use std::process::Stdio;
 
     info!("🔐 Encrypting rclone configuration (using password-command)");
 
-    let rclone_path = read_rclone_path(&app);
+    let mut rclone_command = build_rclone_command(&app, None, None, None);
 
     // Create a cross-platform command that outputs the password
     let password_command = if cfg!(windows) {
@@ -334,7 +334,7 @@ pub async fn encrypt_config(
         format!("echo \"{}\"", password)
     };
     // Use --password-command to avoid stdin password prompt issues
-    let child = tokio::process::Command::new(rclone_path)
+    let child = rclone_command
         .args([
             "config",
             "encryption",
@@ -349,7 +349,6 @@ pub async fn encrypt_config(
 
     let output = child
         .wait_with_output()
-        .await
         .map_err(|e| format!("Failed to wait for rclone config encryption set: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -400,11 +399,10 @@ pub async fn unencrypt_config(
     env_manager: State<'_, SafeEnvironmentManager>,
     password: String,
 ) -> Result<(), String> {
-    use crate::core::check_binaries::read_rclone_path;
     use std::process::Stdio;
     info!("🔓 Unencrypting rclone configuration (using password-command)");
 
-    let rclone_path = read_rclone_path(&app);
+    let mut rclone_command = build_rclone_command(&app, None, None, None);
 
     // Create a cross-platform password command
     let password_command = if cfg!(windows) {
@@ -416,7 +414,7 @@ pub async fn unencrypt_config(
         format!("echo \"{}\"", password)
     };
 
-    let child = tokio::process::Command::new(rclone_path)
+    let child = rclone_command
         .args([
             "config",
             "encryption",
@@ -431,7 +429,6 @@ pub async fn unencrypt_config(
 
     let output = child
         .wait_with_output()
-        .await
         .map_err(|e| format!("Failed to wait for rclone config encryption remove: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);

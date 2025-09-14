@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 use tauri::AppHandle;
 
-use crate::core::check_binaries::read_rclone_path;
+use crate::core::check_binaries::build_rclone_command;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PasswordValidationResult {
@@ -116,15 +116,14 @@ impl PasswordValidator {
 
 /// Test if a password works with rclone by attempting to connect
 pub async fn test_rclone_password(app: &AppHandle, password: &str) -> PasswordValidationResult {
-    let rclone_path = read_rclone_path(app);
+    let mut rclone_command = build_rclone_command(app, None, None, None);
 
     // Try to run a simple rclone command to test the password, setting the env var only for this process
     // Use --ask-password=false to make it fail immediately instead of hanging
-    let result = tokio::process::Command::new(rclone_path)
+    let result = rclone_command
         .args(["listremotes", "--ask-password=false"])
         .env("RCLONE_CONFIG_PASS", password)
-        .output()
-        .await;
+        .output();
 
     match result {
         Ok(output) => {

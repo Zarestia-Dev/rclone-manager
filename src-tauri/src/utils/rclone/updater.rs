@@ -1,10 +1,10 @@
 use log::debug;
 use serde_json::json;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use tauri::{AppHandle, Emitter, Manager, State};
 
-use crate::core::check_binaries::get_rclone_binary_path;
+use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
+use crate::utils::rclone::util::safe_copy_rclone;
 use crate::{rclone::queries::get_rclone_info, utils::types::all_types::RcloneState};
 
 #[derive(Debug, Clone)]
@@ -144,22 +144,36 @@ pub async fn update_rclone(
     // Get current rclone path and resolve the actual binary path
     let rclone_state = app_handle.state::<RcloneState>();
     let base_path = rclone_state.rclone_path.read().unwrap().clone();
-    let current_path = get_rclone_binary_path(&base_path);
+    let mut current_path = get_rclone_binary_path(&base_path);
 
     if !current_path.exists() {
-        // Set updating to false before returning
-        let mut engine = ENGINE
-            .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
         debug!(
-            "🔍 Current rclone binary not found at: {}",
+            "🔍 Configured rclone binary not found at: {}. Trying system-installed rclone",
             current_path.display()
         );
-        engine.updating = false;
-        return Err(format!(
-            "Current rclone binary not found at {}",
-            current_path.display()
-        ));
+        // Try to find a system rclone (this will return a binary path if found)
+        let system_path = read_rclone_path(&app_handle);
+        if system_path.exists() {
+            log::info!(
+                "Falling back to system rclone at: {}",
+                system_path.display()
+            );
+            current_path = system_path;
+        } else {
+            // Set updating to false before returning
+            let mut engine = ENGINE
+                .lock()
+                .map_err(|e| format!("Failed to lock engine: {e}"))?;
+            engine.updating = false;
+            debug!(
+                "🔍 Current rclone binary not found at: {}",
+                current_path.display()
+            );
+            return Err(format!(
+                "Current rclone binary not found at {}",
+                current_path.display()
+            ));
+        }
     }
 
     // Stop the engine before updating (to release the binary)
@@ -347,25 +361,30 @@ async fn execute_update_strategy(
     match strategy {
         UpdateStrategy::InPlace => {
             log::info!("Executing in-place update");
-            perform_rclone_selfupdate(current_path).await
+            // current_path is the binary path; pass its parent directory as the base
+            if let Some(parent) = current_path.parent() {
+                perform_rclone_selfupdate(app_handle, parent).await
+            } else {
+                Err("Failed to determine rclone base directory for in-place update".into())
+            }
         }
         UpdateStrategy::CopyToLocal(local_path) => {
             log::info!("Executing copy-to-local strategy");
 
-            // First, copy the current rclone to local directory
+            // First, copy the current rclone binary into the local install directory
             copy_rclone_to_local(current_path, &local_path)?;
 
             // Update the app state to use the local copy
             update_rclone_path_in_state(app_handle, &local_path)?;
 
-            // Now update the local copy
-            perform_rclone_selfupdate(&local_path).await
+            // Now update the local copy (local_path is an install directory)
+            perform_rclone_selfupdate(app_handle, &local_path).await
         }
         UpdateStrategy::DownloadToLocal(local_path) => {
             log::info!("Executing download-to-local strategy");
 
-            // Download the latest rclone binary
-            download_latest_rclone(&local_path).await?;
+            // Download the latest rclone binary into the local install directory
+            download_latest_rclone(app_handle, &local_path).await?;
 
             // Update the app state to use the local copy
             update_rclone_path_in_state(app_handle, &local_path)?;
@@ -402,46 +421,36 @@ fn can_update_in_place(rclone_path: &Path) -> bool {
 
 /// Get the local rclone path in the app's data directory
 fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
+    // Prefer any configured rclone_path in application state (if not "system" or empty)
+    let rclone_state = app_handle.state::<RcloneState>();
+    let configured = rclone_state.rclone_path.read().unwrap().clone();
+    let configured_str = configured.to_string_lossy();
+
+    if !configured_str.is_empty() && configured_str != "system" {
+        log::info!("Using configured rclone install path from state: {configured:?}");
+        return Ok(configured);
+    }
+
+    // Fallback to the app data directory (same default as provision_rclone)
     let app_data_dir = app_handle
         .path()
         .app_data_dir()
         .map_err(|e| format!("Failed to get app data directory: {e}"))?;
 
-    let mut rclone_path = app_data_dir.join("bin");
-
-    // Add platform-specific extension
-    #[cfg(target_os = "windows")]
-    {
-        rclone_path = rclone_path.join("rclone.exe");
-    }
-    #[cfg(not(target_os = "windows"))]
-    {
-        rclone_path = rclone_path.join("rclone");
-    }
-
-    Ok(rclone_path)
+    Ok(app_data_dir)
 }
 
 /// Copy system rclone to local directory
 fn copy_rclone_to_local(source_path: &Path, dest_path: &Path) -> Result<(), String> {
-    log::info!("Copying rclone from {source_path:?} to {dest_path:?}");
+    log::info!("Copying rclone from {source_path:?} to install dir {dest_path:?}");
 
-    std::fs::copy(source_path, dest_path)
-        .map_err(|e| format!("Failed to copy rclone to local directory: {e}"))?;
-
-    // Set executable permissions on Unix-like systems
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let mut perms = std::fs::metadata(dest_path)
-            .map_err(|e| format!("Failed to get file permissions: {e}"))?
-            .permissions();
-        perms.set_mode(0o755); // rwxr-xr-x
-        std::fs::set_permissions(dest_path, perms)
-            .map_err(|e| format!("Failed to set executable permissions: {e}"))?;
-    }
-
-    Ok(())
+    // Use safe_copy_rclone which expects the destination directory and binary name
+    let binary_name = if cfg!(windows) {
+        "rclone.exe"
+    } else {
+        "rclone"
+    };
+    safe_copy_rclone(source_path, dest_path, binary_name)
 }
 
 /// Update the rclone path in the application state
@@ -454,16 +463,17 @@ fn update_rclone_path_in_state(app_handle: &AppHandle, new_path: &Path) -> Resul
     Ok(())
 }
 
-/// Download the latest rclone binary
-async fn download_latest_rclone(dest_path: &Path) -> Result<(), String> {
-    // This is a simplified implementation - you might want to implement
-    // a more robust download mechanism
-    log::warn!("Download functionality not yet implemented - using rclone selfupdate as fallback");
+/// Download the latest rclone binary via rclone selfupdate
+async fn download_latest_rclone(app_handle: &AppHandle, dest_dir: &Path) -> Result<(), String> {
+    let binary_name = if cfg!(windows) {
+        "rclone.exe"
+    } else {
+        "rclone"
+    };
+    let dest_file = dest_dir.join(binary_name);
 
-    // For now, we'll try to use any available rclone to download itself
-    // This is a fallback - ideally you'd implement direct binary download
-    let output = Command::new("rclone")
-        .args(["selfupdate", "--output", &dest_path.display().to_string()])
+    let output = build_rclone_command(app_handle, None, None, None)
+        .args(["selfupdate", "--output", &dest_file.display().to_string()])
         .output()
         .map_err(|e| format!("Failed to download rclone: {e}"))?;
 
@@ -476,10 +486,17 @@ async fn download_latest_rclone(dest_path: &Path) -> Result<(), String> {
 }
 
 /// Perform rclone selfupdate on the specified binary
-async fn perform_rclone_selfupdate(rclone_path: &Path) -> Result<serde_json::Value, String> {
-    log::info!("Performing selfupdate on rclone at: {rclone_path:?}");
+async fn perform_rclone_selfupdate(
+    app_handle: &AppHandle,
+    rclone_base: &Path,
+) -> Result<serde_json::Value, String> {
+    log::info!("Performing selfupdate on rclone in base dir: {rclone_base:?}");
 
-    let mut update_rclone = Command::new(rclone_path);
+    let base_str = rclone_base
+        .to_str()
+        .ok_or_else(|| "Failed to convert rclone base path to string".to_string())?;
+
+    let mut update_rclone = build_rclone_command(app_handle, Some(base_str), None, None);
 
     update_rclone.arg("selfupdate");
 
@@ -510,7 +527,7 @@ async fn perform_rclone_selfupdate(rclone_path: &Path) -> Result<serde_json::Val
             "message": "Rclone updated successfully",
             "stdout": stdout,
             "stderr": stderr,
-            "path": rclone_path.display().to_string()
+            "path": rclone_base.display().to_string()
         }))
     } else {
         log::error!("Rclone selfupdate failed: {stderr}");

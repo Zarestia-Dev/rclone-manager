@@ -14,7 +14,7 @@
     "editor.formatOnSave": true
   },
   "rust-analyzer.rustfmt.extraArgs": ["+nightly"],
-  "rust-analyzer.checkOnSave.command": "clippy",
+  "rust-analyzer.checkOnSave": true,
   "files.associations": {
     "*.rs": "rust",
     "Cargo.toml": "toml",

@@ -3,7 +3,9 @@ use std::path::PathBuf;
 use log::{debug, error, info};
 use tauri::Manager;
 
-use crate::core::{check_binaries::is_rclone_available, settings::operations::core::save_settings};
+use crate::core::{
+    check_binaries::check_rclone_available, settings::operations::core::save_settings,
+};
 
 use super::{
     downloader::download_rclone_zip,
@@ -27,7 +29,7 @@ pub async fn provision_rclone(
             .expect("Failed to get app data directory"),
     };
 
-    if is_rclone_available(app_handle.clone(), "") {
+    if check_rclone_available(app_handle.clone(), "") {
         if let Err(e) = save_settings(
             app_handle.state(),
             serde_json::json!({

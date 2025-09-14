@@ -63,8 +63,9 @@ pub fn is_7z_available() -> bool {
 //     Ok(format!("{}\\7z.exe", path))
 // }
 
+/// Internal helper that borrows the `AppHandle` so Rust call-sites don't need to clone it.
 #[tauri::command]
-pub fn is_rclone_available(app: AppHandle, path: &str) -> bool {
+pub fn check_rclone_available(app: AppHandle, path: &str) -> bool {
     let rclone_path = if !path.is_empty() {
         // Use the explicit path if provided
         get_rclone_binary_path(&PathBuf::from(path))
@@ -72,6 +73,11 @@ pub fn is_rclone_available(app: AppHandle, path: &str) -> bool {
         // Read the configured path from app state
         read_rclone_path(&app)
     };
+
+    debug!(
+        "Checking rclone availability at path: {}",
+        rclone_path.display()
+    );
 
     // Check if the path exists and can execute --version
     if rclone_path.exists() {
@@ -83,6 +89,48 @@ pub fn is_rclone_available(app: AppHandle, path: &str) -> bool {
     } else {
         false
     }
+}
+
+pub fn build_rclone_command(
+    app: &AppHandle,
+    bin_override: Option<&str>,
+    config_override: Option<&str>,
+    args: Option<&[&str]>,
+) -> Command {
+    // Determine binary path
+    let binary_path = if let Some(b) = bin_override {
+        if !b.is_empty() {
+            get_rclone_binary_path(&PathBuf::from(b))
+        } else {
+            read_rclone_path(app)
+        }
+    } else {
+        read_rclone_path(app)
+    };
+
+    let mut cmd = Command::new(binary_path);
+    // Determine config file: explicit override takes precedence, otherwise use
+    // the application state's configured rclone_config_file (if set).
+    if let Some(cfg) = config_override {
+        if !cfg.is_empty() {
+            cmd.arg("--config").arg(cfg);
+        }
+    } else {
+        let rclone_state = app.state::<RcloneState>();
+        let cfg = rclone_state.rclone_config_file.read().unwrap().clone();
+        if !cfg.is_empty() {
+            cmd.arg("--config").arg(cfg);
+        }
+    }
+
+    // Append any remaining args
+    if let Some(a) = args
+        && !a.is_empty()
+    {
+        cmd.args(a);
+    }
+
+    cmd
 }
 
 pub fn get_rclone_binary_path(base_path: &std::path::Path) -> PathBuf {

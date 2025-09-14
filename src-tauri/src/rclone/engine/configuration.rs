@@ -3,10 +3,7 @@ use std::process::Stdio;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    core::{
-        check_binaries::{is_rclone_available, read_rclone_path},
-        security::SafeEnvironmentManager,
-    },
+    core::{check_binaries::build_rclone_command, security::SafeEnvironmentManager},
     utils::types::all_types::RcApiEngine,
 };
 
@@ -16,12 +13,12 @@ impl RcApiEngine {
     pub async fn validate_config_before_start(&self, app: &AppHandle) -> Result<(), String> {
         info!("🔍 Validating rclone configuration before engine start...");
 
-        // Check if rclone binary exists and is available
-        if !self.rclone_path.exists() {
-            return Err(format!(
-                "Rclone binary not found at: {}",
-                self.rclone_path.display()
-            ));
+        // Check if rclone binary exists and is available using shared helpers
+        if !crate::core::check_binaries::check_rclone_available(app.clone(), "") {
+            let path = crate::core::check_binaries::read_rclone_path(app);
+            let err_msg = format!("Rclone binary not found at: {}", path.display());
+            error!("❌ {}", err_msg);
+            return Err(err_msg);
         }
 
         // Use dedicated method to check if config is encrypted
@@ -52,14 +49,13 @@ impl RcApiEngine {
         }
 
         // Run 'rclone listremotes' to test the password
-        let output = tokio::process::Command::new(&self.rclone_path)
+        let output = build_rclone_command(app, None, None, None)
             .args(["listremotes", "--ask-password=false"])
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .envs(&env_vars)
             .output()
-            .await
             .map_err(|e| format!("Failed to execute rclone command: {}", e))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -101,20 +97,16 @@ impl RcApiEngine {
     pub async fn is_config_encrypted(&self, _app: &AppHandle) -> bool {
         debug!("🔍 Checking if rclone configuration is encrypted...");
 
-        if !self.rclone_path.exists() {
-            warn!("Rclone binary not found, assuming config is not encrypted");
-            return false;
-        }
+        let mut rclone_command = build_rclone_command(_app, None, None, None);
 
         // Simple approach: try listremotes with --ask-password=false
-        let output = match tokio::process::Command::new(&self.rclone_path)
+        let output = match rclone_command
             .args(["listremotes", "--ask-password=false"])
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .env_remove("RCLONE_CONFIG_PASS")
             .output()
-            .await
         {
             Ok(output) => output,
             Err(e) => {
@@ -162,6 +154,7 @@ impl RcApiEngine {
                 let (status, user_message) = if e.contains("Rclone binary not found") {
                     // This is a binary path issue, not a password issue
                     self.password_error = false;
+                    self.path_error = true;
                     (
                         "path_error",
                         "Rclone executable was not found. Please ensure rclone is installed correctly.",
@@ -222,28 +215,30 @@ impl RcApiEngine {
         crate::rclone::engine::lifecycle::start(self, app);
     }
 
-    pub fn handle_invalid_path(&mut self, app: &AppHandle) {
-        error!(
-            "❌ Rclone binary does not exist: {}",
-            self.rclone_path.display()
-        );
+    //     pub fn handle_invalid_path(&mut self, app: &AppHandle) {
+    //         // error!(
+    //         //     "❌ Rclone binary does not exist: {}",
+    //         //     self.rclone_path.display()
+    //         // );
 
-        // Try falling back to system rclone
-        if is_rclone_available(app.clone(), "") {
-            info!("🔄 Rclone is available. Getting the path...");
-            self.rclone_path = read_rclone_path(app);
-        } else {
-            warn!("🔄 Waiting for valid Rclone path...");
-            if let Err(e) = app.emit(
-                "rclone_engine",
-                serde_json::json!({
-                    "status": "path_error",
-                    "message": "Rclone binary not found",
-                }),
-            ) {
-                error!("Failed to emit event: {e}");
-            }
-        }
-        std::thread::sleep(std::time::Duration::from_secs(5));
-    }
+    //         // Try falling back to system rclone
+    //         if crate::core::check_binaries::check_rclone_available(app, "") {
+    //             info!("🔄 Rclone is available. Getting the path...");
+    //             self.path_error = false;
+    //             // self.rclone_path = read_rclone_path(app);
+    //         } else {
+    //             warn!("🔄 Waiting for valid Rclone path...");
+    //             self.path_error = true;
+    //             if let Err(e) = app.emit(
+    //                 "rclone_engine",
+    //                 serde_json::json!({
+    //                     "status": "path_error",
+    //                     "message": "Rclone binary not found",
+    //                 }),
+    //             ) {
+    //                 error!("Failed to emit event: {e}");
+    //             }
+    //         }
+    //         std::thread::sleep(std::time::Duration::from_secs(5));
+    //     }
 }

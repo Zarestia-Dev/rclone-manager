@@ -5,7 +5,6 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     RcloneState,
-    core::check_binaries::read_rclone_path,
     core::initialization::apply_core_settings,
     core::settings::operations::core::load_settings,
     utils::types::all_types::{AppSettings, RcApiEngine, SettingsState},
@@ -13,9 +12,9 @@ use crate::{
 
 impl RcApiEngine {
     pub fn init(&mut self, app: &AppHandle) {
-        if self.rclone_path.as_os_str().is_empty() {
-            self.rclone_path = read_rclone_path(app);
-        }
+        // if self.rclone_path.as_os_str().is_empty() {
+        //     self.rclone_path = read_rclone_path(app);
+        // }
 
         let app_handle = app.clone();
 
@@ -39,10 +38,10 @@ impl RcApiEngine {
                         break;
                     }
 
-                    if !engine.rclone_path.exists() {
-                        engine.handle_invalid_path(&app_handle);
-                        continue;
-                    }
+                    // if !engine.rclone_path.exists() {
+                    //     engine.handle_invalid_path(&app_handle);
+                    //     continue;
+                    // }
 
                     // if engine.password_error {
                     //     engine.test_config_and_password(&app_handle);
@@ -91,6 +90,19 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
             serde_json::json!({
                 "status": "password_error",
                 "message": "Rclone password is required"
+            }),
+        )
+        .ok();
+        return;
+    }
+
+    if engine.path_error {
+        debug!("⏸️ Engine has path error, not starting until resolved");
+        app.emit(
+            "rclone_engine",
+            serde_json::json!({
+                "status": "path_error",
+                "message": "Rclone binary path is invalid"
             }),
         )
         .ok();
@@ -281,7 +293,31 @@ fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> Result<(), Str
     match change_type {
         "rclone_path" => {
             debug!("🔄 Updating rclone path...");
-            engine.rclone_path = read_rclone_path(app);
+            // Validate the new configured rclone path before attempting to start
+            let configured_path = crate::core::check_binaries::read_rclone_path(app);
+            if !crate::core::check_binaries::check_rclone_available(app.clone(), "") {
+                error!(
+                    "❌ Configured rclone path is invalid: {}",
+                    configured_path.display()
+                );
+                engine.path_error = true;
+                // Inform the frontend about the path error
+                if let Err(e) = app.emit(
+                    "rclone_engine",
+                    serde_json::json!({
+                        "status": "path_error",
+                        "message": format!("Rclone binary not found at: {}", configured_path.display())
+                    }),
+                ) {
+                    error!("Failed to emit path_error event: {e}");
+                }
+                return Err(format!(
+                    "Configured rclone path is invalid: {}",
+                    configured_path.display()
+                ));
+            } else {
+                engine.path_error = false;
+            }
         }
         "api_port" => {
             debug!("🔄 API port updated in ENGINE_STATE");

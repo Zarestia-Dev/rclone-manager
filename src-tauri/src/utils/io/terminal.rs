@@ -1,11 +1,11 @@
-use log::{debug, error, info};
+use log::{error, info};
 use serde_json::json;
-use std::process::Stdio;
+use std::process::{Command, Stdio};
 use tauri::{AppHandle, Manager};
 use tokio::process::Command as TokioCommand;
 
 use crate::{
-    core::check_binaries::read_rclone_path,
+    core::check_binaries::build_rclone_command,
     utils::{
         logging::log::log_operation,
         types::all_types::{LogLevel, RcloneState},
@@ -18,18 +18,29 @@ pub async fn open_terminal_config(
     remote_name: Option<String>,
 ) -> Result<(), String> {
     // Get rclone binary path from state
-    let rclone_path = read_rclone_path(&app);
+    let rclone_command = build_rclone_command(&app, None, None, None);
 
-    // Escape the path
-    let escaped_rclone_path = escape_path(&rclone_path.to_string_lossy());
-    debug!("Using rclone path: {escaped_rclone_path}");
+    // // Escape the path
+    // let escaped_rclone_path = escape_path(&rclone_path.to_string_lossy());
+    // debug!("Using rclone path: {escaped_rclone_path}");
 
     let config_command = match remote_name.clone() {
-        Some(name) => format!("{escaped_rclone_path} config update {name}"),
-        _ => format!("{escaped_rclone_path} config"),
+        Some(name) => {
+            let mut cmd = rclone_command;
+            cmd.arg("config").arg("edit").arg(name);
+            cmd
+        }
+        _ => {
+            let mut cmd = rclone_command;
+            cmd.arg("config");
+            cmd
+        }
     };
 
-    info!("🖥️ Opening terminal for rclone config: {config_command}");
+    info!(
+        "🖥️ Opening terminal for rclone config: {:?}",
+        config_command
+    );
 
     log_operation(
         LogLevel::Info,
@@ -37,12 +48,12 @@ pub async fn open_terminal_config(
         Some("Terminal config".to_string()),
         "Opening terminal for rclone config".to_string(),
         Some(json!({
-            "command": config_command
+            "command": format!("{:?}", config_command)
         })),
     )
     .await;
 
-    let result = open_terminal_with_command(&config_command, app.clone()).await;
+    let result = open_terminal_with_command(config_command, app.clone()).await;
 
     match result {
         Ok(_) => {
@@ -76,7 +87,7 @@ pub async fn open_terminal_config(
     }
 }
 
-async fn open_terminal_with_command(command: &str, app: AppHandle) -> Result<(), String> {
+async fn open_terminal_with_command(command: Command, app: AppHandle) -> Result<(), String> {
     let preferred_terminals = app
         .state::<RcloneState>()
         .terminal_apps
@@ -99,7 +110,7 @@ async fn open_terminal_with_command(command: &str, app: AppHandle) -> Result<(),
 
 #[cfg(target_os = "windows")]
 async fn open_windows_terminal(
-    command: &str,
+    command: Command,
     preferred_terminals: &[String],
 ) -> Result<(), String> {
     let mut last_error = None;
@@ -112,7 +123,9 @@ async fn open_windows_terminal(
         //     command.to_string()
         // };
 
-        let full_cmd = terminal_cmd.replace("{}", command);
+        // Convert Command to a string representation
+        let command_str = format!("{:?}", command);
+        let full_cmd = terminal_cmd.replace("{}", &command_str);
         info!("Trying Windows terminal command: {full_cmd}");
 
         match try_open_windows_terminal(&full_cmd).await {
@@ -130,11 +143,16 @@ async fn open_windows_terminal(
 }
 
 #[cfg(target_os = "macos")]
-async fn open_macos_terminal(command: &str, preferred_terminals: &[String]) -> Result<(), String> {
+async fn open_macos_terminal(
+    command: Command,
+    preferred_terminals: &[String],
+) -> Result<(), String> {
     let mut last_error = None;
 
     for terminal_cmd in preferred_terminals {
-        let full_cmd = terminal_cmd.replace("{}", command);
+        // Convert Command to a string representation
+        let command_str = format!("{:?}", command);
+        let full_cmd = terminal_cmd.replace("{}", &command_str);
         info!("Trying macOS terminal command: {full_cmd}");
 
         match try_open_macos_terminal(&full_cmd).await {
@@ -153,11 +171,16 @@ async fn open_macos_terminal(command: &str, preferred_terminals: &[String]) -> R
 }
 
 #[cfg(target_os = "linux")]
-async fn open_linux_terminal(command: &str, preferred_terminals: &[String]) -> Result<(), String> {
+async fn open_linux_terminal(
+    command: Command,
+    preferred_terminals: &[String],
+) -> Result<(), String> {
     let mut last_error = None;
 
     for terminal_cmd in preferred_terminals {
-        let full_cmd = terminal_cmd.replace("{}", command);
+        // Convert Command to a string representation
+        let command_str = format!("{:?}", command);
+        let full_cmd = terminal_cmd.replace("{}", &command_str);
 
         info!("Trying Linux terminal command: {full_cmd}");
 
@@ -296,13 +319,13 @@ fn parse_args(args_str: &str) -> Vec<String> {
     args
 }
 
-fn escape_path(path: &str) -> String {
-    if path.contains(' ') {
-        format!("'{}'", path.replace('"', "\\\""))
-    } else {
-        path.to_string()
-    }
-}
+// fn escape_path(path: &str) -> String {
+//     if path.contains(' ') {
+//         format!("'{}'", path.replace('"', "\\\""))
+//     } else {
+//         path.to_string()
+//     }
+// }
 
 /// Parses a full command string into program and arguments
 fn parse_command(full_command: &str) -> Result<(&str, Vec<String>), String> {

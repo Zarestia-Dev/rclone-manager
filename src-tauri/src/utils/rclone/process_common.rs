@@ -5,6 +5,7 @@ use tauri::{AppHandle, Emitter, Manager};
 #[cfg(target_os = "windows")]
 use std::os::windows::process::CommandExt;
 
+use crate::core::check_binaries::build_rclone_command;
 use crate::core::security::{CredentialStore, SafeEnvironmentManager};
 use crate::rclone::engine::core::ENGINE;
 
@@ -142,12 +143,11 @@ pub async fn setup_rclone_environment(
 
 /// Create and configure a new rclone command with standard settings
 pub async fn create_rclone_command(
-    rclone_path: &str,
     port: u16,
     app: &AppHandle,
     process_type: &str,
 ) -> Result<Command, String> {
-    let mut command = Command::new(rclone_path);
+    let mut command = build_rclone_command(app, None, None, None);
 
     // Standard rclone daemon arguments
     command.args([

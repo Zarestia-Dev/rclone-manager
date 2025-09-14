@@ -21,14 +21,7 @@ impl RcApiEngine {
         let port = ENGINE_STATE.get_api().1;
         self.current_api_port = port;
 
-        let mut engine_app = match create_rclone_command(
-            self.rclone_path.to_str().unwrap(),
-            port,
-            app,
-            "main_engine",
-        )
-        .await
-        {
+        let mut engine_app = match create_rclone_command(port, app, "main_engine").await {
             Ok(cmd) => cmd,
             Err(e) => {
                 let error_msg = format!("Failed to create engine command: {e}");

@@ -12,7 +12,6 @@ use tokio::{sync::Mutex, time::sleep};
 
 use crate::{
     RcloneState,
-    core::check_binaries::read_rclone_path,
     rclone::state::ENGINE_STATE,
     utils::{
         rclone::{
@@ -103,17 +102,15 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     }
 
     // Start new process
-    let rclone_path = read_rclone_path(app);
     let port = ENGINE_STATE.get_oauth().1;
 
-    let mut oauth_app =
-        match create_rclone_command(rclone_path.to_str().unwrap(), port, app, "oauth").await {
-            Ok(cmd) => cmd,
-            Err(e) => {
-                let error_msg = format!("Failed to create OAuth command: {e}");
-                return Err(RcloneError::OAuthError(error_msg));
-            }
-        };
+    let mut oauth_app = match create_rclone_command(port, app, "oauth").await {
+        Ok(cmd) => cmd,
+        Err(e) => {
+            let error_msg = format!("Failed to create OAuth command: {e}");
+            return Err(RcloneError::OAuthError(error_msg));
+        }
+    };
 
     let process = oauth_app.spawn().map_err(|e| {
         let error_msg = format!(
