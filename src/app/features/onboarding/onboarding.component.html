@@ -10,32 +10,29 @@
   >
   </app-loading-overlay>
 
-  <ng-container *ngIf="!isInitializing && initializationComplete">
+  @if (!isInitializing && initializationComplete) {
     <div class="card-container" [@contentFadeIn]>
       <div class="onboarding-header">
         <div class="page-indicators">
-          <ng-container *ngFor="let card of cards; let i = index; trackBy: trackByIndex">
+          @for (card of cards; track trackByIndex(i); let i = $index) {
             <div
               class="indicator"
               [class.active]="i === currentCardIndex"
               [class.completed]="i < currentCardIndex"
             ></div>
-          </ng-container>
+          }
         </div>
       </div>
-
       <div class="content-area">
         <div class="card-content">
           <div class="icon-container">
             <mat-icon [svgIcon]="cards[currentCardIndex].image"></mat-icon>
           </div>
-
           <div class="text-content">
             <h2 class="card-title">{{ cards[currentCardIndex].title }}</h2>
             <p class="card-description">{{ cards[currentCardIndex].content }}</p>
           </div>
-
-          <ng-container *ngIf="cards[currentCardIndex].title === 'Select RClone Config'">
+          @if (cards[currentCardIndex].title === 'Select RClone Config') {
             <div class="form-section" @slideInOut>
               <app-installation-options
                 [mode]="'config'"
@@ -48,9 +45,8 @@
                 (validChange)="onConfigValidChange($event)"
               ></app-installation-options>
             </div>
-          </ng-container>
-
-          <ng-container *ngIf="cards[currentCardIndex].title === 'Configuration Password Required'">
+          }
+          @if (cards[currentCardIndex].title === 'Configuration Password Required') {
             <div class="form-section" @slideInOut>
               <app-password-manager
                 [password]="configPassword"
@@ -64,11 +60,8 @@
                 (unlock)="submitConfigPassword()"
               ></app-password-manager>
             </div>
-          </ng-container>
-
-          <ng-container
-            *ngIf="cards[currentCardIndex].title === 'Install RClone' && !rcloneInstalled"
-          >
+          }
+          @if (cards[currentCardIndex].title === 'Install RClone' && !rcloneInstalled) {
             <div class="form-section" @slideInOut>
               <app-installation-options
                 [mode]="'install'"
@@ -79,22 +72,20 @@
               >
               </app-installation-options>
             </div>
-          </ng-container>
+          }
         </div>
       </div>
-
       <div class="footer-navigation">
         <div>
-          <ng-container *ngIf="currentCardIndex > 0">
+          @if (currentCardIndex > 0) {
             <button mat-button (click)="previousCard()" class="secondary">
               <mat-icon svgIcon="left-arrow"></mat-icon>
               Back
             </button>
-          </ng-container>
+          }
         </div>
-
         <div>
-          <ng-container *ngIf="shouldShowInstallRcloneButton()">
+          @if (shouldShowInstallRcloneButton()) {
             <button
               mat-raised-button
               color="primary"
@@ -110,9 +101,8 @@
               ></mat-icon>
               {{ getInstallButtonText() }}
             </button>
-          </ng-container>
-
-          <ng-container *ngIf="!shouldShowInstallRcloneButton() && shouldShowInstallPluginButton()">
+          }
+          @if (!shouldShowInstallRcloneButton() && shouldShowInstallPluginButton()) {
             <button
               mat-raised-button
               color="primary"
@@ -125,15 +115,12 @@
               ></mat-icon>
               {{ downloadingPlugin ? 'Installing...' : 'Install Plugin' }}
             </button>
-          </ng-container>
-
-          <ng-container
-            *ngIf="
-              !shouldShowInstallRcloneButton() &&
-              !shouldShowInstallPluginButton() &&
-              cards[currentCardIndex].title === 'Ready to Go!'
-            "
-          >
+          }
+          @if (
+            !shouldShowInstallRcloneButton() &&
+            !shouldShowInstallPluginButton() &&
+            cards[currentCardIndex].title === 'Ready to Go!'
+          ) {
             <button
               mat-raised-button
               color="primary"
@@ -143,15 +130,12 @@
               <mat-icon svgIcon="circle-check"></mat-icon>
               Get Started
             </button>
-          </ng-container>
-
-          <ng-container
-            *ngIf="
-              !shouldShowInstallRcloneButton() &&
-              !shouldShowInstallPluginButton() &&
-              cards[currentCardIndex].title === 'Select RClone Config'
-            "
-          >
+          }
+          @if (
+            !shouldShowInstallRcloneButton() &&
+            !shouldShowInstallPluginButton() &&
+            cards[currentCardIndex].title === 'Select RClone Config'
+          ) {
             <button
               mat-raised-button
               color="primary"
@@ -164,46 +148,40 @@
               Next
               <mat-icon svgIcon="right-arrow"></mat-icon>
             </button>
-          </ng-container>
-
-          <ng-container
-            *ngIf="
-              !shouldShowInstallRcloneButton() &&
-              !shouldShowInstallPluginButton() &&
-              cards[currentCardIndex].title === 'Configuration Password Required'
-            "
-          >
+          }
+          @if (
+            !shouldShowInstallRcloneButton() &&
+            !shouldShowInstallPluginButton() &&
+            cards[currentCardIndex].title === 'Configuration Password Required'
+          ) {
             <button
               mat-raised-button
               color="primary"
               (click)="submitConfigPassword()"
               [disabled]="!configPassword || isSubmittingPassword"
             >
-              <mat-progress-spinner
-                *ngIf="isSubmittingPassword"
-                diameter="18"
-                mode="indeterminate"
-              ></mat-progress-spinner>
-              <span *ngIf="!isSubmittingPassword">Unlock</span>
+              @if (isSubmittingPassword) {
+                <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
+              }
+              @if (!isSubmittingPassword) {
+                <span>Unlock</span>
+              }
             </button>
-          </ng-container>
-
-          <ng-container
-            *ngIf="
-              !shouldShowInstallRcloneButton() &&
-              !shouldShowInstallPluginButton() &&
-              cards[currentCardIndex].title !== 'Ready to Go!' &&
-              cards[currentCardIndex].title !== 'Select RClone Config' &&
-              cards[currentCardIndex].title !== 'Configuration Password Required'
-            "
-          >
+          }
+          @if (
+            !shouldShowInstallRcloneButton() &&
+            !shouldShowInstallPluginButton() &&
+            cards[currentCardIndex].title !== 'Ready to Go!' &&
+            cards[currentCardIndex].title !== 'Select RClone Config' &&
+            cards[currentCardIndex].title !== 'Configuration Password Required'
+          ) {
             <button mat-raised-button color="primary" (click)="nextCard()">
               Next
               <mat-icon svgIcon="right-arrow"></mat-icon>
             </button>
-          </ng-container>
+          }
         </div>
       </div>
     </div>
-  </ng-container>
+  }
 </div>

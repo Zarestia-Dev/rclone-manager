@@ -288,7 +288,6 @@ $rclone-manager-accent: mat.m2-define-palette($adwaita-blue-palette);
 $rclone-manager-theme: mat.m2-define-light-theme(
   (
     color: (
-      theme: light,
       primary: $rclone-manager-primary,
       accent: $rclone-manager-accent,
       warn: $rclone-manager-warn,
@@ -300,7 +299,6 @@ $rclone-manager-theme: mat.m2-define-light-theme(
 $rclone-manager-dark-theme: mat.m2-define-dark-theme(
   (
     color: (
-      theme: dark,
       primary: $rclone-manager-primary,
       accent: $rclone-manager-accent,
       warn: $rclone-manager-warn,
@@ -309,7 +307,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
 );
 
 .light {
-  @include mat.all-component-colors($rclone-manager-theme);
+  @include mat.all-component-themes($rclone-manager-theme);
 
   & {
     /* Define custom colors for light mode */
@@ -338,7 +336,7 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
 /* 🌙 Dark Theme */
 
 .dark {
-  @include mat.all-component-colors($rclone-manager-dark-theme);
+  @include mat.all-component-themes($rclone-manager-dark-theme);
   & {
     /* Define custom colors for dark mode */
     --app-background: #222226;
@@ -715,4 +713,13 @@ button {
   border-radius: var(--radius-xxs);
   transition: var(--transition-standard);
   will-change: background;
+}
+
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
 }

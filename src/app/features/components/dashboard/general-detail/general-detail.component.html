@@ -33,19 +33,17 @@
           <div class="status-dot">
             <mat-icon svgIcon="mount"></mat-icon>
           </div>
-          <span
-            *ngIf="selectedRemote.primaryActions?.includes('mount')"
-            class="selection-badge"
-            aria-hidden="true"
-            >{{ (selectedRemote.primaryActions?.indexOf('mount') ?? -1) + 1 }}</span
-          >
-          <span
-            class="cdk-visually-hidden"
-            *ngIf="selectedRemote.primaryActions?.includes('mount')"
-          >
-            Mount selected as quick action
-            {{ (selectedRemote.primaryActions?.indexOf('mount') ?? -1) + 1 }}
-          </span>
+          @if (selectedRemote.primaryActions?.includes('mount')) {
+            <span class="selection-badge" aria-hidden="true">{{
+              (selectedRemote.primaryActions?.indexOf('mount') ?? -1) + 1
+            }}</span>
+          }
+          @if (selectedRemote.primaryActions?.includes('mount')) {
+            <span class="cdk-visually-hidden">
+              Mount selected as quick action
+              {{ (selectedRemote.primaryActions?.indexOf('mount') ?? -1) + 1 }}
+            </span>
+          }
           <span class="status-label">Mount</span>
         </div>
 
@@ -64,16 +62,17 @@
           <div class="status-dot">
             <mat-icon svgIcon="sync"></mat-icon>
           </div>
-          <span
-            *ngIf="selectedRemote.primaryActions?.includes('sync')"
-            class="selection-badge"
-            aria-hidden="true"
-            >{{ (selectedRemote.primaryActions?.indexOf('sync') ?? -1) + 1 }}</span
-          >
-          <span class="cdk-visually-hidden" *ngIf="selectedRemote.primaryActions?.includes('sync')">
-            Sync selected as quick action
-            {{ (selectedRemote.primaryActions?.indexOf('sync') ?? -1) + 1 }}
-          </span>
+          @if (selectedRemote.primaryActions?.includes('sync')) {
+            <span class="selection-badge" aria-hidden="true">{{
+              (selectedRemote.primaryActions?.indexOf('sync') ?? -1) + 1
+            }}</span>
+          }
+          @if (selectedRemote.primaryActions?.includes('sync')) {
+            <span class="cdk-visually-hidden">
+              Sync selected as quick action
+              {{ (selectedRemote.primaryActions?.indexOf('sync') ?? -1) + 1 }}
+            </span>
+          }
           <span class="status-label">Sync</span>
         </div>
 
@@ -91,16 +90,17 @@
           <div class="status-dot">
             <mat-icon svgIcon="copy"></mat-icon>
           </div>
-          <span
-            *ngIf="selectedRemote.primaryActions?.includes('copy')"
-            class="selection-badge"
-            aria-hidden="true"
-            >{{ (selectedRemote.primaryActions?.indexOf('copy') ?? -1) + 1 }}</span
-          >
-          <span class="cdk-visually-hidden" *ngIf="selectedRemote.primaryActions?.includes('copy')">
-            Copy selected as quick action
-            {{ (selectedRemote.primaryActions?.indexOf('copy') ?? -1) + 1 }}
-          </span>
+          @if (selectedRemote.primaryActions?.includes('copy')) {
+            <span class="selection-badge" aria-hidden="true">{{
+              (selectedRemote.primaryActions?.indexOf('copy') ?? -1) + 1
+            }}</span>
+          }
+          @if (selectedRemote.primaryActions?.includes('copy')) {
+            <span class="cdk-visually-hidden">
+              Copy selected as quick action
+              {{ (selectedRemote.primaryActions?.indexOf('copy') ?? -1) + 1 }}
+            </span>
+          }
           <span class="status-label">Copy</span>
         </div>
 
@@ -118,16 +118,17 @@
           <div class="status-dot">
             <mat-icon svgIcon="move"></mat-icon>
           </div>
-          <span
-            *ngIf="selectedRemote.primaryActions?.includes('move')"
-            class="selection-badge"
-            aria-hidden="true"
-            >{{ (selectedRemote.primaryActions?.indexOf('move') ?? -1) + 1 }}</span
-          >
-          <span class="cdk-visually-hidden" *ngIf="selectedRemote.primaryActions?.includes('move')">
-            Move selected as quick action
-            {{ (selectedRemote.primaryActions?.indexOf('move') ?? -1) + 1 }}
-          </span>
+          @if (selectedRemote.primaryActions?.includes('move')) {
+            <span class="selection-badge" aria-hidden="true">{{
+              (selectedRemote.primaryActions?.indexOf('move') ?? -1) + 1
+            }}</span>
+          }
+          @if (selectedRemote.primaryActions?.includes('move')) {
+            <span class="cdk-visually-hidden">
+              Move selected as quick action
+              {{ (selectedRemote.primaryActions?.indexOf('move') ?? -1) + 1 }}
+            </span>
+          }
           <span class="status-label">Move</span>
         </div>
 
@@ -147,19 +148,17 @@
           <div class="status-dot">
             <mat-icon svgIcon="right-left"></mat-icon>
           </div>
-          <span
-            *ngIf="selectedRemote.primaryActions?.includes('bisync')"
-            class="selection-badge"
-            aria-hidden="true"
-            >{{ (selectedRemote.primaryActions?.indexOf('bisync') ?? -1) + 1 }}</span
-          >
-          <span
-            class="cdk-visually-hidden"
-            *ngIf="selectedRemote.primaryActions?.includes('bisync')"
-          >
-            Bisync selected as quick action
-            {{ (selectedRemote.primaryActions?.indexOf('bisync') ?? -1) + 1 }}
-          </span>
+          @if (selectedRemote.primaryActions?.includes('bisync')) {
+            <span class="selection-badge" aria-hidden="true">{{
+              (selectedRemote.primaryActions?.indexOf('bisync') ?? -1) + 1
+            }}</span>
+          }
+          @if (selectedRemote.primaryActions?.includes('bisync')) {
+            <span class="cdk-visually-hidden">
+              Bisync selected as quick action
+              {{ (selectedRemote.primaryActions?.indexOf('bisync') ?? -1) + 1 }}
+            </span>
+          }
           <span class="status-label">Bisync</span>
         </div>
       </div>

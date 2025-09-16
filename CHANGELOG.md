@@ -21,6 +21,9 @@
 
 - Added interactive config support to Detailed Remote Modal. So we can make the post remote configuration. (Like Microsoft OneDrive)
 
+### Changed
+- Updated the Angular version to the latest stable version. Version 20.3.0
+
 ### Need Fix
 - After engine restart, need the apply the startup settings again. (e.g. config file path, bw limit, etc.) (Fixed but need the config file implementation on the rclone. Implemented for when user user change the config file path in the settings app check the config file is ecrypted or not and set the password if needed.)
 - Remote updates not working properly. When you update a some settings to default, it does not update the remote. I know whats the problem. (Fixed I think)

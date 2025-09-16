@@ -1,5 +1,5 @@
 import { Component, HostListener, OnInit, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import {
   ReactiveFormsModule,
   FormBuilder,
@@ -24,7 +24,6 @@ import { LoadingStates, PasswordLockoutStatus, PasswordTab } from '@app/types';
   selector: 'app-password-manager-modal',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatButtonModule,
     MatInputModule,

@@ -17,7 +17,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
 import { InstallationOptionsComponent } from '../../shared/components/installation-options/installation-options.component';
 import { PasswordManagerComponent } from '../../shared/components/password-manager/password-manager.component';
@@ -47,7 +47,6 @@ import { InstallationOptionsData, InstallationTabOption, PasswordLockoutStatus }
     MatInputModule,
     MatProgressSpinnerModule,
     FormsModule,
-    CommonModule,
     PasswordManagerComponent,
   ],
   animations: [

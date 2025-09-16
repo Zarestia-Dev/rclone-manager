@@ -188,12 +188,12 @@
               [disabled]="isDiscardingChanges"
               aria-label="Discard pending changes"
             >
-              <mat-spinner
-                *ngIf="isDiscardingChanges"
-                diameter="16"
-                class="inline-spinner"
-              ></mat-spinner>
-              <mat-icon *ngIf="!isDiscardingChanges" svgIcon="close"></mat-icon>
+              @if (isDiscardingChanges) {
+                <mat-spinner diameter="16" class="inline-spinner"></mat-spinner>
+              }
+              @if (!isDiscardingChanges) {
+                <mat-icon svgIcon="close"></mat-icon>
+              }
               {{ isDiscardingChanges ? 'Discarding...' : 'Discard Changes' }}
             </button>
             <button
@@ -551,18 +551,19 @@
   </ng-template>
 
   <!-- Floating Pending Changes Indicator -->
-  <button
-    class="floating-pending-indicator"
-    *ngIf="hasPendingRestartChanges"
-    (click)="scrollToPendingChanges()"
-    matTooltip="You have {{
-      pendingRestartChanges.size
-    }} unsaved changes that require engine restart. Click to scroll to them."
-    matTooltipPosition="left"
-    matTooltipClass="pending-changes-tooltip"
-    aria-label="Scroll to pending changes section"
-  >
-    <mat-icon svgIcon="circle-exclamation" class="warning-icon"></mat-icon>
-    <span class="pending-count">{{ pendingRestartChanges.size }}</span>
-  </button>
+  @if (hasPendingRestartChanges) {
+    <button
+      class="floating-pending-indicator"
+      (click)="scrollToPendingChanges()"
+      matTooltip="You have {{
+        pendingRestartChanges.size
+      }} unsaved changes that require engine restart. Click to scroll to them."
+      matTooltipPosition="left"
+      matTooltipClass="pending-changes-tooltip"
+      aria-label="Scroll to pending changes section"
+    >
+      <mat-icon svgIcon="circle-exclamation" class="warning-icon"></mat-icon>
+      <span class="pending-count">{{ pendingRestartChanges.size }}</span>
+    </button>
+  }
 </div>
