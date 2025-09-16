@@ -297,15 +297,6 @@ export class RepairSheetComponent implements OnInit {
     }
   }
 
-  formatTime(seconds: number): string {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    if (minutes > 0) {
-      return `${minutes}m ${remainingSeconds}s`;
-    }
-    return `${remainingSeconds}s`;
-  }
-
   canSubmitPassword(): boolean {
     return !!(this.password && !this.isSubmittingPassword && !this.lockoutStatus?.is_locked);
   }

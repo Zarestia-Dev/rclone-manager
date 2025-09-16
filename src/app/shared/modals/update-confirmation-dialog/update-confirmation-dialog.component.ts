@@ -36,19 +36,6 @@ export class UpdateConfirmationDialogComponent {
     this.dialogRef.close(false);
   }
 
-  formatDate(dateString: string): string {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      });
-    } catch {
-      return dateString;
-    }
-  }
-
   openLink(link: string): void {
     openUrl(link);
   }

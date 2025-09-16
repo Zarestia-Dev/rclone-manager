@@ -34,6 +34,7 @@ pub async fn start_sync(
     params: SyncParams,
     state: State<'_, RcloneState>,
 ) -> Result<u64, String> {
+    debug!("Received start_sync params: {params:#?}");
     log_operation(
         LogLevel::Info,
         Some(params.remote_name.clone()),
@@ -53,10 +54,10 @@ pub async fn start_sync(
     let mut body = Map::new();
     body.insert("srcFs".to_string(), Value::String(params.source.clone()));
     body.insert("dstFs".to_string(), Value::String(params.dest.clone()));
-    body.insert(
-        "createEmptySrcDirs".to_string(),
-        Value::Bool(params.create_empty_src_dirs),
-    );
+    // Only include createEmptySrcDirs when true to avoid sending unnecessary false values
+    if params.create_empty_src_dirs {
+        body.insert("createEmptySrcDirs".to_string(), Value::Bool(true));
+    }
     body.insert("_async".to_string(), Value::Bool(true));
 
     if let Some(opts) = params.sync_options {
@@ -165,6 +166,7 @@ pub async fn start_copy(
     params: CopyParams,
     state: State<'_, RcloneState>,
 ) -> Result<u64, String> {
+    debug!("Received start_copy params: {params:#?}");
     log_operation(
         LogLevel::Info,
         Some(params.remote_name.clone()),
@@ -183,10 +185,10 @@ pub async fn start_copy(
     let mut body = Map::new();
     body.insert("srcFs".to_string(), Value::String(params.source.clone()));
     body.insert("dstFs".to_string(), Value::String(params.dest.clone()));
-    body.insert(
-        "createEmptySrcDirs".to_string(),
-        Value::Bool(params.create_empty_src_dirs),
-    );
+    // Only include createEmptySrcDirs when true
+    if params.create_empty_src_dirs {
+        body.insert("createEmptySrcDirs".to_string(), Value::Bool(true));
+    }
     body.insert("_async".to_string(), Value::Bool(true));
 
     if let Some(opts) = params.copy_options {
@@ -310,6 +312,7 @@ pub async fn start_bisync(
     params: BisyncParams,
     state: State<'_, RcloneState>,
 ) -> Result<u64, String> {
+    debug!("Received start_bisync params: {params:#?}");
     log_operation(
         LogLevel::Info,
         Some(params.remote_name.clone()),
@@ -319,8 +322,8 @@ pub async fn start_bisync(
             params.source, params.dest
         ),
         Some(json!({
-            "source": params.source,
-            "destination": params.dest,
+            "source (path1)": params.source,
+            "destination (path2)": params.dest,
             "dry_run": params.dry_run,
             "resync": params.resync,
             "check_access": params.check_access,
@@ -345,88 +348,72 @@ pub async fn start_bisync(
 
     // Construct the JSON body
     let mut body = Map::new();
-    body.insert("srcFs".to_string(), Value::String(params.source.clone()));
-    body.insert("dstFs".to_string(), Value::String(params.dest.clone()));
+    body.insert("path1".to_string(), Value::String(params.source.clone()));
+    body.insert("path2".to_string(), Value::String(params.dest.clone()));
     body.insert("_async".to_string(), Value::Bool(true));
+
+    // Required/non-optional boolean (resync) remains explicit
     body.insert("resync".to_string(), Value::Bool(params.resync));
-    body.insert(
-        "createEmptySrcDirs".to_string(),
-        Value::Bool(params.create_empty_src_dirs.unwrap_or(false)),
-    );
-    body.insert(
-        "noCleanup".to_string(),
-        Value::Bool(params.no_cleanup.unwrap_or(false)),
-    );
-    body.insert(
-        "dryRun".to_string(),
-        Value::Bool(params.dry_run.unwrap_or(false)),
-    );
-    body.insert(
-        "checkAccess".to_string(),
-        Value::Bool(params.check_access.unwrap_or(false)),
-    );
-    body.insert(
-        "checkFilename".to_string(),
-        params
-            .check_filename
-            .as_ref()
-            .map_or(Value::Null, |s| Value::String(s.clone())),
-    );
-    body.insert(
-        "maxDelete".to_string(),
-        Value::Number(params.max_delete.unwrap_or(0).into()),
-    );
-    body.insert(
-        "force".to_string(),
-        Value::Bool(params.force.unwrap_or(false)),
-    );
-    body.insert(
-        "checkSync".to_string(),
-        params
-            .check_sync
-            .as_ref()
-            .map_or(Value::Null, |s| Value::String(s.clone())),
-    );
-    body.insert(
-        "filtersFile".to_string(),
-        params
-            .filters_file
-            .as_ref()
-            .map_or(Value::Null, |s| Value::String(s.clone())),
-    );
-    body.insert(
-        "ignoreListingChecksum".to_string(),
-        Value::Bool(params.ignore_listing_checksum.unwrap_or(false)),
-    );
-    body.insert(
-        "resilient".to_string(),
-        Value::Bool(params.resilient.unwrap_or(false)),
-    );
-    body.insert(
-        "workDir".to_string(),
-        params
-            .workdir
-            .as_ref()
-            .map_or(Value::Null, |s| Value::String(s.clone())),
-    );
-    body.insert(
-        "backupDir1".to_string(),
-        params
-            .backupdir1
-            .as_ref()
-            .map_or(Value::Null, |s| Value::String(s.clone())),
-    );
-    body.insert(
-        "backupDir2".to_string(),
-        params
-            .backupdir2
-            .as_ref()
-            .map_or(Value::Null, |s| Value::String(s.clone())),
-    );
-    body.insert(
-        "noCleanup".to_string(),
-        Value::Bool(params.no_cleanup.unwrap_or(false)),
-    );
+
+    // Insert optional fields only when provided by the caller.
+    if let Some(create) = params.create_empty_src_dirs {
+        body.insert("createEmptySrcDirs".to_string(), Value::Bool(create));
+    }
+
+    if let Some(no_cleanup) = params.no_cleanup {
+        body.insert("noCleanup".to_string(), Value::Bool(no_cleanup));
+    }
+
+    if let Some(dry_run) = params.dry_run {
+        body.insert("dryRun".to_string(), Value::Bool(dry_run));
+    }
+
+    if let Some(check_access) = params.check_access {
+        body.insert("checkAccess".to_string(), Value::Bool(check_access));
+    }
+
+    if let Some(check_filename) = params.check_filename {
+        body.insert("checkFilename".to_string(), Value::String(check_filename));
+    }
+
+    if let Some(max_delete) = params.max_delete {
+        body.insert("maxDelete".to_string(), Value::Number(max_delete.into()));
+    }
+
+    if let Some(force) = params.force {
+        body.insert("force".to_string(), Value::Bool(force));
+    }
+
+    if let Some(check_sync) = params.check_sync {
+        body.insert("checkSync".to_string(), Value::String(check_sync));
+    }
+
+    if let Some(filters_file) = params.filters_file {
+        body.insert("filtersFile".to_string(), Value::String(filters_file));
+    }
+
+    if let Some(ignore_listing_checksum) = params.ignore_listing_checksum {
+        body.insert(
+            "ignoreListingChecksum".to_string(),
+            Value::Bool(ignore_listing_checksum),
+        );
+    }
+
+    if let Some(resilient) = params.resilient {
+        body.insert("resilient".to_string(), Value::Bool(resilient));
+    }
+
+    if let Some(workdir) = params.workdir {
+        body.insert("workDir".to_string(), Value::String(workdir));
+    }
+
+    if let Some(backupdir1) = params.backupdir1 {
+        body.insert("backupDir1".to_string(), Value::String(backupdir1));
+    }
+
+    if let Some(backupdir2) = params.backupdir2 {
+        body.insert("backupDir2".to_string(), Value::String(backupdir2));
+    }
 
     if let Some(opts) = params.bisync_options {
         body.insert(
@@ -535,6 +522,7 @@ pub async fn start_move(
     params: MoveParams,
     state: State<'_, RcloneState>,
 ) -> Result<u64, String> {
+    debug!("Received start_move params: {params:#?}");
     log_operation(
         LogLevel::Info,
         Some(params.remote_name.clone()),
@@ -553,14 +541,13 @@ pub async fn start_move(
     let mut body = Map::new();
     body.insert("srcFs".to_string(), Value::String(params.source.clone()));
     body.insert("dstFs".to_string(), Value::String(params.dest.clone()));
-    body.insert(
-        "createEmptySrcDirs".to_string(),
-        Value::Bool(params.create_empty_src_dirs),
-    );
-    body.insert(
-        "deleteEmptySrcDirs".to_string(),
-        Value::Bool(params.delete_empty_src_dirs),
-    );
+    // Include optional booleans only when true
+    if params.create_empty_src_dirs {
+        body.insert("createEmptySrcDirs".to_string(), Value::Bool(true));
+    }
+    if params.delete_empty_src_dirs {
+        body.insert("deleteEmptySrcDirs".to_string(), Value::Bool(true));
+    }
     body.insert("_async".to_string(), Value::Bool(true));
     if let Some(opts) = params.move_options {
         body.insert(

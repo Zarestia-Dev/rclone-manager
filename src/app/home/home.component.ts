@@ -91,6 +91,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   isSidebarOpen = false;
   sidebarMode: MatDrawerMode = 'side';
   currentTab: AppTab = 'general';
+  // Track the selected sync subtype (sync, bisync, copy, move)
+  selectedSyncOperation: SyncOperationType = 'sync';
   UsePath: PrimaryActionType = 'mount';
   isLoading = false;
   restrictMode = true;
@@ -125,6 +127,18 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.restrictValue();
+  }
+
+  // Handle sync subtype changes coming from AppDetail
+  onSyncOperationChange(operation: SyncOperationType): void {
+    this.selectedSyncOperation = operation;
+    // Persist selection per-remote if a remote is selected
+    if (this.selectedRemote?.remoteSpecs?.name) {
+      this.saveRemoteSettings(this.selectedRemote.remoteSpecs.name, {
+        selectedSyncOperation: operation,
+      });
+    }
+    this.cdr.markForCheck();
   }
 
   // Lifecycle Hooks
@@ -164,6 +178,14 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.uiStateService.setSelectedRemote(remote);
     this.cdr.markForCheck();
     await this.loadJobsForRemote(remote.remoteSpecs.name);
+    // Try to restore previously selected sync operation for this remote if available
+    const settings = this.loadRemoteSettings(remote.remoteSpecs.name) || {};
+    if (settings.selectedSyncOperation && typeof settings.selectedSyncOperation === 'string') {
+      this.selectedSyncOperation = settings.selectedSyncOperation as SyncOperationType;
+    } else {
+      this.selectedSyncOperation = 'sync';
+    }
+    this.cdr.markForCheck();
   }
 
   // Remote Operations
@@ -276,7 +298,8 @@ export class HomeComponent implements OnInit, OnDestroy {
         const createEmptySrcDirs = config.createEmptySrcDirs;
         const options = config.options;
         const filterConfig = settings.filterConfig;
-
+        const dryRun = config.dryRun;
+        const resync = config.resync;
         switch (operationType) {
           case 'mount':
             await this.mountRemote(remoteName);
@@ -307,8 +330,9 @@ export class HomeComponent implements OnInit, OnDestroy {
               source,
               dest,
               options,
-              filterConfig
-              // this.extendedData?.resync
+              filterConfig,
+              dryRun,
+              resync
             );
             break;
           case 'move': {

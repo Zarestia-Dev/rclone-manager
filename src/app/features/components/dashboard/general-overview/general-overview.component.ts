@@ -47,7 +47,12 @@ import {
   RemoteActionProgress,
   SystemStats,
 } from '@app/types';
-import { formatUtils } from '../../../../shared/utils/format-utils';
+import { FormatFileSizePipe } from '../../../../shared/pipes/format-file-size.pipe';
+import { FormatTimePipe } from '../../../../shared/pipes/format-time.pipe';
+import { FormatEtaPipe } from '../../../../shared/pipes/format-eta.pipe';
+import { FormatMemoryUsagePipe } from '../../../../shared/pipes/format-memory-usage.pipe';
+import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
+import { FormatBytesPerSecondPipe } from '../../../../shared/pipes/format-bytes-per-second.pipe';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 
 // Services
@@ -130,6 +135,14 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   // Track by functions
   readonly trackByRemoteName: TrackByFunction<Remote> = (_, remote) => remote.remoteSpecs.name;
   readonly trackByIndex: TrackByFunction<unknown> = index => index;
+
+  // Pipes
+  FormatFileSizePipe = new FormatFileSizePipe();
+  FormatTimePipe = new FormatTimePipe();
+  FormatEtaPipe = new FormatEtaPipe();
+  FormatMemoryUsagePipe = new FormatMemoryUsagePipe();
+  FormatRateValuePipe = new FormatRateValuePipe();
+  FormatBytesPerSecondPipe = new FormatBytesPerSecondPipe();
 
   ngOnInit(): void {
     this.restorePanelStates();
@@ -339,19 +352,19 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
 
   // Formatting methods (keep existing implementations)
   formatBytes(bytes: number): string {
-    return formatUtils.bytes(bytes);
+    return this.FormatFileSizePipe.transform(bytes);
   }
   private formatMemoryUsage(memoryStats: MemoryStats | null): string {
-    return formatUtils.memoryUsage(memoryStats);
+    return this.FormatMemoryUsagePipe.transform(memoryStats);
   }
   formatUptime(elapsedTimeSeconds: number): string {
-    return formatUtils.duration(elapsedTimeSeconds);
+    return this.FormatTimePipe.transform(elapsedTimeSeconds);
   }
   formatEta(eta: number | string): string {
-    return formatUtils.eta(eta);
+    return this.FormatEtaPipe.transform(eta);
   }
   private formatRateValue(rate: string): string {
-    return formatUtils.rateValue(rate);
+    return this.FormatRateValuePipe.transform(rate);
   }
 
   get isBandwidthLimited(): boolean {
@@ -392,7 +405,18 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
 
   get bandwidthDetails(): { upload: string; download: string; total: string } {
     if (!this.bandwidthLimit) return { upload: 'Unknown', download: 'Unknown', total: 'Unknown' };
-    return formatUtils.bandwidthDetails(this.bandwidthLimit);
+    const isUnlimited = (value: number): boolean => value <= 0;
+    return {
+      upload: isUnlimited(this.bandwidthLimit.bytesPerSecondTx)
+        ? 'Unlimited'
+        : this.FormatBytesPerSecondPipe.transform(this.bandwidthLimit.bytesPerSecondTx),
+      download: isUnlimited(this.bandwidthLimit.bytesPerSecondRx)
+        ? 'Unlimited'
+        : this.FormatBytesPerSecondPipe.transform(this.bandwidthLimit.bytesPerSecondRx),
+      total: isUnlimited(this.bandwidthLimit.bytesPerSecond)
+        ? 'Unlimited'
+        : this.FormatBytesPerSecondPipe.transform(this.bandwidthLimit.bytesPerSecond),
+    };
   }
 
   // Action Progress Utilities

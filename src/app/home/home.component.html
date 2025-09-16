@@ -190,11 +190,13 @@
           @default {
             <app-app-detail
               [mainOperationType]="currentTab"
+              [selectedSyncOperation]="selectedSyncOperation"
               [iconService]="iconService"
               [selectedRemote]="selectedRemote"
               [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
               [restrictMode]="restrictMode"
               [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]"
+              (syncOperationChange)="onSyncOperationChange($event)"
               (openRemoteConfigModal)="
                 openRemoteConfigModal($event.editTarget, $event.existingConfig)
               "

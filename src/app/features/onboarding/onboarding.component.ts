@@ -15,6 +15,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { LoadingOverlayComponent } from '../../shared/components/loading-overlay/loading-overlay.component';
@@ -29,7 +30,7 @@ import { EventListenersService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { FileSystemService } from '@app/services';
 import { RclonePasswordService } from '@app/services';
-import { InstallationOptionsData, InstallationTabOption } from '@app/types';
+import { InstallationOptionsData, InstallationTabOption, PasswordLockoutStatus } from '@app/types';
 
 @Component({
   selector: 'app-onboarding',
@@ -44,6 +45,7 @@ import { InstallationOptionsData, InstallationTabOption } from '@app/types';
     MatButtonToggleModule,
     MatFormFieldModule,
     MatInputModule,
+    MatProgressSpinnerModule,
     FormsModule,
     CommonModule,
     PasswordManagerComponent,
@@ -60,6 +62,8 @@ import { InstallationOptionsData, InstallationTabOption } from '@app/types';
   styleUrls: ['./onboarding.component.scss'],
 })
 export class OnboardingComponent implements OnInit, OnDestroy {
+  // Track lockout status for password attempts
+  lockoutStatus: PasswordLockoutStatus | null = null;
   @Output() completed = new EventEmitter<void>();
 
   // Installation options data from shared component
@@ -117,6 +121,7 @@ export class OnboardingComponent implements OnInit, OnDestroy {
   configValid = true;
   // If an attempted password validation failed, show message
   passwordValidationError: string | null = null;
+  isSubmittingPassword = false;
 
   // Only process password_error events when we actually expect a password UI
   private expectingPassword = false;
@@ -151,6 +156,9 @@ export class OnboardingComponent implements OnInit, OnDestroy {
         await this.checkMountPlugin();
         console.log('OnboardingComponent: checkMountPlugin completed');
 
+        // Fetch initial lockout status (in case onboarding starts locked)
+        this.lockoutStatus = await this.rclonePasswordService.getLockoutStatus();
+
         // Subscribe to engine events so we can react to password errors
         this.rcloneEngineSub = this.eventListenersService
           .listenToRcloneEngine()
@@ -183,6 +191,9 @@ export class OnboardingComponent implements OnInit, OnDestroy {
                   // Ensure password card present and surface to user
                   this.configEncrypted = true;
                   this.ensurePasswordCardPresent();
+
+                  // Fetch and update lockout status on password error
+                  this.updateLockoutStatus();
                 }
 
                 if (ev.status === 'ready') {
@@ -195,6 +206,9 @@ export class OnboardingComponent implements OnInit, OnDestroy {
                   if (this.expectingPassword) {
                     this.ensurePasswordCardPresent();
                   }
+
+                  // Fetch and update lockout status on engine ready (may have unlocked)
+                  this.updateLockoutStatus();
                 }
               }
             } catch (err) {
@@ -477,8 +491,9 @@ export class OnboardingComponent implements OnInit, OnDestroy {
 
   // Submit config password
   async submitConfigPassword(): Promise<void> {
-    if (!this.configPassword) return;
+    if (!this.configPassword || this.isSubmittingPassword) return;
 
+    this.isSubmittingPassword = true;
     try {
       // Try validate; if successful, set env var for session
       await this.rclonePasswordService.validatePassword(this.configPassword);
@@ -490,14 +505,27 @@ export class OnboardingComponent implements OnInit, OnDestroy {
       // Clear expectation since password provided
       this.expectingPassword = false;
       this.waitingForEngineStart = false;
+      // Update lockout status (should be reset on success)
+      await this.updateLockoutStatus();
+      this.passwordValidationError = null;
       this.nextCard();
     } catch (error) {
       console.error('Password validation failed:', error);
+      // Update lockout status (may be locked or attempts incremented)
+      await this.updateLockoutStatus();
+      // Show error message on top
+      this.passwordValidationError = 'Wrong password. Please try again.';
       // Keep user on the same card for retry
+    } finally {
+      this.isSubmittingPassword = false;
     }
   }
 
-  // Add these methods to your component class
+  // Helper to update lockout status from service
+  private async updateLockoutStatus(): Promise<void> {
+    this.lockoutStatus = await this.rclonePasswordService.getLockoutStatus();
+  }
+
   shouldShowInstallRcloneButton(): boolean {
     return (
       this.currentCardIndex === this.cards.findIndex(c => c.title === 'Install RClone') &&
@@ -520,30 +548,24 @@ export class OnboardingComponent implements OnInit, OnDestroy {
     );
   }
 
-  // Add validation for custom path installation
   canInstallRclone(): boolean {
     if (this.installing) {
       return false;
     }
-
-    // Use the installation validity from shared component
     return this.installationValid;
   }
 
-  // Get dynamic button text based on validation state
   getInstallButtonText(): string {
     if (this.installing) {
       return this.installationData.installLocation === 'existing'
         ? 'Configuring...'
         : 'Installing...';
     }
-
     if (this.installationData.installLocation === 'custom') {
       if (this.installationData.customPath.trim().length === 0) {
         return 'Select Path First';
       }
     }
-
     if (this.installationData.installLocation === 'existing') {
       if (this.installationData.existingBinaryPath.trim().length === 0) {
         return 'Select Binary First';
@@ -559,7 +581,6 @@ export class OnboardingComponent implements OnInit, OnDestroy {
       }
       return 'Test Binary First';
     }
-
     return 'Install RClone';
   }
 
@@ -571,9 +592,7 @@ export class OnboardingComponent implements OnInit, OnDestroy {
     this.installationValid = valid;
   }
 
-  // Handlers for config selector reuse of installation-options
   onConfigOptionsChange(data: InstallationOptionsData): void {
-    // installationData shape matches what installation-options emits
     if (data.installLocation === 'default') {
       this.configSelection = 'default';
       this.customConfigPath = '';
@@ -581,12 +600,10 @@ export class OnboardingComponent implements OnInit, OnDestroy {
       this.configSelection = 'custom';
       this.customConfigPath = data.customPath || '';
     }
-    // Save selection when changed
     this.onConfigPathChanged().catch(err => console.error(err));
   }
 
   onConfigValidChange(valid: boolean): void {
-    // track validity coming from the reused installation-options component
     this.configValid = valid;
   }
 

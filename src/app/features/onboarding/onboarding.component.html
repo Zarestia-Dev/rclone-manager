@@ -55,10 +55,10 @@
               <app-password-manager
                 [password]="configPassword"
                 [storePassword]="true"
-                [isSubmitting]="false"
+                [isSubmitting]="isSubmittingPassword"
                 [hasError]="!!passwordValidationError"
                 [errorMessage]="passwordValidationError || ''"
-                [lockoutStatus]="null"
+                [lockoutStatus]="lockoutStatus"
                 [showStoreOption]="false"
                 (passwordChange)="configPassword = $event"
                 (unlock)="submitConfigPassword()"
@@ -71,6 +71,7 @@
           >
             <div class="form-section" @slideInOut>
               <app-installation-options
+                [mode]="'install'"
                 [disabled]="installing"
                 [tabOptions]="onboardingTabOptions"
                 (dataChange)="onInstallationOptionsChange($event)"
@@ -172,7 +173,19 @@
               cards[currentCardIndex].title === 'Configuration Password Required'
             "
           >
-            <button mat-raised-button color="primary" disabled>Unlock above</button>
+            <button
+              mat-raised-button
+              color="primary"
+              (click)="submitConfigPassword()"
+              [disabled]="!configPassword || isSubmittingPassword"
+            >
+              <mat-progress-spinner
+                *ngIf="isSubmittingPassword"
+                diameter="18"
+                mode="indeterminate"
+              ></mat-progress-spinner>
+              <span *ngIf="!isSubmittingPassword">Unlock</span>
+            </button>
           </ng-container>
 
           <ng-container

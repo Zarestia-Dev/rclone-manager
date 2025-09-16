@@ -217,7 +217,9 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     const currentOp = this.getCurrentOperationConfig();
 
     return {
-      operationType: this.mainOperationType,
+      operationType: this.isSyncType()
+        ? (this.selectedSyncOperation as PrimaryActionType)
+        : this.mainOperationType,
       isActive: this.getOperationActiveState(),
       isError: this.getOperationErrorState(),
       isLoading: this.isLoading,
@@ -301,6 +303,8 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
   // Helper methods for operation state
   getOperationActiveState(): boolean {
+    console.log(`Checking active state for ${this.mainOperationType}`);
+
     switch (this.mainOperationType) {
       case 'sync':
         return this.getSyncOperationState(this.selectedSyncOperation);
@@ -465,7 +469,9 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
   getJobInfoConfig(): JobInfoConfig {
     return {
-      operationType: this.mainOperationType ?? 'mount',
+      operationType: this.isSyncType()
+        ? this.selectedSyncOperation
+        : (this.mainOperationType ?? 'mount'),
       jobId: this.currentJobId,
       startTime: this.jobStats.startTime ? new Date(this.jobStats.startTime) : undefined,
       lastOperationTime: this.lastSyncDate?.toLocaleString() || undefined,

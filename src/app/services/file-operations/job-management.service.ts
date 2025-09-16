@@ -52,9 +52,10 @@ export class JobManagementService extends TauriBaseService {
       filter_options: filterOptions || {},
     };
 
-    const jobId = await this.invokeCommand<string>('start_sync', { params });
+    console.debug('Invoking start_sync with params', params);
+    const jobId = await this.invokeCommand<number>('start_sync', { params });
 
-    return parseInt(jobId, 10);
+    return jobId;
   }
 
   /**
@@ -79,9 +80,10 @@ export class JobManagementService extends TauriBaseService {
       filter_options: filterOptions || {},
     };
 
-    const jobId = await this.invokeCommand<string>('start_copy', { params });
+    console.debug('Invoking start_copy with params', params);
+    const jobId = await this.invokeCommand<number>('start_copy', { params });
 
-    return parseInt(jobId, 10);
+    return jobId;
   }
 
   async startBisync(
@@ -133,11 +135,10 @@ export class JobManagementService extends TauriBaseService {
       noCleanup: noCleanup || false,
     };
 
-    const jobId = await this.invokeCommand<string>('start_bisync', {
-      params,
-    });
+    console.debug('Invoking start_bisync with params', params);
+    const jobId = await this.invokeCommand<number>('start_bisync', { params });
 
-    return parseInt(jobId, 10);
+    return jobId;
   }
 
   async startMove(
@@ -159,8 +160,9 @@ export class JobManagementService extends TauriBaseService {
       move_options: moveOptions || {},
       filter_options: filterOptions || {},
     };
-    const jobId = await this.invokeCommand<string>('start_move', { params });
-    return parseInt(jobId, 10);
+    console.debug('Invoking start_move with params', params);
+    const jobId = await this.invokeCommand<number>('start_move', { params });
+    return jobId;
   }
 
   /**

@@ -36,6 +36,7 @@ pub async fn mount_remote(
     params: MountParams,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
+    debug!("Received mount_remote params: {params:#?}");
     let mounted_remotes = get_cached_mounted_remotes().await?;
 
     // Check if mount point is in use

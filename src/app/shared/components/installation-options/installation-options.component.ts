@@ -146,7 +146,7 @@ export class InstallationOptionsComponent implements OnInit {
   async selectExistingBinary(): Promise<void> {
     try {
       // Existing binary should be a file selection
-      const selectedPath = await this.fileSystemService.selectFile();
+      const selectedPath = await this.fileSystemService.selectFolder();
       if (selectedPath) {
         this.existingBinaryPath = selectedPath;
         this.existingBinaryControl.setValue(selectedPath);

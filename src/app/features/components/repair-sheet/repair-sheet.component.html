@@ -28,19 +28,21 @@
 
     <!-- Password Section for Password-Required Repairs -->
     @if (requiresPassword()) {
-      <app-password-manager
-        [password]="password"
-        [storePassword]="storePassword"
-        [isSubmitting]="isSubmittingPassword"
-        [hasError]="hasPasswordError"
-        [errorMessage]="passwordErrorMessage"
-        [lockoutStatus]="lockoutStatus"
-        [showStoreOption]="!!data.showStoreOption"
-        [disabled]="installing"
-        (passwordChange)="password = $event"
-        (storePasswordChange)="storePassword = $event"
-        (unlock)="submitPassword()"
-      ></app-password-manager>
+      <div class="password-row">
+        <app-password-manager
+          [password]="password"
+          [storePassword]="storePassword"
+          [isSubmitting]="isSubmittingPassword"
+          [hasError]="hasPasswordError"
+          [errorMessage]="passwordErrorMessage"
+          [lockoutStatus]="lockoutStatus"
+          [showStoreOption]="!!data.showStoreOption"
+          [disabled]="installing"
+          (passwordChange)="password = $event"
+          (storePasswordChange)="storePassword = $event"
+          (unlock)="submitPassword()"
+        ></app-password-manager>
+      </div>
     }
 
     <!-- Advanced Options for Rclone Path Repair -->

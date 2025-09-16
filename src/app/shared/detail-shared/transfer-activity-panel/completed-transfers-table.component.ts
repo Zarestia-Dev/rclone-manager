@@ -8,6 +8,7 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
 import { TruncatePathPipe } from '../../pipes/truncate-path.pipe';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { CompletedTransfer } from '@app/types';
+import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
 @Component({
   selector: 'app-completed-transfers-table',
@@ -151,7 +152,9 @@ import { CompletedTransfer } from '@app/types';
               <td mat-cell *matCellDef="let transfer" class="time-cell">
                 <div class="time-info">
                   @if (transfer.completedAt) {
-                    <span class="time-value">{{ formatTime(transfer.completedAt) }}</span>
+                    <span class="time-value">{{
+                      FormatTimePipe.transform(transfer.completedAt)
+                    }}</span>
                     <span class="time-relative">{{ getRelativeTime(transfer.completedAt) }}</span>
                   } @else {
                     <span class="time-value">-</span>
@@ -210,6 +213,7 @@ export class CompletedTransfersTableComponent {
   @Input() trackBy?: (index: number, transfer: CompletedTransfer) => string;
 
   FormatFileSizePipe = new FormatFileSizePipe();
+  FormatTimePipe = new FormatTimePipe();
 
   defaultTrackBy(_index: number, transfer: CompletedTransfer): string {
     return transfer.name + transfer.completedAt;
@@ -219,10 +223,6 @@ export class CompletedTransfersTableComponent {
 
   getFileName(path: string): string {
     return path.split('/').pop() || path;
-  }
-
-  formatTime(timestamp: string): string {
-    return new Date(timestamp).toLocaleString();
   }
 
   getRelativeTime(timestamp: string): string {

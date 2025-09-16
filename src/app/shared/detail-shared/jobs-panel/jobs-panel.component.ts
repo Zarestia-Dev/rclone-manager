@@ -8,6 +8,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSortModule } from '@angular/material/sort';
 import { JobInfo, JobsPanelConfig, PrimaryActionType } from '../../types';
+import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 
 @Component({
   selector: 'app-jobs-panel',
@@ -68,7 +69,8 @@ import { JobInfo, JobsPanelConfig, PrimaryActionType } from '../../types';
                       class="job-progress"
                     ></mat-progress-bar>
                     <span class="progress-text">
-                      {{ formatBytes(job.stats.bytes) }} / {{ formatBytes(job.stats.totalBytes) }}
+                      {{ FormatFileSizePipe.transform(job.stats.bytes) }} /
+                      {{ FormatFileSizePipe.transform(job.stats.totalBytes) }}
                     </span>
                   </div>
                 } @else {
@@ -104,7 +106,7 @@ import { JobInfo, JobsPanelConfig, PrimaryActionType } from '../../types';
                       mat-icon-button
                       class="action-button delete-button"
                       matTooltip="Delete Job"
-                      (click)="deleteJob.emit(job.id)"
+                      (click)="deleteJob.emit(job.jobid)"
                     >
                       <mat-icon svgIcon="trash"></mat-icon>
                     </button>
@@ -138,6 +140,8 @@ export class JobsPanelComponent {
   }>();
   @Output() deleteJob = new EventEmitter<number>();
 
+  FormatFileSizePipe = new FormatFileSizePipe();
+
   getJobProgress(job: JobInfo): number {
     if (!job.stats) return 0;
     return (job.stats.bytes / job.stats.totalBytes) * 100;
@@ -156,13 +160,5 @@ export class JobsPanelComponent {
       default:
         return 'unknown';
     }
-  }
-
-  formatBytes(bytes: number): string {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   }
 }

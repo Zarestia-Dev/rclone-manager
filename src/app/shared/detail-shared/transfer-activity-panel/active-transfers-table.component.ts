@@ -7,6 +7,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { TransferFile } from '@app/types';
+import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
 @Component({
   selector: 'app-active-transfers-table',
@@ -100,7 +101,7 @@ import { TransferFile } from '@app/types';
               <th mat-header-cell *matHeaderCellDef>ETA</th>
               <td mat-cell *matCellDef="let transfer" class="eta-cell">
                 @if (transfer.eta > 0 && !transfer.isCompleted) {
-                  <span class="eta-value">{{ formatTime(transfer.eta) }}</span>
+                  <span class="eta-value">{{ FormatTimePipe.transform(transfer.eta) }}</span>
                 } @else {
                   <span class="eta-complete">-</span>
                 }
@@ -136,6 +137,7 @@ export class ActiveTransfersTableComponent {
   @Input() trackBy?: (index: number, transfer: TransferFile) => string;
 
   FormatFileSizePipe = new FormatFileSizePipe();
+  FormatTimePipe = new FormatTimePipe();
 
   defaultTrackBy(_index: number, transfer: TransferFile): string {
     return transfer.name + transfer.percentage;
@@ -157,17 +159,5 @@ export class ActiveTransfersTableComponent {
     if (speed > 10 * 1024 * 1024) return 'speed-fast'; // > 10MB/s
     if (speed > 1 * 1024 * 1024) return 'speed-medium'; // > 1MB/s
     return 'speed-slow';
-  }
-
-  formatTime(seconds: number): string {
-    if (isNaN(seconds) || seconds <= 0) return '-';
-
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    if (minutes > 0) return `${minutes}m ${secs}s`;
-    return `${secs}s`;
   }
 }
