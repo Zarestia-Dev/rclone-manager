@@ -20,6 +20,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import {
   catchError,
   debounceTime,
@@ -77,6 +79,8 @@ const POLLING_INTERVAL = 5000;
     MatProgressSpinnerModule,
     MatExpansionModule,
     MatProgressBarModule,
+    MatTooltipModule,
+    MatSnackBarModule,
     RemotesPanelComponent,
   ],
   templateUrl: './general-overview.component.html',
@@ -131,6 +135,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   // Services
   private cdr = inject(ChangeDetectorRef);
   private ngZone = inject(NgZone);
+  private snackBar = inject(MatSnackBar);
 
   // Track by functions
   readonly trackByRemoteName: TrackByFunction<Remote> = (_, remote) => remote.remoteSpecs.name;
@@ -554,5 +559,19 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   onSecondaryActionFromPanel(remoteName: string): void {
     // Secondary action could be sync operation
     this.startJob.emit({ type: 'sync', remoteName });
+  }
+
+  // Copy error to clipboard
+  async copyError(error: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(error);
+      this.snackBar.open('Error copied to clipboard', 'Close', {
+        duration: 2000,
+      });
+    } catch {
+      this.snackBar.open('Failed to copy error', 'Close', {
+        duration: 2000,
+      });
+    }
   }
 }

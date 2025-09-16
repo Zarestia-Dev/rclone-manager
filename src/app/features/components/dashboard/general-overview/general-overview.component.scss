@@ -37,8 +37,6 @@
 
   // 1.2 OVERVIEW CONTENT
   .overview-content {
-    display: grid;
-    grid-template-columns: 1fr;
     gap: var(--panel-padding);
     max-width: 1200px;
     margin: 0 auto;
@@ -218,6 +216,7 @@ mat-accordion {
       background-color: rgba(var(--warn-color-rgb), 0.1);
       border: 1px solid rgba(var(--warn-color-rgb), 0.2);
       border-radius: 8px;
+      overflow: hidden;
       display: flex;
       align-items: flex-start;
       flex-direction: column;
@@ -228,8 +227,18 @@ mat-accordion {
         gap: 8px;
         margin-top: 8px;
 
-        .error-icon {
-          flex-shrink: 0;
+        .error-text-content {
+          transition: opacity 0.2s ease;
+          opacity: 0.7;
+
+          &:hover {
+            opacity: 1;
+          }
+
+          &:focus {
+            outline: 2px solid var(--primary-color);
+            outline-offset: 2px;
+          }
         }
       }
     }

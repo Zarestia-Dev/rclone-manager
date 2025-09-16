@@ -128,25 +128,23 @@
           : ''
       "
     >
-      @if (installing || isSubmittingPassword) {
-        <ng-container>
-          @if (isSubmittingPassword) {
-            <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
-          }
-          @if (!isSubmittingPassword) {
-            <mat-icon
-              [svgIcon]="installing ? 'refresh' : 'download'"
-              [class.animate-spin]="installing"
-            ></mat-icon>
-          }
-          {{ isSubmittingPassword ? 'Validating Password...' : getRepairProgressText() }}
-        </ng-container>
-      } @else {
-        <ng-container>
-          <mat-icon [svgIcon]="getRepairButtonIcon()"></mat-icon>
-          {{ getRepairButtonText() }}
-        </ng-container>
-      }
+      {{
+        installing || isSubmittingPassword
+          ? isSubmittingPassword
+            ? 'Validating Password...'
+            : getRepairProgressText()
+          : getRepairButtonText()
+      }}
+      <mat-icon
+        [svgIcon]="
+          installing || isSubmittingPassword
+            ? installing
+              ? 'refresh'
+              : 'download'
+            : getRepairButtonIcon()
+        "
+        [class.animate-spin]="installing || isSubmittingPassword"
+      ></mat-icon>
     </button>
   </div>
 </mat-nav-list>

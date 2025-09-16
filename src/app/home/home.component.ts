@@ -620,15 +620,21 @@ export class HomeComponent implements OnInit, OnDestroy {
     try {
       await this.getRemoteSettings();
       const remoteConfigs = await this.remoteManagementService.getAllRemoteConfigs();
+
+      // Create remotes from configs (preserving existing state)
       this.remotes = this.createRemotesFromConfigs(remoteConfigs);
-      this.loadDiskUsageInBackground();
+
+      // Load active jobs FIRST to set job states
       await this.loadActiveJobs();
+
+      // Then load disk usage in background
+      this.loadDiskUsageInBackground();
+
       this.cdr.markForCheck();
     } catch (error) {
       this.handleError('Failed to load remotes', error);
     }
   }
-
   private async loadJobs(): Promise<void> {
     try {
       this.jobs = await this.jobManagementService.getJobs();
@@ -640,52 +646,46 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private createRemotesFromConfigs(remoteConfigs: any): Remote[] {
-    return Object.keys(remoteConfigs).map(name => ({
-      remoteSpecs: { name, ...remoteConfigs[name] },
-      primaryActions: this.remoteSettings[name]?.['primaryActions'] || [],
-      mountState: {
-        mounted: this.isRemoteMounted(name),
-        diskUsage: {
-          total_space: 'Loading...',
-          used_space: 'Loading...',
-          free_space: 'Loading...',
-          loading: true,
+    return Object.keys(remoteConfigs).map(name => {
+      // Find existing remote to preserve its state
+      const existingRemote = this.remotes.find(r => r.remoteSpecs.name === name);
+
+      return {
+        remoteSpecs: { name, ...remoteConfigs[name] },
+        primaryActions: this.remoteSettings[name]?.['primaryActions'] || [],
+        mountState: {
+          mounted: this.isRemoteMounted(name),
+          // Preserve existing disk usage if available, otherwise set loading state
+          diskUsage: existingRemote?.mountState?.diskUsage || {
+            total_space: 'Loading...',
+            used_space: 'Loading...',
+            free_space: 'Loading...',
+            loading: true,
+          },
         },
-      },
-      syncState: {
-        isOnSync: false,
-        syncJobID: 0,
-        isLocal: this.isLocalPath(this.remoteSettings[name]?.['syncConfig']?.dest || ''),
-      },
-      copyState: {
-        isOnCopy: false,
-        copyJobID: 0,
-        isLocal: this.isLocalPath(this.remoteSettings[name]?.['copyConfig']?.dest || ''),
-      },
-      bisyncState: {
-        isOnBisync: false,
-        bisyncJobID: 0,
-        isLocal: this.isLocalPath(this.remoteSettings[name]?.['bisyncConfig']?.dest || ''),
-      },
-      moveState: {
-        isOnMove: false,
-        moveJobID: 0,
-        isLocal: this.isLocalPath(this.remoteSettings[name]?.['moveConfig']?.dest || ''),
-      },
-    }));
-  }
-
-  private async loadDiskUsageInBackground(): Promise<void> {
-    const promises = this.remotes
-      .filter(
-        remote =>
-          !remote.mountState?.diskUsage ||
-          remote.mountState.diskUsage.loading ||
-          remote.mountState.diskUsage.error
-      )
-      .map(remote => this.updateRemoteDiskUsage(remote));
-
-    await Promise.all(promises);
+        // Preserve existing job states if available
+        syncState: existingRemote?.syncState || {
+          isOnSync: false,
+          syncJobID: 0,
+          isLocal: this.isLocalPath(this.remoteSettings[name]?.['syncConfig']?.dest || ''),
+        },
+        copyState: existingRemote?.copyState || {
+          isOnCopy: false,
+          copyJobID: 0,
+          isLocal: this.isLocalPath(this.remoteSettings[name]?.['copyConfig']?.dest || ''),
+        },
+        bisyncState: existingRemote?.bisyncState || {
+          isOnBisync: false,
+          bisyncJobID: 0,
+          isLocal: this.isLocalPath(this.remoteSettings[name]?.['bisyncConfig']?.dest || ''),
+        },
+        moveState: existingRemote?.moveState || {
+          isOnMove: false,
+          moveJobID: 0,
+          isLocal: this.isLocalPath(this.remoteSettings[name]?.['moveConfig']?.dest || ''),
+        },
+      };
+    });
   }
 
   private async updateRemoteDiskUsage(remote: Remote): Promise<void> {
@@ -693,12 +693,20 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     const updateDiskUsageState = (updates: Partial<DiskUsage>) => {
       if (remote.mountState) {
+        // Find the current remote in the list to get the latest state
+        const currentRemote = this.remotes.find(
+          r => r.remoteSpecs.name === remote.remoteSpecs.name
+        );
+        if (!currentRemote) return;
+
+        if (!currentRemote.mountState) return;
+
         const updatedRemote = {
-          ...remote,
+          ...currentRemote, // Use current remote state instead of the passed remote
           mountState: {
-            ...remote.mountState,
+            ...currentRemote.mountState,
             diskUsage: {
-              ...remote.mountState.diskUsage,
+              ...currentRemote.mountState.diskUsage,
               ...updates,
             },
           },
@@ -743,6 +751,37 @@ export class HomeComponent implements OnInit, OnDestroy {
       console.error(`Failed to update disk usage for ${remote.remoteSpecs.name}`, error);
     }
   }
+
+  private async loadDiskUsageInBackground(): Promise<void> {
+    // Filter remotes that need disk usage updates
+    const remotesNeedingUpdate = this.remotes.filter(
+      remote =>
+        !remote.mountState?.diskUsage ||
+        remote.mountState.diskUsage.loading ||
+        remote.mountState.diskUsage.error
+    );
+
+    // Process disk usage updates without awaiting (fire and forget)
+    remotesNeedingUpdate.forEach(remote => {
+      this.updateRemoteDiskUsage(remote).catch(error => {
+        console.error(`Background disk usage update failed for ${remote.remoteSpecs.name}:`, error);
+      });
+    });
+  }
+
+  // async refreshDiskUsage(remoteName?: string): Promise<void> {
+  //   const remotesToUpdate = remoteName
+  //     ? this.remotes.filter(r => r.remoteSpecs.name === remoteName)
+  //     : this.remotes;
+
+  //   const updatePromises = remotesToUpdate.map(remote =>
+  //     this.updateRemoteDiskUsage(remote).catch(error => {
+  //       console.error(`Failed to refresh disk usage for ${remote.remoteSpecs.name}:`, error);
+  //     })
+  //   );
+
+  //   await Promise.allSettled(updatePromises);
+  // }
 
   private async getRemoteSettings(): Promise<void> {
     this.remoteSettings = await this.appSettingsService.getRemoteSettings();

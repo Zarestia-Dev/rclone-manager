@@ -252,7 +252,14 @@
                     class="error-icon"
                     aria-hidden="true"
                   ></mat-icon>
-                  <span>{{ jobStats.lastError }}</span>
+                  <span
+                    matTooltip="Click to copy error"
+                    (click)="copyError(jobStats.lastError)"
+                    tabindex="0"
+                    role="button"
+                    class="error-text-content"
+                    >{{ jobStats.lastError }}</span
+                  >
                 </div>
               </div>
             }

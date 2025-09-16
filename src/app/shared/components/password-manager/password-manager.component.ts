@@ -19,12 +19,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { PasswordLockoutStatus } from '@app/types';
 import { FormatTimePipe } from '../../pipes/format-time.pipe';
 
-export interface PasswordStrength {
-  score: number; // 0-4 scale
-  feedback: string[];
-  level: 'weak' | 'medium' | 'strong';
-}
-
 @Component({
   selector: 'app-password-manager',
   standalone: true,
@@ -58,7 +52,6 @@ export class PasswordManagerComponent implements OnInit, OnDestroy {
   @Output() passwordChange = new EventEmitter<string>();
   @Output() storePasswordChange = new EventEmitter<boolean>();
   @Output() unlock = new EventEmitter<void>();
-  @Output() passwordStrengthChange = new EventEmitter<PasswordStrength>();
 
   // Animation state
   isEntering = false;

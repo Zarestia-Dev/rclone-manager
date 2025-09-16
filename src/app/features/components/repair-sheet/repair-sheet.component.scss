@@ -106,6 +106,7 @@
     border-top: 1px solid var(--border-color);
 
     button.repair-button {
+      color: white !important;
       background: linear-gradient(135deg, var(--warn-color), var(--orange));
       box-shadow: var(--shadow-light);
       transition: var(--transition-fast);
