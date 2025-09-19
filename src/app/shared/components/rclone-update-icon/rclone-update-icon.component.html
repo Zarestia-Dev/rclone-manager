@@ -20,7 +20,7 @@
   } @else if (updateStatus.available && updateStatus.updateInfo) {
     <div class="status-indicator available">
       <button
-        mat-icon-button
+        matIconButton
         class="update-button"
         color="primary"
         (click)="showUpdateDialog()"
@@ -39,7 +39,7 @@
   } @else if (updateStatus.error) {
     <div class="status-indicator error">
       <button
-        mat-icon-button
+        matIconButton
         color="warn"
         class="error-button"
         (click)="checkForUpdates()"
@@ -52,7 +52,7 @@
   } @else {
     <div class="status-indicator up-to-date">
       <button
-        mat-icon-button
+        matIconButton
         color="accent"
         class="check-button"
         (click)="checkForUpdates()"

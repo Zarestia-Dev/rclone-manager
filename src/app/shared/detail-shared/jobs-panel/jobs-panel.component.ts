@@ -94,7 +94,7 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
                 <div class="job-actions">
                   @if (job.status === 'Running') {
                     <button
-                      mat-icon-button
+                      matIconButton
                       class="action-button stop-button"
                       matTooltip="Stop Job"
                       (click)="stopJob.emit({ type: job.job_type, remoteName: job.remote_name })"
@@ -103,7 +103,7 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
                     </button>
                   } @else {
                     <button
-                      mat-icon-button
+                      matIconButton
                       class="action-button delete-button"
                       matTooltip="Delete Job"
                       (click)="deleteJob.emit(job.jobid)"

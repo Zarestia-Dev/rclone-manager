@@ -1,11 +1,11 @@
 <div class="input-modal">
   <!-- Modal Header -->
   <div class="modal-header" data-tauri-drag-region>
-    <button mat-icon-button aria-hidden="true">
+    <button matIconButton aria-hidden="true">
       <mat-icon svgIcon="question"></mat-icon>
     </button>
     <h3>{{ data.title }}</h3>
-    <button mat-icon-button (click)="close()" aria-label="Close input dialog">
+    <button matIconButton (click)="close()" aria-label="Close input dialog">
       <mat-icon svgIcon="close"></mat-icon>
     </button>
   </div>
@@ -57,7 +57,7 @@
                   [attr.aria-label]="field.label + (field.required ? ' (required)' : '')"
                 />
                 <button
-                  mat-icon-button
+                  matIconButton
                   matSuffix
                   (click)="togglePasswordVisibility()"
                   [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
@@ -130,7 +130,7 @@
                     "
                   />
                   <button
-                    mat-icon-button
+                    matIconButton
                     matSuffix
                     (click)="selectFolder(field)"
                     [attr.aria-label]="'Select folder for ' + field.label"
@@ -148,7 +148,7 @@
     <!-- Action Buttons -->
     <div class="modal-actions">
       <button
-        mat-raised-button
+        matButton="filled"
         color="primary"
         (click)="confirm()"
         [disabled]="!isFormValid()"

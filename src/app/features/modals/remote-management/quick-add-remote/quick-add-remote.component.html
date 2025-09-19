@@ -6,14 +6,14 @@
 >
   <!-- Modal Header -->
   <div class="modal-header" data-tauri-drag-region>
-    <button mat-icon-button aria-label="Help information">
+    <button matIconButton aria-label="Help information">
       <mat-icon svgIcon="question"></mat-icon>
     </button>
     <p id="quick-add-modal-title">
       <mat-icon svgIcon="hard-drive"></mat-icon>
       Quick Add Remote
     </p>
-    <button mat-icon-button (click)="close()" aria-label="Close dialog">
+    <button matIconButton (click)="close()" aria-label="Close dialog">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -108,7 +108,7 @@
               placeholder="Select a folder to mount the remote..."
               formControlName="mountPath"
             />
-            <button type="button" mat-icon-button matSuffix (click)="selectFolder('mountPath')">
+            <button type="button" matIconButton matSuffix (click)="selectFolder('mountPath')">
               <mat-icon svgIcon="folder" color="primary"></mat-icon>
             </button>
             @if (
@@ -144,7 +144,7 @@
               placeholder="Destination path (e.g., local folder or remote:/)"
               formControlName="syncDest"
             />
-            <button type="button" mat-icon-button matSuffix (click)="selectFolder('syncDest')">
+            <button type="button" matIconButton matSuffix (click)="selectFolder('syncDest')">
               <mat-icon svgIcon="folder" color="primary"></mat-icon>
             </button>
             @if (
@@ -180,7 +180,7 @@
               placeholder="Destination path (e.g., local folder or remote:/)"
               formControlName="copyDest"
             />
-            <button type="button" mat-icon-button matSuffix (click)="selectFolder('copyDest')">
+            <button type="button" matIconButton matSuffix (click)="selectFolder('copyDest')">
               <mat-icon svgIcon="folder" color="primary"></mat-icon>
             </button>
             @if (
@@ -199,7 +199,7 @@
   <div class="button-group">
     <button
       (click)="onSubmit()"
-      mat-raised-button
+      matButton="filled"
       color="primary"
       [disabled]="isAuthInProgress || quickAddForm.invalid"
     >
@@ -215,7 +215,7 @@
     @if (isAuthInProgress && !isAuthCancelled) {
       <button
         type="button"
-        mat-raised-button
+        matButton="filled"
         color="warn"
         (click)="cancelAuth()"
         [disabled]="!isAuthInProgress"

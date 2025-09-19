@@ -6,14 +6,14 @@
 >
   <!-- Modal Header -->
   <div class="modal-header" data-tauri-drag-region>
-    <button mat-icon-button aria-label="Help information" [disabled]="isExporting()">
+    <button matIconButton aria-label="Help information" [disabled]="isExporting()">
       <mat-icon svgIcon="question"></mat-icon>
     </button>
     <p id="export-modal-title">
       <mat-icon svgIcon="export" aria-hidden="true"></mat-icon>
       Export Settings
     </p>
-    <button mat-icon-button (click)="close()" [disabled]="isExporting()" aria-label="Close dialog">
+    <button matIconButton (click)="close()" [disabled]="isExporting()" aria-label="Close dialog">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -113,7 +113,7 @@
             required
           />
           <button
-            mat-icon-button
+            matIconButton
             matSuffix
             (click)="selectFolder()"
             [disabled]="isExporting() || folderSelectionInProgress()"
@@ -181,7 +181,7 @@
               />
               <button
                 type="button"
-                mat-icon-button
+                matIconButton
                 matSuffix
                 (click)="togglePasswordVisibility()"
                 [matTooltip]="showPassword() ? 'Hide password' : 'Show password'"
@@ -202,7 +202,7 @@
 
     <!-- Modal Actions -->
     <div class="button-group">
-      <button mat-raised-button color="primary" (click)="onExport()" [disabled]="!canExport()">
+      <button matButton="filled" color="primary" (click)="onExport()" [disabled]="!canExport()">
         @if (isExporting()) {
           <mat-spinner diameter="16" class="button-spinner"></mat-spinner>
           <span>Exporting...</span>

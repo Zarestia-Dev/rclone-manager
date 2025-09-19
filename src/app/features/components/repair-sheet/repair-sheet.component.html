@@ -48,7 +48,12 @@
     <!-- Advanced Options for Rclone Path Repair -->
     @if (isRclonePathRepair()) {
       <div class="advanced-toggle">
-        <button mat-raised-button color="accent" (click)="toggleAdvanced()" [disabled]="installing">
+        <button
+          matButton="filled"
+          color="accent"
+          (click)="toggleAdvanced()"
+          [disabled]="installing"
+        >
           <mat-icon
             svgIcon="caret-down"
             [style.transform]="showAdvanced ? 'rotate(180deg)' : 'rotate(0deg)'"
@@ -73,7 +78,7 @@
   <div class="sheet-actions">
     @if (isMountPluginRepair()) {
       <button
-        mat-stroked-button
+        matButton="outlined"
         [disabled]="isRefreshingStatus || installing"
         class="refresh-button"
         (click)="refreshMountPluginStatus()"
@@ -99,7 +104,7 @@
     }
 
     <button
-      mat-raised-button
+      matButton="filled"
       [disabled]="!canRepair()"
       class="repair-button"
       (click)="repair()"

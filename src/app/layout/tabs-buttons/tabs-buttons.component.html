@@ -1,6 +1,6 @@
 <div class="tabs-buttons">
   <button
-    mat-icon-button
+    matIconButton
     matTooltip="General"
     (click)="tabSelected.emit('general')"
     [class.selected]="currentTab === 'general'"
@@ -8,7 +8,7 @@
     <mat-icon svgIcon="home"></mat-icon>
   </button>
   <button
-    mat-icon-button
+    matIconButton
     matTooltip="Mount"
     (click)="tabSelected.emit('mount')"
     [class.selected]="currentTab === 'mount'"
@@ -16,7 +16,7 @@
     <mat-icon svgIcon="mount"></mat-icon>
   </button>
   <button
-    mat-icon-button
+    matIconButton
     matTooltip="Sync"
     (click)="tabSelected.emit('sync')"
     [class.selected]="currentTab === 'sync'"
@@ -24,7 +24,7 @@
     <mat-icon svgIcon="sync"></mat-icon>
   </button>
   <button
-    mat-icon-button
+    matIconButton
     matTooltip="File"
     (click)="tabSelected.emit('files')"
     [class.selected]="currentTab === 'files'"

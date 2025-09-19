@@ -45,8 +45,7 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '..
         <app-status-badge [config]="getStatusBadgeConfig()"></app-status-badge>
         <div class="operation-controls">
           <button
-            mat-raised-button
-            [color]="config.isActive ? 'warn' : config.operationColor"
+            matButton="filled"
             (click)="
               config.isActive
                 ? stopJob.emit(config.operationType)

@@ -13,307 +13,417 @@
 // Be sure that you only ever include this mixin once!
 @include mat.elevation-classes();
 
-// Adwaita Green Primary Palette
+// Adwaita Green Primary Palette (M3 format)
 $adwaita-green-palette: (
-  50: #f0faf2,
-  100: #d8f5e0,
-  200: #b8f0c8,
-  300: #8ff0a4,
-  // green-1
-  400: #57e389,
-  // green-2
-  500: #33d17a,
-  // green-3
-  600: #2ec27e,
-  // green-4
-  700: #26a269,
-  // green-5
-  800: #1e8a57,
-  900: #167345,
+  0: #167345,
+  // darkest
+  10: #167345,
+  // very dark
+  20: #167345,
+  // dark
+  30: #1e8a57,
+  // dark
+  40: #26a269,
+  // medium-dark
+  50: #2ec27e,
+  // medium
+  60: #33d17a,
+  // primary
+  70: #57e389,
+  // light-primary
+  80: #8ff0a4,
+  // light
+  90: #b8f0c8,
+  // lighter
+  95: #d8f5e0,
+  // very light
+  98: #f0faf2,
+  // almost white
+  99: #f0faf2,
+  // very light
+  100: #f0faf2,
+  // lightest
   contrast: (
-    50: rgba(black, 0.87),
-    100: rgba(black, 0.87),
-    200: rgba(black, 0.87),
-    300: rgba(black, 0.87),
-    400: rgba(black, 0.87),
-    500: white,
-    // Green-3 works with dark text
-    600: white,
-    700: white,
-    800: white,
-    900: white,
-  ),
-);
-
-// Adwaita Blue Accent Palette
-$adwaita-blue-palette: (
-  50: #f0f7ff,
-  100: #d8ebff,
-  200: #b8d9ff,
-  300: #99c1f1,
-  // blue-1
-  400: #62a0ea,
-  // blue-2
-  500: #3584e4,
-  // blue-3
-  600: #1c71d8,
-  // blue-4
-  700: #1a5fb4,
-  // blue-5
-  800: #154d90,
-  900: #103b6c,
-  contrast: (
-    50: rgba(black, 0.87),
-    100: rgba(black, 0.87),
-    200: rgba(black, 0.87),
-    300: rgba(black, 0.87),
-    400: rgba(black, 0.87),
-    500: white,
-    600: white,
-    700: white,
-    800: white,
-    900: white,
-  ),
-);
-
-// Adwaita Red Warn Palette
-$adwaita-red-palette: (
-  50: #ffebee,
-  100: #ffcdd2,
-  200: #faa7a0,
-  300: #f66151,
-  // red-1
-  400: #ed333b,
-  // red-2
-  500: #e01b24,
-  // red-3
-  600: #c01c28,
-  // red-4
-  700: #a51d2d,
-  // red-5
-  800: #8b1522,
-  900: #700e17,
-  contrast: (
-    50: rgba(black, 0.87),
-    100: rgba(black, 0.87),
-    200: rgba(black, 0.87),
-    300: rgba(black, 0.87),
-    400: white,
-    500: white,
-    600: white,
-    700: white,
-    800: white,
-    900: white,
-  ),
-);
-
-// Yellow Palette
-$adwaita-yellow-palette: (
-  50: #fffdf0,
-  100: #fff9d8,
-  200: #fff5b8,
-  300: #f9f06b,
-  // yellow-1
-  400: #f8e45c,
-  // yellow-2
-  500: #f6d32d,
-  // yellow-3
-  600: #f5c211,
-  // yellow-4
-  700: #e5a50a,
-  // yellow-5
-  800: #d38f00,
-  900: #b57900,
-  contrast: (
-    50: rgba(black, 0.87),
-    100: rgba(black, 0.87),
-    200: rgba(black, 0.87),
-    300: rgba(black, 0.87),
-    400: rgba(black, 0.87),
-    500: rgba(black, 0.87),
-    600: rgba(black, 0.87),
-    700: white,
-    800: white,
-    900: white,
-  ),
-);
-
-// Orange Palette
-$adwaita-orange-palette: (
-  50: #fff8f0,
-  100: #ffebd8,
-  200: #ffddb8,
-  300: #ffbe6f,
-  // orange-1
-  400: #ffa348,
-  // orange-2
-  500: #ff7800,
-  // orange-3
-  600: #e66100,
-  // orange-4
-  700: #c64600,
-  // orange-5
-  800: #a53500,
-  900: #842500,
-  contrast: (
-    50: rgba(black, 0.87),
-    100: rgba(black, 0.87),
-    200: rgba(black, 0.87),
-    300: rgba(black, 0.87),
-    400: rgba(black, 0.87),
-    500: white,
-    600: white,
-    700: white,
-    800: white,
-    900: white,
-  ),
-);
-
-// Purple Palette
-$adwaita-purple-palette: (
-  50: #faf0fa,
-  100: #f0d8f0,
-  200: #e8b8e8,
-  300: #dc8add,
-  // purple-1
-  400: #c061cb,
-  // purple-2
-  500: #9141ac,
-  // purple-3
-  600: #813d9c,
-  // purple-4
-  700: #613583,
-  // purple-5
-  800: #4f2a6a,
-  900: #3d1f51,
-  contrast: (
-    50: rgba(black, 0.87),
-    100: rgba(black, 0.87),
-    200: rgba(black, 0.87),
-    300: rgba(black, 0.87),
-    400: white,
-    500: white,
-    600: white,
-    700: white,
-    800: white,
-    900: white,
-  ),
-);
-
-// Brown Palette
-$adwaita-brown-palette: (
-  50: #f7f2ed,
-  100: #ede0d8,
-  200: #e0c8b8,
-  300: #cdab8f,
-  // brown-1
-  400: #b5835a,
-  // brown-2
-  500: #986a44,
-  // brown-3
-  600: #865e3c,
-  // brown-4
-  700: #63452c,
-  // brown-5
-  800: #513821,
-  900: #3f2b16,
-  contrast: (
-    50: rgba(black, 0.87),
-    100: rgba(black, 0.87),
-    200: rgba(black, 0.87),
-    300: rgba(black, 0.87),
-    400: white,
-    500: white,
-    600: white,
-    700: white,
-    800: white,
-    900: white,
-  ),
-);
-
-// Light (Gray) Palette
-$adwaita-light-palette: (
-  50: #ffffff,
-  // light-1
-  100: #f6f5f4,
-  // light-2
-  200: #deddda,
-  // light-3
-  300: #c0bfbc,
-  // light-4
-  400: #9a9996,
-  // light-5
-  500: #77767b,
-  // dark-1
-  600: #5e5c64,
-  // dark-2
-  700: #3d3846,
-  // dark-3
-  800: #241f31,
-  // dark-4
-  900: #000000,
-  // dark-5
-  contrast: (
-      50: rgba(black, 0.87),
+      0: white,
+      10: white,
+      20: white,
+      30: white,
+      40: white,
+      50: white,
+      60: white,
+      70: rgba(black, 0.87),
+      80: rgba(black, 0.87),
+      90: rgba(black, 0.87),
+      95: rgba(black, 0.87),
+      98: rgba(black, 0.87),
+      99: rgba(black, 0.87),
       100: rgba(black, 0.87),
-      200: rgba(black, 0.87),
-      300: rgba(black, 0.87),
-      400: white,
-      500: white,
-      600: white,
-      700: white,
-      800: white,
-      900: white,
     ),
 );
 
-$adwaita-theme-colors: (
-  yellow: mat.m2-define-palette($adwaita-yellow-palette, 500, 400, 700),
-  orange: mat.m2-define-palette($adwaita-orange-palette, 500, 400, 700),
-  purple: mat.m2-define-palette($adwaita-purple-palette, 500, 400, 700),
-  brown: mat.m2-define-palette($adwaita-brown-palette, 500, 400, 700),
-  light: mat.m2-define-palette($adwaita-light-palette, 200, 100, 300),
-  dark: mat.m2-define-palette($adwaita-light-palette, 700, 500, 900),
+// Adwaita Blue Accent Palette (M3 format)
+$adwaita-blue-palette: (
+  0: #103b6c,
+  // darkest
+  10: #103b6c,
+  // very dark
+  20: #154d90,
+  // dark
+  30: #1a5fb4,
+  // dark
+  40: #1c71d8,
+  // medium-dark
+  50: #3584e4,
+  // medium
+  60: #62a0ea,
+  // primary
+  70: #99c1f1,
+  // light-primary
+  80: #b8d9ff,
+  // light
+  90: #d8ebff,
+  // lighter
+  95: #f0f7ff,
+  // very light
+  98: #f0f7ff,
+  // almost white
+  99: #f0f7ff,
+  // very light
+  100: #f0f7ff,
+  // lightest
+  contrast: (
+      0: white,
+      10: white,
+      20: white,
+      30: white,
+      40: white,
+      50: white,
+      60: rgba(black, 0.87),
+      70: rgba(black, 0.87),
+      80: rgba(black, 0.87),
+      90: rgba(black, 0.87),
+      95: rgba(black, 0.87),
+      98: rgba(black, 0.87),
+      99: rgba(black, 0.87),
+      100: rgba(black, 0.87),
+    ),
 );
 
-// Function to get additional colors
-@function adwaita-color($color-name, $hue: default) {
-  @return mat.get-color-from-palette(map.get($adwaita-theme-colors, $color-name), $hue);
-}
-
-$rclone-manager-warn: mat.m2-define-palette($adwaita-red-palette, 600, 500, 800);
-$rclone-manager-primary: mat.m2-define-palette($adwaita-green-palette);
-$rclone-manager-accent: mat.m2-define-palette($adwaita-blue-palette);
-
-$rclone-manager-theme: mat.m2-define-light-theme(
-  (
-    color: (
-      primary: $rclone-manager-primary,
-      accent: $rclone-manager-accent,
-      warn: $rclone-manager-warn,
+// Adwaita Red Warn Palette (M3 format)
+$adwaita-red-palette: (
+  0: #700e17,
+  // darkest
+  10: #700e17,
+  // very dark
+  20: #8b1522,
+  // dark
+  30: #a51d2d,
+  // dark
+  40: #c01c28,
+  // medium-dark
+  50: #e01b24,
+  // medium
+  60: #ed333b,
+  // primary
+  70: #f66151,
+  // light-primary
+  80: #faa7a0,
+  // light
+  90: #ffcdd2,
+  // lighter
+  95: #ffebee,
+  // very light
+  98: #ffebee,
+  // almost white
+  99: #ffebee,
+  // very light
+  100: #ffebee,
+  // lightest
+  contrast: (
+      0: white,
+      10: white,
+      20: white,
+      30: white,
+      40: white,
+      50: white,
+      60: white,
+      70: rgba(black, 0.87),
+      80: rgba(black, 0.87),
+      90: rgba(black, 0.87),
+      95: rgba(black, 0.87),
+      98: rgba(black, 0.87),
+      99: rgba(black, 0.87),
+      100: rgba(black, 0.87),
     ),
-  )
 );
 
-// Create the dark theme object
-$rclone-manager-dark-theme: mat.m2-define-dark-theme(
-  (
-    color: (
-      primary: $rclone-manager-primary,
-      accent: $rclone-manager-accent,
-      warn: $rclone-manager-warn,
+// Yellow Palette (M3 format)
+$adwaita-yellow-palette: (
+  0: #b57900,
+  // darkest
+  10: #b57900,
+  // very dark
+  20: #d38f00,
+  // dark
+  30: #e5a50a,
+  // dark
+  40: #f5c211,
+  // medium-dark
+  50: #f6d32d,
+  // medium
+  60: #f8e45c,
+  // primary
+  70: #f9f06b,
+  // light-primary
+  80: #fff5b8,
+  // light
+  90: #fff9d8,
+  // lighter
+  95: #fffdf0,
+  // very light
+  98: #fffdf0,
+  // almost white
+  99: #fffdf0,
+  // very light
+  100: #fffdf0,
+  // lightest
+  contrast: (
+      0: white,
+      10: white,
+      20: white,
+      30: white,
+      40: rgba(black, 0.87),
+      50: rgba(black, 0.87),
+      60: rgba(black, 0.87),
+      70: rgba(black, 0.87),
+      80: rgba(black, 0.87),
+      90: rgba(black, 0.87),
+      95: rgba(black, 0.87),
+      98: rgba(black, 0.87),
+      99: rgba(black, 0.87),
+      100: rgba(black, 0.87),
     ),
-  )
+);
+
+// Orange Palette (M3 format)
+$adwaita-orange-palette: (
+  0: #842500,
+  // darkest
+  10: #842500,
+  // very dark
+  20: #a53500,
+  // dark
+  30: #c64600,
+  // dark
+  40: #e66100,
+  // medium-dark
+  50: #ff7800,
+  // medium
+  60: #ffa348,
+  // primary
+  70: #ffbe6f,
+  // light-primary
+  80: #ffddb8,
+  // light
+  90: #ffebd8,
+  // lighter
+  95: #fff8f0,
+  // very light
+  98: #fff8f0,
+  // almost white
+  99: #fff8f0,
+  // very light
+  100: #fff8f0,
+  // lightest
+  contrast: (
+      0: white,
+      10: white,
+      20: white,
+      30: white,
+      40: white,
+      50: white,
+      60: rgba(black, 0.87),
+      70: rgba(black, 0.87),
+      80: rgba(black, 0.87),
+      90: rgba(black, 0.87),
+      95: rgba(black, 0.87),
+      98: rgba(black, 0.87),
+      99: rgba(black, 0.87),
+      100: rgba(black, 0.87),
+    ),
+);
+
+// Purple Palette (M3 format)
+$adwaita-purple-palette: (
+  0: #3d1f51,
+  // darkest
+  10: #3d1f51,
+  // very dark
+  20: #4f2a6a,
+  // dark
+  30: #613583,
+  // dark
+  40: #813d9c,
+  // medium-dark
+  50: #9141ac,
+  // medium
+  60: #c061cb,
+  // primary
+  70: #dc8add,
+  // light-primary
+  80: #e8b8e8,
+  // light
+  90: #f0d8f0,
+  // lighter
+  95: #faf0fa,
+  // very light
+  98: #faf0fa,
+  // almost white
+  99: #faf0fa,
+  // very light
+  100: #faf0fa,
+  // lightest
+  contrast: (
+      0: white,
+      10: white,
+      20: white,
+      30: white,
+      40: white,
+      50: white,
+      60: rgba(black, 0.87),
+      70: rgba(black, 0.87),
+      80: rgba(black, 0.87),
+      90: rgba(black, 0.87),
+      95: rgba(black, 0.87),
+      98: rgba(black, 0.87),
+      99: rgba(black, 0.87),
+      100: rgba(black, 0.87),
+    ),
+);
+
+// Brown Palette (M3 format)
+$adwaita-brown-palette: (
+  0: #3f2b16,
+  // darkest
+  10: #3f2b16,
+  // very dark
+  20: #513821,
+  // dark
+  30: #63452c,
+  // dark
+  40: #865e3c,
+  // medium-dark
+  50: #986a44,
+  // medium
+  60: #b5835a,
+  // primary
+  70: #cdab8f,
+  // light-primary
+  80: #e0c8b8,
+  // light
+  90: #ede0d8,
+  // lighter
+  95: #f7f2ed,
+  // very light
+  98: #f7f2ed,
+  // almost white
+  99: #f7f2ed,
+  // very light
+  100: #f7f2ed,
+  // lightest
+  contrast: (
+      0: white,
+      10: white,
+      20: white,
+      30: white,
+      40: white,
+      50: white,
+      60: rgba(black, 0.87),
+      70: rgba(black, 0.87),
+      80: rgba(black, 0.87),
+      90: rgba(black, 0.87),
+      95: rgba(black, 0.87),
+      98: rgba(black, 0.87),
+      99: rgba(black, 0.87),
+      100: rgba(black, 0.87),
+    ),
+);
+
+// Light (Gray) Palette (M3 format)
+$adwaita-light-palette: (
+  0: #000000,
+  // darkest
+  10: #241f31,
+  // very dark
+  20: #3d3846,
+  // dark
+  30: #5e5c64,
+  // dark
+  40: #77767b,
+  // medium-dark
+  50: #9a9996,
+  // medium
+  60: #c0bfbc,
+  // primary
+  70: #deddda,
+  // light-primary
+  80: #f6f5f4,
+  // light
+  90: #ffffff,
+  // lighter
+  95: #ffffff,
+  // very light
+  98: #ffffff,
+  // almost white
+  99: #ffffff,
+  // very light
+  100: #ffffff,
+  // lightest
+  contrast: (
+      0: white,
+      10: white,
+      20: white,
+      30: white,
+      40: white,
+      50: rgba(black, 0.87),
+      60: rgba(black, 0.87),
+      70: rgba(black, 0.87),
+      80: rgba(black, 0.87),
+      90: rgba(black, 0.87),
+      95: rgba(black, 0.87),
+      98: rgba(black, 0.87),
+      99: rgba(black, 0.87),
+      100: rgba(black, 0.87),
+    ),
+);
+
+$light-theme: (
+  color: (
+    theme-type: light,
+    primary: $adwaita-green-palette,
+    tertiary: $adwaita-blue-palette,
+    error: $adwaita-red-palette,
+  ),
+);
+
+$dark-theme: (
+  color: (
+    theme-type: dark,
+    primary: $adwaita-green-palette,
+    tertiary: $adwaita-blue-palette,
+    error: $adwaita-red-palette,
+  ),
 );
 
 .light {
-  @include mat.all-component-themes($rclone-manager-theme);
+  @include mat.theme($light-theme);
 
   & {
+    color-scheme: light;
     /* Define custom colors for light mode */
     --app-background: #fafafa;
     --secondary-background: #ffffff;
-    --banner-background: #d4d4d7; //rgba(212, 212, 215, 0.85);
+    --banner-background: #d4d4d7;
     --sidebar-background: #f5f5f5;
     --box-shadow: 0 0 0 1px rgba(232, 232, 233, 1), 0 0 4px 1px rgba(10, 10, 11, 0.06);
     --selected-tab-color: #e6e6e7;
@@ -336,12 +446,14 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
 /* 🌙 Dark Theme */
 
 .dark {
-  @include mat.all-component-themes($rclone-manager-dark-theme);
+  @include mat.theme($dark-theme);
+
   & {
+    color-scheme: dark;
     /* Define custom colors for dark mode */
     --app-background: #222226;
     --secondary-background: #000000;
-    --banner-background: #3d3d42; // rgba(61, 61, 66, 0.85);
+    --banner-background: #3d3d42;
     --sidebar-background: #050505;
     --box-shadow: 0 0 0 1px rgba(32, 32, 36, 1), 0 0 4px 1px rgba(0, 0, 0, 0.06);
     --selected-tab-color: #2f2f30;
@@ -363,68 +475,68 @@ $rclone-manager-dark-theme: mat.m2-define-dark-theme(
 
 :root {
   --accent-color-rgb:
-    #{color.channel(map.get($adwaita-blue-palette, 500), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-blue-palette, 500), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-blue-palette, 500), "blue", $space: rgb)};
+    #{color.channel(map.get($adwaita-blue-palette, 50), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-blue-palette, 50), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-blue-palette, 50), "blue", $space: rgb)};
   --warn-color-rgb:
-    #{color.channel(map.get($adwaita-red-palette, 400), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-red-palette, 400), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-red-palette, 400), "blue", $space: rgb)};
+    #{color.channel(map.get($adwaita-red-palette, 50), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-red-palette, 50), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-red-palette, 50), "blue", $space: rgb)};
   --primary-color-rgb:
-    #{color.channel(map.get($adwaita-green-palette, 500), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-green-palette, 500), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-green-palette, 500), "blue", $space: rgb)};
+    #{color.channel(map.get($adwaita-green-palette, 50), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-green-palette, 50), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-green-palette, 50), "blue", $space: rgb)};
   --purple-rgb:
-    #{color.channel(map.get($adwaita-purple-palette, 500), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-purple-palette, 500), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-purple-palette, 500), "blue", $space: rgb)};
+    #{color.channel(map.get($adwaita-purple-palette, 50), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-purple-palette, 50), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-purple-palette, 50), "blue", $space: rgb)};
   --orange-rgb:
-    #{color.channel(map.get($adwaita-orange-palette, 500), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-orange-palette, 500), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-orange-palette, 500), "blue", $space: rgb)};
+    #{color.channel(map.get($adwaita-orange-palette, 50), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-orange-palette, 50), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-orange-palette, 50), "blue", $space: rgb)};
   --yellow-rgb:
-    #{color.channel(map.get($adwaita-yellow-palette, 500), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-yellow-palette, 500), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-yellow-palette, 500), "blue", $space: rgb)};
+    #{color.channel(map.get($adwaita-yellow-palette, 50), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-yellow-palette, 50), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-yellow-palette, 50), "blue", $space: rgb)};
   --light-green-rgb:
-    #{color.channel(map.get($adwaita-green-palette, 300), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-green-palette, 300), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-green-palette, 300), "blue", $space: rgb)};
+    #{color.channel(map.get($adwaita-green-palette, 30), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-green-palette, 30), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-green-palette, 30), "blue", $space: rgb)};
   --light-orange-rgb:
-    #{color.channel(map.get($adwaita-orange-palette, 300), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-orange-palette, 300), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-orange-palette, 300), "blue", $space: rgb)};
+    #{color.channel(map.get($adwaita-orange-palette, 30), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-orange-palette, 30), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-orange-palette, 30), "blue", $space: rgb)};
   --light-blue-rgb:
-    #{color.channel(map.get($adwaita-blue-palette, 300), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-blue-palette, 300), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-blue-palette, 300), "blue", $space: rgb)};
+    #{color.channel(map.get($adwaita-blue-palette, 30), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-blue-palette, 30), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-blue-palette, 30), "blue", $space: rgb)};
   --red-rgb:
-    #{color.channel(map.get($adwaita-red-palette, 500), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-red-palette, 500), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-red-palette, 500), "blue", $space: rgb)};
+    #{color.channel(map.get($adwaita-red-palette, 50), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-red-palette, 50), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-red-palette, 50), "blue", $space: rgb)};
   --light-theme-color-rgb:
-    #{color.channel(map.get($adwaita-light-palette, 50), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-light-palette, 50), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-light-palette, 50), "blue", $space: rgb)};
+    #{color.channel(map.get($adwaita-light-palette, 0), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-light-palette, 0), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-light-palette, 0), "blue", $space: rgb)};
   --dark-theme-color-rgb:
-    #{color.channel(map.get($adwaita-light-palette, 900), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-light-palette, 900), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-light-palette, 900), "blue", $space: rgb)};
+    #{color.channel(map.get($adwaita-light-palette, 100), "red", $space: rgb)},
+    #{color.channel(map.get($adwaita-light-palette, 100), "green", $space: rgb)},
+    #{color.channel(map.get($adwaita-light-palette, 100), "blue", $space: rgb)};
 
-  --accent-color: #{map.get($adwaita-blue-palette, 500)};
-  --warn-color: #{map.get($adwaita-red-palette, 500)};
-  --primary-color: #{map.get($adwaita-green-palette, 500)};
-  --purple: #{map.get($adwaita-purple-palette, 500)};
-  --orange: #{map.get($adwaita-orange-palette, 500)};
-  --yellow: #{map.get($adwaita-yellow-palette, 500)};
-  --light-green: #{map.get($adwaita-green-palette, 300)};
-  --light-orange: #{map.get($adwaita-orange-palette, 300)};
-  --light-blue: #{map.get($adwaita-blue-palette, 300)};
-  --light-purple: #{map.get($adwaita-purple-palette, 300)};
-  --light-yellow: #{map.get($adwaita-yellow-palette, 300)};
-  --red: #{map.get($adwaita-red-palette, 500)};
-  --light-theme-color: #{map.get($adwaita-light-palette, 50)};
-  --dark-theme-color: #{map.get($adwaita-light-palette, 900)};
+  --accent-color: #{map.get($adwaita-blue-palette, 50)};
+  --warn-color: #{map.get($adwaita-red-palette, 50)};
+  --primary-color: #{map.get($adwaita-green-palette, 50)};
+  --purple: #{map.get($adwaita-purple-palette, 50)};
+  --orange: #{map.get($adwaita-orange-palette, 50)};
+  --yellow: #{map.get($adwaita-yellow-palette, 50)};
+  --light-green: #{map.get($adwaita-green-palette, 80)};
+  --light-orange: #{map.get($adwaita-orange-palette, 80)};
+  --light-blue: #{map.get($adwaita-blue-palette, 80)};
+  --light-purple: #{map.get($adwaita-purple-palette, 80)};
+  --light-yellow: #{map.get($adwaita-yellow-palette, 80)};
+  --red: #{map.get($adwaita-red-palette, 50)};
+  --light-theme-color: #{map.get($adwaita-light-palette, 0)};
+  --dark-theme-color: #{map.get($adwaita-light-palette, 100)};
 
   --scroller-color: #90939980;
   -webkit-font-smoothing: antialiased;
@@ -530,6 +642,51 @@ body {
   margin: 0;
   font-family: system-ui, Inter, sans-serif;
   overflow: hidden;
+
+  --mat-sys-primary: var(--primary-color);
+  --mat-sys-surface: var(--app-background);
+  --mat-sys-surface-variant: var(--secondary-background);
+  --mat-sys-on-surface: var(--app-text-color);
+  --mat-sys-on-surface-variant: var(--app-text-color);
+  --mat-sys-outline: var(--theme-border);
+
+  @include mat.tooltip-overrides(
+    (
+      container-color: var(--app-text-color),
+      supporting-text-color: var(--app-background),
+      supporting-text-size: var(--font-size-md),
+    )
+  );
+
+  @include mat.button-overrides(
+    (
+      filled-container-shape: var(--button-border-radius),
+      outlined-container-shape: var(--button-border-radius),
+      tonal-container-shape: var(--button-border-radius),
+      text-container-shape: var(--button-border-radius),
+      protected-container-shape: var(--button-border-radius),
+    )
+  );
+
+  @include mat.fab-overrides(
+    (
+      container-shape: var(--button-border-radius),
+      small-container-shape: var(--button-border-radius),
+      extended-container-shape: var(--button-border-radius),
+    )
+  );
+
+  @include mat.icon-button-overrides(
+    (
+      container-shape: var(--button-border-radius),
+    )
+  );
+
+  @include mat.divider-overrides(
+    (
+      color: var(--theme-border),
+    )
+  );
 }
 
 * {
@@ -561,34 +718,16 @@ h6 {
   margin-top: 0;
 }
 
-.mat-mdc-raised-button,
-.mat-mdc-icon-button,
-.mat-mdc-icon-button .mat-mdc-button-persistent-ripple,
-.mat-mdc-raised-button .mdc-button__ripple,
-.mat-mdc-button,
-.mat-mdc-unelevated-button,
-.mat-mdc-outlined-button {
-  border-radius: var(--button-border-radius) !important;
-}
-
 // Fix for mat-icon overflow issues in Windows
 mat-icon {
   overflow: visible !important;
+  // min-height: unset !important;
 }
 
 button {
-  border: none;
-  display: flex;
-  align-items: center;
   flex-direction: row !important;
-  justify-content: center;
-  background-color: transparent;
-
   span {
     text-wrap: nowrap;
-    display: flex;
-    flex-direction: row;
-    gap: var(--space-xs);
   }
 
   &.copy-btn {
@@ -713,13 +852,4 @@ button {
   border-radius: var(--radius-xxs);
   transition: var(--transition-standard);
   will-change: background;
-}
-
-html,
-body {
-  height: 100%;
-}
-body {
-  margin: 0;
-  font-family: Roboto, "Helvetica Neue", sans-serif;
 }

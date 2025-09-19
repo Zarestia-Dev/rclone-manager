@@ -20,8 +20,7 @@ import { QuickActionButton } from '@app/types';
     <div class="quick-actions">
       @for (button of buttons; track button.id) {
         <button
-          mat-mini-fab
-          [color]="button.color"
+          matMiniFab
           [matTooltip]="button.tooltip"
           [disabled]="button.isDisabled"
           [ngClass]="'action-btn ' + (button.cssClass || '')"

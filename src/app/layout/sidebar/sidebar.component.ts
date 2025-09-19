@@ -10,6 +10,7 @@ import { SearchContainerComponent } from '../../shared/components/search-contain
 // Services
 import { AnimationsService } from '../../shared/services/animations.service';
 import { Remote } from '@app/types';
+import { IconService } from 'src/app/shared/services/icon.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -28,7 +29,7 @@ import { Remote } from '@app/types';
 })
 export class SidebarComponent {
   @Input() remotes: Remote[] = [];
-  @Input() iconService: any;
+  @Input() iconService!: IconService;
   @Output() remoteSelected = new EventEmitter<Remote>();
 
   searchTerm = '';
@@ -36,7 +37,7 @@ export class SidebarComponent {
   @ViewChild(SearchContainerComponent)
   searchContainer!: SearchContainerComponent;
 
-  onSearchTextChange(searchText: string) {
+  onSearchTextChange(searchText: string): void {
     this.searchTerm = searchText.trim().toLowerCase();
   }
 
@@ -55,7 +56,7 @@ export class SidebarComponent {
   }
 
   @HostListener('document:keydown.control.f', ['$event'])
-  onControlF(event: KeyboardEvent) {
+  onControlF(event: KeyboardEvent): void {
     event.preventDefault();
     this.toggleSearch();
     if (this.searchVisible && this.searchContainer) {
@@ -63,14 +64,14 @@ export class SidebarComponent {
     }
   }
 
-  toggleSearch() {
+  toggleSearch(): void {
     this.searchVisible = !this.searchVisible;
     if (!this.searchVisible) {
       this.clearSearch();
     }
   }
 
-  clearSearch() {
+  clearSearch(): void {
     this.searchTerm = '';
     if (this.searchContainer) {
       this.searchContainer.clear();

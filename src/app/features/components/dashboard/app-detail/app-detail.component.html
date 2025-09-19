@@ -33,7 +33,7 @@
         <div class="operation-buttons">
           @for (operation of syncOperations; track operation.type) {
             <button
-              mat-raised-button
+              matButton="filled"
               [class]="
                 'operation-button ' +
                 operation.type +

@@ -33,7 +33,7 @@
     <nav class="about-list" role="navigation" aria-label="About sections">
       <button
         type="button"
-        mat-button
+        matButton
         class="about-item"
         (click)="navigateTo('details')"
         aria-label="View application details"
@@ -44,7 +44,7 @@
 
       <button
         type="button"
-        mat-button
+        matButton
         class="about-item"
         (click)="navigateTo('About Rclone')"
         aria-label="View Rclone information"
@@ -56,7 +56,7 @@
       <div class="stacked-buttons" role="group" aria-label="Additional information">
         <button
           type="button"
-          mat-button
+          matButton
           class="about-item"
           (click)="navigateTo('credits')"
           aria-label="View credits and acknowledgments"
@@ -67,7 +67,7 @@
         <mat-divider></mat-divider>
         <button
           type="button"
-          mat-button
+          matButton
           class="about-item"
           (click)="navigateTo('legal')"
           aria-label="View legal information and licenses"
@@ -109,7 +109,7 @@
           <div class="stacked-buttons" role="group" aria-label="Application links">
             <button
               type="button"
-              mat-button
+              matButton
               class="about-item first"
               (click)="openLink('https://github.com/Hakanbaban53/rclone-manager')"
               aria-label="Open project website in browser"
@@ -120,7 +120,7 @@
             <mat-divider></mat-divider>
             <button
               type="button"
-              mat-button
+              matButton
               class="about-item last"
               (click)="openLink('https://github.com/Hakanbaban53/rclone-manager/issues')"
               aria-label="Report issues on GitHub"
@@ -198,7 +198,7 @@
             <div class="about-list" role="group" aria-label="Rclone actions">
               <button
                 type="button"
-                mat-button
+                matButton
                 class="about-item"
                 (click)="openLink('https://rclone.org')"
                 aria-label="Visit Rclone official website"
@@ -209,7 +209,7 @@
 
               <button
                 type="button"
-                mat-button
+                matButton
                 class="about-item"
                 (click)="killProcess()"
                 [attr.aria-label]="
@@ -236,7 +236,7 @@
       @if (currentPage === 'credits') {
         <div class="overlay-content credits">
           <strong>Development Team</strong>
-          <button mat-button class="about-item" role="group" aria-label="Developer information">
+          <button matButton class="about-item" role="group" aria-label="Developer information">
             <mat-icon svgIcon="terminal" aria-hidden="true"></mat-icon>
             <span>Hakan İSMAİL - Lead Developer</span>
           </button>

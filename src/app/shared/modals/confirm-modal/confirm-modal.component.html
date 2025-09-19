@@ -17,7 +17,7 @@
   <div class="modal-actions">
     @if (data.cancelText) {
       <button
-        mat-raised-button
+        matButton="filled"
         class="cancel-btn"
         (click)="onCancel()"
         [attr.aria-label]="'Cancel: ' + (data.cancelText || 'No')"
@@ -28,7 +28,7 @@
 
     @if (data.confirmText) {
       <button
-        mat-raised-button
+        matButton="filled"
         [color]="getConfirmButtonColor()"
         (click)="onConfirm()"
         [attr.aria-label]="'Confirm: ' + (data.confirmText || 'Yes')"

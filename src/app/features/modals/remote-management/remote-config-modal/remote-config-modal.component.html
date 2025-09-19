@@ -1,14 +1,14 @@
 <div class="modal-container">
   <!-- Modal Header -->
   <header class="modal-header" data-tauri-drag-region>
-    <button mat-icon-button aria-label="Help" (click)="testNonInteractiveFlow()">
+    <button matIconButton aria-label="Help" (click)="testNonInteractiveFlow()">
       <mat-icon svgIcon="question"></mat-icon>
     </button>
     <p data-tauri-drag-region>
       <mat-icon svgIcon="hard-drive" aria-hidden="true"></mat-icon>
       {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
     </p>
-    <button mat-icon-button (click)="close()" aria-label="Close dialog">
+    <button matIconButton (click)="close()" aria-label="Close dialog">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </header>
@@ -93,7 +93,7 @@
       <!-- Navigation Buttons -->
       @if (currentStep < TOTAL_STEPS && !editTarget) {
         <button
-          mat-raised-button
+          matButton="filled"
           color="accent"
           (click)="nextStep()"
           [disabled]="!remoteForm.valid || isAuthInProgress"
@@ -104,7 +104,7 @@
       }
       @if (currentStep > 1 && !editTarget) {
         <button
-          mat-raised-button
+          matButton="filled"
           color="accent"
           [disabled]="isAuthInProgress"
           (click)="prevStep()"
@@ -118,7 +118,7 @@
     <div class="button-container-inner">
       @if ((isAuthInProgress && !isAuthCancelled) || isNonInteractiveActive) {
         <button
-          mat-raised-button
+          matButton="filled"
           [@fadeInOut]
           color="warn"
           (click)="cancelAuth()"
@@ -140,7 +140,7 @@
       <!-- Save Buttons -->
       @if (currentStep > 1 && !editTarget && !isNonInteractiveActive) {
         <button
-          mat-raised-button
+          matButton="filled"
           color="primary"
           (click)="onSubmit()"
           [disabled]="
@@ -163,7 +163,7 @@
 
       @if (editTarget) {
         <button
-          mat-raised-button
+          matButton="filled"
           color="primary"
           (click)="onSubmit()"
           [disabled]="

@@ -17,9 +17,8 @@ import { PathDisplayConfig } from '../../types';
         <div class="path-icon-container">
           @if (config.showOpenButtons && isLocalPath(config.source)) {
             <button
-              mat-icon-button
+              matIconButton
               class="folder-button"
-              [color]="config.operationColor"
               (click)="onOpenPath(config.source)"
               matTooltip="Open in file explorer"
             >
@@ -42,7 +41,7 @@ import { PathDisplayConfig } from '../../types';
         <div class="path-icon-container">
           @if (config.showOpenButtons && isLocalPath(config.destination)) {
             <button
-              mat-icon-button
+              matIconButton
               class="folder-button"
               [class.active]="config.isDestinationActive"
               [class.inactive]="!config.isDestinationActive"

@@ -78,7 +78,7 @@
       <div class="footer-navigation">
         <div>
           @if (currentCardIndex > 0) {
-            <button mat-button (click)="previousCard()" class="secondary">
+            <button matButton (click)="previousCard()" class="secondary">
               <mat-icon svgIcon="left-arrow"></mat-icon>
               Back
             </button>
@@ -87,7 +87,7 @@
         <div>
           @if (shouldShowInstallRcloneButton()) {
             <button
-              mat-raised-button
+              matButton="filled"
               color="primary"
               (click)="installRclone()"
               [disabled]="!canInstallRclone()"
@@ -104,7 +104,7 @@
           }
           @if (!shouldShowInstallRcloneButton() && shouldShowInstallPluginButton()) {
             <button
-              mat-raised-button
+              matButton="filled"
               color="primary"
               (click)="installMountPlugin()"
               [disabled]="downloadingPlugin"
@@ -122,7 +122,7 @@
             cards[currentCardIndex].title === 'Ready to Go!'
           ) {
             <button
-              mat-raised-button
+              matButton="filled"
               color="primary"
               (click)="completeOnboarding()"
               class="finish-button"
@@ -137,7 +137,7 @@
             cards[currentCardIndex].title === 'Select RClone Config'
           ) {
             <button
-              mat-raised-button
+              matButton="filled"
               color="primary"
               (click)="onConfigNext()"
               [disabled]="!configValid"
@@ -155,7 +155,7 @@
             cards[currentCardIndex].title === 'Configuration Password Required'
           ) {
             <button
-              mat-raised-button
+              matButton="filled"
               color="primary"
               (click)="submitConfigPassword()"
               [disabled]="!configPassword || isSubmittingPassword"
@@ -175,7 +175,7 @@
             cards[currentCardIndex].title !== 'Select RClone Config' &&
             cards[currentCardIndex].title !== 'Configuration Password Required'
           ) {
-            <button mat-raised-button color="primary" (click)="nextCard()">
+            <button matButton="filled" color="primary" (click)="nextCard()">
               Next
               <mat-icon svgIcon="right-arrow"></mat-icon>
             </button>

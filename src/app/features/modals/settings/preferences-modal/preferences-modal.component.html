@@ -3,7 +3,7 @@
   <div class="modal-header" data-tauri-drag-region>
     <!-- Search Toggle Button -->
     <button
-      mat-icon-button
+      matIconButton
       (click)="toggleSearch()"
       [attr.aria-label]="searchVisible ? 'Hide search' : 'Show search'"
       [class.active]="searchVisible"
@@ -32,7 +32,7 @@
     }
 
     <!-- Close Button -->
-    <button mat-icon-button (click)="close()" aria-label="Close preferences dialog">
+    <button matIconButton (click)="close()" aria-label="Close preferences dialog">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
@@ -105,7 +105,7 @@
                 @if (isGeneralTab) {
                   <div class="actions">
                     <button
-                      mat-raised-button
+                      matButton="filled"
                       class="reset-button"
                       (click)="resetSettings()"
                       aria-label="Reset all settings to default values"
@@ -182,7 +182,7 @@
 
           <div class="pending-changes-actions">
             <button
-              mat-button
+              matButton
               class="discard-button"
               (click)="discardPendingChanges()"
               [disabled]="isDiscardingChanges"
@@ -197,7 +197,7 @@
               {{ isDiscardingChanges ? 'Discarding...' : 'Discard Changes' }}
             </button>
             <button
-              mat-raised-button
+              matButton="filled"
               class="save-restart-button"
               (click)="savePendingChanges()"
               aria-label="Save changes and restart engine"
@@ -303,7 +303,7 @@
           </ng-container>
           <div class="array-buttons">
             <button
-              mat-icon-button
+              matIconButton
               color="primary"
               (click)="addArrayItem(category, key)"
               [attr.aria-label]="'Add new ' + meta.display_name + ' item'"
@@ -405,7 +405,7 @@
   <ng-template #numberControl let-category="category" let-key="key" let-meta="meta">
     <div class="stepper">
       <button
-        mat-icon-button
+        matIconButton
         (click)="decrementNumber(category, key, meta)"
         [disabled]="getFormControl(category, key).value <= (meta.min_value || 0)"
         [attr.aria-label]="'Decrease ' + meta.display_name + ' value'"
@@ -418,7 +418,7 @@
       </div>
 
       <button
-        mat-icon-button
+        matIconButton
         (click)="incrementNumber(category, key, meta)"
         [disabled]="getFormControl(category, key).value >= (meta.max_value || 999999)"
         [attr.aria-label]="'Increase ' + meta.display_name + ' value'"
@@ -482,7 +482,7 @@
                 [attr.aria-label]="'Item ' + ($index + 1)"
               />
               <button
-                mat-icon-button
+                matIconButton
                 matSuffix
                 (click)="removeArrayItem(category, key, $index)"
                 [attr.aria-label]="'Remove item ' + ($index + 1)"
@@ -509,7 +509,7 @@
           [attr.aria-label]="'File path for ' + getMetadata(category, key).display_name"
         />
         <button
-          mat-icon-button
+          matIconButton
           matSuffix
           (click)="openFilePicker(category, key)"
           [attr.aria-label]="'Browse for ' + getMetadata(category, key).display_name"
@@ -536,7 +536,7 @@
           [attr.aria-label]="'Folder path for ' + getMetadata(category, key).display_name"
         />
         <button
-          mat-icon-button
+          matIconButton
           matSuffix
           (click)="openFolderPicker(category, key)"
           [attr.aria-label]="'Browse for ' + getMetadata(category, key).display_name"

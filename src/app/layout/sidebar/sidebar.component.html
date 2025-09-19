@@ -1,18 +1,19 @@
 <div class="sidebar">
   <!-- Header Section -->
-  <button
-    mat-button
+  <div
     class="sidebar-header"
     (click)="toggleSearch()"
     matTooltip="Toggle search bar"
     aria-label="Toggle search bar"
     matTooltipShowDelay="500"
+    role="button"
+    tabindex="0"
   >
     <h3>
       <mat-icon svgIcon="remotes"></mat-icon>
       Remotes
     </h3>
-  </button>
+  </div>
 
   <!-- Search Container -->
   <app-search-container

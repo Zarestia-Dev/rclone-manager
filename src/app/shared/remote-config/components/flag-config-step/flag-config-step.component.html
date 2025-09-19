@@ -35,7 +35,7 @@
     <mat-form-field appearance="fill">
       <mat-label>Mount Path</mat-label>
       <button
-        mat-icon-button
+        matIconButton
         matSuffix
         (click)="onSelectFolder('mountConfig.dest', shouldRequireEmptyFolder)"
         aria-label="Select folder"
@@ -63,7 +63,7 @@
         [matAutocomplete]="destAuto"
       />
       <button
-        mat-icon-button
+        matIconButton
         matSuffix
         (click)="onSelectFolder(flagType + 'Config.dest', false)"
         aria-label="Select local folder"
@@ -71,11 +71,7 @@
         <mat-icon svgIcon="folder"></mat-icon>
       </button>
       @if (pathState[flagType + 'Config.dest'] && pathState[flagType + 'Config.dest'].remoteName) {
-        <button
-          mat-icon-button
-          matSuffix
-          (click)="onResetRemoteSelection(flagType + 'Config.dest')"
-        >
+        <button matIconButton matSuffix (click)="onResetRemoteSelection(flagType + 'Config.dest')">
           <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
       }
@@ -144,7 +140,7 @@
         [matAutocomplete]="sourceAuto"
       />
       <button
-        mat-icon-button
+        matIconButton
         matSuffix
         (click)="onSelectFolder(flagType + 'Config.source', false)"
         aria-label="Select local folder"
@@ -155,7 +151,7 @@
         pathState[flagType + 'Config.source'] && pathState[flagType + 'Config.source'].remoteName
       ) {
         <button
-          mat-icon-button
+          matIconButton
           matSuffix
           (click)="onResetRemoteSelection(flagType + 'Config.source')"
         >
@@ -308,7 +304,7 @@
       <mat-form-field appearance="fill" style="width: 100%">
         <mat-label>{{ flagType | titlecase }} Configuration</mat-label>
         <button
-          mat-icon-button
+          matIconButton
           class="reset-btn"
           (click)="onResetJson()"
           [attr.aria-label]="'Reset ' + flagType + ' configuration'"

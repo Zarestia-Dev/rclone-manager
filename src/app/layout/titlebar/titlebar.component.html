@@ -25,18 +25,18 @@
     </mat-menu>
 
     <!-- Main Buttons -->
-    <button mat-icon-button [matMenuTriggerFor]="addRemoteMenu" aria-label="Add remote menu">
+    <button matIconButton [matMenuTriggerFor]="addRemoteMenu" aria-label="Add remote menu">
       <mat-icon svgIcon="add" aria-hidden="true"></mat-icon>
     </button>
 
-    <button mat-icon-button (click)="resetRemote()" aria-label="Home">
+    <button matIconButton (click)="resetRemote()" aria-label="Home">
       <mat-icon svgIcon="rclone-symbolic" aria-hidden="true"></mat-icon>
     </button>
 
     <!-- Connection Status Indicator -->
     @if (connectionStatus === 'offline' || connectionStatus === 'checking') {
       <button
-        mat-icon-button
+        matIconButton
         (click)="runInternetCheck()"
         [disabled]="connectionStatus === 'checking'"
         aria-label="Internet connection status"
@@ -61,24 +61,19 @@
 
   <div class="right-section">
     <!-- App Menu -->
-    <button mat-icon-button [matMenuTriggerFor]="menu" aria-label="Application menu">
+    <button matIconButton [matMenuTriggerFor]="menu" aria-label="Application menu">
       <mat-icon svgIcon="menu-bar" aria-hidden="true"></mat-icon>
     </button>
 
     <!-- Window Controls -->
     @if (!isMacOS) {
-      <button mat-icon-button (click)="minimizeWindow()" aria-label="Minimize window">
+      <button matIconButton (click)="minimizeWindow()" aria-label="Minimize window">
         <mat-icon svgIcon="remove" aria-hidden="true"></mat-icon>
       </button>
-      <button mat-icon-button (click)="maximizeWindow()" aria-label="Maximize window">
+      <button matIconButton (click)="maximizeWindow()" aria-label="Maximize window">
         <mat-icon svgIcon="check-box" aria-hidden="true"></mat-icon>
       </button>
-      <button
-        mat-icon-button
-        (click)="closeWindow()"
-        aria-label="Close window"
-        class="close-button"
-      >
+      <button matIconButton (click)="closeWindow()" aria-label="Close window" class="close-button">
         <mat-icon svgIcon="close" aria-hidden="true"></mat-icon>
       </button>
     }

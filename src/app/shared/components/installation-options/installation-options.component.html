@@ -61,7 +61,7 @@
             />
             <button
               matSuffix
-              mat-icon-button
+              matIconButton
               (click)="selectCustomFolder()"
               matTooltip="Browse"
               [disabled]="disabled"
@@ -89,7 +89,7 @@
             <input matInput [formControl]="existingBinaryControl" placeholder="/path/to/rclone" />
             <button
               matSuffix
-              mat-icon-button
+              matIconButton
               (click)="selectExistingBinary()"
               matTooltip="Browse"
               [disabled]="disabled"
@@ -110,7 +110,7 @@
               <span>{{ getBinaryTestStatusText() }}</span>
               @if (binaryTestResult !== 'valid') {
                 <button
-                  mat-stroked-button
+                  matButton="outlined"
                   (click)="testSelectedBinary()"
                   [disabled]="
                     disabled || binaryTestResult === 'testing' || !existingBinaryPath.trim()

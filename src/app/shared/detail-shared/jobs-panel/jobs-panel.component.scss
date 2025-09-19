@@ -128,12 +128,6 @@
         flex-direction: column;
         gap: var(--space-xs);
 
-        .job-progress {
-          height: 6px;
-          border-radius: var(--radius-xxs);
-          background: rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
-        }
-
         .progress-text {
           font-size: var(--caption-font-size);
           color: var(--secondary-text-color);

@@ -12,7 +12,7 @@
     </p>
 
     <!-- Close Button -->
-    <button (click)="close()" mat-icon-button matTooltipPosition="below">
+    <button (click)="close()" matIconButton matTooltipPosition="below">
       <mat-icon svgIcon="close"></mat-icon>
     </button>
   </div>
@@ -50,7 +50,7 @@
         />
         @if (searchText) {
           <button
-            mat-icon-button
+            matIconButton
             matSuffix
             (click)="searchText = ''; saveFilters()"
             type="button"
@@ -68,7 +68,7 @@
       <div class="terminal-header">
         <div class="terminal-actions">
           <button
-            mat-icon-button
+            matIconButton
             color="warn"
             (click)="clearLogs()"
             [disabled]="loading"
@@ -81,7 +81,7 @@
           </button>
 
           <button
-            mat-icon-button
+            matIconButton
             (click)="scrollToBottom()"
             [matTooltip]="'Scroll to bottom'"
             matTooltipPosition="below"
@@ -92,7 +92,7 @@
           </button>
 
           <button
-            mat-icon-button
+            matIconButton
             (click)="scrollToTop()"
             [matTooltip]="'Scroll to top'"
             matTooltipPosition="below"
@@ -103,7 +103,7 @@
           </button>
 
           <button
-            mat-icon-button
+            matIconButton
             (click)="loadLogs()"
             [disabled]="loading"
             [matTooltip]="'Refresh logs'"
@@ -173,7 +173,7 @@
               <div class="log-actions">
                 @if (log.context) {
                   <button
-                    mat-icon-button
+                    matIconButton
                     [matTooltip]="isExpanded(log) ? 'Hide details' : 'Show details'"
                     matTooltipPosition="above"
                     (click)="toggleDetails(log)"

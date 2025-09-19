@@ -37,7 +37,6 @@ import { StatsPanelConfig } from '../../types';
                 </div>
                 @if (stat.progress !== undefined) {
                   <mat-progress-bar
-                    [color]="config.operationColor"
                     mode="determinate"
                     [value]="stat.progress"
                     class="stat-progress"

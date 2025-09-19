@@ -24,7 +24,7 @@
     <mat-sidenav-content class="main-content" position="center">
       <!-- Sidebar Toggle Button -->
       <div class="sidebar-button">
-        <button mat-icon-button (click)="sidenav.toggle()">
+        <button matIconButton (click)="sidenav.toggle()">
           <mat-icon svgIcon="menu-bar"></mat-icon>
         </button>
       </div>
@@ -32,7 +32,7 @@
       <!-- Remote Options Menu -->
       @if (selectedRemote) {
         <div class="ellipsis-button-container">
-          <button mat-icon-button class="ellipsis-button" [matMenuTriggerFor]="remoteOptionsMenu">
+          <button matIconButton class="ellipsis-button" [matMenuTriggerFor]="remoteOptionsMenu">
             <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
           </button>
           <mat-menu #remoteOptionsMenu="matMenu">
@@ -92,11 +92,11 @@
               a fast and simple setup.
             </p>
             <div class="empty-state-actions">
-              <button mat-raised-button color="primary" (click)="openQuickAddRemoteModal()">
+              <button matButton="filled" color="primary" (click)="openQuickAddRemoteModal()">
                 <mat-icon svgIcon="add"></mat-icon>
                 Add Quick Remote
               </button>
-              <button mat-raised-button color="accent" (click)="openRemoteConfigModal()">
+              <button matButton="filled" color="accent" (click)="openRemoteConfigModal()">
                 <mat-icon svgIcon="add"></mat-icon>
                 Add Detailed Remote
               </button>

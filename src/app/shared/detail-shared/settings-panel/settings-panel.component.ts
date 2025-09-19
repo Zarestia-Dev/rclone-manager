@@ -62,12 +62,7 @@ import { SettingsPanelConfig } from '../../types';
       </mat-card-content>
 
       <mat-card-actions class="panel-actions">
-        <button
-          mat-raised-button
-          [color]="config.buttonColor || 'primary'"
-          class="edit-settings-button"
-          (click)="onEditSettings()"
-        >
+        <button matButton="filled" class="edit-settings-button" (click)="onEditSettings()">
           <mat-icon svgIcon="pen"></mat-icon>
           <span>{{ config.buttonLabel || 'Edit Settings' }}</span>
         </button>
