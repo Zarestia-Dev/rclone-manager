@@ -3,10 +3,14 @@
 <plist version="1.0">
 <dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Please allow camera access</string>
+	<string>Please allow camera</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Please allow microphone access</string>
+	<string>Please allow microphone</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSStatusItem</key>
+	<true/>
+	<key>LSUIElement</key>
+	<true/>
 </dict>
 </plist>

@@ -3,6 +3,8 @@
 
 ## [Unreleased]
 ### Added
+- Support for ARM architecture (Linux and Windows). The application can now run on ARM-based systems, such as Raspberry Pi and ARM-based Windows devices.
+
 - Native console support for the native terminal. You can now open the remote configuration in the native terminal by clicking the "Remote Terminal" button in the top left add button. It will use the preferred terminal app from the settings. Also, you can set the preferred terminal app in the settings.
 
 - **Encrypted configuration file support**: Added comprehensive support for rclone encrypted configuration files.
