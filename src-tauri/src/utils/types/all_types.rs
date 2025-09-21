@@ -241,6 +241,7 @@ pub const SENSITIVE_KEYS: &[&str] = &[
     "client_secret",
     "client_id",
     "api_key",
+    "drive_id",
 ];
 
 pub struct LinkChecker {

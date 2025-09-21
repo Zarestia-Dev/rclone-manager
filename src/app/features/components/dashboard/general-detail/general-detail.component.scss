@@ -115,34 +115,6 @@
             letter-spacing: 0.2px;
           }
 
-          // Selected state (user has chosen this as a quick action)
-          &.selected {
-            background: linear-gradient(
-              135deg,
-              rgba(var(--primary-color-rgb), 0.18) 0%,
-              rgba(var(--accent-color-rgb), 0.18) 100%
-            );
-            border-color: rgba(var(--primary-color-rgb), 0.35);
-            box-shadow:
-              0 4px 14px -2px rgba(var(--primary-color-rgb), 0.25),
-              0 2px 6px -1px rgba(var(--accent-color-rgb), 0.15);
-            transform: translateY(-1px);
-
-            .status-dot {
-              background: rgba(var(--primary-color-rgb), 0.25);
-              box-shadow: inset 0 0 0 1px rgba(var(--primary-color-rgb), 0.35);
-
-              mat-icon {
-                color: var(--primary-color);
-              }
-            }
-
-            .status-label {
-              color: var(--primary-color);
-              font-weight: 600;
-            }
-          }
-
           // numeric selection badge shows ordering of primary actions
           .selection-badge {
             position: absolute;
@@ -163,23 +135,11 @@
             box-shadow:
               0 2px 6px rgba(var(--primary-color-rgb), 0.4),
               0 0 0 1px rgba(var(--primary-color-rgb), 0.5);
-            animation: badge-pop 160ms var(--transition-ease);
             z-index: 2;
-          }
-
-          @keyframes badge-pop {
-            0% {
-              transform: scale(0.4) rotate(-12deg);
-              opacity: 0;
-            }
-            60% {
-              transform: scale(1.1);
-              opacity: 1;
-            }
-            100% {
-              transform: scale(1) rotate(0);
-              opacity: 1;
-            }
+            transform-origin: center;
+            will-change: transform, opacity;
+            /* entrance animation when the badge is inserted into DOM */
+            animation: badge-pop 180ms cubic-bezier(0.2, 0.9, 0.2, 1) both;
           }
 
           // Active state (operation is currently running)
@@ -220,44 +180,44 @@
             }
 
             &.copy.active {
-              background: rgba(var(--info-color-rgb), 0.08);
-              border-color: rgba(var(--info-color-rgb), 0.25);
-              box-shadow: 0 2px 12px rgba(var(--info-color-rgb), 0.15);
+              background: rgba(var(--yellow-rgb), 0.08);
+              border-color: rgba(var(--yellow-rgb), 0.25);
+              box-shadow: 0 2px 12px rgba(var(--yellow-rgb), 0.15);
 
               .status-dot {
-                background: var(--info-color);
+                background: var(--yellow);
               }
 
               .status-label {
-                color: var(--info-color);
+                color: var(--yellow);
               }
             }
 
             &.move.active {
-              background: rgba(var(--warning-color-rgb), 0.08);
-              border-color: rgba(var(--warning-color-rgb), 0.25);
-              box-shadow: 0 2px 12px rgba(var(--warning-color-rgb), 0.15);
+              background: rgba(var(--orange-rgb), 0.08);
+              border-color: rgba(var(--orange-rgb), 0.25);
+              box-shadow: 0 2px 12px rgba(var(--orange-rgb), 0.15);
 
               .status-dot {
-                background: var(--warning-color);
+                background: var(--orange);
               }
 
               .status-label {
-                color: var(--warning-color);
+                color: var(--orange);
               }
             }
 
             &.bisync.active {
-              background: rgba(var(--success-color-rgb), 0.08);
-              border-color: rgba(var(--success-color-rgb), 0.25);
-              box-shadow: 0 2px 12px rgba(var(--success-color-rgb), 0.15);
+              background: rgba(var(--purple-rgb), 0.08);
+              border-color: rgba(var(--purple-rgb), 0.25);
+              box-shadow: 0 2px 12px rgba(var(--purple-rgb), 0.15);
 
               .status-dot {
-                background: var(--success-color);
+                background: var(--purple);
               }
 
               .status-label {
-                color: var(--success-color);
+                color: var(--purple);
               }
             }
           }
@@ -268,7 +228,7 @@
             transition: all 200ms var(--transition-ease);
 
             // For unselected chips
-            &:not(.selected) {
+            &:not(.active) {
               background: rgba(var(--primary-color-rgb), 0.06);
               border-color: rgba(var(--primary-color-rgb), 0.15);
               box-shadow: 0 2px 8px rgba(var(--primary-color-rgb), 0.08);
@@ -284,26 +244,6 @@
 
               .status-label {
                 color: var(--primary-color);
-              }
-            }
-
-            // For selected chips
-            &.selected {
-              box-shadow:
-                0 6px 20px -4px rgba(var(--primary-color-rgb), 0.35),
-                0 4px 12px -2px rgba(var(--accent-color-rgb), 0.25);
-              transform: translateY(-2px);
-
-              .status-dot {
-                transform: scale(1.05);
-                box-shadow: inset 0 0 0 1px rgba(var(--primary-color-rgb), 0.45);
-              }
-
-              .selection-badge {
-                transform: scale(1.05);
-                box-shadow:
-                  0 3px 8px rgba(var(--primary-color-rgb), 0.5),
-                  0 0 0 1px rgba(var(--primary-color-rgb), 0.6);
               }
             }
 
@@ -323,12 +263,6 @@
               opacity: 0.5;
               pointer-events: none;
             }
-          }
-
-          // Keyboard focus-visible outline for accessibility
-          &:focus-visible {
-            outline: 3px solid rgba(var(--primary-color-rgb), 0.16);
-            outline-offset: 2px;
           }
         }
       }

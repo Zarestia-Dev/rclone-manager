@@ -22,25 +22,25 @@ export interface Remote {
   remoteSpecs: RemoteSpecs;
   mountState?: {
     diskUsage?: DiskUsage;
-    mounted?: boolean | 'error';
+    mounted?: boolean;
   };
   syncState?: {
-    isOnSync?: boolean | 'error';
+    isOnSync?: boolean;
     syncJobID?: number;
     isLocal?: boolean;
   };
   copyState?: {
-    isOnCopy?: boolean | 'error';
+    isOnCopy?: boolean;
     copyJobID?: number;
     isLocal?: boolean;
   };
   bisyncState?: {
-    isOnBisync?: boolean | 'error';
+    isOnBisync?: boolean;
     bisyncJobID?: number;
     isLocal?: boolean;
   };
   moveState?: {
-    isOnMove?: boolean | 'error';
+    isOnMove?: boolean;
     moveJobID?: number;
     isLocal?: boolean;
   };

@@ -30,7 +30,6 @@ export interface QuickActionButton {
   id: string;
   icon: string;
   tooltip: string;
-  color?: ThemePalette;
   isLoading?: boolean;
   isDisabled?: boolean;
   cssClass?: string;

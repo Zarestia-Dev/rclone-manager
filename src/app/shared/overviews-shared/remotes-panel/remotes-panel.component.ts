@@ -80,17 +80,6 @@ export class RemotesPanelComponent {
         return 'active';
       }
 
-      // Check for error states
-      if (
-        remote.mountState?.mounted === 'error' ||
-        remote.syncState?.isOnSync === 'error' ||
-        remote.copyState?.isOnCopy === 'error' ||
-        remote.moveState?.isOnMove === 'error' ||
-        remote.bisyncState?.isOnBisync === 'error'
-      ) {
-        return 'error';
-      }
-
       return 'inactive';
     }
 

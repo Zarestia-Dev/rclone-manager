@@ -79,32 +79,12 @@ export class AppOverviewComponent {
     });
   }
 
-  get errorRemotes(): Remote[] {
-    return this.remotes.filter(remote => {
-      if (this.mode === 'mount') {
-        return remote.mountState?.mounted === 'error';
-      } else if (this.mode === 'sync') {
-        return (
-          remote.syncState?.isOnSync === 'error' ||
-          remote.copyState?.isOnCopy === 'error' ||
-          remote.moveState?.isOnMove === 'error' ||
-          remote.bisyncState?.isOnBisync === 'error'
-        );
-      }
-      return false;
-    });
-  }
-
   get activeCount(): number {
     return this.activeRemotes.length;
   }
 
   get inactiveCount(): number {
     return this.inactiveRemotes.length;
-  }
-
-  get errorCount(): number {
-    return this.errorRemotes.length;
   }
 
   get title(): string {

@@ -118,10 +118,9 @@ export class RemoteCardComponent {
             id: 'open',
             icon: 'folder',
             tooltip: 'Browse (B)',
-            color: 'accent',
             isLoading: this.isOpening,
             isDisabled: this.isOpening,
-            cssClass: 'browse-btn',
+            cssClass: 'accent',
           });
         }
       } else if (this.variant === 'inactive') {
@@ -154,10 +153,9 @@ export class RemoteCardComponent {
           id: 'open',
           icon: 'folder',
           tooltip: 'Browse Destination',
-          color: 'accent',
           isLoading: this.isOpening,
           isDisabled: this.isOpening,
-          cssClass: 'browse-btn',
+          cssClass: 'accent',
         });
       }
 
@@ -167,10 +165,9 @@ export class RemoteCardComponent {
           id: 'sync',
           icon: 'stop',
           tooltip: 'Stop Sync',
-          color: 'warn',
           isLoading: this.actionState === 'stop',
           isDisabled: this.actionState === 'stop',
-          cssClass: 'stop-btn',
+          cssClass: 'warn',
         });
       }
 
@@ -179,10 +176,9 @@ export class RemoteCardComponent {
           id: 'copy',
           icon: 'stop',
           tooltip: 'Stop Copy',
-          color: 'warn',
           isLoading: this.actionState === 'stop',
           isDisabled: this.actionState === 'stop',
-          cssClass: 'stop-btn',
+          cssClass: 'warn',
         });
       }
 
@@ -191,10 +187,9 @@ export class RemoteCardComponent {
           id: 'move',
           icon: 'stop',
           tooltip: 'Stop Move',
-          color: 'warn',
           isLoading: this.actionState === 'stop',
           isDisabled: this.actionState === 'stop',
-          cssClass: 'stop-btn',
+          cssClass: 'warn',
         });
       }
 
@@ -203,10 +198,9 @@ export class RemoteCardComponent {
           id: 'bisync',
           icon: 'stop',
           tooltip: 'Stop BiSync',
-          color: 'warn',
           isLoading: this.actionState === 'stop',
           isDisabled: this.actionState === 'stop',
-          cssClass: 'stop-btn',
+          cssClass: 'warn',
         });
       }
     } else if (this.variant === 'inactive') {
@@ -260,10 +254,9 @@ export class RemoteCardComponent {
       id: 'browse',
       icon: 'folder',
       tooltip: 'Browse',
-      color: 'accent',
       isLoading: this.actionState === 'open',
       isDisabled: !this.remote.mountState?.mounted || this.actionState === 'open',
-      cssClass: 'browse-btn',
+      cssClass: 'accent',
     });
 
     return buttons;
@@ -312,10 +305,9 @@ export class RemoteCardComponent {
           id: 'mount',
           icon: this.remote.mountState?.mounted ? 'eject' : 'mount',
           tooltip: this.remote.mountState?.mounted ? 'Unmount' : 'Mount',
-          color: this.remote.mountState?.mounted ? 'warn' : 'accent',
           isLoading: isActionInProgress,
           isDisabled: isActionInProgress,
-          cssClass: this.remote.mountState?.mounted ? 'unmount-btn' : 'mount-btn',
+          cssClass: this.remote.mountState?.mounted ? 'warn' : 'accent',
         };
 
       case 'sync':
@@ -323,10 +315,9 @@ export class RemoteCardComponent {
           id: 'sync',
           icon: this.remote.syncState?.isOnSync ? 'stop' : 'refresh',
           tooltip: this.remote.syncState?.isOnSync ? 'Stop Sync' : 'Start Sync',
-          color: this.remote.syncState?.isOnSync ? 'warn' : 'primary',
           isLoading: isActionInProgress && !!this.remote.syncState?.isOnSync,
           isDisabled: isActionInProgress,
-          cssClass: this.remote.syncState?.isOnSync ? 'stop-btn' : 'sync-btn',
+          cssClass: this.remote.syncState?.isOnSync ? 'warn' : 'primary',
         };
 
       case 'copy':
@@ -334,10 +325,9 @@ export class RemoteCardComponent {
           id: 'copy',
           icon: this.remote.copyState?.isOnCopy ? 'stop' : 'copy',
           tooltip: this.remote.copyState?.isOnCopy ? 'Stop Copy' : 'Start Copy',
-          color: this.remote.copyState?.isOnCopy ? 'warn' : undefined,
           isLoading: isActionInProgress && !!this.remote.copyState?.isOnCopy,
           isDisabled: isActionInProgress,
-          cssClass: this.remote.copyState?.isOnCopy ? 'stop-btn' : 'copy-btn',
+          cssClass: this.remote.copyState?.isOnCopy ? 'warn' : 'yellow',
         };
 
       case 'move':
@@ -345,10 +335,9 @@ export class RemoteCardComponent {
           id: 'move',
           icon: this.remote.moveState?.isOnMove ? 'stop' : 'move',
           tooltip: this.remote.moveState?.isOnMove ? 'Stop Move' : 'Start Move',
-          color: this.remote.moveState?.isOnMove ? 'warn' : 'warn',
           isLoading: isActionInProgress && !!this.remote.moveState?.isOnMove,
           isDisabled: isActionInProgress,
-          cssClass: this.remote.moveState?.isOnMove ? 'stop-btn' : 'move-btn',
+          cssClass: this.remote.moveState?.isOnMove ? 'warn' : 'orange',
         };
 
       case 'bisync':
@@ -356,10 +345,9 @@ export class RemoteCardComponent {
           id: 'bisync',
           icon: this.remote.bisyncState?.isOnBisync ? 'stop' : 'right-left',
           tooltip: this.remote.bisyncState?.isOnBisync ? 'Stop BiSync' : 'Start BiSync',
-          color: this.remote.bisyncState?.isOnBisync ? 'warn' : 'accent',
           isLoading: isActionInProgress && !!this.remote.bisyncState?.isOnBisync,
           isDisabled: isActionInProgress,
-          cssClass: this.remote.bisyncState?.isOnBisync ? 'stop-btn' : 'bisync-btn',
+          cssClass: this.remote.bisyncState?.isOnBisync ? 'warn' : 'purple',
         };
 
       default:
@@ -376,10 +364,9 @@ export class RemoteCardComponent {
           id: 'sync',
           icon: 'refresh',
           tooltip: 'Start Sync',
-          color: 'primary',
           isLoading: isActionInProgress,
           isDisabled: isActionInProgress,
-          cssClass: 'sync-btn',
+          cssClass: 'primary',
         };
 
       case 'copy':
@@ -387,10 +374,9 @@ export class RemoteCardComponent {
           id: 'copy',
           icon: 'copy',
           tooltip: 'Start Copy',
-          color: undefined,
           isLoading: isActionInProgress,
           isDisabled: isActionInProgress,
-          cssClass: 'copy-btn',
+          cssClass: 'yellow',
         };
 
       case 'move':
@@ -398,10 +384,9 @@ export class RemoteCardComponent {
           id: 'move',
           icon: 'move',
           tooltip: 'Start Move',
-          color: 'warn',
           isLoading: isActionInProgress,
           isDisabled: isActionInProgress,
-          cssClass: 'move-btn',
+          cssClass: 'orange',
         };
 
       case 'bisync':
@@ -409,10 +394,9 @@ export class RemoteCardComponent {
           id: 'bisync',
           icon: 'right-left',
           tooltip: 'Start BiSync',
-          color: 'accent',
           isLoading: isActionInProgress,
           isDisabled: isActionInProgress,
-          cssClass: 'bisync-btn',
+          cssClass: 'purple',
         };
 
       default:

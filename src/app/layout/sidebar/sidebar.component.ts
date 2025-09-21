@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, HostListener, Input, Output, ViewChild } from '@angular/core';
+import { Component, HostListener, Input, ViewChild, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -11,6 +11,7 @@ import { SearchContainerComponent } from '../../shared/components/search-contain
 import { AnimationsService } from '../../shared/services/animations.service';
 import { Remote } from '@app/types';
 import { IconService } from 'src/app/shared/services/icon.service';
+import { UiStateService } from '@app/services';
 
 @Component({
   selector: 'app-sidebar',
@@ -30,7 +31,11 @@ import { IconService } from 'src/app/shared/services/icon.service';
 export class SidebarComponent {
   @Input() remotes: Remote[] = [];
   @Input() iconService!: IconService;
-  @Output() remoteSelected = new EventEmitter<Remote>();
+  // Previously emitted remoteSelected events here, now selection is managed via UiStateService
+
+  // Expose the selected remote observable directly from UiStateService
+  uiStateService = inject(UiStateService);
+  selectedRemote$ = this.uiStateService.selectedRemote$;
 
   searchTerm = '';
   searchVisible = false;
@@ -52,7 +57,8 @@ export class SidebarComponent {
   }
 
   selectRemote(remote: Remote): void {
-    this.remoteSelected.emit(remote);
+    // propagate selection to global UI state so other components can react
+    this.uiStateService.setSelectedRemote(remote);
   }
 
   @HostListener('document:keydown.control.f', ['$event'])
@@ -63,6 +69,8 @@ export class SidebarComponent {
       this.searchContainer.focus();
     }
   }
+
+  // No local subscription needed: template uses async pipe on `selectedRemote$`
 
   toggleSearch(): void {
     this.searchVisible = !this.searchVisible;

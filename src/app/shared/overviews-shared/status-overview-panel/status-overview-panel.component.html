@@ -12,7 +12,6 @@
       <div class="remotes-bar">
         <div class="bar active-bar" [style.width.%]="activePercentage"></div>
         <div class="bar inactive-bar" [style.width.%]="inactivePercentage"></div>
-        <div class="bar error-bar" [style.width.%]="errorPercentage"></div>
       </div>
 
       <!-- Legend -->
@@ -28,12 +27,6 @@
             <div class="legend-item">
               <span class="color-box inactive"></span>
               {{ inactiveLabel }}: {{ inactiveCount }}
-            </div>
-          }
-          @if (errorCount > 0) {
-            <div class="legend-item">
-              <span class="color-box error"></span>
-              Error: {{ errorCount }}
             </div>
           }
         </div>

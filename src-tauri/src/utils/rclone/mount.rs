@@ -10,7 +10,7 @@ use crate::RcloneState;
 #[cfg(target_os = "macos")]
 /// Checks for the presence of any compatible FUSE implementation on macOS.
 /// Returns `Ok(detected_implementation_name)` if found, or `Err(` if none are found.
-fn check_fuse_installed() -> Result<String, String> {
+fn check_fuse_installed() -> bool {
     // Check for FUSE-T (the preferred implementation)
     let fuse_t_app_support = PathBuf::from("/Library/Application Support/fuse-t").exists();
     let fuse_t_framework = PathBuf::from("/Library/Frameworks/FuseT.framework").exists();
@@ -26,17 +26,17 @@ fn check_fuse_installed() -> Result<String, String> {
     match (fuse_t_exists, macfuse_exists) {
         (true, _) => {
             debug!("macOS: FUSE-T installation detected");
-            Ok("FUSE-T".to_string())
+            true
         }
         (_, true) => {
             debug!("macOS: MacFUSE installation detected");
             // MacFUSE was found. We will consider the system OK for now
             // but might want to inform the user about preferred driver later.
-            Ok("MacFUSE".to_string())
+            true
         }
         _ => {
             debug!("macOS: No compatible FUSE installation found (Checked for FUSE-T and MacFUSE)");
-            Err("No compatible FUSE library found. Please install FUSE-T.".to_string())
+            false
         }
     }
 }
@@ -92,7 +92,7 @@ fn check_winfsp_installed() -> bool {
 pub fn check_mount_plugin_installed() -> bool {
     #[cfg(target_os = "macos")]
     {
-        check_fuse_t_installed()
+        check_fuse_installed()
     }
     #[cfg(target_os = "linux")]
     {

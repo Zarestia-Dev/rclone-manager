@@ -12,12 +12,7 @@
   <mat-sidenav-container class="home-container">
     <!-- Sidebar -->
     <mat-sidenav #sidenav [(opened)]="isSidebarOpen" [mode]="sidebarMode">
-      <app-sidebar
-        [iconService]="iconService"
-        [remotes]="remotes"
-        (remoteSelected)="selectRemote($event)"
-      >
-      </app-sidebar>
+      <app-sidebar [iconService]="iconService" [remotes]="remotes"></app-sidebar>
     </mat-sidenav>
 
     <!-- Main Content -->

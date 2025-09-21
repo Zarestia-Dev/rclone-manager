@@ -1,4 +1,11 @@
-import { Component, EventEmitter, Input, Output, inject, OnChanges } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  Output,
+  OnChanges,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -9,7 +16,6 @@ import { CommonModule } from '@angular/common';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatSortModule } from '@angular/material/sort';
-
 import {
   DiskUsageConfig,
   JobInfo,
@@ -25,10 +31,15 @@ import {
   JobsPanelComponent,
   SettingsPanelComponent,
 } from '../../../../shared/detail-shared';
-
-// Services
 import { IconService } from '../../../../shared/services/icon.service';
-import { AppSettingsService } from '../../../../services/settings/app-settings.service';
+
+interface ActionConfig {
+  key: PrimaryActionType;
+  label: string;
+  icon: string;
+  getTooltip: (remote: Remote) => string;
+  getActiveState?: (remote: Remote) => boolean;
+}
 
 @Component({
   selector: 'app-general-detail',
@@ -42,7 +53,6 @@ import { AppSettingsService } from '../../../../services/settings/app-settings.s
     MatChipsModule,
     MatButtonModule,
     MatTableModule,
-    MatTooltipModule,
     MatSortModule,
     SettingsPanelComponent,
     DiskUsagePanelComponent,
@@ -50,10 +60,9 @@ import { AppSettingsService } from '../../../../services/settings/app-settings.s
   ],
   templateUrl: './general-detail.component.html',
   styleUrl: './general-detail.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GeneralDetailComponent implements OnChanges {
-  // Inject AppSettingsService to persist per-remote quick action choices
-  private appSettings = inject(AppSettingsService);
   @Input() selectedRemote!: Remote;
   @Input() iconService!: IconService;
   @Input() jobs: JobInfo[] = [];
@@ -71,13 +80,86 @@ export class GeneralDetailComponent implements OnChanges {
   @Output() deleteJob = new EventEmitter<number>();
   @Output() togglePrimaryAction = new EventEmitter<PrimaryActionType>();
 
-  // For jobs table
-  displayedColumns: string[] = ['type', 'status', 'progress', 'startTime', 'actions'];
+  readonly displayedColumns: string[] = ['type', 'status', 'progress', 'startTime', 'actions'];
+  readonly maxPrimaryActions = 3;
+
+  // Define action configurations
+  readonly actionConfigs: ActionConfig[] = [
+    {
+      key: 'mount',
+      label: 'Mount',
+      icon: 'mount',
+      getTooltip: remote =>
+        remote.mountState?.mounted ? 'Mounted' : 'Toggle Mount as Quick Action',
+      getActiveState: remote => remote.mountState?.mounted || false,
+    },
+    {
+      key: 'sync',
+      label: 'Sync',
+      icon: 'sync',
+      getTooltip: remote =>
+        remote.syncState?.isOnSync ? 'Syncing' : 'Toggle Sync as Quick Action',
+      getActiveState: remote => remote.syncState?.isOnSync || false,
+    },
+    {
+      key: 'copy',
+      label: 'Copy',
+      icon: 'copy',
+      getTooltip: remote =>
+        remote.copyState?.isOnCopy ? 'Copying' : 'Toggle Copy as Quick Action',
+      getActiveState: remote => remote.copyState?.isOnCopy || false,
+    },
+    {
+      key: 'move',
+      label: 'Move',
+      icon: 'move',
+      getTooltip: remote => (remote.moveState?.isOnMove ? 'Moving' : 'Toggle Move as Quick Action'),
+      getActiveState: remote => remote.moveState?.isOnMove || false,
+    },
+    {
+      key: 'bisync',
+      label: 'Bisync',
+      icon: 'right-left',
+      getTooltip: remote =>
+        remote.bisyncState?.isOnBisync ? 'Bisync Active' : 'Toggle BiSync as Quick Action',
+      getActiveState: remote => remote.bisyncState?.isOnBisync || false,
+    },
+  ];
+
   selectedActions = new Set<PrimaryActionType>();
 
   ngOnChanges(): void {
     if (this.selectedRemote?.primaryActions) {
       this.selectedActions = new Set(this.selectedRemote.primaryActions);
+    }
+  }
+
+  // Action status methods
+  isActionSelected(actionKey: PrimaryActionType): boolean {
+    return this.selectedRemote?.primaryActions?.includes(actionKey) || false;
+  }
+
+  isActionActive(actionKey: PrimaryActionType): boolean {
+    const config = this.actionConfigs.find(c => c.key === actionKey);
+    return config?.getActiveState?.(this.selectedRemote) || false;
+  }
+
+  getActionPosition(actionKey: PrimaryActionType): number {
+    return (this.selectedRemote?.primaryActions?.indexOf(actionKey) ?? -1) + 1;
+  }
+
+  getActionTooltip(actionKey: PrimaryActionType): string {
+    const config = this.actionConfigs.find(c => c.key === actionKey);
+    return config?.getTooltip(this.selectedRemote) || '';
+  }
+
+  canSelectMoreActions(): boolean {
+    return (this.selectedRemote?.primaryActions?.length || 0) < this.maxPrimaryActions;
+  }
+
+  onToggleAction(actionKey: PrimaryActionType): void {
+    if (this.isActionSelected(actionKey) || this.canSelectMoreActions()) {
+      this.togglePrimaryAction.emit(actionKey);
     }
   }
 
@@ -107,12 +189,11 @@ export class GeneralDetailComponent implements OnChanges {
 
   getJobsPanelConfig(): JobsPanelConfig {
     return {
-      jobs: this.getRemoteJobs,
+      jobs: this.getRemoteJobs(),
       displayedColumns: this.displayedColumns,
     };
   }
 
-  // Event handlers for shared components
   onEditRemoteConfiguration(): void {
     this.openRemoteConfigModal.emit({
       editTarget: 'remote',
@@ -120,7 +201,25 @@ export class GeneralDetailComponent implements OnChanges {
     });
   }
 
-  get getRemoteJobs(): JobInfo[] {
+  private getRemoteJobs(): JobInfo[] {
     return this.jobs.filter(job => job.remote_name === this.selectedRemote?.remoteSpecs.name);
+  }
+
+  // Accessibility helpers
+  getAriaLabel(actionKey: PrimaryActionType): string {
+    const config = this.actionConfigs.find(c => c.key === actionKey);
+    const isSelected = this.isActionSelected(actionKey);
+    const position = this.getActionPosition(actionKey);
+
+    if (isSelected && position > 0) {
+      return `${config?.label} selected as quick action ${position}`;
+    }
+
+    return `Toggle ${config?.label} as quick action`;
+  }
+
+  // Track by function for better performance
+  trackByActionKey(index: number, config: ActionConfig): PrimaryActionType {
+    return config.key;
   }
 }

@@ -221,7 +221,6 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
         ? (this.selectedSyncOperation as PrimaryActionType)
         : this.mainOperationType,
       isActive: this.getOperationActiveState(),
-      isError: this.getOperationErrorState(),
       isLoading: this.isLoading,
       operationColor: currentOp?.color || 'primary',
       operationClass: this.getOperationClass(),
@@ -236,15 +235,11 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   }
 
   getMountControlConfig(): OperationControlConfig {
-    const isActive = !!(
-      this.selectedRemote?.mountState?.mounted &&
-      this.selectedRemote?.mountState?.mounted !== 'error'
-    );
+    const isActive = !!this.selectedRemote?.mountState?.mounted;
 
     return {
       operationType: 'mount',
       isActive,
-      isError: this.selectedRemote?.mountState?.mounted === 'error',
       isLoading: this.actionInProgress === 'mount' || this.actionInProgress === 'unmount',
       operationColor: 'accent',
       operationClass: 'mount-operation',
@@ -273,10 +268,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
       destination: this.mountDestination,
       showOpenButtons: true,
       operationColor: 'accent',
-      isDestinationActive: !!(
-        this.selectedRemote?.mountState?.mounted &&
-        this.selectedRemote?.mountState?.mounted !== 'error'
-      ),
+      isDestinationActive: !!this.selectedRemote?.mountState?.mounted,
       actionInProgress: this.actionInProgress?.toString(),
     };
   }
@@ -315,17 +307,6 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     }
   }
 
-  getOperationErrorState(): boolean {
-    switch (this.mainOperationType) {
-      case 'sync':
-        return this.getSyncOperationErrorState(this.selectedSyncOperation);
-      case 'mount':
-        return this.selectedRemote?.mountState?.mounted === 'error';
-      default:
-        return false;
-    }
-  }
-
   private getSyncOperationState(operation: SyncOperationType): boolean {
     // You'll need to update your Remote interface to include states for each operation
     switch (operation) {
@@ -337,21 +318,6 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
         return !!this.selectedRemote?.moveState?.isOnMove;
       case 'copy':
         return !!this.selectedRemote?.copyState?.isOnCopy;
-      default:
-        return false;
-    }
-  }
-
-  private getSyncOperationErrorState(operation: SyncOperationType): boolean {
-    switch (operation) {
-      case 'sync':
-        return this.selectedRemote?.syncState?.isOnSync === 'error';
-      case 'bisync':
-        return this.selectedRemote?.bisyncState?.isOnBisync === 'error';
-      case 'move':
-        return this.selectedRemote?.moveState?.isOnMove === 'error';
-      case 'copy':
-        return this.selectedRemote?.copyState?.isOnCopy === 'error';
       default:
         return false;
     }

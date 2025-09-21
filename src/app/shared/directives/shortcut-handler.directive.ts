@@ -11,6 +11,7 @@ import { WindowService } from '@app/services';
 import { RemoteManagementService } from '@app/services';
 import { NotificationService } from '../services/notification.service';
 import { STANDARD_MODAL_SIZE } from '@app/types';
+import { PasswordManagerModalComponent } from 'src/app/features/modals/password-manager-modal/password-manager-modal.component';
 
 @Directive({
   selector: '[appShortcutHandler]',
@@ -81,6 +82,11 @@ export class ShortcutHandlerDirective {
       return true;
     }
 
+    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'p') {
+      this.openPasswordManager();
+      return true;
+    }
+
     // Navigation shortcuts
     if (!ctrlKey && !shiftKey && !altKey && key === 'Escape') {
       // Let individual components handle this
@@ -114,7 +120,6 @@ export class ShortcutHandlerDirective {
 
   private async quitApplication(): Promise<void> {
     try {
-      console.log('Quitting application via keyboard shortcut');
       await this.windowService.quitApplication();
     } catch (error) {
       this.notificationService.showError('Failed to quit application: ' + error);
@@ -123,7 +128,6 @@ export class ShortcutHandlerDirective {
 
   private async forceRefreshMountedRemotes(): Promise<void> {
     try {
-      console.log('Refreshing mounted remotes via keyboard shortcut');
       await this.remoteManagementService.forceRefreshMountedRemotes();
       this.notificationService.showSuccess('Mounted remotes refreshed successfully');
     } catch (error) {
@@ -158,5 +162,9 @@ export class ShortcutHandlerDirective {
 
   private openPreferences(): void {
     this.dialog.open(PreferencesModalComponent, STANDARD_MODAL_SIZE);
+  }
+
+  private openPasswordManager(): void {
+    this.dialog.open(PasswordManagerModalComponent, STANDARD_MODAL_SIZE);
   }
 }

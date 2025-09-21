@@ -59,8 +59,6 @@ import { SystemInfoService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { NotificationService } from '../shared/services/notification.service';
 
-const MAX_PRIMARY_ACTIONS = 3;
-
 @Component({
   selector: 'app-home',
   standalone: true,
@@ -627,6 +625,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       // Load active jobs FIRST to set job states
       await this.loadActiveJobs();
 
+      // Then load mount states
+      await this.refreshMounts();
+
       // Then load disk usage in background
       this.loadDiskUsageInBackground();
 
@@ -1121,8 +1122,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     const currentActions = this.selectedRemote.primaryActions || [];
 
     const newActions = currentActions.includes(type)
-      ? currentActions.filter(t => t !== type) // Remove if already selected
-      : [...currentActions, type].slice(0, MAX_PRIMARY_ACTIONS); // Add and limit to max
+      ? currentActions.filter(action => action !== type) // Remove if already selected
+      : [...currentActions, type]; // Add to selection
 
     try {
       await this.appSettingsService.saveRemoteSettings(remoteName, {

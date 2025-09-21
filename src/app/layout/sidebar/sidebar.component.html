@@ -31,7 +31,13 @@
     @if (filteredRemotes.length > 0) {
       <ul>
         @for (remote of filteredRemotes; track remote.remoteSpecs.name) {
-          <mat-card class="remote-card" (click)="selectRemote(remote)">
+          <mat-card
+            class="remote-card"
+            (click)="selectRemote(remote)"
+            [class.selected]="
+              (selectedRemote$ | async)?.remoteSpecs?.name === remote.remoteSpecs.name
+            "
+          >
             <mat-card-content class="card-content">
               <!-- Remote Name with Status Indicators -->
               <div class="remote-header">

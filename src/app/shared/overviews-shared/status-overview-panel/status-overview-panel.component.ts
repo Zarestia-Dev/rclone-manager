@@ -16,7 +16,6 @@ export class StatusOverviewPanelComponent {
   @Input() totalCount = 0;
   @Input() activeCount = 0;
   @Input() inactiveCount = 0;
-  @Input() errorCount = 0;
 
   get title(): string {
     const mode = this.mode.charAt(0).toUpperCase() + this.mode.slice(1);
@@ -53,11 +52,7 @@ export class StatusOverviewPanelComponent {
     return this.totalCount > 0 ? (this.inactiveCount / this.totalCount) * 100 : 0;
   }
 
-  get errorPercentage(): number {
-    return this.totalCount > 0 ? (this.errorCount / this.totalCount) * 100 : 0;
-  }
-
   get hasData(): boolean {
-    return this.activeCount > 0 || this.inactiveCount > 0 || this.errorCount > 0;
+    return this.activeCount > 0 || this.inactiveCount > 0;
   }
 }

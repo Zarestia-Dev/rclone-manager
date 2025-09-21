@@ -535,8 +535,8 @@ $dark-theme: (
   --light-purple: #{map.get($adwaita-purple-palette, 80)};
   --light-yellow: #{map.get($adwaita-yellow-palette, 80)};
   --red: #{map.get($adwaita-red-palette, 50)};
-  --light-theme-color: #{map.get($adwaita-light-palette, 0)};
-  --dark-theme-color: #{map.get($adwaita-light-palette, 100)};
+  --light-theme-color: #{map.get($adwaita-light-palette, 100)};
+  --dark-theme-color: #{map.get($adwaita-light-palette, 0)};
 
   --scroller-color: #90939980;
   -webkit-font-smoothing: antialiased;
@@ -687,6 +687,12 @@ body {
       color: var(--theme-border),
     )
   );
+
+  @include mat.expansion-overrides(
+    (
+      container-background-color: var(--secondary-background),
+    )
+  );
 }
 
 * {
@@ -725,14 +731,45 @@ mat-icon {
 }
 
 button {
+  border: none;
+  display: flex;
+  align-items: center;
   flex-direction: row !important;
+  justify-content: center;
+  background-color: transparent;
+
   span {
-    text-wrap: nowrap;
+    white-space: nowrap;
   }
 
-  &.copy-btn {
+  &.primary {
+    color: white !important;
+    background: var(--primary-color) !important;
+  }
+
+  &.accent {
+    color: white !important;
+    background: var(--accent-color) !important;
+  }
+
+  &.warn {
+    color: white !important;
+    background: var(--warn-color) !important;
+  }
+
+  &.yellow {
     color: white !important;
     background: var(--yellow) !important;
+  }
+
+  &.purple {
+    color: white !important;
+    background: var(--purple) !important;
+  }
+
+  &.orange {
+    color: white !important;
+    background: var(--orange) !important;
   }
 }
 

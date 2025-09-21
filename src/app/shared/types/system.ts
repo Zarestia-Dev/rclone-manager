@@ -73,6 +73,7 @@ export const SENSITIVE_KEYS = [
   'client_secret',
   'client_id',
   'api_key',
+  'drive_id',
 ];
 
 // === Engine & App Events ===
