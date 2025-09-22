@@ -6,6 +6,9 @@
           [ngClass]="{
             'icon-container': true,
             sync: isSyncType() && getOperationActiveState(),
+            copy: selectedSyncOperation === 'copy' && getOperationActiveState(),
+            move: selectedSyncOperation === 'move' && getOperationActiveState(),
+            bisync: selectedSyncOperation === 'bisync' && getOperationActiveState(),
             mount: selectedRemote.mountState?.mounted,
           }"
         >
@@ -29,33 +32,41 @@
   <div class="detail-content">
     @if (mainOperationType === 'sync') {
       <div class="sync-operation-wrapper">
+        <!-- Operation Selection Buttons -->
         <div class="operation-buttons">
           @for (operation of syncOperations; track operation.type) {
             <button
-              matButton="filled"
+              mat-flat-button
               [class]="
-                'operation-button ' +
+                'operation-button operation-' +
                 operation.type +
-                (selectedSyncOperation === operation.type ? ' active' : '')
+                (selectedSyncOperation === operation.type ? ' active' : '') +
+                ' ' +
+                operation.cssClass
               "
-              [color]="selectedSyncOperation === operation.type ? operation.color : undefined"
+              [style.--operation-color]="operation.cssClass"
               (click)="onSyncOperationChange(operation.type)"
-              matTooltip="{{ operation.description }}"
+              [matTooltip]="operation.description"
+              matTooltipPosition="below"
             >
-              <mat-icon svgIcon="{{ operation.icon }}"></mat-icon>
-              <span>{{ operation.label }}</span>
+              <mat-icon [svgIcon]="operation.icon" class="operation-icon"></mat-icon>
+              <span class="operation-label">{{ operation.label }}</span>
             </button>
           }
         </div>
 
-        <!-- Sync Operation Content -->
         <div class="sync-operation-content">
           <mat-tab-group
-            [color]="getCurrentOperationColor()"
             class="operation-tabs"
             (selectedTabChange)="onMainTabChange($event)"
+            animationDuration="300ms"
           >
-            <mat-tab label="Monitoring">
+            <!-- Monitoring Tab -->
+            <mat-tab>
+              <ng-template mat-tab-label>
+                <span>Monitoring</span>
+              </ng-template>
+
               <div class="operation-monitor">
                 <!-- Operation Control Panel -->
                 <app-operation-control
@@ -67,51 +78,125 @@
                     stopJob.emit({ type: $event, remoteName: selectedRemote.remoteSpecs.name })
                   "
                   (openPath)="triggerOpenInFiles($event)"
+                  class="control-panel"
                 >
-                  <!-- (data)="handleExtendedData($event)" -->
                 </app-operation-control>
 
                 <!-- Job Information Panel -->
-                <app-job-info-panel [config]="getJobInfoConfig()"></app-job-info-panel>
+                <app-job-info-panel
+                  [config]="getJobInfoConfig()"
+                  class="info-panel"
+                ></app-job-info-panel>
 
                 <!-- Statistics Panel -->
-                <app-stats-panel [config]="getStatsConfig()"></app-stats-panel>
+                <app-stats-panel [config]="getStatsConfig()" class="stats-panel"></app-stats-panel>
 
                 <!-- Transfer Activity Panel -->
                 <app-transfer-activity-panel
                   [config]="getTransferActivityConfig()"
+                  class="activity-panel"
                 ></app-transfer-activity-panel>
 
                 <!-- Performance Charts Panel -->
-                <div class="performance-graphs">
-                  <mat-card class="graph-card">
+                @if (shouldShowCharts()) {
+                  <div class="performance-graphs">
+                    <mat-card class="graph-card speed-chart">
+                      <mat-card-header>
+                        <div mat-card-avatar>
+                          <mat-icon svgIcon="chart" class="chart-icon"></mat-icon>
+                        </div>
+                        <mat-card-title>Transfer Speed</mat-card-title>
+                      </mat-card-header>
+                      <mat-card-content>
+                        <div class="chart-container">
+                          <canvas #speedChart></canvas>
+                        </div>
+                      </mat-card-content>
+                    </mat-card>
+
+                    <mat-card class="graph-card progress-chart">
+                      <mat-card-header>
+                        <div mat-card-avatar>
+                          <mat-icon svgIcon="chart" class="chart-icon"></mat-icon>
+                        </div>
+                        <mat-card-title>Transfer Progress</mat-card-title>
+                      </mat-card-header>
+                      <mat-card-content>
+                        <div class="chart-container">
+                          <canvas #progressChart></canvas>
+                        </div>
+                      </mat-card-content>
+                    </mat-card>
+                  </div>
+                }
+
+                <!-- Error Display -->
+                @if (errorSummary) {
+                  <mat-card class="error-card">
                     <mat-card-header>
-                      <mat-card-title>Transfer Speed</mat-card-title>
+                      <div mat-card-avatar class="error-avatar">
+                        <mat-icon svgIcon="error" class="error-icon"></mat-icon>
+                      </div>
+                      <mat-card-title>Operation Errors</mat-card-title>
                     </mat-card-header>
                     <mat-card-content>
-                      <canvas #speedChart></canvas>
+                      <p class="error-message">{{ errorSummary }}</p>
+                      @if (jobStats.lastError) {
+                        <p class="last-error">Last Error: {{ jobStats.lastError }}</p>
+                      }
                     </mat-card-content>
                   </mat-card>
-                  <mat-card class="graph-card">
-                    <mat-card-header>
-                      <mat-card-title>Transfer Progress</mat-card-title>
-                    </mat-card-header>
-                    <mat-card-content>
-                      <canvas #progressChart></canvas>
-                    </mat-card-content>
-                  </mat-card>
-                </div>
+                }
               </div>
             </mat-tab>
 
-            <mat-tab label="Configuration">
+            <!-- Configuration Tab -->
+            <mat-tab>
+              <ng-template mat-tab-label>
+                <span>Configuration</span>
+              </ng-template>
+
               <div class="configuration-content">
+                <!-- Operation-Specific Warnings -->
+                @switch (selectedSyncOperation) {
+                  @case ('move') {
+                    <mat-card class="detail-panel">
+                      <mat-card-header class="panel-header">
+                        <mat-card-title class="panel-title-content">
+                          <mat-icon svgIcon="warning" class="warn"></mat-icon>Move Operation Warning
+                        </mat-card-title>
+                      </mat-card-header>
+                      <mat-card-content class="panel-content">
+                        <p>
+                          Files will be <strong>deleted</strong> from the source after successful
+                          transfer to destination.
+                        </p>
+                        <p>Ensure you have backups before proceeding with move operations.</p>
+                      </mat-card-content>
+                    </mat-card>
+                  }
+                  @case ('bisync') {
+                    <mat-card class="detail-panel">
+                      <mat-card-header class="panel-header">
+                        <mat-card-title class="panel-title-content">
+                          <mat-icon svgIcon="info" class="panel-icon"></mat-icon>BiSync Information
+                        </mat-card-title>
+                      </mat-card-header>
+                      <mat-card-content class="panel-content">
+                        <p>Bidirectional synchronization keeps both locations synchronized.</p>
+                        <p>Changes made to either location will be reflected in the other.</p>
+                        <p>First run may take longer as it establishes the sync baseline.</p>
+                      </mat-card-content>
+                    </mat-card>
+                  }
+                }
+                <!-- Settings Sections -->
                 @for (section of remoteSettingsSections; track section.key) {
                   <app-settings-panel
                     [config]="getSettingsPanelConfig(section)"
                     (editSettings)="onEditSettings($event)"
-                  >
-                  </app-settings-panel>
+                    class="settings-section"
+                  ></app-settings-panel>
                 }
               </div>
             </mat-tab>
@@ -120,7 +205,7 @@
       </div>
     }
 
-    <!-- MOUNT Operations (existing functionality) -->
+    <!-- MOUNT Operations -->
     @else {
       <div class="mount-operation-wrapper">
         <div class="configuration-content">
@@ -128,20 +213,28 @@
           <app-operation-control
             [config]="getMountControlConfig()"
             (startJob)="
-              startJob.emit({ type: $event, remoteName: selectedRemote.remoteSpecs.name })
+              startJob.emit({
+                type: 'mount',
+                remoteName: selectedRemote.remoteSpecs.name,
+              })
             "
-            (stopJob)="stopJob.emit({ type: $event, remoteName: selectedRemote.remoteSpecs.name })"
+            (stopJob)="
+              stopJob.emit({
+                type: 'mount',
+                remoteName: selectedRemote.remoteSpecs.name,
+              })
+            "
             (openPath)="triggerOpenInFiles($event)"
-          >
-          </app-operation-control>
+            class="mount-control-panel"
+          ></app-operation-control>
 
           <!-- Configuration Sections for Mount -->
           @for (section of remoteSettingsSections; track section.key) {
             <app-settings-panel
               [config]="getSettingsPanelConfig(section)"
               (editSettings)="onEditSettings($event)"
-            >
-            </app-settings-panel>
+              class="mount-settings-section"
+            ></app-settings-panel>
           }
         </div>
       </div>

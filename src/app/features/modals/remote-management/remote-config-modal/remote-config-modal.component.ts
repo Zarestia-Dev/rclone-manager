@@ -149,11 +149,12 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   isRemoteConfigLoading = false;
   isAuthInProgress = false;
   isAuthCancelled = false;
+  isProcessing = false;
 
   // Non-interactive RC flow state
   rcQuestion: RcConfigQuestionResponse | null = null;
   rcAnswer: string | boolean | number | null = null;
-  isNonInteractiveActive = false;
+  isInteractiveActive = false;
   private pendingFinalConfig: {
     mountConfig: MountConfig;
     copyConfig: CopyConfig;
@@ -298,8 +299,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     try {
       const remoteName = this.remoteForm.get('name')?.value;
       const remoteType = this.remoteForm.get('type')?.value;
+
+      // Enable interactive mode by default for remotes that commonly require it
+      this.useInteractiveMode = ['iclouddrive', 'onedrive'].includes(remoteType?.toLowerCase());
+
       const response = await this.remoteManagementService.getRemoteConfigFields(remoteType);
-      console.log(response);
 
       this.remoteForm = this.createRemoteForm();
       this.remoteForm.patchValue({ name: remoteName, type: remoteType });
@@ -773,7 +777,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   private async handleInteractiveRemoteEdit(updatedConfig: any): Promise<{ success: boolean }> {
     const remoteData = this.cleanFormData(this.remoteForm.getRawValue(), true, this.remoteForm);
-    const remoteName = this.getRemoteName();
 
     // Store the updated config for later use
     updatedConfig.name = remoteData.name;
@@ -794,7 +797,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
     // Start interactive configuration for the remote
     const { name, type, ...paramRest } = remoteData;
-    const startResp = await this.remoteManagementService.startRemoteConfigNonInteractive(
+    const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
       name,
       type,
       paramRest,
@@ -802,14 +805,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     );
 
     if (!startResp || startResp.State === '') {
-      // No interactive steps needed, just update directly
-      await this.remoteManagementService.updateRemote(remoteName, remoteData);
-      await this.appSettingsService.saveRemoteSettings(remoteName, updatedConfig);
       return { success: true };
     }
 
     // Interactive steps needed
-    this.isNonInteractiveActive = true;
+    this.isInteractiveActive = true;
     this.rcQuestion = startResp;
     this.rcAnswer = this.getDefaultAnswerFromQuestion(startResp);
     return { success: false };
@@ -909,10 +909,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     };
 
     const interactive = this.useInteractiveMode; // Read from component property instead of form
+    await this.authStateService.startAuth(remoteData.name, false);
     if (!interactive) {
       // Simple path: create the remote directly using provided fields
       const toCreate = { ...remoteData } as Record<string, unknown>;
-      await this.authStateService.startAuth(remoteData.name, false);
       await this.remoteManagementService.createRemote(remoteData.name, toCreate);
       // Save settings and kick off any auto-actions
       this.pendingFinalConfig = finalConfig;
@@ -922,12 +922,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }
 
     // Interactive path: start non-interactive RC flow via rclone and guide user through Q/A
-    await this.authStateService.startAuth(remoteData.name, false);
     this.pendingFinalConfig = finalConfig;
     this.pendingRemoteData = remoteData;
 
     const { name, type, ...paramRest } = remoteData;
-    const startResp = await this.remoteManagementService.startRemoteConfigNonInteractive(
+    const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
       name,
       type,
       paramRest,
@@ -938,83 +937,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       await this.finalizeRemoteCreation();
       return { success: true };
     }
-    this.isNonInteractiveActive = true;
+    this.isInteractiveActive = true;
     this.rcQuestion = startResp;
     this.rcAnswer = this.getDefaultAnswerFromQuestion(startResp);
     return { success: false };
-
-    if (finalConfig.mountConfig.autoStart && finalConfig.mountConfig.dest) {
-      const mountPath = finalConfig.mountConfig.dest;
-      const remoteName = remoteData.name;
-      const source = finalConfig.mountConfig?.source;
-      const mountOptions = finalConfig.mountConfig.options;
-      const vfs = finalConfig.vfsConfig;
-      await this.mountManagementService.mountRemote(
-        remoteName,
-        source,
-        mountPath,
-        mountOptions,
-        vfs
-      );
-    }
-
-    if (finalConfig.copyConfig.autoStart && finalConfig.copyConfig.dest) {
-      const copySource = finalConfig.copyConfig.source;
-      const copyDest = finalConfig.copyConfig.dest;
-      const createEmptySrcDirs = finalConfig.copyConfig.createEmptySrcDirs;
-      const copyOptions = finalConfig.copyConfig.options;
-      const filter = finalConfig.filterConfig;
-      await this.jobManagementService.startCopy(
-        remoteData.name,
-        copySource,
-        copyDest,
-        createEmptySrcDirs,
-        copyOptions,
-        filter
-      );
-    }
-    if (finalConfig.syncConfig.autoStart && finalConfig.syncConfig.dest) {
-      const syncSource = finalConfig.syncConfig.source;
-      const syncDest = finalConfig.syncConfig.dest;
-      const createEmptySrcDirs = finalConfig.syncConfig.createEmptySrcDirs;
-      const syncOptions = finalConfig.syncConfig.options;
-      const filter = finalConfig.filterConfig;
-      await this.jobManagementService.startSync(
-        remoteData.name,
-        syncSource,
-        syncDest,
-        createEmptySrcDirs,
-        syncOptions,
-        filter
-      );
-    }
-    if (finalConfig.bisyncConfig.autoStart && finalConfig.bisyncConfig.dest) {
-      const bisyncSource = finalConfig.bisyncConfig.source;
-      const bisyncDest = finalConfig.bisyncConfig.dest;
-      const bisyncOptions = finalConfig.bisyncConfig.options;
-      await this.jobManagementService.startBisync(
-        remoteData.name,
-        bisyncSource,
-        bisyncDest,
-        bisyncOptions
-      );
-    }
-    if (finalConfig.moveConfig.autoStart && finalConfig.moveConfig.dest) {
-      const moveSource = finalConfig.moveConfig.source;
-      const moveDest = finalConfig.moveConfig.dest;
-      const deleteEmptySrcDirs = finalConfig.moveConfig.deleteEmptySrcDirs;
-      const createEmptySrcDirs = finalConfig.moveConfig.createEmptySrcDirs;
-      const moveOptions = finalConfig.moveConfig.options;
-      await this.jobManagementService.startMove(
-        remoteData.name,
-        moveSource,
-        moveDest,
-        createEmptySrcDirs,
-        deleteEmptySrcDirs,
-        moveOptions
-      );
-    }
-    return { success: true };
   }
 
   private async handleRemoteUpdate(updatedConfig: any): Promise<void> {
@@ -1278,7 +1204,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   async cancelAuth(): Promise<void> {
     await this.authStateService.cancelAuth();
     // Reset interactive mode state when cancelling
-    this.isNonInteractiveActive = false;
+    this.isInteractiveActive = false;
     this.rcQuestion = null;
     this.rcAnswer = null;
   }
@@ -1322,60 +1248,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     return this.currentStep > 1 && !this.editTarget;
   }
 
-  // Dev helper: Run a non-interactive config flow using defaults to validate OAuth after-config
-  async testNonInteractiveFlow(): Promise<void> {
-    try {
-      const name = this.remoteForm.get('name')?.value?.toString().trim();
-      const type = this.remoteForm.get('type')?.value?.toString().trim();
-      if (!name || !type) {
-        console.warn('Provide name and type before testing non-interactive flow.');
-        return;
-      }
-      console.log('[RC] start non-interactive', { name, type });
-      let resp = await this.remoteManagementService.startRemoteConfigNonInteractive(
-        name,
-        type,
-        {},
-        { nonInteractive: true }
-      );
-      console.log('[RC] response', resp);
-      // Loop until State is empty
-      while (resp && resp.State) {
-        // Answer with default or first example where possible
-        let answer: unknown = (resp.Option?.ValueStr ??
-          resp.Option?.DefaultStr ??
-          resp.Option?.Default ??
-          null) as unknown;
-        if (!answer && resp.Option?.Examples && resp.Option.Examples.length > 0) {
-          answer = resp.Option.Examples[0].Value;
-        }
-        // Coerce strings for bool types
-        if (resp.Option?.Type === 'bool') {
-          if (typeof answer === 'boolean') {
-            answer = answer ? 'true' : 'false';
-          } else if (typeof answer === 'string') {
-            answer = answer.toLowerCase() === 'true' ? 'true' : 'false';
-          } else {
-            answer = 'true';
-          }
-        }
-        console.log('[RC] continuing with', { state: resp.State, answer });
-        resp = await this.remoteManagementService.continueRemoteConfigNonInteractive(
-          name,
-          resp.State,
-          answer,
-          {},
-          { nonInteractive: true }
-        );
-        console.log('[RC] response', resp);
-        if (!resp || resp.State === '') break;
-      }
-      console.log('[RC] flow finished');
-    } catch (e) {
-      console.error('Non-interactive flow failed:', e);
-    }
-  }
-
   // Helpers for non-interactive flow
   private getDefaultAnswerFromQuestion(q: RcConfigQuestionResponse): string | boolean | number {
     const opt = q.Option;
@@ -1396,7 +1268,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   async submitRcAnswer(): Promise<void> {
-    if (!this.isNonInteractiveActive || !this.rcQuestion || !this.pendingRemoteData) return;
+    if (!this.isInteractiveActive || !this.rcQuestion || !this.pendingRemoteData) return;
     try {
       const name = this.pendingRemoteData.name;
       const stateToken = this.rcQuestion.State;
@@ -1420,7 +1292,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
       if (!resp || resp.State === '') {
         // Finished
-        this.isNonInteractiveActive = false;
+        this.isInteractiveActive = false;
         this.rcQuestion = null;
         await this.finalizeRemoteCreation();
       } else {
@@ -1433,9 +1305,14 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
   // Inline interactive step (no dialog)
 
-  onInteractiveContinue(answer: string | number | boolean | null): void {
-    this.rcAnswer = answer;
-    void this.submitRcAnswer();
+  async onInteractiveContinue(answer: string | number | boolean | null): Promise<void> {
+    this.isProcessing = true;
+    try {
+      this.rcAnswer = answer;
+      await this.submitRcAnswer();
+    } finally {
+      this.isProcessing = false;
+    }
   }
 
   private async finalizeRemoteCreation(): Promise<void> {
@@ -1444,7 +1321,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     const finalConfig = this.pendingFinalConfig;
 
     // Check if this is edit mode for remote
-    if (this.editTarget === 'remote') {
+    if (this.editTarget === 'remote' && !this.useInteractiveMode) {
       // Update the remote instead of creating it
       await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
     }

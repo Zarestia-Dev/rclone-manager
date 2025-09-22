@@ -193,7 +193,7 @@ export class RemoteManagementService extends TauriBaseService {
   /**
    * Start non-interactive remote config. Returns a question or an empty state when finished.
    */
-  async startRemoteConfigNonInteractive(
+  async startRemoteConfigInteractive(
     name: string,
     type: string,
     parameters?: Record<string, unknown>,

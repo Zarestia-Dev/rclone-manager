@@ -16,7 +16,6 @@
         </div>
       </div>
       <!-- Status Indicators -->
-      <!-- Status Indicators -->
       <div class="remote-status-indicators" role="group" aria-label="Remote action quick selection">
         @for (actionConfig of actionConfigs; track trackByActionKey($index, actionConfig)) {
           <div
@@ -39,7 +38,7 @@
               <mat-icon [svgIcon]="actionConfig.icon"></mat-icon>
             </div>
 
-            <!-- Selection badge showing position (1 or 2) -->
+            <!-- Selection badge showing position -->
             @if (isActionSelected(actionConfig.key)) {
               <span class="selection-badge" aria-hidden="true">
                 {{ getActionPosition(actionConfig.key) }}

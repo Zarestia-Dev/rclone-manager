@@ -146,16 +146,19 @@ export interface RemoteConfigSections {
 export interface QuickAddForm {
   remoteName: string;
   remoteType: string;
+  useInteractiveMode: boolean;
   mountPath: string;
   autoMount: boolean;
   syncDest: string;
   autoSync: boolean;
   copyDest: string;
   autoCopy: boolean;
-  moveDest?: string;
-  autoMove?: boolean;
-  bisyncDest?: string;
-  autoBisync?: boolean;
+  bisyncSource: string;
+  bisyncDest: string;
+  autoBisync: boolean;
+  moveSource: string;
+  moveDest: string;
+  autoMove: boolean;
 }
 
 export const REMOTE_NAME_REGEX = /^[A-Za-z0-9_\-.+@ ]+$/;

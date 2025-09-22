@@ -35,13 +35,13 @@ export class RemoteConfigStepComponent {
   @Input() isLoading = false;
   @Input() existingRemotes: string[] = [];
   @Input() restrictMode!: boolean;
+  @Input() useInteractiveMode = false;
 
   @Output() advancedOptionsToggled = new EventEmitter<boolean>();
   @Output() remoteTypeChanged = new EventEmitter<void>();
   @Output() interactiveModeToggled = new EventEmitter<boolean>();
 
   showAdvancedOptions = false;
-  useInteractiveMode = false;
 
   get basicFields(): RemoteField[] {
     return this.remoteFields.filter(f => !f.Advanced);

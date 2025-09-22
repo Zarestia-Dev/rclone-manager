@@ -23,7 +23,6 @@ import {
   PrimaryActionType,
   Remote,
   RemoteSettings,
-  SENSITIVE_KEYS,
   SettingsPanelConfig,
 } from '@app/types';
 import {
@@ -31,7 +30,6 @@ import {
   JobsPanelComponent,
   SettingsPanelComponent,
 } from '../../../../shared/detail-shared';
-import { IconService } from '../../../../shared/services/icon.service';
 
 interface ActionConfig {
   key: PrimaryActionType;
@@ -64,7 +62,7 @@ interface ActionConfig {
 })
 export class GeneralDetailComponent implements OnChanges {
   @Input() selectedRemote!: Remote;
-  @Input() iconService!: IconService;
+  @Input() iconService!: { getIconName: (type: string) => string };
   @Input() jobs: JobInfo[] = [];
   @Input() actionInProgress: 'mount' | 'unmount' | 'sync' | 'copy' | 'stop' | 'open' | null = null;
   @Input() restrictMode!: boolean;
@@ -176,7 +174,6 @@ export class GeneralDetailComponent implements OnChanges {
       restrictMode: this.restrictMode,
       buttonColor: 'primary',
       buttonLabel: 'Edit Configuration',
-      sensitiveKeys: SENSITIVE_KEYS,
     };
   }
 

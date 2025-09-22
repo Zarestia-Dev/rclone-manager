@@ -25,8 +25,8 @@ import { RcConfigQuestionResponse } from '@app/services';
 })
 export class InteractiveConfigStepComponent implements OnChanges {
   @Input() question: RcConfigQuestionResponse | null = null;
-  @Input() disabled = false;
   @Input() canceling = false;
+  @Input() processing = false;
   @Output() continue = new EventEmitter<string | number | boolean | null>();
 
   answer: string | boolean | number | null = null;
@@ -37,12 +37,12 @@ export class InteractiveConfigStepComponent implements OnChanges {
     }
   }
 
-  onContinue(): void {
-    if (this.disabled || this.canceling) return;
+  async onContinue(): Promise<void> {
+    if (this.canceling) return;
     this.continue.emit(this.answer);
   }
 
-  trackByValue = (_: number, ex: { Value: string }): string => ex.Value;
+  trackByIndex = (index: number, _: { Value: string }): number => index;
 
   /**
    * Check if the current field is required
@@ -77,7 +77,7 @@ export class InteractiveConfigStepComponent implements OnChanges {
    * Check if the continue button should be disabled
    */
   isButtonDisabled(): boolean {
-    return this.disabled || this.canceling || (this.isFieldRequired() && !this.isValidAnswer());
+    return this.canceling || this.processing || (this.isFieldRequired() && !this.isValidAnswer());
   }
 
   /**

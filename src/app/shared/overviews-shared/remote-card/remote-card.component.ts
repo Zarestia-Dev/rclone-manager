@@ -16,10 +16,6 @@ import {
   RemoteAction,
   RemoteCardVariant,
 } from '@app/types';
-
-// Services
-import { IconService } from '../../services/icon.service';
-
 // Variant moved to shared types
 
 @Component({
@@ -44,7 +40,7 @@ export class RemoteCardComponent {
   @Input() remote!: Remote;
   @Input() variant: RemoteCardVariant = 'inactive';
   @Input() mode: AppTab = 'general';
-  @Input() iconService!: IconService;
+  @Input() iconService!: { getIconName: (type: string) => string };
   @Input() actionState: RemoteAction = null;
   @Input() showOpenButton = false;
   @Input() primaryActionLabel = 'Start';

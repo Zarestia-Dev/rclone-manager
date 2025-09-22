@@ -7,7 +7,6 @@ import {
   ValidationErrors,
   Validators,
 } from '@angular/forms';
-
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -33,6 +32,7 @@ import { JobManagementService } from '@app/services';
 import { MountManagementService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { FileSystemService } from '@app/services';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 @Component({
   selector: 'app-quick-add-remote',
@@ -48,6 +48,7 @@ import { FileSystemService } from '@app/services';
     MatIconModule,
     MatButtonModule,
     MatExpansionModule,
+    MatSlideToggleModule,
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -123,6 +124,14 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       autoCopy: [false],
       copySource: [''],
       copyDest: [''],
+      // Bisync options
+      autoBisync: [false],
+      bisyncSource: [''],
+      bisyncDest: [''],
+      // Move options
+      autoMove: [false],
+      moveSource: [''],
+      moveDest: [''],
     });
   }
 
@@ -170,9 +179,41 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         copyDestControl?.updateValueAndValidity();
       });
 
+    // Bisync validation - both source and destination required
+    const autoBisyncSub = this.quickAddForm
+      .get('autoBisync')
+      ?.valueChanges.subscribe((autoBisync: boolean) => {
+        const bisyncDestControl = this.quickAddForm.get('bisyncDest');
+
+        if (autoBisync) {
+          bisyncDestControl?.setValidators([Validators.required]);
+        } else {
+          bisyncDestControl?.clearValidators();
+        }
+
+        bisyncDestControl?.updateValueAndValidity();
+      });
+
+    // Move validation - both source and destination required
+    const autoMoveSub = this.quickAddForm
+      .get('autoMove')
+      ?.valueChanges.subscribe((autoMove: boolean) => {
+        const moveDestControl = this.quickAddForm.get('moveDest');
+
+        if (autoMove) {
+          moveDestControl?.setValidators([Validators.required]);
+        } else {
+          moveDestControl?.clearValidators();
+        }
+
+        moveDestControl?.updateValueAndValidity();
+      });
+
     if (autoMountSub) this.subscriptions.push(autoMountSub);
     if (autoSyncSub) this.subscriptions.push(autoSyncSub);
     if (autoCopySub) this.subscriptions.push(autoCopySub);
+    if (autoBisyncSub) this.subscriptions.push(autoBisyncSub);
+    if (autoMoveSub) this.subscriptions.push(autoMoveSub);
   }
 
   private async initializeComponent(): Promise<void> {
@@ -199,6 +240,11 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   onRemoteTypeChange(): void {
     const selectedRemote = this.quickAddForm.get('remoteType')?.value;
     if (!selectedRemote) return;
+
+    // Enable interactive mode by default for remotes that commonly require it
+    this.quickAddForm.patchValue({
+      useInteractiveMode: ['iclouddrive', 'onedrive'].includes(selectedRemote?.toLowerCase()),
+    });
 
     const baseName = selectedRemote.replace(/\s+/g, '');
     let newName = baseName;
@@ -242,8 +288,22 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   private async handleRemoteCreation(formValue: QuickAddForm): Promise<void> {
-    const { remoteName, remoteType, autoMount, mountPath, autoSync, syncDest, autoCopy, copyDest } =
-      formValue;
+    const {
+      remoteName,
+      remoteType,
+      autoMount,
+      mountPath,
+      autoSync,
+      syncDest,
+      autoCopy,
+      copyDest,
+      autoBisync,
+      bisyncSource,
+      bisyncDest,
+      autoMove,
+      moveSource,
+      moveDest,
+    } = formValue;
 
     await this.remoteManagementService.createRemote(remoteName, {
       name: remoteName,
@@ -270,17 +330,17 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         source: remoteName + ':/',
         dest: syncDest || '',
       },
-      filterConfig: {},
-      moveConfig: {
-        autoStart: false,
-        source: remoteName + ':/',
-        dest: '',
-      },
       bisyncConfig: {
-        autoStart: false,
+        autoStart: autoBisync || false,
         source: remoteName + ':/',
-        dest: '',
+        dest: bisyncDest || '',
       },
+      moveConfig: {
+        autoStart: autoMove || false,
+        source: remoteName + ':/',
+        dest: moveDest || '',
+      },
+      filterConfig: {},
     };
 
     await this.appSettingsService.saveRemoteSettings(remoteName, remoteSettings);
@@ -298,17 +358,27 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     }
 
     if (autoSync && syncDest) {
-      // Note: You may need to implement auto-sync starting logic
       const finalSyncSource = remoteName + ':/';
       await this.jobManagementService.startSync(remoteName, finalSyncSource, syncDest);
       console.log('Auto-sync configured for:', { source: finalSyncSource, dest: syncDest });
     }
 
     if (autoCopy && copyDest) {
-      // Note: You may need to implement auto-copy starting logic
       const finalCopySource = remoteName + ':/';
       await this.jobManagementService.startCopy(remoteName, finalCopySource, copyDest);
       console.log('Auto-copy configured for:', { source: finalCopySource, dest: copyDest });
+    }
+
+    if (autoBisync && bisyncSource && bisyncDest) {
+      const finalBisyncSource = remoteName + ':/';
+      await this.jobManagementService.startBisync(remoteName, finalBisyncSource, bisyncDest);
+      console.log('Auto-bisync configured for:', { source: finalBisyncSource, dest: bisyncDest });
+    }
+
+    if (autoMove && moveSource && moveDest) {
+      const finalMoveSource = remoteName + ':/';
+      await this.jobManagementService.startMove(remoteName, finalMoveSource, moveDest);
+      console.log('Auto-move configured for:', { source: finalMoveSource, dest: moveDest });
     }
   }
 
@@ -331,7 +401,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     return 'Create Remote';
   }
 
-  onPanelToggle(operation: 'mount' | 'sync' | 'copy', isOpen: boolean): void {
+  onPanelToggle(operation: 'mount' | 'sync' | 'copy' | 'bisync' | 'move', isOpen: boolean): void {
     const controlName = `auto${operation.charAt(0).toUpperCase() + operation.slice(1)}`;
     this.quickAddForm.patchValue({ [controlName]: isOpen });
   }

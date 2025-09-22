@@ -1,4 +1,3 @@
-import type { ThemePalette } from '@angular/material/core';
 import type { PrimaryActionType } from './operations';
 import type { TransferFile } from './jobs';
 
@@ -14,7 +13,7 @@ export interface SettingsPanelConfig {
   settings: any;
   hasSettings: boolean;
   restrictMode: boolean;
-  buttonColor?: ThemePalette;
+  buttonColor?: string;
   buttonLabel?: string;
   sensitiveKeys?: string[];
 }
@@ -46,7 +45,7 @@ export interface StatsPanelConfig {
   icon: string;
   stats: StatItem[];
   operationClass?: string;
-  operationColor?: ThemePalette;
+  operationColor?: string;
 }
 
 // Path Display
@@ -56,7 +55,7 @@ export interface PathDisplayConfig {
   sourceLabel?: string;
   destinationLabel?: string;
   showOpenButtons?: boolean;
-  operationColor?: ThemePalette;
+  operationColor?: string;
   isDestinationActive?: boolean;
   actionInProgress?: string;
 }
@@ -81,8 +80,7 @@ export interface OperationControlConfig {
   isActive: boolean;
   isError?: boolean;
   isLoading: boolean;
-  operationColor: ThemePalette;
-  operationClass: string;
+  cssClass: string;
   pathConfig: PathDisplayConfig;
   primaryButtonLabel: string;
   primaryIcon: string;

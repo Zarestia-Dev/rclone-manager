@@ -10,25 +10,18 @@
 
   // MODE-SPECIFIC COLOR VARIABLES
   // Dynamic color variables that change based on the current mode
-  &.mount-mode {
+  &.mount {
     --mode-primary-color: var(--accent-color);
     --mode-primary-color-rgb: var(--accent-color-rgb);
     --mode-light-color: var(--light-blue);
     --mode-light-color-rgb: var(--light-blue-rgb);
   }
 
-  &.sync-mode {
+  &.sync {
     --mode-primary-color: var(--primary-color);
     --mode-primary-color-rgb: var(--primary-color-rgb);
     --mode-light-color: var(--light-green);
     --mode-light-color-rgb: var(--light-green-rgb);
-  }
-
-  &.copy-mode {
-    --mode-primary-color: var(--yellow);
-    --mode-primary-color-rgb: var(--yellow-rgb);
-    --mode-light-color: var(--light-yellow);
-    --mode-light-color-rgb: var(--light-yellow-rgb);
   }
 }
 

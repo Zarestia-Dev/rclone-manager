@@ -1,4 +1,4 @@
-import type { PrimaryActionType } from './operations';
+import type { PrimaryActionType, SyncOperationType } from './operations';
 
 export interface RemoteSpecs {
   name: string;
@@ -44,8 +44,8 @@ export interface Remote {
     moveJobID?: number;
     isLocal?: boolean;
   };
-
   primaryActions?: PrimaryActionType[];
+  selectedSyncOperation?: SyncOperationType;
 }
 
 export type RemoteSettings = Record<string, any>;

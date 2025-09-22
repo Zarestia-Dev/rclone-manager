@@ -325,16 +325,6 @@
 
     .detail-content {
       gap: var(--header-gap);
-
-      .detail-panel {
-        .panel-content {
-          padding: var(--header-gap);
-        }
-
-        .panel-actions {
-          padding: 12px var(--header-gap);
-        }
-      }
     }
   }
 }

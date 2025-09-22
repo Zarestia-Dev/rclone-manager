@@ -4,7 +4,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { SettingsPanelConfig } from '../../types';
+import { SENSITIVE_KEYS, SettingsPanelConfig } from '../../types';
 
 @Component({
   selector: 'app-settings-panel',
@@ -62,7 +62,11 @@ import { SettingsPanelConfig } from '../../types';
       </mat-card-content>
 
       <mat-card-actions class="panel-actions">
-        <button matButton="filled" class="edit-settings-button" (click)="onEditSettings()">
+        <button
+          matButton="filled"
+          [class]="'edit-settings-button ' + config.buttonColor"
+          (click)="onEditSettings()"
+        >
           <mat-icon svgIcon="pen"></mat-icon>
           <span>{{ config.buttonLabel || 'Edit Settings' }}</span>
         </button>
@@ -73,8 +77,6 @@ import { SettingsPanelConfig } from '../../types';
 export class SettingsPanelComponent {
   @Input() config!: SettingsPanelConfig;
   @Output() editSettings = new EventEmitter<{ section: string; settings: any }>();
-
-  private readonly SENSITIVE_KEYS = ['password', 'token', 'key', 'secret', 'auth', 'credential'];
 
   getSettingsEntries(): { key: string; value: any }[] {
     return Object.entries(this.config.settings || {}).map(([key, value]) => ({
@@ -95,7 +97,7 @@ export class SettingsPanelComponent {
   }
 
   isSensitiveKey(key: string): boolean {
-    const sensitiveKeys = this.config.sensitiveKeys || this.SENSITIVE_KEYS;
+    const sensitiveKeys = SENSITIVE_KEYS;
     return (
       sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive)) &&
       this.config.restrictMode

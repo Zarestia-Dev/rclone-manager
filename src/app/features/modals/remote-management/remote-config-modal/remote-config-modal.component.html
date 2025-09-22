@@ -1,7 +1,7 @@
 <div class="modal-container">
   <!-- Modal Header -->
   <header class="modal-header" data-tauri-drag-region>
-    <button matIconButton aria-label="Help" (click)="testNonInteractiveFlow()">
+    <button matIconButton aria-label="Help">
       <mat-icon svgIcon="question"></mat-icon>
     </button>
     <p data-tauri-drag-region>
@@ -15,7 +15,7 @@
 
   <!-- Modal Content -->
   <main class="modal-content" [@slideAnimation]="currentStep">
-    @if (isNonInteractiveActive && rcQuestion) {
+    @if (isInteractiveActive && rcQuestion) {
       <section
         class="step-container"
         aria-live="polite"
@@ -24,15 +24,14 @@
         <h2 id="interactive-config-heading" class="visually-hidden">Interactive Configuration</h2>
         <app-interactive-config-step
           [question]="rcQuestion"
-          [disabled]="isAuthInProgress"
           [canceling]="isAuthCancelled"
+          [processing]="isProcessing"
           (continue)="onInteractiveContinue($event)"
-          (cancelClick)="cancelAuth()"
         />
       </section>
     }
 
-    @if (!isNonInteractiveActive) {
+    @if (!isInteractiveActive) {
       <!-- Step 1: Remote Configuration -->
       @if (editTarget === 'remote' || (!editTarget && currentStep === 1)) {
         <section class="step-container" aria-labelledby="remote-config-heading">
@@ -44,6 +43,7 @@
             [isLoading]="isRemoteConfigLoading"
             [existingRemotes]="existingRemotes"
             [restrictMode]="restrictMode"
+            [useInteractiveMode]="useInteractiveMode"
             (remoteTypeChanged)="onRemoteTypeChange()"
             (interactiveModeToggled)="onInteractiveModeToggled($event)"
           >
@@ -91,10 +91,10 @@
   <footer class="button-container">
     <div class="button-container-inner">
       <!-- Navigation Buttons -->
-      @if (currentStep < TOTAL_STEPS && !editTarget) {
+      @if (currentStep < TOTAL_STEPS && !editTarget && !isInteractiveActive) {
         <button
           matButton="filled"
-          color="accent"
+          class="accent"
           (click)="nextStep()"
           [disabled]="!remoteForm.valid || isAuthInProgress"
           [@fadeInOut]
@@ -102,10 +102,10 @@
           Next
         </button>
       }
-      @if (currentStep > 1 && !editTarget) {
+      @if (currentStep > 1 && !editTarget && !isInteractiveActive) {
         <button
           matButton="filled"
-          color="accent"
+          class="accent"
           [disabled]="isAuthInProgress"
           (click)="prevStep()"
           [@fadeInOut]
@@ -116,13 +116,13 @@
     </div>
 
     <div class="button-container-inner">
-      @if ((isAuthInProgress && !isAuthCancelled) || isNonInteractiveActive) {
+      @if ((isAuthInProgress && !isAuthCancelled) || isInteractiveActive) {
         <button
           matButton="filled"
           [@fadeInOut]
-          color="warn"
+          class="warn"
           (click)="cancelAuth()"
-          [disabled]="!isAuthInProgress && !isNonInteractiveActive"
+          [disabled]="(!isAuthInProgress && !isInteractiveActive) || isAuthCancelled"
         >
           Cancel
         </button>
@@ -138,16 +138,12 @@
       }
 
       <!-- Save Buttons -->
-      @if (currentStep > 1 && !editTarget && !isNonInteractiveActive) {
+      @if (currentStep > 1 && !editTarget && !isInteractiveActive) {
         <button
           matButton="filled"
-          color="primary"
           (click)="onSubmit()"
           [disabled]="
-            isAuthInProgress ||
-            isNonInteractiveActive ||
-            !remoteConfigForm.valid ||
-            !remoteForm.valid
+            isAuthInProgress || isInteractiveActive || !remoteConfigForm.valid || !remoteForm.valid
           "
           [@fadeInOut]
           aria-live="polite"
@@ -161,10 +157,9 @@
         </button>
       }
 
-      @if (editTarget) {
+      @if (editTarget && !isInteractiveActive) {
         <button
           matButton="filled"
-          color="primary"
           (click)="onSubmit()"
           [disabled]="
             isAuthInProgress ||

@@ -19,11 +19,11 @@ $adwaita-green-palette: (
   // darkest
   10: #167345,
   // very dark
-  20: #167345,
+  20: #ffffff,
   // dark
   30: #1e8a57,
   // dark
-  40: #26a269,
+  40: #2ec27e,
   // medium-dark
   50: #2ec27e,
   // medium
@@ -31,33 +31,134 @@ $adwaita-green-palette: (
   // primary
   70: #57e389,
   // light-primary
-  80: #8ff0a4,
+  80: #2ec27e,
   // light
   90: #b8f0c8,
   // lighter
   95: #d8f5e0,
   // very light
-  98: #f0faf2,
-  // almost white
-  99: #f0faf2,
-  // very light
-  100: #f0faf2,
+  100: #ffffff,
   // lightest
-  contrast: (
-      0: white,
-      10: white,
-      20: white,
-      30: white,
-      40: white,
-      50: white,
-      60: white,
-      70: rgba(black, 0.87),
-      80: rgba(black, 0.87),
-      90: rgba(black, 0.87),
-      95: rgba(black, 0.87),
-      98: rgba(black, 0.87),
-      99: rgba(black, 0.87),
-      100: rgba(black, 0.87),
+  // Secondary Palette (M3 format)
+  // Using Adwaita Blue as secondary color
+  secondary: (
+      0: #103b6c,
+      // darkest
+      10: #103b6c,
+      // very dark
+      20: #154d90,
+      // dark
+      30: #1a5fb4,
+      // dark
+      40: #1c71d8,
+      // medium-dark
+      50: #3584e4,
+      // medium
+      60: #62a0ea,
+      // primary
+      70: #99c1f1,
+      // light-primary
+      80: #b8d9ff,
+      // light
+      90: #d8ebff,
+      // lighter
+      95: #f0f7ff,
+      // very light
+      98: #f0f7ff,
+      // almost white
+      99: #f0f7ff,
+      // very light
+      100: #f0f7ff,
+      // lightest
+    ),
+
+  neutral: (
+    0: #000000,
+    10: #000000,
+    // Material Design 3 card background (dark mode)
+    20: #313030,
+    25: #3c3b3b,
+    30: #474646,
+    35: #535252,
+    40: #5f5e5e,
+    50: #787776,
+    60: #929090,
+    70: #adabaa,
+    80: #c9c6c5,
+    90: #e5e2e1,
+    // Material Design 3 slide toggle outline (dark mode)
+    95: #f4f0ef,
+    98: #ffffff,
+    // Expansion panel background (Light mode)
+    99: #f6feff,
+    100: #ffffff,
+    4: #0e0e0e,
+    6: #000000,
+    // Material Design 3 expansion panel background (dark mode)
+    12: #000000,
+    // Material Design 3 dropdown background (dark mode)
+    17: #2a2a2a,
+    22: #353434,
+    24: #3a3939,
+    87: #ddd9d9,
+    92: #ebe7e7,
+    94: #ffffff,
+    // Material Design 3 dropdown background (light mode)
+    96: #ffffff,
+    // Material Design 3 card background (light mode)
+  ),
+  neutral-variant: (
+    0: #000000,
+    10: #181c1d,
+    20: #2d3132,
+    25: #383c3d,
+    30: #000000,
+    // Material Design 3 icon color (light mode)
+    35: #4f5354,
+    40: #5b5f60,
+    50: #747878,
+    60: #8e9192,
+    70: #a8acac,
+    80: #c4c7c8,
+    90: #ffffff,
+    // Material Design 3 icon color outline (dark mode)
+    95: #eef1f2,
+    98: #f7fafa,
+    99: #fafdfd,
+    100: #ffffff,
+  ),
+
+  // Error Palette (M3 format)
+  // Using Adwaita Red as error color
+  error: (
+      0: #700e17,
+      // darkest
+      10: #700e17,
+      // very dark
+      20: #8b1522,
+      // dark
+      30: #a51d2d,
+      // dark
+      40: #c01c28,
+      // medium-dark
+      50: #e01b24,
+      // medium
+      60: #ed333b,
+      // primary
+      70: #f66151,
+      // light-primary
+      80: #ed333b,
+      // light (Using 60 color for better contrast)
+      90: #ffcdd2,
+      // lighter
+      95: #ffebee,
+      // very light
+      98: #ffebee,
+      // almost white
+      99: #ffebee,
+      // very light
+      100: #ffebee,
+      // lightest
     ),
 );
 
@@ -69,8 +170,9 @@ $adwaita-blue-palette: (
   // very dark
   20: #154d90,
   // dark
-  30: #1a5fb4,
-  // dark
+  // 30: #1a5fb4,
+  30: #103b6c,
+  // dark (changed for better contrast to 10)
   40: #1c71d8,
   // medium-dark
   50: #3584e4,
@@ -89,24 +191,7 @@ $adwaita-blue-palette: (
   // almost white
   99: #f0f7ff,
   // very light
-  100: #f0f7ff,
-  // lightest
-  contrast: (
-      0: white,
-      10: white,
-      20: white,
-      30: white,
-      40: white,
-      50: white,
-      60: rgba(black, 0.87),
-      70: rgba(black, 0.87),
-      80: rgba(black, 0.87),
-      90: rgba(black, 0.87),
-      95: rgba(black, 0.87),
-      98: rgba(black, 0.87),
-      99: rgba(black, 0.87),
-      100: rgba(black, 0.87),
-    ),
+  100: #f0f7ff, // lightest
 );
 
 // Adwaita Red Warn Palette (M3 format)
@@ -137,24 +222,7 @@ $adwaita-red-palette: (
   // almost white
   99: #ffebee,
   // very light
-  100: #ffebee,
-  // lightest
-  contrast: (
-      0: white,
-      10: white,
-      20: white,
-      30: white,
-      40: white,
-      50: white,
-      60: white,
-      70: rgba(black, 0.87),
-      80: rgba(black, 0.87),
-      90: rgba(black, 0.87),
-      95: rgba(black, 0.87),
-      98: rgba(black, 0.87),
-      99: rgba(black, 0.87),
-      100: rgba(black, 0.87),
-    ),
+  100: #ffebee, // lightest
 );
 
 // Yellow Palette (M3 format)
@@ -185,24 +253,7 @@ $adwaita-yellow-palette: (
   // almost white
   99: #fffdf0,
   // very light
-  100: #fffdf0,
-  // lightest
-  contrast: (
-      0: white,
-      10: white,
-      20: white,
-      30: white,
-      40: rgba(black, 0.87),
-      50: rgba(black, 0.87),
-      60: rgba(black, 0.87),
-      70: rgba(black, 0.87),
-      80: rgba(black, 0.87),
-      90: rgba(black, 0.87),
-      95: rgba(black, 0.87),
-      98: rgba(black, 0.87),
-      99: rgba(black, 0.87),
-      100: rgba(black, 0.87),
-    ),
+  100: #fffdf0, // lightest
 );
 
 // Orange Palette (M3 format)
@@ -233,24 +284,7 @@ $adwaita-orange-palette: (
   // almost white
   99: #fff8f0,
   // very light
-  100: #fff8f0,
-  // lightest
-  contrast: (
-      0: white,
-      10: white,
-      20: white,
-      30: white,
-      40: white,
-      50: white,
-      60: rgba(black, 0.87),
-      70: rgba(black, 0.87),
-      80: rgba(black, 0.87),
-      90: rgba(black, 0.87),
-      95: rgba(black, 0.87),
-      98: rgba(black, 0.87),
-      99: rgba(black, 0.87),
-      100: rgba(black, 0.87),
-    ),
+  100: #fff8f0, // lightest
 );
 
 // Purple Palette (M3 format)
@@ -281,24 +315,7 @@ $adwaita-purple-palette: (
   // almost white
   99: #faf0fa,
   // very light
-  100: #faf0fa,
-  // lightest
-  contrast: (
-      0: white,
-      10: white,
-      20: white,
-      30: white,
-      40: white,
-      50: white,
-      60: rgba(black, 0.87),
-      70: rgba(black, 0.87),
-      80: rgba(black, 0.87),
-      90: rgba(black, 0.87),
-      95: rgba(black, 0.87),
-      98: rgba(black, 0.87),
-      99: rgba(black, 0.87),
-      100: rgba(black, 0.87),
-    ),
+  100: #faf0fa, // lightest
 );
 
 // Brown Palette (M3 format)
@@ -329,24 +346,7 @@ $adwaita-brown-palette: (
   // almost white
   99: #f7f2ed,
   // very light
-  100: #f7f2ed,
-  // lightest
-  contrast: (
-      0: white,
-      10: white,
-      20: white,
-      30: white,
-      40: white,
-      50: white,
-      60: rgba(black, 0.87),
-      70: rgba(black, 0.87),
-      80: rgba(black, 0.87),
-      90: rgba(black, 0.87),
-      95: rgba(black, 0.87),
-      98: rgba(black, 0.87),
-      99: rgba(black, 0.87),
-      100: rgba(black, 0.87),
-    ),
+  100: #f7f2ed, // lightest
 );
 
 // Light (Gray) Palette (M3 format)
@@ -377,24 +377,7 @@ $adwaita-light-palette: (
   // almost white
   99: #ffffff,
   // very light
-  100: #ffffff,
-  // lightest
-  contrast: (
-      0: white,
-      10: white,
-      20: white,
-      30: white,
-      40: white,
-      50: rgba(black, 0.87),
-      60: rgba(black, 0.87),
-      70: rgba(black, 0.87),
-      80: rgba(black, 0.87),
-      90: rgba(black, 0.87),
-      95: rgba(black, 0.87),
-      98: rgba(black, 0.87),
-      99: rgba(black, 0.87),
-      100: rgba(black, 0.87),
-    ),
+  100: #ffffff, // lightest
 );
 
 $light-theme: (
@@ -538,7 +521,6 @@ $dark-theme: (
   --light-theme-color: #{map.get($adwaita-light-palette, 100)};
   --dark-theme-color: #{map.get($adwaita-light-palette, 0)};
 
-  --scroller-color: #90939980;
   -webkit-font-smoothing: antialiased;
 
   --onboarding-background:
@@ -643,21 +625,6 @@ body {
   font-family: system-ui, Inter, sans-serif;
   overflow: hidden;
 
-  --mat-sys-primary: var(--primary-color);
-  --mat-sys-surface: var(--app-background);
-  --mat-sys-surface-variant: var(--secondary-background);
-  --mat-sys-on-surface: var(--app-text-color);
-  --mat-sys-on-surface-variant: var(--app-text-color);
-  --mat-sys-outline: var(--theme-border);
-
-  @include mat.tooltip-overrides(
-    (
-      container-color: var(--app-text-color),
-      supporting-text-color: var(--app-background),
-      supporting-text-size: var(--font-size-md),
-    )
-  );
-
   @include mat.button-overrides(
     (
       filled-container-shape: var(--button-border-radius),
@@ -679,18 +646,6 @@ body {
   @include mat.icon-button-overrides(
     (
       container-shape: var(--button-border-radius),
-    )
-  );
-
-  @include mat.divider-overrides(
-    (
-      color: var(--theme-border),
-    )
-  );
-
-  @include mat.expansion-overrides(
-    (
-      container-background-color: var(--secondary-background),
     )
   );
 }
@@ -727,19 +682,24 @@ h6 {
 // Fix for mat-icon overflow issues in Windows
 mat-icon {
   overflow: visible !important;
-  // min-height: unset !important;
+  min-height: unset !important;
+
+  &.warn {
+    color: var(--warn-color) !important;
+  }
 }
 
 button {
   border: none;
-  display: flex;
-  align-items: center;
-  flex-direction: row !important;
-  justify-content: center;
   background-color: transparent;
 
   span {
+    display: flex;
     white-space: nowrap;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-direction: row !important;
+    justify-content: center;
   }
 
   &.primary {
@@ -770,6 +730,14 @@ button {
   &.orange {
     color: white !important;
     background: var(--orange) !important;
+  }
+
+  &:disabled {
+    background: rgba(var(--secondary-text-color-rgb), 0.3) !important;
+    color: rgba(var(--app-text-color-rgb), 0.5) !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    box-shadow: none !important;
   }
 }
 

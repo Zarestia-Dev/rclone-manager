@@ -128,8 +128,6 @@ export class AppOverviewComponent {
         return 'Mounted Remotes';
       case 'sync':
         return 'Active Sync Operations';
-      // case 'files':
-      //   return 'Copying Remotes';
       default:
         return 'Active Remotes';
     }

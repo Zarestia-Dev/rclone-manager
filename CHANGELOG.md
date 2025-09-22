@@ -2,6 +2,9 @@
 # All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
+### Warning
+- In this version, app identifier has been changed from `com.rclone-manager.app` to `com.rclone-manager` because of potential conflicts with MacOS application bundle extension. If you are updating from a previous version, please uninstall the old version first to avoid any conflicts. This change is necessary to ensure proper functionality and avoid issues with application recognition on MacOS. We apologize for any inconvenience this may cause and appreciate your understanding. You can export your configuration via the export feature before uninstalling the old version.
+
 ### Added
 - Support for ARM architecture (Linux and Windows). The application can now run on ARM-based systems, such as Raspberry Pi and ARM-based Windows devices.
 

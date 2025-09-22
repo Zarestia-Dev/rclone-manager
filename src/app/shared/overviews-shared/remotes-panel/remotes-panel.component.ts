@@ -7,6 +7,7 @@ import {
   AppTab,
   PrimaryActionType,
   Remote,
+  RemoteAction,
   RemoteActionProgress,
   RemoteCardVariant,
 } from '@app/types';
@@ -25,7 +26,7 @@ export class RemotesPanelComponent {
   @Input() remotes: Remote[] = [];
   @Input() variant: RemoteCardVariant = 'inactive';
   @Input() mode: AppTab = 'general';
-  @Input() iconService: any;
+  @Input() iconService!: { getIconName: (type: string) => string };
   @Input() actionInProgress: RemoteActionProgress = {};
   @Input() primaryActionLabel = 'Start';
   @Input() activeIcon = 'circle-check';
@@ -47,7 +48,7 @@ export class RemotesPanelComponent {
     this.openInFiles.emit(remoteName);
   }
 
-  getActionState(remoteName: string): any {
+  getActionState(remoteName: string): RemoteAction | null {
     return this.actionInProgress[remoteName] || null;
   }
 

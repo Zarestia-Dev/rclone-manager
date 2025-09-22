@@ -36,6 +36,13 @@
     }
   }
 
+  // ===== INTERACTIVE SECTION =====
+  .interactive-section {
+    padding: var(--modal-padding);
+    border-top: 1px solid var(--border-color);
+    overflow-y: auto;
+  }
+
   // ===== BUTTON GROUP =====
   .button-group {
     display: flex;

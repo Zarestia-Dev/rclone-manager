@@ -56,7 +56,7 @@
               <div class="toggle-container">
                 <mat-slide-toggle
                   [(ngModel)]="answer"
-                  [disabled]="disabled || canceling"
+                  [disabled]="canceling"
                   [color]="'primary'"
                   class="toggle-input"
                   [attr.aria-label]="q.Option?.Name || 'Toggle option'"
@@ -74,10 +74,10 @@
                   <mat-label>{{ q.Option?.Name || 'Choose an option' }}</mat-label>
                   <mat-select
                     [(ngModel)]="answer"
-                    [disabled]="disabled || canceling"
+                    [disabled]="canceling"
                     [attr.aria-label]="q.Option?.Name || 'Select option'"
                   >
-                    @for (ex of q.Option?.Examples; track trackByValue($index, ex)) {
+                    @for (ex of q.Option?.Examples; track trackByIndex($index, ex)) {
                       <mat-option [value]="ex.Value">
                         <div class="option-content">
                           <span class="option-value">{{ ex.Help || ex.Value }} </span>
@@ -97,7 +97,7 @@
                   <input
                     matInput
                     [(ngModel)]="answer"
-                    [disabled]="disabled || canceling"
+                    [disabled]="canceling"
                     [placeholder]="getInputPlaceholder(q)"
                     [attr.aria-label]="q.Option?.Name || 'Input field'"
                   />
@@ -135,14 +135,10 @@
           (click)="onContinue()"
           [disabled]="isButtonDisabled()"
           class="continue-button"
-          [class.loading]="canceling"
-          [attr.aria-label]="canceling ? 'Processing...' : 'Continue to next step'"
+          [class.loading]="canceling || processing"
+          [attr.aria-label]="canceling || processing ? 'Processing...' : 'Continue to next step'"
         >
-          <mat-icon
-            [svgIcon]="canceling ? 'refresh' : 'bolt'"
-            [class.spinning]="canceling"
-          ></mat-icon>
-          <span>{{ canceling ? 'Processing...' : 'Continue' }}</span>
+          <span>{{ canceling || processing ? 'Processing...' : 'Continue' }}</span>
         </button>
       </div>
     </div>

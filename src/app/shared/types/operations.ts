@@ -1,5 +1,3 @@
-import { ThemePalette } from '@angular/material/core';
-
 export type JobType = 'sync' | 'copy' | 'move' | 'bisync' | 'check';
 export type RemoteAction =
   | 'mount'
@@ -22,7 +20,7 @@ export interface SyncOperation {
   type: SyncOperationType;
   label: string;
   icon: string;
-  color: ThemePalette;
+  cssClass: string;
   description: string;
 }
 

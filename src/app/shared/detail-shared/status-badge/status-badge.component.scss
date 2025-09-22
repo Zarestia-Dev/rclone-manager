@@ -57,6 +57,26 @@
     }
   }
 
+  &.active-move {
+    background: rgba(var(--light-orange-rgb), var(--active-opacity));
+    color: var(--light-orange);
+    border: 1px solid rgba(var(--light-orange-rgb), 0.2);
+
+    .status-dot {
+      background: var(--light-orange);
+    }
+  }
+
+  &.active-bisync {
+    background: rgba(var(--purple-rgb), var(--active-opacity));
+    color: var(--purple);
+    border: 1px solid rgba(var(--purple-rgb), 0.2);
+
+    .status-dot {
+      background: var(--purple);
+    }
+  }
+
   &.mounted {
     background: rgba(var(--accent-color-rgb), var(--active-opacity));
     color: var(--accent-color);

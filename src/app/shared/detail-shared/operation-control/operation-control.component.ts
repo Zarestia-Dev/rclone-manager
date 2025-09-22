@@ -24,11 +24,7 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '..
   ],
   styleUrls: ['./operation-control.component.scss'],
   template: `
-    <mat-card
-      class="detail-panel operation-control-panel"
-      [class.active]="config.isActive"
-      [ngClass]="config.operationClass"
-    >
+    <mat-card class="detail-panel operation-control-panel" [class.active]="config.isActive">
       <mat-card-header class="panel-header">
         <mat-card-title class="panel-title-content">
           <mat-icon [svgIcon]="getOperationIcon()" class="panel-icon"></mat-icon>
@@ -52,6 +48,7 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '..
                 : startJob.emit(config.operationType)
             "
             [disabled]="config.isLoading"
+            [ngClass]="getButtonClass()"
             class="operation-toggle-button"
           >
             @if (config.isLoading) {
@@ -104,13 +101,6 @@ export class OperationControlComponent {
       copy: { active: 'Copying', inactive: 'Stopped' },
     };
 
-    // Define badge classes for each state
-    const badgeClasses = {
-      active: this.config.operationType === 'mount' ? 'mounted' : '',
-      inactive: this.config.operationType === 'mount' ? 'unmounted' : 'inactive',
-      error: 'error',
-    };
-
     // Determine the current state
     let state: 'active' | 'inactive' | 'error';
     if (this.config.isError) {
@@ -121,6 +111,26 @@ export class OperationControlComponent {
       state = 'inactive';
     }
 
+    // Resolve the badge class per operation and state
+    let resolvedBadgeClass = '';
+    if (state === 'error') {
+      resolvedBadgeClass = 'error';
+    } else if (state === 'active') {
+      // Active operation: use mounted for mount, otherwise active-<op>
+      if (this.config.operationType === 'mount') {
+        resolvedBadgeClass = 'mounted';
+      } else {
+        resolvedBadgeClass = `active-${this.config.operationType}`;
+      }
+    } else {
+      // Inactive: use unmounted for mount, otherwise generic inactive
+      if (this.config.operationType === 'mount') {
+        resolvedBadgeClass = 'unmounted';
+      } else {
+        resolvedBadgeClass = 'inactive';
+      }
+    }
+
     return {
       isActive: this.config.isActive,
       isError: this.config.isError,
@@ -128,11 +138,17 @@ export class OperationControlComponent {
       activeLabel: statusLabels[this.config.operationType].active,
       inactiveLabel: statusLabels[this.config.operationType].inactive,
       errorLabel: 'Error',
-      badgeClass: badgeClasses[state],
+      badgeClass: resolvedBadgeClass,
     };
   }
 
   onOpenPath(path: string): void {
     this.openPath.emit(path);
+  }
+
+  getButtonClass(): string {
+    // When active, always use the warn class to emphasize stopping an active op.
+    if (this.config?.isActive) return 'warn';
+    return this.config?.cssClass || '';
   }
 }

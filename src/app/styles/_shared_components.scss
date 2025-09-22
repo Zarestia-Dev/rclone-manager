@@ -45,3 +45,20 @@
     overflow-y: auto;
   }
 }
+
+// Responsive Design
+@media (max-width: 768px) {
+  .detail-panel {
+    .panel-header {
+      padding: var(--space-md) var(--space-md);
+    }
+
+    .panel-content {
+      padding: var(--header-gap);
+    }
+
+    .panel-actions {
+      padding: 12px var(--header-gap);
+    }
+  }
+}

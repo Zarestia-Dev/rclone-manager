@@ -46,6 +46,21 @@
       </mat-form-field>
     </div>
 
+    <!-- Interactive Mode Toggle -->
+    <!-- <div class="form-section">
+      <mat-slide-toggle
+        formControlName="useInteractiveMode"
+        color="primary"
+        class="interactive-toggle"
+      >
+        Use Interactive Configuration
+      </mat-slide-toggle>
+      <p class="section-description">
+        Enable interactive setup for remotes that require additional configuration steps
+        (recommended for iCloud, OneDrive, etc.)
+      </p>
+    </div> -->
+
     <!-- Remote Name Input -->
     <div class="form-section">
       <h3 class="section-title">
@@ -82,8 +97,8 @@
         Operation Options
       </h3>
       <p class="section-description">
-        Choose which operations to configure for this remote. You can set up mounting, syncing, and
-        copying operations.
+        Choose which operations to configure for this remote. You can set up mounting, syncing,
+        copying, bidirectional syncing, and moving operations.
       </p>
 
       <!-- Auto-Mount Expansion Panel -->
@@ -193,8 +208,83 @@
           </mat-form-field>
         </div>
       </mat-expansion-panel>
+
+      <!-- Auto-Bisync Expansion Panel -->
+      <mat-expansion-panel
+        class="operation-panel"
+        (opened)="onPanelToggle('bisync', true)"
+        (closed)="onPanelToggle('bisync', false)"
+        [disabled]="isAuthInProgress"
+      >
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <mat-checkbox formControlName="autoBisync"> Enable Auto-Bisync </mat-checkbox>
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <!-- Bisync Configuration -->
+        <div class="operation-config">
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>Bisync Destination</mat-label>
+            <input
+              matInput
+              placeholder="Destination path (e.g., local folder or remote:/)"
+              formControlName="bisyncDest"
+            />
+            <button type="button" matIconButton matSuffix (click)="selectFolder('bisyncDest')">
+              <mat-icon svgIcon="folder" color="primary"></mat-icon>
+            </button>
+            @if (
+              quickAddForm.get('autoBisync')?.value &&
+              quickAddForm.get('bisyncDest')?.hasError('required') &&
+              quickAddForm.get('bisyncDest')?.touched
+            ) {
+              <mat-error>Bisync destination is required when auto-bisync is enabled</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      </mat-expansion-panel>
+
+      <!-- Auto-Move Expansion Panel -->
+      <mat-expansion-panel
+        class="operation-panel"
+        (opened)="onPanelToggle('move', true)"
+        (closed)="onPanelToggle('move', false)"
+        [disabled]="isAuthInProgress"
+      >
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <mat-checkbox formControlName="autoMove"> Enable Auto-Move </mat-checkbox>
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+
+        <!-- Move Configuration -->
+        <div class="operation-config">
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>Move Destination</mat-label>
+            <input
+              matInput
+              placeholder="Destination path (e.g., local folder or remote:/)"
+              formControlName="moveDest"
+            />
+            <button type="button" matIconButton matSuffix (click)="selectFolder('moveDest')">
+              <mat-icon svgIcon="folder" color="primary"></mat-icon>
+            </button>
+            @if (
+              quickAddForm.get('autoMove')?.value &&
+              quickAddForm.get('moveDest')?.hasError('required') &&
+              quickAddForm.get('moveDest')?.touched
+            ) {
+              <mat-error>Move destination is required when auto-move is enabled</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      </mat-expansion-panel>
     </div>
   </form>
+
+  <!-- End of Form Content -->
+
   <!-- Action Buttons -->
   <div class="button-group">
     <button
