@@ -65,7 +65,7 @@
           </div>
         } @else if (bandwidthLimit?.error) {
           <div class="bandwidth-error" role="alert">
-            <mat-icon color="warn" svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
+            <mat-icon class="warn" svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
             <span>{{ bandwidthLimit?.error }}</span>
             <button
               matIconButton
@@ -73,7 +73,7 @@
               matTooltip="Retry"
               aria-label="Retry loading bandwidth"
             >
-              <mat-icon color="primary" svgIcon="refresh" aria-hidden="true"></mat-icon>
+              <mat-icon class="primary" svgIcon="refresh" aria-hidden="true"></mat-icon>
             </button>
           </div>
         } @else {
@@ -200,7 +200,6 @@
                 <mat-progress-bar
                   mode="determinate"
                   [value]="_jobCompletionPercentage"
-                  color="primary"
                   role="progressbar"
                   [attr.aria-valuenow]="_jobCompletionPercentage"
                   aria-valuemin="0"
@@ -247,9 +246,8 @@
                 <div class="label">Last Error:</div>
                 <div class="error-message">
                   <mat-icon
-                    color="warn"
                     svgIcon="circle-exclamation"
-                    class="error-icon"
+                    class="error-icon warn"
                     aria-hidden="true"
                   ></mat-icon>
                   <span

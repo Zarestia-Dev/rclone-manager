@@ -2,7 +2,7 @@
   <!-- Modal Header -->
   <div class="modal-header" data-tauri-drag-region>
     <!-- Terminal Icon -->
-    <button disabled aria-label="Terminal logs">
+    <button aria-label="Terminal logs">
       <mat-icon svgIcon="terminal"></mat-icon>
     </button>
 
@@ -69,7 +69,7 @@
         <div class="terminal-actions">
           <button
             matIconButton
-            color="warn"
+            class="warn"
             (click)="clearLogs()"
             [disabled]="loading"
             [matTooltip]="'Clear all logs'"

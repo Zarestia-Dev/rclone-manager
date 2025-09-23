@@ -1,54 +1,44 @@
 @use "../../../styles/_shared_components";
 
 .stats-panel {
-  background: var(--secondary-background);
-  border-radius: var(--panel-radius);
-  box-shadow: var(--box-shadow);
-  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-  transition: var(--transition-standard);
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--panel-gap);
 
-  &:hover {
-    box-shadow: 0 8px 32px rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
-  }
-}
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: var(--item-padding);
+      background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+      border-radius: var(--item-radius);
+      border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+      text-align: center;
+      transition: var(--transition-standard);
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: var(--panel-gap);
-
-  .stat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: var(--item-padding);
-    background: rgba(var(--app-text-color-rgb), var(--background-opacity));
-    border-radius: var(--item-radius);
-    border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-    text-align: center;
-    transition: var(--transition-standard);
-
-    &:hover {
-      box-shadow: var(--shadow-light);
-    }
-
-    &.primary {
-      background: rgba(var(--primary-color-rgb), var(--background-opacity));
-      border-color: rgba(var(--primary-color-rgb), var(--active-opacity));
-
-      .stat-value {
-        color: var(--primary-color);
-        font-weight: 600;
+      &:hover {
+        box-shadow: var(--shadow-light);
       }
-    }
 
-    &.has-error {
-      background: rgba(var(--warn-color-rgb), var(--background-opacity));
-      border-color: rgba(var(--warn-color-rgb), var(--active-opacity));
+      &.primary {
+        background: rgba(var(--primary-color-rgb), var(--background-opacity));
+        border-color: rgba(var(--primary-color-rgb), var(--active-opacity));
 
-      .stat-value {
-        color: var(--warn-color);
-        font-weight: 600;
+        .stat-value {
+          color: var(--primary-color);
+          font-weight: 600;
+        }
+      }
+
+      &.has-error {
+        background: rgba(var(--warn-color-rgb), var(--background-opacity));
+        border-color: rgba(var(--warn-color-rgb), var(--active-opacity));
+
+        .stat-value {
+          color: var(--warn-color);
+          font-weight: 600;
+        }
       }
     }
   }

@@ -1,65 +1,26 @@
 @use "../../../styles/_shared_components";
 
 .operation-control-panel {
-  background: var(--secondary-background);
-  border-radius: var(--panel-radius);
-  box-shadow: var(--box-shadow);
-  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-  overflow: hidden;
-  transition: var(--transition-standard);
-  margin-bottom: var(--panel-gap);
-  border: 2px solid transparent;
-
-  &:hover {
-    box-shadow: 0 8px 32px rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
-  }
-
   &.active {
     .panel-header {
-      background: linear-gradient(
-        135deg,
-        rgba(var(--primary-color-rgb), 0.08) 0%,
-        rgba(var(--accent-color-rgb), 0.08) 100%
-      );
-    }
+      &.sync {
+        background-color: rgba(var(--primary-color-rgb), var(--background-opacity));
+      }
+      &.mount {
+        background-color: rgba(var(--accent-color-rgb), var(--background-opacity));
+      }
 
-    // Combine similar active states
-    &.sync-operation {
-      background-color: rgba(var(--primary-color-rgb), var(--background-opacity));
-    }
+      &.copy {
+        background-color: rgba(var(--yellow-rgb), var(--background-opacity));
+      }
 
-    &.copy-operation,
-    &.mount-operation {
-      background-color: rgba(var(--accent-color-rgb), var(--background-opacity));
-    }
+      &.move {
+        background-color: rgba(var(--orange-rgb), var(--background-opacity));
+      }
 
-    // Special case for mount
-    &.mount-operation .panel-header {
-      background: linear-gradient(
-        135deg,
-        rgba(var(--accent-color-rgb), 0.08) 0%,
-        rgba(var(--accent-color-rgb), 0.08) 100%
-      );
-    }
-  }
-
-  &.sync-operation.active {
-    background-color: rgba(var(--primary-color-rgb), var(--background-opacity));
-  }
-
-  &.copy-operation.active {
-    background-color: rgba(var(--accent-color-rgb), var(--background-opacity));
-  }
-
-  &.mount-operation.active {
-    background-color: rgba(var(--accent-color-rgb), var(--background-opacity));
-
-    .panel-header {
-      background: linear-gradient(
-        135deg,
-        rgba(var(--accent-color-rgb), 0.08) 0%,
-        rgba(var(--accent-color-rgb), 0.08) 100%
-      );
+      &.bisync {
+        background-color: rgba(var(--purple-rgb), var(--background-opacity));
+      }
     }
   }
 }
@@ -78,19 +39,10 @@
 }
 
 @media (max-width: 768px) {
-  .operation-control-panel {
-    margin-bottom: calc(var(--panel-gap) / 2);
-  }
-
   .operation-toggle-button {
     height: 44px;
     font-size: 0.875rem;
     padding: 0 var(--space-sm);
-  }
-
-  .panel-actions {
-    flex-direction: column;
-    gap: var(--space-sm);
   }
 
   .operation-controls {

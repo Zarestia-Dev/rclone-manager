@@ -23,7 +23,7 @@
     <!-- Remote Type Selection -->
     <div class="form-section">
       <h3 class="section-title">
-        <mat-icon svgIcon="remotes" color="primary"></mat-icon>
+        <mat-icon svgIcon="remotes" class="primary"></mat-icon>
         Remote Type
       </h3>
       <mat-form-field class="full-width" appearance="fill">
@@ -50,7 +50,6 @@
     <!-- <div class="form-section">
       <mat-slide-toggle
         formControlName="useInteractiveMode"
-        color="primary"
         class="interactive-toggle"
       >
         Use Interactive Configuration
@@ -64,7 +63,7 @@
     <!-- Remote Name Input -->
     <div class="form-section">
       <h3 class="section-title">
-        <mat-icon svgIcon="cloud" color="accent"></mat-icon>
+        <mat-icon svgIcon="cloud" class="accent"></mat-icon>
         Remote Name
       </h3>
       <mat-form-field class="full-width" appearance="fill">
@@ -93,7 +92,7 @@
     <!-- Operation Options -->
     <div class="form-section">
       <h3 class="section-title">
-        <mat-icon svgIcon="wrench" color="accent"></mat-icon>
+        <mat-icon svgIcon="wrench" class="accent"></mat-icon>
         Operation Options
       </h3>
       <p class="section-description">
@@ -123,8 +122,8 @@
               placeholder="Select a folder to mount the remote..."
               formControlName="mountPath"
             />
-            <button type="button" matIconButton matSuffix (click)="selectFolder('mountPath')">
-              <mat-icon svgIcon="folder" color="primary"></mat-icon>
+            <button matIconButton matSuffix (click)="selectFolder('mountPath')">
+              <mat-icon svgIcon="folder" class="primary"></mat-icon>
             </button>
             @if (
               quickAddForm.get('autoMount')?.value &&
@@ -159,8 +158,8 @@
               placeholder="Destination path (e.g., local folder or remote:/)"
               formControlName="syncDest"
             />
-            <button type="button" matIconButton matSuffix (click)="selectFolder('syncDest')">
-              <mat-icon svgIcon="folder" color="primary"></mat-icon>
+            <button matIconButton matSuffix (click)="selectFolder('syncDest')">
+              <mat-icon svgIcon="folder" class="primary"></mat-icon>
             </button>
             @if (
               quickAddForm.get('autoSync')?.value &&
@@ -195,8 +194,8 @@
               placeholder="Destination path (e.g., local folder or remote:/)"
               formControlName="copyDest"
             />
-            <button type="button" matIconButton matSuffix (click)="selectFolder('copyDest')">
-              <mat-icon svgIcon="folder" color="primary"></mat-icon>
+            <button matIconButton matSuffix (click)="selectFolder('copyDest')">
+              <mat-icon svgIcon="folder" class="primary"></mat-icon>
             </button>
             @if (
               quickAddForm.get('autoCopy')?.value &&
@@ -231,8 +230,8 @@
               placeholder="Destination path (e.g., local folder or remote:/)"
               formControlName="bisyncDest"
             />
-            <button type="button" matIconButton matSuffix (click)="selectFolder('bisyncDest')">
-              <mat-icon svgIcon="folder" color="primary"></mat-icon>
+            <button matIconButton matSuffix (click)="selectFolder('bisyncDest')">
+              <mat-icon svgIcon="folder" class="primary"></mat-icon>
             </button>
             @if (
               quickAddForm.get('autoBisync')?.value &&
@@ -267,8 +266,8 @@
               placeholder="Destination path (e.g., local folder or remote:/)"
               formControlName="moveDest"
             />
-            <button type="button" matIconButton matSuffix (click)="selectFolder('moveDest')">
-              <mat-icon svgIcon="folder" color="primary"></mat-icon>
+            <button matIconButton matSuffix (click)="selectFolder('moveDest')">
+              <mat-icon svgIcon="folder" class="primary"></mat-icon>
             </button>
             @if (
               quickAddForm.get('autoMove')?.value &&
@@ -290,7 +289,7 @@
     <button
       (click)="onSubmit()"
       matButton="filled"
-      color="primary"
+      class="primary"
       [disabled]="isAuthInProgress || quickAddForm.invalid"
     >
       @if (isAuthInProgress && !isAuthCancelled) {
@@ -304,9 +303,8 @@
     <!-- Cancel Authentication Button -->
     @if (isAuthInProgress && !isAuthCancelled) {
       <button
-        type="button"
         matButton="filled"
-        color="warn"
+        class="warn"
         (click)="cancelAuth()"
         [disabled]="!isAuthInProgress"
         @slideInOut
@@ -327,7 +325,7 @@
     <!-- Authentication Message -->
     @if (isAuthInProgress && !isAuthCancelled) {
       <div class="message loading">
-        <mat-icon svgIcon="info" color="accent"></mat-icon>
+        <mat-icon svgIcon="info" class="accent"></mat-icon>
         <span
           >A browser window may open for authentication. Please complete the process there.</span
         >

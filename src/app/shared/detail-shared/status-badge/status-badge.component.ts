@@ -1,14 +1,12 @@
 import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { StatusBadgeConfig } from '../../types';
 
 @Component({
   selector: 'app-status-badge',
   standalone: true,
-  imports: [CommonModule],
   styleUrls: ['./status-badge.component.scss'],
   template: `
-    <div class="status-badge" [ngClass]="config.badgeClass">
+    <div class="status-badge" [class]="config.badgeClass">
       <div class="status-dot"></div>
       <span>{{ getStatusLabel() }}</span>
     </div>

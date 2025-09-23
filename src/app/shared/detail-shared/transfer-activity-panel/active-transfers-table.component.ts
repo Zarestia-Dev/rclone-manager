@@ -39,17 +39,15 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
                   @if (transfer.isError) {
                     <mat-icon
                       svgIcon="circle-exclamation"
-                      class="error-icon"
+                      class="error-icon warn"
                       matTooltip="Transfer error"
-                      color="warn"
                     ></mat-icon>
                   }
                   @if (transfer.isCompleted) {
                     <mat-icon
                       svgIcon="circle-check"
-                      class="success-icon"
+                      class="success-icon primary"
                       matTooltip="Transfer completed"
-                      color="primary"
                     ></mat-icon>
                   }
                 </div>
@@ -71,8 +69,7 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
                   <mat-progress-bar
                     mode="determinate"
                     [value]="transfer.percentage"
-                    [color]="getProgressColor(transfer)"
-                    class="progress-bar"
+                    [class]="'progress-bar' + ' ' + getProgressColor(transfer)"
                   >
                   </mat-progress-bar>
                 </div>

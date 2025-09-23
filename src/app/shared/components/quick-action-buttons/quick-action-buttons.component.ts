@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,13 +8,7 @@ import { QuickActionButton } from '@app/types';
 @Component({
   selector: 'app-quick-action-buttons',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    MatTooltipModule,
-  ],
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule],
   template: `
     <div class="quick-actions">
       @for (button of buttons; track button.id) {
@@ -23,7 +16,7 @@ import { QuickActionButton } from '@app/types';
           matMiniFab
           [matTooltip]="button.tooltip"
           [disabled]="button.isDisabled"
-          [ngClass]="'action-btn ' + (button.cssClass || '')"
+          [class]="button.cssClass || ''"
           (click)="onButtonClick(button.id, $event)"
         >
           @if (button.isLoading) {

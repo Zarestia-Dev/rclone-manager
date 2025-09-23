@@ -1,6 +1,6 @@
 <div class="about-modal">
   <div class="modal-header" data-tauri-drag-region [class.scrolled]="scrolled">
-    <button disabled>
+    <button>
       <mat-icon></mat-icon>
     </button>
     <p>About</p>
@@ -151,7 +151,7 @@
 
             @if (rcloneError) {
               <div class="error" role="alert" aria-live="assertive">
-                <mat-icon color="warn" svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
+                <mat-icon class="warn" svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
                 <span>{{ rcloneError }}</span>
               </div>
             }

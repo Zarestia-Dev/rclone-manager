@@ -1,14 +1,11 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
-
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, firstValueFrom } from 'rxjs';
 import { UpdateConfirmationDialogComponent } from '../../modals/update-confirmation-dialog/update-confirmation-dialog.component';
-
-// Services
 import { RcloneUpdateService, UpdateStatus } from '@app/services';
 
 @Component({
@@ -39,14 +36,12 @@ export class RcloneUpdateIconComponent implements OnInit, OnDestroy {
   };
 
   ngOnInit(): void {
-    // Subscribe to update status changes
     this.updateService.updateStatus$
       .pipe(takeUntil(this.destroy$))
       .subscribe((status: UpdateStatus) => {
         this.updateStatus = status;
       });
 
-    // Initial check for updates
     this.checkForUpdates();
   }
 
@@ -59,38 +54,55 @@ export class RcloneUpdateIconComponent implements OnInit, OnDestroy {
     await this.updateService.checkForUpdates();
   }
 
-  getIcon(): string {
-    if (this.updateStatus.available) return 'circle-up';
-    if (this.updateStatus.error) return 'warning';
-    return 'gear';
+  // New consolidated methods for the improved template
+  getStatusClass(): string {
+    if (this.updateStatus.checking) return 'checking';
+    if (this.updateStatus.updating) return 'updating';
+    if (this.updateStatus.available) return 'available';
+    if (this.updateStatus.error) return 'error';
+    return 'up-to-date';
   }
 
-  getIconColor(): string {
+  getSpinnerTooltip(): string {
+    return this.updateStatus.checking ? 'Checking for updates...' : 'Updating rclone...';
+  }
+
+  getButtonTooltip(): string {
+    if (this.updateStatus.available && this.updateStatus.updateInfo) {
+      return `Update available: ${this.updateStatus.updateInfo.current_version_clean} → ${this.updateStatus.updateInfo.latest_version_clean}.`;
+    }
+
+    if (this.updateStatus.error) {
+      return `Error checking for updates: ${this.updateStatus.error}. Click to retry.`;
+    }
+
+    const version = this.updateStatus.updateInfo?.current_version_clean;
+    const versionText = version ? ` (v${version})` : '';
+    return `Rclone is up to date${versionText}. Click to check for updates.`;
+  }
+
+  getStatusIcon(): string {
+    if (this.updateStatus.available) return 'circle-up';
+    if (this.updateStatus.error) return 'circle-exclamation';
+    return 'circle-check';
+  }
+
+  getIconClass(): string {
     if (this.updateStatus.available) return 'primary';
     if (this.updateStatus.error) return 'warn';
-    return '';
+    return 'accent';
   }
 
-  getTooltipText(): string {
-    if (this.updateStatus.checking) return 'Checking for updates...';
-    if (this.updateStatus.updating) return 'Updating rclone...';
-    if (this.updateStatus.available) return 'Rclone update available';
-    if (this.updateStatus.error) return 'Update check failed';
-    return 'Check for rclone updates';
+  handleStatusClick(): void {
+    if (this.updateStatus.available) {
+      this.showUpdateDialog();
+    } else {
+      this.checkForUpdates();
+    }
   }
 
-  formatLastCheck(date: Date): string {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins} min ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
+  isActionDisabled(): boolean {
+    return this.updateStatus.checking || this.updateStatus.updating;
   }
 
   async showUpdateDialog(): Promise<void> {
@@ -110,8 +122,7 @@ export class RcloneUpdateIconComponent implements OnInit, OnDestroy {
       maxHeight: '630px',
     });
 
-    const result = await dialogRef.afterClosed().toPromise();
-
+    const result = await firstValueFrom(dialogRef.afterClosed());
     if (result) {
       await this.updateService.performUpdate();
     }

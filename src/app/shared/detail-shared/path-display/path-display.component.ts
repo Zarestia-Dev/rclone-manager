@@ -13,7 +13,7 @@ import { PathDisplayConfig } from '../../types';
   styleUrls: ['./path-display.component.scss'],
   template: `
     <div class="path-section">
-      <div class="path-item source-path">
+      <div class="path-item">
         <div class="path-icon-container">
           @if (config.showOpenButtons && isLocalPath(config.source)) {
             <button

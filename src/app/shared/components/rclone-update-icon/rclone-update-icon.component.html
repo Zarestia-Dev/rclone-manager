@@ -1,72 +1,27 @@
 <div class="update-status-container">
-  @if (updateStatus.checking) {
-    <div class="status-indicator checking">
+  <div class="status-indicator" [class]="getStatusClass()">
+    @if (updateStatus.checking || updateStatus.updating) {
       <mat-spinner
         diameter="20"
         strokeWidth="3"
-        matTooltip="Checking for updates..."
-        matTooltipPosition="above"
-      ></mat-spinner>
-    </div>
-  } @else if (updateStatus.updating) {
-    <div class="status-indicator updating">
-      <mat-spinner
-        diameter="20"
-        strokeWidth="3"
-        matTooltip="Updating rclone..."
-        matTooltipPosition="above"
-      ></mat-spinner>
-    </div>
-  } @else if (updateStatus.available && updateStatus.updateInfo) {
-    <div class="status-indicator available">
-      <button
-        matIconButton
-        class="update-button"
-        color="primary"
-        (click)="showUpdateDialog()"
-        [matTooltip]="
-          'Update available: ' +
-          updateStatus.updateInfo.current_version_clean +
-          ' → ' +
-          updateStatus.updateInfo.latest_version_clean +
-          '.'
-        "
+        [matTooltip]="getSpinnerTooltip()"
         matTooltipPosition="above"
       >
-        <mat-icon svgIcon="circle-up"></mat-icon>
-      </button>
-    </div>
-  } @else if (updateStatus.error) {
-    <div class="status-indicator error">
+      </mat-spinner>
+    } @else {
       <button
-        matIconButton
-        color="warn"
-        class="error-button"
-        (click)="checkForUpdates()"
-        [matTooltip]="'Error checking for updates: ' + updateStatus.error + '. Click to retry.'"
+        mat-icon-button
+        class="status-button"
+        [class.update-available]="updateStatus.available"
+        [class.error-state]="updateStatus.error"
+        [class.up-to-date]="!updateStatus.available && !updateStatus.error"
+        [matTooltip]="getButtonTooltip()"
         matTooltipPosition="above"
+        (click)="handleStatusClick()"
+        [disabled]="isActionDisabled()"
       >
-        <mat-icon svgIcon="circle-exclamation"></mat-icon>
+        <mat-icon [svgIcon]="getStatusIcon()" [class]="getIconClass()"> </mat-icon>
       </button>
-    </div>
-  } @else {
-    <div class="status-indicator up-to-date">
-      <button
-        matIconButton
-        color="accent"
-        class="check-button"
-        (click)="checkForUpdates()"
-        [matTooltip]="
-          'Rclone is up to date' +
-          (updateStatus.updateInfo
-            ? ' (v' + updateStatus.updateInfo.current_version_clean + ')'
-            : '') +
-          '. Click to check for updates.'
-        "
-        matTooltipPosition="above"
-      >
-        <mat-icon svgIcon="circle-check"></mat-icon>
-      </button>
-    </div>
-  }
+    }
+  </div>
 </div>

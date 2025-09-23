@@ -30,7 +30,7 @@
       <!-- Export Type Selection -->
       <div class="form-section">
         <h3 class="section-title">
-          <mat-icon color="accent" svgIcon="wrench" aria-hidden="true"></mat-icon>
+          <mat-icon class="accent" svgIcon="wrench" aria-hidden="true"></mat-icon>
           What would you like to export?
         </h3>
         <mat-form-field appearance="fill" class="full-width">
@@ -62,7 +62,7 @@
       @if (showSpecificRemoteSection()) {
         <div class="form-section" @slideInOut>
           <h3 class="section-title">
-            <mat-icon color="accent" svgIcon="hard-drive" aria-hidden="true"></mat-icon>
+            <mat-icon class="accent" svgIcon="hard-drive" aria-hidden="true"></mat-icon>
             Select Remote
           </h3>
           <mat-form-field appearance="fill" class="full-width">
@@ -96,7 +96,7 @@
       <!-- Export Destination -->
       <div class="form-section">
         <h3 class="section-title">
-          <mat-icon color="accent" svgIcon="folder" aria-hidden="true"></mat-icon>
+          <mat-icon class="accent" svgIcon="folder" aria-hidden="true"></mat-icon>
           Export Destination
         </h3>
         <mat-form-field appearance="fill" class="full-width">
@@ -124,7 +124,7 @@
             @if (folderSelectionInProgress()) {
               <mat-spinner diameter="20"></mat-spinner>
             } @else {
-              <mat-icon svgIcon="folder" color="primary"></mat-icon>
+              <mat-icon svgIcon="folder" class="primary"></mat-icon>
             }
           </button>
         </mat-form-field>
@@ -155,7 +155,7 @@
 
           @if (showSecurityWarning()) {
             <div class="security-warning">
-              <mat-icon color="warn" svgIcon="warning" aria-hidden="true"></mat-icon>
+              <mat-icon class="warn" svgIcon="warning" aria-hidden="true"></mat-icon>
               <span>7-Zip not found. Password protection unavailable.</span>
             </div>
           }
@@ -202,7 +202,7 @@
 
     <!-- Modal Actions -->
     <div class="button-group">
-      <button matButton="filled" color="primary" (click)="onExport()" [disabled]="!canExport()">
+      <button matButton="filled" class="primary" (click)="onExport()" [disabled]="!canExport()">
         @if (isExporting()) {
           <mat-spinner diameter="16" class="button-spinner"></mat-spinner>
           <span>Exporting...</span>

@@ -41,7 +41,7 @@
     box-shadow:
       0 8px 32px rgba(var(--warn-color-rgb), 0.4),
       0 4px 16px rgba(0, 0, 0, 0.2);
-    z-index: 9999;
+    z-index: 9998;
     animation: slideInFromRight 0.5s ease-out;
     backdrop-filter: blur(10px);
     transition: var(--transition-standard);

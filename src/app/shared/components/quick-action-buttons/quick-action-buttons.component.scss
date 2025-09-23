@@ -1,14 +1,10 @@
-:host {
-  display: block;
-}
-
 .quick-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
 
-  .action-btn {
+  button {
     transform: scale(var(--action-btn-scale));
     transition: var(--transition-fast);
     box-shadow:

@@ -6,7 +6,7 @@
     <div class="modal-icon" [class]="getModalIconClass()">
       <mat-icon
         [svgIcon]="getModalIcon()"
-        [color]="getModalIconColor()"
+        [class]="getModalIconColor()"
         aria-hidden="true"
       ></mat-icon>
     </div>
@@ -29,7 +29,7 @@
     @if (data.confirmText) {
       <button
         matButton="filled"
-        [color]="getConfirmButtonColor()"
+        [class]="getConfirmButtonColor()"
         (click)="onConfirm()"
         [attr.aria-label]="'Confirm: ' + (data.confirmText || 'Yes')"
       >

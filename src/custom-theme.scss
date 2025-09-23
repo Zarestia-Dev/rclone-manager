@@ -687,10 +687,19 @@ mat-icon {
   &.warn {
     color: var(--warn-color) !important;
   }
+
+  &.primary {
+    color: var(--primary-color) !important;
+  }
+
+  &.accent {
+    color: var(--accent-color) !important;
+  }
 }
 
 button {
   border: none;
+  flex-direction: row !important;
   background-color: transparent;
 
   span {
@@ -698,7 +707,6 @@ button {
     white-space: nowrap;
     align-items: center;
     gap: var(--space-sm);
-    flex-direction: row !important;
     justify-content: center;
   }
 

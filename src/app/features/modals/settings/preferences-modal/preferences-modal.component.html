@@ -150,7 +150,7 @@
         <div class="pending-changes-section">
           <div class="pending-changes-header">
             <div class="header-info">
-              <mat-icon svgIcon="circle-exclamation" color="warn"></mat-icon>
+              <mat-icon svgIcon="circle-exclamation" class="warn"></mat-icon>
               <div class="header-text">
                 <h3>Settings Requiring Restart</h3>
                 <p>The following changes require an engine restart to take effect:</p>
@@ -304,7 +304,7 @@
           <div class="array-buttons">
             <button
               matIconButton
-              color="primary"
+              class="primary"
               (click)="addArrayItem(category, key)"
               [attr.aria-label]="'Add new ' + meta.display_name + ' item'"
               matTooltip="Add item"
@@ -390,8 +390,7 @@
       @if (getFormControl(category, key).invalid) {
         <mat-icon
           svgIcon="error"
-          color="warn"
-          class="error-icon"
+          class="error-icon warn"
           [matTooltip]="getValidationMessage(category, key)"
           matTooltipPosition="above"
           [id]="category + '-' + key + '-error'"
@@ -466,7 +465,7 @@
             <div class="array-error">
               <mat-icon
                 svgIcon="error"
-                color="warn"
+                class="warn"
                 [matTooltip]="getValidationMessage(category, key)"
                 matTooltipPosition="above"
               >

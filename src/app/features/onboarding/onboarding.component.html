@@ -88,7 +88,7 @@
           @if (shouldShowInstallRcloneButton()) {
             <button
               matButton="filled"
-              color="primary"
+              class="primary"
               (click)="installRclone()"
               [disabled]="!canInstallRclone()"
               [matTooltip]="
@@ -105,7 +105,7 @@
           @if (!shouldShowInstallRcloneButton() && shouldShowInstallPluginButton()) {
             <button
               matButton="filled"
-              color="primary"
+              class="primary"
               (click)="installMountPlugin()"
               [disabled]="downloadingPlugin"
             >
@@ -123,7 +123,7 @@
           ) {
             <button
               matButton="filled"
-              color="primary"
+              class="primary"
               (click)="completeOnboarding()"
               class="finish-button"
             >
@@ -138,7 +138,7 @@
           ) {
             <button
               matButton="filled"
-              color="primary"
+              class="primary"
               (click)="onConfigNext()"
               [disabled]="!configValid"
               [matTooltip]="
@@ -156,7 +156,7 @@
           ) {
             <button
               matButton="filled"
-              color="primary"
+              class="primary"
               (click)="submitConfigPassword()"
               [disabled]="!configPassword || isSubmittingPassword"
             >
@@ -175,7 +175,7 @@
             cards[currentCardIndex].title !== 'Select RClone Config' &&
             cards[currentCardIndex].title !== 'Configuration Password Required'
           ) {
-            <button matButton="filled" color="primary" (click)="nextCard()">
+            <button matButton="filled" class="primary" (click)="nextCard()">
               Next
               <mat-icon svgIcon="right-arrow"></mat-icon>
             </button>

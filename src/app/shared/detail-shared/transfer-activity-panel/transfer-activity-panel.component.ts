@@ -48,12 +48,12 @@ import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
           <mat-icon svgIcon="download" class="panel-icon"></mat-icon>
           <span>Transfer Activity</span>
           <div class="transfer-summary">
-            <mat-chip class="summary-chip active" [color]="config.operationColor">
+            <mat-chip [class]="'summary-chip active' + ' ' + config.operationColor">
               <span class="chip-label">Active:</span>
               <span class="chip-value">{{ config.activeTransfers.length }}</span>
             </mat-chip>
             @if (config.showHistory) {
-              <mat-chip class="summary-chip completed">
+              <mat-chip [class]="'summary-chip completed' + ' ' + config.operationColor">
                 <span class="chip-label">Recent:</span>
                 <span class="chip-value">{{ config.completedTransfers.length }}</span>
               </mat-chip>

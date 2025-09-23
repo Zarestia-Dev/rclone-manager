@@ -25,7 +25,7 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '..
   styleUrls: ['./operation-control.component.scss'],
   template: `
     <mat-card class="detail-panel operation-control-panel" [class.active]="config.isActive">
-      <mat-card-header class="panel-header">
+      <mat-card-header class="panel-header" [ngClass]="config.operationType">
         <mat-card-title class="panel-title-content">
           <mat-icon [svgIcon]="getOperationIcon()" class="panel-icon"></mat-icon>
           <span>{{ config.operationType | titlecase }} Control</span>

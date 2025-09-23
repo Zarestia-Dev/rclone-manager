@@ -1,17 +1,6 @@
 @use "../../../styles/_shared_components";
 
 .transfer-activity-panel {
-  background: var(--secondary-background);
-  border-radius: var(--panel-radius);
-  box-shadow: var(--box-shadow);
-  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-  overflow: hidden;
-  transition: var(--transition-standard);
-
-  &:hover {
-    box-shadow: 0 8px 32px rgba(var(--app-text-color-rgb), var(--panel-hover-opacity));
-  }
-
   .panel-header {
     .panel-title-content {
       .transfer-summary {

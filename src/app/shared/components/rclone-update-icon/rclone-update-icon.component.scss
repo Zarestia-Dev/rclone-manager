@@ -8,28 +8,46 @@
     align-items: center;
     justify-content: center;
 
-    // Button styling for different states
-    .update-button {
+    .status-button {
       transition: all 0.2s ease;
 
-      &:hover {
+      &:hover:not([disabled]) {
         transform: translateY(-1px);
+      }
+
+      &[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      &.update-available,
+      &.error-state {
+        animation: breathing 2s infinite;
       }
     }
 
-    .error-button {
-      transition: all 0.2s ease;
-
-      &:hover {
-        transform: translateY(-1px);
+    &.checking,
+    &.updating {
+      mat-spinner {
+        opacity: 1;
       }
     }
 
-    .check-button {
-      transition: all 0.2s ease;
+    &.available {
+      .status-button {
+        color: var(--accent-color);
+      }
+    }
 
-      &:hover {
-        transform: translateY(-1px);
+    &.error {
+      .status-button {
+        color: var(--warn-color);
+      }
+    }
+
+    &.up-to-date {
+      .status-button {
+        color: var(--primary-color);
       }
     }
   }

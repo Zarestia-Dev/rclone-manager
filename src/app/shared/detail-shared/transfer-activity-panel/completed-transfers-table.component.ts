@@ -40,30 +40,26 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
                   @if (transfer.status === 'failed') {
                     <mat-icon
                       svgIcon="circle-exclamation"
-                      class="error-icon"
+                      class="error-icon warn"
                       matTooltip="{{ transfer.error }}"
-                      color="warn"
                     ></mat-icon>
                   } @else if (transfer.status === 'checked') {
                     <mat-icon
                       svgIcon="circle-check"
-                      class="check-icon"
+                      class="check-icon accent"
                       matTooltip="File was checked/skipped"
-                      color="accent"
                     ></mat-icon>
                   } @else if (transfer.status === 'partial') {
                     <mat-icon
                       svgIcon="circle-exclamation"
-                      class="partial-icon"
+                      class="partial-icon warn"
                       matTooltip="Partial transfer"
-                      color="warn"
                     ></mat-icon>
                   } @else {
                     <mat-icon
                       svgIcon="circle-check"
-                      class="success-icon"
+                      class="success-icon primary"
                       matTooltip="Transfer completed"
-                      color="primary"
                     ></mat-icon>
                   }
                 </div>

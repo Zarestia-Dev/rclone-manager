@@ -58,6 +58,8 @@
     }
 
     .panel-actions {
+      flex-direction: column;
+      gap: var(--space-sm);
       padding: 12px var(--header-gap);
     }
   }

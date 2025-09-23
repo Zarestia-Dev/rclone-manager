@@ -57,8 +57,7 @@
                 <mat-slide-toggle
                   [(ngModel)]="answer"
                   [disabled]="canceling"
-                  [color]="'primary'"
-                  class="toggle-input"
+                  class="toggle-input primary"
                   [attr.aria-label]="q.Option?.Name || 'Toggle option'"
                 >
                   <span class="toggle-label">{{ answer ? 'Yes' : 'No' }}</span>
@@ -118,7 +117,7 @@
         <div class="validation-status">
           <mat-icon
             class="validation-icon"
-            [svgIcon]="isValidAnswer() ? 'circle-check' : 'circle'"
+            [svgIcon]="isValidAnswer() ? 'circle-check' : 'info'"
             [class.valid]="isValidAnswer()"
             [class.invalid]="!isValidAnswer()"
           ></mat-icon>
@@ -131,7 +130,6 @@
       <div class="actions">
         <button
           matButton="filled"
-          color="primary"
           (click)="onContinue()"
           [disabled]="isButtonDisabled()"
           class="continue-button"
