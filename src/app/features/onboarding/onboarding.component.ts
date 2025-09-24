@@ -30,7 +30,7 @@ import { EventListenersService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { FileSystemService } from '@app/services';
 import { RclonePasswordService } from '@app/services';
-import { InstallationOptionsData, InstallationTabOption, PasswordLockoutStatus } from '@app/types';
+import { InstallationOptionsData, InstallationTabOption } from '@app/types';
 
 @Component({
   selector: 'app-onboarding',
@@ -62,7 +62,6 @@ import { InstallationOptionsData, InstallationTabOption, PasswordLockoutStatus }
 })
 export class OnboardingComponent implements OnInit, OnDestroy {
   // Track lockout status for password attempts
-  lockoutStatus: PasswordLockoutStatus | null = null;
   @Output() completed = new EventEmitter<void>();
 
   // Installation options data from shared component
@@ -121,6 +120,7 @@ export class OnboardingComponent implements OnInit, OnDestroy {
   // If an attempted password validation failed, show message
   passwordValidationError: string | null = null;
   isSubmittingPassword = false;
+  errorCount = 0;
 
   // Only process password_error events when we actually expect a password UI
   private expectingPassword = false;
@@ -155,9 +155,6 @@ export class OnboardingComponent implements OnInit, OnDestroy {
         await this.checkMountPlugin();
         console.log('OnboardingComponent: checkMountPlugin completed');
 
-        // Fetch initial lockout status (in case onboarding starts locked)
-        this.lockoutStatus = await this.rclonePasswordService.getLockoutStatus();
-
         // Subscribe to engine events so we can react to password errors
         this.rcloneEngineSub = this.eventListenersService
           .listenToRcloneEngine()
@@ -190,9 +187,6 @@ export class OnboardingComponent implements OnInit, OnDestroy {
                   // Ensure password card present and surface to user
                   this.configEncrypted = true;
                   this.ensurePasswordCardPresent();
-
-                  // Fetch and update lockout status on password error
-                  this.updateLockoutStatus();
                 }
 
                 if (ev.status === 'ready') {
@@ -205,9 +199,6 @@ export class OnboardingComponent implements OnInit, OnDestroy {
                   if (this.expectingPassword) {
                     this.ensurePasswordCardPresent();
                   }
-
-                  // Fetch and update lockout status on engine ready (may have unlocked)
-                  this.updateLockoutStatus();
                 }
               }
             } catch (err) {
@@ -504,25 +495,17 @@ export class OnboardingComponent implements OnInit, OnDestroy {
       // Clear expectation since password provided
       this.expectingPassword = false;
       this.waitingForEngineStart = false;
-      // Update lockout status (should be reset on success)
-      await this.updateLockoutStatus();
       this.passwordValidationError = null;
       this.nextCard();
     } catch (error) {
       console.error('Password validation failed:', error);
-      // Update lockout status (may be locked or attempts incremented)
-      await this.updateLockoutStatus();
       // Show error message on top
       this.passwordValidationError = 'Wrong password. Please try again.';
+      this.errorCount++;
       // Keep user on the same card for retry
     } finally {
       this.isSubmittingPassword = false;
     }
-  }
-
-  // Helper to update lockout status from service
-  private async updateLockoutStatus(): Promise<void> {
-    this.lockoutStatus = await this.rclonePasswordService.getLockoutStatus();
   }
 
   shouldShowInstallRcloneButton(): boolean {

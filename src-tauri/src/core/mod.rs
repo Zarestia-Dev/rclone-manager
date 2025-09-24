@@ -6,4 +6,3 @@ pub mod lifecycle;
 pub mod security;
 pub mod settings;
 pub mod tray;
-pub mod ui;

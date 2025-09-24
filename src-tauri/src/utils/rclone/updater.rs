@@ -44,7 +44,7 @@ pub async fn check_rclone_update(
 }
 
 /// Get the latest rclone version from GitHub releases
-async fn get_latest_rclone_version(state: &State<'_, RcloneState>) -> Result<String, String> {
+pub async fn get_latest_rclone_version(state: &State<'_, RcloneState>) -> Result<String, String> {
     let url = "https://api.github.com/repos/rclone/rclone/releases/latest";
 
     let response = state

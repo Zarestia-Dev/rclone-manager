@@ -67,7 +67,7 @@ pub async fn verify_rclone_sha256(
     version: &str,
     platform_zip_name: &str,
 ) -> Result<(), String> {
-    let sha_url = format!("https://downloads.rclone.org/v{version}/SHA256SUMS");
+    let sha_url = format!("https://downloads.rclone.org/{version}/SHA256SUMS");
 
     debug!("Fetching SHA256SUMS from: {sha_url}");
     debug!("Verifying file: {platform_zip_name}");

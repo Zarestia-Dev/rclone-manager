@@ -114,12 +114,6 @@ export interface UpdateStatus {
 }
 
 // === Security / Passwords ===
-export interface PasswordLockoutStatus {
-  is_locked: boolean;
-  failed_attempts: number;
-  max_attempts: number;
-  remaining_lockout_time?: number;
-}
 
 export interface LoadingStates {
   isValidating: boolean;
@@ -137,7 +131,6 @@ export interface PasswordManagerState {
   hasStoredPassword: boolean;
   hasEnvPassword: boolean;
   isConfigEncrypted: boolean;
-  lockoutStatus: PasswordLockoutStatus | null;
   loading: LoadingStates;
   errors: string[];
 }

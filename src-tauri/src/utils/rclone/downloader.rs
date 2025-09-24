@@ -1,17 +1,13 @@
 use log::debug;
 use reqwest;
 
-pub async fn download_rclone_zip(os_name: &str, arch: &str) -> Result<(String, Vec<u8>), String> {
-    let version_txt = reqwest::get("https://downloads.rclone.org/version.txt")
-        .await
-        .map_err(|e| format!("Failed to fetch version: {e}"))?
-        .text()
-        .await
-        .map_err(|e| format!("Failed to read version text: {e}"))?;
-
-    let version = version_txt.trim().replace("rclone v", "");
+pub async fn download_rclone_zip(
+    os_name: &str,
+    arch: &str,
+    version: &str,
+) -> Result<Vec<u8>, String> {
     let download_url =
-        format!("https://downloads.rclone.org/v{version}/rclone-v{version}-{os_name}-{arch}.zip");
+        format!("https://downloads.rclone.org/{version}/rclone-{version}-{os_name}-{arch}.zip");
 
     debug!("Download URL: {download_url}");
 
@@ -23,7 +19,7 @@ pub async fn download_rclone_zip(os_name: &str, arch: &str) -> Result<(String, V
                     .bytes()
                     .await
                     .map_err(|e| format!("Read failed: {e}"))?;
-                return Ok((version, bytes.to_vec()));
+                return Ok(bytes.to_vec());
             }
             Err(e) => {
                 retries -= 1;

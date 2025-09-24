@@ -1,4 +1,4 @@
-import { Component, inject, NgZone, OnInit } from '@angular/core';
+import { Component, inject, NgZone, ChangeDetectorRef } from '@angular/core';
 
 import { MAT_BOTTOM_SHEET_DATA, MatBottomSheetRef } from '@angular/material/bottom-sheet';
 import { MatListModule } from '@angular/material/list';
@@ -11,7 +11,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { InstallationOptionsData, PasswordLockoutStatus, RepairData } from '@app/types';
+import { InstallationOptionsData, RepairData } from '@app/types';
 import { InstallationOptionsComponent } from '../../../shared/components/installation-options/installation-options.component';
 import { PasswordManagerComponent } from '../../../shared/components/password-manager/password-manager.component';
 
@@ -42,7 +42,7 @@ import { AnimationsService } from '../../../shared/services/animations.service';
   templateUrl: './repair-sheet.component.html',
   styleUrl: './repair-sheet.component.scss',
 })
-export class RepairSheetComponent implements OnInit {
+export class RepairSheetComponent {
   installing = false;
   showAdvanced = false;
 
@@ -61,7 +61,7 @@ export class RepairSheetComponent implements OnInit {
   isSubmittingPassword = false;
   hasPasswordError = false;
   passwordErrorMessage = '';
-  lockoutStatus: PasswordLockoutStatus | null = null;
+  errorCount = 0;
 
   // Refresh status properties
   isRefreshingStatus = false;
@@ -73,12 +73,7 @@ export class RepairSheetComponent implements OnInit {
   private appSettingsService = inject(AppSettingsService);
   private passwordService = inject(RclonePasswordService);
   private installationService = inject(InstallationService);
-
-  async ngOnInit(): Promise<void> {
-    if (this.requiresPassword()) {
-      await this.refreshLockoutStatus();
-    }
-  }
+  private cdr = inject(ChangeDetectorRef);
 
   async repair(): Promise<void> {
     // If this repair requires a password and we don't have one yet, validate it first
@@ -247,16 +242,8 @@ export class RepairSheetComponent implements OnInit {
     return this.data.type === 'rclone_password' || this.data.requiresPassword === true;
   }
 
-  private async refreshLockoutStatus(): Promise<void> {
-    try {
-      this.lockoutStatus = await this.passwordService.getLockoutStatus();
-    } catch (error) {
-      console.error('Failed to get lockout status:', error);
-    }
-  }
-
   async submitPassword(): Promise<void> {
-    if (!this.password || this.isSubmittingPassword || this.lockoutStatus?.is_locked) {
+    if (!this.password || this.isSubmittingPassword) {
       return;
     }
 
@@ -290,14 +277,15 @@ export class RepairSheetComponent implements OnInit {
       console.error('Password validation failed:', error);
       this.hasPasswordError = true;
       this.passwordErrorMessage = this.getPasswordErrorMessage(error);
-      await this.refreshLockoutStatus();
+      this.errorCount++;
+      this.cdr.detectChanges();
     } finally {
       this.isSubmittingPassword = false;
     }
   }
 
   canSubmitPassword(): boolean {
-    return !!(this.password && !this.isSubmittingPassword && !this.lockoutStatus?.is_locked);
+    return !!(this.password && !this.isSubmittingPassword);
   }
 
   private getPasswordErrorMessage(error: unknown): string {

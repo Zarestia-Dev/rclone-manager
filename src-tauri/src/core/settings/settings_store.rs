@@ -86,24 +86,6 @@ impl Default for AppSettings {
     }
 }
 
-// impl SettingMetadata {
-//     /// Validates a setting value based on its metadata
-//     pub fn validate(&self, value: &str) -> bool {
-//         match self.value_type.as_str() {
-//             "bool" => value == "true" || value == "false",
-//             "number" => value.parse::<u64>().is_ok(),
-//             "string" => {
-//                 if let Some(pattern) = &self.validation_pattern {
-//                     Regex::new(pattern).unwrap().is_match(value)
-//                 } else {
-//                     true
-//                 }
-//             }
-//             _ => true,
-//         }
-//     }
-// }
-
 impl AppSettings {
     pub fn get_metadata() -> HashMap<String, SettingMetadata> {
         let mut metadata = HashMap::new();

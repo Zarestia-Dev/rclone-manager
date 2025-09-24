@@ -3,8 +3,9 @@ use std::path::PathBuf;
 use log::{debug, error, info};
 use tauri::Manager;
 
-use crate::core::{
-    check_binaries::check_rclone_available, settings::operations::core::save_settings,
+use crate::{
+    core::{check_binaries::check_rclone_available, settings::operations::core::save_settings},
+    utils::rclone::updater::get_latest_rclone_version,
 };
 
 use super::{
@@ -53,7 +54,9 @@ pub async fn provision_rclone(
         _ => return Err("Unsupported OS.".into()),
     };
 
-    let (version, zip_bytes) = download_rclone_zip(os_name, &arch).await?;
+    let version = get_latest_rclone_version(&app_handle.state()).await?;
+
+    let zip_bytes = download_rclone_zip(os_name, &arch, &version).await?;
 
     info!("Rclone version: {version}");
     // Save the downloaded zip bytes to a local file for debugging or reuse
@@ -61,7 +64,7 @@ pub async fn provision_rclone(
     std::fs::create_dir_all(&temp_dir)
         .map_err(|e| format!("Failed to create temp directory: {e}"))?;
     debug!("Temp directory created at {}", temp_dir.display());
-    let zip_file_path = temp_dir.join(format!("rclone-v{version}-{os_name}-{arch}.zip"));
+    let zip_file_path = temp_dir.join(format!("rclone-{version}-{os_name}-{arch}.zip"));
     std::fs::write(&zip_file_path, &zip_bytes)
         .map_err(|e| format!("Failed to save rclone zip file locally: {e}"))?;
     info!(
@@ -72,7 +75,7 @@ pub async fn provision_rclone(
     match verify_rclone_sha256(
         &temp_dir,
         &version,
-        &format!("rclone-v{version}-{os_name}-{arch}.zip"),
+        &format!("rclone-{version}-{os_name}-{arch}.zip"),
     )
     .await
     {
@@ -92,7 +95,7 @@ pub async fn provision_rclone(
     };
     let extracted_path = temp_dir
         .join("rclone")
-        .join(format!("rclone-v{version}-{os_name}-{arch}"))
+        .join(format!("rclone-{version}-{os_name}-{arch}"))
         .join(binary_name);
 
     if !extracted_path.exists() {

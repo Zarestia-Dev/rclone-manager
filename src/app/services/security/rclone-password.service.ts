@@ -1,5 +1,4 @@
 import { Injectable } from '@angular/core';
-import { PasswordLockoutStatus } from '@app/types';
 import { BehaviorSubject } from 'rxjs';
 import { invoke } from '@tauri-apps/api/core';
 
@@ -98,19 +97,6 @@ export class RclonePasswordService {
   }
 
   /**
-   * Reset password validator (clear failed attempts)
-   */
-  async resetLockout(): Promise<boolean> {
-    try {
-      await invoke('reset_password_validator');
-      return true;
-    } catch (error) {
-      console.error('Failed to reset password validator:', error);
-      return false;
-    }
-  }
-
-  /**
    * Validate the Rclone config password
    */
   async validatePassword(password: string): Promise<void> {
@@ -119,18 +105,6 @@ export class RclonePasswordService {
     } catch (error) {
       console.error(error);
       throw error;
-    }
-  }
-
-  /**
-   * Get lockout status
-   */
-  async getLockoutStatus(): Promise<PasswordLockoutStatus | null> {
-    try {
-      return await invoke('get_password_lockout_status');
-    } catch (error) {
-      console.error('Failed to get lockout status:', error);
-      return null;
     }
   }
 

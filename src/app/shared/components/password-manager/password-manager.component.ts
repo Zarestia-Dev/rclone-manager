@@ -4,7 +4,8 @@ import {
   Output,
   EventEmitter,
   OnInit,
-  OnDestroy,
+  OnChanges,
+  SimpleChanges,
   ChangeDetectorRef,
   inject,
 } from '@angular/core';
@@ -16,8 +17,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
-import { PasswordLockoutStatus } from '@app/types';
 import { FormatTimePipe } from '../../pipes/format-time.pipe';
+import { AnimationsService } from '../../services/animations.service';
 
 @Component({
   selector: 'app-password-manager',
@@ -31,22 +32,23 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
     MatTooltipModule,
     MatButtonModule,
   ],
+  animations: [AnimationsService.slideInOut()],
   templateUrl: './password-manager.component.html',
   styleUrls: ['./password-manager.component.scss'],
 })
-export class PasswordManagerComponent implements OnInit, OnDestroy {
+export class PasswordManagerComponent implements OnInit, OnChanges {
   @Input() password = '';
   @Input() storePassword = true;
   @Input() isSubmitting = false;
   @Input() hasError = false;
   @Input() errorMessage = '';
-  @Input() lockoutStatus: PasswordLockoutStatus | null = null;
   @Input() showStoreOption = true;
   @Input() showSubmitButton = false;
   @Input() showPasswordStrength = false;
   @Input() disabled = false;
   @Input() placeholder = 'Enter your rclone config password';
   @Input() label = 'Configuration Password';
+  @Input() shakeTrigger = 0;
 
   @Output() passwordChange = new EventEmitter<string>();
   @Output() storePasswordChange = new EventEmitter<boolean>();
@@ -55,9 +57,9 @@ export class PasswordManagerComponent implements OnInit, OnDestroy {
   // Animation state
   isEntering = false;
 
-  // Internal state
-  private lockoutTimer?: number;
-  private previousLockoutTime?: number;
+  // Shake state for wrong password feedback
+  shouldShake = false;
+  private isShaking = false;
 
   FormatTimePipe = new FormatTimePipe();
 
@@ -69,15 +71,20 @@ export class PasswordManagerComponent implements OnInit, OnDestroy {
       this.isEntering = true;
       this.cdr.detectChanges();
     }, 50);
-
-    // Start lockout timer if needed
-    if (this.lockoutStatus?.is_locked && this.lockoutStatus.remaining_lockout_time) {
-      this.startLockoutTimer();
-    }
   }
 
-  ngOnDestroy(): void {
-    this.clearLockoutTimer();
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['hasError']) {
+      const prev = changes['hasError'].previousValue;
+      const curr = changes['hasError'].currentValue;
+      // If it changed from falsy -> truthy, trigger the shake
+      if (!prev && curr && !this.isShaking) {
+        this.triggerShake();
+      }
+    }
+    if (changes['shakeTrigger'] && !this.isShaking) {
+      this.triggerShake();
+    }
   }
 
   onPasswordInput(value: string): void {
@@ -95,83 +102,13 @@ export class PasswordManagerComponent implements OnInit, OnDestroy {
   }
 
   canSubmit(): boolean {
-    return !!(
-      this.password &&
-      !this.isSubmitting &&
-      !this.lockoutStatus?.is_locked &&
-      !this.disabled
-    );
-  }
-
-  getAttemptsRemainingText(lockoutStatus: PasswordLockoutStatus): string {
-    const remaining = lockoutStatus.max_attempts - lockoutStatus.failed_attempts;
-
-    if (remaining <= 1) {
-      return 'Next failed attempt will lock the account';
-    } else if (remaining <= 2) {
-      return `${remaining} attempts remaining before lockout`;
-    } else {
-      return `${remaining} attempts remaining`;
-    }
-  }
-
-  private startLockoutTimer(): void {
-    this.clearLockoutTimer();
-
-    if (!this.lockoutStatus?.remaining_lockout_time) return;
-
-    this.previousLockoutTime = this.lockoutStatus.remaining_lockout_time;
-
-    this.lockoutTimer = window.setInterval(() => {
-      if (this.lockoutStatus && this.lockoutStatus.remaining_lockout_time) {
-        this.lockoutStatus.remaining_lockout_time -= 1;
-
-        // Update the UI
-        this.cdr.detectChanges();
-
-        // Clear timer when time is up
-        if (this.lockoutStatus.remaining_lockout_time <= 0) {
-          this.clearLockoutTimer();
-          // Optionally emit an event that lockout has ended
-          this.unlock.emit();
-        }
-      } else {
-        this.clearLockoutTimer();
-      }
-    }, 1000);
-  }
-
-  private clearLockoutTimer(): void {
-    if (this.lockoutTimer) {
-      clearInterval(this.lockoutTimer);
-      this.lockoutTimer = undefined;
-    }
-  }
-
-  // Method to handle lockout status changes from parent
-  updateLockoutStatus(newStatus: PasswordLockoutStatus | null): void {
-    const wasLocked = this.lockoutStatus?.is_locked;
-    const isNowLocked = newStatus?.is_locked;
-
-    this.lockoutStatus = newStatus;
-
-    // Start timer if newly locked
-    if (!wasLocked && isNowLocked && newStatus?.remaining_lockout_time) {
-      this.startLockoutTimer();
-    }
-
-    // Clear timer if no longer locked
-    if (wasLocked && !isNowLocked) {
-      this.clearLockoutTimer();
-    }
-
-    this.cdr.detectChanges();
+    return !!(this.password && !this.isSubmitting && !this.disabled);
   }
 
   // Utility method for focus management
   focusPasswordInput(): void {
     const input = document.querySelector('.password-field input') as HTMLInputElement;
-    if (input && !this.disabled && !this.lockoutStatus?.is_locked) {
+    if (input && !this.disabled) {
       input.focus();
     }
   }
@@ -181,11 +118,24 @@ export class PasswordManagerComponent implements OnInit, OnDestroy {
     this.passwordChange.emit('');
   }
 
+  /**
+   * Trigger a shake animation on the input/description.
+   * Keeps state in a property so Angular templates and tests can interact predictably.
+   */
+  triggerShake(duration = 600): void {
+    this.shouldShake = true;
+    this.isShaking = true;
+    // Ensure change detection runs so template classes update immediately
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      this.shouldShake = false;
+      this.isShaking = false;
+      this.cdr.detectChanges();
+    }, duration);
+  }
+
+  // Backwards-compatible method kept for external callers
   shakeInput(): void {
-    const field = document.querySelector('.password-field-container');
-    if (field) {
-      field.classList.add('shake');
-      setTimeout(() => field.classList.remove('shake'), 600);
-    }
+    this.triggerShake();
   }
 }

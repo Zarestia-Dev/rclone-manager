@@ -1,9 +1,6 @@
 use crate::core::{
     check_binaries::build_rclone_command,
-    security::{
-        CredentialError, CredentialStore, PasswordValidatorState, SafeEnvironmentManager,
-        test_rclone_password,
-    },
+    security::{CredentialStore, SafeEnvironmentManager},
 };
 use log::{debug, error, info, warn};
 use tauri::{AppHandle, Emitter, State};
@@ -12,7 +9,6 @@ use tauri::{AppHandle, Emitter, State};
 #[tauri::command]
 pub async fn store_config_password(
     app: AppHandle,
-    password_state: State<'_, PasswordValidatorState>,
     env_manager: State<'_, SafeEnvironmentManager>,
     credential_store: State<'_, CredentialStore>,
     password: String,
@@ -23,10 +19,6 @@ pub async fn store_config_password(
         Ok(()) => {
             // Set environment variable for current session using safe manager
             env_manager.set_config_password(password.clone());
-            // Reset password validator state on successful storage
-            if let Ok(mut validator) = password_state.lock() {
-                validator.record_success();
-            }
 
             // Emit event so OAuth can restart if needed
             if let Err(e) = app.emit(
@@ -58,7 +50,7 @@ pub async fn get_config_password(
             debug!("✅ Password retrieved successfully");
             Ok(password)
         }
-        Err(CredentialError::NotFound) => {
+        Err(keyring::Error::NoEntry) => {
             debug!("ℹ️ No password stored");
             Err("No password stored".to_string())
         }
@@ -104,85 +96,42 @@ pub async fn remove_config_password(
 
 /// Test if a password is valid for rclone
 #[tauri::command]
-pub async fn validate_rclone_password(
-    app: AppHandle,
-    password_state: State<'_, PasswordValidatorState>,
-    password: String,
-) -> Result<(), String> {
-    // Check if we're locked out
-    if let Ok(validator) = password_state.lock()
-        && validator.is_locked_out()
-    {
-        let remaining = validator
-            .remaining_lockout_time()
-            .map(|d| d.as_secs())
-            .unwrap_or(0);
+pub async fn validate_rclone_password(app: AppHandle, password: String) -> Result<(), String> {
+    use std::process::Stdio;
 
-        error!(
-            "🔒 Password validation locked out for {} seconds",
-            remaining
-        );
-        return Err(format!(
-            "You are locked out due to too many failed attempts. Please try again in {} seconds.",
-            remaining
-        ));
+    debug!("🔐 Testing rclone password");
+
+    if password.trim().is_empty() {
+        return Err("Password cannot be empty".to_string());
     }
 
-    // Test the password
-    let result = test_rclone_password(&app, &password).await;
+    let output = build_rclone_command(&app, None, None, None)
+        .args(["listremotes", "--ask-password=false"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .env("RCLONE_CONFIG_PASS", &password)
+        .output()
+        .map_err(|e| format!("Failed to execute rclone: {}", e))?;
 
-    // Update validator state
-    if let Ok(mut validator) = password_state.lock() {
-        if result.is_valid {
-            validator.record_success();
-        } else {
-            validator.record_failure();
-        }
-    }
-
-    if result.is_valid {
+    if output.status.success() {
         info!("✅ Password validation successful");
-    } else {
-        error!("❌ Password validation failed: {}", result.message);
-        return Err(format!("Password validation failed: {}", result.message));
-    }
-
-    Ok(())
-}
-
-/// Get the current lockout status
-#[tauri::command]
-pub async fn get_password_lockout_status(
-    password_state: State<'_, PasswordValidatorState>,
-) -> Result<serde_json::Value, String> {
-    debug!("🔍 Getting password lockout status");
-
-    if let Ok(validator) = password_state.lock() {
-        Ok(serde_json::json!({
-            "is_locked_out": validator.is_locked_out(),
-            "remaining_time": validator.remaining_lockout_time().map(|d| d.as_secs()),
-            "failed_attempts": validator.failed_attempts(),
-            "max_attempts": validator.max_attempts()
-        }))
-    } else {
-        Err("Failed to get lockout status".to_string())
-    }
-}
-
-/// Reset the password validator (admin function)
-#[tauri::command]
-pub async fn reset_password_validator(
-    password_state: State<'_, PasswordValidatorState>,
-) -> Result<(), String> {
-    info!("🔄 Resetting password validator");
-
-    if let Ok(mut validator) = password_state.lock() {
-        validator.reset();
-
-        info!("✅ Password validator reset successfully");
         Ok(())
     } else {
-        Err("Failed to reset password validator".to_string())
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        error!("❌ Password validation failed: {}", stderr);
+
+        let error_msg = if stderr
+            .contains("Couldn't decrypt configuration, most likely wrong password")
+            || stderr.contains("unable to decrypt configuration")
+            || stderr.contains("wrong password")
+        {
+            "Incorrect password for rclone configuration".to_string()
+        } else {
+            format!("Rclone error: {}", stderr.trim())
+        };
+
+        Err(error_msg)
     }
 }
 
@@ -274,44 +223,39 @@ pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
 
     debug!("🔍 Checking if rclone config is encrypted");
 
-    let mut rclone_command = build_rclone_command(&app, None, None, None);
-
-    // Simple approach: try listremotes with --ask-password=false
-    // If encrypted: "unable to decrypt configuration and not allowed to ask for password"
-    // If not encrypted: succeeds and lists remotes
-    let output = rclone_command
+    let output = build_rclone_command(&app, None, None, None)
         .args(["listremotes", "--ask-password=false"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .env_remove("RCLONE_CONFIG_PASS")
         .output()
-        .map_err(|e| format!("Failed to execute rclone listremotes: {e}"))?;
+        .map_err(|e| format!("Failed to execute rclone: {e}"))?;
 
     let stderr = String::from_utf8_lossy(&output.stderr);
-    debug!("🔍 rclone listremotes stderr: {}", stderr.trim());
+    debug!("🔍 rclone stderr: {}", stderr.trim());
 
-    // Check for encryption error message
-    if stderr.contains("unable to decrypt configuration and not allowed to ask for password")
-        || stderr.contains("Failed to load config file") && stderr.contains("unable to decrypt")
-    {
-        debug!("🔒 Configuration is encrypted");
-        Ok(true)
-    } else if output.status.success() {
-        debug!("🔓 Configuration is NOT encrypted");
-        Ok(false)
-    } else {
-        // Other error - assume not encrypted if we can't determine
-        warn!("⚠️ Unexpected error checking encryption: {}", stderr);
-        Ok(false)
-    }
+    // Encrypted if we get the specific decryption error message
+    let is_encrypted =
+        stderr.contains("unable to decrypt configuration and not allowed to ask for password");
+
+    debug!(
+        "{} Configuration is {}",
+        if is_encrypted { "🔒" } else { "🔓" },
+        if is_encrypted {
+            "encrypted"
+        } else {
+            "not encrypted"
+        }
+    );
+
+    Ok(is_encrypted)
 }
 
 /// Encrypt the rclone configuration with a password
 #[tauri::command]
 pub async fn encrypt_config(
     app: AppHandle,
-    password_state: State<'_, PasswordValidatorState>,
     env_manager: State<'_, SafeEnvironmentManager>,
     credential_store: State<'_, CredentialStore>,
     password: String,
@@ -368,11 +312,6 @@ pub async fn encrypt_config(
 
         // Set environment variable for current session using safe manager
         env_manager.set_config_password(password.clone());
-
-        // Reset password validator state on successful encryption
-        if let Ok(mut validator) = password_state.lock() {
-            validator.record_success();
-        }
 
         info!("✅ Configuration encrypted successfully");
         Ok(())
@@ -475,7 +414,6 @@ pub async fn unencrypt_config(
 #[tauri::command]
 pub async fn change_config_password(
     app: AppHandle,
-    password_state: State<'_, PasswordValidatorState>,
     env_manager: State<'_, SafeEnvironmentManager>,
     credential_store: State<'_, CredentialStore>,
     current_password: String,
@@ -493,7 +431,6 @@ pub async fn change_config_password(
     debug!("🔒 Step 2: Encrypting with new password");
     encrypt_config(
         app.clone(),
-        password_state.clone(),
         env_manager.clone(),
         credential_store.clone(),
         new_password.clone(),
@@ -508,11 +445,6 @@ pub async fn change_config_password(
 
     // Update environment variable for current session using safe manager
     env_manager.set_config_password(new_password.clone());
-
-    // Reset password validator state on successful password change
-    if let Ok(mut validator) = password_state.lock() {
-        validator.record_success();
-    }
 
     info!("✅ Configuration password changed successfully");
     Ok(())

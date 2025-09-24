@@ -271,3 +271,6 @@ pub enum ExportType {
     RemoteConfigs,
     SpecificRemote,
 }
+
+pub const SERVICE_NAME: &str = env!("CARGO_PKG_NAME");
+pub const CONFIG_PASSWORD_KEY: &str = "rclone_config_password";

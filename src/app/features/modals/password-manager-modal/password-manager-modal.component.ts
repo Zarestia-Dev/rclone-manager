@@ -18,7 +18,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { RclonePasswordService } from '@app/services';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
-import { LoadingStates, PasswordLockoutStatus, PasswordTab } from '@app/types';
+import { LoadingStates, PasswordTab } from '@app/types';
 
 @Component({
   selector: 'app-password-manager-modal',
@@ -72,7 +72,6 @@ export class PasswordManagerModalComponent implements OnInit {
   hasStoredPassword = false;
   hasEnvPassword = false;
   isConfigEncrypted: boolean | null = null; // null = loading, true/false = actual state
-  lockoutStatus: PasswordLockoutStatus | null = null;
 
   // Loading state for initial data fetch
   isInitialLoading = true;
@@ -231,7 +230,6 @@ export class PasswordManagerModalComponent implements OnInit {
       this.showError(this.getErrorMessage(error));
       console.error('Validation failed:', error);
     } finally {
-      this.lockoutStatus = await this.passwordService.getLockoutStatus();
       this.loading.isValidating = false;
     }
   }
@@ -376,21 +374,6 @@ export class PasswordManagerModalComponent implements OnInit {
     }
   }
 
-  // Advanced actions
-  async resetLockout(): Promise<void> {
-    this.loading.isResettingLockout = true;
-    try {
-      await this.passwordService.resetLockout();
-      this.showSuccess('Security status reset');
-      await this.refreshStatus();
-    } catch (error) {
-      console.error('Failed to reset lockout:', error);
-      this.showError(this.getErrorMessage(error));
-    } finally {
-      this.loading.isResettingLockout = false;
-    }
-  }
-
   // Utility methods
   private async refreshStatus(): Promise<void> {
     try {
@@ -416,18 +399,16 @@ export class PasswordManagerModalComponent implements OnInit {
         this.passwordService.hasStoredPassword(),
         this.passwordService.hasConfigPasswordEnv(),
         this.passwordService.isConfigEncryptedCached(), // Always use cached version for better performance
-        this.passwordService.getLockoutStatus(),
       ]);
 
-      const [hasStored, hasEnv, isEncrypted, lockout] = (await Promise.race([
+      const [hasStored, hasEnv, isEncrypted] = (await Promise.race([
         statusPromise,
         timeoutPromise,
-      ])) as [boolean, boolean, boolean, PasswordLockoutStatus | null];
+      ])) as [boolean, boolean, boolean, null];
 
       this.hasStoredPassword = hasStored;
       this.hasEnvPassword = hasEnv;
       this.isConfigEncrypted = isEncrypted;
-      this.lockoutStatus = lockout;
 
       // Update form states after getting lockout status
       this.updateFormStatesBasedOnLockout();
@@ -503,17 +484,10 @@ export class PasswordManagerModalComponent implements OnInit {
 
   // Update form disabled states based on lockout status
   private updateFormStatesBasedOnLockout(): void {
-    if (this.lockoutStatus?.is_locked) {
-      this.overviewForm.get('password')?.disable();
-      this.encryptionForm.get('password')?.disable();
-      this.encryptionForm.get('confirmPassword')?.disable();
-      this.changePasswordForm.disable();
-    } else {
-      this.overviewForm.get('password')?.enable();
-      this.encryptionForm.get('password')?.enable();
-      this.encryptionForm.get('confirmPassword')?.enable();
-      this.changePasswordForm.enable();
-    }
+    this.overviewForm.get('password')?.enable();
+    this.encryptionForm.get('password')?.enable();
+    this.encryptionForm.get('confirmPassword')?.enable();
+    this.changePasswordForm.enable();
   }
 
   @HostListener('window:resize')

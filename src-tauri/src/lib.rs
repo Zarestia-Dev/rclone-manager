@@ -18,10 +18,9 @@ use crate::{
         security::{
             change_config_password, clear_config_password_env, clear_encryption_cache,
             encrypt_config, get_cached_encryption_status, get_config_password,
-            get_password_lockout_status, has_config_password_env, has_stored_password,
-            is_config_encrypted, is_config_encrypted_cached, remove_config_password,
-            reset_password_validator, set_config_password_env, store_config_password,
-            unencrypt_config, validate_rclone_password,
+            has_config_password_env, has_stored_password, is_config_encrypted,
+            is_config_encrypted_cached, remove_config_password, set_config_password_env,
+            store_config_password, unencrypt_config, validate_rclone_password,
         },
         settings::{
             backup::{
@@ -39,7 +38,6 @@ use crate::{
             handle_stop_move, handle_stop_sync, handle_sync_remote, handle_unmount_remote,
             show_main_window,
         },
-        ui::set_theme,
     },
     rclone::{
         commands::{
@@ -66,7 +64,7 @@ use crate::{
         },
     },
     utils::{
-        app::builder::create_app_window,
+        app::{builder::create_app_window, ui::set_theme},
         io::{
             file_helper::{get_file_location, get_folder_location, open_in_files},
             network::{check_links, is_network_metered, monitor_network_changes},
@@ -140,11 +138,6 @@ pub fn run() {
             );
 
             app.manage(SettingsState { store, config_dir });
-
-            // Initialize password validator state
-            use crate::core::security::init_password_validator;
-            let password_validator = init_password_validator();
-            app.manage(password_validator);
 
             // Initialize SafeEnvironmentManager for secure password handling
             use crate::core::security::{CredentialStore, SafeEnvironmentManager};
@@ -387,8 +380,6 @@ pub fn run() {
             has_stored_password,
             remove_config_password,
             validate_rclone_password,
-            get_password_lockout_status,
-            reset_password_validator,
             is_config_encrypted,
             is_config_encrypted_cached,
             get_cached_encryption_status,

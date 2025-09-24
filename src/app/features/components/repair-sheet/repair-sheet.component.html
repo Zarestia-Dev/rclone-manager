@@ -35,9 +35,9 @@
           [isSubmitting]="isSubmittingPassword"
           [hasError]="hasPasswordError"
           [errorMessage]="passwordErrorMessage"
-          [lockoutStatus]="lockoutStatus"
           [showStoreOption]="!!data.showStoreOption"
           [disabled]="installing"
+          [shakeTrigger]="errorCount"
           (passwordChange)="password = $event"
           (storePasswordChange)="storePassword = $event"
           (unlock)="submitPassword()"
@@ -113,7 +113,7 @@
         !canRepair() && !installing && !isSubmittingPassword
           ? requiresPassword() && !password
             ? 'Please enter the configuration password first'
-            : requiresPassword() && lockoutStatus?.is_locked
+            : requiresPassword()
               ? 'Account is temporarily locked due to failed attempts'
               : installationData.installLocation === 'custom' &&
                   installationData.customPath.trim().length === 0

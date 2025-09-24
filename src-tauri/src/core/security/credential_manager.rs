@@ -1,11 +1,9 @@
-use keyring::{Entry, Error as KeyringError};
+use keyring::Entry;
 use log::{debug, error, info, warn};
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-const SERVICE_NAME: &str = "rclone-manager";
-const CONFIG_PASSWORD_KEY: &str = "rclone_config_password";
+use crate::utils::types::all_types::{CONFIG_PASSWORD_KEY, SERVICE_NAME};
 
 /// Thread-safe environment variable manager
 #[derive(Debug, Clone)]
@@ -18,29 +16,6 @@ pub struct CredentialStore {
     service_name: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum CredentialError {
-    KeyringError(String),
-    NotFound,
-    InvalidPassword,
-    AccessDenied,
-    Unknown(String),
-}
-
-impl From<KeyringError> for CredentialError {
-    fn from(error: KeyringError) -> Self {
-        match error {
-            KeyringError::NoEntry => CredentialError::NotFound,
-            KeyringError::BadEncoding(_) => CredentialError::InvalidPassword,
-            KeyringError::PlatformFailure(err) => {
-                error!("Platform keyring failure: {}", err);
-                CredentialError::KeyringError(err.to_string())
-            }
-            _ => CredentialError::Unknown(error.to_string()),
-        }
-    }
-}
-
 impl CredentialStore {
     pub fn new() -> Self {
         Self {
@@ -49,15 +24,14 @@ impl CredentialStore {
     }
 
     /// Store the rclone config password securely
-    pub fn store_config_password(&self, password: &str) -> Result<(), CredentialError> {
+    pub fn store_config_password(&self, password: &str) -> Result<(), keyring::Error> {
         debug!("Storing rclone config password in system keyring");
 
-        let entry =
-            Entry::new(&self.service_name, CONFIG_PASSWORD_KEY).map_err(CredentialError::from)?;
+        let entry = Entry::new(&self.service_name, CONFIG_PASSWORD_KEY)?;
 
         entry.set_password(password).map_err(|e| {
             error!("Failed to store password: {}", e);
-            CredentialError::from(e)
+            e
         })?;
 
         info!("✅ Rclone config password stored securely");
@@ -65,65 +39,49 @@ impl CredentialStore {
     }
 
     /// Retrieve the rclone config password from secure storage
-    pub fn get_config_password(&self) -> Result<String, CredentialError> {
+    pub fn get_config_password(&self) -> Result<String, keyring::Error> {
         debug!("Retrieving rclone config password from system keyring");
 
-        let entry =
-            Entry::new(&self.service_name, CONFIG_PASSWORD_KEY).map_err(CredentialError::from)?;
+        let entry = Entry::new(&self.service_name, CONFIG_PASSWORD_KEY)?;
 
         match entry.get_password() {
             Ok(password) => {
                 debug!("✅ Rclone config password retrieved successfully");
                 Ok(password)
             }
+            Err(keyring::Error::NoEntry) => Err(keyring::Error::NoEntry),
             Err(e) => {
                 warn!("Failed to retrieve password: {}", e);
-                Err(CredentialError::from(e))
+                Err(e)
             }
         }
     }
 
     /// Remove the stored rclone config password
-    pub fn remove_config_password(&self) -> Result<(), String> {
+    pub fn remove_config_password(&self) -> Result<(), keyring::Error> {
         debug!("Removing rclone config password from system keyring");
 
-        let entry = Entry::new(&self.service_name, CONFIG_PASSWORD_KEY).map_err(|e| {
-            error!("Failed to create keyring entry: {}", e);
-            e.to_string()
-        })?;
+        let entry = Entry::new(&self.service_name, CONFIG_PASSWORD_KEY)?;
 
         match entry.delete_credential() {
             Ok(()) => {
                 info!("✅ Rclone config password removed from keyring");
                 Ok(())
             }
-            Err(KeyringError::NoEntry) => {
+            Err(keyring::Error::NoEntry) => {
                 debug!("Password entry not found (already removed)");
                 Ok(())
             }
             Err(e) => {
                 error!("Failed to remove password: {}", e);
-                Err(e.to_string())
+                Err(e)
             }
         }
     }
 
     /// Check if a config password is stored
     pub fn has_config_password(&self) -> bool {
-        match self.get_config_password() {
-            Ok(_) => true,
-            Err(CredentialError::NotFound) => false,
-            Err(e) => {
-                warn!("Error checking for stored password: {:?}", e);
-                false
-            }
-        }
-    }
-}
-
-impl Default for CredentialStore {
-    fn default() -> Self {
-        Self::new()
+        self.get_config_password().is_ok()
     }
 }
 
@@ -140,23 +98,14 @@ impl SafeEnvironmentManager {
         &self,
         credential_store: &CredentialStore,
     ) -> Result<(), String> {
-        // Try to load stored password into environment manager
         match credential_store.get_config_password() {
             Ok(password) => {
                 self.set_config_password(password);
                 info!("✅ Initialized SafeEnvironmentManager with stored credentials");
                 Ok(())
             }
-            Err(CredentialError::NotFound) => {
+            Err(_) => {
                 debug!("No stored credentials found during initialization");
-                Ok(())
-            }
-            Err(e) => {
-                warn!(
-                    "Failed to load stored credentials during initialization: {:?}",
-                    e
-                );
-                // Don't fail initialization if we can't load credentials
                 Ok(())
             }
         }
@@ -180,11 +129,10 @@ impl SafeEnvironmentManager {
 
     /// Check if password is stored
     pub fn has_config_password(&self) -> bool {
-        if let Ok(env_vars) = self.env_vars.lock() {
-            env_vars.contains_key("RCLONE_CONFIG_PASS")
-        } else {
-            false
-        }
+        self.env_vars
+            .lock()
+            .map(|env_vars| env_vars.contains_key("RCLONE_CONFIG_PASS"))
+            .unwrap_or(false)
     }
 
     /// Get all environment variables for spawning rclone process
@@ -204,6 +152,12 @@ impl SafeEnvironmentManager {
         }
 
         result
+    }
+}
+
+impl Default for CredentialStore {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

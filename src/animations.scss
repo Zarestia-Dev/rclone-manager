@@ -1,5 +1,41 @@
 // ===== LOADING & UTILITY ANIMATIONS =====
 
+@keyframes shake {
+  0% {
+    transform: translateX(0);
+  }
+  10% {
+    transform: translateX(-8px) rotate(-1deg);
+  }
+  20% {
+    transform: translateX(8px) rotate(1deg);
+  }
+  30% {
+    transform: translateX(-6px) rotate(-1deg);
+  }
+  40% {
+    transform: translateX(6px) rotate(1deg);
+  }
+  50% {
+    transform: translateX(-4px) rotate(-0.5deg);
+  }
+  60% {
+    transform: translateX(4px) rotate(0.5deg);
+  }
+  70% {
+    transform: translateX(-2px) rotate(-0.25deg);
+  }
+  80% {
+    transform: translateX(2px) rotate(0.25deg);
+  }
+  90% {
+    transform: translateX(-1px) rotate(-0.1deg);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
 @keyframes diskLoadingShimmer {
   0% {
     background-position: 200% 0;

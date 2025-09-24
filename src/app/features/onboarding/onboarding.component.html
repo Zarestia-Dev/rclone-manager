@@ -50,12 +50,12 @@
             <div class="form-section" @slideInOut>
               <app-password-manager
                 [password]="configPassword"
+                [hasError]="!!passwordValidationError"
                 [storePassword]="true"
                 [isSubmitting]="isSubmittingPassword"
-                [hasError]="!!passwordValidationError"
                 [errorMessage]="passwordValidationError || ''"
-                [lockoutStatus]="lockoutStatus"
                 [showStoreOption]="false"
+                [shakeTrigger]="errorCount"
                 (passwordChange)="configPassword = $event"
                 (unlock)="submitConfigPassword()"
               ></app-password-manager>
