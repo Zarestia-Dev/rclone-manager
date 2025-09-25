@@ -606,9 +606,19 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     await this.onRemoteTypeChange();
     this.dynamicRemoteFields.forEach(field => {
       if (config[field.Name] !== undefined) {
-        this.remoteForm.get(field.Name)?.setValue(config[field.Name]);
+        // Convert string boolean values to actual booleans for boolean fields
+        let value = config[field.Name];
+        if (field.Type === 'bool') {
+          value = this.convertToBoolean(value);
+        }
+        this.remoteForm.get(field.Name)?.setValue(value);
       } else if (field.Value !== null) {
-        this.remoteForm.get(field.Name)?.setValue(field.Value);
+        // Also convert default values for boolean fields
+        let value = field.Value;
+        if (field.Type === 'bool') {
+          value = this.convertToBoolean(value);
+        }
+        this.remoteForm.get(field.Name)?.setValue(value);
       }
     });
   }
@@ -1403,5 +1413,20 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       );
     }
     this.close();
+  }
+
+  /**
+   * Converts various representations of boolean values to actual boolean type.
+   * This is needed because form values may come as strings "true"/"false" from the backend.
+   */
+  private convertToBoolean(value: unknown): boolean {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'string') {
+      return value.toLowerCase() === 'true';
+    }
+    // For any other type, convert to boolean (handles numbers, etc.)
+    return Boolean(value);
   }
 }

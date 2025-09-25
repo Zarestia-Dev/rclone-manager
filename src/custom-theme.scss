@@ -648,6 +648,13 @@ body {
       container-shape: var(--button-border-radius),
     )
   );
+
+  @include mat.chips-overrides(
+    (
+      outline-color: var(--border-color),
+      focus-outline-color: var(--border-color),
+    )
+  );
 }
 
 * {

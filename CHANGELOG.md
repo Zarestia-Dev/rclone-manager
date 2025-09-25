@@ -13,7 +13,6 @@
 - **Encrypted configuration file support**: Added comprehensive support for rclone encrypted configuration files.
   - Automatic detection of encrypted config files
   - Secure password storage using system keyring/credential store
-  - Password validation with lockout protection to prevent brute force attacks
   - Encrypt/decrypt configuration operations
 
 - Implemented the `bisync` and `move` operations for remotes.
@@ -30,8 +29,8 @@
 - Updated the Angular version to the latest stable version. Version 20.3.0
 
 ### Need Fix
-- After engine restart, need the apply the startup settings again. (e.g. config file path, bw limit, etc.) (Fixed but need the config file implementation on the rclone. Implemented for when user user change the config file path in the settings app check the config file is ecrypted or not and set the password if needed.)
-- Remote updates not working properly. When you update a some settings to default, it does not update the remote. I know whats the problem. (Fixed I think)
+- After engine restart, need the apply the startup settings again. (e.g. config file path, bw limit, etc.) (All Fixed)
+- Remote updates not working properly. When you update a some settings to default, it does not update the remote. I know whats the problem. (Fixed)
 
 ## [beta-0.1.2] - 2025-07-15
 ### Added

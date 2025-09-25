@@ -48,7 +48,7 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
         let current_mounts = match get_mounted_remotes_from_api(&app_handle).await {
             Ok(mounts) => mounts,
             Err(e) => {
-                debug!("� Failed to get mounted remotes from API: {e}");
+                debug!("🔍 Failed to get mounted remotes from API: {e}");
                 // Fall back to cache if API is not available
                 cached_remotes
             }

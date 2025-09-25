@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::{error, info, warn};
 use serde_json::json;
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Manager};
@@ -129,8 +129,12 @@ async fn open_windows_terminal(
         info!("Trying Windows terminal command: {full_cmd}");
 
         match try_open_windows_terminal(&full_cmd).await {
-            Ok(_) => return Ok(()),
+            Ok(_) => {
+                info!("✅ Successfully opened Windows terminal with: {terminal_cmd}");
+                return Ok(());
+            }
             Err(e) => {
+                warn!("⚠️ Failed to open Windows terminal with '{terminal_cmd}': {e}");
                 last_error = Some(e);
                 continue;
             }
@@ -157,11 +161,11 @@ async fn open_macos_terminal(
 
         match try_open_macos_terminal(&full_cmd).await {
             Ok(_) => {
-                info!("Successfully opened macOS terminal");
+                info!("✅ Successfully opened macOS terminal with: {terminal_cmd}");
                 return Ok(());
             }
             Err(e) => {
-                info!("Failed to open terminal with command '{full_cmd}': {e}");
+                warn!("⚠️ Failed to open macOS terminal with '{terminal_cmd}': {e}");
                 last_error = Some(e);
             }
         }
@@ -186,11 +190,11 @@ async fn open_linux_terminal(
 
         match try_open_linux_terminal(&full_cmd).await {
             Ok(_) => {
-                info!("Successfully opened Linux terminal");
+                info!("✅ Successfully opened Linux terminal with: {terminal_cmd}");
                 return Ok(());
             }
             Err(e) => {
-                info!("Failed to open terminal with command '{full_cmd}': {e}");
+                warn!("⚠️ Failed to open Linux terminal with '{terminal_cmd}': {e}");
                 last_error = Some(e);
             }
         }
