@@ -46,6 +46,20 @@
         type="button"
         matButton
         class="about-item"
+        (click)="navigateTo('updates')"
+        aria-label="Check for app updates"
+        [matBadge]="updateAvailable ? '1' : null"
+        matBadgeColor="warn"
+        [matTooltip]="updateAvailable ? 'Application update available' : null"
+      >
+        <span>Updates</span>
+        <mat-icon svgIcon="chevron-right" aria-hidden="true"></mat-icon>
+      </button>
+
+      <button
+        type="button"
+        matButton
+        class="about-item"
         (click)="navigateTo('About Rclone')"
         aria-label="View Rclone information"
       >
@@ -128,6 +142,84 @@
               <span>Report Issues</span>
               <mat-icon svgIcon="open-link" aria-hidden="true"></mat-icon>
             </button>
+          </div>
+        </div>
+      }
+
+      @if (currentPage === 'updates') {
+        <div class="overlay-content">
+          <div class="update-section">
+            <h3>Application Updates</h3>
+            <p class="current-version">Current version: {{ rCloneManagerVersion }}</p>
+
+            @if (updateAvailable) {
+              <div class="update-available">
+                <mat-icon svgIcon="circle-exclamation" class="update-icon"></mat-icon>
+                <div class="update-info">
+                  <h4>Update Available</h4>
+                  <p>Version {{ updateAvailable.version }} is available</p>
+                  <div class="update-actions">
+                    <button
+                      mat-raised-button
+                      color="primary"
+                      (click)="installUpdate()"
+                      [disabled]="installingUpdate"
+                    >
+                      @if (installingUpdate) {
+                        <mat-spinner diameter="20"></mat-spinner>
+                        Installing...
+                      } @else {
+                        Install Update
+                      }
+                    </button>
+                    <button mat-stroked-button (click)="skipUpdate()">Skip This Version</button>
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <div class="no-updates">
+                <mat-icon svgIcon="circle-check" class="check-icon"></mat-icon>
+                <p>Your app is up to date</p>
+              </div>
+            }
+
+            <div class="update-settings">
+              <mat-slide-toggle [checked]="autoCheckUpdates" (change)="toggleAutoCheck()">
+                Automatically check for updates
+              </mat-slide-toggle>
+            </div>
+
+            <div class="update-settings">
+              <mat-form-field appearance="outline" class="channel-select">
+                <mat-label>Update Channel</mat-label>
+                <mat-select [value]="updateChannel" (selectionChange)="changeChannel($event.value)">
+                  <mat-option
+                    *ngFor="let channel of channels; trackBy: trackByChannel"
+                    [value]="channel.value"
+                  >
+                    <div class="channel-option">
+                      <span class="channel-label">{{ channel.label }}</span>
+                      <span class="channel-description">{{ channel.description }}</span>
+                    </div>
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="update-actions">
+              <button
+                mat-stroked-button
+                (click)="checkForUpdates()"
+                [disabled]="checkingForUpdates"
+              >
+                @if (checkingForUpdates) {
+                  <mat-spinner diameter="20"></mat-spinner>
+                  Checking...
+                } @else {
+                  Check for Updates
+                }
+              </button>
+            </div>
           </div>
         </div>
       }

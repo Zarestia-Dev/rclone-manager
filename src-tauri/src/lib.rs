@@ -9,6 +9,8 @@ mod core;
 mod rclone;
 mod utils;
 
+#[cfg(desktop)]
+use crate::utils::app::updater::app_updates::PendingUpdate;
 // Import the functions we separated out
 use crate::{
     core::{
@@ -64,7 +66,11 @@ use crate::{
         },
     },
     utils::{
-        app::{builder::create_app_window, ui::set_theme},
+        app::{
+            builder::create_app_window,
+            ui::set_theme,
+            updater::app_updates::{fetch_update, install_update},
+        },
         io::{
             file_helper::{get_file_location, get_folder_location, open_in_files},
             network::{check_links, is_network_metered, monitor_network_changes},
@@ -84,6 +90,7 @@ use crate::{
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             show_main_window(app.clone());
         }))
@@ -185,6 +192,9 @@ pub fn run() {
                     settings.core.terminal_apps.clone(),
                 )),
             });
+
+            #[cfg(desktop)]
+            app.manage(PendingUpdate(std::sync::Mutex::new(None)));
 
             // Setup global shortcuts
             #[cfg(desktop)]
@@ -390,6 +400,10 @@ pub fn run() {
             set_config_password_env,
             clear_config_password_env,
             has_config_password_env,
+            #[cfg(desktop)]
+            fetch_update,
+            #[cfg(desktop)]
+            install_update,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

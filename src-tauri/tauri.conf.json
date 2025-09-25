@@ -16,6 +16,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": ["nsis", "msi", "dmg", "app", "deb", "rpm", "appimage"],
     "category": "utility",
     "shortDescription": "User-friendly GUI for RClone",
@@ -25,12 +26,12 @@
     "linux": {
       "deb": {
         "desktopTemplate": "linux/template.desktop",
-        "depends": ["rclone"],
+        "depends": ["rclone", "libayatana-appindicator3-1 | libappindicator3-1"],
         "recommends": ["7z"]
       },
       "rpm": {
         "desktopTemplate": "linux/template.desktop",
-        "depends": ["rclone"],
+        "depends": ["rclone", "libappindicator-gtk3 or libayatana-appindicator-gtk3"],
         "recommends": ["7z"]
       }
     },
@@ -58,5 +59,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEzQkE2OTczRUM3RDkzNkYKUldSdmszM3NjMm02bzBTOXhXU0JBZS9TMGdtN1RoanUrZUpiVndsMHJhM0pHRXpiWWpQNkRiYlQK"
+    }
   }
 }

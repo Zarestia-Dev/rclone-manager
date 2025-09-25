@@ -61,7 +61,15 @@
 
   <div class="right-section">
     <!-- App Menu -->
-    <button matIconButton [matMenuTriggerFor]="menu" aria-label="Application menu">
+    <button
+      matIconButton
+      [matMenuTriggerFor]="menu"
+      aria-label="Application menu"
+      class="menu-button"
+      [matBadge]="updateAvailable ? '!' : null"
+      matBadgeColor="warn"
+      [matTooltip]="updateAvailable ? 'Application update available' : null"
+    >
       <mat-icon svgIcon="menu-bar" aria-hidden="true"></mat-icon>
     </button>
 

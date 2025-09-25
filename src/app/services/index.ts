@@ -2,6 +2,7 @@ export * from './system/system-info.service';
 export * from './system/event-listeners.service';
 export * from './system/logging.service';
 export * from './system/rclone-update.service';
+export * from './system/app-updater.service';
 export * from './ui/ui-state.service';
 export * from './ui/window.service';
 export * from './remote/remote-management.service';

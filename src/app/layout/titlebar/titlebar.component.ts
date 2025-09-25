@@ -11,6 +11,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatBadgeModule } from '@angular/material/badge';
 import { ExportModalComponent } from '../../features/modals/settings/export-modal/export-modal.component';
 import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
 import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
@@ -26,6 +27,7 @@ import { AppSettingsService } from '@app/services';
 import { UiStateService } from '@app/services';
 import { NotificationService } from 'src/app/shared/services/notification.service';
 import { PasswordManagerModalComponent } from 'src/app/features/modals/password-manager-modal/password-manager-modal.component';
+import { AppUpdaterService } from '@app/services';
 import { CheckResult, ConnectionStatus, ModalSize, STANDARD_MODAL_SIZE, Theme } from '@app/types';
 
 @Component({
@@ -38,6 +40,7 @@ import { CheckResult, ConnectionStatus, ModalSize, STANDARD_MODAL_SIZE, Theme } 
     MatButtonModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
+    MatBadgeModule,
   ],
   templateUrl: './titlebar.component.html',
   styleUrls: ['./titlebar.component.scss'],
@@ -51,12 +54,14 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   windowService = inject(WindowService);
   remoteManagementService = inject(RemoteManagementService);
   notificationService = inject(NotificationService);
+  appUpdaterService = inject(AppUpdaterService);
 
   selectedTheme: Theme = 'light';
   isMacOS = false;
   connectionStatus: ConnectionStatus = 'online';
   connectionHistory: { timestamp: Date; result: CheckResult }[] = [];
   result?: CheckResult;
+  updateAvailable = false;
 
   private darkModeMediaQuery: MediaQueryList | null = null;
   private destroy$ = new Subject<void>();
@@ -83,6 +88,14 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
       this.initThemeSystem();
       await this.runInternetCheck();
+
+      // Subscribe to update availability
+      this.appUpdaterService.updateAvailable$.subscribe(update => {
+        this.updateAvailable = !!update;
+      });
+
+      // Check for updates if auto-check is enabled
+      this.checkAutoUpdate();
     } catch (error) {
       console.error('Initialization error:', error);
       this.selectedTheme = 'light';
@@ -134,6 +147,18 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
   private applyTheme(theme: 'light' | 'dark'): void {
     this.windowService.applyTheme(theme);
+  }
+
+  private async checkAutoUpdate(): Promise<void> {
+    try {
+      const autoCheckEnabled = await this.appUpdaterService.getAutoCheckEnabled();
+      if (autoCheckEnabled) {
+        // Check for updates on app start
+        await this.appUpdaterService.checkForUpdates();
+      }
+    } catch (error) {
+      console.error('Failed to check for auto-updates:', error);
+    }
   }
 
   // Connection Checking

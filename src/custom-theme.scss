@@ -713,6 +713,9 @@ button {
   justify-content: center;
 
   span {
+    display: flex;
+    flex-direction: row !important;
+    gap: var(--space-xs);
     white-space: nowrap;
   }
 

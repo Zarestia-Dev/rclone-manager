@@ -9,12 +9,24 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { version as appVersion } from '../../../../../../package.json';
 import { RcloneInfo } from '@app/types';
 import { RcloneUpdateIconComponent } from '../../../../shared/components/rclone-update-icon/rclone-update-icon.component';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatBadgeModule } from '@angular/material/badge';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 // Services
 import { AnimationsService } from '../../../../shared/services/animations.service';
 import { EventListenersService } from '@app/services';
 import { SystemInfoService } from '@app/services';
 import { NotificationService } from 'src/app/shared/services/notification.service';
+import { AppUpdaterService, UpdateMetadata } from '@app/services';
+
+interface UpdateChannel {
+  value: string;
+  label: string;
+  description: string;
+}
 
 @Component({
   selector: 'app-about-modal',
@@ -24,6 +36,11 @@ import { NotificationService } from 'src/app/shared/services/notification.servic
     MatIconModule,
     MatButtonModule,
     MatProgressSpinnerModule,
+    MatSlideToggleModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatBadgeModule,
+    MatTooltipModule,
     RcloneUpdateIconComponent,
   ],
   templateUrl: './about-modal.component.html',
@@ -36,6 +53,7 @@ export class AboutModalComponent implements OnInit {
   dialogRef = inject(MatDialogRef<AboutModalComponent>);
   systemInfoService = inject(SystemInfoService);
   notificationService = inject(NotificationService);
+  appUpdaterService = inject(AppUpdaterService);
 
   currentPage = 'main';
 
@@ -46,9 +64,43 @@ export class AboutModalComponent implements OnInit {
   rcloneError: string | null = null;
   private eventListenersService = inject(EventListenersService);
 
+  // Updater properties
+  updateAvailable: UpdateMetadata | null = null;
+  checkingForUpdates = false;
+  installingUpdate = false;
+  autoCheckUpdates = true;
+  updateChannel = 'stable';
+
+  readonly channels: UpdateChannel[] = [
+    { value: 'stable', label: 'Stable', description: 'Recommended for most users' },
+    { value: 'beta', label: 'Beta', description: 'Latest features with some testing' },
+    { value: 'nightly', label: 'Nightly', description: 'Bleeding edge, may be unstable' },
+  ];
+
+  trackByChannel(index: number, channel: UpdateChannel): string {
+    return channel.value;
+  }
+
   async ngOnInit(): Promise<void> {
     await this.loadRcloneInfo();
     await this.loadRclonePID();
+
+    // Subscribe to updater service
+    this.appUpdaterService.updateAvailable$.subscribe(update => {
+      this.updateAvailable = update;
+    });
+
+    this.appUpdaterService.updateInProgress$.subscribe(inProgress => {
+      this.installingUpdate = inProgress;
+    });
+
+    this.appUpdaterService.updateChannel$.subscribe(channel => {
+      this.updateChannel = channel;
+    });
+
+    // Load settings
+    this.loadAutoCheckSetting();
+    this.loadChannelSetting();
 
     this.eventListenersService.listenToRcloneEngine().subscribe({
       next: async event => {
@@ -157,5 +209,75 @@ export class AboutModalComponent implements OnInit {
 
   navigateTo(page: string): void {
     this.currentPage = page;
+  }
+
+  // Updater methods
+  async checkForUpdates(): Promise<void> {
+    if (this.checkingForUpdates) return;
+
+    this.checkingForUpdates = true;
+    try {
+      await this.appUpdaterService.checkForUpdates();
+    } finally {
+      this.checkingForUpdates = false;
+    }
+  }
+
+  async installUpdate(): Promise<void> {
+    if (this.installingUpdate) return;
+
+    await this.appUpdaterService.installUpdate();
+  }
+
+  async skipUpdate(): Promise<void> {
+    if (!this.updateAvailable) return;
+
+    await this.appUpdaterService.skipVersion(this.updateAvailable.version);
+  }
+
+  async toggleAutoCheck(): Promise<void> {
+    try {
+      this.autoCheckUpdates = !this.autoCheckUpdates;
+      await this.appUpdaterService.setAutoCheckEnabled(this.autoCheckUpdates);
+      this.notificationService.showSuccess(
+        `Auto-check updates ${this.autoCheckUpdates ? 'enabled' : 'disabled'}`
+      );
+    } catch (error) {
+      console.error('Failed to toggle auto-check:', error);
+      this.notificationService.showError('Failed to update setting');
+      // Revert on error
+      this.autoCheckUpdates = !this.autoCheckUpdates;
+    }
+  }
+
+  async changeChannel(channel: string): Promise<void> {
+    try {
+      await this.appUpdaterService.setChannel(channel);
+      // Clear current update when channel changes
+      this.updateAvailable = null;
+    } catch (error) {
+      console.error('Failed to change channel:', error);
+      this.notificationService.showError('Failed to change update channel');
+      // Revert on error
+      this.updateChannel = this.appUpdaterService.getCurrentChannel();
+    }
+  }
+
+  private async loadAutoCheckSetting(): Promise<void> {
+    try {
+      this.autoCheckUpdates = await this.appUpdaterService.getAutoCheckEnabled();
+    } catch (error) {
+      console.error('Failed to load auto-check setting:', error);
+      this.autoCheckUpdates = true; // Default fallback
+    }
+  }
+
+  private async loadChannelSetting(): Promise<void> {
+    try {
+      this.updateChannel = await this.appUpdaterService.getChannel();
+    } catch (error) {
+      console.error('Failed to load channel setting:', error);
+      this.updateChannel = 'stable'; // Default fallback
+    }
   }
 }

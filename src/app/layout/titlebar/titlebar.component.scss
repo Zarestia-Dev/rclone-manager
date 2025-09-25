@@ -77,3 +77,20 @@
 .selected {
   border-color: var(--accent-color) !important;
 }
+
+// Update Badge
+.menu-button {
+  position: relative;
+}
+
+.update-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--warning-color, #ff9800);
+  border-radius: 50%;
+  border: 2px solid var(--titlebar-background);
+  box-shadow: 0 0 0 1px var(--titlebar-background);
+}
