@@ -58,7 +58,7 @@ pub mod app_updates {
         // Determine endpoint based on channel
         let endpoint = match channel.as_str() {
             "stable" => {
-                "https://github.com/Hakanbaban53/rclone-manager/releases/latest/download/stable.json"
+                "https://github.com/Hakanbaban53/rclone-manager/releases/latest/download/latest.json"
             }
             "beta" => {
                 "https://github.com/Hakanbaban53/rclone-manager/releases/latest/download/beta.json"
@@ -67,7 +67,7 @@ pub mod app_updates {
                 "https://github.com/Hakanbaban53/rclone-manager/releases/latest/download/nightly.json"
             }
             _ => {
-                "https://github.com/Hakanbaban53/rclone-manager/releases/latest/download/stable.json"
+                "https://github.com/Hakanbaban53/rclone-manager/releases/latest/download/latest.json"
             } // default to stable
         };
 
