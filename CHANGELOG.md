@@ -3,10 +3,10 @@
 
 ## [Unreleased]
 ### Warning
-- In this version, app identifier has been changed from `com.rclone-manager.app` to `com.rclone-manager` because of potential conflicts with MacOS application bundle extension. If you are updating from a previous version, please uninstall the old version first to avoid any conflicts. This change is necessary to ensure proper functionality and avoid issues with application recognition on MacOS. We apologize for any inconvenience this may cause and appreciate your understanding. You can export your configuration via the export feature before uninstalling the old version.
+- In this version, app identifier has been changed from `com.rclone-manager.app` to `com.rclone.manager` because of potential conflicts with MacOS application bundle extension. If you are updating from a previous version, please uninstall the old version first to avoid any conflicts. This change is necessary to ensure proper functionality and avoid issues with application recognition on MacOS. We apologize for any inconvenience this may cause and appreciate your understanding. You can export your configuration via the export feature before uninstalling the old version.
 
 ### Added
-- Auto-update support with Tauri's built-in updater plugin. The application can now check for updates and install them with user permission.
+- **Auto-update support** using Tauri's built-in updater plugin. The application can now check for updates and install them with user permission. Additionally, users can install a previous version if it appears in the update section—this is typically offered as a fallback if a newer version has issues. Also with the new update system, bug fixes and improvements can be delivered more frequently (You're not waiting a 3 months anymore :D).
 
 - Support for ARM architecture (Linux and Windows). The application can now run on ARM-based systems, such as Raspberry Pi and ARM-based Windows devices.
 

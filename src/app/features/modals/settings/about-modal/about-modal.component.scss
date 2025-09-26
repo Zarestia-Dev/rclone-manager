@@ -152,6 +152,7 @@
       flex: 1;
       padding: var(--space-sm);
       overflow: auto;
+      box-sizing: border-box;
 
       // Credits Section
       &.credits {
@@ -288,14 +289,16 @@
 
 // Update Section Styles
 .update-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+
   h3 {
-    margin: 0 0 var(--space-md) 0;
     color: var(--app-text-color);
   }
 
   .current-version {
     color: var(--app-text-secondary);
-    margin-bottom: var(--space-lg);
     font-size: 14px;
   }
 
@@ -304,45 +307,34 @@
     align-items: flex-start;
     gap: var(--space-md);
     padding: var(--space-md);
-    background-color: var(--about-dialog-button-color);
-    border-radius: 12px;
-    margin-bottom: var(--space-md);
-
-    .update-icon {
-      color: var(--warning-color, #ff9800);
-      font-size: 24px;
-      margin-top: 2px;
-    }
+    background-color: var(--secondary-background);
+    box-shadow: var(--box-shadow);
+    border-radius: var(--radius-md);
 
     .update-info {
-      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
 
-      h4 {
-        margin: 0 0 var(--space-xs) 0;
-        color: var(--app-text-color);
+      .update-header {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+
+        h4 {
+          color: var(--app-text-color);
+        }
       }
 
       p {
-        margin: 0 0 var(--space-md) 0;
         color: var(--app-text-secondary);
         font-size: 14px;
-      }
-
-      .update-note {
-        margin: 0 0 var(--space-md) 0 !important;
-        color: var(--app-text-secondary);
-        font-size: 13px;
-        font-style: italic;
       }
 
       .update-actions {
         display: flex;
         gap: var(--space-sm);
         flex-wrap: wrap;
-
-        button {
-          min-width: 120px;
-        }
       }
     }
   }
@@ -352,12 +344,12 @@
     align-items: center;
     gap: var(--space-md);
     padding: var(--space-md);
-    background-color: var(--about-dialog-button-color);
-    border-radius: 12px;
-    margin-bottom: var(--space-md);
+    background-color: var(--secondary-background);
+    box-shadow: var(--box-shadow);
+    border-radius: var(--radius-md);
 
     .check-icon {
-      color: var(--success-color, #4caf50);
+      color: var(--primary-color);
       font-size: 24px;
     }
 
@@ -370,37 +362,14 @@
   .update-actions {
     button {
       width: 100%;
-      min-width: 140px;
     }
   }
 
   .update-settings {
-    margin-top: var(--space-lg);
-    padding-top: var(--space-md);
-    border-top: 1px solid var(--divider-color, #e0e0e0);
-
-    ::ng-deep .mat-mdc-slide-toggle {
-      --mdc-switch-selected-track-color: var(--primary-color);
-      --mdc-switch-selected-handle-color: var(--primary-color);
-      --mdc-switch-selected-hover-track-color: var(--primary-color);
-      --mdc-switch-selected-hover-handle-color: var(--primary-color);
-    }
-
-    .mat-mdc-slide-toggle {
-      margin-bottom: var(--space-sm);
-    }
+    border-top: 1px solid var(--divider-color);
 
     .channel-select {
       width: 100%;
-      margin-top: var(--space-md);
-
-      ::ng-deep .mat-mdc-select {
-        background-color: var(--input-background, #f5f5f5);
-      }
-
-      ::ng-deep .mat-mdc-form-field-outline {
-        color: var(--divider-color, #e0e0e0);
-      }
     }
 
     .channel-option {
@@ -411,18 +380,70 @@
       .channel-label {
         font-weight: 500;
         color: var(--app-text-color);
+        font-size: var(--font-size-base);
       }
 
       .channel-description {
-        font-size: 0.875rem;
-        color: var(--secondary-text-color, #666);
-        margin-top: 2px;
+        font-size: var(--font-size-xs);
+        color: var(--secondary-text-color);
+        opacity: 0.7;
+        font-style: italic;
+      }
+    }
+
+    .skipped-info {
+      font-size: 0.875rem;
+      color: var(--secondary-text-color);
+    }
+
+    .skipped-versions {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+      border-radius: 8px;
+      box-shadow: var(--box-shadow);
+    }
+
+    .skipped-version-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-xs) var(--space-sm);
+      background-color: var(--input-background);
+      border: 1px solid var(--divider-color);
+
+      .version-text {
+        font-weight: 500;
+        color: var(--app-text-color);
+      }
+
+      button {
+        color: var(--primary-color);
+        &:hover {
+          background-color: rgba(var(--primary-color-rgb, 33, 150, 243), 0.1);
+        }
       }
     }
   }
+}
 
-  .update-indicator {
-    color: var(--warning-color, #ff9800);
-    margin-right: 8px;
-  }
+/* Release badge styles */
+.release-badge {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  color: #fff;
+  vertical-align: middle;
+}
+.badge-stable {
+  background: var(--accent-color);
+}
+.badge-beta {
+  background: var(--orange);
+}
+.badge-nightly {
+  background: var(--purple);
 }

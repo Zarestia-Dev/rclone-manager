@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { version as appVersion } from '../../../../../../package.json';
-import { RcloneInfo } from '@app/types';
+import { RcloneInfo, UpdateMetadata } from '@app/types';
 import { RcloneUpdateIconComponent } from '../../../../shared/components/rclone-update-icon/rclone-update-icon.component';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSelectModule } from '@angular/material/select';
@@ -20,7 +20,9 @@ import { AnimationsService } from '../../../../shared/services/animations.servic
 import { EventListenersService } from '@app/services';
 import { SystemInfoService } from '@app/services';
 import { NotificationService } from 'src/app/shared/services/notification.service';
-import { AppUpdaterService, UpdateMetadata } from '@app/services';
+import { AppUpdaterService } from '@app/services';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 
 interface UpdateChannel {
   value: string;
@@ -42,6 +44,8 @@ interface UpdateChannel {
     MatBadgeModule,
     MatTooltipModule,
     RcloneUpdateIconComponent,
+    MatProgressBarModule,
+    FormatFileSizePipe,
   ],
   templateUrl: './about-modal.component.html',
   styleUrl: './about-modal.component.scss',
@@ -66,10 +70,22 @@ export class AboutModalComponent implements OnInit {
 
   // Updater properties
   updateAvailable: UpdateMetadata | null = null;
+  // Derived display fields from update metadata
+  updateReleaseTag: string | null = null;
+  updateReleaseChannel: string | null = null;
   checkingForUpdates = false;
   installingUpdate = false;
   autoCheckUpdates = true;
   updateChannel = 'stable';
+  skippedVersions: string[] = [];
+
+  downloadProgress = 0;
+  downloadTotal = 0;
+  downloadPercentage = 0;
+  downloadInProgress = false;
+  // Updater error display
+  updateErrorMessage: string | null = null;
+  updateErrorDismissed = false;
 
   readonly channels: UpdateChannel[] = [
     { value: 'stable', label: 'Stable', description: 'Recommended for most users' },
@@ -81,6 +97,10 @@ export class AboutModalComponent implements OnInit {
     return channel.value;
   }
 
+  trackByVersion(index: number, version: string): string {
+    return version;
+  }
+
   async ngOnInit(): Promise<void> {
     await this.loadRcloneInfo();
     await this.loadRclonePID();
@@ -88,6 +108,14 @@ export class AboutModalComponent implements OnInit {
     // Subscribe to updater service
     this.appUpdaterService.updateAvailable$.subscribe(update => {
       this.updateAvailable = update;
+      // derive release tag and channel for better UI feedback
+      if (update && update.releaseTag) {
+        this.updateReleaseTag = update.releaseTag;
+        this.updateReleaseChannel = this.getChannelFromTag(update.releaseTag);
+      } else {
+        this.updateReleaseTag = null;
+        this.updateReleaseChannel = null;
+      }
     });
 
     this.appUpdaterService.updateInProgress$.subscribe(inProgress => {
@@ -96,6 +124,10 @@ export class AboutModalComponent implements OnInit {
 
     this.appUpdaterService.updateChannel$.subscribe(channel => {
       this.updateChannel = channel;
+    });
+
+    this.appUpdaterService.skippedVersions$.subscribe(versions => {
+      this.skippedVersions = versions;
     });
 
     // Load settings
@@ -125,6 +157,42 @@ export class AboutModalComponent implements OnInit {
         }
       },
     });
+
+    // Add download status subscription
+    this.appUpdaterService.downloadStatus$.subscribe(status => {
+      this.downloadProgress = status.downloadedBytes;
+      this.downloadTotal = status.totalBytes;
+      this.downloadPercentage = status.percentage;
+      this.downloadInProgress = status.downloadedBytes > 0 && !status.isComplete;
+
+      // Update installingUpdate based on completion
+      if (status.isComplete) {
+        this.installingUpdate = false;
+      }
+
+      // Show backend failure messages in the UI unless the user dismissed them.
+      if (status.isFailed) {
+        // If it's a new failure message, reset dismissed flag so it becomes visible
+        if (status.failureMessage !== this.updateErrorMessage) {
+          this.updateErrorMessage = status.failureMessage ?? 'Update installation failed.';
+          this.updateErrorDismissed = false;
+        }
+      }
+
+      // If a new download/install starts, hide previously dismissed errors
+      if (this.downloadInProgress || this.installingUpdate) {
+        this.updateErrorDismissed = true;
+      }
+    });
+  }
+
+  private getChannelFromTag(tag: string): string {
+    const t = tag.toLowerCase();
+    if (t.includes('nightly')) return 'nightly';
+    if (t.includes('beta')) return 'beta';
+    if (t.includes('alpha')) return 'alpha';
+    if (t.includes('rc')) return 'rc';
+    return 'stable';
   }
 
   async loadRcloneInfo(): Promise<void> {
@@ -226,13 +294,30 @@ export class AboutModalComponent implements OnInit {
   async installUpdate(): Promise<void> {
     if (this.installingUpdate) return;
 
+    // When the user starts an installation, hide any previous error banner
+    this.updateErrorDismissed = true;
+    this.updateErrorMessage = null;
     await this.appUpdaterService.installUpdate();
+  }
+
+  closeUpdateError(): void {
+    this.updateErrorDismissed = true;
   }
 
   async skipUpdate(): Promise<void> {
     if (!this.updateAvailable) return;
 
     await this.appUpdaterService.skipVersion(this.updateAvailable.version);
+  }
+
+  async unskipVersion(version: string): Promise<void> {
+    try {
+      await this.appUpdaterService.unskipVersion(version);
+      this.notificationService.showSuccess(`Update ${version} restored`);
+    } catch (error) {
+      console.error('Failed to unskip version:', error);
+      this.notificationService.showError('Failed to restore update');
+    }
   }
 
   async toggleAutoCheck(): Promise<void> {

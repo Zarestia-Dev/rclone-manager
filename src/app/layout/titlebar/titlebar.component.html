@@ -66,8 +66,9 @@
       [matMenuTriggerFor]="menu"
       aria-label="Application menu"
       class="menu-button"
-      [matBadge]="updateAvailable ? '!' : null"
-      matBadgeColor="warn"
+      [matBadge]="updateAvailable ? 'i' : null"
+      matBadgePosition="below before"
+      matBadgeSize="small"
       [matTooltip]="updateAvailable ? 'Application update available' : null"
     >
       <mat-icon svgIcon="menu-bar" aria-hidden="true"></mat-icon>
@@ -167,7 +168,15 @@
 
     <mat-divider></mat-divider>
 
-    <button mat-menu-item (click)="openAboutModal()" aria-label="About application">
+    <button
+      mat-menu-item
+      [matBadge]="updateAvailable ? 'i' : null"
+      matBadgePosition="below before"
+      matBadgeSize="small"
+      [matTooltip]="updateAvailable ? 'Application update available' : null"
+      (click)="openAboutModal()"
+      aria-label="About application"
+    >
       <span>About RClone Manager</span>
     </button>
   </mat-menu>

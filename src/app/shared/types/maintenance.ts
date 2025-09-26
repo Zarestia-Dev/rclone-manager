@@ -11,3 +11,9 @@ export interface RepairData {
   showStoreOption?: boolean;
   passwordDescription?: string;
 }
+
+export interface UpdateMetadata {
+  version: string;
+  currentVersion: string;
+  releaseTag: string;
+}

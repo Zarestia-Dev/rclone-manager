@@ -100,6 +100,7 @@ export class IconService {
       'open-link': 'assets/icons/arrow-up-right-from-square.svg',
       'right-arrow': 'assets/icons/circle-arrow-right.svg',
       'right-left': 'assets/icons/right-left.svg',
+      'rotate-left': 'assets/icons/rotate-left.svg',
       star: 'assets/icons/star.svg',
     };
 

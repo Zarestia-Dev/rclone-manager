@@ -79,8 +79,8 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
                 spawn_mount_task(
                     remote_name.clone(),
                     source,
-                    mount_type,
                     dest,
+                    mount_type,
                     mount_options,
                     vfs_options,
                     app_handle.clone(),

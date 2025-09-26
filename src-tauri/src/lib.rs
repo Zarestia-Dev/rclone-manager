@@ -9,9 +9,6 @@ mod core;
 mod rclone;
 mod utils;
 
-#[cfg(desktop)]
-use crate::utils::app::updater::app_updates::PendingUpdate;
-// Import the functions we separated out
 use crate::{
     core::{
         check_binaries::{check_rclone_available, is_7z_available},
@@ -69,7 +66,9 @@ use crate::{
         app::{
             builder::create_app_window,
             ui::set_theme,
-            updater::app_updates::{fetch_update, install_update},
+            updater::app_updates::{
+                DownloadState, PendingUpdate, fetch_update, get_download_status, install_update,
+            },
         },
         io::{
             file_helper::{get_file_location, get_folder_location, open_in_files},
@@ -195,6 +194,7 @@ pub fn run() {
 
             #[cfg(desktop)]
             app.manage(PendingUpdate(std::sync::Mutex::new(None)));
+            app.manage(DownloadState::default());
 
             // Setup global shortcuts
             #[cfg(desktop)]
@@ -402,6 +402,7 @@ pub fn run() {
             has_config_password_env,
             #[cfg(desktop)]
             fetch_update,
+            get_download_status,
             #[cfg(desktop)]
             install_update,
         ])
