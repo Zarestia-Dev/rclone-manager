@@ -2,9 +2,6 @@ use log::{error, info};
 use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter, Manager};
 
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
-
 use crate::core::check_binaries::build_rclone_command;
 use crate::core::security::{CredentialStore, SafeEnvironmentManager};
 use crate::rclone::engine::core::ENGINE;

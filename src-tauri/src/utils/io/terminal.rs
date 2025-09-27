@@ -208,8 +208,6 @@ async fn try_open_windows_terminal(full_command: &str) -> Result<(), String> {
     info!("Executing Windows terminal command: {full_command}");
 
     let (program, args) = parse_command(full_command)?;
-    debug!("Parsed command: program = {program}, args = {args:?}");
-    debug!("Full command: {program} {}", args.join(" "));
     match TokioCommand::new(program)
         .args(&args)
         .stdin(Stdio::null())

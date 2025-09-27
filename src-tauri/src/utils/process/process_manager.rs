@@ -32,7 +32,7 @@ pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
         use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess};
 
         let handle = unsafe { OpenProcess(PROCESS_TERMINATE, 0, pid) };
-        if handle == std::ptr::null_mut() {
+        if handle.is_null() {
             let error_msg = format!("Failed to open process {}", pid);
             error!("{}", error_msg);
             return Err(error_msg);
@@ -98,7 +98,7 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
     {
         // Use netstat to find processes using the port
         let output = std::process::Command::new("netstat")
-            .args(&["-ano", "-p", "TCP"])
+            .args(["-ano", "-p", "TCP"])
             .output()
             .map_err(|e| format!("Failed to run netstat: {}", e))?;
 
@@ -106,12 +106,12 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
         let mut pids = Vec::new();
 
         for line in netstat_output.lines() {
-            if line.contains(&format!(":{}", port)) && line.contains("LISTENING") {
-                if let Some(pid_str) = line.split_whitespace().last() {
-                    if let Ok(pid) = pid_str.parse::<u32>() {
-                        pids.push(pid);
-                    }
-                }
+            if line.contains(&format!(":{}", port))
+                && line.contains("LISTENING")
+                && let Some(pid_str) = line.split_whitespace().last()
+                && let Ok(pid) = pid_str.parse::<u32>()
+            {
+                pids.push(pid);
             }
         }
 
@@ -138,7 +138,7 @@ pub fn kill_all_rclone_processes() -> Result<(), String> {
     {
         // Kill rclone.exe processes on Windows
         let _ = std::process::Command::new("taskkill")
-            .args(&["/F", "/IM", "rclone.exe"])
+            .args(["/F", "/IM", "rclone.exe"])
             .output();
 
         std::thread::sleep(std::time::Duration::from_millis(500));

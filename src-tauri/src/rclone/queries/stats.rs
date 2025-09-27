@@ -140,10 +140,10 @@ pub async fn get_completed_transfers(
         if let Some(transferred) = value.get_mut("transferred").and_then(|v| v.as_array_mut()) {
             for transfer in transferred.iter_mut() {
                 for field in ["dstFs", "srcFs"] {
-                    if let Some(fs_value) = transfer.get_mut(field) {
-                        if let Some(path_str) = fs_value.as_str() {
-                            *fs_value = serde_json::Value::String(normalize_windows_path(path_str));
-                        }
+                    if let Some(fs_value) = transfer.get_mut(field)
+                        && let Some(path_str) = fs_value.as_str()
+                    {
+                        *fs_value = serde_json::Value::String(normalize_windows_path(path_str));
                     }
                 }
             }

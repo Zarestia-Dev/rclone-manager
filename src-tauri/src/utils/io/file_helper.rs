@@ -34,11 +34,12 @@ pub async fn get_folder_location(
 
         use std::path::{Component, Path};
         let path = Path::new(&folder);
-        if let Some(drive) = path.components().next() {
-            if matches!(drive, Component::Prefix(_)) && path.parent().is_none() {
-                debug!("Selected path is a drive root, which is not allowed for mounting");
-                return Err("Cannot select a drive root (e.g., D:\\) as a mount point. Please select or create a subfolder.".into());
-            }
+        if let Some(drive) = path.components().next()
+            && matches!(drive, Component::Prefix(_))
+            && path.parent().is_none()
+        {
+            debug!("Selected path is a drive root, which is not allowed for mounting");
+            return Err("Cannot select a drive root (e.g., D:\\) as a mount point. Please select or create a subfolder.".into());
         }
     }
 

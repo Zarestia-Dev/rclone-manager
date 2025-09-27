@@ -72,13 +72,12 @@ fn check_winfsp_installed() -> bool {
         if let Ok(output) = std::process::Command::new("sc")
             .args(["query", "WinFsp.Launcher"])
             .output()
+            && output.status.success()
         {
-            if output.status.success() {
-                let output_str = String::from_utf8_lossy(&output.stdout);
-                if output_str.contains("WinFsp.Launcher") {
-                    winfsp_exists = true;
-                    debug!("Windows: WinFsp service found via sc query");
-                }
+            let output_str = String::from_utf8_lossy(&output.stdout);
+            if output_str.contains("WinFsp.Launcher") {
+                winfsp_exists = true;
+                debug!("Windows: WinFsp service found via sc query");
             }
         }
     }
