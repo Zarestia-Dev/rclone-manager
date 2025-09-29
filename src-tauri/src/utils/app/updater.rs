@@ -90,14 +90,20 @@ pub mod app_updates {
 
         // Get releases from GitHub API
         let client = reqwest::Client::new();
-        let releases: Vec<GitHubRelease> = client
-            .get("https://api.github.com/repos/RClone-Manger/rclone-manager/releases")
+        // configure owner/repo and optional token (use org name as owner)
+        let owner = "RClone-Manager";
+        let repo = "rclone-manager";
+        let url = format!(
+            "https://api.github.com/repos/{}/{}/releases?per_page=100",
+            owner, repo
+        );
+
+        let req = client
+            .get(&url)
             .header("User-Agent", "Rclone-Manager")
-            .header("Accept", "application/vnd.github.v3+json")
-            .send()
-            .await?
-            .json()
-            .await?;
+            .header("Accept", "application/vnd.github.v3+json");
+
+        let releases: Vec<GitHubRelease> = req.send().await?.json().await?;
 
         debug!("Found {:?} releases", releases);
 

@@ -58,9 +58,9 @@ export class MountManagementService extends TauriBaseService {
     try {
       const params: MountParams = {
         remote_name: remoteName,
-        source,
-        mount_point: mountPoint,
-        mount_type: mountType,
+        source: source || '',
+        mount_point: mountPoint || '',
+        mount_type: mountType || '',
         mount_options: mountOptions || {},
         vfs_options: vfsOptions || {},
       };

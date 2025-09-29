@@ -1345,12 +1345,14 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       const mountPath = finalConfig.mountConfig.dest;
       const remoteName = remoteData.name;
       const source = finalConfig.mountConfig?.source;
+      const mountType = finalConfig.mountConfig.type;
       const mountOptions = finalConfig.mountConfig.options;
       const vfs = finalConfig.vfsConfig;
       await this.mountManagementService.mountRemote(
         remoteName,
         source,
         mountPath,
+        mountType,
         mountOptions,
         vfs
       );

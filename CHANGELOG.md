@@ -1,7 +1,7 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.1.3] - 2025-09-30
 ### Warning
 - In this version, app identifier has been changed from `com.rclone-manager.app` to `com.rclone.manager` because of potential conflicts with MacOS application bundle extension. If you are updating from a previous version, please uninstall the old version first to avoid any conflicts. This change is necessary to ensure proper functionality and avoid issues with application recognition on MacOS. We apologize for any inconvenience this may cause and appreciate your understanding. You can export your configuration via the export feature before uninstalling the old version.
 

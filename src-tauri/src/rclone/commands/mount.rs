@@ -86,11 +86,15 @@ pub async fn mount_remote(
     let mut payload = json!({
         "fs": params.source,
         "mountPoint": params.mount_point,
-        "mountType": params.mount_type,
         "_async": true,
     });
 
     debug!("Mount request payload: {payload:#?}");
+
+    // Only include mountType if it's not an empty string
+    if !params.mount_type.is_empty() {
+        payload["mountType"] = json!(params.mount_type);
+    }
 
     if let Some(opts) = params.mount_options.clone() {
         payload["mountOpt"] = json!(opts);
