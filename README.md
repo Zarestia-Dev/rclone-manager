@@ -74,7 +74,7 @@
 
 👉 Get the latest release from:
 
-- 🔗 [GitHub Releases](https://github.com/Hakanbaban53/rclone-manager/releases)
+- 🔗 [GitHub Releases](https://github.com/RClone-Manger/rclone-manager/releases)
 
 ---
 
@@ -101,7 +101,7 @@ If you want to protect your exported app configuration, **RClone Manager** suppo
 
 ```bash
 # Clone from GitHub
-git clone https://github.com/Hakanbaban53/rclone-manager.git
+git clone https://github.com/RClone-Manger/rclone-manager.git
 cd rclone-manager
 
 # Install dependencies
@@ -126,13 +126,13 @@ npm run tauri build
 Known bugs and technical limitations are tracked in two places:
 
 - 📄 See [**ISSUES.md**](ISSUES.md) for detailed explanations of platform-specific issues (e.g. Windows terminal flash)
-- 📌 Visit our [**GitHub Project Board**](https://github.com/users/Hakanbaban53/projects/6) for open bugs and upcoming fixes
+- 📌 Visit our [**GitHub Project Board**](https://github.com/users/RClone-Manger/projects/6) for open bugs and upcoming fixes
 
 ---
 
 ## 🗺️ Roadmap
 
-We organize development on [**GitHub Projects**](https://github.com/users/Hakanbaban53/projects/6) — including features, bugs, and long-term goals.
+We organize development on [**GitHub Projects**](https://github.com/users/RClone-Manger/projects/6) — including features, bugs, and long-term goals.
 
 The board includes:
 
@@ -150,7 +150,7 @@ The board includes:
 We welcome contributors of all experience levels!
 You can help by:
 
-- 🐛 Reporting bugs & submitting suggestions in [**GitHub Issues**](https://github.com/Hakanbaban53/rclone-manager/issues)
+- 🐛 Reporting bugs & submitting suggestions in [**GitHub Issues**](https://github.com/RClone-Manger/rclone-manager/issues)
 - 🛠️ Submitting pull requests — see the [CONTRIBUTING.md](CONTRIBUTING.md) guide (coming soon)
 
 ---
@@ -163,4 +163,4 @@ Licensed under the **[GNU GPLv3](LICENSE)**.
 
 ## 📬 Contact
 
-Reach out via [**GitHub Issues**](https://github.com/Hakanbaban53/rclone-manager/issues) — we’d love your feedback!
+Reach out via [**GitHub Issues**](https://github.com/RClone-Manger/rclone-manager/issues) — we’d love your feedback!

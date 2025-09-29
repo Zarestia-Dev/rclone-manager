@@ -91,7 +91,7 @@ pub mod app_updates {
         // Get releases from GitHub API
         let client = reqwest::Client::new();
         let releases: Vec<GitHubRelease> = client
-            .get("https://api.github.com/repos/Hakanbaban53/rclone-manager/releases")
+            .get("https://api.github.com/repos/RClone-Manger/rclone-manager/releases")
             .header("User-Agent", "Rclone-Manager")
             .header("Accept", "application/vnd.github.v3+json")
             .send()
@@ -137,7 +137,7 @@ pub mod app_updates {
                 // Fallback: construct the JSON URL based on release tag
                 info!("No JSON asset found, constructing URL from release tag");
                 &format!(
-                    "https://github.com/Hakanbaban53/rclone-manager/releases/download/{}/latest.json",
+                    "https://github.com/RClone-Manger/rclone-manager/releases/download/{}/latest.json",
                     release.tag_name
                 )
             }

@@ -2,7 +2,7 @@
 
 ### 1️⃣ Terminal Window Flash on Windows
 
-🔗 [Track on GitHub Project](https://github.com/users/Hakanbaban53/projects/6/views/1?pane=issue&itemId=110319862)  
+🔗 [Track on GitHub Project](https://github.com/users/RClone-Manger/projects/6/views/1?pane=issue&itemId=110319862)  
 (“Investigate workaround for terminal flash on Windows”)
 
 On **Windows**, you may see a **brief terminal window flash** either:
