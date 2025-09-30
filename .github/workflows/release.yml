@@ -1,4 +1,4 @@
-name: 'Release All'
+name: "Release All"
 
 on:
   workflow_dispatch:
@@ -11,26 +11,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
-            arch: 'silicon'
-            type: 'aarch64'
-          - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
-            arch: 'silicon'
-            type: 'x86_64'
-          - platform: 'ubuntu-22.04'
-            args: ''
-          - platform: 'ubuntu-22.04-arm'
-            args: ''
-          - platform: 'windows-latest'
-            args: '--target x86_64-pc-windows-msvc'
-            arch: 'arm64'
-            type: 'x86_64'
-          - platform: 'windows-latest'
-            args: '--target aarch64-pc-windows-msvc'
-            arch: 'arm64'
-            type: 'aarch64'
+          - platform: "macos-latest"
+            args: "--target aarch64-apple-darwin"
+            arch: "silicon"
+            type: "aarch64"
+          - platform: "macos-latest"
+            args: "--target x86_64-apple-darwin"
+            arch: "silicon"
+            type: "x86_64"
+          - platform: "ubuntu-22.04"
+            args: ""
+          - platform: "ubuntu-22.04-arm"
+            args: ""
+          - platform: "windows-latest"
+            args: "--target x86_64-pc-windows-msvc"
+            arch: "arm64"
+            type: "x86_64"
+          - platform: "windows-latest"
+            args: "--target aarch64-pc-windows-msvc"
+            arch: "arm64"
+            type: "aarch64"
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -40,13 +40,13 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04' || matrix.platform == 'ubuntu-22.04-arm'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
 
       - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: 'npm'
+          cache: "npm"
 
       - name: install Rust stable (macos only)
         uses: dtolnay/rust-toolchain@stable
@@ -63,7 +63,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: install frontend dependencies
         run: npm install
@@ -76,8 +76,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__-beta
-          releaseName: 'RClone Manager v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseName: "RClone Manager v__VERSION__"
+          releaseBody: "See the assets to download this version and install."
           releaseDraft: true
           prerelease: true
           args: ${{ matrix.args }}
