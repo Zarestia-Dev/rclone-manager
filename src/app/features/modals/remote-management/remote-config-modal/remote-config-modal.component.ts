@@ -108,7 +108,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     restrictMode: boolean;
   };
 
-  public readonly TOTAL_STEPS = 6;
+  public readonly TOTAL_STEPS = 8;
 
   currentStep = 1;
   editTarget: EditTarget = null;
