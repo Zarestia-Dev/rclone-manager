@@ -27,12 +27,12 @@ pkgver() {
 
 prepare() {
   cd rclone-manager
-  pnpm install
+  npm install
 }
 
 build() {
   cd rclone-manager
-  pnpm tauri build -b deb
+  npm run tauri build -b deb
 }
 
 package() {
