@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { RcloneInfo } from '@app/types';
+import { PlatformInfo, RcloneInfo } from '@app/types';
 
 /**
  * Service for system information and rclone engine management
@@ -10,6 +10,19 @@ import { RcloneInfo } from '@app/types';
   providedIn: 'root',
 })
 export class SystemInfoService extends TauriBaseService {
+  /**
+   * Check if the app is running in a Flatpak sandbox
+   */
+  async isFlatpakBuild(): Promise<boolean> {
+    return this.invokeCommand<boolean>('is_flatpak_build');
+  }
+
+  /**
+   * Get platform information including build type
+   */
+  async getPlatformInfo(): Promise<PlatformInfo> {
+    return this.invokeCommand<PlatformInfo>('get_platform_info');
+  }
   /**
    * Check if network is metered
    */

@@ -62,6 +62,13 @@ export interface SystemStats {
 
 export type RcloneStatus = 'active' | 'inactive' | 'error';
 
+export interface PlatformInfo {
+  is_flatpak: boolean;
+  os: string;
+  arch: string;
+  family: string;
+}
+
 export const SENSITIVE_KEYS = [
   'password',
   'secret',

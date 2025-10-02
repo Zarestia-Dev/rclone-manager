@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { version as appVersion } from '../../../../../../package.json';
-import { RcloneInfo, UpdateMetadata } from '@app/types';
+import { PlatformInfo, RcloneInfo, UpdateMetadata } from '@app/types';
 import { RcloneUpdateIconComponent } from '../../../../shared/components/rclone-update-icon/rclone-update-icon.component';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSelectModule } from '@angular/material/select';
@@ -68,6 +68,12 @@ export class AboutModalComponent implements OnInit {
   rcloneError: string | null = null;
   private eventListenersService = inject(EventListenersService);
 
+  // Platform detection
+  platformInfo: PlatformInfo | null = null;
+  get isFlatpak(): boolean {
+    return this.platformInfo?.is_flatpak ?? false;
+  }
+
   // Updater properties
   updateAvailable: UpdateMetadata | null = null;
   // Derived display fields from update metadata
@@ -102,6 +108,9 @@ export class AboutModalComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    // Load platform info first to determine if we're in Flatpak
+    await this.loadPlatformInfo();
+
     await this.loadRcloneInfo();
     await this.loadRclonePID();
 
@@ -363,6 +372,16 @@ export class AboutModalComponent implements OnInit {
     } catch (error) {
       console.error('Failed to load channel setting:', error);
       this.updateChannel = 'stable'; // Default fallback
+    }
+  }
+
+  private async loadPlatformInfo(): Promise<void> {
+    try {
+      this.platformInfo = await this.systemInfoService.getPlatformInfo();
+      console.log('Platform info:', this.platformInfo);
+    } catch (error) {
+      console.error('Failed to load platform info:', error);
+      this.platformInfo = null;
     }
   }
 }

@@ -1,4 +1,4 @@
-#[cfg(desktop)]
+#[cfg(all(desktop, feature = "updater"))]
 pub mod app_updates {
     use log::{debug, info, warn};
     use serde::Deserialize;

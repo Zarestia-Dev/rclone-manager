@@ -9,6 +9,11 @@ mod core;
 mod rclone;
 mod utils;
 
+#[cfg(all(desktop, feature = "updater"))]
+use crate::utils::app::updater::app_updates::{
+    DownloadState, PendingUpdate, fetch_update, get_download_status, install_update,
+};
+
 use crate::{
     core::{
         check_binaries::{check_rclone_available, is_7z_available},
@@ -65,10 +70,8 @@ use crate::{
     utils::{
         app::{
             builder::create_app_window,
+            platform::{get_platform_info, is_flatpak_build},
             ui::set_theme,
-            updater::app_updates::{
-                DownloadState, PendingUpdate, fetch_update, get_download_status, install_update,
-            },
         },
         io::{
             file_helper::{get_file_location, get_folder_location, open_in_files},
@@ -88,8 +91,14 @@ use crate::{
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        .plugin(tauri_plugin_updater::Builder::new().build())
+    let mut builder = tauri::Builder::default();
+
+    #[cfg(feature = "updater")]
+    {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
+    builder
         .plugin(tauri_plugin_single_instance::init(|app, _, _| {
             show_main_window(app.clone());
         }))
@@ -192,8 +201,9 @@ pub fn run() {
                 )),
             });
 
-            #[cfg(desktop)]
+            #[cfg(all(desktop, feature = "updater"))]
             app.manage(PendingUpdate(std::sync::Mutex::new(None)));
+            #[cfg(all(desktop, feature = "updater"))]
             app.manage(DownloadState::default());
 
             // Setup global shortcuts
@@ -294,6 +304,9 @@ pub fn run() {
             get_file_location,
             // UI
             set_theme,
+            // Platform
+            is_flatpak_build,
+            get_platform_info,
             // Rclone operations
             provision_rclone,
             get_rclone_info,
@@ -400,10 +413,11 @@ pub fn run() {
             set_config_password_env,
             clear_config_password_env,
             has_config_password_env,
-            #[cfg(desktop)]
+            #[cfg(all(desktop, feature = "updater"))]
             fetch_update,
+            #[cfg(all(desktop, feature = "updater"))]
             get_download_status,
-            #[cfg(desktop)]
+            #[cfg(all(desktop, feature = "updater"))]
             install_update,
         ])
         .run(tauri::generate_context!())

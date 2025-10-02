@@ -20,14 +20,22 @@
     <mat-icon svgIcon="rclone" class="app-icon" aria-hidden="true"></mat-icon>
     <h2 class="app-name">RClone Manager</h2>
     <p class="app-team">Developed by Hakan İSMAİL</p>
-    <button
-      type="button"
-      class="version-badge"
-      (click)="copyToClipboard(rCloneManagerVersion)"
-      [attr.aria-label]="'Copy version ' + rCloneManagerVersion + ' to clipboard'"
-    >
-      {{ rCloneManagerVersion }}
-    </button>
+    <div class="version-info">
+      <button
+        type="button"
+        class="version-badge"
+        (click)="copyToClipboard(rCloneManagerVersion)"
+        [attr.aria-label]="'Copy version ' + rCloneManagerVersion + ' to clipboard'"
+      >
+        {{ rCloneManagerVersion }}
+      </button>
+      @if (isFlatpak) {
+        <span class="platform-badge flatpak" matTooltip="Installed via Flatpak">
+          <mat-icon svgIcon="flatpak"></mat-icon>
+          Flatpak
+        </span>
+      }
+    </div>
 
     <!-- Navigation List -->
     <nav class="about-list" role="navigation" aria-label="About sections">
@@ -152,161 +160,180 @@
             <h3>Application Updates</h3>
             <p class="current-version">Current version: {{ rCloneManagerVersion }}</p>
 
-            <!-- Updater error banner -->
-            @if (updateErrorMessage && !updateErrorDismissed) {
-              <div class="update-error" role="alert" aria-live="assertive">
-                <mat-icon svgIcon="circle-exclamation" class="warn" aria-hidden="true"></mat-icon>
-                <span class="error-text">{{ updateErrorMessage }}</span>
-                <button
-                  type="button"
-                  mat-icon-button
-                  aria-label="Dismiss update error"
-                  (click)="closeUpdateError()"
-                >
-                  <mat-icon svgIcon="circle-xmark"></mat-icon>
-                </button>
-              </div>
-            }
-
-            @if (updateAvailable) {
-              <div class="update-available">
-                <div class="update-info">
-                  <div class="update-header">
-                    <mat-icon svgIcon="circle-up" class="accent"></mat-icon>
-                    <h4>Update Available</h4>
-                  </div>
+            <!-- Flatpak Info Banner -->
+            @if (isFlatpak) {
+              <div class="flatpak-info" role="status">
+                <mat-icon svgIcon="circle-info" class="info"></mat-icon>
+                <div class="flatpak-info-content">
+                  <strong>Flatpak Installation Detected</strong>
                   <p>
-                    Version {{ updateAvailable.version }} is available
-                    <span
-                      *ngIf="updateReleaseChannel"
-                      class="release-badge"
-                      [ngClass]="'badge-' + updateReleaseChannel"
-                      matTooltip="Release tag: {{ updateReleaseTag }}"
-                    >
-                      {{ updateReleaseChannel | titlecase }}
-                    </span>
+                    This app is installed via Flatpak. Updates are managed through your system's
+                    Flatpak repositories. Use your system's software manager or run
+                    <code>flatpak update</code> to update.
                   </p>
-
-                  <!-- Download Progress -->
-                  @if (downloadInProgress) {
-                    <div class="download-progress">
-                      <mat-progress-bar
-                        mode="determinate"
-                        [value]="downloadPercentage"
-                        color="primary"
-                      >
-                      </mat-progress-bar>
-                      <div class="progress-text">
-                        <span>Downloading: </span>
-                        <span
-                          >{{ downloadProgress | formatFileSize }} /
-                          {{ downloadTotal | formatFileSize }}</span
-                        >
-                      </div>
-                    </div>
-                  }
-
-                  <div class="update-actions">
-                    <button
-                      mat-raised-button
-                      color="primary"
-                      (click)="installUpdate()"
-                      [disabled]="installingUpdate || downloadInProgress"
-                    >
-                      @if (installingUpdate || downloadInProgress) {
-                        <mat-spinner diameter="20"></mat-spinner>
-                        @if (downloadInProgress) {
-                          Downloading... ({{ downloadPercentage | number: '1.0-0' }}%)
-                        } @else {
-                          Installing...
-                        }
-                      } @else {
-                        Install Update
-                      }
-                    </button>
-                    <button
-                      mat-stroked-button
-                      (click)="skipUpdate()"
-                      [disabled]="downloadInProgress"
-                    >
-                      Skip This Version
-                    </button>
-                  </div>
                 </div>
               </div>
-            } @else {
-              <div class="no-updates">
-                <mat-icon svgIcon="circle-check" class="check-icon"></mat-icon>
-                <p>Your app is up to date</p>
-              </div>
             }
-            <div class="update-settings">
-              <mat-slide-toggle
-                [checked]="autoCheckUpdates"
-                (change)="toggleAutoCheck()"
-                [disabled]="downloadInProgress"
-              >
-                Automatically check for updates
-              </mat-slide-toggle>
-            </div>
 
-            <div class="update-settings">
-              <mat-form-field appearance="outline" class="channel-select">
-                <mat-label>Update Channel</mat-label>
-                <mat-select
-                  [value]="updateChannel"
-                  (selectionChange)="changeChannel($event.value)"
+            <!-- Only show updater controls if not Flatpak -->
+            @if (!isFlatpak) {
+              <!-- Updater error banner -->
+              @if (updateErrorMessage && !updateErrorDismissed) {
+                <div class="update-error" role="alert" aria-live="assertive">
+                  <mat-icon svgIcon="circle-exclamation" class="warn" aria-hidden="true"></mat-icon>
+                  <span class="error-text">{{ updateErrorMessage }}</span>
+                  <button
+                    type="button"
+                    mat-icon-button
+                    aria-label="Dismiss update error"
+                    (click)="closeUpdateError()"
+                  >
+                    <mat-icon svgIcon="circle-xmark"></mat-icon>
+                  </button>
+                </div>
+              }
+
+              @if (updateAvailable) {
+                <div class="update-available">
+                  <div class="update-info">
+                    <div class="update-header">
+                      <mat-icon svgIcon="circle-up" class="accent"></mat-icon>
+                      <h4>Update Available</h4>
+                    </div>
+                    <p>
+                      Version {{ updateAvailable.version }} is available
+                      <span
+                        *ngIf="updateReleaseChannel"
+                        class="release-badge"
+                        [ngClass]="'badge-' + updateReleaseChannel"
+                        matTooltip="Release tag: {{ updateReleaseTag }}"
+                      >
+                        {{ updateReleaseChannel | titlecase }}
+                      </span>
+                    </p>
+
+                    <!-- Download Progress -->
+                    @if (downloadInProgress) {
+                      <div class="download-progress">
+                        <mat-progress-bar
+                          mode="determinate"
+                          [value]="downloadPercentage"
+                          color="primary"
+                        >
+                        </mat-progress-bar>
+                        <div class="progress-text">
+                          <span>Downloading: </span>
+                          <span
+                            >{{ downloadProgress | formatFileSize }} /
+                            {{ downloadTotal | formatFileSize }}</span
+                          >
+                        </div>
+                      </div>
+                    }
+
+                    <div class="update-actions">
+                      <button
+                        mat-raised-button
+                        color="primary"
+                        (click)="installUpdate()"
+                        [disabled]="installingUpdate || downloadInProgress"
+                      >
+                        @if (installingUpdate || downloadInProgress) {
+                          <mat-spinner diameter="20"></mat-spinner>
+                          @if (downloadInProgress) {
+                            Downloading... ({{ downloadPercentage | number: '1.0-0' }}%)
+                          } @else {
+                            Installing...
+                          }
+                        } @else {
+                          Install Update
+                        }
+                      </button>
+                      <button
+                        mat-stroked-button
+                        (click)="skipUpdate()"
+                        [disabled]="downloadInProgress"
+                      >
+                        Skip This Version
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              } @else {
+                <div class="no-updates">
+                  <mat-icon svgIcon="circle-check" class="check-icon"></mat-icon>
+                  <p>Your app is up to date</p>
+                </div>
+              }
+              <div class="update-settings">
+                <mat-slide-toggle
+                  [checked]="autoCheckUpdates"
+                  (change)="toggleAutoCheck()"
                   [disabled]="downloadInProgress"
                 >
-                  <mat-option
-                    *ngFor="let channel of channels; trackBy: trackByChannel"
-                    [value]="channel.value"
-                  >
-                    <div class="channel-option">
-                      <span class="channel-label">{{ channel.label }} </span>
-                      <span class="channel-description">{{ channel.description }}</span>
-                    </div>
-                  </mat-option>
-                </mat-select>
-              </mat-form-field>
-            </div>
+                  Automatically check for updates
+                </mat-slide-toggle>
+              </div>
 
-            <div class="update-actions">
-              <button
-                mat-stroked-button
-                (click)="checkForUpdates()"
-                [disabled]="checkingForUpdates || downloadInProgress"
-              >
-                @if (checkingForUpdates) {
-                  <mat-spinner diameter="20"></mat-spinner>
-                  Checking...
-                } @else {
-                  Check for Updates
-                }
-              </button>
-            </div>
-            @if (skippedVersions.length > 0) {
               <div class="update-settings">
-                <h4>Skipped Updates</h4>
-                <p class="skipped-info">These updates were skipped but can be restored:</p>
-                <div class="skipped-versions">
-                  <div
-                    *ngFor="let version of skippedVersions; trackBy: trackByVersion"
-                    class="skipped-version-item"
+                <mat-form-field appearance="outline" class="channel-select">
+                  <mat-label>Update Channel</mat-label>
+                  <mat-select
+                    [value]="updateChannel"
+                    (selectionChange)="changeChannel($event.value)"
+                    [disabled]="downloadInProgress"
                   >
-                    <span class="version-text">{{ version }}</span>
-                    <button
-                      mat-icon-button
-                      (click)="unskipVersion(version)"
-                      matTooltip="Restore this update"
-                      aria-label="Restore update {{ version }}"
+                    <mat-option
+                      *ngFor="let channel of channels; trackBy: trackByChannel"
+                      [value]="channel.value"
                     >
-                      <mat-icon svgIcon="rotate-left" aria-hidden="true"></mat-icon>
-                    </button>
+                      <div class="channel-option">
+                        <span class="channel-label">{{ channel.label }} </span>
+                        <span class="channel-description">{{ channel.description }}</span>
+                      </div>
+                    </mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="update-actions">
+                <button
+                  mat-stroked-button
+                  (click)="checkForUpdates()"
+                  [disabled]="checkingForUpdates || downloadInProgress"
+                >
+                  @if (checkingForUpdates) {
+                    <mat-spinner diameter="20"></mat-spinner>
+                    Checking...
+                  } @else {
+                    Check for Updates
+                  }
+                </button>
+              </div>
+              @if (skippedVersions.length > 0) {
+                <div class="update-settings">
+                  <h4>Skipped Updates</h4>
+                  <p class="skipped-info">These updates were skipped but can be restored:</p>
+                  <div class="skipped-versions">
+                    <div
+                      *ngFor="let version of skippedVersions; trackBy: trackByVersion"
+                      class="skipped-version-item"
+                    >
+                      <span class="version-text">{{ version }}</span>
+                      <button
+                        mat-icon-button
+                        (click)="unskipVersion(version)"
+                        matTooltip="Restore this update"
+                        aria-label="Restore update {{ version }}"
+                      >
+                        <mat-icon svgIcon="rotate-left" aria-hidden="true"></mat-icon>
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              }
             }
+            <!-- End of non-Flatpak update controls -->
           </div>
         </div>
       }

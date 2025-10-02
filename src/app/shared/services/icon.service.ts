@@ -102,6 +102,7 @@ export class IconService {
       'right-left': 'assets/icons/right-left.svg',
       'rotate-left': 'assets/icons/rotate-left.svg',
       star: 'assets/icons/star.svg',
+      flatpak: 'assets/icons/flatpak.svg',
     };
 
     this.icons = icons;
