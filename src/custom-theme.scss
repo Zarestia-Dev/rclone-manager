@@ -655,6 +655,17 @@ body {
       focus-outline-color: var(--border-color),
     )
   );
+
+  @include mat.menu-overrides(
+    (
+      container-shape: var(--radius-sm),
+      container-color: var(--app-background),
+      divider-color: var(--theme-border),
+      divider-top-spacing: var(--space-xs),
+      divider-bottom-spacing: var(--space-xs),
+      item-label-text-color: var(--app-text-color),
+    )
+  );
 }
 
 * {
@@ -758,19 +769,7 @@ button {
   }
 }
 
-.mat-mdc-menu-item-text {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-sm);
-}
-
-.mat-mdc-menu-panel {
-  background-color: var(--app-background) !important;
-  border-radius: var(--radius-sm) !important;
-}
-
 .mat-mdc-menu-item {
-  color: var(--app-text-color) !important;
   min-height: 30px !important;
   width: calc(100% - 12px) !important;
   margin: var(--space-xxs) !important;
@@ -853,9 +852,7 @@ button {
   --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
 
   /* ===== COMPONENT-SPECIFIC VARIABLES ===== */
-  --action-btn-scale: 0.85;
   --action-btn-scale-hover: 0.9;
-  --action-btn-scale-active: 0.82;
   --action-btn-scale-disabled: 0.8;
 }
 

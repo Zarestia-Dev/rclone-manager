@@ -75,4 +75,7 @@ url = { version = "2.5", optional = true }
 default = ["updater"]
 updater = ["tauri-plugin-updater", "url"]
 flatpak = []
+deb = []
+rpm = []
+arch = []
 

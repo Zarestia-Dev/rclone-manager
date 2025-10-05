@@ -7,28 +7,20 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { version as appVersion } from '../../../../../../package.json';
-import { PlatformInfo, RcloneInfo, UpdateMetadata } from '@app/types';
+import { RcloneInfo, UpdateMetadata } from '@app/types';
 import { RcloneUpdateIconComponent } from '../../../../shared/components/rclone-update-icon/rclone-update-icon.component';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
-
-// Services
-import { AnimationsService } from '../../../../shared/services/animations.service';
-import { EventListenersService } from '@app/services';
-import { SystemInfoService } from '@app/services';
-import { NotificationService } from 'src/app/shared/services/notification.service';
-import { AppUpdaterService } from '@app/services';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 
-interface UpdateChannel {
-  value: string;
-  label: string;
-  description: string;
-}
+// Services
+import { AnimationsService } from '../../../../shared/services/animations.service';
+import { EventListenersService, SystemInfoService, AppUpdaterService } from '@app/services';
+import { NotificationService } from 'src/app/shared/services/notification.service';
 
 @Component({
   selector: 'app-about-modal',
@@ -68,15 +60,12 @@ export class AboutModalComponent implements OnInit {
   rcloneError: string | null = null;
   private eventListenersService = inject(EventListenersService);
 
-  // Platform detection
-  platformInfo: PlatformInfo | null = null;
-  get isFlatpak(): boolean {
-    return this.platformInfo?.is_flatpak ?? false;
-  }
+  // Platform detection - null means source build, string means packaged build
+  buildType: string | null = null;
+  updatesDisabled = false;
 
-  // Updater properties
+  // Updater properties - only keep what's needed for disabled updates UI
   updateAvailable: UpdateMetadata | null = null;
-  // Derived display fields from update metadata
   updateReleaseTag: string | null = null;
   updateReleaseChannel: string | null = null;
   checkingForUpdates = false;
@@ -84,22 +73,20 @@ export class AboutModalComponent implements OnInit {
   autoCheckUpdates = true;
   updateChannel = 'stable';
   skippedVersions: string[] = [];
-
   downloadProgress = 0;
   downloadTotal = 0;
   downloadPercentage = 0;
   downloadInProgress = false;
-  // Updater error display
   updateErrorMessage: string | null = null;
   updateErrorDismissed = false;
 
-  readonly channels: UpdateChannel[] = [
+  readonly channels = [
     { value: 'stable', label: 'Stable', description: 'Recommended for most users' },
     { value: 'beta', label: 'Beta', description: 'Latest features with some testing' },
     { value: 'nightly', label: 'Nightly', description: 'Bleeding edge, may be unstable' },
   ];
 
-  trackByChannel(index: number, channel: UpdateChannel): string {
+  trackByChannel(index: number, channel: { value: string }): string {
     return channel.value;
   }
 
@@ -108,38 +95,19 @@ export class AboutModalComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    // Load platform info first to determine if we're in Flatpak
-    await this.loadPlatformInfo();
+    // Initialize all services in parallel
+    const [, ,] = await Promise.all([
+      this.loadPlatformInfo(),
+      this.loadRcloneInfo(),
+      this.appUpdaterService.initialize(),
+    ]);
 
-    await this.loadRcloneInfo();
     await this.loadRclonePID();
 
-    // Subscribe to updater service
-    this.appUpdaterService.updateAvailable$.subscribe(update => {
-      this.updateAvailable = update;
-      // derive release tag and channel for better UI feedback
-      if (update && update.releaseTag) {
-        this.updateReleaseTag = update.releaseTag;
-        this.updateReleaseChannel = this.getChannelFromTag(update.releaseTag);
-      } else {
-        this.updateReleaseTag = null;
-        this.updateReleaseChannel = null;
-      }
-    });
+    // Subscribe to updater service observables
+    this.setupUpdaterSubscriptions();
 
-    this.appUpdaterService.updateInProgress$.subscribe(inProgress => {
-      this.installingUpdate = inProgress;
-    });
-
-    this.appUpdaterService.updateChannel$.subscribe(channel => {
-      this.updateChannel = channel;
-    });
-
-    this.appUpdaterService.skippedVersions$.subscribe(versions => {
-      this.skippedVersions = versions;
-    });
-
-    // Load settings
+    // Load settings (no await needed as they're handled by subscriptions)
     this.loadAutoCheckSetting();
     this.loadChannelSetting();
 
@@ -165,33 +133,6 @@ export class AboutModalComponent implements OnInit {
           console.error('Error handling Rclone API ready event:', error);
         }
       },
-    });
-
-    // Add download status subscription
-    this.appUpdaterService.downloadStatus$.subscribe(status => {
-      this.downloadProgress = status.downloadedBytes;
-      this.downloadTotal = status.totalBytes;
-      this.downloadPercentage = status.percentage;
-      this.downloadInProgress = status.downloadedBytes > 0 && !status.isComplete;
-
-      // Update installingUpdate based on completion
-      if (status.isComplete) {
-        this.installingUpdate = false;
-      }
-
-      // Show backend failure messages in the UI unless the user dismissed them.
-      if (status.isFailed) {
-        // If it's a new failure message, reset dismissed flag so it becomes visible
-        if (status.failureMessage !== this.updateErrorMessage) {
-          this.updateErrorMessage = status.failureMessage ?? 'Update installation failed.';
-          this.updateErrorDismissed = false;
-        }
-      }
-
-      // If a new download/install starts, hide previously dismissed errors
-      if (this.downloadInProgress || this.installingUpdate) {
-        this.updateErrorDismissed = true;
-      }
     });
   }
 
@@ -259,7 +200,7 @@ export class AboutModalComponent implements OnInit {
   }
 
   @HostListener('document:keydown.escape', ['$event'])
-  onEscKeyPress(): void {
+  close(): void {
     this.dialogRef.close();
   }
 
@@ -277,11 +218,6 @@ export class AboutModalComponent implements OnInit {
         this.notificationService.openSnackBar('Failed to copy to clipboard', 'Close');
       }
     );
-  }
-
-  @HostListener('document:keydown.escape', ['$event'])
-  close(): void {
-    this.dialogRef.close();
   }
 
   navigateTo(page: string): void {
@@ -377,11 +313,64 @@ export class AboutModalComponent implements OnInit {
 
   private async loadPlatformInfo(): Promise<void> {
     try {
-      this.platformInfo = await this.systemInfoService.getPlatformInfo();
-      console.log('Platform info:', this.platformInfo);
+      this.buildType = await this.systemInfoService.getBuildType();
+      this.updatesDisabled = await this.systemInfoService.areUpdatesDisabled();
+      console.log('Build type:', this.buildType, 'Updates disabled:', this.updatesDisabled);
     } catch (error) {
       console.error('Failed to load platform info:', error);
-      this.platformInfo = null;
+      this.buildType = null;
+      this.updatesDisabled = false;
     }
+  }
+
+  private setupUpdaterSubscriptions(): void {
+    // Subscribe to updater service observables
+    this.appUpdaterService.updateAvailable$.subscribe(update => {
+      this.updateAvailable = update;
+      // derive release tag and channel for better UI feedback
+      if (update?.releaseTag) {
+        this.updateReleaseTag = update.releaseTag;
+        this.updateReleaseChannel = this.getChannelFromTag(update.releaseTag);
+      } else {
+        this.updateReleaseTag = null;
+        this.updateReleaseChannel = null;
+      }
+    });
+
+    this.appUpdaterService.updateInProgress$.subscribe(inProgress => {
+      this.installingUpdate = inProgress;
+    });
+
+    this.appUpdaterService.updateChannel$.subscribe(channel => {
+      this.updateChannel = channel;
+    });
+
+    this.appUpdaterService.skippedVersions$.subscribe(versions => {
+      this.skippedVersions = versions;
+    });
+
+    // Subscribe to download status
+    this.appUpdaterService.downloadStatus$.subscribe(status => {
+      this.downloadProgress = status.downloadedBytes;
+      this.downloadTotal = status.totalBytes;
+      this.downloadPercentage = status.percentage;
+      this.downloadInProgress = status.downloadedBytes > 0 && !status.isComplete;
+
+      // Update installingUpdate based on completion
+      if (status.isComplete) {
+        this.installingUpdate = false;
+      }
+
+      // Handle error display
+      if (status.isFailed && status.failureMessage !== this.updateErrorMessage) {
+        this.updateErrorMessage = status.failureMessage ?? 'Update installation failed.';
+        this.updateErrorDismissed = false;
+      }
+
+      // Hide errors when new download starts
+      if (this.downloadInProgress || this.installingUpdate) {
+        this.updateErrorDismissed = true;
+      }
+    });
   }
 }

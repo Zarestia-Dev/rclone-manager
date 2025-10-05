@@ -70,7 +70,7 @@ use crate::{
     utils::{
         app::{
             builder::create_app_window,
-            platform::{get_platform_info, is_flatpak_build},
+            platform::{are_updates_disabled, get_build_type},
             ui::set_theme,
         },
         io::{
@@ -91,6 +91,7 @@ use crate::{
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[allow(unused_mut)]
     let mut builder = tauri::Builder::default();
 
     #[cfg(feature = "updater")]
@@ -305,8 +306,8 @@ pub fn run() {
             // UI
             set_theme,
             // Platform
-            is_flatpak_build,
-            get_platform_info,
+            get_build_type,
+            are_updates_disabled,
             // Rclone operations
             provision_rclone,
             get_rclone_info,

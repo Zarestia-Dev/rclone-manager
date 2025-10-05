@@ -170,13 +170,17 @@
 
     <button
       mat-menu-item
-      [matBadge]="updateAvailable ? 'i' : null"
-      matBadgePosition="below before"
-      matBadgeSize="small"
       [matTooltip]="updateAvailable ? 'Application update available' : null"
       (click)="openAboutModal()"
       aria-label="About application"
     >
+      @if (updateAvailable) {
+        <span
+          [matBadge]="updateAvailable ? 'i' : null"
+          matBadgePosition="below before"
+          matBadgeSize="small"
+        ></span>
+      }
       <span>About RClone Manager</span>
     </button>
   </mat-menu>

@@ -4,9 +4,6 @@ import { Subject, BehaviorSubject, Subscription } from 'rxjs';
 import { takeUntil, take } from 'rxjs/operators';
 import { InputModalComponent } from '../../shared/modals/input-modal/input-modal.component';
 
-import { MatDividerModule } from '@angular/material/divider';
-import { MatIconModule } from '@angular/material/icon';
-
 import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -29,6 +26,8 @@ import { NotificationService } from 'src/app/shared/services/notification.servic
 import { PasswordManagerModalComponent } from 'src/app/features/modals/password-manager-modal/password-manager-modal.component';
 import { AppUpdaterService } from '@app/services';
 import { CheckResult, ConnectionStatus, ModalSize, STANDARD_MODAL_SIZE, Theme } from '@app/types';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-titlebar',
@@ -89,7 +88,10 @@ export class TitlebarComponent implements OnInit, OnDestroy {
       this.initThemeSystem();
       await this.runInternetCheck();
 
-      // Subscribe to update availability
+      // Initialize updater service and subscribe to updates
+      await this.appUpdaterService.initialize();
+
+      // Always subscribe - the service will handle disabled state internally
       this.appUpdaterService.updateAvailable$.subscribe(update => {
         this.updateAvailable = !!update;
       });
@@ -152,7 +154,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   private async checkAutoUpdate(): Promise<void> {
     try {
       const autoCheckEnabled = await this.appUpdaterService.getAutoCheckEnabled();
-      if (autoCheckEnabled) {
+      if (autoCheckEnabled && !this.appUpdaterService.areUpdatesDisabled()) {
         // Check for updates on app start
         await this.appUpdaterService.checkForUpdates();
       }

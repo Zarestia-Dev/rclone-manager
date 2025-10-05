@@ -4,6 +4,7 @@ import { BehaviorSubject, interval, Subscription } from 'rxjs';
 import { debounceTime, takeWhile } from 'rxjs/operators';
 import { NotificationService } from '../../shared/services/notification.service';
 import { AppSettingsService } from '../settings/app-settings.service';
+import { UpdateStateService } from './update-state.service';
 import { UpdateMetadata } from '@app/types';
 
 export interface DownloadStatus {
@@ -21,9 +22,9 @@ export interface DownloadStatus {
 export class AppUpdaterService {
   private notificationService = inject(NotificationService);
   private appSettingsService = inject(AppSettingsService);
+  private updateStateService = inject(UpdateStateService);
 
   private updateAvailableSubject = new BehaviorSubject<UpdateMetadata | null>(null);
-  private updateInProgressSubject = new BehaviorSubject<boolean>(false);
   private downloadStatusSubject = new BehaviorSubject<DownloadStatus>({
     downloadedBytes: 0,
     totalBytes: 0,
@@ -35,46 +36,56 @@ export class AppUpdaterService {
 
   private statusPollingInterval = 500; // Poll every 500ms instead of real-time events
   private pollingSubscription: Subscription | null = null;
+  private initialized = false;
 
   public updateAvailable$ = this.updateAvailableSubject.asObservable();
-  public updateInProgress$ = this.updateInProgressSubject.asObservable();
+  public updateInProgress$ = this.updateStateService.updateInProgress$;
   public downloadStatus$ = this.downloadStatusSubject.asObservable();
   public skippedVersions$ = this.skippedVersionsSubject.asObservable();
   public updateChannel$ = this.updateChannelSubject.asObservable();
-
-  constructor() {
-    this.initialize();
-  }
+  public updatesDisabled$ = this.updateStateService.updatesDisabled$;
+  public buildType$ = this.updateStateService.buildType$;
+  public updateState$ = this.updateStateService.updateState$;
 
   async checkForUpdates(): Promise<UpdateMetadata | null> {
     try {
+      // Ensure initialization
+      await this.ensureInitialized();
+
       console.log('Checking for updates on channel:', this.updateChannelSubject.value);
 
-      this.updateInProgressSubject.next(false);
+      this.updateStateService.setUpdateInProgress(false);
       this.resetDownloadStatus();
+
+      // Check if updates are disabled (use cached value)
+      if (this.areUpdatesDisabled()) {
+        console.log('Updates are disabled for this build type');
+        return null;
+      }
+
       const result = await invoke<UpdateMetadata | null>('fetch_update', {
         channel: this.updateChannelSubject.value,
       });
 
       if (result) {
         console.log('Update available:', result.version, 'Release tag:', result.releaseTag);
-      } else {
-        console.log('No update available for channel:', this.updateChannelSubject.value);
-      }
 
-      if (result && this.isVersionSkipped(result.version)) {
-        console.log(`Update ${result.version} was skipped by user`);
-        return null;
-      }
+        // Check if version is skipped before setting as available
+        if (this.isVersionSkipped(result.version)) {
+          console.log(`Update ${result.version} was skipped by user`);
+          return null;
+        }
 
-      this.updateAvailableSubject.next(result);
-
-      if (result) {
+        this.updateAvailableSubject.next(result);
+        this.updateStateService.setHasUpdates(true);
         this.notificationService.showInfo(
           `Update available: ${result.version}. Please check the About dialog to install.`,
           'OK',
           10000
         );
+      } else {
+        console.log('No update available for channel:', this.updateChannelSubject.value);
+        this.updateAvailableSubject.next(null);
       }
 
       return result;
@@ -93,7 +104,7 @@ export class AppUpdaterService {
     }
 
     try {
-      this.updateInProgressSubject.next(true);
+      this.updateStateService.setUpdateInProgress(true);
       this.resetDownloadStatus();
 
       // Start polling for download status
@@ -108,7 +119,7 @@ export class AppUpdaterService {
       console.error('Failed to install update:', error);
       this.notificationService.showError('Failed to install update');
       this.stopStatusPolling();
-      this.updateInProgressSubject.next(false);
+      this.updateStateService.setUpdateInProgress(false);
     }
   }
 
@@ -117,7 +128,7 @@ export class AppUpdaterService {
 
     this.pollingSubscription = interval(this.statusPollingInterval)
       .pipe(
-        takeWhile(() => this.updateInProgressSubject.value),
+        takeWhile(() => this.updateStateService.isUpdateInProgress()),
         debounceTime(100)
       )
       .subscribe(async () => {
@@ -129,16 +140,18 @@ export class AppUpdaterService {
           if (status.isFailed) {
             const msg = status.failureMessage || 'Update installation failed';
             this.notificationService.showError(msg);
-            this.updateInProgressSubject.next(false);
+            this.updateStateService.setUpdateInProgress(false);
             this.updateAvailableSubject.next(null);
+            this.updateStateService.setHasUpdates(false);
             this.stopStatusPolling();
             return;
           }
 
           if (status.isComplete) {
             this.notificationService.showSuccess('Update downloaded successfully. Restarting...');
-            this.updateInProgressSubject.next(false);
+            this.updateStateService.setUpdateInProgress(false);
             this.updateAvailableSubject.next(null);
+            this.updateStateService.setHasUpdates(false);
             this.stopStatusPolling();
           }
         } catch (error) {
@@ -163,13 +176,12 @@ export class AppUpdaterService {
     });
   }
 
-  // Keep all your existing methods (skipVersion, getChannel, etc.) unchanged
   getUpdateAvailable(): UpdateMetadata | null {
     return this.updateAvailableSubject.value;
   }
 
   isUpdateInProgress(): boolean {
-    return this.updateInProgressSubject.value;
+    return this.updateStateService.isUpdateInProgress();
   }
 
   async skipVersion(version: string): Promise<void> {
@@ -262,14 +274,51 @@ export class AppUpdaterService {
   }
 
   async initialize(): Promise<void> {
-    try {
-      const skippedVersions = await this.getSkippedVersions();
-      this.skippedVersionsSubject.next(skippedVersions);
+    return this.ensureInitialized();
+  }
 
-      const channel = await this.getChannel();
+  private async ensureInitialized(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      // Load all initial state in parallel
+      const [skippedVersions, channel, updatesDisabled, buildType] = await Promise.all([
+        this.getSkippedVersions(),
+        this.getChannel(),
+        this.checkIfUpdatesDisabled(),
+        invoke<string>('get_build_type'),
+      ]);
+
+      this.skippedVersionsSubject.next(skippedVersions);
       this.updateChannelSubject.next(channel);
+      this.updateStateService.setUpdatesDisabled(updatesDisabled);
+      this.updateStateService.setBuildType(buildType);
+
+      this.initialized = true;
     } catch (error) {
-      console.error('Failed to initialize skipped versions:', error);
+      console.error('Failed to initialize updater service:', error);
+      // Set defaults on error
+      this.skippedVersionsSubject.next([]);
+      this.updateChannelSubject.next('stable');
+      this.updateStateService.setUpdatesDisabled(false);
+      this.updateStateService.setBuildType(null);
     }
+  }
+
+  private async checkIfUpdatesDisabled(): Promise<boolean> {
+    try {
+      return await invoke<boolean>('are_updates_disabled');
+    } catch (error) {
+      console.error('Failed to check if updates are disabled:', error);
+      return false; // Default to allowing updates if check fails
+    }
+  }
+
+  public areUpdatesDisabled(): boolean {
+    return this.updateStateService.areUpdatesDisabled();
+  }
+
+  public getBuildType(): string | null {
+    return this.updateStateService.getBuildType();
   }
 }

@@ -1,36 +1,34 @@
-use std::{env, fs};
-
-/// Checks if the application is running inside a Flatpak sandbox
 #[tauri::command]
-pub fn is_flatpak_build() -> bool {
-    // Check for Flatpak environment variable
-    if env::var("FLATPAK_ID").is_ok() {
-        return true;
+pub fn get_build_type() -> Option<&'static str> {
+    #[cfg(feature = "flatpak")]
+    {
+        Some("flatpak")
     }
-
-    // Check for /.flatpak-info file which exists in Flatpak containers
-    if fs::metadata("/.flatpak-info").is_ok() {
-        return true;
+    #[cfg(feature = "deb")]
+    {
+        Some("deb")
     }
-
-    false
+    #[cfg(feature = "rpm")]
+    {
+        Some("rpm")
+    }
+    #[cfg(feature = "arch")]
+    {
+        Some("arch")
+    }
+    #[cfg(not(any(
+        feature = "flatpak",
+        feature = "deb",
+        feature = "rpm",
+        feature = "arch"
+    )))]
+    {
+        None
+    }
 }
 
-/// Get platform information including build type
+/// Check if updates are disabled for this build
 #[tauri::command]
-pub fn get_platform_info() -> PlatformInfo {
-    PlatformInfo {
-        is_flatpak: is_flatpak_build(),
-        os: env::consts::OS.to_string(),
-        arch: env::consts::ARCH.to_string(),
-        family: env::consts::FAMILY.to_string(),
-    }
-}
-
-#[derive(serde::Serialize)]
-pub struct PlatformInfo {
-    pub is_flatpak: bool,
-    pub os: String,
-    pub arch: String,
-    pub family: String,
+pub fn are_updates_disabled() -> bool {
+    get_build_type().is_some()
 }
