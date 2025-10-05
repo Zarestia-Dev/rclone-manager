@@ -256,6 +256,12 @@ export class AppUpdaterService {
     try {
       await this.appSettingsService.saveSetting('general', 'update_channel', channel);
       this.updateChannelSubject.next(channel);
+
+      // Clear update status when channel is changed
+      this.updateAvailableSubject.next(null);
+      this.updateStateService.setHasUpdates(false);
+      this.resetDownloadStatus();
+
       this.notificationService.showInfo(`Update channel changed to ${channel}`);
     } catch (error) {
       console.error('Failed to save update channel:', error);

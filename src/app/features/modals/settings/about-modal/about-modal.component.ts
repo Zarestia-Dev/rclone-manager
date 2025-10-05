@@ -7,8 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { version as appVersion } from '../../../../../../package.json';
-import { RcloneInfo, UpdateMetadata } from '@app/types';
-import { RcloneUpdateIconComponent } from '../../../../shared/components/rclone-update-icon/rclone-update-icon.component';
+import { RcloneInfo, UpdateMetadata, UpdateStatus } from '@app/types';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -19,7 +18,12 @@ import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 
 // Services
 import { AnimationsService } from '../../../../shared/services/animations.service';
-import { EventListenersService, SystemInfoService, AppUpdaterService } from '@app/services';
+import {
+  EventListenersService,
+  SystemInfoService,
+  AppUpdaterService,
+  RcloneUpdateService,
+} from '@app/services';
 import { NotificationService } from 'src/app/shared/services/notification.service';
 
 @Component({
@@ -35,7 +39,6 @@ import { NotificationService } from 'src/app/shared/services/notification.servic
     MatFormFieldModule,
     MatBadgeModule,
     MatTooltipModule,
-    RcloneUpdateIconComponent,
     MatProgressBarModule,
     FormatFileSizePipe,
   ],
@@ -50,6 +53,7 @@ export class AboutModalComponent implements OnInit {
   systemInfoService = inject(SystemInfoService);
   notificationService = inject(NotificationService);
   appUpdaterService = inject(AppUpdaterService);
+  rcloneUpdateService = inject(RcloneUpdateService);
 
   currentPage = 'main';
 
@@ -64,7 +68,7 @@ export class AboutModalComponent implements OnInit {
   buildType: string | null = null;
   updatesDisabled = false;
 
-  // Updater properties - only keep what's needed for disabled updates UI
+  // App Updater properties
   updateAvailable: UpdateMetadata | null = null;
   updateReleaseTag: string | null = null;
   updateReleaseChannel: string | null = null;
@@ -80,10 +84,27 @@ export class AboutModalComponent implements OnInit {
   updateErrorMessage: string | null = null;
   updateErrorDismissed = false;
 
+  // Rclone Update properties
+  rcloneUpdateStatus: UpdateStatus = {
+    checking: false,
+    updating: false,
+    available: false,
+    error: null,
+    lastCheck: null,
+    updateInfo: null,
+  };
+  rcloneAutoCheck = true;
+  rcloneUpdateChannel = 'stable';
+  rcloneSkippedVersions: string[] = [];
+
   readonly channels = [
     { value: 'stable', label: 'Stable', description: 'Recommended for most users' },
     { value: 'beta', label: 'Beta', description: 'Latest features with some testing' },
-    { value: 'nightly', label: 'Nightly', description: 'Bleeding edge, may be unstable' },
+  ];
+
+  readonly rcloneChannels = [
+    { value: 'stable', label: 'Stable', description: 'Stable releases (recommended)' },
+    { value: 'beta', label: 'Beta', description: 'Beta releases with latest features' },
   ];
 
   trackByChannel(index: number, channel: { value: string }): string {
@@ -96,20 +117,23 @@ export class AboutModalComponent implements OnInit {
 
   async ngOnInit(): Promise<void> {
     // Initialize all services in parallel
-    const [, ,] = await Promise.all([
+    const [, , ,] = await Promise.all([
       this.loadPlatformInfo(),
       this.loadRcloneInfo(),
       this.appUpdaterService.initialize(),
+      this.rcloneUpdateService.initialize(),
     ]);
 
     await this.loadRclonePID();
 
     // Subscribe to updater service observables
     this.setupUpdaterSubscriptions();
+    this.setupRcloneUpdaterSubscriptions();
 
     // Load settings (no await needed as they're handled by subscriptions)
     this.loadAutoCheckSetting();
     this.loadChannelSetting();
+    this.loadRcloneSettings();
 
     this.eventListenersService.listenToRcloneEngine().subscribe({
       next: async event => {
@@ -138,10 +162,7 @@ export class AboutModalComponent implements OnInit {
 
   private getChannelFromTag(tag: string): string {
     const t = tag.toLowerCase();
-    if (t.includes('nightly')) return 'nightly';
     if (t.includes('beta')) return 'beta';
-    if (t.includes('alpha')) return 'alpha';
-    if (t.includes('rc')) return 'rc';
     return 'stable';
   }
 
@@ -372,5 +393,69 @@ export class AboutModalComponent implements OnInit {
         this.updateErrorDismissed = true;
       }
     });
+  }
+
+  // Rclone Update Methods
+  private setupRcloneUpdaterSubscriptions(): void {
+    this.rcloneUpdateService.updateStatus$.subscribe(status => {
+      this.rcloneUpdateStatus = status;
+    });
+
+    this.rcloneUpdateService.updateChannel$.subscribe(channel => {
+      this.rcloneUpdateChannel = channel;
+    });
+
+    this.rcloneUpdateService.skippedVersions$.subscribe(versions => {
+      this.rcloneSkippedVersions = versions;
+    });
+
+    this.rcloneUpdateService.autoCheck$.subscribe(autoCheck => {
+      this.rcloneAutoCheck = autoCheck;
+    });
+  }
+
+  private async loadRcloneSettings(): Promise<void> {
+    try {
+      this.rcloneAutoCheck = await this.rcloneUpdateService.getAutoCheckEnabled();
+      this.rcloneUpdateChannel = await this.rcloneUpdateService.getChannel();
+    } catch (error) {
+      console.error('Failed to load rclone update settings:', error);
+    }
+  }
+
+  async checkForRcloneUpdates(): Promise<void> {
+    if (this.rcloneUpdateStatus.checking) return;
+    await this.rcloneUpdateService.checkForUpdates();
+  }
+
+  async installRcloneUpdate(): Promise<void> {
+    if (this.rcloneUpdateStatus.updating) return;
+    await this.rcloneUpdateService.performUpdate();
+  }
+
+  async skipRcloneUpdate(): Promise<void> {
+    if (!this.rcloneUpdateStatus.updateInfo) return;
+    const version =
+      this.rcloneUpdateStatus.updateInfo.latest_version_clean ||
+      this.rcloneUpdateStatus.updateInfo.latest_version;
+    await this.rcloneUpdateService.skipVersion(version);
+  }
+
+  async unskipRcloneVersion(version: string): Promise<void> {
+    await this.rcloneUpdateService.unskipVersion(version);
+  }
+
+  async toggleRcloneAutoCheck(): Promise<void> {
+    await this.rcloneUpdateService.setAutoCheckEnabled(!this.rcloneAutoCheck);
+  }
+
+  async changeRcloneChannel(channel: string): Promise<void> {
+    await this.rcloneUpdateService.setChannel(channel);
+    // Clear current update when channel changes
+    this.rcloneUpdateStatus = {
+      ...this.rcloneUpdateStatus,
+      available: false,
+      updateInfo: null,
+    };
   }
 }

@@ -274,10 +274,10 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     try {
       // Load system stats independently of Rclone status
       const [memoryStats, coreStats] = await Promise.all([
-        this.systemInfoService.getMemoryStats(),
+        this.systemInfoService.getMemoryStats().catch(() => null as MemoryStats | null),
         this.systemInfoService.getCoreStats().catch(err => {
           console.error('Error loading core stats:', err);
-          return null;
+          return null as GlobalStats | null;
         }),
       ]);
 
@@ -325,7 +325,9 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: async () => {
-          this.bandwidthLimit = await this.systemInfoService.getBandwidthLimit();
+          this.bandwidthLimit = await this.systemInfoService
+            .getBandwidthLimit()
+            .catch(() => null as BandwidthLimitResponse | null);
           this.statsUpdateDebounce$.next();
         },
       });
@@ -482,7 +484,9 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
       };
       this.cdr.markForCheck();
 
-      const response = await this.systemInfoService.getBandwidthLimit();
+      const response = await this.systemInfoService
+        .getBandwidthLimit()
+        .catch(() => null as BandwidthLimitResponse | null);
       console.log('HomeComponent: Bandwidth limit loaded:', response);
 
       this.bandwidthLimit = response;

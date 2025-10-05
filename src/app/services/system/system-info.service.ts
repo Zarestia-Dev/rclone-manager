@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { RcloneInfo } from '@app/types';
+import { RcloneInfo, MemoryStats, GlobalStats, BandwidthLimitResponse } from '@app/types';
 
 /**
  * Service for system information and rclone engine management
@@ -53,28 +53,28 @@ export class SystemInfoService extends TauriBaseService {
   /**
    * Get memory statistics
    */
-  async getMemoryStats(): Promise<any> {
+  async getMemoryStats(): Promise<MemoryStats> {
     return this.invokeCommand('get_memory_stats');
   }
 
   /**
    * Get core statistics
    */
-  async getCoreStats(): Promise<any> {
+  async getCoreStats(): Promise<GlobalStats> {
     return this.invokeCommand('get_core_stats');
   }
 
   /**
    * Get bandwidth limit
    */
-  async getBandwidthLimit(): Promise<any> {
+  async getBandwidthLimit(): Promise<BandwidthLimitResponse> {
     return this.invokeCommand('get_bandwidth_limit');
   }
 
   /**
    * Set bandwidth limit
    */
-  async setBandwidthLimit(rate?: string): Promise<any> {
+  async setBandwidthLimit(rate?: string): Promise<BandwidthLimitResponse> {
     return this.invokeCommand('set_bandwidth_limit', { rate });
   }
 

@@ -103,6 +103,7 @@ export class IconService {
       'rotate-left': 'assets/icons/rotate-left.svg',
       star: 'assets/icons/star.svg',
       package: 'assets/icons/package.svg',
+      skull: 'assets/icons/skull.svg',
     };
 
     this.icons = icons;

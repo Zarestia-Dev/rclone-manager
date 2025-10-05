@@ -379,7 +379,6 @@
   >
     <div class="toggle-container">
       <mat-slide-toggle
-        [hideIcon]="!showCategory"
         [formControl]="getFormControl(category, key)"
         (change)="updateSetting(category, key, getFormControl(category, key).value)"
         [attr.aria-describedby]="

@@ -66,10 +66,10 @@
       [matMenuTriggerFor]="menu"
       aria-label="Application menu"
       class="menu-button"
-      [matBadge]="updateAvailable ? 'i' : null"
+      [matBadge]="updateAvailable || rcloneUpdateAvailable ? '!' : null"
       matBadgePosition="below before"
       matBadgeSize="small"
-      [matTooltip]="updateAvailable ? 'Application update available' : null"
+      [matTooltip]="getUpdateTooltip()"
     >
       <mat-icon svgIcon="menu-bar" aria-hidden="true"></mat-icon>
     </button>
@@ -170,13 +170,13 @@
 
     <button
       mat-menu-item
-      [matTooltip]="updateAvailable ? 'Application update available' : null"
+      [matTooltip]="getAboutMenuTooltip()"
       (click)="openAboutModal()"
       aria-label="About application"
     >
-      @if (updateAvailable) {
+      @if (updateAvailable || rcloneUpdateAvailable) {
         <span
-          [matBadge]="updateAvailable ? 'i' : null"
+          [matBadge]="getAboutMenuBadge()"
           matBadgePosition="below before"
           matBadgeSize="small"
         ></span>

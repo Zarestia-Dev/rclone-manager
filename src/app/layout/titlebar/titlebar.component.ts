@@ -24,7 +24,7 @@ import { AppSettingsService } from '@app/services';
 import { UiStateService } from '@app/services';
 import { NotificationService } from 'src/app/shared/services/notification.service';
 import { PasswordManagerModalComponent } from 'src/app/features/modals/password-manager-modal/password-manager-modal.component';
-import { AppUpdaterService } from '@app/services';
+import { AppUpdaterService, RcloneUpdateService } from '@app/services';
 import { CheckResult, ConnectionStatus, ModalSize, STANDARD_MODAL_SIZE, Theme } from '@app/types';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -54,6 +54,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   remoteManagementService = inject(RemoteManagementService);
   notificationService = inject(NotificationService);
   appUpdaterService = inject(AppUpdaterService);
+  rcloneUpdateService = inject(RcloneUpdateService);
 
   selectedTheme: Theme = 'light';
   isMacOS = false;
@@ -61,6 +62,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   connectionHistory: { timestamp: Date; result: CheckResult }[] = [];
   result?: CheckResult;
   updateAvailable = false;
+  rcloneUpdateAvailable = false;
 
   private darkModeMediaQuery: MediaQueryList | null = null;
   private destroy$ = new Subject<void>();
@@ -90,14 +92,21 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
       // Initialize updater service and subscribe to updates
       await this.appUpdaterService.initialize();
+      await this.rcloneUpdateService.initialize();
 
       // Always subscribe - the service will handle disabled state internally
       this.appUpdaterService.updateAvailable$.subscribe(update => {
         this.updateAvailable = !!update;
       });
 
+      // Subscribe to rclone updates
+      this.rcloneUpdateService.updateStatus$.subscribe(status => {
+        this.rcloneUpdateAvailable = status.available;
+      });
+
       // Check for updates if auto-check is enabled
       this.checkAutoUpdate();
+      this.checkRcloneAutoUpdate();
     } catch (error) {
       console.error('Initialization error:', error);
       this.selectedTheme = 'light';
@@ -163,6 +172,19 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     }
   }
 
+  private async checkRcloneAutoUpdate(): Promise<void> {
+    try {
+      const autoCheckEnabled = await this.rcloneUpdateService.getAutoCheckEnabled();
+      if (autoCheckEnabled) {
+        // Check for rclone updates on app start
+        console.log('🔍 Auto-checking for rclone updates on app launch...');
+        await this.rcloneUpdateService.checkForUpdates();
+      }
+    } catch (error) {
+      console.error('Failed to check for rclone auto-updates:', error);
+    }
+  }
+
   // Connection Checking
   async runInternetCheck(): Promise<void> {
     if (this.connectionStatus === 'checking') return;
@@ -225,6 +247,30 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     }
 
     return 'Your internet connection is working properly.';
+  }
+
+  getUpdateTooltip(): string {
+    if (this.updateAvailable && this.rcloneUpdateAvailable) {
+      return 'Application and Rclone updates available';
+    } else if (this.updateAvailable) {
+      return 'Application update available';
+    } else if (this.rcloneUpdateAvailable) {
+      return 'Rclone update available';
+    }
+    return '';
+  }
+
+  getAboutMenuTooltip(): string {
+    return this.getUpdateTooltip();
+  }
+
+  getAboutMenuBadge(): string {
+    if (this.updateAvailable && this.rcloneUpdateAvailable) {
+      return '2'; // Show number of available updates
+    } else if (this.updateAvailable || this.rcloneUpdateAvailable) {
+      return '!'; // Show single update indicator
+    }
+    return '';
   }
 
   // Window Controls

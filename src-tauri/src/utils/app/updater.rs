@@ -222,24 +222,16 @@ pub mod app_updates {
     fn is_release_for_channel(release: &GitHubRelease, channel: &str) -> bool {
         match channel {
             "stable" => {
-                // Stable channel: not prerelease and doesn't contain beta/nightly in tag
-                !release.prerelease
-                    && !release.tag_name.to_lowercase().contains("beta")
-                    && !release.tag_name.to_lowercase().contains("nightly")
+                // Stable channel: not prerelease and doesn't contain beta in tag
+                !release.prerelease && !release.tag_name.to_lowercase().contains("beta")
             }
             "beta" => {
                 // Beta channel: prerelease OR contains beta in tag name
                 release.prerelease || release.tag_name.to_lowercase().contains("beta")
             }
-            "nightly" => {
-                // Nightly channel: contains nightly in tag name
-                release.tag_name.to_lowercase().contains("nightly")
-            }
             _ => {
                 // Default to stable behavior
-                !release.prerelease
-                    && !release.tag_name.to_lowercase().contains("beta")
-                    && !release.tag_name.to_lowercase().contains("nightly")
+                !release.prerelease && !release.tag_name.to_lowercase().contains("beta")
             }
         }
     }

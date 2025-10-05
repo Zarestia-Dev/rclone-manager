@@ -225,6 +225,7 @@
           .detail-row {
             display: flex;
             align-items: center;
+            gap: var(--space-sm);
             margin: var(--space-sm) 0;
 
             &.warning {
@@ -265,6 +266,17 @@
         margin: 0;
       }
     }
+  }
+}
+
+// Rclone Page - extends update page classes
+.rclone-page {
+  .rclone-info {
+    margin-bottom: var(--space-lg);
+  }
+
+  .rclone-updates-section {
+    @extend .updates-page;
   }
 }
 
@@ -507,9 +519,6 @@
   }
   &.badge-beta {
     background: var(--orange);
-  }
-  &.badge-nightly {
-    background: var(--purple);
   }
 }
 

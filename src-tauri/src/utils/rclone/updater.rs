@@ -1,26 +1,55 @@
-use log::debug;
+//! # Rclone Updater Module
+//!
+//! This module handles rclone binary updates with intelligent strategy selection:
+//!
+//! ## Update Strategies:
+//! - **In-Place**: Updates rclone directly when write permissions allow
+//! - **Download-to-Local**: Downloads to app data directory when in-place isn't possible
+//!
+//! ## Features:
+//! - Cross-platform permission handling
+//! - Channel selection (stable/beta)
+//! - Settings integration for path management
+//! - Engine lifecycle management during updates
+//! - Comprehensive error handling and rollback
+
+use log::{debug, info};
 use serde_json::json;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
-use crate::utils::rclone::util::safe_copy_rclone;
+use crate::core::settings::operations::core::save_settings;
 use crate::{rclone::queries::get_rclone_info, utils::types::all_types::RcloneState};
+
+// ============================================================================
+// Types and Constants
+// ============================================================================
 
 #[derive(Debug, Clone)]
 enum UpdateStrategy {
     /// Update in place (rclone has write permissions to its own location)
     InPlace,
-    /// Copy to local app directory and update there
-    CopyToLocal(PathBuf),
     /// Download new binary to local app directory
     DownloadToLocal(PathBuf),
 }
 
-/// Check if a newer version of rclone is available
+#[derive(Debug)]
+struct UpdateCheckResult {
+    update_available: bool,
+    latest_version: String,
+}
+
+// ============================================================================
+// Public API Commands
+// ============================================================================
+
+/// Check if a newer version of rclone is available using rclone selfupdate --check
 #[tauri::command]
 pub async fn check_rclone_update(
+    app_handle: tauri::AppHandle,
     state: State<'_, RcloneState>,
+    channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
     // Get current version
     let current_version = match get_rclone_info(state.clone()).await {
@@ -28,100 +57,57 @@ pub async fn check_rclone_update(
         Err(e) => return Err(format!("Failed to get current rclone version: {e}")),
     };
 
-    // Get latest version from GitHub API
-    let latest_version = get_latest_rclone_version(&state).await?;
-
-    // Compare versions
-    let update_available = is_version_newer(&latest_version, &current_version);
+    // Use rclone selfupdate --check to determine if update is available
+    let channel = channel.unwrap_or_else(|| "stable".to_string());
+    let update_check_result = check_rclone_selfupdate(&app_handle, &channel).await?;
 
     Ok(json!({
         "current_version": current_version,
-        "latest_version": latest_version,
-        "update_available": update_available,
+        "latest_version": update_check_result.latest_version,
+        "update_available": update_check_result.update_available,
         "current_version_clean": clean_version(&current_version),
-        "latest_version_clean": clean_version(&latest_version)
+        "latest_version_clean": clean_version(&update_check_result.latest_version),
+        "channel": channel
     }))
 }
 
-/// Get the latest rclone version from GitHub releases
-pub async fn get_latest_rclone_version(state: &State<'_, RcloneState>) -> Result<String, String> {
-    let url = "https://api.github.com/repos/rclone/rclone/releases/latest";
-
-    let response = state
-        .client
-        .get(url)
-        .header("User-Agent", "rclone-manager")
-        .send()
-        .await
-        .map_err(|e| format!("Failed to fetch latest version: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!("GitHub API returned status: {}", response.status()));
-    }
-
-    let release_data: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse GitHub response: {e}"))?;
-
-    let tag_name = release_data
-        .get("tag_name")
-        .and_then(|v| v.as_str())
-        .ok_or("No tag_name found in release data")?;
-
-    Ok(tag_name.to_string())
-}
+// ============================================================================
+// Utility Functions
+// ============================================================================
 
 /// Clean version string (remove 'v' prefix, etc.)
 fn clean_version(version: &str) -> String {
     version.trim_start_matches('v').to_string()
 }
 
-/// Compare two version strings to see if the first is newer
-fn is_version_newer(latest: &str, current: &str) -> bool {
-    let latest_clean = clean_version(latest);
-    let current_clean = clean_version(current);
-
-    // Simple version comparison (works for semantic versioning)
-    let latest_parts: Vec<u32> = latest_clean
-        .split('.')
-        .filter_map(|s| s.parse().ok())
-        .collect();
-
-    let current_parts: Vec<u32> = current_clean
-        .split('.')
-        .filter_map(|s| s.parse().ok())
-        .collect();
-
-    // Pad with zeros if lengths differ
-    let max_len = latest_parts.len().max(current_parts.len());
-    let mut latest_padded = latest_parts;
-    let mut current_padded = current_parts;
-
-    latest_padded.resize(max_len, 0);
-    current_padded.resize(max_len, 0);
-
-    latest_padded > current_padded
-}
-
-/// Update rclone to the latest version with cross-platform permission handling
+/// Update rclone to the latest version with intelligent strategy selection
+///
+/// This function handles the complete update workflow:
+/// 1. Checks if an update is available
+/// 2. Stops the running rclone engine
+/// 3. Determines the best update strategy (in-place vs local download)
+/// 4. Executes the update
+/// 5. Updates settings if needed
+/// 6. Restarts the engine
 #[tauri::command]
 pub async fn update_rclone(
     state: State<'_, RcloneState>,
     app_handle: tauri::AppHandle,
+    channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
     use crate::rclone::engine::ENGINE;
-    // Set updating to true at the start
+
+    // Step 1: Initialize update process
     {
         let mut engine = ENGINE
             .lock()
             .map_err(|e| format!("Failed to lock engine: {e}"))?;
         engine.updating = true;
-        debug!("🔍 Starting rclone update process {0:?}", engine.updating);
+        debug!("🔍 Starting rclone update process");
     }
 
-    // First, check if update is available
-    let update_check = check_rclone_update(state).await?;
+    // Step 2: Check if update is available
+    let update_check = check_rclone_update(app_handle.clone(), state, channel.clone()).await?;
     let update_available = update_check
         .get("update_available")
         .and_then(|v| v.as_bool())
@@ -204,7 +190,7 @@ pub async fn update_rclone(
     let update_result = match determine_update_strategy(&current_path, &app_handle).await {
         Ok(strategy) => {
             log::info!("Using update strategy: {strategy:?}");
-            execute_update_strategy(strategy, &current_path, &app_handle).await
+            execute_update_strategy(strategy, &app_handle, channel.clone()).await
         }
         Err(e) => {
             log::error!("Failed to determine update strategy: {e}");
@@ -260,67 +246,9 @@ pub async fn update_rclone(
     update_result
 }
 
-// /// Get detailed update information including changelog
-// #[tauri::command]
-// pub async fn get_rclone_update_info(
-//     state: State<'_, RcloneState>,
-// ) -> Result<serde_json::Value, String> {
-//     let update_check = check_rclone_update(state.clone()).await?;
-
-//     if !update_check
-//         .get("update_available")
-//         .unwrap_or(&json!(false))
-//         .as_bool()
-//         .unwrap_or(false)
-//     {
-//         return Ok(update_check);
-//     }
-
-//     // Get release notes from GitHub
-//     let latest_version = update_check
-//         .get("latest_version")
-//         .unwrap()
-//         .as_str()
-//         .unwrap();
-//     let release_info = get_release_info(&state, latest_version).await?;
-
-//     info!("Fetched release info for version: {}", latest_version);
-//     info!("Download URL: {}", release_info.get("html_url").unwrap_or(&json!(null)));
-
-//     Ok(json!({
-//         "current_version": update_check.get("current_version"),
-//         "latest_version": update_check.get("latest_version"),
-//         "update_available": true,
-//         "release_notes": release_info.get("body"),
-//         "release_date": release_info.get("published_at"),
-//         "download_url": release_info.get("html_url")
-//     }))
-// }
-
-// /// Get release information from GitHub
-// async fn get_release_info(
-//     state: &State<'_, RcloneState>,
-//     version: &str,
-// ) -> Result<serde_json::Value, String> {
-//     let url = format!("https://api.github.com/repos/rclone/rclone/releases/tags/{version}");
-
-//     let response = state
-//         .client
-//         .get(&url)
-//         .header("User-Agent", "rclone-manager")
-//         .send()
-//         .await
-//         .map_err(|e| format!("Failed to fetch release info: {e}"))?;
-
-//     if !response.status().is_success() {
-//         return Err(format!("GitHub API returned status: {}", response.status()));
-//     }
-
-//     response
-//         .json()
-//         .await
-//         .map_err(|e| format!("Failed to parse release info: {e}"))
-// }
+// ============================================================================
+// Update Strategy Logic
+// ============================================================================
 
 /// Determine the best update strategy based on current rclone path and permissions
 async fn determine_update_strategy(
@@ -342,61 +270,48 @@ async fn determine_update_strategy(
             .map_err(|e| format!("Failed to create local rclone directory: {e}"))?;
     }
 
-    // If current rclone exists and we can read it, copy it to local directory
-    if current_path.exists() && current_path.is_file() {
-        log::info!("Will copy system rclone to local directory: {local_rclone_path:?}");
-        Ok(UpdateStrategy::CopyToLocal(local_rclone_path))
-    } else {
-        log::info!("Will download rclone to local directory: {local_rclone_path:?}");
-        Ok(UpdateStrategy::DownloadToLocal(local_rclone_path))
-    }
+    // Always download to local directory since rclone selfupdate --output handles this directly
+    log::info!("Will download rclone to local directory: {local_rclone_path:?}");
+    Ok(UpdateStrategy::DownloadToLocal(local_rclone_path))
 }
 
 /// Execute the determined update strategy
 async fn execute_update_strategy(
     strategy: UpdateStrategy,
-    current_path: &Path,
     app_handle: &AppHandle,
+    channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
     match strategy {
         UpdateStrategy::InPlace => {
-            log::info!("Executing in-place update");
-            // current_path is the binary path; pass its parent directory as the base
-            if let Some(parent) = current_path.parent() {
-                perform_rclone_selfupdate(app_handle, parent).await
-            } else {
-                Err("Failed to determine rclone base directory for in-place update".into())
-            }
+            info!("Executing in-place update");
+            perform_rclone_selfupdate(app_handle, None, channel).await
         }
-        UpdateStrategy::CopyToLocal(local_path) => {
-            log::info!("Executing copy-to-local strategy");
 
-            // First, copy the current rclone binary into the local install directory
-            copy_rclone_to_local(current_path, &local_path)?;
-
-            // Update the app state to use the local copy
-            update_rclone_path_in_state(app_handle, &local_path)?;
-
-            // Now update the local copy (local_path is an install directory)
-            perform_rclone_selfupdate(app_handle, &local_path).await
-        }
         UpdateStrategy::DownloadToLocal(local_path) => {
-            log::info!("Executing download-to-local strategy");
+            info!("Executing download-to-local strategy to: {local_path:?}");
 
-            // Download the latest rclone binary into the local install directory
-            download_latest_rclone(app_handle, &local_path).await?;
+            // Determine binary name based on platform
+            let binary_name = if cfg!(windows) {
+                "rclone.exe"
+            } else {
+                "rclone"
+            };
+            let dest_file = local_path.join(binary_name);
 
-            // Update the app state to use the local copy
-            update_rclone_path_in_state(app_handle, &local_path)?;
+            // Download rclone to local directory
+            let result = perform_rclone_selfupdate(app_handle, Some(&dest_file), channel).await?;
 
-            Ok(json!({
-                "success": true,
-                "message": "Rclone downloaded and installed successfully",
-                "path": local_path.display().to_string()
-            }))
+            // Update settings to point to new local installation
+            update_rclone_path_in_settings(app_handle, &local_path).await;
+
+            Ok(result)
         }
     }
 }
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
 /// Check if we can update rclone in its current location
 fn can_update_in_place(rclone_path: &Path) -> bool {
@@ -440,97 +355,163 @@ fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
     Ok(app_data_dir)
 }
 
-/// Copy system rclone to local directory
-fn copy_rclone_to_local(source_path: &Path, dest_path: &Path) -> Result<(), String> {
-    log::info!("Copying rclone from {source_path:?} to install dir {dest_path:?}");
+/// Update the rclone path in application settings
+async fn update_rclone_path_in_settings(app_handle: &AppHandle, new_path: &Path) {
+    let settings_update = json!({
+        "rclone": {
+            "rclone_path": new_path.display().to_string()
+        }
+    });
 
-    // Use safe_copy_rclone which expects the destination directory and binary name
-    let binary_name = if cfg!(windows) {
-        "rclone.exe"
-    } else {
-        "rclone"
-    };
-    safe_copy_rclone(source_path, dest_path, binary_name)
-}
-
-/// Update the rclone path in the application state
-fn update_rclone_path_in_state(app_handle: &AppHandle, new_path: &Path) -> Result<(), String> {
-    let rclone_state = app_handle.state::<RcloneState>();
-    let mut path_guard = rclone_state.rclone_path.write().unwrap();
-    *path_guard = new_path.to_path_buf();
-
-    log::info!("Updated rclone path in state to: {new_path:?}");
-    Ok(())
-}
-
-/// Download the latest rclone binary via rclone selfupdate
-async fn download_latest_rclone(app_handle: &AppHandle, dest_dir: &Path) -> Result<(), String> {
-    let binary_name = if cfg!(windows) {
-        "rclone.exe"
-    } else {
-        "rclone"
-    };
-    let dest_file = dest_dir.join(binary_name);
-
-    let output = build_rclone_command(app_handle, None, None, None)
-        .args(["selfupdate", "--output", &dest_file.display().to_string()])
-        .output()
-        .map_err(|e| format!("Failed to download rclone: {e}"))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("Failed to download rclone: {stderr}"));
+    match save_settings(app_handle.state(), settings_update, app_handle.clone()).await {
+        Ok(_) => info!("Updated rclone path in settings to: {new_path:?}"),
+        Err(e) => {
+            log::error!("Failed to save rclone path to settings: {e}");
+            // Don't fail the update process for settings save errors
+        }
     }
-
-    Ok(())
 }
 
-/// Perform rclone selfupdate on the specified binary
-async fn perform_rclone_selfupdate(
+// ============================================================================
+// Core Update Logic
+// ============================================================================
+
+/// Check for rclone updates using selfupdate --check
+async fn check_rclone_selfupdate(
     app_handle: &AppHandle,
-    rclone_base: &Path,
-) -> Result<serde_json::Value, String> {
-    log::info!("Performing selfupdate on rclone in base dir: {rclone_base:?}");
-
-    let base_str = rclone_base
-        .to_str()
-        .ok_or_else(|| "Failed to convert rclone base path to string".to_string())?;
-
-    let mut update_rclone = build_rclone_command(app_handle, Some(base_str), None, None);
-
-    update_rclone.arg("selfupdate");
-
-    // This is a workaround for Windows to avoid showing a console window
-    // when starting the Rclone process.
-    // It uses the CREATE_NO_WINDOW and DETACHED_PROCESS flags.
-    // But it may not work in all cases. Like when app build for terminal
-    // and not for GUI. Rclone may still try to open a console window.
-    // You can see the flashing of the console window when starting the app.
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        update_rclone.creation_flags(0x08000000 | 0x00200000);
-    }
-
-    let output = update_rclone.output().map_err(|e| {
-        log::error!("Failed to execute rclone selfupdate: {e}");
-        format!("Failed to execute rclone selfupdate: {e}")
-    })?;
+    channel: &str,
+) -> Result<UpdateCheckResult, String> {
+    let output = build_rclone_command(app_handle, None, None, None)
+        .arg("selfupdate")
+        .arg("--check")
+        .output()
+        .map_err(|e| format!("Failed to run rclone selfupdate --check: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
+    debug!("rclone selfupdate --check output: {}", stdout);
+    if !stderr.is_empty() {
+        debug!("rclone selfupdate --check stderr: {}", stderr);
+    }
+
+    if !output.status.success() {
+        return Err(format!("rclone selfupdate --check failed: {}", stderr));
+    }
+
+    // Parse the output
+    // Example output:
+    // yours:  1.71.1
+    // latest: 1.71.1                                   (released 2025-09-24)
+    // beta:   1.72.0-beta.9155.2bc155a96               (released 2025-10-05)
+    //   upgrade: https://beta.rclone.org/v1.72.0-beta.9155.2bc155a96
+
+    let mut current_version = String::new();
+    let mut latest_stable = String::new();
+    let mut latest_beta = String::new();
+
+    for line in stdout.lines() {
+        let line = line.trim();
+        if line.starts_with("yours:") {
+            current_version = line.split_whitespace().nth(1).unwrap_or("").to_string();
+        } else if line.starts_with("latest:") {
+            latest_stable = line.split_whitespace().nth(1).unwrap_or("").to_string();
+        } else if line.starts_with("beta:") {
+            latest_beta = line.split_whitespace().nth(1).unwrap_or("").to_string();
+        }
+    }
+
+    // Determine which version to use based on channel
+    let target_version = match channel {
+        "beta" => {
+            if !latest_beta.is_empty() {
+                latest_beta
+            } else {
+                latest_stable // fallback to stable if no beta available
+            }
+        }
+        _ => latest_stable, // "stable" or any other value
+    };
+
+    if target_version.is_empty() {
+        return Err(
+            "Could not parse version information from rclone selfupdate --check".to_string(),
+        );
+    }
+
+    // Check if update is available by comparing current with target
+    let update_available = !current_version.is_empty()
+        && !target_version.is_empty()
+        && current_version != target_version;
+
+    Ok(UpdateCheckResult {
+        update_available,
+        latest_version: target_version,
+    })
+}
+
+/// Perform rclone selfupdate with optional output path
+async fn perform_rclone_selfupdate(
+    app_handle: &AppHandle,
+    output_path: Option<&Path>,
+    channel: Option<String>,
+) -> Result<serde_json::Value, String> {
+    let mut cmd = build_rclone_command(app_handle, None, None, None);
+    cmd.arg("selfupdate");
+
+    // Configure output destination
+    if let Some(output) = output_path {
+        cmd.args(["--output", &output.display().to_string()]);
+        info!("Updating rclone with output to: {output:?}");
+    } else {
+        info!("Updating rclone in place");
+    }
+
+    // Configure update channel
+    let channel_name = match channel.as_deref() {
+        Some("beta") => {
+            cmd.arg("--beta");
+            "beta"
+        }
+        Some("stable") | None => {
+            cmd.arg("--stable");
+            "stable"
+        }
+        Some(other) => {
+            return Err(format!("Unsupported update channel: {other}"));
+        }
+    };
+
+    info!("Using {channel_name} channel");
+
+    debug!("Executing rclone selfupdate: {cmd:?}");
+
+    let output = cmd
+        .output()
+        .map_err(|e| format!("Failed to run rclone selfupdate: {e}"))?;
+
     if output.status.success() {
-        log::info!("Rclone selfupdate completed successfully");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        info!("Rclone selfupdate completed successfully");
+        debug!("Update output: {stdout}");
+        if !stderr.is_empty() {
+            debug!("Update stderr: {stderr}");
+        }
+
+        app_handle
+            .emit("rclone-engine", json!({"status": "updated"}))
+            .map_err(|e| format!("Failed to emit update event: {e}"))?;
+
         Ok(json!({
             "success": true,
             "message": "Rclone updated successfully",
-            "stdout": stdout,
-            "stderr": stderr,
-            "path": rclone_base.display().to_string()
+            "output": stdout.trim(),
+            "channel": channel_name
         }))
     } else {
-        log::error!("Rclone selfupdate failed: {stderr}");
+        let stderr = String::from_utf8_lossy(&output.stderr);
         Err(format!("Rclone selfupdate failed: {stderr}"))
     }
 }

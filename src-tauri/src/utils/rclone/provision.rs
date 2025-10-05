@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
 use log::{debug, error, info};
-use tauri::Manager;
+use tauri::{Manager, State};
 
 use crate::{
     core::{check_binaries::check_rclone_available, settings::operations::core::save_settings},
-    utils::rclone::updater::get_latest_rclone_version,
+    utils::types::all_types::RcloneState,
 };
 
 use super::{
@@ -126,4 +126,33 @@ pub async fn provision_rclone(
     }
 
     Ok(format!("Rclone installed in {}", install_path.display()))
+}
+
+/// Get the latest rclone version from GitHub releases
+pub async fn get_latest_rclone_version(state: &State<'_, RcloneState>) -> Result<String, String> {
+    let url = "https://api.github.com/repos/rclone/rclone/releases/latest";
+
+    let response = state
+        .client
+        .get(url)
+        .header("User-Agent", "rclone-manager")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to fetch latest version: {e}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!("GitHub API returned status: {}", response.status()));
+    }
+
+    let release_data: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse GitHub response: {e}"))?;
+
+    let tag_name = release_data
+        .get("tag_name")
+        .and_then(|v| v.as_str())
+        .ok_or("No tag_name found in release data")?;
+
+    Ok(tag_name.to_string())
 }
