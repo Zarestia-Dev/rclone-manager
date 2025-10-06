@@ -6,7 +6,11 @@
 - Added a rclone beta update checker support. It will check for the latest beta version of rclone and notify the user if a new beta version is available. (Default Stable channel is selected. You can change it in the About modal > About Rclone section.)
 
 ### Changed
-- Removed the rclone update modal and update badge.
+- Removed the rclone update modal and update badge. Now the update status is shown in the About modal > About Rclone section.
+
+### Fixed
+- Fixed a crash on Linux systems without NetworkManager by adding graceful error handling for metered network checks.
+
 
 ## [0.1.3] - 2025-09-30
 ### Warning

@@ -20,8 +20,9 @@ export interface Remote {
   showOnTray?: boolean;
   type?: string;
   remoteSpecs: RemoteSpecs;
+  // Disk usage is no longer a part of mountState — it's a top-level property
+  diskUsage?: DiskUsage;
   mountState?: {
-    diskUsage?: DiskUsage;
     mounted?: boolean;
   };
   syncState?: {

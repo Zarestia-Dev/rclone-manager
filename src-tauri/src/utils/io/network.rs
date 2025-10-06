@@ -104,23 +104,39 @@ impl LinkChecker {
 pub fn is_metered() -> bool {
     use zbus::blocking::{Connection, Proxy};
 
-    let connection = Connection::system().unwrap();
-    let proxy = Proxy::new(
+    let connection = match Connection::system() {
+        Ok(c) => c,
+        Err(e) => {
+            use log::error;
+            error!("Failed to connect to D-Bus: {e}");
+            return false;
+        }
+    };
+
+    let proxy = match Proxy::new(
         &connection,
         "org.freedesktop.NetworkManager",
         "/org/freedesktop/NetworkManager",
         "org.freedesktop.NetworkManager",
-    )
-    .unwrap();
+    ) {
+        Ok(p) => p,
+        Err(e) => {
+            use log::error;
+            error!("NetworkManager D-Bus proxy error: {e}");
+            return false;
+        }
+    };
 
-    // The Metered property returns an enum:
-    // 0: Unknown, 1: Yes, 2: No, 3: Guess-Yes, 4: Guess-No
-    let metered_status: u32 = proxy.get_property("Metered").unwrap();
-
-    matches!(metered_status, 1 | 3)
+    match proxy.get_property::<u32>("Metered") {
+        Ok(status) => matches!(status, 1 | 3),
+        Err(e) => {
+            use log::error;
+            error!("Failed to read Metered property: {e}");
+            false
+        }
+    }
 }
 
-// Make sure you have these `use` statements for the Linux implementation
 #[cfg(target_os = "linux")]
 use {futures_lite::stream::StreamExt, zbus::Connection};
 
@@ -136,16 +152,21 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
         }
     };
 
-    let proxy = zbus::Proxy::new(
+    let proxy = match zbus::Proxy::new(
         &connection,
         "org.freedesktop.NetworkManager",
         "/org/freedesktop/NetworkManager",
         "org.freedesktop.NetworkManager",
     )
     .await
-    .unwrap();
+    {
+        Ok(p) => p,
+        Err(e) => {
+            error!("Failed to create NetworkManager D-Bus proxy: {e}");
+            return;
+        }
+    };
 
-    // Listen for changes to the "Metered" property.
     let mut metered_changed_stream = proxy.receive_property_changed::<u32>("Metered").await;
     info!("Listening for NetworkManager 'Metered' property changes...");
 
@@ -155,7 +176,10 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
         let payload = NetworkStatusPayload {
             is_metered: is_metered(),
         };
-        app_handle.emit("network-status-changed", payload).unwrap();
+
+        if let Err(e) = app_handle.emit("network-status-changed", payload) {
+            error!("Failed to emit network status change event: {e}");
+        }
     }
 }
 

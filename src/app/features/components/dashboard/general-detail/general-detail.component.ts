@@ -180,7 +180,7 @@ export class GeneralDetailComponent implements OnChanges {
   getDiskUsageConfig(): DiskUsageConfig {
     return {
       mounted: this.selectedRemote.mountState?.mounted || false,
-      diskUsage: this.selectedRemote.mountState?.diskUsage,
+      diskUsage: this.selectedRemote.diskUsage,
     };
   }
 

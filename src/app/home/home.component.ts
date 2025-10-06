@@ -150,6 +150,10 @@ export class HomeComponent implements OnInit, OnDestroy {
       console.log('HomeComponent: setupSubscriptions completed');
 
       await this.loadInitialData();
+      // Ensure mount state is refreshed and applied to remotes after initial load
+      await this.refreshMounts();
+      this.updateRemoteMountStates();
+      this.cdr.markForCheck();
       console.log('HomeComponent: loadInitialData called');
 
       this.setupTauriListeners();
@@ -473,17 +477,21 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
   }
 
-  private updateSourcesForClonedRemote(settings: any, oldName: string, newName: string): any {
+  private updateSourcesForClonedRemote(
+    settings: Record<string, any>,
+    oldName: string,
+    newName: string
+  ): Record<string, any> {
     // Helper to update source fields in all configs
-    const updateSource = (obj: any, key: string) => {
+    const updateSource = (obj: Record<string, any> | undefined, key: string): void => {
       if (obj && typeof obj[key] === 'string' && obj[key].startsWith(`${oldName}:`)) {
         obj[key] = obj[key].replace(`${oldName}:`, `${newName}:`);
       }
     };
 
-    if (settings.mountConfig) updateSource(settings.mountConfig, 'source');
-    if (settings.syncConfig) updateSource(settings.syncConfig, 'source');
-    if (settings.copyConfig) updateSource(settings.copyConfig, 'source');
+    updateSource(settings['mountConfig'] as Record<string, any> | undefined, 'source');
+    updateSource(settings['syncConfig'] as Record<string, any> | undefined, 'source');
+    updateSource(settings['copyConfig'] as Record<string, any> | undefined, 'source');
 
     return settings;
   }
@@ -505,7 +513,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   // Remote Settings
   loadRemoteSettings(remoteName: string): any {
-    return this.remoteSettings[remoteName] || {};
+    return (this.remoteSettings as Record<string, any>)[remoteName] || {};
   }
 
   getRemoteSettingValue(remoteName: string, key: string): any {
@@ -608,6 +616,8 @@ export class HomeComponent implements OnInit, OnDestroy {
       await this.getRemoteSettings(); // Load settings first
       await this.loadRemotes(); // Then remotes (which need settings)
       await Promise.all([this.refreshMounts(), this.loadJobs()]);
+      // Ensure remotes reflect the refreshed mount information
+      this.updateRemoteMountStates();
     } catch (error) {
       console.error('HomeComponent: Data refresh failed:', error);
       throw error;
@@ -619,14 +629,14 @@ export class HomeComponent implements OnInit, OnDestroy {
       await this.getRemoteSettings();
       const remoteConfigs = await this.remoteManagementService.getAllRemoteConfigs();
 
+      // Refresh mounts first so createRemotesFromConfigs can set mountState correctly
+      await this.refreshMounts();
+
       // Create remotes from configs (preserving existing state)
       this.remotes = this.createRemotesFromConfigs(remoteConfigs);
 
       // Load active jobs FIRST to set job states
       await this.loadActiveJobs();
-
-      // Then load mount states
-      await this.refreshMounts();
 
       // Then load disk usage in background
       this.loadDiskUsageInBackground();
@@ -646,74 +656,76 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  private createRemotesFromConfigs(remoteConfigs: any): Remote[] {
+  private buildMountedNameSet(): Set<string> {
+    const set = new Set<string>();
+    this.mountedRemotes.forEach(m => {
+      // mounted fs strings look like "name:..." — extract prefix before ':'
+      const parts = m.fs.split(':');
+      if (parts.length > 0 && parts[0]) set.add(parts[0]);
+    });
+    return set;
+  }
+
+  private createRemotesFromConfigs(remoteConfigs: Record<string, any>): Remote[] {
+    const mountedSet = this.buildMountedNameSet();
+
     return Object.keys(remoteConfigs).map(name => {
       // Find existing remote to preserve its state
       const existingRemote = this.remotes.find(r => r.remoteSpecs.name === name);
+      const settings = this.loadRemoteSettings(name);
 
       return {
         remoteSpecs: { name, ...remoteConfigs[name] },
-        primaryActions: this.remoteSettings[name]?.['primaryActions'] || [],
+        primaryActions: settings?.primaryActions || [],
+        // Disk usage moved to top-level
+        diskUsage: existingRemote?.diskUsage || {
+          total_space: 'Loading...',
+          used_space: 'Loading...',
+          free_space: 'Loading...',
+          loading: true,
+        },
         mountState: {
-          mounted: this.isRemoteMounted(name),
-          // Preserve existing disk usage if available, otherwise set loading state
-          diskUsage: existingRemote?.mountState?.diskUsage || {
-            total_space: 'Loading...',
-            used_space: 'Loading...',
-            free_space: 'Loading...',
-            loading: true,
-          },
+          mounted: mountedSet.has(name),
         },
         // Preserve existing job states if available
         syncState: existingRemote?.syncState || {
           isOnSync: false,
           syncJobID: 0,
-          isLocal: this.isLocalPath(this.remoteSettings[name]?.['syncConfig']?.dest || ''),
+          isLocal: this.isLocalPath(settings?.syncConfig?.dest || ''),
         },
         copyState: existingRemote?.copyState || {
           isOnCopy: false,
           copyJobID: 0,
-          isLocal: this.isLocalPath(this.remoteSettings[name]?.['copyConfig']?.dest || ''),
+          isLocal: this.isLocalPath(settings?.copyConfig?.dest || ''),
         },
         bisyncState: existingRemote?.bisyncState || {
           isOnBisync: false,
           bisyncJobID: 0,
-          isLocal: this.isLocalPath(this.remoteSettings[name]?.['bisyncConfig']?.dest || ''),
+          isLocal: this.isLocalPath(settings?.bisyncConfig?.dest || ''),
         },
         moveState: existingRemote?.moveState || {
           isOnMove: false,
           moveJobID: 0,
-          isLocal: this.isLocalPath(this.remoteSettings[name]?.['moveConfig']?.dest || ''),
+          isLocal: this.isLocalPath(settings?.moveConfig?.dest || ''),
         },
       };
     });
   }
 
   private async updateRemoteDiskUsage(remote: Remote): Promise<void> {
-    if (!remote.mountState) return;
+    const updateDiskUsageState = (updates: Partial<DiskUsage>): void => {
+      // Find the current remote in the list to get the latest state
+      const currentRemote = this.remotes.find(r => r.remoteSpecs.name === remote.remoteSpecs.name);
+      if (!currentRemote) return;
 
-    const updateDiskUsageState = (updates: Partial<DiskUsage>) => {
-      if (remote.mountState) {
-        // Find the current remote in the list to get the latest state
-        const currentRemote = this.remotes.find(
-          r => r.remoteSpecs.name === remote.remoteSpecs.name
-        );
-        if (!currentRemote) return;
-
-        if (!currentRemote.mountState) return;
-
-        const updatedRemote = {
-          ...currentRemote, // Use current remote state instead of the passed remote
-          mountState: {
-            ...currentRemote.mountState,
-            diskUsage: {
-              ...currentRemote.mountState.diskUsage,
-              ...updates,
-            },
-          },
-        };
-        this.updateRemoteInList(updatedRemote);
-      }
+      const updatedRemote = {
+        ...currentRemote,
+        diskUsage: {
+          ...currentRemote.diskUsage,
+          ...updates,
+        },
+      };
+      this.updateRemoteInList(updatedRemote);
     };
 
     try {
@@ -724,8 +736,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         fsInfo &&
         typeof fsInfo === 'object' &&
         'Features' in (fsInfo as Record<string, unknown>) &&
-        typeof (fsInfo as Record<string, any>)['Features'] === 'object' &&
-        (fsInfo as Record<string, any>)['Features']?.About === false;
+        typeof (fsInfo as Record<string, unknown>)['Features'] === 'object' &&
+        ((fsInfo as Record<string, unknown>)['Features'] as Record<string, unknown>)?.['About'] ===
+          false;
 
       if (aboutFlag) {
         updateDiskUsageState({
@@ -755,12 +768,10 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private async loadDiskUsageInBackground(): Promise<void> {
     // Filter remotes that need disk usage updates
-    const remotesNeedingUpdate = this.remotes.filter(
-      remote =>
-        !remote.mountState?.diskUsage ||
-        remote.mountState.diskUsage.loading ||
-        remote.mountState.diskUsage.error
-    );
+    const remotesNeedingUpdate = this.remotes.filter(remote => {
+      const du = remote.diskUsage;
+      return !du || du.loading || du.error;
+    });
 
     // Process disk usage updates without awaiting (fire and forget)
     remotesNeedingUpdate.forEach(remote => {
@@ -770,20 +781,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
   }
 
-  // async refreshDiskUsage(remoteName?: string): Promise<void> {
-  //   const remotesToUpdate = remoteName
-  //     ? this.remotes.filter(r => r.remoteSpecs.name === remoteName)
-  //     : this.remotes;
-
-  //   const updatePromises = remotesToUpdate.map(remote =>
-  //     this.updateRemoteDiskUsage(remote).catch(error => {
-  //       console.error(`Failed to refresh disk usage for ${remote.remoteSpecs.name}:`, error);
-  //     })
-  //   );
-
-  //   await Promise.allSettled(updatePromises);
-  // }
-
   private async getRemoteSettings(): Promise<void> {
     this.remoteSettings = await this.appSettingsService.getRemoteSettings();
     this.cdr.markForCheck();
@@ -791,6 +788,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private async refreshMounts(): Promise<void> {
     this.mountedRemotes = await this.mountManagementService.getMountedRemotes();
+    this.updateRemoteMountStates();
     this.cdr.markForCheck();
   }
 
@@ -827,48 +825,42 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private updateRemotesWithJobs(jobs: any[]): void {
+  private updateRemotesWithJobs(jobs: JobInfo[]): void {
     this.remotes.forEach(remote => {
       const remoteJobs = jobs.filter(j => j.remote_name === remote.remoteSpecs.name);
       this.updateRemoteWithJobs(remote, remoteJobs);
     });
   }
 
-  private updateRemoteWithJobs(remote: Remote, jobs: any[]): Remote {
+  private updateRemoteWithJobs(remote: Remote, jobs: JobInfo[]): Remote {
     const runningSyncJob = jobs.find(j => j.status === 'Running' && j.job_type === 'sync');
     const runningCopyJob = jobs.find(j => j.status === 'Running' && j.job_type === 'copy');
     const runningBisyncJob = jobs.find(j => j.status === 'Running' && j.job_type === 'bisync');
     const runningMoveJob = jobs.find(j => j.status === 'Running' && j.job_type === 'move');
 
-    const updatedRemote = {
+    const settings = this.loadRemoteSettings(remote.remoteSpecs.name);
+
+    const updatedRemote: Remote = {
       ...remote,
       syncState: {
         isOnSync: !!runningSyncJob,
         syncJobID: runningSyncJob?.jobid,
-        isLocal: this.isLocalPath(
-          this.remoteSettings[remote.remoteSpecs.name]?.['syncConfig']?.dest || ''
-        ),
+        isLocal: this.isLocalPath(settings?.syncConfig?.dest || ''),
       },
       copyState: {
         isOnCopy: !!runningCopyJob,
         copyJobID: runningCopyJob?.jobid,
-        isLocal: this.isLocalPath(
-          this.remoteSettings[remote.remoteSpecs.name]?.['copyConfig']?.dest || ''
-        ),
+        isLocal: this.isLocalPath(settings?.copyConfig?.dest || ''),
       },
       bisyncState: {
         isOnBisync: !!runningBisyncJob,
         bisyncJobID: runningBisyncJob?.jobid,
-        isLocal: this.isLocalPath(
-          this.remoteSettings[remote.remoteSpecs.name]?.['bisyncConfig']?.dest || ''
-        ),
+        isLocal: this.isLocalPath(settings?.bisyncConfig?.dest || ''),
       },
       moveState: {
         isOnMove: !!runningMoveJob,
         moveJobID: runningMoveJob?.jobid,
-        isLocal: this.isLocalPath(
-          this.remoteSettings[remote.remoteSpecs.name]?.['moveConfig']?.dest || ''
-        ),
+        isLocal: this.isLocalPath(settings?.moveConfig?.dest || ''),
       },
     };
 
@@ -954,7 +946,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  private handleError(message: string, error: any): void {
+  private handleError(message: string, error: unknown): void {
     console.error(`${message}:`, error);
     this.notificationService.openSnackBar(String(error), 'Close');
   }
