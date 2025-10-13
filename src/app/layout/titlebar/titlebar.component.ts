@@ -11,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatBadgeModule } from '@angular/material/badge';
 import { ExportModalComponent } from '../../features/modals/settings/export-modal/export-modal.component';
 import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
+import { RcloneConfigModalComponent } from '../../features/modals/settings/rclone-config-modal/rclone-config-modal.component';
 import { KeyboardShortcutsModalComponent } from '../../features/modals/settings/keyboard-shortcuts-modal/keyboard-shortcuts-modal.component';
 import { AboutModalComponent } from '../../features/modals/settings/about-modal/about-modal.component';
 import { QuickAddRemoteComponent } from '../../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
@@ -23,7 +24,6 @@ import { FileSystemService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { UiStateService } from '@app/services';
 import { NotificationService } from 'src/app/shared/services/notification.service';
-import { PasswordManagerModalComponent } from 'src/app/features/modals/password-manager-modal/password-manager-modal.component';
 import { AppUpdaterService, RcloneUpdateService } from '@app/services';
 import { CheckResult, ConnectionStatus, ModalSize, STANDARD_MODAL_SIZE, Theme } from '@app/types';
 import { MatDividerModule } from '@angular/material/divider';
@@ -299,16 +299,16 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     this.openModal(PreferencesModalComponent, STANDARD_MODAL_SIZE);
   }
 
+  openRcloneConfigModal(): void {
+    this.openModal(RcloneConfigModalComponent, STANDARD_MODAL_SIZE);
+  }
+
   openKeyboardShortcutsModal(): void {
     this.openModal(KeyboardShortcutsModalComponent, STANDARD_MODAL_SIZE);
   }
 
   openExportModal(): void {
     this.openModal(ExportModalComponent, STANDARD_MODAL_SIZE);
-  }
-
-  openPasswordManager(): void {
-    this.openModal(PasswordManagerModalComponent, STANDARD_MODAL_SIZE);
   }
 
   openAboutModal(): void {

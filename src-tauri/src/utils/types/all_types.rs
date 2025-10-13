@@ -270,6 +270,7 @@ pub enum ExportType {
     Remotes,
     RemoteConfigs,
     SpecificRemote,
+    RCloneBackend,
 }
 
 pub const SERVICE_NAME: &str = env!("CARGO_PKG_NAME");

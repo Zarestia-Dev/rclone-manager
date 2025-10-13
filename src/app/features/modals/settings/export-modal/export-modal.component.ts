@@ -72,7 +72,7 @@ export class ExportModalComponent implements OnInit {
     {
       value: ExportType.All,
       label: '📦 Export All',
-      description: 'Settings + Remotes + rclone.conf',
+      description: 'Settings + Remotes + rclone.conf + Backend',
     },
     {
       value: ExportType.Settings,
@@ -93,6 +93,11 @@ export class ExportModalComponent implements OnInit {
       value: ExportType.SpecificRemote,
       label: '🔍 Specific Remote',
       description: 'Single remote configuration',
+    },
+    {
+      value: ExportType.RCloneBackend,
+      label: '⚡ RClone Backend Settings',
+      description: 'RClone runtime options (rclone_options.json)',
     },
   ] as const;
 

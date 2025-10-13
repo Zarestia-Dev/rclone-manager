@@ -1,0 +1,974 @@
+:host {
+  --icon-size: 100px;
+}
+
+.rclone-config-modal {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  .modal-header {
+    padding: var(--space-xs);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: var(--transition-standard);
+
+    &.scrolled {
+      box-shadow: var(--shadow-light);
+    }
+
+    p {
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity var(--transition-standard);
+    }
+
+    &.scrolled p {
+      opacity: 1;
+    }
+  }
+
+  .modal-content {
+    flex: 1;
+    padding: var(--space-sm);
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    .app-icon {
+      width: var(--icon-size);
+      height: var(--icon-size);
+      margin-bottom: var(--space-md);
+    }
+
+    .app-name {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: var(--space-xs);
+      text-align: center;
+    }
+
+    .app-subtitle {
+      color: var(--secondary-text-color);
+      margin-bottom: var(--space-lg);
+      text-align: center;
+    }
+  }
+
+  .config-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    width: 100%;
+    max-width: 600px;
+
+    .config-item {
+      display: flex;
+      align-items: center;
+      flex-direction: row-reverse !important;
+      justify-content: space-between;
+      padding: var(--space-md);
+      background-color: var(--about-dialog-button-color);
+      height: auto;
+      min-height: 72px;
+      border-radius: var(--radius-md);
+      box-shadow: var(--box-shadow);
+      color: var(--app-text-color);
+      text-align: left;
+      transition: var(--transition-fast);
+
+      &:hover {
+        background-color: var(--button-hover-background);
+        box-shadow: var(--shadow-elevated);
+      }
+
+      .config-item-content {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        flex: 1;
+
+        mat-icon:first-child {
+          font-size: 32px;
+          width: 32px;
+          height: 32px;
+          color: var(--primary-color);
+        }
+
+        .config-item-text {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-xs);
+
+          .config-item-title {
+            font-weight: 600;
+            font-size: 16px;
+          }
+
+          .config-item-description {
+            color: var(--secondary-text-color);
+            font-size: 13px;
+            line-height: 1.4;
+          }
+        }
+      }
+
+      > mat-icon:last-child {
+        color: var(--secondary-text-color);
+      }
+    }
+  }
+
+  // Overlay Pages
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: var(--app-background);
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+
+    .overlay-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      padding: var(--space-xs);
+
+      p {
+        font-size: 16px;
+      }
+    }
+
+    .overlay-content {
+      flex: 1;
+      padding: var(--space-sm);
+      overflow: auto;
+
+      .settings-list {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+        max-width: 600px;
+        margin: 0 auto;
+
+        .settings-header {
+          text-align: center;
+          margin-bottom: var(--space-lg);
+
+          h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--space-xs);
+            color: var(--app-text-color);
+          }
+
+          .settings-description {
+            font-size: 13px;
+            color: var(--secondary-text-color);
+            margin: 0;
+          }
+        }
+
+        .search-container {
+          margin-bottom: var(--space-lg);
+          width: 100%;
+
+          .search-field {
+            width: 100%;
+
+            ::ng-deep {
+              .mat-mdc-text-field-wrapper {
+                background: var(--surface-background);
+              }
+
+              .mat-mdc-form-field-icon-prefix {
+                padding-right: var(--space-sm);
+                color: var(--secondary-text-color);
+              }
+
+              .mat-mdc-form-field-icon-suffix {
+                padding-left: var(--space-xs);
+              }
+            }
+          }
+
+          .search-results-info {
+            margin-top: var(--space-xs);
+            text-align: center;
+
+            small {
+              font-size: 12px;
+              color: var(--secondary-text-color);
+            }
+          }
+        }
+
+        .no-results {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: var(--space-xxl);
+          text-align: center;
+          color: var(--secondary-text-color);
+
+          mat-icon {
+            width: 64px;
+            height: 64px;
+            font-size: 64px;
+            opacity: 0.3;
+            margin-bottom: var(--space-md);
+          }
+
+          h4 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 var(--space-xs) 0;
+            color: var(--app-text-color);
+          }
+
+          p {
+            font-size: 14px;
+            margin: 0 0 var(--space-lg) 0;
+          }
+
+          button {
+            margin-top: var(--space-sm);
+          }
+        }
+
+        .setting-item {
+          background: var(--surface-background);
+          border-radius: var(--radius-lg);
+          padding: var(--space-lg);
+          box-shadow: var(--shadow-light);
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: var(--space-md);
+
+          &:hover {
+            box-shadow: var(--shadow-elevated);
+          }
+
+          .setting-info {
+            flex: 1;
+            min-width: 0;
+
+            strong {
+              display: block;
+              font-weight: 600;
+              font-size: 15px;
+              margin-bottom: var(--space-xs);
+              color: var(--app-text-color);
+            }
+
+            p {
+              font-size: 13px;
+              color: var(--secondary-text-color);
+              line-height: 1.4;
+              margin: 0;
+              margin-bottom: var(--space-xs);
+            }
+
+            .default-value,
+            .type-info {
+              display: block;
+              font-size: 12px;
+              color: var(--tertiary-text-color);
+              margin-top: var(--space-xs);
+              font-style: italic;
+            }
+
+            .type-info {
+              color: var(--warning-color);
+            }
+          }
+
+          .setting-control {
+            flex-shrink: 0;
+
+            .stepper {
+              display: flex;
+              align-items: center;
+              gap: var(--space-sm);
+              background: var(--button-background);
+              border-radius: var(--radius-md);
+              padding: var(--space-xs);
+
+              .value-display {
+                min-width: 48px;
+                text-align: center;
+                font-weight: 600;
+                font-size: 16px;
+                padding: 0 var(--space-sm);
+              }
+
+              button {
+                mat-icon {
+                  font-size: 20px;
+                  width: 20px;
+                  height: 20px;
+                }
+              }
+            }
+          }
+
+          // Full-width settings (strings, paths, arrays)
+          &.setting-full-width,
+          .setting-full-width {
+            flex-direction: column;
+            align-items: stretch;
+            width: 100%;
+
+            .setting-info {
+              margin-bottom: var(--space-sm);
+            }
+
+            .setting-control {
+              width: 100%;
+
+              .input-field {
+                width: 100%;
+              }
+            }
+          }
+
+          .setting-header-with-action {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: var(--space-md);
+            margin-bottom: var(--space-sm);
+
+            .setting-info {
+              flex: 1;
+              margin-bottom: 0;
+            }
+
+            button {
+              flex-shrink: 0;
+              color: var(--primary-color);
+
+              &:hover {
+                background: rgba(var(--primary-color-rgb), 0.1);
+              }
+            }
+          }
+
+          .array-items {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+
+            .array-item {
+              .input-field {
+                width: 100%;
+              }
+
+              button[matSuffix] {
+                color: var(--warn-color);
+
+                &:hover {
+                  background: rgba(var(--warn-color-rgb), 0.1);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Security actions section
+      .security-actions {
+        padding: var(--space-sm) 0;
+        max-width: 600px;
+        margin: 0 auto var(--space-lg) auto;
+
+        .password-manager-button {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: var(--space-lg);
+          background: var(--surface-background);
+          border-radius: var(--radius-lg);
+          box-shadow: var(--shadow-light);
+          text-align: left;
+          height: auto;
+          min-height: 72px;
+          transition: var(--transition-fast);
+
+          &:hover {
+            box-shadow: var(--shadow-elevated);
+            background: var(--button-hover-background);
+          }
+
+          mat-icon:first-child {
+            font-size: 32px;
+            width: 32px;
+            height: 32px;
+            color: var(--primary-color);
+            margin-right: var(--space-md);
+          }
+
+          .button-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xs);
+            min-width: 0;
+
+            .button-title {
+              font-weight: 600;
+              font-size: 16px;
+              color: var(--app-text-color);
+            }
+
+            .button-description {
+              color: var(--secondary-text-color);
+              font-size: 13px;
+              line-height: 1.4;
+              display: block;
+            }
+          }
+
+          mat-icon:last-child {
+            color: var(--secondary-text-color);
+            margin-left: var(--space-md);
+          }
+        }
+      }
+    }
+  }
+
+  // Loading Overlay
+  .loading-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--app-background);
+    z-index: 100;
+  }
+
+  // Password Manager Section (inside overlay-content)
+  .overlay .overlay-content .password-manager-section {
+    width: 100%;
+    max-width: 700px;
+    margin: 0 auto;
+
+    .security-tabs {
+      ::ng-deep {
+        .mat-mdc-tab-labels {
+          justify-content: center;
+          gap: var(--space-sm);
+        }
+
+        .mat-mdc-tab-label {
+          min-width: 120px;
+          padding: var(--space-sm) var(--space-md);
+
+          .mat-mdc-tab-label-content {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+
+            mat-icon {
+              font-size: 18px;
+              width: 18px;
+              height: 18px;
+            }
+          }
+        }
+      }
+    }
+
+    .tab-content {
+      padding: var(--space-lg) 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-lg);
+    }
+
+    // Cards
+    .card {
+      background: var(--surface-background);
+      border-radius: var(--radius-lg);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-light);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+
+      &:hover {
+        box-shadow: var(--shadow-elevated);
+      }
+
+      .card-header {
+        .card-title {
+          display: flex;
+          align-items: center;
+          gap: var(--space-sm);
+          margin-bottom: var(--space-sm);
+
+          mat-icon {
+            font-size: 24px;
+            width: 24px;
+            height: 24px;
+            color: var(--primary-color);
+          }
+
+          h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--app-text-color);
+          }
+        }
+
+        .card-description {
+          color: var(--secondary-text-color);
+          font-size: 14px;
+          line-height: 1.5;
+          margin: 0;
+        }
+      }
+
+      .card-content {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+
+        .full-width {
+          width: 100%;
+        }
+
+        .encryption-form,
+        .password-change-form {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-md);
+        }
+
+        // Status Grid
+        .status-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+          gap: var(--space-md);
+
+          .status-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            background: var(--button-background);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border-color);
+
+            &.success {
+              background: rgba(76, 175, 80, 0.1);
+              border-color: rgba(76, 175, 80, 0.3);
+
+              .status-indicator mat-icon {
+                color: #4caf50;
+              }
+            }
+
+            &.warning {
+              background: rgba(255, 152, 0, 0.1);
+              border-color: rgba(255, 152, 0, 0.3);
+
+              .status-indicator mat-icon {
+                color: #ff9800;
+              }
+            }
+
+            .status-indicator {
+              mat-icon {
+                font-size: 28px;
+                width: 28px;
+                height: 28px;
+                color: var(--primary-color);
+              }
+            }
+
+            .status-details {
+              flex: 1;
+
+              h4 {
+                margin: 0 0 var(--space-xxs) 0;
+                font-size: 14px;
+                font-weight: 600;
+                color: var(--app-text-color);
+              }
+
+              p {
+                margin: 0;
+                font-size: 13px;
+                color: var(--secondary-text-color);
+              }
+            }
+          }
+        }
+
+        // Encryption Status Badge
+        .encryption-status {
+          display: flex;
+          align-items: center;
+          gap: var(--space-sm);
+          padding: var(--space-md);
+          border-radius: var(--radius-md);
+          font-weight: 500;
+
+          &.encrypted {
+            background: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            color: #4caf50;
+
+            mat-icon {
+              color: #4caf50;
+            }
+          }
+
+          &.unencrypted {
+            background: rgba(255, 152, 0, 0.1);
+            border: 1px solid rgba(255, 152, 0, 0.3);
+            color: #ff9800;
+
+            mat-icon {
+              color: #ff9800;
+            }
+          }
+
+          mat-icon {
+            font-size: 24px;
+            width: 24px;
+            height: 24px;
+          }
+        }
+
+        // Benefits List
+        .benefits-list {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-md);
+
+          .benefit-item {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+
+            mat-icon {
+              font-size: 20px;
+              width: 20px;
+              height: 20px;
+              color: var(--primary-color);
+              flex-shrink: 0;
+              margin-top: 2px;
+            }
+
+            span {
+              font-size: 14px;
+              line-height: 1.5;
+              color: var(--app-text-color);
+            }
+          }
+        }
+
+        // Loading Content
+        .loading-content {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: var(--space-md);
+          padding: var(--space-xl);
+
+          mat-spinner {
+            margin-bottom: var(--space-sm);
+          }
+
+          h3 {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--app-text-color);
+          }
+
+          p {
+            margin: 0;
+            font-size: 14px;
+            color: var(--secondary-text-color);
+          }
+        }
+      }
+
+      .card-actions {
+        display: flex;
+        gap: var(--space-sm);
+        flex-wrap: wrap;
+
+        button {
+          display: flex;
+          align-items: center;
+          gap: var(--space-xs);
+
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+
+          &.action-button-large {
+            flex: 1;
+            min-width: 200px;
+          }
+
+          &.warn {
+            color: var(--warn-color);
+            border-color: var(--warn-color);
+
+            &:hover {
+              background: rgba(var(--warn-color-rgb), 0.1);
+            }
+          }
+        }
+      }
+
+      &.get-started-card {
+        background: linear-gradient(
+          135deg,
+          rgba(var(--primary-color-rgb), 0.05) 0%,
+          rgba(var(--accent-color-rgb), 0.05) 100%
+        );
+      }
+
+      &.loading-card {
+        min-height: 300px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
+    // Proxy Credentials Section
+    .proxy-credential-section {
+      padding: var(--space-lg);
+      background: var(--button-background);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      margin-bottom: var(--space-md);
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+
+      .proxy-type-title {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--app-text-color);
+        margin: 0 0 var(--space-md) 0;
+
+        mat-icon {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+          color: var(--primary-color);
+        }
+      }
+
+      .proxy-input-form {
+        display: flex;
+        gap: var(--space-sm);
+        align-items: flex-start;
+
+        mat-form-field {
+          flex: 1;
+        }
+
+        .store-button {
+          margin-top: 8px;
+          min-width: 150px;
+        }
+      }
+
+      .proxy-stored-display {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+
+        .proxy-details {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-sm);
+
+          .proxy-detail-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+            font-size: 14px;
+
+            .detail-label {
+              font-weight: 600;
+              color: var(--secondary-text-color);
+              min-width: 80px;
+            }
+
+            .detail-value {
+              flex: 1;
+              color: var(--app-text-color);
+              font-family: "Courier New", monospace;
+              padding: var(--space-xs) var(--space-sm);
+              background: var(--surface-background);
+              border-radius: var(--radius-sm);
+
+              &.url-display {
+                font-size: 13px;
+                word-break: break-all;
+              }
+            }
+
+            button[mat-icon-button] {
+              flex-shrink: 0;
+            }
+          }
+
+          .proxy-status {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            padding: var(--space-sm);
+            background: rgba(76, 175, 80, 0.1);
+            border-radius: var(--radius-sm);
+            color: #4caf50;
+            font-size: 13px;
+            font-weight: 500;
+
+            .success-icon {
+              font-size: 18px;
+              width: 18px;
+              height: 18px;
+            }
+          }
+        }
+
+        .proxy-actions {
+          display: flex;
+          gap: var(--space-sm);
+
+          button {
+            &.warn {
+              color: var(--warn-color);
+              border-color: var(--warn-color);
+
+              &:hover {
+                background: rgba(var(--warn-color-rgb), 0.1);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 540px) {
+  .rclone-config-modal {
+    .config-list {
+      .config-item {
+        min-height: 64px;
+        padding: var(--space-sm);
+
+        .config-item-content {
+          gap: var(--space-sm);
+
+          mat-icon:first-child {
+            font-size: 28px;
+            width: 28px;
+            height: 28px;
+          }
+
+          .config-item-text {
+            .config-item-title {
+              font-size: 15px;
+            }
+
+            .config-item-description {
+              font-size: 12px;
+            }
+          }
+        }
+      }
+    }
+
+    .overlay {
+      .overlay-content {
+        .settings-list {
+          .setting-item {
+            padding: var(--space-md);
+          }
+        }
+
+        .password-manager-section {
+          .card {
+            padding: var(--space-md);
+
+            .card-actions {
+              flex-direction: column;
+
+              button.action-button-large {
+                min-width: unset;
+                width: 100%;
+              }
+            }
+          }
+
+          .security-tabs {
+            ::ng-deep .mat-mdc-tab-label {
+              min-width: 80px;
+              padding: var(--space-xs) var(--space-sm);
+            }
+          }
+        }
+
+        .password-manager-section {
+          .proxy-credential-section {
+            padding: var(--space-md);
+
+            .proxy-input-form {
+              flex-direction: column;
+
+              .store-button {
+                width: 100%;
+                margin-top: 0;
+              }
+            }
+
+            .proxy-stored-display {
+              .proxy-detail-row {
+                flex-direction: column;
+                align-items: flex-start;
+
+                .detail-label {
+                  min-width: unset;
+                }
+
+                .detail-value {
+                  width: 100%;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

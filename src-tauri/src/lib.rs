@@ -34,6 +34,11 @@ use crate::{
             operations::core::{
                 load_setting_value, load_settings, reset_setting, reset_settings, save_settings,
             },
+            rclone_backend::{
+                get_rclone_backend_store_path, load_rclone_backend_options,
+                reset_rclone_backend_options, save_rclone_backend_option,
+                save_rclone_backend_options,
+            },
             remote::manager::{delete_remote_settings, get_remote_settings, save_remote_settings},
         },
         tray::actions::{
@@ -52,8 +57,9 @@ use crate::{
         },
         queries::{
             flags::{
-                get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags,
-                get_sync_flags, get_vfs_flags,
+                get_all_options_info, get_copy_flags, get_current_options, get_filter_flags,
+                get_flags_by_category, get_global_flags, get_mount_flags, get_option_blocks,
+                get_sync_flags, get_vfs_flags, set_rclone_option,
             },
             get_all_remote_configs, get_bandwidth_limit, get_completed_transfers, get_core_stats,
             get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats,
@@ -154,6 +160,12 @@ pub fn run() {
             );
 
             app.manage(SettingsState { store, config_dir });
+
+            // Initialize RClone Backend Store for rclone_options.json
+            use crate::core::settings::rclone_backend::RCloneBackendStore;
+            let rclone_backend_store = RCloneBackendStore::new(app_handle)
+                .map_err(|e| format!("Failed to initialize RClone backend store: {e}"))?;
+            app.manage(rclone_backend_store);
 
             // Initialize SafeEnvironmentManager for secure password handling
             use crate::core::security::{CredentialStore, SafeEnvironmentManager};
@@ -349,18 +361,29 @@ pub fn run() {
             get_remote_paths,
             get_bandwidth_limit,
             // Flags
+            get_option_blocks,
+            get_all_options_info,
+            get_current_options,
+            get_flags_by_category,
             get_global_flags,
             get_copy_flags,
             get_sync_flags,
             get_filter_flags,
             get_vfs_flags,
             get_mount_flags,
+            set_rclone_option,
             // Settings
             load_settings,
             load_setting_value,
             save_settings,
             reset_settings,
             reset_setting,
+            // RClone Backend Settings
+            load_rclone_backend_options,
+            save_rclone_backend_options,
+            save_rclone_backend_option,
+            reset_rclone_backend_options,
+            get_rclone_backend_store_path,
             // Remote Settings
             save_remote_settings,
             get_remote_settings,

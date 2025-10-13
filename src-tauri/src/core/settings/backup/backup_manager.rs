@@ -77,6 +77,24 @@ pub async fn backup_settings(
         }
     }
 
+    if export_type == ExportType::All || export_type == ExportType::RCloneBackend {
+        let rclone_options_path = state.config_dir.join("rclone_options.json");
+        debug!(
+            "Checking for rclone_options.json at: {}",
+            rclone_options_path.display()
+        );
+        if rclone_options_path.exists() {
+            fs::copy(&rclone_options_path, export_dir.join("rclone_options.json")).ok();
+            info!("rclone_options.json copied to export directory.");
+            exported_items.push("rclone-backend");
+        } else {
+            debug!(
+                "rclone_options.json does not exist at: {}",
+                rclone_options_path.display()
+            );
+        }
+    }
+
     if export_type == ExportType::All
         || export_type == ExportType::RemoteConfigs
         || export_type == ExportType::SpecificRemote

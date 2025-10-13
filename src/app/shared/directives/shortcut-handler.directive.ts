@@ -5,13 +5,13 @@ import { QuickAddRemoteComponent } from '../../features/modals/remote-management
 import { RemoteConfigModalComponent } from '../../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
 import { ExportModalComponent } from '../../features/modals/settings/export-modal/export-modal.component';
 import { PreferencesModalComponent } from '../../features/modals/settings/preferences-modal/preferences-modal.component';
+import { RcloneConfigModalComponent } from '../../features/modals/settings/rclone-config-modal/rclone-config-modal.component';
 
 // Services
 import { WindowService } from '@app/services';
 import { RemoteManagementService } from '@app/services';
 import { NotificationService } from '../services/notification.service';
 import { STANDARD_MODAL_SIZE } from '@app/types';
-import { PasswordManagerModalComponent } from 'src/app/features/modals/password-manager-modal/password-manager-modal.component';
 
 @Directive({
   selector: '[appShortcutHandler]',
@@ -82,11 +82,6 @@ export class ShortcutHandlerDirective {
       return true;
     }
 
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'p') {
-      this.openPasswordManager();
-      return true;
-    }
-
     // Navigation shortcuts
     if (!ctrlKey && !shiftKey && !altKey && key === 'Escape') {
       // Let individual components handle this
@@ -96,6 +91,11 @@ export class ShortcutHandlerDirective {
     // Settings shortcuts
     if (ctrlKey && !shiftKey && !altKey && key === ',') {
       this.openPreferences();
+      return true;
+    }
+
+    if (ctrlKey && !shiftKey && !altKey && key === '.') {
+      this.openRcloneConfig();
       return true;
     }
 
@@ -164,7 +164,7 @@ export class ShortcutHandlerDirective {
     this.dialog.open(PreferencesModalComponent, STANDARD_MODAL_SIZE);
   }
 
-  private openPasswordManager(): void {
-    this.dialog.open(PasswordManagerModalComponent, STANDARD_MODAL_SIZE);
+  private openRcloneConfig(): void {
+    this.dialog.open(RcloneConfigModalComponent, STANDARD_MODAL_SIZE);
   }
 }

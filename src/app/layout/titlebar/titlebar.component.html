@@ -149,6 +149,13 @@
       <span class="shortcut" aria-hidden="true">Ctrl + ,</span>
     </button>
 
+    <button mat-menu-item (click)="openRcloneConfigModal()" aria-label="Open RClone configuration">
+      <span>RClone Configuration</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + .</span>
+    </button>
+
+    <mat-divider></mat-divider>
+
     <button
       mat-menu-item
       (click)="openKeyboardShortcutsModal()"
@@ -156,14 +163,6 @@
     >
       <span>Keyboard Shortcuts</span>
       <span class="shortcut" aria-hidden="true">Ctrl + ?</span>
-    </button>
-
-    <mat-divider></mat-divider>
-
-    <!-- Security -->
-    <button mat-menu-item (click)="openPasswordManager()" aria-label="Open password manager">
-      <span>Password Manager</span>
-      <span class="shortcut" aria-hidden="true">Ctrl + P</span>
     </button>
 
     <mat-divider></mat-divider>

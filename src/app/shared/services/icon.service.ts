@@ -104,6 +104,7 @@ export class IconService {
       star: 'assets/icons/star.svg',
       package: 'assets/icons/package.svg',
       skull: 'assets/icons/skull.svg',
+      'file-lines': 'assets/icons/file-lines.svg',
     };
 
     this.icons = icons;

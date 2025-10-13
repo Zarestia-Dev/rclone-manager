@@ -112,12 +112,12 @@ pub mod sync {
 // }
 
 // /// Option management endpoints
-// pub mod options {
-//     pub const BLOCKS: &str = "options/blocks";
-//     pub const GET: &str = "options/get";
-//     pub const INFO: &str = "options/info";
-//     pub const SET: &str = "options/set";
-// }
+pub mod options {
+    pub const BLOCKS: &str = "options/blocks";
+    pub const GET: &str = "options/get";
+    pub const INFO: &str = "options/info";
+    pub const SET: &str = "options/set";
+}
 
 // /// Plugin control endpoints
 // pub mod pluginsctl {
