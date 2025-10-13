@@ -1,4 +1,5 @@
 use log::{error, info, warn};
+use sysinfo::{IS_SUPPORTED_SYSTEM, ProcessesToUpdate, System};
 
 /// Kill a process by PID using platform-specific methods
 /// This is a more robust implementation than the basic shell commands
@@ -75,48 +76,33 @@ pub fn kill_processes_on_port(port: u16) -> Result<(), String> {
     Ok(())
 }
 
-/// Find PIDs of processes using a specific port
+/// Find PIDs of processes using a specific port without spawning shell tools
 fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
-    #[cfg(unix)]
-    {
-        // Use lsof to find processes using the port
-        let output = std::process::Command::new("lsof")
-            .args(["-ti", &format!(":{port}")])
-            .output()
-            .map_err(|e| format!("Failed to run lsof: {e}"))?;
+    use netstat2::{
+        AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo, TcpState, get_sockets_info,
+    };
 
-        let pids_str = String::from_utf8_lossy(&output.stdout);
-        let pids: Vec<u32> = pids_str
-            .lines()
-            .filter_map(|line| line.trim().parse::<u32>().ok())
-            .collect();
+    let families = AddressFamilyFlags::IPV4 | AddressFamilyFlags::IPV6;
+    let protocols = ProtocolFlags::TCP;
 
-        Ok(pids)
-    }
+    let mut pids = Vec::new();
+    let sockets = get_sockets_info(families, protocols)
+        .map_err(|e| format!("Failed to enumerate sockets: {e}"))?;
 
-    #[cfg(windows)]
-    {
-        // Use netstat to find processes using the port
-        let output = std::process::Command::new("netstat")
-            .args(["-ano", "-p", "TCP"])
-            .output()
-            .map_err(|e| format!("Failed to run netstat: {}", e))?;
-
-        let netstat_output = String::from_utf8_lossy(&output.stdout);
-        let mut pids = Vec::new();
-
-        for line in netstat_output.lines() {
-            if line.contains(&format!(":{}", port))
-                && line.contains("LISTENING")
-                && let Some(pid_str) = line.split_whitespace().last()
-                && let Ok(pid) = pid_str.parse::<u32>()
-            {
-                pids.push(pid);
-            }
+    for socket_info in sockets {
+        if let ProtocolSocketInfo::Tcp(tcp_info) = &socket_info.protocol_socket_info
+            && tcp_info.local_port == port
+            && matches!(tcp_info.state, TcpState::Listen)
+        {
+            // Duplicate PIDs are deduped later; collect everything for now.
+            pids.extend(socket_info.associated_pids.iter().copied());
         }
-
-        Ok(pids)
     }
+
+    pids.sort_unstable();
+    pids.dedup();
+
+    Ok(pids)
 }
 
 /// Kill all rclone rcd processes (emergency cleanup)
@@ -124,25 +110,57 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
 pub fn kill_all_rclone_processes() -> Result<(), String> {
     info!("🧹 Emergency cleanup: killing ALL rclone processes (including OAuth)");
 
-    #[cfg(unix)]
-    {
-        // Kill any rclone rcd processes
-        let _ = std::process::Command::new("pkill")
-            .args(["-f", "rclone rcd"])
-            .output();
+    #[cfg(target_os = "windows")]
+    const TARGET_NAMES: &[&str] = &["rclone.exe"];
+    #[cfg(not(target_os = "windows"))]
+    const TARGET_NAMES: &[&str] = &["rclone"];
 
-        std::thread::sleep(std::time::Duration::from_millis(500));
+    if !IS_SUPPORTED_SYSTEM {
+        warn!("⚠️ sysinfo does not support this platform; falling back to no-op cleanup");
+        return Ok(());
     }
 
-    #[cfg(windows)]
-    {
-        // Kill rclone.exe processes on Windows
-        let _ = std::process::Command::new("taskkill")
-            .args(["/F", "/IM", "rclone.exe"])
-            .output();
+    let mut system = System::new();
+    system.refresh_processes(ProcessesToUpdate::All, true);
 
-        std::thread::sleep(std::time::Duration::from_millis(500));
+    let mut target_pids: Vec<u32> = system
+        .processes()
+        .iter()
+        .filter_map(|(pid, process)| {
+            let process_name = process.name().to_string_lossy();
+            let matches_name = TARGET_NAMES
+                .iter()
+                .any(|expected| process_name.eq_ignore_ascii_case(expected));
+
+            let matches_cmd = process.cmd().iter().any(|arg| {
+                let arg = arg.to_string_lossy();
+                arg.to_ascii_lowercase().contains("rclone")
+            });
+
+            if matches_name || matches_cmd {
+                Some(pid.as_u32())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    target_pids.sort_unstable();
+    target_pids.dedup();
+
+    if target_pids.is_empty() {
+        info!("No rclone processes found to kill");
+        return Ok(());
     }
+
+    for pid in target_pids {
+        match kill_process_by_pid(pid) {
+            Ok(_) => info!("✅ Killed rclone process {pid}"),
+            Err(e) => warn!("⚠️ Failed to kill rclone process {pid}: {e}"),
+        }
+    }
+
+    std::thread::sleep(std::time::Duration::from_millis(500));
 
     Ok(())
 }
