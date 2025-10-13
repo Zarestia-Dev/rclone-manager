@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.rclonemanager.RCloneManager</id>
+  <id>io.github.rclone_manager.rclone-manager</id>
   <name>Rclone Manager</name>
   <summary>Cross-platform User Friendly UI for rclone</summary>
   <metadata_license>MIT</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <developer id="io.github.rclonemanager.RCloneManager">
+  <developer id="io.github.rclone_manager.rclone-manager">
     <name>Rclone Manager</name>
   </developer>
   <supports>
@@ -96,5 +96,5 @@
       </description>
     </release>
   </releases>
-  <launchable type="desktop-id">io.github.rclonemanager.RCloneManager.desktop</launchable>
+  <launchable type="desktop-id">io.github.rclone_manager.rclone-manager.desktop</launchable>
 </component>
