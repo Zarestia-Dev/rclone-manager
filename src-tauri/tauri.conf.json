@@ -27,7 +27,10 @@
       "deb": {
         "desktopTemplate": "linux/template.desktop",
         "depends": ["rclone", "libayatana-appindicator3-1 | libappindicator3-1"],
-        "recommends": ["7z"]
+        "recommends": ["7z"],
+        "files": {
+          "/usr/share/flatpak.metainfo.xml": "linux/flatpak.metainfo.xml"
+        }
       },
       "rpm": {
         "desktopTemplate": "linux/template.desktop",
