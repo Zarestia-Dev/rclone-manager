@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.rclonemanager.RCloneManager</id>
+  <id>io.github.rclone_manager.rclone-manager</id>
   <name>Rclone Manager</name>
   <summary>Cross-platform User Friendly UI for rclone</summary>
   <metadata_license>MIT</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <developer id="io.github.rclonemanager.RCloneManager">
+  <developer id="io.github.rclone-manager">
     <name>Rclone Manager</name>
   </developer>
   <supports>
@@ -13,10 +13,6 @@
     <control>keyboard</control>
     <control>touch</control>
   </supports>
-  <recommends>
-    <control>keyboard</control>
-    <control>pointing</control>
-  </recommends>
   <requires>
     <display_length compare="ge">320</display_length>
   </requires>
@@ -64,27 +60,27 @@
   <url type="vcs-browser">https://github.com/RClone-Manager/rclone-manager</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/desktop-ui.pngdesktop-ui.png</image>
+      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/desktop-ui.png</image>
       <caption>Desktop UI - Light and Dark modes</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/desktop-ui.pnggeneral-home.png</image>
+      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/general-home.png</image>
       <caption>General Home View</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/desktop-ui.pnggeneral-remote.png</image>
+      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/general-remote.png</image>
       <caption>Remote Management Interface</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/desktop-ui.pngjob-watcher.png</image>
+      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/job-watcher.png</image>
       <caption>Job Watcher - Monitor your rclone operations</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/desktop-ui.pngmount-control.png</image>
+      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/mount-control.png</image>
       <caption>Mount Control Panel</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/desktop-ui.pngmobile-ui.png</image>
+      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/mobile-ui.png</image>
       <caption>Mobile UI - Responsive design</caption>
     </screenshot>
   </screenshots>
@@ -96,5 +92,5 @@
       </description>
     </release>
   </releases>
-  <launchable type="desktop-id">io.github.rclonemanager.RCloneManager.desktop</launchable>
+  <launchable type="desktop-id">io.github.rclone_manager.rclone-manager.desktop</launchable>
 </component>
