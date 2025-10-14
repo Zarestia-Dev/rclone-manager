@@ -97,7 +97,7 @@ export class ExportModalComponent implements OnInit {
     {
       value: ExportType.RCloneBackend,
       label: '⚡ RClone Backend Settings',
-      description: 'RClone runtime options (rclone_options.json)',
+      description: 'RClone backend options',
     },
   ] as const;
 

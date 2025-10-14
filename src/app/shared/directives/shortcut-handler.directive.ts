@@ -10,6 +10,7 @@ import { RcloneConfigModalComponent } from '../../features/modals/settings/rclon
 // Services
 import { WindowService } from '@app/services';
 import { RemoteManagementService } from '@app/services';
+import { OnboardingStateService } from '@app/services';
 import { NotificationService } from '../services/notification.service';
 import { STANDARD_MODAL_SIZE } from '@app/types';
 
@@ -22,11 +23,17 @@ export class ShortcutHandlerDirective {
   private notificationService = inject(NotificationService);
   private windowService = inject(WindowService);
   private remoteManagementService = inject(RemoteManagementService);
+  private onboardingStateService = inject(OnboardingStateService);
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
     // Skip if typing in input fields (except for critical shortcuts)
     if (this.isInInputField(event) && !this.isCriticalShortcut(event)) {
+      return;
+    }
+
+    // Block shortcuts if any modal is open or onboarding is active
+    if (this.shouldBlockShortcuts(event)) {
       return;
     }
 
@@ -116,6 +123,39 @@ export class ShortcutHandlerDirective {
   private isCriticalShortcut(event: KeyboardEvent): boolean {
     // Ctrl+Q should always work, even in input fields
     return event.ctrlKey && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'q';
+  }
+
+  /**
+   * Check if shortcuts should be blocked
+   * Returns true if any modal is open or onboarding is active
+   * Critical shortcuts (like Ctrl+Q) bypass this check
+   */
+  private shouldBlockShortcuts(event: KeyboardEvent): boolean {
+    // Always allow critical shortcuts
+    if (this.isCriticalShortcut(event)) {
+      return false;
+    }
+
+    // Block if any modal is open
+    if (this.dialog.openDialogs.length > 0) {
+      console.debug('Shortcuts blocked: Modal is open');
+      return true;
+    }
+
+    // Block if onboarding is active
+    if (this.isOnboardingActive()) {
+      console.debug('Shortcuts blocked: Onboarding is active');
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if onboarding is currently active using centralized service
+   */
+  private isOnboardingActive(): boolean {
+    return this.onboardingStateService.isOnboardingActive();
   }
 
   private async quitApplication(): Promise<void> {

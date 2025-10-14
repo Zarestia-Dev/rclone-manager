@@ -78,20 +78,14 @@ pub async fn backup_settings(
     }
 
     if export_type == ExportType::All || export_type == ExportType::RCloneBackend {
-        let rclone_options_path = state.config_dir.join("rclone_options.json");
-        debug!(
-            "Checking for rclone_options.json at: {}",
-            rclone_options_path.display()
-        );
-        if rclone_options_path.exists() {
-            fs::copy(&rclone_options_path, export_dir.join("rclone_options.json")).ok();
-            info!("rclone_options.json copied to export directory.");
+        let backend_path = state.config_dir.join("backend.json");
+        debug!("Checking for backend.json at: {}", backend_path.display());
+        if backend_path.exists() {
+            fs::copy(&backend_path, export_dir.join("backend.json")).ok();
+            info!("backend.json copied to export directory.");
             exported_items.push("rclone-backend");
         } else {
-            debug!(
-                "rclone_options.json does not exist at: {}",
-                rclone_options_path.display()
-            );
+            debug!("backend.json does not exist at: {}", backend_path.display());
         }
     }
 

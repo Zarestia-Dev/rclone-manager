@@ -8,7 +8,7 @@ use crate::utils::types::all_types::SettingsState;
 
 /// **RClone Backend Settings Manager**
 ///
-/// Manages RClone backend options in a separate file (rclone_options.json)
+/// Manages RClone backend options in a separate file (backend.json)
 /// This keeps RClone-specific runtime configurations separate from app settings
 pub struct RCloneBackendStore {
     store: Mutex<std::sync::Arc<tauri_plugin_store::Store<tauri::Wry>>>,
@@ -16,13 +16,9 @@ pub struct RCloneBackendStore {
 
 impl RCloneBackendStore {
     /// Initialize RClone backend store with proper path
-    pub fn new(app_handle: &AppHandle) -> Result<Self, String> {
-        let config_dir = app_handle
-            .path()
-            .app_config_dir()
-            .map_err(|e| format!("Failed to get config dir: {}", e))?;
-
-        let store_path = config_dir.join("rclone_options.json");
+    /// Uses the same config directory as the main settings store for consistency
+    pub fn new(app_handle: &AppHandle, config_dir: &std::path::Path) -> Result<Self, String> {
+        let store_path = config_dir.join("backend.json");
         info!("📦 Initializing RClone backend store at: {:?}", store_path);
         let store = StoreBuilder::new(app_handle, store_path.clone())
             .build()
@@ -51,7 +47,7 @@ pub async fn load_rclone_backend_options(
     // Try to reload from disk, handle missing file gracefully
     let stored_options = match store_guard.reload() {
         Ok(_) => store_guard
-            .get("rclone_options")
+            .get("backend")
             .unwrap_or_else(|| json!({}))
             .clone(),
         Err(e) => match &e {
@@ -86,7 +82,7 @@ pub async fn save_rclone_backend_options(
     let store_guard = backend_store.store.lock().await;
 
     // Save to store
-    store_guard.set("rclone_options", options.clone());
+    store_guard.set("backend", options.clone());
 
     // Persist to disk
     store_guard
@@ -116,7 +112,7 @@ pub async fn save_rclone_backend_option(
     // Load existing options
     let _ = store_guard.reload();
     let mut options = store_guard
-        .get("rclone_options")
+        .get("backend")
         .unwrap_or_else(|| json!({}))
         .clone();
 
@@ -138,7 +134,7 @@ pub async fn save_rclone_backend_option(
     }
 
     // Save to store
-    store_guard.set("rclone_options", options);
+    store_guard.set("backend", options);
 
     store_guard
         .save()
@@ -160,7 +156,7 @@ pub async fn reset_rclone_backend_options(app_handle: AppHandle) -> Result<(), S
     let store_guard = backend_store.store.lock().await;
 
     // Clear all options
-    store_guard.set("rclone_options", json!({}));
+    store_guard.set("backend", json!({}));
 
     store_guard
         .save()
@@ -176,6 +172,6 @@ pub async fn get_rclone_backend_store_path(
     settings_state: State<'_, SettingsState<tauri::Wry>>,
 ) -> Result<String, String> {
     let config_dir = &settings_state.config_dir;
-    let store_path = config_dir.join("rclone_options.json");
+    let store_path = config_dir.join("backend.json");
     Ok(store_path.to_string_lossy().to_string())
 }

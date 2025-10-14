@@ -6,6 +6,7 @@ use crate::{
     core::event_listener::setup_event_listener,
     rclone::{
         commands::set_bandwidth_limit,
+        queries::flags::set_rclone_option,
         state::{CACHE, ENGINE_STATE},
     },
     utils::{
@@ -98,6 +99,11 @@ pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSe
         }
     }
 
+    // Apply RClone backend settings from backend.json
+    if let Err(e) = apply_backend_settings(app_handle).await {
+        error!("Failed to apply backend settings: {e}");
+    }
+
     // if !settings.core.rclone_config_file.is_empty() {
     //     debug!(
     //         "🔗 Setting Rclone config path: {}",
@@ -110,4 +116,50 @@ pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSe
     //         error!("Failed to set Rclone config path: {e}");
     //     }
     // }
+}
+
+/// Apply RClone backend settings from backend.json file
+pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(), String> {
+    use crate::core::settings::rclone_backend::load_rclone_backend_options;
+
+    debug!("🔧 Applying RClone backend settings from backend.json");
+
+    // Load backend options from store
+    let backend_options = load_rclone_backend_options(app_handle.clone())
+        .await
+        .map_err(|e| format!("Failed to load backend options: {}", e))?;
+
+    let rclone_state = app_handle.state::<RcloneState>();
+
+    // Apply each block's options
+    if let Some(backend_obj) = backend_options.as_object() {
+        for (block_name, block_options) in backend_obj {
+            if let Some(options_obj) = block_options.as_object() {
+                for (option_name, option_value) in options_obj {
+                    debug!(
+                        "🔧 Setting RClone option: {}.{} = {:?}",
+                        block_name, option_name, option_value
+                    );
+
+                    if let Err(e) = set_rclone_option(
+                        rclone_state.clone(),
+                        block_name.clone(),
+                        option_name.clone(),
+                        option_value.clone(),
+                    )
+                    .await
+                    {
+                        error!(
+                            "Failed to set RClone option {}.{}: {}",
+                            block_name, option_name, e
+                        );
+                        // Continue with other options even if one fails
+                    }
+                }
+            }
+        }
+    }
+
+    info!("✅ RClone backend settings applied successfully");
+    Ok(())
 }

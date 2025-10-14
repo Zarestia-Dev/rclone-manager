@@ -90,7 +90,7 @@ export interface RcConfigOption {
   Advanced?: boolean;
   Exclusive?: boolean;
   Sensitive?: boolean;
-  DefaultStr?: string;
+  DefaultStr: string;
   ValueStr?: string;
   Type: string;
 }

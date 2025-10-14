@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { FormControl } from '@angular/forms';
 import { ValidatorsService } from './validators.service';
-import { UiStateService } from '../ui/ui-state.service';
+import { UiStateService } from '@app/services';
 
 describe('ValidatorsService', () => {
   let service: ValidatorsService;

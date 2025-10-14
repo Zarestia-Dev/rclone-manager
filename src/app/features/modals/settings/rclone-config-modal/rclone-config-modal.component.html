@@ -1,7 +1,7 @@
 <div class="rclone-config-modal">
-  <div class="modal-header" data-tauri-drag-region [class.scrolled]="scrolled">
-    <button>
-      <mat-icon></mat-icon>
+  <div class="modal-header" data-tauri-drag-region>
+    <button mat-icon-button (click)="toggleSearchVisibility()" aria-label="Toggle Search">
+      <mat-icon svgIcon="search"></mat-icon>
     </button>
     <p>{{ getPageTitle() }}</p>
     <button mat-icon-button (click)="close()" aria-label="Close">
@@ -18,41 +18,102 @@
 
   <!-- home Content -->
   @if (!isLoading) {
-    <div class="modal-content" #content (scroll)="onScroll(content)">
+    <div class="modal-content" #content>
       <!-- home Page: Menu Items -->
       @if (currentPage === 'home') {
-        <mat-icon svgIcon="rclone" class="app-icon"></mat-icon>
-        <h2 class="app-name">RClone Configuration</h2>
-        <p class="app-subtitle">Manage RClone engine and network settings</p>
+        <!-- Search Bar on Home -->
+        <div class="home-search-container">
+          <app-search-container
+            [visible]="isSearchVisible"
+            [searchText]="homeSearchQuery"
+            (searchTextChange)="onHomeSearchChange($event)"
+            placeholder="Search all settings..."
+            ariaLabel="Search RClone settings"
+          ></app-search-container>
 
-        <div class="config-list">
-          @for (group of settingGroups; track group.key) {
-            <button mat-button class="config-item" (click)="navigateTo(group.key)">
+          <!-- Search Results Summary -->
+          @if (homeSearchQuery && globalSearchResults.length > 0) {
+            <div class="search-results-summary">
+              <mat-icon svgIcon="search"></mat-icon>
+              <span>
+                Found <strong>{{ globalSearchResults.length }}</strong>
+                {{ globalSearchResults.length === 1 ? 'setting' : 'settings' }}
+                across all categories
+              </span>
+            </div>
+          }
+        </div>
+
+        <mat-accordion class="config-accordion">
+          <!-- Categorized Settings -->
+          @for (category of getFilteredCategories(); track category.name) {
+            <mat-expansion-panel
+              [expanded]="category.expanded"
+              (opened)="category.expanded = true"
+              (closed)="category.expanded = false"
+              class="category-panel"
+            >
+              <mat-expansion-panel-header>
+                <mat-panel-title>
+                  <mat-icon [svgIcon]="category.icon"></mat-icon>
+                  <div class="category-header-text">
+                    <span class="category-title">{{ category.name }}</span>
+                    <small class="category-description">{{ category.description }}</small>
+                  </div>
+                </mat-panel-title>
+              </mat-expansion-panel-header>
+
+              <!-- Category Items -->
+              <div class="category-items">
+                @for (group of category.groups; track group.key) {
+                  <button mat-button class="config-item" (click)="navigateTo(group.key)">
+                    <div class="config-item-content">
+                      <mat-icon [svgIcon]="group.icon"></mat-icon>
+                      <div class="config-item-text">
+                        <span class="config-item-title">
+                          {{ group.label }}
+                          @if (homeSearchQuery && blockHasSearchMatches(group.key)) {
+                            <span class="match-count">{{ getBlockMatchCount(group.key) }}</span>
+                          }
+                        </span>
+                        <small class="config-item-description">{{ group.description }}</small>
+                      </div>
+                    </div>
+                    <mat-icon svgIcon="chevron-right"></mat-icon>
+                  </button>
+                }
+              </div>
+            </mat-expansion-panel>
+          }
+        </mat-accordion>
+
+        <!-- Security Settings (Not visible on search) -->
+        @if (!homeSearchQuery) {
+          <div class="security-section">
+            <button mat-button class="config-item security-item" (click)="navigateTo('security')">
               <div class="config-item-content">
-                <mat-icon [svgIcon]="group.icon"></mat-icon>
+                <mat-icon svgIcon="lock"></mat-icon>
                 <div class="config-item-text">
-                  <span class="config-item-title">{{ group.label }}</span>
-                  <small class="config-item-description">{{ group.description }}</small>
+                  <span class="config-item-title">Security Settings</span>
+                  <small class="config-item-description"
+                    >Configuration encryption and password management</small
+                  >
                 </div>
               </div>
               <mat-icon svgIcon="chevron-right"></mat-icon>
             </button>
-          }
+          </div>
+        }
 
-          <!-- Always show Security option -->
-          <button mat-button class="config-item" (click)="navigateTo('security')">
-            <div class="config-item-content">
-              <mat-icon svgIcon="lock"></mat-icon>
-              <div class="config-item-text">
-                <span class="config-item-title">Security Settings</span>
-                <small class="config-item-description"
-                  >Configuration encryption and password management</small
-                >
-              </div>
-            </div>
-            <mat-icon svgIcon="chevron-right"></mat-icon>
-          </button>
-        </div>
+        <!-- No Results Message -->
+        @if (homeSearchQuery && getFilteredCategories().length === 0) {
+          <div class="no-results-home">
+            <mat-icon svgIcon="search"></mat-icon>
+            <h4>No settings found</h4>
+            <p>Try adjusting your search terms</p>
+            <button mat-stroked-button (click)="clearHomeSearch()">Clear Search</button>
+          </div>
+        }
       }
     </div>
   }
@@ -73,499 +134,7 @@
       <div class="overlay-content">
         <!-- Security Page: Embedded Password Manager with Tabs -->
         @if (isSecurityPage) {
-          <div class="password-manager-section">
-            <!-- Loading State -->
-            @if (isLoadingPassword) {
-              <div class="card loading-card">
-                <div class="card-content">
-                  <div class="loading-content">
-                    <mat-spinner diameter="48"></mat-spinner>
-                    <h3>Loading Configuration...</h3>
-                    <p>Checking encryption status</p>
-                  </div>
-                </div>
-              </div>
-            } @else {
-              <!-- Tabs -->
-              <mat-tab-group [(selectedIndex)]="selectedSecurityTab" class="security-tabs">
-                <!-- Overview Tab -->
-                <mat-tab label="Overview">
-                  <ng-template mat-tab-label>
-                    <mat-icon svgIcon="shield"></mat-icon>
-                    <span>Overview</span>
-                  </ng-template>
-
-                  <div class="tab-content">
-                    <!-- Configuration Not Encrypted -->
-                    @if (isUnencryptedConfig) {
-                      <div class="card get-started-card">
-                        <div class="card-header">
-                          <div class="card-title">
-                            <mat-icon svgIcon="lock-open"></mat-icon>
-                            <h3>Configuration Not Encrypted</h3>
-                          </div>
-                          <p class="card-description">
-                            Your rclone configuration is currently unencrypted. Encrypt it to
-                            protect your remote access credentials.
-                          </p>
-                        </div>
-                        <div class="card-content">
-                          <div class="benefits-list">
-                            <div class="benefit-item">
-                              <mat-icon svgIcon="shield"></mat-icon>
-                              <span>Protect your remote credentials from unauthorized access</span>
-                            </div>
-                            <div class="benefit-item">
-                              <mat-icon svgIcon="lock"></mat-icon>
-                              <span>Secure password-based encryption for configuration files</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="card-actions">
-                          <button
-                            mat-flat-button
-                            (click)="switchToEncryptionTab()"
-                            class="action-button-large primary"
-                          >
-                            <mat-icon svgIcon="lock"></mat-icon>
-                            Encrypt Configuration
-                          </button>
-                          <button
-                            mat-stroked-button
-                            (click)="learnMoreAboutEncryption()"
-                            class="action-button-large"
-                          >
-                            <mat-icon svgIcon="open-link"></mat-icon>
-                            Learn More
-                          </button>
-                        </div>
-                      </div>
-                    } @else {
-                      <!-- Configuration Is Encrypted -->
-                      <div class="card">
-                        <div class="card-header">
-                          <div class="card-title">
-                            <mat-icon svgIcon="shield"></mat-icon>
-                            <h3>Security Status</h3>
-                          </div>
-                          <p class="card-description">
-                            Current status of your encrypted rclone configuration
-                          </p>
-                        </div>
-                        <div class="card-content">
-                          <div class="status-grid">
-                            <div class="status-item">
-                              <div class="status-indicator">
-                                <mat-icon svgIcon="lock"></mat-icon>
-                              </div>
-                              <div class="status-details">
-                                <h4>Configuration</h4>
-                                <p>Configuration is encrypted and secure</p>
-                              </div>
-                            </div>
-                            <div
-                              class="status-item"
-                              [class.success]="hasStoredPassword"
-                              [class.warning]="!hasStoredPassword"
-                            >
-                              <div class="status-indicator">
-                                <mat-icon
-                                  [svgIcon]="hasStoredPassword ? 'circle-check' : 'warning'"
-                                ></mat-icon>
-                              </div>
-                              <div class="status-details">
-                                <h4>Stored Password</h4>
-                                <p>
-                                  {{
-                                    hasStoredPassword
-                                      ? 'Password is securely stored'
-                                      : 'No password stored'
-                                  }}
-                                </p>
-                              </div>
-                            </div>
-                            @if (hasEnvPassword) {
-                              <div class="status-item success">
-                                <div class="status-indicator">
-                                  <mat-icon svgIcon="circle-check"></mat-icon>
-                                </div>
-                                <div class="status-details">
-                                  <h4>Environment Variable</h4>
-                                  <p>RCLONE_CONFIG_PASS is set</p>
-                                </div>
-                              </div>
-                            }
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Password Management Card -->
-                      <div class="card">
-                        <div class="card-header">
-                          <div class="card-title">
-                            <mat-icon svgIcon="key"></mat-icon>
-                            <h3>Password Management</h3>
-                          </div>
-                          <p class="card-description">
-                            Enter your rclone configuration password and manage quick actions
-                          </p>
-                        </div>
-                        <div class="card-content">
-                          <form [formGroup]="overviewForm">
-                            <mat-form-field appearance="outline" class="full-width">
-                              <mat-label>Configuration Password</mat-label>
-                              <input
-                                matInput
-                                type="password"
-                                formControlName="password"
-                                placeholder="Enter your rclone config password"
-                                autocomplete="current-password"
-                              />
-                              <mat-icon matSuffix svgIcon="key"></mat-icon>
-                              @if (overviewForm.get('password')?.hasError('required')) {
-                                <mat-error>Password is required</mat-error>
-                              }
-                              @if (overviewForm.get('password')?.hasError('minLength')) {
-                                <mat-error>{{
-                                  overviewForm.get('password')?.errors?.['minLength']?.message
-                                }}</mat-error>
-                              }
-                              @if (overviewForm.get('password')?.hasError('invalidChars')) {
-                                <mat-error>{{
-                                  overviewForm.get('password')?.errors?.['invalidChars']?.message
-                                }}</mat-error>
-                              }
-                              @if (overviewForm.get('password')?.hasError('apiError')) {
-                                <mat-error>{{
-                                  overviewForm.get('password')?.errors?.['apiError']?.message
-                                }}</mat-error>
-                              }
-                            </mat-form-field>
-                          </form>
-                        </div>
-                        <div class="card-actions">
-                          <button
-                            mat-flat-button
-                            [disabled]="!canValidatePassword || passwordLoading.isValidating"
-                            (click)="validatePassword()"
-                          >
-                            <mat-icon svgIcon="circle-check"></mat-icon>
-                            {{
-                              passwordLoading.isValidating ? 'Validating...' : 'Validate Password'
-                            }}
-                          </button>
-                          @if (!hasStoredPassword) {
-                            <button
-                              mat-stroked-button
-                              [disabled]="!canStorePassword || passwordLoading.isStoringPassword"
-                              (click)="storePassword()"
-                            >
-                              <mat-icon svgIcon="key"></mat-icon>
-                              {{
-                                passwordLoading.isStoringPassword ? 'Saving...' : 'Store Password'
-                              }}
-                            </button>
-                          }
-                          @if (hasStoredPassword) {
-                            <button
-                              mat-stroked-button
-                              class="warn"
-                              [disabled]="passwordLoading.isRemovingPassword"
-                              (click)="removePassword()"
-                            >
-                              <mat-icon svgIcon="trash"></mat-icon>
-                              {{
-                                passwordLoading.isRemovingPassword
-                                  ? 'Removing...'
-                                  : 'Remove Stored Password'
-                              }}
-                            </button>
-                          }
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </mat-tab>
-
-                <!-- Encryption Tab -->
-                <mat-tab label="Encryption">
-                  <ng-template mat-tab-label>
-                    <mat-icon svgIcon="lock"></mat-icon>
-                    <span>Encryption</span>
-                  </ng-template>
-
-                  <div class="tab-content">
-                    <div class="card">
-                      <div class="card-header">
-                        <div class="card-title">
-                          <mat-icon [svgIcon]="isEncryptedConfig ? 'lock' : 'lock-open'"></mat-icon>
-                          <h3>Configuration Encryption</h3>
-                        </div>
-                        <p class="card-description">
-                          Encrypt your rclone configuration file for enhanced security
-                        </p>
-                      </div>
-                      <div class="card-content">
-                        <div
-                          class="encryption-status"
-                          [class.encrypted]="isEncryptedConfig"
-                          [class.unencrypted]="!isEncryptedConfig"
-                        >
-                          <mat-icon [svgIcon]="isEncryptedConfig ? 'lock' : 'lock-open'"></mat-icon>
-                          <span>{{
-                            isEncryptedConfig
-                              ? 'Configuration is encrypted'
-                              : 'Configuration is not encrypted'
-                          }}</span>
-                        </div>
-                        <form [formGroup]="encryptionForm" class="encryption-form">
-                          <mat-form-field appearance="outline" class="full-width">
-                            <mat-label>{{
-                              isEncryptedConfig
-                                ? 'Password for Decryption'
-                                : 'Password for Encryption'
-                            }}</mat-label>
-                            <input
-                              matInput
-                              type="password"
-                              formControlName="password"
-                              [placeholder]="
-                                isEncryptedConfig
-                                  ? 'Enter password to decrypt configuration'
-                                  : 'Enter password to encrypt configuration'
-                              "
-                              autocomplete="current-password"
-                            />
-                            <mat-icon
-                              matSuffix
-                              [svgIcon]="isEncryptedConfig ? 'lock-open' : 'lock'"
-                            ></mat-icon>
-                            @if (encryptionForm.get('password')?.hasError('required')) {
-                              <mat-error>Password is required</mat-error>
-                            }
-                            @if (encryptionForm.get('password')?.hasError('minLength')) {
-                              <mat-error>{{
-                                encryptionForm.get('password')?.errors?.['minLength']?.message
-                              }}</mat-error>
-                            }
-                            @if (encryptionForm.get('password')?.hasError('invalidChars')) {
-                              <mat-error>{{
-                                encryptionForm.get('password')?.errors?.['invalidChars']?.message
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                          @if (!isEncryptedConfig) {
-                            <mat-form-field appearance="outline" class="full-width">
-                              <mat-label>Confirm Password</mat-label>
-                              <input
-                                matInput
-                                type="password"
-                                formControlName="confirmPassword"
-                                placeholder="Confirm your password"
-                                autocomplete="new-password"
-                              />
-                              <mat-icon matSuffix svgIcon="lock"></mat-icon>
-                              @if (encryptionForm.get('confirmPassword')?.hasError('required')) {
-                                <mat-error>Please confirm your password</mat-error>
-                              }
-                              @if (encryptionForm.hasError('passwordMismatch')) {
-                                <mat-error>{{
-                                  encryptionForm.errors?.['passwordMismatch']?.message
-                                }}</mat-error>
-                              }
-                            </mat-form-field>
-                          }
-                        </form>
-                      </div>
-                      <div class="card-actions">
-                        @if (!isEncryptedConfig) {
-                          <button
-                            mat-flat-button
-                            (click)="encryptConfig()"
-                            [disabled]="!canEncrypt || passwordLoading.isEncrypting"
-                            class="action-button-large"
-                          >
-                            <mat-icon svgIcon="lock"></mat-icon>
-                            {{
-                              passwordLoading.isEncrypting
-                                ? 'Encrypting...'
-                                : 'Encrypt Configuration'
-                            }}
-                          </button>
-                        } @else {
-                          <button
-                            mat-stroked-button
-                            (click)="unencryptConfig()"
-                            [disabled]="!canUnencrypt || passwordLoading.isUnencrypting"
-                            class="action-button-large warn"
-                          >
-                            <mat-icon svgIcon="lock-open"></mat-icon>
-                            {{
-                              passwordLoading.isUnencrypting
-                                ? 'Decrypting...'
-                                : 'Decrypt Configuration'
-                            }}
-                          </button>
-                        }
-                      </div>
-                    </div>
-
-                    <!-- Change Password Card -->
-                    @if (isEncryptedConfig) {
-                      <div class="card">
-                        <div class="card-header">
-                          <div class="card-title">
-                            <mat-icon svgIcon="key"></mat-icon>
-                            <h3>Change Password</h3>
-                          </div>
-                          <p class="card-description">
-                            Update the encryption password for your configuration
-                          </p>
-                        </div>
-                        <div class="card-content">
-                          <form [formGroup]="changePasswordForm" class="password-change-form">
-                            <mat-form-field appearance="outline" class="full-width">
-                              <mat-label>Current Password</mat-label>
-                              <input
-                                matInput
-                                type="password"
-                                formControlName="currentPassword"
-                                placeholder="Enter current password"
-                                autocomplete="current-password"
-                              />
-                              <mat-icon matSuffix svgIcon="key"></mat-icon>
-                              @if (
-                                changePasswordForm.get('currentPassword')?.hasError('required')
-                              ) {
-                                <mat-error>Current password is required</mat-error>
-                              }
-                            </mat-form-field>
-                            <mat-form-field appearance="outline" class="full-width">
-                              <mat-label>New Password</mat-label>
-                              <input
-                                matInput
-                                type="password"
-                                formControlName="newPassword"
-                                placeholder="Enter new password"
-                                autocomplete="new-password"
-                              />
-                              <mat-icon matSuffix svgIcon="key"></mat-icon>
-                              @if (changePasswordForm.get('newPassword')?.hasError('required')) {
-                                <mat-error>New password is required</mat-error>
-                              }
-                            </mat-form-field>
-                            <mat-form-field appearance="outline" class="full-width">
-                              <mat-label>Confirm New Password</mat-label>
-                              <input
-                                matInput
-                                type="password"
-                                formControlName="confirmNewPassword"
-                                placeholder="Confirm your new password"
-                                autocomplete="new-password"
-                              />
-                              <mat-icon matSuffix svgIcon="key"></mat-icon>
-                              @if (
-                                changePasswordForm.get('confirmNewPassword')?.hasError('required')
-                              ) {
-                                <mat-error>Please confirm your new password</mat-error>
-                              }
-                              @if (changePasswordForm.hasError('passwordMismatch')) {
-                                <mat-error>{{
-                                  changePasswordForm.errors?.['passwordMismatch']?.message
-                                }}</mat-error>
-                              }
-                            </mat-form-field>
-                          </form>
-                        </div>
-                        <div class="card-actions">
-                          <button
-                            mat-flat-button
-                            (click)="changePassword()"
-                            [disabled]="!canChangePassword || passwordLoading.isChangingPassword"
-                            class="action-button-large primary"
-                          >
-                            <mat-icon svgIcon="key"></mat-icon>
-                            {{
-                              passwordLoading.isChangingPassword
-                                ? 'Changing Password...'
-                                : 'Change Password'
-                            }}
-                          </button>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </mat-tab>
-
-                <!-- Advanced Tab -->
-                <mat-tab label="Advanced">
-                  <ng-template mat-tab-label>
-                    <mat-icon svgIcon="wrench"></mat-icon>
-                    <span>Advanced</span>
-                  </ng-template>
-
-                  <div class="tab-content">
-                    <!-- Environment Variables (only for encrypted configs) -->
-                    @if (isEncryptedConfig) {
-                      <div class="card">
-                        <div class="card-header">
-                          <div class="card-title">
-                            <mat-icon svgIcon="terminal"></mat-icon>
-                            <h3>Environment Variables</h3>
-                          </div>
-                          <p class="card-description">
-                            Manage password environment variables for the current session
-                          </p>
-                        </div>
-                        <div class="card-content">
-                          <div class="status-grid">
-                            <div class="status-item">
-                              <div class="status-indicator">
-                                <mat-icon
-                                  [svgIcon]="hasEnvPassword ? 'circle-check' : 'circle-info'"
-                                ></mat-icon>
-                              </div>
-                              <div class="status-details">
-                                <h4>RCLONE_CONFIG_PASS:</h4>
-                                <p>{{ hasEnvPassword ? 'Set' : 'Not set' }}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="card-actions">
-                          <button
-                            mat-stroked-button
-                            (click)="setEnvPassword()"
-                            [disabled]="!hasStoredPassword || passwordLoading.isSettingEnv"
-                          >
-                            <mat-icon svgIcon="terminal"></mat-icon>
-                            {{
-                              passwordLoading.isSettingEnv
-                                ? 'Saving...'
-                                : 'Set Environment Variable'
-                            }}
-                          </button>
-                          <button
-                            mat-stroked-button
-                            class="warn"
-                            (click)="clearEnvPassword()"
-                            [disabled]="!hasEnvPassword || passwordLoading.isClearingEnv"
-                          >
-                            <mat-icon svgIcon="close"></mat-icon>
-                            {{
-                              passwordLoading.isClearingEnv
-                                ? 'Clearing...'
-                                : 'Clear Environment Variable'
-                            }}
-                          </button>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </mat-tab>
-              </mat-tab-group>
-            }
-          </div>
+          <app-security-settings></app-security-settings>
         }
 
         <!-- Regular Settings List (non-security pages) -->
@@ -573,50 +142,29 @@
           <!-- RClone Options from API -->
           @if (totalOptionsCount > 0) {
             <div class="settings-list">
-              <div class="settings-header">
-                <h3>{{ getPageTitle() }}</h3>
-                <p class="settings-description">
-                  Configure {{ getPageTitle().toLowerCase() }} directly from RClone
-                </p>
-              </div>
-
               <!-- Search Bar -->
-              <div class="search-container">
-                <mat-form-field class="search-field" appearance="outline">
-                  <mat-icon matPrefix svgIcon="magnifying-glass"></mat-icon>
-                  <input
-                    matInput
-                    [(ngModel)]="searchQuery"
-                    placeholder="Search settings..."
-                    aria-label="Search settings"
-                  />
-                  @if (hasSearchQuery) {
-                    <button
-                      matSuffix
-                      mat-icon-button
-                      (click)="clearSearch()"
-                      aria-label="Clear search"
-                    >
-                      <mat-icon svgIcon="circle-xmark"></mat-icon>
-                    </button>
-                  }
-                </mat-form-field>
-                @if (hasSearchQuery) {
-                  <div class="search-results-info">
-                    <small>
-                      Showing {{ filteredOptionsCount }} of {{ totalOptionsCount }} settings
-                    </small>
-                  </div>
-                }
-              </div>
+              <app-search-container
+                [visible]="isSearchVisible"
+                [searchText]="searchQuery"
+                (searchTextChange)="onSearchTextChange($event)"
+                placeholder="Search settings..."
+                ariaLabel="Search RClone settings"
+              ></app-search-container>
+
+              @if (hasSearchQuery) {
+                <div class="search-results-info">
+                  <small>
+                    Showing {{ filteredOptionsCount }} of {{ totalOptionsCount }} settings
+                  </small>
+                </div>
+              }
 
               @if (filteredOptionsCount === 0) {
                 <!-- No Results Message -->
                 <div class="no-results">
-                  <mat-icon svgIcon="magnifying-glass"></mat-icon>
+                  <mat-icon svgIcon="search"></mat-icon>
                   <h4>No settings found</h4>
                   <p>Try adjusting your search terms</p>
-                  <button mat-stroked-button (click)="clearSearch()">Clear Search</button>
                 </div>
               } @else {
                 <!-- Settings List -->
@@ -637,9 +185,6 @@
                         >
                           {{ getRCloneOptionControl(option.Name).value ? 'Enabled' : 'Disabled' }}
                         </mat-slide-toggle>
-                        @if (isOptionSaving(option.Name)) {
-                          <mat-icon class="saving-indicator" svgIcon="spinner"></mat-icon>
-                        }
                       </div>
                     }
 
@@ -657,9 +202,10 @@
                           <mat-form-field class="input-field" appearance="outline">
                             <input
                               matInput
-                              [value]="option.ValueStr"
+                              [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
                               [placeholder]="option.DefaultStr || ''"
+                              (blur)="saveRCloneOption(option.Name)"
                             />
                           </mat-form-field>
                         </div>
@@ -683,6 +229,7 @@
                             [formControl]="getRCloneOptionControl(option.Name)"
                             [attr.aria-label]="option.Name"
                             [placeholder]="option.DefaultStr"
+                            (blur)="saveRCloneOption(option.Name)"
                           />
                           @if (
                             getRCloneOptionControl(option.Name).invalid &&
@@ -711,6 +258,7 @@
                               [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
                               [placeholder]="option.DefaultStr"
+                              (blur)="saveRCloneOption(option.Name)"
                             />
                             <mat-hint>Format: 1h30m45s or 5m0s</mat-hint>
                             @if (
@@ -741,6 +289,7 @@
                               [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
                               [placeholder]="option.DefaultStr"
+                              (blur)="saveRCloneOption(option.Name)"
                             />
                             <mat-hint>Format: 100Ki, 16Mi, 1Gi</mat-hint>
                             @if (
@@ -816,6 +365,7 @@
                             <mat-select
                               [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
+                              (selectionChange)="saveRCloneOption(option.Name)"
                             >
                               @for (example of option.Examples; track example.Value) {
                                 <mat-option [value]="example.Value">
@@ -849,6 +399,7 @@
                             <mat-select
                               [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
+                              (selectionChange)="saveRCloneOption(option.Name)"
                             >
                               @for (example of option.Examples; track example.Value) {
                                 <mat-option [value]="example.Value">
@@ -886,6 +437,7 @@
                             <mat-select
                               [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
+                              (selectionChange)="saveRCloneOption(option.Name)"
                             >
                               @for (example of option.Examples; track example.Value) {
                                 <mat-option [value]="example.Value">
@@ -921,6 +473,7 @@
                               [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
                               [placeholder]="option.DefaultStr"
+                              (blur)="saveRCloneOption(option.Name)"
                             />
                             <mat-hint>Octal format (e.g., 755, 644)</mat-hint>
                             @if (
@@ -951,6 +504,7 @@
                               [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
                               [placeholder]="option.DefaultStr"
+                              (blur)="saveRCloneOption(option.Name)"
                             />
                             <mat-hint>Comma-separated flags</mat-hint>
                             @if (
@@ -980,6 +534,7 @@
                               multiple
                               [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
+                              (selectionChange)="saveRCloneOption(option.Name)"
                             >
                               @if (option.Examples) {
                                 @for (example of option.Examples; track example.Value) {
@@ -1028,6 +583,7 @@
                               [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
                               [placeholder]="option.DefaultStr"
+                              (blur)="saveRCloneOption(option.Name)"
                             />
                             <mat-hint>Space-separated list of values</mat-hint>
                             @if (
@@ -1060,6 +616,7 @@
                               [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
                               [placeholder]="option.DefaultStr"
+                              (blur)="saveRCloneOption(option.Name)"
                             />
                             @if (
                               getRCloneOptionControl(option.Name).invalid &&
@@ -1089,6 +646,7 @@
                               [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
                               [placeholder]="option.DefaultStr"
+                              (blur)="saveRCloneOption(option.Name)"
                             />
                             <mat-hint
                               >Bandwidth limit in KiB/s, or use suffix B|K|M|G|T|P or full timetable
@@ -1122,6 +680,7 @@
                               type="datetime-local"
                               [formControl]="getRCloneOptionControl(option.Name)"
                               [attr.aria-label]="option.Name"
+                              (blur)="saveRCloneOption(option.Name)"
                             />
                             <mat-hint>ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)</mat-hint>
                             @if (
@@ -1171,202 +730,6 @@
                       </div>
                     }
                   </div>
-                }
-              }
-            </div>
-          }
-
-          <!-- Fallback to old settings system if no RClone options -->
-          @if (filteredOptionsCount === 0 && !hasSearchQuery) {
-            <div class="settings-list">
-              @for (setting of getSettingsForCurrentPage(); track setting.key) {
-                @if (isSettingVisible(setting.key)) {
-                  @if (getMetadata(setting.category, setting.key); as meta) {
-                    <div class="setting-item">
-                      <!-- Boolean Settings (Toggle) -->
-                      @if (meta.value_type === 'bool') {
-                        <div class="setting-info">
-                          <strong>{{ meta.display_name }}</strong>
-                          <p>{{ meta.help_text }}</p>
-                        </div>
-                        <div class="setting-control">
-                          <mat-slide-toggle
-                            [formControl]="getFormControl(setting.key)"
-                            [attr.aria-label]="meta.display_name"
-                          >
-                          </mat-slide-toggle>
-                        </div>
-                      }
-
-                      <!-- Number Settings -->
-                      @if (meta.value_type === 'number') {
-                        <div class="setting-info">
-                          <strong>{{ meta.display_name }}</strong>
-                          <p>{{ meta.help_text }}</p>
-                        </div>
-                        <div class="setting-control">
-                          <div class="stepper">
-                            <button
-                              mat-icon-button
-                              (click)="decrementNumber(setting.key, meta)"
-                              [disabled]="
-                                getFormControl(setting.key).value <= (meta.min_value || 0)
-                              "
-                              [attr.aria-label]="'Decrease ' + meta.display_name"
-                            >
-                              <mat-icon svgIcon="remove"></mat-icon>
-                            </button>
-                            <div class="value-display">
-                              {{ getFormControl(setting.key).value }}
-                            </div>
-                            <button
-                              mat-icon-button
-                              (click)="incrementNumber(setting.key, meta)"
-                              [disabled]="
-                                getFormControl(setting.key).value >= (meta.max_value || 999999)
-                              "
-                              [attr.aria-label]="'Increase ' + meta.display_name"
-                            >
-                              <mat-icon svgIcon="add"></mat-icon>
-                            </button>
-                          </div>
-                        </div>
-                      }
-
-                      <!-- String Settings -->
-                      @if (meta.value_type === 'string') {
-                        <div class="setting-full-width">
-                          <div class="setting-info">
-                            <strong>{{ meta.display_name }}</strong>
-                            <p>{{ meta.help_text }}</p>
-                          </div>
-                          <div class="setting-control">
-                            <mat-form-field class="input-field" appearance="outline">
-                              <input
-                                matInput
-                                [formControl]="getFormControl(setting.key)"
-                                [attr.aria-label]="meta.display_name"
-                                [placeholder]="meta.placeholder || ''"
-                              />
-                              @if (getFormControl(setting.key).invalid) {
-                                <mat-error>{{ getValidationMessage(setting.key) }}</mat-error>
-                              }
-                            </mat-form-field>
-                          </div>
-                        </div>
-                      }
-
-                      <!-- Array Settings -->
-                      @if (meta.value_type === 'array') {
-                        <div class="setting-full-width">
-                          <div class="setting-header-with-action">
-                            <div class="setting-info">
-                              <strong>{{ meta.display_name }}</strong>
-                              <p>{{ meta.help_text }}</p>
-                            </div>
-                            <button
-                              mat-icon-button
-                              class="primary"
-                              (click)="addArrayItem(setting.key)"
-                              [attr.aria-label]="'Add ' + meta.display_name + ' item'"
-                              matTooltip="Add item"
-                            >
-                              <mat-icon svgIcon="add"></mat-icon>
-                            </button>
-                          </div>
-                          <div class="array-items">
-                            @for (
-                              item of getFormControl(setting.key).value;
-                              track trackByIndex($index)
-                            ) {
-                              <div class="array-item">
-                                <mat-form-field appearance="outline" class="input-field">
-                                  <input
-                                    matInput
-                                    [value]="item"
-                                    (input)="
-                                      getFormControl(setting.key).value[$index] = $any(
-                                        $event.target
-                                      ).value
-                                    "
-                                    [attr.aria-label]="'Item ' + ($index + 1)"
-                                  />
-                                  <button
-                                    mat-icon-button
-                                    matSuffix
-                                    (click)="removeArrayItem(setting.key, $index)"
-                                    [attr.aria-label]="'Remove item ' + ($index + 1)"
-                                  >
-                                    <mat-icon svgIcon="close"></mat-icon>
-                                  </button>
-                                </mat-form-field>
-                              </div>
-                            }
-                          </div>
-                        </div>
-                      }
-
-                      <!-- File Path Settings -->
-                      @if (meta.value_type === 'file') {
-                        <div class="setting-full-width">
-                          <div class="setting-info">
-                            <strong>{{ meta.display_name }}</strong>
-                            <p>{{ meta.help_text }}</p>
-                          </div>
-                          <div class="setting-control">
-                            <mat-form-field appearance="outline" class="input-field">
-                              <input
-                                matInput
-                                [formControl]="getFormControl(setting.key)"
-                                [attr.aria-label]="meta.display_name"
-                              />
-                              <button
-                                mat-icon-button
-                                matSuffix
-                                (click)="openFilePicker(setting.key)"
-                                [attr.aria-label]="'Browse for ' + meta.display_name"
-                              >
-                                <mat-icon svgIcon="file"></mat-icon>
-                              </button>
-                              @if (getFormControl(setting.key).invalid) {
-                                <mat-error>{{ getValidationMessage(setting.key) }}</mat-error>
-                              }
-                            </mat-form-field>
-                          </div>
-                        </div>
-                      }
-
-                      <!-- Folder Path Settings -->
-                      @if (meta.value_type === 'folder') {
-                        <div class="setting-full-width">
-                          <div class="setting-info">
-                            <strong>{{ meta.display_name }}</strong>
-                            <p>{{ meta.help_text }}</p>
-                          </div>
-                          <div class="setting-control">
-                            <mat-form-field appearance="outline" class="input-field">
-                              <input
-                                matInput
-                                [formControl]="getFormControl(setting.key)"
-                                [attr.aria-label]="meta.display_name"
-                              />
-                              <button
-                                mat-icon-button
-                                matSuffix
-                                (click)="openFolderPicker(setting.key)"
-                                [attr.aria-label]="'Browse for ' + meta.display_name"
-                              >
-                                <mat-icon svgIcon="folder"></mat-icon>
-                              </button>
-                              @if (getFormControl(setting.key).invalid) {
-                                <mat-error>{{ getValidationMessage(setting.key) }}</mat-error>
-                              }
-                            </mat-form-field>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  }
                 }
               }
             </div>

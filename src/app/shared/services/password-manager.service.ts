@@ -8,7 +8,6 @@ export class PasswordManagerStateService {
     hasStoredPassword: false,
     hasEnvPassword: false,
     isConfigEncrypted: false,
-    lockoutStatus: null,
     loading: this.createInitialLoadingState(),
     errors: [],
   });

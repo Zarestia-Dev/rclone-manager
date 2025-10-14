@@ -57,7 +57,7 @@ export class IconService {
       'puzzle-piece': 'assets/icons/puzzle-piece.svg',
       question: 'assets/icons/question.svg',
       refresh: 'assets/icons/rotate.svg',
-      remotes: 'assets/icons/remotes.svg',
+      server: 'assets/icons/server.svg',
       rclone: 'assets/rclone.svg',
       'rclone-symbolic': 'assets/rclone-symbolic.svg',
       'file-operations': 'assets/icons/file-operations.svg',
@@ -69,6 +69,8 @@ export class IconService {
       vfs: 'assets/icons/vfs.svg',
       warning: 'assets/icons/warning.svg',
       wrench: 'assets/icons/wrench.svg',
+      'box-archive': 'assets/icons/box-archive.svg',
+      'file-arrow-up': 'assets/icons/file-arrow-up.svg',
 
       // ------------------- Remote Icons -------------------
       drive: 'assets/icons/remotes/drive.svg',
@@ -105,6 +107,10 @@ export class IconService {
       package: 'assets/icons/package.svg',
       skull: 'assets/icons/skull.svg',
       'file-lines': 'assets/icons/file-lines.svg',
+      bucket: 'assets/icons/bucket.svg',
+      'shield-halved': 'assets/icons/shield-halved.svg',
+      tv: 'assets/icons/tv.svg',
+      globe: 'assets/icons/globe.svg',
     };
 
     this.icons = icons;

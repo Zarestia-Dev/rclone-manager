@@ -159,11 +159,15 @@ pub fn run() {
                     .map_err(|e| format!("Failed to create settings store: {e}"))?,
             );
 
-            app.manage(SettingsState { store, config_dir });
+            app.manage(SettingsState {
+                store,
+                config_dir: config_dir.clone(),
+            });
 
-            // Initialize RClone Backend Store for rclone_options.json
+            // Initialize RClone Backend Store for backend.json
+            // Uses the same config directory as settings for consistency
             use crate::core::settings::rclone_backend::RCloneBackendStore;
-            let rclone_backend_store = RCloneBackendStore::new(app_handle)
+            let rclone_backend_store = RCloneBackendStore::new(app_handle, &config_dir)
                 .map_err(|e| format!("Failed to initialize RClone backend store: {e}"))?;
             app.manage(rclone_backend_store);
 

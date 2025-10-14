@@ -10,7 +10,7 @@
     tabindex="0"
   >
     <h3>
-      <mat-icon svgIcon="remotes"></mat-icon>
+      <mat-icon svgIcon="server"></mat-icon>
       Remotes
     </h3>
   </div>
@@ -81,7 +81,7 @@
     <!-- No Remotes State -->
     @if (filteredRemotes.length === 0) {
       <div class="no-remotes">
-        <mat-icon svgIcon="remotes"></mat-icon>
+        <mat-icon svgIcon="server"></mat-icon>
         @if (searchTerm.trim()) {
           No remotes found matching "{{ searchTerm }}"
         } @else {
