@@ -5,7 +5,7 @@
   <summary>Cross-platform User Friendly UI for rclone</summary>
   <metadata_license>MIT</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <developer id="io.github.rclone_manager.rclone-manager">
+  <developer id="io.github.rclone-manager">
     <name>Rclone Manager</name>
   </developer>
   <supports>
@@ -13,10 +13,6 @@
     <control>keyboard</control>
     <control>touch</control>
   </supports>
-  <recommends>
-    <control>keyboard</control>
-    <control>pointing</control>
-  </recommends>
   <requires>
     <display_length compare="ge">320</display_length>
   </requires>
