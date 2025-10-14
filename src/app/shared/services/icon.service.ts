@@ -58,7 +58,7 @@ export class IconService {
       question: 'assets/icons/question.svg',
       refresh: 'assets/icons/rotate.svg',
       server: 'assets/icons/server.svg',
-      rclone: 'assets/rclone.svg',
+      // rclone: 'assets/rclone.svg', // Use as image because The gradient IDs are being removed/stripped during build optimization
       'rclone-symbolic': 'assets/rclone-symbolic.svg',
       'file-operations': 'assets/icons/file-operations.svg',
       stop: 'assets/icons/stop.svg',
