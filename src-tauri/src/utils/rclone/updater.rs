@@ -390,11 +390,6 @@ async fn check_rclone_selfupdate(
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    debug!("rclone selfupdate --check output: {}", stdout);
-    if !stderr.is_empty() {
-        debug!("rclone selfupdate --check stderr: {}", stderr);
-    }
-
     if !output.status.success() {
         return Err(format!("rclone selfupdate --check failed: {}", stderr));
     }

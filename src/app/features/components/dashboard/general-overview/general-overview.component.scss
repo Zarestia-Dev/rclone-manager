@@ -46,33 +46,6 @@
 }
 
 // =============================================
-// 2. MAT-ACCORDION CONTAINER
-// =============================================
-mat-accordion {
-  .mat-expansion-panel {
-    border-radius: var(--card-border-radius) !important;
-    margin-bottom: 16px;
-
-    &.mat-expanded {
-      box-shadow: var(--shadow-elevated);
-    }
-
-    .mat-expansion-panel-header {
-      min-height: 64px;
-      padding: 0 clamp(16px, 4vw, 32px);
-    }
-
-    .mat-expansion-panel-header-description {
-      justify-content: flex-end;
-      align-items: center;
-      display: flex;
-      gap: 12px;
-      font-size: clamp(12px, 2vw, 14px);
-    }
-  }
-}
-
-// =============================================
 // 3. EXPANSION PANELS
 // =============================================
 
@@ -371,27 +344,6 @@ mat-accordion {
 
 // 5.1 Tablet Styles (max-width: 768px)
 @media (max-width: 768px) {
-  // Mat-accordion adjustments
-  mat-accordion {
-    .mat-expansion-panel {
-      margin-bottom: 12px;
-
-      .mat-expansion-panel-header {
-        padding: 0 16px;
-        min-height: 56px;
-
-        .mat-expansion-panel-header-description {
-          font-size: 12px;
-          gap: 8px;
-        }
-      }
-
-      .mat-expansion-panel-body {
-        padding: 0 16px 16px 16px;
-      }
-    }
-  }
-
   // General overview adjustments
   .general-overview {
     padding: var(--panel-padding-mobile, 16px);

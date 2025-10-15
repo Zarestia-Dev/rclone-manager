@@ -1,36 +1,8 @@
 .password-manager-section {
   width: 100%;
-  max-width: 700px;
-  margin: 0 auto;
-
-  .security-tabs {
-    ::ng-deep {
-      .mat-mdc-tab-labels {
-        justify-content: center;
-        gap: var(--space-sm);
-      }
-
-      .mat-mdc-tab-label {
-        min-width: 120px;
-        padding: var(--space-sm) var(--space-md);
-
-        .mat-mdc-tab-label-content {
-          display: flex;
-          align-items: center;
-          gap: var(--space-xs);
-
-          mat-icon {
-            font-size: 18px;
-            width: 18px;
-            height: 18px;
-          }
-        }
-      }
-    }
-  }
 
   .tab-content {
-    padding: var(--space-lg) 0;
+    padding: var(--space-md);
     display: flex;
     flex-direction: column;
     gap: var(--space-lg);
@@ -45,6 +17,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-md);
+    transition: var(--transition-standard);
 
     &:hover {
       box-shadow: var(--shadow-elevated);
@@ -112,20 +85,20 @@
           border: 1px solid var(--border-color);
 
           &.success {
-            background: rgba(76, 175, 80, 0.1);
-            border-color: rgba(76, 175, 80, 0.3);
+            background: rgba(var(--primary-color-rgb), 0.1);
+            border-color: rgba(var(--primary-color-rgb), 0.3);
 
             .status-indicator mat-icon {
-              color: #4caf50;
+              color: var(--primary-color);
             }
           }
 
           &.warning {
-            background: rgba(255, 152, 0, 0.1);
-            border-color: rgba(255, 152, 0, 0.3);
+            background: rgba(var(--orange-rgb), 0.1);
+            border-color: rgba(var(--orange-rgb), 0.3);
 
             .status-indicator mat-icon {
-              color: #ff9800;
+              color: var(--orange);
             }
           }
 
@@ -167,22 +140,22 @@
         font-weight: 500;
 
         &.encrypted {
-          background: rgba(76, 175, 80, 0.1);
-          border: 1px solid rgba(76, 175, 80, 0.3);
-          color: #4caf50;
+          background: rgba(var(--primary-color-rgb), 0.1);
+          border: 1px solid rgba(var(--primary-color-rgb), 0.3);
+          color: var(--primary-color);
 
           mat-icon {
-            color: #4caf50;
+            color: var(--primary-color);
           }
         }
 
         &.unencrypted {
-          background: rgba(255, 152, 0, 0.1);
-          border: 1px solid rgba(255, 152, 0, 0.3);
-          color: #ff9800;
+          background: rgba(var(--orange-rgb), 0.1);
+          border: 1px solid rgba(var(--orange-rgb), 0.3);
+          color: var(--orange);
 
           mat-icon {
-            color: #ff9800;
+            color: var(--orange);
           }
         }
 
@@ -271,21 +244,12 @@
 
         &.warn {
           color: var(--warn-color);
-          border-color: var(--warn-color);
 
           &:hover {
             background: rgba(var(--warn-color-rgb), 0.1);
           }
         }
       }
-    }
-
-    &.get-started-card {
-      background: linear-gradient(
-        135deg,
-        rgba(var(--primary-color-rgb), 0.05) 0%,
-        rgba(var(--accent-color-rgb), 0.05) 100%
-      );
     }
 
     &.loading-card {
@@ -301,18 +265,6 @@
 @media (max-width: 768px) {
   .password-manager-section {
     max-width: 100%;
-
-    .security-tabs {
-      ::ng-deep {
-        .mat-mdc-tab-labels {
-          flex-direction: column;
-        }
-
-        .mat-mdc-tab-label {
-          width: 100%;
-        }
-      }
-    }
 
     .card {
       padding: var(--space-md);

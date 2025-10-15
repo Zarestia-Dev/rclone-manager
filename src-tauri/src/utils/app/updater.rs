@@ -105,10 +105,6 @@ pub mod app_updates {
 
         let releases: Vec<GitHubRelease> = req.send().await?.json().await?;
 
-        debug!("Found {:?} releases", releases);
-
-        info!("Found {} releases", releases.len());
-
         // Filter and find the appropriate release for the channel
         let suitable_release = releases
             .into_iter()

@@ -1,8 +1,3 @@
-:host {
-  --icon-size: 100px;
-  --max-content-width: 600px;
-}
-
 .rclone-config-modal {
   height: 100%;
   display: flex;
@@ -22,29 +17,33 @@
 
   .modal-content {
     flex: 1;
-    padding: var(--space-sm);
-    overflow: auto;
+    padding: var(--space-md);
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
-    align-items: center;
 
-    .app-icon {
-      width: var(--icon-size);
-      height: var(--icon-size);
-      margin-bottom: var(--space-md);
+    .category-items {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
     }
 
-    .app-name {
-      font-size: 24px;
-      font-weight: 700;
-      margin-bottom: var(--space-xs);
-      text-align: center;
-    }
+    .category-header-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
 
-    .app-subtitle {
-      color: var(--secondary-text-color);
-      margin-bottom: var(--space-lg);
-      text-align: center;
+      .category-title {
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--app-text-color);
+      }
+
+      .category-description {
+        color: var(--secondary-text-color);
+        font-size: 12px;
+        line-height: 1.3;
+      }
     }
   }
 
@@ -60,86 +59,6 @@
       padding: var(--space-md);
       font-size: 13px;
       color: var(--secondary-text-color);
-    }
-  }
-
-  // Material Accordion
-  .config-accordion {
-    width: 100%;
-    max-width: var(--max-content-width);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-md);
-
-    .category-panel {
-      box-shadow: var(--box-shadow) !important;
-      border-radius: var(--radius-lg) !important;
-      overflow: hidden;
-
-      &::before {
-        display: none;
-      }
-
-      ::ng-deep {
-        .mat-expansion-panel-header {
-          padding: var(--space-md);
-          background-color: var(--about-dialog-button-color);
-          transition: var(--transition-fast);
-
-          &:hover {
-            background-color: var(--button-hover-background) !important;
-          }
-
-          .mat-content {
-            align-items: center;
-          }
-
-          .mat-expansion-indicator {
-            color: var(--secondary-text-color);
-          }
-        }
-
-        .mat-expansion-panel-body {
-          padding: var(--space-xs);
-          background-color: var(--surface-background);
-        }
-
-        mat-panel-title {
-          display: flex;
-          align-items: center;
-          gap: var(--space-md);
-          flex: 1;
-
-          mat-icon:first-child {
-            color: var(--primary-color);
-            opacity: 0.9;
-          }
-        }
-      }
-
-      .category-header-text {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-
-        .category-title {
-          font-weight: 700;
-          font-size: 15px;
-          color: var(--app-text-color);
-        }
-
-        .category-description {
-          color: var(--secondary-text-color);
-          font-size: 12px;
-          line-height: 1.3;
-        }
-      }
-    }
-
-    .category-items {
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-xs);
     }
   }
 
@@ -221,7 +140,6 @@
 
   // Security Section
   .security-section {
-    width: 100%;
     max-width: var(--max-content-width);
     margin-top: var(--space-md);
     border: 2px solid var(--primary-color);
@@ -301,15 +219,13 @@
 
     .overlay-content {
       flex: 1;
-      padding: var(--space-sm);
-      overflow: auto;
+      overflow-y: auto;
 
       .settings-list {
         display: flex;
         flex-direction: column;
         gap: var(--space-md);
-        max-width: 600px;
-        margin: 0 auto;
+        padding: var(--space-md);
 
         .settings-header {
           text-align: center;
@@ -408,16 +324,11 @@
 
           &.setting-full-width,
           .setting-full-width {
+            display: flex;
             flex-direction: column;
             align-items: stretch;
-
-            .setting-info {
-              margin-bottom: var(--space-sm);
-            }
-
-            .input-field {
-              width: 100%;
-            }
+            gap: var(--space-md);
+            width: 100%;
           }
 
           .setting-header-with-action {
@@ -479,39 +390,19 @@
 // Responsive adjustments
 @media (max-width: 540px) {
   .rclone-config-modal {
-    .config-accordion {
-      gap: var(--space-sm);
-
-      ::ng-deep .mat-expansion-panel-header {
-        padding: var(--space-sm);
-        min-height: 56px;
+    .category-header-text {
+      .category-title {
+        font-size: 14px;
       }
 
-      ::ng-deep mat-panel-title {
-        gap: var(--space-sm);
-
-        mat-icon:first-child {
-          font-size: 20px;
-          width: 20px;
-          height: 20px;
-        }
-      }
-
-      .category-header-text {
-        .category-title {
-          font-size: 14px;
-        }
-
-        .category-description {
-          font-size: 11px;
-        }
-      }
-
-      .category-items {
-        padding: var(--space-xxs);
+      .category-description {
+        font-size: 11px;
       }
     }
 
+    .category-items {
+      padding: var(--space-xxs);
+    }
     .config-item {
       min-height: 52px;
       padding: var(--space-sm);

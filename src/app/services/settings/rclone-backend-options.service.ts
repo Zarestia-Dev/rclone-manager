@@ -1,5 +1,8 @@
 import { Injectable } from '@angular/core';
+import { RcConfigOption } from '@app/types';
 import { invoke } from '@tauri-apps/api/core';
+
+type RCloneOptionsInfo = Record<string, RcConfigOption[]>;
 
 /**
  * **RClone Backend Options Service**
@@ -11,6 +14,53 @@ import { invoke } from '@tauri-apps/api/core';
   providedIn: 'root',
 })
 export class RcloneBackendOptionsService {
+  async getOptionBlocks(): Promise<string[]> {
+    try {
+      const response = await invoke<{ options: string[] }>('get_option_blocks');
+      return response.options;
+    } catch (error) {
+      console.error('Failed to get RClone option blocks:', error);
+      return [];
+    }
+  }
+
+  async getAllOptionsInfo(): Promise<RCloneOptionsInfo> {
+    try {
+      const response = await invoke<RCloneOptionsInfo>('get_all_options_info');
+      return response;
+    } catch (error) {
+      console.error('Failed to get all RClone options info:', error);
+      return {};
+    }
+  }
+
+  async setRCloneOption(block: string, option: string, value: unknown): Promise<void> {
+    try {
+      await invoke('set_rclone_option', {
+        blockName: block,
+        optionName: option,
+        value,
+      });
+    } catch (error) {
+      console.error(`Failed to set RClone option ${block}.${option}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Load the current RClone config file path
+   * This is used to ensure backend options are tied to the correct config
+   */
+  async loadRcloneConfigFile(): Promise<string> {
+    try {
+      const path = await invoke<string>('get_rclone_config_file');
+      return path;
+    } catch (error) {
+      console.error('Failed to get RClone config file:', error);
+      throw error;
+    }
+  }
+
   /**
    * Load all RClone backend options from the separate store
    */

@@ -876,3 +876,66 @@ button {
   transition: var(--transition-standard);
   will-change: background;
 }
+
+@media (max-width: 540px) {
+  mat-accordion {
+    gap: var(--space-sm);
+
+    .mat-expansion-panel-header {
+      padding: var(--space-sm);
+      min-height: 56px;
+    }
+
+    mat-panel-title {
+      gap: var(--space-sm);
+
+      mat-icon:first-child {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+    }
+  }
+}
+
+// =============================================
+// 2. MAT-ACCORDION CONTAINER
+// =============================================
+mat-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+
+  .mat-expansion-panel {
+    border-radius: var(--card-border-radius) !important;
+
+    mat-panel-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      flex: 1;
+
+      mat-icon:first-child {
+        color: var(--primary-color);
+        opacity: 0.9;
+      }
+    }
+
+    &.mat-expanded {
+      box-shadow: var(--shadow-elevated);
+    }
+
+    .mat-expansion-panel-header {
+      min-height: 72px;
+      padding: 0 clamp(16px, 4vw, 32px);
+    }
+
+    .mat-expansion-panel-header-description {
+      justify-content: flex-end;
+      align-items: center;
+      display: flex;
+      gap: 12px;
+      font-size: clamp(12px, 2vw, 14px);
+    }
+  }
+}

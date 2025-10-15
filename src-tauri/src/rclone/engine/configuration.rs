@@ -58,11 +58,7 @@ impl RcApiEngine {
             .output()
             .map_err(|e| format!("Failed to execute rclone command: {}", e))?;
 
-        let stdout = String::from_utf8_lossy(&output.stdout);
         let stderr = String::from_utf8_lossy(&output.stderr);
-
-        debug!("rclone listremotes stdout: {}", stdout.trim());
-        debug!("rclone listremotes stderr: {}", stderr.trim());
 
         if output.status.success() {
             info!("✅ Rclone configuration and password validation successful");

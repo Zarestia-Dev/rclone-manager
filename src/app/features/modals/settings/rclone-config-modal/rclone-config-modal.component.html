@@ -44,14 +44,13 @@
           }
         </div>
 
-        <mat-accordion class="config-accordion">
+        <mat-accordion>
           <!-- Categorized Settings -->
           @for (category of getFilteredCategories(); track category.name) {
             <mat-expansion-panel
               [expanded]="category.expanded"
               (opened)="category.expanded = true"
               (closed)="category.expanded = false"
-              class="category-panel"
             >
               <mat-expansion-panel-header>
                 <mat-panel-title>
@@ -317,6 +316,7 @@
                           <button
                             mat-icon-button
                             class="primary"
+                            (click)="addArrayItem(currentPage, option.Name)"
                             [attr.aria-label]="'Add ' + option.Name + ' item'"
                             matTooltip="Add item"
                           >
@@ -325,24 +325,28 @@
                         </div>
                         <div class="array-items">
                           @if (
-                            option.ValueStr && option.ValueStr !== '[]' && option.ValueStr !== ''
+                            getRCloneOptionControl(option.Name).value &&
+                            getRCloneOptionControl(option.Name).value.length > 0
                           ) {
-                            @for (item of option.ValueStr.split(','); track $index) {
+                            @for (item of getRCloneOptionControl(option.Name).value; track $index) {
                               <div class="array-item">
                                 <mat-form-field appearance="outline" class="array-input">
                                   <input
                                     matInput
-                                    [value]="item.trim()"
+                                    [formControl]="
+                                      getArrayItemControl(currentPage, option.Name, $index)
+                                    "
                                     [attr.aria-label]="option.Name + ' item ' + ($index + 1)"
+                                    (blur)="saveRCloneOption(option.Name)"
                                   />
+                                  <button
+                                    matSuffix
+                                    (click)="removeArrayItem(currentPage, option.Name, $index)"
+                                    [attr.aria-label]="'Remove ' + option.Name + ' item'"
+                                  >
+                                    <mat-icon svgIcon="trash"></mat-icon>
+                                  </button>
                                 </mat-form-field>
-                                <button
-                                  mat-icon-button
-                                  [attr.aria-label]="'Remove ' + option.Name + ' item'"
-                                  matTooltip="Remove"
-                                >
-                                  <mat-icon svgIcon="trash"></mat-icon>
-                                </button>
                               </div>
                             }
                           } @else {

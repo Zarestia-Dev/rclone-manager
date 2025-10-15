@@ -158,29 +158,11 @@ export class RcloneConfigModalComponent implements OnInit {
   // Global search results (for home page search)
   globalSearchResults: { block: string; option: RcConfigOption }[] = [];
 
-  // Security tab management
-  selectedSecurityTab = 0;
-
-  // Status flags for password manager
-  hasStoredPassword = false;
-  hasEnvPassword = false;
-  isConfigEncrypted: boolean | null = null;
-  isPasswordLoading = false;
-
-  // Loading states for password operations
-  passwordLoading = {
-    isValidating: false,
-    isEncrypting: false,
-    isUnencrypting: false,
-    isChangingPassword: false,
-    isStoringPassword: false,
-    isRemovingPassword: false,
-    isSettingEnv: false,
-    isClearingEnv: false,
-  };
-
   // Track if we're currently performing search to prevent loops
   private isPerformingSearch = false;
+
+  // Cache for dynamic FormControls used for array (stringArray) options
+  private arrayControlsCache = new Map<string, FormControl[]>();
 
   async ngOnInit(): Promise<void> {
     // Load RClone blocks and create dynamic pages
@@ -201,16 +183,11 @@ export class RcloneConfigModalComponent implements OnInit {
    */
   private async loadRCloneBlocks(): Promise<void> {
     try {
-      // Import invoke dynamically
-      const { invoke } = await import('@tauri-apps/api/core');
-
       // Get blocks from RClone API
-      const blocksResponse = await invoke<{ options: string[] }>('get_option_blocks');
-      const blocks = blocksResponse.options;
+      const blocks = await this.rcloneBackendOptions.getOptionBlocks();
 
       // Get all options info from RClone API
-      const optionsResponse = await invoke<RCloneOptionsInfo>('get_all_options_info');
-      this.rcloneOptions = optionsResponse;
+      this.rcloneOptions = await this.rcloneBackendOptions.getAllOptionsInfo();
 
       // Organize options by block for easy access
       for (const block of blocks) {
@@ -248,13 +225,20 @@ export class RcloneConfigModalComponent implements OnInit {
         // Get validators for this option type
         const validators = this.getRCloneOptionValidators(option);
 
-        // Get initial value - convert boolean strings to actual booleans
+        // Get initial value - convert boolean strings to actual booleans and arrays
         let initialValue: unknown = option.ValueStr || option.DefaultStr;
         if (option.Type === 'bool') {
           initialValue = option.ValueStr === 'true' || option.DefaultStr === 'true';
         } else if (option.Type === 'DumpFlags' && typeof initialValue === 'string') {
           // DumpFlags should be an array for multi-select
           initialValue = initialValue ? initialValue.split(',').map((v: string) => v.trim()) : [];
+        } else if (option.Type === 'stringArray') {
+          // stringArray stored as comma-separated string in some cases; normalize to array
+          if (typeof initialValue === 'string') {
+            initialValue = initialValue ? initialValue.split(',').map((v: string) => v.trim()) : [];
+          } else if (!Array.isArray(initialValue)) {
+            initialValue = [];
+          }
         }
 
         // Create FormControl with current value and validators
@@ -312,6 +296,24 @@ export class RcloneConfigModalComponent implements OnInit {
                 `✅ Applied boolean value for ${optionName} (${optionFieldName}):`,
                 storedValue === true
               );
+            } else if (option.Type === 'stringArray') {
+              // storedValue may be an array or a comma-separated string
+              if (Array.isArray(storedValue)) {
+                control.setValue(storedValue, { emitEvent: false });
+              } else if (typeof storedValue === 'string') {
+                control.setValue(
+                  storedValue ? storedValue.split(',').map((v: string) => v.trim()) : [],
+                  {
+                    emitEvent: false,
+                  }
+                );
+              } else {
+                control.setValue([], { emitEvent: false });
+              }
+              console.log(
+                `✅ Applied stringArray value for ${optionName} (${optionFieldName}):`,
+                storedValue
+              );
             } else if (option.Type === 'DumpFlags' && typeof storedValue === 'string') {
               control.setValue(storedValue ? storedValue.split(',').map(v => v.trim()) : [], {
                 emitEvent: false,
@@ -340,11 +342,14 @@ export class RcloneConfigModalComponent implements OnInit {
   /**
    * Save RClone option value to API (called on blur/change)
    */
+  /**
+   * Save RClone option value to API (called on blur/change)
+   */
   async saveRCloneOption(optionName: string): Promise<void> {
     const control = this.getRCloneOptionControl(optionName);
 
-    // Don't save if invalid or already saving
-    if (control.invalid || this.savingOptions.has(optionName)) {
+    // Only save if the control is dirty (value changed) and valid, and not already saving
+    if (control.invalid || this.savingOptions.has(optionName) || control.pristine) {
       return;
     }
 
@@ -393,18 +398,13 @@ export class RcloneConfigModalComponent implements OnInit {
         valueToSave = null;
       }
 
-      // Import invoke dynamically
-      const { invoke } = await import('@tauri-apps/api/core');
-
       // Call the backend to save the option with block name and FieldName (PascalCase)
-      await invoke('set_rclone_option', {
-        blockName,
-        optionName: fieldName, // Use PascalCase FieldName for API
-        value: valueToSave,
-      });
-
+      await this.rcloneBackendOptions.saveOption(blockName, fieldName, valueToSave);
       // Also save to local backend.json file for persistence using the service
       await this.rcloneBackendOptions.saveOption(blockName, fieldName, valueToSave);
+
+      // Mark as pristine after successful save
+      control.markAsPristine();
 
       // Show success notification (using display name)
       this.notificationService.showSuccess(`Saved: ${optionName}`);
@@ -421,7 +421,7 @@ export class RcloneConfigModalComponent implements OnInit {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.notificationService.showError(`Failed to save ${optionName}: ${errorMessage}`);
 
-      // Revert the control value to the original
+      // Revert the control value to the original and mark as pristine
       const option = this.getRCloneOption(optionName);
       if (option) {
         if (option.Type === 'bool') {
@@ -433,6 +433,7 @@ export class RcloneConfigModalComponent implements OnInit {
         } else {
           control.setValue(option.ValueStr || option.DefaultStr, { emitEvent: false });
         }
+        control.markAsPristine();
       }
     } finally {
       this.savingOptions.delete(optionName);
@@ -1178,5 +1179,99 @@ export class RcloneConfigModalComponent implements OnInit {
   // Track array items by index
   trackByIndex(index: number): number {
     return index;
+  }
+
+  // --------- Array helpers (for stringArray option type) ----------
+  getArrayItemControl(block: string, optionName: string, index: number): FormControl {
+    const cacheKey = `${block}.${optionName}`;
+
+    // Initialize cache if missing
+    if (!this.arrayControlsCache.has(cacheKey)) {
+      this.initializeArrayControls(block, optionName);
+    }
+
+    const controls = this.arrayControlsCache.get(cacheKey);
+    if (!controls) throw new Error(`Array controls not found for ${cacheKey}`);
+
+    const parentControl = this.getFormControl(optionName);
+    const array = Array.isArray(parentControl.value) ? parentControl.value : [];
+
+    while (controls.length <= index) {
+      const ctrl = new FormControl(array[controls.length] || '');
+      this.setupArrayControlSubscription(ctrl, block, optionName, controls.length);
+      controls.push(ctrl);
+    }
+
+    return controls[index];
+  }
+
+  private initializeArrayControls(block: string, optionName: string): void {
+    const cacheKey = `${block}.${optionName}`;
+    const parentControl = this.getFormControl(optionName);
+    const array = Array.isArray(parentControl.value) ? parentControl.value : [];
+
+    const controls = array.map((value, idx) => {
+      const ctrl = new FormControl(value);
+      this.setupArrayControlSubscription(ctrl, block, optionName, idx);
+      return ctrl;
+    });
+
+    this.arrayControlsCache.set(cacheKey, controls);
+  }
+
+  private setupArrayControlSubscription(
+    control: FormControl,
+    block: string,
+    optionName: string,
+    index: number
+  ): void {
+    control.valueChanges.subscribe(newValue => {
+      const parentControl = this.getFormControl(optionName);
+      const currentArray = Array.isArray(parentControl.value) ? parentControl.value : [];
+      const newArray = [...currentArray];
+
+      const normalize = (v: unknown): string => (v == null || v === '' ? '' : String(v));
+      const curNorm = normalize(currentArray[index]);
+      const newNorm = normalize(newValue);
+
+      if (curNorm !== newNorm) {
+        newArray[index] = newNorm;
+        parentControl.setValue(newArray, { emitEvent: false });
+        // Persist change via save flow (use option name to find block)
+        this.saveRCloneOption(optionName);
+      }
+    });
+  }
+
+  addArrayItem(block: string, optionName: string): void {
+    const parentControl = this.getFormControl(optionName);
+    const arr = Array.isArray(parentControl.value) ? parentControl.value : [];
+    const newArray = [...arr, ''];
+    parentControl.setValue(newArray);
+
+    const cacheKey = `${block}.${optionName}`;
+    this.arrayControlsCache.delete(cacheKey);
+
+    // Immediately create control for new last index so UI updates
+    this.getArrayItemControl(block, optionName, newArray.length - 1);
+    // Save to backend
+    this.saveRCloneOption(optionName);
+  }
+
+  removeArrayItem(block: string, optionName: string, index: number): void {
+    const parentControl = this.getFormControl(optionName);
+    const arr = Array.isArray(parentControl.value) ? parentControl.value : [];
+    const newArray = arr.filter((_: unknown, i: number) => i !== index);
+    parentControl.setValue(newArray);
+
+    const cacheKey = `${block}.${optionName}`;
+    this.arrayControlsCache.delete(cacheKey);
+
+    this.saveRCloneOption(optionName);
+  }
+
+  // Helper to get a rclone option FormControl by option name
+  private getFormControl(optionName: string): FormControl {
+    return this.rcloneOptionControls[optionName] || new FormControl('');
   }
 }

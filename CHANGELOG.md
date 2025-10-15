@@ -1,6 +1,19 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Added
+- Added a Backend Settings modal. You can now set the backend options globally for all remotes. If you wants to override the backend options for a specific remote, you can do it in the remote settings. (e.g. mount options, vfs options, etc.). Also added the export and import feature for the backend settings on export modal.
+
+### Changed
+- Password Manager modal has been removed. Now the password manager is integrated into the Backend Settings modal. You can manage your passwords in the Backend Settings modal.
+
+
+### Fixed
+- Fixed an issue where the RClone Manager Logo was not displayed correctly in the app.
+- When one modal opens, disable the open other modals via shortcuts or other ways (Unlimited modal opening). This include the Onboard state too. (This not include the dialog modals like delete confirmation, etc.)
+
+
 ## [0.1.4] - 2025-10-13
 ### Added
 - Added a rclone beta update checker support. It will check for the latest beta version of rclone and notify the user if a new beta version is available. (Default Stable channel is selected. You can change it in the About modal > About Rclone section.)
