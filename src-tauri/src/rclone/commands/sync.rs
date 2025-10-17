@@ -25,6 +25,7 @@ pub struct SyncParams {
     pub create_empty_src_dirs: bool,
     pub sync_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
+    pub backend_options: Option<HashMap<String, Value>>,
 }
 
 /// Start a sync operation
@@ -45,7 +46,8 @@ pub async fn start_sync(
             "destination": params.dest,
             "create_empty_src_dirs": params.create_empty_src_dirs,
             "sync_options": params.sync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
-            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
+            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
+            "backend_options": params.backend_options.as_ref().map(|b| b.keys().collect::<Vec<_>>())
         })),
     )
     .await;
@@ -60,10 +62,19 @@ pub async fn start_sync(
     }
     body.insert("_async".to_string(), Value::Bool(true));
 
-    if let Some(opts) = params.sync_options {
+    let config_map = match (params.sync_options, params.backend_options) {
+        (Some(mut opts), Some(backend_opts)) => {
+            opts.extend(backend_opts);
+            opts
+        }
+        (Some(opts), None) => opts,
+        (None, Some(backend_opts)) => backend_opts,
+        (None, None) => HashMap::new(),
+    };
+    if !config_map.is_empty() {
         body.insert(
             "_config".to_string(),
-            Value::Object(opts.into_iter().collect()),
+            Value::Object(config_map.into_iter().collect()),
         );
     }
 
@@ -158,6 +169,7 @@ pub struct CopyParams {
     pub create_empty_src_dirs: bool,
     pub copy_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
+    pub backend_options: Option<HashMap<String, Value>>,
 }
 
 #[tauri::command]
@@ -177,7 +189,8 @@ pub async fn start_copy(
             "destination": params.dest,
             "create_empty_src_dirs": params.create_empty_src_dirs,
             "copy_options": params.copy_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
-            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
+            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
+            "backend_options": params.backend_options.as_ref().map(|b| b.keys().collect::<Vec<_>>())
         })),
     )
     .await;
@@ -191,10 +204,19 @@ pub async fn start_copy(
     }
     body.insert("_async".to_string(), Value::Bool(true));
 
-    if let Some(opts) = params.copy_options {
+    let config_map = match (params.copy_options, params.backend_options) {
+        (Some(mut opts), Some(backend_opts)) => {
+            opts.extend(backend_opts);
+            opts
+        }
+        (Some(opts), None) => opts,
+        (None, Some(backend_opts)) => backend_opts,
+        (None, None) => HashMap::new(),
+    };
+    if !config_map.is_empty() {
         body.insert(
             "_config".to_string(),
-            Value::Object(opts.into_iter().collect()),
+            Value::Object(config_map.into_iter().collect()),
         );
     }
 
@@ -304,6 +326,7 @@ pub struct BisyncParams {
     pub no_cleanup: Option<bool>,
     pub bisync_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
+    pub backend_options: Option<HashMap<String, Value>>,
 }
 
 #[tauri::command]
@@ -341,7 +364,8 @@ pub async fn start_bisync(
             "backupdir2": params.backupdir2,
             "no_cleanup": params.no_cleanup,
             "bisync_options": params.bisync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
-            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
+            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
+            "backend_options": params.backend_options.as_ref().map(|b| b.keys().collect::<Vec<_>>())
         })),
     )
     .await;
@@ -415,10 +439,19 @@ pub async fn start_bisync(
         body.insert("backupDir2".to_string(), Value::String(backupdir2));
     }
 
-    if let Some(opts) = params.bisync_options {
+    let config_map = match (params.bisync_options, params.backend_options) {
+        (Some(mut opts), Some(backend_opts)) => {
+            opts.extend(backend_opts);
+            opts
+        }
+        (Some(opts), None) => opts,
+        (None, Some(backend_opts)) => backend_opts,
+        (None, None) => HashMap::new(),
+    };
+    if !config_map.is_empty() {
         body.insert(
             "_config".to_string(),
-            Value::Object(opts.into_iter().collect()),
+            Value::Object(config_map.into_iter().collect()),
         );
     }
 
@@ -514,6 +547,7 @@ pub struct MoveParams {
     pub delete_empty_src_dirs: bool,
     pub move_options: Option<HashMap<String, Value>>, // rclone move-specific options
     pub filter_options: Option<HashMap<String, Value>>, // filter options
+    pub backend_options: Option<HashMap<String, Value>>, // backend options
 }
 
 #[tauri::command]
@@ -534,7 +568,8 @@ pub async fn start_move(
             "create_empty_src_dirs": params.create_empty_src_dirs,
             "delete_empty_src_dirs": params.delete_empty_src_dirs,
             "move_options": params.move_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
-            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>())
+            "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
+            "backend_options": params.backend_options.as_ref().map(|b| b.keys().collect::<Vec<_>>())
         })),
     )
     .await;
@@ -549,10 +584,20 @@ pub async fn start_move(
         body.insert("deleteEmptySrcDirs".to_string(), Value::Bool(true));
     }
     body.insert("_async".to_string(), Value::Bool(true));
-    if let Some(opts) = params.move_options {
+
+    let config_map = match (params.move_options, params.backend_options) {
+        (Some(mut opts), Some(backend_opts)) => {
+            opts.extend(backend_opts);
+            opts
+        }
+        (Some(opts), None) => opts,
+        (None, Some(backend_opts)) => backend_opts,
+        (None, None) => HashMap::new(),
+    };
+    if !config_map.is_empty() {
         body.insert(
             "_config".to_string(),
-            Value::Object(opts.into_iter().collect()),
+            Value::Object(config_map.into_iter().collect()),
         );
     }
 

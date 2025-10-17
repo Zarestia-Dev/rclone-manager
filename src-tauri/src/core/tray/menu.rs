@@ -291,7 +291,7 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
                     "{}{}",
                     if is_mounted { "🗃️" } else { "" },
                     if !active_jobs_for_remote.is_empty() {
-                        "⚡"
+                        "🔄"
                     } else {
                         ""
                     }

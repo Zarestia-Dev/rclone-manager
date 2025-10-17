@@ -16,6 +16,8 @@ pub struct RcloneState {
     pub rclone_config_file: Arc<std::sync::RwLock<String>>,
     pub tray_enabled: Arc<std::sync::RwLock<bool>>,
     pub is_shutting_down: AtomicBool,
+    // pub is_updating: AtomicBool,
+    // pub is_starting: AtomicBool,
     pub notifications_enabled: Arc<std::sync::RwLock<bool>>,
     pub rclone_path: Arc<std::sync::RwLock<PathBuf>>,
     pub restrict_mode: Arc<std::sync::RwLock<bool>>,

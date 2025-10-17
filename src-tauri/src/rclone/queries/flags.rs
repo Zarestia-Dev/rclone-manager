@@ -166,11 +166,10 @@ pub async fn get_filter_flags(state: State<'_, RcloneState>) -> Result<Vec<Value
     let json = fetch_all_options_info(state)
         .await
         .map_err(|e| e.to_string())?;
-
     let empty_vec = vec![];
     let filter_flags = json["filter"].as_array().unwrap_or(&empty_vec);
 
-    // Exclude metadata-related flags
+    // Exclude metadata-related flags and transform FieldName
     let filtered: Vec<Value> = filter_flags
         .iter()
         .filter(|flag| {
@@ -179,10 +178,71 @@ pub async fn get_filter_flags(state: State<'_, RcloneState>) -> Result<Vec<Value
                 .map(|groups| groups.contains("Metadata"))
                 .unwrap_or(false)
         })
-        .cloned()
+        .map(|flag| {
+            let mut flag_obj = flag.clone();
+
+            // Extract the last part of FieldName (after the last dot)
+            if let Some(field_name) = flag_obj["FieldName"].as_str()
+                && let Some(last_part) = field_name.split('.').next_back()
+            {
+                flag_obj["FieldName"] = Value::String(last_part.to_string());
+            }
+
+            flag_obj
+        })
         .collect();
 
     Ok(filtered)
+}
+
+/// Fetch config-related flags (example ported from frontend helper)
+#[command]
+pub async fn get_backend_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
+    let json = fetch_all_options_info(state)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let empty_vec: Vec<Value> = vec![];
+    let main_flags = json["main"].as_array().unwrap_or(&empty_vec);
+
+    // Helper to test groups membership (handles string or array)
+    let groups_match = |flag: &Value| -> bool {
+        let groups_filter = ["Performance", "Listing", "Networking", "Check"];
+        if let Some(groups_val) = flag.get("Groups") {
+            match groups_val {
+                Value::String(s) => groups_filter.iter().any(|g| s.contains(g)),
+                Value::Array(arr) => groups_filter.iter().any(|g| {
+                    arr.iter()
+                        .any(|v| v.as_str().map(|s| s.contains(g)).unwrap_or(false))
+                }),
+                _ => false,
+            }
+        } else {
+            false
+        }
+    };
+
+    let mut copy_flags: Vec<Value> = main_flags
+        .iter()
+        .filter(|flag| {
+            groups_match(flag)
+                || flag
+                    .get("Name")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s == "use_server_modtime")
+                    .unwrap_or(false)
+        })
+        .cloned()
+        .collect();
+
+    // Sort by Name
+    copy_flags.sort_by(|a, b| {
+        let a_name = a.get("Name").and_then(|v| v.as_str()).unwrap_or("");
+        let b_name = b.get("Name").and_then(|v| v.as_str()).unwrap_or("");
+        a_name.cmp(b_name)
+    });
+
+    Ok(copy_flags)
 }
 
 /// Fetch VFS flags (excluding unsupported flags)

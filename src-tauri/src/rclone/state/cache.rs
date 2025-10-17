@@ -102,25 +102,22 @@ impl RemoteCache {
         &self,
         app_handle: tauri::AppHandle,
     ) -> Result<(), String> {
-        let remotes = self.remotes.read().await;
-        let mut settings = self.settings.write().await;
+        let remotes: Vec<String> = {
+            let remotes_guard = self.remotes.read().await;
+            remotes_guard.clone() // Quick clone, release lock
+        };
 
         let mut all_settings = serde_json::Map::new();
-
-        for remote in remotes.iter() {
-            if let Ok(settings) = get_remote_settings(remote.to_string(), app_handle.state()).await
-            {
-                all_settings.insert(remote.clone(), settings);
-            } else {
-                error!("❌ Failed to fetch settings for remote: {remote}");
+        for remote in remotes {
+            // IO without holding cache locks
+            if let Ok(settings) = get_remote_settings(remote.clone(), app_handle.state()).await {
+                all_settings.insert(remote, settings);
             }
         }
 
+        // Brief write lock only for the final update
+        let mut settings = self.settings.write().await;
         *settings = serde_json::Value::Object(all_settings);
-        // // Redact sensitive values in the remote settings
-        // let state = app_handle.state::<RcloneState>();
-        // let redacted_settings = redact_sensitive_json(&settings, &state.restrict_mode);
-        // debug!("🔄 Updated remotes settings: {redacted_settings:?}");
         Ok(())
     }
 
@@ -143,15 +140,24 @@ impl RemoteCache {
     }
 
     pub async fn refresh_all(&self, app_handle: tauri::AppHandle) {
-        let refresh_tasks = tokio::join!(
-            CACHE.refresh_remote_list(app_handle.clone()),
-            CACHE.refresh_remote_settings(app_handle.clone()),
-            CACHE.refresh_remote_configs(app_handle.clone()),
-            CACHE.refresh_mounted_remotes(app_handle.clone()),
+        let (res1, res2, res3, res4) = tokio::join!(
+            self.refresh_remote_list(app_handle.clone()),
+            self.refresh_remote_settings(app_handle.clone()),
+            self.refresh_remote_configs(app_handle.clone()),
+            self.refresh_mounted_remotes(app_handle.clone()),
         );
 
-        if let (Err(e1), Err(e2), Err(e3), Err(e4)) = refresh_tasks {
-            error!("Failed to refresh cache: {e1}, {e2}, {e3}, {e4}");
+        if let Err(e) = res1 {
+            error!("Failed to refresh remote list: {e}");
+        }
+        if let Err(e) = res2 {
+            error!("Failed to refresh remote settings: {e}");
+        }
+        if let Err(e) = res3 {
+            error!("Failed to refresh remote configs: {e}");
+        }
+        if let Err(e) = res4 {
+            error!("Failed to refresh mounted remotes: {e}");
         }
     }
 

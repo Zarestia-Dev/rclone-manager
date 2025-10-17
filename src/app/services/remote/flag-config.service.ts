@@ -17,6 +17,7 @@ export class FlagConfigService {
     'sync',
     'filter',
     'vfs',
+    'backend',
     'bisync',
     'move',
   ];
@@ -29,6 +30,7 @@ export class FlagConfigService {
       sync: [],
       filter: [],
       vfs: [],
+      backend: [],
       bisync: [],
       move: [],
     };

@@ -441,6 +441,12 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   }
 
   private setupRemoteSettingsSections(): void {
+    // Always show backend config section
+    const backendSection = {
+      key: 'backend',
+      title: 'Backend Config',
+      icon: 'server',
+    };
     if (this.isSyncType()) {
       const currentOp = this.getCurrentOperationConfig();
       this.remoteSettingsSections = [
@@ -454,6 +460,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
           title: 'Filter Options',
           icon: 'filter',
         },
+        backendSection,
       ];
     } else {
       this.remoteSettingsSections = [
@@ -467,6 +474,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
           title: 'VFS Options',
           icon: 'vfs',
         },
+        backendSection,
       ];
     }
   }

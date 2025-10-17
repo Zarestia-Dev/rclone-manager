@@ -495,10 +495,9 @@ export class RcloneConfigModalComponent implements OnInit {
   private buildCategorizedSettings(): void {
     // Define category mappings
     const categoryMappings: Record<string, string[]> = {
-      general: ['main', 'log'],
+      general: ['main', 'log', 'proxy', 'rc'],
       filesystem: ['vfs', 'mount', 'filter'],
-      network: ['http', 'rc', 'ftp', 'sftp', 'nfs', 'webdav', 's3'],
-      advanced: ['dlna', 'proxy', 'restic'],
+      network: ['http', 'ftp', 'sftp', 'nfs', 'webdav', 's3', 'restic', 'dlna'],
     };
 
     // Initialize categories
@@ -506,7 +505,7 @@ export class RcloneConfigModalComponent implements OnInit {
       {
         name: 'General Settings',
         icon: 'gear',
-        description: 'Core RClone operation and logging configuration',
+        description: 'Core RClone options and logging',
         groups: [],
         expanded: true,
       },
@@ -518,16 +517,9 @@ export class RcloneConfigModalComponent implements OnInit {
         expanded: false,
       },
       {
-        name: 'Network & Servers',
+        name: 'Network & Servers (Serve Options)',
         icon: 'globe',
-        description: 'HTTP, FTP, S3, and other network protocol settings',
-        groups: [],
-        expanded: false,
-      },
-      {
-        name: 'Advanced Services',
-        icon: 'wrench',
-        description: 'DLNA, proxy, and backup service configuration',
+        description: 'HTTP, FTP, SFTP, WebDAV, S3, and other network settings',
         groups: [],
         expanded: false,
       },

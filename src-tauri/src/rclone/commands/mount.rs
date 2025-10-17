@@ -27,6 +27,8 @@ pub struct MountParams {
     pub mount_type: String,
     pub mount_options: Option<HashMap<String, Value>>, // rc mount options
     pub vfs_options: Option<HashMap<String, Value>>,   // vfs options
+    pub filter_options: Option<HashMap<String, Value>>, // filter options
+    pub backend_options: Option<HashMap<String, Value>>, // backend options
 }
 
 /// Mount a remote filesystem
@@ -70,7 +72,15 @@ pub async fn mount_remote(
         "vfs_options": params
             .vfs_options
             .as_ref()
-            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode))
+            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+        "filter_options": params
+            .filter_options
+            .as_ref()
+            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
+        "backend_options": params
+            .backend_options
+            .as_ref()
+            .map(|opts| redact_sensitive_values(opts, &state.restrict_mode)),
     });
 
     log_operation(
@@ -102,6 +112,22 @@ pub async fn mount_remote(
 
     if let Some(opts) = params.vfs_options.clone() {
         payload["vfsOpt"] = json!(opts);
+    }
+
+    if let Some(opts) = params.backend_options.clone() {
+        let filtered_opts: HashMap<String, Value> = opts
+            .into_iter()
+            .filter(|(_, v)| {
+                !matches!(v, Value::Null) && !matches!(v, Value::String(s) if s.is_empty())
+            })
+            .collect();
+        if !filtered_opts.is_empty() {
+            payload["_config"] = json!(filtered_opts);
+        }
+    }
+
+    if let Some(opts) = params.filter_options.clone() {
+        payload["_filter"] = json!(opts);
     }
 
     // Make the request

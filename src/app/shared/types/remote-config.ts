@@ -1,4 +1,4 @@
-export type FlagType = 'mount' | 'bisync' | 'move' | 'copy' | 'sync' | 'filter' | 'vfs';
+export type FlagType = 'mount' | 'bisync' | 'move' | 'copy' | 'sync' | 'filter' | 'vfs' | 'backend';
 export type EditTarget = FlagType | 'remote' | null;
 
 export type FieldType =
@@ -92,6 +92,11 @@ export interface FilterConfig {
 }
 
 export interface VfsConfig {
+  options?: any;
+  [key: string]: any;
+}
+
+export interface BackendConfig {
   options?: any;
   [key: string]: any;
 }

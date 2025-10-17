@@ -1,4 +1,12 @@
-import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  Output,
+  OnInit,
+  OnChanges,
+  SimpleChanges,
+} from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Entry, FlagField, FlagType, LinebreaksPipe } from '../../remote-config-types';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -35,7 +43,7 @@ import { Observable, map, startWith } from 'rxjs';
   templateUrl: './flag-config-step.component.html',
   styleUrl: './flag-config-step.component.scss',
 })
-export class FlagConfigStepComponent implements OnInit {
+export class FlagConfigStepComponent implements OnInit, OnChanges {
   @Input() form!: FormGroup;
   @Input() flagType!: FlagType;
   @Input() isEditMode = false;
@@ -47,7 +55,7 @@ export class FlagConfigStepComponent implements OnInit {
   @Input() sourceLoading = false;
   @Input() destLoading = false;
   @Input() dynamicFlagFields: FlagField[] = [];
-  @Input() selectedOptions: Record<string, any> = {};
+  @Input() selectedOptions: Record<string, unknown> = {};
   @Input() isDisabled = false;
   @Input() mountTypes: string[] = [];
 
@@ -70,6 +78,13 @@ export class FlagConfigStepComponent implements OnInit {
 
   ngOnInit(): void {
     this.initializeFilteredRemotes();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    // When inputs arrive/ change (form, flagType, existingRemotes) reinitialize filters
+    if (changes['form'] || changes['flagType'] || changes['existingRemotes']) {
+      this.initializeFilteredRemotes();
+    }
   }
 
   private initializeFilteredRemotes(): void {
@@ -131,8 +146,8 @@ export class FlagConfigStepComponent implements OnInit {
     return this.dynamicFlagFields;
   }
 
-  get getSelectedOptions(): Record<string, any> {
-    return this.selectedOptions;
+  get getSelectedOptions(): Record<string, unknown> {
+    return this.selectedOptions as Record<string, unknown>;
   }
 
   /**

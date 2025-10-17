@@ -1,6 +1,6 @@
 <form [formGroup]="configGroup" class="flag-form">
   <!-- Auto-Action Toggle -->
-  @if (flagType !== 'vfs' && flagType !== 'filter') {
+  @if (!isType(['vfs', 'filter', 'backend'])) {
     <mat-slide-toggle class="slide-toggle" formControlName="autoStart">
       {{
         isType('mount')
@@ -53,7 +53,7 @@
   }
 
   <!-- Destination Path -->
-  @if (!isType(['mount', 'vfs', 'filter'])) {
+  @if (!isType(['mount', 'vfs', 'filter', 'backend'])) {
     <mat-form-field appearance="fill">
       <mat-label>{{ flagType | titlecase }} Destination</mat-label>
       <input
@@ -130,7 +130,7 @@
   }
 
   <!-- Source Path -->
-  @if (isEditMode && !isType(['vfs', 'filter'])) {
+  @if (isEditMode && !isType(['vfs', 'filter', 'backend'])) {
     <mat-form-field appearance="fill">
       <mat-label>{{ flagType | titlecase }} Source</mat-label>
       <input
