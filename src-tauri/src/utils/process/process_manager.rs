@@ -51,7 +51,7 @@ pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
         };
 
         let handle = unsafe { OpenProcess(PROCESS_TERMINATE, 0, pid) };
-        if handle == 0 {
+        if handle.is_null() {
             let err = std::io::Error::last_os_error();
             let err_code = err.raw_os_error();
 
