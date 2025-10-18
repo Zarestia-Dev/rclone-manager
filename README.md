@@ -11,13 +11,13 @@
 
 <p align="center">
   <a href="https://github.com/RClone-Manager/rclone-manager/releases">
-    <img src="https://img.shields.io/github/v/release/RClone-Manager/rclone-manager?style=flat-square" alt="Latest Release">
+    <img src="https://img.shields.io/github/v/release/RClone-Manager/rclone-manager?flat-square&color=2ec27e" alt="Latest Release">
   </a>
   <a href="https://github.com/RClone-Manager/rclone-manager/blob/master/LICENSE">
-    <img src="https://img.shields.io/github/license/RClone-Manager/rclone-manager?style=flat-square" alt="License">
+    <img src="https://img.shields.io/github/license/RClone-Manager/rclone-manager?flat-square&color=9141ac" alt="License">
   </a>
   <a href="https://github.com/RClone-Manager/rclone-manager/stargazers">
-    <img src="https://img.shields.io/github/stars/RClone-Manager/rclone-manager?style=flat-square" alt="Stars">
+    <img src="https://img.shields.io/github/stars/RClone-Manager/rclone-manager?flat-square&color=3584e4" alt="Stars">
   </a>
 </p>
 
@@ -131,31 +131,48 @@ Nearly all Rclone remotes are supported, including:
 
 ---
 
-## 📦 Downloads
+## 📦 Installation & Downloads
 
-### 🎯 Latest Release
+### 📦 Package Manager Availability
 
-Get the latest version for your platform:
+Install RClone Manager from your favorite package manager.
 
-<p align="center">
-  <a href="https://github.com/RClone-Manager/rclone-manager/releases/latest">
-    <img src="https://img.shields.io/badge/Download-Latest%20Release-blue?style=for-the-badge&logo=github" alt="Download Latest Release">
+#### 🐧 Linux
+
+| Repository          | Version                                                                                                                                                                                      | Status          | Install Command                                                                                                                                                                |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AUR**             | [![AUR Version](https://img.shields.io/aur/version/rclone-manager?flat-square&label=)](https://aur.archlinux.org/packages/rclone-manager)                                                    | ✅ Available    | `yay -S rclone-manager`                                                                                                                                                        |
+| **AUR (Git)**       | [![AUR Version](https://img.shields.io/aur/version/rclone-manager-git?flat-square&label=)](https://aur.archlinux.org/packages/rclone-manager-git)                                            | ✅ Available    | `yay -S rclone-manager-git`                                                                                                                                                    |
+| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/RClone-Manager/rclone-manager?flat-square&label=&color=2ec27e)](https://github.com/RClone-Manager/rclone-manager/releases/latest) | ✅ Available    | <a href="https://github.com/RClone-Manager/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?flat-square&logo=github" alt="Download"></a> |
+| **Flathub**         | ![Pending](https://img.shields.io/badge/Pending-gray?flat-square)                                                                                                                            | ⏳ Under Review | `flatpak install flathub xxxxxxxxxxxxxxxxxxxxx`                                                                                                                                |
+
+<p align="left">
+  <a href="https://flathub.org/apps/io.github.rclonemanager">
+    <img src="https://dl.flathub.org/assets/badges/flathub-badge-en.png" alt="Download on Flathub" height="50">
   </a>
 </p>
 
-**Available for:**
+#### 🍎 macOS
 
-- 🐧 Linux (x86_64, ARM64) – AppImage, Deb, RPM
-- 🪟 Windows (x86_64, ARM64) – MSI Installer, Portable
-- 🍎 macOS (Intel, Apple Silicon) – DMG
+| Repository          | Version                                                                                                                                                                                      | Status                | Install Command                                                                                                                                                                |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Homebrew**        | ![Pending](https://img.shields.io/badge/Pending-gray?flat-square)                                                                                                                            | ⏳ Under Construction | `brew install --cask xxxxxxxxxxxxxxxxxxxxxx`                                                                                                                                   |
+| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/RClone-Manager/rclone-manager?flat-square&label=&color=2ec27e)](https://github.com/RClone-Manager/rclone-manager/releases/latest) | ✅ Available          | <a href="https://github.com/RClone-Manager/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?flat-square&logo=github" alt="Download"></a> |
 
-> 📋 See the [full release notes](https://github.com/RClone-Manager/rclone-manager/releases) for changelog and installation instructions
+#### 🪟 Windows
+
+| Repository          | Version                                                                                                                                                                                      | Status          | Install Command                                                                                                                                                                |
+| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Chocolatey**      | [![Chocolatey Version](https://img.shields.io/chocolatey/v/rclone-manager?flat-square&label=)](https://community.chocolatey.org/packages/rclone-manager)                                     | ✅ Available    | `choco install rclone-manager`                                                                                                                                                 |
+| **Scoop**           | ![Pending](https://img.shields.io/badge/Pending-gray?flat-square)                                                                                                                            | ⏳ Under Review | `scoop install xxxxxxxxxxxxxxxxxx`                                                                                                                                             |
+| **Winget**          | ![Pending](https://img.shields.io/badge/Pending-gray?flat-square)                                                                                                                            | ⏳ Under Review | `winget install xxxxxxxxxxxxxxxxxxx`                                                                                                                                           |
+| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/RClone-Manager/rclone-manager?flat-square&label=&color=2ec27e)](https://github.com/RClone-Manager/rclone-manager/releases/latest) | ✅ Available    | <a href="https://github.com/RClone-Manager/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?flat-square&logo=github" alt="Download"></a> |
+
+> 💡 **More package managers coming soon!** We have submissions under review for Flathub, Homebrew, Scoop, and Winget.
 
 ---
 
-## 🛠️ Installation
-
-### 📋 Runtime Requirements
+### 🛠️ Runtime Requirements
 
 **RClone Manager** will guide you through installing any missing dependencies on first run. However, you can pre-install:
 
@@ -175,16 +192,12 @@ Get the latest version for your platform:
 
 ### 🚀 Quick Start
 
-1. **Download** the appropriate package for your OS from [releases](https://github.com/RClone-Manager/rclone-manager/releases/latest)
-2. **Install** using your platform's standard method:
-
-- **Linux:**
-  - **Debian/Ubuntu:** `sudo dpkg -i rclone-manager_*.deb` or run the AppImage
-  - **Fedora/openSUSE (RPM):** `sudo rpm -i rclone-manager-*.rpm`
-  - **Arch Linux:** Install from [AUR](https://aur.archlinux.org/packages/rclone-manager) via your AUR helper, e.g. `yay -S rclone-manager`
-- **Windows:** Run the MSI installer or extract the portable version
-- **macOS:** Open the DMG and drag to Applications
-
+1. **Download** the appropriate package for your OS from the section above or [releases](https://github.com/RClone-Manager/rclone-manager/releases/latest)
+2. **Install** using your package manager or platform's standard method:
+   - **Linux (Arch):** `yay -S rclone-manager`
+   - **Windows (Chocolatey):** `choco install rclone-manager`
+   - **macOS:** Download .dmg and drag to Applications
+   - **Other Linux:** Use AppImage, Deb, or RPM from releases
 3. **Launch** RClone Manager and follow the onboarding wizard
 4. **Add your first remote** using the guided setup
 
@@ -264,7 +277,6 @@ We organize development on our [**GitHub Project Board**](https://github.com/use
   - Mobile app versions
   - Advanced scheduling and automation
   - Plugin system for custom integrations
-
 - 🧩 **Community Driven**
   - Feature requests and suggestions
   - UI/UX improvements
@@ -282,7 +294,7 @@ We welcome contributions from developers of all skill levels! Here's how you can
 
 - 🐛 **Report Bugs** – Found an issue? [Open a bug report](https://github.com/RClone-Manager/rclone-manager/issues/new?template=bug_report.md)
 - 💡 **Suggest Features** – Have an idea? [Share it with us](https://github.com/RClone-Manager/rclone-manager/issues/new?template=feature_request.md)
-- � **Improve Documentation** – Help make our docs clearer and more comprehensive
+- 📖 **Improve Documentation** – Help make our docs clearer and more comprehensive
 - 🔧 **Submit Pull Requests** – Fix bugs or implement features (see development setup above)
 - 🌍 **Translate** – Help make RClone Manager available in your language (coming soon)
 - ⭐ **Spread the Word** – Star the repo, share with friends, write blog posts
