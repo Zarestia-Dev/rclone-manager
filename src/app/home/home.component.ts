@@ -206,7 +206,8 @@ export class HomeComponent implements OnInit, OnDestroy {
           settings.mountConfig.dest,
           settings.mountConfig.type,
           settings.mountConfig.options,
-          settings.vfsConfig || {}
+          settings.vfsConfig || {},
+          settings.backendConfig || {}
         );
         await this.refreshMounts();
       },
@@ -300,6 +301,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         const createEmptySrcDirs = config.createEmptySrcDirs;
         const options = config.options;
         const filterConfig = settings.filterConfig;
+        const backendConfig = settings.backendConfig;
         const dryRun = config.dryRun;
         const resync = config.resync;
         switch (operationType) {
@@ -313,7 +315,8 @@ export class HomeComponent implements OnInit, OnDestroy {
               dest,
               createEmptySrcDirs,
               options,
-              filterConfig
+              filterConfig,
+              backendConfig
             );
             break;
           case 'copy':
@@ -323,7 +326,8 @@ export class HomeComponent implements OnInit, OnDestroy {
               dest,
               createEmptySrcDirs,
               options,
-              filterConfig
+              filterConfig,
+              backendConfig
             );
             break;
           case 'bisync':
@@ -333,6 +337,7 @@ export class HomeComponent implements OnInit, OnDestroy {
               dest,
               options,
               filterConfig,
+              backendConfig,
               dryRun,
               resync
             );
@@ -347,7 +352,8 @@ export class HomeComponent implements OnInit, OnDestroy {
               createEmptySrcDirs,
               deleteEmptySrcDirs,
               options,
-              filterConfig
+              filterConfig,
+              backendConfig
             );
             break;
           }

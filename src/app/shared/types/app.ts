@@ -6,6 +6,7 @@ export interface ModalSize {
   minWidth: string;
   height: string;
   maxHeight: string;
+  disableClose?: boolean;
 }
 
 export const STANDARD_MODAL_SIZE: ModalSize = {
@@ -14,4 +15,5 @@ export const STANDARD_MODAL_SIZE: ModalSize = {
   minWidth: '360px',
   height: '80vh',
   maxHeight: '600px',
+  disableClose: true,
 };

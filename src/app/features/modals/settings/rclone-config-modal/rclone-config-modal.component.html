@@ -9,118 +9,149 @@
     </button>
   </div>
 
+  <div class="persistent-search-container">
+    <app-search-container
+      [visible]="isSearchVisible"
+      [searchText]="searchQuery"
+      (searchTextChange)="onSearchInput($event)"
+      [placeholder]="getSearchPlaceholder()"
+      ariaLabel="Search RClone settings"
+    ></app-search-container>
+  </div>
+
   @if (isLoading) {
     <div class="loading-overlay">
       <mat-spinner diameter="50"></mat-spinner>
     </div>
   }
 
-  <!-- HOME PAGE: GROUPED BY MAIN CATEGORIES -->
   @if (!isLoading && currentPage === 'home') {
     <div class="modal-content" #content>
-      <div class="home-search-container">
-        <app-search-container
-          [visible]="isSearchVisible"
-          [searchText]="homeSearchQuery"
-          (searchTextChange)="onHomeSearchChange($event)"
-          placeholder="Search all services..."
-          ariaLabel="Search RClone services"
-        ></app-search-container>
-      </div>
-
-      <mat-accordion>
-        @for (
-          mainCategory of ['General Settings', 'File System & Storage', 'Network & Servers'];
-          track mainCategory
-        ) {
-          @if (getServicesByMainCategory()[mainCategory].length > 0) {
-            <mat-expansion-panel [expanded]="false" class="main-category-panel">
-              <mat-expansion-panel-header>
-                <mat-panel-title class="main-category-title-text">
-                  <div class="main-category-header">
-                    <span class="category-name">{{ mainCategory }}</span>
-                    <small class="category-desc">{{
-                      getMainCategoryDescription(mainCategory)
-                    }}</small>
-                  </div>
-                </mat-panel-title>
-              </mat-expansion-panel-header>
-
-              <div class="main-category-services">
-                @for (service of getServicesByMainCategory()[mainCategory]; track service.name) {
-                  <mat-expansion-panel
-                    [expanded]="service.expanded"
-                    (opened)="service.expanded = true"
-                    (closed)="service.expanded = false"
-                    class="service-panel"
-                  >
-                    <mat-expansion-panel-header>
-                      <mat-panel-title>
-                        <mat-icon [svgIcon]="getServiceIcon(service.name)"></mat-icon>
-                        <div class="category-header-text">
-                          <span class="category-title">{{ service.name | titlecase }}</span>
-                          <small class="category-description">{{
-                            getServiceDescription(service.name)
-                          }}</small>
-                        </div>
-                      </mat-panel-title>
-                    </mat-expansion-panel-header>
-
-                    <div class="category-items">
-                      @for (
-                        categoryName of getServiceCategories(service.name);
-                        track categoryName
-                      ) {
-                        <button
-                          mat-button
-                          class="config-item"
-                          (click)="navigateTo(service.name, categoryName)"
-                        >
-                          <div class="config-item-content">
-                            <mat-icon [svgIcon]="getCategoryIcon(categoryName)"></mat-icon>
-                            <div class="config-item-text">
-                              <span class="config-item-title">
-                                {{ categoryName }}
-                                @if (homeSearchQuery) {
-                                  <span class="match-count">{{ globalSearchResults.length }}</span>
-                                }
-                              </span>
-                              <small class="config-item-description">{{
-                                getCategoryDescription(categoryName)
-                              }}</small>
-                            </div>
-                          </div>
-                          <mat-icon svgIcon="chevron-right"></mat-icon>
-                        </button>
-                      }
-                    </div>
-                  </mat-expansion-panel>
-                }
+      @if (searchQuery) {
+        <div class="global-search-results">
+          @for (result of globalSearchResults; track result.service + '-' + result.option.Name) {
+            <button
+              mat-button
+              class="config-item"
+              (click)="navigateTo(result.service, result.category, result.option.Name)"
+            >
+              <div class="config-item-content">
+                <mat-icon [svgIcon]="getServiceIcon(result.service)"></mat-icon>
+                <div class="config-item-text">
+                  <span class="config-item-title">
+                    {{ result.option.FieldName }}
+                  </span>
+                  <small class="config-item-description">
+                    {{ result.service | titlecase }} > {{ result.category }}
+                  </small>
+                  <small class="config-item-description result-help">
+                    {{ result.option.Help | slice: 0 : 50 }}...
+                  </small>
+                </div>
               </div>
-            </mat-expansion-panel>
-          }
-        }
-      </mat-accordion>
-
-      @if (!homeSearchQuery) {
-        <div class="security-section">
-          <button mat-button class="config-item security-item" (click)="navigateTo('security')">
-            <div class="config-item-content">
-              <mat-icon svgIcon="lock"></mat-icon>
-              <div class="config-item-text">
-                <span class="config-item-title">Security Settings</span>
-                <small class="config-item-description"
-                  >Configuration encryption and password management</small
-                >
-              </div>
+              <mat-icon svgIcon="chevron-right"></mat-icon>
+            </button>
+          } @empty {
+            <div class="no-results-home">
+              <mat-icon svgIcon="search"></mat-icon>
+              <h4>No settings found</h4>
+              <p>Try adjusting your search terms for services or settings.</p>
             </div>
-            <mat-icon svgIcon="chevron-right"></mat-icon>
-          </button>
+          }
         </div>
-      }
+      } @else {
+        <mat-accordion>
+          @for (
+            mainCategory of ['General Settings', 'File System & Storage', 'Network & Servers'];
+            track mainCategory
+          ) {
+            @if (getServicesByMainCategory()[mainCategory].length > 0) {
+              <mat-expansion-panel [expanded]="false" class="main-category-panel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title class="main-category-title-text">
+                    <div class="main-category-header">
+                      <span class="category-name">{{ mainCategory }}</span>
+                      <small class="category-desc">{{
+                        getMainCategoryDescription(mainCategory)
+                      }}</small>
+                    </div>
+                  </mat-panel-title>
+                </mat-expansion-panel-header>
 
-      @if (homeSearchQuery && filteredServices.length === 0) {
-        <div class="no-results-home"></div>
+                <div class="main-category-services">
+                  @for (service of getServicesByMainCategory()[mainCategory]; track service.name) {
+                    <mat-expansion-panel
+                      [expanded]="service.expanded"
+                      (opened)="service.expanded = true"
+                      (closed)="service.expanded = false"
+                      class="service-panel"
+                    >
+                      <mat-expansion-panel-header>
+                        <mat-panel-title>
+                          <mat-icon [svgIcon]="getServiceIcon(service.name)"></mat-icon>
+                          <div class="category-header-text">
+                            <span class="category-title">{{ service.name | titlecase }}</span>
+                            <small class="category-description">{{
+                              getServiceDescription(service.name)
+                            }}</small>
+                          </div>
+                        </mat-panel-title>
+                      </mat-expansion-panel-header>
+
+                      <div class="category-items">
+                        @for (
+                          categoryName of getServiceCategories(service.name);
+                          track categoryName
+                        ) {
+                          <button
+                            mat-button
+                            class="config-item"
+                            (click)="navigateTo(service.name, categoryName)"
+                          >
+                            <div class="config-item-content">
+                              <mat-icon [svgIcon]="getCategoryIcon(categoryName)"></mat-icon>
+                              <div class="config-item-text">
+                                <span class="config-item-title">
+                                  {{ categoryName }}
+                                  @if (
+                                    searchQuery &&
+                                    getMatchCountForCategory(service.name, categoryName) > 0
+                                  ) {
+                                    <span class="match-count">
+                                      {{ getMatchCountForCategory(service.name, categoryName) }}
+                                    </span>
+                                  }
+                                </span>
+                                <small class="config-item-description">{{
+                                  getCategoryDescription(categoryName)
+                                }}</small>
+                              </div>
+                            </div>
+                            <mat-icon svgIcon="chevron-right"></mat-icon>
+                          </button>
+                        }
+                      </div>
+                    </mat-expansion-panel>
+                  }
+                </div>
+              </mat-expansion-panel>
+            }
+          }
+          <div class="security-section">
+            <button mat-button class="config-item security-item" (click)="navigateTo('security')">
+              <div class="config-item-content">
+                <mat-icon svgIcon="lock"></mat-icon>
+                <div class="config-item-text">
+                  <span class="config-item-title">Security Settings</span>
+                  <small class="config-item-description"
+                    >Configuration encryption and password management</small
+                  >
+                </div>
+              </div>
+              <mat-icon svgIcon="chevron-right"></mat-icon>
+            </button>
+          </div>
+        </mat-accordion>
       }
     </div>
   }
@@ -143,14 +174,6 @@
           <app-security-settings></app-security-settings>
         } @else {
           <div class="settings-list">
-            <app-search-container
-              [visible]="isSearchVisible"
-              [searchText]="searchQuery"
-              (searchTextChange)="onSearchTextChange($event)"
-              placeholder="Search settings..."
-              ariaLabel="Search RClone settings"
-            ></app-search-container>
-
             @if (hasSearchQuery) {
               <div class="search-results-info">
                 <small
@@ -166,25 +189,16 @@
                 <p>Try adjusting your search terms</p>
               </div>
             } @else {
-              <!-- BASIC SETTINGS SECTION -->
-              @if (filteredOptionsCount === 0 && hasSearchQuery) {
-                <div class="no-results">
-                  <mat-icon svgIcon="search"></mat-icon>
-                  <h4>No settings found</h4>
-                  <p>Try adjusting your search terms</p>
-                </div>
-              } @else {
-                <div class="settings-list">
-                  @for (
-                    option of getRCloneOptionsForCurrentPage();
-                    track trackByOptionName($index, option)
-                  ) {
-                    <ng-container
-                      *ngTemplateOutlet="settingItem; context: { $implicit: option }"
-                    ></ng-container>
-                  }
-                </div>
-              }
+              <div class="settings-list">
+                @for (
+                  option of getRCloneOptionsForCurrentPage();
+                  track trackByOptionName($index, option)
+                ) {
+                  <ng-container
+                    *ngTemplateOutlet="settingItem; context: { $implicit: option }"
+                  ></ng-container>
+                }
+              </div>
             }
           </div>
         }
@@ -195,7 +209,7 @@
 
 <!-- SETTING ITEM TEMPLATE (reusable) -->
 <ng-template #settingItem let-option>
-  <div class="setting-item">
+  <div class="setting-item" id="{{ 'setting-' + option.Name }}">
     @switch (option.Type) {
       @case ('bool') {
         <div class="setting-info">
@@ -260,6 +274,153 @@
                 (blur)="saveRCloneOption(option.Name)"
               />
               <mat-hint>Format: 1h30m45s</mat-hint>
+              @if (
+                getRCloneOptionControl(option.Name)?.invalid &&
+                getRCloneOptionControl(option.Name)?.touched
+              ) {
+                <mat-error>{{
+                  getRCloneOptionError(getRCloneOptionControl(option.Name))
+                }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('SpaceSepList') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+            <small class="default-value">Default: {{ option.DefaultStr }}</small>
+          </div>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(getRCloneOptionControl(option.Name))"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr"
+                (blur)="saveRCloneOption(option.Name)"
+              />
+              <mat-hint>Space-separated list of values</mat-hint>
+              @if (
+                getRCloneOptionControl(option.Name)?.invalid &&
+                getRCloneOptionControl(option.Name)?.touched
+              ) {
+                <mat-error>{{
+                  getRCloneOptionError(getRCloneOptionControl(option.Name))
+                }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('Time') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+            <small class="default-value">Default: {{ option.DefaultStr }}</small>
+          </div>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                type="datetime-local"
+                [formControl]="$any(getRCloneOptionControl(option.Name))"
+                [attr.aria-label]="option.Name"
+                (blur)="saveRCloneOption(option.Name)"
+              />
+              <mat-hint>ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)</mat-hint>
+              @if (
+                getRCloneOptionControl(option.Name)?.invalid &&
+                getRCloneOptionControl(option.Name)?.touched
+              ) {
+                <mat-error>{{
+                  getRCloneOptionError(getRCloneOptionControl(option.Name))
+                }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('Bits') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+            <small class="default-value">Default: {{ option.DefaultStr }}</small>
+          </div>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(getRCloneOptionControl(option.Name))"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr"
+                (blur)="saveRCloneOption(option.Name)"
+              />
+              <mat-hint>Comma-separated flags</mat-hint>
+              @if (
+                getRCloneOptionControl(option.Name)?.invalid &&
+                getRCloneOptionControl(option.Name)?.touched
+              ) {
+                <mat-error>{{
+                  getRCloneOptionError(getRCloneOptionControl(option.Name))
+                }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('Tristate') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+            <small class="default-value">Default: {{ option.DefaultStr }}</small>
+          </div>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <mat-select
+                [formControl]="$any(getRCloneOptionControl(option.Name))"
+                [attr.aria-label]="option.Name"
+                (selectionChange)="saveRCloneOption(option.Name)"
+              >
+                <mat-option [value]="null">Auto (unset)</mat-option>
+                <mat-option [value]="true">True</mat-option>
+                <mat-option [value]="false">False</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      <!-- BwTimetable Options (Bandwidth limit with timetable) -->
+      @case ('BwTimetable') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+            <small class="default-value">Default: {{ option.DefaultStr }}</small>
+          </div>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(getRCloneOptionControl(option.Name))"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr"
+                (blur)="saveRCloneOption(option.Name)"
+              />
+              <mat-hint
+                >Bandwidth limit in KiB/s, or use suffix B|K|M|G|T|P or full timetable
+                format</mat-hint
+              >
               @if (
                 getRCloneOptionControl(option.Name)?.invalid &&
                 getRCloneOptionControl(option.Name)?.touched
@@ -532,15 +693,38 @@
           <div class="setting-control">
             <mat-form-field class="input-field" appearance="outline">
               <mat-select
-                [multiple]="true"
+                multiple
                 [formControl]="$any(getRCloneOptionControl(option.Name))"
                 [attr.aria-label]="option.Name"
                 (selectionChange)="saveRCloneOption(option.Name)"
               >
-                @for (example of option.Examples; track example.Value) {
-                  <mat-option [value]="example.Value">{{ example.Value }}</mat-option>
+                @if (option.Examples) {
+                  @for (example of option.Examples; track example.Value) {
+                    <mat-option [value]="example.Value">
+                      {{ example.Value }}
+                    </mat-option>
+                  }
+                } @else {
+                  <mat-option value="headers">headers</mat-option>
+                  <mat-option value="bodies">bodies</mat-option>
+                  <mat-option value="requests">requests</mat-option>
+                  <mat-option value="responses">responses</mat-option>
+                  <mat-option value="auth">auth</mat-option>
+                  <mat-option value="filters">filters</mat-option>
+                  <mat-option value="goroutines">goroutines</mat-option>
+                  <mat-option value="openfiles">openfiles</mat-option>
+                  <mat-option value="mapper">mapper</mat-option>
                 }
               </mat-select>
+              <mat-hint>Select items to dump (multiple allowed)</mat-hint>
+              @if (
+                getRCloneOptionControl(option.Name)?.invalid &&
+                getRCloneOptionControl(option.Name)?.touched
+              ) {
+                <mat-error>{{
+                  getRCloneOptionError(getRCloneOptionControl(option.Name))
+                }}</mat-error>
+              }
             </mat-form-field>
           </div>
         </div>

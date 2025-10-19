@@ -133,6 +133,69 @@ export class FlagConfigService {
     }));
   }
 
+  toggleOption(
+    selectedOptions: Record<string, any>,
+    fields: FlagField[],
+    fieldName: string
+  ): Record<string, any> {
+    const newOptions = { ...selectedOptions };
+    const field = fields.find(f => f.name === fieldName);
+
+    if (!field) {
+      return newOptions;
+    }
+    if (newOptions[fieldName] !== undefined) {
+      delete newOptions[fieldName];
+    } else {
+      newOptions[fieldName] = this.getFlagValue(field);
+    }
+
+    return newOptions;
+  }
+
+  private getFlagValue(field: FlagField): any {
+    let value =
+      field.Value !== null
+        ? field.Value
+        : field.ValueStr !== undefined
+          ? field.ValueStr
+          : field.default !== null
+            ? field.default
+            : getDefaultValueForType(field.type as FieldType);
+
+    if (field.type === 'Tristate') {
+      value = false;
+    }
+
+    return this.coerceValueToType(value, field.type as FieldType);
+  }
+
+  validateFlagOptions(
+    jsonString: string,
+    fields: FlagField[]
+  ): { valid: boolean; cleanedOptions?: Record<string, any> } {
+    try {
+      const parsedValue = jsonString ? JSON.parse(jsonString) : {};
+      const cleanedValue: Record<string, any> = {};
+
+      for (const [key, value] of Object.entries(parsedValue)) {
+        const field = fields.find(f => f.name === key);
+        if (field) {
+          cleanedValue[key] = this.coerceValueToType(value, field.type as FieldType);
+        }
+      }
+
+      return { valid: true, cleanedOptions: cleanedValue };
+    } catch (error) {
+      console.error('Invalid JSON format:', error);
+      return { valid: false };
+    }
+  }
+
+  private capitalizeFirstLetter(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  }
+
   coerceValueToType(value: any, type: FieldType): any {
     if (value === null || value === undefined || value === '') {
       return getDefaultValueForType(type);
@@ -149,7 +212,6 @@ export class FlagConfigService {
           return isNaN(intValue) ? getDefaultValueForType(type) : intValue;
         }
         case 'stringArray':
-        case 'CommaSeparatedList':
           if (Array.isArray(value)) return value;
           if (typeof value === 'string')
             return value

@@ -1,5 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  OnInit,
+  inject,
+  ChangeDetectorRef,
+  OnDestroy,
+} from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -30,6 +37,7 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 import { MatSelectModule } from '@angular/material/select';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { SecuritySettingsComponent } from '../security-settings/security-settings.component';
+import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 
 type PageType = 'home' | 'security' | string;
 type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
@@ -71,31 +79,35 @@ interface SearchResult {
   styleUrl: './rclone-config-modal.component.scss',
   animations: [AnimationsService.slideOverlay()],
 })
-export class RcloneConfigModalComponent implements OnInit {
+export class RcloneConfigModalComponent implements OnInit, OnDestroy {
+  // --- Injected Services & DialogRef ---
   private dialogRef = inject(MatDialogRef<RcloneConfigModalComponent>);
   private notificationService = inject(NotificationService);
   private flagConfigService = inject(FlagConfigService);
   private rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
   private cdRef = inject(ChangeDetectorRef);
 
+  // --- Public Properties (for the template) ---
   currentPage: PageType = 'home';
   currentCategory: string | null = null;
   isLoading = true;
   rcloneOptionsForm: FormGroup;
-
-  private groupedRcloneOptions: GroupedRCloneOptions = {};
-  private optionToServiceMap: Record<string, string> = {};
-  private optionToCategoryMap: Record<string, string> = {};
-  private optionToFullFieldNameMap: Record<string, string> = {};
-
   services: RCloneService[] = [];
   filteredServices: RCloneService[] = [];
   globalSearchResults: SearchResult[] = [];
-  private isPerformingSearch = false;
-
-  homeSearchQuery = '';
   searchQuery = '';
   isSearchVisible = false;
+  savingOptions = new Set<string>();
+  searchMatchCounts = new Map<string, number>();
+
+  // --- Private Properties ---
+  private readonly componentDestroyed$ = new Subject<void>();
+  private readonly search$ = new Subject<string>();
+  private groupedRcloneOptions: GroupedRCloneOptions = {};
+  private optionToFocus: string | null = null;
+  private optionToServiceMap: Record<string, string> = {};
+  private optionToCategoryMap: Record<string, string> = {};
+  private optionToFullFieldNameMap: Record<string, string> = {};
 
   // Enhanced icon mapping with better visual consistency
   private readonly serviceIconMap: Record<string, string> = {
@@ -170,15 +182,53 @@ export class RcloneConfigModalComponent implements OnInit {
   };
 
   private readonly mainCategoryIconMap: Record<string, string> = {
-    'General Settings': 'settings',
+    'General Settings': 'gear',
     'File System & Storage': 'folder',
     'Network & Servers': 'public',
   };
 
-  savingOptions = new Set<string>();
-
   constructor() {
     this.rcloneOptionsForm = new FormGroup({});
+    // The search subscription now handles logic for ALL pages
+    this.search$
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.componentDestroyed$))
+      .subscribe(searchText => {
+        const query = searchText.toLowerCase().trim();
+        this.searchQuery = query;
+
+        // Only perform global search if we are on the home page
+        if (this.currentPage === 'home') {
+          if (!query) {
+            this.globalSearchResults = [];
+            this.filteredServices = [...this.services].map(s => ({ ...s, expanded: false }));
+          } else {
+            this.performGlobalSearch(query);
+            this.updateFilteredServices();
+          }
+        }
+        // No 'else' block needed. The settings page filter is handled reactively by the template.
+        this.cdRef.detectChanges();
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.componentDestroyed$.next();
+    this.componentDestroyed$.complete();
+  }
+
+  onSearchInput(searchText: string): void {
+    this.search$.next(searchText);
+  }
+
+  getSearchPlaceholder(): string {
+    return this.currentPage === 'home'
+      ? 'Search all services and settings...'
+      : `Search in ${this.currentPage.toUpperCase()}...`;
+  }
+
+  getMatchCountForCategory(serviceName: string, categoryName: string): number {
+    const key = `${serviceName}---${categoryName}`;
+    return this.searchMatchCounts.get(key) || 0;
   }
 
   async ngOnInit(): Promise<void> {
@@ -267,12 +317,12 @@ export class RcloneConfigModalComponent implements OnInit {
   }
 
   getMainCategoryIcon(category: string): string {
-    return this.mainCategoryIconMap[category] || 'settings';
+    return this.mainCategoryIconMap[category] || 'gear';
   }
 
   // Service and category methods
   getServiceIcon(serviceName: string): string {
-    return this.serviceIconMap[serviceName] || 'settings';
+    return this.serviceIconMap[serviceName] || 'gear';
   }
 
   getServiceDescription(serviceName: string): string {
@@ -289,14 +339,14 @@ export class RcloneConfigModalComponent implements OnInit {
     const iconMap: Record<string, string> = {
       General: 'gear',
       Auth: 'lock',
-      HTTP: 'public',
-      Template: 'code',
-      MetaRules: 'list',
-      RulesOpt: 'tune',
+      HTTP: 'globe',
+      Template: 'terminal',
+      MetaRules: 'chart',
+      RulesOpt: 'filter',
       MetricsAuth: 'lock',
-      MetricsHTTP: 'public',
+      MetricsHTTP: 'globe',
     };
-    return iconMap[categoryName] || 'settings';
+    return iconMap[categoryName] || 'gear';
   }
 
   getCategoryDescription(categoryName: string): string {
@@ -304,7 +354,7 @@ export class RcloneConfigModalComponent implements OnInit {
   }
 
   // Navigation and page management
-  navigateTo(service: string, category?: string): void {
+  navigateTo(service: string, category?: string, optionName?: string): void {
     if (service === 'security') {
       this.currentPage = 'security';
       this.currentCategory = null;
@@ -313,8 +363,23 @@ export class RcloneConfigModalComponent implements OnInit {
       this.currentCategory = category || null;
     }
 
-    this.searchQuery = '';
+    this.optionToFocus = optionName || null;
     this.cdRef.detectChanges();
+
+    // The scroll logic now lives here again.
+    if (this.optionToFocus) {
+      setTimeout(() => {
+        const element = document.getElementById(`setting-${this.optionToFocus}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          element.classList.add('highlighted');
+          setTimeout(() => {
+            element.classList.remove('highlighted');
+          }, 1500);
+        }
+        this.optionToFocus = null;
+      }, 100); // A small delay is sufficient.
+    }
   }
 
   getRCloneOptionsForCurrentPage(): RcConfigOption[] {
@@ -338,25 +403,6 @@ export class RcloneConfigModalComponent implements OnInit {
     );
   }
 
-  // Search functionality
-  onHomeSearchChange(searchText: string): void {
-    if (this.isPerformingSearch) return;
-    this.isPerformingSearch = true;
-    this.homeSearchQuery = searchText;
-
-    if (!this.homeSearchQuery || this.homeSearchQuery.trim() === '') {
-      this.globalSearchResults = [];
-      this.filteredServices = [...this.services];
-    } else {
-      const query = this.homeSearchQuery.toLowerCase().trim();
-      this.performGlobalSearch(query);
-      this.updateFilteredServices();
-    }
-
-    this.isPerformingSearch = false;
-    this.cdRef.detectChanges();
-  }
-
   private performGlobalSearch(query: string): void {
     this.globalSearchResults = [];
     for (const service in this.groupedRcloneOptions) {
@@ -377,16 +423,22 @@ export class RcloneConfigModalComponent implements OnInit {
   }
 
   private updateFilteredServices(): void {
+    this.searchMatchCounts.clear(); // Clear old counts
+
     if (this.globalSearchResults.length > 0) {
+      // Tally up the counts
+      this.globalSearchResults.forEach(result => {
+        const key = `${result.service}---${result.category}`;
+        const currentCount = this.searchMatchCounts.get(key) || 0;
+        this.searchMatchCounts.set(key, currentCount + 1);
+      });
+
       const servicesWithMatches = new Set(this.globalSearchResults.map(r => r.service));
       this.filteredServices = this.services
         .filter(svc => servicesWithMatches.has(svc.name))
-        .map(svc => ({
-          ...svc,
-          expanded: true,
-        }));
+        .map(svc => ({ ...svc, expanded: true }));
     } else {
-      const query = this.homeSearchQuery.toLowerCase().trim();
+      const query = this.searchQuery.toLowerCase().trim();
       this.filteredServices = this.services
         .filter(
           svc =>
@@ -397,16 +449,11 @@ export class RcloneConfigModalComponent implements OnInit {
     }
   }
 
-  onSearchTextChange(searchText: string): void {
-    this.searchQuery = searchText;
-    this.cdRef.detectChanges();
-  }
-
   toggleSearchVisibility(): void {
     this.isSearchVisible = !this.isSearchVisible;
     if (!this.isSearchVisible) {
       this.searchQuery = '';
-      this.homeSearchQuery = '';
+      this.onSearchInput('');
     }
     this.cdRef.detectChanges();
   }
@@ -528,6 +575,18 @@ export class RcloneConfigModalComponent implements OnInit {
       case 'FileMode':
         validators.push(this.fileModeValidator(option.DefaultStr));
         break;
+      case 'Time':
+        validators.push(this.timeValidator(option.DefaultStr));
+        break;
+      case 'SpaceSepList':
+        validators.push(this.spaceSepListValidator(option.DefaultStr));
+        break;
+      case 'Bits':
+        validators.push(this.bitsValidator(option.DefaultStr));
+        break;
+      case 'Tristate': // ADD THIS CASE
+        validators.push(this.tristateValidator());
+        break;
       case 'LogLevel':
       case 'CacheMode':
         if (option.Examples) {
@@ -576,6 +635,90 @@ export class RcloneConfigModalComponent implements OnInit {
       return !durationPattern.test(value)
         ? { duration: { value, message: 'Invalid duration format. Use: 1h30m45s, 5m, 1h' } }
         : null;
+    };
+  }
+
+  private tristateValidator(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const allowedValues = [null, true, false];
+      if (allowedValues.includes(control.value)) {
+        return null; // Value is valid
+      }
+      return {
+        tristate: { value: control.value, message: 'Value must be true, false, or unset.' },
+      };
+    };
+  }
+
+  private bitsValidator(defaultValue?: string): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      if (!control.value || control.value === '') return null;
+      const value = control.value.toString().trim();
+      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) {
+        return null;
+      }
+      if (value.length > 0 && !/^[a-zA-Z0-9_-]+(,\s*[a-zA-Z0-9_-]+)*$/.test(value)) {
+        return {
+          bits: {
+            value,
+            message: 'Must be comma-separated flags (alphanumeric, underscore, and hyphen)',
+          },
+        };
+      }
+
+      return null;
+    };
+  }
+
+  private timeValidator(defaultValue?: string): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      if (!control.value || control.value === '') return null;
+
+      const value = control.value.toString().trim();
+
+      // Allow the option's default value
+      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) {
+        return null;
+      }
+
+      // ISO 8601 datetime format check
+      const isoPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?([+-]\d{2}:\d{2}|Z)?$/;
+
+      if (!isoPattern.test(value)) {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) {
+          return {
+            time: {
+              value,
+              message: 'Invalid datetime format. Use ISO 8601: YYYY-MM-DDTHH:mm:ssZ',
+            },
+          };
+        }
+      }
+
+      return null;
+    };
+  }
+
+  private spaceSepListValidator(defaultValue?: string): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      if (!control.value || control.value === '') return null;
+
+      const value = control.value.toString().trim();
+
+      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) {
+        return null;
+      }
+      if (value.length > 0 && !/\S/.test(value)) {
+        return {
+          spaceSepList: {
+            value,
+            message: 'List cannot contain only whitespace',
+          },
+        };
+      }
+
+      return null;
     };
   }
 

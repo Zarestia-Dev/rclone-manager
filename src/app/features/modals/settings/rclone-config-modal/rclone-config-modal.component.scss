@@ -167,9 +167,8 @@
   // Security Section
   .security-section {
     max-width: var(--max-content-width);
-    margin-top: var(--space-md);
     border: 2px solid var(--primary-color);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-md);
     box-shadow: var(--shadow-elevated);
     overflow: hidden;
     min-height: 72px;
@@ -408,6 +407,36 @@
         }
       }
     }
+  }
+
+  .global-search-results {
+    padding-top: var(--space-md);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .setting-item.highlighted {
+    // Use animation to make it stand out
+    animation: highlight-fade 1.5s ease-out;
+    box-shadow:
+      0 0 0 2px var(--accent-color),
+      var(--shadow-elevated);
+  }
+
+  // Define the animation
+  @keyframes highlight-fade {
+    0% {
+      background-color: rgba(var(--accent-color-rgb), 0.15);
+    }
+    100% {
+      background-color: var(--surface-background);
+    }
+  }
+  .config-item-description.result-help {
+    margin-top: 4px;
+    font-style: italic;
+    opacity: 0.8;
   }
 
   // Loading Overlay

@@ -6,7 +6,7 @@ import { Directive, HostListener } from '@angular/core';
 })
 export class RightClickDirective {
   @HostListener('contextmenu', ['$event'])
-  onRightClick(event: MouseEvent) {
+  onRightClick(event: MouseEvent): void {
     event.preventDefault(); // Disable default browser right-click menu
 
     const menu = document.getElementById('custom-menu');
