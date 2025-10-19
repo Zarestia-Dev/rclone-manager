@@ -78,8 +78,9 @@ export interface RcConfigExample {
 
 export interface RcConfigOption {
   Name: string;
-  FieldName?: string;
+  FieldName: string;
   Help: string;
+  Groups?: string;
   Default?: unknown;
   Value?: unknown;
   Examples?: RcConfigExample[];

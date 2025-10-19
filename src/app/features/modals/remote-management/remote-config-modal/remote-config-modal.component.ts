@@ -526,12 +526,12 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   //#endregion
 
   //#region Flag Configuration Methods
-  toggleOption(flagType: FlagType, field: FlagField): void {
-    this.selectedOptions[flagType] = this.flagConfigService.toggleOption(
-      this.selectedOptions[flagType],
-      this.dynamicFlagFields[flagType],
-      field.name
-    );
+  toggleOption(flagType: FlagType, _field: FlagField): void {
+    // this.selectedOptions[flagType] = this.flagConfigService.toggleOption(
+    //   this.selectedOptions[flagType],
+    //   this.dynamicFlagFields[flagType],
+    //   field.name
+    // );
     this.updateJsonDisplay(flagType);
   }
 
@@ -549,17 +549,17 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     const optionsControl = configGroup?.get('options');
     if (!optionsControl) return;
 
-    const validation = this.flagConfigService.validateFlagOptions(
-      optionsControl.value || '{}',
-      this.dynamicFlagFields[flagType]
-    );
+    // const validation = this.flagConfigService.validateFlagOptions(
+    //   optionsControl.value || '{}',
+    //   this.dynamicFlagFields[flagType]
+    // );
 
-    if (validation.valid && validation.cleanedOptions) {
-      this.selectedOptions[flagType] = validation.cleanedOptions;
-      optionsControl.setErrors(null);
-    } else {
-      optionsControl.setErrors({ invalidJson: true });
-    }
+    // if (validation.valid && validation.cleanedOptions) {
+    //   this.selectedOptions[flagType] = validation.cleanedOptions;
+    //   optionsControl.setErrors(null);
+    // } else {
+    //   optionsControl.setErrors({ invalidJson: true });
+    // }
   }
 
   resetJson(flagType: FlagType): void {

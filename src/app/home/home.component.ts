@@ -506,7 +506,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       disableClose: true,
       data: {
         remoteName,
-        defaultExportType: 'specific-remote',
+        defaultExportType: 'SpecificRemote',
       },
     });
   }

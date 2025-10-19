@@ -58,7 +58,6 @@ export class IconService {
       question: 'assets/icons/question.svg',
       refresh: 'assets/icons/rotate.svg',
       server: 'assets/icons/server.svg',
-      // rclone: 'assets/rclone.svg', // Use as image because The gradient IDs are being removed/stripped during build optimization
       'rclone-symbolic': 'assets/rclone-symbolic.svg',
       'file-operations': 'assets/icons/file-operations.svg',
       stop: 'assets/icons/stop.svg',
@@ -71,6 +70,7 @@ export class IconService {
       wrench: 'assets/icons/wrench.svg',
       'box-archive': 'assets/icons/box-archive.svg',
       'file-arrow-up': 'assets/icons/file-arrow-up.svg',
+      database: 'assets/icons/database.svg',
 
       // ------------------- Remote Icons -------------------
       drive: 'assets/icons/remotes/drive.svg',

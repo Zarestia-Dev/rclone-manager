@@ -9,115 +9,123 @@
     </button>
   </div>
 
-  <!-- Loading Indicator -->
   @if (isLoading) {
     <div class="loading-overlay">
       <mat-spinner diameter="50"></mat-spinner>
     </div>
   }
 
-  <!-- home Content -->
-  @if (!isLoading) {
+  <!-- HOME PAGE: GROUPED BY MAIN CATEGORIES -->
+  @if (!isLoading && currentPage === 'home') {
     <div class="modal-content" #content>
-      <!-- home Page: Menu Items -->
-      @if (currentPage === 'home') {
-        <!-- Search Bar on Home -->
-        <div class="home-search-container">
-          <app-search-container
-            [visible]="isSearchVisible"
-            [searchText]="homeSearchQuery"
-            (searchTextChange)="onHomeSearchChange($event)"
-            placeholder="Search all settings..."
-            ariaLabel="Search RClone settings"
-          ></app-search-container>
+      <div class="home-search-container">
+        <app-search-container
+          [visible]="isSearchVisible"
+          [searchText]="homeSearchQuery"
+          (searchTextChange)="onHomeSearchChange($event)"
+          placeholder="Search all services..."
+          ariaLabel="Search RClone services"
+        ></app-search-container>
+      </div>
 
-          <!-- Search Results Summary -->
-          @if (homeSearchQuery && globalSearchResults.length > 0) {
-            <div class="search-results-summary">
-              <mat-icon svgIcon="search"></mat-icon>
-              <span>
-                Found <strong>{{ globalSearchResults.length }}</strong>
-                {{ globalSearchResults.length === 1 ? 'setting' : 'settings' }}
-                across all categories
-              </span>
-            </div>
-          }
-        </div>
-
-        <mat-accordion>
-          <!-- Categorized Settings -->
-          @for (category of getFilteredCategories(); track category.name) {
-            <mat-expansion-panel
-              [expanded]="category.expanded"
-              (opened)="category.expanded = true"
-              (closed)="category.expanded = false"
-            >
+      <mat-accordion>
+        @for (
+          mainCategory of ['General Settings', 'File System & Storage', 'Network & Servers'];
+          track mainCategory
+        ) {
+          @if (getServicesByMainCategory()[mainCategory].length > 0) {
+            <mat-expansion-panel [expanded]="false" class="main-category-panel">
               <mat-expansion-panel-header>
-                <mat-panel-title>
-                  <mat-icon [svgIcon]="category.icon"></mat-icon>
-                  <div class="category-header-text">
-                    <span class="category-title">{{ category.name }}</span>
-                    <small class="category-description">{{ category.description }}</small>
+                <mat-panel-title class="main-category-title-text">
+                  <div class="main-category-header">
+                    <span class="category-name">{{ mainCategory }}</span>
+                    <small class="category-desc">{{
+                      getMainCategoryDescription(mainCategory)
+                    }}</small>
                   </div>
                 </mat-panel-title>
               </mat-expansion-panel-header>
 
-              <!-- Category Items -->
-              <div class="category-items">
-                @for (group of category.groups; track group.key) {
-                  <button mat-button class="config-item" (click)="navigateTo(group.key)">
-                    <div class="config-item-content">
-                      <mat-icon [svgIcon]="group.icon"></mat-icon>
-                      <div class="config-item-text">
-                        <span class="config-item-title">
-                          {{ group.label }}
-                          @if (homeSearchQuery && blockHasSearchMatches(group.key)) {
-                            <span class="match-count">{{ getBlockMatchCount(group.key) }}</span>
-                          }
-                        </span>
-                        <small class="config-item-description">{{ group.description }}</small>
-                      </div>
+              <div class="main-category-services">
+                @for (service of getServicesByMainCategory()[mainCategory]; track service.name) {
+                  <mat-expansion-panel
+                    [expanded]="service.expanded"
+                    (opened)="service.expanded = true"
+                    (closed)="service.expanded = false"
+                    class="service-panel"
+                  >
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>
+                        <mat-icon [svgIcon]="getServiceIcon(service.name)"></mat-icon>
+                        <div class="category-header-text">
+                          <span class="category-title">{{ service.name | titlecase }}</span>
+                          <small class="category-description">{{
+                            getServiceDescription(service.name)
+                          }}</small>
+                        </div>
+                      </mat-panel-title>
+                    </mat-expansion-panel-header>
+
+                    <div class="category-items">
+                      @for (
+                        categoryName of getServiceCategories(service.name);
+                        track categoryName
+                      ) {
+                        <button
+                          mat-button
+                          class="config-item"
+                          (click)="navigateTo(service.name, categoryName)"
+                        >
+                          <div class="config-item-content">
+                            <mat-icon [svgIcon]="getCategoryIcon(categoryName)"></mat-icon>
+                            <div class="config-item-text">
+                              <span class="config-item-title">
+                                {{ categoryName }}
+                                @if (homeSearchQuery) {
+                                  <span class="match-count">{{ globalSearchResults.length }}</span>
+                                }
+                              </span>
+                              <small class="config-item-description">{{
+                                getCategoryDescription(categoryName)
+                              }}</small>
+                            </div>
+                          </div>
+                          <mat-icon svgIcon="chevron-right"></mat-icon>
+                        </button>
+                      }
                     </div>
-                    <mat-icon svgIcon="chevron-right"></mat-icon>
-                  </button>
+                  </mat-expansion-panel>
                 }
               </div>
             </mat-expansion-panel>
           }
-        </mat-accordion>
+        }
+      </mat-accordion>
 
-        <!-- Security Settings (Not visible on search) -->
-        @if (!homeSearchQuery) {
-          <div class="security-section">
-            <button mat-button class="config-item security-item" (click)="navigateTo('security')">
-              <div class="config-item-content">
-                <mat-icon svgIcon="lock"></mat-icon>
-                <div class="config-item-text">
-                  <span class="config-item-title">Security Settings</span>
-                  <small class="config-item-description"
-                    >Configuration encryption and password management</small
-                  >
-                </div>
+      @if (!homeSearchQuery) {
+        <div class="security-section">
+          <button mat-button class="config-item security-item" (click)="navigateTo('security')">
+            <div class="config-item-content">
+              <mat-icon svgIcon="lock"></mat-icon>
+              <div class="config-item-text">
+                <span class="config-item-title">Security Settings</span>
+                <small class="config-item-description"
+                  >Configuration encryption and password management</small
+                >
               </div>
-              <mat-icon svgIcon="chevron-right"></mat-icon>
-            </button>
-          </div>
-        }
+            </div>
+            <mat-icon svgIcon="chevron-right"></mat-icon>
+          </button>
+        </div>
+      }
 
-        <!-- No Results Message -->
-        @if (homeSearchQuery && getFilteredCategories().length === 0) {
-          <div class="no-results-home">
-            <mat-icon svgIcon="search"></mat-icon>
-            <h4>No settings found</h4>
-            <p>Try adjusting your search terms</p>
-            <button mat-stroked-button (click)="clearHomeSearch()">Clear Search</button>
-          </div>
-        }
+      @if (homeSearchQuery && filteredServices.length === 0) {
+        <div class="no-results-home"></div>
       }
     </div>
   }
 
-  <!-- Overlay for Detail Pages -->
+  <!-- SETTINGS PAGE: BASIC/ADVANCED SPLIT -->
   @if (currentPage !== 'home' && !isLoading) {
     <div class="overlay" [@slideOverlay]>
       <div class="overlay-header" data-tauri-drag-region>
@@ -126,620 +134,463 @@
         </button>
         <p>{{ getPageTitle() }}</p>
         <button mat-icon-button (click)="close()">
-          <mat-icon svgIcon="close"></mat-icon>
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
       </div>
 
       <div class="overlay-content">
-        <!-- Security Page: Embedded Password Manager with Tabs -->
         @if (isSecurityPage) {
           <app-security-settings></app-security-settings>
-        }
+        } @else {
+          <div class="settings-list">
+            <app-search-container
+              [visible]="isSearchVisible"
+              [searchText]="searchQuery"
+              (searchTextChange)="onSearchTextChange($event)"
+              placeholder="Search settings..."
+              ariaLabel="Search RClone settings"
+            ></app-search-container>
 
-        <!-- Regular Settings List (non-security pages) -->
-        @if (!isSecurityPage) {
-          <!-- RClone Options from API -->
-          @if (totalOptionsCount > 0) {
-            <div class="settings-list">
-              <!-- Search Bar -->
-              <app-search-container
-                [visible]="isSearchVisible"
-                [searchText]="searchQuery"
-                (searchTextChange)="onSearchTextChange($event)"
-                placeholder="Search settings..."
-                ariaLabel="Search RClone settings"
-              ></app-search-container>
+            @if (hasSearchQuery) {
+              <div class="search-results-info">
+                <small
+                  >Showing {{ filteredOptionsCount }} of {{ totalOptionsCount }} settings</small
+                >
+              </div>
+            }
 
-              @if (hasSearchQuery) {
-                <div class="search-results-info">
-                  <small>
-                    Showing {{ filteredOptionsCount }} of {{ totalOptionsCount }} settings
-                  </small>
-                </div>
-              }
-
-              @if (filteredOptionsCount === 0) {
-                <!-- No Results Message -->
+            @if (filteredOptionsCount === 0 && hasSearchQuery) {
+              <div class="no-results">
+                <mat-icon svgIcon="search"></mat-icon>
+                <h4>No settings found</h4>
+                <p>Try adjusting your search terms</p>
+              </div>
+            } @else {
+              <!-- BASIC SETTINGS SECTION -->
+              @if (filteredOptionsCount === 0 && hasSearchQuery) {
                 <div class="no-results">
                   <mat-icon svgIcon="search"></mat-icon>
                   <h4>No settings found</h4>
                   <p>Try adjusting your search terms</p>
                 </div>
               } @else {
-                <!-- Settings List -->
-                @for (option of getRCloneOptionsForCurrentPage(); track option.Name) {
-                  <div class="setting-item">
-                    <!-- Boolean Options -->
-                    @if (option.Type === 'bool') {
-                      <div class="setting-info">
-                        <strong>{{ option.FieldName }}</strong>
-                        <p>{{ option.Help }}</p>
-                        <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                      </div>
-                      <div class="setting-control">
-                        <mat-slide-toggle
-                          [formControl]="getRCloneOptionControl(option.Name)"
-                          [attr.aria-label]="option.Name"
-                          (change)="saveRCloneOption(option.Name)"
-                        >
-                          {{ getRCloneOptionControl(option.Name).value ? 'Enabled' : 'Disabled' }}
-                        </mat-slide-toggle>
-                      </div>
-                    }
-
-                    <!-- String Options -->
-                    @if (option.Type === 'string') {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value"
-                            >Default: {{ option.DefaultStr || 'none' }}</small
-                          >
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <input
-                              matInput
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              [placeholder]="option.DefaultStr || ''"
-                              (blur)="saveRCloneOption(option.Name)"
-                            />
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- Integer Options -->
-                    @if (
-                      option.Type === 'int' || option.Type === 'int64' || option.Type === 'uint32'
-                    ) {
-                      <div class="setting-info">
-                        <strong>{{ option.FieldName }}</strong>
-                        <p>{{ option.Help }}</p>
-                        <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                      </div>
-                      <div class="setting-control">
-                        <mat-form-field class="input-field" appearance="outline">
-                          <input
-                            matInput
-                            type="number"
-                            [formControl]="getRCloneOptionControl(option.Name)"
-                            [attr.aria-label]="option.Name"
-                            [placeholder]="option.DefaultStr"
-                            (blur)="saveRCloneOption(option.Name)"
-                          />
-                          @if (
-                            getRCloneOptionControl(option.Name).invalid &&
-                            getRCloneOptionControl(option.Name).touched
-                          ) {
-                            <mat-error>{{
-                              getRCloneOptionError(getRCloneOptionControl(option.Name))
-                            }}</mat-error>
-                          }
-                        </mat-form-field>
-                      </div>
-                    }
-
-                    <!-- Duration Options -->
-                    @if (option.Type === 'Duration') {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <input
-                              matInput
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              [placeholder]="option.DefaultStr"
-                              (blur)="saveRCloneOption(option.Name)"
-                            />
-                            <mat-hint>Format: 1h30m45s or 5m0s</mat-hint>
-                            @if (
-                              getRCloneOptionControl(option.Name).invalid &&
-                              getRCloneOptionControl(option.Name).touched
-                            ) {
-                              <mat-error>{{
-                                getRCloneOptionError(getRCloneOptionControl(option.Name))
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- SizeSuffix Options -->
-                    @if (option.Type === 'SizeSuffix') {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <input
-                              matInput
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              [placeholder]="option.DefaultStr"
-                              (blur)="saveRCloneOption(option.Name)"
-                            />
-                            <mat-hint>Format: 100Ki, 16Mi, 1Gi</mat-hint>
-                            @if (
-                              getRCloneOptionControl(option.Name).invalid &&
-                              getRCloneOptionControl(option.Name).touched
-                            ) {
-                              <mat-error>{{
-                                getRCloneOptionError(getRCloneOptionControl(option.Name))
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- stringArray Options -->
-                    @if (option.Type === 'stringArray') {
-                      <div class="setting-full-width">
-                        <div class="setting-header-with-action">
-                          <div class="setting-info">
-                            <strong>{{ option.FieldName }}</strong>
-                            <p>{{ option.Help }}</p>
-                            <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                          </div>
-                          <button
-                            mat-icon-button
-                            class="primary"
-                            (click)="addArrayItem(currentPage, option.Name)"
-                            [attr.aria-label]="'Add ' + option.Name + ' item'"
-                            matTooltip="Add item"
-                          >
-                            <mat-icon svgIcon="add"></mat-icon>
-                          </button>
-                        </div>
-                        <div class="array-items">
-                          @if (
-                            getRCloneOptionControl(option.Name).value &&
-                            getRCloneOptionControl(option.Name).value.length > 0
-                          ) {
-                            @for (item of getRCloneOptionControl(option.Name).value; track $index) {
-                              <div class="array-item">
-                                <mat-form-field appearance="outline" class="array-input">
-                                  <input
-                                    matInput
-                                    [formControl]="
-                                      getArrayItemControl(currentPage, option.Name, $index)
-                                    "
-                                    [attr.aria-label]="option.Name + ' item ' + ($index + 1)"
-                                    (blur)="saveRCloneOption(option.Name)"
-                                  />
-                                  <button
-                                    matSuffix
-                                    (click)="removeArrayItem(currentPage, option.Name, $index)"
-                                    [attr.aria-label]="'Remove ' + option.Name + ' item'"
-                                  >
-                                    <mat-icon svgIcon="trash"></mat-icon>
-                                  </button>
-                                </mat-form-field>
-                              </div>
-                            }
-                          } @else {
-                            <p class="empty-array-message">No items. Click + to add.</p>
-                          }
-                        </div>
-                      </div>
-                    }
-
-                    <!-- LogLevel Options (Dropdown) -->
-                    @if (option.Type === 'LogLevel') {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <mat-select
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              (selectionChange)="saveRCloneOption(option.Name)"
-                            >
-                              @for (example of option.Examples; track example.Value) {
-                                <mat-option [value]="example.Value">
-                                  {{ example.Value }}
-                                </mat-option>
-                              }
-                            </mat-select>
-                            @if (
-                              getRCloneOptionControl(option.Name).invalid &&
-                              getRCloneOptionControl(option.Name).touched
-                            ) {
-                              <mat-error>{{
-                                getRCloneOptionError(getRCloneOptionControl(option.Name))
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- CacheMode Options (Dropdown) -->
-                    @if (option.Type === 'CacheMode') {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <mat-select
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              (selectionChange)="saveRCloneOption(option.Name)"
-                            >
-                              @for (example of option.Examples; track example.Value) {
-                                <mat-option [value]="example.Value">
-                                  {{ example.Value }}
-                                </mat-option>
-                              }
-                            </mat-select>
-                            @if (
-                              getRCloneOptionControl(option.Name).invalid &&
-                              getRCloneOptionControl(option.Name).touched
-                            ) {
-                              <mat-error>{{
-                                getRCloneOptionError(getRCloneOptionControl(option.Name))
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- Exclusive Options (any type with Exclusive=true and Examples) -->
-                    @if (
-                      option.Exclusive &&
-                      option.Examples &&
-                      !['LogLevel', 'CacheMode'].includes(option.Type)
-                    ) {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <mat-select
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              (selectionChange)="saveRCloneOption(option.Name)"
-                            >
-                              @for (example of option.Examples; track example.Value) {
-                                <mat-option [value]="example.Value">
-                                  {{ example.Value }}
-                                </mat-option>
-                              }
-                            </mat-select>
-                            @if (
-                              getRCloneOptionControl(option.Name).invalid &&
-                              getRCloneOptionControl(option.Name).touched
-                            ) {
-                              <mat-error>{{
-                                getRCloneOptionError(getRCloneOptionControl(option.Name))
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- FileMode Options (Permission editor) -->
-                    @if (option.Type === 'FileMode') {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <input
-                              matInput
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              [placeholder]="option.DefaultStr"
-                              (blur)="saveRCloneOption(option.Name)"
-                            />
-                            <mat-hint>Octal format (e.g., 755, 644)</mat-hint>
-                            @if (
-                              getRCloneOptionControl(option.Name).invalid &&
-                              getRCloneOptionControl(option.Name).touched
-                            ) {
-                              <mat-error>{{
-                                getRCloneOptionError(getRCloneOptionControl(option.Name))
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- Bits Options (Flags) -->
-                    @if (option.Type === 'Bits') {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <input
-                              matInput
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              [placeholder]="option.DefaultStr"
-                              (blur)="saveRCloneOption(option.Name)"
-                            />
-                            <mat-hint>Comma-separated flags</mat-hint>
-                            @if (
-                              getRCloneOptionControl(option.Name).invalid &&
-                              getRCloneOptionControl(option.Name).touched
-                            ) {
-                              <mat-error>{{
-                                getRCloneOptionError(getRCloneOptionControl(option.Name))
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- DumpFlags Options (Multi-select for dump items) -->
-                    @if (option.Type === 'DumpFlags') {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <mat-select
-                              multiple
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              (selectionChange)="saveRCloneOption(option.Name)"
-                            >
-                              @if (option.Examples) {
-                                @for (example of option.Examples; track example.Value) {
-                                  <mat-option [value]="example.Value">
-                                    {{ example.Value }}
-                                  </mat-option>
-                                }
-                              } @else {
-                                <mat-option value="headers">headers</mat-option>
-                                <mat-option value="bodies">bodies</mat-option>
-                                <mat-option value="requests">requests</mat-option>
-                                <mat-option value="responses">responses</mat-option>
-                                <mat-option value="auth">auth</mat-option>
-                                <mat-option value="filters">filters</mat-option>
-                                <mat-option value="goroutines">goroutines</mat-option>
-                                <mat-option value="openfiles">openfiles</mat-option>
-                                <mat-option value="mapper">mapper</mat-option>
-                              }
-                            </mat-select>
-                            <mat-hint>Select items to dump (multiple allowed)</mat-hint>
-                            @if (
-                              getRCloneOptionControl(option.Name).invalid &&
-                              getRCloneOptionControl(option.Name).touched
-                            ) {
-                              <mat-error>{{
-                                getRCloneOptionError(getRCloneOptionControl(option.Name))
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- SpaceSepList Options (Space-separated list) -->
-                    @if (option.Type === 'SpaceSepList') {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <input
-                              matInput
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              [placeholder]="option.DefaultStr"
-                              (blur)="saveRCloneOption(option.Name)"
-                            />
-                            <mat-hint>Space-separated list of values</mat-hint>
-                            @if (
-                              getRCloneOptionControl(option.Name).invalid &&
-                              getRCloneOptionControl(option.Name).touched
-                            ) {
-                              <mat-error>{{
-                                getRCloneOptionError(getRCloneOptionControl(option.Name))
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- Float64 Options (Decimal number) -->
-                    @if (option.Type === 'float64') {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <input
-                              matInput
-                              type="number"
-                              step="0.01"
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              [placeholder]="option.DefaultStr"
-                              (blur)="saveRCloneOption(option.Name)"
-                            />
-                            @if (
-                              getRCloneOptionControl(option.Name).invalid &&
-                              getRCloneOptionControl(option.Name).touched
-                            ) {
-                              <mat-error>{{
-                                getRCloneOptionError(getRCloneOptionControl(option.Name))
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- BwTimetable Options (Bandwidth limit with timetable) -->
-                    @if (option.Type === 'BwTimetable') {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <input
-                              matInput
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              [placeholder]="option.DefaultStr"
-                              (blur)="saveRCloneOption(option.Name)"
-                            />
-                            <mat-hint
-                              >Bandwidth limit in KiB/s, or use suffix B|K|M|G|T|P or full timetable
-                              format</mat-hint
-                            >
-                            @if (
-                              getRCloneOptionControl(option.Name).invalid &&
-                              getRCloneOptionControl(option.Name).touched
-                            ) {
-                              <mat-error>{{
-                                getRCloneOptionError(getRCloneOptionControl(option.Name))
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- Time Options (ISO 8601 datetime) -->
-                    @if (option.Type === 'Time') {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                        <div class="setting-control">
-                          <mat-form-field class="input-field" appearance="outline">
-                            <input
-                              matInput
-                              type="datetime-local"
-                              [formControl]="getRCloneOptionControl(option.Name)"
-                              [attr.aria-label]="option.Name"
-                              (blur)="saveRCloneOption(option.Name)"
-                            />
-                            <mat-hint>ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)</mat-hint>
-                            @if (
-                              getRCloneOptionControl(option.Name).invalid &&
-                              getRCloneOptionControl(option.Name).touched
-                            ) {
-                              <mat-error>{{
-                                getRCloneOptionError(getRCloneOptionControl(option.Name))
-                              }}</mat-error>
-                            }
-                          </mat-form-field>
-                        </div>
-                      </div>
-                    }
-
-                    <!-- Show a placeholder for other types -->
-                    @if (
-                      ![
-                        'bool',
-                        'string',
-                        'int',
-                        'int64',
-                        'uint32',
-                        'Duration',
-                        'SizeSuffix',
-                        'stringArray',
-                        'LogLevel',
-                        'CacheMode',
-                        'FileMode',
-                        'Bits',
-                        'DumpFlags',
-                        'SpaceSepList',
-                        'float64',
-                        'BwTimetable',
-                        'Time',
-                      ].includes(option.Type) && !(option.Exclusive && option.Examples)
-                    ) {
-                      <div class="setting-full-width">
-                        <div class="setting-info">
-                          <strong>{{ option.FieldName }}</strong>
-                          <p>{{ option.Help }}</p>
-                          <small class="type-info"
-                            >Type: {{ option.Type }} (not yet implemented)</small
-                          >
-                          <small class="default-value">Default: {{ option.DefaultStr }}</small>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                }
+                <div class="settings-list">
+                  @for (
+                    option of getRCloneOptionsForCurrentPage();
+                    track trackByOptionName($index, option)
+                  ) {
+                    <ng-container
+                      *ngTemplateOutlet="settingItem; context: { $implicit: option }"
+                    ></ng-container>
+                  }
+                </div>
               }
-            </div>
-          }
+            }
+          </div>
         }
       </div>
     </div>
   }
 </div>
+
+<!-- SETTING ITEM TEMPLATE (reusable) -->
+<ng-template #settingItem let-option>
+  <div class="setting-item">
+    @switch (option.Type) {
+      @case ('bool') {
+        <div class="setting-info">
+          <strong>{{ option.FieldName }}</strong>
+          <p>{{ option.Help }}</p>
+          <small class="default-value">Default: {{ option.DefaultStr }}</small>
+        </div>
+        <div class="setting-control">
+          <mat-slide-toggle
+            [formControl]="$any(getRCloneOptionControl(option.Name))"
+            [attr.aria-label]="option.Name"
+            (change)="saveRCloneOption(option.Name)"
+          >
+            {{ getRCloneOptionControl(option.Name)?.value ? 'Enabled' : 'Disabled' }}
+          </mat-slide-toggle>
+        </div>
+      }
+
+      @case ('string') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+            <small class="default-value">Default: {{ option.DefaultStr }}</small>
+          </div>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(getRCloneOptionControl(option.Name))"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr || ''"
+                (blur)="saveRCloneOption(option.Name)"
+              />
+              @if (
+                getRCloneOptionControl(option.Name)?.invalid &&
+                getRCloneOptionControl(option.Name)?.touched
+              ) {
+                <mat-error>{{
+                  getRCloneOptionError(getRCloneOptionControl(option.Name))
+                }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('Duration') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+            <small class="default-value">Default: {{ option.DefaultStr }}</small>
+          </div>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(getRCloneOptionControl(option.Name))"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr || ''"
+                (blur)="saveRCloneOption(option.Name)"
+              />
+              <mat-hint>Format: 1h30m45s</mat-hint>
+              @if (
+                getRCloneOptionControl(option.Name)?.invalid &&
+                getRCloneOptionControl(option.Name)?.touched
+              ) {
+                <mat-error>{{
+                  getRCloneOptionError(getRCloneOptionControl(option.Name))
+                }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('SizeSuffix') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+            <small class="default-value">Default: {{ option.DefaultStr }}</small>
+          </div>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(getRCloneOptionControl(option.Name))"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr || ''"
+                (blur)="saveRCloneOption(option.Name)"
+              />
+              <mat-hint>Format: 100Ki, 16Mi, 1Gi</mat-hint>
+              @if (
+                getRCloneOptionControl(option.Name)?.invalid &&
+                getRCloneOptionControl(option.Name)?.touched
+              ) {
+                <mat-error>{{
+                  getRCloneOptionError(getRCloneOptionControl(option.Name))
+                }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('FileMode') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+            <small class="default-value">Default: {{ option.DefaultStr }}</small>
+          </div>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(getRCloneOptionControl(option.Name))"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr || ''"
+                (blur)="saveRCloneOption(option.Name)"
+              />
+              @if (
+                getRCloneOptionControl(option.Name)?.invalid &&
+                getRCloneOptionControl(option.Name)?.touched
+              ) {
+                <mat-error>{{
+                  getRCloneOptionError(getRCloneOptionControl(option.Name))
+                }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('int') {
+        <div class="setting-info">
+          <strong>{{ option.FieldName }}</strong>
+          <p>{{ option.Help }}</p>
+          <small class="default-value">Default: {{ option.DefaultStr }}</small>
+        </div>
+        <div class="setting-control">
+          <mat-form-field class="input-field" appearance="outline">
+            <input
+              matInput
+              type="number"
+              [formControl]="$any(getRCloneOptionControl(option.Name))"
+              [attr.aria-label]="option.Name"
+              [placeholder]="option.DefaultStr || ''"
+              (blur)="saveRCloneOption(option.Name)"
+            />
+            @if (
+              getRCloneOptionControl(option.Name)?.invalid &&
+              getRCloneOptionControl(option.Name)?.touched
+            ) {
+              <mat-error>{{ getRCloneOptionError(getRCloneOptionControl(option.Name)) }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      }
+
+      @case ('int64') {
+        <div class="setting-info">
+          <strong>{{ option.FieldName }}</strong>
+          <p>{{ option.Help }}</p>
+          <small class="default-value">Default: {{ option.DefaultStr }}</small>
+        </div>
+        <div class="setting-control">
+          <mat-form-field class="input-field" appearance="outline">
+            <input
+              matInput
+              type="number"
+              [formControl]="$any(getRCloneOptionControl(option.Name))"
+              [attr.aria-label]="option.Name"
+              [placeholder]="option.DefaultStr || ''"
+              (blur)="saveRCloneOption(option.Name)"
+            />
+            @if (
+              getRCloneOptionControl(option.Name)?.invalid &&
+              getRCloneOptionControl(option.Name)?.touched
+            ) {
+              <mat-error>{{ getRCloneOptionError(getRCloneOptionControl(option.Name)) }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      }
+
+      @case ('uint32') {
+        <div class="setting-info">
+          <strong>{{ option.FieldName }}</strong>
+          <p>{{ option.Help }}</p>
+          <small class="default-value">Default: {{ option.DefaultStr }}</small>
+        </div>
+        <div class="setting-control">
+          <mat-form-field class="input-field" appearance="outline">
+            <input
+              matInput
+              type="number"
+              [formControl]="$any(getRCloneOptionControl(option.Name))"
+              [attr.aria-label]="option.Name"
+              [placeholder]="option.DefaultStr || ''"
+              (blur)="saveRCloneOption(option.Name)"
+            />
+            @if (
+              getRCloneOptionControl(option.Name)?.invalid &&
+              getRCloneOptionControl(option.Name)?.touched
+            ) {
+              <mat-error>{{ getRCloneOptionError(getRCloneOptionControl(option.Name)) }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      }
+
+      @case ('float64') {
+        <div class="setting-info">
+          <strong>{{ option.FieldName }}</strong>
+          <p>{{ option.Help }}</p>
+          <small class="default-value">Default: {{ option.DefaultStr }}</small>
+        </div>
+        <div class="setting-control">
+          <mat-form-field class="input-field" appearance="outline">
+            <input
+              matInput
+              type="number"
+              step="any"
+              [formControl]="$any(getRCloneOptionControl(option.Name))"
+              [attr.aria-label]="option.Name"
+              [placeholder]="option.DefaultStr || ''"
+              (blur)="saveRCloneOption(option.Name)"
+            />
+            @if (
+              getRCloneOptionControl(option.Name)?.invalid &&
+              getRCloneOptionControl(option.Name)?.touched
+            ) {
+              <mat-error>{{ getRCloneOptionError(getRCloneOptionControl(option.Name)) }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      }
+
+      @case ('stringArray') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+          </div>
+          <div class="array-items">
+            @for (control of getFormArrayControls(option.Name); track $index) {
+              <div class="array-item">
+                <mat-form-field appearance="outline" class="array-input">
+                  <input
+                    matInput
+                    [formControl]="$any(control)"
+                    [attr.aria-label]="option.Name + ' item ' + ($index + 1)"
+                    (blur)="saveRCloneOption(option.Name)"
+                  />
+                  <button
+                    mat-icon-button
+                    matSuffix
+                    (click)="removeArrayItem(option.Name, $index)"
+                    [attr.aria-label]="'Remove ' + option.Name + ' item'"
+                  >
+                    <mat-icon svgIcon="trash"></mat-icon>
+                  </button>
+                </mat-form-field>
+              </div>
+            }
+            <button
+              mat-stroked-button
+              class="add-array-item-btn"
+              (click)="addArrayItem(option.Name)"
+            >
+              <mat-icon svgIcon="plus"></mat-icon>
+              Add Item
+            </button>
+          </div>
+        </div>
+      }
+
+      @case ('LogLevel') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+            <small class="default-value">Default: {{ option.DefaultStr }}</small>
+          </div>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <mat-select
+                [formControl]="$any(getRCloneOptionControl(option.Name))"
+                [attr.aria-label]="option.Name"
+                (selectionChange)="saveRCloneOption(option.Name)"
+              >
+                @for (example of option.Examples; track example.Value) {
+                  <mat-option [value]="example.Value">{{ example.Value }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('CacheMode') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+            <small class="default-value">Default: {{ option.DefaultStr }}</small>
+          </div>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <mat-select
+                [formControl]="$any(getRCloneOptionControl(option.Name))"
+                [attr.aria-label]="option.Name"
+                (selectionChange)="saveRCloneOption(option.Name)"
+              >
+                @for (example of option.Examples; track example.Value) {
+                  <mat-option [value]="example.Value">{{ example.Value }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('DumpFlags') {
+        <div class="setting-full-width">
+          <div class="setting-info">
+            <strong>{{ option.FieldName }}</strong>
+            <p>{{ option.Help }}</p>
+            <small class="default-value">Default: {{ option.DefaultStr }}</small>
+          </div>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <mat-select
+                [multiple]="true"
+                [formControl]="$any(getRCloneOptionControl(option.Name))"
+                [attr.aria-label]="option.Name"
+                (selectionChange)="saveRCloneOption(option.Name)"
+              >
+                @for (example of option.Examples; track example.Value) {
+                  <mat-option [value]="example.Value">{{ example.Value }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @default {
+        @if (
+          option.Exclusive &&
+          option.Examples &&
+          !['LogLevel', 'CacheMode', 'DumpFlags'].includes(option.Type)
+        ) {
+          <div class="setting-full-width">
+            <div class="setting-info">
+              <strong>{{ option.FieldName }}</strong>
+              <p>{{ option.Help }}</p>
+              <small class="default-value">Default: {{ option.DefaultStr }}</small>
+            </div>
+            <div class="setting-control">
+              <mat-form-field class="input-field" appearance="outline">
+                <mat-select
+                  [formControl]="$any(getRCloneOptionControl(option.Name))"
+                  [attr.aria-label]="option.Name"
+                  (selectionChange)="saveRCloneOption(option.Name)"
+                >
+                  @for (example of option.Examples; track example.Value) {
+                    <mat-option [value]="example.Value">{{ example.Value }}</mat-option>
+                  }
+                </mat-select>
+                @if (
+                  getRCloneOptionControl(option.Name)?.invalid &&
+                  getRCloneOptionControl(option.Name)?.touched
+                ) {
+                  <mat-error>{{
+                    getRCloneOptionError(getRCloneOptionControl(option.Name))
+                  }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+          </div>
+        } @else if (!(option.Exclusive && option.Examples)) {
+          <div class="setting-full-width">
+            <div class="setting-info">
+              <strong>{{ option.FieldName }}</strong>
+              <p>{{ option.Help }}</p>
+              <small class="type-info">Type: {{ option.Type }} (not implemented)</small>
+              <small class="default-value">Default: {{ option.DefaultStr }}</small>
+            </div>
+          </div>
+        }
+      }
+    }
+  </div>
+</ng-template>
