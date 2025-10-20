@@ -1,0 +1,478 @@
+@if (control) {
+  <ng-template #settingInfo let-opt>
+    <div class="setting-info">
+      <strong>{{ opt.FieldName }}</strong>
+      <p>{{ opt.Help }}</p>
+      <small class="default-value">Default: {{ opt.DefaultStr }}</small>
+    </div>
+  </ng-template>
+
+  <div class="setting-item" id="{{ 'setting-' + option.Name }}">
+    @switch (option.Type) {
+      @case ('bool') {
+        <ng-container
+          *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+        ></ng-container>
+        <div class="setting-control">
+          <mat-slide-toggle
+            [formControl]="$any(control)"
+            [attr.aria-label]="option.Name"
+            (change)="commitValue()"
+          >
+            {{ control.value ? 'Enabled' : 'Disabled' }}
+          </mat-slide-toggle>
+        </div>
+      }
+
+      @case ('string') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(control)"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr || ''"
+                (blur)="commitValue()"
+              />
+              @if (control.invalid && control.touched) {
+                <mat-error>{{ getControlError() }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('Duration') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(control)"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr || ''"
+                (blur)="commitValue()"
+              />
+              <mat-hint>Format: 1h30m45s</mat-hint>
+              @if (control.invalid && control.touched) {
+                <mat-error>{{ getControlError() }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('SpaceSepList') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(control)"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr"
+                (blur)="commitValue()"
+              />
+              <mat-hint>Space-separated list of values</mat-hint>
+              @if (control.invalid && control.touched) {
+                <mat-error>{{ getControlError() }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('Time') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                type="datetime-local"
+                [formControl]="$any(control)"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr || ''"
+                (blur)="commitValue()"
+              />
+              <mat-hint>ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)</mat-hint>
+              @if (control.invalid && control.touched) {
+                <mat-error>{{ getControlError() }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('Bits') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(control)"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr"
+                (blur)="commitValue()"
+              />
+              <mat-hint>Comma-separated flags</mat-hint>
+              @if (control.invalid && control.touched) {
+                <mat-error>{{ getControlError() }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('Tristate') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <mat-select
+                [formControl]="$any(control)"
+                [attr.aria-label]="option.Name"
+                (selectionChange)="commitValue()"
+              >
+                <mat-option [value]="null">Auto (unset)</mat-option>
+                <mat-option [value]="true">True</mat-option>
+                <mat-option [value]="false">False</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      <!-- BwTimetable Options (Bandwidth limit with timetable) -->
+      @case ('BwTimetable') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(control)"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr"
+                (blur)="commitValue()"
+              />
+              <mat-hint
+                >Bandwidth limit in KiB/s, or use suffix B|K|M|G|T|P or full timetable
+                format</mat-hint
+              >
+              @if (control.invalid && control.touched) {
+                <mat-error>{{ getControlError() }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('SizeSuffix') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(control)"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr || ''"
+                (blur)="commitValue()"
+              />
+              <mat-hint>Format: 100Ki, 16Mi, 1Gi</mat-hint>
+              @if (control.invalid && control.touched) {
+                <mat-error>{{ getControlError() }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('FileMode') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <input
+                matInput
+                [formControl]="$any(control)"
+                [attr.aria-label]="option.Name"
+                [placeholder]="option.DefaultStr || ''"
+                (blur)="commitValue()"
+              />
+              @if (control.invalid && control.touched) {
+                <mat-error>{{ getControlError() }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('int') {
+        <ng-container
+          *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+        ></ng-container>
+        <div class="setting-control">
+          <mat-form-field class="input-field" appearance="outline">
+            <input
+              matInput
+              type="number"
+              [formControl]="$any(control)"
+              [attr.aria-label]="option.Name"
+              [placeholder]="option.DefaultStr || ''"
+              (blur)="commitValue()"
+            />
+            @if (control.invalid && control.touched) {
+              <mat-error>{{ getControlError() }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      }
+
+      @case ('int64') {
+        <ng-container
+          *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+        ></ng-container>
+        <div class="setting-control">
+          <mat-form-field class="input-field" appearance="outline">
+            <input
+              matInput
+              type="number"
+              [formControl]="$any(control)"
+              [attr.aria-label]="option.Name"
+              [placeholder]="option.DefaultStr || ''"
+              (blur)="commitValue()"
+            />
+            @if (control.invalid && control.touched) {
+              <mat-error>{{ getControlError() }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      }
+
+      @case ('uint32') {
+        <ng-container
+          *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+        ></ng-container>
+        <div class="setting-control">
+          <mat-form-field class="input-field" appearance="outline">
+            <input
+              matInput
+              type="number"
+              [formControl]="$any(control)"
+              [attr.aria-label]="option.Name"
+              [placeholder]="option.DefaultStr || ''"
+              (blur)="commitValue()"
+            />
+            @if (control.invalid && control.touched) {
+              <mat-error>{{ getControlError() }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      }
+
+      @case ('float64') {
+        <ng-container
+          *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+        ></ng-container>
+        <div class="setting-control">
+          <mat-form-field class="input-field" appearance="outline">
+            <input
+              matInput
+              type="number"
+              step="any"
+              [formControl]="$any(control)"
+              [attr.aria-label]="option.Name"
+              [placeholder]="option.DefaultStr || ''"
+              (blur)="commitValue()"
+            />
+            @if (control.invalid && control.touched) {
+              <mat-error>{{ getControlError() }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      }
+
+      @case ('stringArray') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="array-items">
+            @for (itemControl of formArrayControls; track $index) {
+              <div class="array-item">
+                <mat-form-field appearance="outline" class="array-input">
+                  <input
+                    matInput
+                    [formControl]="$any(itemControl)"
+                    [attr.aria-label]="option.Name + ' item ' + ($index + 1)"
+                    (blur)="commitValue()"
+                  />
+                  <button
+                    mat-icon-button
+                    matSuffix
+                    (click)="removeArrayItem($index)"
+                    [attr.aria-label]="'Remove ' + option.Name + ' item'"
+                  >
+                    <mat-icon svgIcon="trash"></mat-icon>
+                  </button>
+                </mat-form-field>
+              </div>
+            }
+            <button mat-stroked-button class="add-array-item-btn" (click)="addArrayItem()">
+              <mat-icon svgIcon="plus"></mat-icon>
+              Add Item
+            </button>
+          </div>
+        </div>
+      }
+
+      @case ('LogLevel') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <mat-select
+                [formControl]="$any(control)"
+                [attr.aria-label]="option.Name"
+                (selectionChange)="commitValue()"
+              >
+                @for (example of option.Examples; track example.Value) {
+                  <mat-option [value]="example.Value">{{ example.Value }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('CacheMode') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <mat-select
+                [formControl]="$any(control)"
+                [attr.aria-label]="option.Name"
+                (selectionChange)="commitValue()"
+              >
+                @for (example of option.Examples; track example.Value) {
+                  <mat-option [value]="example.Value">{{ example.Value }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @case ('DumpFlags') {
+        <div class="setting-full-width">
+          <ng-container
+            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+          ></ng-container>
+          <div class="setting-control">
+            <mat-form-field class="input-field" appearance="outline">
+              <mat-select
+                multiple
+                [formControl]="$any(control)"
+                [attr.aria-label]="option.Name"
+                (selectionChange)="commitValue()"
+              >
+                @if (option.Examples) {
+                  @for (example of option.Examples; track example.Value) {
+                    <mat-option [value]="example.Value">
+                      {{ example.Value }}
+                    </mat-option>
+                  }
+                } @else {
+                  <mat-option value="headers">headers</mat-option>
+                  <mat-option value="bodies">bodies</mat-option>
+                  <mat-option value="requests">requests</mat-option>
+                  <mat-option value="responses">responses</mat-option>
+                  <mat-option value="auth">auth</mat-option>
+                  <mat-option value="filters">filters</mat-option>
+                  <mat-option value="goroutines">goroutines</mat-option>
+                  <mat-option value="openfiles">openfiles</mat-option>
+                  <mat-option value="mapper">mapper</mat-option>
+                }
+              </mat-select>
+              <mat-hint>Select items to dump (multiple allowed)</mat-hint>
+              @if (control.invalid && control.touched) {
+                <mat-error>{{ getControlError() }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+        </div>
+      }
+
+      @default {
+        @if (
+          option.Exclusive &&
+          option.Examples &&
+          !['LogLevel', 'CacheMode', 'DumpFlags'].includes(option.Type)
+        ) {
+          <div class="setting-full-width">
+            <div class="setting-info">
+              <strong>{{ option.FieldName }}</strong>
+              <p>{{ option.Help }}</p>
+              <small class="default-value">Default: {{ option.DefaultStr }}</small>
+            </div>
+            <div class="setting-control">
+              <mat-form-field class="input-field" appearance="outline">
+                <mat-select
+                  [formControl]="$any(control)"
+                  [attr.aria-label]="option.Name"
+                  (selectionChange)="commitValue()"
+                >
+                  @for (example of option.Examples; track example.Value) {
+                    <mat-option [value]="example.Value">{{ example.Value }}</mat-option>
+                  }
+                </mat-select>
+                @if (control.invalid && control.touched) {
+                  <mat-error>{{ getControlError() }}</mat-error>
+                }
+              </mat-form-field>
+            </div>
+          </div>
+        } @else if (!(option.Exclusive && option.Examples)) {
+          <div class="setting-full-width">
+            <div class="setting-info">
+              <strong>{{ option.FieldName }}</strong>
+              <p>{{ option.Help }}</p>
+              <small class="type-info">Type: {{ option.Type }} (not implemented)</small>
+              <small class="default-value">Default: {{ option.DefaultStr }}</small>
+            </div>
+          </div>
+        }
+      }
+    }
+  </div>
+}

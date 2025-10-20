@@ -99,7 +99,7 @@
         </mat-form-field>
       }
       <!-- Select Inputs -->
-      @if (field.Type !== 'bool' && field.Examples.length > 0) {
+      @if (field.Type !== 'bool') {
         <mat-form-field appearance="fill">
           <mat-label>{{ field.Name }}</mat-label>
           <mat-select [formControlName]="field.Name">
@@ -119,10 +119,7 @@
         </mat-form-field>
       }
       <!-- Default Text Input -->
-      @if (
-        !['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration', 'bool'].includes(field.Type) &&
-        field.Examples.length === 0
-      ) {
+      @if (!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration', 'bool'].includes(field.Type)) {
         <mat-form-field appearance="fill">
           <mat-label>{{ field.Name }}</mat-label>
           <input
@@ -166,7 +163,7 @@
           </mat-form-field>
         }
         <!-- Select Inputs -->
-        @if (field.Type !== 'bool' && field.Examples.length > 0) {
+        @if (field.Type !== 'bool') {
           <mat-form-field appearance="fill">
             <mat-label>{{ field.Name }}</mat-label>
             <mat-select [formControlName]="field.Name">
@@ -186,10 +183,7 @@
           </mat-form-field>
         }
         <!-- Default Text Input -->
-        @if (
-          !['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration', 'bool'].includes(field.Type) &&
-          field.Examples.length === 0
-        ) {
+        @if (!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration', 'bool'].includes(field.Type)) {
           <mat-form-field appearance="fill">
             <mat-label>{{ field.Name }}</mat-label>
             <input

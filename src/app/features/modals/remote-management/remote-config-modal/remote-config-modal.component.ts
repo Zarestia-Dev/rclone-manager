@@ -10,11 +10,11 @@ import {
 import { CommonModule } from '@angular/common';
 import {
   FormBuilder,
-  FormControl,
   FormGroup,
   ValidatorFn,
   Validators,
   FormsModule,
+  FormControl,
 } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatInputModule } from '@angular/material/input';
@@ -34,7 +34,6 @@ import {
   FlagField,
   FlagType,
   REMOTE_NAME_REGEX,
-  RemoteField,
   RemoteType,
 } from '../../../../shared/remote-config/remote-config-types';
 import { RcConfigQuestionResponse } from '@app/services';
@@ -44,7 +43,6 @@ import { InteractiveConfigStepComponent } from '../../../../shared/remote-config
 import { AnimationsService } from '../../../../shared/services/animations.service';
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
 import { ValidatorRegistryService } from '../../../../shared/services/validator-registry.service';
-import { RemoteConfigService } from '@app/services';
 import { FlagConfigService } from '@app/services';
 import { PathSelectionService } from '@app/services';
 import { RemoteManagementService } from '@app/services';
@@ -62,6 +60,8 @@ import {
   MoveConfig,
   FilterConfig,
   VfsConfig,
+  RcConfigOption,
+  RemoteField,
 } from '@app/types';
 
 @Component({
@@ -90,7 +90,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   @ViewChild('jsonArea') jsonArea!: ElementRef<HTMLTextAreaElement>;
   fb = inject(FormBuilder);
   dialogRef = inject(MatDialogRef<RemoteConfigModalComponent>);
-  remoteConfigService = inject(RemoteConfigService);
   flagConfigService = inject(FlagConfigService);
   pathSelectionService = inject(PathSelectionService);
   authStateService = inject(AuthStateService);
@@ -122,7 +121,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   remoteConfigForm: FormGroup;
 
   remoteTypes: RemoteType[] = [];
-  dynamicRemoteFields: RemoteField[] = [];
+  dynamicRemoteFields: RcConfigOption[] = [];
   existingRemotes: string[] = [];
   mountTypes: string[] = [];
 
@@ -295,25 +294,31 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   // Remote Config Service
   private async loadRemoteTypes(): Promise<void> {
-    this.remoteTypes = await this.remoteConfigService.getRemoteTypes();
+    this.remoteTypes = await this.getRemoteTypes();
   }
 
   async onRemoteTypeChange(): Promise<void> {
     this.isRemoteConfigLoading = true;
     try {
-      const remoteName = this.remoteForm.get('name')?.value;
       const remoteType = this.remoteForm.get('type')?.value;
 
-      // Enable interactive mode by default for remotes that commonly require it
       this.useInteractiveMode = ['iclouddrive', 'onedrive'].includes(remoteType?.toLowerCase());
-
       const response = await this.remoteManagementService.getRemoteConfigFields(remoteType);
 
-      this.remoteForm = this.createRemoteForm();
-      this.remoteForm.patchValue({ name: remoteName, type: remoteType });
+      // 1. Clear out old dynamic fields from the form
+      Object.keys(this.remoteForm.controls).forEach(key => {
+        if (key !== 'name' && key !== 'type') {
+          this.remoteForm.removeControl(key);
+        }
+      });
 
-      this.dynamicRemoteFields = this.remoteConfigService.mapRemoteFields(response);
-      this.addDynamicRemoteFieldsToForm();
+      this.dynamicRemoteFields = this.mapRemoteFields(response);
+
+      this.dynamicRemoteFields.forEach(field => {
+        // Use the Value from the API if present, otherwise the Default value
+        const initialValue = field.Value ?? field.DefaultStr;
+        this.remoteForm.addControl(field.Name, new FormControl(initialValue));
+      });
     } catch (error) {
       console.error('Error loading remote config fields:', error);
     } finally {
@@ -325,11 +330,38 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.useInteractiveMode = useInteractiveMode;
   }
 
-  private addDynamicRemoteFieldsToForm(): void {
-    this.dynamicRemoteFields.forEach(field => {
-      const config = this.remoteConfigService.createFormControlConfig(field);
-      this.remoteForm.addControl(field.Name, new FormControl(config.value, config.validators));
-    });
+  async getRemoteTypes(): Promise<RemoteType[]> {
+    try {
+      const providers = await this.remoteManagementService.getRemoteTypes();
+      return providers.map(provider => ({
+        value: provider.name,
+        label: provider.description,
+      }));
+    } catch (error) {
+      console.error('Error fetching remote types:', error);
+      throw error;
+    }
+  }
+
+  mapRemoteFields(remoteOptions: any[]): RemoteField[] {
+    return remoteOptions.map(field => ({
+      Name: field.Name,
+      FieldName: field.Name, // Use Name as the display field name
+      Help: field.Help,
+      Default: { Value: field.Default, Valid: true },
+      Value: field.Value,
+      Hide: field.Hide,
+      Required: field.Required,
+      IsPassword: field.IsPassword,
+      NoPrefix: field.NoPrefix,
+      Advanced: field.Advanced,
+      Exclusive: field.Exclusive,
+      Sensitive: field.Sensitive,
+      DefaultStr: field.DefaultStr,
+      ValueStr: field.ValueStr,
+      Type: field.Type === 'CommaSepList' ? 'stringArray' : field.Type,
+      Examples: field.Examples || [],
+    }));
   }
 
   private setupAuthStateListeners(): void {

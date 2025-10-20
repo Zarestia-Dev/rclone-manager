@@ -21,12 +21,8 @@ import {
   FormControl,
   ReactiveFormsModule,
   FormsModule,
-  ValidatorFn,
-  Validators,
   AbstractControl,
   FormGroup,
-  FormArray,
-  ValidationErrors,
 } from '@angular/forms';
 
 import { AnimationsService } from '../../../../shared/services/animations.service';
@@ -38,6 +34,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { SecuritySettingsComponent } from '../security-settings/security-settings.component';
 import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
+import { SettingControlComponent } from 'src/app/shared/components';
 
 type PageType = 'home' | 'security' | string;
 type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
@@ -74,6 +71,7 @@ interface SearchResult {
     MatExpansionModule,
     SearchContainerComponent,
     SecuritySettingsComponent,
+    SettingControlComponent,
   ],
   templateUrl: './rclone-config-modal.component.html',
   styleUrl: './rclone-config-modal.component.scss',
@@ -269,26 +267,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
           this.optionToServiceMap[uniqueControlKey] = service;
           this.optionToCategoryMap[uniqueControlKey] = category;
           this.optionToFullFieldNameMap[uniqueControlKey] = fullFieldName;
-
-          const validators = this.getRCloneOptionValidators(option);
-          let initialValue: unknown = option.Value;
-
-          if (option.Type === 'stringArray') {
-            const arrayValues = (Array.isArray(initialValue) ? initialValue : []).filter(v => v);
-            this.rcloneOptionsForm.addControl(
-              uniqueControlKey,
-              new FormArray(
-                arrayValues.map(val => new FormControl(val)),
-                validators
-              )
-            );
-          } else {
-            if (option.Type === 'bool') {
-              initialValue = initialValue === true || initialValue === 'true';
-            }
-            const control = new FormControl(initialValue, validators);
-            this.rcloneOptionsForm.addControl(uniqueControlKey, control);
-          }
+          this.rcloneOptionsForm.addControl(uniqueControlKey, new FormControl(option.Value));
         }
       }
     }
@@ -483,22 +462,23 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   // Form control management
   async saveRCloneOption(optionName: string): Promise<void> {
-    const uniqueKey = `${this.currentPage}---${this.currentCategory}---${optionName}`;
-    const control = this.rcloneOptionsForm.get(uniqueKey);
+    const control = this.rcloneOptionsForm.get(optionName);
+    console.log('Saving option:', optionName, 'with value:', control?.value);
 
-    if (!control || control.invalid || this.savingOptions.has(uniqueKey) || control.pristine) {
+    if (!control || control.invalid || this.savingOptions.has(optionName) || control.pristine) {
+      console.log('Skipping save for option:', optionName);
       return;
     }
 
     try {
-      this.savingOptions.add(uniqueKey);
+      this.savingOptions.add(optionName);
       control.disable({ emitEvent: false });
 
-      const service = this.optionToServiceMap[uniqueKey];
-      const fullFieldName = this.optionToFullFieldNameMap[uniqueKey];
+      const service = this.optionToServiceMap[optionName];
+      const fullFieldName = this.optionToFullFieldNameMap[optionName];
 
       if (!service || !fullFieldName) {
-        throw new Error(`Mapping not found for ${uniqueKey}`);
+        throw new Error(`Mapping not found for ${optionName}`);
       }
 
       let valueToSave = control.value;
@@ -511,10 +491,10 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       control.markAsPristine();
       this.notificationService.showSuccess(`Saved: ${fullFieldName}`);
     } catch (error) {
-      console.error(`Failed to save option ${uniqueKey}:`, error);
+      console.error(`Failed to save option ${optionName}:`, error);
       this.notificationService.showError(`Failed to save ${optionName}`);
     } finally {
-      this.savingOptions.delete(uniqueKey);
+      this.savingOptions.delete(optionName);
       if (control) control.enable({ emitEvent: false });
     }
   }
@@ -522,272 +502,6 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   getRCloneOptionControl(optionName: string): AbstractControl | null {
     const uniqueKey = `${this.currentPage}---${this.currentCategory}---${optionName}`;
     return this.rcloneOptionsForm.get(uniqueKey);
-  }
-
-  addArrayItem(optionName: string): void {
-    const uniqueKey = `${this.currentPage}---${this.currentCategory}---${optionName}`;
-    const formArray = this.rcloneOptionsForm.get(uniqueKey) as FormArray;
-    formArray.push(new FormControl(''));
-    formArray.markAsDirty();
-    this.saveRCloneOption(optionName);
-  }
-
-  removeArrayItem(optionName: string, index: number): void {
-    const uniqueKey = `${this.currentPage}---${this.currentCategory}---${optionName}`;
-    const formArray = this.rcloneOptionsForm.get(uniqueKey) as FormArray;
-    formArray.removeAt(index);
-    formArray.markAsDirty();
-    this.saveRCloneOption(optionName);
-  }
-
-  getFormArrayControls(optionName: string): AbstractControl[] {
-    const uniqueKey = `${this.currentPage}---${this.currentCategory}---${optionName}`;
-    const formArray = this.rcloneOptionsForm.get(uniqueKey) as FormArray;
-    return formArray ? formArray.controls : [];
-  }
-
-  // Validators
-  getRCloneOptionValidators(option: RcConfigOption): ValidatorFn[] {
-    const validators: ValidatorFn[] = [];
-
-    if (option.Required) {
-      validators.push(Validators.required);
-    }
-
-    switch (option.Type) {
-      case 'int':
-      case 'int64':
-      case 'uint32':
-        validators.push(this.integerValidator(option.DefaultStr));
-        break;
-      case 'float64':
-        validators.push(this.floatValidator(option.DefaultStr));
-        break;
-      case 'Duration':
-        validators.push(this.durationValidator(option.DefaultStr));
-        break;
-      case 'SizeSuffix':
-        validators.push(this.sizeSuffixValidator(option.DefaultStr));
-        break;
-      case 'BwTimetable':
-        validators.push(this.bwTimetableValidator(option.DefaultStr));
-        break;
-      case 'FileMode':
-        validators.push(this.fileModeValidator(option.DefaultStr));
-        break;
-      case 'Time':
-        validators.push(this.timeValidator(option.DefaultStr));
-        break;
-      case 'SpaceSepList':
-        validators.push(this.spaceSepListValidator(option.DefaultStr));
-        break;
-      case 'Bits':
-        validators.push(this.bitsValidator(option.DefaultStr));
-        break;
-      case 'Tristate': // ADD THIS CASE
-        validators.push(this.tristateValidator());
-        break;
-      case 'LogLevel':
-      case 'CacheMode':
-        if (option.Examples) {
-          validators.push(this.enumValidator(option.Examples.map(e => e.Value)));
-        }
-        break;
-    }
-
-    if (option.Exclusive && option.Examples) {
-      validators.push(this.enumValidator(option.Examples.map(e => e.Value)));
-    }
-
-    return validators;
-  }
-
-  private integerValidator(defaultValue?: string): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || control.value === '') return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (!/^-?\d+$/.test(value)) {
-        return { integer: { value, message: 'Must be a valid integer' } };
-      }
-      return isNaN(parseInt(value, 10)) ? { integer: { value, message: 'Invalid integer' } } : null;
-    };
-  }
-
-  private floatValidator(defaultValue?: string): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || control.value === '') return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      if (!/^-?\d+(\.\d+)?$/.test(value)) {
-        return { float: { value, message: 'Must be a valid decimal number' } };
-      }
-      return isNaN(parseFloat(value)) ? { float: { value, message: 'Invalid float' } } : null;
-    };
-  }
-
-  private durationValidator(defaultValue?: string): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || control.value === '') return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      const durationPattern = /^(\d+(\.\d+)?(ns|us|µs|ms|s|m|h))+$/;
-      return !durationPattern.test(value)
-        ? { duration: { value, message: 'Invalid duration format. Use: 1h30m45s, 5m, 1h' } }
-        : null;
-    };
-  }
-
-  private tristateValidator(): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      const allowedValues = [null, true, false];
-      if (allowedValues.includes(control.value)) {
-        return null; // Value is valid
-      }
-      return {
-        tristate: { value: control.value, message: 'Value must be true, false, or unset.' },
-      };
-    };
-  }
-
-  private bitsValidator(defaultValue?: string): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || control.value === '') return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) {
-        return null;
-      }
-      if (value.length > 0 && !/^[a-zA-Z0-9_-]+(,\s*[a-zA-Z0-9_-]+)*$/.test(value)) {
-        return {
-          bits: {
-            value,
-            message: 'Must be comma-separated flags (alphanumeric, underscore, and hyphen)',
-          },
-        };
-      }
-
-      return null;
-    };
-  }
-
-  private timeValidator(defaultValue?: string): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || control.value === '') return null;
-
-      const value = control.value.toString().trim();
-
-      // Allow the option's default value
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) {
-        return null;
-      }
-
-      // ISO 8601 datetime format check
-      const isoPattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?([+-]\d{2}:\d{2}|Z)?$/;
-
-      if (!isoPattern.test(value)) {
-        const date = new Date(value);
-        if (isNaN(date.getTime())) {
-          return {
-            time: {
-              value,
-              message: 'Invalid datetime format. Use ISO 8601: YYYY-MM-DDTHH:mm:ssZ',
-            },
-          };
-        }
-      }
-
-      return null;
-    };
-  }
-
-  private spaceSepListValidator(defaultValue?: string): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || control.value === '') return null;
-
-      const value = control.value.toString().trim();
-
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) {
-        return null;
-      }
-      if (value.length > 0 && !/\S/.test(value)) {
-        return {
-          spaceSepList: {
-            value,
-            message: 'List cannot contain only whitespace',
-          },
-        };
-      }
-
-      return null;
-    };
-  }
-
-  private sizeSuffixValidator(defaultValue?: string): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || control.value === '') return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      const sizePattern = /^\d+(\.\d+)?(b|B|k|K|Ki|M|Mi|G|Gi|T|Ti|P|Pi|E|Ei)?$/;
-      return !sizePattern.test(value)
-        ? { sizeSuffix: { value, message: 'Invalid size format. Use: 100Ki, 16Mi, 1Gi, 2.5G' } }
-        : null;
-    };
-  }
-
-  private bwTimetableValidator(defaultValue?: string): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || control.value === '') return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      const simpleBandwidth = /^\d+(\.\d+)?(B|K|M|G|T|P)?$/i;
-      const hasTimetable = value.includes(',') || value.includes('-') || value.includes(':');
-      return !simpleBandwidth.test(value) && !hasTimetable && value.length > 0
-        ? { bwTimetable: { value, message: 'Invalid bandwidth format' } }
-        : null;
-    };
-  }
-
-  private fileModeValidator(defaultValue?: string): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || control.value === '') return null;
-      const value = control.value.toString().trim();
-      if (defaultValue && value.toLowerCase() === defaultValue.toLowerCase()) return null;
-      return !/^[0-7]{3,4}$/.test(value)
-        ? {
-            fileMode: {
-              value,
-              message: 'Must be octal format (3-4 digits, each 0-7). Example: 755',
-            },
-          }
-        : null;
-    };
-  }
-
-  private enumValidator(allowedValues: string[]): ValidatorFn {
-    return (control: AbstractControl): ValidationErrors | null => {
-      if (!control.value || control.value === '') return null;
-      const value = control.value.toString().trim().toLowerCase();
-      const allowed = allowedValues.map(v => v.toLowerCase());
-      return !allowed.includes(value)
-        ? { enum: { value, allowedValues, message: `Must be one of: ${allowedValues.join(', ')}` } }
-        : null;
-    };
-  }
-
-  getRCloneOptionError(control: AbstractControl | null): string | null {
-    if (!control || !control.errors) return null;
-    const errors = control.errors;
-    return (
-      errors['required']?.message ||
-      errors['integer']?.message ||
-      errors['float']?.message ||
-      errors['duration']?.message ||
-      errors['sizeSuffix']?.message ||
-      errors['bwTimetable']?.message ||
-      errors['fileMode']?.message ||
-      errors['enum']?.message ||
-      'Invalid value'
-    );
   }
 
   // UI helpers
@@ -805,7 +519,15 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   }
 
   trackByOptionName(_index?: number, option?: RcConfigOption): string {
+    // Include the current index if available to ensure uniqueness when duplicate option names exist
+    if (typeof _index === 'number') {
+      return `${this.currentPage}-${this.currentCategory}-${option?.Name}-${_index}`;
+    }
     return `${this.currentPage}-${this.currentCategory}-${option?.Name}`;
+  }
+
+  public getUniqueControlKey(option: RcConfigOption): string {
+    return `${this.currentPage}---${this.currentCategory}---${option.Name}`;
   }
 
   @HostListener('document:keydown.escape', ['$event'])
