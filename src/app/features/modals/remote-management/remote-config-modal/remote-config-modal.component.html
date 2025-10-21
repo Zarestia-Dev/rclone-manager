@@ -1,27 +1,62 @@
 <div class="modal-container">
   <!-- Modal Header -->
   <header class="modal-header" data-tauri-drag-region>
-    <button matIconButton aria-label="Help">
+    <button matIconButton aria-label="Help" title="Help">
       <mat-icon svgIcon="question"></mat-icon>
     </button>
+
     <p data-tauri-drag-region>
       <mat-icon svgIcon="hard-drive" aria-hidden="true"></mat-icon>
-      {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
+      <span>
+        {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
+      </span>
     </p>
-    <button matIconButton (click)="close()" aria-label="Close dialog">
+
+    <button matIconButton (click)="close()" aria-label="Close dialog" title="Close">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </header>
 
+  <!-- Step Progress Indicator -->
+  @if (!isInteractiveActive && !editTarget) {
+    <div class="step-indicator-container">
+      <div class="step-indicator hide-scrollbar" role="tablist" aria-label="Configuration Steps">
+        @for (step of stepLabels; track step; let i = $index) {
+          <button
+            class="step"
+            [ngClass]="getStepState(i + 1)"
+            [class.clickable]="editTarget"
+            [matTooltip]="step"
+            matTooltipPosition="below"
+            (click)="goToStep(i + 1)"
+            (keydown)="handleStepKeydown($event, i + 1)"
+            [attr.tabindex]="editTarget ? '0' : '-1'"
+            role="tab"
+            [disabled]="!remoteForm.valid || isAuthInProgress"
+            [attr.aria-selected]="currentStep === i + 1"
+            [attr.aria-label]="getStepProgressAriaLabel()"
+          >
+            <div class="step-number">
+              @if (getStepState(i + 1) === 'completed') {
+                <mat-icon svgIcon="circle-check"></mat-icon>
+              } @else {
+                <mat-icon [svgIcon]="getStepIcon(i)"></mat-icon>
+              }
+            </div>
+
+            @if (getStepState(i + 1) === 'current') {
+              <span class="step-label-animated" @labelSlideIn>{{ step }}</span>
+            }
+          </button>
+        }
+      </div>
+    </div>
+  }
+
   <!-- Modal Content -->
   <main class="modal-content" [@slideAnimation]="currentStep">
     @if (isInteractiveActive && rcQuestion) {
-      <section
-        class="step-container"
-        aria-live="polite"
-        aria-labelledby="interactive-config-heading"
-      >
-        <h2 id="interactive-config-heading" class="visually-hidden">Interactive Configuration</h2>
+      <section class="step-container" aria-live="polite">
         <app-interactive-config-step
           [question]="rcQuestion"
           [canceling]="isAuthCancelled"
@@ -34,8 +69,7 @@
     @if (!isInteractiveActive) {
       <!-- Step 1: Remote Configuration -->
       @if (editTarget === 'remote' || (!editTarget && currentStep === 1)) {
-        <section class="step-container" aria-labelledby="remote-config-heading">
-          <h2 id="remote-config-heading" class="visually-hidden">Remote Configuration</h2>
+        <section class="step-container">
           <app-remote-config-step
             [form]="remoteForm"
             [remoteFields]="dynamicRemoteFields"
@@ -54,10 +88,7 @@
       <!-- Steps 2-6: Flags and Mount Configurations -->
       @for (step of flagConfigService.FLAG_TYPES; track step; let i = $index) {
         @if (editTarget === step || (!editTarget && currentStep === i + 2)) {
-          <section class="step-container" [attr.aria-labelledby]="step + '-config-heading'">
-            <h2 [id]="step + '-config-heading'" class="visually-hidden">
-              {{ step | titlecase }} Configuration
-            </h2>
+          <section class="step-container">
             <app-flag-config-step
               [form]="remoteConfigForm"
               [flagType]="step"
@@ -90,50 +121,42 @@
   <!-- Footer Buttons -->
   <footer class="button-container">
     <div class="button-container-inner">
-      <!-- Navigation Buttons -->
-      @if (currentStep < TOTAL_STEPS && !editTarget && !isInteractiveActive) {
-        <button
-          matButton="filled"
-          class="accent"
-          (click)="nextStep()"
-          [disabled]="!remoteForm.valid || isAuthInProgress"
-          [@fadeInOut]
-        >
-          Next
-        </button>
-      }
+      <!-- Back Button -->
       @if (currentStep > 1 && !editTarget && !isInteractiveActive) {
         <button
           matButton="filled"
           class="accent"
           [disabled]="isAuthInProgress"
           (click)="prevStep()"
-          [@fadeInOut]
+          @fadeInOut
+          title="Go to previous step"
         >
+          <mat-icon svgIcon="left-arrow"></mat-icon>
           Back
         </button>
       }
     </div>
 
     <div class="button-container-inner">
+      <!-- Cancel Button (During Auth) -->
       @if ((isAuthInProgress && !isAuthCancelled) || isInteractiveActive) {
         <button
           matButton="filled"
-          [@fadeInOut]
           class="warn"
+          @fadeInOut
           (click)="cancelAuth()"
           [disabled]="(!isAuthInProgress && !isInteractiveActive) || isAuthCancelled"
+          title="Cancel the current operation"
         >
           Cancel
         </button>
       }
 
+      <!-- Cleaning Status -->
       @if (isAuthCancelled) {
         <p>
-          Cleaning
-          @if (isAuthCancelled) {
-            <mat-spinner diameter="20"></mat-spinner>
-          }
+          Cleaning up
+          <mat-spinner diameter="16"></mat-spinner>
         </p>
       }
 
@@ -145,15 +168,20 @@
           [disabled]="
             isAuthInProgress || isInteractiveActive || !remoteConfigForm.valid || !remoteForm.valid
           "
-          [@fadeInOut]
+          @fadeInOut
           aria-live="polite"
+          title="Save configuration and create remote"
         >
           @if (isAuthInProgress && !isAuthCancelled) {
             <div class="saving-overlay">
-              <mat-spinner diameter="20"></mat-spinner>
+              <mat-spinner diameter="16"></mat-spinner>
             </div>
           }
-          {{ saveButtonLabel }}
+          @if (!isAuthInProgress || isAuthCancelled) {
+            <span>
+              {{ saveButtonLabel }}
+            </span>
+          }
         </button>
       }
 
@@ -166,15 +194,34 @@
             (editTarget === 'remote' && !remoteForm.valid) ||
             (['mount', 'copy', 'sync'].includes(editTarget) && !remoteConfigForm.valid)
           "
-          [@fadeInOut]
+          @fadeInOut
           aria-live="polite"
+          title="Save changes"
         >
           @if (isAuthInProgress && !isAuthCancelled) {
             <div class="saving-overlay">
-              <mat-spinner diameter="20"></mat-spinner>
+              <mat-spinner diameter="16"></mat-spinner>
             </div>
           }
-          {{ saveButtonLabel }}
+          @if (!isAuthInProgress || isAuthCancelled) {
+            <span>
+              {{ saveButtonLabel }}
+            </span>
+          }
+        </button>
+      }
+      <!-- Next Button -->
+      @if (currentStep < TOTAL_STEPS && !editTarget && !isInteractiveActive) {
+        <button
+          matButton="filled"
+          class="accent"
+          (click)="nextStep()"
+          [disabled]="!remoteForm.valid || isAuthInProgress"
+          @fadeInOut
+          title="Go to next step"
+        >
+          Next
+          <mat-icon svgIcon="right-arrow"></mat-icon>
         </button>
       }
     </div>

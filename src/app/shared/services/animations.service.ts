@@ -328,6 +328,24 @@ export class AnimationsService {
     ]);
   }
 
+  static labelSlideIn(duration = '300ms'): AnimationTriggerMetadata {
+    return trigger('labelSlideIn', [
+      transition(':enter', [
+        style({
+          opacity: 0,
+          transform: 'translateX(-40px)',
+        }),
+        animate(
+          `${duration} cubic-bezier(0.34, 1.56, 0.64, 1)`,
+          style({
+            opacity: 1,
+            transform: 'translateX(0)',
+          })
+        ),
+      ]),
+    ]);
+  }
+
   /**
    * Utility method to get multiple animations at once
    */
@@ -392,6 +410,9 @@ export class AnimationsService {
           break;
         case 'fadeInOutWithMove':
           animations.push(this.fadeInOutWithMove());
+          break;
+        case 'labelSlideIn':
+          animations.push(this.labelSlideIn());
           break;
       }
     });

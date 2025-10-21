@@ -1,73 +1,122 @@
 form {
   display: flex;
   flex-direction: column;
-  padding: 12px;
+  height: 100%;
 
-  .slide-toggle {
-    margin-bottom: 12px;
+  // =============================================
+  // TOGGLE CONTROLS
+  // =============================================
+  mat-slide-toggle {
+    display: block;
+    margin: var(--space-xs) 0;
+    font-size: 14px;
   }
 
-  .field-card {
-    margin-bottom: 12px;
-    padding: 8px 12px;
-    gap: 6px;
-    overflow: clip;
-
-    &.advanced-field {
-      border-left: 4px solid var(--purple);
-    }
-  }
-  .section-heading {
-    margin: 16px 0 8px 0;
-  }
-
-  .responsive-config-row {
-    display: flex;
-    flex-direction: row;
-    gap: 16px;
-    margin-top: 16px;
-    align-items: flex-start;
-
-    .json-textarea {
-      flex: 1;
-      width: 100%;
-
-      .reset-btn {
-        position: absolute;
-        top: 0;
-        right: -16px;
-        z-index: 2;
-      }
-    }
-
-    .json-chip-set {
-      flex: 1;
-      background: var(--faint-blue);
-      border-radius: 8px;
-      padding: 12px 8px;
-      margin-top: 8px;
-    }
-
-    @media (max-width: 640px) {
-      flex-direction: column;
-
-      .json-chip-set {
-        margin-top: 12px;
-        width: 100%;
-      }
-    }
-  }
-
-  // Remote type autocomplete styling
-  .remote-option {
+  // =============================================
+  // FIELD SECTIONS
+  // =============================================
+  .basic-section {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+  }
 
-    .remote-label {
-      font-weight: 500;
-      font-size: var(--font-size-sm);
-      color: var(--app-text-color);
+  .advanced-section {
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(
+      135deg,
+      rgba(var(--accent-color-rgb), 0.04) 0%,
+      rgba(var(--accent-color-rgb), 0.03) 100%
+    );
+    border-left: 4px solid var(--primary-color);
+    border-radius: 4px;
+    margin-top: var(--space-lg, 24px);
+    transition: all 0.3s ease;
+
+    &:hover {
+      box-shadow: 0 2px 8px rgba(var(--accent-color-rgb), 0.09);
+    }
+  }
+
+  // =============================================
+  // SECTION HEADING
+  // =============================================
+  .section-heading {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--app-text-color);
+    padding: var(--space-sm) var(--space-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    letter-spacing: 0.3px;
+
+    span {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--secondary-text-color);
+      background: rgba(var(--purple-rgb), 0.1);
+      border: 1px solid var(--purple);
+      padding: 2px 4px;
+      border-radius: 12px;
+      min-width: 40px;
+      text-align: center;
+    }
+  }
+
+  // =============================================
+  // LOADING STATE
+  // =============================================
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-lg);
+    background: rgba(var(--accent-color-rgb), 0.06);
+    border-radius: 8px;
+    margin: var(--space-md) 0;
+  }
+
+  // =============================================
+  // RESPONSIVE ADJUSTMENTS
+  // =============================================
+  @media (max-width: 768px) {
+    gap: var(--space-md);
+    padding: var(--space-md);
+
+    .advanced-section {
+      padding: var(--space-md);
+      gap: var(--space-sm);
+    }
+
+    .section-heading {
+      font-size: 15px;
+
+      span {
+        font-size: 12px;
+        padding: 2px 6px;
+      }
+    }
+
+    mat-slide-toggle {
+      margin: var(--space-sm) 0;
+      font-size: 13px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    padding: var(--space-md);
+    gap: var(--space-md);
+
+    .advanced-section {
+      border-left-width: 3px;
+      padding: var(--space-md);
+    }
+
+    .section-heading {
+      font-size: 14px;
+      flex-wrap: wrap;
     }
   }
 }

@@ -26,7 +26,7 @@
         <mat-icon svgIcon="server" class="primary"></mat-icon>
         Remote Type
       </h3>
-      <mat-form-field class="full-width" appearance="fill">
+      <mat-form-field class="full-width" appearance="outline">
         <mat-label>Select Remote Type</mat-label>
         <mat-select formControlName="remoteType" (selectionChange)="onRemoteTypeChange()" required>
           @for (remote of remoteTypes; track remote.value) {
@@ -66,7 +66,7 @@
         <mat-icon svgIcon="cloud" class="accent"></mat-icon>
         Remote Name
       </h3>
-      <mat-form-field class="full-width" appearance="fill">
+      <mat-form-field class="full-width" appearance="outline">
         <mat-label>Remote Name</mat-label>
         <input
           matInput
@@ -115,7 +115,7 @@
 
         <!-- Mount Configuration -->
         <div class="operation-config">
-          <mat-form-field appearance="fill">
+          <mat-form-field appearance="outline">
             <mat-label>Mount Destination</mat-label>
             <input
               matInput
@@ -151,7 +151,7 @@
 
         <!-- Sync Configuration -->
         <div class="operation-config">
-          <mat-form-field appearance="fill">
+          <mat-form-field appearance="outline">
             <mat-label>Sync Destination</mat-label>
             <input
               matInput
@@ -187,7 +187,7 @@
 
         <!-- Copy Configuration -->
         <div class="operation-config">
-          <mat-form-field appearance="fill" class="full-width">
+          <mat-form-field appearance="outline" class="full-width">
             <mat-label>Copy Destination</mat-label>
             <input
               matInput
@@ -223,7 +223,7 @@
 
         <!-- Bisync Configuration -->
         <div class="operation-config">
-          <mat-form-field appearance="fill" class="full-width">
+          <mat-form-field appearance="outline" class="full-width">
             <mat-label>Bisync Destination</mat-label>
             <input
               matInput
@@ -259,7 +259,7 @@
 
         <!-- Move Configuration -->
         <div class="operation-config">
-          <mat-form-field appearance="fill" class="full-width">
+          <mat-form-field appearance="outline" class="full-width">
             <mat-label>Move Destination</mat-label>
             <input
               matInput

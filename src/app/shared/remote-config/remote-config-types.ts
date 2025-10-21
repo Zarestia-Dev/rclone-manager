@@ -1,4 +1,3 @@
-import { Pipe, PipeTransform } from '@angular/core';
 import {
   BisyncConfig,
   CopyConfig,
@@ -67,12 +66,5 @@ export function getDefaultValueForType(type: FieldType): any {
       return 'HARD';
     default:
       return null;
-  }
-}
-
-@Pipe({ name: 'linebreaks' })
-export class LinebreaksPipe implements PipeTransform {
-  transform(value: string): string {
-    return value ? value.replace(/(?:\r\n|\r|\n)/g, '<br>') : '';
   }
 }

@@ -1,199 +1,72 @@
 <form [formGroup]="form" class="remote-form">
-  <!-- Remote Name Field -->
-  <mat-form-field appearance="fill">
-    <mat-label>Remote Name</mat-label>
-    <input matInput formControlName="name" id="remoteName" aria-describedby="remoteNameError" />
-    @if (form.get('name')?.hasError('required')) {
-      <mat-error id="remoteNameError"> Remote Name is required. </mat-error>
-    }
-    @if (form.get('name')?.hasError('nameTaken')) {
-      <mat-error id="remoteNameError">
-        This remote name already exists! Choose another name.
-      </mat-error>
-    }
-  </mat-form-field>
+  <div class="basic-section">
+    <mat-form-field appearance="outline">
+      <mat-label>Remote Name</mat-label>
+      <input matInput formControlName="name" id="remoteName" placeholder="e.g., my-cloud-storage" />
+    </mat-form-field>
 
-  <!-- Remote Type Selector -->
-  <mat-form-field appearance="fill">
-    <mat-label>Select Remote Type</mat-label>
-    <mat-select
-      formControlName="type"
-      id="remoteType"
-      (selectionChange)="onRemoteTypeChange(); $event.source.close()"
-      aria-describedby="remoteTypeError"
-    >
-      @for (remote of remoteTypes; track remote.value) {
-        <mat-option [value]="remote.value">
-          {{ remote.label }}
-        </mat-option>
-      }
-    </mat-select>
-    @if (form.get('type')?.hasError('required')) {
-      <mat-error id="remoteTypeError"> Remote Type is required. </mat-error>
-    }
-  </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Search Remote Type</mat-label>
+      <input
+        type="text"
+        formControlName="type"
+        matInput
+        [formControl]="remoteSearchCtrl"
+        [matAutocomplete]="auto"
+        placeholder="e.g., Google Drive"
+      />
+      <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayRemote.bind(this)">
+        @for (remote of filteredRemotes$ | async; track remote.value) {
+          <mat-option [value]="remote.value">{{ remote.label }}</mat-option>
+        }
+        @if ((filteredRemotes$ | async)?.length === 0) {
+          <mat-option disabled>No matching remote types</mat-option>
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+  </div>
 
   <!-- Loading State -->
   @if (isLoading) {
-    <div class="loading-container" aria-live="polite">
+    <div class="loading-container">
       <mat-spinner diameter="30"></mat-spinner>
-      <p>Loading configuration options...</p>
+      <span>Loading configuration options...</span>
     </div>
   }
 
-  <!-- Advanced Options Toggle -->
+  <!-- Configuration Toggles -->
   @if (remoteFields.length > 0) {
-    <mat-slide-toggle
-      class="slide-toggle"
-      (change)="toggleAdvancedOptions()"
-      [checked]="showAdvancedOptions"
-    >
-      Show Advanced Options
-      @if (advancedFields.length > 0) {
-        <span>({{ advancedFields.length }})</span>
-      }
-    </mat-slide-toggle>
-    <mat-slide-toggle
-      class="slide-toggle"
-      (change)="toggleInteractiveMode()"
-      [checked]="useInteractiveMode"
-    >
-      Use Interactive Configuration
-    </mat-slide-toggle>
+    <div class="config-toggles">
+      <mat-slide-toggle (change)="toggleAdvancedOptions()" [checked]="showAdvancedOptions">
+        Show Advanced Options
+      </mat-slide-toggle>
+
+      <mat-slide-toggle (change)="toggleInteractiveMode()" [checked]="useInteractiveMode">
+        Use Interactive Configuration
+      </mat-slide-toggle>
+    </div>
   }
 
-  <!-- Basic Fields -->
+  <!-- Basic Configuration Fields -->
   @if (basicFields.length > 0) {
-    <mat-divider></mat-divider>
-  }
-  @if (basicFields.length > 0) {
-    <h3 class="section-heading">
-      Basic Options
-      @if (basicFields.length > 0) {
-        <span>({{ basicFields.length }})</span>
+    <div class="basic-section">
+      @for (field of basicFields; track field.Name) {
+        <app-setting-control [option]="field" [formControlName]="field.Name"></app-setting-control>
       }
-    </h3>
+    </div>
   }
 
-  @for (field of basicFields; track field.Name) {
-    <mat-card class="field-card">
-      <mat-label [innerHTML]="field.Help | linebreaks"></mat-label>
-      <!-- Boolean Toggle -->
-      @if (field.Type === 'bool') {
-        <mat-slide-toggle [formControlName]="field.Name">
-          {{ field.Name }}
-        </mat-slide-toggle>
-      }
-      <!-- Number Inputs -->
-      @if (field.Type === 'bool' ? false : ['int', 'SizeSuffix', 'bits'].includes(field.Type)) {
-        <mat-form-field appearance="fill">
-          <mat-label>{{ field.Value || 'No default value' }}</mat-label>
-          <input
-            matInput
-            type="number"
-            [formControlName]="field.Name"
-            pattern="\d*"
-            (keypress)="allowOnlyNumbers($event)"
-            (input)="sanitizeNumberInput(field.Name)"
-          />
-        </mat-form-field>
-      }
-      <!-- Select Inputs -->
-      @if (field.Type !== 'bool') {
-        <mat-form-field appearance="fill">
-          <mat-label>{{ field.Name }}</mat-label>
-          <mat-select [formControlName]="field.Name">
-            @for (example of field.Examples; track example) {
-              <mat-option [value]="example.Value">
-                {{ example.Help }}
-              </mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-      }
-      <!-- Duration Input -->
-      @if (field.Type === 'Duration') {
-        <mat-form-field appearance="fill">
-          <mat-label>{{ field.Name }}</mat-label>
-          <input matInput type="text" [formControlName]="field.Name" />
-        </mat-form-field>
-      }
-      <!-- Default Text Input -->
-      @if (!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration', 'bool'].includes(field.Type)) {
-        <mat-form-field appearance="fill">
-          <mat-label>{{ field.Name }}</mat-label>
-          <input
-            matInput
-            [type]="isSensitiveField(field.Name) ? 'password' : 'text'"
-            [formControlName]="field.Name"
-          />
-        </mat-form-field>
-      }
-    </mat-card>
-  }
-
-  <!-- Advanced Fields -->
+  <!-- Advanced Options Section -->
   @if (showAdvancedOptions && advancedFields.length > 0) {
-    <mat-divider></mat-divider>
-    <h3 class="section-heading">
-      Advanced Options <span>({{ advancedFields.length }})</span>
-    </h3>
-    @for (field of advancedFields; track field.Name) {
-      <mat-card class="field-card advanced-field">
-        <mat-label [innerHTML]="field.Help | linebreaks"></mat-label>
-        <!-- Repeat the same field types as basic fields -->
-        <!-- Boolean Toggle -->
-        @if (field.Type === 'bool') {
-          <mat-slide-toggle [formControlName]="field.Name">
-            {{ field.Name }}
-          </mat-slide-toggle>
-        }
-        <!-- Number Inputs -->
-        @if (field.Type === 'bool' ? false : ['int', 'SizeSuffix', 'bits'].includes(field.Type)) {
-          <mat-form-field appearance="fill">
-            <mat-label>{{ field.Value || 'No default value' }}</mat-label>
-            <input
-              matInput
-              type="number"
-              [formControlName]="field.Name"
-              pattern="\d*"
-              (keypress)="allowOnlyNumbers($event)"
-              (input)="sanitizeNumberInput(field.Name)"
-            />
-          </mat-form-field>
-        }
-        <!-- Select Inputs -->
-        @if (field.Type !== 'bool') {
-          <mat-form-field appearance="fill">
-            <mat-label>{{ field.Name }}</mat-label>
-            <mat-select [formControlName]="field.Name">
-              @for (example of field.Examples; track example) {
-                <mat-option [value]="example.Value">
-                  {{ example.Help }}
-                </mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-        }
-        <!-- Duration Input -->
-        @if (field.Type === 'Duration') {
-          <mat-form-field appearance="fill">
-            <mat-label>{{ field.Name }}</mat-label>
-            <input matInput type="text" [formControlName]="field.Name" />
-          </mat-form-field>
-        }
-        <!-- Default Text Input -->
-        @if (!['int', 'SizeSuffix', 'bits', 'Encoding', 'Duration', 'bool'].includes(field.Type)) {
-          <mat-form-field appearance="fill">
-            <mat-label>{{ field.Name }}</mat-label>
-            <input
-              matInput
-              [type]="isSensitiveField(field.Name) ? 'password' : 'text'"
-              [formControlName]="field.Name"
-            />
-          </mat-form-field>
-        }
-      </mat-card>
-    }
+    <div class="advanced-section">
+      <h3 class="section-heading">
+        Advanced Options
+        <span>{{ advancedFields.length }}</span>
+      </h3>
+
+      @for (field of advancedFields; track field.Name) {
+        <app-setting-control [option]="field" [formControlName]="field.Name"></app-setting-control>
+      }
+    </div>
   }
 </form>

@@ -8,7 +8,7 @@ import {
   SimpleChanges,
 } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { Entry, FlagField, FlagType, LinebreaksPipe } from '../../remote-config-types';
+import { Entry, FlagField, FlagType } from '../../remote-config-types';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -38,7 +38,6 @@ import { Observable, map, startWith } from 'rxjs';
     MatTooltipModule,
     MatButtonModule,
     MatInputModule,
-    LinebreaksPipe,
   ],
   templateUrl: './flag-config-step.component.html',
   styleUrl: './flag-config-step.component.scss',

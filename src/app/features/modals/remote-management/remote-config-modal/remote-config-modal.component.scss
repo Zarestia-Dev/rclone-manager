@@ -3,33 +3,117 @@
   flex-direction: column;
   overflow: hidden;
   width: 100%;
+  background: var(--app-background);
   box-sizing: border-box;
 
-  // Modal Content
+  // =============================================
+  // PROGRESS INDICATOR (Steps)
+  // =============================================
+  .step-indicator-container {
+    .step-indicator {
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      gap: var(--space-sm);
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: var(--space-sm);
+      background: rgba(var(--accent-color-rgb), 0.05);
+      scroll-behavior: smooth;
+
+      .step {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm); // Gap between the icon and the animated label
+        position: relative;
+        min-width: fit-content;
+
+        &:disabled {
+          background: transparent !important;
+          cursor: not-allowed;
+        }
+
+        // The icon circle
+        .step-number {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: var(--icon-size-lg);
+          height: var(--icon-size-lg);
+          border-radius: var(--button-border-radius);
+          color: var(--secondary-text-color);
+          transition: all 0.3s ease;
+          flex-shrink: 0;
+
+          mat-icon {
+            width: 20px;
+            height: 20px;
+            font-size: 20px;
+          }
+        }
+
+        // The animated label that appears for the current step
+        .step-label-animated {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--app-text-color);
+          white-space: nowrap;
+        }
+
+        // Current step (active)
+        &.current {
+          .step-number {
+            background: var(--primary-color);
+            color: white; // Makes the icon white
+            box-shadow: 0 4px 12px rgba(var(--primary-color-rgb, 25, 118, 210), 0.3);
+          }
+        }
+
+        // Completed steps
+        &.completed {
+          .step-number {
+            background: rgba(var(--primary-color-rgb, 25, 118, 210), 0.15);
+            color: var(--primary-color); // Makes the icon primary color
+          }
+        }
+
+        // Future steps
+        &.future {
+          .step-number {
+            background: rgba(0, 0, 0, 0.03);
+            opacity: 0.6;
+          }
+        }
+
+        // Clickable steps (in edit mode)
+        &.clickable {
+          cursor: pointer;
+
+          &:hover .step-number {
+            background: rgba(var(--primary-color-rgb, 25, 118, 210), 0.1);
+          }
+        }
+      }
+    }
+  }
+
+  // =============================================
+  // MODAL CONTENT
+  // =============================================
   .modal-content {
     position: relative;
     height: 100vh;
     overflow-x: hidden;
     overflow-y: auto;
 
-    h2 {
-      display: flex;
-      justify-content: center;
-      margin: var(--space-md);
-      font-size: var(--font-size-xl);
-      font-weight: 500;
-      color: var(--app-text-color);
-      text-align: center;
-
-      // Responsive adjustments
-      @media (max-width: 768px) {
-        font-size: var(--font-size-lg);
-        margin: var(--space-sm);
-      }
+    .step-container {
+      padding: var(--space-lg);
     }
   }
 
-  // Button Container (Footer)
+  // =============================================
+  // FOOTER BUTTONS
+  // =============================================
   .button-container {
     border-top: 1px solid var(--border-color);
     position: sticky;
@@ -45,7 +129,6 @@
       align-items: center;
       gap: var(--space-sm);
 
-      // Loading text with spinner
       p {
         display: flex;
         align-items: center;
@@ -58,30 +141,23 @@
       }
     }
 
-    // Responsive adjustments
-    @media (max-width: 768px) {
+    .saving-overlay {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       gap: var(--space-sm);
+    }
+
+    // Responsive adjustments
+    @media (max-width: 640px) {
+      gap: var(--space-sm);
+      padding: var(--space-md);
 
       .button-container-inner {
         gap: var(--space-xs);
-      }
-    }
-
-    @media (max-width: 480px) {
-      flex-direction: column;
-      align-items: stretch;
-      gap: var(--space-xs);
-
-      .button-container-inner {
+        width: 100%;
         justify-content: center;
-
-        &:first-child {
-          order: 2;
-        }
-
-        &:last-child {
-          order: 1;
-        }
       }
     }
   }

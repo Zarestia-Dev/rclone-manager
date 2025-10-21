@@ -20,7 +20,7 @@
 
   @if (isType('mount')) {
     <!-- Mount Type Selector -->
-    <mat-form-field appearance="fill">
+    <mat-form-field appearance="outline">
       <mat-label>Mount Type</mat-label>
       <mat-select formControlName="type" placeholder="Select mount type">
         @for (mountType of mountTypes; track mountType) {
@@ -32,7 +32,7 @@
     </mat-form-field>
 
     <!-- Mount Path -->
-    <mat-form-field appearance="fill">
+    <mat-form-field appearance="outline">
       <mat-label>Mount Path</mat-label>
       <button
         matIconButton
@@ -54,7 +54,7 @@
 
   <!-- Destination Path -->
   @if (!isType(['mount', 'vfs', 'filter', 'backend'])) {
-    <mat-form-field appearance="fill">
+    <mat-form-field appearance="outline">
       <mat-label>{{ flagType | titlecase }} Destination</mat-label>
       <input
         matInput
@@ -131,7 +131,7 @@
 
   <!-- Source Path -->
   @if (isEditMode && !isType(['vfs', 'filter', 'backend'])) {
-    <mat-form-field appearance="fill">
+    <mat-form-field appearance="outline">
       <mat-label>{{ flagType | titlecase }} Source</mat-label>
       <input
         matInput
@@ -218,13 +218,13 @@
       </mat-slide-toggle>
 
       @if (configGroup.get('checkAccess')?.value) {
-        <mat-form-field appearance="fill">
+        <mat-form-field appearance="outline">
           <mat-label>Check Filename</mat-label>
           <input matInput formControlName="checkFilename" placeholder="RCLONE_TEST" />
         </mat-form-field>
       }
 
-      <mat-form-field appearance="fill">
+      <mat-form-field appearance="outline">
         <mat-label>Max Delete Percentage</mat-label>
         <input matInput type="number" formControlName="maxDelete" placeholder="50" />
       </mat-form-field>
@@ -249,22 +249,22 @@
 
       <mat-slide-toggle formControlName="noCleanup"> Retain Working Files </mat-slide-toggle>
 
-      <mat-form-field appearance="fill">
+      <mat-form-field appearance="outline">
         <mat-label>Work Directory</mat-label>
         <input matInput formControlName="workdir" placeholder="~/.cache/rclone/bisync" />
       </mat-form-field>
 
-      <mat-form-field appearance="fill">
+      <mat-form-field appearance="outline">
         <mat-label>Backup Directory 1</mat-label>
         <input matInput formControlName="backupdir1" placeholder="Backup dir for Path1" />
       </mat-form-field>
 
-      <mat-form-field appearance="fill">
+      <mat-form-field appearance="outline">
         <mat-label>Backup Directory 2</mat-label>
         <input matInput formControlName="backupdir2" placeholder="Backup dir for Path2" />
       </mat-form-field>
 
-      <mat-form-field appearance="fill">
+      <mat-form-field appearance="outline">
         <mat-label>Filters File</mat-label>
         <input matInput formControlName="filtersFile" placeholder="Path to filters file" />
       </mat-form-field>
@@ -301,7 +301,7 @@
   <div class="json-config-container responsive-config-row">
     <!-- JSON Form Field -->
     <div class="json-textarea">
-      <mat-form-field appearance="fill" style="width: 100%">
+      <mat-form-field appearance="outline" style="width: 100%">
         <mat-label>{{ flagType | titlecase }} Configuration</mat-label>
         <button
           matIconButton
@@ -330,7 +330,7 @@
             (click)="onToggleOption(field)"
             [selected]="getSelectedOptions.hasOwnProperty(field.name)"
             [disabled]="isDisabled"
-            [matTooltip]="field.help | linebreaks"
+            [matTooltip]="field.help"
             matTooltipPosition="above"
           >
             {{ field.name }}

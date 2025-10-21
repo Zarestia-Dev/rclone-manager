@@ -176,36 +176,32 @@
         @if (isSecurityPage) {
           <app-security-settings></app-security-settings>
         } @else {
-          <div class="settings-list">
-            @if (hasSearchQuery) {
-              <div class="search-results-info">
-                <small
-                  >Showing {{ filteredOptionsCount }} of {{ totalOptionsCount }} settings</small
-                >
-              </div>
-            }
+          @if (hasSearchQuery) {
+            <div class="search-results-info">
+              <small>Showing {{ filteredOptionsCount }} of {{ totalOptionsCount }} settings</small>
+            </div>
+          }
 
-            @if (filteredOptionsCount === 0 && hasSearchQuery) {
-              <div class="no-results">
-                <mat-icon svgIcon="search"></mat-icon>
-                <h4>No settings found</h4>
-                <p>Try adjusting your search terms</p>
-              </div>
-            } @else {
-              <div class="settings-list" [formGroup]="rcloneOptionsForm">
-                @for (
-                  option of getRCloneOptionsForCurrentPage();
-                  track trackByOptionName($index, option)
-                ) {
-                  <app-setting-control
-                    [option]="option"
-                    [formControlName]="getUniqueControlKey(option)"
-                    (valueCommit)="saveRCloneOption(getUniqueControlKey(option))"
-                  ></app-setting-control>
-                }
-              </div>
-            }
-          </div>
+          @if (filteredOptionsCount === 0 && hasSearchQuery) {
+            <div class="no-results">
+              <mat-icon svgIcon="search"></mat-icon>
+              <h4>No settings found</h4>
+              <p>Try adjusting your search terms</p>
+            </div>
+          } @else {
+            <form [formGroup]="rcloneOptionsForm">
+              @for (
+                option of getRCloneOptionsForCurrentPage();
+                track trackByOptionName($index, option)
+              ) {
+                <app-setting-control
+                  [option]="option"
+                  [formControlName]="getUniqueControlKey(option)"
+                  (valueCommit)="saveRCloneOption(getUniqueControlKey(option))"
+                ></app-setting-control>
+              }
+            </form>
+          }
         }
       </div>
     </div>

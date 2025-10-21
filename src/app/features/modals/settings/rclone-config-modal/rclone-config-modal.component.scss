@@ -253,31 +253,6 @@
     .overlay-content {
       flex: 1;
       overflow-y: auto;
-
-      .settings-list {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-md);
-        padding: var(--space-md);
-
-        .settings-header {
-          text-align: center;
-          margin-bottom: var(--space-lg);
-
-          h3 {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: var(--space-xs);
-            color: var(--app-text-color);
-          }
-
-          .settings-description {
-            font-size: 13px;
-            color: var(--secondary-text-color);
-            margin: 0;
-          }
-        }
-      }
     }
   }
 
@@ -328,25 +303,6 @@
         padding: var(--space-sm) !important;
       }
     }
-
-    .setting-item {
-      padding: var(--space-md) !important;
-      flex-direction: column;
-      align-items: stretch !important;
-
-      .setting-info {
-        flex: 1 !important;
-      }
-
-      .setting-control {
-        width: 100%;
-        flex-shrink: 1 !important;
-      }
-
-      .setting-full-width {
-        width: 100% !important;
-      }
-    }
   }
 }
 
@@ -387,61 +343,6 @@
         .config-item-description {
           font-size: 11px;
         }
-      }
-    }
-
-    .settings-section {
-      border-radius: var(--radius-md);
-      margin-bottom: var(--space-sm);
-
-      &.basic-section .section-header {
-        padding: var(--space-sm);
-
-        h3 {
-          font-size: 14px;
-        }
-
-        small {
-          font-size: 11px;
-        }
-      }
-
-      .section-toggle {
-        padding: var(--space-sm) !important;
-        font-size: 14px;
-      }
-
-      .section-content,
-      .advanced-content {
-        padding: var(--space-sm) !important;
-        gap: var(--space-sm);
-      }
-    }
-
-    .setting-item {
-      padding: var(--space-md) !important;
-
-      .setting-info {
-        strong {
-          font-size: 13px;
-        }
-
-        p {
-          font-size: 12px;
-        }
-      }
-
-      .setting-control {
-        width: 100%;
-      }
-
-      mat-form-field {
-        width: 100%;
-      }
-
-      mat-slide-toggle {
-        transform: scale(0.9);
-        transform-origin: right center;
       }
     }
 

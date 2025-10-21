@@ -1,59 +1,113 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { RemoteField, RemoteType, LinebreaksPipe } from '../../remote-config-types';
-import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatCardModule } from '@angular/material/card';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatFormFieldModule } from '@angular/material/form-field';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { SENSITIVE_KEYS } from '@app/types';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { RcConfigOption, RemoteType } from '@app/types';
+import { SettingControlComponent } from 'src/app/shared/components';
+import { Observable, ReplaySubject, Subject, combineLatest } from 'rxjs';
+import { map, startWith, takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'app-remote-config-step',
+  standalone: true,
   imports: [
+    CommonModule,
     ReactiveFormsModule,
     MatFormFieldModule,
-    MatSelectModule,
     MatInputModule,
     MatSlideToggleModule,
-    MatCardModule,
-    MatDividerModule,
     MatProgressSpinnerModule,
     MatAutocompleteModule,
-    LinebreaksPipe,
+    SettingControlComponent,
   ],
   templateUrl: './remote-config-step.component.html',
   styleUrl: './remote-config-step.component.scss',
 })
-export class RemoteConfigStepComponent {
+export class RemoteConfigStepComponent implements OnInit, OnDestroy {
   @Input() form!: FormGroup;
-  @Input() remoteFields: RemoteField[] = [];
-  @Input() remoteTypes: RemoteType[] = [];
+  @Input() remoteFields: RcConfigOption[] = [];
   @Input() isLoading = false;
   @Input() existingRemotes: string[] = [];
   @Input() restrictMode!: boolean;
   @Input() useInteractiveMode = false;
 
-  @Output() advancedOptionsToggled = new EventEmitter<boolean>();
+  private remoteTypes$ = new ReplaySubject<RemoteType[]>(1);
+  @Input()
+  set remoteTypes(types: RemoteType[]) {
+    if (types && types.length > 0) {
+      this.remoteTypes$.next(types);
+      // OPTIMIZATION 2: Create a Map for instant lookups (O(1) complexity).
+      // This is much faster than using array.find() repeatedly.
+      this.remoteTypeMap = new Map(types.map(t => [t.value, t]));
+    }
+  }
+
   @Output() remoteTypeChanged = new EventEmitter<void>();
   @Output() interactiveModeToggled = new EventEmitter<boolean>();
 
+  remoteSearchCtrl = new FormControl('');
+  filteredRemotes$!: Observable<RemoteType[]>;
   showAdvancedOptions = false;
 
-  get basicFields(): RemoteField[] {
+  private remoteTypeMap = new Map<string, RemoteType>();
+  // OPTIMIZATION 3: Add a subject to manage subscriptions and prevent memory leaks.
+  private destroy$ = new Subject<void>();
+
+  ngOnInit(): void {
+    // This part is the same: Set up the observable for filtering.
+    const searchTerm$ = this.remoteSearchCtrl.valueChanges.pipe(startWith(''));
+    this.filteredRemotes$ = combineLatest([this.remoteTypes$, searchTerm$]).pipe(
+      map(([types, term]) => this.filterRemotes(types, term || ''))
+    );
+
+    this.remoteSearchCtrl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
+      if (value && this.remoteTypeMap.has(value)) {
+        this.form.get('type')?.setValue(value, { emitEvent: false });
+        this.onRemoteTypeChange();
+      }
+    });
+
+    const initialTypeValue = this.form.get('type')?.value;
+    if (initialTypeValue) {
+      this.remoteSearchCtrl.setValue(initialTypeValue, { emitEvent: false });
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  // The filter logic now receives the list directly from the combined observable.
+  private filterRemotes(types: RemoteType[], value: string): RemoteType[] {
+    const filterValue = value.toLowerCase();
+    return types.filter(
+      remote =>
+        remote.label.toLowerCase().includes(filterValue) ||
+        remote.value.toLowerCase().includes(filterValue)
+    );
+  }
+
+  // This function is now highly performant thanks to the Map lookup.
+  displayRemote(remoteValue: string): string {
+    if (!remoteValue) return '';
+    return this.remoteTypeMap.get(remoteValue)?.label || '';
+  }
+
+  get basicFields(): RcConfigOption[] {
     return this.remoteFields.filter(f => !f.Advanced);
   }
 
-  get advancedFields(): RemoteField[] {
+  get advancedFields(): RcConfigOption[] {
     return this.remoteFields.filter(f => f.Advanced);
   }
 
   toggleAdvancedOptions(): void {
     this.showAdvancedOptions = !this.showAdvancedOptions;
-    this.advancedOptionsToggled.emit(this.showAdvancedOptions);
   }
 
   toggleInteractiveMode(): void {
@@ -63,23 +117,5 @@ export class RemoteConfigStepComponent {
 
   onRemoteTypeChange(): void {
     this.remoteTypeChanged.emit();
-  }
-
-  isSensitiveField(fieldName: string): boolean {
-    return SENSITIVE_KEYS.some(key => fieldName.toLowerCase().includes(key)) && this.restrictMode;
-  }
-
-  allowOnlyNumbers(event: KeyboardEvent): void {
-    const charCode = event.key ? event.key.charCodeAt(0) : 0;
-    if (charCode < 48 || charCode > 57) {
-      event.preventDefault();
-    }
-  }
-
-  sanitizeNumberInput(fieldName: string): void {
-    const value = this.form.get(fieldName)?.value;
-    if (value && isNaN(value)) {
-      this.form.get(fieldName)?.setValue('');
-    }
   }
 }

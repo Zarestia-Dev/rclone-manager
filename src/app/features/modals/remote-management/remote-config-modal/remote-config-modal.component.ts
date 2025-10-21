@@ -63,6 +63,7 @@ import {
   RcConfigOption,
   RemoteField,
 } from '@app/types';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-remote-config-modal',
@@ -73,6 +74,7 @@ import {
     MatProgressSpinnerModule,
     MatInputModule,
     MatChipsModule,
+    MatTooltipModule,
     MatIconModule,
     MatButtonModule,
     MatFormFieldModule,
@@ -84,7 +86,14 @@ import {
   ],
   templateUrl: './remote-config-modal.component.html',
   styleUrls: ['./remote-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
-  animations: [AnimationsService.getAnimations(['slideAnimation', 'fadeInOutWithMove'])],
+  animations: [
+    AnimationsService.getAnimations([
+      'slideAnimation',
+      'fadeInOutWithMove',
+      'fadeInOut',
+      'labelSlideIn',
+    ]),
+  ],
 })
 export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   @ViewChild('jsonArea') jsonArea!: ElementRef<HTMLTextAreaElement>;
@@ -274,6 +283,125 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.subscriptions.push(...subs);
   }
 
+  stepLabels: string[] = [
+    'Remote Config',
+    'Mount',
+    'Copy',
+    'Sync',
+    'Bisync',
+    'Move',
+    'Filter',
+    'VFS',
+    'Backend',
+  ];
+
+  // =============================================
+  // ADD THESE METHODS
+  // =============================================
+
+  /**
+   * Get current step label for display
+   */
+  getCurrentStepLabel(): string {
+    if (this.currentStep === 1) {
+      return 'Remote Configuration';
+    }
+
+    const stepIndex = this.currentStep - 2;
+    if (stepIndex >= 0 && stepIndex < this.flagConfigService.FLAG_TYPES.length) {
+      return (
+        this.flagConfigService.FLAG_TYPES[stepIndex].charAt(0).toUpperCase() +
+        this.flagConfigService.FLAG_TYPES[stepIndex].slice(1) +
+        ' Configuration'
+      );
+    }
+
+    return '';
+  }
+
+  /**
+   * Navigate to a specific step (used when clicking step indicators in edit mode)
+   */
+  goToStep(step: number): void {
+    if (step >= 1 && step <= this.TOTAL_STEPS) {
+      this.currentStep = step;
+    }
+  }
+
+  /**
+   * Get step information for accessibility
+   */
+  getStepProgress(): { current: number; total: number; percentage: number } {
+    return {
+      current: this.currentStep,
+      total: this.TOTAL_STEPS,
+      percentage: Math.round((this.currentStep / this.TOTAL_STEPS) * 100),
+    };
+  }
+
+  /**
+   * Get visual state for current step
+   */
+  getStepState(stepNumber: number): 'completed' | 'current' | 'future' {
+    if (stepNumber < this.currentStep) {
+      return 'completed';
+    } else if (stepNumber === this.currentStep) {
+      return 'current';
+    } else {
+      return 'future';
+    }
+  }
+
+  getStepIcon(stepIndex: number): string {
+    const iconMap: Record<number, string> = {
+      0: 'hard-drive', // Remote Config
+      1: 'mount', // Mount
+      2: 'copy', // Copy
+      3: 'sync', // Sync
+      4: 'right-left', // Bisync (bidirectional sync)
+      5: 'move', // Move
+      6: 'filter', // Filter
+      7: 'vfs', // VFS (Virtual File System)
+      8: 'server', // Backend
+    };
+
+    return iconMap[stepIndex] || 'circle';
+  }
+
+  getStepProgressAriaLabel(): string {
+    return `Step ${this.currentStep} of ${this.TOTAL_STEPS}: ${this.stepLabels[this.currentStep - 1]}`;
+  }
+
+  /**
+   * Handle keyboard navigation for step indicators
+   */
+  handleStepKeydown(event: KeyboardEvent, stepNumber: number): void {
+    if (!this.editTarget) return;
+
+    switch (event.key) {
+      case 'ArrowRight':
+        event.preventDefault();
+        if (stepNumber < this.TOTAL_STEPS) {
+          this.goToStep(stepNumber + 1);
+        }
+        break;
+      case 'ArrowLeft':
+        event.preventDefault();
+        if (stepNumber > 1) {
+          this.goToStep(stepNumber - 1);
+        }
+        break;
+      case 'Home':
+        event.preventDefault();
+        this.goToStep(1);
+        break;
+      case 'End':
+        event.preventDefault();
+        this.goToStep(this.TOTAL_STEPS);
+        break;
+    }
+  }
+
   ngOnDestroy(): void {
     this.cleanupSubscriptions();
     this.authStateService.cancelAuth();
@@ -315,9 +443,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       this.dynamicRemoteFields = this.mapRemoteFields(response);
 
       this.dynamicRemoteFields.forEach(field => {
-        // Use the Value from the API if present, otherwise the Default value
-        const initialValue = field.Value ?? field.DefaultStr;
-        this.remoteForm.addControl(field.Name, new FormControl(initialValue));
+        this.remoteForm.addControl(field.Name, new FormControl(field.Value));
       });
     } catch (error) {
       console.error('Error loading remote config fields:', error);
@@ -1243,15 +1369,39 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     });
   }
 
-  nextStep(): void {
-    if (this.currentStep < this.TOTAL_STEPS && this.remoteForm.valid) {
-      this.currentStep++;
+  private scrollToTop(): void {
+    const modalContent = document.querySelector('.modal-content');
+    if (modalContent) {
+      modalContent.scrollTop = 0;
     }
+  }
+
+  nextStep(): void {
+    if (this.currentStep >= this.TOTAL_STEPS) {
+      return;
+    }
+
+    // Validate current step before advancing
+    if (this.currentStep === 1 && !this.remoteForm.valid) {
+      // Show validation error
+      this.remoteForm.markAllAsTouched();
+      return;
+    }
+
+    if (this.currentStep > 1 && !this.remoteConfigForm.valid) {
+      // Show validation error
+      this.remoteConfigForm.markAllAsTouched();
+      return;
+    }
+
+    this.currentStep++;
+    this.scrollToTop();
   }
 
   prevStep(): void {
     if (this.currentStep > 1) {
       this.currentStep--;
+      this.scrollToTop();
     }
   }
 

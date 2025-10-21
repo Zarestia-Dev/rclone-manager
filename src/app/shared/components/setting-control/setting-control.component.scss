@@ -1,3 +1,28 @@
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-md);
+
+  .settings-header {
+    text-align: center;
+    margin-bottom: var(--space-lg);
+
+    h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: var(--space-xs);
+      color: var(--app-text-color);
+    }
+
+    .settings-description {
+      font-size: 13px;
+      color: var(--secondary-text-color);
+      margin: 0;
+    }
+  }
+}
+
 .setting-item {
   background: var(--surface-background);
   border-radius: var(--radius-lg);
@@ -139,5 +164,170 @@
   }
   100% {
     background-color: var(--surface-background);
+  }
+}
+// =============================================
+// RESPONSIVE ADJUSTMENTS
+// =============================================
+@media (max-width: 840px) {
+  .setting-item {
+    padding: var(--space-md) !important;
+    flex-direction: column;
+    align-items: stretch !important;
+
+    .setting-info {
+      flex: 1 !important;
+    }
+
+    .setting-control {
+      width: 100%;
+      flex-shrink: 1 !important;
+    }
+
+    .setting-full-width {
+      width: 100% !important;
+    }
+  }
+}
+
+@media (max-width: 540px) {
+  .setting-item {
+    padding: var(--space-md) !important;
+
+    .setting-info {
+      strong {
+        font-size: 13px;
+      }
+
+      p {
+        font-size: 12px;
+      }
+    }
+
+    .setting-control {
+      width: 100%;
+    }
+
+    mat-form-field {
+      width: 100%;
+    }
+
+    mat-slide-toggle {
+      transform: scale(0.9);
+      transform-origin: right center;
+    }
+  }
+}
+
+// Add these styles to your setting-control.component.scss
+
+.setting-info {
+  flex: 1;
+  min-width: 0;
+
+  strong {
+    display: block;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: var(--space-xs);
+    color: var(--app-text-color);
+  }
+
+  .help-text {
+    font-size: 13px;
+    color: var(--secondary-text-color);
+    line-height: 1.6;
+    margin: 0 0 var(--space-xs);
+    word-break: break-word;
+    overflow-wrap: break-word;
+
+    // Markdown formatting
+    strong {
+      font-weight: 600;
+      color: var(--app-text-color);
+      display: inline;
+      margin: 0;
+      font-size: inherit;
+    }
+
+    em {
+      font-style: italic;
+      color: inherit;
+    }
+
+    code {
+      background-color: rgba(0, 0, 0, 0.05);
+      border-radius: 3px;
+      padding: 2px 6px;
+      font-family: "Monaco", "Courier New", monospace;
+      font-size: 12px;
+      color: var(--code-color, #d73a49);
+      word-break: break-word;
+    }
+
+    // URL/Link styling
+    a {
+      color: var(--primary-color, #1976d2);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(var(--primary-color-rgb, 25, 118, 210), 0.3);
+      transition: all 0.2s ease;
+      word-break: break-all;
+
+      &:hover {
+        border-bottom-color: var(--primary-color, #1976d2);
+        opacity: 0.8;
+      }
+
+      &:focus {
+        outline: 2px solid var(--primary-color, #1976d2);
+        outline-offset: 2px;
+        border-radius: 2px;
+      }
+    }
+
+    // Line breaks
+    br {
+      display: block;
+      content: "";
+      margin: 4px 0;
+    }
+
+    // Allow natural text flow while preserving intentional breaks
+    white-space: normal;
+    font-feature-settings: "liga" 0; // Disable ligatures in code
+  }
+
+  .default-value,
+  .type-info {
+    display: block;
+    font-size: 12px;
+    margin-top: var(--space-xs);
+    font-style: italic;
+  }
+
+  .default-value {
+    color: var(--secondary-text-color);
+  }
+
+  .type-info {
+    color: var(--warning-color);
+  }
+}
+
+// Mobile responsiveness
+@media (max-width: 540px) {
+  .setting-info .help-text {
+    font-size: 12px;
+    line-height: 1.5;
+
+    code {
+      font-size: 11px;
+      padding: 2px 4px;
+    }
+
+    a {
+      display: inline-block;
+      max-width: 100%;
+    }
   }
 }
