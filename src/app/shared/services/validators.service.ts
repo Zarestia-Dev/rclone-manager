@@ -64,7 +64,8 @@ export class ValidatorsService {
    */
   remoteNameValidator(existingNames: string[], allowedPattern?: RegExp): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
-      const value = control.value?.trimEnd();
+      const raw = control.value;
+      const value = typeof raw === 'string' ? raw.trim() : raw;
       if (!value) return null;
 
       // Check allowed characters if pattern provided
@@ -82,8 +83,10 @@ export class ValidatorsService {
         return { invalidEnd: true };
       }
 
-      // Check uniqueness
-      return existingNames.includes(value) ? { nameTaken: true } : null;
+      // Check uniqueness (case-insensitive, trimmed)
+      const normalized = String(value).toLowerCase();
+      const existingNormalized = existingNames.map(n => String(n).toLowerCase());
+      return existingNormalized.includes(normalized) ? { nameTaken: true } : null;
     };
   }
 

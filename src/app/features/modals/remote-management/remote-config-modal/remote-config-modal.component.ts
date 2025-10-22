@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ValidatorFn, Validators, FormControl } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { debounceTime, distinctUntilChanged, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/components/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/components/flag-config-step/flag-config-step.component';
@@ -16,7 +16,6 @@ import {
 import { RcConfigQuestionResponse } from '@app/services';
 import { InteractiveConfigStepComponent } from '../../../../shared/remote-config/components/interactive-config-step/interactive-config-step.component';
 
-// Services
 import { AnimationsService } from '../../../../shared/services/animations.service';
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
 import { ValidatorRegistryService } from '../../../../shared/services/validator-registry.service';
@@ -27,7 +26,6 @@ import { JobManagementService } from '@app/services';
 import { MountManagementService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { FileSystemService } from '@app/services';
-import { UiStateService } from '@app/services';
 import {
   BackendConfig,
   MountConfig,
@@ -40,6 +38,49 @@ import {
   RcConfigOption,
 } from '@app/types';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
+
+interface DialogData {
+  editTarget?: EditTarget;
+  cloneTarget?: boolean;
+  existingConfig?: Record<string, unknown>;
+  name?: string;
+  restrictMode: boolean;
+}
+
+interface InteractiveFlowState {
+  isActive: boolean;
+  question: RcConfigQuestionResponse | null;
+  answer: string | boolean | number | null;
+  isProcessing: boolean;
+}
+
+interface RemoteData {
+  name: string;
+  type: string;
+  [key: string]: unknown;
+}
+
+interface FinalConfig {
+  mountConfig: MountConfig;
+  copyConfig: CopyConfig;
+  syncConfig: SyncConfig;
+  bisyncConfig: BisyncConfig;
+  moveConfig: MoveConfig;
+  filterConfig: FilterConfig;
+  vfsConfig: VfsConfig;
+  backendConfig: BackendConfig;
+}
+
+interface PendingConfig {
+  remoteData: RemoteData;
+  finalConfig: FinalConfig;
+}
+
+interface AutoStartValidator {
+  autoStartPath: string;
+  destPath: string;
+  validators: ValidatorFn[];
+}
 
 @Component({
   selector: 'app-remote-config-modal',
@@ -65,142 +106,32 @@ import { MatProgressSpinner } from '@angular/material/progress-spinner';
   ],
 })
 export class RemoteConfigModalComponent implements OnInit, OnDestroy {
-  fb = inject(FormBuilder);
-  dialogRef = inject(MatDialogRef<RemoteConfigModalComponent>);
-  flagConfigService = inject(FlagConfigService);
-  pathSelectionService = inject(PathSelectionService);
-  authStateService = inject(AuthStateService);
-  remoteManagementService = inject(RemoteManagementService);
-  jobManagementService = inject(JobManagementService);
-  mountManagementService = inject(MountManagementService);
-  appSettingsService = inject(AppSettingsService);
-  fileSystemService = inject(FileSystemService);
-  uiStateService = inject(UiStateService);
-  validatorRegistry = inject(ValidatorRegistryService);
-  data = inject(MAT_DIALOG_DATA) as {
-    editTarget?: EditTarget;
-    cloneTarget?: boolean;
-    existingConfig?: Record<string, unknown>;
-    name?: string;
-    restrictMode: boolean;
-  };
+  // ============================================================================
+  // DEPENDENCY INJECTION
+  // ============================================================================
+  private readonly fb = inject(FormBuilder);
+  private readonly dialogRef = inject(MatDialogRef<RemoteConfigModalComponent>);
+  private readonly authStateService = inject(AuthStateService);
+  private readonly remoteManagementService = inject(RemoteManagementService);
+  private readonly jobManagementService = inject(JobManagementService);
+  private readonly mountManagementService = inject(MountManagementService);
+  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly fileSystemService = inject(FileSystemService);
+  private readonly validatorRegistry = inject(ValidatorRegistryService);
+  private readonly dialogData = inject(MAT_DIALOG_DATA) as DialogData;
+  readonly flagConfigService = inject(FlagConfigService);
+  readonly pathSelectionService = inject(PathSelectionService);
 
-  public readonly TOTAL_STEPS = 9;
+  // ============================================================================
+  // LIFECYCLE MANAGEMENT
+  // ============================================================================
+  private destroy$ = new Subject<void>();
 
-  currentStep = 1;
-  editTarget: EditTarget = null;
-  useInteractiveMode = false;
-  restrictMode!: boolean;
-  cloneTarget!: boolean;
-
-  remoteForm: FormGroup;
-  remoteConfigForm: FormGroup;
-
-  remoteTypes: RemoteType[] = [];
-  dynamicRemoteFields: RcConfigOption[] = [];
-  existingRemotes: string[] = [];
-  mountTypes: string[] = [];
-
-  // UPDATED: Type is now RcConfigOption[]
-  dynamicFlagFields: Record<FlagType, RcConfigOption[]> = {
-    mount: [],
-    copy: [],
-    sync: [],
-    filter: [],
-    vfs: [],
-    bisync: [],
-    move: [],
-    backend: [],
-  };
-  // Simplified state management
-  isRemoteConfigLoading = false;
-  isAuthInProgress = false;
-  isAuthCancelled = false;
-  isProcessing = false;
-
-  // Non-interactive RC flow state
-  rcQuestion: RcConfigQuestionResponse | null = null;
-  rcAnswer: string | boolean | number | null = null;
-  isInteractiveActive = false;
-  private pendingFinalConfig: {
-    mountConfig: MountConfig;
-    copyConfig: CopyConfig;
-    syncConfig: SyncConfig;
-    bisyncConfig: BisyncConfig;
-    moveConfig: MoveConfig;
-    filterConfig: FilterConfig;
-    backendConfig: BackendConfig;
-    vfsConfig: VfsConfig;
-  } | null = null;
-  private pendingRemoteData: { name: string; type: string; [k: string]: unknown } | null = null;
-
-  private subscriptions: Subscription[] = [];
-
-  constructor() {
-    this.editTarget = this.data?.editTarget || null;
-    this.cloneTarget = this.data?.cloneTarget || false;
-    this.restrictMode = this.data?.restrictMode;
-    this.remoteForm = this.createRemoteForm();
-    this.remoteConfigForm = this.createRemoteConfigForm();
-  }
-
-  async ngOnInit(): Promise<void> {
-    // initializeComponent now adds dynamic controls *before* populating
-    await this.initializeComponent();
-    this.setupFormListeners();
-    this.mountTypes = await this.mountManagementService.getMountTypes();
-    this.setupAuthStateListeners();
-    await this.fetchInitialPathEntriesForEditMode();
-
-    // Setup path selection listeners
-    const subs = [
-      this.remoteConfigForm
-        .get('mountConfig.source')
-        ?.valueChanges.pipe(debounceTime(300), distinctUntilChanged())
-        .subscribe(value =>
-          this.pathSelectionService.onInputChanged('mountConfig.source', value ?? '')
-        ),
-      this.remoteConfigForm
-        .get('copyConfig.source')
-        ?.valueChanges.pipe(debounceTime(300), distinctUntilChanged())
-        .subscribe(value =>
-          this.pathSelectionService.onInputChanged('copyConfig.source', value ?? '')
-        ),
-      this.remoteConfigForm
-        .get('syncConfig.source')
-        ?.valueChanges.pipe(debounceTime(300), distinctUntilChanged())
-        .subscribe(value =>
-          this.pathSelectionService.onInputChanged('syncConfig.source', value ?? '')
-        ),
-      this.remoteConfigForm
-        .get('copyConfig.dest')
-        ?.valueChanges.pipe(debounceTime(300), distinctUntilChanged())
-        .subscribe(value =>
-          this.pathSelectionService.onInputChanged('copyConfig.dest', value ?? '')
-        ),
-      this.remoteConfigForm
-        .get('syncConfig.dest')
-        ?.valueChanges.pipe(debounceTime(300), distinctUntilChanged())
-        .subscribe(value =>
-          this.pathSelectionService.onInputChanged('syncConfig.dest', value ?? '')
-        ),
-      this.remoteConfigForm
-        .get('bisyncConfig.dest')
-        ?.valueChanges.pipe(debounceTime(300), distinctUntilChanged())
-        .subscribe(value =>
-          this.pathSelectionService.onInputChanged('bisyncConfig.dest', value ?? '')
-        ),
-      this.remoteConfigForm
-        .get('moveConfig.dest')
-        ?.valueChanges.pipe(debounceTime(300), distinctUntilChanged())
-        .subscribe(value =>
-          this.pathSelectionService.onInputChanged('moveConfig.dest', value ?? '')
-        ),
-    ].filter((sub): sub is Subscription => !!sub);
-    this.subscriptions.push(...subs);
-  }
-
-  stepLabels: string[] = [
+  // ============================================================================
+  // CONFIGURATION CONSTANTS
+  // ============================================================================
+  readonly TOTAL_STEPS = 9;
+  readonly stepLabels: string[] = [
     'Remote Config',
     'Mount',
     'Copy',
@@ -212,120 +143,125 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     'Backend',
   ];
 
-  /**
-   * Get current step label for display
-   */
-  getCurrentStepLabel(): string {
-    if (this.currentStep === 1) {
-      return 'Remote Configuration';
-    }
+  private readonly FLAG_BASED_TYPES: FlagType[] = ['mount', 'copy', 'sync', 'bisync', 'move'];
+  private readonly FLAG_ONLY_TYPES: FlagType[] = ['filter', 'vfs', 'backend'];
+  private readonly INTERACTIVE_REMOTES = ['iclouddrive', 'onedrive'];
+  private readonly PATH_EDIT_TARGETS = ['mount', 'copy', 'sync', 'bisync', 'move'];
 
-    const stepIndex = this.currentStep - 2;
-    if (stepIndex >= 0 && stepIndex < this.flagConfigService.FLAG_TYPES.length) {
-      const type = this.flagConfigService.FLAG_TYPES[stepIndex];
-      return type.charAt(0).toUpperCase() + type.slice(1) + ' Configuration';
-    }
+  // ============================================================================
+  // FORM STATE
+  // ============================================================================
+  remoteForm!: FormGroup;
+  remoteConfigForm!: FormGroup;
 
-    return '';
+  // ============================================================================
+  // CONFIGURATION STATE
+  // ============================================================================
+  remoteTypes: RemoteType[] = [];
+  dynamicRemoteFields: RcConfigOption[] = [];
+  existingRemotes: string[] = [];
+  mountTypes: string[] = [];
+  dynamicFlagFields: Record<FlagType, RcConfigOption[]> = {
+    mount: [],
+    copy: [],
+    sync: [],
+    filter: [],
+    vfs: [],
+    bisync: [],
+    move: [],
+    backend: [],
+  };
+
+  // ============================================================================
+  // EDIT/CREATE MODE STATE
+  // ============================================================================
+  editTarget: EditTarget = null;
+  cloneTarget = false;
+  restrictMode = false;
+  useInteractiveMode = false;
+
+  // ============================================================================
+  // LOADING & ASYNC STATE
+  // ============================================================================
+  isRemoteConfigLoading = false;
+  isAuthInProgress = false;
+  isAuthCancelled = false;
+
+  // ============================================================================
+  // INTERACTIVE FLOW STATE
+  // ============================================================================
+  interactiveFlowState: InteractiveFlowState = {
+    isActive: false,
+    question: null,
+    answer: null,
+    isProcessing: false,
+  };
+
+  private pendingConfig: PendingConfig | null = null;
+
+  // ============================================================================
+  // UI STATE
+  // ============================================================================
+  currentStep = 1;
+
+  constructor() {
+    this.initializeFromDialogData();
+    this.createForms();
   }
 
-  /**
-   * Navigate to a specific step (used when clicking step indicators in edit mode)
-   */
-  goToStep(step: number): void {
-    if (step >= 1 && step <= this.TOTAL_STEPS) {
-      this.currentStep = step;
-    }
-  }
-
-  /**
-   * Get step information for accessibility
-   */
-  getStepProgress(): { current: number; total: number; percentage: number } {
-    return {
-      current: this.currentStep,
-      total: this.TOTAL_STEPS,
-      percentage: Math.round((this.currentStep / this.TOTAL_STEPS) * 100),
-    };
-  }
-
-  /**
-   * Get visual state for current step
-   */
-  getStepState(stepNumber: number): 'completed' | 'current' | 'future' {
-    if (stepNumber < this.currentStep) {
-      return 'completed';
-    } else if (stepNumber === this.currentStep) {
-      return 'current';
-    } else {
-      return 'future';
-    }
-  }
-
-  getStepIcon(stepIndex: number): string {
-    const iconMap: Record<number, string> = {
-      0: 'hard-drive', // Remote Config
-      1: 'mount', // Mount
-      2: 'copy', // Copy
-      3: 'sync', // Sync
-      4: 'right-left', // Bisync (bidirectional sync)
-      5: 'move', // Move
-      6: 'filter', // Filter
-      7: 'vfs', // VFS (Virtual File System)
-      8: 'server', // Backend
-    };
-
-    return iconMap[stepIndex] || 'circle';
-  }
-
-  getStepProgressAriaLabel(): string {
-    return `Step ${this.currentStep} of ${this.TOTAL_STEPS}: ${this.stepLabels[this.currentStep - 1]}`;
-  }
-
-  /**
-   * Handle keyboard navigation for step indicators
-   */
-  handleStepKeydown(event: KeyboardEvent, stepNumber: number): void {
-    if (!this.editTarget) return;
-
-    switch (event.key) {
-      case 'ArrowRight':
-        event.preventDefault();
-        if (stepNumber < this.TOTAL_STEPS) {
-          this.goToStep(stepNumber + 1);
-        }
-        break;
-      case 'ArrowLeft':
-        event.preventDefault();
-        if (stepNumber > 1) {
-          this.goToStep(stepNumber - 1);
-        }
-        break;
-      case 'Home':
-        event.preventDefault();
-        this.goToStep(1);
-        break;
-      case 'End':
-        event.preventDefault();
-        this.goToStep(this.TOTAL_STEPS);
-        break;
-    }
+  // ============================================================================
+  // LIFECYCLE HOOKS
+  // ============================================================================
+  async ngOnInit(): Promise<void> {
+    await this.initializeComponent();
+    this.setupFormListeners();
+    this.setupAuthStateListeners();
+    this.mountTypes = await this.mountManagementService.getMountTypes();
+    await this.fetchInitialPathEntriesForEditMode();
   }
 
   ngOnDestroy(): void {
-    this.cleanupSubscriptions();
+    this.destroy$.next();
+    this.destroy$.complete();
     this.authStateService.cancelAuth();
+  }
+
+  // ============================================================================
+  // INITIALIZATION
+  // ============================================================================
+  private initializeFromDialogData(): void {
+    this.editTarget = this.dialogData?.editTarget || null;
+    this.cloneTarget = this.dialogData?.cloneTarget || false;
+    this.restrictMode = this.dialogData?.restrictMode;
+  }
+
+  private createForms(): void {
+    this.remoteForm = this.createRemoteForm();
+    this.remoteConfigForm = this.createRemoteConfigForm();
   }
 
   private async initializeComponent(): Promise<void> {
     await this.loadExistingRemotes();
-    this.dynamicFlagFields = await this.flagConfigService.loadAllFlagFields();
+    await this.loadRemoteTypes();
+    await this.loadAllFlagFields();
+    this.populateFormIfEditingOrCloning();
+    this.setupPathSelectionListeners();
+  }
 
+  private async loadRemoteTypes(): Promise<void> {
+    this.remoteTypes = await this.getRemoteTypes();
+  }
+
+  private async loadAllFlagFields(): Promise<void> {
+    this.dynamicFlagFields = await this.flagConfigService.loadAllFlagFields();
     this.dynamicFlagFields.move = [...this.dynamicFlagFields.copy];
     this.dynamicFlagFields.bisync = [...this.dynamicFlagFields.copy];
+    this.addDynamicFieldsToForm();
+  }
 
+  private addDynamicFieldsToForm(): void {
     this.flagConfigService.FLAG_TYPES.forEach(flagType => {
-      const optionsGroup = this.remoteConfigForm.get(`${flagType}Config.options`) as FormGroup;
+      const optionsGroup = this.remoteConfigForm.get(`${flagType}Config`) as FormGroup;
 
       if (optionsGroup && this.dynamicFlagFields[flagType]) {
         this.dynamicFlagFields[flagType].forEach(field => {
@@ -334,176 +270,49 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         });
       }
     });
+  }
 
-    if (this.data?.existingConfig) {
-      this.populateForm(this.data.existingConfig);
+  private populateFormIfEditingOrCloning(): void {
+    if (this.dialogData?.existingConfig) {
+      this.populateForm(this.dialogData.existingConfig);
     }
-
-    this.loadRemoteTypes();
   }
 
-  // Remote Config Service
-  private async loadRemoteTypes(): Promise<void> {
-    this.remoteTypes = await this.getRemoteTypes();
-  }
-
-  async onRemoteTypeChange(): Promise<void> {
-    this.isRemoteConfigLoading = true;
+  private async loadExistingRemotes(): Promise<void> {
     try {
-      const remoteType = this.remoteForm.get('type')?.value;
-
-      this.useInteractiveMode = ['iclouddrive', 'onedrive'].includes(remoteType?.toLowerCase());
-      this.dynamicRemoteFields =
-        await this.remoteManagementService.getRemoteConfigFields(remoteType);
-
-      // 1. Clear out old dynamic fields from the form
-      Object.keys(this.remoteForm.controls).forEach(key => {
-        if (key !== 'name' && key !== 'type') {
-          this.remoteForm.removeControl(key);
-        }
-      });
-
-      this.dynamicRemoteFields.forEach(field => {
-        this.remoteForm.addControl(field.Name, new FormControl(field.Value));
-      });
+      this.existingRemotes = await this.remoteManagementService.getRemotes();
+      // Ensure the name control uses the up-to-date list for uniqueness checks
+      this.refreshRemoteNameValidator();
     } catch (error) {
-      console.error('Error loading remote config fields:', error);
-    } finally {
-      this.isRemoteConfigLoading = false;
+      console.error('Error loading existing remotes:', error);
     }
   }
 
-  onInteractiveModeToggled(useInteractiveMode: boolean): void {
-    this.useInteractiveMode = useInteractiveMode;
+  /**
+   * Rebuilds the validator for the "name" control so it captures the current
+   * list of existing remotes (the validator factory captures the array by
+   * reference at creation time). Call this after existingRemotes is updated.
+   */
+  private refreshRemoteNameValidator(): void {
+    const nameCtrl = this.remoteForm?.get('name');
+    if (!nameCtrl) return;
+
+    nameCtrl.setValidators([Validators.required, this.validateRemoteNameFactory()]);
+    nameCtrl.updateValueAndValidity({ onlySelf: true, emitEvent: false });
   }
 
-  async getRemoteTypes(): Promise<RemoteType[]> {
-    try {
-      const providers = await this.remoteManagementService.getRemoteTypes();
-      return providers.map(provider => ({
-        value: provider.name,
-        label: provider.description,
-      }));
-    } catch (error) {
-      console.error('Error fetching remote types:', error);
-      throw error;
-    }
-  }
-
-  private setupAuthStateListeners(): void {
-    this.subscriptions.push(
-      this.authStateService.isAuthInProgress$.subscribe(isInProgress => {
-        this.isAuthInProgress = isInProgress;
-        this.setFormState(isInProgress);
-      })
-    );
-    this.subscriptions.push(
-      this.authStateService.isAuthCancelled$.subscribe(isCancelled => {
-        this.isAuthCancelled = isCancelled;
-      })
-    );
-  }
-
-  private setupFormListeners(): void {
-    // Mount path required if autoStart is enabled
-    this.remoteConfigForm.get('mountConfig.autoStart')?.valueChanges.subscribe(enabled => {
-      const destCtrl = this.remoteConfigForm.get('mountConfig.dest');
-      if (enabled) {
-        destCtrl?.setValidators([
-          Validators.required,
-          this.validatorRegistry.getValidator('crossPlatformPath')!,
-        ]);
-      } else {
-        destCtrl?.setValidators([this.validatorRegistry.getValidator('crossPlatformPath')!]);
-      }
-      destCtrl?.updateValueAndValidity();
-    });
-
-    // Copy source/dest required if autoStart is enabled
-    this.remoteConfigForm.get('copyConfig.autoStart')?.valueChanges.subscribe(enabled => {
-      const destCtrl = this.remoteConfigForm.get('copyConfig.dest');
-      if (enabled) {
-        destCtrl?.setValidators([Validators.required]);
-      } else {
-        destCtrl?.clearValidators();
-      }
-      destCtrl?.updateValueAndValidity();
-    });
-
-    // Sync source/dest required if autoStart is enabled
-    this.remoteConfigForm.get('syncConfig.autoStart')?.valueChanges.subscribe(enabled => {
-      const destCtrl = this.remoteConfigForm.get('syncConfig.dest');
-      if (enabled) {
-        destCtrl?.setValidators([Validators.required]);
-      } else {
-        destCtrl?.clearValidators();
-      }
-      destCtrl?.updateValueAndValidity();
-    });
-
-    // Bisync source/dest required if autoStart is enabled
-    this.remoteConfigForm.get('bisyncConfig.autoStart')?.valueChanges.subscribe(enabled => {
-      const destCtrl = this.remoteConfigForm.get('bisyncConfig.dest');
-      if (enabled) {
-        destCtrl?.setValidators([Validators.required]);
-      } else {
-        destCtrl?.clearValidators();
-      }
-      destCtrl?.updateValueAndValidity();
-    });
-
-    // Move source/dest required if autoStart is enabled
-    this.remoteConfigForm.get('moveConfig.autoStart')?.valueChanges.subscribe(enabled => {
-      const destCtrl = this.remoteConfigForm.get('moveConfig.dest');
-      if (enabled) {
-        destCtrl?.setValidators([Validators.required]);
-      } else {
-        destCtrl?.clearValidators();
-      }
-      destCtrl?.updateValueAndValidity();
-    });
-  }
-
-  async onSourceOptionSelectedField(entryName: string, formPath: string): Promise<void> {
-    const control = this.remoteConfigForm.get(formPath);
-    await this.pathSelectionService.onPathSelected(formPath, entryName, control);
-  }
-
-  async onDestOptionSelectedField(entryName: string, formPath: string): Promise<void> {
-    const control = this.remoteConfigForm.get(formPath);
-    await this.pathSelectionService.onPathSelected(formPath, entryName, control);
-  }
-
-  async onRemoteSelected(remoteWithColon: string, formPath: string): Promise<void> {
-    const control = this.remoteConfigForm.get(formPath);
-    await this.pathSelectionService.onRemoteSelected(formPath, remoteWithColon, control);
-  }
-
-  async onRemoteSelectedField(remoteWithColon: string, formPath: string): Promise<void> {
-    const control = this.remoteConfigForm.get(formPath);
-    await this.pathSelectionService.onRemoteSelected(formPath, remoteWithColon, control);
-  }
-
-  resetRemoteSelectionField(formPath: string): void {
-    this.pathSelectionService.resetPathSelection(formPath);
-    this.remoteConfigForm.get(formPath)?.setValue('');
-  }
-
-  private cleanupSubscriptions(): void {
-    this.subscriptions.forEach(sub => sub.unsubscribe());
-    this.subscriptions = [];
-  }
-
+  // ============================================================================
+  // FORM CREATION
+  // ============================================================================
   private createRemoteForm(): FormGroup {
-    const isEditMode = this.editTarget === 'remote' && !!this.data?.existingConfig;
-    const form = this.fb.group({
+    const isEditMode = this.editTarget === 'remote' && !!this.dialogData?.existingConfig;
+    return this.fb.group({
       name: [
         { value: '', disabled: isEditMode },
         [Validators.required, this.validateRemoteNameFactory()],
       ],
       type: [{ value: '', disabled: isEditMode }, [Validators.required]],
     });
-    return form;
   }
 
   private createRemoteConfigForm(): FormGroup {
@@ -513,21 +322,21 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         dest: [''],
         source: [''],
         type: [''],
-        options: this.fb.group({}),
+        options: {},
       }),
       copyConfig: this.fb.group({
         autoStart: [false],
         source: [''],
         dest: [''],
         createEmptySrcDirs: [false],
-        options: this.fb.group({}),
+        options: {},
       }),
       syncConfig: this.fb.group({
         autoStart: [false],
         source: [''],
         dest: [''],
         createEmptySrcDirs: [false],
-        options: this.fb.group({}),
+        options: {},
       }),
       bisyncConfig: this.fb.group({
         autoStart: [false],
@@ -549,7 +358,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         backupdir1: [''],
         backupdir2: [''],
         noCleanup: [false],
-        options: this.fb.group({}),
+        options: {},
       }),
       moveConfig: this.fb.group({
         autoStart: [false],
@@ -557,60 +366,123 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         dest: [''],
         createEmptySrcDirs: [false],
         deleteEmptySrcDirs: [false],
-        options: this.fb.group({}),
+        options: {},
       }),
       filterConfig: this.fb.group({
-        options: this.fb.group({}),
+        options: {},
       }),
       vfsConfig: this.fb.group({
-        options: this.fb.group({}),
+        options: {},
       }),
       backendConfig: this.fb.group({
-        options: this.fb.group({}),
+        options: {},
       }),
     });
   }
 
-  //#region Remote Configuration Methods
-  private async loadExistingRemotes(): Promise<void> {
-    try {
-      this.existingRemotes = await this.remoteManagementService.getRemotes();
-    } catch (error) {
-      console.error('Error loading existing remotes:', error);
-    }
+  // ============================================================================
+  // FORM LISTENERS SETUP
+  // ============================================================================
+  private setupFormListeners(): void {
+    this.setupAutoStartValidators();
   }
-  //#endregion
 
-  //#region Form Population Methods
-  populateForm(config: any): void {
+  private setupAutoStartValidators(): void {
+    const autoStartConfigs: AutoStartValidator[] = [
+      {
+        autoStartPath: 'mountConfig.autoStart',
+        destPath: 'mountConfig.dest',
+        validators: [
+          Validators.required,
+          this.validatorRegistry.getValidator('crossPlatformPath')!,
+        ],
+      },
+      {
+        autoStartPath: 'copyConfig.autoStart',
+        destPath: 'copyConfig.dest',
+        validators: [Validators.required],
+      },
+      {
+        autoStartPath: 'syncConfig.autoStart',
+        destPath: 'syncConfig.dest',
+        validators: [Validators.required],
+      },
+      {
+        autoStartPath: 'bisyncConfig.autoStart',
+        destPath: 'bisyncConfig.dest',
+        validators: [Validators.required],
+      },
+      {
+        autoStartPath: 'moveConfig.autoStart',
+        destPath: 'moveConfig.dest',
+        validators: [Validators.required],
+      },
+    ];
+
+    autoStartConfigs.forEach(config => {
+      this.remoteConfigForm
+        .get(config.autoStartPath)
+        ?.valueChanges.pipe(takeUntil(this.destroy$))
+        .subscribe(enabled => {
+          const destCtrl = this.remoteConfigForm.get(config.destPath);
+          if (enabled) {
+            destCtrl?.setValidators(config.validators);
+          } else {
+            destCtrl?.clearValidators();
+          }
+          destCtrl?.updateValueAndValidity();
+        });
+    });
+  }
+
+  private setupPathSelectionListeners(): void {
+    const pathConfigs = [
+      'mountConfig.source',
+      'copyConfig.source',
+      'copyConfig.dest',
+      'syncConfig.source',
+      'syncConfig.dest',
+      'bisyncConfig.dest',
+      'moveConfig.dest',
+    ];
+
+    pathConfigs.forEach(path => {
+      this.remoteConfigForm
+        .get(path)
+        ?.valueChanges.pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
+        .subscribe(value => {
+          this.pathSelectionService.onInputChanged(path, value ?? '');
+        });
+    });
+  }
+
+  private setupAuthStateListeners(): void {
+    this.authStateService.isAuthInProgress$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(isInProgress => {
+        this.isAuthInProgress = isInProgress;
+        this.setFormState(isInProgress);
+      });
+
+    this.authStateService.isAuthCancelled$.pipe(takeUntil(this.destroy$)).subscribe(isCancelled => {
+      this.isAuthCancelled = isCancelled;
+    });
+  }
+
+  // ============================================================================
+  // FORM POPULATION
+  // ============================================================================
+  private populateForm(config: any): void {
     if (!this.editTarget && !this.cloneTarget) return;
+
     if (this.editTarget === 'remote') {
       this.populateRemoteForm(config);
     } else if (this.cloneTarget) {
       this.populateRemoteForm(config.remoteSpecs);
-      this.populateFlagBasedForm('mount', config.mountConfig || {});
-      this.populateFlagBasedForm('copy', config.copyConfig || {});
-      this.populateFlagBasedForm('sync', config.syncConfig || {});
-      this.populateFlagBasedForm('bisync', config.bisyncConfig || {});
-      this.populateFlagBasedForm('move', config.moveConfig || {});
-      this.populateFlagForm('filter', config.filterConfig || {});
-      this.populateFlagForm('vfs', config.vfsConfig || {});
-      this.populateFlagForm('backend', config.backendConfig || {});
+      this.populateFlagBasedConfigs(config);
+      this.populateFlagOnlyConfigs(config);
     } else {
-      switch (this.editTarget) {
-        case 'mount':
-        case 'copy':
-        case 'sync':
-        case 'bisync':
-        case 'move':
-          this.populateFlagBasedForm(this.editTarget, config);
-          break;
-        case 'filter':
-        case 'vfs':
-        case 'backend':
-          this.populateFlagForm(this.editTarget, config);
-          break;
-      }
+      this.populateByEditTarget(config);
     }
   }
 
@@ -620,95 +492,187 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       type: config.type,
     });
     await this.onRemoteTypeChange();
-    // Use patchValue for dynamic fields
     this.remoteForm.patchValue(config);
   }
 
-  private populateFlagBasedForm(flagType: FlagType, config: any): void {
-    // Ensure config is a valid object to prevent errors on null/undefined data.
-    if (!config) {
-      config = {};
-    }
+  private populateFlagBasedConfigs(config: any): void {
+    this.FLAG_BASED_TYPES.forEach(flagType => {
+      this.populateFlagBasedForm(flagType, config[`${flagType}Config`] || {});
+    });
+  }
 
-    // Set a default source path if one isn't provided in the config.
+  private populateFlagOnlyConfigs(config: any): void {
+    this.FLAG_ONLY_TYPES.forEach(flagType => {
+      this.populateFlagForm(flagType, config[`${flagType}Config`] || {});
+    });
+  }
+
+  private populateByEditTarget(config: any): void {
+    if (this.editTarget && (this.FLAG_BASED_TYPES as string[]).includes(this.editTarget)) {
+      this.populateFlagBasedForm(this.editTarget as FlagType, config);
+    } else if (this.editTarget && (this.FLAG_ONLY_TYPES as string[]).includes(this.editTarget)) {
+      this.populateFlagForm(this.editTarget as FlagType, config);
+    }
+  }
+
+  private populateFlagBasedForm(flagType: FlagType, config: any): void {
+    config = config || {};
+
     let source = config.source || '';
     if (!source || source.trim() === '') {
       source = `${this.getRemoteName()}:/`;
     }
 
-    // 1. Prepare an object for the static fields common to most types.
     const baseConfig = {
       autoStart: config.autoStart ?? false,
-      source: source,
+      source,
       dest: config.dest || '',
     };
 
-    // 2. Prepare an object for static fields specific to certain flag types.
-    let specificConfig = {};
-    switch (flagType) {
-      case 'mount':
-        specificConfig = {
-          type: config.type || '',
-        };
-        break;
-      case 'copy':
-      case 'sync':
-        specificConfig = {
-          createEmptySrcDirs: config.createEmptySrcDirs ?? false,
-        };
-        break;
-      case 'move':
-        specificConfig = {
-          createEmptySrcDirs: config.createEmptySrcDirs ?? false,
-          deleteEmptySrcDirs: config.deleteEmptySrcDirs ?? false,
-        };
-        break;
-      case 'bisync':
-        specificConfig = {
-          dryRun: config.dryRun ?? false,
-          resync: config.resync ?? false,
-          checkAccess: config.checkAccess ?? false,
-          checkFilename: config.checkFilename || '',
-          maxDelete: config.maxDelete ?? null,
-          force: config.force ?? false,
-          checkSync: config.checkSync ?? false,
-          createEmptySrcDirs: config.createEmptySrcDirs ?? false,
-          removeEmptyDirs: config.removeEmptyDirs ?? false,
-          filtersFile: config.filtersFile || '',
-          ignoreListingChecksum: config.ignoreListingChecksum ?? false,
-          resilient: config.resilient ?? false,
-          workdir: config.workdir || '',
-          backupdir1: config.backupdir1 || '',
-          backupdir2: config.backupdir2 || '',
-          noCleanup: config.noCleanup ?? false,
-        };
-        break;
-    }
+    const specificConfig = this.getSpecificFlagConfig(flagType, config);
+    const staticConfigToPatch = { ...baseConfig, ...specificConfig };
 
-    // 3. Combine the static configs and patch them into the parent form group.
-    const staticConfigToPatch = {
-      ...baseConfig,
-      ...specificConfig,
-    };
     this.remoteConfigForm.get(`${flagType}Config`)?.patchValue(staticConfigToPatch);
 
-    // 4. Patch the dynamic flag options into the nested 'options' form group.
-    const optionsGroup = this.remoteConfigForm.get(`${flagType}Config.options`);
+    const optionsGroup = this.remoteConfigForm.get(`${flagType}Config`);
     if (optionsGroup && config.options) {
       optionsGroup.patchValue(config.options);
     }
   }
 
+  private getSpecificFlagConfig(flagType: FlagType, config: any): Record<string, any> {
+    const specificConfigs: Record<FlagType, Record<string, any>> = {
+      mount: { type: config.type || '' },
+      copy: { createEmptySrcDirs: config.createEmptySrcDirs ?? false },
+      sync: { createEmptySrcDirs: config.createEmptySrcDirs ?? false },
+      filter: {},
+      vfs: {},
+      backend: {},
+      move: {
+        createEmptySrcDirs: config.createEmptySrcDirs ?? false,
+        deleteEmptySrcDirs: config.deleteEmptySrcDirs ?? false,
+      },
+      bisync: {
+        dryRun: config.dryRun ?? false,
+        resync: config.resync ?? false,
+        checkAccess: config.checkAccess ?? false,
+        checkFilename: config.checkFilename || '',
+        maxDelete: config.maxDelete ?? null,
+        force: config.force ?? false,
+        checkSync: config.checkSync ?? false,
+        createEmptySrcDirs: config.createEmptySrcDirs ?? false,
+        removeEmptyDirs: config.removeEmptyDirs ?? false,
+        filtersFile: config.filtersFile || '',
+        ignoreListingChecksum: config.ignoreListingChecksum ?? false,
+        resilient: config.resilient ?? false,
+        workdir: config.workdir || '',
+        backupdir1: config.backupdir1 || '',
+        backupdir2: config.backupdir2 || '',
+        noCleanup: config.noCleanup ?? false,
+      },
+    };
+    return specificConfigs[flagType] || {};
+  }
+
   private populateFlagForm(flagType: FlagType, config: any): void {
-    const optionsGroup = this.remoteConfigForm.get(`${flagType}Config.options`);
+    const optionsGroup = this.remoteConfigForm.get(`${flagType}Config`);
     if (optionsGroup) {
       optionsGroup.patchValue(config || {});
     }
   }
 
-  //#endregion
+  // ============================================================================
+  // REMOTE TYPE MANAGEMENT
+  // ============================================================================
+  async onRemoteTypeChange(): Promise<void> {
+    this.isRemoteConfigLoading = true;
+    try {
+      const remoteType = this.remoteForm.get('type')?.value;
+      this.useInteractiveMode = this.INTERACTIVE_REMOTES.includes(remoteType?.toLowerCase());
+      this.dynamicRemoteFields =
+        await this.remoteManagementService.getRemoteConfigFields(remoteType);
+      this.replaceDynamicFormControls();
+    } catch (error) {
+      console.error('Error loading remote config fields:', error);
+    } finally {
+      this.isRemoteConfigLoading = false;
+    }
+  }
 
-  //#region Form Submission Methods
+  private replaceDynamicFormControls(): void {
+    Object.keys(this.remoteForm.controls).forEach(key => {
+      if (!['name', 'type'].includes(key)) {
+        this.remoteForm.removeControl(key);
+      }
+    });
+
+    this.dynamicRemoteFields.forEach(field => {
+      this.remoteForm.addControl(field.Name, new FormControl(field.Value));
+    });
+  }
+
+  private async getRemoteTypes(): Promise<RemoteType[]> {
+    try {
+      const providers = await this.remoteManagementService.getRemoteTypes();
+      return providers.map(provider => ({
+        value: provider.name,
+        label: provider.description,
+      }));
+    } catch (error) {
+      console.error('Error fetching remote types:', error);
+      throw error;
+    }
+  }
+
+  onInteractiveModeToggled(useInteractiveMode: boolean): void {
+    this.useInteractiveMode = useInteractiveMode;
+  }
+
+  // ============================================================================
+  // PATH SELECTION
+  // ============================================================================
+  async onSourceOptionSelectedField(entryName: string, formPath: string): Promise<void> {
+    const control = this.remoteConfigForm.get(formPath);
+    await this.pathSelectionService.onPathSelected(formPath, entryName, control);
+  }
+
+  async onDestOptionSelectedField(entryName: string, formPath: string): Promise<void> {
+    const control = this.remoteConfigForm.get(formPath);
+    await this.pathSelectionService.onPathSelected(formPath, entryName, control);
+  }
+
+  async onRemoteSelectedField(remoteWithColon: string, formPath: string): Promise<void> {
+    const control = this.remoteConfigForm.get(formPath);
+    await this.pathSelectionService.onRemoteSelected(formPath, remoteWithColon, control);
+  }
+
+  resetRemoteSelectionField(formPath: string): void {
+    this.pathSelectionService.resetPathSelection(formPath);
+    this.remoteConfigForm.get(formPath)?.setValue('');
+  }
+
+  selectLocalFolder(formPath: string, requireEmpty: boolean): void {
+    this.fileSystemService.selectFolder(requireEmpty).then(selectedPath => {
+      this.remoteConfigForm.get(formPath)?.setValue(selectedPath);
+    });
+  }
+
+  private async fetchInitialPathEntriesForEditMode(): Promise<void> {
+    if (this.editTarget && this.PATH_EDIT_TARGETS.includes(this.editTarget)) {
+      const formPath = `${this.editTarget}Config.source`;
+      const remoteName = this.dialogData?.name ?? '';
+      const existingSource =
+        typeof this.dialogData?.existingConfig?.['source'] === 'string'
+          ? this.dialogData.existingConfig['source']
+          : '';
+
+      await this.pathSelectionService.fetchEntriesForField(formPath, remoteName, existingSource);
+    }
+  }
+
+  // ============================================================================
+  // FORM SUBMISSION & STATE MANAGEMENT
+  // ============================================================================
   async onSubmit(): Promise<void> {
     if (this.isAuthInProgress) return;
 
@@ -725,15 +689,79 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  // UPDATED: Removed specific logic for 'options'
+  private async handleCreateMode(): Promise<{ success: boolean }> {
+    const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
+    const configData = this.remoteConfigForm.getRawValue();
+    const finalConfig = this.buildFinalConfig(remoteData, configData);
+
+    const interactive = this.useInteractiveMode;
+    await this.authStateService.startAuth(remoteData.name, false);
+
+    if (!interactive) {
+      await this.remoteManagementService.createRemote(remoteData.name, remoteData);
+      this.pendingConfig = { remoteData, finalConfig };
+      await this.finalizeRemoteCreation();
+      return { success: true };
+    }
+
+    this.pendingConfig = { remoteData, finalConfig };
+    return await this.startInteractiveRemoteConfig(remoteData);
+  }
+
+  private async handleEditMode(): Promise<{ success: boolean }> {
+    const remoteName = this.getRemoteName();
+    await this.authStateService.startAuth(remoteName, true);
+
+    if (this.editTarget === 'remote' && this.useInteractiveMode) {
+      return await this.handleInteractiveRemoteEdit();
+    }
+
+    const updatedConfig = await this.buildUpdateConfig();
+    await this.appSettingsService.saveRemoteSettings(remoteName, updatedConfig);
+    return { success: true };
+  }
+
+  private async handleInteractiveRemoteEdit(): Promise<{ success: boolean }> {
+    const remoteData = this.cleanFormData(this.remoteForm.getRawValue(), true, this.remoteForm);
+
+    this.pendingConfig = {
+      remoteData,
+      finalConfig: this.createEmptyFinalConfig(),
+    };
+
+    return await this.startInteractiveRemoteConfig(remoteData);
+  }
+
+  private async startInteractiveRemoteConfig(remoteData: any): Promise<{ success: boolean }> {
+    const { name, type, ...paramRest } = remoteData;
+    const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
+      name,
+      type,
+      paramRest,
+      { nonInteractive: true }
+    );
+
+    if (!startResp || startResp.State === '') {
+      await this.finalizeRemoteCreation();
+      return { success: true };
+    }
+
+    this.interactiveFlowState = {
+      isActive: true,
+      question: startResp,
+      answer: this.getDefaultAnswerFromQuestion(startResp),
+      isProcessing: false,
+    };
+
+    return { success: false };
+  }
+
   private setFormState(disabled: boolean): void {
     if (disabled) {
       this.remoteConfigForm.disable();
       this.remoteForm.disable();
     } else {
-      // Only enable controls that should be editable
       if (this.editTarget === 'remote') {
-        // In remote edit mode, keep 'name' and 'type' disabled
         Object.keys(this.remoteForm.controls).forEach(key => {
           if (['name', 'type'].includes(key)) {
             this.remoteForm.get(key)?.disable();
@@ -742,40 +770,52 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
           }
         });
       } else {
-        // In other modes, enable all controls
         this.remoteForm.enable();
       }
       this.remoteConfigForm.enable();
     }
   }
 
-  private async handleEditMode(): Promise<{ success: boolean }> {
-    const updatedConfig: any = {};
-    const remoteName = this.getRemoteName();
+  private async buildUpdateConfig(): Promise<Record<string, any>> {
+    const updatedConfig: Record<string, any> = {};
 
-    await this.authStateService.startAuth(remoteName, true);
+    const updateHandlers: Record<string, (config: any) => Promise<void>> = {
+      remote: config => this.handleRemoteUpdate(config),
+      mount: config => this.handleMountUpdate(config),
+      bisync: config => this.handleBisyncUpdate(config),
+      move: config => this.handleMoveUpdate(config),
+      copy: config => this.handleCopyUpdate(config),
+      sync: config => this.handleSyncUpdate(config),
+      filter: config => this.handleFlagUpdate(config),
+      backend: config => this.handleFlagUpdate(config),
+      vfs: config => this.handleFlagUpdate(config),
+    };
 
-    // Check if this is a remote edit with interactive mode
-    if (this.editTarget === 'remote' && this.useInteractiveMode) {
-      return await this.handleInteractiveRemoteEdit(updatedConfig);
+    if (this.editTarget && updateHandlers[this.editTarget]) {
+      await updateHandlers[this.editTarget](updatedConfig);
     }
 
-    await this.updateConfigBasedOnEditTarget(updatedConfig);
-    await this.appSettingsService.saveRemoteSettings(remoteName, updatedConfig);
-
-    return { success: true };
+    return updatedConfig;
   }
 
-  private async handleInteractiveRemoteEdit(updatedConfig: any): Promise<{ success: boolean }> {
-    const remoteData = this.cleanFormData(this.remoteForm.getRawValue(), true, this.remoteForm);
+  // ============================================================================
+  // CONFIGURATION BUILDING
+  // ============================================================================
+  private buildFinalConfig(remoteData: any, configData: any): FinalConfig {
+    return {
+      mountConfig: this.buildMountConfig(remoteData, configData.mountConfig),
+      copyConfig: this.buildCopyConfig(remoteData, configData.copyConfig),
+      syncConfig: this.buildSyncConfig(remoteData, configData.syncConfig),
+      bisyncConfig: this.buildBisyncConfig(remoteData, configData.bisyncConfig),
+      moveConfig: this.buildMoveConfig(remoteData, configData.moveConfig),
+      filterConfig: this.buildFilterConfig(configData.filterConfig),
+      vfsConfig: this.buildVfsConfig(configData.vfsConfig),
+      backendConfig: this.buildBackendConfig(configData.backendConfig),
+    };
+  }
 
-    // Store the updated config for later use
-    updatedConfig.name = remoteData.name;
-    updatedConfig.type = remoteData.type;
-
-    // Store config for finalization
-    this.pendingFinalConfig = {
-      ...updatedConfig,
+  private createEmptyFinalConfig(): FinalConfig {
+    return {
       mountConfig: {} as MountConfig,
       copyConfig: {} as CopyConfig,
       syncConfig: {} as SyncConfig,
@@ -785,160 +825,95 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       vfsConfig: {} as VfsConfig,
       backendConfig: {} as BackendConfig,
     };
-    this.pendingRemoteData = remoteData;
-
-    // Start interactive configuration for the remote
-    const { name, type, ...paramRest } = remoteData;
-    const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
-      name,
-      type,
-      paramRest,
-      { nonInteractive: true }
-    );
-
-    if (!startResp || startResp.State === '') {
-      return { success: true };
-    }
-
-    // Interactive steps needed
-    this.isInteractiveActive = true;
-    this.rcQuestion = startResp;
-    this.rcAnswer = this.getDefaultAnswerFromQuestion(startResp);
-    return { success: false };
   }
 
-  private getRemoteName(): string {
-    return this.data.name || this.remoteForm.get('name')?.value;
-  }
-
-  private async updateConfigBasedOnEditTarget(updatedConfig: any): Promise<void> {
-    if (!this.editTarget) return;
-
-    const updateHandlers = {
-      remote: this.handleRemoteUpdate.bind(this),
-      mount: this.handleMountUpdate.bind(this),
-      bisync: this.handleBisyncUpdate.bind(this),
-      move: this.handleMoveUpdate.bind(this),
-      copy: this.handleCopyUpdate.bind(this),
-      sync: this.handleSyncUpdate.bind(this),
-      filter: this.handleFlagUpdate.bind(this),
-      backend: this.handleFlagUpdate.bind(this),
-      vfs: this.handleFlagUpdate.bind(this),
-    } as const;
-
-    if (updateHandlers[this.editTarget]) {
-      await updateHandlers[this.editTarget](updatedConfig);
-    }
-  }
-
-  // UPDATED: All submission logic now uses extractFlagOptions
-  private async handleCreateMode(): Promise<{ success: boolean }> {
-    const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
-    const configData = this.remoteConfigForm.getRawValue();
-
-    const mountConfig = configData.mountConfig;
-    const copyConfig = configData.copyConfig;
-    const syncConfig = configData.syncConfig;
-    const bisyncConfig = configData.bisyncConfig;
-    const moveConfig = configData.moveConfig;
-
-    const finalConfig = {
-      mountConfig: {
-        autoStart: mountConfig.autoStart,
-        dest: mountConfig.dest,
-        source: mountConfig.source || `${remoteData.name}:/`,
-        type: mountConfig.type,
-        options: this.cleanData(configData.mountConfig.options, this.dynamicRemoteFields),
-      },
-      copyConfig: {
-        autoStart: copyConfig.autoStart,
-        source: copyConfig.source || `${remoteData.name}:/`,
-        dest: copyConfig.dest,
-        createEmptySrcDirs: copyConfig.createEmptySrcDirs,
-        options: this.cleanData(configData.copyConfig.options, this.dynamicRemoteFields),
-      },
-      syncConfig: {
-        autoStart: syncConfig.autoStart,
-        source: syncConfig.source || `${remoteData.name}:/`,
-        dest: syncConfig.dest,
-        createEmptySrcDirs: syncConfig.createEmptySrcDirs,
-        options: this.cleanData(configData.syncConfig.options, this.dynamicRemoteFields),
-      },
-      bisyncConfig: {
-        autoStart: bisyncConfig.autoStart,
-        source: bisyncConfig.source || `${remoteData.name}:/`,
-        dest: bisyncConfig.dest,
-        dryRun: bisyncConfig.dryRun,
-        resync: bisyncConfig.resync,
-        checkAccess: bisyncConfig.checkAccess,
-        checkFilename: bisyncConfig.checkFilename,
-        maxDelete: bisyncConfig.maxDelete,
-        force: bisyncConfig.force,
-        checkSync: bisyncConfig.checkSync,
-        createEmptySrcDirs: bisyncConfig.createEmptySrcDirs,
-        removeEmptyDirs: bisyncConfig.removeEmptyDirs,
-        filtersFile: bisyncConfig.filtersFile,
-        ignoreListingChecksum: bisyncConfig.ignoreListingChecksum,
-        resilient: bisyncConfig.resilient,
-        workdir: bisyncConfig.workdir,
-        backupdir1: bisyncConfig.backupdir1,
-        backupdir2: bisyncConfig.backupdir2,
-        noCleanup: bisyncConfig.noCleanup,
-        options: this.cleanData(configData.bisyncConfig.options, this.dynamicRemoteFields),
-      },
-      moveConfig: {
-        autoStart: moveConfig.autoStart,
-        source: moveConfig.source || `${remoteData.name}:/`,
-        dest: moveConfig.dest,
-        createEmptySrcDirs: moveConfig.createEmptySrcDirs,
-        deleteEmptySrcDirs: moveConfig.deleteEmptySrcDirs,
-        options: this.cleanData(configData.moveConfig.options, this.dynamicRemoteFields),
-      },
-      filterConfig: {
-        options: this.cleanData(configData.filterConfig.options, this.dynamicRemoteFields),
-      },
-      vfsConfig: {
-        options: this.cleanData(configData.vfsConfig.options, this.dynamicRemoteFields),
-      },
-      backendConfig: {
-        options: this.cleanData(configData.backendConfig.options, this.dynamicRemoteFields),
-      },
+  private buildMountConfig(remoteData: any, mountData: any): MountConfig {
+    return {
+      autoStart: mountData.autoStart || false,
+      dest: mountData.dest || '',
+      source: mountData.source || `${remoteData.name}:/`,
+      type: mountData.type || '',
+      options: this.cleanData(mountData.options, this.dynamicFlagFields.mount),
     };
-
-    const interactive = this.useInteractiveMode;
-    await this.authStateService.startAuth(remoteData.name, false);
-    if (!interactive) {
-      // Simple path
-      const toCreate = { ...remoteData } as Record<string, unknown>;
-      await this.remoteManagementService.createRemote(remoteData.name, toCreate);
-      this.pendingFinalConfig = finalConfig;
-      this.pendingRemoteData = remoteData;
-      await this.finalizeRemoteCreation();
-      return { success: true };
-    }
-
-    // Interactive path
-    this.pendingFinalConfig = finalConfig;
-    this.pendingRemoteData = remoteData;
-
-    const { name, type, ...paramRest } = remoteData;
-    const startResp = await this.remoteManagementService.startRemoteConfigInteractive(
-      name,
-      type,
-      paramRest,
-      { nonInteractive: true }
-    );
-
-    if (!startResp || startResp.State === '') {
-      await this.finalizeRemoteCreation();
-      return { success: true };
-    }
-    this.isInteractiveActive = true;
-    this.rcQuestion = startResp;
-    this.rcAnswer = this.getDefaultAnswerFromQuestion(startResp);
-    return { success: false };
   }
 
+  private buildCopyConfig(remoteData: any, copyData: any): CopyConfig {
+    return {
+      autoStart: copyData.autoStart || false,
+      source: copyData.source || `${remoteData.name}:/`,
+      dest: copyData.dest || '',
+      createEmptySrcDirs: copyData.createEmptySrcDirs || false,
+      options: this.cleanData(copyData.options, this.dynamicFlagFields.copy),
+    };
+  }
+
+  private buildSyncConfig(remoteData: any, syncData: any): SyncConfig {
+    return {
+      autoStart: syncData.autoStart || false,
+      source: syncData.source || `${remoteData.name}:/`,
+      dest: syncData.dest || '',
+      createEmptySrcDirs: syncData.createEmptySrcDirs || false,
+      options: this.cleanData(syncData.options, this.dynamicFlagFields.sync),
+    };
+  }
+
+  private buildBisyncConfig(remoteData: any, bisyncData: any): BisyncConfig {
+    return {
+      autoStart: bisyncData.autoStart || false,
+      source: bisyncData.source || `${remoteData.name}:/`,
+      dest: bisyncData.dest || '',
+      dryRun: bisyncData.dryRun,
+      resync: bisyncData.resync,
+      checkAccess: bisyncData.checkAccess,
+      checkFilename: bisyncData.checkFilename,
+      maxDelete: bisyncData.maxDelete,
+      force: bisyncData.force,
+      checkSync: bisyncData.checkSync,
+      createEmptySrcDirs: bisyncData.createEmptySrcDirs,
+      removeEmptyDirs: bisyncData.removeEmptyDirs,
+      filtersFile: bisyncData.filtersFile,
+      ignoreListingChecksum: bisyncData.ignoreListingChecksum,
+      resilient: bisyncData.resilient,
+      workdir: bisyncData.workdir,
+      backupdir1: bisyncData.backupdir1,
+      backupdir2: bisyncData.backupdir2,
+      noCleanup: bisyncData.noCleanup,
+      options: this.cleanData(bisyncData.options, this.dynamicFlagFields.bisync),
+    };
+  }
+
+  private buildMoveConfig(remoteData: any, moveData: any): MoveConfig {
+    return {
+      autoStart: moveData.autoStart,
+      source: moveData.source || `${remoteData.name}:/`,
+      dest: moveData.dest,
+      createEmptySrcDirs: moveData.createEmptySrcDirs,
+      deleteEmptySrcDirs: moveData.deleteEmptySrcDirs,
+      options: this.cleanData(moveData.options, this.dynamicFlagFields.move),
+    };
+  }
+
+  private buildFilterConfig(filterData: any): FilterConfig {
+    return {
+      ...this.cleanData(filterData.options, this.dynamicFlagFields.filter),
+    };
+  }
+
+  private buildVfsConfig(vfsData: any): VfsConfig {
+    return {
+      ...this.cleanData(vfsData.options, this.dynamicFlagFields.vfs),
+    };
+  }
+
+  private buildBackendConfig(backendData: any): BackendConfig {
+    return {
+      ...this.cleanData(backendData.options, this.dynamicFlagFields.backend),
+    };
+  }
+
+  // ============================================================================
+  // UPDATE HANDLERS
+  // ============================================================================
   private async handleRemoteUpdate(updatedConfig: any): Promise<void> {
     const remoteData = this.cleanFormData(this.remoteForm.getRawValue(), true, this.remoteForm);
     updatedConfig.name = remoteData.name;
@@ -947,18 +922,47 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private async handleMountUpdate(updatedConfig: any): Promise<void> {
-    const mountData = this.cleanFormData(this.remoteConfigForm.getRawValue().mountConfig);
+    const mountData = this.remoteConfigForm.getRawValue().mountConfig;
     if (!mountData.source || mountData.source.trim() === '') {
       mountData.source = `${this.getRemoteName()}:/`;
     }
-    console.log('mountData options after check:', mountData);
 
     updatedConfig.mountConfig = {
       autoStart: mountData.autoStart,
       dest: mountData.dest,
       source: mountData.source,
       type: mountData.type,
-      options: this.cleanData(mountData.options, this.dynamicRemoteFields),
+      options: this.cleanData(mountData.options, this.dynamicFlagFields.mount),
+    };
+  }
+
+  private async handleCopyUpdate(updatedConfig: any): Promise<void> {
+    const copyData = this.remoteConfigForm.getRawValue().copyConfig;
+    if (!copyData.source || copyData.source.trim() === '') {
+      copyData.source = `${this.getRemoteName()}:/`;
+    }
+
+    updatedConfig.copyConfig = {
+      autoStart: copyData.autoStart,
+      source: copyData.source,
+      dest: copyData.dest,
+      createEmptySrcDirs: copyData.createEmptySrcDirs,
+      options: this.cleanData(copyData.options, this.dynamicFlagFields.copy),
+    };
+  }
+
+  private async handleSyncUpdate(updatedConfig: any): Promise<void> {
+    const syncData = this.remoteConfigForm.getRawValue().syncConfig;
+    if (!syncData.source || syncData.source.trim() === '') {
+      syncData.source = `${this.getRemoteName()}:/`;
+    }
+
+    updatedConfig.syncConfig = {
+      autoStart: syncData.autoStart,
+      source: syncData.source,
+      dest: syncData.dest,
+      createEmptySrcDirs: syncData.createEmptySrcDirs,
+      options: this.cleanData(syncData.options, this.dynamicFlagFields.sync),
     };
   }
 
@@ -967,6 +971,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (!bisyncData.source || bisyncData.source.trim() === '') {
       bisyncData.source = `${this.getRemoteName()}:/`;
     }
+
     updatedConfig.bisyncConfig = {
       autoStart: bisyncData.autoStart,
       source: bisyncData.source,
@@ -987,7 +992,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       backupdir1: bisyncData.backupdir1,
       backupdir2: bisyncData.backupdir2,
       noCleanup: bisyncData.noCleanup,
-      options: this.cleanData(bisyncData.options, this.dynamicRemoteFields),
+      options: this.cleanData(bisyncData.options, this.dynamicFlagFields.bisync),
     };
   }
 
@@ -996,41 +1001,14 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     if (!moveData.source || moveData.source.trim() === '') {
       moveData.source = `${this.getRemoteName()}:/`;
     }
+
     updatedConfig.moveConfig = {
       autoStart: moveData.autoStart,
       source: moveData.source,
       dest: moveData.dest,
       createEmptySrcDirs: moveData.createEmptySrcDirs,
       deleteEmptySrcDirs: moveData.deleteEmptySrcDirs,
-      options: this.cleanData(moveData.options, this.dynamicRemoteFields),
-    };
-  }
-
-  private async handleCopyUpdate(updatedConfig: any): Promise<void> {
-    const copyData = this.remoteConfigForm.getRawValue().copyConfig;
-    if (!copyData.source || copyData.source.trim() === '') {
-      copyData.source = `${this.getRemoteName()}:/`;
-    }
-    updatedConfig.copyConfig = {
-      autoStart: copyData.autoStart,
-      source: copyData.source,
-      dest: copyData.dest,
-      createEmptySrcDirs: copyData.createEmptySrcDirs,
-      options: this.cleanData(copyData.options, this.dynamicRemoteFields),
-    };
-  }
-
-  private async handleSyncUpdate(updatedConfig: any): Promise<void> {
-    const syncData = this.remoteConfigForm.getRawValue().syncConfig;
-    if (!syncData.source || syncData.source.trim() === '') {
-      syncData.source = `${this.getRemoteName()}:/`;
-    }
-    updatedConfig.syncConfig = {
-      autoStart: syncData.autoStart,
-      source: syncData.source,
-      dest: syncData.dest,
-      createEmptySrcDirs: syncData.createEmptySrcDirs,
-      options: this.cleanData(syncData.options, this.dynamicRemoteFields),
+      options: this.cleanData(moveData.options, this.dynamicFlagFields.move),
     };
   }
 
@@ -1041,52 +1019,36 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     ) {
       return;
     }
-    // Get the raw value of the specific config group (e.g., filterConfig)
-    const flagData = this.remoteConfigForm.getRawValue()[`${this.editTarget}Config`];
 
-    // Extract only the dynamic flags, removing any static keys (which shouldn't be there, but good to be safe)
+    const flagData = this.remoteConfigForm.getRawValue()[`${this.editTarget}Config`];
     updatedConfig[`${this.editTarget}Config`] = this.cleanData(
       flagData.options,
-      this.dynamicRemoteFields
-    );
-  }
-  //#endregion
-
-  //#region Utility Methods
-  private validateRemoteNameFactory(): ValidatorFn {
-    return this.validatorRegistry.createRemoteNameValidator(
-      this.existingRemotes,
-      REMOTE_NAME_REGEX
+      this.dynamicFlagFields[this.editTarget as FlagType]
     );
   }
 
+  // ============================================================================
+  // DATA CLEANING & VALIDATION
+  // ============================================================================
   private cleanFormData(formData: any, isEditMode = false, formControl?: FormGroup): any {
+    const staticRequiredFields =
+      isEditMode && formControl === this.remoteForm ? ['name', 'type'] : [];
+
     return Object.entries(formData)
       .filter(([key, value]) => {
-        // Always filter null, undefined
+        // Always keep required static fields
+        if (staticRequiredFields.includes(key)) {
+          return true;
+        }
+
         if (value === null || value === undefined) {
           return false;
         }
 
-        // Keep 0 or '0' if it's a number/string, but not if it's the default for a number type
-        if (value === 0 || value === '0') {
-          const field = this.dynamicRemoteFields.find(f => f.Name === key);
-          if (field && ['int', 'int64', 'uint32', 'SizeSuffix'].includes(field.Type)) {
-            // It's a number type, check if it's default
-          } else {
-            return true; // Keep '0' for string fields etc.
-          }
-        }
-
-        // Keep empty strings as they might be intentional unsets
-        if (value === '') {
-          return true;
-        }
-
         if (isEditMode && formControl) {
           const control = formControl.get(key);
-          if (control && control.dirty) {
-            return true;
+          if (control && !control.dirty) {
+            return false;
           }
         }
 
@@ -1095,64 +1057,372 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {});
   }
 
-  private cleanData(formData: any, fieldDefinitions: RcConfigOption[]): any {
+  private cleanData(formData: any, fieldDefinitions: RcConfigOption[]): Record<string, unknown> {
     const cleanedData: Record<string, unknown> = {};
     if (!fieldDefinitions || !formData) return cleanedData;
 
     for (const field of fieldDefinitions) {
       const key = field.Name;
-      if (Object.prototype.hasOwnProperty.call(formData, key)) {
-        const currentValue = formData[key];
-        const defaultValue = field.Default;
-        let isDefault = false;
-
-        if (field.Type === 'bool') {
-          isDefault = currentValue === (defaultValue === true);
-        } else if (
-          Array.isArray(defaultValue) &&
-          Array.isArray(currentValue) &&
-          currentValue.length === 0 &&
-          defaultValue.length === 0
-        ) {
-          isDefault = true;
-        } else {
-          const isCurrentEmpty =
-            currentValue === null || currentValue === undefined || currentValue === '';
-          const isDefaultEmpty =
-            defaultValue === null || defaultValue === undefined || defaultValue === '';
-          if (isCurrentEmpty && isDefaultEmpty) {
-            isDefault = true;
-          } else {
-            // Use string comparison as a general fallback, handles numbers/strings ok
-            isDefault = String(currentValue) === String(defaultValue);
-          }
-        }
-        if (!isDefault) cleanedData[key] = currentValue;
+      if (!Object.prototype.hasOwnProperty.call(formData, key)) {
+        continue;
       }
+
+      const currentValue = formData[key];
+
+      if (this.isDefaultValue(currentValue, field)) {
+        continue;
+      }
+
+      cleanedData[key] = currentValue;
     }
+
+    console.log('Cleaned Data:', cleanedData);
+
     return cleanedData;
   }
 
-  //#endregion
+  private isDefaultValue(currentValue: any, field: RcConfigOption): boolean {
+    const fieldType = field.Type;
+    const defaultValue = field.Default;
+    const defaultStr = field.DefaultStr;
 
-  //#region UI Helper Methods
-  selectLocalFolder(whichFormPath: string, requireEmpty: boolean): void {
-    this.fileSystemService.selectFolder(requireEmpty).then(selectedPath => {
-      this.remoteConfigForm.get(whichFormPath)?.setValue(selectedPath);
-    });
+    if (fieldType === 'stringArray') {
+      // null or undefined or empty array should be filtered (they're all "default")
+      if (currentValue === null || currentValue === undefined) {
+        return true;
+      }
+      if (Array.isArray(currentValue) && currentValue.length === 0) {
+        return true;
+      }
+      // Compare to default if it's an array
+      if (Array.isArray(defaultValue) && Array.isArray(currentValue)) {
+        return (
+          currentValue.length === defaultValue.length &&
+          currentValue.every((v, i) => v === defaultValue[i])
+        );
+      }
+      return false;
+    }
+
+    // Handle Tristate type (has complex Default object)
+    if (fieldType === 'Tristate') {
+      // Tristate default is {Value: boolean, Valid: boolean}
+      // "unset" means use default
+      if (currentValue === null || currentValue === undefined || currentValue === '') {
+        return true;
+      }
+      // If it's "unset" or matches the default state, it's default
+      if (currentValue === 'unset' || currentValue === defaultStr) {
+        return true;
+      }
+      return false;
+    }
+
+    // Handle enum-like types (CacheMode, etc.)
+    if (fieldType === 'CacheMode' || fieldType === 'Choice' || fieldType === 'HARD|SOFT|CAUTIOUS') {
+      // Use DefaultStr for comparison with enum values
+      if (defaultStr && currentValue === defaultStr) {
+        return true;
+      }
+      if (currentValue === null || currentValue === undefined || currentValue === '') {
+        return true;
+      }
+      return false;
+    }
+
+    // Handle boolean type
+    if (fieldType === 'bool') {
+      return currentValue === (defaultValue === true);
+    }
+
+    // Handle arrays
+    if (Array.isArray(defaultValue) && Array.isArray(currentValue)) {
+      return currentValue.length === 0 && defaultValue.length === 0;
+    }
+
+    // Handle empty values
+    const isCurrentEmpty =
+      currentValue === null || currentValue === undefined || currentValue === '';
+    const isDefaultEmpty =
+      defaultValue === null || defaultValue === undefined || defaultValue === '';
+
+    if (isCurrentEmpty && isDefaultEmpty) {
+      return true;
+    }
+
+    // For objects (like Tristate's Default), compare the Value property if it exists
+    if (typeof defaultValue === 'object' && defaultValue !== null && 'Value' in defaultValue) {
+      return currentValue === defaultValue.Value;
+    }
+
+    // Default: string comparison
+    return String(currentValue) === String(defaultValue);
   }
 
-  private scrollToTop(): void {
-    const modalContent = document.querySelector('.modal-content');
-    if (modalContent) {
-      modalContent.scrollTop = 0;
+  // ============================================================================
+  // INTERACTIVE FLOW
+  // ============================================================================
+  async onInteractiveContinue(answer: string | number | boolean | null): Promise<void> {
+    this.interactiveFlowState.isProcessing = true;
+    try {
+      this.interactiveFlowState.answer = answer;
+      await this.submitRcAnswer();
+    } finally {
+      this.interactiveFlowState.isProcessing = false;
+    }
+  }
+
+  async submitRcAnswer(): Promise<void> {
+    if (
+      !this.interactiveFlowState.isActive ||
+      !this.interactiveFlowState.question ||
+      !this.pendingConfig
+    ) {
+      return;
+    }
+
+    try {
+      const { name, ...paramRest } = this.pendingConfig.remoteData;
+      const stateToken = this.interactiveFlowState.question.State;
+      let result: unknown = this.interactiveFlowState.answer;
+
+      if (this.interactiveFlowState.question?.Option?.Type === 'bool') {
+        result = this.normalizeBooleanAnswer(result);
+      }
+
+      const resp = await this.remoteManagementService.continueRemoteConfigNonInteractive(
+        name,
+        stateToken,
+        result as unknown,
+        paramRest,
+        { nonInteractive: true }
+      );
+
+      if (!resp || resp.State === '') {
+        this.interactiveFlowState.isActive = false;
+        this.interactiveFlowState.question = null;
+        await this.finalizeRemoteCreation();
+      } else {
+        this.interactiveFlowState.question = resp;
+        this.interactiveFlowState.answer = this.getDefaultAnswerFromQuestion(resp);
+      }
+    } catch (error) {
+      console.error('Failed to continue interactive config:', error);
+    }
+  }
+
+  private normalizeBooleanAnswer(value: unknown): string {
+    if (typeof value === 'boolean') {
+      return value ? 'true' : 'false';
+    }
+    if (typeof value === 'string') {
+      return value.toLowerCase() === 'true' ? 'true' : 'false';
+    }
+    return 'true';
+  }
+
+  private getDefaultAnswerFromQuestion(q: RcConfigQuestionResponse): string | boolean | number {
+    const opt = q.Option;
+    if (!opt) return '';
+
+    if (opt.Type === 'bool') {
+      if (typeof opt.Value === 'boolean') return opt.Value;
+      if (opt.ValueStr !== undefined) return opt.ValueStr.toLowerCase() === 'true';
+      if (opt.DefaultStr !== undefined) return opt.DefaultStr.toLowerCase() === 'true';
+      if (typeof opt.Default === 'boolean') return opt.Default;
+      return true;
+    }
+
+    if (opt.ValueStr !== undefined) return opt.ValueStr as unknown as string;
+    if (opt.DefaultStr !== undefined) return opt.DefaultStr as unknown as string;
+    if (opt.Default !== undefined) return String(opt.Default);
+    if (opt.Examples && opt.Examples.length > 0) return opt.Examples[0].Value;
+    return '';
+  }
+
+  async cancelAuth(): Promise<void> {
+    await this.authStateService.cancelAuth();
+    this.interactiveFlowState.isActive = false;
+    this.interactiveFlowState.question = null;
+    this.interactiveFlowState.answer = null;
+  }
+
+  private async finalizeRemoteCreation(): Promise<void> {
+    if (!this.pendingConfig) return;
+
+    const { remoteData, finalConfig } = this.pendingConfig;
+
+    if (this.editTarget === 'remote' && !this.useInteractiveMode) {
+      await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
+    }
+
+    await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
+    await this.remoteManagementService.getRemotes();
+    this.authStateService.resetAuthState();
+
+    await this.triggerAutoStartJobs(remoteData.name, finalConfig);
+    this.close();
+  }
+
+  private async triggerAutoStartJobs(remoteName: string, finalConfig: FinalConfig): Promise<void> {
+    const {
+      mountConfig,
+      copyConfig,
+      syncConfig,
+      bisyncConfig,
+      moveConfig,
+      vfsConfig,
+      filterConfig,
+      backendConfig,
+    } = finalConfig;
+
+    if (mountConfig.autoStart && mountConfig.dest) {
+      await this.mountManagementService.mountRemote(
+        remoteName,
+        mountConfig.source,
+        mountConfig.dest,
+        mountConfig.type,
+        mountConfig.options,
+        vfsConfig,
+        filterConfig,
+        backendConfig
+      );
+    }
+
+    if (copyConfig.autoStart && copyConfig.dest) {
+      await this.jobManagementService.startCopy(
+        remoteName,
+        copyConfig.source,
+        copyConfig.dest,
+        copyConfig.createEmptySrcDirs,
+        copyConfig.options,
+        filterConfig,
+        backendConfig
+      );
+    }
+
+    if (syncConfig.autoStart && syncConfig.dest) {
+      await this.jobManagementService.startSync(
+        remoteName,
+        syncConfig.source,
+        syncConfig.dest,
+        syncConfig.createEmptySrcDirs,
+        syncConfig.options,
+        filterConfig,
+        backendConfig
+      );
+    }
+
+    if (bisyncConfig.autoStart && bisyncConfig.dest) {
+      await this.jobManagementService.startBisync(
+        remoteName,
+        bisyncConfig.source,
+        bisyncConfig.dest,
+        bisyncConfig.options,
+        filterConfig,
+        backendConfig
+      );
+    }
+
+    if (moveConfig.autoStart && moveConfig.dest) {
+      await this.jobManagementService.startMove(
+        remoteName,
+        moveConfig.source,
+        moveConfig.dest,
+        moveConfig.createEmptySrcDirs,
+        moveConfig.deleteEmptySrcDirs,
+        moveConfig.options,
+        filterConfig,
+        backendConfig
+      );
+    }
+  }
+
+  // ============================================================================
+  // STEP NAVIGATION (UI HELPERS)
+  // ============================================================================
+  getCurrentStepLabel(): string {
+    if (this.currentStep === 1) {
+      return 'Remote Configuration';
+    }
+
+    const stepIndex = this.currentStep - 2;
+    if (stepIndex >= 0 && stepIndex < this.flagConfigService.FLAG_TYPES.length) {
+      const type = this.flagConfigService.FLAG_TYPES[stepIndex];
+      return type.charAt(0).toUpperCase() + type.slice(1) + ' Configuration';
+    }
+
+    return '';
+  }
+
+  goToStep(step: number): void {
+    if (step >= 1 && step <= this.TOTAL_STEPS) {
+      this.currentStep = step;
+    }
+  }
+
+  getStepProgress(): { current: number; total: number; percentage: number } {
+    return {
+      current: this.currentStep,
+      total: this.TOTAL_STEPS,
+      percentage: Math.round((this.currentStep / this.TOTAL_STEPS) * 100),
+    };
+  }
+
+  getStepState(stepNumber: number): 'completed' | 'current' | 'future' {
+    if (stepNumber < this.currentStep) {
+      return 'completed';
+    }
+    if (stepNumber === this.currentStep) {
+      return 'current';
+    }
+    return 'future';
+  }
+
+  getStepIcon(stepIndex: number): string {
+    const iconMap: Record<number, string> = {
+      0: 'hard-drive',
+      1: 'mount',
+      2: 'copy',
+      3: 'sync',
+      4: 'right-left',
+      5: 'move',
+      6: 'filter',
+      7: 'vfs',
+      8: 'server',
+    };
+    return iconMap[stepIndex] || 'circle';
+  }
+
+  getStepProgressAriaLabel(): string {
+    return `Step ${this.currentStep} of ${this.TOTAL_STEPS}: ${this.stepLabels[this.currentStep - 1]}`;
+  }
+
+  handleStepKeydown(event: KeyboardEvent, stepNumber: number): void {
+    if (!this.editTarget) return;
+
+    switch (event.key) {
+      case 'ArrowRight':
+        event.preventDefault();
+        if (stepNumber < this.TOTAL_STEPS) this.goToStep(stepNumber + 1);
+        break;
+      case 'ArrowLeft':
+        event.preventDefault();
+        if (stepNumber > 1) this.goToStep(stepNumber - 1);
+        break;
+      case 'Home':
+        event.preventDefault();
+        this.goToStep(1);
+        break;
+      case 'End':
+        event.preventDefault();
+        this.goToStep(this.TOTAL_STEPS);
+        break;
     }
   }
 
   nextStep(): void {
-    if (this.currentStep >= this.TOTAL_STEPS) {
-      return;
-    }
+    if (this.currentStep >= this.TOTAL_STEPS) return;
 
     if (this.currentStep === 1 && !this.remoteForm.valid) {
       this.remoteForm.markAllAsTouched();
@@ -1170,20 +1440,30 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  async cancelAuth(): Promise<void> {
-    await this.authStateService.cancelAuth();
-    this.isInteractiveActive = false;
-    this.rcQuestion = null;
-    this.rcAnswer = null;
+  private scrollToTop(): void {
+    const modalContent = document.querySelector('.modal-content');
+    if (modalContent) {
+      modalContent.scrollTop = 0;
+    }
   }
 
-  @HostListener('document:keydown.escape', ['$event'])
-  close(): void {
-    this.dialogRef.close(false);
+  // ============================================================================
+  // UTILITY HELPERS
+  // ============================================================================
+  private getRemoteName(): string {
+    return this.dialogData.name || this.remoteForm.get('name')?.value;
   }
-  //#endregion
 
-  // Add getters for Save button logic
+  private validateRemoteNameFactory(): ValidatorFn {
+    return this.validatorRegistry.createRemoteNameValidator(
+      this.existingRemotes,
+      REMOTE_NAME_REGEX
+    );
+  }
+
+  // ============================================================================
+  // COMPUTED PROPERTIES (FOR TEMPLATE)
+  // ============================================================================
   get isSaveDisabled(): boolean {
     if (this.isAuthInProgress) return true;
 
@@ -1191,11 +1471,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       if (this.editTarget === 'remote') {
         return !this.remoteForm.valid;
       }
-      // In edit mode for flags, check the specific config group
       const configGroup = this.remoteConfigForm.get(`${this.editTarget}Config`);
       return !configGroup?.valid;
     }
-    // In create mode, both must be valid
+
     return !this.remoteForm.valid || !this.remoteConfigForm.valid;
   }
 
@@ -1206,193 +1485,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     return this.editTarget ? 'Save Changes' : 'Save';
   }
 
-  // Helpers for non-interactive flow
-  private getDefaultAnswerFromQuestion(q: RcConfigQuestionResponse): string | boolean | number {
-    const opt = q.Option;
-    if (!opt) return '';
-    if (opt.Type === 'bool') {
-      if (typeof opt.Value === 'boolean') return opt.Value;
-      if (opt.ValueStr !== undefined) return opt.ValueStr.toLowerCase() === 'true';
-      if (opt.DefaultStr !== undefined) return opt.DefaultStr.toLowerCase() === 'true';
-      if (typeof opt.Default === 'boolean') return opt.Default;
-      return true;
-    }
-    if (opt.ValueStr !== undefined) return opt.ValueStr as unknown as string;
-    if (opt.DefaultStr !== undefined) return opt.DefaultStr as unknown as string;
-    if (opt.Default !== undefined) return String(opt.Default);
-    if (opt.Examples && opt.Examples.length > 0) return opt.Examples[0].Value;
-    return '';
-  }
-
-  async submitRcAnswer(): Promise<void> {
-    if (!this.isInteractiveActive || !this.rcQuestion || !this.pendingRemoteData) return;
-    try {
-      const name = this.pendingRemoteData.name;
-      const stateToken = this.rcQuestion.State;
-      let result: unknown = this.rcAnswer;
-      if (this.rcQuestion?.Option?.Type === 'bool') {
-        if (typeof result === 'boolean') result = result ? 'true' : 'false';
-        else if (typeof result === 'string')
-          result = result.toLowerCase() === 'true' ? 'true' : 'false';
-        else result = 'true';
-      }
-
-      const { ...paramRest } = this.pendingRemoteData;
-      const resp = await this.remoteManagementService.continueRemoteConfigNonInteractive(
-        name,
-        stateToken,
-        result as unknown,
-        paramRest,
-        { nonInteractive: true }
-      );
-
-      if (!resp || resp.State === '') {
-        this.isInteractiveActive = false;
-        this.rcQuestion = null;
-        await this.finalizeRemoteCreation();
-      } else {
-        this.rcQuestion = resp;
-        this.rcAnswer = this.getDefaultAnswerFromQuestion(resp);
-      }
-    } catch (e) {
-      console.error('Failed to continue config:', e);
-    }
-  }
-
-  async onInteractiveContinue(answer: string | number | boolean | null): Promise<void> {
-    this.isProcessing = true;
-    try {
-      this.rcAnswer = answer;
-      await this.submitRcAnswer();
-    } finally {
-      this.isProcessing = false;
-    }
-  }
-
-  private async finalizeRemoteCreation(): Promise<void> {
-    if (!this.pendingRemoteData || !this.pendingFinalConfig) return;
-    const remoteData = this.pendingRemoteData;
-    const finalConfig = this.pendingFinalConfig;
-
-    if (this.editTarget === 'remote' && !this.useInteractiveMode) {
-      await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
-    }
-
-    await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
-    await this.remoteManagementService.getRemotes();
-    this.authStateService.resetAuthState();
-
-    if (finalConfig.mountConfig.autoStart && finalConfig.mountConfig.dest) {
-      const mountPath = finalConfig.mountConfig.dest;
-      const remoteName = remoteData.name;
-      const source = finalConfig.mountConfig?.source;
-      const mountType = finalConfig.mountConfig.type;
-      const mountOptions = finalConfig.mountConfig.options;
-      const vfs = finalConfig.vfsConfig;
-      const filter = finalConfig.filterConfig;
-      const backend = finalConfig.backendConfig;
-      await this.mountManagementService.mountRemote(
-        remoteName,
-        source,
-        mountPath,
-        mountType,
-        mountOptions,
-        vfs,
-        filter,
-        backend
-      );
-    }
-
-    if (finalConfig.copyConfig.autoStart && finalConfig.copyConfig.dest) {
-      const copySource = finalConfig.copyConfig.source;
-      const copyDest = finalConfig.copyConfig.dest;
-      const createEmptySrcDirs = finalConfig.copyConfig.createEmptySrcDirs;
-      const copyOptions = finalConfig.copyConfig.options;
-      const filter = finalConfig.filterConfig;
-      const backend = finalConfig.backendConfig;
-      await this.jobManagementService.startCopy(
-        remoteData.name,
-        copySource,
-        copyDest,
-        createEmptySrcDirs,
-        copyOptions,
-        filter,
-        backend
-      );
-    }
-    if (finalConfig.syncConfig.autoStart && finalConfig.syncConfig.dest) {
-      const syncSource = finalConfig.syncConfig.source;
-      const syncDest = finalConfig.syncConfig.dest;
-      const createEmptySrcDirs = finalConfig.syncConfig.createEmptySrcDirs;
-      const syncOptions = finalConfig.syncConfig.options;
-      const filter = finalConfig.filterConfig;
-      const backend = finalConfig.backendConfig;
-      await this.jobManagementService.startSync(
-        remoteData.name,
-        syncSource,
-        syncDest,
-        createEmptySrcDirs,
-        syncOptions,
-        filter,
-        backend
-      );
-    }
-    if (finalConfig.bisyncConfig.autoStart && finalConfig.bisyncConfig.dest) {
-      const bisyncSource = finalConfig.bisyncConfig.source;
-      const bisyncDest = finalConfig.bisyncConfig.dest;
-      const bisyncOptions = finalConfig.bisyncConfig.options;
-      const filter = finalConfig.filterConfig;
-      const backend = finalConfig.backendConfig;
-      await this.jobManagementService.startBisync(
-        remoteData.name,
-        bisyncSource,
-        bisyncDest,
-        bisyncOptions,
-        filter,
-        backend
-      );
-    }
-    if (finalConfig.moveConfig.autoStart && finalConfig.moveConfig.dest) {
-      const moveSource = finalConfig.moveConfig.source;
-      const moveDest = finalConfig.moveConfig.dest;
-      const deleteEmptySrcDirs = finalConfig.moveConfig.deleteEmptySrcDirs;
-      const createEmptySrcDirs = finalConfig.moveConfig.createEmptySrcDirs;
-      const moveOptions = finalConfig.moveConfig.options;
-      const filter = finalConfig.filterConfig;
-      const backend = finalConfig.backendConfig;
-      await this.jobManagementService.startMove(
-        remoteData.name,
-        moveSource,
-        moveDest,
-        createEmptySrcDirs,
-        deleteEmptySrcDirs,
-        moveOptions,
-        filter,
-        backend
-      );
-    }
-    this.close();
-  }
-
-  private async fetchInitialPathEntriesForEditMode(): Promise<void> {
-    const pathEditTargets: string[] = ['mount', 'copy', 'sync', 'bisync', 'move'];
-
-    // Check if the current editTarget is one we care about
-    if (this.editTarget && pathEditTargets.includes(this.editTarget)) {
-      // 1. Construct the dynamic form path (e.g., "mountConfig.source")
-      const formPath = `${this.editTarget}Config.source`;
-
-      // 2. Get the remote name
-      const remoteName = this.data?.name ?? '';
-
-      // 3. Get the existing source path from the data
-      const existingSource =
-        typeof this.data?.existingConfig?.['source'] === 'string'
-          ? this.data.existingConfig['source']
-          : '';
-
-      // 4. Call the service with the dynamic and static values
-      await this.pathSelectionService.fetchEntriesForField(formPath, remoteName, existingSource);
-    }
+  // ============================================================================
+  // DIALOG CLOSE
+  // ============================================================================
+  @HostListener('document:keydown.escape', ['$event'])
+  close(): void {
+    this.dialogRef.close(false);
   }
 }

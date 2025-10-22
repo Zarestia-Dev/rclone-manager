@@ -3,6 +3,21 @@
     <mat-form-field appearance="outline">
       <mat-label>Remote Name</mat-label>
       <input matInput formControlName="name" id="remoteName" placeholder="e.g., my-cloud-storage" />
+      @if (form.get('name')?.hasError('required')) {
+        <mat-error> Remote name is required </mat-error>
+      }
+      @if (form.get('name')?.hasError('invalidChars')) {
+        <mat-error> Name contains invalid characters </mat-error>
+      }
+      @if (form.get('name')?.hasError('invalidStart')) {
+        <mat-error> Name cannot start with a dash or space </mat-error>
+      }
+      @if (form.get('name')?.hasError('invalidEnd')) {
+        <mat-error> Name cannot end with a space </mat-error>
+      }
+      @if (form.get('name')?.hasError('nameTaken')) {
+        <mat-error> A remote with this name already exists </mat-error>
+      }
     </mat-form-field>
 
     <mat-form-field appearance="outline">

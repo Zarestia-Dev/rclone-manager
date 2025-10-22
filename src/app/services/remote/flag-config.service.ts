@@ -82,20 +82,35 @@ export class FlagConfigService {
    * Loads all flag fields for all defined flag types.
    */
   async loadAllFlagFields(): Promise<Record<FlagType, RcConfigOption[]>> {
-    const result: Record<FlagType, RcConfigOption[]> = {} as any;
+    const result: Partial<Record<FlagType, RcConfigOption[]>> = {};
+
+    // Some flag types (bisync, move) don't have dedicated backend commands.
+    // Reuse the 'copy' flags for those since their options largely overlap.
+    const commandTypeMap: Record<FlagType, FlagType> = {
+      mount: 'mount',
+      copy: 'copy',
+      sync: 'sync',
+      filter: 'filter',
+      vfs: 'vfs',
+      backend: 'backend',
+      bisync: 'copy',
+      move: 'copy',
+    };
+
     await Promise.all(
       this.FLAG_TYPES.map(async type => {
-        result[type] = await this.loadFlagFields(type);
+        const cmdType = commandTypeMap[type] || type;
+        result[type] = await this.loadFlagFields(cmdType);
       })
     );
-    return result;
+    return result as Record<FlagType, RcConfigOption[]>;
   }
 
   private async loadFlagFields(type: FlagType): Promise<RcConfigOption[]> {
     try {
       const command = `get_${type}_flags`;
-      const flags = await invoke<any[]>(command);
-      return flags as RcConfigOption[];
+      const flags = await invoke<RcConfigOption[]>(command);
+      return flags ?? [];
     } catch (error) {
       console.error(`Error loading ${type} flags:`, error);
       return [];

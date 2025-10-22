@@ -297,9 +297,7 @@
     </div>
   }
 
-  <ng-container formGroupName="options">
-    @for (field of this.dynamicFlagFields; track field.Name) {
-      <app-setting-control [option]="field" [formControlName]="field.Name"></app-setting-control>
-    }
-  </ng-container>
+  @for (field of this.dynamicFlagFields; track field.Name) {
+    <app-setting-control [option]="field" [formControlName]="field.Name"></app-setting-control>
+  }
 </form>

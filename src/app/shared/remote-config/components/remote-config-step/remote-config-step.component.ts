@@ -63,6 +63,11 @@ export class RemoteConfigStepComponent implements OnInit, OnDestroy {
     if (initialTypeValue) {
       this.remoteSearchCtrl.setValue(initialTypeValue, { emitEvent: false });
     }
+
+    const typeControl = this.form.get('type');
+    if (typeControl?.disabled) {
+      this.remoteSearchCtrl.disable();
+    }
   }
 
   ngOnDestroy(): void {

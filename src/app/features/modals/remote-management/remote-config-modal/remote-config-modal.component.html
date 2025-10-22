@@ -4,21 +4,19 @@
     <button matIconButton aria-label="Help" title="Help">
       <mat-icon svgIcon="question"></mat-icon>
     </button>
-
     <p data-tauri-drag-region>
       <mat-icon svgIcon="hard-drive" aria-hidden="true"></mat-icon>
       <span>
         {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
       </span>
     </p>
-
     <button matIconButton (click)="close()" aria-label="Close dialog" title="Close">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </header>
 
-  <!-- Step Progress Indicator -->
-  @if (!isInteractiveActive && !editTarget) {
+  <!-- Step Progress Indicator (Only shown during multi-step create flow) -->
+  @if (!interactiveFlowState.isActive && !editTarget) {
     <div class="step-indicator-container">
       <div class="step-indicator hide-scrollbar" role="tablist" aria-label="Configuration Steps">
         @for (step of stepLabels; track step; let i = $index) {
@@ -41,7 +39,6 @@
                 <mat-icon [svgIcon]="getStepIcon(i)"></mat-icon>
               }
             </div>
-
             @if (getStepState(i + 1) === 'current') {
               <span class="step-label-animated" @labelSlideIn>{{ step }}</span>
             }
@@ -53,18 +50,20 @@
 
   <!-- Modal Content -->
   <main class="modal-content" [@slideAnimation]="currentStep">
-    @if (isInteractiveActive && rcQuestion) {
-      <section class="step-container" aria-live="polite">
+    <!-- Interactive Configuration Flow -->
+    @if (interactiveFlowState.isActive && interactiveFlowState.question) {
+      <section class="step-container" aria-live="polite" aria-busy="true">
         <app-interactive-config-step
-          [question]="rcQuestion"
+          [question]="interactiveFlowState.question"
           [canceling]="isAuthCancelled"
-          [processing]="isProcessing"
+          [processing]="interactiveFlowState.isProcessing"
           (continue)="onInteractiveContinue($event)"
         />
       </section>
     }
 
-    @if (!isInteractiveActive) {
+    <!-- Non-Interactive Configuration Flow -->
+    @if (!interactiveFlowState.isActive) {
       <!-- Step 1: Remote Configuration -->
       @if (editTarget === 'remote' || (!editTarget && currentStep === 1)) {
         <section class="step-container">
@@ -78,33 +77,32 @@
             [useInteractiveMode]="useInteractiveMode"
             (remoteTypeChanged)="onRemoteTypeChange()"
             (interactiveModeToggled)="onInteractiveModeToggled($event)"
-          >
-          </app-remote-config-step>
+          />
         </section>
       }
 
-      <!-- Steps 2-9: Flags and Mount Configurations -->
-      @for (step of flagConfigService.FLAG_TYPES; track step; let i = $index) {
-        @if (editTarget === step || (!editTarget && currentStep === i + 2)) {
+      <!-- Steps 2-9: Flag Configurations (Mount, Copy, Sync, etc.) -->
+      @for (flagType of flagConfigService.FLAG_TYPES; track flagType; let i = $index) {
+        @if (editTarget === flagType || (!editTarget && currentStep === i + 2)) {
           <section class="step-container">
             <app-flag-config-step
               [form]="remoteConfigForm"
-              [flagType]="step"
+              [flagType]="flagType"
               [isEditMode]="!!editTarget"
               [existingRemotes]="existingRemotes"
-              [pathState]="pathSelectionService.getPathState"
-              [sourceLoading]="pathSelectionService.getLoadingState(step + 'Config.source')"
-              [destLoading]="pathSelectionService.getLoadingState(step + 'Config.dest')"
-              [dynamicFlagFields]="dynamicFlagFields[step]"
+              [sourceLoading]="pathSelectionService.getLoadingState(flagType + 'Config.source')"
+              [destLoading]="pathSelectionService.getLoadingState(flagType + 'Config.dest')"
+              [dynamicFlagFields]="dynamicFlagFields[flagType]"
               [mountTypes]="mountTypes"
-              (destRemoteSelected)="onRemoteSelected($event, step + 'Config.dest')"
-              (sourceRemoteSelected)="onRemoteSelected($event, step + 'Config.source')"
-              (destOptionSelected)="onDestOptionSelectedField($event, step + 'Config.dest')"
-              (sourceOptionSelected)="onSourceOptionSelectedField($event, step + 'Config.source')"
+              (sourceRemoteSelected)="onRemoteSelectedField($event, flagType + 'Config.source')"
+              (destRemoteSelected)="onRemoteSelectedField($event, flagType + 'Config.dest')"
+              (sourceOptionSelected)="
+                onSourceOptionSelectedField($event, flagType + 'Config.source')
+              "
+              (destOptionSelected)="onDestOptionSelectedField($event, flagType + 'Config.dest')"
               (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
               (remoteSelectionReset)="resetRemoteSelectionField($event)"
-            >
-            </app-flag-config-step>
+            />
           </section>
         }
       }
@@ -113,9 +111,9 @@
 
   <!-- Footer Buttons -->
   <footer class="button-container">
+    <!-- Left Side: Back Button -->
     <div class="button-container-inner">
-      <!-- Back Button -->
-      @if (currentStep > 1 && !editTarget && !isInteractiveActive) {
+      @if (currentStep > 1 && !editTarget && !interactiveFlowState.isActive) {
         <button
           matButton="filled"
           class="accent"
@@ -123,6 +121,7 @@
           (click)="prevStep()"
           @fadeInOut
           title="Go to previous step"
+          aria-label="Previous step"
         >
           <mat-icon svgIcon="left-arrow"></mat-icon>
           Back
@@ -130,54 +129,56 @@
       }
     </div>
 
+    <!-- Center/Right Side: Action Buttons -->
     <div class="button-container-inner">
-      <!-- Cancel Button (During Auth) -->
-      @if ((isAuthInProgress && !isAuthCancelled) || isInteractiveActive) {
+      <!-- Cancel Button (During Auth or Interactive Flow) -->
+      @if ((isAuthInProgress && !isAuthCancelled) || interactiveFlowState.isActive) {
         <button
           matButton="filled"
           class="warn"
           @fadeInOut
           (click)="cancelAuth()"
-          [disabled]="(!isAuthInProgress && !isInteractiveActive) || isAuthCancelled"
+          [disabled]="(!isAuthInProgress && !interactiveFlowState.isActive) || isAuthCancelled"
           title="Cancel the current operation"
+          aria-label="Cancel current operation"
         >
           Cancel
         </button>
       }
 
-      <!-- Cleaning Status -->
+      <!-- Cleanup Status (Shows when auth is cancelled) -->
       @if (isAuthCancelled) {
-        <p>
+        <span class="cleanup-status" aria-live="polite">
           Cleaning up
-          <mat-spinner diameter="16"></mat-spinner>
-        </p>
+          <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
+        </span>
       }
 
-      <!-- Save Buttons (This logic was already refactored and is correct) -->
-      @if (((currentStep > 1 && !editTarget) || editTarget) && !isInteractiveActive) {
+      <!-- Save Button (Shown on step > 1 in create mode, or in edit mode) -->
+      @if (((currentStep > 1 && !editTarget) || editTarget) && !interactiveFlowState.isActive) {
         <button
           matButton="filled"
           (click)="onSubmit()"
           [disabled]="isSaveDisabled"
           @fadeInOut
           aria-live="polite"
+          [attr.aria-label]="editTarget ? 'Save changes' : 'Save configuration and create remote'"
           [title]="editTarget ? 'Save changes' : 'Save configuration and create remote'"
         >
+          <!-- Loading State -->
           @if (isAuthInProgress && !isAuthCancelled) {
-            <div class="saving-overlay">
+            <div class="saving-overlay" aria-hidden="true">
               <mat-spinner diameter="16"></mat-spinner>
             </div>
           }
-          @if (!isAuthInProgress || isAuthCancelled) {
-            <span>
-              {{ saveButtonLabel }}
-            </span>
-          }
+
+          <!-- Button Label -->
+          <span>{{ saveButtonLabel }}</span>
         </button>
       }
 
-      <!-- Next Button -->
-      @if (currentStep < TOTAL_STEPS && !editTarget && !isInteractiveActive) {
+      <!-- Next Button (Shown in create mode when not on last step) -->
+      @if (currentStep < TOTAL_STEPS && !editTarget && !interactiveFlowState.isActive) {
         <button
           matButton="filled"
           class="accent"
@@ -185,6 +186,7 @@
           [disabled]="!remoteForm.valid || isAuthInProgress"
           @fadeInOut
           title="Go to next step"
+          aria-label="Next step"
         >
           Next
           <mat-icon svgIcon="right-arrow"></mat-icon>
