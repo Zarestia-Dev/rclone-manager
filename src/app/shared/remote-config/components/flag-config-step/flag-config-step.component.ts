@@ -8,11 +8,10 @@ import {
   SimpleChanges,
 } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { Entry, FlagField, FlagType } from '../../remote-config-types';
+import { Entry, FlagType } from '../../remote-config-types';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { MatChipsModule } from '@angular/material/chips';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -21,6 +20,9 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Observable, map, startWith } from 'rxjs';
+
+import { RcConfigOption } from '@app/types'; // Assuming this path from setting-control.ts
+import { SettingControlComponent } from 'src/app/shared/components';
 
 @Component({
   selector: 'app-flag-config-step',
@@ -31,13 +33,13 @@ import { Observable, map, startWith } from 'rxjs';
     MatInputModule,
     MatSelectModule,
     MatSlideToggleModule,
-    MatChipsModule,
     MatAutocompleteModule,
     MatProgressSpinnerModule,
     MatIconModule,
     MatTooltipModule,
     MatButtonModule,
     MatInputModule,
+    SettingControlComponent,
   ],
   templateUrl: './flag-config-step.component.html',
   styleUrl: './flag-config-step.component.scss',
@@ -53,18 +55,13 @@ export class FlagConfigStepComponent implements OnInit, OnChanges {
   > = {};
   @Input() sourceLoading = false;
   @Input() destLoading = false;
-  @Input() dynamicFlagFields: FlagField[] = [];
-  @Input() selectedOptions: Record<string, unknown> = {};
-  @Input() isDisabled = false;
+
+  @Input() dynamicFlagFields: RcConfigOption[] = [];
   @Input() mountTypes: string[] = [];
 
-  // Filtered observables for typeable autocomplete
   filteredDestRemotes$ = new Observable<string[]>();
   filteredSourceRemotes$ = new Observable<string[]>();
 
-  @Output() optionToggled = new EventEmitter<FlagField>();
-  @Output() jsonValidated = new EventEmitter<void>();
-  @Output() jsonReset = new EventEmitter<void>();
   @Output() destRemoteSelected = new EventEmitter<string>();
   @Output() sourceRemoteSelected = new EventEmitter<string>();
   @Output() destOptionSelected = new EventEmitter<string>();
@@ -74,6 +71,8 @@ export class FlagConfigStepComponent implements OnInit, OnChanges {
     requiredEmpty: boolean;
   }>();
   @Output() remoteSelectionReset = new EventEmitter<string>();
+
+  public showAdvancedOptions = false;
 
   ngOnInit(): void {
     this.initializeFilteredRemotes();
@@ -87,7 +86,6 @@ export class FlagConfigStepComponent implements OnInit, OnChanges {
   }
 
   private initializeFilteredRemotes(): void {
-    // Initialize filtered remotes for destination field
     const destControl = this.configGroup?.get('dest');
     if (destControl) {
       this.filteredDestRemotes$ = destControl.valueChanges.pipe(
@@ -95,13 +93,11 @@ export class FlagConfigStepComponent implements OnInit, OnChanges {
         map(value => this._filterRemotes(value || ''))
       );
     } else {
-      // Fallback to show all remotes if control not ready
       this.filteredDestRemotes$ = new Observable(observer => {
         observer.next(this.existingRemotes);
       });
     }
 
-    // Initialize filtered remotes for source field
     const sourceControl = this.configGroup?.get('source');
     if (sourceControl) {
       this.filteredSourceRemotes$ = sourceControl.valueChanges.pipe(
@@ -109,7 +105,6 @@ export class FlagConfigStepComponent implements OnInit, OnChanges {
         map(value => this._filterRemotes(value || ''))
       );
     } else {
-      // Fallback to show all remotes if control not ready
       this.filteredSourceRemotes$ = new Observable(observer => {
         observer.next(this.existingRemotes);
       });
@@ -117,7 +112,6 @@ export class FlagConfigStepComponent implements OnInit, OnChanges {
   }
 
   private _filterRemotes(value: string): string[] {
-    // If value contains :/ or :// it's likely a path, show all remotes
     if (!value || value.includes('://') || value.includes(':/')) {
       return this.existingRemotes;
     }
@@ -141,37 +135,17 @@ export class FlagConfigStepComponent implements OnInit, OnChanges {
     return this.flagType === type;
   }
 
-  get getDynamicFlagFields(): FlagField[] {
-    return this.dynamicFlagFields;
-  }
-
-  get getSelectedOptions(): Record<string, unknown> {
-    return this.selectedOptions as Record<string, unknown>;
-  }
-
   /**
    * Determines if folder selection should require empty folder
    * For mount operations, checks if AllowNonEmpty is set to true
    */
   get shouldRequireEmptyFolder(): boolean {
     if (this.isType('mount')) {
-      const requireEmpty = !this.selectedOptions['AllowNonEmpty'];
+      const allowNonEmpty = this.configGroup?.get('AllowNonEmpty')?.value;
+      const requireEmpty = !allowNonEmpty;
       return requireEmpty;
     }
-    // Extend here for other types if needed
     return false;
-  }
-
-  onToggleOption(field: FlagField): void {
-    this.optionToggled.emit(field);
-  }
-
-  onValidateJson(): void {
-    this.jsonValidated.emit();
-  }
-
-  onResetJson(): void {
-    this.jsonReset.emit();
   }
 
   onDestOptionSelected(option: string): void {

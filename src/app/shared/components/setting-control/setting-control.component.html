@@ -7,9 +7,89 @@
         <small class="default-value">Default: {{ opt.DefaultStr }}</small>
       </div>
     </ng-template>
-
+    <ng-template
+      #standardInput
+      let-opt
+      let-inputType="inputType"
+      let-inputStep="inputStep"
+      let-inputHint="inputHint"
+    >
+      <div class="setting-full-width">
+        <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
+        <div class="setting-control">
+          <mat-form-field class="input-field" appearance="outline">
+            <input
+              matInput
+              [type]="inputType || 'text'"
+              [step]="inputStep || null"
+              [formControl]="$any(control)"
+              [attr.aria-label]="opt.Name"
+              [placeholder]="opt.DefaultStr || ''"
+              (blur)="commitValue()"
+            />
+            @if (inputHint) {
+              <mat-hint>{{ inputHint }}</mat-hint>
+            }
+            @if (control.invalid && control.touched) {
+              <mat-error>{{ getControlError() }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      </div>
+    </ng-template>
+    <ng-template #standardSelect let-opt>
+      <div class="setting-full-width">
+        <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
+        <div class="setting-control">
+          <mat-form-field class="input-field" appearance="outline">
+            <mat-select
+              [formControl]="$any(control)"
+              [attr.aria-label]="opt.Name"
+              (selectionChange)="commitValue()"
+            >
+              @for (example of opt.Examples; track example.Value) {
+                <mat-option [value]="example.Value">{{ example.Help || example.Value }}</mat-option>
+              }
+            </mat-select>
+            @if (control.invalid && control.touched) {
+              <mat-error>{{ getControlError() }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      </div>
+    </ng-template>
+    <ng-template #multiSelect let-opt let-optionsList="optionsList" let-inputHint="inputHint">
+      <div class="setting-full-width">
+        <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
+        <div class="setting-control">
+          <mat-form-field class="input-field" appearance="outline">
+            <mat-select
+              multiple
+              [formControl]="$any(control)"
+              [attr.aria-label]="opt.Name"
+              (selectionChange)="commitValue()"
+            >
+              <!-- 
+                This loop handles both string arrays (['val1', 'val2'])
+                and object arrays ([{Value: 'v1'}, {Value: 'v2'}])
+              -->
+              @for (item of optionsList; track item.Value || item) {
+                <mat-option [value]="item.Value || item">{{
+                  item.Help || item.Value || item
+                }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>{{ inputHint || 'Select one or more items' }}</mat-hint>
+            @if (control.invalid && control.touched) {
+              <mat-error>{{ getControlError() }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      </div>
+    </ng-template>
     <div class="setting-item" id="{{ 'setting-' + option.Name }}">
       @switch (option.Type) {
+        <!-- Unique control: bool -->
         @case ('bool') {
           <ng-container
             *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
@@ -26,168 +106,145 @@
         }
         @case ('string') {
           @if (option.Examples && option.Examples.length > 0) {
-            <div class="setting-full-width">
-              <ng-container
-                *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-              ></ng-container>
-              <div class="setting-control">
-                <mat-form-field class="input-field" appearance="outline">
-                  <mat-select
-                    [formControl]="$any(control)"
-                    [attr.aria-label]="option.Name"
-                    (selectionChange)="commitValue()"
-                  >
-                    @for (example of option.Examples; track example.Value) {
-                      <mat-option [value]="example.Value">{{
-                        example.Help || example.Value
-                      }}</mat-option>
-                    }
-                  </mat-select>
-                  @if (control.invalid && control.touched) {
-                    <mat-error>{{ getControlError() }}</mat-error>
-                  }
-                </mat-form-field>
-              </div>
-            </div>
+            <ng-container
+              *ngTemplateOutlet="standardSelect; context: { $implicit: option }"
+            ></ng-container>
           } @else {
-            <div class="setting-full-width">
-              <ng-container
-                *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-              ></ng-container>
-              <div class="setting-control">
-                <mat-form-field class="input-field" appearance="outline">
-                  <input
-                    matInput
-                    [formControl]="$any(control)"
-                    [attr.aria-label]="option.Name"
-                    [placeholder]="option.DefaultStr || ''"
-                    (blur)="commitValue()"
-                  />
-                  @if (control.invalid && control.touched) {
-                    <mat-error>{{ getControlError() }}</mat-error>
-                  }
-                </mat-form-field>
-              </div>
-            </div>
+            <ng-container
+              *ngTemplateOutlet="standardInput; context: { $implicit: option }"
+            ></ng-container>
           }
         }
+
+        <!-- Standard inputs with custom hints/types -->
         @case ('Duration') {
-          <div class="setting-full-width">
-            <ng-container
-              *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-            ></ng-container>
-            <div class="setting-control">
-              <mat-form-field class="input-field" appearance="outline">
-                <input
-                  matInput
-                  [formControl]="$any(control)"
-                  [attr.aria-label]="option.Name"
-                  [placeholder]="option.DefaultStr || ''"
-                  (blur)="commitValue()"
-                />
-                <mat-hint>Format: 1h30m45s</mat-hint>
-                @if (control.invalid && control.touched) {
-                  <mat-error>{{ getControlError() }}</mat-error>
-                }
-              </mat-form-field>
-            </div>
-          </div>
+          <ng-container
+            *ngTemplateOutlet="
+              standardInput;
+              context: { $implicit: option, inputHint: 'Format: 1h30m45s' }
+            "
+          ></ng-container>
         }
         @case ('SpaceSepList') {
-          <div class="setting-full-width">
-            <ng-container
-              *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-            ></ng-container>
-            <div class="setting-control">
-              <mat-form-field class="input-field" appearance="outline">
-                <input
-                  matInput
-                  [formControl]="$any(control)"
-                  [attr.aria-label]="option.Name"
-                  [placeholder]="option.DefaultStr"
-                  (blur)="commitValue()"
-                />
-                <mat-hint>Space-separated list of values</mat-hint>
-                @if (control.invalid && control.touched) {
-                  <mat-error>{{ getControlError() }}</mat-error>
-                }
-              </mat-form-field>
-            </div>
-          </div>
+          <ng-container
+            *ngTemplateOutlet="
+              standardInput;
+              context: { $implicit: option, inputHint: 'Space-separated list of values' }
+            "
+          ></ng-container>
         }
         @case ('Time') {
-          <div class="setting-full-width">
-            <ng-container
-              *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-            ></ng-container>
-            <div class="setting-control">
-              <mat-form-field class="input-field" appearance="outline">
-                <input
-                  matInput
-                  type="datetime-local"
-                  [formControl]="$any(control)"
-                  [attr.aria-label]="option.Name"
-                  [placeholder]="option.DefaultStr || ''"
-                  (blur)="commitValue()"
-                />
-                <mat-hint>ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)</mat-hint>
-                @if (control.invalid && control.touched) {
-                  <mat-error>{{ getControlError() }}</mat-error>
-                }
-              </mat-form-field>
-            </div>
-          </div>
+          <ng-container
+            *ngTemplateOutlet="
+              standardInput;
+              context: {
+                $implicit: option,
+                inputType: 'datetime-local',
+                inputHint: 'ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)',
+              }
+            "
+          ></ng-container>
         }
+        @case ('BwTimetable') {
+          <ng-container
+            *ngTemplateOutlet="
+              standardInput;
+              context: {
+                $implicit: option,
+                inputHint:
+                  'Bandwidth limit in KiB/s, or use suffix B|K|M|G|T|P or full timetable format',
+              }
+            "
+          ></ng-container>
+        }
+        @case ('SizeSuffix') {
+          <ng-container
+            *ngTemplateOutlet="
+              standardInput;
+              context: { $implicit: option, inputHint: 'Format: 100Ki, 16Mi, 1Gi' }
+            "
+          ></ng-container>
+        }
+        @case ('FileMode') {
+          <ng-container
+            *ngTemplateOutlet="standardInput; context: { $implicit: option }"
+          ></ng-container>
+        }
+
+        <!-- Number inputs -->
+        @case ('int') {
+          <ng-container
+            *ngTemplateOutlet="standardInput; context: { $implicit: option, inputType: 'number' }"
+          ></ng-container>
+        }
+        @case ('int64') {
+          <ng-container
+            *ngTemplateOutlet="standardInput; context: { $implicit: option, inputType: 'number' }"
+          ></ng-container>
+        }
+        @case ('uint32') {
+          <ng-container
+            *ngTemplateOutlet="standardInput; context: { $implicit: option, inputType: 'number' }"
+          ></ng-container>
+        }
+        @case ('float64') {
+          <ng-container
+            *ngTemplateOutlet="
+              standardInput;
+              context: { $implicit: option, inputType: 'number', inputStep: 'any' }
+            "
+          ></ng-container>
+        }
+
+        <!-- Multi-select controls -->
         @case ('Bits') {
-          <div class="setting-full-width">
-            <ng-container
-              *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-            ></ng-container>
-            <div class="setting-control">
-              <mat-form-field class="input-field" appearance="outline">
-                <mat-select
-                  multiple
-                  [formControl]="$any(control)"
-                  [attr.aria-label]="option.Name"
-                  (selectionChange)="commitValue()"
-                >
-                  @for (flag of bitsFlags; track flag) {
-                    <mat-option [value]="flag">{{ flag }}</mat-option>
-                  }
-                </mat-select>
-                <mat-hint>Select one or more flags</mat-hint>
-                @if (control.invalid && control.touched) {
-                  <mat-error>{{ getControlError() }}</mat-error>
-                }
-              </mat-form-field>
-            </div>
-          </div>
+          <ng-container
+            *ngTemplateOutlet="
+              multiSelect;
+              context: {
+                $implicit: option,
+                optionsList: bitsFlags,
+                inputHint: 'Select one or more flags',
+              }
+            "
+          ></ng-container>
         }
         @case ('Encoding') {
-          <div class="setting-full-width">
-            <ng-container
-              *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-            ></ng-container>
-            <div class="setting-control">
-              <mat-form-field class="input-field" appearance="outline">
-                <mat-select
-                  multiple
-                  [formControl]="$any(control)"
-                  [attr.aria-label]="option.Name"
-                  (selectionChange)="commitValue()"
-                >
-                  @for (flag of encodingFlags; track flag) {
-                    <mat-option [value]="flag">{{ flag }}</mat-option>
-                  }
-                </mat-select>
-                <mat-hint>Select one or more encoding flags</mat-hint>
-                @if (control.invalid && control.touched) {
-                  <mat-error>{{ getControlError() }}</mat-error>
-                }
-              </mat-form-field>
-            </div>
-          </div>
+          <ng-container
+            *ngTemplateOutlet="
+              multiSelect;
+              context: {
+                $implicit: option,
+                optionsList: encodingFlags,
+                inputHint: 'Select one or more encoding flags',
+              }
+            "
+          ></ng-container>
         }
+        @case ('DumpFlags') {
+          <ng-container
+            *ngTemplateOutlet="
+              multiSelect;
+              context: {
+                $implicit: option,
+                optionsList: option.Examples || [
+                  'headers',
+                  'bodies',
+                  'requests',
+                  'responses',
+                  'auth',
+                  'filters',
+                  'goroutines',
+                  'openfiles',
+                  'mapper',
+                ],
+                inputHint: 'Select items to dump (multiple allowed)',
+              }
+            "
+          ></ng-container>
+        }
+
+        <!-- Unique control: Tristate -->
         @case ('Tristate') {
           <div class="setting-full-width">
             <ng-container
@@ -206,155 +263,6 @@
                 </mat-select>
               </mat-form-field>
             </div>
-          </div>
-        }
-        @case ('BwTimetable') {
-          <div class="setting-full-width">
-            <ng-container
-              *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-            ></ng-container>
-            <div class="setting-control">
-              <mat-form-field class="input-field" appearance="outline">
-                <input
-                  matInput
-                  [formControl]="$any(control)"
-                  [attr.aria-label]="option.Name"
-                  [placeholder]="option.DefaultStr"
-                  (blur)="commitValue()"
-                />
-                <mat-hint
-                  >Bandwidth limit in KiB/s, or use suffix B|K|M|G|T|P or full timetable
-                  format</mat-hint
-                >
-                @if (control.invalid && control.touched) {
-                  <mat-error>{{ getControlError() }}</mat-error>
-                }
-              </mat-form-field>
-            </div>
-          </div>
-        }
-        @case ('SizeSuffix') {
-          <div class="setting-full-width">
-            <ng-container
-              *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-            ></ng-container>
-            <div class="setting-control">
-              <mat-form-field class="input-field" appearance="outline">
-                <input
-                  matInput
-                  [formControl]="$any(control)"
-                  [attr.aria-label]="option.Name"
-                  [placeholder]="option.DefaultStr || ''"
-                  (blur)="commitValue()"
-                />
-                <mat-hint>Format: 100Ki, 16Mi, 1Gi</mat-hint>
-                @if (control.invalid && control.touched) {
-                  <mat-error>{{ getControlError() }}</mat-error>
-                }
-              </mat-form-field>
-            </div>
-          </div>
-        }
-        @case ('FileMode') {
-          <div class="setting-full-width">
-            <ng-container
-              *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-            ></ng-container>
-            <div class="setting-control">
-              <mat-form-field class="input-field" appearance="outline">
-                <input
-                  matInput
-                  [formControl]="$any(control)"
-                  [attr.aria-label]="option.Name"
-                  [placeholder]="option.DefaultStr || ''"
-                  (blur)="commitValue()"
-                />
-                @if (control.invalid && control.touched) {
-                  <mat-error>{{ getControlError() }}</mat-error>
-                }
-              </mat-form-field>
-            </div>
-          </div>
-        }
-        @case ('int') {
-          <ng-container
-            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-          ></ng-container>
-          <div class="setting-control">
-            <mat-form-field class="input-field" appearance="outline">
-              <input
-                matInput
-                type="number"
-                [formControl]="$any(control)"
-                [attr.aria-label]="option.Name"
-                [placeholder]="option.DefaultStr || ''"
-                (blur)="commitValue()"
-              />
-              @if (control.invalid && control.touched) {
-                <mat-error>{{ getControlError() }}</mat-error>
-              }
-            </mat-form-field>
-          </div>
-        }
-        @case ('int64') {
-          <ng-container
-            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-          ></ng-container>
-          <div class="setting-control">
-            <mat-form-field class="input-field" appearance="outline">
-              <input
-                matInput
-                type="number"
-                [formControl]="$any(control)"
-                [attr.aria-label]="option.Name"
-                [placeholder]="option.DefaultStr || ''"
-                (blur)="commitValue()"
-              />
-              @if (control.invalid && control.touched) {
-                <mat-error>{{ getControlError() }}</mat-error>
-              }
-            </mat-form-field>
-          </div>
-        }
-        @case ('uint32') {
-          <ng-container
-            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-          ></ng-container>
-          <div class="setting-control">
-            <mat-form-field class="input-field" appearance="outline">
-              <input
-                matInput
-                type="number"
-                [formControl]="$any(control)"
-                [attr.aria-label]="option.Name"
-                [placeholder]="option.DefaultStr || ''"
-                (blur)="commitValue()"
-              />
-              @if (control.invalid && control.touched) {
-                <mat-error>{{ getControlError() }}</mat-error>
-              }
-            </mat-form-field>
-          </div>
-        }
-        @case ('float64') {
-          <ng-container
-            *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-          ></ng-container>
-          <div class="setting-control">
-            <mat-form-field class="input-field" appearance="outline">
-              <input
-                matInput
-                type="number"
-                step="any"
-                [formControl]="$any(control)"
-                [attr.aria-label]="option.Name"
-                [placeholder]="option.DefaultStr || ''"
-                (blur)="commitValue()"
-              />
-              @if (control.invalid && control.touched) {
-                <mat-error>{{ getControlError() }}</mat-error>
-              }
-            </mat-form-field>
           </div>
         }
         @case ('stringArray') {
@@ -390,72 +298,11 @@
             </div>
           </div>
         }
-        @case ('DumpFlags') {
-          <div class="setting-full-width">
-            <ng-container
-              *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
-            ></ng-container>
-            <div class="setting-control">
-              <mat-form-field class="input-field" appearance="outline">
-                <mat-select
-                  multiple
-                  [formControl]="$any(control)"
-                  [attr.aria-label]="option.Name"
-                  (selectionChange)="commitValue()"
-                >
-                  @if (option.Examples) {
-                    @for (example of option.Examples; track example.Value) {
-                      <mat-option [value]="example.Value">
-                        {{ example.Value }}
-                      </mat-option>
-                    }
-                  } @else {
-                    <mat-option value="headers">headers</mat-option>
-                    <mat-option value="bodies">bodies</mat-option>
-                    <mat-option value="requests">requests</mat-option>
-                    <mat-option value="responses">responses</mat-option>
-                    <mat-option value="auth">auth</mat-option>
-                    <mat-option value="filters">filters</mat-option>
-                    <mat-option value="goroutines">goroutines</mat-option>
-                    <mat-option value="openfiles">openfiles</mat-option>
-                    <mat-option value="mapper">mapper</mat-option>
-                  }
-                </mat-select>
-                <mat-hint>Select items to dump (multiple allowed)</mat-hint>
-                @if (control.invalid && control.touched) {
-                  <mat-error>{{ getControlError() }}</mat-error>
-                }
-              </mat-form-field>
-            </div>
-          </div>
-        }
         @default {
-          @if (option.Examples && option.Type !== 'DumpFlags') {
-            <div class="setting-full-width">
-              <div class="setting-info">
-                <strong>{{ option.FieldName || option.Name }}</strong>
-                <p>{{ option.Help }}</p>
-                <small class="default-value">Default: {{ option.DefaultStr }}</small>
-              </div>
-              <div class="setting-control">
-                <mat-form-field class="input-field" appearance="outline">
-                  <mat-select
-                    [formControl]="$any(control)"
-                    [attr.aria-label]="option.Name"
-                    (selectionChange)="commitValue()"
-                  >
-                    @for (example of option.Examples; track example.Value) {
-                      <mat-option [value]="example.Value">{{
-                        example.Help || example.Value
-                      }}</mat-option>
-                    }
-                  </mat-select>
-                  @if (control.invalid && control.touched) {
-                    <mat-error>{{ getControlError() }}</mat-error>
-                  }
-                </mat-form-field>
-              </div>
-            </div>
+          @if (option.Examples) {
+            <ng-container
+              *ngTemplateOutlet="standardSelect; context: { $implicit: option }"
+            ></ng-container>
           } @else {
             <div class="setting-full-width">
               <div class="setting-info">

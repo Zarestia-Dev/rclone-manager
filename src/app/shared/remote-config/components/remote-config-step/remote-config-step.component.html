@@ -9,13 +9,16 @@
       <mat-label>Search Remote Type</mat-label>
       <input
         type="text"
-        formControlName="type"
         matInput
         [formControl]="remoteSearchCtrl"
         [matAutocomplete]="auto"
         placeholder="e.g., Google Drive"
       />
-      <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayRemote.bind(this)">
+      <mat-autocomplete
+        #auto="matAutocomplete"
+        [displayWith]="displayRemote.bind(this)"
+        (optionSelected)="onTypeSelected($event.option.value)"
+      >
         @for (remote of filteredRemotes$ | async; track remote.value) {
           <mat-option [value]="remote.value">{{ remote.label }}</mat-option>
         }

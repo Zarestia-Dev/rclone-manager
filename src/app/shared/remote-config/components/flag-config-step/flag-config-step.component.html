@@ -297,46 +297,9 @@
     </div>
   }
 
-  <!-- JSON Configuration Section -->
-  <div class="json-config-container responsive-config-row">
-    <!-- JSON Form Field -->
-    <div class="json-textarea">
-      <mat-form-field appearance="outline" style="width: 100%">
-        <mat-label>{{ flagType | titlecase }} Configuration</mat-label>
-        <button
-          matIconButton
-          class="reset-btn"
-          (click)="onResetJson()"
-          [attr.aria-label]="'Reset ' + flagType + ' configuration'"
-        >
-          <mat-icon svgIcon="circle-xmark"></mat-icon>
-        </button>
-        <textarea
-          cdkTextareaAutosize
-          matInput
-          formControlName="options"
-          (input)="onValidateJson()"
-          spellcheck="false"
-        ></textarea>
-      </mat-form-field>
-    </div>
-
-    <!-- Flag Chips -->
-    <div class="json-chip-set">
-      <label class="chip-set-label" for="flag-chip-set">{{ flagType | titlecase }} Flags</label>
-      <mat-chip-set id="flag-chip-set" [attr.aria-label]="flagType + ' configuration options'">
-        @for (field of dynamicFlagFields; track field.name) {
-          <mat-chip-option
-            (click)="onToggleOption(field)"
-            [selected]="getSelectedOptions.hasOwnProperty(field.name)"
-            [disabled]="isDisabled"
-            [matTooltip]="field.help"
-            matTooltipPosition="above"
-          >
-            {{ field.name }}
-          </mat-chip-option>
-        }
-      </mat-chip-set>
-    </div>
-  </div>
+  <ng-container formGroupName="options">
+    @for (field of this.dynamicFlagFields; track field.Name) {
+      <app-setting-control [option]="field" [formControlName]="field.Name"></app-setting-control>
+    }
+  </ng-container>
 </form>

@@ -58,7 +58,7 @@ export class RemoteManagementService extends TauriBaseService {
   /**
    * Get configuration fields for a specific remote type
    */
-  async getRemoteConfigFields(type: string): Promise<unknown[]> {
+  async getRemoteConfigFields(type: string): Promise<any[]> {
     const response = await this.invokeCommand<unknown>('get_remote_types');
 
     // Response can be either { providers: [...] } or a record of arrays

@@ -52,9 +52,9 @@ form {
     letter-spacing: 0.3px;
 
     span {
-      font-size: 13px;
-      font-weight: 400;
-      color: var(--secondary-text-color);
+      font-size: var(--font-size-md);
+      font-weight: 500;
+      color: var(--purple);
       background: rgba(var(--purple-rgb), 0.1);
       border: 1px solid var(--purple);
       padding: 2px 4px;

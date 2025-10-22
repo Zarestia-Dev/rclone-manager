@@ -9,7 +9,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { RcConfigOption, RemoteType } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
 import { Observable, ReplaySubject, Subject, combineLatest } from 'rxjs';
-import { map, startWith, takeUntil } from 'rxjs/operators';
+import { map, startWith } from 'rxjs/operators';
 
 @Component({
   selector: 'app-remote-config-step',
@@ -40,8 +40,6 @@ export class RemoteConfigStepComponent implements OnInit, OnDestroy {
   set remoteTypes(types: RemoteType[]) {
     if (types && types.length > 0) {
       this.remoteTypes$.next(types);
-      // OPTIMIZATION 2: Create a Map for instant lookups (O(1) complexity).
-      // This is much faster than using array.find() repeatedly.
       this.remoteTypeMap = new Map(types.map(t => [t.value, t]));
     }
   }
@@ -54,23 +52,13 @@ export class RemoteConfigStepComponent implements OnInit, OnDestroy {
   showAdvancedOptions = false;
 
   private remoteTypeMap = new Map<string, RemoteType>();
-  // OPTIMIZATION 3: Add a subject to manage subscriptions and prevent memory leaks.
   private destroy$ = new Subject<void>();
 
   ngOnInit(): void {
-    // This part is the same: Set up the observable for filtering.
     const searchTerm$ = this.remoteSearchCtrl.valueChanges.pipe(startWith(''));
     this.filteredRemotes$ = combineLatest([this.remoteTypes$, searchTerm$]).pipe(
       map(([types, term]) => this.filterRemotes(types, term || ''))
     );
-
-    this.remoteSearchCtrl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
-      if (value && this.remoteTypeMap.has(value)) {
-        this.form.get('type')?.setValue(value, { emitEvent: false });
-        this.onRemoteTypeChange();
-      }
-    });
-
     const initialTypeValue = this.form.get('type')?.value;
     if (initialTypeValue) {
       this.remoteSearchCtrl.setValue(initialTypeValue, { emitEvent: false });
@@ -80,6 +68,11 @@ export class RemoteConfigStepComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  onTypeSelected(value: string): void {
+    this.form.get('type')?.setValue(value);
+    this.onRemoteTypeChange();
   }
 
   // The filter logic now receives the list directly from the combined observable.

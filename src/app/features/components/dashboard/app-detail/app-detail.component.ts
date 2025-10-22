@@ -368,6 +368,8 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     const configKey = `${section.key}Config`;
     const settings = this.getRemoteSettings(configKey);
 
+    console.log('Settings for section', section.key, settings);
+
     return {
       section,
       settings,
