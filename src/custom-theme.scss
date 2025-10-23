@@ -415,7 +415,7 @@ $dark-theme: (
     --secondary-text-color: #939090;
     --button-hover: #dddddd;
     --theme-border: #dbdbdb;
-    --faint-blue: #f0f8ff;
+    --input-background: #ebebeb;
     --about-dialog-button-color: #ffffff;
 
     /* Define rgb variables for colors */
@@ -445,7 +445,7 @@ $dark-theme: (
     --secondary-text-color: #939090;
     --button-hover: #333;
     --theme-border: #555;
-    --faint-blue: #464d50;
+    --input-background: #47474b;
     --about-dialog-button-color: #333337;
 
     /* Define rgb variables for colors */
@@ -554,7 +554,7 @@ $dark-theme: (
   /* Component-specific Aliases (mapped to scale) */
   --border-radius: var(--radius-xs); // 8px
   --button-border-radius: var(--radius-sm); // 12px
-  --input-border-radius: var(--radius-sm); // 12px - Border radius for input fields
+  --input-border-radius: var(--radius-md); // 16px - Border radius for input fields
   --card-border-radius: var(--radius-sm); // 12px
   --panel-radius: var(--radius-sm); // 12px
   --modal-radius: var(--radius-md); // 16px
@@ -624,6 +624,30 @@ body {
   margin: 0;
   font-family: system-ui, Inter, sans-serif;
   overflow: hidden;
+
+  @include mat.form-field-overrides(
+    (
+      // Shape & Borders (using your design system tokens)
+      outlined-container-shape: var(--input-border-radius),
+      outlined-outline-width: 0px,
+      outlined-focus-outline-width: 2px,
+      // Unfocused State Colors
+      outlined-label-text-color: var(--secondary-text-color),
+      outlined-input-text-color: var(--app-text-color),
+      outlined-input-text-placeholder-color: var(--secondary-text-color),
+      // Focused State Colors (using your accent color)
+      outlined-focus-outline-color: var(--accent-color),
+      outlined-focus-label-text-color: var(--accent-color),
+      outlined-caret-color: var(--accent-color),
+      // A slightly lighter gray from your palette
+      outlined-hover-label-text-color: var(--app-text-color)
+    )
+  );
+
+  .mat-mdc-form-field .mat-mdc-text-field-wrapper {
+    background-color: var(--input-background);
+    border-radius: var(--input-border-radius);
+  }
 
   @include mat.button-overrides(
     (
@@ -783,10 +807,6 @@ button {
   &:hover {
     background-color: var(--button-hover) !important;
   }
-}
-
-.mdc-text-field--filled:not(.mdc-text-field--disabled) {
-  background-color: var(--faint-blue) !important;
 }
 
 .cdk-overlay-pane,

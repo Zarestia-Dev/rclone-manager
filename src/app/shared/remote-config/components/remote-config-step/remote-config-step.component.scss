@@ -2,6 +2,17 @@ form {
   display: flex;
   flex-direction: column;
   height: 100%;
+  overflow: hidden;
+
+  // Virtual Scroll Viewport
+  .virtual-scroll-viewport {
+    width: 100%;
+    flex: 1;
+
+    .form-field-item {
+      padding-inline: var(--space-lg);
+    }
+  }
 
   // =============================================
   // TOGGLE CONTROLS
@@ -18,6 +29,12 @@ form {
   .basic-section {
     display: flex;
     flex-direction: column;
+    gap: var(--space-md);
+    padding-top: var(--space-lg);
+  }
+
+  .config-toggles {
+    padding-inline: var(--space-lg);
   }
 
   .advanced-section {
@@ -30,12 +47,8 @@ form {
     );
     border-left: 4px solid var(--primary-color);
     border-radius: 4px;
-    margin-top: var(--space-lg, 24px);
+    margin-bottom: var(--space-lg);
     transition: all 0.3s ease;
-
-    &:hover {
-      box-shadow: 0 2px 8px rgba(var(--accent-color-rgb), 0.09);
-    }
   }
 
   // =============================================
@@ -82,9 +95,6 @@ form {
   // RESPONSIVE ADJUSTMENTS
   // =============================================
   @media (max-width: 768px) {
-    gap: var(--space-md);
-    padding: var(--space-md);
-
     .advanced-section {
       padding: var(--space-md);
       gap: var(--space-sm);
@@ -106,9 +116,6 @@ form {
   }
 
   @media (max-width: 480px) {
-    padding: var(--space-md);
-    gap: var(--space-md);
-
     .advanced-section {
       border-left-width: 3px;
       padding: var(--space-md);

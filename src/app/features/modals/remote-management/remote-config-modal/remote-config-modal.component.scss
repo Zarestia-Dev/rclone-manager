@@ -3,6 +3,7 @@
   flex-direction: column;
   overflow: hidden;
   width: 100%;
+  height: 100%;
   background: var(--app-background);
   box-sizing: border-box;
 
@@ -24,7 +25,7 @@
       .step {
         display: flex;
         align-items: center;
-        gap: var(--space-sm); // Gap between the icon and the animated label
+        gap: var(--space-sm);
         position: relative;
         min-width: fit-content;
 
@@ -33,7 +34,6 @@
           cursor: not-allowed;
         }
 
-        // The icon circle
         .step-number {
           display: flex;
           align-items: center;
@@ -52,7 +52,6 @@
           }
         }
 
-        // The animated label that appears for the current step
         .step-label-animated {
           font-size: 13px;
           font-weight: 600;
@@ -60,24 +59,19 @@
           white-space: nowrap;
         }
 
-        // Current step (active)
         &.current {
           .step-number {
             background: var(--primary-color);
-            color: white; // Makes the icon white
-            box-shadow: 0 4px 12px rgba(var(--primary-color-rgb, 25, 118, 210), 0.3);
+            color: white;
           }
         }
 
-        // Completed steps
         &.completed {
           .step-number {
-            background: rgba(var(--primary-color-rgb, 25, 118, 210), 0.15);
-            color: var(--primary-color); // Makes the icon primary color
+            color: var(--primary-color);
           }
         }
 
-        // Future steps
         &.future {
           .step-number {
             background: rgba(0, 0, 0, 0.03);
@@ -85,28 +79,39 @@
           }
         }
 
-        // Clickable steps (in edit mode)
         &.clickable {
           cursor: pointer;
-
-          &:hover .step-number {
-            background: rgba(var(--primary-color-rgb, 25, 118, 210), 0.1);
-          }
         }
       }
     }
   }
 
   // =============================================
-  // MODAL CONTENT
+  // MODAL CONTENT - UPDATED
   // =============================================
   .modal-content {
     position: relative;
-    height: 100vh;
-    overflow-x: hidden;
-    overflow-y: auto;
+    flex: 1;
+    overflow: hidden; // Changed from auto to hidden
+    display: flex;
+    flex-direction: column;
 
-    .step-container {
+    .step-container:not(.interactive) {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+
+      // Ensure child components take full height
+      app-remote-config-step,
+      app-flag-config-step {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+    }
+    .step-container.interactive {
+      overflow-y: auto;
       padding: var(--space-lg);
     }
   }
@@ -123,6 +128,8 @@
     align-items: center;
     padding: var(--button-padding);
     gap: var(--space-md);
+    background: var(--app-background);
+    z-index: 10;
 
     .button-container-inner {
       display: flex;
@@ -149,7 +156,6 @@
       gap: var(--space-sm);
     }
 
-    // Responsive adjustments
     @media (max-width: 640px) {
       gap: var(--space-sm);
       padding: var(--space-md);

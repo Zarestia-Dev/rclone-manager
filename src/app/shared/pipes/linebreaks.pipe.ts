@@ -7,7 +7,7 @@ import { inject } from '@angular/core';
   standalone: true,
   pure: true,
 })
-export class LinebreaksPipe implements PipeTransform {
+export class LineBreaksPipe implements PipeTransform {
   private sanitizer = inject(DomSanitizer);
 
   transform(value: string | null | undefined): SafeHtml {

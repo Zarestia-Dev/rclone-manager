@@ -1,4 +1,14 @@
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef, // Add this import
+  Component,
+  EventEmitter,
+  inject,
+  Input,
+  OnDestroy,
+  OnInit,
+  Output,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -10,6 +20,7 @@ import { RcConfigOption, RemoteType } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
 import { Observable, ReplaySubject, Subject, combineLatest } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 
 @Component({
   selector: 'app-remote-config-step',
@@ -23,11 +34,15 @@ import { map, startWith } from 'rxjs/operators';
     MatProgressSpinnerModule,
     MatAutocompleteModule,
     SettingControlComponent,
+    ScrollingModule,
   ],
   templateUrl: './remote-config-step.component.html',
   styleUrl: './remote-config-step.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RemoteConfigStepComponent implements OnInit, OnDestroy {
+  cdRef = inject(ChangeDetectorRef);
+
   @Input() form!: FormGroup;
   @Input() remoteFields: RcConfigOption[] = [];
   @Input() isLoading = false;
@@ -41,6 +56,7 @@ export class RemoteConfigStepComponent implements OnInit, OnDestroy {
     if (types && types.length > 0) {
       this.remoteTypes$.next(types);
       this.remoteTypeMap = new Map(types.map(t => [t.value, t]));
+      this.cdRef.markForCheck(); // Mark for check when remote types change
     }
   }
 
@@ -75,12 +91,41 @@ export class RemoteConfigStepComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  // Get all form fields as an array for virtual scrolling
+  get formFields(): any[] {
+    const fields = [];
+
+    // Always include the basic fields (name and type)
+    fields.push({ type: 'basic-info' });
+
+    // Configuration toggles (if there are remote fields)
+    if (this.remoteFields.length > 0) {
+      fields.push({ type: 'config-toggles' });
+    }
+
+    // Basic configuration fields
+    if (this.basicFields.length > 0) {
+      fields.push({ type: 'basic-fields' });
+    }
+
+    // Advanced options section
+    if (this.showAdvancedOptions && this.advancedFields.length > 0) {
+      fields.push({ type: 'advanced-section' });
+    }
+
+    return fields;
+  }
+
+  // Track by function for virtual scrolling
+  trackByField(index: number, field: any): string {
+    return `${field.type}-${index}`;
+  }
+
   onTypeSelected(value: string): void {
     this.form.get('type')?.setValue(value);
     this.onRemoteTypeChange();
   }
 
-  // The filter logic now receives the list directly from the combined observable.
   private filterRemotes(types: RemoteType[], value: string): RemoteType[] {
     const filterValue = value.toLowerCase();
     return types.filter(
@@ -90,7 +135,6 @@ export class RemoteConfigStepComponent implements OnInit, OnDestroy {
     );
   }
 
-  // This function is now highly performant thanks to the Map lookup.
   displayRemote(remoteValue: string): string {
     if (!remoteValue) return '';
     return this.remoteTypeMap.get(remoteValue)?.label || '';
@@ -106,11 +150,15 @@ export class RemoteConfigStepComponent implements OnInit, OnDestroy {
 
   toggleAdvancedOptions(): void {
     this.showAdvancedOptions = !this.showAdvancedOptions;
+    // Mark for check since we're changing a property that affects the template
+    this.cdRef.markForCheck();
   }
 
   toggleInteractiveMode(): void {
     this.useInteractiveMode = !this.useInteractiveMode;
     this.interactiveModeToggled.emit(this.useInteractiveMode);
+    // Mark for check since we're changing a property that affects the template
+    this.cdRef.markForCheck();
   }
 
   onRemoteTypeChange(): void {

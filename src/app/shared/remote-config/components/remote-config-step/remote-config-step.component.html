@@ -1,90 +1,111 @@
 <form [formGroup]="form" class="remote-form">
-  <div class="basic-section">
-    <mat-form-field appearance="outline">
-      <mat-label>Remote Name</mat-label>
-      <input matInput formControlName="name" id="remoteName" placeholder="e.g., my-cloud-storage" />
-      @if (form.get('name')?.hasError('required')) {
-        <mat-error> Remote name is required </mat-error>
-      }
-      @if (form.get('name')?.hasError('invalidChars')) {
-        <mat-error> Name contains invalid characters </mat-error>
-      }
-      @if (form.get('name')?.hasError('invalidStart')) {
-        <mat-error> Name cannot start with a dash or space </mat-error>
-      }
-      @if (form.get('name')?.hasError('invalidEnd')) {
-        <mat-error> Name cannot end with a space </mat-error>
-      }
-      @if (form.get('name')?.hasError('nameTaken')) {
-        <mat-error> A remote with this name already exists </mat-error>
-      }
-    </mat-form-field>
+  <!-- Virtual Scroll Viewport -->
+  <cdk-virtual-scroll-viewport
+    [itemSize]="20"
+    [style.height.px]="700"
+    class="virtual-scroll-viewport"
+  >
+    <div *cdkVirtualFor="let field of formFields; trackBy: trackByField" class="form-field-item">
+      <!-- Basic Info Section (Name and Type) -->
+      @if (field.type === 'basic-info') {
+        <div class="basic-section">
+          <mat-form-field appearance="outline">
+            <mat-label>Remote Name</mat-label>
+            <input
+              matInput
+              formControlName="name"
+              id="remoteName"
+              placeholder="e.g., my-cloud-storage"
+            />
+            @if (form.get('name')?.hasError('required')) {
+              <mat-error> Remote name is required </mat-error>
+            }
+            @if (form.get('name')?.hasError('invalidChars')) {
+              <mat-error> Name contains invalid characters </mat-error>
+            }
+            @if (form.get('name')?.hasError('invalidStart')) {
+              <mat-error> Name cannot start with a dash or space </mat-error>
+            }
+            @if (form.get('name')?.hasError('invalidEnd')) {
+              <mat-error> Name cannot end with a space </mat-error>
+            }
+            @if (form.get('name')?.hasError('nameTaken')) {
+              <mat-error> A remote with this name already exists </mat-error>
+            }
+          </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Search Remote Type</mat-label>
-      <input
-        type="text"
-        matInput
-        [formControl]="remoteSearchCtrl"
-        [matAutocomplete]="auto"
-        placeholder="e.g., Google Drive"
-      />
-      <mat-autocomplete
-        #auto="matAutocomplete"
-        [displayWith]="displayRemote.bind(this)"
-        (optionSelected)="onTypeSelected($event.option.value)"
-      >
-        @for (remote of filteredRemotes$ | async; track remote.value) {
-          <mat-option [value]="remote.value">{{ remote.label }}</mat-option>
+          <mat-form-field appearance="outline">
+            <mat-label>Search Remote Type</mat-label>
+            <input
+              type="text"
+              matInput
+              [formControl]="remoteSearchCtrl"
+              [matAutocomplete]="auto"
+              placeholder="e.g., Google Drive"
+            />
+            <mat-autocomplete
+              #auto="matAutocomplete"
+              [displayWith]="displayRemote.bind(this)"
+              (optionSelected)="onTypeSelected($event.option.value)"
+            >
+              @for (remote of filteredRemotes$ | async; track remote.value) {
+                <mat-option [value]="remote.value">{{ remote.label }}</mat-option>
+              }
+              @if ((filteredRemotes$ | async)?.length === 0) {
+                <mat-option disabled>No matching remote types</mat-option>
+              }
+            </mat-autocomplete>
+          </mat-form-field>
+        </div>
+      }
+
+      <!-- Loading State -->
+      @if (field.type === 'basic-info' && isLoading) {
+        <div class="loading-container">
+          <mat-spinner diameter="30"></mat-spinner>
+          <span>Loading configuration options...</span>
+        </div>
+      }
+
+      <!-- Configuration Toggles -->
+      @if (field.type === 'config-toggles') {
+        <div class="config-toggles">
+          <mat-slide-toggle (change)="toggleAdvancedOptions()" [checked]="showAdvancedOptions">
+            Show Advanced Options
+          </mat-slide-toggle>
+
+          <mat-slide-toggle (change)="toggleInteractiveMode()" [checked]="useInteractiveMode">
+            Use Interactive Configuration
+          </mat-slide-toggle>
+        </div>
+      }
+
+      <!-- Basic Configuration Fields -->
+      @if (field.type === 'basic-fields') {
+        @for (field of basicFields; track field.Name) {
+          <app-setting-control
+            [option]="field"
+            [formControlName]="field.Name"
+          ></app-setting-control>
         }
-        @if ((filteredRemotes$ | async)?.length === 0) {
-          <mat-option disabled>No matching remote types</mat-option>
-        }
-      </mat-autocomplete>
-    </mat-form-field>
-  </div>
+      }
 
-  <!-- Loading State -->
-  @if (isLoading) {
-    <div class="loading-container">
-      <mat-spinner diameter="30"></mat-spinner>
-      <span>Loading configuration options...</span>
-    </div>
-  }
+      <!-- Advanced Options Section -->
+      @if (field.type === 'advanced-section') {
+        <div class="advanced-section">
+          <h3 class="section-heading">
+            Advanced Options
+            <span>{{ advancedFields.length }}</span>
+          </h3>
 
-  <!-- Configuration Toggles -->
-  @if (remoteFields.length > 0) {
-    <div class="config-toggles">
-      <mat-slide-toggle (change)="toggleAdvancedOptions()" [checked]="showAdvancedOptions">
-        Show Advanced Options
-      </mat-slide-toggle>
-
-      <mat-slide-toggle (change)="toggleInteractiveMode()" [checked]="useInteractiveMode">
-        Use Interactive Configuration
-      </mat-slide-toggle>
-    </div>
-  }
-
-  <!-- Basic Configuration Fields -->
-  @if (basicFields.length > 0) {
-    <div class="basic-section">
-      @for (field of basicFields; track field.Name) {
-        <app-setting-control [option]="field" [formControlName]="field.Name"></app-setting-control>
+          @for (field of advancedFields; track field.Name) {
+            <app-setting-control
+              [option]="field"
+              [formControlName]="field.Name"
+            ></app-setting-control>
+          }
+        </div>
       }
     </div>
-  }
-
-  <!-- Advanced Options Section -->
-  @if (showAdvancedOptions && advancedFields.length > 0) {
-    <div class="advanced-section">
-      <h3 class="section-heading">
-        Advanced Options
-        <span>{{ advancedFields.length }}</span>
-      </h3>
-
-      @for (field of advancedFields; track field.Name) {
-        <app-setting-control [option]="field" [formControlName]="field.Name"></app-setting-control>
-      }
-    </div>
-  }
+  </cdk-virtual-scroll-viewport>
 </form>

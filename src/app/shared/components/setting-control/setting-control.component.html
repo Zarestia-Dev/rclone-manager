@@ -3,7 +3,7 @@
     <ng-template #settingInfo let-opt>
       <div class="setting-info">
         <strong>{{ opt.FieldName || opt.Name }}</strong>
-        <div class="help-text" [innerHTML]="opt.Help | linebreaks"></div>
+        <p class="help-text" [innerHTML]="opt.Help | linebreaks"></p>
         <small class="default-value">Default: {{ opt.DefaultStr }}</small>
       </div>
     </ng-template>
@@ -266,6 +266,39 @@
           </div>
         }
         @case ('stringArray') {
+          <div class="setting-full-width">
+            <ng-container
+              *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+            ></ng-container>
+            <div class="array-items">
+              @for (itemControl of formArrayControls; track $index) {
+                <div class="array-item">
+                  <mat-form-field appearance="outline" class="array-input">
+                    <input
+                      matInput
+                      [formControl]="$any(itemControl)"
+                      [attr.aria-label]="option.Name + ' item ' + ($index + 1)"
+                      (blur)="commitValue()"
+                    />
+                    <button
+                      mat-icon-button
+                      matSuffix
+                      (click)="removeArrayItem($index)"
+                      [attr.aria-label]="'Remove ' + option.Name + ' item'"
+                    >
+                      <mat-icon svgIcon="trash"></mat-icon>
+                    </button>
+                  </mat-form-field>
+                </div>
+              }
+              <button mat-stroked-button class="add-array-item-btn" (click)="addArrayItem()">
+                <mat-icon svgIcon="add"></mat-icon>
+                Add Item
+              </button>
+            </div>
+          </div>
+        }
+        @case ('CommaSepList') {
           <div class="setting-full-width">
             <ng-container
               *ngTemplateOutlet="settingInfo; context: { $implicit: option }"

@@ -7,9 +7,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-xl);
-  padding: var(--space-lg);
-  background: transparent;
-  min-height: 400px;
 }
 
 // =============================================
@@ -61,7 +58,6 @@
     font-size: 28px;
     width: 28px;
     height: 28px;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
   }
 }
 
@@ -85,25 +81,6 @@
   color: var(--secondary-text-color);
   opacity: 0.85;
   font-weight: 500;
-}
-
-.progress-indicator {
-  display: flex;
-  align-items: center;
-
-  .progress-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: rgba(var(--secondary-text-color-rgb), 0.3);
-    transition: all 0.3s ease;
-
-    &.active {
-      background: var(--accent-color);
-      transform: scale(1.2);
-      box-shadow: 0 0 8px rgba(var(--accent-color-rgb), 0.4);
-    }
-  }
 }
 
 // =============================================
@@ -167,7 +144,6 @@
 
 .question-text {
   .help-text {
-    margin: 0;
     line-height: 1.6;
     white-space: pre-wrap;
     color: var(--app-text-color);
@@ -179,10 +155,12 @@
     display: flex;
     align-items: center;
     gap: var(--space-xs);
-    margin-top: var(--space-sm);
+    padding: var(--space-sm);
+    border-radius: var(--radius-sm);
     font-size: var(--font-size-sm);
     color: var(--secondary-text-color);
-    opacity: 0.9;
+    background: rgba(var(--accent-color-rgb), 0.1);
+    border-left-color: var(--primary-color);
 
     .info-icon {
       color: var(--accent-color);
@@ -279,16 +257,6 @@
   }
 }
 
-// =============================================
-// ACTIONS SECTION
-// =============================================
-.actions-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  margin-top: var(--space-lg);
-}
-
 .validation-status {
   display: flex;
   align-items: center;
@@ -310,8 +278,7 @@
     }
 
     &.invalid {
-      color: var(--secondary-text-color);
-      opacity: 0.5;
+      color: var(--warn-color);
     }
   }
 
@@ -324,7 +291,7 @@
     }
 
     .invalid & {
-      color: var(--secondary-text-color);
+      color: var(--warn-color);
     }
   }
 }
@@ -391,10 +358,6 @@
 
 .input-card:nth-child(2) {
   animation-delay: 0.1s;
-}
-
-.actions-section {
-  animation: fadeInUp 0.5s ease-out 0.2s both;
 }
 
 // =============================================

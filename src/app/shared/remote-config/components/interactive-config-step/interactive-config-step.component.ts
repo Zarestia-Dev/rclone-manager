@@ -1,4 +1,14 @@
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  inject,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,6 +17,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { RcConfigQuestionResponse } from '@app/services';
+import { LineBreaksPipe } from '../../../pipes/linebreaks.pipe';
 
 @Component({
   selector: 'app-interactive-config-step',
@@ -19,30 +30,40 @@ import { RcConfigQuestionResponse } from '@app/services';
     MatInputModule,
     MatButtonModule,
     MatIconModule,
+    LineBreaksPipe,
   ],
   templateUrl: './interactive-config-step.component.html',
   styleUrls: ['./interactive-config-step.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InteractiveConfigStepComponent implements OnChanges {
+  cdRef = inject(ChangeDetectorRef);
+
   @Input() question: RcConfigQuestionResponse | null = null;
   @Input() canceling = false;
   @Input() processing = false;
-  @Output() continue = new EventEmitter<string | number | boolean | null>();
+  @Output() answerChange = new EventEmitter<string | number | boolean | null>();
 
-  answer: string | boolean | number | null = null;
+  _answer: string | boolean | number | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['question']) {
-      this.answer = this.defaultAnswer(this.question);
+      this._answer = this.defaultAnswer(this.question);
     }
   }
 
-  async onContinue(): Promise<void> {
-    if (this.canceling) return;
-    this.continue.emit(this.answer);
+  get answer(): string | boolean | number | null {
+    return this._answer;
   }
 
-  trackByIndex = (index: number, _: { Value: string }): number => index;
+  set answer(val: string | boolean | number | null) {
+    if (this._answer !== val) {
+      this._answer = val;
+      this.answerChange.emit(this._answer);
+      this.cdRef.markForCheck();
+    }
+  }
+  trackByIndex = (index: number): number => index;
 
   /**
    * Check if the current field is required
@@ -71,13 +92,6 @@ export class InteractiveConfigStepComponent implements OnChanges {
 
     // For boolean and number answers, they're valid as long as they're not null
     return true;
-  }
-
-  /**
-   * Check if the continue button should be disabled
-   */
-  isButtonDisabled(): boolean {
-    return this.canceling || this.processing || (this.isFieldRequired() && !this.isValidAnswer());
   }
 
   /**

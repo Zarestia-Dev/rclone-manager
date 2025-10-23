@@ -1,303 +1,337 @@
 <form [formGroup]="configGroup" class="flag-form">
-  <!-- Auto-Action Toggle -->
-  @if (!isType(['vfs', 'filter', 'backend'])) {
-    <mat-slide-toggle class="slide-toggle" formControlName="autoStart">
-      {{
-        isType('mount')
-          ? 'Auto-Mount after creation and on startup'
-          : isType('sync')
-            ? 'Auto-Sync after creation and on startup'
-            : isType('copy')
-              ? 'Auto-Copy after creation and on startup'
-              : isType('move')
-                ? 'Auto-Move after creation and on startup'
-                : isType('bisync')
-                  ? 'Auto-Bisync after creation and on startup'
-                  : 'Auto-Action after creation and on startup'
-      }}
-    </mat-slide-toggle>
-  }
-
-  @if (isType('mount')) {
-    <!-- Mount Type Selector -->
-    <mat-form-field appearance="outline">
-      <mat-label>Mount Type</mat-label>
-      <mat-select formControlName="type" placeholder="Select mount type">
-        @for (mountType of mountTypes; track mountType) {
-          <mat-option [value]="mountType">
-            {{ mountType | titlecase }}
-          </mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-
-    <!-- Mount Path -->
-    <mat-form-field appearance="outline">
-      <mat-label>Mount Path</mat-label>
-      <button
-        matIconButton
-        matSuffix
-        (click)="onSelectFolder('mountConfig.dest', shouldRequireEmptyFolder)"
-        aria-label="Select folder"
-      >
-        <mat-icon svgIcon="folder"></mat-icon>
-      </button>
-      <input matInput formControlName="dest" id="dest" placeholder="Select a folder..." />
-      @if (configGroup.get('dest')?.hasError('required')) {
-        <mat-error> Mount path is required. </mat-error>
-      }
-      @if (configGroup.get('dest')?.hasError('invalidPath')) {
-        <mat-error> Invalid mount path. </mat-error>
-      }
-    </mat-form-field>
-  }
-
-  <!-- Destination Path -->
-  @if (!isType(['mount', 'vfs', 'filter', 'backend'])) {
-    <mat-form-field appearance="outline">
-      <mat-label>{{ flagType | titlecase }} Destination</mat-label>
-      <input
-        matInput
-        formControlName="dest"
-        placeholder="Type remote name or select destination path"
-        [matAutocomplete]="destAuto"
-      />
-      <button
-        matIconButton
-        matSuffix
-        (click)="onSelectFolder(flagType + 'Config.dest', false)"
-        aria-label="Select local folder"
-      >
-        <mat-icon svgIcon="folder"></mat-icon>
-      </button>
-      @if (pathState[flagType + 'Config.dest'] && pathState[flagType + 'Config.dest'].remoteName) {
-        <button matIconButton matSuffix (click)="onResetRemoteSelection(flagType + 'Config.dest')">
-          <mat-icon svgIcon="circle-xmark"></mat-icon>
-        </button>
-      }
-      @if (destLoading) {
-        <mat-spinner diameter="24"></mat-spinner>
-      }
-      <mat-autocomplete
-        #destAuto="matAutocomplete"
-        (optionSelected)="onDestOptionSelected($event.option.value)"
-      >
-        @if (
-          !pathState[flagType + 'Config.dest'] || !pathState[flagType + 'Config.dest'].remoteName
-        ) {
-          @for (remote of filteredDestRemotes$ | async; track remote) {
-            <mat-option [value]="remote + ':/'">
-              <mat-icon
-                svgIcon="hard-drive"
-                style="margin-right: 8px; width: 16px; height: 16px"
-              ></mat-icon>
-              {{ remote }}
-            </mat-option>
-          }
-        }
-        @if (
-          pathState[flagType + 'Config.dest'] && pathState[flagType + 'Config.dest'].remoteName
-        ) {
-          @for (option of pathState[flagType + 'Config.dest'].options || []; track option.Name) {
-            <mat-option
-              [value]="
-                pathState[flagType + 'Config.dest'].remoteName +
-                ':/' +
-                (pathState[flagType + 'Config.dest'].currentPath
-                  ? pathState[flagType + 'Config.dest'].currentPath + '/'
-                  : '') +
-                option.Name
-              "
-            >
-              @if (option.IsDir) {
-                <mat-icon
-                  svgIcon="folder"
-                  style="margin-right: 8px; width: 16px; height: 16px"
-                ></mat-icon>
-              }
-              @if (!option.IsDir) {
-                <mat-icon
-                  svgIcon="file"
-                  style="margin-right: 8px; width: 16px; height: 16px"
-                ></mat-icon>
-              }
-              {{ option.Name }}
-            </mat-option>
-          }
-        }
-      </mat-autocomplete>
-    </mat-form-field>
-  }
-
-  <!-- Source Path -->
-  @if (isEditMode && !isType(['vfs', 'filter', 'backend'])) {
-    <mat-form-field appearance="outline">
-      <mat-label>{{ flagType | titlecase }} Source</mat-label>
-      <input
-        matInput
-        formControlName="source"
-        placeholder="Type remote name or select source path"
-        [matAutocomplete]="sourceAuto"
-      />
-      <button
-        matIconButton
-        matSuffix
-        (click)="onSelectFolder(flagType + 'Config.source', false)"
-        aria-label="Select local folder"
-      >
-        <mat-icon svgIcon="folder"></mat-icon>
-      </button>
-      @if (
-        pathState[flagType + 'Config.source'] && pathState[flagType + 'Config.source'].remoteName
-      ) {
-        <button
-          matIconButton
-          matSuffix
-          (click)="onResetRemoteSelection(flagType + 'Config.source')"
-        >
-          <mat-icon svgIcon="circle-xmark"></mat-icon>
-        </button>
-      }
-      @if (sourceLoading) {
-        <mat-spinner diameter="24"></mat-spinner>
-      }
-      <mat-autocomplete
-        #sourceAuto="matAutocomplete"
-        (optionSelected)="onSourceOptionSelected($event.option.value)"
-      >
-        @if (
-          !pathState[flagType + 'Config.source'] ||
-          !pathState[flagType + 'Config.source'].remoteName
-        ) {
-          @for (remote of filteredSourceRemotes$ | async; track remote) {
-            <mat-option [value]="remote + ':/'">
-              <mat-icon
-                svgIcon="hard-drive"
-                style="margin-right: 8px; width: 16px; height: 16px"
-              ></mat-icon>
-              {{ remote }}
-            </mat-option>
-          }
-        }
-        @if (
-          pathState[flagType + 'Config.source'] && pathState[flagType + 'Config.source'].remoteName
-        ) {
-          @for (option of pathState[flagType + 'Config.source'].options || []; track option.Name) {
-            <mat-option [value]="option.Name">
-              @if (option.IsDir) {
-                <mat-icon
-                  svgIcon="folder"
-                  style="margin-right: 8px; width: 16px; height: 16px"
-                ></mat-icon>
-              }
-              @if (!option.IsDir) {
-                <mat-icon
-                  svgIcon="file"
-                  style="margin-right: 8px; width: 16px; height: 16px"
-                ></mat-icon>
-              }
-              {{ option.Name }}
-            </mat-option>
-          }
-        }
-      </mat-autocomplete>
-    </mat-form-field>
-  }
-
-  <!-- Bisync Specific Options -->
-  @if (isType('bisync')) {
-    <div class="bisync-options">
-      <h4>Bisync Options</h4>
-
-      <mat-slide-toggle formControlName="dryRun"> Dry Run Mode </mat-slide-toggle>
-
-      <mat-slide-toggle formControlName="resync"> Perform Resync Run </mat-slide-toggle>
-
-      <mat-slide-toggle formControlName="checkAccess">
-        Abort if RCLONE_TEST files not found
-      </mat-slide-toggle>
-
-      @if (configGroup.get('checkAccess')?.value) {
+  <!-- Virtual Scroll Viewport -->
+  <cdk-virtual-scroll-viewport
+    [itemSize]="20"
+    [style.height.px]="700"
+    class="virtual-scroll-viewport"
+  >
+    <!-- Virtual scrolling content -->
+    <div *cdkVirtualFor="let field of formFields; trackBy: trackByField" class="form-field-item">
+      <!-- Mount Type Selector -->
+      @if (field.type === 'mount-type' && isType('mount')) {
         <mat-form-field appearance="outline">
-          <mat-label>Check Filename</mat-label>
-          <input matInput formControlName="checkFilename" placeholder="RCLONE_TEST" />
+          <mat-label>Mount Type</mat-label>
+          <mat-select formControlName="type" placeholder="Select mount type">
+            @for (mountType of mountTypes; track mountType) {
+              <mat-option [value]="mountType">
+                {{ mountType | titlecase }}
+              </mat-option>
+            }
+          </mat-select>
         </mat-form-field>
       }
 
-      <mat-form-field appearance="outline">
-        <mat-label>Max Delete Percentage</mat-label>
-        <input matInput type="number" formControlName="maxDelete" placeholder="50" />
-      </mat-form-field>
+      <!-- Auto-Action Toggle -->
+      @if (field.type === 'auto-action') {
+        <mat-slide-toggle class="slide-toggle" formControlName="autoStart">
+          {{
+            isType('mount')
+              ? 'Auto-Mount after creation and on startup'
+              : isType('sync')
+                ? 'Auto-Sync after creation and on startup'
+                : isType('copy')
+                  ? 'Auto-Copy after creation and on startup'
+                  : isType('move')
+                    ? 'Auto-Move after creation and on startup'
+                    : isType('bisync')
+                      ? 'Auto-Bisync after creation and on startup'
+                      : 'Auto-Action after creation and on startup'
+          }}
+        </mat-slide-toggle>
+      }
+      <!-- Mount Path -->
+      @if (field.type === 'mount-path' && isType('mount')) {
+        <mat-form-field appearance="outline">
+          <mat-label>Mount Path</mat-label>
+          <button
+            matIconButton
+            matSuffix
+            (click)="onSelectFolder('mountConfig.dest', shouldRequireEmptyFolder)"
+            aria-label="Select folder"
+          >
+            <mat-icon svgIcon="folder"></mat-icon>
+          </button>
+          <input matInput formControlName="dest" id="dest" placeholder="Select a folder..." />
+          @if (configGroup.get('dest')?.hasError('required')) {
+            <mat-error> Mount path is required. </mat-error>
+          }
+          @if (configGroup.get('dest')?.hasError('invalidPath')) {
+            <mat-error> Invalid mount path. </mat-error>
+          }
+        </mat-form-field>
+      }
 
-      <mat-slide-toggle formControlName="force"> Bypass maxDelete safety check </mat-slide-toggle>
+      <!-- Destination Path -->
+      @if (field.type === 'destination' && !isType(['mount', 'vfs', 'filter', 'backend'])) {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ flagType | titlecase }} Destination</mat-label>
+          <input
+            matInput
+            formControlName="dest"
+            placeholder="Type remote name or select destination path"
+            [matAutocomplete]="destAuto"
+          />
+          <button
+            matIconButton
+            matSuffix
+            (click)="onSelectFolder(flagType + 'Config.dest', false)"
+            aria-label="Select local folder"
+          >
+            <mat-icon svgIcon="folder"></mat-icon>
+          </button>
+          @if (
+            pathState[flagType + 'Config.dest'] && pathState[flagType + 'Config.dest'].remoteName
+          ) {
+            <button
+              matIconButton
+              matSuffix
+              (click)="onResetRemoteSelection(flagType + 'Config.dest')"
+            >
+              <mat-icon svgIcon="circle-xmark"></mat-icon>
+            </button>
+          }
+          @if (destLoading) {
+            <mat-spinner diameter="24"></mat-spinner>
+          }
+          <mat-autocomplete
+            #destAuto="matAutocomplete"
+            (optionSelected)="onDestOptionSelected($event.option.value)"
+          >
+            @if (
+              !pathState[flagType + 'Config.dest'] ||
+              !pathState[flagType + 'Config.dest'].remoteName
+            ) {
+              @for (remote of filteredDestRemotes$ | async; track remote) {
+                <mat-option [value]="remote + ':/'">
+                  <mat-icon
+                    svgIcon="hard-drive"
+                    style="margin-right: 8px; width: 16px; height: 16px"
+                  ></mat-icon>
+                  {{ remote }}
+                </mat-option>
+              }
+            }
+            @if (
+              pathState[flagType + 'Config.dest'] && pathState[flagType + 'Config.dest'].remoteName
+            ) {
+              @for (
+                option of pathState[flagType + 'Config.dest'].options || [];
+                track option.Name
+              ) {
+                <mat-option
+                  [value]="
+                    pathState[flagType + 'Config.dest'].remoteName +
+                    ':/' +
+                    (pathState[flagType + 'Config.dest'].currentPath
+                      ? pathState[flagType + 'Config.dest'].currentPath + '/'
+                      : '') +
+                    option.Name
+                  "
+                >
+                  @if (option.IsDir) {
+                    <mat-icon
+                      svgIcon="folder"
+                      style="margin-right: 8px; width: 16px; height: 16px"
+                    ></mat-icon>
+                  }
+                  @if (!option.IsDir) {
+                    <mat-icon
+                      svgIcon="file"
+                      style="margin-right: 8px; width: 16px; height: 16px"
+                    ></mat-icon>
+                  }
+                  {{ option.Name }}
+                </mat-option>
+              }
+            }
+          </mat-autocomplete>
+        </mat-form-field>
+      }
 
-      <mat-slide-toggle formControlName="createEmptySrcDirs">
-        Create Empty Source Directories
-      </mat-slide-toggle>
+      <!-- Source Path -->
+      @if (field.type === 'source' && isEditMode && !isType(['vfs', 'filter', 'backend'])) {
+        <mat-form-field appearance="outline">
+          <mat-label>{{ flagType | titlecase }} Source</mat-label>
+          <input
+            matInput
+            formControlName="source"
+            placeholder="Type remote name or select source path"
+            [matAutocomplete]="sourceAuto"
+          />
+          <button
+            matIconButton
+            matSuffix
+            (click)="onSelectFolder(flagType + 'Config.source', false)"
+            aria-label="Select local folder"
+          >
+            <mat-icon svgIcon="folder"></mat-icon>
+          </button>
+          @if (
+            pathState[flagType + 'Config.source'] &&
+            pathState[flagType + 'Config.source'].remoteName
+          ) {
+            <button
+              matIconButton
+              matSuffix
+              (click)="onResetRemoteSelection(flagType + 'Config.source')"
+            >
+              <mat-icon svgIcon="circle-xmark"></mat-icon>
+            </button>
+          }
+          @if (sourceLoading) {
+            <mat-spinner diameter="24"></mat-spinner>
+          }
+          <mat-autocomplete
+            #sourceAuto="matAutocomplete"
+            (optionSelected)="onSourceOptionSelected($event.option.value)"
+          >
+            @if (
+              !pathState[flagType + 'Config.source'] ||
+              !pathState[flagType + 'Config.source'].remoteName
+            ) {
+              @for (remote of filteredSourceRemotes$ | async; track remote) {
+                <mat-option [value]="remote + ':/'">
+                  <mat-icon
+                    svgIcon="hard-drive"
+                    style="margin-right: 8px; width: 16px; height: 16px"
+                  ></mat-icon>
+                  {{ remote }}
+                </mat-option>
+              }
+            }
+            @if (
+              pathState[flagType + 'Config.source'] &&
+              pathState[flagType + 'Config.source'].remoteName
+            ) {
+              @for (
+                option of pathState[flagType + 'Config.source'].options || [];
+                track option.Name
+              ) {
+                <mat-option [value]="option.Name">
+                  @if (option.IsDir) {
+                    <mat-icon
+                      svgIcon="folder"
+                      style="margin-right: 8px; width: 16px; height: 16px"
+                    ></mat-icon>
+                  }
+                  @if (!option.IsDir) {
+                    <mat-icon
+                      svgIcon="file"
+                      style="margin-right: 8px; width: 16px; height: 16px"
+                    ></mat-icon>
+                  }
+                  {{ option.Name }}
+                </mat-option>
+              }
+            }
+          </mat-autocomplete>
+        </mat-form-field>
+      }
 
-      <mat-slide-toggle formControlName="removeEmptyDirs">
-        Remove Empty Directories
-      </mat-slide-toggle>
+      <!-- Bisync Specific Options -->
+      @if (field.type === 'bisync-options' && isType('bisync')) {
+        <div class="bisync-options">
+          <h4>Bisync Options</h4>
 
-      <mat-slide-toggle formControlName="ignoreListingChecksum">
-        Ignore Listing Checksum
-      </mat-slide-toggle>
+          <mat-slide-toggle formControlName="dryRun"> Dry Run Mode </mat-slide-toggle>
 
-      <mat-slide-toggle formControlName="resilient">
-        Resilient Mode (Use at your own risk!)
-      </mat-slide-toggle>
+          <mat-slide-toggle formControlName="resync"> Perform Resync Run </mat-slide-toggle>
 
-      <mat-slide-toggle formControlName="noCleanup"> Retain Working Files </mat-slide-toggle>
+          <mat-slide-toggle formControlName="checkAccess">
+            Abort if RCLONE_TEST files not found
+          </mat-slide-toggle>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Work Directory</mat-label>
-        <input matInput formControlName="workdir" placeholder="~/.cache/rclone/bisync" />
-      </mat-form-field>
+          @if (configGroup.get('checkAccess')?.value) {
+            <mat-form-field appearance="outline">
+              <mat-label>Check Filename</mat-label>
+              <input matInput formControlName="checkFilename" placeholder="RCLONE_TEST" />
+            </mat-form-field>
+          }
 
-      <mat-form-field appearance="outline">
-        <mat-label>Backup Directory 1</mat-label>
-        <input matInput formControlName="backupdir1" placeholder="Backup dir for Path1" />
-      </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Max Delete Percentage</mat-label>
+            <input matInput type="number" formControlName="maxDelete" placeholder="50" />
+          </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Backup Directory 2</mat-label>
-        <input matInput formControlName="backupdir2" placeholder="Backup dir for Path2" />
-      </mat-form-field>
+          <mat-slide-toggle formControlName="force">
+            Bypass maxDelete safety check
+          </mat-slide-toggle>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Filters File</mat-label>
-        <input matInput formControlName="filtersFile" placeholder="Path to filters file" />
-      </mat-form-field>
+          <mat-slide-toggle formControlName="createEmptySrcDirs">
+            Create Empty Source Directories
+          </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="removeEmptyDirs">
+            Remove Empty Directories
+          </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="ignoreListingChecksum">
+            Ignore Listing Checksum
+          </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="resilient">
+            Resilient Mode (Use at your own risk!)
+          </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="noCleanup"> Retain Working Files </mat-slide-toggle>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Work Directory</mat-label>
+            <input matInput formControlName="workdir" placeholder="~/.cache/rclone/bisync" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Backup Directory 1</mat-label>
+            <input matInput formControlName="backupdir1" placeholder="Backup dir for Path1" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Backup Directory 2</mat-label>
+            <input matInput formControlName="backupdir2" placeholder="Backup dir for Path2" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Filters File</mat-label>
+            <input matInput formControlName="filtersFile" placeholder="Path to filters file" />
+          </mat-form-field>
+        </div>
+      }
+
+      <!-- Move Specific Options -->
+      @if (field.type === 'move-options' && isType('move')) {
+        <div class="move-options">
+          <h4>Move Options</h4>
+
+          <mat-slide-toggle formControlName="createEmptySrcDirs">
+            Create Empty Source Directories
+          </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="deleteEmptySrcDirs">
+            Delete Empty Source Directories
+          </mat-slide-toggle>
+        </div>
+      }
+
+      <!-- Copy/Sync Specific Options -->
+      @if (field.type === 'copy-sync-options' && isType(['copy', 'sync'])) {
+        <div class="copy-sync-options">
+          <h4>{{ flagType | titlecase }} Options</h4>
+
+          <mat-slide-toggle formControlName="createEmptySrcDirs">
+            Create Empty Source Directories
+          </mat-slide-toggle>
+        </div>
+      }
+
+      <!-- Dynamic Flag Fields -->
+      @if (field.type === 'dynamic-fields') {
+        <ng-container formGroupName="options">
+          @for (field of this.dynamicFlagFields; track field.Name) {
+            <app-setting-control [option]="field" [formControlName]="field.Name">
+            </app-setting-control>
+          }
+        </ng-container>
+      }
     </div>
-  }
-
-  <!-- Move Specific Options -->
-  @if (isType('move')) {
-    <div class="move-options">
-      <h4>Move Options</h4>
-
-      <mat-slide-toggle formControlName="createEmptySrcDirs">
-        Create Empty Source Directories
-      </mat-slide-toggle>
-
-      <mat-slide-toggle formControlName="deleteEmptySrcDirs">
-        Delete Empty Source Directories
-      </mat-slide-toggle>
-    </div>
-  }
-
-  <!-- Copy/Sync Specific Options -->
-  @if (isType(['copy', 'sync'])) {
-    <div class="copy-sync-options">
-      <h4>{{ flagType | titlecase }} Options</h4>
-
-      <mat-slide-toggle formControlName="createEmptySrcDirs">
-        Create Empty Source Directories
-      </mat-slide-toggle>
-    </div>
-  }
-
-  @for (field of this.dynamicFlagFields; track field.Name) {
-    <app-setting-control [option]="field" [formControlName]="field.Name"></app-setting-control>
-  }
+  </cdk-virtual-scroll-viewport>
 </form>

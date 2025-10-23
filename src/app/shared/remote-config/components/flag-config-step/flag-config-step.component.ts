@@ -6,6 +6,9 @@ import {
   OnInit,
   OnChanges,
   SimpleChanges,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  inject,
 } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Entry, FlagType } from '../../remote-config-types';
@@ -21,7 +24,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Observable, map, startWith } from 'rxjs';
 
-import { RcConfigOption } from '@app/types'; // Assuming this path from setting-control.ts
+// Add CDK Scrolling imports
+import { ScrollingModule } from '@angular/cdk/scrolling';
+
+import { RcConfigOption } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
 
 @Component({
@@ -40,9 +46,11 @@ import { SettingControlComponent } from 'src/app/shared/components';
     MatButtonModule,
     MatInputModule,
     SettingControlComponent,
+    ScrollingModule,
   ],
   templateUrl: './flag-config-step.component.html',
   styleUrl: './flag-config-step.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FlagConfigStepComponent implements OnInit, OnChanges {
   @Input() form!: FormGroup;
@@ -73,6 +81,8 @@ export class FlagConfigStepComponent implements OnInit, OnChanges {
   @Output() remoteSelectionReset = new EventEmitter<string>();
 
   public showAdvancedOptions = false;
+  // Add ChangeDetectorRef
+  private cdRef = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
     this.initializeFilteredRemotes();
@@ -83,6 +93,74 @@ export class FlagConfigStepComponent implements OnInit, OnChanges {
     if (changes['form'] || changes['flagType'] || changes['existingRemotes']) {
       this.initializeFilteredRemotes();
     }
+
+    // Mark for check when loading states change
+    if (changes['sourceLoading'] || changes['destLoading']) {
+      this.cdRef.markForCheck();
+    }
+
+    // Mark for check when pathState changes (affects autocomplete options)
+    if (changes['pathState']) {
+      this.cdRef.markForCheck();
+    }
+
+    // Mark for check when dynamic fields or mount types change
+    if (changes['dynamicFlagFields'] || changes['mountTypes']) {
+      this.cdRef.markForCheck();
+    }
+  }
+
+  // Get all form fields as an array for virtual scrolling
+  get formFields(): any[] {
+    const fields = [];
+
+    // Auto-action toggle (if applicable)
+    if (!this.isType(['vfs', 'filter', 'backend'])) {
+      fields.push({ type: 'auto-action' });
+    }
+
+    // Mount type selector
+    if (this.isType('mount')) {
+      fields.push({ type: 'mount-type' });
+      fields.push({ type: 'mount-path' });
+    }
+
+    // Destination path
+    if (!this.isType(['mount', 'vfs', 'filter', 'backend'])) {
+      fields.push({ type: 'destination' });
+    }
+
+    // Source path (edit mode only)
+    if (this.isEditMode && !this.isType(['vfs', 'filter', 'backend'])) {
+      fields.push({ type: 'source' });
+    }
+
+    // Bisync options
+    if (this.isType('bisync')) {
+      fields.push({ type: 'bisync-options' });
+    }
+
+    // Move options
+    if (this.isType('move')) {
+      fields.push({ type: 'move-options' });
+    }
+
+    // Copy/Sync options
+    if (this.isType(['copy', 'sync'])) {
+      fields.push({ type: 'copy-sync-options' });
+    }
+
+    // Dynamic flag fields
+    if (this.dynamicFlagFields && this.dynamicFlagFields.length > 0) {
+      fields.push({ type: 'dynamic-fields' });
+    }
+
+    return fields;
+  }
+
+  // Track by function for virtual scrolling
+  trackByField(index: number, field: any): string {
+    return `${field.type}-${index}`;
   }
 
   private initializeFilteredRemotes(): void {
@@ -109,6 +187,8 @@ export class FlagConfigStepComponent implements OnInit, OnChanges {
         observer.next(this.existingRemotes);
       });
     }
+
+    this.cdRef.markForCheck(); // Mark for check after initializing filtered remotes
   }
 
   private _filterRemotes(value: string): string[] {

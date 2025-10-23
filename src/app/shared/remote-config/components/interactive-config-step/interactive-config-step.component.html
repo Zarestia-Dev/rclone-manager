@@ -9,11 +9,6 @@
         <h3 class="step-title">Additional Configuration</h3>
         <p class="step-subtitle">Complete the setup for this remote</p>
       </div>
-      @if (!canceling) {
-        <div class="progress-indicator">
-          <div class="progress-dot active"></div>
-        </div>
-      }
     </div>
   </div>
 
@@ -33,7 +28,9 @@
       <div class="question-text">
         <p
           class="help-text"
-          [innerText]="question?.Option?.Help || 'Answer the next question to continue.'"
+          [innerHTML]="
+            (question?.Option?.Help | linebreaks) || 'Answer the next question to continue.'
+          "
         ></p>
         @if (question?.Option?.DefaultStr) {
           <div class="default-info">
@@ -76,7 +73,7 @@
                     [disabled]="canceling"
                     [attr.aria-label]="q.Option?.Name || 'Select option'"
                   >
-                    @for (ex of q.Option?.Examples; track trackByIndex($index, ex)) {
+                    @for (ex of q.Option?.Examples; track trackByIndex($index)) {
                       <mat-option [value]="ex.Value">
                         <div class="option-content">
                           <span class="option-value">{{ ex.Help || ex.Value }} </span>
@@ -111,34 +108,18 @@
       </div>
     }
 
-    <!-- Enhanced Actions Section -->
-    <div class="actions-section">
-      @if (question?.Option?.Required) {
-        <div class="validation-status">
-          <mat-icon
-            class="validation-icon"
-            [svgIcon]="isValidAnswer() ? 'circle-check' : 'info'"
-            [class.valid]="isValidAnswer()"
-            [class.invalid]="!isValidAnswer()"
-          ></mat-icon>
-          <span class="validation-text">
-            {{ isValidAnswer() ? 'Ready to continue' : 'Please provide a value' }}
-          </span>
-        </div>
-      }
-
-      <div class="actions">
-        <button
-          matButton="filled"
-          (click)="onContinue()"
-          [disabled]="isButtonDisabled()"
-          class="continue-button"
-          [class.loading]="canceling || processing"
-          [attr.aria-label]="canceling || processing ? 'Processing...' : 'Continue to next step'"
-        >
-          <span>{{ canceling || processing ? 'Processing...' : 'Continue' }}</span>
-        </button>
+    @if (question?.Option?.Required) {
+      <div class="validation-status">
+        <mat-icon
+          class="validation-icon"
+          [svgIcon]="isValidAnswer() ? 'circle-check' : 'info'"
+          [class.valid]="isValidAnswer()"
+          [class.invalid]="!isValidAnswer()"
+        ></mat-icon>
+        <span class="validation-text">
+          {{ isValidAnswer() ? 'Ready to continue' : 'Please provide a value' }}
+        </span>
       </div>
-    </div>
+    }
   </div>
 </div>
