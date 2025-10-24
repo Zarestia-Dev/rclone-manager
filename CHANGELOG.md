@@ -18,6 +18,7 @@
 - When one modal opens, disable the open other modals via shortcuts or other ways (Unlimited modal opening). This include the Onboard state too. (This not include the dialog modals like delete confirmation, etc.)
  - Strip `RulesOpt.` prefix from rule fields before sending to rclone (e.g. `RulesOpt.ExcludeFrom` -> `ExcludeFrom`), which fixes issues where rclone ignored prefixed field names.
 - Fixed an issue where the remotes not showing correctly in the tray menu.
+ - Fixed terminal window flash on Windows (brief terminal/console window appearing) when starting the app or running rclone operations.
 
 
 

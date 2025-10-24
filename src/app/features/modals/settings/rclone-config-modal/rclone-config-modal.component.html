@@ -114,14 +114,6 @@
                               <div class="config-item-text">
                                 <span class="config-item-title">
                                   {{ categoryName }}
-                                  @if (
-                                    searchQuery &&
-                                    getMatchCountForCategory(service.name, categoryName) > 0
-                                  ) {
-                                    <span class="match-count">
-                                      {{ getMatchCountForCategory(service.name, categoryName) }}
-                                    </span>
-                                  }
                                 </span>
                                 <small class="config-item-description">{{
                                   getCategoryDescription(categoryName)
@@ -138,10 +130,12 @@
               </mat-expansion-panel>
             }
           }
+
+          <!-- Security Section -->
           <div class="security-section">
             <button mat-button class="config-item security-item" (click)="navigateTo('security')">
               <div class="config-item-content">
-                <mat-icon svgIcon="lock"></mat-icon>
+                <mat-icon svgIcon="shield"></mat-icon>
                 <div class="config-item-text">
                   <span class="config-item-title">Security Settings</span>
                   <small class="config-item-description"
@@ -157,7 +151,7 @@
     </div>
   }
 
-  <!-- SETTINGS PAGE: BASIC/ADVANCED SPLIT -->
+  <!-- SETTINGS PAGE: Category Settings Display -->
   @if (currentPage !== 'home' && !isLoading) {
     <div class="overlay" [@slideOverlay]>
       <div class="overlay-header" data-tauri-drag-region>

@@ -58,7 +58,6 @@ async fn fetch_option_blocks(
 
 // --- DATA TRANSFORMATION LOGIC ---
 
-/// Merges live values from `current_options` into the `options_info` metadata.
 fn merge_options(options_info: &mut Value, current_options: &Value) {
     if let Some(info_map) = options_info.as_object_mut() {
         for (block_name, options_array) in info_map {
@@ -100,21 +99,34 @@ fn merge_options(options_info: &mut Value, current_options: &Value) {
 /// Transforms a flat list of options into a nested object grouped by prefixes (e.g., "HTTP", "Auth").
 fn group_options(merged_info: &Value) -> Value {
     let mut final_grouped_data = Value::Object(Map::new());
+    let mut seen_field_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+
     if let Some(info_map) = merged_info.as_object() {
         for (block_name, options_array) in info_map {
             let mut block_groups = Map::new();
             if let Some(options) = options_array.as_array() {
                 for option in options {
+                    // Get the FieldName to check for duplicates
+                    let field_name = option
+                        .get("FieldName")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("");
+
+                    // Skip if we've already processed this FieldName
+                    if seen_field_names.contains(field_name) {
+                        continue;
+                    }
+                    seen_field_names.insert(field_name.to_string());
+
                     let mut new_option = option.clone();
 
-                    // --- NEW LOGIC TO HANDLE `main` DIFFERENTLY ---
                     if block_name == "main" {
-                        // For the 'main' block, group by the "Groups" property.
+                        // For the 'main' block, group by the "Groups" property
                         let group_name = new_option
                             .get("Groups")
                             .and_then(|v| v.as_str())
-                            .and_then(|s| s.split(',').next()) // Take the first group if there are multiple
-                            .unwrap_or("General") // Fallback to "General"
+                            .and_then(|s| s.split(',').next())
+                            .unwrap_or("General")
                             .to_string();
 
                         block_groups
@@ -124,11 +136,7 @@ fn group_options(merged_info: &Value) -> Value {
                             .unwrap()
                             .push(new_option);
                     } else {
-                        // For all other blocks, use the original dot-notation logic.
-                        let field_name = new_option
-                            .get("FieldName")
-                            .and_then(|v| v.as_str())
-                            .unwrap_or("");
+                        // For all other blocks, use the dot-notation logic
                         let (group_name, simplified_field_name) =
                             if let Some((group, field)) = field_name.split_once('.') {
                                 (group.to_string(), field.to_string())

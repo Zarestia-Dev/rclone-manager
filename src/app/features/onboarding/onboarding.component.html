@@ -26,7 +26,10 @@
       <div class="content-area">
         <div class="card-content">
           <div class="icon-container">
-            <mat-icon [svgIcon]="cards[currentCardIndex].image"></mat-icon>
+            <img
+              [src]="cards[currentCardIndex].image"
+              alt="{{ cards[currentCardIndex].title }} icon"
+            />
           </div>
           <div class="text-content">
             <h2 class="card-title">{{ cards[currentCardIndex].title }}</h2>

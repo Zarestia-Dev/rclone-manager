@@ -86,13 +86,13 @@ export class OnboardingComponent implements OnInit, OnDestroy {
   // Base cards that are always shown
   private baseCards = [
     {
-      image: 'rclone',
+      image: '../assets/rclone.svg',
       title: 'Welcome to RClone Manager',
       content:
         'Your modern cloud storage management solution. RClone Manager provides an intuitive interface to sync, mount, and manage all your cloud remotes effortlessly.',
     },
     {
-      image: 'rclone',
+      image: '../assets/rclone.svg',
       title: 'Powerful Features',
       content:
         'Seamlessly sync files, mount cloud storage as local drives, manage multiple remotes, and monitor transfer operations - all from one beautiful interface.',
@@ -337,36 +337,36 @@ export class OnboardingComponent implements OnInit, OnDestroy {
   async checkRclone(): Promise<void> {
     try {
       this.rcloneInstalled = await this.systemInfoService.isRcloneAvailable();
-      if (!this.rcloneInstalled) {
-        this.cards.splice(3, 0, {
-          image: '../assets/rclone.svg',
-          title: 'Install RClone',
-          content:
-            "RClone is required for cloud storage operations. Choose your preferred installation location or binary location and we'll handle the setup automatically.",
-        });
-      }
     } catch (error) {
       console.error('Error checking rclone:', error);
       this.rcloneInstalled = false;
+    }
+    if (!this.rcloneInstalled) {
+      this.cards.splice(3, 0, {
+        image: '../assets/rclone.svg',
+        title: 'Install RClone',
+        content:
+          "RClone is required for cloud storage operations. Choose your preferred installation location or binary location and we'll handle the setup automatically.",
+      });
     }
   }
 
   async checkMountPlugin(): Promise<void> {
     try {
       this.mountPluginInstalled = await this.installationService.isMountPluginInstalled();
-      if (!this.mountPluginInstalled) {
-        // Add after install rclone card if it exists, otherwise at position 3
-        const insertPosition = this.cards.length > 3 ? 4 : 3;
-        this.cards.splice(insertPosition, 0, {
-          image: '../assets/rclone.svg',
-          title: 'Install Mount Plugin',
-          content:
-            'The mount plugin enables you to mount cloud storage as local drives. This optional component enhances your RClone experience.',
-        });
-      }
     } catch (error) {
       console.error('Error checking mount plugin:', error);
       this.mountPluginInstalled = false;
+    }
+    if (!this.mountPluginInstalled) {
+      // Add after install rclone card if it exists, otherwise at position 3
+      const insertPosition = this.cards.length > 3 ? 4 : 3;
+      this.cards.splice(insertPosition, 0, {
+        image: '../assets/rclone.svg',
+        title: 'Install Mount Plugin',
+        content:
+          'The mount plugin enables you to mount cloud storage as local drives. This optional component enhances your RClone experience.',
+      });
     }
 
     // Always add setup complete as the last card

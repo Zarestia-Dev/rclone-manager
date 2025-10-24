@@ -30,7 +30,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 import { RcConfigOption } from '@app/types';
 import { Subject } from 'rxjs';
-import { takeUntil, debounceTime } from 'rxjs/operators';
+import { takeUntil } from 'rxjs/operators';
 import { LineBreaksPipe } from '../../pipes/linebreaks.pipe';
 
 @Component({
@@ -132,7 +132,22 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
 
     let internalValue = value;
 
-    if (this.option.Type === 'CommaSepList') {
+    // Handle numeric types - convert string numbers to actual numbers
+    if (
+      this.option.Type === 'int' ||
+      this.option.Type === 'int64' ||
+      this.option.Type === 'uint32'
+    ) {
+      if (typeof value === 'string' && value.trim() !== '') {
+        const numValue = parseInt(value, 10);
+        internalValue = isNaN(numValue) ? value : numValue;
+      }
+    } else if (this.option.Type === 'float64') {
+      if (typeof value === 'string' && value.trim() !== '') {
+        const numValue = parseFloat(value);
+        internalValue = isNaN(numValue) ? value : numValue;
+      }
+    } else if (this.option.Type === 'CommaSepList') {
       if (typeof value === 'string' && value) {
         internalValue = value
           .split(',')
@@ -167,7 +182,6 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       this.control.setValue(internalValue, { emitEvent: false });
     }
   }
-
   commitValue(): void {
     this.valueCommit.emit();
   }
@@ -215,18 +229,30 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       this.control = new FormControl(initialValue, validators);
     }
 
-    this.control.valueChanges
-      .pipe(debounceTime(300), takeUntil(this.destroyed$))
-      .subscribe(value => {
-        let outputValue = value;
-        if (this.option.Type === 'Encoding' || this.option.Type === 'Bits') {
-          outputValue = Array.isArray(value) ? value.join(',') : value;
-        } else if (this.option.Type === 'CommaSepList') {
-          outputValue = Array.isArray(value) ? value.join(',') : value;
+    this.control.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(value => {
+      let outputValue = value;
+      if (
+        this.option.Type === 'int' ||
+        this.option.Type === 'int64' ||
+        this.option.Type === 'uint32'
+      ) {
+        if (typeof value === 'string' && value.trim() !== '') {
+          const numValue = parseInt(value, 10);
+          outputValue = isNaN(numValue) ? value : numValue;
         }
-        this.onChange(outputValue);
-        this.onTouched();
-      });
+      } else if (this.option.Type === 'float64') {
+        if (typeof value === 'string' && value.trim() !== '') {
+          const numValue = parseFloat(value);
+          outputValue = isNaN(numValue) ? value : numValue;
+        }
+      } else if (this.option.Type === 'Encoding' || this.option.Type === 'Bits') {
+        outputValue = Array.isArray(value) ? value.join(',') : value;
+      } else if (this.option.Type === 'CommaSepList') {
+        outputValue = Array.isArray(value) ? value.join(',') : value;
+      }
+      this.onChange(outputValue);
+      this.onTouched();
+    });
   }
 
   getRCloneOptionValidators(option: RcConfigOption): ValidatorFn[] {

@@ -35,7 +35,7 @@ import { SearchContainerComponent } from '../../../../shared/components/search-c
 import { MatSelectModule } from '@angular/material/select';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { SecuritySettingsComponent } from '../security-settings/security-settings.component';
-import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
+import { distinctUntilChanged, Subject, takeUntil } from 'rxjs';
 import { SettingControlComponent } from 'src/app/shared/components';
 
 type PageType = 'home' | 'security' | string;
@@ -201,7 +201,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   private setupSearchSubscription(): void {
     this.search$
-      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.componentDestroyed$))
+      .pipe(distinctUntilChanged(), takeUntil(this.componentDestroyed$))
       .subscribe(searchText => {
         const query = searchText.toLowerCase().trim();
         this.searchQuery = query;
