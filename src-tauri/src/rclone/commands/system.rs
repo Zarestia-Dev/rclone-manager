@@ -2,11 +2,11 @@ use log::{debug, error, info, warn};
 use serde_json::{Value, json};
 use std::{
     collections::HashMap,
-    process::Child,
     sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
 use tauri::{AppHandle, Emitter, State};
+use tauri_plugin_shell::process::CommandChild;
 use tokio::net::TcpStream;
 use tokio::{sync::Mutex, time::sleep};
 
@@ -23,7 +23,7 @@ use crate::{
 };
 
 lazy_static::lazy_static! {
-    static ref OAUTH_PROCESS: Arc<Mutex<Option<Child>>> = Arc::new(Mutex::new(None));
+    static ref OAUTH_PROCESS: Arc<Mutex<Option<CommandChild>>> = Arc::new(Mutex::new(None));
 }
 
 #[derive(Debug)]
@@ -104,7 +104,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     // Start new process
     let port = ENGINE_STATE.get_oauth().1;
 
-    let mut oauth_app = match create_rclone_command(port, app, "oauth").await {
+    let oauth_cmd = match create_rclone_command(port, app, "oauth").await {
         Ok(cmd) => cmd,
         Err(e) => {
             let error_msg = format!("Failed to create OAuth command: {e}");
@@ -112,7 +112,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
         }
     };
 
-    let process = oauth_app.spawn().map_err(|e| {
+    let (_rx, process) = oauth_cmd.spawn().map_err(|e| {
         let error_msg = format!(
             "Failed to start Rclone OAuth process: {e}. Ensure Rclone is installed and in PATH."
         );
@@ -172,18 +172,12 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
         warn!("⚠️ Failed to send quit request: {e}");
     }
 
-    if let Some(mut process) = guard.take() {
-        match process.wait() {
-            Ok(status) => {
-                info!("✅ Rclone OAuth process exited with status: {status:?}");
-            }
-            Err(_) => {
-                if let Err(e) = process.kill() {
-                    error!("❌ Failed to kill process: {e}");
-                    return Err(format!("Failed to kill process: {e}"));
-                }
-                info!("💀 Forcefully killed Rclone OAuth process");
-            }
+    if let Some(process) = guard.take() {
+        if let Err(e) = process.kill() {
+            error!("❌ Failed to kill process: {e}");
+            return Err(format!("Failed to kill process: {e}"));
+        } else {
+            info!("💀 Rclone OAuth process killed");
         }
     } else {
         // If not tracked, just wait a bit for the process to exit after /core/quit

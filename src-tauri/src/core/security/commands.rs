@@ -97,8 +97,6 @@ pub async fn remove_config_password(
 /// Test if a password is valid for rclone
 #[tauri::command]
 pub async fn validate_rclone_password(app: AppHandle, password: String) -> Result<(), String> {
-    use std::process::Stdio;
-
     debug!("🔐 Testing rclone password");
 
     if password.trim().is_empty() {
@@ -107,11 +105,9 @@ pub async fn validate_rclone_password(app: AppHandle, password: String) -> Resul
 
     let output = build_rclone_command(&app, None, None, None)
         .args(["listremotes", "--ask-password=false"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
         .env("RCLONE_CONFIG_PASS", &password)
         .output()
+        .await
         .map_err(|e| format!("Failed to execute rclone: {}", e))?;
 
     if output.status.success() {
@@ -219,17 +215,13 @@ pub async fn is_config_encrypted_cached(app: AppHandle) -> Result<bool, String> 
 
 #[tauri::command]
 pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
-    use std::process::Stdio;
-
     debug!("🔍 Checking if rclone config is encrypted");
 
     let output = build_rclone_command(&app, None, None, None)
         .args(["listremotes", "--ask-password=false"])
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .env_remove("RCLONE_CONFIG_PASS")
+        .env_clear()
         .output()
+        .await
         .map_err(|e| format!("Failed to execute rclone: {e}"))?;
 
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -260,11 +252,9 @@ pub async fn encrypt_config(
     credential_store: State<'_, CredentialStore>,
     password: String,
 ) -> Result<(), String> {
-    use std::process::Stdio;
-
     info!("🔐 Encrypting rclone configuration (using password-command)");
 
-    let mut rclone_command = build_rclone_command(&app, None, None, None);
+    let rclone_command = build_rclone_command(&app, None, None, None);
 
     // Create a cross-platform command that outputs the password
     let password_command = if cfg!(windows) {
@@ -277,8 +267,9 @@ pub async fn encrypt_config(
         // Unix/Linux: Use printf to avoid newlines and quote issues (no quotes)
         format!("echo \"{}\"", password)
     };
+
     // Use --password-command to avoid stdin password prompt issues
-    let child = rclone_command
+    let output = rclone_command
         .args([
             "config",
             "encryption",
@@ -286,14 +277,9 @@ pub async fn encrypt_config(
             "--password-command",
             &password_command,
         ])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Failed to start rclone config encryption set: {e}"))?;
-
-    let output = child
-        .wait_with_output()
-        .map_err(|e| format!("Failed to wait for rclone config encryption set: {e}"))?;
+        .output()
+        .await
+        .map_err(|e| format!("Failed to execute rclone config encryption set: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -338,10 +324,9 @@ pub async fn unencrypt_config(
     env_manager: State<'_, SafeEnvironmentManager>,
     password: String,
 ) -> Result<(), String> {
-    use std::process::Stdio;
     info!("🔓 Unencrypting rclone configuration (using password-command)");
 
-    let mut rclone_command = build_rclone_command(&app, None, None, None);
+    let rclone_command = build_rclone_command(&app, None, None, None);
 
     // Create a cross-platform password command
     let password_command = if cfg!(windows) {
@@ -353,7 +338,7 @@ pub async fn unencrypt_config(
         format!("echo \"{}\"", password)
     };
 
-    let child = rclone_command
+    let output = rclone_command
         .args([
             "config",
             "encryption",
@@ -361,14 +346,9 @@ pub async fn unencrypt_config(
             "--password-command",
             &password_command,
         ])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Failed to start rclone config encryption remove: {e}"))?;
-
-    let output = child
-        .wait_with_output()
-        .map_err(|e| format!("Failed to wait for rclone config encryption remove: {e}"))?;
+        .output()
+        .await
+        .map_err(|e| format!("Failed to execute rclone config encryption remove: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);

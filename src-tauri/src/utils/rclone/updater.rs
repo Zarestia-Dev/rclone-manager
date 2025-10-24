@@ -385,6 +385,7 @@ async fn check_rclone_selfupdate(
         .arg("selfupdate")
         .arg("--check")
         .output()
+        .await
         .map_err(|e| format!("Failed to run rclone selfupdate --check: {e}"))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -452,11 +453,11 @@ async fn perform_rclone_selfupdate(
     channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
     let mut cmd = build_rclone_command(app_handle, None, None, None);
-    cmd.arg("selfupdate");
+    cmd = cmd.arg("selfupdate");
 
     // Configure output destination
     if let Some(output) = output_path {
-        cmd.args(["--output", &output.display().to_string()]);
+        cmd = cmd.args(["--output", &output.display().to_string()]);
         info!("Updating rclone with output to: {output:?}");
     } else {
         info!("Updating rclone in place");
@@ -465,11 +466,11 @@ async fn perform_rclone_selfupdate(
     // Configure update channel
     let channel_name = match channel.as_deref() {
         Some("beta") => {
-            cmd.arg("--beta");
+            cmd = cmd.arg("--beta");
             "beta"
         }
         Some("stable") | None => {
-            cmd.arg("--stable");
+            cmd = cmd.arg("--stable");
             "stable"
         }
         Some(other) => {
@@ -479,10 +480,11 @@ async fn perform_rclone_selfupdate(
 
     info!("Using {channel_name} channel");
 
-    debug!("Executing rclone selfupdate: {cmd:?}");
+    debug!("Executing rclone selfupdate");
 
     let output = cmd
         .output()
+        .await
         .map_err(|e| format!("Failed to run rclone selfupdate: {e}"))?;
 
     if output.status.success() {

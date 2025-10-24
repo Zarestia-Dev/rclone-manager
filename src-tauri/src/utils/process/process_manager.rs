@@ -254,7 +254,7 @@ pub fn kill_all_rclone_processes() -> Result<(), String> {
     Ok(())
 }
 
-/// Get the PID of a child process
-pub fn get_child_pid(child: &std::process::Child) -> Option<u32> {
-    Some(child.id())
-}
+// /// Get the PID of a child process
+// // pub fn get_child_pid(child: &tauri_plugin_shell::process::CommandChild) -> Option<u32> {
+// //     Some(child.pid())
+// // }

@@ -30,21 +30,30 @@ pub async fn provision_rclone(
             .expect("Failed to get app data directory"),
     };
 
-    if check_rclone_available(app_handle.clone(), "") {
-        if let Err(e) = save_settings(
-            app_handle.state(),
-            serde_json::json!({
-                "core": {
-                    "rclone_path": "system"
+    // check_rclone_available is now async, so we need to await it
+    match check_rclone_available(app_handle.clone(), "").await {
+        Ok(available) => {
+            if available {
+                if let Err(e) = save_settings(
+                    app_handle.state(),
+                    serde_json::json!({
+                        "core": {
+                            "rclone_path": "system"
+                        }
+                    }),
+                    app_handle.clone(),
+                )
+                .await
+                {
+                    error!("Failed to save settings: {e}");
                 }
-            }),
-            app_handle.clone(),
-        )
-        .await
-        {
-            error!("Failed to save settings: {e}");
+                return Ok("Rclone already installed system-wide.".into());
+            }
         }
-        return Ok("Rclone already installed system-wide.".into());
+        Err(e) => {
+            error!("Error checking rclone availability: {e}");
+            // Continue anyway - assume not available
+        }
     }
 
     let os_name = match os {

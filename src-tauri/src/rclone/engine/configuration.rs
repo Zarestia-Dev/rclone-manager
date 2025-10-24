@@ -1,5 +1,4 @@
 use log::{debug, error, info, warn};
-use std::process::Stdio;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
@@ -14,11 +13,20 @@ impl RcApiEngine {
         info!("🔍 Validating rclone configuration before engine start...");
 
         // Check if rclone binary exists and is available using shared helpers
-        if !crate::core::check_binaries::check_rclone_available(app.clone(), "") {
-            let path = crate::core::check_binaries::read_rclone_path(app);
-            let err_msg = format!("Rclone binary not found at: {}", path.display());
-            error!("❌ {}", err_msg);
-            return Err(err_msg);
+        match crate::core::check_binaries::check_rclone_available(app.clone(), "").await {
+            Ok(available) => {
+                if !available {
+                    let path = crate::core::check_binaries::read_rclone_path(app);
+                    let err_msg = format!("Rclone binary not found at: {}", path.display());
+                    error!("❌ {}", err_msg);
+                    return Err(err_msg);
+                }
+            }
+            Err(e) => {
+                let err_msg = format!("Failed to check rclone availability: {}", e);
+                error!("❌ {}", err_msg);
+                return Err(err_msg);
+            }
         }
 
         // Use dedicated method to check if config is encrypted
@@ -51,11 +59,9 @@ impl RcApiEngine {
         // Run 'rclone listremotes' to test the password
         let output = build_rclone_command(app, None, None, None)
             .args(["listremotes", "--ask-password=false"])
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
             .envs(&env_vars)
             .output()
+            .await
             .map_err(|e| format!("Failed to execute rclone command: {}", e))?;
 
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -93,16 +99,14 @@ impl RcApiEngine {
     pub async fn is_config_encrypted(&self, _app: &AppHandle) -> bool {
         debug!("🔍 Checking if rclone configuration is encrypted...");
 
-        let mut rclone_command = build_rclone_command(_app, None, None, None);
+        let rclone_command = build_rclone_command(_app, None, None, None);
 
         // Simple approach: try listremotes with --ask-password=false
         let output = match rclone_command
             .args(["listremotes", "--ask-password=false"])
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .env_remove("RCLONE_CONFIG_PASS")
+            .env_clear()
             .output()
+            .await
         {
             Ok(output) => output,
             Err(e) => {

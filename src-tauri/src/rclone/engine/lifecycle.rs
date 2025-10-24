@@ -295,28 +295,52 @@ fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> Result<(), Str
             debug!("🔄 Updating rclone path...");
             // Validate the new configured rclone path before attempting to start
             let configured_path = crate::core::check_binaries::read_rclone_path(app);
-            if !crate::core::check_binaries::check_rclone_available(app.clone(), "") {
-                error!(
-                    "❌ Configured rclone path is invalid: {}",
-                    configured_path.display()
-                );
-                engine.path_error = true;
-                // Inform the frontend about the path error
-                if let Err(e) = app.emit(
-                    "rclone_engine",
-                    serde_json::json!({
-                        "status": "path_error",
-                        "message": format!("Rclone binary not found at: {}", configured_path.display())
-                    }),
-                ) {
-                    error!("Failed to emit path_error event: {e}");
+
+            // Use blocking call since we're in a blocking context
+            let check_result = tauri::async_runtime::block_on(
+                crate::core::check_binaries::check_rclone_available(app.clone(), ""),
+            );
+
+            match check_result {
+                Ok(available) => {
+                    if !available {
+                        error!(
+                            "❌ Configured rclone path is invalid: {}",
+                            configured_path.display()
+                        );
+                        engine.path_error = true;
+                        // Inform the frontend about the path error
+                        if let Err(e) = app.emit(
+                            "rclone_engine",
+                            serde_json::json!({
+                                "status": "path_error",
+                                "message": format!("Rclone binary not found at: {}", configured_path.display())
+                            }),
+                        ) {
+                            error!("Failed to emit path_error event: {e}");
+                        }
+                        return Err(format!(
+                            "Configured rclone path is invalid: {}",
+                            configured_path.display()
+                        ));
+                    } else {
+                        engine.path_error = false;
+                    }
                 }
-                return Err(format!(
-                    "Configured rclone path is invalid: {}",
-                    configured_path.display()
-                ));
-            } else {
-                engine.path_error = false;
+                Err(e) => {
+                    error!("❌ Error checking rclone availability: {}", e);
+                    engine.path_error = true;
+                    if let Err(emit_err) = app.emit(
+                        "rclone_engine",
+                        serde_json::json!({
+                            "status": "path_error",
+                            "message": format!("Error checking rclone: {}", e)
+                        }),
+                    ) {
+                        error!("Failed to emit path_error event: {emit_err}");
+                    }
+                    return Err(e);
+                }
             }
         }
         "api_port" => {

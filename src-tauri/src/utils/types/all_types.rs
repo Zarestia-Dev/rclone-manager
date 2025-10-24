@@ -148,7 +148,7 @@ pub struct RcloneCoreVersion {
 
 #[derive(Default)]
 pub struct RcApiEngine {
-    pub process: Option<std::process::Child>,
+    pub process: Option<tauri_plugin_shell::process::CommandChild>,
     pub should_exit: bool,
     pub running: bool,
     pub updating: bool,

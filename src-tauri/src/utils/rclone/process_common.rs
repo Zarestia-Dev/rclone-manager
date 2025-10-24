@@ -1,5 +1,4 @@
 use log::{error, info};
-use std::process::{Command, Stdio};
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::core::check_binaries::build_rclone_command;
@@ -65,9 +64,9 @@ async fn is_config_encrypted_cached(app: &AppHandle) -> bool {
 /// Setup environment variables for rclone processes (main engine or OAuth)
 pub async fn setup_rclone_environment(
     app: &AppHandle,
-    command: &mut std::process::Command,
+    mut command: tauri_plugin_shell::process::Command,
     process_type: &str,
-) -> Result<(), String> {
+) -> Result<tauri_plugin_shell::process::Command, String> {
     let mut password_found = false;
 
     // Try to get password from SafeEnvironmentManager first (GUI context)
@@ -79,7 +78,7 @@ pub async fn setup_rclone_environment(
                 process_type
             );
             for (key, value) in env_vars {
-                command.env(key, value);
+                command = command.env(&key, &value);
             }
             password_found = true;
         }
@@ -94,7 +93,7 @@ pub async fn setup_rclone_environment(
                         "🔑 Using stored rclone config password for {} process",
                         process_type
                     );
-                    command.env("RCLONE_CONFIG_PASS", password.clone());
+                    command = command.env("RCLONE_CONFIG_PASS", &password);
                     password_found = true;
 
                     // Also update the environment manager for future use
@@ -135,7 +134,7 @@ pub async fn setup_rclone_environment(
         }
     }
 
-    Ok(())
+    Ok(command)
 }
 
 /// Create and configure a new rclone command with standard settings
@@ -143,30 +142,19 @@ pub async fn create_rclone_command(
     port: u16,
     app: &AppHandle,
     process_type: &str,
-) -> Result<Command, String> {
-    let mut command = build_rclone_command(app, None, None, None);
+) -> Result<tauri_plugin_shell::process::Command, String> {
+    let command = build_rclone_command(app, None, None, None);
 
     // Standard rclone daemon arguments
-    command.args([
+    let command = command.args([
         "rcd",
         "--rc-no-auth",
         "--rc-serve",
         &format!("--rc-addr=127.0.0.1:{}", port),
     ]);
 
-    // Configure stdio
-    command.stdout(Stdio::null());
-    command.stderr(Stdio::null());
-
     // Set up environment variables
-    setup_rclone_environment(app, &mut command, process_type).await?;
-
-    // Windows-specific console window handling
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        command.creation_flags(0x08000000 | 0x00200000);
-    }
+    let command = setup_rclone_environment(app, command, process_type).await?;
 
     Ok(command)
 }
