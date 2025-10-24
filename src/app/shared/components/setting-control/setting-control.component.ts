@@ -210,7 +210,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
         initialValue = initialValue === true || initialValue === 'true';
       } else if (this.option.Type === 'Encoding' || this.option.Type === 'Bits') {
         const strValue = (this.option.Value || this.option.DefaultStr || '').toString();
-        initialValue = strValue ? strValue.split(',').filter(v => v) : [];
+        initialValue = strValue ? strValue.split(',').filter((v: any) => v) : [];
       }
       this.control = new FormControl(initialValue, validators);
     }

@@ -18,11 +18,6 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { Subscription } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
-import {
-  QuickAddForm,
-  RemoteSettings,
-  RemoteType,
-} from '../../../../shared/remote-config/remote-config-types';
 
 // Services
 import { AnimationsService } from '../../../../shared/services/animations.service';
@@ -33,6 +28,7 @@ import { MountManagementService } from '@app/services';
 import { AppSettingsService } from '@app/services';
 import { FileSystemService } from '@app/services';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { QuickAddForm, RemoteSettings, RemoteType } from '@app/types';
 
 @Component({
   selector: 'app-quick-add-remote',

@@ -10,14 +10,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/RClone-Manager/rclone-manager/releases">
-    <img src="https://img.shields.io/github/v/release/RClone-Manager/rclone-manager?flat-square&color=2ec27e" alt="Latest Release">
+  <a href="https://github.com/Zarestia-Dev/rclone-manager/releases">
+    <img src="https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?flat-square&color=2ec27e" alt="Latest Release">
   </a>
-  <a href="https://github.com/RClone-Manager/rclone-manager/blob/master/LICENSE">
-    <img src="https://img.shields.io/github/license/RClone-Manager/rclone-manager?flat-square&color=9141ac" alt="License">
+  <a href="https://github.com/Zarestia-Dev/rclone-manager/blob/master/LICENSE">
+    <img src="https://img.shields.io/github/license/Zarestia-Dev/rclone-manager?flat-square&color=9141ac" alt="License">
   </a>
-  <a href="https://github.com/RClone-Manager/rclone-manager/stargazers">
-    <img src="https://img.shields.io/github/stars/RClone-Manager/rclone-manager?flat-square&color=3584e4" alt="Stars">
+  <a href="https://github.com/Zarestia-Dev/rclone-manager/stargazers">
+    <img src="https://img.shields.io/github/stars/Zarestia-Dev/rclone-manager?flat-square&color=3584e4" alt="Stars">
   </a>
 </p>
 
@@ -139,12 +139,12 @@ Install RClone Manager from your favorite package manager.
 
 #### 🐧 Linux
 
-| Repository          | Version                                                                                                                                                                                      | Status          | Install Command                                                                                                                                                                |
-| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **AUR**             | [![AUR Version](https://img.shields.io/aur/version/rclone-manager?flat-square&label=)](https://aur.archlinux.org/packages/rclone-manager)                                                    | ✅ Available    | `yay -S rclone-manager`                                                                                                                                                        |
-| **AUR (Git)**       | [![AUR Version](https://img.shields.io/aur/version/rclone-manager-git?flat-square&label=)](https://aur.archlinux.org/packages/rclone-manager-git)                                            | ✅ Available    | `yay -S rclone-manager-git`                                                                                                                                                    |
-| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/RClone-Manager/rclone-manager?flat-square&label=&color=2ec27e)](https://github.com/RClone-Manager/rclone-manager/releases/latest) | ✅ Available    | <a href="https://github.com/RClone-Manager/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?flat-square&logo=github" alt="Download"></a> |
-| **Flathub**         | ![Pending](https://img.shields.io/badge/Pending-gray?flat-square)                                                                                                                            | ⏳ Under Review | `flatpak install flathub xxxxxxxxxxxxxxxxxxxxx`                                                                                                                                |
+| Repository          | Version                                                                                                                                                                                  | Status          | Install Command                                                                                                                                                              |
+| :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AUR**             | [![AUR Version](https://img.shields.io/aur/version/rclone-manager?flat-square&label=)](https://aur.archlinux.org/packages/rclone-manager)                                                | ✅ Available    | `yay -S rclone-manager`                                                                                                                                                      |
+| **AUR (Git)**       | [![AUR Version](https://img.shields.io/aur/version/rclone-manager-git?flat-square&label=)](https://aur.archlinux.org/packages/rclone-manager-git)                                        | ✅ Available    | `yay -S rclone-manager-git`                                                                                                                                                  |
+| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?flat-square&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | ✅ Available    | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?flat-square&logo=github" alt="Download"></a> |
+| **Flathub**         | ![Pending](https://img.shields.io/badge/Pending-gray?flat-square)                                                                                                                        | ⏳ Under Review | `flatpak install flathub xxxxxxxxxxxxxxxxxxxxx`                                                                                                                              |
 
 <p align="left">
   <a href="https://flathub.org/apps/io.github.rclonemanager">
@@ -154,19 +154,19 @@ Install RClone Manager from your favorite package manager.
 
 #### 🍎 macOS
 
-| Repository          | Version                                                                                                                                                                                      | Status                | Install Command                                                                                                                                                                |
-| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Homebrew**        | ![Pending](https://img.shields.io/badge/Pending-gray?flat-square)                                                                                                                            | ⏳ Under Construction | `brew install --cask xxxxxxxxxxxxxxxxxxxxxx`                                                                                                                                   |
-| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/RClone-Manager/rclone-manager?flat-square&label=&color=2ec27e)](https://github.com/RClone-Manager/rclone-manager/releases/latest) | ✅ Available          | <a href="https://github.com/RClone-Manager/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?flat-square&logo=github" alt="Download"></a> |
+| Repository          | Version                                                                                                                                                                                  | Status                | Install Command                                                                                                                                                              |
+| :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Homebrew**        | ![Pending](https://img.shields.io/badge/Pending-gray?flat-square)                                                                                                                        | ⏳ Under Construction | `brew install --cask xxxxxxxxxxxxxxxxxxxxxx`                                                                                                                                 |
+| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?flat-square&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | ✅ Available          | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?flat-square&logo=github" alt="Download"></a> |
 
 #### 🪟 Windows
 
-| Repository          | Version                                                                                                                                                                                      | Status          | Install Command                                                                                                                                                                |
-| :------------------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Chocolatey**      | [![Chocolatey Version](https://img.shields.io/chocolatey/v/rclone-manager?flat-square&label=)](https://community.chocolatey.org/packages/rclone-manager)                                     | ✅ Available    | `choco install rclone-manager`                                                                                                                                                 |
-| **Scoop**           | [![Scoop](https://img.shields.io/scoop/v/rclone-manager?bucket=extras&flat-square&label=&color=2ec27e)](https://github.com/ScoopInstaller/Extras/blob/master/bucket/rclone-manager.json)     | ✅ Available    | `scoop bucket add extras` then `scoop install rclone-manager`                                                                                                                  |
-| **Winget**          | ![Pending](https://img.shields.io/badge/Pending-gray?flat-square)                                                                                                                            | ⏳ Under Review | `winget install xxxxxxxxxxxxxxxxxxx`                                                                                                                                           |
-| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/RClone-Manager/rclone-manager?flat-square&label=&color=2ec27e)](https://github.com/RClone-Manager/rclone-manager/releases/latest) | ✅ Available    | <a href="https://github.com/RClone-Manager/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?flat-square&logo=github" alt="Download"></a> |
+| Repository          | Version                                                                                                                                                                                  | Status          | Install Command                                                                                                                                                              |
+| :------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Chocolatey**      | [![Chocolatey Version](https://img.shields.io/chocolatey/v/rclone-manager?flat-square&label=)](https://community.chocolatey.org/packages/rclone-manager)                                 | ✅ Available    | `choco install rclone-manager`                                                                                                                                               |
+| **Scoop**           | [![Scoop](https://img.shields.io/scoop/v/rclone-manager?bucket=extras&flat-square&label=&color=2ec27e)](https://github.com/ScoopInstaller/Extras/blob/master/bucket/rclone-manager.json) | ✅ Available    | `scoop bucket add extras` then `scoop install rclone-manager`                                                                                                                |
+| **Winget**          | ![Pending](https://img.shields.io/badge/Pending-gray?flat-square)                                                                                                                        | ⏳ Under Review | `winget install xxxxxxxxxxxxxxxxxxx`                                                                                                                                         |
+| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?flat-square&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | ✅ Available    | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?flat-square&logo=github" alt="Download"></a> |
 
 > 💡 **More package managers coming soon!** We have submissions under review for Flathub, Homebrew, Scoop, and Winget.
 
@@ -192,7 +192,7 @@ Install RClone Manager from your favorite package manager.
 
 ### 🚀 Quick Start
 
-1. **Download** the appropriate package for your OS from the section above or [releases](https://github.com/RClone-Manager/rclone-manager/releases/latest)
+1. **Download** the appropriate package for your OS from the section above or [releases](https://github.com/Zarestia-Dev/rclone-manager/releases/latest)
 2. **Install** using your package manager or platform's standard method:
    - **Linux (Arch):** `yay -S rclone-manager`
    - **Windows (Chocolatey):** `choco install rclone-manager`
@@ -218,7 +218,7 @@ Install RClone Manager from your favorite package manager.
 
 ```bash
 # Clone the repository
-git clone https://github.com/RClone-Manager/rclone-manager.git
+git clone https://github.com/Zarestia-Dev/rclone-manager.git
 cd rclone-manager
 
 # Install dependencies
@@ -258,13 +258,13 @@ npm run format:rust   # Rustfmt format
 Known bugs and technical limitations are tracked in two places:
 
 - 📄 See [**ISSUES.md**](ISSUES.md) for detailed explanations of platform-specific issues (e.g. Windows terminal flash)
-- 📌 Visit our [**GitHub Project Board**](https://github.com/users/RClone-Manager/projects/6) for open bugs and upcoming fixes
+- 📌 Visit our [**GitHub Project Board**](https://github.com/users/Zarestia-Dev/projects/6) for open bugs and upcoming fixes
 
 ---
 
 ## 🗺️ Roadmap
 
-We organize development on our [**GitHub Project Board**](https://github.com/users/RClone-Manager/projects/6) — track features, bugs, and long-term goals.
+We organize development on our [**GitHub Project Board**](https://github.com/users/Zarestia-Dev/projects/6) — track features, bugs, and long-term goals.
 
 ### Current Focus Areas
 
@@ -282,7 +282,7 @@ We organize development on our [**GitHub Project Board**](https://github.com/use
   - UI/UX improvements
   - Platform-specific enhancements
 
-> 🧠 **Want to influence the direction?** Star the repo, watch the project board, and share your ideas in [Discussions](https://github.com/RClone-Manager/rclone-manager/discussions) or [Issues](https://github.com/RClone-Manager/rclone-manager/issues)!
+> 🧠 **Want to influence the direction?** Star the repo, watch the project board, and share your ideas in [Discussions](https://github.com/Zarestia-Dev/rclone-manager/discussions) or [Issues](https://github.com/Zarestia-Dev/rclone-manager/issues)!
 
 ---
 
@@ -292,8 +292,8 @@ We welcome contributions from developers of all skill levels! Here's how you can
 
 ### Ways to Contribute
 
-- 🐛 **Report Bugs** – Found an issue? [Open a bug report](https://github.com/RClone-Manager/rclone-manager/issues/new?template=bug_report.md)
-- 💡 **Suggest Features** – Have an idea? [Share it with us](https://github.com/RClone-Manager/rclone-manager/issues/new?template=feature_request.md)
+- 🐛 **Report Bugs** – Found an issue? [Open a bug report](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=bug_report.md)
+- 💡 **Suggest Features** – Have an idea? [Share it with us](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=feature_request.md)
 - 📖 **Improve Documentation** – Help make our docs clearer and more comprehensive
 - 🔧 **Submit Pull Requests** – Fix bugs or implement features (see development setup above)
 - 🌍 **Translate** – Help make RClone Manager available in your language (coming soon)
@@ -323,9 +323,9 @@ You are free to use, modify, and distribute this software under the terms of the
 
 ### Get Help
 
-- 💬 [GitHub Discussions](https://github.com/RClone-Manager/rclone-manager/discussions) – Ask questions and chat with the community
-- 🐛 [Issue Tracker](https://github.com/RClone-Manager/rclone-manager/issues) – Report bugs or request features
-- 📖 [Documentation](https://github.com/RClone-Manager/rclone-manager/wiki) – Guides and tutorials (coming soon)
+- 💬 [GitHub Discussions](https://github.com/Zarestia-Dev/rclone-manager/discussions) – Ask questions and chat with the community
+- 🐛 [Issue Tracker](https://github.com/Zarestia-Dev/rclone-manager/issues) – Report bugs or request features
+- 📖 [Documentation](https://github.com/Zarestia-Dev/rclone-manager/wiki) – Guides and tutorials (coming soon)
 
 ### Stay Updated
 

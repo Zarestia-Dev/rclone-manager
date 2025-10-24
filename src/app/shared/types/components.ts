@@ -1,5 +1,5 @@
-import type { PrimaryActionType } from './operations';
 import type { TransferFile } from './jobs';
+import { PrimaryActionType } from './remotes';
 
 // Settings Panel
 export interface SettingsSection {

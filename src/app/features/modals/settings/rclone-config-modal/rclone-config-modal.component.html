@@ -9,15 +9,13 @@
     </button>
   </div>
 
-  <div class="persistent-search-container">
-    <app-search-container
-      [visible]="isSearchVisible"
-      [searchText]="searchQuery"
-      (searchTextChange)="onSearchInput($event)"
-      [placeholder]="getSearchPlaceholder()"
-      ariaLabel="Search RClone settings"
-    ></app-search-container>
-  </div>
+  <app-search-container
+    [visible]="isSearchVisible"
+    [searchText]="searchQuery"
+    (searchTextChange)="onSearchInput($event)"
+    [placeholder]="getSearchPlaceholder()"
+    ariaLabel="Search RClone settings"
+  ></app-search-container>
 
   @if (isLoading) {
     <div class="loading-overlay">
@@ -189,18 +187,29 @@
               <p>Try adjusting your search terms</p>
             </div>
           } @else {
-            <form [formGroup]="rcloneOptionsForm">
-              @for (
-                option of getRCloneOptionsForCurrentPage();
-                track trackByOptionName($index, option)
-              ) {
-                <app-setting-control
-                  [option]="option"
-                  [formControlName]="getUniqueControlKey(option)"
-                  (valueCommit)="saveRCloneOption(getUniqueControlKey(option))"
-                ></app-setting-control>
-              }
-            </form>
+            <!-- VIRTUAL SCROLL IMPLEMENTATION -->
+            <cdk-virtual-scroll-viewport
+              [itemSize]="20"
+              class="virtual-scroll-viewport"
+              [style.height.px]="'100%'"
+            >
+              <form [formGroup]="rcloneOptionsForm">
+                @for (
+                  option of getVirtualScrollData();
+                  track trackByOptionIndex($index, option);
+                  let i = $index
+                ) {
+                  <div class="virtual-scroll-item" [attr.data-index]="i">
+                    <app-setting-control
+                      [id]="'setting-' + option.Name"
+                      [option]="option"
+                      [formControlName]="getUniqueControlKey(option)"
+                      (valueCommit)="saveRCloneOption(getUniqueControlKey(option))"
+                    ></app-setting-control>
+                  </div>
+                }
+              </form>
+            </cdk-virtual-scroll-viewport>
           }
         }
       </div>

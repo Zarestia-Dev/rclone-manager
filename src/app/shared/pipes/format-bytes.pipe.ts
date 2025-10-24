@@ -5,7 +5,7 @@ import { Pipe, PipeTransform } from '@angular/core';
   standalone: true,
   pure: true,
 })
-export class FormatBytesPerSecondPipe implements PipeTransform {
+export class FormatBytes implements PipeTransform {
   transform(bytes: number): string {
     if (bytes <= 0) return 'Unlimited';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];

@@ -55,38 +55,38 @@
     <color type="primary" scheme_preference="dark">#093a7b</color>
   </branding>
   <content_rating type="oars-1.1" />
-  <url type="bugtracker">https://github.com/RClone-Manager/rclone-manager/issues</url>
-  <url type="homepage">https://github.com/RClone-Manager/rclone-manager</url>
-  <url type="vcs-browser">https://github.com/RClone-Manager/rclone-manager</url>
+  <url type="bugtracker">https://github.com/Zarestia-Dev/rclone-manager/issues</url>
+  <url type="homepage">https://github.com/Zarestia-Dev/rclone-manager</url>
+  <url type="vcs-browser">https://github.com/Zarestia-Dev/rclone-manager</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/desktop-ui.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.4/assets/desktop-ui.png</image>
       <caption>Desktop UI - Light and Dark modes</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/general-home.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.4/assets/general-home.png</image>
       <caption>General Home View</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/general-remote.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.4/assets/general-remote.png</image>
       <caption>Remote Management Interface</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/job-watcher.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.4/assets/job-watcher.png</image>
       <caption>Job Watcher - Monitor your rclone operations</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/mount-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.4/assets/mount-control.png</image>
       <caption>Mount Control Panel</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/RClone-Manager/rclone-manager/refs/tags/v0.1.4/assets/mobile-ui.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.4/assets/mobile-ui.png</image>
       <caption>Mobile UI - Responsive design</caption>
     </screenshot>
   </screenshots>
   <releases>
     <release version="0.1.4" date="2025-10-13">
-      <url type="details">https://github.com/RClone-Manager/rclone-manager/releases/tag/v0.1.4</url>
+      <url type="details">https://github.com/Zarestia-Dev/rclone-manager/releases/tag/v0.1.4</url>
       <description>
         <p>Initial release of RClone Manager for FlatHub.</p>
       </description>

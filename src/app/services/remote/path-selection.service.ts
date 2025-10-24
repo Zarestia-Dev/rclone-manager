@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { AbstractControl } from '@angular/forms';
 import { RemoteManagementService } from './remote-management.service';
-import { Entry } from '../../shared/remote-config/remote-config-types';
+import { Entry } from '@app/types';
 
 @Injectable({
   providedIn: 'root',

@@ -1,5 +1,4 @@
 export * from './app';
-export * from './operations';
 export * from './jobs';
 export * from './remotes';
 export * from './logs';
@@ -7,5 +6,4 @@ export * from './system';
 export * from './ui';
 export * from './maintenance';
 export * from './params';
-export * from './remote-config';
 export * from './components';

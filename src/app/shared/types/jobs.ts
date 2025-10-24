@@ -1,4 +1,4 @@
-import type { PrimaryActionType } from './operations';
+import { PrimaryActionType } from './remotes';
 
 export type JobStatus = 'Running' | 'Completed' | 'Failed' | 'Stopped';
 

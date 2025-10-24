@@ -1,6 +1,6 @@
 ## 🛠️ Issues
 
-### 1️⃣ Terminal Window Flash on Windows
+### 1️⃣ Terminal Window Flash on Windows (I think the fix is using tauri shell api to run rclone commands)
 
 🔗 [Track on GitHub Project](https://github.com/users/RClone-Manger/projects/6/views/1?pane=issue&itemId=110319862)  
 (“Investigate workaround for terminal flash on Windows”)

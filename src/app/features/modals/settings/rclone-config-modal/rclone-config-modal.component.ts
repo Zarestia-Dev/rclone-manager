@@ -6,6 +6,7 @@ import {
   inject,
   ChangeDetectorRef,
   OnDestroy,
+  ViewChild,
 } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
@@ -24,6 +25,7 @@ import {
   AbstractControl,
   FormGroup,
 } from '@angular/forms';
+import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 
 import { AnimationsService } from '../../../../shared/services/animations.service';
 import { FlagConfigService, RcloneBackendOptionsService } from '@app/services';
@@ -69,6 +71,7 @@ interface SearchResult {
     MatTabsModule,
     MatSelectModule,
     MatExpansionModule,
+    ScrollingModule,
     SearchContainerComponent,
     SecuritySettingsComponent,
     SettingControlComponent,
@@ -85,6 +88,9 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   private rcloneBackendOptionsService = inject(RcloneBackendOptionsService);
   private cdRef = inject(ChangeDetectorRef);
 
+  // --- View Child for Virtual Scroll ---
+  @ViewChild(CdkVirtualScrollViewport) virtualScrollViewport?: CdkVirtualScrollViewport;
+
   // --- Public Properties (for the template) ---
   currentPage: PageType = 'home';
   currentCategory: string | null = null;
@@ -97,6 +103,9 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   isSearchVisible = false;
   savingOptions = new Set<string>();
   searchMatchCounts = new Map<string, number>();
+
+  // Virtual scroll properties
+  virtualScrollData: RcConfigOption[] = [];
 
   // --- Private Properties ---
   private readonly componentDestroyed$ = new Subject<void>();
@@ -187,14 +196,16 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.rcloneOptionsForm = new FormGroup({});
-    // The search subscription now handles logic for ALL pages
+    this.setupSearchSubscription();
+  }
+
+  private setupSearchSubscription(): void {
     this.search$
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.componentDestroyed$))
       .subscribe(searchText => {
         const query = searchText.toLowerCase().trim();
         this.searchQuery = query;
 
-        // Only perform global search if we are on the home page
         if (this.currentPage === 'home') {
           if (!query) {
             this.globalSearchResults = [];
@@ -203,8 +214,10 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
             this.performGlobalSearch(query);
             this.updateFilteredServices();
           }
+        } else if (this.currentPage !== 'home' && this.currentPage !== 'security') {
+          this.updateVirtualScrollData();
         }
-        // No 'else' block needed. The settings page filter is handled reactively by the template.
+
         this.cdRef.detectChanges();
       });
   }
@@ -271,6 +284,24 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
         }
       }
     }
+  }
+
+  // Virtual Scroll Methods
+  private updateVirtualScrollData(): void {
+    this.virtualScrollData = this.getRCloneOptionsForCurrentPage();
+    this.cdRef.detectChanges();
+
+    setTimeout(() => {
+      this.virtualScrollViewport?.scrollToIndex(0);
+    }, 0);
+  }
+
+  getVirtualScrollData(): RcConfigOption[] {
+    return this.virtualScrollData;
+  }
+
+  trackByOptionIndex(index: number, option: RcConfigOption): string {
+    return `${this.currentPage}-${this.currentCategory}-${option.Name}-${index}`;
   }
 
   // Main Category Grouping
@@ -343,22 +374,46 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
     }
 
     this.optionToFocus = optionName || null;
+
+    if (this.currentPage !== 'home' && this.currentPage !== 'security') {
+      this.updateVirtualScrollData();
+    }
+
     this.cdRef.detectChanges();
 
-    // The scroll logic now lives here again.
-    if (this.optionToFocus) {
+    const option = this.optionToFocus;
+    if (option) {
       setTimeout(() => {
-        const element = document.getElementById(`setting-${this.optionToFocus}`);
+        this.scrollToOption(option);
+      }, 100);
+    }
+  }
+
+  private scrollToOption(optionName: string): void {
+    if (this.virtualScrollViewport && this.virtualScrollData.length > 0) {
+      const index = this.virtualScrollData.findIndex(opt => opt.Name === optionName);
+      if (index !== -1) {
+        this.virtualScrollViewport.scrollToIndex(index, 'smooth');
+
+        const element = document.getElementById(`setting-${optionName}`);
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           element.classList.add('highlighted');
           setTimeout(() => {
             element.classList.remove('highlighted');
           }, 1500);
         }
-        this.optionToFocus = null;
-      }, 100); // A small delay is sufficient.
+      }
+    } else {
+      const element = document.getElementById(`setting-${optionName}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('highlighted');
+        setTimeout(() => {
+          element.classList.remove('highlighted');
+        }, 1500);
+      }
     }
+    this.optionToFocus = null;
   }
 
   getRCloneOptionsForCurrentPage(): RcConfigOption[] {
@@ -399,13 +454,13 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
         }
       }
     }
+    this.cdRef.detectChanges();
   }
 
   private updateFilteredServices(): void {
-    this.searchMatchCounts.clear(); // Clear old counts
+    this.searchMatchCounts.clear();
 
     if (this.globalSearchResults.length > 0) {
-      // Tally up the counts
       this.globalSearchResults.forEach(result => {
         const key = `${result.service}---${result.category}`;
         const currentCount = this.searchMatchCounts.get(key) || 0;
@@ -426,6 +481,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
         )
         .map(svc => ({ ...svc, expanded: true }));
     }
+    this.cdRef.detectChanges();
   }
 
   toggleSearchVisibility(): void {
@@ -495,7 +551,10 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       this.notificationService.showError(`Failed to save ${optionName}`);
     } finally {
       this.savingOptions.delete(optionName);
-      if (control) control.enable({ emitEvent: false });
+      if (control) {
+        control.enable({ emitEvent: false });
+      }
+      this.cdRef.detectChanges();
     }
   }
 
@@ -519,7 +578,6 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   }
 
   trackByOptionName(_index?: number, option?: RcConfigOption): string {
-    // Include the current index if available to ensure uniqueness when duplicate option names exist
     if (typeof _index === 'number') {
       return `${this.currentPage}-${this.currentCategory}-${option?.Name}-${_index}`;
     }

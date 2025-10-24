@@ -11,7 +11,6 @@ import {
   inject,
 } from '@angular/core';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
-import { Entry, FlagType } from '../../remote-config-types';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatIconModule } from '@angular/material/icon';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -27,7 +26,7 @@ import { Observable, map, startWith } from 'rxjs';
 // Add CDK Scrolling imports
 import { ScrollingModule } from '@angular/cdk/scrolling';
 
-import { RcConfigOption } from '@app/types';
+import { Entry, FlagType, RcConfigOption } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
 
 @Component({

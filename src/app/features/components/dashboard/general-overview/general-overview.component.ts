@@ -54,13 +54,13 @@ import { FormatTimePipe } from '../../../../shared/pipes/format-time.pipe';
 import { FormatEtaPipe } from '../../../../shared/pipes/format-eta.pipe';
 import { FormatMemoryUsagePipe } from '../../../../shared/pipes/format-memory-usage.pipe';
 import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
-import { FormatBytesPerSecondPipe } from '../../../../shared/pipes/format-bytes-per-second.pipe';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 
 // Services
 import { AnimationsService } from '../../../../shared/services/animations.service';
 import { EventListenersService } from '@app/services';
 import { SystemInfoService } from '@app/services';
+import { FormatBytes } from '@app/pipes';
 
 /** Polling interval for system stats in milliseconds */
 const POLLING_INTERVAL = 5000;
@@ -147,7 +147,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   FormatEtaPipe = new FormatEtaPipe();
   FormatMemoryUsagePipe = new FormatMemoryUsagePipe();
   FormatRateValuePipe = new FormatRateValuePipe();
-  FormatBytesPerSecondPipe = new FormatBytesPerSecondPipe();
+  FormatBytes = new FormatBytes();
 
   ngOnInit(): void {
     this.restorePanelStates();
@@ -416,13 +416,13 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     return {
       upload: isUnlimited(this.bandwidthLimit.bytesPerSecondTx)
         ? 'Unlimited'
-        : this.FormatBytesPerSecondPipe.transform(this.bandwidthLimit.bytesPerSecondTx),
+        : this.FormatBytes.transform(this.bandwidthLimit.bytesPerSecondTx),
       download: isUnlimited(this.bandwidthLimit.bytesPerSecondRx)
         ? 'Unlimited'
-        : this.FormatBytesPerSecondPipe.transform(this.bandwidthLimit.bytesPerSecondRx),
+        : this.FormatBytes.transform(this.bandwidthLimit.bytesPerSecondRx),
       total: isUnlimited(this.bandwidthLimit.bytesPerSecond)
         ? 'Unlimited'
-        : this.FormatBytesPerSecondPipe.transform(this.bandwidthLimit.bytesPerSecond),
+        : this.FormatBytes.transform(this.bandwidthLimit.bytesPerSecond),
     };
   }
 

@@ -10,6 +10,8 @@
 ### Changed
 - Password Manager modal has been removed. Now the password manager is integrated into the Backend Settings modal. You can manage your passwords in the Backend Settings modal.
 
+- Some npm and cargo dependencies have been updated to their latest versions.
+
 
 ### Fixed
 - Fixed an issue where the RClone Manager Logo was not displayed correctly in the app.
