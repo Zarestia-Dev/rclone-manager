@@ -9,3 +9,9 @@ Categories=Utility;FileTools;
 Keywords=rclone;cloud;backup;sync;
 StartupWMClass=rclone-manager
 MimeType=application/x-rclone-config;
+Actions=StartOnTray;
+
+[Desktop Action StartOnTray]
+Name=Start on Tray
+Exec=rclone-manager --tray
+OnlyShowIn=GNOME;Unity;XFCE;KDE;

@@ -5,7 +5,7 @@
         <div class="setting-info">
           <strong>{{ opt.FieldName || opt.Name }}</strong>
           <p class="help-text" [innerHTML]="opt.Help | linebreaks"></p>
-          <small class="default-value">Default: {{ opt.DefaultStr }}</small>
+          <small class="default-value">Default: {{ getDisplayDefault() }}</small>
         </div>
         @if (isValueChanged()) {
           <button
@@ -20,6 +20,7 @@
         }
       </div>
     </ng-template>
+
     <ng-template
       #standardInput
       let-opt
@@ -82,10 +83,6 @@
               [attr.aria-label]="opt.Name"
               (selectionChange)="commitValue()"
             >
-              <!-- 
-                This loop handles both string arrays (['val1', 'val2'])
-                and object arrays ([{Value: 'v1'}, {Value: 'v2'}])
-              -->
               @for (item of optionsList; track item.Value || item) {
                 <mat-option [value]="item.Value || item">{{
                   item.Help || item.Value || item
@@ -102,7 +99,6 @@
     </ng-template>
     <div class="setting-item" id="{{ 'setting-' + option.Name }}">
       @switch (option.Type) {
-        <!-- Unique control: bool -->
         @case ('bool') {
           <ng-container
             *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
@@ -129,7 +125,6 @@
           }
         }
 
-        <!-- Standard inputs with custom hints/types -->
         @case ('Duration') {
           <ng-container
             *ngTemplateOutlet="
@@ -139,12 +134,37 @@
           ></ng-container>
         }
         @case ('SpaceSepList') {
-          <ng-container
-            *ngTemplateOutlet="
-              standardInput;
-              context: { $implicit: option, inputHint: 'Space-separated list of values' }
-            "
-          ></ng-container>
+          <div class="setting-full-width">
+            <ng-container
+              *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+            ></ng-container>
+            <div class="array-items">
+              @for (itemControl of formArrayControls; track $index) {
+                <div class="array-item">
+                  <mat-form-field appearance="outline" class="array-input">
+                    <input
+                      matInput
+                      [formControl]="$any(itemControl)"
+                      [attr.aria-label]="option.Name + ' item ' + ($index + 1)"
+                      (blur)="commitValue()"
+                    />
+                    <button
+                      mat-icon-button
+                      matSuffix
+                      (click)="removeArrayItem($index)"
+                      [attr.aria-label]="'Remove ' + option.Name + ' item'"
+                    >
+                      <mat-icon svgIcon="trash"></mat-icon>
+                    </button>
+                  </mat-form-field>
+                </div>
+              }
+              <button mat-stroked-button class="add-array-item-btn" (click)="addArrayItem()">
+                <mat-icon svgIcon="add"></mat-icon>
+                Add Item
+              </button>
+            </div>
+          </div>
         }
         @case ('Time') {
           <ng-container
@@ -184,7 +204,6 @@
           ></ng-container>
         }
 
-        <!-- Number inputs -->
         @case ('int') {
           <ng-container
             *ngTemplateOutlet="standardInput; context: { $implicit: option, inputType: 'number' }"
@@ -209,7 +228,6 @@
           ></ng-container>
         }
 
-        <!-- Multi-select controls -->
         @case ('Bits') {
           <ng-container
             *ngTemplateOutlet="
@@ -257,7 +275,6 @@
           ></ng-container>
         }
 
-        <!-- Unique control: Tristate -->
         @case ('Tristate') {
           <div class="setting-full-width">
             <ng-container

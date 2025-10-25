@@ -90,6 +90,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
 
   // --- View Child for Virtual Scroll ---
   @ViewChild(CdkVirtualScrollViewport) virtualScrollViewport?: CdkVirtualScrollViewport;
+  @ViewChild('searchViewport') searchViewport?: CdkVirtualScrollViewport;
 
   // --- Public Properties (for the template) ---
   currentPage: PageType = 'home';
@@ -103,6 +104,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   isSearchVisible = false;
   savingOptions = new Set<string>();
   searchMatchCounts = new Map<string, number>();
+  private optionIsDefaultMap = new Map<string, boolean>();
 
   // Virtual scroll properties
   virtualScrollData: RcConfigOption[] = [];
@@ -246,6 +248,15 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
     await this.loadAndBuildOptions();
     this.isLoading = false;
     this.cdRef.detectChanges();
+  }
+
+  onOptionValueChanged(optionName: string, isChanged: boolean): void {
+    this.optionIsDefaultMap.set(optionName, !isChanged);
+    this.cdRef.detectChanges();
+  }
+
+  isOptionAtDefault(optionName: string): boolean {
+    return this.optionIsDefaultMap.get(optionName) ?? true;
   }
 
   private async loadAndBuildOptions(): Promise<void> {
@@ -394,23 +405,6 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       const index = this.virtualScrollData.findIndex(opt => opt.Name === optionName);
       if (index !== -1) {
         this.virtualScrollViewport.scrollToIndex(index, 'smooth');
-
-        const element = document.getElementById(`setting-${optionName}`);
-        if (element) {
-          element.classList.add('highlighted');
-          setTimeout(() => {
-            element.classList.remove('highlighted');
-          }, 1500);
-        }
-      }
-    } else {
-      const element = document.getElementById(`setting-${optionName}`);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        element.classList.add('highlighted');
-        setTimeout(() => {
-          element.classList.remove('highlighted');
-        }, 1500);
       }
     }
     this.optionToFocus = null;
@@ -516,7 +510,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
     return this.currentPage === 'security';
   }
 
-  async saveRCloneOption(optionName: string): Promise<void> {
+  async saveRCloneOption(optionName: string, isAtDefault: boolean): Promise<void> {
     const control = this.rcloneOptionsForm.get(optionName);
     console.log('Saving option:', optionName, 'with value:', control?.value);
 
@@ -530,32 +524,23 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       control.disable({ emitEvent: false });
 
       const service = this.optionToServiceMap[optionName];
-      const category = this.optionToCategoryMap[optionName];
       const fullFieldName = this.optionToFullFieldNameMap[optionName];
 
       if (!service || !fullFieldName) {
         throw new Error(`Mapping not found for ${optionName}`);
       }
 
-      // Get the original option definition to check default value
-      const optionDef = this.groupedRcloneOptions[service]?.[category]?.find(
-        opt => opt.Name === optionName.split('---').pop()
-      );
-
       let valueToSave = control.value;
       if (Array.isArray(valueToSave)) {
         valueToSave = valueToSave.filter(v => v);
       }
 
-      // Check if the value is the same as the default
-      const isDefaultValue = this.isValueEqualToDefault(valueToSave, optionDef?.Default);
-
-      if (isDefaultValue) {
-        // Don't save default values - remove them if they exist
+      if (isAtDefault) {
+        // Value is at default - remove from JSON file
         await this.rcloneBackendOptionsService.removeOption(service, fullFieldName);
         this.notificationService.showSuccess(`Reset to default: ${fullFieldName}`);
       } else {
-        // Only save non-default values
+        // Value is custom - save to JSON file
         await this.rcloneBackendOptionsService.saveOption(service, fullFieldName, valueToSave);
         this.notificationService.showSuccess(`Saved: ${fullFieldName}`);
       }
@@ -564,7 +549,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       control.markAsPristine();
     } catch (error) {
       console.error(`Failed to save option ${optionName}:`, error);
-      this.notificationService.showError(`Failed to save ${optionName}`);
+      this.notificationService.showError(`Failed to save ${optionName}: ${error as string}`);
     } finally {
       this.savingOptions.delete(optionName);
       if (control) {
@@ -572,27 +557,6 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       }
       this.cdRef.detectChanges();
     }
-  }
-
-  /**
-   * Compare if a value equals the default value
-   * Handles different types (string, number, boolean, array, null)
-   */
-  private isValueEqualToDefault(currentValue: any, defaultValue: any): boolean {
-    // Handle null/undefined
-    if (currentValue === null || currentValue === undefined) {
-      return defaultValue === null || defaultValue === undefined;
-    }
-
-    // Handle arrays
-    if (Array.isArray(currentValue)) {
-      if (!Array.isArray(defaultValue)) return false;
-      if (currentValue.length !== defaultValue.length) return false;
-      return currentValue.every((val, idx) => val === defaultValue[idx]);
-    }
-
-    // Handle primitives (string, number, boolean)
-    return currentValue === defaultValue;
   }
 
   getRCloneOptionControl(optionName: string): AbstractControl | null {

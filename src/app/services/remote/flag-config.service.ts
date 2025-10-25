@@ -15,7 +15,6 @@ type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
 })
 export class FlagConfigService {
   // A cache for our master data object to prevent redundant backend calls.
-  private groupedOptionsCache: GroupedRCloneOptions | null = null;
 
   public readonly FLAG_TYPES: FlagType[] = [
     'mount',
@@ -34,12 +33,8 @@ export class FlagConfigService {
    * Fetches the master data object: all options, with live values, pre-grouped by the backend.
    */
   async getGroupedOptions(): Promise<GroupedRCloneOptions> {
-    if (this.groupedOptionsCache) {
-      return this.groupedOptionsCache;
-    }
     const response = await invoke<GroupedRCloneOptions>('get_grouped_options_with_values');
     console.log('Fetched and cached grouped RClone options:', response);
-    this.groupedOptionsCache = response;
     return response;
   }
 
@@ -70,10 +65,6 @@ export class FlagConfigService {
       console.error(`Failed to set RClone option ${block}.${fullFieldName}:`, error);
       throw error;
     }
-  }
-
-  clearCache(): void {
-    this.groupedOptionsCache = null;
   }
 
   // --- Flag Fetching for Specific Commands ---

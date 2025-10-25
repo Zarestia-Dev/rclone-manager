@@ -26,33 +26,49 @@
   @if (!isLoading && currentPage === 'home') {
     <div class="modal-content" #content>
       @if (searchQuery) {
-        <div class="global-search-results">
-          @for (
-            result of globalSearchResults;
-            track result.service + '-' + result.category + '-' + result.option.Name + '-' + $index
-          ) {
-            <button
-              mat-button
-              class="config-item"
-              (click)="navigateTo(result.service, result.category, result.option.Name)"
+        <div class="global-search-results" style="flex: 1; overflow: hidden">
+          @if (globalSearchResults.length > 0) {
+            <cdk-virtual-scroll-viewport
+              #searchViewport
+              itemSize="25"
+              class="virtual-scroll-viewport"
             >
-              <div class="config-item-content">
-                <mat-icon [svgIcon]="getServiceIcon(result.service)"></mat-icon>
-                <div class="config-item-text">
-                  <span class="config-item-title">
-                    {{ result.option.FieldName }}
-                  </span>
-                  <small class="config-item-description">
-                    {{ result.service | titlecase }} > {{ result.category }}
-                  </small>
-                  <small class="config-item-description result-help">
-                    {{ result.option.Help | slice: 0 : 50 }}...
-                  </small>
+              @for (
+                result of globalSearchResults;
+                track result.service +
+                  '-' +
+                  result.category +
+                  '-' +
+                  result.option.Name +
+                  '-' +
+                  $index
+              ) {
+                <div class="virtual-scroll-item">
+                  <button
+                    mat-button
+                    class="config-item"
+                    (click)="navigateTo(result.service, result.category, result.option.Name)"
+                  >
+                    <div class="config-item-content">
+                      <mat-icon [svgIcon]="getServiceIcon(result.service)"></mat-icon>
+                      <div class="config-item-text">
+                        <span class="config-item-title">
+                          {{ result.option.FieldName }}
+                        </span>
+                        <small class="config-item-description">
+                          {{ result.service | titlecase }} > {{ result.category }}
+                        </small>
+                        <small class="config-item-description result-help">
+                          {{ result.option.Help | slice: 0 : 50 }}...
+                        </small>
+                      </div>
+                    </div>
+                    <mat-icon svgIcon="chevron-right"></mat-icon>
+                  </button>
                 </div>
-              </div>
-              <mat-icon svgIcon="chevron-right"></mat-icon>
-            </button>
-          } @empty {
+              }
+            </cdk-virtual-scroll-viewport>
+          } @else {
             <div class="no-results-home">
               <mat-icon svgIcon="search"></mat-icon>
               <h4>No settings found</h4>
@@ -182,11 +198,7 @@
             </div>
           } @else {
             <!-- VIRTUAL SCROLL IMPLEMENTATION -->
-            <cdk-virtual-scroll-viewport
-              [itemSize]="20"
-              class="virtual-scroll-viewport"
-              [style.height.px]="'100%'"
-            >
+            <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
               <form [formGroup]="rcloneOptionsForm">
                 @for (
                   option of getVirtualScrollData();
@@ -198,7 +210,13 @@
                       [id]="'setting-' + option.Name"
                       [option]="option"
                       [formControlName]="getUniqueControlKey(option)"
-                      (valueCommit)="saveRCloneOption(getUniqueControlKey(option))"
+                      (valueCommit)="
+                        saveRCloneOption(
+                          getUniqueControlKey(option),
+                          isOptionAtDefault(getUniqueControlKey(option))
+                        )
+                      "
+                      (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
                     ></app-setting-control>
                   </div>
                 }

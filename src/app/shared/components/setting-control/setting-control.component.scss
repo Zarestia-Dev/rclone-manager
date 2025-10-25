@@ -156,21 +156,6 @@
   }
 }
 
-.setting-item.highlighted {
-  animation: highlight-fade 1.5s ease-out;
-  box-shadow:
-    0 0 0 2px var(--accent-color),
-    var(--shadow-elevated);
-}
-
-@keyframes highlight-fade {
-  0% {
-    background-color: rgba(var(--accent-color-rgb), 0.15);
-  }
-  100% {
-    background-color: var(--surface-background);
-  }
-}
 // =============================================
 // RESPONSIVE ADJUSTMENTS
 // =============================================

@@ -35,10 +35,13 @@
 
   .modal-content {
     flex: 1;
-    padding: var(--space-md);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
+
+    mat-accordion {
+      padding: var(--space-md);
+    }
 
     .category-items {
       display: flex;
@@ -96,7 +99,12 @@
     padding: var(--space-sm) 0;
 
     .service-panel {
-      margin-bottom: 0 !important;
+      background: var(--input-background);
+      margin-bottom: var(--space-sm);
+
+      mat-icon {
+        color: var(--accent-color);
+      }
     }
   }
 
@@ -245,10 +253,11 @@
   }
 
   .search-results-info {
+    margin-inline: var(--space-sm);
     padding: var(--space-sm) var(--space-md);
     font-size: 12px;
     color: var(--secondary-text-color);
-    background: rgba(var(--primary-color-rgb), 0.05);
+    background: rgba(var(--primary-color-rgb), 0.1);
     border-radius: var(--radius-md);
   }
 
@@ -281,10 +290,18 @@
   }
 
   .global-search-results {
-    padding-top: var(--space-md);
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+
+    .virtual-scroll-item {
+      display: flex;
+      align-items: stretch;
+      padding: var(--space-xs) var(--space-md);
+
+      .config-item {
+        width: 100%;
+      }
+    }
   }
 
   // Loading Overlay
