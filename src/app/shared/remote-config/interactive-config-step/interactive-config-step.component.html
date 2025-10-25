@@ -66,7 +66,7 @@
           @default {
             @if (q.Option?.Examples?.length) {
               <div class="input-card select-input">
-                <mat-form-field appearance="outline" class="input-field">
+                <mat-form-field appearance="fill" class="input-field">
                   <mat-label>{{ q.Option?.Name || 'Choose an option' }}</mat-label>
                   <mat-select
                     [(ngModel)]="answer"
@@ -88,7 +88,7 @@
               </div>
             } @else {
               <div class="input-card text-input">
-                <mat-form-field appearance="outline" class="input-field">
+                <mat-form-field appearance="fill" class="input-field">
                   <mat-label>{{ q.Option?.Name || 'Enter value' }}</mat-label>
                   <input
                     matInput

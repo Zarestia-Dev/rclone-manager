@@ -9,7 +9,7 @@
       <!-- Basic Info Section (Name and Type) -->
       @if (field.type === 'basic-info') {
         <div class="basic-section">
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="fill">
             <mat-label>Remote Name</mat-label>
             <input
               matInput
@@ -34,7 +34,7 @@
             }
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="fill">
             <mat-label>Search Remote Type</mat-label>
             <input
               type="text"
@@ -86,6 +86,7 @@
           <app-setting-control
             [option]="field"
             [formControlName]="field.Name"
+            (valueChanged)="onFieldChanged(field.Name, $event)"
           ></app-setting-control>
         }
       }
@@ -102,6 +103,7 @@
             <app-setting-control
               [option]="field"
               [formControlName]="field.Name"
+              (valueChanged)="onFieldChanged(field.Name, $event)"
             ></app-setting-control>
           }
         </div>

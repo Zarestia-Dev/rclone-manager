@@ -25,7 +25,7 @@
           @switch (field.type) {
             <!-- Text Input -->
             @case ('text') {
-              <mat-form-field appearance="outline" style="width: 100%">
+              <mat-form-field appearance="fill" style="width: 100%">
                 <mat-label>{{ field.label }}</mat-label>
                 <input
                   matInput
@@ -45,7 +45,7 @@
 
             <!-- Password Input -->
             @case ('password') {
-              <mat-form-field appearance="outline" style="width: 100%">
+              <mat-form-field appearance="fill" style="width: 100%">
                 <mat-label>{{ field.label }}</mat-label>
                 <input
                   matInput
@@ -69,7 +69,7 @@
 
             <!-- Number Input -->
             @case ('number') {
-              <mat-form-field appearance="outline" style="width: 100%">
+              <mat-form-field appearance="fill" style="width: 100%">
                 <mat-label>{{ field.label }}</mat-label>
                 <input
                   matInput
@@ -90,7 +90,7 @@
 
             <!-- Select Dropdown -->
             @case ('select') {
-              <mat-form-field appearance="outline" style="width: 100%">
+              <mat-form-field appearance="fill" style="width: 100%">
                 <mat-label>{{ field.label }}</mat-label>
                 <mat-select
                   [(ngModel)]="formData[field.name]"
@@ -115,7 +115,7 @@
             <!-- Folder Selector -->
             @case ('folder') {
               <div class="form-field folder-field">
-                <mat-form-field appearance="outline" style="width: 100%">
+                <mat-form-field appearance="fill" style="width: 100%">
                   <mat-label>{{ field.label }}</mat-label>
                   <input
                     matInput

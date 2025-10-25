@@ -35,7 +35,7 @@
       <li>🖥 Tray Icon Support – Quick access to your remotes from the system tray</li>
       <li>🌗 Light &amp; Dark Modes – GTK-inspired themes with a modern, responsive layout</li>
       <li>📁 File Browser – Browse and manage files across your remotes</li>
-      <li>🔄 Sync, Copy, Mount – Full support for rclone operations including mounting remotes</li>
+      <li>🔄 Sync, Copy, Mount – Full support for rclone operations including mounting remotes (Needs flatpak spawn access)</li>
       <li>📊 Job Management – Track and manage your rclone operations</li>
       <li>🚀 Cross-Platform – Works seamlessly on Windows, Linux, and macOS</li>
     </ul>

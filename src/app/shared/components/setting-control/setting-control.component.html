@@ -31,7 +31,7 @@
       <div class="setting-full-width">
         <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
         <div class="setting-control">
-          <mat-form-field class="input-field" appearance="outline">
+          <mat-form-field class="input-field" appearance="fill">
             <input
               matInput
               [type]="inputType || 'text'"
@@ -55,7 +55,7 @@
       <div class="setting-full-width">
         <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
         <div class="setting-control">
-          <mat-form-field class="input-field" appearance="outline">
+          <mat-form-field class="input-field" appearance="fill">
             <mat-select
               [formControl]="$any(control)"
               [attr.aria-label]="opt.Name"
@@ -76,7 +76,7 @@
       <div class="setting-full-width">
         <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
         <div class="setting-control">
-          <mat-form-field class="input-field" appearance="outline">
+          <mat-form-field class="input-field" appearance="fill">
             <mat-select
               multiple
               [formControl]="$any(control)"
@@ -141,7 +141,7 @@
             <div class="array-items">
               @for (itemControl of formArrayControls; track $index) {
                 <div class="array-item">
-                  <mat-form-field appearance="outline" class="array-input">
+                  <mat-form-field appearance="fill" class="array-input">
                     <input
                       matInput
                       [formControl]="$any(itemControl)"
@@ -234,7 +234,7 @@
               multiSelect;
               context: {
                 $implicit: option,
-                optionsList: bitsFlags,
+                optionsList: option.Examples || bitsFlags,
                 inputHint: 'Select one or more flags',
               }
             "
@@ -246,7 +246,7 @@
               multiSelect;
               context: {
                 $implicit: option,
-                optionsList: encodingFlags,
+                optionsList: option.Examples || encodingFlags,
                 inputHint: 'Select one or more encoding flags',
               }
             "
@@ -281,7 +281,7 @@
               *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
             ></ng-container>
             <div class="setting-control">
-              <mat-form-field class="input-field" appearance="outline">
+              <mat-form-field class="input-field" appearance="fill">
                 <mat-select
                   [formControl]="$any(control)"
                   [attr.aria-label]="option.Name"
@@ -303,7 +303,7 @@
             <div class="array-items">
               @for (itemControl of formArrayControls; track $index) {
                 <div class="array-item">
-                  <mat-form-field appearance="outline" class="array-input">
+                  <mat-form-field appearance="fill" class="array-input">
                     <input
                       matInput
                       [formControl]="$any(itemControl)"
@@ -336,7 +336,7 @@
             <div class="array-items">
               @for (itemControl of formArrayControls; track $index) {
                 <div class="array-item">
-                  <mat-form-field appearance="outline" class="array-input">
+                  <mat-form-field appearance="fill" class="array-input">
                     <input
                       matInput
                       [formControl]="$any(itemControl)"

@@ -628,25 +628,24 @@ body {
   @include mat.form-field-overrides(
     (
       // Shape & Borders (using your design system tokens)
-      outlined-container-shape: var(--input-border-radius),
-      outlined-outline-width: 0px,
-      outlined-focus-outline-width: 2px,
+      filled-container-color: var(--input-background),
       // Unfocused State Colors
-      outlined-label-text-color: var(--secondary-text-color),
-      outlined-input-text-color: var(--app-text-color),
-      outlined-input-text-placeholder-color: var(--secondary-text-color),
+      filled-label-text-color: var(--secondary-text-color),
+      filled-input-text-color: var(--app-text-color),
+      filled-input-text-placeholder-color: var(--secondary-text-color),
       // Focused State Colors (using your accent color)
-      outlined-focus-outline-color: var(--accent-color),
-      outlined-focus-label-text-color: var(--accent-color),
-      outlined-caret-color: var(--accent-color),
+      filled-focus-label-text-color: var(--accent-color),
+      filled-caret-color: var(--accent-color),
       // A slightly lighter gray from your palette
-      outlined-hover-label-text-color: var(--app-text-color)
+      filled-hover-label-text-color: var(--app-text-color)
     )
   );
 
   .mat-mdc-form-field .mat-mdc-text-field-wrapper {
-    background-color: var(--input-background);
     border-radius: var(--input-border-radius);
+    .mdc-line-ripple {
+      display: none !important;
+    }
   }
 
   @include mat.button-overrides(

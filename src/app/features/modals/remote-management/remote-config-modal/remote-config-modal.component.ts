@@ -175,6 +175,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   };
 
   private pendingConfig: { remoteData: any; finalConfig: FinalConfig } | null = null;
+  private changedRemoteFields = new Set<string>();
 
   // Config specifications for each flag type
   private readonly configSpecs: Record<FlagType, ConfigSpec> = {
@@ -661,7 +662,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     await this.authStateService.startAuth(remoteName, true);
 
     if (this.editTarget === 'remote' && this.useInteractiveMode) {
-      const remoteData = this.cleanFormData(this.remoteForm.getRawValue(), true, this.remoteForm);
+      const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
       this.pendingConfig = { remoteData, finalConfig: this.createEmptyFinalConfig() };
       return await this.startInteractiveRemoteConfig(remoteData);
     }
@@ -720,7 +721,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     const updatedConfig: Record<string, any> = {};
 
     if (this.editTarget === 'remote') {
-      const remoteData = this.cleanFormData(this.remoteForm.getRawValue(), true, this.remoteForm);
+      const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
       updatedConfig['name'] = remoteData.name;
       updatedConfig['type'] = remoteData.type;
       await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
@@ -728,7 +729,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       const flagData = this.remoteConfigForm.getRawValue()[`${this.editTarget}Config`];
       const remoteData = { name: this.getRemoteName() };
 
-      // Use the same buildConfig method as create mode for consistency
       updatedConfig[`${this.editTarget}Config`] = this.buildConfig(
         this.editTarget as FlagType,
         remoteData,
@@ -739,60 +739,50 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     return updatedConfig;
   }
 
+  onRemoteFieldChanged(fieldName: string, isChanged: boolean): void {
+    if (isChanged) {
+      this.changedRemoteFields.add(fieldName);
+    } else {
+      this.changedRemoteFields.delete(fieldName);
+    }
+  }
+
   // ============================================================================
   // DATA CLEANING
   // ============================================================================
-  private cleanFormData(formData: any, isEditMode = false, formControl?: FormGroup): any {
-    return Object.entries(formData).reduce((acc, [key, value]: [string, any]) => {
-      if (value === null || value === undefined) return acc;
-      if (isEditMode && formControl === this.remoteForm) {
-        const fieldDef = this.dynamicRemoteFields.find(f => f.Name === key);
-        if (fieldDef && (value === fieldDef.Default || String(value) === String(fieldDef.Default)))
-          return acc;
+  private cleanFormData(formData: any): any {
+    // For remote form: only include changed fields (tracked by setting-control)
+    const result: any = {
+      name: formData.name, // Always include name
+      type: formData.type, // Always include type
+    };
+
+    // Add only changed dynamic fields
+    this.changedRemoteFields.forEach(fieldName => {
+      if (fieldName !== 'name' && fieldName !== 'type' && formData[fieldName] !== undefined) {
+        result[fieldName] = formData[fieldName];
       }
-      acc[key] = value;
-      return acc;
-    }, {} as any);
+    });
+
+    return result;
   }
 
   private cleanData(formData: any, fieldDefinitions: RcConfigOption[]): Record<string, unknown> {
+    // Just collect non-null/undefined values - no default checking needed
     return fieldDefinitions.reduce(
       (acc, field) => {
         if (!Object.prototype.hasOwnProperty.call(formData, field.Name)) return acc;
         const value = formData[field.Name];
-        if (!this.isDefaultValue(value, field)) {
+
+        // Only exclude truly empty values
+        if (value !== null && value !== undefined && value !== '') {
           acc[field.Name] = value;
         }
+
         return acc;
       },
       {} as Record<string, unknown>
     );
-  }
-
-  private isDefaultValue(currentValue: any, field: RcConfigOption): boolean {
-    if (field.Type === 'stringArray') {
-      return (
-        !Array.isArray(currentValue) ||
-        currentValue.length === 0 ||
-        (Array.isArray(field.Default) &&
-          currentValue.length === field.Default.length &&
-          currentValue.every((v, i) => v === field.Default[i]))
-      );
-    }
-    if (field.Type === 'Tristate') {
-      return !currentValue || currentValue === 'unset' || currentValue === field.DefaultStr;
-    }
-    if (field.Type === 'bool') {
-      return currentValue === (field.Default === true);
-    }
-    if (
-      field.Type === 'CacheMode' ||
-      field.Type === 'Choice' ||
-      field.Type === 'HARD|SOFT|CAUTIOUS'
-    ) {
-      return !currentValue || currentValue === field.DefaultStr;
-    }
-    return String(currentValue) === String(field.Default);
   }
 
   // ============================================================================

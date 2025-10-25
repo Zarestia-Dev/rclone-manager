@@ -134,7 +134,7 @@
               </div>
               <div class="card-content">
                 <form [formGroup]="overviewForm">
-                  <mat-form-field appearance="outline">
+                  <mat-form-field appearance="fill">
                     <mat-label>Configuration Password</mat-label>
                     <input
                       matInput
@@ -234,7 +234,7 @@
                 }}</span>
               </div>
               <form [formGroup]="encryptionForm" class="encryption-form">
-                <mat-form-field appearance="outline">
+                <mat-form-field appearance="fill">
                   <mat-label>{{
                     isEncryptedConfig ? 'Password for Decryption' : 'Password for Encryption'
                   }}</mat-label>
@@ -268,7 +268,7 @@
                   }
                 </mat-form-field>
                 @if (!isEncryptedConfig) {
-                  <mat-form-field appearance="outline">
+                  <mat-form-field appearance="fill">
                     <mat-label>Confirm Password</mat-label>
                     <input
                       matInput
@@ -329,7 +329,7 @@
               </div>
               <div class="card-content">
                 <form [formGroup]="changePasswordForm" class="password-change-form">
-                  <mat-form-field appearance="outline">
+                  <mat-form-field appearance="fill">
                     <mat-label>Current Password</mat-label>
                     <input
                       matInput
@@ -343,7 +343,7 @@
                       <mat-error>Current password is required</mat-error>
                     }
                   </mat-form-field>
-                  <mat-form-field appearance="outline">
+                  <mat-form-field appearance="fill">
                     <mat-label>New Password</mat-label>
                     <input
                       matInput
@@ -357,7 +357,7 @@
                       <mat-error>New password is required</mat-error>
                     }
                   </mat-form-field>
-                  <mat-form-field appearance="outline">
+                  <mat-form-field appearance="fill">
                     <mat-label>Confirm New Password</mat-label>
                     <input
                       matInput

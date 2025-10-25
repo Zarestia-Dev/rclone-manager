@@ -48,7 +48,7 @@
           </p>
           <mat-form-field
             [class]="mode === 'config' ? 'accent' : 'primary'"
-            appearance="outline"
+            appearance="fill"
             class="compact-field"
           >
             <mat-label>{{
@@ -84,7 +84,7 @@
                 : 'Select an existing rclone binary path on your system.'
             }}
           </p>
-          <mat-form-field [class]="mode === 'config' ? 'accent' : 'primary'" appearance="outline">
+          <mat-form-field [class]="mode === 'config' ? 'accent' : 'primary'" appearance="fill">
             <mat-label>{{ mode === 'config' ? 'Binary (optional)' : 'Binary Path' }}</mat-label>
             <input matInput [formControl]="existingBinaryControl" placeholder="/path/to/rclone" />
             <button

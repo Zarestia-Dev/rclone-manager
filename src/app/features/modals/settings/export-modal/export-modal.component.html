@@ -33,7 +33,7 @@
           <mat-icon class="accent" svgIcon="wrench" aria-hidden="true"></mat-icon>
           What would you like to export?
         </h3>
-        <mat-form-field appearance="outline" class="full-width">
+        <mat-form-field appearance="fill" class="full-width">
           <mat-label>Export Option</mat-label>
           <mat-select
             [ngModel]="selectedOption()"
@@ -65,7 +65,7 @@
             <mat-icon class="accent" svgIcon="hard-drive" aria-hidden="true"></mat-icon>
             Select Remote
           </h3>
-          <mat-form-field appearance="outline" class="full-width">
+          <mat-form-field appearance="fill" class="full-width">
             <mat-label>Choose Remote</mat-label>
             <mat-select
               [ngModel]="selectedRemoteName()"
@@ -99,7 +99,7 @@
           <mat-icon class="accent" svgIcon="folder" aria-hidden="true"></mat-icon>
           Export Destination
         </h3>
-        <mat-form-field appearance="outline" class="full-width">
+        <mat-form-field appearance="fill" class="full-width">
           <mat-label>Save Export To</mat-label>
           <input
             matInput
@@ -164,7 +164,7 @@
         <!-- Password Field -->
         @if (showPasswordField()) {
           <div @slideInOut>
-            <mat-form-field appearance="outline" class="full-width">
+            <mat-form-field appearance="fill" class="full-width">
               <mat-label>Export Password</mat-label>
               <input
                 matInput

@@ -62,6 +62,7 @@ export class RemoteConfigStepComponent implements OnInit, OnDestroy {
 
   @Output() remoteTypeChanged = new EventEmitter<void>();
   @Output() interactiveModeToggled = new EventEmitter<boolean>();
+  @Output() fieldChanged = new EventEmitter<{ fieldName: string; isChanged: boolean }>();
 
   remoteSearchCtrl = new FormControl('');
   filteredRemotes$!: Observable<RemoteType[]>;
@@ -163,5 +164,9 @@ export class RemoteConfigStepComponent implements OnInit, OnDestroy {
 
   onRemoteTypeChange(): void {
     this.remoteTypeChanged.emit();
+  }
+
+  onFieldChanged(fieldName: string, isChanged: boolean): void {
+    this.fieldChanged.emit({ fieldName, isChanged });
   }
 }

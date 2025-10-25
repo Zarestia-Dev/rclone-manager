@@ -9,7 +9,7 @@
     <div *cdkVirtualFor="let field of formFields; trackBy: trackByField" class="form-field-item">
       <!-- Mount Type Selector -->
       @if (field.type === 'mount-type' && isType('mount')) {
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="fill">
           <mat-label>Mount Type</mat-label>
           <mat-select formControlName="type" placeholder="Select mount type">
             @for (mountType of mountTypes; track mountType) {
@@ -41,7 +41,7 @@
       }
       <!-- Mount Path -->
       @if (field.type === 'mount-path' && isType('mount')) {
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="fill">
           <mat-label>Mount Path</mat-label>
           <button
             matIconButton
@@ -63,7 +63,7 @@
 
       <!-- Destination Path -->
       @if (field.type === 'destination' && !isType(['mount', 'vfs', 'filter', 'backend'])) {
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="fill">
           <mat-label>{{ flagType | titlecase }} Destination</mat-label>
           <input
             matInput
@@ -150,7 +150,7 @@
 
       <!-- Source Path -->
       @if (field.type === 'source' && isEditMode && !isType(['vfs', 'filter', 'backend'])) {
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="fill">
           <mat-label>{{ flagType | titlecase }} Source</mat-label>
           <input
             matInput
@@ -242,13 +242,13 @@
           </mat-slide-toggle>
 
           @if (configGroup.get('checkAccess')?.value) {
-            <mat-form-field appearance="outline">
+            <mat-form-field appearance="fill">
               <mat-label>Check Filename</mat-label>
               <input matInput formControlName="checkFilename" placeholder="RCLONE_TEST" />
             </mat-form-field>
           }
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="fill">
             <mat-label>Max Delete Percentage</mat-label>
             <input matInput type="number" formControlName="maxDelete" placeholder="50" />
           </mat-form-field>
@@ -275,22 +275,22 @@
 
           <mat-slide-toggle formControlName="noCleanup"> Retain Working Files </mat-slide-toggle>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="fill">
             <mat-label>Work Directory</mat-label>
             <input matInput formControlName="workdir" placeholder="~/.cache/rclone/bisync" />
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="fill">
             <mat-label>Backup Directory 1</mat-label>
             <input matInput formControlName="backupdir1" placeholder="Backup dir for Path1" />
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="fill">
             <mat-label>Backup Directory 2</mat-label>
             <input matInput formControlName="backupdir2" placeholder="Backup dir for Path2" />
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="fill">
             <mat-label>Filters File</mat-label>
             <input matInput formControlName="filtersFile" placeholder="Path to filters file" />
           </mat-form-field>

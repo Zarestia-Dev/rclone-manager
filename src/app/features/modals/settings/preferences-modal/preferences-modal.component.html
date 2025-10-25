@@ -428,7 +428,7 @@
 
   <!-- String Control Template -->
   <ng-template #stringControl let-category="category" let-key="key" let-meta="meta">
-    <mat-form-field class="input-field" appearance="outline">
+    <mat-form-field class="input-field" appearance="fill">
       @if (meta.options) {
         <mat-select
           [formControl]="getFormControl(category, key)"
@@ -473,7 +473,7 @@
             </div>
           }
           <div class="array-item">
-            <mat-form-field appearance="outline" class="input-field">
+            <mat-form-field appearance="fill" class="input-field">
               <input
                 matInput
                 [formControl]="getArrayItemControl(category, key, $index)"
@@ -497,7 +497,7 @@
   <!-- file Control Template -->
   <ng-template #fileControl let-category="category" let-key="key">
     <div class="path-input-container">
-      <mat-form-field appearance="outline" class="input-field">
+      <mat-form-field appearance="fill" class="input-field">
         <input
           matInput
           [formControl]="getFormControl(category, key)"
@@ -524,7 +524,7 @@
   <!-- folder Control Template -->
   <ng-template #folderControl let-category="category" let-key="key">
     <div class="path-input-container">
-      <mat-form-field appearance="outline" class="input-field">
+      <mat-form-field appearance="fill" class="input-field">
         <input
           matInput
           [formControl]="getFormControl(category, key)"
