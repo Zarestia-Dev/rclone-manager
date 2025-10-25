@@ -400,9 +400,9 @@ fn handle_settings_changed(app: &AppHandle) {
                     }
                 }
 
-                if let Some(experimental) = settings.get("experimental")
+                if let Some(developer) = settings.get("developer")
                     && let Some(debug_logging) =
-                        experimental.get("debug_logging").and_then(|v| v.as_bool())
+                        developer.get("debug_logging").and_then(|v| v.as_bool())
                 {
                     debug!("🐞 Debug logging changed to: {debug_logging}");
                     update_log_level(debug_logging);

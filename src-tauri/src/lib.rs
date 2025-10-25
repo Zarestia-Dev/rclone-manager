@@ -36,8 +36,8 @@ use crate::{
             },
             rclone_backend::{
                 get_rclone_backend_store_path, load_rclone_backend_options,
-                reset_rclone_backend_options, save_rclone_backend_option,
-                save_rclone_backend_options,
+                remove_rclone_backend_option, reset_rclone_backend_options,
+                save_rclone_backend_option, save_rclone_backend_options,
             },
             remote::manager::{delete_remote_settings, get_remote_settings, save_remote_settings},
         },
@@ -77,7 +77,7 @@ use crate::{
         app::{
             builder::create_app_window,
             platform::{are_updates_disabled, get_build_type},
-            ui::set_theme,
+            ui::{get_system_theme, set_theme},
         },
         io::{
             file_helper::{get_file_location, get_folder_location, open_in_files},
@@ -255,7 +255,7 @@ pub fn run() {
                 info!("🔗 Global shortcuts registered successfully");
             }
 
-            init_logging(settings.experimental.debug_logging)
+            init_logging(settings.developer.debug_logging)
                 .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
             init_rclone_state(app_handle, &settings)
@@ -321,6 +321,7 @@ pub fn run() {
             get_file_location,
             // UI
             set_theme,
+            get_system_theme,
             // Platform
             get_build_type,
             are_updates_disabled,
@@ -387,6 +388,7 @@ pub fn run() {
             save_rclone_backend_option,
             reset_rclone_backend_options,
             get_rclone_backend_store_path,
+            remove_rclone_backend_option,
             // Remote Settings
             save_remote_settings,
             get_remote_settings,

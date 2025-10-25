@@ -93,36 +93,34 @@
     <!-- Theme Selector -->
     <div class="theme-selector" aria-label="Theme selection">
       <button
-        matTooltip="Not Supported"
-        disabled
         class="theme-button system"
-        [class.selected]="selectedTheme === 'system'"
-        (click)="setTheme('system', false, $event)"
+        [class.selected]="(currentTheme$ | async) === 'system'"
+        (click)="setTheme('system', $event)"
         aria-label="System theme"
       >
-        @if (selectedTheme === 'system') {
+        @if ((currentTheme$ | async) === 'system') {
           <mat-icon svgIcon="circle-check" class="checkmark" aria-hidden="true"></mat-icon>
         }
       </button>
 
       <button
         class="theme-button light"
-        [class.selected]="selectedTheme === 'light'"
-        (click)="setTheme('light', false, $event)"
+        [class.selected]="(currentTheme$ | async) === 'light'"
+        (click)="setTheme('light', $event)"
         aria-label="Light theme"
       >
-        @if (selectedTheme === 'light') {
+        @if ((currentTheme$ | async) === 'light') {
           <mat-icon svgIcon="circle-check" class="checkmark" aria-hidden="true"></mat-icon>
         }
       </button>
 
       <button
         class="theme-button dark"
-        [class.selected]="selectedTheme === 'dark'"
-        (click)="setTheme('dark', false, $event)"
+        [class.selected]="(currentTheme$ | async) === 'dark'"
+        (click)="setTheme('dark', $event)"
         aria-label="Dark theme"
       >
-        @if (selectedTheme === 'dark') {
+        @if ((currentTheme$ | async) === 'dark') {
           <mat-icon svgIcon="circle-check" class="checkmark" aria-hidden="true"></mat-icon>
         }
       </button>

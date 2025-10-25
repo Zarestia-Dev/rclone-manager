@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject, Type } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
-import { Subject, BehaviorSubject, Subscription } from 'rxjs';
-import { takeUntil, take } from 'rxjs/operators';
+import { Subject, Subscription } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { InputModalComponent } from '../../shared/modals/input-modal/input-modal.component';
 
 import { MatMenuModule } from '@angular/material/menu';
@@ -28,11 +28,13 @@ import { AppUpdaterService, RcloneUpdateService } from '@app/services';
 import { CheckResult, ConnectionStatus, ModalSize, STANDARD_MODAL_SIZE, Theme } from '@app/types';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
+import { AsyncPipe } from '@angular/common';
 
 @Component({
   selector: 'app-titlebar',
   standalone: true,
   imports: [
+    AsyncPipe,
     MatMenuModule,
     MatDividerModule,
     MatIconModule,
@@ -56,7 +58,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   appUpdaterService = inject(AppUpdaterService);
   rcloneUpdateService = inject(RcloneUpdateService);
 
-  selectedTheme: Theme = 'light';
   isMacOS = false;
   connectionStatus: ConnectionStatus = 'online';
   connectionHistory: { timestamp: Date; result: CheckResult }[] = [];
@@ -64,12 +65,9 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   updateAvailable = false;
   rcloneUpdateAvailable = false;
 
-  private darkModeMediaQuery: MediaQueryList | null = null;
   private destroy$ = new Subject<void>();
   private internetCheckSub?: Subscription;
-  private systemTheme$ = new BehaviorSubject<'light' | 'dark'>(
-    window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-  );
+  currentTheme$ = this.windowService.theme$;
 
   constructor() {
     if (this.uiStateService.platform === 'macos') {
@@ -79,38 +77,22 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
     try {
-      const theme = await this.appSettingsService.loadSettingValue('general', 'theme');
-      if (theme && theme !== this.selectedTheme) {
-        this.selectedTheme = theme;
-        await this.setTheme(this.selectedTheme, true);
-      } else {
-        this.applyTheme(this.systemTheme$.value);
-      }
-
-      this.initThemeSystem();
       await this.runInternetCheck();
-
-      // Initialize updater service and subscribe to updates
       await this.appUpdaterService.initialize();
       await this.rcloneUpdateService.initialize();
 
-      // Always subscribe - the service will handle disabled state internally
       this.appUpdaterService.updateAvailable$.subscribe(update => {
         this.updateAvailable = !!update;
       });
 
-      // Subscribe to rclone updates
       this.rcloneUpdateService.updateStatus$.subscribe(status => {
         this.rcloneUpdateAvailable = status.available;
       });
 
-      // Check for updates if auto-check is enabled
       this.checkAutoUpdate();
       this.checkRcloneAutoUpdate();
     } catch (error) {
       console.error('Initialization error:', error);
-      this.selectedTheme = 'light';
-      this.applyTheme('light');
     }
   }
 
@@ -118,46 +100,14 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     this.cleanup();
   }
 
-  // Theme Methods
-  private initThemeSystem(): void {
-    this.darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const listener = (event: MediaQueryListEvent): void => {
-      this.systemTheme$.next(event.matches ? 'dark' : 'light');
-      if (this.selectedTheme === 'system') {
-        this.applyTheme(this.systemTheme$.value);
-      }
-    };
-    this.darkModeMediaQuery.addEventListener('change', listener);
-
-    this.destroy$.pipe(take(1)).subscribe(() => {
-      if (this.darkModeMediaQuery) {
-        this.darkModeMediaQuery.removeEventListener('change', listener);
-      }
-    });
-  }
-
-  async setTheme(theme: Theme, isInitialization = false, event?: MouseEvent): Promise<void> {
+  // --- Theme Method (Simplified) ---
+  async setTheme(theme: Theme, event?: MouseEvent): Promise<void> {
     if (event) {
       event.preventDefault();
       event.stopPropagation();
     }
-    if (this.selectedTheme === theme && !isInitialization) return;
-
-    this.selectedTheme = theme;
-    const effectiveTheme = theme === 'system' ? this.systemTheme$.value : theme;
-    this.applyTheme(effectiveTheme);
-
-    if (!isInitialization) {
-      try {
-        await this.appSettingsService.saveSetting('general', 'theme', theme);
-      } catch (error) {
-        console.error('Failed to save theme preference:', error);
-      }
-    }
-  }
-
-  private applyTheme(theme: 'light' | 'dark'): void {
-    this.windowService.applyTheme(theme);
+    // Delegate all the complex logic to the service
+    await this.windowService.setTheme(theme);
   }
 
   private async checkAutoUpdate(): Promise<void> {

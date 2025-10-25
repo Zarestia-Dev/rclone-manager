@@ -99,67 +99,48 @@ fn merge_options(options_info: &mut Value, current_options: &Value) {
 /// Transforms a flat list of options into a nested object grouped by prefixes (e.g., "HTTP", "Auth").
 fn group_options(merged_info: &Value) -> Value {
     let mut final_grouped_data = Value::Object(Map::new());
-    let mut seen_field_names: std::collections::HashSet<String> = std::collections::HashSet::new();
 
     if let Some(info_map) = merged_info.as_object() {
         for (block_name, options_array) in info_map {
             let mut block_groups = Map::new();
+
             if let Some(options) = options_array.as_array() {
                 for option in options {
-                    // Get the FieldName to check for duplicates
-                    let field_name = option
+                    let mut new_option = option.clone();
+
+                    let field_name = new_option
                         .get("FieldName")
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
 
-                    // Skip if we've already processed this FieldName
-                    if seen_field_names.contains(field_name) {
-                        continue;
+                    // Special handling for blocks like "rc" that have nested structures
+                    let (group_name, simplified_field_name) =
+                        if let Some((group, field)) = field_name.split_once('.') {
+                            (group.to_string(), field.to_string())
+                        } else {
+                            // For fields without dots, use "General" group
+                            ("General".to_string(), field_name.to_string())
+                        };
+
+                    // Update the FieldName to be simplified (without the group prefix)
+                    if let Some(obj) = new_option.as_object_mut() {
+                        obj.insert(
+                            "FieldName".to_string(),
+                            Value::String(simplified_field_name),
+                        );
                     }
-                    seen_field_names.insert(field_name.to_string());
 
-                    let mut new_option = option.clone();
-
-                    if block_name == "main" {
-                        // For the 'main' block, group by the "Groups" property
-                        let group_name = new_option
-                            .get("Groups")
-                            .and_then(|v| v.as_str())
-                            .and_then(|s| s.split(',').next())
-                            .unwrap_or("General")
-                            .to_string();
-
-                        block_groups
-                            .entry(group_name)
-                            .or_insert_with(|| Value::Array(vec![]))
-                            .as_array_mut()
-                            .unwrap()
-                            .push(new_option);
-                    } else {
-                        // For all other blocks, use the dot-notation logic
-                        let (group_name, simplified_field_name) =
-                            if let Some((group, field)) = field_name.split_once('.') {
-                                (group.to_string(), field.to_string())
-                            } else {
-                                ("General".to_string(), field_name.to_string())
-                            };
-
-                        if let Some(obj) = new_option.as_object_mut() {
-                            obj.insert(
-                                "FieldName".to_string(),
-                                Value::String(simplified_field_name),
-                            );
-                        }
-
-                        block_groups
-                            .entry(group_name)
-                            .or_insert_with(|| Value::Array(vec![]))
-                            .as_array_mut()
-                            .unwrap()
-                            .push(new_option);
-                    }
+                    // Add to the appropriate group within this block
+                    block_groups
+                        .entry(group_name)
+                        .or_insert_with(|| Value::Array(vec![]))
+                        .as_array_mut()
+                        .unwrap()
+                        .push(new_option);
                 }
             }
+
+            // Insert the grouped options for this block
             final_grouped_data
                 .as_object_mut()
                 .unwrap()
@@ -167,8 +148,7 @@ fn group_options(merged_info: &Value) -> Value {
         }
     }
     final_grouped_data
-}
-// --- MASTER DATA COMMANDS ---
+} // --- MASTER DATA COMMANDS ---
 
 /// **MASTER COMMAND 1**: Fetches, merges, and returns a flat list of options.
 /// Used internally by all `get_..._flags` commands.

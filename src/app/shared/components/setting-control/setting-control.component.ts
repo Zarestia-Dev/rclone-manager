@@ -194,6 +194,112 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     this.onTouched = fn;
   }
 
+  isValueChanged(): boolean {
+    if (!this.option || !this.control) return false;
+
+    const currentValue = this.control.value;
+    const defaultValue = this.option.Default;
+
+    return !this.areValuesEqual(currentValue, defaultValue, this.option.Type);
+  }
+  /**
+   * Reset control value to default
+   */
+  resetToDefault(): void {
+    if (!this.option || !this.control) return;
+
+    let defaultToSet = this.option.Default;
+
+    // Special handling for array types
+    if (this.option.Type === 'stringArray' || this.option.Type === 'CommaSepList') {
+      // Ensure we have a proper array (handle null/undefined defaults)
+      defaultToSet = Array.isArray(this.option.Default) ? [...this.option.Default] : [];
+
+      // For FormArray controls, we need to rebuild the form array
+      if (this.control instanceof FormArray) {
+        const fa = this.control as FormArray;
+        fa.clear({ emitEvent: false });
+        defaultToSet.forEach((val: any) => {
+          fa.push(new FormControl(val), { emitEvent: false });
+        });
+      } else {
+        this.control.setValue(defaultToSet, { emitEvent: false });
+      }
+    } else {
+      this.control.setValue(defaultToSet, { emitEvent: false });
+    }
+
+    this.commitValue();
+  }
+  /**
+   * Compare if a value equals the default value
+   * Enhanced version of your existing method
+   */
+  private areValuesEqual(currentValue: any, defaultValue: any, type: string): boolean {
+    // Handle array types
+    if (
+      type === 'stringArray' ||
+      type === 'CommaSepList' ||
+      type === 'Encoding' ||
+      type === 'Bits'
+    ) {
+      return this.areArraysEqual(currentValue, defaultValue);
+    }
+
+    // Handle null/undefined
+    if (currentValue === null || currentValue === undefined) {
+      return defaultValue === null || defaultValue === undefined;
+    }
+
+    // Handle arrays (fallback)
+    if (Array.isArray(currentValue)) {
+      if (!Array.isArray(defaultValue)) return false;
+      return this.areArraysEqual(currentValue, defaultValue);
+    }
+
+    // Handle booleans
+    if (typeof currentValue === 'boolean' || typeof defaultValue === 'boolean') {
+      const currentBool = currentValue === true || currentValue === 'true';
+      const defaultBool = defaultValue === true || defaultValue === 'true';
+      return currentBool === defaultBool;
+    }
+
+    // Handle numbers
+    if (typeof currentValue === 'number' || typeof defaultValue === 'number') {
+      const currentNum = Number(currentValue);
+      const defaultNum = Number(defaultValue);
+      return currentNum === defaultNum && !isNaN(currentNum) && !isNaN(defaultNum);
+    }
+
+    // Handle strings
+    if (typeof currentValue === 'string' && typeof defaultValue === 'string') {
+      return currentValue.trim() === defaultValue.trim();
+    }
+
+    // Default comparison
+    return currentValue === defaultValue;
+  }
+
+  private areArraysEqual(arr1: any[], arr2: any[]): boolean {
+    // Handle null/undefined arrays
+    if (!arr1 && !arr2) return true;
+    if (!arr1 || !arr2) return false;
+
+    // Convert to arrays if they're not already
+    const array1 = Array.isArray(arr1) ? arr1 : [arr1];
+    const array2 = Array.isArray(arr2) ? arr2 : [arr2];
+
+    // Check length
+    if (array1.length !== array2.length) return false;
+
+    // Check each element
+    return array1.every((item, index) => {
+      const item1 = item?.toString().trim();
+      const item2 = array2[index]?.toString().trim();
+      return item1 === item2;
+    });
+  }
+
   private createInternalControl(): void {
     this.destroyed$.next();
 

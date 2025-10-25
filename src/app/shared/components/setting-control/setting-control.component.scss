@@ -4,21 +4,26 @@
   gap: var(--space-md);
   padding: var(--space-md);
 
-  .settings-header {
-    text-align: center;
-    margin-bottom: var(--space-lg);
+  .setting {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
 
-    h3 {
-      font-size: 18px;
-      font-weight: 600;
-      margin-bottom: var(--space-xs);
-      color: var(--app-text-color);
-    }
+    .setting-info {
+      h3 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: var(--space-xs);
+        color: var(--app-text-color);
+      }
 
-    .settings-description {
-      font-size: 13px;
-      color: var(--secondary-text-color);
-      margin: 0;
+      .settings-description {
+        font-size: 13px;
+        color: var(--secondary-text-color);
+        margin: 0;
+      }
     }
   }
 }

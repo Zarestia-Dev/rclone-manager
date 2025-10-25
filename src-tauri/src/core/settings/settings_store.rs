@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 
 use crate::utils::types::all_types::{
-    AppSettings, CoreSettings, ExperimentalSettings, GeneralSettings, SettingMetadata,
+    AppSettings, CoreSettings, DeveloperSettings, GeneralSettings, SettingMetadata,
 };
 
 /// Macro to create SettingMetadata with only required and commonly used fields
@@ -115,7 +115,7 @@ impl Default for AppSettings {
                 completed_onboarding: false,
                 terminal_apps: default_terminal_apps(),
             },
-            experimental: ExperimentalSettings {
+            developer: DeveloperSettings {
                 debug_logging: false,
             },
         }
@@ -332,9 +332,9 @@ impl AppSettings {
                 requires_restart = false
             ),
         );
-        // Experimental Settings
+        // Developer Settings
         metadata.insert(
-            "experimental.debug_logging".to_string(),
+            "developer.debug_logging".to_string(),
             setting_meta!(
                 "Enable Debug Logging",
                 "bool",

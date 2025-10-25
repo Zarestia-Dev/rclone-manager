@@ -130,7 +130,7 @@ pub async fn save_rclone_backend_option(
 
     // Set the option value
     if let Some(block_obj) = options_obj.get_mut(&block).and_then(|v| v.as_object_mut()) {
-        block_obj.insert(option.clone(), value);
+        block_obj.insert(option.clone(), value.clone());
     }
 
     // Save to store
@@ -140,7 +140,7 @@ pub async fn save_rclone_backend_option(
         .save()
         .map_err(|e| format!("Failed to save RClone option: {}", e))?;
 
-    info!("✅ RClone option {}.{} saved", block, option);
+    info!("✅ RClone option {}.{} saved: {}", block, option, value);
     Ok(())
 }
 
@@ -163,6 +163,58 @@ pub async fn reset_rclone_backend_options(app_handle: AppHandle) -> Result<(), S
         .map_err(|e| format!("Failed to save reset RClone options: {}", e))?;
 
     info!("✅ RClone backend options reset successfully");
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn remove_rclone_backend_option(
+    app_handle: AppHandle,
+    block: String,
+    option: String,
+) -> Result<(), String> {
+    debug!("Removing RClone option: {}.{}", block, option);
+
+    let backend_store = app_handle
+        .try_state::<RCloneBackendStore>()
+        .ok_or("RClone backend store not initialized")?;
+
+    let store_guard = backend_store.store.lock().await;
+
+    // Load existing options
+    let _ = store_guard.reload();
+    let mut options = store_guard
+        .get("backend")
+        .unwrap_or_else(|| json!({}))
+        .clone();
+
+    // Ensure it's an object
+    if !options.is_object() {
+        return Ok(()); // Nothing to remove
+    }
+
+    let options_obj = options.as_object_mut().unwrap();
+
+    // Remove the option from the block
+    if let Some(block_obj) = options_obj.get_mut(&block).and_then(|v| v.as_object_mut()) {
+        block_obj.remove(&option);
+
+        // If the block is now empty, remove the entire block
+        if block_obj.is_empty() {
+            options_obj.remove(&block);
+        }
+    }
+
+    // Save to store
+    store_guard.set("backend", options);
+
+    store_guard
+        .save()
+        .map_err(|e| format!("Failed to save RClone options after removal: {}", e))?;
+
+    info!(
+        "✅ RClone option {}.{} removed (reset to default)",
+        block, option
+    );
     Ok(())
 }
 

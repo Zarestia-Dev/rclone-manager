@@ -164,4 +164,8 @@ export class RcloneBackendOptionsService {
     const opts = options || (await this.loadOptions());
     return opts[block]?.[option] !== undefined;
   }
+
+  async removeOption(service: string, option: string): Promise<void> {
+    await invoke('remove_rclone_backend_option', { block: service, option });
+  }
 }

@@ -516,7 +516,6 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
     return this.currentPage === 'security';
   }
 
-  // Form control management
   async saveRCloneOption(optionName: string): Promise<void> {
     const control = this.rcloneOptionsForm.get(optionName);
     console.log('Saving option:', optionName, 'with value:', control?.value);
@@ -531,21 +530,38 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       control.disable({ emitEvent: false });
 
       const service = this.optionToServiceMap[optionName];
+      const category = this.optionToCategoryMap[optionName];
       const fullFieldName = this.optionToFullFieldNameMap[optionName];
 
       if (!service || !fullFieldName) {
         throw new Error(`Mapping not found for ${optionName}`);
       }
 
+      // Get the original option definition to check default value
+      const optionDef = this.groupedRcloneOptions[service]?.[category]?.find(
+        opt => opt.Name === optionName.split('---').pop()
+      );
+
       let valueToSave = control.value;
       if (Array.isArray(valueToSave)) {
         valueToSave = valueToSave.filter(v => v);
       }
 
+      // Check if the value is the same as the default
+      const isDefaultValue = this.isValueEqualToDefault(valueToSave, optionDef?.Default);
+
+      if (isDefaultValue) {
+        // Don't save default values - remove them if they exist
+        await this.rcloneBackendOptionsService.removeOption(service, fullFieldName);
+        this.notificationService.showSuccess(`Reset to default: ${fullFieldName}`);
+      } else {
+        // Only save non-default values
+        await this.rcloneBackendOptionsService.saveOption(service, fullFieldName, valueToSave);
+        this.notificationService.showSuccess(`Saved: ${fullFieldName}`);
+      }
       await this.flagConfigService.saveOption(service, fullFieldName, valueToSave);
-      await this.rcloneBackendOptionsService.saveOption(service, fullFieldName, valueToSave);
+
       control.markAsPristine();
-      this.notificationService.showSuccess(`Saved: ${fullFieldName}`);
     } catch (error) {
       console.error(`Failed to save option ${optionName}:`, error);
       this.notificationService.showError(`Failed to save ${optionName}`);
@@ -556,6 +572,27 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
       }
       this.cdRef.detectChanges();
     }
+  }
+
+  /**
+   * Compare if a value equals the default value
+   * Handles different types (string, number, boolean, array, null)
+   */
+  private isValueEqualToDefault(currentValue: any, defaultValue: any): boolean {
+    // Handle null/undefined
+    if (currentValue === null || currentValue === undefined) {
+      return defaultValue === null || defaultValue === undefined;
+    }
+
+    // Handle arrays
+    if (Array.isArray(currentValue)) {
+      if (!Array.isArray(defaultValue)) return false;
+      if (currentValue.length !== defaultValue.length) return false;
+      return currentValue.every((val, idx) => val === defaultValue[idx]);
+    }
+
+    // Handle primitives (string, number, boolean)
+    return currentValue === defaultValue;
   }
 
   getRCloneOptionControl(optionName: string): AbstractControl | null {

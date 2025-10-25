@@ -77,9 +77,9 @@ pub struct CoreSettings {
     pub terminal_apps: Vec<String>,
 }
 
-/// Experimental settings
+/// Developer settings
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ExperimentalSettings {
+pub struct DeveloperSettings {
     pub debug_logging: bool,
 }
 
@@ -88,7 +88,7 @@ pub struct ExperimentalSettings {
 pub struct AppSettings {
     pub general: GeneralSettings,
     pub core: CoreSettings,
-    pub experimental: ExperimentalSettings,
+    pub developer: DeveloperSettings,
 }
 
 /// **Global settings state**
