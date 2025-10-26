@@ -141,7 +141,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   // Array-like types that split on comma
   private readonly COMMA_ARRAY_TYPES = ['Bits', 'Encoding', 'CommaSepList', 'DumpFlags'];
   // Types that need machine-to-human conversion
-  private readonly CONVERTIBLE_TYPES = ['Duration', 'SizeSuffix', 'BwTimetable'];
+  private readonly CONVERTIBLE_TYPES = ['Duration', 'SizeSuffix', 'BwTimetable', 'FileMode'];
 
   //
   // ─── CORE LOGIC ──────────────────────────────────────────────────────────────
@@ -222,17 +222,11 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
         formArray.clear({ emitEvent: false });
         defaultArr.forEach(val => formArray.push(new FormControl(val), { emitEvent: false }));
       } else {
-        // Same length â€” just set values
+        // Same length just set values
         defaultArr.forEach((val, i) => formArray.at(i).setValue(val, { emitEvent: false }));
       }
-
-      // emit change after adjusting the array
-      this.commitValue();
-      return;
-    } else {
-      // Non-array controls can be set directly
-      this.control.setValue(this.uiDefaultValue);
     }
+    this.control.setValue(this.uiDefaultValue);
     this.commitValue();
   }
 

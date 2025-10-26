@@ -155,10 +155,6 @@ export interface SettingMetadata {
   options?: string[];
   placeholder?: string;
   requires_restart?: boolean;
-  // New fields for organization and dependencies
-  group?: string; // Group/section this setting belongs to (e.g., "engine", "proxy")
-  depends_on?: string; // Setting key this depends on (e.g., "proxy_enabled")
-  depends_value?: unknown; // Value that depends_on must have (typically true for boolean toggles)
 }
 
 export interface SearchResult {

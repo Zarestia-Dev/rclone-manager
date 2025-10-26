@@ -179,16 +179,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   private pendingConfig: { remoteData: any; finalConfig: FinalConfig } | null = null;
   private changedRemoteFields = new Set<string>();
-  private changedFlagFields: Record<FlagType, Set<string>> = {
-    mount: new Set(),
-    copy: new Set(),
-    sync: new Set(),
-    bisync: new Set(),
-    move: new Set(),
-    filter: new Set(),
-    vfs: new Set(),
-    backend: new Set(),
-  };
 
   // Config specifications for each flag type
   private readonly configSpecs: Record<FlagType, ConfigSpec> = {
@@ -742,16 +732,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  onFlagFieldChanged(event: { flagType: FlagType; fieldName: string; isChanged: boolean }): void {
-    const { flagType, fieldName, isChanged } = event;
-
-    if (isChanged) {
-      this.changedFlagFields[flagType].add(fieldName);
-    } else {
-      this.changedFlagFields[flagType].delete(fieldName);
-    }
-  }
-
   // --- Interactive Flow ---
   handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {
     if (this.interactiveFlowState.isActive) {
@@ -837,10 +817,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     });
 
     // Pass flagType to cleanData
-    Object.assign(
-      result,
-      this.cleanData(configData.options, this.dynamicFlagFields[flagType], flagType)
-    );
+    Object.assign(result, this.cleanData(configData.options, this.dynamicFlagFields[flagType]));
     return result;
   }
 
@@ -899,27 +876,20 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     return result;
   }
 
-  private cleanData(
-    formData: any,
-    fieldDefinitions: RcConfigOption[],
-    flagType: FlagType
-  ): Record<string, unknown> {
-    // Only include fields that are in the changed set
-    const changedSet = this.changedFlagFields[flagType];
-
+  private cleanData(formData: any, fieldDefinitions: RcConfigOption[]): Record<string, unknown> {
     return fieldDefinitions.reduce(
       (acc, field) => {
-        // Skip if field hasn't changed
-        if (!changedSet.has(field.Name)) return acc;
-
         if (!Object.prototype.hasOwnProperty.call(formData, field.Name)) return acc;
         const value = formData[field.Name];
-
-        // Only exclude truly empty values
-        if (value !== null && value !== undefined && value !== '') {
+        if (
+          !(
+            String(value) === String(field.Default) ||
+            String(value) === String(field.DefaultStr) ||
+            value === null
+          )
+        ) {
           acc[field.Name] = value;
         }
-
         return acc;
       },
       {} as Record<string, unknown>

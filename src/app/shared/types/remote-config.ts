@@ -1,5 +1,3 @@
-import { RcConfigExample } from './remotes';
-
 export type FlagType = 'mount' | 'bisync' | 'move' | 'copy' | 'sync' | 'filter' | 'vfs' | 'backend';
 export type EditTarget = FlagType | 'remote' | null;
 
@@ -22,37 +20,6 @@ export type FieldType =
   | 'object'
   | 'json'
   | string;
-
-export interface RemoteField {
-  Name: string;
-  FieldName: string;
-  Help: string;
-  Groups?: string;
-  Default?: unknown;
-  Value?: unknown;
-  Examples?: RcConfigExample[];
-  Hide?: number;
-  Required?: boolean;
-  IsPassword?: boolean;
-  NoPrefix?: boolean;
-  Advanced?: boolean;
-  Exclusive?: boolean;
-  Sensitive?: boolean;
-  DefaultStr: string;
-  ValueStr?: string;
-  Type: string;
-}
-
-export interface FlagField {
-  ValueStr: string;
-  Value: any;
-  name: string;
-  default: any;
-  help: string;
-  type: string;
-  required: boolean;
-  examples: any[];
-}
 
 export interface LoadingState {
   remoteConfig?: boolean;

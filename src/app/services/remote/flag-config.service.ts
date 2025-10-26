@@ -20,14 +20,12 @@ export class FlagConfigService {
     'mount',
     'copy',
     'sync',
+    'bisync',
+    'move',
     'filter',
     'vfs',
     'backend',
-    'bisync',
-    'move',
   ];
-
-  // --- Primary Data Fetching ---
 
   /**
    * Fetches the master data object: all options, with live values, pre-grouped by the backend.

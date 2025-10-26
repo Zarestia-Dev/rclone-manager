@@ -3,7 +3,14 @@ import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../../shared/services/notification.service';
 
-import { MountOptions, VfsOptions, MountParams, BackendOptions, FilterOptions } from '@app/types';
+import {
+  MountOptions,
+  VfsOptions,
+  MountParams,
+  BackendOptions,
+  FilterOptions,
+  MountedRemote,
+} from '@app/types';
 
 /**
  * Service for managing rclone mounts
@@ -13,7 +20,7 @@ import { MountOptions, VfsOptions, MountParams, BackendOptions, FilterOptions } 
   providedIn: 'root',
 })
 export class MountManagementService extends TauriBaseService {
-  private mountedRemotesCache = new BehaviorSubject<any[]>([]);
+  private mountedRemotesCache = new BehaviorSubject<MountedRemote[]>([]);
   public mountedRemotes$ = this.mountedRemotesCache.asObservable();
 
   private notificationService = inject(NotificationService);
@@ -31,8 +38,8 @@ export class MountManagementService extends TauriBaseService {
   /**
    * Get mounted remotes with details
    */
-  async getMountedRemotes(): Promise<any[]> {
-    const mountedRemotes = await this.invokeCommand<any[]>('get_cached_mounted_remotes');
+  async getMountedRemotes(): Promise<MountedRemote[]> {
+    const mountedRemotes = await this.invokeCommand<MountedRemote[]>('get_cached_mounted_remotes');
     this.mountedRemotesCache.next(mountedRemotes);
     return mountedRemotes;
   }
@@ -69,7 +76,6 @@ export class MountManagementService extends TauriBaseService {
         backend_options: backendOptions || {},
       };
       await this.invokeCommand('mount_remote', { params });
-
       await this.refreshMountedRemotes();
       this.notificationService.showSuccess(`Successfully mounted ${remoteName}`);
     } catch (error) {

@@ -78,20 +78,6 @@ export class FlagConfigStepComponent implements OnInit, OnChanges {
     requiredEmpty: boolean;
   }>();
   @Output() remoteSelectionReset = new EventEmitter<string>();
-  @Output() fieldChanged = new EventEmitter<{
-    flagType: FlagType;
-    fieldName: string;
-    isChanged: boolean;
-  }>();
-
-  // 2. Add handler method
-  onFieldChanged(fieldName: string, isChanged: boolean): void {
-    this.fieldChanged.emit({
-      flagType: this.flagType,
-      fieldName,
-      isChanged,
-    });
-  }
 
   public showAdvancedOptions = false;
   // Add ChangeDetectorRef
