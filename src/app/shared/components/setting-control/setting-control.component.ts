@@ -26,6 +26,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { RcConfigOption } from '@app/types';
 import { Subject } from 'rxjs';
@@ -47,6 +49,8 @@ import { ValidatorRegistryService } from '../../services/validator-registry.serv
     MatSlideToggleModule,
     MatIconModule,
     MatButtonModule,
+    MatDatepickerModule,
+    MatNativeDateModule,
     ScrollingModule,
     LineBreaksPipe,
   ],
@@ -59,6 +63,7 @@ import { ValidatorRegistryService } from '../../services/validator-registry.serv
       useExisting: forwardRef(() => SettingControlComponent),
       multi: true,
     },
+    provideNativeDateAdapter(),
   ],
 })
 export class SettingControlComponent implements ControlValueAccessor, OnDestroy {
@@ -129,6 +134,9 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     'Exclamation',
   ].sort();
   public bitsFlags = ['date', 'time', 'microseconds', 'longfile', 'shortfile', 'pid'].sort();
+  // For Time type UI (split date + time inputs)
+  public dateControl: FormControl = new FormControl('');
+  public timeControl: FormControl = new FormControl('');
 
   private onChange: (value: any) => void = () => {
     /* empty */
@@ -261,6 +269,10 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       this.setFormArrayValue(this.control, internalValue);
     } else {
       this.control.setValue(internalValue, { emitEvent: false });
+      // If this is a Time type, update the split date/time controls
+      if (this.option && this.option.Type === 'Time') {
+        this.updateSplitFromControl(internalValue);
+      }
     }
   }
 
@@ -393,7 +405,63 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       this.onChange(outputValue);
       this.onTouched();
       this.valueChanged.emit(this.isValueChanged());
+      // If option is Time, reflect any changes (including resets) into the split controls
+      if (this.option && this.option.Type === 'Time') {
+        this.updateSplitFromControl(value);
+      }
     });
+
+    // If option is Time, keep the date/time split controls in sync with the main control
+    if (this.option && this.option.Type === 'Time') {
+      // initialize split controls
+      this.updateSplitFromControl(this.control.value);
+
+      this.dateControl.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(() => {
+        const combined = this.combineDateTime();
+        // update main control which will trigger prepareValueForBackend and onChange
+        this.control.setValue(combined);
+      });
+
+      this.timeControl.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(() => {
+        const combined = this.combineDateTime();
+        this.control.setValue(combined);
+      });
+    }
+  }
+
+  private updateSplitFromControl(value: any): void {
+    // value expected to be ISO-like string (YYYY-MM-DDTHH:mm:ssZ) or empty
+    if (!value || typeof value !== 'string') {
+      this.dateControl.setValue('', { emitEvent: false });
+      this.timeControl.setValue('', { emitEvent: false });
+      return;
+    }
+
+    // Try to parse ISO-like value safely
+    // Accept forms like: YYYY-MM-DDTHH:mm[:ss][Z]
+    const m = value.match(/^(\d{4}-\d{2}-\d{2})[T\s](\d{2}:\d{2}(?::\d{2})?).*/);
+    if (m) {
+      const datePart = m[1];
+      let timePart = m[2];
+      // Trim seconds for time input (HH:mm)
+      const tmatch = timePart.match(/^(\d{2}:\d{2})/);
+      if (tmatch) timePart = tmatch[1];
+      this.dateControl.setValue(datePart, { emitEvent: false });
+      this.timeControl.setValue(timePart, { emitEvent: false });
+    } else {
+      // Fallback: clear
+      this.dateControl.setValue('', { emitEvent: false });
+      this.timeControl.setValue('', { emitEvent: false });
+    }
+  }
+
+  private combineDateTime(): string {
+    const date = this.dateControl.value;
+    const time = this.timeControl.value || '00:00';
+    if (!date) return '';
+    // Ensure time includes minutes; we append seconds and Z to match ISO expected format
+    const seconds = ':00';
+    return `${date}T${time}${seconds}Z`;
   }
 
   private prepareValueForBackend(value: any): any {

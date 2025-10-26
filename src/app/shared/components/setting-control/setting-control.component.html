@@ -167,16 +167,36 @@
           </div>
         }
         @case ('Time') {
-          <ng-container
-            *ngTemplateOutlet="
-              standardInput;
-              context: {
-                $implicit: option,
-                inputType: 'datetime-local',
-                inputHint: 'ISO 8601 format (YYYY-MM-DDTHH:mm:ssZ)',
-              }
-            "
-          ></ng-container>
+          <div class="setting-full-width">
+            <ng-container
+              *ngTemplateOutlet="settingInfo; context: { $implicit: option }"
+            ></ng-container>
+            <div class="setting-control time-split">
+              <mat-form-field appearance="fill" class="input-field">
+                <mat-label>Date</mat-label>
+                <input
+                  matInput
+                  [matDatepicker]="picker"
+                  [formControl]="dateControl"
+                  [attr.aria-label]="option.Name + ' date'"
+                  (dateChange)="commitValue()"
+                />
+                <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                <mat-datepicker #picker></mat-datepicker>
+              </mat-form-field>
+
+              <mat-form-field appearance="fill" class="input-field">
+                <mat-label>Time</mat-label>
+                <input
+                  matInput
+                  type="time"
+                  [formControl]="timeControl"
+                  [attr.aria-label]="option.Name + ' time'"
+                  (blur)="commitValue()"
+                />
+              </mat-form-field>
+            </div>
+          </div>
         }
         @case ('BwTimetable') {
           <ng-container
