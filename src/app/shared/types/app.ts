@@ -14,6 +14,6 @@ export const STANDARD_MODAL_SIZE: ModalSize = {
   maxWidth: '642px',
   minWidth: '360px',
   height: '80vh',
-  maxHeight: '600px',
+  maxHeight: '700px',
   disableClose: true,
 };

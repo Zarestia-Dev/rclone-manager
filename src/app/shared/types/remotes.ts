@@ -237,6 +237,7 @@ export interface RcConfigOption {
   Name: string;
   FieldName: string;
   Help: string;
+  Provider?: string;
   Groups?: string;
   Default?: any;
   Value?: any;

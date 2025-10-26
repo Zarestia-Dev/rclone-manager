@@ -327,7 +327,11 @@
       @if (field.type === 'dynamic-fields') {
         <ng-container formGroupName="options">
           @for (field of this.dynamicFlagFields; track field.Name) {
-            <app-setting-control [option]="field" [formControlName]="field.Name">
+            <app-setting-control
+              [option]="field"
+              [formControlName]="field.Name"
+              (valueChanged)="onFieldChanged(field.Name, $event)"
+            >
             </app-setting-control>
           }
         </ng-container>

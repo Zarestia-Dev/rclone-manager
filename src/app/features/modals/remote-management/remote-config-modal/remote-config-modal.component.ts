@@ -103,6 +103,9 @@ interface ConfigSpec {
   ],
 })
 export class RemoteConfigModalComponent implements OnInit, OnDestroy {
+  // ============================================================================
+  // PROPERTIES
+  // ============================================================================
   private readonly fb = inject(FormBuilder);
   private readonly dialogRef = inject(MatDialogRef<RemoteConfigModalComponent>);
   private readonly authStateService = inject(AuthStateService);
@@ -176,6 +179,16 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   private pendingConfig: { remoteData: any; finalConfig: FinalConfig } | null = null;
   private changedRemoteFields = new Set<string>();
+  private changedFlagFields: Record<FlagType, Set<string>> = {
+    mount: new Set(),
+    copy: new Set(),
+    sync: new Set(),
+    bisync: new Set(),
+    move: new Set(),
+    filter: new Set(),
+    vfs: new Set(),
+    backend: new Set(),
+  };
 
   // Config specifications for each flag type
   private readonly configSpecs: Record<FlagType, ConfigSpec> = {
@@ -229,6 +242,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     backend: { flagType: 'backend', formPath: 'backendConfig', staticFields: [] },
   };
 
+  // ============================================================================
+  // LIFECYCLE HOOKS
+  // ============================================================================
   constructor() {
     this.editTarget = this.dialogData?.editTarget || null;
     this.cloneTarget = this.dialogData?.cloneTarget || false;
@@ -252,6 +268,60 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
     this.authStateService.cancelAuth();
+  }
+
+  // ============================================================================
+  // INITIALIZATION
+  // ============================================================================
+  private async loadExistingRemotes(): Promise<void> {
+    try {
+      this.existingRemotes = await this.remoteManagementService.getRemotes();
+      this.refreshRemoteNameValidator();
+    } catch (error) {
+      console.error('Error loading remotes:', error);
+    } finally {
+      this.cdRef.markForCheck();
+    }
+  }
+
+  private async loadRemoteTypes(): Promise<void> {
+    try {
+      const providers = await this.remoteManagementService.getRemoteTypes();
+      this.remoteTypes = providers.map(p => ({ value: p.name, label: p.description }));
+    } catch (error) {
+      console.error('Error fetching remote types:', error);
+    }
+  }
+
+  private async loadAllFlagFields(): Promise<void> {
+    this.dynamicFlagFields = await this.flagConfigService.loadAllFlagFields();
+    this.dynamicFlagFields.move = [...this.dynamicFlagFields.copy];
+    this.dynamicFlagFields.bisync = [...this.dynamicFlagFields.copy];
+    this.addDynamicFieldsToForm();
+  }
+
+  private addDynamicFieldsToForm(): void {
+    this.flagConfigService.FLAG_TYPES.forEach(flagType => {
+      const optionsGroup = this.remoteConfigForm.get(`${flagType}Config.options`) as FormGroup;
+      if (optionsGroup && this.dynamicFlagFields[flagType]) {
+        this.dynamicFlagFields[flagType].forEach(field => {
+          const defaultValue = field.Value !== undefined ? field.Value : field.Default;
+          optionsGroup.addControl(field.Name, new FormControl(defaultValue));
+        });
+      }
+    });
+  }
+
+  private async fetchInitialPathEntriesForEditMode(): Promise<void> {
+    if (this.editTarget && this.PATH_EDIT_TARGETS.includes(this.editTarget)) {
+      const formPath = `${this.editTarget}Config.source`;
+      const remoteName = this.dialogData?.name ?? '';
+      const existingSource =
+        typeof this.dialogData?.existingConfig?.['source'] === 'string'
+          ? this.dialogData.existingConfig['source']
+          : '';
+      await this.pathSelectionService.fetchEntriesForField(formPath, remoteName, existingSource);
+    }
   }
 
   // ============================================================================
@@ -327,48 +397,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     });
     group['options'] = this.fb.group({});
     return this.fb.group(group);
-  }
-
-  // ============================================================================
-  // INITIALIZATION
-  // ============================================================================
-  private async loadExistingRemotes(): Promise<void> {
-    try {
-      this.existingRemotes = await this.remoteManagementService.getRemotes();
-      this.refreshRemoteNameValidator();
-    } catch (error) {
-      console.error('Error loading remotes:', error);
-    } finally {
-      this.cdRef.markForCheck();
-    }
-  }
-
-  private async loadRemoteTypes(): Promise<void> {
-    try {
-      const providers = await this.remoteManagementService.getRemoteTypes();
-      this.remoteTypes = providers.map(p => ({ value: p.name, label: p.description }));
-    } catch (error) {
-      console.error('Error fetching remote types:', error);
-    }
-  }
-
-  private async loadAllFlagFields(): Promise<void> {
-    this.dynamicFlagFields = await this.flagConfigService.loadAllFlagFields();
-    this.dynamicFlagFields.move = [...this.dynamicFlagFields.copy];
-    this.dynamicFlagFields.bisync = [...this.dynamicFlagFields.copy];
-    this.addDynamicFieldsToForm();
-  }
-
-  private addDynamicFieldsToForm(): void {
-    this.flagConfigService.FLAG_TYPES.forEach(flagType => {
-      const optionsGroup = this.remoteConfigForm.get(`${flagType}Config.options`) as FormGroup;
-      if (optionsGroup && this.dynamicFlagFields[flagType]) {
-        this.dynamicFlagFields[flagType].forEach(field => {
-          const defaultValue = field.Value !== undefined ? field.Value : field.Default;
-          optionsGroup.addControl(field.Name, new FormControl(defaultValue));
-        });
-      }
-    });
   }
 
   private refreshRemoteNameValidator(): void {
@@ -539,8 +567,103 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   // ============================================================================
-  // REMOTE TYPE MANAGEMENT
+  // STEP NAVIGATION
   // ============================================================================
+  getCurrentStepLabel(): string {
+    if (this.currentStep === 1) return 'Remote Configuration';
+    const stepIndex = this.currentStep - 2;
+    if (stepIndex >= 0 && stepIndex < this.flagConfigService.FLAG_TYPES.length) {
+      const type = this.flagConfigService.FLAG_TYPES[stepIndex];
+      return type.charAt(0).toUpperCase() + type.slice(1) + ' Configuration';
+    }
+    return '';
+  }
+
+  goToStep(step: number): void {
+    if (step >= 1 && step <= this.TOTAL_STEPS) {
+      this.currentStep = step;
+      this.cdRef.markForCheck();
+      this.scrollToTop();
+    }
+  }
+
+  nextStep(): void {
+    if (this.currentStep >= this.TOTAL_STEPS) return;
+    if (this.currentStep === 1 && !this.remoteForm.valid) {
+      this.remoteForm.markAllAsTouched();
+      return;
+    }
+    this.currentStep++;
+    this.cdRef.markForCheck();
+    this.scrollToTop();
+  }
+
+  prevStep(): void {
+    if (this.currentStep > 1) {
+      this.currentStep--;
+      this.cdRef.markForCheck();
+      this.scrollToTop();
+    }
+  }
+
+  getStepProgress(): { current: number; total: number; percentage: number } {
+    return {
+      current: this.currentStep,
+      total: this.TOTAL_STEPS,
+      percentage: Math.round((this.currentStep / this.TOTAL_STEPS) * 100),
+    };
+  }
+
+  getStepState(stepNumber: number): 'completed' | 'current' | 'future' {
+    if (stepNumber < this.currentStep) return 'completed';
+    if (stepNumber === this.currentStep) return 'current';
+    return 'future';
+  }
+
+  getStepIcon(stepIndex: number): string {
+    const iconMap: Record<number, string> = {
+      0: 'hard-drive',
+      1: 'mount',
+      2: 'copy',
+      3: 'sync',
+      4: 'right-left',
+      5: 'move',
+      6: 'filter',
+      7: 'vfs',
+      8: 'server',
+    };
+    return iconMap[stepIndex] || 'circle';
+  }
+
+  getStepProgressAriaLabel(): string {
+    return `Step ${this.currentStep} of ${this.TOTAL_STEPS}: ${this.stepLabels[this.currentStep - 1]}`;
+  }
+
+  handleStepKeydown(event: KeyboardEvent, stepNumber: number): void {
+    if (!this.editTarget) return;
+
+    const handlers: Record<string, () => void> = {
+      ArrowRight: () => stepNumber < this.TOTAL_STEPS && this.goToStep(stepNumber + 1),
+      ArrowLeft: () => stepNumber > 1 && this.goToStep(stepNumber - 1),
+      Home: () => this.goToStep(1),
+      End: () => this.goToStep(this.TOTAL_STEPS),
+    };
+
+    if (handlers[event.key]) {
+      event.preventDefault();
+      handlers[event.key]();
+    }
+  }
+
+  private scrollToTop(): void {
+    document.querySelector('.modal-content')?.scrollTo(0, 0);
+  }
+
+  // ============================================================================
+  // EVENT HANDLERS
+  // ============================================================================
+
+  // --- Remote Type / Interactive Mode ---
   async onRemoteTypeChange(): Promise<void> {
     this.isRemoteConfigLoading = true;
     try {
@@ -572,9 +695,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.useInteractiveMode = useInteractiveMode;
   }
 
-  // ============================================================================
-  // PATH SELECTION
-  // ============================================================================
+  // --- Path Selection ---
   async onSourceOptionSelectedField(entryName: string, formPath: string): Promise<void> {
     await this.pathSelectionService.onPathSelected(
       formPath,
@@ -612,15 +733,30 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       .then(path => this.remoteConfigForm.get(formPath)?.setValue(path));
   }
 
-  private async fetchInitialPathEntriesForEditMode(): Promise<void> {
-    if (this.editTarget && this.PATH_EDIT_TARGETS.includes(this.editTarget)) {
-      const formPath = `${this.editTarget}Config.source`;
-      const remoteName = this.dialogData?.name ?? '';
-      const existingSource =
-        typeof this.dialogData?.existingConfig?.['source'] === 'string'
-          ? this.dialogData.existingConfig['source']
-          : '';
-      await this.pathSelectionService.fetchEntriesForField(formPath, remoteName, existingSource);
+  // --- Field Change Tracking ---
+  onRemoteFieldChanged(fieldName: string, isChanged: boolean): void {
+    if (isChanged) {
+      this.changedRemoteFields.add(fieldName);
+    } else {
+      this.changedRemoteFields.delete(fieldName);
+    }
+  }
+
+  onFlagFieldChanged(event: { flagType: FlagType; fieldName: string; isChanged: boolean }): void {
+    const { flagType, fieldName, isChanged } = event;
+
+    if (isChanged) {
+      this.changedFlagFields[flagType].add(fieldName);
+    } else {
+      this.changedFlagFields[flagType].delete(fieldName);
+    }
+  }
+
+  // --- Interactive Flow ---
+  handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {
+    if (this.interactiveFlowState.isActive) {
+      this.interactiveFlowState.answer = newAnswer;
+      this.cdRef.markForCheck();
     }
   }
 
@@ -700,7 +836,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       }
     });
 
-    Object.assign(result, this.cleanData(configData.options, this.dynamicFlagFields[flagType]));
+    // Pass flagType to cleanData
+    Object.assign(
+      result,
+      this.cleanData(configData.options, this.dynamicFlagFields[flagType], flagType)
+    );
     return result;
   }
 
@@ -739,14 +879,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     return updatedConfig;
   }
 
-  onRemoteFieldChanged(fieldName: string, isChanged: boolean): void {
-    if (isChanged) {
-      this.changedRemoteFields.add(fieldName);
-    } else {
-      this.changedRemoteFields.delete(fieldName);
-    }
-  }
-
   // ============================================================================
   // DATA CLEANING
   // ============================================================================
@@ -767,10 +899,19 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     return result;
   }
 
-  private cleanData(formData: any, fieldDefinitions: RcConfigOption[]): Record<string, unknown> {
-    // Just collect non-null/undefined values - no default checking needed
+  private cleanData(
+    formData: any,
+    fieldDefinitions: RcConfigOption[],
+    flagType: FlagType
+  ): Record<string, unknown> {
+    // Only include fields that are in the changed set
+    const changedSet = this.changedFlagFields[flagType];
+
     return fieldDefinitions.reduce(
       (acc, field) => {
+        // Skip if field hasn't changed
+        if (!changedSet.has(field.Name)) return acc;
+
         if (!Object.prototype.hasOwnProperty.call(formData, field.Name)) return acc;
         const value = formData[field.Name];
 
@@ -887,13 +1028,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     );
   }
 
-  handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {
-    if (this.interactiveFlowState.isActive) {
-      this.interactiveFlowState.answer = newAnswer;
-      this.cdRef.markForCheck();
-    }
-  }
-
   isInteractiveContinueDisabled(): boolean {
     if (this.isAuthCancelled || this.interactiveFlowState.isProcessing) return true;
     if (!this.interactiveFlowState.question?.Option?.Required) return false;
@@ -906,17 +1040,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     );
   }
 
-  async cancelAuth(): Promise<void> {
-    await this.authStateService.cancelAuth();
-    this.interactiveFlowState = {
-      isActive: false,
-      question: null,
-      answer: null,
-      isProcessing: false,
-    };
-    this.cdRef.markForCheck();
-  }
-
+  // ============================================================================
+  // FINALIZATION & POST-SUBMIT
+  // ============================================================================
   private async finalizeRemoteCreation(): Promise<void> {
     if (!this.pendingConfig) return;
 
@@ -1007,101 +1133,19 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ============================================================================
-  // STEP NAVIGATION
-  // ============================================================================
-  getCurrentStepLabel(): string {
-    if (this.currentStep === 1) return 'Remote Configuration';
-    const stepIndex = this.currentStep - 2;
-    if (stepIndex >= 0 && stepIndex < this.flagConfigService.FLAG_TYPES.length) {
-      const type = this.flagConfigService.FLAG_TYPES[stepIndex];
-      return type.charAt(0).toUpperCase() + type.slice(1) + ' Configuration';
-    }
-    return '';
-  }
-
-  goToStep(step: number): void {
-    if (step >= 1 && step <= this.TOTAL_STEPS) {
-      this.currentStep = step;
-      this.cdRef.markForCheck();
-      this.scrollToTop();
-    }
-  }
-
-  getStepProgress(): { current: number; total: number; percentage: number } {
-    return {
-      current: this.currentStep,
-      total: this.TOTAL_STEPS,
-      percentage: Math.round((this.currentStep / this.TOTAL_STEPS) * 100),
+  async cancelAuth(): Promise<void> {
+    await this.authStateService.cancelAuth();
+    this.interactiveFlowState = {
+      isActive: false,
+      question: null,
+      answer: null,
+      isProcessing: false,
     };
-  }
-
-  getStepState(stepNumber: number): 'completed' | 'current' | 'future' {
-    if (stepNumber < this.currentStep) return 'completed';
-    if (stepNumber === this.currentStep) return 'current';
-    return 'future';
-  }
-
-  getStepIcon(stepIndex: number): string {
-    const iconMap: Record<number, string> = {
-      0: 'hard-drive',
-      1: 'mount',
-      2: 'copy',
-      3: 'sync',
-      4: 'right-left',
-      5: 'move',
-      6: 'filter',
-      7: 'vfs',
-      8: 'server',
-    };
-    return iconMap[stepIndex] || 'circle';
-  }
-
-  getStepProgressAriaLabel(): string {
-    return `Step ${this.currentStep} of ${this.TOTAL_STEPS}: ${this.stepLabels[this.currentStep - 1]}`;
-  }
-
-  handleStepKeydown(event: KeyboardEvent, stepNumber: number): void {
-    if (!this.editTarget) return;
-
-    const handlers: Record<string, () => void> = {
-      ArrowRight: () => stepNumber < this.TOTAL_STEPS && this.goToStep(stepNumber + 1),
-      ArrowLeft: () => stepNumber > 1 && this.goToStep(stepNumber - 1),
-      Home: () => this.goToStep(1),
-      End: () => this.goToStep(this.TOTAL_STEPS),
-    };
-
-    if (handlers[event.key]) {
-      event.preventDefault();
-      handlers[event.key]();
-    }
-  }
-
-  nextStep(): void {
-    if (this.currentStep >= this.TOTAL_STEPS) return;
-    if (this.currentStep === 1 && !this.remoteForm.valid) {
-      this.remoteForm.markAllAsTouched();
-      return;
-    }
-    this.currentStep++;
     this.cdRef.markForCheck();
-    this.scrollToTop();
-  }
-
-  prevStep(): void {
-    if (this.currentStep > 1) {
-      this.currentStep--;
-      this.cdRef.markForCheck();
-      this.scrollToTop();
-    }
-  }
-
-  private scrollToTop(): void {
-    document.querySelector('.modal-content')?.scrollTo(0, 0);
   }
 
   // ============================================================================
-  // UTILITIES
+  // UTILITIES & GETTERS
   // ============================================================================
   private getRemoteName(): string {
     return this.dialogData.name || this.remoteForm.get('name')?.value;

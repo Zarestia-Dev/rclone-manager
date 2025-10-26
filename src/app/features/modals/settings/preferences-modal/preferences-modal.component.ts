@@ -74,7 +74,7 @@ export class PreferencesModalComponent implements OnInit {
   readonly tabs: SettingTab[] = [
     { label: 'General', icon: 'wrench', key: 'general' },
     { label: 'Core', icon: 'puzzle-piece', key: 'core' },
-    { label: 'Experimental', icon: 'flask', key: 'developer' },
+    { label: 'Developer', icon: 'flask', key: 'developer' },
   ];
 
   readonly searchSuggestions = ['Api Port', 'Start on Startup', 'Debug', 'Bandwidth'];

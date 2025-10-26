@@ -103,6 +103,7 @@
               (destOptionSelected)="onDestOptionSelectedField($event, flagType + 'Config.dest')"
               (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
               (remoteSelectionReset)="resetRemoteSelectionField($event)"
+              (fieldChanged)="onFlagFieldChanged($event)"
             />
           </section>
         }

@@ -93,6 +93,8 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     this.createControl();
   }
 
+  @Input() selectedProvider?: string; // For remote-specific settings
+
   @Output() valueCommit = new EventEmitter<void>();
   @Output() valueChanged = new EventEmitter<boolean>();
 
@@ -515,6 +517,14 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       errors['enum']?.message ||
       'Invalid value'
     );
+  }
+
+  get shouldShow(): boolean {
+    // If no provider specified on this field, always show
+    if (!this.option.Provider) return true;
+
+    // If provider specified, only show if it matches selected
+    return this.option.Provider === this.selectedProvider;
   }
 
   ngOnDestroy(): void {

@@ -80,7 +80,19 @@
         </div>
       }
 
-      <!-- Basic Configuration Fields -->
+      <!-- Provider Field (Shown FIRST, before other fields) -->
+      @if (field.type === 'provider-field' && providerField) {
+        <div class="provider-section">
+          <h3 class="section-heading">Authentication Method</h3>
+          <app-setting-control
+            [option]="providerField"
+            [formControlName]="providerField.Name"
+            (valueChanged)="onFieldChanged(providerField.Name, $event)"
+          ></app-setting-control>
+        </div>
+      }
+
+      <!-- Basic Configuration Fields (Only show after provider selected) -->
       @if (field.type === 'basic-fields') {
         @for (field of basicFields; track field.Name) {
           <app-setting-control

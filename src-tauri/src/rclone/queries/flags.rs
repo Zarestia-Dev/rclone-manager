@@ -160,9 +160,6 @@ pub async fn get_all_options_with_values(state: State<'_, RcloneState>) -> Resul
     )
     .map_err(|e| e.to_string())?;
 
-    println!("Merging options info with current values...");
-    println!("Options Info: {:?}", options_info);
-    println!("Current Options: {:?}", current_options);
     merge_options(&mut options_info, &current_options);
     Ok(options_info)
 }
