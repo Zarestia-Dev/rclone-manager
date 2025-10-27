@@ -66,7 +66,7 @@
           @default {
             @if (q.Option?.Examples?.length) {
               <div class="input-card select-input">
-                <mat-form-field appearance="fill" class="input-field">
+                <mat-form-field appearance="fill">
                   <mat-label>{{ q.Option?.Name || 'Choose an option' }}</mat-label>
                   <mat-select
                     [(ngModel)]="answer"
@@ -76,9 +76,9 @@
                     @for (ex of q.Option?.Examples; track trackByIndex($index)) {
                       <mat-option [value]="ex.Value">
                         <div class="option-content">
-                          <span class="option-value">{{ ex.Help || ex.Value }} </span>
+                          <span class="option-label">{{ ex.Help || ex.Value }} </span>
                           @if (ex.Help && ex.Help !== ex.Value) {
-                            <span class="option-hint">{{ ex.Value }}</span>
+                            <span class="option-secondary">{{ ex.Value }}</span>
                           }
                         </div>
                       </mat-option>
@@ -88,7 +88,7 @@
               </div>
             } @else {
               <div class="input-card text-input">
-                <mat-form-field appearance="fill" class="input-field">
+                <mat-form-field appearance="fill">
                   <mat-label>{{ q.Option?.Name || 'Enter value' }}</mat-label>
                   <input
                     matInput

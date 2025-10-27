@@ -10,17 +10,25 @@
   justify-content: space-between;
   align-items: center;
   position: relative;
+  transition: var(--transition-standard);
 
-  border-bottom: 1px solid var(--border-color);
-  font-weight: 600;
-  font-size: var(--font-size-md);
+  &.scrolled {
+    box-shadow: var(--shadow-light);
+  }
+
+  &.scrolled p {
+    opacity: 1;
+  }
 
   p {
+    font-size: var(--font-size-md);
+    transition: opacity var(--transition-standard);
     display: flex;
     align-items: center;
     justify-content: center;
     gap: var(--space-xs);
     margin: 0;
+    opacity: 0;
     font-weight: 600;
     text-align: center;
     flex: 1;

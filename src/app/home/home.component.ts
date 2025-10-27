@@ -120,7 +120,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   // ============================================================================
   jobs: JobInfo[] = [];
   remotes: Remote[] = [];
-  mountedRemotes: MountedRemote[] = []; // Local copy synced from service
+  mountedRemotes: MountedRemote[] = [];
+  mountedRemotes$ = this.mountManagementService.mountedRemotes$;
   selectedRemote: Remote | null = null;
   remoteSettings: RemoteSettings = {};
   bandwidthLimit: BandwidthLimitResponse | null = null;
@@ -192,9 +193,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     });
 
-    // Subscribe to mount cache from the service
-    this.mountManagementService.mountedRemotes$.pipe(takeUntil(this.destroy$)).subscribe(mounts => {
-      this.mountedRemotes = mounts;
+    // Subscribe to mounted remotes changes
+    this.mountedRemotes$.pipe(takeUntil(this.destroy$)).subscribe(mountedRemotes => {
+      this.mountedRemotes = mountedRemotes;
       this.updateRemoteMountStates();
       this.cdr.markForCheck();
     });
@@ -216,8 +217,9 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private async refreshData(): Promise<void> {
     await this.getRemoteSettings(); // Load settings first
+    await this.mountManagementService.getMountedRemotes(); // This will trigger the observable
     await this.loadRemotes(); // Then remotes
-    await Promise.all([this.refreshMounts(), this.loadJobs()]);
+    await this.loadJobs();
   }
 
   private async loadRemotes(): Promise<void> {
@@ -344,14 +346,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       });
   }
 
-  private async refreshMounts(): Promise<void> {
-    try {
-      await this.mountManagementService.getMountedRemotes();
-    } catch (error) {
-      this.handleError('Failed to refresh mount list', error);
-    }
-  }
-
   private async loadActiveJobs(): Promise<void> {
     try {
       const jobs = await this.jobManagementService.getActiveJobs();
@@ -431,7 +425,8 @@ export class HomeComponent implements OnInit, OnDestroy {
       .subscribe({
         next: async () => {
           try {
-            await this.refreshMounts();
+            // Just trigger a refresh - the observable subscription will handle the update
+            await this.mountManagementService.getMountedRemotes();
           } catch (error) {
             this.handleError('Error handling mount_cache_updated', error);
           }
@@ -449,12 +444,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       .subscribe({
         next: async () => {
           try {
-            // Ensure we refresh remote settings first so that when we rebuild
-            // the remotes list it uses the most up-to-date settings.
-            // Previously we called loadRemotes() before getRemoteSettings(),
-            // which meant remotes were reconstructed from stale local
-            // `this.remoteSettings` and could overwrite a recently saved
-            // change (causing the UI to require a second click).
             await this.getRemoteSettings();
             await this.loadRemotes();
             await this.loadRestrictMode();
@@ -564,6 +553,7 @@ export class HomeComponent implements OnInit, OnDestroy {
           settings.mountConfig.type,
           settings.mountConfig.options,
           settings.vfsConfig || {},
+          settings.filterConfig || {},
           settings.backendConfig || {}
         ),
       `Failed to mount ${remoteName}`
@@ -947,7 +937,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private isRemoteMounted(remoteName: string): boolean {
-    return this.mountedRemotes.some(mount => mount.fs.startsWith(`${remoteName}:`));
+    return this.mountedRemotes.some(m => m.fs.startsWith(`${remoteName}:`));
   }
 
   private updateRemoteInList(updatedRemote: Remote): void {

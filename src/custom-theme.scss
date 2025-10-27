@@ -971,3 +971,21 @@ mat-accordion {
     display: none; /* Safari and Chrome */
   }
 }
+
+.option-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  padding: var(--space-xs) 0;
+
+  .option-label {
+    color: var(--app-text-color);
+    font-weight: 500;
+    font-size: var(--font-size-base);
+  }
+
+  .option-description {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+  }
+}

@@ -42,6 +42,7 @@ import {
   FlagType,
   RemoteType,
   REMOTE_NAME_REGEX,
+  RemoteConfigSections,
 } from '@app/types';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
@@ -59,17 +60,6 @@ interface InteractiveFlowState {
   question: RcConfigQuestionResponse | null;
   answer: string | boolean | number | null;
   isProcessing: boolean;
-}
-
-interface FinalConfig {
-  mountConfig: MountConfig;
-  copyConfig: CopyConfig;
-  syncConfig: SyncConfig;
-  bisyncConfig: BisyncConfig;
-  moveConfig: MoveConfig;
-  filterConfig: FilterConfig;
-  vfsConfig: VfsConfig;
-  backendConfig: BackendConfig;
 }
 
 interface ConfigSpec {
@@ -177,7 +167,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     isProcessing: false,
   };
 
-  private pendingConfig: { remoteData: any; finalConfig: FinalConfig } | null = null;
+  private pendingConfig: { remoteData: any; finalConfig: RemoteConfigSections } | null = null;
   private changedRemoteFields = new Set<string>();
 
   // Config specifications for each flag type
@@ -319,6 +309,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // ============================================================================
   private createRemoteForm(): FormGroup {
     const isEditMode = this.editTarget === 'remote' && !!this.dialogData?.existingConfig;
+    console.log('existingConfig:', this.dialogData?.existingConfig);
+
     return this.fb.group({
       name: [
         { value: '', disabled: isEditMode },
@@ -727,6 +719,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   onRemoteFieldChanged(fieldName: string, isChanged: boolean): void {
     if (isChanged) {
       this.changedRemoteFields.add(fieldName);
+    } else if (this.editTarget === 'remote') {
+      if (this.changedRemoteFields.has(fieldName)) return;
+      this.changedRemoteFields.add(fieldName);
     } else {
       this.changedRemoteFields.delete(fieldName);
     }
@@ -783,6 +778,12 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       return await this.startInteractiveRemoteConfig(remoteData);
     }
 
+    if (this.editTarget === 'remote') {
+      const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
+      await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
+      return { success: true };
+    }
+
     const updatedConfig = await this.buildUpdateConfig();
     await this.appSettingsService.saveRemoteSettings(remoteName, updatedConfig);
     return { success: true };
@@ -791,7 +792,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // ============================================================================
   // CONFIG BUILDING
   // ============================================================================
-  private buildFinalConfig(remoteData: any, configData: any): FinalConfig {
+  private buildFinalConfig(remoteData: any, configData: any): RemoteConfigSections {
     return {
       mountConfig: this.buildConfig('mount', remoteData, configData.mountConfig),
       copyConfig: this.buildConfig('copy', remoteData, configData.copyConfig),
@@ -801,6 +802,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       filterConfig: this.buildConfig('filter', remoteData, configData.filterConfig),
       vfsConfig: this.buildConfig('vfs', remoteData, configData.vfsConfig),
       backendConfig: this.buildConfig('backend', remoteData, configData.backendConfig),
+      showOnTray: true,
     };
   }
 
@@ -821,7 +823,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     return result;
   }
 
-  private createEmptyFinalConfig(): FinalConfig {
+  private createEmptyFinalConfig(): RemoteConfigSections {
     return {
       mountConfig: {} as MountConfig,
       copyConfig: {} as CopyConfig,
@@ -831,18 +833,14 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       filterConfig: {} as FilterConfig,
       vfsConfig: {} as VfsConfig,
       backendConfig: {} as BackendConfig,
+      showOnTray: true,
     };
   }
 
   private async buildUpdateConfig(): Promise<Record<string, any>> {
     const updatedConfig: Record<string, any> = {};
 
-    if (this.editTarget === 'remote') {
-      const remoteData = this.cleanFormData(this.remoteForm.getRawValue());
-      updatedConfig['name'] = remoteData.name;
-      updatedConfig['type'] = remoteData.type;
-      await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
-    } else if (this.editTarget) {
+    if (this.editTarget && this.editTarget !== 'remote') {
       const flagData = this.remoteConfigForm.getRawValue()[`${this.editTarget}Config`];
       const remoteData = { name: this.getRemoteName() };
 
@@ -860,16 +858,38 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // DATA CLEANING
   // ============================================================================
   private cleanFormData(formData: any): any {
-    // For remote form: only include changed fields (tracked by setting-control)
     const result: any = {
       name: formData.name, // Always include name
       type: formData.type, // Always include type
     };
 
-    // Add only changed dynamic fields
-    this.changedRemoteFields.forEach(fieldName => {
-      if (fieldName !== 'name' && fieldName !== 'type' && formData[fieldName] !== undefined) {
-        result[fieldName] = formData[fieldName];
+    this.dynamicRemoteFields.forEach(field => {
+      // Skip if the field doesn't exist in the form data
+      if (!Object.prototype.hasOwnProperty.call(formData, field.Name)) return;
+
+      const value = formData[field.Name];
+      const isEdited = this.changedRemoteFields.has(field.Name);
+
+      if (this.editTarget === 'remote') {
+        // **EDIT MODE LOGIC:**
+        // Only include fields that were explicitly changed during this edit session.
+        // This is critical because if a user reverts a field BACK to its default value,
+        // we MUST send that default value to the backend to overwrite the previously saved
+        // setting. If we omitted the field, the backend would keep the old, non-default value.
+        if (
+          (isEdited && this.isDefaultValue(value, field)) ||
+          (!isEdited && !this.isDefaultValue(value, field))
+        ) {
+          result[field.Name] = value;
+        }
+      } else {
+        // **CREATE MODE LOGIC:**
+        // Only include fields that have a non-default value. This creates a minimal,
+        // clean configuration file from the start, avoiding clutter from unnecessary
+        // default entries.
+        if (!this.isDefaultValue(value, field)) {
+          result[field.Name] = value;
+        }
       }
     });
 
@@ -881,18 +901,20 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       (acc, field) => {
         if (!Object.prototype.hasOwnProperty.call(formData, field.Name)) return acc;
         const value = formData[field.Name];
-        if (
-          !(
-            String(value) === String(field.Default) ||
-            String(value) === String(field.DefaultStr) ||
-            value === null
-          )
-        ) {
+        if (!this.isDefaultValue(value, field)) {
           acc[field.Name] = value;
         }
         return acc;
       },
       {} as Record<string, unknown>
+    );
+  }
+
+  private isDefaultValue(value: any, field: RcConfigOption): boolean {
+    return (
+      String(value) === String(field.Default) ||
+      String(value) === String(field.DefaultStr) ||
+      value === null
     );
   }
 
@@ -1014,13 +1036,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // FINALIZATION & POST-SUBMIT
   // ============================================================================
   private async finalizeRemoteCreation(): Promise<void> {
-    if (!this.pendingConfig) return;
+    if (this.editTarget === 'remote') {
+      this.authStateService.resetAuthState();
+      this.close();
+      return;
+    } else if (!this.pendingConfig) return;
 
     const { remoteData, finalConfig } = this.pendingConfig;
-
-    if (this.editTarget === 'remote' && !this.useInteractiveMode) {
-      await this.remoteManagementService.updateRemote(remoteData.name, remoteData);
-    }
 
     await this.appSettingsService.saveRemoteSettings(remoteData.name, finalConfig);
     await this.remoteManagementService.getRemotes();
@@ -1029,7 +1051,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.close();
   }
 
-  private async triggerAutoStartJobs(remoteName: string, finalConfig: FinalConfig): Promise<void> {
+  private async triggerAutoStartJobs(
+    remoteName: string,
+    finalConfig: RemoteConfigSections
+  ): Promise<void> {
     const {
       mountConfig,
       copyConfig,

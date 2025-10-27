@@ -41,28 +41,6 @@
     }
   }
 
-  .modal-header {
-    padding: var(--space-xs);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: var(--transition-standard);
-
-    &.scrolled {
-      box-shadow: var(--shadow-light);
-    }
-
-    p {
-      font-weight: 600;
-      opacity: 0;
-      transition: opacity var(--transition-standard);
-    }
-
-    &.scrolled p {
-      opacity: 1;
-    }
-  }
-
   .modal-content {
     flex: 1;
     padding: var(--space-sm);

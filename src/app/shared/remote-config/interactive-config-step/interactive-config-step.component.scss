@@ -143,6 +143,10 @@
 }
 
 .question-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+
   .help-text {
     line-height: 1.6;
     white-space: pre-wrap;

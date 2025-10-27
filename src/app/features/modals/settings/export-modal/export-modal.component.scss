@@ -3,9 +3,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  flex: 1;
 }
-
-// Modal header styles are now inherited from shared-modal.scss
 
 // ===== MODAL CONTENT =====
 .modal-content {
@@ -13,7 +12,7 @@
   padding: var(--modal-padding);
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
   overflow-y: auto;
 }
 
@@ -31,10 +30,6 @@
     font-size: var(--font-size-base);
     font-weight: 600;
     color: var(--app-text-color);
-  }
-
-  .full-width {
-    width: 100%;
   }
 }
 

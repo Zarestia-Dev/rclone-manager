@@ -77,7 +77,7 @@ interface SearchResult {
     SettingControlComponent,
   ],
   templateUrl: './rclone-config-modal.component.html',
-  styleUrl: './rclone-config-modal.component.scss',
+  styleUrls: ['./rclone-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   animations: [AnimationsService.slideOverlay()],
 })
 export class RcloneConfigModalComponent implements OnInit, OnDestroy {

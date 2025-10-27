@@ -4,17 +4,6 @@
   flex-direction: column;
   overflow: hidden;
 
-  .modal-header {
-    padding: var(--space-xs);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    p {
-      font-weight: 600;
-    }
-  }
-
   // Virtual Scroll Viewport Styles
   .virtual-scroll-viewport {
     height: 100%;
@@ -127,8 +116,13 @@
     color: var(--app-text-color);
     transition: var(--transition-fast);
 
+    &.search-result-item {
+      background-color: var(--input-background);
+      text-align: left;
+      min-height: 72px;
+    }
+
     &:hover {
-      background-color: var(--button-hover-background);
       box-shadow: var(--shadow-light);
     }
 

@@ -128,7 +128,7 @@ export class ExportModalComponent implements OnInit {
 
   readonly selectedOptionLabel = computed(() => {
     const option = this.exportOptions.find(opt => opt.value === this.selectedOption());
-    return option?.label.replace(/^[^\s]+\s/, '') ?? 'Settings';
+    return option?.label ?? 'Settings';
   });
 
   readonly showSpecificRemoteSection = computed(

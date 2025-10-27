@@ -43,7 +43,7 @@ import { NotificationService } from 'src/app/shared/services/notification.servic
     FormatFileSizePipe,
   ],
   templateUrl: './about-modal.component.html',
-  styleUrl: './about-modal.component.scss',
+  styleUrls: ['./about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   animations: [AnimationsService.slideOverlay()],
 })
 export class AboutModalComponent implements OnInit {

@@ -31,8 +31,9 @@
         <mat-select formControlName="remoteType" (selectionChange)="onRemoteTypeChange()" required>
           @for (remote of remoteTypes; track remote.value) {
             <mat-option [value]="remote.value">
-              <div class="remote-type-icon">
-                <span>{{ remote.label }}</span>
+              <div class="option-content">
+                <span class="option-label">{{ remote.label }}</span>
+                <small class="option-secondary">{{ remote.value }}</small>
               </div>
             </mat-option>
           }
