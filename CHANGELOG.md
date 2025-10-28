@@ -7,6 +7,8 @@
 - New Backend flag support for remotes. You can now set backend flags for remotes in the remote settings. This will be applied to all operations for that remote.
 - Added Filter options support for mounts. You can now set filter options for mounts in the remote settings. This will be applied to the mount operation for that remote.
 - Added system theme detection support. You can now set the theme to system in the settings. It will automatically change the theme based on the system theme.
+- Interactive mode toggle added to Quick Add Remote modal to. Now you can enable or disable the interactive mode for remotes that require additional configuration steps (like iCloud, OneDrive, etc.). By default, it is enabled for those remotes.
+- Quick Add Remote modal design has been improved for better user experience and usability.
 
 ### Changed
 - Password Manager modal has been removed. Now the password manager is integrated into the Backend Settings modal. You can manage your passwords in the Backend Settings modal.

@@ -159,8 +159,10 @@ export class RemoteManagementService extends TauriBaseService {
     remote: string,
     path: string,
     options: Record<string, unknown>
-  ): Promise<unknown> {
-    return this.invokeCommand('get_remote_paths', { remote, path, options });
+  ): Promise<any[]> {
+    const response = await this.invokeCommand('get_remote_paths', { remote, path, options });
+    console.log('getRemotePaths response:', response);
+    return response as any[];
   }
 
   /**

@@ -18,319 +18,295 @@
     </button>
   </div>
 
-  <!-- Form Content -->
-  <form class="form-group" [formGroup]="quickAddForm" (ngSubmit)="onSubmit()" novalidate>
-    <!-- Remote Type Selection -->
-    <div class="form-section">
-      <h3 class="section-title">
-        <mat-icon svgIcon="server" class="primary"></mat-icon>
-        Remote Type
-      </h3>
-      <mat-form-field class="full-width" appearance="fill">
-        <mat-label>Select Remote Type</mat-label>
-        <mat-select formControlName="remoteType" (selectionChange)="onRemoteTypeChange()" required>
-          @for (remote of remoteTypes; track remote.value) {
-            <mat-option [value]="remote.value">
-              <div class="option-content">
-                <span class="option-label">{{ remote.label }}</span>
-                <small class="option-secondary">{{ remote.value }}</small>
+  <!-- ========== MAIN FORM ========== -->
+  <form class="form-container" [formGroup]="quickAddForm" (ngSubmit)="onSubmit()" novalidate>
+    <!-- WIZARD CONTENT -->
+    <div class="wizard-content" [@slideAnimation]="currentStep">
+      @switch (currentStep) {
+        @case ('setup') {
+          <div class="step-content" formGroupName="setup">
+            <section class="form-section">
+              <h3 class="section-title">
+                <mat-icon svgIcon="server" class="primary"></mat-icon>
+                Remote Type
+              </h3>
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>Select Remote Type</mat-label>
+                <mat-select formControlName="remoteType" required>
+                  <mat-select-trigger>
+                    {{ selectedRemoteLabel }}
+                  </mat-select-trigger>
+                  @for (remote of remoteTypes; track remote.value) {
+                    <mat-option [value]="remote.value">
+                      <div class="option-content">
+                        <span class="option-label">{{ remote.label }}</span>
+                        <small class="option-secondary">{{ remote.value }}</small>
+                      </div>
+                    </mat-option>
+                  }
+                </mat-select>
+                @if (quickAddForm.get('setup.remoteType')?.hasError('required')) {
+                  <mat-error>Remote type is required</mat-error>
+                }
+              </mat-form-field>
+            </section>
+
+            <section class="form-section">
+              <h3 class="section-title">
+                <mat-icon svgIcon="cloud" class="accent"></mat-icon>
+                Remote Name
+              </h3>
+              <mat-form-field appearance="fill" class="full-width">
+                <mat-label>Remote Name</mat-label>
+                <input
+                  matInput
+                  formControlName="remoteName"
+                  placeholder="Enter a unique name for this remote..."
+                  required
+                  type="text"
+                />
+                @if (quickAddForm.get('setup.remoteName')?.hasError('required')) {
+                  <mat-error>Remote name is required</mat-error>
+                }
+                @if (quickAddForm.get('setup.remoteName')?.hasError('nameTaken')) {
+                  <mat-error>That name is already taken. Please choose another name</mat-error>
+                }
+              </mat-form-field>
+            </section>
+
+            <section class="form-section interactive-mode-section">
+              <mat-slide-toggle formControlName="useInteractiveMode" class="interactive-toggle">
+                Use Interactive Configuration
+              </mat-slide-toggle>
+              <p class="section-description">
+                <mat-icon
+                  svgIcon="info"
+                  class="info-icon"
+                  matTooltip="Some remotes like iCloud and OneDrive require additional setup steps"
+                ></mat-icon>
+                Enable this for remotes that require extra setup (e.g., iCloud, OneDrive).
+              </p>
+            </section>
+          </div>
+        }
+
+        @case ('operations') {
+          <form formGroupName="operations">
+            <section class="form-section">
+              <div class="operations-header">
+                <h3 class="section-title">
+                  <mat-icon svgIcon="wrench" class="accent"></mat-icon>
+                  Operation Options (Optional)
+                </h3>
+                <p class="section-description">
+                  Configure operations to run automatically after the remote is created.
+                </p>
               </div>
-            </mat-option>
-          }
-        </mat-select>
-        @if (
-          quickAddForm.get('remoteType')?.hasError('required') &&
-          quickAddForm.get('remoteType')?.touched
-        ) {
-          <mat-error>Remote type is required</mat-error>
+
+              <mat-tab-group>
+                <mat-tab label="Mount">
+                  <app-operation-config
+                    formGroupName="mount"
+                    [opFormGroup]="$any(quickAddForm.get('operations.mount'))"
+                    operationType="mount"
+                    [currentRemoteName]="quickAddForm.get('setup.remoteName')?.value || 'remote'"
+                    [existingRemotes]="existingRemotes"
+                    description="Automatically mount this remote as a drive when created."
+                    (destFolderSelected)="selectFolder('mount', 'dest')"
+                    (sourceFolderSelected)="selectFolder('mount', 'source')"
+                  ></app-operation-config>
+                </mat-tab>
+
+                <mat-tab label="Sync">
+                  <app-operation-config
+                    formGroupName="sync"
+                    [opFormGroup]="$any(quickAddForm.get('operations.sync'))"
+                    operationType="sync"
+                    [currentRemoteName]="quickAddForm.get('setup.remoteName')?.value || 'remote'"
+                    [existingRemotes]="existingRemotes"
+                    description="Automatically sync this remote to a local folder when created."
+                    (destFolderSelected)="selectFolder('sync', 'dest')"
+                    (sourceFolderSelected)="selectFolder('sync', 'source')"
+                  ></app-operation-config>
+                </mat-tab>
+
+                <mat-tab label="Copy">
+                  <app-operation-config
+                    formGroupName="copy"
+                    [opFormGroup]="$any(quickAddForm.get('operations.copy'))"
+                    operationType="copy"
+                    [currentRemoteName]="quickAddForm.get('setup.remoteName')?.value || 'remote'"
+                    [existingRemotes]="existingRemotes"
+                    description="Automatically copy this remote to a local folder when created."
+                    (destFolderSelected)="selectFolder('copy', 'dest')"
+                    (sourceFolderSelected)="selectFolder('copy', 'source')"
+                  ></app-operation-config>
+                </mat-tab>
+
+                <mat-tab label="Bisync">
+                  <app-operation-config
+                    formGroupName="bisync"
+                    [opFormGroup]="$any(quickAddForm.get('operations.bisync'))"
+                    operationType="bisync"
+                    [currentRemoteName]="quickAddForm.get('setup.remoteName')?.value || 'remote'"
+                    [existingRemotes]="existingRemotes"
+                    description="Automatically bisync this remote with a local folder when created."
+                    (destFolderSelected)="selectFolder('bisync', 'dest')"
+                    (sourceFolderSelected)="selectFolder('bisync', 'source')"
+                  ></app-operation-config>
+                </mat-tab>
+
+                <mat-tab label="Move">
+                  <app-operation-config
+                    formGroupName="move"
+                    [opFormGroup]="$any(quickAddForm.get('operations.move'))"
+                    operationType="move"
+                    [currentRemoteName]="quickAddForm.get('setup.remoteName')?.value || 'remote'"
+                    [existingRemotes]="existingRemotes"
+                    description="Automatically move this remote to a local folder when created."
+                    (destFolderSelected)="selectFolder('move', 'dest')"
+                    (sourceFolderSelected)="selectFolder('move', 'source')"
+                  ></app-operation-config>
+                </mat-tab>
+              </mat-tab-group>
+            </section>
+          </form>
         }
-      </mat-form-field>
-    </div>
 
-    <!-- Interactive Mode Toggle -->
-    <!-- <div class="form-section">
-      <mat-slide-toggle
-        formControlName="useInteractiveMode"
-        class="interactive-toggle"
-      >
-        Use Interactive Configuration
-      </mat-slide-toggle>
-      <p class="section-description">
-        Enable interactive setup for remotes that require additional configuration steps
-        (recommended for iCloud, OneDrive, etc.)
-      </p>
-    </div> -->
-
-    <!-- Remote Name Input -->
-    <div class="form-section">
-      <h3 class="section-title">
-        <mat-icon svgIcon="cloud" class="accent"></mat-icon>
-        Remote Name
-      </h3>
-      <mat-form-field class="full-width" appearance="fill">
-        <mat-label>Remote Name</mat-label>
-        <input
-          matInput
-          formControlName="remoteName"
-          placeholder="Enter a unique name for this remote..."
-          required
-        />
-        @if (
-          quickAddForm.get('remoteName')?.hasError('required') &&
-          quickAddForm.get('remoteName')?.touched
-        ) {
-          <mat-error>Remote name is required</mat-error>
+        @case ('interactive') {
+          <div class="step-content">
+            @if (interactiveFlowState.isActive && interactiveFlowState.question) {
+              <section class="interactive-section">
+                <app-interactive-config-step
+                  [question]="interactiveFlowState.question"
+                  [canceling]="isAuthCancelled"
+                  [processing]="interactiveFlowState.isProcessing"
+                  (answerChange)="handleInteractiveAnswerUpdate($event)"
+                />
+              </section>
+            }
+          </div>
         }
-        @if (
-          quickAddForm.get('remoteName')?.hasError('nameTaken') &&
-          quickAddForm.get('remoteName')?.touched
-        ) {
-          <mat-error>That name is already taken. Please choose another name</mat-error>
-        }
-      </mat-form-field>
-    </div>
-
-    <!-- Operation Options -->
-    <div class="form-section">
-      <h3 class="section-title">
-        <mat-icon svgIcon="wrench" class="accent"></mat-icon>
-        Operation Options
-      </h3>
-      <p class="section-description">
-        Choose which operations to configure for this remote. You can set up mounting, syncing,
-        copying, bidirectional syncing, and moving operations.
-      </p>
-
-      <!-- Auto-Mount Expansion Panel -->
-      <mat-expansion-panel
-        class="operation-panel"
-        (opened)="onPanelToggle('mount', true)"
-        (closed)="onPanelToggle('mount', false)"
-        [disabled]="isAuthInProgress"
-      >
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <mat-checkbox formControlName="autoMount"> Enable Auto-Mount </mat-checkbox>
-          </mat-panel-title>
-        </mat-expansion-panel-header>
-
-        <!-- Mount Configuration -->
-        <div class="operation-config">
-          <mat-form-field appearance="fill">
-            <mat-label>Mount Destination</mat-label>
-            <input
-              matInput
-              placeholder="Select a folder to mount the remote..."
-              formControlName="mountPath"
-            />
-            <button matIconButton matSuffix (click)="selectFolder('mountPath')">
-              <mat-icon svgIcon="folder" class="primary"></mat-icon>
-            </button>
-            @if (
-              quickAddForm.get('autoMount')?.value &&
-              quickAddForm.get('mountPath')?.hasError('required') &&
-              quickAddForm.get('mountPath')?.touched
-            ) {
-              <mat-error>Mount destination is required when auto-mount is enabled</mat-error>
-            }
-          </mat-form-field>
-        </div>
-      </mat-expansion-panel>
-
-      <!-- Auto-Sync Expansion Panel -->
-      <mat-expansion-panel
-        class="operation-panel"
-        (opened)="onPanelToggle('sync', true)"
-        (closed)="onPanelToggle('sync', false)"
-        [disabled]="isAuthInProgress"
-      >
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <mat-checkbox formControlName="autoSync"> Enable Auto-Sync </mat-checkbox>
-          </mat-panel-title>
-        </mat-expansion-panel-header>
-
-        <!-- Sync Configuration -->
-        <div class="operation-config">
-          <mat-form-field appearance="fill">
-            <mat-label>Sync Destination</mat-label>
-            <input
-              matInput
-              placeholder="Destination path (e.g., local folder or remote:/)"
-              formControlName="syncDest"
-            />
-            <button matIconButton matSuffix (click)="selectFolder('syncDest')">
-              <mat-icon svgIcon="folder" class="primary"></mat-icon>
-            </button>
-            @if (
-              quickAddForm.get('autoSync')?.value &&
-              quickAddForm.get('syncDest')?.hasError('required') &&
-              quickAddForm.get('syncDest')?.touched
-            ) {
-              <mat-error>Sync destination is required when auto-sync is enabled</mat-error>
-            }
-          </mat-form-field>
-        </div>
-      </mat-expansion-panel>
-
-      <!-- Auto-Copy Expansion Panel -->
-      <mat-expansion-panel
-        class="operation-panel"
-        (opened)="onPanelToggle('copy', true)"
-        (closed)="onPanelToggle('copy', false)"
-        [disabled]="isAuthInProgress"
-      >
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <mat-checkbox formControlName="autoCopy"> Enable Auto-Copy </mat-checkbox>
-          </mat-panel-title>
-        </mat-expansion-panel-header>
-
-        <!-- Copy Configuration -->
-        <div class="operation-config">
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Copy Destination</mat-label>
-            <input
-              matInput
-              placeholder="Destination path (e.g., local folder or remote:/)"
-              formControlName="copyDest"
-            />
-            <button matIconButton matSuffix (click)="selectFolder('copyDest')">
-              <mat-icon svgIcon="folder" class="primary"></mat-icon>
-            </button>
-            @if (
-              quickAddForm.get('autoCopy')?.value &&
-              quickAddForm.get('copyDest')?.hasError('required') &&
-              quickAddForm.get('copyDest')?.touched
-            ) {
-              <mat-error>Copy destination is required when auto-copy is enabled</mat-error>
-            }
-          </mat-form-field>
-        </div>
-      </mat-expansion-panel>
-
-      <!-- Auto-Bisync Expansion Panel -->
-      <mat-expansion-panel
-        class="operation-panel"
-        (opened)="onPanelToggle('bisync', true)"
-        (closed)="onPanelToggle('bisync', false)"
-        [disabled]="isAuthInProgress"
-      >
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <mat-checkbox formControlName="autoBisync"> Enable Auto-Bisync </mat-checkbox>
-          </mat-panel-title>
-        </mat-expansion-panel-header>
-
-        <!-- Bisync Configuration -->
-        <div class="operation-config">
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Bisync Destination</mat-label>
-            <input
-              matInput
-              placeholder="Destination path (e.g., local folder or remote:/)"
-              formControlName="bisyncDest"
-            />
-            <button matIconButton matSuffix (click)="selectFolder('bisyncDest')">
-              <mat-icon svgIcon="folder" class="primary"></mat-icon>
-            </button>
-            @if (
-              quickAddForm.get('autoBisync')?.value &&
-              quickAddForm.get('bisyncDest')?.hasError('required') &&
-              quickAddForm.get('bisyncDest')?.touched
-            ) {
-              <mat-error>Bisync destination is required when auto-bisync is enabled</mat-error>
-            }
-          </mat-form-field>
-        </div>
-      </mat-expansion-panel>
-
-      <!-- Auto-Move Expansion Panel -->
-      <mat-expansion-panel
-        class="operation-panel"
-        (opened)="onPanelToggle('move', true)"
-        (closed)="onPanelToggle('move', false)"
-        [disabled]="isAuthInProgress"
-      >
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <mat-checkbox formControlName="autoMove"> Enable Auto-Move </mat-checkbox>
-          </mat-panel-title>
-        </mat-expansion-panel-header>
-
-        <!-- Move Configuration -->
-        <div class="operation-config">
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Move Destination</mat-label>
-            <input
-              matInput
-              placeholder="Destination path (e.g., local folder or remote:/)"
-              formControlName="moveDest"
-            />
-            <button matIconButton matSuffix (click)="selectFolder('moveDest')">
-              <mat-icon svgIcon="folder" class="primary"></mat-icon>
-            </button>
-            @if (
-              quickAddForm.get('autoMove')?.value &&
-              quickAddForm.get('moveDest')?.hasError('required') &&
-              quickAddForm.get('moveDest')?.touched
-            ) {
-              <mat-error>Move destination is required when auto-move is enabled</mat-error>
-            }
-          </mat-form-field>
-        </div>
-      </mat-expansion-panel>
-    </div>
-  </form>
-
-  <!-- End of Form Content -->
-
-  <!-- Action Buttons -->
-  <div class="button-group">
-    <button
-      (click)="onSubmit()"
-      matButton="filled"
-      class="primary"
-      [disabled]="isAuthInProgress || quickAddForm.invalid"
-    >
-      @if (isAuthInProgress && !isAuthCancelled) {
-        <mat-spinner diameter="20"></mat-spinner>
-      } @else {
-        <mat-icon svgIcon="add"></mat-icon>
       }
-      <span>{{ getSubmitButtonText() }}</span>
-    </button>
+    </div>
 
-    <!-- Cancel Authentication Button -->
-    @if (isAuthInProgress && !isAuthCancelled) {
-      <button
-        matButton="filled"
-        class="warn"
-        (click)="cancelAuth()"
-        [disabled]="!isAuthInProgress"
-        @slideInOut
-      >
-        <mat-icon svgIcon="circle-xmark"></mat-icon>
-        <span>Cancel Authentication</span>
-      </button>
-    }
+    <section class="message-bar" aria-live="polite" aria-atomic="true">
+      @if (currentStep === 'interactive' && !isAuthCancelled) {
+        <div class="message info" @slideInFromBottom>
+          <mat-icon svgIcon="info" class="accent"></mat-icon>
+          <span>Please follow the steps to configure your remote.</span>
+        </div>
+      }
+      @if (isAuthCancelled) {
+        <div class="message cleanup" role="status" @slideInFromBottom>
+          <mat-spinner diameter="20"></mat-spinner>
+          <span>Cancelling... Please wait...</span>
+        </div>
+      }
+      @if (isAuthInProgress && !isAuthCancelled && currentStep !== 'interactive') {
+        <div class="message loading" role="status" @slideInFromBottom>
+          <mat-icon svgIcon="info" class="accent"></mat-icon>
+          <span
+            >A browser window may open for authentication. Please complete the process there.</span
+          >
+        </div>
+      }
+    </section>
 
-    <!-- Cleanup Message -->
-    @if (isAuthCancelled) {
-      <div class="message cleanup" @slideInOut>
-        <mat-spinner diameter="20"></mat-spinner>
-        <span>Cleaning up authentication process. Please wait...</span>
-      </div>
-    }
-
-    <!-- Authentication Message -->
-    @if (isAuthInProgress && !isAuthCancelled) {
-      <div class="message loading">
-        <mat-icon svgIcon="info" class="accent"></mat-icon>
-        <span
-          >A browser window may open for authentication. Please complete the process there.</span
+    <footer class="button-group">
+      @if (currentStep === 'setup') {
+        <button
+          [@fadeInOut]
+          matButton="filled"
+          class="accent"
+          (click)="nextStep()"
+          [disabled]="!isSetupStepValid()"
+          type="button"
+          aria-label="Proceed to operations step"
         >
-      </div>
-    }
-  </div>
+          <span>Next</span>
+          <mat-icon svgIcon="right-arrow"></mat-icon>
+        </button>
+      }
+
+      @if (currentStep === 'operations') {
+        <button
+          [@fadeInOut]
+          matButton="filled"
+          class="accent"
+          (click)="prevStep()"
+          type="button"
+          [disabled]="isAuthInProgress"
+          aria-label="Return to setup step"
+        >
+          <mat-icon svgIcon="left-arrow"></mat-icon>
+          <span>Back</span>
+        </button>
+
+        @if (isAuthInProgress && !isAuthCancelled) {
+          <button
+            [@fadeInOut]
+            matButton="filled"
+            class="warn"
+            (click)="cancelAuth()"
+            type="button"
+            aria-label="Cancel authentication process"
+          >
+            <mat-icon svgIcon="circle-xmark"></mat-icon>
+            <span>Cancel</span>
+          </button>
+        }
+
+        <button
+          [@fadeInOut]
+          matButton="filled"
+          class="primary"
+          (click)="onSubmit()"
+          [disabled]="isAuthInProgress || quickAddForm.invalid"
+          type="submit"
+          [attr.aria-busy]="isAuthInProgress"
+          aria-label="Create remote with selected configuration"
+        >
+          @if (isAuthInProgress && !isAuthCancelled) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <mat-icon svgIcon="add"></mat-icon>
+          }
+          <span>{{ getSubmitButtonText() }}</span>
+        </button>
+      }
+
+      <!-- Interactive Step Buttons -->
+      @if (currentStep === 'interactive') {
+        <button
+          [@fadeInOut]
+          matButton="filled"
+          class="warn"
+          (click)="cancelAuth()"
+          [disabled]="interactiveFlowState.isProcessing"
+          type="button"
+          aria-label="Cancel interactive configuration"
+        >
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
+          <span>Cancel</span>
+        </button>
+
+        <button
+          [@fadeInOut]
+          matButton="filled"
+          class="primary"
+          (click)="onInteractiveContinue(interactiveFlowState.answer)"
+          [disabled]="isInteractiveContinueDisabled()"
+          type="button"
+          [attr.aria-busy]="interactiveFlowState.isProcessing"
+          aria-label="Submit answer and continue configuration"
+        >
+          @if (interactiveFlowState.isProcessing) {
+            <mat-spinner diameter="20"></mat-spinner>
+          }
+          <span>{{ interactiveFlowState.isProcessing ? 'Processing...' : 'Continue' }}</span>
+        </button>
+      }
+    </footer>
+  </form>
 </div>

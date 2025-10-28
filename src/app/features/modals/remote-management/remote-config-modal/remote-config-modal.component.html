@@ -40,7 +40,7 @@
               }
             </div>
             @if (getStepState(i + 1) === 'current') {
-              <span class="step-label-animated" @labelSlideIn>{{ step }}</span>
+              <span class="step-label-animated" [@labelSlideIn]>{{ step }}</span>
             }
           </button>
         }
@@ -120,7 +120,7 @@
           class="accent"
           [disabled]="isAuthInProgress"
           (click)="prevStep()"
-          @fadeInOut
+          [@fadeInOut]
           title="Go to previous step"
           aria-label="Previous step"
         >
@@ -137,7 +137,7 @@
         <button
           matButton="filled"
           class="warn"
-          @fadeInOut
+          [@fadeInOut]
           (click)="cancelAuth()"
           [disabled]="(!isAuthInProgress && !interactiveFlowState.isActive) || isAuthCancelled"
           title="Cancel the current operation"
@@ -161,7 +161,7 @@
           matButton="filled"
           (click)="onSubmit()"
           [disabled]="isSaveDisabled"
-          @fadeInOut
+          [@fadeInOut]
           aria-live="polite"
           [attr.aria-label]="editTarget ? 'Save changes' : 'Save configuration and create remote'"
           [title]="editTarget ? 'Save changes' : 'Save configuration and create remote'"
@@ -185,7 +185,7 @@
           [disabled]="isInteractiveContinueDisabled()"
           class="continue-button"
           [class.loading]="interactiveFlowState.isProcessing || isAuthCancelled"
-          @fadeInOut
+          [@fadeInOut]
           aria-live="polite"
           [attr.aria-label]="
             interactiveFlowState.isProcessing ? 'Processing...' : 'Continue to next step'
@@ -208,7 +208,7 @@
           class="accent"
           (click)="nextStep()"
           [disabled]="!remoteForm.valid || isAuthInProgress"
-          @fadeInOut
+          [@fadeInOut]
           title="Go to next step"
           aria-label="Next step"
         >

@@ -290,10 +290,13 @@ export interface QuickAddForm {
   remoteName: string;
   remoteType: string;
   useInteractiveMode: boolean;
+  mountSource: string;
   mountPath: string;
   autoMount: boolean;
+  syncSource: string;
   syncDest: string;
   autoSync: boolean;
+  copySource: string;
   copyDest: string;
   autoCopy: boolean;
   bisyncSource: string;

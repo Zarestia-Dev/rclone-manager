@@ -17,7 +17,7 @@
   }
 
   &.scrolled p {
-    opacity: 1;
+    opacity: 1 !important;
   }
 
   p {
@@ -28,7 +28,6 @@
     justify-content: center;
     gap: var(--space-xs);
     margin: 0;
-    opacity: 0;
     font-weight: 600;
     text-align: center;
     flex: 1;

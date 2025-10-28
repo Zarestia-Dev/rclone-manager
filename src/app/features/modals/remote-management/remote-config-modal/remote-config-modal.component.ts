@@ -83,14 +83,7 @@ interface ConfigSpec {
   templateUrl: './remote-config-modal.component.html',
   styleUrls: ['./remote-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    AnimationsService.getAnimations([
-      'slideAnimation',
-      'fadeInOutWithMove',
-      'fadeInOut',
-      'labelSlideIn',
-    ]),
-  ],
+  animations: [AnimationsService.getAnimations(['slideAnimation', 'fadeInOut', 'labelSlideIn'])],
 })
 export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // ============================================================================

@@ -128,14 +128,30 @@ export class AnimationsService {
     ]);
   }
 
-  static slideInFromBottom(duration = '300ms'): AnimationTriggerMetadata {
+  /**
+   * Slide from bottom with both enter and leave transitions.
+   * Useful for message bars that should animate in and out.
+   */
+  static slideInFromBottom(
+    enterDuration = '300ms',
+    leaveDuration = '200ms'
+  ): AnimationTriggerMetadata {
     return trigger('slideInFromBottom', [
       transition(':enter', [
         animate(
-          `${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+          `${enterDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
           keyframes([
             style({ opacity: 0, transform: 'translateY(20px)', offset: 0 }),
             style({ opacity: 1, transform: 'translateY(0)', offset: 1 }),
+          ])
+        ),
+      ]),
+      transition(':leave', [
+        animate(
+          `${leaveDuration} cubic-bezier(0.55, 0.06, 0.68, 0.19)`,
+          keyframes([
+            style({ opacity: 1, transform: 'translateY(0)', offset: 0 }),
+            style({ opacity: 0, transform: 'translateY(20px)', offset: 1 }),
           ])
         ),
       ]),
@@ -321,7 +337,10 @@ export class AnimationsService {
    * Complex slide animation for multi-step components
    * NOTE: This function uses group() and query() and is already correct.
    */
-  static slideAnimation(duration = '300ms'): AnimationTriggerMetadata {
+  static slideAnimation(
+    enterDuration = '300ms',
+    leaveDuration = '400ms'
+  ): AnimationTriggerMetadata {
     return trigger('slideAnimation', [
       transition('* => *', [
         query(':leave', [style({ position: 'absolute', width: '100%' })], {
@@ -333,7 +352,7 @@ export class AnimationsService {
             [
               style({ transform: 'translateX(-100%)', opacity: 0 }),
               animate(
-                `${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+                `${enterDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
                 style({ transform: 'translateX(0)', opacity: 1 })
               ),
             ],
@@ -342,8 +361,9 @@ export class AnimationsService {
           query(
             ':leave',
             [
+              style({ transform: 'translateX(0)', opacity: 1 }),
               animate(
-                `${duration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
+                `${leaveDuration} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
                 style({ transform: 'translateX(-100%)', opacity: 0 })
               ),
             ],

@@ -1,190 +1,254 @@
-import { inject, Injectable } from '@angular/core';
-import { BehaviorSubject } from 'rxjs';
+import { Injectable, inject } from '@angular/core';
 import { AbstractControl } from '@angular/forms';
 import { RemoteManagementService } from './remote-management.service';
 import { Entry } from '@app/types';
+
+interface PathState {
+  remoteName: string;
+  currentPath: string;
+  options: Entry[];
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class PathSelectionService {
-  private remoteManagementService = inject(RemoteManagementService);
-  private pathStates: Record<
-    string,
-    { remoteName: string; currentPath: string; options: Entry[] }
-  > = {};
+  private readonly remoteManagementService = inject(RemoteManagementService);
 
-  private loadingStates: Record<string, BehaviorSubject<boolean>> = {};
+  // Public path state accessible by components
+  pathState: Record<string, PathState> = {};
 
-  async fetchEntriesForField(formPath: string, remoteName: string, path: string): Promise<void> {
-    // Don't fetch if no remote name is provided
-    if (!remoteName || remoteName.trim() === '') {
-      this.setLoading(formPath, false);
-      return;
-    }
+  private loadingStates: Record<string, boolean> = {};
+  private debounceTimers: Record<string, any> = {};
 
-    this.setLoading(formPath, true);
-    try {
-      const cleanPath = this.cleanPath(path, remoteName);
-      const response = await this.remoteManagementService.getRemotePaths(
-        remoteName,
-        cleanPath || '',
-        {}
-      );
-
-      this.ensurePathState(formPath, remoteName);
-      this.pathStates[formPath].currentPath = cleanPath;
-      const list =
-        response && typeof response === 'object' && 'list' in (response as Record<string, unknown>)
-          ? ((response as Record<string, unknown>)['list'] as unknown)
-          : undefined;
-      this.pathStates[formPath].options = Array.isArray(list) ? (list as Entry[]) : [];
-    } catch (error) {
-      console.error(`Failed to fetch entries for ${remoteName}:`, error);
-      // Reset path state on error to avoid stuck state
-      this.resetPathSelection(formPath);
-    } finally {
-      this.setLoading(formPath, false);
-    }
-  }
-
-  get getPathState(): Record<
-    string,
-    { remoteName: string; currentPath: string; options: Entry[] }
-  > {
-    console.log('Current path states:', this.pathStates);
-
-    return this.pathStates;
-  }
-
+  /**
+   * Get loading state for a specific form path
+   */
   getLoadingState(formPath: string): boolean {
-    if (!this.loadingStates[formPath]) {
-      this.loadingStates[formPath] = new BehaviorSubject<boolean>(false);
-    }
-    return this.loadingStates[formPath].getValue();
+    return this.loadingStates[formPath] || false;
   }
 
-  async onPathSelected(
-    formPath: string,
-    entryName: string,
-    control: AbstractControl | null = null
-  ): Promise<void> {
-    const state = this.pathStates[formPath];
-    if (!state) return;
-
-    const selectedEntry = state.options.find(e => e.Name === entryName);
-    if (!selectedEntry) return;
-
-    const fullPath = state.currentPath
-      ? `${state.currentPath}/${selectedEntry.Name}`
-      : selectedEntry.Name;
-
-    // Always include remote prefix for source paths
-    const remotePath = `${state.remoteName}:/${fullPath}`;
-
-    if (selectedEntry.IsDir) {
-      state.currentPath = fullPath;
-      control?.setValue(remotePath);
-      await this.fetchEntriesForField(formPath, state.remoteName, fullPath);
-    } else {
-      state.currentPath = fullPath;
-      state.options = [];
-      this.setLoading(formPath, false);
-      control?.setValue(remotePath);
-    }
+  /**
+   * Set loading state for a specific form path
+   */
+  private setLoadingState(formPath: string, isLoading: boolean): void {
+    this.loadingStates[formPath] = isLoading;
   }
 
+  /**
+   * Handle remote selection (e.g., "remoteName:/")
+   */
   async onRemoteSelected(
     formPath: string,
     remoteWithColon: string,
-    control: AbstractControl | null = null
+    control?: AbstractControl | null
   ): Promise<void> {
-    const [remote] = remoteWithColon.split(':');
-    this.ensurePathState(formPath, remote);
-    this.pathStates[formPath].remoteName = remote;
-    this.pathStates[formPath].currentPath = '';
+    const remoteName = remoteWithColon.replace(':/', '').trim();
 
-    // Default to remote:/ when selecting a remote
-    const remotePath = `${remote}:/`;
+    // Create a new state object instead of mutating
+    this.pathState = {
+      ...this.pathState,
+      [formPath]: {
+        remoteName,
+        currentPath: '',
+        options: [],
+      },
+    };
+
+    // Fetch root entries
+    await this.fetchEntriesForField(formPath, remoteName, '');
+
+    // Update form control
     if (control) {
-      control.setValue(remotePath);
-    }
-
-    await this.fetchEntriesForField(formPath, remote, '');
-  }
-
-  resetPathSelection(formPath: string): void {
-    // Instead of setting empty values, delete the path state entirely
-    // This ensures the template conditions work correctly
-    delete this.pathStates[formPath];
-  }
-
-  private ensurePathState(formPath: string, remoteName = ''): void {
-    if (!this.pathStates[formPath]) {
-      this.pathStates[formPath] = { remoteName, currentPath: '', options: [] };
+      control.setValue(''); // Set to empty string, as the full path is remoteName + :/ + path
     }
   }
 
-  private cleanPath(path: string, remoteName: string): string {
-    let cleanPath = path;
+  /**
+   * Handle path selection within a remote
+   */
+  async onPathSelected(
+    formPath: string,
+    entryName: string,
+    control?: AbstractControl | null
+  ): Promise<void> {
+    let state = this.pathState[formPath];
+    if (!state || !state.remoteName) return;
 
-    if (cleanPath.startsWith(`${remoteName}:/`)) {
-      cleanPath = cleanPath.slice(`${remoteName}:/`.length);
+    const selectedEntry = (state.options || []).find((e: Entry) => e.Name === entryName);
+    if (!selectedEntry) return;
+
+    // Build new path
+    const newPath = state.currentPath ? `${state.currentPath}/${entryName}` : entryName;
+
+    // Update current path by creating a new state
+    state = { ...state, currentPath: newPath };
+    this.pathState = { ...this.pathState, [formPath]: state };
+
+    // Update form control with relative path
+    if (control) {
+      control.setValue(newPath);
     }
-    cleanPath = cleanPath.replace(/^\/+/, '').replace(/\/+$/, '');
 
-    return cleanPath;
-  }
-
-  private setLoading(formPath: string, isLoading: boolean): void {
-    if (!this.loadingStates[formPath]) {
-      this.loadingStates[formPath] = new BehaviorSubject<boolean>(isLoading);
+    // Only fetch new entries if the selected item is a directory
+    if (selectedEntry.IsDir) {
+      // Fetch entries for new path
+      await this.fetchEntriesForField(formPath, state.remoteName, newPath);
     } else {
-      this.loadingStates[formPath].next(isLoading);
+      // If it's a file, clear options as we can't navigate further (create new state)
+      this.pathState = {
+        ...this.pathState,
+        [formPath]: { ...state, options: [] },
+      };
     }
   }
 
-  async onInputChanged(formPath: string, value: string): Promise<void> {
-    const state = this.pathStates[formPath];
-    const cleanedPath = value?.trim() ?? '';
-
-    if (!this.shouldReloadOnPathChange(cleanedPath, state?.currentPath ?? '')) {
-      return;
+  /**
+   * Handle input changes with debouncing
+   */
+  onInputChanged(formPath: string, value: string): void {
+    // Clear existing timer
+    if (this.debounceTimers[formPath]) {
+      clearTimeout(this.debounceTimers[formPath]);
     }
-    if (cleanedPath === '') {
-      // If input is cleared and no remote is selected, reset the path state completely
-      if (!state?.remoteName) {
-        this.resetPathSelection(formPath);
-        return;
+
+    // Don't fetch if no remote is selected
+    const state = this.pathState[formPath];
+    if (!state || !state.remoteName) return;
+
+    // Debounce the fetch
+    this.debounceTimers[formPath] = setTimeout(() => {
+      // When input changes, we are searching relative to the remote root
+      // So we update the currentPath to the new value (create new state)
+      this.pathState = {
+        ...this.pathState,
+        [formPath]: { ...state, currentPath: value },
+      };
+      this.fetchEntriesForField(formPath, state.remoteName, value);
+    }, 300);
+  }
+
+  /**
+   * Fetch directory entries for a given path
+   */
+  async fetchEntriesForField(formPath: string, remoteName: string, path: string): Promise<void> {
+    this.setLoadingState(formPath, true);
+
+    console.log(`Fetching entries for ${formPath}: remote=${remoteName}, path=`, path);
+
+    try {
+      // The response from getRemotePaths is the object { list: [...] }
+      const response = await this.remoteManagementService.getRemotePaths(
+        remoteName,
+        path || '',
+        {}
+      );
+
+      // Get current state for this formPath, or create a default
+      const currentState = this.pathState[formPath] || {
+        remoteName,
+        currentPath: path,
+        options: [],
+      };
+
+      // Create a new state object
+      this.pathState = {
+        ...this.pathState,
+        [formPath]: {
+          ...currentState,
+          remoteName,
+          currentPath: path,
+          options: response || [],
+        },
+      };
+
+      console.log(this.pathState[formPath]);
+    } catch (error) {
+      console.error(`Error fetching entries for ${formPath}:`, error);
+      if (this.pathState[formPath]) {
+        this.pathState = {
+          ...this.pathState,
+          [formPath]: {
+            ...this.pathState[formPath],
+            options: [],
+          },
+        };
       }
-      await this.fetchEntriesForField(formPath, state.remoteName, '');
-      return;
-    }
-    if (cleanedPath.includes(':/')) {
-      const [remote, ...pathParts] = cleanedPath.split(/:\/?/);
-      const path = pathParts.join('/');
-      await this.fetchEntriesForField(formPath, remote, path);
-    } else {
-      await this.fetchEntriesForField(formPath, state?.remoteName ?? '', cleanedPath);
+    } finally {
+      this.setLoadingState(formPath, false);
     }
   }
 
-  private shouldReloadOnPathChange(newPath: string, currentPath: string): boolean {
-    // Reload when input is cleared
-    if (newPath === '') return true;
+  /**
+   * Reset path selection for a field
+   */
+  resetPathSelection(formPath: string): void {
+    // Create new state object without the deleted key
+    const newState = { ...this.pathState };
+    delete newState[formPath];
+    this.pathState = newState;
 
-    // Always reload on remote change (contains :/)
-    if (newPath.includes(':/')) return true;
+    this.setLoadingState(formPath, false);
 
-    // Reload when trailing slash is added (directory navigation)
-    if (newPath.endsWith('/')) return true;
+    if (this.debounceTimers[formPath]) {
+      clearTimeout(this.debounceTimers[formPath]);
+      delete this.debounceTimers[formPath];
+    }
+  }
 
-    // Don't reload if path hasn't actually changed
-    if (newPath === currentPath) return false;
+  /**
+   * Clear all path states
+   */
+  clearAllStates(): void {
+    this.pathState = {}; // This already creates a new reference, so it's fine
+    this.loadingStates = {};
 
-    // For other cases, only reload if the path exists in our current options
-    const pathParts = newPath.split('/').filter(Boolean);
-    const parentPath = pathParts.slice(0, -1).join('/');
-    return parentPath === currentPath;
+    Object.keys(this.debounceTimers).forEach(key => {
+      clearTimeout(this.debounceTimers[key]);
+    });
+    this.debounceTimers = {};
+  }
+
+  /**
+   * Initialize path state for edit mode
+   * Parses existing paths and fetches entries if it's a remote path
+   */
+  async initializePathStateForEdit(formPath: string, existingPath: string): Promise<void> {
+    if (!existingPath) return;
+
+    // Check if it's a remote path
+    const remoteMatch = existingPath.match(/^([^:]+):\/(.*)$/);
+    if (!remoteMatch) return; // Local path, no initialization needed
+
+    const remoteName = remoteMatch[1];
+    const path = remoteMatch[2];
+
+    // Initialize state by
+    this.pathState = {
+      ...this.pathState,
+      [formPath]: {
+        remoteName,
+        currentPath: path,
+        options: [],
+      },
+    };
+
+    // Fetch entries for the path
+    // We fetch based on the directory of the path to show options
+    const lastSlash = path.lastIndexOf('/');
+    const dirPath = lastSlash > -1 ? path.substring(0, lastSlash) : '';
+
+    await this.fetchEntriesForField(formPath, remoteName, dirPath);
+
+    // After fetching, ensure the currentPath is set back to the full original path
+    if (this.pathState[formPath]) {
+      this.pathState = {
+        ...this.pathState,
+        [formPath]: {
+          ...this.pathState[formPath],
+          currentPath: path,
+        },
+      };
+    }
   }
 }
