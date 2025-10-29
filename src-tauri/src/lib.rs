@@ -34,6 +34,11 @@ use crate::{
             operations::core::{
                 load_setting_value, load_settings, reset_setting, reset_settings, save_settings,
             },
+            rclone_backend::{
+                get_rclone_backend_store_path, load_rclone_backend_options,
+                remove_rclone_backend_option, reset_rclone_backend_options,
+                save_rclone_backend_option, save_rclone_backend_options,
+            },
             remote::manager::{delete_remote_settings, get_remote_settings, save_remote_settings},
         },
         tray::actions::{
@@ -52,8 +57,9 @@ use crate::{
         },
         queries::{
             flags::{
-                get_copy_flags, get_filter_flags, get_global_flags, get_mount_flags,
-                get_sync_flags, get_vfs_flags,
+                get_backend_flags, get_copy_flags, get_filter_flags, get_flags_by_category,
+                get_grouped_options_with_values, get_mount_flags, get_option_blocks,
+                get_sync_flags, get_vfs_flags, set_rclone_option,
             },
             get_all_remote_configs, get_bandwidth_limit, get_completed_transfers, get_core_stats,
             get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats,
@@ -71,7 +77,7 @@ use crate::{
         app::{
             builder::create_app_window,
             platform::{are_updates_disabled, get_build_type},
-            ui::set_theme,
+            ui::{get_system_theme, set_theme},
         },
         io::{
             file_helper::{get_file_location, get_folder_location, open_in_files},
@@ -92,7 +98,7 @@ use crate::{
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[allow(unused_mut)]
-    let mut builder = tauri::Builder::default();
+    let mut builder = tauri::Builder::default().plugin(tauri_plugin_shell::init());
 
     #[cfg(feature = "updater")]
     {
@@ -153,7 +159,17 @@ pub fn run() {
                     .map_err(|e| format!("Failed to create settings store: {e}"))?,
             );
 
-            app.manage(SettingsState { store, config_dir });
+            app.manage(SettingsState {
+                store,
+                config_dir: config_dir.clone(),
+            });
+
+            // Initialize RClone Backend Store for backend.json
+            // Uses the same config directory as settings for consistency
+            use crate::core::settings::rclone_backend::RCloneBackendStore;
+            let rclone_backend_store = RCloneBackendStore::new(app_handle, &config_dir)
+                .map_err(|e| format!("Failed to initialize RClone backend store: {e}"))?;
+            app.manage(rclone_backend_store);
 
             // Initialize SafeEnvironmentManager for secure password handling
             use crate::core::security::{CredentialStore, SafeEnvironmentManager};
@@ -239,7 +255,7 @@ pub fn run() {
                 info!("🔗 Global shortcuts registered successfully");
             }
 
-            init_logging(settings.experimental.debug_logging)
+            init_logging(settings.developer.debug_logging)
                 .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
             init_rclone_state(app_handle, &settings)
@@ -305,6 +321,7 @@ pub fn run() {
             get_file_location,
             // UI
             set_theme,
+            get_system_theme,
             // Platform
             get_build_type,
             are_updates_disabled,
@@ -349,18 +366,29 @@ pub fn run() {
             get_remote_paths,
             get_bandwidth_limit,
             // Flags
-            get_global_flags,
+            get_option_blocks,
+            get_flags_by_category,
             get_copy_flags,
             get_sync_flags,
             get_filter_flags,
             get_vfs_flags,
             get_mount_flags,
+            get_backend_flags,
+            get_grouped_options_with_values,
+            set_rclone_option,
             // Settings
             load_settings,
             load_setting_value,
             save_settings,
             reset_settings,
             reset_setting,
+            // RClone Backend Settings
+            load_rclone_backend_options,
+            save_rclone_backend_options,
+            save_rclone_backend_option,
+            reset_rclone_backend_options,
+            get_rclone_backend_store_path,
+            remove_rclone_backend_option,
             // Remote Settings
             save_remote_settings,
             get_remote_settings,

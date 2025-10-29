@@ -62,16 +62,6 @@
 
 .system {
   background: linear-gradient(45deg, black 50%, white 50%);
-
-  // Tauri does not support system theme detection yet
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: var(--disabled-fade);
-    border-radius: inherit;
-    z-index: 1;
-  }
 }
 
 .selected {

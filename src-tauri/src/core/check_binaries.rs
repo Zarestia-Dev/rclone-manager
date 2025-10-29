@@ -1,7 +1,8 @@
-use std::{path::PathBuf, process::Command};
+use std::path::PathBuf;
 
 use log::{debug, error, info};
 use tauri::{AppHandle, Manager};
+use tauri_plugin_shell::ShellExt;
 
 use crate::utils::types::all_types::RcloneState;
 
@@ -65,7 +66,7 @@ pub fn is_7z_available() -> bool {
 
 /// Internal helper that borrows the `AppHandle` so Rust call-sites don't need to clone it.
 #[tauri::command]
-pub fn check_rclone_available(app: AppHandle, path: &str) -> bool {
+pub async fn check_rclone_available(app: AppHandle, path: &str) -> Result<bool, String> {
     let rclone_path = if !path.is_empty() {
         // Use the explicit path if provided
         get_rclone_binary_path(&PathBuf::from(path))
@@ -81,13 +82,21 @@ pub fn check_rclone_available(app: AppHandle, path: &str) -> bool {
 
     // Check if the path exists and can execute --version
     if rclone_path.exists() {
-        Command::new(&rclone_path)
+        match app
+            .shell()
+            .command(rclone_path.to_string_lossy().to_string())
             .arg("--version")
             .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+            .await
+        {
+            Ok(output) => Ok(output.status.success()),
+            Err(e) => Err(format!("Failed to execute rclone: {}", e)),
+        }
     } else {
-        false
+        Err(format!(
+            "Rclone binary not found at {}",
+            rclone_path.display()
+        ))
     }
 }
 
@@ -96,7 +105,7 @@ pub fn build_rclone_command(
     bin_override: Option<&str>,
     config_override: Option<&str>,
     args: Option<&[&str]>,
-) -> Command {
+) -> tauri_plugin_shell::process::Command {
     // Determine binary path
     let binary_path = if let Some(b) = bin_override {
         if !b.is_empty() {
@@ -108,18 +117,21 @@ pub fn build_rclone_command(
         read_rclone_path(app)
     };
 
-    let mut cmd = Command::new(binary_path);
+    let mut cmd = app
+        .shell()
+        .command(binary_path.to_string_lossy().to_string());
+
     // Determine config file: explicit override takes precedence, otherwise use
     // the application state's configured rclone_config_file (if set).
     if let Some(cfg) = config_override {
         if !cfg.is_empty() {
-            cmd.arg("--config").arg(cfg);
+            cmd = cmd.arg("--config").arg(cfg);
         }
     } else {
         let rclone_state = app.state::<RcloneState>();
         let cfg = rclone_state.rclone_config_file.read().unwrap().clone();
         if !cfg.is_empty() {
-            cmd.arg("--config").arg(cfg);
+            cmd = cmd.arg("--config").arg(cfg);
         }
     }
 
@@ -127,7 +139,7 @@ pub fn build_rclone_command(
     if let Some(a) = args
         && !a.is_empty()
     {
-        cmd.args(a);
+        cmd = cmd.args(a);
     }
 
     cmd

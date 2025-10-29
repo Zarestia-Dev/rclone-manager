@@ -1,37 +1,9 @@
 ## 🛠️ Issues
 
-### 1️⃣ Terminal Window Flash on Windows
+### 1️⃣ Terminal Window Flash on Windows (FIXED)
 
-🔗 [Track on GitHub Project](https://github.com/users/RClone-Manger/projects/6/views/1?pane=issue&itemId=110319862)  
+🔗 [Track on GitHub Project](https://github.com/orgs/Zarestia-Dev/projects/2/views/1?pane=issue&itemId=135397576)  
 (“Investigate workaround for terminal flash on Windows”)
-
-On **Windows**, you may see a **brief terminal window flash** either:
-
-- When **starting RClone Manager**, or
-- When running certain Rclone operations like **mounting remotes** or **OAuth authentication**.
-
-This is **not a bug in RClone Manager**, but a side effect of how the **official Rclone binary** is compiled:
-
-> ⚙️ **Rclone is compiled as a console application using Go**, and on Windows, such binaries always open a terminal window when executed — even if launched from a GUI app.
-
-#### ✅ What This Means
-
-- This behavior is **harmless** and does **not affect** functionality.
-- It is simply a side effect of **how Rclone is compiled**, not something we directly control.
-
-#### 🔮 Future Plans & Workarounds
-
-We are actively looking into solutions to suppress the terminal window:
-
-- ✨ **Build a GUI version of Rclone**
-  A custom Rclone binary can be compiled with Go using:
-  `go build -ldflags="-H windowsgui" -o rclone.exe`
-  This prevents the terminal window from opening.
-
-- 🤝 **Contribute upstream**
-  We’re considering proposing a **pull request to the Rclone project** to provide an optional “GUI mode” build target for better GUI integration.
-
-Any approach will ensure full CLI compatibility is preserved.
 
 ### 2️⃣ macOS: This app is broken and can't run
 

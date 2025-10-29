@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import {
+  BackendOptions,
   BisyncOptions,
   BisyncParams,
   CopyOptions,
@@ -39,7 +40,8 @@ export class JobManagementService extends TauriBaseService {
     dest: string,
     createEmptySrcDirs?: boolean,
     syncOptions?: SyncOptions,
-    filterOptions?: FilterOptions
+    filterOptions?: FilterOptions,
+    backendOptions?: BackendOptions
   ): Promise<number> {
     this.validatePaths(source, dest);
 
@@ -50,6 +52,7 @@ export class JobManagementService extends TauriBaseService {
       create_empty_src_dirs: createEmptySrcDirs || false,
       sync_options: syncOptions || {},
       filter_options: filterOptions || {},
+      backend_options: backendOptions || {},
     };
 
     console.debug('Invoking start_sync with params', params);
@@ -67,7 +70,8 @@ export class JobManagementService extends TauriBaseService {
     dest: string,
     createEmptySrcDirs?: boolean,
     copyOptions?: CopyOptions,
-    filterOptions?: FilterOptions
+    filterOptions?: FilterOptions,
+    backendOptions?: BackendOptions
   ): Promise<number> {
     this.validatePaths(source, dest);
 
@@ -78,6 +82,7 @@ export class JobManagementService extends TauriBaseService {
       create_empty_src_dirs: createEmptySrcDirs || false,
       copy_options: copyOptions || {},
       filter_options: filterOptions || {},
+      backend_options: backendOptions || {},
     };
 
     console.debug('Invoking start_copy with params', params);
@@ -92,6 +97,7 @@ export class JobManagementService extends TauriBaseService {
     dest: string,
     bisyncOptions?: BisyncOptions,
     filterOptions?: FilterOptions,
+    backendOptions?: BackendOptions,
     dryRun?: boolean,
     resync?: boolean,
     checkAccess?: boolean,
@@ -117,6 +123,7 @@ export class JobManagementService extends TauriBaseService {
       dest,
       bisync_options: bisyncOptions || null,
       filter_options: filterOptions || null,
+      backend_options: backendOptions || {},
       resync: resync || false,
       dryRun: dryRun || false,
       checkAccess: checkAccess || false,
@@ -148,7 +155,8 @@ export class JobManagementService extends TauriBaseService {
     createEmptySrcDirs?: boolean,
     deleteEmptySrcDirs?: boolean,
     moveOptions?: MoveOptions,
-    filterOptions?: FilterOptions
+    filterOptions?: FilterOptions,
+    backendOptions?: BackendOptions
   ): Promise<number> {
     this.validatePaths(source, dest);
     const params: MoveParams = {
@@ -159,6 +167,7 @@ export class JobManagementService extends TauriBaseService {
       delete_empty_src_dirs: deleteEmptySrcDirs || false,
       move_options: moveOptions || {},
       filter_options: filterOptions || {},
+      backend_options: backendOptions || {},
     };
     console.debug('Invoking start_move with params', params);
     const jobId = await this.invokeCommand<number>('start_move', { params });

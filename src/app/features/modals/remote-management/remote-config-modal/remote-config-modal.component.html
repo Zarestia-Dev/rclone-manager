@@ -1,41 +1,72 @@
 <div class="modal-container">
   <!-- Modal Header -->
   <header class="modal-header" data-tauri-drag-region>
-    <button matIconButton aria-label="Help">
+    <button matIconButton aria-label="Help" title="Help">
       <mat-icon svgIcon="question"></mat-icon>
     </button>
     <p data-tauri-drag-region>
       <mat-icon svgIcon="hard-drive" aria-hidden="true"></mat-icon>
-      {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
+      <span>
+        {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
+      </span>
     </p>
-    <button matIconButton (click)="close()" aria-label="Close dialog">
+    <button matIconButton (click)="close()" aria-label="Close dialog" title="Close">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </header>
 
+  <!-- Step Progress Indicator (Only shown during multi-step create flow) -->
+  @if (!interactiveFlowState.isActive && !editTarget) {
+    <div class="step-indicator-container">
+      <div class="step-indicator hide-scrollbar" role="tablist" aria-label="Configuration Steps">
+        @for (step of stepLabels; track step; let i = $index) {
+          <button
+            class="step"
+            [ngClass]="getStepState(i + 1)"
+            [class.clickable]="editTarget"
+            (click)="goToStep(i + 1)"
+            (keydown)="handleStepKeydown($event, i + 1)"
+            [attr.tabindex]="editTarget ? '0' : '-1'"
+            role="tab"
+            [disabled]="!remoteForm.valid || isAuthInProgress"
+            [attr.aria-selected]="currentStep === i + 1"
+            [attr.aria-label]="getStepProgressAriaLabel()"
+          >
+            <div class="step-number">
+              @if (getStepState(i + 1) === 'completed') {
+                <mat-icon svgIcon="circle-check"></mat-icon>
+              } @else {
+                <mat-icon [svgIcon]="getStepIcon(i)"></mat-icon>
+              }
+            </div>
+            @if (getStepState(i + 1) === 'current') {
+              <span class="step-label-animated" [@labelSlideIn]>{{ step }}</span>
+            }
+          </button>
+        }
+      </div>
+    </div>
+  }
+
   <!-- Modal Content -->
   <main class="modal-content" [@slideAnimation]="currentStep">
-    @if (isInteractiveActive && rcQuestion) {
-      <section
-        class="step-container"
-        aria-live="polite"
-        aria-labelledby="interactive-config-heading"
-      >
-        <h2 id="interactive-config-heading" class="visually-hidden">Interactive Configuration</h2>
+    <!-- Interactive Configuration Flow -->
+    @if (interactiveFlowState.isActive && interactiveFlowState.question) {
+      <section class="step-container interactive" aria-live="polite" aria-busy="true">
         <app-interactive-config-step
-          [question]="rcQuestion"
+          [question]="interactiveFlowState.question"
           [canceling]="isAuthCancelled"
-          [processing]="isProcessing"
-          (continue)="onInteractiveContinue($event)"
+          [processing]="interactiveFlowState.isProcessing"
+          (answerChange)="handleInteractiveAnswerUpdate($event)"
         />
       </section>
     }
 
-    @if (!isInteractiveActive) {
+    <!-- Non-Interactive Configuration Flow -->
+    @if (!interactiveFlowState.isActive) {
       <!-- Step 1: Remote Configuration -->
       @if (editTarget === 'remote' || (!editTarget && currentStep === 1)) {
-        <section class="step-container" aria-labelledby="remote-config-heading">
-          <h2 id="remote-config-heading" class="visually-hidden">Remote Configuration</h2>
+        <section class="step-container">
           <app-remote-config-step
             [form]="remoteForm"
             [remoteFields]="dynamicRemoteFields"
@@ -46,41 +77,27 @@
             [useInteractiveMode]="useInteractiveMode"
             (remoteTypeChanged)="onRemoteTypeChange()"
             (interactiveModeToggled)="onInteractiveModeToggled($event)"
-          >
-          </app-remote-config-step>
+            (fieldChanged)="onRemoteFieldChanged($event.fieldName, $event.isChanged)"
+          />
         </section>
       }
 
-      <!-- Steps 2-6: Flags and Mount Configurations -->
-      @for (step of flagConfigService.FLAG_TYPES; track step; let i = $index) {
-        @if (editTarget === step || (!editTarget && currentStep === i + 2)) {
-          <section class="step-container" [attr.aria-labelledby]="step + '-config-heading'">
-            <h2 [id]="step + '-config-heading'" class="visually-hidden">
-              {{ step | titlecase }} Configuration
-            </h2>
+      <!-- Steps 2-9: Flag Configurations (Mount, Copy, Sync, etc.) -->
+      @for (flagType of FLAG_TYPES; track flagType; let i = $index) {
+        @if (editTarget === flagType || (!editTarget && currentStep === i + 2)) {
+          <section class="step-container">
             <app-flag-config-step
               [form]="remoteConfigForm"
-              [flagType]="step"
+              [flagType]="flagType"
               [isEditMode]="!!editTarget"
               [existingRemotes]="existingRemotes"
-              [pathState]="pathSelectionService.getPathState"
-              [sourceLoading]="pathSelectionService.getLoadingState(step + 'Config.source')"
-              [destLoading]="pathSelectionService.getLoadingState(step + 'Config.dest')"
-              [dynamicFlagFields]="dynamicFlagFields[step]"
-              [selectedOptions]="selectedOptions[step]"
-              [isDisabled]="isAuthInProgress"
+              [dynamicFlagFields]="dynamicFlagFields[flagType]"
               [mountTypes]="mountTypes"
-              (optionToggled)="toggleOption(step, $event)"
-              (jsonValidated)="validateJson(step)"
-              (jsonReset)="resetJson(step)"
-              (destRemoteSelected)="onRemoteSelected($event, step + 'Config.dest')"
-              (sourceRemoteSelected)="onRemoteSelected($event, step + 'Config.source')"
-              (destOptionSelected)="onDestOptionSelectedField($event, step + 'Config.dest')"
-              (sourceOptionSelected)="onSourceOptionSelectedField($event, step + 'Config.source')"
-              (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
-              (remoteSelectionReset)="resetRemoteSelectionField($event)"
-            >
-            </app-flag-config-step>
+              [currentRemoteName]="getRemoteName()"
+              [isNewRemote]="!editTarget"
+              (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
+              (destFolderSelected)="handleDestFolderSelect(flagType)"
+            />
           </section>
         }
       }
@@ -89,92 +106,108 @@
 
   <!-- Footer Buttons -->
   <footer class="button-container">
+    <!-- Left Side: Back Button -->
     <div class="button-container-inner">
-      <!-- Navigation Buttons -->
-      @if (currentStep < TOTAL_STEPS && !editTarget && !isInteractiveActive) {
-        <button
-          matButton="filled"
-          class="accent"
-          (click)="nextStep()"
-          [disabled]="!remoteForm.valid || isAuthInProgress"
-          [@fadeInOut]
-        >
-          Next
-        </button>
-      }
-      @if (currentStep > 1 && !editTarget && !isInteractiveActive) {
+      @if (currentStep > 1 && !editTarget && !interactiveFlowState.isActive) {
         <button
           matButton="filled"
           class="accent"
           [disabled]="isAuthInProgress"
           (click)="prevStep()"
           [@fadeInOut]
+          title="Go to previous step"
+          aria-label="Previous step"
         >
+          <mat-icon svgIcon="left-arrow"></mat-icon>
           Back
         </button>
       }
     </div>
 
+    <!-- Center/Right Side: Action Buttons -->
     <div class="button-container-inner">
-      @if ((isAuthInProgress && !isAuthCancelled) || isInteractiveActive) {
+      <!-- Cancel Button (During Auth or Interactive Flow) -->
+      @if ((isAuthInProgress && !isAuthCancelled) || interactiveFlowState.isActive) {
         <button
           matButton="filled"
-          [@fadeInOut]
           class="warn"
+          [@fadeInOut]
           (click)="cancelAuth()"
-          [disabled]="(!isAuthInProgress && !isInteractiveActive) || isAuthCancelled"
+          [disabled]="(!isAuthInProgress && !interactiveFlowState.isActive) || isAuthCancelled"
+          title="Cancel the current operation"
+          aria-label="Cancel current operation"
         >
           Cancel
         </button>
       }
 
+      <!-- Cleanup Status (Shows when auth is cancelled) -->
       @if (isAuthCancelled) {
-        <p>
-          Cleaning
-          @if (isAuthCancelled) {
-            <mat-spinner diameter="20"></mat-spinner>
-          }
-        </p>
+        <span class="cleanup-status" aria-live="polite">
+          Cleaning up
+          <mat-spinner diameter="16" aria-hidden="true"></mat-spinner>
+        </span>
       }
 
-      <!-- Save Buttons -->
-      @if (currentStep > 1 && !editTarget && !isInteractiveActive) {
+      <!-- Save Button (Shown on step > 1 in create mode, or in edit mode) -->
+      @if (((currentStep > 1 && !editTarget) || editTarget) && !interactiveFlowState.isActive) {
         <button
           matButton="filled"
           (click)="onSubmit()"
-          [disabled]="
-            isAuthInProgress || isInteractiveActive || !remoteConfigForm.valid || !remoteForm.valid
-          "
+          [disabled]="isSaveDisabled"
           [@fadeInOut]
           aria-live="polite"
+          [attr.aria-label]="editTarget ? 'Save changes' : 'Save configuration and create remote'"
+          [title]="editTarget ? 'Save changes' : 'Save configuration and create remote'"
         >
+          <!-- Loading State -->
           @if (isAuthInProgress && !isAuthCancelled) {
-            <div class="saving-overlay">
-              <mat-spinner diameter="20"></mat-spinner>
+            <div class="saving-overlay" aria-hidden="true">
+              <mat-spinner diameter="16"></mat-spinner>
             </div>
           }
-          {{ saveButtonLabel }}
+
+          <!-- Button Label -->
+          <span>{{ saveButtonLabel }}</span>
         </button>
       }
 
-      @if (editTarget && !isInteractiveActive) {
+      @if (interactiveFlowState.isActive) {
         <button
           matButton="filled"
-          (click)="onSubmit()"
-          [disabled]="
-            isAuthInProgress ||
-            (editTarget === 'remote' && !remoteForm.valid) ||
-            (['mount', 'copy', 'sync'].includes(editTarget) && !remoteConfigForm.valid)
-          "
+          (click)="onInteractiveContinue(interactiveFlowState.answer)"
+          [disabled]="isInteractiveContinueDisabled()"
+          class="continue-button"
+          [class.loading]="interactiveFlowState.isProcessing || isAuthCancelled"
           [@fadeInOut]
           aria-live="polite"
+          [attr.aria-label]="
+            interactiveFlowState.isProcessing ? 'Processing...' : 'Continue to next step'
+          "
+          [title]="interactiveFlowState.isProcessing ? 'Processing...' : 'Continue to next step'"
         >
-          @if (isAuthInProgress && !isAuthCancelled) {
-            <div class="saving-overlay">
-              <mat-spinner diameter="20"></mat-spinner>
+          @if (interactiveFlowState.isProcessing && !isAuthCancelled) {
+            <div class="saving-overlay" aria-hidden="true">
+              <mat-spinner diameter="16"></mat-spinner>
             </div>
           }
-          {{ saveButtonLabel }}
+          <span>{{ interactiveFlowState.isProcessing ? 'Processing...' : 'Continue' }}</span>
+        </button>
+      }
+
+      <!-- Next Button (Shown in create mode when not on last step) -->
+      @if (currentStep < TOTAL_STEPS && !editTarget && !interactiveFlowState.isActive) {
+        <button
+          matButton="filled"
+          class="accent"
+          (click)="nextStep()"
+          [disabled]="!remoteForm.valid || isAuthInProgress"
+          [@fadeInOut]
+          title="Go to next step"
+          aria-label="Next step"
+        >
+          Next
+          <mat-icon svgIcon="right-arrow"></mat-icon>
         </button>
       }
     </div>

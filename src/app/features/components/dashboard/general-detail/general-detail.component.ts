@@ -3,8 +3,11 @@ import {
   EventEmitter,
   Input,
   Output,
-  OnChanges,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  inject,
+  SimpleChanges,
+  OnChanges,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatChipsModule } from '@angular/material/chips';
@@ -36,8 +39,47 @@ interface ActionConfig {
   label: string;
   icon: string;
   getTooltip: (remote: Remote) => string;
-  getActiveState?: (remote: Remote) => boolean;
+  getActiveState: (remote: Remote) => boolean;
 }
+
+const ACTION_CONFIGS: ActionConfig[] = [
+  {
+    key: 'mount',
+    label: 'Mount',
+    icon: 'mount',
+    getTooltip: remote => (remote.mountState?.mounted ? 'Mounted' : 'Toggle Mount as Quick Action'),
+    getActiveState: remote => remote.mountState?.mounted || false,
+  },
+  {
+    key: 'sync',
+    label: 'Sync',
+    icon: 'sync',
+    getTooltip: remote => (remote.syncState?.isOnSync ? 'Syncing' : 'Toggle Sync as Quick Action'),
+    getActiveState: remote => remote.syncState?.isOnSync || false,
+  },
+  {
+    key: 'copy',
+    label: 'Copy',
+    icon: 'copy',
+    getTooltip: remote => (remote.copyState?.isOnCopy ? 'Copying' : 'Toggle Copy as Quick Action'),
+    getActiveState: remote => remote.copyState?.isOnCopy || false,
+  },
+  {
+    key: 'move',
+    label: 'Move',
+    icon: 'move',
+    getTooltip: remote => (remote.moveState?.isOnMove ? 'Moving' : 'Toggle Move as Quick Action'),
+    getActiveState: remote => remote.moveState?.isOnMove || false,
+  },
+  {
+    key: 'bisync',
+    label: 'Bisync',
+    icon: 'right-left',
+    getTooltip: remote =>
+      remote.bisyncState?.isOnBisync ? 'Bisync Active' : 'Toggle BiSync as Quick Action',
+    getActiveState: remote => remote.bisyncState?.isOnBisync || false,
+  },
+];
 
 @Component({
   selector: 'app-general-detail',
@@ -61,10 +103,10 @@ interface ActionConfig {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GeneralDetailComponent implements OnChanges {
+  cdr = inject(ChangeDetectorRef);
   @Input() selectedRemote!: Remote;
   @Input() iconService!: { getIconName: (type: string) => string };
   @Input() jobs: JobInfo[] = [];
-  @Input() actionInProgress: 'mount' | 'unmount' | 'sync' | 'copy' | 'stop' | 'open' | null = null;
   @Input() restrictMode!: boolean;
 
   @Output() openRemoteConfigModal = new EventEmitter<{
@@ -80,55 +122,11 @@ export class GeneralDetailComponent implements OnChanges {
 
   readonly displayedColumns: string[] = ['type', 'status', 'progress', 'startTime', 'actions'];
   readonly maxPrimaryActions = 3;
+  readonly actionConfigs = ACTION_CONFIGS;
 
-  // Define action configurations
-  readonly actionConfigs: ActionConfig[] = [
-    {
-      key: 'mount',
-      label: 'Mount',
-      icon: 'mount',
-      getTooltip: remote =>
-        remote.mountState?.mounted ? 'Mounted' : 'Toggle Mount as Quick Action',
-      getActiveState: remote => remote.mountState?.mounted || false,
-    },
-    {
-      key: 'sync',
-      label: 'Sync',
-      icon: 'sync',
-      getTooltip: remote =>
-        remote.syncState?.isOnSync ? 'Syncing' : 'Toggle Sync as Quick Action',
-      getActiveState: remote => remote.syncState?.isOnSync || false,
-    },
-    {
-      key: 'copy',
-      label: 'Copy',
-      icon: 'copy',
-      getTooltip: remote =>
-        remote.copyState?.isOnCopy ? 'Copying' : 'Toggle Copy as Quick Action',
-      getActiveState: remote => remote.copyState?.isOnCopy || false,
-    },
-    {
-      key: 'move',
-      label: 'Move',
-      icon: 'move',
-      getTooltip: remote => (remote.moveState?.isOnMove ? 'Moving' : 'Toggle Move as Quick Action'),
-      getActiveState: remote => remote.moveState?.isOnMove || false,
-    },
-    {
-      key: 'bisync',
-      label: 'Bisync',
-      icon: 'right-left',
-      getTooltip: remote =>
-        remote.bisyncState?.isOnBisync ? 'Bisync Active' : 'Toggle BiSync as Quick Action',
-      getActiveState: remote => remote.bisyncState?.isOnBisync || false,
-    },
-  ];
-
-  selectedActions = new Set<PrimaryActionType>();
-
-  ngOnChanges(): void {
-    if (this.selectedRemote?.primaryActions) {
-      this.selectedActions = new Set(this.selectedRemote.primaryActions);
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['selectedRemote']) {
+      this.cdr.markForCheck();
     }
   }
 
@@ -139,7 +137,7 @@ export class GeneralDetailComponent implements OnChanges {
 
   isActionActive(actionKey: PrimaryActionType): boolean {
     const config = this.actionConfigs.find(c => c.key === actionKey);
-    return config?.getActiveState?.(this.selectedRemote) || false;
+    return config?.getActiveState(this.selectedRemote) || false;
   }
 
   getActionPosition(actionKey: PrimaryActionType): number {

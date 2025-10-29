@@ -10,14 +10,14 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/RClone-Manager/rclone-manager/releases">
-    <img src="https://img.shields.io/github/v/release/RClone-Manager/rclone-manager?style=flat-square" alt="Latest Release">
+  <a href="https://github.com/Zarestia-Dev/rclone-manager/releases">
+    <img src="https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&color=2ec27e" alt="Latest Release">
   </a>
-  <a href="https://github.com/RClone-Manager/rclone-manager/blob/master/LICENSE">
-    <img src="https://img.shields.io/github/license/RClone-Manager/rclone-manager?style=flat-square" alt="License">
+  <a href="https://github.com/Zarestia-Dev/rclone-manager/blob/master/LICENSE">
+    <img src="https://img.shields.io/github/license/Zarestia-Dev/rclone-manager?style=flat&color=9141ac" alt="License">
   </a>
-  <a href="https://github.com/RClone-Manager/rclone-manager/stargazers">
-    <img src="https://img.shields.io/github/stars/RClone-Manager/rclone-manager?style=flat-square" alt="Stars">
+  <a href="https://github.com/Zarestia-Dev/rclone-manager/stargazers">
+    <img src="https://img.shields.io/github/stars/Zarestia-Dev/rclone-manager?style=flat&color=3584e4" alt="Stars">
   </a>
 </p>
 
@@ -27,7 +27,7 @@
 
 **RClone Manager** is a **modern, cross-platform GUI** that makes managing [Rclone](https://rclone.org/) remotes effortless. Whether you're syncing files across cloud storage providers, mounting remote drives, or performing complex file operations, RClone Manager provides an intuitive interface that simplifies even the most advanced Rclone features.
 
-> ⚠️ **Actively developed** – Regular updates with new features and improvements. Check out our [roadmap](#-roadmap) to see what's coming next!
+> ⚠️ **Actively developed** – Regular updates with new features and improvements. Check out our [roadmap](https://github.com/users/Zarestia-Dev/projects/2) to see what's coming next!
 
 ---
 
@@ -41,24 +41,24 @@
 
 <p align="center">
   <strong>💻 Desktop Interface</strong><br/>
-  <img src="assets/desktop-ui.png" alt="Desktop UI" width="700"/>
+  <img src="assets/desktop-ui.png" alt="Desktop UI" width="500"/>
 </p>
 
 <p align="center">
   <strong>🏠 Home & Overview</strong><br/>
-  <img src="assets/general-home.png" alt="General Home" width="350"/>
-  <img src="assets/general-remote.png" alt="General Remote" width="350"/>
+  <img src="assets/general-home.png" alt="General Home" width="250"/>
+  <img src="assets/general-remote.png" alt="General Remote" width="250"/>
 </p>
 
 <p align="center">
   <strong>⚙️ Mount Control & Job Monitoring</strong><br/>
-  <img src="assets/mount-control.png" alt="Mount Control" width="350"/>
-  <img src="assets/job-watcher.png" alt="Job Watcher" width="350"/>
+  <img src="assets/mount-control.png" alt="Mount Control" width="250"/>
+  <img src="assets/job-watcher.png" alt="Job Watcher" width="250"/>
 </p>
 
 <p align="center">
-  <strong>📱 Mobile Support</strong><br/>
-  <img src="assets/mobile-ui.png" alt="Mobile UI" width="250"/>
+  <strong>📱 Responsive</strong><br/>
+  <img src="assets/mobile-ui.png" alt="Mobile UI" width="150"/>
 </p>
 
 <p align="center">
@@ -106,56 +106,54 @@
 - 📡 **Metered Connection Detection** – Smart warnings when on limited networks
 - 🎮 **Global Shortcuts** – Keyboard shortcuts for power users (e.g., Ctrl+Shift+M to force-check mounts)
 - 🔍 **Mount Watcher** – Automatic detection and updates of mount status
-
-### ☁️ Supported Cloud Providers
-
-Nearly all Rclone remotes are supported, including:
-
-- **Google Drive** – Full OAuth support with team drives
-- **Microsoft OneDrive** – Personal and Business accounts
-- **Dropbox** – Complete integration
-- **Amazon S3** – And all S3-compatible services
-- **iCloud Drive** – Interactive configuration support
-- **SFTP/FTP** – Secure file transfer protocols
-- **WebDAV** – Generic WebDAV support
-- **And 40+ more providers!**
+- ☁️ **Supported Cloud Providers** – Google Drive, OneDrive, Dropbox, Amazon S3, iCloud, Wasabi, Backblaze B2, and many more
 
 ---
 
-## 🔧 Tech Stack
+## 📦 Installation & Downloads
 
-- **Frontend**: Angular 20 + Angular Material + FontAwesome
-- **Backend**: Tauri 2 (Rust)
-- **Styling**: Custom GTK-inspired theming with responsive design
-- **Architecture**: Modern component-based with reactive state management
+### 📦 Package Manager Availability
 
----
+Install RClone Manager from your favorite package manager.
 
-## 📦 Downloads
+#### 🐧 Linux
 
-### 🎯 Latest Release
+| Repository          | Version                                                                                                                                                                                 | Install Command                                                                                                                                                             |
+| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **AUR**             | [![AUR Version](https://img.shields.io/aur/version/rclone-manager?style=flat&label=)](https://aur.archlinux.org/packages/rclone-manager)                                                | `yay -S rclone-manager`                                                                                                                                                     |
+| **AUR (Git)**       | [![AUR Version](https://img.shields.io/aur/version/rclone-manager-git?style=flat&label=)](https://aur.archlinux.org/packages/rclone-manager-git)                                        | `yay -S rclone-manager-git`                                                                                                                                                 |
+| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?style=flat&logo=github" alt="Download"></a> |
+| **Flathub**         | ![Pending](https://img.shields.io/badge/Pending-gray?style=flat)                                                                                                                        | `flatpak install flathub xxxxxxxxxxxxxxxxxxxxx`                                                                                                                             |
 
-Get the latest version for your platform:
-
-<p align="center">
-  <a href="https://github.com/RClone-Manager/rclone-manager/releases/latest">
-    <img src="https://img.shields.io/badge/Download-Latest%20Release-blue?style=for-the-badge&logo=github" alt="Download Latest Release">
+<!-- <p align="left">
+  <a href="https://flathub.org/apps/io.github.rclonemanager">
+    <img src="https://dl.flathub.org/assets/badges/flathub-badge-en.png" alt="Download on Flathub" height="50">
   </a>
-</p>
+</p> -->
 
-**Available for:**
+#### 🍎 macOS
 
-- 🐧 Linux (x86_64, ARM64) – AppImage, Deb, RPM
-- 🪟 Windows (x86_64, ARM64) – MSI Installer, Portable
-- 🍎 macOS (Intel, Apple Silicon) – DMG
+| Repository          | Version                                                                                                                                                                                 | Install Command                                                                                                                                                             |
+| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Homebrew**        | ![Pending](https://img.shields.io/badge/Pending-gray?style=flat)                                                                                                                        | `brew install --cask xxxxxxxxxxxxxxxxxxxxxx`                                                                                                                                |
+| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?style=flat&logo=github" alt="Download"></a> |
 
-> 📋 See the [full release notes](https://github.com/RClone-Manager/rclone-manager/releases) for changelog and installation instructions
+> **Note:** For macOS app launch instructions and troubleshooting, check the installation guide: [Installation - macOS](https://github.com/Zarestia-Dev/rclone-manager/wiki/Installation-macOS)
+
+#### 🪟 Windows
+
+| Repository          | Version                                                                                                                                                                                 | Install Command                                                                                                                                                             |
+| :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Chocolatey**      | [![Chocolatey](https://img.shields.io/chocolatey/v/rclone-manager?style=flat&label=)](https://community.chocolatey.org/packages/rclone-manager)                                         | `choco install rclone-manager`                                                                                                                                              |
+| **Scoop**           | [![Scoop](https://img.shields.io/scoop/v/rclone-manager?bucket=extras&style=flat&label=&color=2ec27e)](https://github.com/ScoopInstaller/Extras/blob/master/bucket/rclone-manager.json) | `scoop bucket add extras` then `scoop install rclone-manager`                                                                                                               |
+| **Winget**          | ![Winget](https://img.shields.io/winget/v/RClone-Manager.rclone-manager?style=flat&label=&color=2ec27e)                                                                                 | `winget install RClone-Manager.rclone-manager`                                                                                                                              |
+| **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?style=flat&logo=github" alt="Download"></a> |
+
+> 💡 **More package managers coming soon!** We have submissions under review for Flathub, Homebrew, Scoop, and Winget.
 
 ---
 
-## 🛠️ Installation
-
-### 📋 Runtime Requirements
+### 🛠️ Runtime Requirements
 
 **RClone Manager** will guide you through installing any missing dependencies on first run. However, you can pre-install:
 
@@ -173,39 +171,29 @@ Get the latest version for your platform:
 
 - **[7-Zip](https://www.7-zip.org/)** – For password-protected configuration backups
 
-### 🚀 Quick Start
-
-1. **Download** the appropriate package for your OS from [releases](https://github.com/RClone-Manager/rclone-manager/releases/latest)
-2. **Install** using your platform's standard method:
-
-- **Linux:**
-  - **Debian/Ubuntu:** `sudo dpkg -i rclone-manager_*.deb` or run the AppImage
-  - **Fedora/openSUSE (RPM):** `sudo rpm -i rclone-manager-*.rpm`
-  - **Arch Linux:** Install from [AUR](https://aur.archlinux.org/packages/rclone-manager) via your AUR helper, e.g. `yay -S rclone-manager`
-- **Windows:** Run the MSI installer or extract the portable version
-- **macOS:** Open the DMG and drag to Applications
-
-3. **Launch** RClone Manager and follow the onboarding wizard
-4. **Add your first remote** using the guided setup
-
-> 💡 **First-time users?** The app includes an interactive onboarding that will help you set up Rclone and create your first remote!
-
 ---
 
 ## 🛠️ Development
+
+### 🔧 Tech Stack
+
+- **Frontend**: Angular 20 + Angular Material + FontAwesome
+- **Backend**: Tauri 2 (Rust)
+- **Styling**: Custom GTK-inspired theming with responsive design
+- **Architecture**: Modern component-based with reactive state management
 
 ### Prerequisites for Building
 
 - **[Node.js](https://nodejs.org/)** (v18 or later)
 - **[Rust](https://www.rust-lang.org/tools/install)** (latest stable)
 - **[Cargo](https://doc.rust-lang.org/cargo/)** (comes with Rust)
-- Platform-specific build tools (see [Tauri prerequisites](https://tauri.app/v2/guides/prerequisites/))
+- Platform-specific build tools (see [Tauri prerequisites](https://tauri.app/start/prerequisites/))
 
 ### Development Setup
 
 ```bash
 # Clone the repository
-git clone https://github.com/RClone-Manager/rclone-manager.git
+git clone https://github.com/Zarestia-Dev/rclone-manager.git
 cd rclone-manager
 
 # Install dependencies
@@ -228,15 +216,7 @@ npm run tauri build
 
 ### Linting & Formatting
 
-```bash
-# Frontend (Angular)
-npm run lint          # ESLint check
-npm run format        # Prettier format
-
-# Backend (Rust)
-npm run lint:rust     # Clippy check
-npm run format:rust   # Rustfmt format
-```
+- See [**LINTING.md**](LINTING.md) for detailed instructions on linting and formatting the codebase.
 
 ---
 
@@ -244,33 +224,16 @@ npm run format:rust   # Rustfmt format
 
 Known bugs and technical limitations are tracked in two places:
 
-- 📄 See [**ISSUES.md**](ISSUES.md) for detailed explanations of platform-specific issues (e.g. Windows terminal flash)
-- 📌 Visit our [**GitHub Project Board**](https://github.com/users/RClone-Manager/projects/6) for open bugs and upcoming fixes
+- 📄 See [**ISSUES.md**](ISSUES.md) for detailed explanations of platform-specific issues (e.g. MacOS App Damaged)
+- 📌 Visit our [**GitHub Project Board**](https://github.com/users/Zarestia-Dev/projects/2) for open bugs and upcoming fixes
 
 ---
 
 ## 🗺️ Roadmap
 
-We organize development on our [**GitHub Project Board**](https://github.com/users/RClone-Manager/projects/6) — track features, bugs, and long-term goals.
+We organize development on our [**GitHub Project Board**](https://github.com/users/Zarestia-Dev/projects/2) — track features, bugs, and long-term goals.
 
-### Current Focus Areas
-
-- 🔜 **Near-Term Goals**
-  - Enhanced job monitoring with detailed progress tracking
-  - Additional filter configuration options
-  - Performance optimizations for large remote lists
-- 🚀 **Long-Term Vision**
-  - Multi-language support (i18n/l10n)
-  - Mobile app versions
-  - Advanced scheduling and automation
-  - Plugin system for custom integrations
-
-- 🧩 **Community Driven**
-  - Feature requests and suggestions
-  - UI/UX improvements
-  - Platform-specific enhancements
-
-> 🧠 **Want to influence the direction?** Star the repo, watch the project board, and share your ideas in [Discussions](https://github.com/RClone-Manager/rclone-manager/discussions) or [Issues](https://github.com/RClone-Manager/rclone-manager/issues)!
+> 🧠 **Want to influence the direction?** Star the repo, watch the project board, and share your ideas in [Discussions](https://github.com/Zarestia-Dev/rclone-manager/discussions) or [Issues](https://github.com/Zarestia-Dev/rclone-manager/issues)!
 
 ---
 
@@ -280,9 +243,9 @@ We welcome contributions from developers of all skill levels! Here's how you can
 
 ### Ways to Contribute
 
-- 🐛 **Report Bugs** – Found an issue? [Open a bug report](https://github.com/RClone-Manager/rclone-manager/issues/new?template=bug_report.md)
-- 💡 **Suggest Features** – Have an idea? [Share it with us](https://github.com/RClone-Manager/rclone-manager/issues/new?template=feature_request.md)
-- � **Improve Documentation** – Help make our docs clearer and more comprehensive
+- 🐛 **Report Bugs** – Found an issue? [Open a bug report](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=bug_report.md)
+- 💡 **Suggest Features** – Have an idea? [Share it with us](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=feature_request.md)
+- 📖 **Improve Documentation** – Help make our docs clearer and more comprehensive
 - 🔧 **Submit Pull Requests** – Fix bugs or implement features (see development setup above)
 - 🌍 **Translate** – Help make RClone Manager available in your language (coming soon)
 - ⭐ **Spread the Word** – Star the repo, share with friends, write blog posts
@@ -311,9 +274,9 @@ You are free to use, modify, and distribute this software under the terms of the
 
 ### Get Help
 
-- 💬 [GitHub Discussions](https://github.com/RClone-Manager/rclone-manager/discussions) – Ask questions and chat with the community
-- 🐛 [Issue Tracker](https://github.com/RClone-Manager/rclone-manager/issues) – Report bugs or request features
-- 📖 [Documentation](https://github.com/RClone-Manager/rclone-manager/wiki) – Guides and tutorials (coming soon)
+- 💬 [GitHub Discussions](https://github.com/Zarestia-Dev/rclone-manager/discussions) – Ask questions and chat with the community
+- 🐛 [Issue Tracker](https://github.com/Zarestia-Dev/rclone-manager/issues) – Report bugs or request features
+- 📖 [Documentation](https://github.com/Zarestia-Dev/rclone-manager/wiki) – Guides and tutorials (coming soon)
 
 ### Stay Updated
 
@@ -324,6 +287,6 @@ You are free to use, modify, and distribute this software under the terms of the
 ---
 
 <p align="center">
-  Made with ❤️ by the RClone Manager Team<br>
+  Made with ❤️ by the Zarestia Dev Team<br>
   <sub>Powered by Rclone | Built with Angular & Tauri</sub>
 </p>

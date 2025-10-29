@@ -1,183 +1,97 @@
-import { Injectable, inject } from '@angular/core';
-import { MountManagementService } from '../file-operations/mount-management.service';
-import {
-  FieldType,
-  FlagField,
-  FlagType,
-  getDefaultValueForType,
-} from '../../shared/remote-config/remote-config-types';
+import { Injectable } from '@angular/core';
+import { FLAG_TYPES, FlagType, RcConfigOption } from '@app/types';
+import { invoke } from '@tauri-apps/api/core';
 
+// Define the shape of the grouped data returned by our new Rust command
+type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
+
+/**
+ * **Rclone Configuration Service**
+ *
+ * This service manages Rclone backend options and command flags.
+ */
 @Injectable({
   providedIn: 'root',
 })
 export class FlagConfigService {
-  public readonly FLAG_TYPES: FlagType[] = [
-    'mount',
-    'copy',
-    'sync',
-    'filter',
-    'vfs',
-    'bisync',
-    'move',
-  ];
-  private mountManagementService = inject(MountManagementService);
+  // A cache for our master data object to prevent redundant backend calls.
 
-  async loadAllFlagFields(): Promise<Record<FlagType, FlagField[]>> {
-    const result: Record<FlagType, FlagField[]> = {
-      mount: [],
-      copy: [],
-      sync: [],
-      filter: [],
-      vfs: [],
-      bisync: [],
-      move: [],
+  /**
+   * Fetches the master data object: all options, with live values, pre-grouped by the backend.
+   */
+  async getGroupedOptions(): Promise<GroupedRCloneOptions> {
+    const response = await invoke<GroupedRCloneOptions>('get_grouped_options_with_values');
+    console.log('Fetched and cached grouped RClone options:', response);
+    return response;
+  }
+
+  /**
+   * Fetches the simple list of available option blocks (e.g., "main", "vfs").
+   */
+  async getOptionBlocks(): Promise<string[]> {
+    try {
+      // The Rust command returns `{ "options": [...] }` so we need to unpack it.
+      const response = await invoke<{ options: string[] }>('get_option_blocks');
+      return response.options;
+    } catch (error) {
+      console.error('Failed to get RClone option blocks:', error);
+      return [];
+    }
+  }
+
+  // --- Data Mutation ---
+
+  async saveOption(block: string, fullFieldName: string, value: unknown): Promise<void> {
+    try {
+      await invoke('set_rclone_option', {
+        blockName: block,
+        optionName: fullFieldName,
+        value,
+      });
+    } catch (error) {
+      console.error(`Failed to set RClone option ${block}.${fullFieldName}:`, error);
+      throw error;
+    }
+  }
+
+  // --- Flag Fetching for Specific Commands ---
+
+  /**
+   * Loads all flag fields for all defined flag types.
+   */
+  async loadAllFlagFields(): Promise<Record<FlagType, RcConfigOption[]>> {
+    const result: Partial<Record<FlagType, RcConfigOption[]>> = {};
+
+    // Some flag types (bisync, move) don't have dedicated backend commands.
+    // Reuse the 'copy' flags for those since their options largely overlap.
+    const commandTypeMap: Record<FlagType, FlagType> = {
+      mount: 'mount',
+      copy: 'copy',
+      sync: 'sync',
+      filter: 'filter',
+      vfs: 'vfs',
+      backend: 'backend',
+      bisync: 'copy',
+      move: 'copy',
     };
 
     await Promise.all(
-      this.FLAG_TYPES.map(async type => {
-        result[type] = await this.loadFlagFields(type);
+      FLAG_TYPES.map(async type => {
+        const cmdType = commandTypeMap[type] || type;
+        result[type] = await this.loadFlagFields(cmdType);
       })
     );
-
-    return result;
+    return result as Record<FlagType, RcConfigOption[]>;
   }
 
-  private async loadFlagFields(type: FlagType): Promise<FlagField[]> {
+  private async loadFlagFields(type: FlagType): Promise<RcConfigOption[]> {
     try {
-      const methodName = `get${this.capitalizeFirstLetter(type)}Flags`;
-      if (typeof (this.mountManagementService as any)[methodName] === 'function') {
-        const flags = (await (this.mountManagementService as any)[methodName]()) as Promise<any[]>;
-        console.log(`Loaded ${type} flags:`, flags);
-        return this.mapFlagFields(await flags);
-      }
-      return [];
+      const command = `get_${type}_flags`;
+      const flags = await invoke<RcConfigOption[]>(command);
+      return flags ?? [];
     } catch (error) {
       console.error(`Error loading ${type} flags:`, error);
       return [];
-    }
-  }
-
-  private mapFlagFields(fields: any[]): FlagField[] {
-    return fields.map(field => ({
-      ValueStr: field.ValueStr ?? '',
-      Value: field.Value ?? null,
-      name: field.FieldName || field.Name,
-      default: field.Default || null,
-      help: field.Help || 'No description available',
-      type: field.Type || 'string',
-      required: field.Required || false,
-      examples: field.Examples || [],
-    }));
-  }
-
-  toggleOption(
-    selectedOptions: Record<string, any>,
-    fields: FlagField[],
-    fieldName: string
-  ): Record<string, any> {
-    const newOptions = { ...selectedOptions };
-    const field = fields.find(f => f.name === fieldName);
-
-    if (!field) {
-      return newOptions;
-    }
-    if (newOptions[fieldName] !== undefined) {
-      delete newOptions[fieldName];
-    } else {
-      newOptions[fieldName] = this.getFlagValue(field);
-    }
-
-    return newOptions;
-  }
-
-  private getFlagValue(field: FlagField): any {
-    let value =
-      field.Value !== null
-        ? field.Value
-        : field.ValueStr !== undefined
-          ? field.ValueStr
-          : field.default !== null
-            ? field.default
-            : getDefaultValueForType(field.type as FieldType);
-
-    if (field.type === 'Tristate') {
-      value = false;
-    }
-
-    return this.coerceValueToType(value, field.type as FieldType);
-  }
-
-  validateFlagOptions(
-    jsonString: string,
-    fields: FlagField[]
-  ): { valid: boolean; cleanedOptions?: Record<string, any> } {
-    try {
-      const parsedValue = jsonString ? JSON.parse(jsonString) : {};
-      const cleanedValue: Record<string, any> = {};
-
-      for (const [key, value] of Object.entries(parsedValue)) {
-        const field = fields.find(f => f.name === key);
-        if (field) {
-          cleanedValue[key] = this.coerceValueToType(value, field.type as FieldType);
-        }
-      }
-
-      return { valid: true, cleanedOptions: cleanedValue };
-    } catch (error) {
-      console.error('Invalid JSON format:', error);
-      return { valid: false };
-    }
-  }
-
-  private capitalizeFirstLetter(str: string): string {
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  }
-
-  coerceValueToType(value: any, type: FieldType): any {
-    if (value === null || value === undefined || value === '') {
-      return getDefaultValueForType(type);
-    }
-
-    try {
-      switch (type) {
-        case 'bool':
-          if (typeof value === 'string') {
-            const normalized = value.trim().toLowerCase();
-            if (normalized === 'true') return true;
-            if (normalized === 'false') return false;
-          }
-          return Boolean(value);
-
-        case 'int':
-        case 'int64':
-        case 'uint32':
-        case 'SizeSuffix': {
-          const intValue = parseInt(value, 10);
-          return isNaN(intValue) ? getDefaultValueForType(type) : intValue;
-        }
-
-        case 'stringArray':
-        case 'CommaSeparatedList':
-          if (Array.isArray(value)) return value;
-          if (typeof value === 'string') {
-            return value
-              .split(',')
-              .map(item => item.trim())
-              .filter(item => item);
-          }
-          return [String(value)];
-
-        case 'Tristate':
-          if (value === 'true') return true;
-          if (value === 'false') return false;
-          return value;
-
-        default:
-          return value;
-      }
-    } catch (error) {
-      console.warn(`Failed to coerce value '${value}' to type '${type}'`, error);
-      return getDefaultValueForType(type);
     }
   }
 }

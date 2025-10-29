@@ -33,7 +33,7 @@
           <mat-icon class="accent" svgIcon="wrench" aria-hidden="true"></mat-icon>
           What would you like to export?
         </h3>
-        <mat-form-field appearance="fill" class="full-width">
+        <mat-form-field appearance="fill">
           <mat-label>Export Option</mat-label>
           <mat-select
             [ngModel]="selectedOption()"
@@ -43,14 +43,18 @@
             [disabled]="isExporting()"
             required
           >
+            <mat-select-trigger>
+              {{ selectedOptionLabel() }}
+            </mat-select-trigger>
+
             @for (option of exportOptions; track trackByExportOption($index, option)) {
               <mat-option
                 [value]="option.value"
                 [attr.aria-label]="option.label + ' - ' + option.description"
               >
-                <div class="export-option">
+                <div class="option-content">
                   <span class="option-label">{{ option.label }}</span>
-                  <small class="option-description">{{ option.description }}</small>
+                  <small class="option-secondary">{{ option.description }}</small>
                 </div>
               </mat-option>
             }

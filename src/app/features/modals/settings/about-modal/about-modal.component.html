@@ -3,16 +3,19 @@
     <button>
       <mat-icon></mat-icon>
     </button>
-    <p>About</p>
+    <p style="opacity: 0">About</p>
     <button mat-icon-button (click)="close()" aria-label="Close">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
 
-  <div class="modal-content" #content (scroll)="onScroll(content)">
-    <mat-icon svgIcon="rclone" class="app-icon"></mat-icon>
+  <div class="modal-content hide-scrollbar" #content (scroll)="onScroll(content)">
+    <img src="assets/rclone.svg" alt="Rclone Logo" class="app-icon" />
     <h2 class="app-name">RClone Manager</h2>
-    <p class="app-team">Developed by Hakan İSMAİL</p>
+    <p class="app-team">
+      Zarestia
+      <mat-icon svgIcon="wind"></mat-icon>
+    </p>
     <div class="version-info">
       <button class="version-badge" (click)="copyToClipboard(rCloneManagerVersion)">
         {{ rCloneManagerVersion }}
@@ -93,7 +96,7 @@
             <button
               matButton
               class="about-item"
-              (click)="openLink('https://github.com/RClone-Manger/rclone-manager')"
+              (click)="openLink('https://github.com/Zarestia-Dev/rclone-manager')"
             >
               <span>Website</span>
               <mat-icon svgIcon="open-link"></mat-icon>
@@ -102,7 +105,7 @@
             <button
               matButton
               class="about-item"
-              (click)="openLink('https://github.com/RClone-Manger/rclone-manager/issues')"
+              (click)="openLink('https://github.com/Zarestia-Dev/rclone-manager/issues')"
             >
               <span>Report Issues</span>
               <mat-icon svgIcon="open-link"></mat-icon>
@@ -233,7 +236,7 @@
                   <span class="setting-title">Release Channel</span>
                 </div>
                 <div class="setting-control">
-                  <mat-form-field appearance="outline">
+                  <mat-form-field appearance="fill">
                     <mat-select
                       [value]="updateChannel"
                       (selectionChange)="changeChannel($event.value)"
@@ -433,7 +436,7 @@
                     <span class="setting-title">Release Channel</span>
                   </div>
                   <div class="setting-control">
-                    <mat-form-field appearance="outline">
+                    <mat-form-field appearance="fill">
                       <mat-select
                         [value]="rcloneUpdateChannel"
                         (selectionChange)="changeRcloneChannel($event.value)"

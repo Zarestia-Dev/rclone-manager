@@ -16,6 +16,8 @@ pub struct RcloneState {
     pub rclone_config_file: Arc<std::sync::RwLock<String>>,
     pub tray_enabled: Arc<std::sync::RwLock<bool>>,
     pub is_shutting_down: AtomicBool,
+    // pub is_updating: AtomicBool,
+    // pub is_starting: AtomicBool,
     pub notifications_enabled: Arc<std::sync::RwLock<bool>>,
     pub rclone_path: Arc<std::sync::RwLock<PathBuf>>,
     pub restrict_mode: Arc<std::sync::RwLock<bool>>,
@@ -75,9 +77,9 @@ pub struct CoreSettings {
     pub terminal_apps: Vec<String>,
 }
 
-/// Experimental settings
+/// Developer settings
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ExperimentalSettings {
+pub struct DeveloperSettings {
     pub debug_logging: bool,
 }
 
@@ -86,7 +88,7 @@ pub struct ExperimentalSettings {
 pub struct AppSettings {
     pub general: GeneralSettings,
     pub core: CoreSettings,
-    pub experimental: ExperimentalSettings,
+    pub developer: DeveloperSettings,
 }
 
 /// **Global settings state**
@@ -146,7 +148,7 @@ pub struct RcloneCoreVersion {
 
 #[derive(Default)]
 pub struct RcApiEngine {
-    pub process: Option<std::process::Child>,
+    pub process: Option<tauri_plugin_shell::process::CommandChild>,
     pub should_exit: bool,
     pub running: bool,
     pub updating: bool,
@@ -270,6 +272,7 @@ pub enum ExportType {
     Remotes,
     RemoteConfigs,
     SpecificRemote,
+    RCloneBackend,
 }
 
 pub const SERVICE_NAME: &str = env!("CARGO_PKG_NAME");

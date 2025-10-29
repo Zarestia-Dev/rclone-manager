@@ -1,0 +1,137 @@
+.operation-config {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  padding: var(--space-md);
+
+  .header-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+    padding: var(--space-md);
+    margin-bottom: var(--space-sm);
+    border: 2px solid var(--primary-color);
+    border-radius: var(--panel-radius);
+    background: rgba(var(--primary-color-rgb), 0.1);
+
+    .operation-enable {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      font-weight: 500;
+    }
+    .section-description {
+      font-size: var(--font-size-sm);
+      color: var(--app-text-color-secondary);
+      margin: 0;
+    }
+  }
+
+  .message {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+    font-size: var(--font-size-md);
+    margin-top: var(--space-sm);
+    border-radius: var(--border-radius);
+
+    &.warning {
+      color: var(--orange);
+      background: rgba(var(--orange-rgb), 0.1);
+      padding: var(--space-xxs) var(--space-sm);
+      border: 1px solid var(--orange);
+    }
+  }
+}
+
+.path-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+}
+
+.path-prefix {
+  cursor: pointer;
+
+  &.mount-local,
+  &.mount-remote,
+  ::ng-deep .mat-mdc-select-trigger {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+  }
+
+  &.mount-local,
+  &.mount-remote {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+    padding: 19.4px;
+  }
+
+  ::ng-deep .ng-star-inserted {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+  }
+
+  ::ng-deep .mat-mdc-select-value {
+    padding: 19.4px;
+  }
+
+  ::ng-deep .mat-mdc-select-arrow-wrapper {
+    display: none;
+  }
+
+  /* Apply styles to the trigger */
+  ::ng-deep .mat-mdc-select-trigger {
+    transition: all 150ms ease-in-out;
+    min-width: 0;
+  }
+
+  &.mount-local,
+  &.local ::ng-deep .mat-mdc-select-trigger {
+    background: rgba(var(--purple-rgb), 0.1);
+    color: var(--purple);
+  }
+
+  &.mount-remote,
+  &.remote ::ng-deep .mat-mdc-select-trigger {
+    background: rgba(var(--primary-color-rgb), 0.1);
+    color: var(--primary-color);
+  }
+
+  &.other ::ng-deep .mat-mdc-select-trigger {
+    background: rgba(var(--accent-color-rgb), 0.1);
+    color: var(--accent-color);
+  }
+
+  &.locked {
+    cursor: default;
+  }
+
+  mat-icon {
+    font-size: 1.1rem;
+    height: 1.1rem;
+    width: 1.1rem;
+  }
+}
+
+.path-input-wrapper {
+  position: relative;
+}
+::ng-deep .mat-mdc-menu-content {
+  max-height: 260px;
+  overflow-y: auto;
+}
+.loading-spinner,
+.no-results {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  color: var(--app-text-color-secondary);
+  font-style: italic;
+}

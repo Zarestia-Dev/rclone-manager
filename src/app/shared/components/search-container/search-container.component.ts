@@ -1,4 +1,13 @@
-import { Component, Input, Output, EventEmitter, ViewChild, ElementRef } from '@angular/core';
+import {
+  Component,
+  Input,
+  Output,
+  EventEmitter,
+  ViewChild,
+  ElementRef,
+  OnChanges,
+  SimpleChanges,
+} from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { MatInputModule } from '@angular/material/input';
@@ -26,32 +35,38 @@ import { AnimationsService } from '../../services/animations.service';
   `,
   styleUrls: ['./search-container.component.scss'],
 })
-export class SearchContainerComponent {
+export class SearchContainerComponent implements OnChanges {
   @Input() visible = false;
   @Input() placeholder = 'Search...';
   @Input() ariaLabel = 'Search';
   @Input() searchText = '';
 
   @Output() searchTextChange = new EventEmitter<string>();
-  @Output() visibilityChange = new EventEmitter<boolean>();
 
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    // Check if the 'visible' property is the one that changed
+    if (changes['visible']) {
+      // If it changed to true, call the focus method
+      if (changes['visible'].currentValue === true) {
+        this.focus();
+      }
+    }
+  }
 
   onSearchTextChange(value: string): void {
     this.searchText = value;
     this.searchTextChange.emit(value);
   }
 
-  focus(): void {
-    // Focus after animation completes
+  public focus(): void {
     setTimeout(() => {
-      if (this.searchInput?.nativeElement) {
-        this.searchInput.nativeElement.focus();
-      }
-    }, 300);
+      this.searchInput?.nativeElement?.focus();
+    }, 150);
   }
 
-  clear(): void {
+  public clear(): void {
     this.searchText = '';
     this.onSearchTextChange('');
   }

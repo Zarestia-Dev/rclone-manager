@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TabsButtonsComponent } from './tabs-buttons.component';
-import { AppTab } from '../../shared/components/types';
+import { AppTab } from '@app/types';
 
 describe('TabsButtonsComponent', () => {
   let component: TabsButtonsComponent;

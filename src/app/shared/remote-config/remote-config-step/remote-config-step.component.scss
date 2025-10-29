@@ -1,0 +1,129 @@
+form {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+
+  // Virtual Scroll Viewport
+  .virtual-scroll-viewport {
+    width: 100%;
+    flex: 1;
+
+    .form-field-item {
+      padding-inline: var(--space-lg);
+    }
+  }
+
+  // =============================================
+  // TOGGLE CONTROLS
+  // =============================================
+  mat-slide-toggle {
+    display: block;
+    margin: var(--space-xs) 0;
+    font-size: 14px;
+  }
+
+  // =============================================
+  // FIELD SECTIONS
+  // =============================================
+  .basic-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding-top: var(--space-lg);
+  }
+
+  .config-toggles {
+    padding-inline: var(--space-lg);
+  }
+
+  .advanced-section {
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(
+      135deg,
+      rgba(var(--accent-color-rgb), 0.04) 0%,
+      rgba(var(--accent-color-rgb), 0.03) 100%
+    );
+    border-left: 4px solid var(--primary-color);
+    border-radius: 4px;
+    margin-bottom: var(--space-lg);
+    transition: all 0.3s ease;
+  }
+
+  // =============================================
+  // SECTION HEADING
+  // =============================================
+  .section-heading {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--app-text-color);
+    padding: var(--space-sm) var(--space-md);
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    letter-spacing: 0.3px;
+
+    span {
+      font-size: var(--font-size-md);
+      font-weight: 500;
+      color: var(--purple);
+      background: rgba(var(--purple-rgb), 0.1);
+      border: 1px solid var(--purple);
+      padding: 2px 4px;
+      border-radius: 12px;
+      min-width: 40px;
+      text-align: center;
+    }
+  }
+
+  // =============================================
+  // LOADING STATE
+  // =============================================
+  .loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-lg);
+    background: rgba(var(--accent-color-rgb), 0.06);
+    border-radius: 8px;
+    margin: var(--space-md) 0;
+  }
+
+  // =============================================
+  // RESPONSIVE ADJUSTMENTS
+  // =============================================
+  @media (max-width: 768px) {
+    .advanced-section {
+      padding: var(--space-md);
+      gap: var(--space-sm);
+    }
+
+    .section-heading {
+      font-size: 15px;
+
+      span {
+        font-size: 12px;
+        padding: 2px 6px;
+      }
+    }
+
+    mat-slide-toggle {
+      margin: var(--space-sm) 0;
+      font-size: 13px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .advanced-section {
+      border-left-width: 3px;
+      padding: var(--space-md);
+    }
+
+    .section-heading {
+      font-size: 14px;
+      flex-wrap: wrap;
+    }
+  }
+}

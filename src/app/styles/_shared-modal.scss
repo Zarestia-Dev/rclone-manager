@@ -10,12 +10,19 @@
   justify-content: space-between;
   align-items: center;
   position: relative;
+  transition: var(--transition-standard);
 
-  border-bottom: 1px solid var(--border-color);
-  font-weight: 600;
-  font-size: var(--font-size-md);
+  &.scrolled {
+    box-shadow: var(--shadow-light);
+  }
+
+  &.scrolled p {
+    opacity: 1 !important;
+  }
 
   p {
+    font-size: var(--font-size-md);
+    transition: opacity var(--transition-standard);
     display: flex;
     align-items: center;
     justify-content: center;

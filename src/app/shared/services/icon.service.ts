@@ -57,8 +57,7 @@ export class IconService {
       'puzzle-piece': 'assets/icons/puzzle-piece.svg',
       question: 'assets/icons/question.svg',
       refresh: 'assets/icons/rotate.svg',
-      remotes: 'assets/icons/remotes.svg',
-      rclone: 'assets/rclone.svg',
+      server: 'assets/icons/server.svg',
       'rclone-symbolic': 'assets/rclone-symbolic.svg',
       'file-operations': 'assets/icons/file-operations.svg',
       stop: 'assets/icons/stop.svg',
@@ -69,6 +68,9 @@ export class IconService {
       vfs: 'assets/icons/vfs.svg',
       warning: 'assets/icons/warning.svg',
       wrench: 'assets/icons/wrench.svg',
+      'box-archive': 'assets/icons/box-archive.svg',
+      'file-arrow-up': 'assets/icons/file-arrow-up.svg',
+      database: 'assets/icons/database.svg',
 
       // ------------------- Remote Icons -------------------
       drive: 'assets/icons/remotes/drive.svg',
@@ -89,6 +91,7 @@ export class IconService {
       'arrow-down': 'assets/icons/circle-chevron-down.svg',
       'arrow-rotate-left': 'assets/icons/arrow-rotate-left.svg',
       'arrow-up': 'assets/icons/circle-chevron-up.svg',
+      'arrow-turn-up-left': 'assets/icons/arrow-turn-up-left.svg',
       bolt: 'assets/icons/bolt.svg',
       'caret-down': 'assets/icons/caret-down.svg',
       'caret-up': 'assets/icons/caret-up.svg',
@@ -104,6 +107,12 @@ export class IconService {
       star: 'assets/icons/star.svg',
       package: 'assets/icons/package.svg',
       skull: 'assets/icons/skull.svg',
+      'file-lines': 'assets/icons/file-lines.svg',
+      bucket: 'assets/icons/bucket.svg',
+      'shield-halved': 'assets/icons/shield-halved.svg',
+      tv: 'assets/icons/tv.svg',
+      globe: 'assets/icons/globe.svg',
+      wind: 'assets/icons/wind.svg',
     };
 
     this.icons = icons;

@@ -3,7 +3,14 @@ import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../../shared/services/notification.service';
 
-import { MountOptions, VfsOptions, MountParams } from '@app/types';
+import {
+  MountOptions,
+  VfsOptions,
+  MountParams,
+  BackendOptions,
+  FilterOptions,
+  MountedRemote,
+} from '@app/types';
 
 /**
  * Service for managing rclone mounts
@@ -13,7 +20,7 @@ import { MountOptions, VfsOptions, MountParams } from '@app/types';
   providedIn: 'root',
 })
 export class MountManagementService extends TauriBaseService {
-  private mountedRemotesCache = new BehaviorSubject<any[]>([]);
+  private mountedRemotesCache = new BehaviorSubject<MountedRemote[]>([]);
   public mountedRemotes$ = this.mountedRemotesCache.asObservable();
 
   private notificationService = inject(NotificationService);
@@ -31,8 +38,8 @@ export class MountManagementService extends TauriBaseService {
   /**
    * Get mounted remotes with details
    */
-  async getMountedRemotes(): Promise<any[]> {
-    const mountedRemotes = await this.invokeCommand<any[]>('get_cached_mounted_remotes');
+  async getMountedRemotes(): Promise<MountedRemote[]> {
+    const mountedRemotes = await this.invokeCommand<MountedRemote[]>('get_cached_mounted_remotes');
     this.mountedRemotesCache.next(mountedRemotes);
     return mountedRemotes;
   }
@@ -53,7 +60,9 @@ export class MountManagementService extends TauriBaseService {
     mountPoint: string,
     mountType: string,
     mountOptions?: MountOptions,
-    vfsOptions?: VfsOptions
+    vfsOptions?: VfsOptions,
+    filterOptions?: FilterOptions,
+    backendOptions?: BackendOptions
   ): Promise<void> {
     try {
       const params: MountParams = {
@@ -63,9 +72,10 @@ export class MountManagementService extends TauriBaseService {
         mount_type: mountType || '',
         mount_options: mountOptions || {},
         vfs_options: vfsOptions || {},
+        filter_options: filterOptions || {},
+        backend_options: backendOptions || {},
       };
       await this.invokeCommand('mount_remote', { params });
-
       await this.refreshMountedRemotes();
       this.notificationService.showSuccess(`Successfully mounted ${remoteName}`);
     } catch (error) {
@@ -147,6 +157,13 @@ export class MountManagementService extends TauriBaseService {
    */
   async getFilterFlags(): Promise<any> {
     return this.invokeCommand('get_filter_flags');
+  }
+
+  /**
+   * Get backend flags
+   */
+  async getBackendFlags(): Promise<any> {
+    return this.invokeCommand('get_backend_flags');
   }
 
   /**

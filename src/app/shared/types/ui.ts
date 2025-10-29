@@ -1,3 +1,23 @@
+export type AppTab = 'mount' | 'sync' | 'files' | 'general';
+
+export interface ModalSize {
+  width: string;
+  maxWidth: string;
+  minWidth: string;
+  height: string;
+  maxHeight: string;
+  disableClose?: boolean;
+}
+
+export const STANDARD_MODAL_SIZE: ModalSize = {
+  width: '90vw',
+  maxWidth: '642px',
+  minWidth: '360px',
+  height: '80vh',
+  maxHeight: '700px',
+  disableClose: true,
+};
+
 export interface ConfirmDialogData {
   title: string;
   message: string;
@@ -11,6 +31,7 @@ export enum ExportType {
   Remotes = 'Remotes',
   RemoteConfigs = 'RemoteConfigs',
   SpecificRemote = 'SpecificRemote',
+  RCloneBackend = 'RCloneBackend',
 }
 
 export interface ExportModalData {

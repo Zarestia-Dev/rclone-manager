@@ -1,0 +1,462 @@
+<div class="password-manager-section">
+  <!-- Loading State -->
+  @if (isLoadingPassword) {
+    <div class="card loading-card">
+      <div class="card-content">
+        <div class="loading-content">
+          <mat-spinner diameter="48"></mat-spinner>
+          <h3>Loading Configuration...</h3>
+          <p>Checking encryption status</p>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <!-- Tabs -->
+    <mat-tab-group [(selectedIndex)]="selectedSecurityTab" class="security-tabs">
+      <!-- Overview Tab -->
+      <mat-tab label="Overview">
+        <ng-template mat-tab-label>
+          <span>Overview</span>
+        </ng-template>
+
+        <div class="tab-content">
+          <!-- Configuration Not Encrypted -->
+          @if (isUnencryptedConfig) {
+            <div class="card get-started-card">
+              <div class="card-header">
+                <div class="card-title">
+                  <mat-icon svgIcon="lock-open"></mat-icon>
+                  <h3>Configuration Not Encrypted</h3>
+                </div>
+                <p class="card-description">
+                  Your rclone configuration is currently unencrypted. Encrypt it to protect your
+                  remote access credentials.
+                </p>
+              </div>
+              <div class="card-content">
+                <div class="benefits-list">
+                  <div class="benefit-item">
+                    <mat-icon svgIcon="shield"></mat-icon>
+                    <span>Protect your remote credentials from unauthorized access</span>
+                  </div>
+                  <div class="benefit-item">
+                    <mat-icon svgIcon="lock"></mat-icon>
+                    <span>Secure password-based encryption for configuration files</span>
+                  </div>
+                </div>
+              </div>
+              <div class="card-actions">
+                <button
+                  mat-flat-button
+                  (click)="switchToEncryptionTab()"
+                  class="action-button-large primary"
+                >
+                  <mat-icon svgIcon="lock"></mat-icon>
+                  Encrypt Configuration
+                </button>
+                <button
+                  mat-stroked-button
+                  (click)="learnMoreAboutEncryption()"
+                  class="action-button-large"
+                >
+                  <mat-icon svgIcon="open-link"></mat-icon>
+                  Learn More
+                </button>
+              </div>
+            </div>
+          } @else {
+            <!-- Configuration Is Encrypted -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <mat-icon svgIcon="shield"></mat-icon>
+                  <h3>Security Status</h3>
+                </div>
+                <p class="card-description">
+                  Current status of your encrypted rclone configuration
+                </p>
+              </div>
+              <div class="card-content">
+                <div class="status-grid">
+                  <div class="status-item">
+                    <div class="status-indicator">
+                      <mat-icon svgIcon="lock"></mat-icon>
+                    </div>
+                    <div class="status-details">
+                      <h4>Configuration</h4>
+                      <p>Configuration is encrypted and secure</p>
+                    </div>
+                  </div>
+                  <div
+                    class="status-item"
+                    [class.success]="hasStoredPassword"
+                    [class.warning]="!hasStoredPassword"
+                  >
+                    <div class="status-indicator">
+                      <mat-icon
+                        [svgIcon]="hasStoredPassword ? 'circle-check' : 'warning'"
+                      ></mat-icon>
+                    </div>
+                    <div class="status-details">
+                      <h4>Stored Password</h4>
+                      <p>
+                        {{
+                          hasStoredPassword ? 'Password is securely stored' : 'No password stored'
+                        }}
+                      </p>
+                    </div>
+                  </div>
+                  @if (hasEnvPassword) {
+                    <div class="status-item success">
+                      <div class="status-indicator">
+                        <mat-icon svgIcon="circle-check"></mat-icon>
+                      </div>
+                      <div class="status-details">
+                        <h4>Environment Variable</h4>
+                        <p>RCLONE_CONFIG_PASS is set</p>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+
+            <!-- Password Management Card -->
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <mat-icon svgIcon="key"></mat-icon>
+                  <h3>Password Management</h3>
+                </div>
+                <p class="card-description">
+                  Enter your rclone configuration password and manage quick actions
+                </p>
+              </div>
+              <div class="card-content">
+                <form [formGroup]="overviewForm">
+                  <mat-form-field appearance="fill">
+                    <mat-label>Configuration Password</mat-label>
+                    <input
+                      matInput
+                      type="password"
+                      formControlName="password"
+                      placeholder="Enter your rclone config password"
+                      autocomplete="current-password"
+                    />
+                    <mat-icon matSuffix svgIcon="key"></mat-icon>
+                    @if (overviewForm.get('password')?.hasError('required')) {
+                      <mat-error>Password is required</mat-error>
+                    }
+                    @if (overviewForm.get('password')?.hasError('minLength')) {
+                      <mat-error>{{
+                        overviewForm.get('password')?.errors?.['minLength']?.message
+                      }}</mat-error>
+                    }
+                    @if (overviewForm.get('password')?.hasError('invalidChars')) {
+                      <mat-error>{{
+                        overviewForm.get('password')?.errors?.['invalidChars']?.message
+                      }}</mat-error>
+                    }
+                    @if (overviewForm.get('password')?.hasError('apiError')) {
+                      <mat-error>{{
+                        overviewForm.get('password')?.errors?.['apiError']?.message
+                      }}</mat-error>
+                    }
+                  </mat-form-field>
+                </form>
+              </div>
+              <div class="card-actions">
+                <button
+                  mat-flat-button
+                  [disabled]="!canValidatePassword || passwordLoading.isValidating"
+                  (click)="validatePassword()"
+                >
+                  <mat-icon svgIcon="circle-check"></mat-icon>
+                  {{ passwordLoading.isValidating ? 'Validating...' : 'Validate Password' }}
+                </button>
+                @if (!hasStoredPassword) {
+                  <button
+                    mat-stroked-button
+                    [disabled]="!canStorePassword || passwordLoading.isStoringPassword"
+                    (click)="storePassword()"
+                  >
+                    <mat-icon svgIcon="key"></mat-icon>
+                    {{ passwordLoading.isStoringPassword ? 'Saving...' : 'Store Password' }}
+                  </button>
+                }
+                @if (hasStoredPassword) {
+                  <button
+                    matButton="filled"
+                    class="warn"
+                    [disabled]="passwordLoading.isRemovingPassword"
+                    (click)="removePassword()"
+                  >
+                    <mat-icon svgIcon="trash"></mat-icon>
+                    {{
+                      passwordLoading.isRemovingPassword ? 'Removing...' : 'Remove Stored Password'
+                    }}
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <!-- Encryption Tab -->
+      <mat-tab label="Encryption">
+        <ng-template mat-tab-label>
+          <span>Encryption</span>
+        </ng-template>
+
+        <div class="tab-content">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <mat-icon [svgIcon]="isEncryptedConfig ? 'lock' : 'lock-open'"></mat-icon>
+                <h3>Configuration Encryption</h3>
+              </div>
+              <p class="card-description">
+                Encrypt your rclone configuration file for enhanced security
+              </p>
+            </div>
+            <div class="card-content">
+              <div
+                class="encryption-status"
+                [class.encrypted]="isEncryptedConfig"
+                [class.unencrypted]="!isEncryptedConfig"
+              >
+                <mat-icon [svgIcon]="isEncryptedConfig ? 'lock' : 'lock-open'"></mat-icon>
+                <span>{{
+                  isEncryptedConfig
+                    ? 'Configuration is encrypted'
+                    : 'Configuration is not encrypted'
+                }}</span>
+              </div>
+              <form [formGroup]="encryptionForm" class="encryption-form">
+                <mat-form-field appearance="fill">
+                  <mat-label>{{
+                    isEncryptedConfig ? 'Password for Decryption' : 'Password for Encryption'
+                  }}</mat-label>
+                  <input
+                    matInput
+                    type="password"
+                    formControlName="password"
+                    [placeholder]="
+                      isEncryptedConfig
+                        ? 'Enter password to decrypt configuration'
+                        : 'Enter password to encrypt configuration'
+                    "
+                    autocomplete="current-password"
+                  />
+                  <mat-icon
+                    matSuffix
+                    [svgIcon]="isEncryptedConfig ? 'lock-open' : 'lock'"
+                  ></mat-icon>
+                  @if (encryptionForm.get('password')?.hasError('required')) {
+                    <mat-error>Password is required</mat-error>
+                  }
+                  @if (encryptionForm.get('password')?.hasError('minLength')) {
+                    <mat-error>{{
+                      encryptionForm.get('password')?.errors?.['minLength']?.message
+                    }}</mat-error>
+                  }
+                  @if (encryptionForm.get('password')?.hasError('invalidChars')) {
+                    <mat-error>{{
+                      encryptionForm.get('password')?.errors?.['invalidChars']?.message
+                    }}</mat-error>
+                  }
+                </mat-form-field>
+                @if (!isEncryptedConfig) {
+                  <mat-form-field appearance="fill">
+                    <mat-label>Confirm Password</mat-label>
+                    <input
+                      matInput
+                      type="password"
+                      formControlName="confirmPassword"
+                      placeholder="Confirm your password"
+                      autocomplete="new-password"
+                    />
+                    <mat-icon matSuffix svgIcon="lock"></mat-icon>
+                    @if (encryptionForm.get('confirmPassword')?.hasError('required')) {
+                      <mat-error>Please confirm your password</mat-error>
+                    }
+                    @if (encryptionForm.hasError('passwordMismatch')) {
+                      <mat-error>{{
+                        encryptionForm.errors?.['passwordMismatch']?.message
+                      }}</mat-error>
+                    }
+                  </mat-form-field>
+                }
+              </form>
+            </div>
+            <div class="card-actions">
+              @if (!isEncryptedConfig) {
+                <button
+                  mat-flat-button
+                  (click)="encryptConfig()"
+                  [disabled]="!canEncrypt || passwordLoading.isEncrypting"
+                  class="action-button-large"
+                >
+                  <mat-icon svgIcon="lock"></mat-icon>
+                  {{ passwordLoading.isEncrypting ? 'Encrypting...' : 'Encrypt Configuration' }}
+                </button>
+              } @else {
+                <button
+                  matButton="filled"
+                  (click)="unencryptConfig()"
+                  [disabled]="!canUnencrypt || passwordLoading.isUnencrypting"
+                  class="action-button-large warn"
+                >
+                  <mat-icon svgIcon="lock-open"></mat-icon>
+                  {{ passwordLoading.isUnencrypting ? 'Decrypting...' : 'Decrypt Configuration' }}
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Change Password Card -->
+          @if (isEncryptedConfig) {
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <mat-icon svgIcon="key"></mat-icon>
+                  <h3>Change Password</h3>
+                </div>
+                <p class="card-description">
+                  Update the encryption password for your configuration
+                </p>
+              </div>
+              <div class="card-content">
+                <form [formGroup]="changePasswordForm" class="password-change-form">
+                  <mat-form-field appearance="fill">
+                    <mat-label>Current Password</mat-label>
+                    <input
+                      matInput
+                      type="password"
+                      formControlName="currentPassword"
+                      placeholder="Enter current password"
+                      autocomplete="current-password"
+                    />
+                    <mat-icon matSuffix svgIcon="key"></mat-icon>
+                    @if (changePasswordForm.get('currentPassword')?.hasError('required')) {
+                      <mat-error>Current password is required</mat-error>
+                    }
+                  </mat-form-field>
+                  <mat-form-field appearance="fill">
+                    <mat-label>New Password</mat-label>
+                    <input
+                      matInput
+                      type="password"
+                      formControlName="newPassword"
+                      placeholder="Enter new password"
+                      autocomplete="new-password"
+                    />
+                    <mat-icon matSuffix svgIcon="key"></mat-icon>
+                    @if (changePasswordForm.get('newPassword')?.hasError('required')) {
+                      <mat-error>New password is required</mat-error>
+                    }
+                  </mat-form-field>
+                  <mat-form-field appearance="fill">
+                    <mat-label>Confirm New Password</mat-label>
+                    <input
+                      matInput
+                      type="password"
+                      formControlName="confirmNewPassword"
+                      placeholder="Confirm your new password"
+                      autocomplete="new-password"
+                    />
+                    <mat-icon matSuffix svgIcon="key"></mat-icon>
+                    @if (changePasswordForm.get('confirmNewPassword')?.hasError('required')) {
+                      <mat-error>Please confirm your new password</mat-error>
+                    }
+                    @if (changePasswordForm.hasError('passwordMismatch')) {
+                      <mat-error>{{
+                        changePasswordForm.errors?.['passwordMismatch']?.message
+                      }}</mat-error>
+                    }
+                  </mat-form-field>
+                </form>
+              </div>
+              <div class="card-actions">
+                <button
+                  mat-flat-button
+                  (click)="changePassword()"
+                  [disabled]="!canChangePassword || passwordLoading.isChangingPassword"
+                  class="action-button-large primary"
+                >
+                  <mat-icon svgIcon="key"></mat-icon>
+                  {{
+                    passwordLoading.isChangingPassword ? 'Changing Password...' : 'Change Password'
+                  }}
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <!-- Advanced Tab -->
+      @if (isEncryptedConfig) {
+        <mat-tab label="Advanced">
+          <ng-template mat-tab-label>
+            <span>Advanced</span>
+          </ng-template>
+
+          <div class="tab-content">
+            <!-- Environment Variables (only for encrypted configs) -->
+            @if (isEncryptedConfig) {
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">
+                    <mat-icon svgIcon="terminal"></mat-icon>
+                    <h3>Environment Variables</h3>
+                  </div>
+                  <p class="card-description">
+                    Manage password environment variables for the current session
+                  </p>
+                </div>
+                <div class="card-content">
+                  <div class="status-grid">
+                    <div class="status-item">
+                      <div class="status-indicator">
+                        <mat-icon
+                          [svgIcon]="hasEnvPassword ? 'circle-check' : 'circle-info'"
+                        ></mat-icon>
+                      </div>
+                      <div class="status-details">
+                        <h4>RCLONE_CONFIG_PASS:</h4>
+                        <p>{{ hasEnvPassword ? 'Set' : 'Not set' }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button
+                    mat-stroked-button
+                    (click)="setEnvPassword()"
+                    [disabled]="!hasStoredPassword || passwordLoading.isSettingEnv"
+                  >
+                    <mat-icon svgIcon="terminal"></mat-icon>
+                    {{ passwordLoading.isSettingEnv ? 'Saving...' : 'Set Environment Variable' }}
+                  </button>
+                  <button
+                    matButton="filled"
+                    class="warn"
+                    (click)="clearEnvPassword()"
+                    [disabled]="!hasEnvPassword || passwordLoading.isClearingEnv"
+                  >
+                    <mat-icon svgIcon="close"></mat-icon>
+                    {{
+                      passwordLoading.isClearingEnv ? 'Clearing...' : 'Clear Environment Variable'
+                    }}
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </mat-tab>
+      }
+    </mat-tab-group>
+  }
+</div>

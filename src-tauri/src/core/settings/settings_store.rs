@@ -2,8 +2,44 @@
 use std::collections::HashMap;
 
 use crate::utils::types::all_types::{
-    AppSettings, CoreSettings, ExperimentalSettings, GeneralSettings, SettingMetadata,
+    AppSettings, CoreSettings, DeveloperSettings, GeneralSettings, SettingMetadata,
 };
+
+/// Macro to create SettingMetadata with only required and commonly used fields
+/// This reduces boilerplate and makes the code more readable
+macro_rules! setting_meta {
+    (
+        $display_name:expr,
+        $value_type:expr,
+        $help_text:expr
+        $(, validation_type = $validation_type:expr)?
+        $(, validation_message = $validation_message:expr)?
+        $(, min = $min_value:expr)?
+        $(, max = $max_value:expr)?
+        $(, step = $step:expr)?
+        $(, placeholder = $placeholder:expr)?
+        $(, required = $required:expr)?
+        $(, requires_restart = $requires_restart:expr)?
+        $(, group = $group:expr)?
+        $(, depends_on = $depends_on:expr)?
+        $(, depends_value = $depends_value:expr)?
+    ) => {
+        SettingMetadata {
+            display_name: $display_name.to_string(),
+            value_type: $value_type.to_string(),
+            help_text: $help_text.to_string(),
+            validation_type: None $(.or(Some($validation_type.to_string())))?,
+            validation_pattern: None,
+            validation_message: None $(.or(Some($validation_message.to_string())))?,
+            min_value: None $(.or(Some($min_value)))?,
+            max_value: None $(.or(Some($max_value)))?,
+            step: None $(.or(Some($step)))?,
+            placeholder: None $(.or(Some($placeholder.to_string())))?,
+            options: None,
+            required: None $(.or(Some($required)))?,
+            requires_restart: None $(.or(Some($requires_restart)))?        }
+    };
+}
 
 pub fn default_terminal_apps() -> Vec<String> {
     #[cfg(target_os = "linux")]
@@ -79,7 +115,7 @@ impl Default for AppSettings {
                 completed_onboarding: false,
                 terminal_apps: default_terminal_apps(),
             },
-            experimental: ExperimentalSettings {
+            developer: DeveloperSettings {
                 debug_logging: false,
             },
         }
@@ -90,276 +126,222 @@ impl AppSettings {
     pub fn get_metadata() -> HashMap<String, SettingMetadata> {
         let mut metadata = HashMap::new();
 
+        // General Settings (App-level)
         metadata.insert(
             "general.start_on_startup".to_string(),
-            SettingMetadata {
-                display_name: "Start on Startup".to_string(),
-                value_type: "bool".to_string(),
-                help_text: "Automatically start the app when the system starts.".to_string(),
-                validation_type: None,
-                validation_pattern: None,
-                validation_message: None,
-                min_value: None,
-                max_value: None,
-                step: None,
-                placeholder: None,
-                options: None,
-                required: Some(true),
-                requires_restart: Some(false),
-            },
+            setting_meta!(
+                "Start on Startup",
+                "bool",
+                "Automatically start the app when the system starts.",
+                required = true,
+                requires_restart = false
+            ),
         );
 
         metadata.insert(
             "general.notifications".to_string(),
-            SettingMetadata {
-                display_name: "Enable Notifications".to_string(),
-                value_type: "bool".to_string(),
-                help_text: "Show notifications for mount events.".to_string(),
-                validation_type: None,
-                validation_pattern: None,
-                validation_message: None,
-                min_value: None,
-                max_value: None,
-                step: None,
-                placeholder: None,
-                options: None,
-                required: Some(true),
-                requires_restart: Some(false),
-            },
+            setting_meta!(
+                "Enable Notifications",
+                "bool",
+                "Show notifications for mount events.",
+                required = true,
+                requires_restart = false
+            ),
         );
 
         metadata.insert(
             "general.tray_enabled".to_string(),
-            SettingMetadata {
-                display_name: "Enable Tray Icon".to_string(),
-                value_type: "bool".to_string(),
-                help_text: "Show an icon in the system tray. Also enables the background service."
-                    .to_string(),
-                validation_type: None,
-                validation_pattern: None,
-                validation_message: None,
-                min_value: None,
-                max_value: None,
-                step: None,
-                placeholder: None,
-                options: None,
-                required: Some(true),
-                requires_restart: Some(false),
-            },
+            setting_meta!(
+                "Enable Tray Icon",
+                "bool",
+                "Show an icon in the system tray. Also enables the background service.",
+                required = true,
+                requires_restart = false
+            ),
         );
 
         metadata.insert(
             "general.restrict".to_string(),
-            SettingMetadata {
-                display_name: "Restrict Values".to_string(),
-                value_type: "bool".to_string(),
-                help_text: "Restrict some specific values for security purposes (e.g., Token, Client ID, etc.)".to_string(),
-                validation_type: None,
-                validation_pattern: None,
-                validation_message: None,
-                min_value: None,
-                max_value: None,
-                step: None,
-                placeholder: None,
-                options: None,
-                required: Some(true),
-                requires_restart: Some(false),
-            },
+            setting_meta!(
+                "Restrict Values",
+                "bool",
+                "Restrict some specific values for security purposes (e.g., Token, Client ID, etc.)",
+                required = true,
+                requires_restart = false
+            ),
         );
 
+        // RClone Settings - Network Group
         metadata.insert(
             "core.bandwidth_limit".to_string(),
-            SettingMetadata {
-                display_name: "Bandwidth Limit".to_string(),
-                value_type: "string".to_string(),
-                help_text: "Limit the bandwidth used by Rclone transfers. It can be specified as 'upload:download'".to_string(),
-                validation_type: Some("frontend:bandwidthFormat".to_string()),
-                validation_pattern: None,
-                validation_message: Some("The bandwidth should be of the form 1M|2M|1G|1K|1.1K etc. Can also be specified as (upload:download). Keep it empty for no limit.".to_string()),
-                min_value: None,
-                max_value: None,
-                step: None,
-                placeholder: Some("e.g., 10M or 5M:2M".to_string()),
-                options: None,
-                required: Some(false),
-                requires_restart: Some(false),
-            },
+            setting_meta!(
+                "Bandwidth Limit",
+                "string",
+                "Limit the bandwidth used by Rclone transfers. It can be specified as 'upload:download'",
+                validation_type = "frontend:bandwidthFormat",
+                validation_message = "The bandwidth should be of the form 1M|2M|1G|1K|1.1K etc. Can also be specified as (upload:download). Keep it empty for no limit.",
+                placeholder = "e.g., 10M or 5M:2M",
+                required = false,
+                requires_restart = false
+            ),
         );
 
+        // RClone Settings - Engine Group
         metadata.insert(
             "core.rclone_api_port".to_string(),
-            SettingMetadata {
-                display_name: "Rclone API Port".to_string(),
-                value_type: "number".to_string(),
-                help_text: "Port used for Rclone API communication (1024-65535).".to_string(),
-                validation_type: Some("frontend:portRange".to_string()),
-                validation_pattern: None,
-                validation_message: Some(
-                    "Must be a valid port number between 1024 and 65535".to_string(),
-                ),
-                min_value: Some(1024),
-                max_value: Some(65535),
-                step: Some(1),
-                placeholder: Some("e.g., 51900".to_string()),
-                options: None,
-                required: Some(true),
-                requires_restart: Some(true),
-            },
+            setting_meta!(
+                "Rclone API Port",
+                "number",
+                "Port used for Rclone API communication (1024-65535).",
+                validation_type = "frontend:portRange",
+                validation_message = "Must be a valid port number between 1024 and 65535",
+                min = 1024,
+                max = 65535,
+                step = 1,
+                placeholder = "e.g., 51900",
+                required = true,
+                requires_restart = true
+            ),
         );
 
         metadata.insert(
             "core.rclone_oauth_port".to_string(),
-            SettingMetadata {
-                display_name: "Rclone OAuth Port".to_string(),
-                value_type: "number".to_string(),
-                help_text: "Port used for Rclone OAuth communication (1024-65535).".to_string(),
-                validation_type: Some("frontend:portRange".to_string()),
-                validation_pattern: None,
-                validation_message: Some(
-                    "Must be a valid port number between 1024 and 65535".to_string(),
-                ),
-                min_value: Some(1024),
-                max_value: Some(65535),
-                step: Some(1),
-                placeholder: Some("e.g., 51901".to_string()),
-                options: None,
-                required: Some(true),
-                requires_restart: Some(false),
-            },
+            setting_meta!(
+                "Rclone OAuth Port",
+                "number",
+                "Port used for Rclone OAuth communication (1024-65535).",
+                validation_type = "frontend:portRange",
+                validation_message = "Must be a valid port number between 1024 and 65535",
+                min = 1024,
+                max = 65535,
+                step = 1,
+                placeholder = "e.g., 51901",
+                required = true,
+                requires_restart = false
+            ),
         );
 
         metadata.insert(
             "core.connection_check_urls".to_string(),
-            SettingMetadata {
-                display_name: "Connection Check URLs".to_string(),
-                value_type: "array".to_string(),
-                help_text: "List of URLs to check for internet connectivity".to_string(),
-                validation_type: Some("frontend:urlList".to_string()),
-                validation_pattern: None,
-                validation_message: Some("All items must be valid URLs".to_string()),
-                min_value: None,
-                max_value: None,
-                step: None,
-                placeholder: Some("https://google.com".to_string()),
-                options: None,
-                required: Some(true),
-                requires_restart: Some(false),
-            },
+            setting_meta!(
+                "Connection Check URLs",
+                "array",
+                "List of URLs to check for internet connectivity",
+                validation_type = "frontend:urlList",
+                validation_message = "All items must be valid URLs",
+                placeholder = "https://google.com",
+                required = true,
+                requires_restart = false
+            ),
         );
 
+        // App-level Core Settings (no group = appears in Preferences)
         metadata.insert(
             "core.max_tray_items".to_string(),
-            SettingMetadata {
-                display_name: "Max Tray Items".to_string(),
-                value_type: "number".to_string(),
-                help_text: "Maximum number of items to show in the tray (1-40).".to_string(),
-                validation_type: Some("frontend:trayItemsRange".to_string()),
-                validation_pattern: None,
-                validation_message: Some("Must be between 1 and 40".to_string()),
-                min_value: Some(1),
-                max_value: Some(40),
-                step: Some(1),
-                placeholder: Some("e.g., 5".to_string()),
-                options: None,
-                required: Some(true),
-                requires_restart: Some(false),
-            },
+            setting_meta!(
+                "Max Tray Items",
+                "number",
+                "Maximum number of items to show in the tray (1-40).",
+                validation_type = "frontend:trayItemsRange",
+                validation_message = "Must be between 1 and 40",
+                min = 1,
+                max = 40,
+                step = 1,
+                placeholder = "e.g., 5",
+                required = true,
+                requires_restart = false
+            ),
         );
 
         metadata.insert(
             "core.completed_onboarding".to_string(),
-            SettingMetadata {
-                display_name: "Completed Onboarding".to_string(),
-                value_type: "bool".to_string(),
-                help_text: "Indicates if the onboarding process is completed.".to_string(),
-                validation_type: None,
-                validation_pattern: None,
-                validation_message: None,
-                min_value: None,
-                max_value: None,
-                step: None,
-                placeholder: None,
-                options: None,
-                required: Some(true),
-                requires_restart: Some(false),
-            },
+            setting_meta!(
+                "Completed Onboarding",
+                "bool",
+                "Indicates if the onboarding process is completed.",
+                required = true,
+                requires_restart = false
+            ),
         );
 
+        // RClone Settings - Paths Group
         metadata.insert(
             "core.rclone_config_file".to_string(),
-            SettingMetadata {
-                display_name: "Rclone Config File".to_string(),
-                value_type: "file".to_string(),
-                help_text: "Path to rclone config file. Leave empty to use default location."
-                    .to_string(),
-                validation_type: Some("frontend:crossPlatformPath".to_string()),
-                validation_pattern: None,
-                validation_message: Some("Must be a valid file path".to_string()),
-                min_value: None,
-                max_value: None,
-                step: None,
-                placeholder: Some("e.g., /home/user/.config/rclone/rclone.conf".to_string()),
-                options: None,
-                required: Some(false),
-                requires_restart: Some(true), // Requires restart to apply to default rclone config because we cant reset it via API
-            },
+            setting_meta!(
+                "Rclone Config File",
+                "file",
+                "Path to rclone config file. Leave empty to use default location.",
+                validation_type = "frontend:crossPlatformPath",
+                validation_message = "Must be a valid file path",
+                placeholder = "e.g., /home/user/.config/rclone/rclone.conf",
+                required = false,
+                requires_restart = true
+            ),
         );
 
         metadata.insert(
             "core.rclone_path".to_string(),
-            SettingMetadata {
-                display_name: "Rclone Binary Path".to_string(),
-                value_type: "folder".to_string(),
-                help_text: "Path to rclone binary or directory. Leave empty for auto-detection, use 'system' for system PATH.".to_string(),
-                validation_type: Some("frontend:crossPlatformPath".to_string()),
-                validation_pattern: None,
-                validation_message: Some("Must be a valid file or directory path".to_string()),
-                min_value: None,
-                max_value: None,
-                step: None,
-                placeholder: Some("e.g., /usr/bin/rclone or 'system'".to_string()),
-                options: None,
-                required: Some(false),
-                requires_restart: Some(true),
-            },
+            setting_meta!(
+                "Rclone Binary Path",
+                "folder",
+                "Path to rclone binary or directory. Leave empty for auto-detection, use 'system' for system PATH.",
+                validation_type = "frontend:crossPlatformPath",
+                validation_message = "Must be a valid file or directory path",
+                placeholder = "e.g., /usr/bin/rclone or 'system'",
+                required = false,
+                requires_restart = true
+            ),
         );
 
         metadata.insert(
             "core.terminal_apps".to_string(),
-            SettingMetadata {
-                display_name: "Preferred Terminal Apps".to_string(),
-                value_type: "array".to_string(),
-                help_text: "List of terminal applications to use for commands.".to_string(),
-                validation_type: None,
-                validation_pattern: None,
-                validation_message: Some("All items must be valid terminal app names".to_string()),
-                min_value: None,
-                max_value: None,
-                step: None,
-                placeholder: Some("e.g., gnome-terminal, x-terminal-emulator".to_string()),
-                options: None,
-                required: Some(true),
-                requires_restart: Some(false),
-            },
+            setting_meta!(
+                "Preferred Terminal Apps",
+                "array",
+                "List of terminal applications to use for commands.",
+                validation_message = "All items must be valid terminal app names",
+                placeholder = "e.g., gnome-terminal, x-terminal-emulator",
+                required = true,
+                requires_restart = false
+            ),
         );
 
         metadata.insert(
-            "experimental.debug_logging".to_string(),
-            SettingMetadata {
-                display_name: "Enable Debug Logging".to_string(),
-                value_type: "bool".to_string(),
-                help_text: "Enable detailed logging for debugging.".to_string(),
-                validation_type: None,
-                validation_pattern: None,
-                validation_message: None,
-                min_value: None,
-                max_value: None,
-                step: None,
-                placeholder: None,
-                options: None,
-                required: Some(true),
-                requires_restart: Some(false),
-            },
+            "core.rclone_path".to_string(),
+            setting_meta!(
+                "Rclone Binary Path",
+                "folder",
+                "Path to rclone binary or directory. Leave empty for auto-detection, use 'system' for system PATH.",
+                validation_type = "frontend:crossPlatformPath",
+                validation_message = "Must be a valid file or directory path",
+                placeholder = "e.g., /usr/bin/rclone or 'system'",
+                required = false,
+                requires_restart = true
+            ),
+        );
+
+        metadata.insert(
+            "core.terminal_apps".to_string(),
+            setting_meta!(
+                "Preferred Terminal Apps",
+                "array",
+                "List of terminal applications to use for commands.",
+                validation_message = "All items must be valid terminal app names",
+                placeholder = "e.g., gnome-terminal, x-terminal-emulator",
+                required = true,
+                requires_restart = false
+            ),
+        );
+        // Developer Settings
+        metadata.insert(
+            "developer.debug_logging".to_string(),
+            setting_meta!(
+                "Enable Debug Logging",
+                "bool",
+                "Enable detailed logging for debugging.",
+                required = true,
+                requires_restart = false
+            ),
         );
 
         metadata

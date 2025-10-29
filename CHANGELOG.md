@@ -1,6 +1,30 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Added
+- Added a Backend Settings modal. You can now set the backend options globally for all remotes. If you wants to override the backend options for a specific remote, you can do it in the remote settings. (e.g. mount options, vfs options, etc.). Also added the export and import feature for the backend settings on export modal.
+- New Backend flag support for remotes. You can now set backend flags for remotes in the remote settings. This will be applied to all operations for that remote.
+- Added Filter options support for mounts. You can now set filter options for mounts in the remote settings. This will be applied to the mount operation for that remote.
+- Added system theme detection support. You can now set the theme to system in the settings. It will automatically change the theme based on the system theme.
+- Interactive mode toggle added to Quick Add Remote modal to. Now you can enable or disable the interactive mode for remotes that require additional configuration steps (like iCloud, OneDrive, etc.). By default, it is enabled for those remotes.
+- Quick Add Remote modal design has been improved for better user experience and usability.
+
+### Changed
+- Password Manager modal has been removed. Now the password manager is integrated into the Backend Settings modal. You can manage your passwords in the Backend Settings modal.
+- Some npm and cargo dependencies have been updated to their latest versions.
+- Detailed Remote Modal UI and behavior has been improved for better user experience and usability. Also its now filters the displayed fields based on the provider type of the remote (e.g., S3 specific fields for AWS or Alibaba Cloud providers not show the all provider fields anymore. Only relevant fields are displayed).
+- Removed the json editor for remote adding and editing. Now only the form-based configuration is available for better user experience and usability.
+
+### Fixed
+- Fixed an issue where the RClone Manager Logo was not displayed correctly in the app.
+- When one modal opens, disable the open other modals via shortcuts or other ways (Unlimited modal opening). This include the Onboard state too. (This not include the dialog modals like delete confirmation, etc.)
+- Strip `RulesOpt.` prefix from rule fields before sending to rclone (e.g. `RulesOpt.ExcludeFrom` -> `ExcludeFrom`), which fixes issues where rclone ignored prefixed field names.
+- Fixed an issue where the remotes not showing correctly in the tray menu.
+- Fixed terminal window flash on Windows (brief terminal/console window appearing) when starting the app or running rclone operations.
+
+
+
 ## [0.1.4] - 2025-10-13
 ### Added
 - Added a rclone beta update checker support. It will check for the latest beta version of rclone and notify the user if a new beta version is available. (Default Stable channel is selected. You can change it in the About modal > About Rclone section.)

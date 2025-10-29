@@ -91,7 +91,7 @@ pub mod app_updates {
         // Get releases from GitHub API
         let client = reqwest::Client::new();
         // configure owner/repo and optional token (use org name as owner)
-        let owner = "RClone-Manager";
+        let owner = "Zarestia-Dev";
         let repo = "rclone-manager";
         let url = format!(
             "https://api.github.com/repos/{}/{}/releases?per_page=100",
@@ -100,14 +100,10 @@ pub mod app_updates {
 
         let req = client
             .get(&url)
-            .header("User-Agent", "Rclone-Manager")
+            .header("User-Agent", "Zarestia-Dev")
             .header("Accept", "application/vnd.github.v3+json");
 
         let releases: Vec<GitHubRelease> = req.send().await?.json().await?;
-
-        debug!("Found {:?} releases", releases);
-
-        info!("Found {} releases", releases.len());
 
         // Filter and find the appropriate release for the channel
         let suitable_release = releases
@@ -143,7 +139,7 @@ pub mod app_updates {
                 // Fallback: construct the JSON URL based on release tag
                 info!("No JSON asset found, constructing URL from release tag");
                 &format!(
-                    "https://github.com/RClone-Manger/rclone-manager/releases/download/{}/latest.json",
+                    "https://github.com/Zarestia-Dev/rclone-manager/releases/download/{}/latest.json",
                     release.tag_name
                 )
             }

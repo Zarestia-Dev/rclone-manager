@@ -22,6 +22,7 @@ import {
   InstallationService,
   EventListenersService,
   RclonePasswordService,
+  OnboardingStateService,
 } from '@app/services';
 
 @Component({
@@ -50,6 +51,7 @@ export class AppComponent implements OnInit, OnDestroy {
   public appSettingsService = inject(AppSettingsService);
   private eventListenersService = inject(EventListenersService);
   private rclonePasswordService = inject(RclonePasswordService);
+  public onboardingStateService = inject(OnboardingStateService);
 
   // Subscription management
   private destroy$ = new Subject<void>();
@@ -141,14 +143,17 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private async checkOnboardingStatus(): Promise<void> {
     try {
-      this.completedOnboarding =
-        (await this.appSettingsService.loadSettingValue('core', 'completed_onboarding')) ?? false;
+      this.onboardingStateService.onboardingCompleted$
+        .pipe(takeUntil(this.destroy$))
+        .subscribe(async completed => {
+          this.completedOnboarding = completed;
+          console.log('Onboarding status updated:', completed);
 
-      console.log('Onboarding status: ', this.completedOnboarding);
-
-      if (this.completedOnboarding) {
-        await this.postOnboardingSetup();
-      }
+          // Run post-onboarding setup when completed
+          if (completed) {
+            await this.postOnboardingSetup();
+          }
+        });
     } catch (error) {
       console.error('Error checking onboarding status:', error);
       this.completedOnboarding = false;
@@ -417,9 +422,10 @@ export class AppComponent implements OnInit, OnDestroy {
 
   async finishOnboarding(): Promise<void> {
     try {
+      // Use the centralized service to complete onboarding
+      await this.onboardingStateService.completeOnboarding();
       this.completedOnboarding = true;
-      await this.appSettingsService.saveSetting('core', 'completed_onboarding', true);
-      console.log('Onboarding completed status saved.');
+      console.log('Onboarding completed via OnboardingStateService');
 
       await this.postOnboardingSetup();
     } catch (error) {

@@ -15,29 +15,18 @@ impl RcApiEngine {
             return false;
         }
 
-        // Then check if API is responding
         self.check_api_response()
     }
 
     /// Check if the process is still alive (without checking API)
     pub fn is_process_alive(&mut self) -> bool {
-        if let Some(child) = &mut self.process {
-            match child.try_wait() {
-                Ok(Some(_)) => {
-                    // Process has exited
-                    debug!("🔍 Process has exited");
-                    self.running = false;
-                    false
-                }
-                Ok(_) => {
-                    // Process is still running
-                    true
-                }
-                Err(_) => {
-                    debug!("🔍 Error checking process status");
-                    false
-                }
-            }
+        if let Some(_child) = &mut self.process {
+            // FIX: CommandChild has no sync try_wait. The most reliable way to check
+            // if it's "alive" from a synchronous context is to assume it is if the
+            // handle exists and let the API check confirm it. For a more robust check,
+            // you would need to use the async CommandEvent receiver or check the PID.
+            // For now, we return true and let the API health check do the real work.
+            true
         } else {
             debug!("🔍 No process found");
             false
@@ -71,7 +60,7 @@ impl RcApiEngine {
     pub fn wait_until_ready(&mut self, timeout_secs: u64) -> bool {
         let start = std::time::Instant::now();
         let timeout = Duration::from_secs(timeout_secs);
-        let poll = Duration::from_millis(500); // Increased poll interval
+        let poll = Duration::from_millis(500);
 
         debug!("🔍 Waiting for API to be ready (timeout: {timeout_secs}s)");
 

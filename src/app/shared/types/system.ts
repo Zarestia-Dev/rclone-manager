@@ -144,7 +144,7 @@ export interface SettingTab {
 export interface SettingMetadata {
   display_name: string;
   help_text: string;
-  value_type: 'bool' | 'number' | 'string' | 'array' | 'path';
+  value_type: 'bool' | 'number' | 'string' | 'array' | 'path' | 'file' | 'folder';
   required?: boolean;
   validation_type?: string; // 'regex' | 'frontend:<validatorName>' | other types
   validation_pattern?: string;

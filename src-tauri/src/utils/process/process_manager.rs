@@ -1,4 +1,5 @@
 use log::{error, info, warn};
+use std::path::Path;
 use sysinfo::{IS_SUPPORTED_SYSTEM, ProcessesToUpdate, System};
 
 /// Kill a process by PID using platform-specific methods
@@ -9,33 +10,65 @@ pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
 
     #[cfg(target_family = "unix")]
     {
-        use nix::libc::{SIGKILL, kill};
+        use nix::libc::{EPERM, ESRCH, SIGKILL, kill};
 
         let result = unsafe { kill(pid as i32, SIGKILL) };
         if result == 0 {
             info!("✅ Successfully killed process {pid}");
             Ok(())
         } else {
-            let error_msg = format!(
-                "Failed to kill process {}: {}",
-                pid,
-                std::io::Error::last_os_error()
-            );
-            error!("{error_msg}");
-            Err(error_msg)
+            let err = std::io::Error::last_os_error();
+            let errno = err.raw_os_error();
+
+            match errno {
+                Some(ESRCH) => {
+                    // ESRCH (errno 3) means "No such process" - it's already gone
+                    info!("✅ Process {pid} already exited");
+                    Ok(())
+                }
+                Some(EPERM) => {
+                    // EPERM (errno 1) means "Operation not permitted"
+                    let error_msg = format!("Permission denied to kill process {pid}");
+                    error!("{error_msg}");
+                    Err(error_msg)
+                }
+                _ => {
+                    let error_msg = format!("Failed to kill process {pid}: {err}");
+                    error!("{error_msg}");
+                    Err(error_msg)
+                }
+            }
         }
     }
 
     #[cfg(target_family = "windows")]
     {
-        use windows_sys::Win32::Foundation::CloseHandle;
-        use windows_sys::Win32::System::Threading::PROCESS_TERMINATE;
-        use windows_sys::Win32::System::Threading::{OpenProcess, TerminateProcess};
+        use windows_sys::Win32::Foundation::{
+            CloseHandle, ERROR_ACCESS_DENIED, ERROR_INVALID_PARAMETER,
+        };
+        use windows_sys::Win32::System::Threading::{
+            OpenProcess, PROCESS_TERMINATE, TerminateProcess,
+        };
 
         let handle = unsafe { OpenProcess(PROCESS_TERMINATE, 0, pid) };
         if handle.is_null() {
-            let error_msg = format!("Failed to open process {}", pid);
-            error!("{}", error_msg);
+            let err = std::io::Error::last_os_error();
+            let err_code = err.raw_os_error();
+
+            // ERROR_INVALID_PARAMETER (87) means process doesn't exist
+            if err_code == Some(ERROR_INVALID_PARAMETER as i32) {
+                info!("✅ Process {pid} already exited");
+                return Ok(());
+            }
+            // ERROR_ACCESS_DENIED (5) means we don't have permission
+            if err_code == Some(ERROR_ACCESS_DENIED as i32) {
+                let error_msg = format!("Permission denied to open process {pid}");
+                error!("{error_msg}");
+                return Err(error_msg);
+            }
+
+            let error_msg = format!("Failed to open process {pid}: {err}");
+            error!("{error_msg}");
             return Err(error_msg);
         }
 
@@ -43,12 +76,13 @@ pub fn kill_process_by_pid(pid: u32) -> Result<(), String> {
         unsafe { CloseHandle(handle) };
 
         if result == 0 {
-            let error_msg = format!("Failed to terminate process {}", pid);
-            error!("{}", error_msg);
+            let err = std::io::Error::last_os_error();
+            let error_msg = format!("Failed to terminate process {pid}: {err}");
+            error!("{error_msg}");
             return Err(error_msg);
         }
 
-        info!("✅ Successfully killed process {}", pid);
+        info!("✅ Successfully killed process {pid}");
         Ok(())
     }
 }
@@ -64,12 +98,23 @@ pub fn kill_processes_on_port(port: u16) -> Result<(), String> {
         return Ok(());
     }
 
+    let mut success_count = 0;
+    let mut fail_count = 0;
+
     for pid in pids {
         match kill_process_by_pid(pid) {
-            Ok(_) => info!("✅ Killed process {pid} on port {port}"),
-            Err(e) => warn!("⚠️ Failed to kill process {pid} on port {port}: {e}"),
+            Ok(_) => {
+                info!("✅ Killed process {pid} on port {port}");
+                success_count += 1;
+            }
+            Err(e) => {
+                warn!("⚠️ Failed to kill process {pid} on port {port}: {e}");
+                fail_count += 1;
+            }
         }
     }
+
+    info!("Port {port} cleanup: {success_count} killed, {fail_count} failed");
 
     // Give some time for processes to die
     std::thread::sleep(std::time::Duration::from_millis(500));
@@ -94,7 +139,6 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
             && tcp_info.local_port == port
             && matches!(tcp_info.state, TcpState::Listen)
         {
-            // Duplicate PIDs are deduped later; collect everything for now.
             pids.extend(socket_info.associated_pids.iter().copied());
         }
     }
@@ -103,6 +147,12 @@ fn find_pids_on_port(port: u16) -> Result<Vec<u32>, String> {
     pids.dedup();
 
     Ok(pids)
+}
+
+/// Check if a filename matches rclone executable (exact match only)
+fn is_rclone_executable(filename: &str) -> bool {
+    let filename_lower = filename.to_ascii_lowercase();
+    filename_lower == "rclone" || filename_lower == "rclone.exe"
 }
 
 /// Kill all rclone rcd processes (emergency cleanup)
@@ -127,17 +177,29 @@ pub fn kill_all_rclone_processes() -> Result<(), String> {
         .processes()
         .iter()
         .filter_map(|(pid, process)| {
+            // Check process name (exact match)
             let process_name = process.name().to_string_lossy();
             let matches_name = TARGET_NAMES
                 .iter()
                 .any(|expected| process_name.eq_ignore_ascii_case(expected));
 
+            // Check command line arguments (extract filename and exact match)
             let matches_cmd = process.cmd().iter().any(|arg| {
                 let arg = arg.to_string_lossy();
-                arg.to_ascii_lowercase().contains("rclone")
+                if let Some(filename) = Path::new(arg.as_ref()).file_name() {
+                    let filename = filename.to_string_lossy();
+                    is_rclone_executable(&filename)
+                } else {
+                    false
+                }
             });
 
             if matches_name || matches_cmd {
+                info!(
+                    "🎯 Found rclone process: PID {}, name: {}",
+                    pid.as_u32(),
+                    process_name
+                );
                 Some(pid.as_u32())
             } else {
                 None
@@ -153,19 +215,46 @@ pub fn kill_all_rclone_processes() -> Result<(), String> {
         return Ok(());
     }
 
+    info!(
+        "Found {} rclone process(es) to terminate: {:?}",
+        target_pids.len(),
+        target_pids
+    );
+
+    let mut killed_count = 0;
+    let mut already_gone_count = 0;
+    let mut failed_count = 0;
+
     for pid in target_pids {
         match kill_process_by_pid(pid) {
-            Ok(_) => info!("✅ Killed rclone process {pid}"),
-            Err(e) => warn!("⚠️ Failed to kill rclone process {pid}: {e}"),
+            Ok(_) => {
+                killed_count += 1;
+                info!("✅ Killed rclone process {pid}");
+            }
+            Err(e) => {
+                // Don't warn if process already exited
+                if e.contains("already exited") {
+                    already_gone_count += 1;
+                } else {
+                    warn!("⚠️ Failed to kill rclone process {pid}: {e}");
+                    failed_count += 1;
+                }
+            }
         }
     }
 
+    info!(
+        "Cleanup complete: {} killed, {} already gone, {} failed",
+        killed_count, already_gone_count, failed_count
+    );
+
+    // Give processes time to fully terminate
     std::thread::sleep(std::time::Duration::from_millis(500));
 
     Ok(())
 }
 
-/// Get the PID of a child process
-pub fn get_child_pid(child: &std::process::Child) -> Option<u32> {
-    Some(child.id())
-}
+// /// Get the PID of a child process
+// // pub fn get_child_pid(child: &tauri_plugin_shell::process::CommandChild) -> Option<u32> {
+// //     Some(child.pid())
+// // }

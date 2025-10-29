@@ -61,7 +61,7 @@ export class AppSettingsService extends TauriBaseService {
   async resetSettings(): Promise<boolean> {
     const confirmed = await this.notificationService.confirmModal(
       'Reset Settings',
-      'Are you sure you want to reset all settings? This action cannot be undone.'
+      'Are you sure you want to reset all app settings? This action cannot be undone.'
     );
 
     if (confirmed) {

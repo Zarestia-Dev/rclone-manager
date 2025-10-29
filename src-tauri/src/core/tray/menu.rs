@@ -1,7 +1,7 @@
 use log::{error, warn};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::{
-    AppHandle,
+    AppHandle, Runtime,
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
 };
 
@@ -10,6 +10,7 @@ use crate::rclone::state::{
 };
 
 static OLD_MAX_TRAY_ITEMS: AtomicUsize = AtomicUsize::new(0);
+const MAX_PRIMARY_ACTIONS: usize = 3;
 
 /// Represents available primary action types for tray menu
 #[derive(Debug, Clone, PartialEq)]
@@ -33,7 +34,7 @@ impl PrimaryActionType {
         }
     }
 
-    fn to_action_label(&self) -> &'static str {
+    fn action_label(&self) -> &'static str {
         match self {
             Self::Mount => "Mount",
             Self::Sync => "Start Sync",
@@ -43,7 +44,7 @@ impl PrimaryActionType {
         }
     }
 
-    fn to_stop_label(&self) -> &'static str {
+    fn stop_label(&self) -> &'static str {
         match self {
             Self::Mount => "Unmount",
             Self::Sync => "Stop Sync",
@@ -54,46 +55,45 @@ impl PrimaryActionType {
     }
 
     fn to_menu_id(&self, remote: &str) -> String {
-        match self {
-            Self::Mount => format!("mount-{}", remote),
-            Self::Sync => format!("sync-{}", remote),
-            Self::Copy => format!("copy-{}", remote),
-            Self::Move => format!("move-{}", remote),
-            Self::Bisync => format!("bisync-{}", remote),
-        }
+        format!("{}-{}", self.job_type_str().unwrap_or("mount"), remote)
     }
 
     fn to_stop_menu_id(&self, remote: &str) -> String {
+        let action = match self {
+            Self::Mount => "unmount".to_string(),
+            _ => self
+                .job_type_str()
+                .map_or_else(|| "".to_string(), |s| format!("stop_{}", s)),
+        };
+        format!("{}-{}", action, remote)
+    }
+
+    fn job_type_str(&self) -> Option<&'static str> {
         match self {
-            Self::Mount => format!("unmount-{}", remote),
-            Self::Sync => format!("stop_sync-{}", remote),
-            Self::Copy => format!("stop_copy-{}", remote),
-            Self::Move => format!("stop_move-{}", remote),
-            Self::Bisync => format!("stop_bisync-{}", remote),
+            Self::Sync => Some("sync"),
+            Self::Copy => Some("copy"),
+            Self::Move => Some("move"),
+            Self::Bisync => Some("bisync"),
+            Self::Mount => None,
         }
     }
 }
 
 /// Get primary actions for a remote from settings, with defaults fallback
 fn get_primary_actions_for_remote(settings: &serde_json::Value) -> Vec<PrimaryActionType> {
-    // Try to get primary actions from settings
-    if let Some(primary_actions) = settings.get("primaryActions")
-        && let Some(actions_array) = primary_actions.as_array()
-    {
-        let mut actions = Vec::new();
-        for action in actions_array {
-            if let Some(action_str) = action.as_str()
-                && let Some(action_type) = PrimaryActionType::from_string(action_str)
-            {
-                actions.push(action_type);
-            }
-        }
+    if let Some(actions_array) = settings.get("primaryActions").and_then(|v| v.as_array()) {
+        let actions: Vec<PrimaryActionType> = actions_array
+            .iter()
+            .filter_map(|v| v.as_str())
+            .filter_map(PrimaryActionType::from_string)
+            .collect();
+
         if !actions.is_empty() {
             return actions;
         }
     }
 
-    // Default primary actions if none configured: Mount + Sync + BiSync
+    // Default primary actions if none are configured
     vec![
         PrimaryActionType::Mount,
         PrimaryActionType::Sync,
@@ -101,7 +101,7 @@ fn get_primary_actions_for_remote(settings: &serde_json::Value) -> Vec<PrimaryAc
     ]
 }
 
-pub async fn create_tray_menu<R: tauri::Runtime>(
+pub async fn create_tray_menu<R: Runtime>(
     app: &AppHandle<R>,
     max_tray_items: usize,
 ) -> tauri::Result<Menu<R>> {
@@ -131,13 +131,10 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
         vec![]
     });
 
-    let mounted_remotes = match get_cached_mounted_remotes().await {
-        Ok(remotes) => remotes,
-        Err(err) => {
-            error!("Failed to fetch mounted remotes: {err}");
-            vec![]
-        }
-    };
+    let mounted_remotes = get_cached_mounted_remotes().await.unwrap_or_else(|err| {
+        error!("Failed to fetch mounted remotes: {err}");
+        vec![]
+    });
 
     let active_jobs = JOB_CACHE.get_active_jobs().await;
 
@@ -148,180 +145,165 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
         serde_json::Value::Null
     });
 
-    for remote in remotes.iter().take(max_tray_items) {
-        let settings = cached_settings.get(remote).cloned();
-
-        if let Some(settings) = settings {
-            if settings
-                .get("showOnTray")
+    let remotes_to_show = remotes
+        .iter()
+        .filter(|&remote| {
+            cached_settings
+                .get(remote)
+                .and_then(|s| s.get("showOnTray"))
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false)
-            {
-                // Check mount status
-                let is_mounted = mounted_remotes.iter().any(|mounted| {
-                    let remote_name = remote.trim_end_matches(':');
-                    let mounted_name = mounted.fs.trim_end_matches(':');
-                    mounted_name == remote_name
-                        || mounted_name == remote
-                        || mounted_name.starts_with(&format!("{remote_name}/"))
-                        || mounted_name.starts_with(&format!("{remote_name}:"))
-                });
+        })
+        .take(max_tray_items);
 
-                // Get primary actions for this remote
-                let primary_actions = get_primary_actions_for_remote(&settings);
+    for remote_str in remotes_to_show {
+        let remote = remote_str.to_string();
+        if let Some(settings) = cached_settings.get(&remote).cloned() {
+            // Check mount status by comparing the remote name against mounted fs paths
+            let is_mounted = mounted_remotes.iter().any(|mounted| {
+                let remote_name = remote.trim_end_matches(':');
+                let mounted_name = mounted.fs.trim_end_matches(':');
+                mounted_name == remote_name || mounted_name.starts_with(&format!("{remote_name}:"))
+            });
 
-                // Create status indicators
-                let active_jobs_for_remote: Vec<_> = active_jobs
+            let active_jobs_for_remote: Vec<_> = active_jobs
+                .iter()
+                .filter(|job| job.remote_name == remote)
+                .collect();
+
+            // -- Build the submenu items for this remote --
+            let mut submenu_items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
+
+            // Add status indicators
+            let mount_status = CheckMenuItem::with_id(
+                &handle,
+                format!("mount_status-{}", remote),
+                if is_mounted { "Mounted" } else { "Not Mounted" },
+                false,
+                is_mounted,
+                None::<&str>,
+            )?;
+            submenu_items.push(Box::new(mount_status));
+
+            let job_status_text = if active_jobs_for_remote.is_empty() {
+                "No active jobs".to_string()
+            } else {
+                let job_types: Vec<String> = active_jobs_for_remote
                     .iter()
-                    .filter(|job| job.remote_name == *remote)
+                    .map(|job| job.job_type.clone())
                     .collect();
+                format!("{} in progress", job_types.join(" & "))
+            };
+            let job_status = CheckMenuItem::with_id(
+                &handle,
+                format!("job_status-{}", remote),
+                job_status_text,
+                false,
+                !active_jobs_for_remote.is_empty(),
+                None::<&str>,
+            )?;
+            submenu_items.push(Box::new(job_status));
+            submenu_items.push(Box::new(PredefinedMenuItem::separator(&handle)?));
 
-                let job_status = CheckMenuItem::with_id(
-                    &handle,
-                    format!("job_status-{remote}"),
-                    if active_jobs_for_remote.is_empty() {
-                        "No active jobs".to_string()
-                    } else {
-                        let job_types: Vec<String> = active_jobs_for_remote
-                            .iter()
-                            .map(|job| job.job_type.clone())
-                            .collect();
-                        format!("{} in progress", job_types.join(" & "))
-                    },
-                    false,
-                    !active_jobs_for_remote.is_empty(),
-                    None::<&str>,
-                )?;
-
-                let mount_status = CheckMenuItem::with_id(
-                    &handle,
-                    format!("mount_status-{remote}"),
-                    if is_mounted { "Mounted" } else { "Not Mounted" },
-                    false,
-                    is_mounted,
-                    None::<&str>,
-                )?;
-
-                let mut submenu_items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> =
-                    vec![Box::new(mount_status), Box::new(job_status)];
-
-                submenu_items.push(Box::new(PredefinedMenuItem::separator(&handle)?));
-
-                // Add primary action menu items (max 3)
-                for action in primary_actions.iter().take(3) {
-                    match action {
-                        PrimaryActionType::Mount => {
-                            if is_mounted {
-                                let unmount_item = MenuItem::with_id(
-                                    &handle,
-                                    action.to_stop_menu_id(remote),
-                                    action.to_stop_label(),
-                                    true,
-                                    None::<&str>,
-                                )?;
-                                submenu_items.push(Box::new(unmount_item));
-                            } else {
-                                let mount_item = MenuItem::with_id(
-                                    &handle,
-                                    action.to_menu_id(remote),
-                                    action.to_action_label(),
-                                    true,
-                                    None::<&str>,
-                                )?;
-                                submenu_items.push(Box::new(mount_item));
-                            }
-                        }
-                        _ => {
-                            // Check if this job type is active
-                            let job_type_str = match action {
-                                PrimaryActionType::Sync => "sync",
-                                PrimaryActionType::Copy => "copy",
-                                PrimaryActionType::Move => "move",
-                                PrimaryActionType::Bisync => "bisync",
-                                _ => continue,
-                            };
-
-                            let has_active_job = active_jobs_for_remote
-                                .iter()
-                                .any(|job| job.job_type == job_type_str);
-
-                            if has_active_job {
-                                let stop_item = MenuItem::with_id(
-                                    &handle,
-                                    action.to_stop_menu_id(remote),
-                                    action.to_stop_label(),
-                                    true,
-                                    None::<&str>,
-                                )?;
-                                submenu_items.push(Box::new(stop_item));
-                            } else {
-                                let start_item = MenuItem::with_id(
-                                    &handle,
-                                    action.to_menu_id(remote),
-                                    action.to_action_label(),
-                                    true,
-                                    None::<&str>,
-                                )?;
-                                submenu_items.push(Box::new(start_item));
-                            }
-                        }
-                    }
-                }
-
-                submenu_items.push(Box::new(PredefinedMenuItem::separator(&handle)?));
-
-                // Common items (browse and delete)
-                let browse_item = MenuItem::with_id(
-                    &handle,
-                    format!("browse-{remote}"),
-                    "Browse",
-                    is_mounted,
-                    None::<&str>,
-                )?;
-                submenu_items.push(Box::new(browse_item));
-
-                let name = if remote.len() > 20 {
-                    format!("{}...", &remote[..17])
-                } else {
-                    remote.clone()
-                };
-
-                // Create status indicators for the menu title
-                let indicators = format!(
-                    "{}{}",
-                    if is_mounted { "🗃️" } else { "" },
-                    if !active_jobs_for_remote.is_empty() {
-                        "⚡"
-                    } else {
-                        ""
-                    }
-                );
-
-                let remote_submenu = Submenu::with_items(
-                    &handle,
-                    format!("{name} {indicators}"),
-                    true,
-                    &submenu_items
+            // Add primary action menu items
+            let primary_actions = get_primary_actions_for_remote(&settings);
+            for action in primary_actions.iter().take(MAX_PRIMARY_ACTIONS) {
+                if let Some(job_type_str) = action.job_type_str() {
+                    let has_active_job = active_jobs_for_remote
                         .iter()
-                        .map(|item| item.as_ref())
-                        .collect::<Vec<_>>(),
-                )?;
-
-                remote_menus.push(remote_submenu);
+                        .any(|j| j.job_type == job_type_str);
+                    let item = if has_active_job {
+                        MenuItem::with_id(
+                            &handle,
+                            action.to_stop_menu_id(&remote),
+                            action.stop_label(),
+                            true,
+                            None::<&str>,
+                        )?
+                    } else {
+                        MenuItem::with_id(
+                            &handle,
+                            action.to_menu_id(&remote),
+                            action.action_label(),
+                            true,
+                            None::<&str>,
+                        )?
+                    };
+                    submenu_items.push(Box::new(item));
+                } else if *action == PrimaryActionType::Mount {
+                    let item = if is_mounted {
+                        MenuItem::with_id(
+                            &handle,
+                            action.to_stop_menu_id(&remote),
+                            action.stop_label(),
+                            true,
+                            None::<&str>,
+                        )?
+                    } else {
+                        MenuItem::with_id(
+                            &handle,
+                            action.to_menu_id(&remote),
+                            action.action_label(),
+                            true,
+                            None::<&str>,
+                        )?
+                    };
+                    submenu_items.push(Box::new(item));
+                }
             }
+
+            submenu_items.push(Box::new(PredefinedMenuItem::separator(&handle)?));
+
+            // Add common items (e.g., Browse)
+            let browse_item = MenuItem::with_id(
+                &handle,
+                format!("browse-{}", remote),
+                "Browse",
+                is_mounted,
+                None::<&str>,
+            )?;
+            submenu_items.push(Box::new(browse_item));
+
+            // --- Submenu Creation (Now happens only ONCE per remote) ---
+            let name = if remote.len() > 20 {
+                format!("{}...", &remote[..17])
+            } else {
+                remote.clone()
+            };
+
+            let indicators = format!(
+                "{}{}",
+                if is_mounted { "🗃️ " } else { "" },
+                if !active_jobs_for_remote.is_empty() {
+                    "🔄"
+                } else {
+                    ""
+                }
+            );
+
+            let remote_submenu = Submenu::with_items(
+                &handle,
+                format!("{name} {indicators}").trim(),
+                true,
+                &submenu_items
+                    .iter()
+                    .map(|item| item.as_ref())
+                    .collect::<Vec<_>>(),
+            )?;
+
+            remote_menus.push(remote_submenu);
         } else {
-            warn!("No cached settings found for remote: {remote}");
+            warn!("No cached settings found for remote: {}", remote);
         }
     }
 
+    // -- Assemble the final tray menu --
     let mut menu_items: Vec<&dyn tauri::menu::IsMenuItem<R>> = vec![&show_app_item, &separator];
 
     if !remote_menus.is_empty() {
-        menu_items.extend(
-            remote_menus
-                .iter()
-                .map(|submenu| submenu as &dyn tauri::menu::IsMenuItem<R>),
-        );
+        for submenu in &remote_menus {
+            menu_items.push(submenu);
+        }
         menu_items.push(&separator);
         menu_items.push(&unmount_all_item);
         menu_items.push(&stop_all_jobs_item);
@@ -329,6 +311,5 @@ pub async fn create_tray_menu<R: tauri::Runtime>(
     }
 
     menu_items.push(&quit_item);
-
     Menu::with_items(&handle, &menu_items)
 }

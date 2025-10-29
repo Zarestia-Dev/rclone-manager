@@ -415,7 +415,7 @@ $dark-theme: (
     --secondary-text-color: #939090;
     --button-hover: #dddddd;
     --theme-border: #dbdbdb;
-    --faint-blue: #f0f8ff;
+    --input-background: #ebebeb;
     --about-dialog-button-color: #ffffff;
 
     /* Define rgb variables for colors */
@@ -445,7 +445,7 @@ $dark-theme: (
     --secondary-text-color: #939090;
     --button-hover: #333;
     --theme-border: #555;
-    --faint-blue: #464d50;
+    --input-background: #47474b;
     --about-dialog-button-color: #333337;
 
     /* Define rgb variables for colors */
@@ -554,7 +554,7 @@ $dark-theme: (
   /* Component-specific Aliases (mapped to scale) */
   --border-radius: var(--radius-xs); // 8px
   --button-border-radius: var(--radius-sm); // 12px
-  --input-border-radius: var(--radius-sm); // 12px - Border radius for input fields
+  --input-border-radius: var(--radius-md); // 16px - Border radius for input fields
   --card-border-radius: var(--radius-sm); // 12px
   --panel-radius: var(--radius-sm); // 12px
   --modal-radius: var(--radius-md); // 16px
@@ -624,6 +624,29 @@ body {
   margin: 0;
   font-family: system-ui, Inter, sans-serif;
   overflow: hidden;
+
+  @include mat.form-field-overrides(
+    (
+      // Shape & Borders (using your design system tokens)
+      filled-container-color: var(--input-background),
+      // Unfocused State Colors
+      filled-label-text-color: var(--secondary-text-color),
+      filled-input-text-color: var(--app-text-color),
+      filled-input-text-placeholder-color: var(--secondary-text-color),
+      // Focused State Colors (using your accent color)
+      filled-focus-label-text-color: var(--accent-color),
+      filled-caret-color: var(--accent-color),
+      // A slightly lighter gray from your palette
+      filled-hover-label-text-color: var(--app-text-color)
+    )
+  );
+
+  .mat-mdc-form-field .mat-mdc-text-field-wrapper {
+    border-radius: var(--input-border-radius);
+    .mdc-line-ripple {
+      display: none !important;
+    }
+  }
 
   @include mat.button-overrides(
     (
@@ -717,6 +740,10 @@ mat-icon {
   &.orange {
     color: var(--orange) !important;
   }
+
+  &.purple {
+    color: var(--purple) !important;
+  }
 }
 
 button {
@@ -785,10 +812,6 @@ button {
   }
 }
 
-.mdc-text-field--filled:not(.mdc-text-field--disabled) {
-  background-color: var(--faint-blue) !important;
-}
-
 .cdk-overlay-pane,
 .cdk-overlay-dark-backdrop {
   border-radius: var(--app-border-radius) !important;
@@ -806,6 +829,10 @@ button {
 // ===== FORM FIELDS =====
 .mat-mdc-form-field {
   width: 100%;
+}
+
+.cdk-virtual-scroll-content-wrapper {
+  max-width: 100% !important;
 }
 
 .mat-mdc-dialog-container .mdc-dialog__surface {
@@ -875,4 +902,94 @@ button {
   border-radius: var(--radius-xxs);
   transition: var(--transition-standard);
   will-change: background;
+}
+
+@media (max-width: 540px) {
+  mat-accordion {
+    gap: var(--space-sm);
+
+    .mat-expansion-panel-header {
+      padding: var(--space-sm);
+      min-height: 56px;
+    }
+
+    mat-panel-title {
+      gap: var(--space-sm);
+
+      mat-icon:first-child {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+    }
+  }
+}
+
+// =============================================
+// 2. MAT-ACCORDION CONTAINER
+// =============================================
+mat-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+
+  .mat-expansion-panel {
+    border-radius: var(--card-border-radius) !important;
+
+    mat-panel-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      flex: 1;
+
+      mat-icon:first-child {
+        color: var(--primary-color);
+        opacity: 0.9;
+      }
+    }
+
+    &.mat-expanded {
+      box-shadow: var(--shadow-elevated);
+    }
+
+    .mat-expansion-panel-header {
+      min-height: 72px;
+      padding: 0 clamp(16px, 4vw, 32px);
+    }
+
+    .mat-expansion-panel-header-description {
+      justify-content: flex-end;
+      align-items: center;
+      display: flex;
+      gap: 12px;
+      font-size: clamp(12px, 2vw, 14px);
+    }
+  }
+}
+
+.hide-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+
+  &::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+  }
+}
+
+.option-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  padding: var(--space-xs) 0;
+
+  .option-label {
+    color: var(--app-text-color);
+    font-weight: 500;
+    font-size: var(--font-size-base);
+  }
+
+  .option-description {
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+  }
 }

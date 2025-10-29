@@ -7,7 +7,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { StatusBadgeComponent } from '../status-badge/status-badge.component';
 import { PathDisplayComponent } from '../path-display/path-display.component';
-import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '../../types';
+import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@app/types';
 
 @Component({
   selector: 'app-operation-control',

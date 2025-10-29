@@ -1,0 +1,148 @@
+<form [formGroup]="configGroup" class="flag-form">
+  <!-- Virtual Scroll Viewport -->
+  <cdk-virtual-scroll-viewport
+    [itemSize]="20"
+    [style.height.px]="700"
+    class="virtual-scroll-viewport"
+  >
+    <!-- Virtual scrolling content -->
+    <div *cdkVirtualFor="let field of formFields; trackBy: trackByField" class="form-field-item">
+      @if (field.type === 'operation-config' && !isType(['vfs', 'filter', 'backend'])) {
+        <app-operation-config
+          [opFormGroup]="configGroup"
+          [operationType]="flagType"
+          [currentRemoteName]="currentRemoteName"
+          [existingRemotes]="existingRemotes"
+          [isNewRemote]="isNewRemote"
+          [description]="
+            'Configure source, destination, and auto-start options for this operation.'
+          "
+          (sourceFolderSelected)="onSourceFolderSelect()"
+          (destFolderSelected)="onDestFolderSelect()"
+        >
+        </app-operation-config>
+      }
+
+      <!-- Mount Type Selector -->
+      @if (field.type === 'mount-type' && isType('mount')) {
+        <div class="options">
+          <mat-form-field appearance="fill">
+            <mat-label>Mount Type</mat-label>
+            <mat-select formControlName="type" placeholder="Select mount type">
+              @for (mountType of mountTypes; track mountType) {
+                <mat-option [value]="mountType">
+                  {{ mountType | titlecase }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+      }
+
+      <!-- Bisync Specific Options -->
+      @if (field.type === 'bisync-options' && isType('bisync')) {
+        <div class="options">
+          <h4>Bisync Options</h4>
+
+          <mat-slide-toggle formControlName="dryRun"> Dry Run Mode </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="resync"> Perform Resync Run </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="checkAccess">
+            Abort if RCLONE_TEST files not found
+          </mat-slide-toggle>
+
+          @if (configGroup.get('checkAccess')?.value) {
+            <mat-form-field appearance="fill">
+              <mat-label>Check Filename</mat-label>
+              <input matInput formControlName="checkFilename" placeholder="RCLONE_TEST" />
+            </mat-form-field>
+          }
+
+          <mat-form-field appearance="fill">
+            <mat-label>Max Delete Percentage</mat-label>
+            <input matInput type="number" formControlName="maxDelete" placeholder="50" />
+          </mat-form-field>
+
+          <mat-slide-toggle formControlName="force">
+            Bypass maxDelete safety check
+          </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="createEmptySrcDirs">
+            Create Empty Source Directories
+          </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="removeEmptyDirs">
+            Remove Empty Directories
+          </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="ignoreListingChecksum">
+            Ignore Listing Checksum
+          </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="resilient">
+            Resilient Mode (Use at your own risk!)
+          </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="noCleanup"> Retain Working Files </mat-slide-toggle>
+
+          <mat-form-field appearance="fill">
+            <mat-label>Work Directory</mat-label>
+            <input matInput formControlName="workdir" placeholder="~/.cache/rclone/bisync" />
+          </mat-form-field>
+
+          <mat-form-field appearance="fill">
+            <mat-label>Backup Directory 1</mat-label>
+            <input matInput formControlName="backupdir1" placeholder="Backup dir for Path1" />
+          </mat-form-field>
+
+          <mat-form-field appearance="fill">
+            <mat-label>Backup Directory 2</mat-label>
+            <input matInput formControlName="backupdir2" placeholder="Backup dir for Path2" />
+          </mat-form-field>
+
+          <mat-form-field appearance="fill">
+            <mat-label>Filters File</mat-label>
+            <input matInput formControlName="filtersFile" placeholder="Path to filters file" />
+          </mat-form-field>
+        </div>
+      }
+
+      <!-- Move Specific Options -->
+      @if (field.type === 'move-options' && isType('move')) {
+        <div class="options">
+          <h4>Move Options</h4>
+
+          <mat-slide-toggle formControlName="createEmptySrcDirs">
+            Create Empty Source Directories
+          </mat-slide-toggle>
+
+          <mat-slide-toggle formControlName="deleteEmptySrcDirs">
+            Delete Empty Source Directories
+          </mat-slide-toggle>
+        </div>
+      }
+
+      <!-- Copy/Sync Specific Options -->
+      @if (field.type === 'copy-sync-options' && isType(['copy', 'sync'])) {
+        <div class="options">
+          <h4>{{ flagType | titlecase }} Options</h4>
+
+          <mat-slide-toggle formControlName="createEmptySrcDirs">
+            Create Empty Source Directories
+          </mat-slide-toggle>
+        </div>
+      }
+
+      <!-- Dynamic Flag Fields -->
+      @if (field.type === 'dynamic-fields') {
+        <ng-container formGroupName="options">
+          @for (field of this.dynamicFlagFields; track field.Name) {
+            <app-setting-control [option]="field" [formControlName]="field.Name">
+            </app-setting-control>
+          }
+        </ng-container>
+      }
+    </div>
+  </cdk-virtual-scroll-viewport>
+</form>

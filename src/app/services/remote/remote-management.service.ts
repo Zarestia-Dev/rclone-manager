@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { RemoteProvider, RemoteConfig, RcConfigQuestionResponse } from '@app/types';
+import { RemoteProvider, RemoteConfig, RcConfigQuestionResponse, Entry } from '@app/types';
 
 /**
  * Service for managing rclone remotes
@@ -58,7 +58,7 @@ export class RemoteManagementService extends TauriBaseService {
   /**
    * Get configuration fields for a specific remote type
    */
-  async getRemoteConfigFields(type: string): Promise<unknown[]> {
+  async getRemoteConfigFields(type: string): Promise<any[]> {
     const response = await this.invokeCommand<unknown>('get_remote_types');
 
     // Response can be either { providers: [...] } or a record of arrays
@@ -159,8 +159,9 @@ export class RemoteManagementService extends TauriBaseService {
     remote: string,
     path: string,
     options: Record<string, unknown>
-  ): Promise<unknown> {
-    return this.invokeCommand('get_remote_paths', { remote, path, options });
+  ): Promise<{ list: Entry[] }> {
+    const response = await this.invokeCommand('get_remote_paths', { remote, path, options });
+    return response as { list: Entry[] };
   }
 
   /**

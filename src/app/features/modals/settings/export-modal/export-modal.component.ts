@@ -72,7 +72,7 @@ export class ExportModalComponent implements OnInit {
     {
       value: ExportType.All,
       label: '📦 Export All',
-      description: 'Settings + Remotes + rclone.conf',
+      description: 'Settings + Remotes + rclone.conf + Backend',
     },
     {
       value: ExportType.Settings,
@@ -93,6 +93,11 @@ export class ExportModalComponent implements OnInit {
       value: ExportType.SpecificRemote,
       label: '🔍 Specific Remote',
       description: 'Single remote configuration',
+    },
+    {
+      value: ExportType.RCloneBackend,
+      label: '⚡ RClone Backend Settings',
+      description: 'RClone backend options',
     },
   ] as const;
 
@@ -123,7 +128,7 @@ export class ExportModalComponent implements OnInit {
 
   readonly selectedOptionLabel = computed(() => {
     const option = this.exportOptions.find(opt => opt.value === this.selectedOption());
-    return option?.label.replace(/^[^\s]+\s/, '') ?? 'Settings';
+    return option?.label ?? 'Settings';
   });
 
   readonly showSpecificRemoteSection = computed(

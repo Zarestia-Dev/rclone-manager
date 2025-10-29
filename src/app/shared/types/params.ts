@@ -8,6 +8,7 @@ export type FilterOptions = Record<string, object>;
 // Mount option bags
 export type MountOptions = Record<string, string | number | boolean>;
 export type VfsOptions = Record<string, string | number | boolean>;
+export type BackendOptions = Record<string, string | number | boolean>;
 
 // Tauri command parameter payloads
 export interface SyncParams {
@@ -17,6 +18,7 @@ export interface SyncParams {
   create_empty_src_dirs: boolean;
   sync_options: SyncOptions | null;
   filter_options: FilterOptions | null;
+  backend_options: BackendOptions | null;
 }
 
 export interface CopyParams {
@@ -26,6 +28,7 @@ export interface CopyParams {
   create_empty_src_dirs: boolean;
   copy_options: CopyOptions | null;
   filter_options: FilterOptions | null;
+  backend_options: BackendOptions | null;
 }
 
 export interface BisyncParams {
@@ -50,6 +53,7 @@ export interface BisyncParams {
   backupdir1?: string;
   backupdir2?: string;
   noCleanup?: boolean;
+  backend_options: BackendOptions | null;
 }
 
 export interface MoveParams {
@@ -60,6 +64,7 @@ export interface MoveParams {
   delete_empty_src_dirs: boolean;
   move_options: MoveOptions | null;
   filter_options: FilterOptions | null;
+  backend_options: BackendOptions | null;
 }
 
 export interface MountParams {
@@ -69,4 +74,6 @@ export interface MountParams {
   mount_type: string;
   mount_options: MountOptions | null;
   vfs_options: VfsOptions | null;
+  filter_options: FilterOptions | null;
+  backend_options: BackendOptions | null;
 }

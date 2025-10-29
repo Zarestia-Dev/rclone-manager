@@ -1,0 +1,230 @@
+<div class="rclone-config-modal">
+  <div class="modal-header" data-tauri-drag-region>
+    <button mat-icon-button (click)="toggleSearchVisibility()" aria-label="Toggle Search">
+      <mat-icon svgIcon="search"></mat-icon>
+    </button>
+    <p>{{ getPageTitle() }}</p>
+    <button mat-icon-button (click)="close()" aria-label="Close">
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    </button>
+  </div>
+
+  <app-search-container
+    [visible]="isSearchVisible"
+    [searchText]="searchQuery"
+    (searchTextChange)="onSearchInput($event)"
+    [placeholder]="getSearchPlaceholder()"
+    ariaLabel="Search RClone settings"
+  ></app-search-container>
+
+  @if (isLoading) {
+    <div class="loading-overlay">
+      <mat-spinner diameter="50"></mat-spinner>
+    </div>
+  }
+
+  @if (!isLoading && currentPage === 'home') {
+    <div class="modal-content" #content>
+      @if (searchQuery) {
+        <div class="global-search-results" style="flex: 1; overflow: hidden">
+          @if (globalSearchResults.length > 0) {
+            <cdk-virtual-scroll-viewport
+              #searchViewport
+              itemSize="25"
+              class="virtual-scroll-viewport"
+            >
+              @for (
+                result of globalSearchResults;
+                track result.service +
+                  '-' +
+                  result.category +
+                  '-' +
+                  result.option.Name +
+                  '-' +
+                  $index
+              ) {
+                <div class="virtual-scroll-item">
+                  <button
+                    mat-button
+                    class="config-item search-result-item"
+                    (click)="navigateTo(result.service, result.category, result.option.Name)"
+                  >
+                    <div class="config-item-content">
+                      <mat-icon [svgIcon]="getServiceIcon(result.service)"></mat-icon>
+                      <div class="config-item-text">
+                        <span class="config-item-title">
+                          {{ result.option.FieldName }}
+                        </span>
+                        <small class="config-item-description">
+                          {{ result.service | titlecase }} > {{ result.category }}
+                        </small>
+                        <small class="config-item-description result-help">
+                          {{ result.option.Help | slice: 0 : 50 }}...
+                        </small>
+                      </div>
+                    </div>
+                    <mat-icon svgIcon="chevron-right"></mat-icon>
+                  </button>
+                </div>
+              }
+            </cdk-virtual-scroll-viewport>
+          } @else {
+            <div class="no-results-home">
+              <mat-icon svgIcon="search"></mat-icon>
+              <h4>No settings found</h4>
+              <p>Try adjusting your search terms for services or settings.</p>
+            </div>
+          }
+        </div>
+      } @else {
+        <mat-accordion>
+          @for (
+            mainCategory of ['General Settings', 'File System & Storage', 'Network & Servers'];
+            track mainCategory
+          ) {
+            @if (getServicesByMainCategory()[mainCategory].length > 0) {
+              <mat-expansion-panel [expanded]="false" class="main-category-panel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title class="main-category-title-text">
+                    <div class="main-category-header">
+                      <span class="category-name">{{ mainCategory }}</span>
+                      <small class="category-desc">{{
+                        getMainCategoryDescription(mainCategory)
+                      }}</small>
+                    </div>
+                  </mat-panel-title>
+                </mat-expansion-panel-header>
+
+                <div class="main-category-services">
+                  @for (service of getServicesByMainCategory()[mainCategory]; track service.name) {
+                    <mat-expansion-panel
+                      [expanded]="service.expanded"
+                      (opened)="service.expanded = true"
+                      (closed)="service.expanded = false"
+                      class="service-panel"
+                    >
+                      <mat-expansion-panel-header>
+                        <mat-panel-title>
+                          <mat-icon [svgIcon]="getServiceIcon(service.name)"></mat-icon>
+                          <div class="category-header-text">
+                            <span class="category-title">{{ service.name | titlecase }}</span>
+                            <small class="category-description">{{
+                              getServiceDescription(service.name)
+                            }}</small>
+                          </div>
+                        </mat-panel-title>
+                      </mat-expansion-panel-header>
+
+                      <div class="category-items">
+                        @for (
+                          categoryName of getServiceCategories(service.name);
+                          track categoryName
+                        ) {
+                          <button
+                            mat-button
+                            class="config-item"
+                            (click)="navigateTo(service.name, categoryName)"
+                          >
+                            <div class="config-item-content">
+                              <mat-icon [svgIcon]="getCategoryIcon(categoryName)"></mat-icon>
+                              <div class="config-item-text">
+                                <span class="config-item-title">
+                                  {{ categoryName }}
+                                </span>
+                                <small class="config-item-description">{{
+                                  getCategoryDescription(categoryName)
+                                }}</small>
+                              </div>
+                            </div>
+                            <mat-icon svgIcon="chevron-right"></mat-icon>
+                          </button>
+                        }
+                      </div>
+                    </mat-expansion-panel>
+                  }
+                </div>
+              </mat-expansion-panel>
+            }
+          }
+
+          <!-- Security Section -->
+          <div class="security-section">
+            <button mat-button class="config-item security-item" (click)="navigateTo('security')">
+              <div class="config-item-content">
+                <mat-icon svgIcon="shield"></mat-icon>
+                <div class="config-item-text">
+                  <span class="config-item-title">Security Settings</span>
+                  <small class="config-item-description"
+                    >Configuration encryption and password management</small
+                  >
+                </div>
+              </div>
+              <mat-icon svgIcon="chevron-right"></mat-icon>
+            </button>
+          </div>
+        </mat-accordion>
+      }
+    </div>
+  }
+
+  <!-- SETTINGS PAGE: Category Settings Display -->
+  @if (currentPage !== 'home' && !isLoading) {
+    <div class="overlay" [@slideOverlay]>
+      <div class="overlay-header" data-tauri-drag-region>
+        <button mat-icon-button (click)="navigateTo('home')">
+          <mat-icon svgIcon="chevron-left"></mat-icon>
+        </button>
+        <p>{{ getPageTitle() }}</p>
+        <button mat-icon-button (click)="close()">
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
+        </button>
+      </div>
+
+      <div class="overlay-content">
+        @if (isSecurityPage) {
+          <app-security-settings></app-security-settings>
+        } @else {
+          @if (hasSearchQuery) {
+            <div class="search-results-info">
+              <small>Showing {{ filteredOptionsCount }} of {{ totalOptionsCount }} settings</small>
+            </div>
+          }
+
+          @if (filteredOptionsCount === 0 && hasSearchQuery) {
+            <div class="no-results">
+              <mat-icon svgIcon="search"></mat-icon>
+              <h4>No settings found</h4>
+              <p>Try adjusting your search terms</p>
+            </div>
+          } @else {
+            <!-- VIRTUAL SCROLL IMPLEMENTATION -->
+            <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
+              <form [formGroup]="rcloneOptionsForm">
+                @for (
+                  option of getVirtualScrollData();
+                  track trackByOptionIndex($index, option);
+                  let i = $index
+                ) {
+                  <div class="virtual-scroll-item" [attr.data-index]="i">
+                    <app-setting-control
+                      [id]="'setting-' + option.Name"
+                      [option]="option"
+                      [formControlName]="getUniqueControlKey(option)"
+                      (valueCommit)="
+                        saveRCloneOption(
+                          getUniqueControlKey(option),
+                          isOptionAtDefault(getUniqueControlKey(option))
+                        )
+                      "
+                      (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
+                    ></app-setting-control>
+                  </div>
+                }
+              </form>
+            </cdk-virtual-scroll-viewport>
+          }
+        }
+      </div>
+    </div>
+  }
+</div>

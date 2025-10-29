@@ -204,8 +204,6 @@ pub async fn create_remote(
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
-    println!("Response: {body}");
-
     if !status.is_success() {
         let error = if body.contains("failed to get oauth token") {
             "OAuth authentication failed or was not completed".to_string()

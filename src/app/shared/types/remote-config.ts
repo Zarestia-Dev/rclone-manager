@@ -1,47 +1,16 @@
-export type FlagType = 'mount' | 'bisync' | 'move' | 'copy' | 'sync' | 'filter' | 'vfs';
+export type FlagType = 'mount' | 'bisync' | 'move' | 'copy' | 'sync' | 'filter' | 'vfs' | 'backend';
+export const FLAG_TYPES: FlagType[] = [
+  'mount',
+  'copy',
+  'sync',
+  'bisync',
+  'move',
+  'filter',
+  'vfs',
+  'backend',
+];
 export type EditTarget = FlagType | 'remote' | null;
-
-export type FieldType =
-  | 'bool'
-  | 'int'
-  | 'Duration'
-  | 'string'
-  | 'stringArray'
-  | 'CommaSeparatedList'
-  | 'SizeSuffix'
-  | 'int64'
-  | 'uint32'
-  | 'float'
-  | 'password'
-  | 'hidden'
-  | 'option'
-  | 'time'
-  | 'date'
-  | 'object'
-  | 'json'
-  | string;
-
-export interface RemoteField {
-  Name: string;
-  Type: string;
-  Help: string;
-  Value: any;
-  Default: any;
-  Required: boolean;
-  Advanced: boolean;
-  Examples: any[];
-}
-
-export interface FlagField {
-  ValueStr: string;
-  Value: any;
-  name: string;
-  default: any;
-  help: string;
-  type: string;
-  required: boolean;
-  examples: any[];
-}
+export const INTERACTIVE_REMOTES = ['iclouddrive', 'onedrive'];
 
 export interface LoadingState {
   remoteConfig?: boolean;
@@ -96,6 +65,11 @@ export interface VfsConfig {
   [key: string]: any;
 }
 
+export interface BackendConfig {
+  options?: any;
+  [key: string]: any;
+}
+
 export interface MoveConfig {
   autoStart: boolean;
   source: string;
@@ -139,29 +113,52 @@ export interface RemoteConfigSections {
   moveConfig: MoveConfig;
   bisyncConfig: BisyncConfig;
   filterConfig: FilterConfig;
+  backendConfig: BackendConfig;
   vfsConfig: VfsConfig;
   showOnTray: boolean;
 }
 
-export interface QuickAddForm {
-  remoteName: string;
-  remoteType: string;
-  useInteractiveMode: boolean;
-  mountPath: string;
-  autoMount: boolean;
-  syncDest: string;
-  autoSync: boolean;
-  copyDest: string;
-  autoCopy: boolean;
-  bisyncSource: string;
-  bisyncDest: string;
-  autoBisync: boolean;
-  moveSource: string;
-  moveDest: string;
-  autoMove: boolean;
+export const REMOTE_NAME_REGEX = /^[A-Za-z0-9_\-.+@ ]+$/;
+
+export interface RcConfigExample {
+  Value: string;
+  Help: string;
 }
 
-export const REMOTE_NAME_REGEX = /^[A-Za-z0-9_\-.+@ ]+$/;
+export interface RcConfigOption {
+  Name: string;
+  FieldName: string;
+  Help: string;
+  Provider?: string;
+  Groups?: string;
+  Default?: any;
+  Value?: any;
+  Examples?: RcConfigExample[];
+  Hide?: number;
+  Required?: boolean;
+  IsPassword?: boolean;
+  NoPrefix?: boolean;
+  Advanced?: boolean;
+  Exclusive?: boolean;
+  Sensitive?: boolean;
+  DefaultStr: string;
+  ValueStr?: string;
+  Type: string;
+}
+
+export interface RcConfigQuestionResponse {
+  State: string;
+  Option: RcConfigOption | null;
+  Error: string;
+  Result?: string;
+}
+
+export interface InteractiveFlowState {
+  isActive: boolean;
+  question: RcConfigQuestionResponse | null;
+  answer: string | boolean | number | null;
+  isProcessing: boolean;
+}
 
 export interface Entry {
   ID: string;
