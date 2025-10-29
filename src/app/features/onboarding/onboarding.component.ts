@@ -52,7 +52,7 @@ import { InstallationOptionsData, InstallationTabOption } from '@app/types';
   animations: [
     AnimationsService.getAnimations([
       'onboardingEntrance',
-      'contentFadeIn',
+      'onboardingState',
       'loadingSpinner',
       'slideInOut',
     ]),
@@ -72,16 +72,13 @@ export class OnboardingComponent implements OnInit, OnDestroy {
     binaryTestResult: 'untested',
   };
   installationValid = true;
+  animationState: 'loading' | 'visible' = 'loading';
 
   mountPluginInstalled = false;
   downloadingPlugin = false;
   currentCardIndex = 0;
   rcloneInstalled = false;
   installing = false;
-
-  // Add initialization state
-  isInitializing = true;
-  initializationComplete = false;
 
   // Base cards that are always shown
   private baseCards = [
@@ -143,18 +140,11 @@ export class OnboardingComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
-    console.log('OnboardingComponent: ngOnInit started');
-
     // Add a small delay for smooth entrance
     setTimeout(async () => {
-      console.log('OnboardingComponent: Starting system checks');
       try {
         await this.checkRclone();
-        console.log('OnboardingComponent: checkRclone completed');
-
         await this.checkMountPlugin();
-        console.log('OnboardingComponent: checkMountPlugin completed');
-
         // Subscribe to engine events so we can react to password errors
         this.rcloneEngineSub = this.eventListenersService
           .listenToRcloneEngine()
@@ -167,7 +157,6 @@ export class OnboardingComponent implements OnInit, OnDestroy {
                 // ignore password_error spam until we see a ready event.
                 if (ev.status === 'password_error') {
                   if (this.waitingForEngineStart) {
-                    console.debug('Ignoring password_error while waiting for engine start');
                     return;
                   }
 
@@ -203,21 +192,18 @@ export class OnboardingComponent implements OnInit, OnDestroy {
               }
             } catch (err) {
               console.error('Error handling rclone engine event:', err);
+              this.animationState = 'visible';
             }
           });
 
         // Mark initialization as complete
-        this.isInitializing = false;
 
         // Add another small delay for the initialization complete animation
         setTimeout(() => {
-          this.initializationComplete = true;
-          console.log('OnboardingComponent: Initialization complete');
+          this.animationState = 'visible';
         }, 300);
       } catch (error) {
         console.error('OnboardingComponent: System checks failed', error);
-        this.isInitializing = false;
-        this.initializationComplete = true;
       }
     }, 500); // Initial delay for app to settle
   }
@@ -225,12 +211,6 @@ export class OnboardingComponent implements OnInit, OnDestroy {
   // When config path changes we should clear cached encryption state
   async onConfigPathChanged(): Promise<void> {
     try {
-      // Save selection temporarily to settings
-      await this.appSettingsService.saveSetting(
-        'core',
-        'rclone_config_source',
-        this.configSelection
-      );
       if (this.configSelection === 'custom' && this.customConfigPath) {
         await this.appSettingsService.saveSetting(
           'core',
@@ -386,7 +366,7 @@ export class OnboardingComponent implements OnInit, OnDestroy {
         image: '../assets/rclone.svg',
         title: 'Select RClone Config',
         content:
-          'Choose the RClone configuration file to use: the default location or a custom file path.',
+          'Choose the RClone configuration file to use: the default location or a custom configuration file.',
       });
     }
   }

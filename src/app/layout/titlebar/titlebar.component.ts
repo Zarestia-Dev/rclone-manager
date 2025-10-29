@@ -88,9 +88,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
       this.rcloneUpdateService.updateStatus$.subscribe(status => {
         this.rcloneUpdateAvailable = status.available;
       });
-
-      this.checkAutoUpdate();
-      this.checkRcloneAutoUpdate();
     } catch (error) {
       console.error('Initialization error:', error);
     }
@@ -108,31 +105,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     }
     // Delegate all the complex logic to the service
     await this.windowService.setTheme(theme);
-  }
-
-  private async checkAutoUpdate(): Promise<void> {
-    try {
-      const autoCheckEnabled = await this.appUpdaterService.getAutoCheckEnabled();
-      if (autoCheckEnabled && !this.appUpdaterService.areUpdatesDisabled()) {
-        // Check for updates on app start
-        await this.appUpdaterService.checkForUpdates();
-      }
-    } catch (error) {
-      console.error('Failed to check for auto-updates:', error);
-    }
-  }
-
-  private async checkRcloneAutoUpdate(): Promise<void> {
-    try {
-      const autoCheckEnabled = await this.rcloneUpdateService.getAutoCheckEnabled();
-      if (autoCheckEnabled) {
-        // Check for rclone updates on app start
-        console.log('🔍 Auto-checking for rclone updates on app launch...');
-        await this.rcloneUpdateService.checkForUpdates();
-      }
-    } catch (error) {
-      console.error('Failed to check for rclone auto-updates:', error);
-    }
   }
 
   // Connection Checking

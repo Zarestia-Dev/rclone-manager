@@ -155,38 +155,49 @@ pub fn get_rclone_binary_path(base_path: &std::path::Path) -> PathBuf {
 }
 
 pub fn read_rclone_path(app: &AppHandle) -> PathBuf {
-    // Get the rclone path from app state
     let rclone_state = app.state::<RcloneState>();
-    let rclone_path = rclone_state.rclone_path.read().unwrap().clone();
-    debug!("🔄 Reading rclone path: {}", rclone_path.to_string_lossy());
+    let configured_base_path = rclone_state.rclone_path.read().unwrap().clone();
+    debug!(
+        "🔄 Reading configured rclone base path: {}",
+        configured_base_path.to_string_lossy()
+    );
 
-    // First try the configured path
-    if rclone_path.to_string_lossy() != "system" {
-        let configured_path = get_rclone_binary_path(&rclone_path);
+    // 1. **PRIORITY**: Check for a valid, user-configured rclone binary.
+    // We only proceed if the path is not the special "system" keyword.
+    if configured_base_path.to_string_lossy() != "system" {
+        let configured_binary_path = get_rclone_binary_path(&configured_base_path);
 
-        if configured_path.exists() {
+        // If the binary exists at the configured path, we use it immediately.
+        if configured_binary_path.exists() {
             debug!(
-                "🔄 Using configured rclone at {}",
-                configured_path.display()
+                "✅ Using user-configured rclone binary at {}",
+                configured_binary_path.display()
             );
-            return configured_path;
+            return configured_binary_path;
+        } else {
+            debug!(
+                "⚠️ Configured rclone binary not found at {}. Falling back to system PATH.",
+                configured_binary_path.display()
+            );
         }
     }
 
-    // Fallback: try to find rclone in PATH
+    // 2. **FALLBACK**: If no valid configured path was found, search the system PATH.
+    debug!("🔍 Searching for rclone in system PATH...");
     match which::which("rclone") {
         Ok(system_path) => {
             info!(
-                "🔄 Using system-installed rclone at {}",
+                "✅ Found and using system-installed rclone at {}",
                 system_path.display()
             );
             system_path
         }
         Err(_) => {
             error!(
-                "❌ No valid Rclone binary found - neither configured path nor system rclone available"
+                "❌ Rclone binary not found. Neither the configured path is valid nor is it in the system PATH."
             );
-            PathBuf::from("rclone") // Return generic path (will fail later with proper error)
+            // Return a generic path. The subsequent command execution will fail with a clearer error to the user.
+            PathBuf::from("rclone")
         }
     }
 }

@@ -2,7 +2,7 @@
   <div class="floating-shape"></div>
 
   <app-loading-overlay
-    [isVisible]="isInitializing"
+    [isVisible]="animationState === 'loading'"
     title="Initializing RClone Manager"
     message="Checking system configuration..."
     icon="refresh"
@@ -10,181 +10,179 @@
   >
   </app-loading-overlay>
 
-  @if (!isInitializing && initializationComplete) {
-    <div class="card-container" [@contentFadeIn]>
-      <div class="onboarding-header">
-        <div class="page-indicators">
-          @for (card of cards; track trackByIndex(i); let i = $index) {
-            <div
-              class="indicator"
-              [class.active]="i === currentCardIndex"
-              [class.completed]="i < currentCardIndex"
-            ></div>
-          }
-        </div>
-      </div>
-      <div class="content-area">
-        <div class="card-content">
-          <div class="icon-container">
-            <img
-              [src]="cards[currentCardIndex].image"
-              alt="{{ cards[currentCardIndex].title }} icon"
-            />
-          </div>
-          <div class="text-content">
-            <h2 class="card-title">{{ cards[currentCardIndex].title }}</h2>
-            <p class="card-description">{{ cards[currentCardIndex].content }}</p>
-          </div>
-          @if (cards[currentCardIndex].title === 'Select RClone Config') {
-            <div class="form-section" @slideInOut>
-              <app-installation-options
-                [mode]="'config'"
-                [disabled]="installing"
-                [tabOptions]="[
-                  { key: 'default', label: 'Default', icon: 'file' },
-                  { key: 'custom', label: 'Custom', icon: 'folder' },
-                ]"
-                (dataChange)="onConfigOptionsChange($event)"
-                (validChange)="onConfigValidChange($event)"
-              ></app-installation-options>
-            </div>
-          }
-          @if (cards[currentCardIndex].title === 'Configuration Password Required') {
-            <div class="form-section" @slideInOut>
-              <app-password-manager
-                [password]="configPassword"
-                [hasError]="!!passwordValidationError"
-                [storePassword]="true"
-                [isSubmitting]="isSubmittingPassword"
-                [errorMessage]="passwordValidationError || ''"
-                [showStoreOption]="false"
-                [shakeTrigger]="errorCount"
-                (passwordChange)="configPassword = $event"
-                (unlock)="submitConfigPassword()"
-              ></app-password-manager>
-            </div>
-          }
-          @if (cards[currentCardIndex].title === 'Install RClone' && !rcloneInstalled) {
-            <div class="form-section" @slideInOut>
-              <app-installation-options
-                [mode]="'install'"
-                [disabled]="installing"
-                [tabOptions]="onboardingTabOptions"
-                (dataChange)="onInstallationOptionsChange($event)"
-                (validChange)="onInstallationValidChange($event)"
-              >
-              </app-installation-options>
-            </div>
-          }
-        </div>
-      </div>
-      <div class="footer-navigation">
-        <div>
-          @if (currentCardIndex > 0) {
-            <button matButton (click)="previousCard()" class="secondary">
-              <mat-icon svgIcon="left-arrow"></mat-icon>
-              Back
-            </button>
-          }
-        </div>
-        <div>
-          @if (shouldShowInstallRcloneButton()) {
-            <button
-              matButton="filled"
-              class="primary"
-              (click)="installRclone()"
-              [disabled]="!canInstallRclone()"
-              [matTooltip]="
-                !canInstallRclone() ? 'Please complete the installation options above' : ''
-              "
-            >
-              <mat-icon
-                [svgIcon]="installing ? 'refresh' : 'download'"
-                [class.animate-spin]="installing"
-              ></mat-icon>
-              {{ getInstallButtonText() }}
-            </button>
-          }
-          @if (!shouldShowInstallRcloneButton() && shouldShowInstallPluginButton()) {
-            <button
-              matButton="filled"
-              class="primary"
-              (click)="installMountPlugin()"
-              [disabled]="downloadingPlugin"
-            >
-              <mat-icon
-                [svgIcon]="downloadingPlugin ? 'refresh' : 'download'"
-                [class.animate-spin]="downloadingPlugin"
-              ></mat-icon>
-              {{ downloadingPlugin ? 'Installing...' : 'Install Plugin' }}
-            </button>
-          }
-          @if (
-            !shouldShowInstallRcloneButton() &&
-            !shouldShowInstallPluginButton() &&
-            cards[currentCardIndex].title === 'Ready to Go!'
-          ) {
-            <button
-              matButton="filled"
-              class="primary"
-              (click)="completeOnboarding()"
-              class="finish-button"
-            >
-              <mat-icon svgIcon="circle-check"></mat-icon>
-              Get Started
-            </button>
-          }
-          @if (
-            !shouldShowInstallRcloneButton() &&
-            !shouldShowInstallPluginButton() &&
-            cards[currentCardIndex].title === 'Select RClone Config'
-          ) {
-            <button
-              matButton="filled"
-              class="primary"
-              (click)="onConfigNext()"
-              [disabled]="!configValid"
-              [matTooltip]="
-                !configValid ? 'Please select or provide a valid config option first' : ''
-              "
-            >
-              Next
-              <mat-icon svgIcon="right-arrow"></mat-icon>
-            </button>
-          }
-          @if (
-            !shouldShowInstallRcloneButton() &&
-            !shouldShowInstallPluginButton() &&
-            cards[currentCardIndex].title === 'Configuration Password Required'
-          ) {
-            <button
-              matButton="filled"
-              class="primary"
-              (click)="submitConfigPassword()"
-              [disabled]="!configPassword || isSubmittingPassword"
-            >
-              @if (isSubmittingPassword) {
-                <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
-              }
-              @if (!isSubmittingPassword) {
-                <span>Unlock</span>
-              }
-            </button>
-          }
-          @if (
-            !shouldShowInstallRcloneButton() &&
-            !shouldShowInstallPluginButton() &&
-            cards[currentCardIndex].title !== 'Ready to Go!' &&
-            cards[currentCardIndex].title !== 'Select RClone Config' &&
-            cards[currentCardIndex].title !== 'Configuration Password Required'
-          ) {
-            <button matButton="filled" class="primary" (click)="nextCard()">
-              Next
-              <mat-icon svgIcon="right-arrow"></mat-icon>
-            </button>
-          }
-        </div>
+  <div class="card-container" [@onboardingState]="animationState">
+    <div class="onboarding-header">
+      <div class="page-indicators">
+        @for (card of cards; track trackByIndex(i); let i = $index) {
+          <div
+            class="indicator"
+            [class.active]="i === currentCardIndex"
+            [class.completed]="i < currentCardIndex"
+          ></div>
+        }
       </div>
     </div>
-  }
+    <div class="content-area">
+      <div class="card-content">
+        <div class="icon-container">
+          <img
+            [src]="cards[currentCardIndex].image"
+            alt="{{ cards[currentCardIndex].title }} icon"
+          />
+        </div>
+        <div class="text-content">
+          <h2 class="card-title">{{ cards[currentCardIndex].title }}</h2>
+          <p class="card-description">{{ cards[currentCardIndex].content }}</p>
+        </div>
+        @if (cards[currentCardIndex].title === 'Select RClone Config') {
+          <div class="form-section" @slideInOut>
+            <app-installation-options
+              [mode]="'config'"
+              [disabled]="installing"
+              [tabOptions]="[
+                { key: 'default', label: 'Default', icon: 'file' },
+                { key: 'custom', label: 'Custom', icon: 'folder' },
+              ]"
+              (dataChange)="onConfigOptionsChange($event)"
+              (validChange)="onConfigValidChange($event)"
+            ></app-installation-options>
+          </div>
+        }
+        @if (cards[currentCardIndex].title === 'Configuration Password Required') {
+          <div class="form-section" @slideInOut>
+            <app-password-manager
+              [password]="configPassword"
+              [hasError]="!!passwordValidationError"
+              [storePassword]="true"
+              [isSubmitting]="isSubmittingPassword"
+              [errorMessage]="passwordValidationError || ''"
+              [showStoreOption]="false"
+              [shakeTrigger]="errorCount"
+              (passwordChange)="configPassword = $event"
+              (unlock)="submitConfigPassword()"
+            ></app-password-manager>
+          </div>
+        }
+        @if (cards[currentCardIndex].title === 'Install RClone' && !rcloneInstalled) {
+          <div class="form-section" @slideInOut>
+            <app-installation-options
+              [mode]="'install'"
+              [disabled]="installing"
+              [tabOptions]="onboardingTabOptions"
+              (dataChange)="onInstallationOptionsChange($event)"
+              (validChange)="onInstallationValidChange($event)"
+            >
+            </app-installation-options>
+          </div>
+        }
+      </div>
+    </div>
+    <div class="footer-navigation">
+      <div>
+        @if (currentCardIndex > 0) {
+          <button matButton (click)="previousCard()" class="secondary">
+            <mat-icon svgIcon="left-arrow"></mat-icon>
+            Back
+          </button>
+        }
+      </div>
+      <div>
+        @if (shouldShowInstallRcloneButton()) {
+          <button
+            matButton="filled"
+            class="primary"
+            (click)="installRclone()"
+            [disabled]="!canInstallRclone()"
+            [matTooltip]="
+              !canInstallRclone() ? 'Please complete the installation options above' : ''
+            "
+          >
+            <mat-icon
+              [svgIcon]="installing ? 'refresh' : 'download'"
+              [class.animate-spin]="installing"
+            ></mat-icon>
+            {{ getInstallButtonText() }}
+          </button>
+        }
+        @if (!shouldShowInstallRcloneButton() && shouldShowInstallPluginButton()) {
+          <button
+            matButton="filled"
+            class="primary"
+            (click)="installMountPlugin()"
+            [disabled]="downloadingPlugin"
+          >
+            <mat-icon
+              [svgIcon]="downloadingPlugin ? 'refresh' : 'download'"
+              [class.animate-spin]="downloadingPlugin"
+            ></mat-icon>
+            {{ downloadingPlugin ? 'Installing...' : 'Install Plugin' }}
+          </button>
+        }
+        @if (
+          !shouldShowInstallRcloneButton() &&
+          !shouldShowInstallPluginButton() &&
+          cards[currentCardIndex].title === 'Ready to Go!'
+        ) {
+          <button
+            matButton="filled"
+            class="primary"
+            (click)="completeOnboarding()"
+            class="finish-button"
+          >
+            <mat-icon svgIcon="circle-check"></mat-icon>
+            Get Started
+          </button>
+        }
+        @if (
+          !shouldShowInstallRcloneButton() &&
+          !shouldShowInstallPluginButton() &&
+          cards[currentCardIndex].title === 'Select RClone Config'
+        ) {
+          <button
+            matButton="filled"
+            class="primary"
+            (click)="onConfigNext()"
+            [disabled]="!configValid"
+            [matTooltip]="
+              !configValid ? 'Please select or provide a valid config option first' : ''
+            "
+          >
+            Next
+            <mat-icon svgIcon="right-arrow"></mat-icon>
+          </button>
+        }
+        @if (
+          !shouldShowInstallRcloneButton() &&
+          !shouldShowInstallPluginButton() &&
+          cards[currentCardIndex].title === 'Configuration Password Required'
+        ) {
+          <button
+            matButton="filled"
+            class="primary"
+            (click)="submitConfigPassword()"
+            [disabled]="!configPassword || isSubmittingPassword"
+          >
+            @if (isSubmittingPassword) {
+              <mat-progress-spinner diameter="18" mode="indeterminate"></mat-progress-spinner>
+            }
+            @if (!isSubmittingPassword) {
+              <span>Unlock</span>
+            }
+          </button>
+        }
+        @if (
+          !shouldShowInstallRcloneButton() &&
+          !shouldShowInstallPluginButton() &&
+          cards[currentCardIndex].title !== 'Ready to Go!' &&
+          cards[currentCardIndex].title !== 'Select RClone Config' &&
+          cards[currentCardIndex].title !== 'Configuration Password Required'
+        ) {
+          <button matButton="filled" class="primary" (click)="nextCard()">
+            Next
+            <mat-icon svgIcon="right-arrow"></mat-icon>
+          </button>
+        }
+      </div>
+    </div>
+  </div>
 </div>

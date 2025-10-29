@@ -290,16 +290,27 @@ export class AnimationsService {
     ]);
   }
 
-  static contentFadeIn(duration = '500ms', delay = '200ms'): AnimationTriggerMetadata {
-    return trigger('contentFadeIn', [
-      transition(':enter', [
-        animate(
-          `${duration} ${delay} cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
-          keyframes([
-            style({ opacity: 0, transform: 'translateY(20px)', offset: 0 }),
-            style({ opacity: 1, transform: 'translateY(0)', offset: 1 }),
-          ])
-        ),
+  static onboardingState(duration = '500ms', delay = '200ms'): AnimationTriggerMetadata {
+    return trigger('onboardingState', [
+      // The 'loading' state is the initial, hidden state
+      state(
+        'loading',
+        style({
+          opacity: 0,
+          transform: 'translateY(20px)',
+        })
+      ),
+      // The 'visible' state is the final, visible state
+      state(
+        'visible',
+        style({
+          opacity: 1,
+          transform: 'translateY(0)',
+        })
+      ),
+      // The transition between the two states
+      transition('loading => visible', [
+        animate(`${duration} ${delay} cubic-bezier(0.25, 0.46, 0.45, 0.94)`),
       ]),
     ]);
   }
@@ -470,8 +481,8 @@ export class AnimationsService {
         case 'onboardingEntrance':
           animations.push(this.onboardingEntrance());
           break;
-        case 'contentFadeIn':
-          animations.push(this.contentFadeIn());
+        case 'onboardingState':
+          animations.push(this.onboardingState());
           break;
         case 'loadingSpinner':
           animations.push(this.loadingSpinner());

@@ -88,10 +88,9 @@ export class WindowService extends TauriBaseService {
   async initializeTheme(): Promise<void> {
     try {
       const savedTheme = await this.appSettingsService.loadSettingValue('general', 'theme');
-
-      await this.applyTheme(savedTheme);
-
-      this._theme$.next(savedTheme);
+      const themeToApply = savedTheme || 'system';
+      await this.applyTheme(themeToApply);
+      this._theme$.next(themeToApply);
     } catch (error) {
       console.error('Failed to initialize theme:', error);
       await this.applyTheme('system');

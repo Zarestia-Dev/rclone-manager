@@ -358,7 +358,7 @@ fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
 /// Update the rclone path in application settings
 async fn update_rclone_path_in_settings(app_handle: &AppHandle, new_path: &Path) {
     let settings_update = json!({
-        "rclone": {
+        "core": {
             "rclone_path": new_path.display().to_string()
         }
     });

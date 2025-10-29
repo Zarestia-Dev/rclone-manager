@@ -23,6 +23,8 @@ import {
   EventListenersService,
   RclonePasswordService,
   OnboardingStateService,
+  RcloneUpdateService,
+  AppUpdaterService,
 } from '@app/services';
 
 @Component({
@@ -52,6 +54,8 @@ export class AppComponent implements OnInit, OnDestroy {
   private eventListenersService = inject(EventListenersService);
   private rclonePasswordService = inject(RclonePasswordService);
   public onboardingStateService = inject(OnboardingStateService);
+  private appUpdaterService = inject(AppUpdaterService);
+  private rcloneUpdateService = inject(RcloneUpdateService);
 
   // Subscription management
   private destroy$ = new Subject<void>();
@@ -64,7 +68,7 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   }
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.setupSubscriptions();
   }
 
@@ -162,6 +166,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private async postOnboardingSetup(): Promise<void> {
     await this.checkMountPluginStatus();
+    await this.runAutoUpdateChecks();
   }
 
   private async checkMountPluginStatus(): Promise<void> {
@@ -181,6 +186,24 @@ export class AppComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Error checking mount plugin status:', error);
+    }
+  }
+
+  private async runAutoUpdateChecks(): Promise<void> {
+    try {
+      // Check for application updates
+      const appAutoCheckEnabled = await this.appUpdaterService.getAutoCheckEnabled();
+      if (appAutoCheckEnabled && !this.appUpdaterService.areUpdatesDisabled()) {
+        await this.appUpdaterService.checkForUpdates();
+      }
+
+      // Check for rclone updates
+      const rcloneAutoCheckEnabled = await this.rcloneUpdateService.getAutoCheckEnabled();
+      if (rcloneAutoCheckEnabled) {
+        await this.rcloneUpdateService.checkForUpdates();
+      }
+    } catch (error) {
+      console.error('Failed to run auto-update checks post-onboarding:', error);
     }
   }
 
