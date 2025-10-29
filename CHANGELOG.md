@@ -1,7 +1,7 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [v0.1.5] - 2025-10-29
 ### Added
 - Added a Backend Settings modal. You can now set the backend options globally for all remotes. If you wants to override the backend options for a specific remote, you can do it in the remote settings. (e.g. mount options, vfs options, etc.). Also added the export and import feature for the backend settings on export modal.
 - New Backend flag support for remotes. You can now set backend flags for remotes in the remote settings. This will be applied to all operations for that remote.
