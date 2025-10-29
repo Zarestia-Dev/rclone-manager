@@ -41,7 +41,7 @@ import {
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { RemoteType, RcConfigQuestionResponse, RemoteConfigSections } from '@app/types';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
-import { OperationConfigComponent } from '../app-operation-config/app-operation-config.component';
+import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 
 interface InteractiveFlowState {
   isActive: boolean;
@@ -61,7 +61,6 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
     MatInputModule,
     MatSelectModule,
     MatDividerModule,
-    // MatCheckboxModule,
     MatProgressSpinnerModule,
     MatIconModule,
     MatButtonModule,
@@ -70,11 +69,10 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
     MatTabsModule,
     InteractiveConfigStepComponent,
     MatTooltipModule,
-    OperationConfigComponent, // Import the child component
+    OperationConfigComponent,
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
-  // Use the shared AnimationsService to attach multiple reusable animation triggers.
   animations: AnimationsService.getAnimations(['slideAnimation', 'slideInFromBottom', 'fadeInOut']),
 })
 export class QuickAddRemoteComponent implements OnInit, OnDestroy {
@@ -179,15 +177,14 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   private createOperationGroup(opType: 'mount' | 'sync' | 'copy' | 'bisync' | 'move'): FormGroup {
     if (opType === 'mount') {
-      // Mount is special: source MUST be currentRemote, dest MUST be local
       return this.fb.group({
         autoStart: new FormControl(false),
-        source: this.createOperationPathGroup('currentRemote'), // Locked to currentRemote
-        dest: this.createOperationPathGroup('local'), // Locked to local
+        source: this.createOperationPathGroup('currentRemote'),
+        dest: new FormControl(''), // Destination is a simple string path
       });
     }
 
-    // Other ops default to remote -> local
+    // Other ops default to remote -> local and have complex path objects
     return this.fb.group({
       autoStart: new FormControl(false),
       source: this.createOperationPathGroup('currentRemote'),
@@ -199,6 +196,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     return this.fb.group({
       // Step 1: Setup
       setup: this.fb.group({
+        // *** CHANGE: Validator is now aware of edit mode (via bind) ***
         remoteName: ['', [Validators.required, this.validateRemoteName.bind(this)]],
         remoteType: ['', Validators.required],
         useInteractiveMode: [false],
@@ -236,9 +234,13 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         ?.get('autoStart')
         ?.valueChanges.pipe(takeUntil(this.destroy$))
         .subscribe((enabled: boolean) => {
-          // Get the 'path' control inside 'dest' and 'source'
-          const destPathControl = opGroup.get('dest.path');
+          let destPathControl: AbstractControl | null;
           const sourcePathControl = opGroup.get('source.path');
+          if (opName === 'mount') {
+            destPathControl = opGroup.get('dest'); // Direct FormControl
+          } else {
+            destPathControl = opGroup.get('dest.path'); // Nested FormControl
+          }
 
           if (enabled) {
             // Mount is special, only dest is required (source is optional root)
@@ -316,8 +318,13 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     try {
       const selectedPath = await this.fileSystemService.selectFolder(true);
       if (selectedPath) {
-        // Set the value on the correct nested 'path' control
-        this.quickAddForm.get(`operations.${opName}.${pathType}.path`)?.patchValue(selectedPath);
+        let controlPath: string;
+        if (opName === 'mount' && pathType === 'dest') {
+          controlPath = `operations.mount.dest`;
+        } else {
+          controlPath = `operations.${opName}.${pathType}.path`;
+        }
+        this.quickAddForm.get(controlPath)?.patchValue(selectedPath);
       }
     } catch (error) {
       console.error('Error selecting folder:', error);
@@ -381,16 +388,23 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   private buildPathString(pathGroup: any, currentRemoteName: string): string {
+    if (typeof pathGroup === 'string' || !pathGroup) {
+      return pathGroup || '';
+    }
+
     const { pathType, path, otherRemoteName } = pathGroup;
-    const p = path || ''; // Use empty string if path is null/undefined
+    const p = path || '';
+
+    if (typeof pathType === 'string' && pathType.startsWith('otherRemote:')) {
+      const remote = otherRemoteName || pathType.split(':')[1];
+      return `${remote}:/${p}`;
+    }
 
     switch (pathType) {
       case 'local':
         return p;
       case 'currentRemote':
         return `${currentRemoteName}:/${p}`;
-      case 'otherRemote':
-        return `${otherRemoteName}:/${p}`;
       default:
         return '';
     }

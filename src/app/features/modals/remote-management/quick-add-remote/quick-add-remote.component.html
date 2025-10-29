@@ -4,7 +4,6 @@
   aria-labelledby="quick-add-modal-title"
   aria-describedby="quick-add-modal-description"
 >
-  <!-- Modal Header -->
   <div class="modal-header" data-tauri-drag-region>
     <button matIconButton aria-label="Help information">
       <mat-icon svgIcon="question"></mat-icon>
@@ -18,9 +17,7 @@
     </button>
   </div>
 
-  <!-- ========== MAIN FORM ========== -->
   <form class="form-container" [formGroup]="quickAddForm" (ngSubmit)="onSubmit()" novalidate>
-    <!-- WIZARD CONTENT -->
     <div class="wizard-content" [@slideAnimation]="currentStep">
       @switch (currentStep) {
         @case ('setup') {
@@ -91,7 +88,7 @@
         }
 
         @case ('operations') {
-          <form formGroupName="operations">
+          <div formGroupName="operations">
             <section class="form-section">
               <div class="operations-header">
                 <h3 class="section-title">
@@ -106,7 +103,6 @@
               <mat-tab-group>
                 <mat-tab label="Mount">
                   <app-operation-config
-                    formGroupName="mount"
                     [opFormGroup]="$any(quickAddForm.get('operations.mount'))"
                     operationType="mount"
                     [currentRemoteName]="quickAddForm.get('setup.remoteName')?.value || 'remote'"
@@ -119,7 +115,6 @@
 
                 <mat-tab label="Sync">
                   <app-operation-config
-                    formGroupName="sync"
                     [opFormGroup]="$any(quickAddForm.get('operations.sync'))"
                     operationType="sync"
                     [currentRemoteName]="quickAddForm.get('setup.remoteName')?.value || 'remote'"
@@ -132,7 +127,6 @@
 
                 <mat-tab label="Copy">
                   <app-operation-config
-                    formGroupName="copy"
                     [opFormGroup]="$any(quickAddForm.get('operations.copy'))"
                     operationType="copy"
                     [currentRemoteName]="quickAddForm.get('setup.remoteName')?.value || 'remote'"
@@ -145,7 +139,6 @@
 
                 <mat-tab label="Bisync">
                   <app-operation-config
-                    formGroupName="bisync"
                     [opFormGroup]="$any(quickAddForm.get('operations.bisync'))"
                     operationType="bisync"
                     [currentRemoteName]="quickAddForm.get('setup.remoteName')?.value || 'remote'"
@@ -158,7 +151,6 @@
 
                 <mat-tab label="Move">
                   <app-operation-config
-                    formGroupName="move"
                     [opFormGroup]="$any(quickAddForm.get('operations.move'))"
                     operationType="move"
                     [currentRemoteName]="quickAddForm.get('setup.remoteName')?.value || 'remote'"
@@ -170,7 +162,7 @@
                 </mat-tab>
               </mat-tab-group>
             </section>
-          </form>
+          </div>
         }
 
         @case ('interactive') {
@@ -276,7 +268,6 @@
         </button>
       }
 
-      <!-- Interactive Step Buttons -->
       @if (currentStep === 'interactive') {
         <button
           [@fadeInOut]

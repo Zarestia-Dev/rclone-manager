@@ -7,6 +7,22 @@
   >
     <!-- Virtual scrolling content -->
     <div *cdkVirtualFor="let field of formFields; trackBy: trackByField" class="form-field-item">
+      @if (field.type === 'operation-config' && !isType(['vfs', 'filter', 'backend'])) {
+        <app-operation-config
+          [opFormGroup]="configGroup"
+          [operationType]="flagType"
+          [currentRemoteName]="currentRemoteName"
+          [existingRemotes]="existingRemotes"
+          [isNewRemote]="isNewRemote"
+          [description]="
+            'Configure source, destination, and auto-start options for this operation.'
+          "
+          (sourceFolderSelected)="onSourceFolderSelect()"
+          (destFolderSelected)="onDestFolderSelect()"
+        >
+        </app-operation-config>
+      }
+
       <!-- Mount Type Selector -->
       @if (field.type === 'mount-type' && isType('mount')) {
         <mat-form-field appearance="fill">
@@ -18,219 +34,6 @@
               </mat-option>
             }
           </mat-select>
-        </mat-form-field>
-      }
-
-      <!-- Auto-Action Toggle -->
-      @if (field.type === 'auto-action') {
-        <mat-slide-toggle class="slide-toggle" formControlName="autoStart">
-          {{
-            isType('mount')
-              ? 'Auto-Mount after creation and on startup'
-              : isType('sync')
-                ? 'Auto-Sync after creation and on startup'
-                : isType('copy')
-                  ? 'Auto-Copy after creation and on startup'
-                  : isType('move')
-                    ? 'Auto-Move after creation and on startup'
-                    : isType('bisync')
-                      ? 'Auto-Bisync after creation and on startup'
-                      : 'Auto-Action after creation and on startup'
-          }}
-        </mat-slide-toggle>
-      }
-      <!-- Mount Path -->
-      @if (field.type === 'mount-path' && isType('mount')) {
-        <mat-form-field appearance="fill">
-          <mat-label>Mount Path</mat-label>
-          <button
-            matIconButton
-            matSuffix
-            (click)="onSelectFolder('mountConfig.dest', shouldRequireEmptyFolder)"
-            aria-label="Select folder"
-          >
-            <mat-icon svgIcon="folder"></mat-icon>
-          </button>
-          <input matInput formControlName="dest" id="dest" placeholder="Select a folder..." />
-          @if (configGroup.get('dest')?.hasError('required')) {
-            <mat-error> Mount path is required. </mat-error>
-          }
-          @if (configGroup.get('dest')?.hasError('invalidPath')) {
-            <mat-error> Invalid mount path. </mat-error>
-          }
-        </mat-form-field>
-      }
-
-      <!-- Destination Path -->
-      @if (field.type === 'destination' && !isType(['mount', 'vfs', 'filter', 'backend'])) {
-        <mat-form-field appearance="fill">
-          <mat-label>{{ flagType | titlecase }} Destination</mat-label>
-          @if (pathState[flagType + 'Config.dest']?.remoteName) {
-            <span matPrefix>{{ pathState[flagType + 'Config.dest'].remoteName }}:</span>
-          }
-          <input
-            matInput
-            formControlName="dest"
-            placeholder="Type remote name or select destination path"
-            [matAutocomplete]="destAuto"
-          />
-          <button
-            matIconButton
-            matSuffix
-            (click)="onSelectFolder(flagType + 'Config.dest', false)"
-            aria-label="Select local folder"
-          >
-            <mat-icon svgIcon="folder"></mat-icon>
-          </button>
-          @if (
-            pathState[flagType + 'Config.dest'] && pathState[flagType + 'Config.dest'].remoteName
-          ) {
-            <button
-              matIconButton
-              matSuffix
-              (click)="onResetRemoteSelection(flagType + 'Config.dest')"
-            >
-              <mat-icon svgIcon="circle-xmark"></mat-icon>
-            </button>
-          }
-          @if (destLoading) {
-            <mat-spinner diameter="24"></mat-spinner>
-          }
-          <mat-autocomplete
-            #destAuto="matAutocomplete"
-            (optionSelected)="onDestOptionSelected($event.option.value)"
-          >
-            @if (
-              !pathState[flagType + 'Config.dest'] ||
-              !pathState[flagType + 'Config.dest'].remoteName
-            ) {
-              @for (remote of filteredDestRemotes$ | async; track remote) {
-                <mat-option [value]="remote + ':/'">
-                  <mat-icon
-                    svgIcon="hard-drive"
-                    style="margin-right: 8px; width: 16px; height: 16px"
-                  ></mat-icon>
-                  {{ remote }}
-                </mat-option>
-              }
-            }
-            @if (
-              pathState[flagType + 'Config.dest'] && pathState[flagType + 'Config.dest'].remoteName
-            ) {
-              @for (
-                option of pathState[flagType + 'Config.dest'].options || [];
-                track option.Name
-              ) {
-                <mat-option
-                  [value]="
-                    pathState[flagType + 'Config.dest'].remoteName +
-                    ':/' +
-                    (pathState[flagType + 'Config.dest'].currentPath
-                      ? pathState[flagType + 'Config.dest'].currentPath + '/'
-                      : '') +
-                    option.Name
-                  "
-                >
-                  @if (option.IsDir) {
-                    <mat-icon
-                      svgIcon="folder"
-                      style="margin-right: 8px; width: 16px; height: 16px"
-                    ></mat-icon>
-                  }
-                  @if (!option.IsDir) {
-                    <mat-icon
-                      svgIcon="file"
-                      style="margin-right: 8px; width: 16px; height: 16px"
-                    ></mat-icon>
-                  }
-                  {{ option.Name }}
-                </mat-option>
-              }
-            }
-          </mat-autocomplete>
-        </mat-form-field>
-      }
-
-      <!-- Source Path -->
-      @if (field.type === 'source' && isEditMode && !isType(['vfs', 'filter', 'backend'])) {
-        <mat-form-field appearance="fill">
-          <mat-label>{{ flagType | titlecase }} Source</mat-label>
-          @if (pathState[flagType + 'Config.source']?.remoteName) {
-            <span matPrefix>{{ pathState[flagType + 'Config.source'].remoteName }}:</span>
-          }
-          <input
-            matInput
-            formControlName="source"
-            placeholder="Type remote name or select source path"
-            [matAutocomplete]="sourceAuto"
-          />
-          <button
-            matIconButton
-            matSuffix
-            (click)="onSelectFolder(flagType + 'Config.source', false)"
-            aria-label="Select local folder"
-          >
-            <mat-icon svgIcon="folder"></mat-icon>
-          </button>
-          @if (
-            pathState[flagType + 'Config.source'] &&
-            pathState[flagType + 'Config.source'].remoteName
-          ) {
-            <button
-              matIconButton
-              matSuffix
-              (click)="onResetRemoteSelection(flagType + 'Config.source')"
-            >
-              <mat-icon svgIcon="circle-xmark"></mat-icon>
-            </button>
-          }
-          @if (sourceLoading) {
-            <mat-spinner diameter="24"></mat-spinner>
-          }
-          <mat-autocomplete
-            #sourceAuto="matAutocomplete"
-            (optionSelected)="onSourceOptionSelected($event.option.value)"
-          >
-            @if (
-              !pathState[flagType + 'Config.source'] ||
-              !pathState[flagType + 'Config.source'].remoteName
-            ) {
-              @for (remote of filteredSourceRemotes$ | async; track remote) {
-                <mat-option [value]="remote + ':/'">
-                  <mat-icon
-                    svgIcon="hard-drive"
-                    style="margin-right: 8px; width: 16px; height: 16px"
-                  ></mat-icon>
-                  {{ remote }}
-                </mat-option>
-              }
-            }
-            @if (
-              pathState[flagType + 'Config.source'] &&
-              pathState[flagType + 'Config.source'].remoteName
-            ) {
-              @for (
-                option of pathState[flagType + 'Config.source'].options || [];
-                track option.Name
-              ) {
-                <mat-option [value]="option.Name">
-                  @if (option.IsDir) {
-                    <mat-icon
-                      svgIcon="folder"
-                      style="margin-right: 8px; width: 16px; height: 16px"
-                    ></mat-icon>
-                  }
-                  @if (!option.IsDir) {
-                    <mat-icon
-                      svgIcon="file"
-                      style="margin-right: 8px; width: 16px; height: 16px"
-                    ></mat-icon>
-                  }
-                  {{ option.Name }}
-                </mat-option>
-              }
-            }
-          </mat-autocomplete>
         </mat-form-field>
       }
 

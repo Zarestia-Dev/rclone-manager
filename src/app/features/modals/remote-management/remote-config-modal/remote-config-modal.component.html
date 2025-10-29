@@ -91,18 +91,12 @@
               [flagType]="flagType"
               [isEditMode]="!!editTarget"
               [existingRemotes]="existingRemotes"
-              [sourceLoading]="pathSelectionService.getLoadingState(flagType + 'Config.source')"
-              [destLoading]="pathSelectionService.getLoadingState(flagType + 'Config.dest')"
               [dynamicFlagFields]="dynamicFlagFields[flagType]"
               [mountTypes]="mountTypes"
-              (sourceRemoteSelected)="onRemoteSelectedField($event, flagType + 'Config.source')"
-              (destRemoteSelected)="onRemoteSelectedField($event, flagType + 'Config.dest')"
-              (sourceOptionSelected)="
-                onSourceOptionSelectedField($event, flagType + 'Config.source')
-              "
-              (destOptionSelected)="onDestOptionSelectedField($event, flagType + 'Config.dest')"
-              (folderSelected)="selectLocalFolder($event.formPath, $event.requiredEmpty)"
-              (remoteSelectionReset)="resetRemoteSelectionField($event)"
+              [currentRemoteName]="getRemoteName()"
+              [isNewRemote]="!editTarget"
+              (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
+              (destFolderSelected)="handleDestFolderSelect(flagType)"
             />
           </section>
         }

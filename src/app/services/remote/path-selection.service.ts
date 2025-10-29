@@ -79,7 +79,11 @@ export class PathSelectionService {
     if (!selectedEntry) return;
 
     // Build new path
-    const newPath = state.currentPath ? `${state.currentPath}/${entryName}` : entryName;
+    let newPath = state.currentPath ? `${state.currentPath}/${entryName}` : entryName;
+    // Handle root path case to avoid double slash '//'
+    if (state.currentPath === '/') {
+      newPath = `/${entryName}`;
+    }
 
     // Update current path by creating a new state
     state = { ...state, currentPath: newPath };
@@ -134,11 +138,8 @@ export class PathSelectionService {
   async fetchEntriesForField(formPath: string, remoteName: string, path: string): Promise<void> {
     this.setLoadingState(formPath, true);
 
-    console.log(`Fetching entries for ${formPath}: remote=${remoteName}, path=`, path);
-
     try {
-      // The response from getRemotePaths is the object { list: [...] }
-      const response = await this.remoteManagementService.getRemotePaths(
+      const response: any = await this.remoteManagementService.getRemotePaths(
         remoteName,
         path || '',
         {}
@@ -151,6 +152,10 @@ export class PathSelectionService {
         options: [],
       };
 
+      // Also check if response and response.list are valid before assigning
+      const entries =
+        response && response.list && Array.isArray(response.list) ? response.list : [];
+
       // Create a new state object
       this.pathState = {
         ...this.pathState,
@@ -158,11 +163,9 @@ export class PathSelectionService {
           ...currentState,
           remoteName,
           currentPath: path,
-          options: response || [],
+          options: entries,
         },
       };
-
-      console.log(this.pathState[formPath]);
     } catch (error) {
       console.error(`Error fetching entries for ${formPath}:`, error);
       if (this.pathState[formPath]) {

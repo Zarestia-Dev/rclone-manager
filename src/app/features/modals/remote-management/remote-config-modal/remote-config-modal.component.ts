@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ValidatorFn, Validators, FormControl } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { debounceTime, distinctUntilChanged, Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
@@ -21,7 +21,6 @@ import { AuthStateService } from '../../../../shared/services/auth-state.service
 import { ValidatorRegistryService } from '../../../../shared/services/validator-registry.service';
 import {
   FlagConfigService,
-  PathSelectionService,
   RemoteManagementService,
   JobManagementService,
   MountManagementService,
@@ -98,10 +97,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
-  private readonly dialogData = inject(MAT_DIALOG_DATA) as DialogData;
+  private readonly dialogData = inject(MAT_DIALOG_DATA, { optional: true }) as DialogData; // Make injection optional
   private readonly cdRef = inject(ChangeDetectorRef);
   readonly flagConfigService = inject(FlagConfigService);
-  readonly pathSelectionService = inject(PathSelectionService);
 
   private destroy$ = new Subject<void>();
 
@@ -121,7 +119,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private readonly FLAG_BASED_TYPES: FlagType[] = ['mount', 'copy', 'sync', 'bisync', 'move'];
   private readonly FLAG_ONLY_TYPES: FlagType[] = ['filter', 'vfs', 'backend'];
   private readonly INTERACTIVE_REMOTES = ['iclouddrive', 'onedrive'];
-  private readonly PATH_EDIT_TARGETS = ['mount', 'copy', 'sync', 'bisync', 'move'];
 
   // Forms
   remoteForm!: FormGroup;
@@ -221,7 +218,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   constructor() {
     this.editTarget = this.dialogData?.editTarget || null;
     this.cloneTarget = this.dialogData?.cloneTarget || false;
-    this.restrictMode = this.dialogData?.restrictMode;
+    this.restrictMode = this.dialogData?.restrictMode || false;
     this.remoteForm = this.createRemoteForm();
     this.remoteConfigForm = this.createRemoteConfigForm();
   }
@@ -234,7 +231,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.setupFormListeners();
     this.setupAuthStateListeners();
     this.mountTypes = await this.mountManagementService.getMountTypes();
-    await this.fetchInitialPathEntriesForEditMode();
   }
 
   ngOnDestroy(): void {
@@ -285,31 +281,18 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     });
   }
 
-  private async fetchInitialPathEntriesForEditMode(): Promise<void> {
-    if (this.editTarget && this.PATH_EDIT_TARGETS.includes(this.editTarget)) {
-      const formPath = `${this.editTarget}Config.source`;
-      const remoteName = this.dialogData?.name ?? '';
-      const existingSource =
-        typeof this.dialogData?.existingConfig?.['source'] === 'string'
-          ? this.dialogData.existingConfig['source']
-          : '';
-      await this.pathSelectionService.fetchEntriesForField(formPath, remoteName, existingSource);
-    }
-  }
-
   // ============================================================================
   // FORM CREATION
   // ============================================================================
   private createRemoteForm(): FormGroup {
     const isEditMode = this.editTarget === 'remote' && !!this.dialogData?.existingConfig;
-    console.log('existingConfig:', this.dialogData?.existingConfig);
 
     return this.fb.group({
       name: [
-        { value: '', disabled: isEditMode },
+        { value: '', disabled: isEditMode && !this.cloneTarget }, // Allow edit on clone
         [Validators.required, this.validateRemoteNameFactory()],
       ],
-      type: [{ value: '', disabled: isEditMode }, [Validators.required]],
+      type: [{ value: '', disabled: isEditMode && !this.cloneTarget }, [Validators.required]], // Allow edit on clone
     });
   }
 
@@ -370,6 +353,26 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
           ? [false]
           : [''];
     });
+    // Add pathType controls for relevant groups
+    if (fields.includes('source')) {
+      group['source'] = this.fb.group({
+        pathType: ['currentRemote'],
+        path: [''],
+        otherRemoteName: [''],
+      });
+    }
+    if (fields.includes('dest') && !fields.includes('type')) {
+      // 'type' check excludes mount
+      group['dest'] = this.fb.group({
+        pathType: ['local'],
+        path: [''],
+        otherRemoteName: [''],
+      });
+    } else if (fields.includes('dest') && fields.includes('type')) {
+      // This is mount, 'dest' is a simple control
+      group['dest'] = [''];
+    }
+
     group['options'] = this.fb.group({});
     return this.fb.group(group);
   }
@@ -387,14 +390,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // ============================================================================
   private setupFormListeners(): void {
     this.setupAutoStartValidators();
-    this.setupPathSelectionListeners();
   }
 
   private setupAutoStartValidators(): void {
     const configs = [
       {
         autoStart: 'mountConfig.autoStart',
-        dest: 'mountConfig.dest',
+        dest: 'mountConfig.dest', // This is a simple string control for mount
         validators: [
           Validators.required,
           this.validatorRegistry.getValidator('crossPlatformPath')!,
@@ -402,22 +404,22 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       },
       {
         autoStart: 'copyConfig.autoStart',
-        dest: 'copyConfig.dest',
+        dest: 'copyConfig.dest.path', // This is a nested control
         validators: [Validators.required],
       },
       {
         autoStart: 'syncConfig.autoStart',
-        dest: 'syncConfig.dest',
+        dest: 'syncConfig.dest.path', // This is a nested control
         validators: [Validators.required],
       },
       {
         autoStart: 'bisyncConfig.autoStart',
-        dest: 'bisyncConfig.dest',
+        dest: 'bisyncConfig.dest.path', // This is a nested control
         validators: [Validators.required],
       },
       {
         autoStart: 'moveConfig.autoStart',
-        dest: 'moveConfig.dest',
+        dest: 'moveConfig.dest.path', // This is a nested control
         validators: [Validators.required],
       },
     ];
@@ -435,24 +437,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
           }
           ctrl?.updateValueAndValidity();
         });
-    });
-  }
-
-  private setupPathSelectionListeners(): void {
-    const pathConfigs = [
-      'mountConfig.source',
-      'copyConfig.source',
-      'copyConfig.dest',
-      'syncConfig.source',
-      'syncConfig.dest',
-      'bisyncConfig.dest',
-      'moveConfig.dest',
-    ];
-    pathConfigs.forEach(path => {
-      this.remoteConfigForm
-        .get(path)
-        ?.valueChanges.pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
-        .subscribe(value => this.pathSelectionService.onInputChanged(path, value ?? ''));
     });
   }
 
@@ -476,18 +460,27 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private populateFormIfEditingOrCloning(): void {
     if (!this.dialogData?.existingConfig) return;
 
-    if (this.editTarget === 'remote') {
-      this.populateRemoteForm(this.dialogData.existingConfig);
-    } else if (this.cloneTarget) {
-      this.populateRemoteForm(this.dialogData.existingConfig['remoteSpecs']);
-      this.FLAG_BASED_TYPES.forEach(t =>
-        this.populateFlagForm(t, this.dialogData.existingConfig?.[`${t}Config`] || {})
-      );
-      this.FLAG_ONLY_TYPES.forEach(t =>
-        this.populateFlagForm(t, this.dialogData.existingConfig?.[`${t}Config`] || {})
-      );
+    if (this.editTarget === 'remote' || this.cloneTarget) {
+      const remoteSpecs = this.cloneTarget
+        ? this.dialogData.existingConfig['remoteSpecs']
+        : this.dialogData.existingConfig;
+      this.populateRemoteForm(remoteSpecs);
+
+      if (this.cloneTarget) {
+        // If cloning, also populate flag forms
+        this.FLAG_BASED_TYPES.forEach(t =>
+          this.populateFlagForm(t, this.dialogData.existingConfig?.[`${t}Config`] || {})
+        );
+        this.FLAG_ONLY_TYPES.forEach(t =>
+          this.populateFlagForm(t, this.dialogData.existingConfig?.[`${t}Config`] || {})
+        );
+      }
     } else if (this.editTarget) {
       this.populateFlagForm(this.editTarget as FlagType, this.dialogData.existingConfig);
+    }
+
+    if (this.cloneTarget) {
+      this.generateNewCloneName();
     }
   }
 
@@ -502,15 +495,20 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     const spec = this.configSpecs[flagType];
     if (!spec) return;
 
-    const sourceDefault =
-      config.source || (spec.staticFields.includes('source') ? `${this.getRemoteName()}:/` : '');
-    const baseConfig: Record<string, any> = { source: sourceDefault };
+    const baseConfig: Record<string, any> = {};
 
     spec.staticFields.forEach(field => {
-      if (
-        field === 'autoStart' ||
+      if (field === 'source' || field === 'dest') {
+        // Handle path objects
+        baseConfig[field] = this.parsePathString(
+          config[field],
+          field === 'source' ? 'currentRemote' : 'local',
+          this.getRemoteName()
+        );
+      } else if (
         field.includes('Empty') ||
         field.includes('Dirs') ||
+        field === 'autoStart' ||
         field === 'dryRun' ||
         field === 'resync' ||
         field === 'checkAccess' ||
@@ -526,9 +524,19 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.remoteConfigForm.get(`${flagType}Config`)?.patchValue(baseConfig);
+    if (flagType === 'mount') {
+      // Mount 'source' is a path group, but 'dest' is just a string
+      baseConfig['source'] = this.parsePathString(
+        config['source'],
+        'currentRemote',
+        this.getRemoteName()
+      );
+      baseConfig['dest'] = config['dest'] || '';
+    }
 
-    const optionsGroup = this.remoteConfigForm.get(`${flagType}Config.options`);
+    this.remoteConfigForm.get(spec.formPath)?.patchValue(baseConfig);
+
+    const optionsGroup = this.remoteConfigForm.get(`${spec.formPath}.options`);
     if (optionsGroup && this.dynamicFlagFields[flagType]) {
       const dynamicFieldNames = this.dynamicFlagFields[flagType].map(f => f.Name);
       const optionsToPopulate: Record<string, any> = {};
@@ -539,6 +547,51 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       });
       optionsGroup.patchValue(optionsToPopulate);
     }
+  }
+
+  // Helper to parse a path string (e.g., "myRemote:/path") into a form object
+  private parsePathString(
+    path: string,
+    defaultType: 'local' | 'currentRemote',
+    currentRemote: string
+  ): object {
+    if (!path) {
+      return { pathType: defaultType, path: '', otherRemoteName: '' };
+    }
+
+    const parts = path.split(':/');
+    if (parts.length > 1) {
+      const remoteName = parts[0];
+      const remotePath = parts.slice(1).join(':/') || ''; // Re-join if path had colons
+      if (remoteName === currentRemote) {
+        return { pathType: 'currentRemote', path: remotePath, otherRemoteName: '' };
+      } else if (this.existingRemotes.includes(remoteName)) {
+        // *** FIX: Correctly format 'otherRemote' value and set otherRemoteName ***
+        return {
+          pathType: 'otherRemote:' + remoteName,
+          path: remotePath,
+          otherRemoteName: remoteName,
+        };
+      }
+    }
+
+    // Assume local path if no remote prefix or prefix not in existing remotes
+    return { pathType: 'local', path: path, otherRemoteName: '' };
+  }
+
+  // Helper to generate a new name for a cloned remote
+  private generateNewCloneName(): void {
+    const baseName = this.remoteForm.get('name')?.value;
+    if (!baseName) return;
+
+    let newName = `${baseName}-clone`;
+    let counter = 1;
+    while (this.existingRemotes.includes(newName)) {
+      newName = `${baseName}-clone-${counter}`;
+      counter++;
+    }
+    this.remoteForm.get('name')?.setValue(newName);
+    this.refreshRemoteNameValidator();
   }
 
   // ============================================================================
@@ -611,7 +664,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   getStepProgressAriaLabel(): string {
-    return `Step ${this.currentStep} of ${this.TOTAL_STEPS}: ${this.stepLabels[this.currentStep - 1]}`;
+    return `Step ${this.currentStep} of ${this.TOTAL_STEPS}: ${
+      this.stepLabels[this.currentStep - 1]
+    }`;
   }
 
   handleStepKeydown(event: KeyboardEvent, stepNumber: number): void {
@@ -670,39 +725,26 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.useInteractiveMode = useInteractiveMode;
   }
 
-  // --- Path Selection ---
-  async onSourceOptionSelectedField(entryName: string, formPath: string): Promise<void> {
-    await this.pathSelectionService.onPathSelected(
-      formPath,
-      entryName,
-      this.remoteConfigForm.get(formPath)
-    );
-    this.cdRef.markForCheck();
-  }
-
-  async onDestOptionSelectedField(entryName: string, formPath: string): Promise<void> {
-    await this.pathSelectionService.onPathSelected(
-      formPath,
-      entryName,
-      this.remoteConfigForm.get(formPath)
-    );
-    this.cdRef.markForCheck();
-  }
-
-  async onRemoteSelectedField(remoteWithColon: string, formPath: string): Promise<void> {
-    await this.pathSelectionService.onRemoteSelected(
-      formPath,
-      remoteWithColon,
-      this.remoteConfigForm.get(formPath)
-    );
-  }
-
-  resetRemoteSelectionField(formPath: string): void {
-    this.pathSelectionService.resetPathSelection(formPath);
-    this.remoteConfigForm.get(formPath)?.setValue('');
-  }
-
   selectLocalFolder(formPath: string, requireEmpty: boolean): void {
+    this.fileSystemService
+      .selectFolder(requireEmpty)
+      .then(path => this.remoteConfigForm.get(formPath)?.setValue(path));
+  }
+
+  handleSourceFolderSelect(flagType: FlagType): void {
+    const formPath =
+      flagType === 'mount' ? 'mountConfig.source.path' : `${flagType}Config.source.path`;
+    this.fileSystemService
+      .selectFolder(false)
+      .then(path => this.remoteConfigForm.get(formPath)?.setValue(path));
+  }
+
+  handleDestFolderSelect(flagType: FlagType): void {
+    // Mount dest is a simple string, others are nested
+    const formPath = flagType === 'mount' ? 'mountConfig.dest' : `${flagType}Config.dest.path`;
+    // Mount dest folder should be empty
+    const requireEmpty = flagType === 'mount';
+
     this.fileSystemService
       .selectFolder(requireEmpty)
       .then(path => this.remoteConfigForm.get(formPath)?.setValue(path));
@@ -799,13 +841,40 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     };
   }
 
+  // Helper to build a path string (e.g., "myRemote:/path") from a form object
+  private buildPathString(pathGroup: any, currentRemoteName: string): string {
+    if (pathGroup === null || pathGroup === undefined) return '';
+    // Handle mount's simple string path for DEST
+    if (typeof pathGroup === 'string') {
+      return pathGroup; // This is for mountConfig.dest, which is a local path
+    }
+
+    const { pathType, path, otherRemoteName } = pathGroup;
+    const p = path || '';
+
+    if (typeof pathType === 'string' && pathType.startsWith('otherRemote:')) {
+      const remote = otherRemoteName || pathType.split(':')[1];
+      return `${remote}:/${p}`;
+    }
+
+    switch (pathType) {
+      case 'local':
+        return p;
+      case 'currentRemote':
+        return `${currentRemoteName}:/${p}`;
+      default:
+        return '';
+    }
+  }
+
   private buildConfig(flagType: FlagType, remoteData: any, configData: any): any {
     const spec = this.configSpecs[flagType];
     const result: any = {};
 
     spec.staticFields.forEach(field => {
-      if (field === 'source' && !configData[field]) {
-        result[field] = configData[field] || `${remoteData.name}:/`;
+      if (field === 'source' || field === 'dest') {
+        // Build path string from path object
+        result[field] = this.buildPathString(configData[field], remoteData.name);
       } else {
         result[field] = configData[field];
       }
@@ -863,23 +932,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       const value = formData[field.Name];
       const isEdited = this.changedRemoteFields.has(field.Name);
 
-      if (this.editTarget === 'remote') {
+      if (this.editTarget === 'remote' && !this.cloneTarget) {
         // **EDIT MODE LOGIC:**
-        // Only include fields that were explicitly changed during this edit session.
-        // This is critical because if a user reverts a field BACK to its default value,
-        // we MUST send that default value to the backend to overwrite the previously saved
-        // setting. If we omitted the field, the backend would keep the old, non-default value.
-        if (
-          (isEdited && this.isDefaultValue(value, field)) ||
-          (!isEdited && !this.isDefaultValue(value, field))
-        ) {
+        if (isEdited) {
           result[field.Name] = value;
         }
       } else {
-        // **CREATE MODE LOGIC:**
-        // Only include fields that have a non-default value. This creates a minimal,
-        // clean configuration file from the start, avoiding clutter from unnecessary
-        // default entries.
+        // **CREATE or CLONE MODE LOGIC:**
         if (!this.isDefaultValue(value, field)) {
           result[field.Name] = value;
         }
@@ -1135,8 +1194,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // ============================================================================
   // UTILITIES & GETTERS
   // ============================================================================
-  private getRemoteName(): string {
-    return this.dialogData.name || this.remoteForm.get('name')?.value;
+  public getRemoteName(): string {
+    return this.dialogData?.name || this.remoteForm.get('name')?.value;
   }
 
   private validateRemoteNameFactory(): ValidatorFn {
@@ -1151,11 +1210,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       this.remoteForm.disable();
       this.remoteConfigForm.disable();
     } else {
-      if (this.editTarget === 'remote') {
-        Object.keys(this.remoteForm.controls).forEach(key => {
-          this.remoteForm.get(key)?.[['name', 'type'].includes(key) ? 'disable' : 'enable']();
-        });
+      if (this.editTarget === 'remote' && !this.cloneTarget) {
+        // In remote edit mode, keep name/type disabled
+        this.remoteForm.enable({ emitEvent: false });
+        this.remoteForm.get('name')?.disable({ emitEvent: false });
+        this.remoteForm.get('type')?.disable({ emitEvent: false });
       } else {
+        // In create or clone mode, enable everything
         this.remoteForm.enable();
       }
       this.remoteConfigForm.enable();
