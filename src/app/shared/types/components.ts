@@ -1,5 +1,5 @@
-import type { TransferFile } from './jobs';
-import { PrimaryActionType } from './remotes';
+import type { JobInfo, TransferFile } from './jobs';
+import { PrimaryActionType } from './operations';
 
 // Settings Panel
 export interface SettingsSection {
@@ -62,7 +62,7 @@ export interface PathDisplayConfig {
 
 // Jobs Panel
 export interface JobsPanelConfig {
-  jobs: import('./jobs').JobInfo[];
+  jobs: JobInfo[];
   displayedColumns: string[];
 }
 

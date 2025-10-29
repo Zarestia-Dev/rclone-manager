@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { FlagType, RcConfigOption } from '@app/types';
+import { FLAG_TYPES, FlagType, RcConfigOption } from '@app/types';
 import { invoke } from '@tauri-apps/api/core';
 
 // Define the shape of the grouped data returned by our new Rust command
@@ -15,17 +15,6 @@ type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
 })
 export class FlagConfigService {
   // A cache for our master data object to prevent redundant backend calls.
-
-  public readonly FLAG_TYPES: FlagType[] = [
-    'mount',
-    'copy',
-    'sync',
-    'bisync',
-    'move',
-    'filter',
-    'vfs',
-    'backend',
-  ];
 
   /**
    * Fetches the master data object: all options, with live values, pre-grouped by the backend.
@@ -87,7 +76,7 @@ export class FlagConfigService {
     };
 
     await Promise.all(
-      this.FLAG_TYPES.map(async type => {
+      FLAG_TYPES.map(async type => {
         const cmdType = commandTypeMap[type] || type;
         result[type] = await this.loadFlagFields(cmdType);
       })

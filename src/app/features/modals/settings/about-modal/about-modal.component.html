@@ -12,7 +12,10 @@
   <div class="modal-content hide-scrollbar" #content (scroll)="onScroll(content)">
     <img src="assets/rclone.svg" alt="Rclone Logo" class="app-icon" />
     <h2 class="app-name">RClone Manager</h2>
-    <p class="app-team">Developed by Hakan İSMAİL</p>
+    <p class="app-team">
+      Zarestia
+      <mat-icon svgIcon="wind"></mat-icon>
+    </p>
     <div class="version-info">
       <button class="version-badge" (click)="copyToClipboard(rCloneManagerVersion)">
         {{ rCloneManagerVersion }}

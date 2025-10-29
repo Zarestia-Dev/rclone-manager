@@ -83,7 +83,7 @@
       }
 
       <!-- Steps 2-9: Flag Configurations (Mount, Copy, Sync, etc.) -->
-      @for (flagType of flagConfigService.FLAG_TYPES; track flagType; let i = $index) {
+      @for (flagType of FLAG_TYPES; track flagType; let i = $index) {
         @if (editTarget === flagType || (!editTarget && currentStep === i + 2)) {
           <section class="step-container">
             <app-flag-config-step

@@ -25,6 +25,14 @@
         margin: 0;
       }
     }
+
+    .reset-btn {
+      color: var(--orange);
+      background: rgba(var(--orange-rgb), 0.1);
+      &:hover {
+        background: rgba(var(--orange-rgb), 0.2);
+      }
+    }
   }
 }
 

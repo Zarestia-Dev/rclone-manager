@@ -8,187 +8,162 @@
 
   <div class="path-section" formGroupName="source">
     @if (isMount) {
-      <div class="path-input-wrapper">
-        <mat-form-field appearance="fill">
-          <mat-label>Source Path</mat-label>
-          <span matPrefix class="path-prefix mount-remote locked">
-            <mat-icon svgIcon="hard-drive"></mat-icon>
-            <span>{{ currentRemoteName }}:/</span>
-          </span>
-          <input
-            matInput
-            formControlName="path"
-            placeholder="Root folder (optional)"
-            aria-label="Source path on remote"
-            (input)="onInputChanged($event, sourceFormPath)"
-            (click)="$event.stopPropagation()"
-            [matMenuTriggerFor]="!isNewRemote ? sourcePathAutocompleteMenu : null"
-          />
-        </mat-form-field>
+      @if (sourcePathState$ | async; as state) {
+        <div class="path-input-wrapper">
+          <mat-form-field appearance="fill">
+            <mat-label>Source Path</mat-label>
+            <span matPrefix class="path-prefix mount-remote locked">
+              <mat-icon svgIcon="hard-drive"></mat-icon>
+              <span>{{ currentRemoteName }}:/</span>
+            </span>
+            <input
+              matInput
+              formControlName="path"
+              placeholder="Root folder (optional)"
+              aria-label="Source path on remote"
+              (input)="onInputChanged($event, 'source')"
+              (click)="$event.stopPropagation()"
+              [matMenuTriggerFor]="!isNewRemote ? sourcePathAutocompleteMenu : null"
+            />
+          </mat-form-field>
 
-        <mat-menu
-          #sourcePathAutocompleteMenu="matMenu"
-          panelClass="path-autocomplete-menu"
-          [overlapTrigger]="false"
-        >
-          @if (pathSelectionService.getLoadingState(sourceFormPath)) {
-            <div class="loading-spinner">
-              <mat-spinner diameter="24"></mat-spinner>
-              <span>Loading...</span>
-            </div>
-          } @else {
-            @if (pathSelectionService.pathState[sourceFormPath]?.currentPath) {
-              <button mat-menu-item (click)="goUp(sourceFormPath)">
-                <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
-                <span>.. (Up a folder)</span>
-              </button>
-            }
-            @for (
-              entry of pathSelectionService.pathState[sourceFormPath]?.options;
-              track trackByEntry($index, entry)
-            ) {
-              <button
-                mat-menu-item
-                (click)="onPathSelected(sourceFormPath, entry.Name)"
-                [disabled]="!entry.IsDir"
-              >
-                <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
-                <span>{{ entry.Name }}</span>
-              </button>
-            } @empty {
-              @if (
-                !pathSelectionService.getLoadingState(sourceFormPath) &&
-                pathSelectionService.pathState[sourceFormPath]
-              ) {
-                <div class="no-results">
-                  <span>No items found in this directory.</span>
-                </div>
-              }
-            }
-          }
-        </mat-menu>
-      </div>
-    } @else {
-      <div class="path-input-wrapper">
-        <mat-form-field appearance="fill">
-          <mat-label>Source Path</mat-label>
-          <mat-select
-            matPrefix
-            formControlName="pathType"
-            class="path-prefix"
-            [class.local]="sourcePathType === 'local'"
-            [class.remote]="sourcePathType === 'currentRemote'"
-            [class.other]="sourcePathType === 'otherRemote'"
-            aria-label="Change source path type"
-            (click)="$event.stopPropagation()"
-            (selectionChange)="clearPathOnTypeChange('source')"
+          <mat-menu
+            #sourcePathAutocompleteMenu="matMenu"
+            panelClass="path-autocomplete-menu"
+            [overlapTrigger]="false"
           >
-            <mat-select-trigger>
-              @switch (sourcePathType) {
-                @case ('local') {
-                  <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                  <span>Local Path</span>
-                }
-                @case ('currentRemote') {
-                  <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                  <span>{{ currentRemoteName }}:/</span>
-                }
-                @case ('otherRemote') {
-                  <mat-icon svgIcon="cloud" class="accent"></mat-icon>
-                  <span>{{ opFormGroup.get('source.otherRemoteName')?.value }}:/</span>
+            @if (state.isLoading) {
+              <div class="loading-spinner">
+                <mat-spinner diameter="24"></mat-spinner> <span>Loading...</span>
+              </div>
+            } @else {
+              @if (state.currentPath) {
+                <button mat-menu-item (click)="goUp('source')">
+                  <mat-icon svgIcon="arrow-turn-up-left"></mat-icon> <span>.. (Up a folder)</span>
+                </button>
+              }
+              @for (entry of state.options; track trackByEntry($index, entry)) {
+                <button
+                  mat-menu-item
+                  (click)="onPathSelected('source', entry.Name)"
+                  [disabled]="!entry.IsDir"
+                >
+                  <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
+                  <span>{{ entry.Name }}</span>
+                </button>
+              } @empty {
+                @if (!state.isLoading && state.remoteName) {
+                  <div class="no-results"><span>No items found in this directory.</span></div>
                 }
               }
-            </mat-select-trigger>
-            <mat-option value="local">
-              <mat-icon svgIcon="folder" class="purple"></mat-icon>
-              Local Path
-            </mat-option>
-            <mat-option value="currentRemote">
-              <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-              {{ currentRemoteName }}:/
-            </mat-option>
-            @if (otherRemotes.length) {
-              <mat-optgroup label="Other Remotes">
-                @for (remote of otherRemotes; track remote) {
-                  <mat-option [value]="'otherRemote:' + remote">
-                    <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                    {{ remote }}:/
-                  </mat-option>
-                }
-              </mat-optgroup>
             }
-          </mat-select>
-
-          <input
-            matInput
-            formControlName="path"
-            placeholder="Enter source path..."
-            aria-label="Source path"
-            (input)="onInputChanged($event, sourceFormPath)"
-            (click)="$event.stopPropagation()"
-            [matMenuTriggerFor]="
-              sourcePathType === 'currentRemote' || sourcePathType === 'otherRemote'
-                ? sourcePathAutocompleteMenu
-                : null
-            "
-          />
-
-          @if (sourcePathType === 'local') {
-            <button
-              matIconButton
-              matSuffix
-              (click)="onSelectFolder('source')"
-              type="button"
-              aria-label="Select source folder"
+          </mat-menu>
+        </div>
+      }
+    } @else {
+      @if (sourcePathState$ | async; as state) {
+        <div class="path-input-wrapper">
+          <mat-form-field appearance="fill">
+            <mat-label>Source Path</mat-label>
+            <mat-select
+              matPrefix
+              formControlName="pathType"
+              class="path-prefix"
+              [class.local]="sourcePathType === 'local'"
+              [class.remote]="sourcePathType === 'currentRemote'"
+              [class.other]="sourcePathType === 'otherRemote'"
+              aria-label="Change source path type"
+              (click)="$event.stopPropagation()"
+              (selectionChange)="clearPathOnTypeChange('source')"
             >
-              <mat-icon svgIcon="folder" class="purple"></mat-icon>
-            </button>
-          }
-        </mat-form-field>
+              <mat-select-trigger>
+                @switch (sourcePathType) {
+                  @case ('local') {
+                    <mat-icon svgIcon="folder" class="purple"></mat-icon> <span>Local Path</span>
+                  }
+                  @case ('currentRemote') {
+                    <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+                    <span>{{ currentRemoteName }}:/</span>
+                  }
+                  @case ('otherRemote') {
+                    <mat-icon svgIcon="cloud" class="accent"></mat-icon>
+                    <span>{{ opFormGroup.get('source.otherRemoteName')?.value }}:/</span>
+                  }
+                }
+              </mat-select-trigger>
+              <mat-option value="local">
+                <mat-icon svgIcon="folder" class="purple"></mat-icon> Local Path
+              </mat-option>
+              <mat-option value="currentRemote">
+                <mat-icon svgIcon="hard-drive" class="primary"></mat-icon> {{ currentRemoteName }}:/
+              </mat-option>
+              @if (otherRemotes.length) {
+                <mat-optgroup label="Other Remotes">
+                  @for (remote of otherRemotes; track remote) {
+                    <mat-option [value]="'otherRemote:' + remote">
+                      <mat-icon class="accent" svgIcon="cloud"></mat-icon> {{ remote }}:/
+                    </mat-option>
+                  }
+                </mat-optgroup>
+              }
+            </mat-select>
 
-        <mat-menu
-          #sourcePathAutocompleteMenu="matMenu"
-          panelClass="path-autocomplete-menu"
-          [overlapTrigger]="false"
-        >
-          @if (pathSelectionService.getLoadingState(sourceFormPath)) {
-            <div class="loading-spinner">
-              <mat-spinner diameter="24"></mat-spinner>
-              <span>Loading...</span>
-            </div>
-          } @else {
-            @if (pathSelectionService.pathState[sourceFormPath]?.currentPath) {
-              <button mat-menu-item (click)="goUp(sourceFormPath)">
-                <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
-                <span>.. (Up a folder)</span>
+            <input
+              matInput
+              formControlName="path"
+              placeholder="Enter source path..."
+              aria-label="Source path"
+              (input)="onInputChanged($event, 'source')"
+              (click)="$event.stopPropagation()"
+              [matMenuTriggerFor]="sourcePathType !== 'local' ? sourcePathAutocompleteMenu : null"
+            />
+
+            @if (sourcePathType === 'local') {
+              <button
+                matIconButton
+                matSuffix
+                (click)="onSelectFolder('source')"
+                type="button"
+                aria-label="Select source folder"
+              >
+                <mat-icon svgIcon="folder" class="purple"></mat-icon>
               </button>
             }
+          </mat-form-field>
 
-            @for (
-              entry of pathSelectionService.pathState[sourceFormPath]?.options;
-              track trackByEntry($index, entry)
-            ) {
-              <button
-                mat-menu-item
-                (click)="onPathSelected(sourceFormPath, entry.Name)"
-                [disabled]="!entry.IsDir"
-              >
-                <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
-                <span>{{ entry.Name }}</span>
-              </button>
-            } @empty {
-              @if (
-                !pathSelectionService.getLoadingState(sourceFormPath) &&
-                pathSelectionService.pathState[sourceFormPath]
-              ) {
-                <div class="no-results">
-                  <span>No items found in this directory.</span>
-                </div>
+          <mat-menu
+            #sourcePathAutocompleteMenu="matMenu"
+            panelClass="path-autocomplete-menu"
+            [overlapTrigger]="false"
+          >
+            @if (state.isLoading) {
+              <div class="loading-spinner">
+                <mat-spinner diameter="24"></mat-spinner> <span>Loading...</span>
+              </div>
+            } @else {
+              @if (state.currentPath) {
+                <button mat-menu-item (click)="goUp('source')">
+                  <mat-icon svgIcon="arrow-turn-up-left"></mat-icon> <span>.. (Up a folder)</span>
+                </button>
+              }
+              @for (entry of state.options; track trackByEntry($index, entry)) {
+                <button
+                  mat-menu-item
+                  (click)="onPathSelected('source', entry.Name)"
+                  [disabled]="!entry.IsDir"
+                >
+                  <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
+                  <span>{{ entry.Name }}</span>
+                </button>
+              } @empty {
+                @if (!state.isLoading && state.remoteName) {
+                  <div class="no-results"><span>No items found in this directory.</span></div>
+                }
               }
             }
-          }
-        </mat-menu>
-      </div>
+          </mat-menu>
+        </div>
+      }
     }
   </div>
 
@@ -222,129 +197,112 @@
     </div>
   } @else {
     <div class="path-section" formGroupName="dest">
-      <div class="path-input-wrapper">
-        <mat-form-field appearance="fill">
-          <mat-label>Destination Path</mat-label>
-          <mat-select
-            matPrefix
-            formControlName="pathType"
-            class="path-prefix local"
-            [class.local]="destPathType === 'local'"
-            [class.remote]="destPathType === 'currentRemote'"
-            [class.other]="destPathType === 'otherRemote'"
-            aria-label="Change destination path type"
-            (click)="$event.stopPropagation()"
-            (selectionChange)="clearPathOnTypeChange('dest')"
-          >
-            <mat-select-trigger>
-              @switch (destPathType) {
-                @case ('local') {
-                  <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                  <span>Local Path</span>
-                }
-                @case ('currentRemote') {
-                  <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                  <span>{{ currentRemoteName }}:/</span>
-                }
-                @case ('otherRemote') {
-                  <mat-icon svgIcon="cloud" class="accent"></mat-icon>
-                  <span>{{ opFormGroup.get('dest.otherRemoteName')?.value }}:/</span>
-                }
-              }
-            </mat-select-trigger>
-
-            <mat-option value="local">
-              <mat-icon svgIcon="folder" class="purple"></mat-icon>
-              Local Path
-            </mat-option>
-            <mat-option value="currentRemote">
-              <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-              {{ currentRemoteName }}:/
-            </mat-option>
-            @if (otherRemotes.length) {
-              <mat-optgroup label="Other Remotes">
-                @for (remote of otherRemotes; track remote) {
-                  <mat-option [value]="'otherRemote:' + remote">
-                    <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                    {{ remote }}:/
-                  </mat-option>
-                }
-              </mat-optgroup>
-            }
-          </mat-select>
-
-          <input
-            matInput
-            formControlName="path"
-            placeholder="Enter destination path..."
-            aria-label="Destination path"
-            (input)="onInputChanged($event, destFormPath)"
-            (click)="$event.stopPropagation()"
-            [matMenuTriggerFor]="
-              destPathType === 'currentRemote' || destPathType === 'otherRemote'
-                ? destPathAutocompleteMenu
-                : null
-            "
-          />
-
-          @if (destPathType === 'local') {
-            <button
-              matIconButton
-              matSuffix
-              (click)="onSelectFolder('dest')"
-              type="button"
-              aria-label="Select destination folder"
+      @if (destPathState$ | async; as state) {
+        <div class="path-input-wrapper">
+          <mat-form-field appearance="fill">
+            <mat-label>Destination Path</mat-label>
+            <mat-select
+              matPrefix
+              formControlName="pathType"
+              class="path-prefix"
+              [class.local]="destPathType === 'local'"
+              [class.remote]="destPathType === 'currentRemote'"
+              [class.other]="destPathType === 'otherRemote'"
+              aria-label="Change destination path type"
+              (click)="$event.stopPropagation()"
+              (selectionChange)="clearPathOnTypeChange('dest')"
             >
-              <mat-icon svgIcon="folder" class="purple"></mat-icon>
-            </button>
-          }
-          @if (opFormGroup.get('dest.path')?.hasError('required')) {
-            <mat-error>Destination is required</mat-error>
-          }
-        </mat-form-field>
+              <mat-select-trigger>
+                @switch (destPathType) {
+                  @case ('local') {
+                    <mat-icon svgIcon="folder" class="purple"></mat-icon> <span>Local Path</span>
+                  }
+                  @case ('currentRemote') {
+                    <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+                    <span>{{ currentRemoteName }}:/</span>
+                  }
+                  @case ('otherRemote') {
+                    <mat-icon svgIcon="cloud" class="accent"></mat-icon>
+                    <span>{{ opFormGroup.get('dest.otherRemoteName')?.value }}:/</span>
+                  }
+                }
+              </mat-select-trigger>
+              <mat-option value="local">
+                <mat-icon svgIcon="folder" class="purple"></mat-icon> Local Path
+              </mat-option>
+              <mat-option value="currentRemote">
+                <mat-icon svgIcon="hard-drive" class="primary"></mat-icon> {{ currentRemoteName }}:/
+              </mat-option>
+              @if (otherRemotes.length) {
+                <mat-optgroup label="Other Remotes">
+                  @for (remote of otherRemotes; track remote) {
+                    <mat-option [value]="'otherRemote:' + remote">
+                      <mat-icon class="accent" svgIcon="cloud"></mat-icon> {{ remote }}:/
+                    </mat-option>
+                  }
+                </mat-optgroup>
+              }
+            </mat-select>
 
-        <mat-menu
-          #destPathAutocompleteMenu="matMenu"
-          panelClass="path-autocomplete-menu"
-          [overlapTrigger]="false"
-        >
-          @if (pathSelectionService.getLoadingState(destFormPath)) {
-            <div class="loading-spinner">
-              <mat-spinner diameter="24"></mat-spinner>
-              <span>Loading...</span>
-            </div>
-          } @else {
-            @if (pathSelectionService.pathState[destFormPath]?.currentPath) {
-              <button mat-menu-item (click)="goUp(destFormPath)">
-                <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
-                <span>.. (Up a folder)</span>
+            <input
+              matInput
+              formControlName="path"
+              placeholder="Enter destination path..."
+              aria-label="Destination path"
+              (input)="onInputChanged($event, 'dest')"
+              (click)="$event.stopPropagation()"
+              [matMenuTriggerFor]="destPathType !== 'local' ? destPathAutocompleteMenu : null"
+            />
+
+            @if (destPathType === 'local') {
+              <button
+                matIconButton
+                matSuffix
+                (click)="onSelectFolder('dest')"
+                type="button"
+                aria-label="Select destination folder"
+              >
+                <mat-icon svgIcon="folder" class="purple"></mat-icon>
               </button>
             }
-            @for (
-              entry of pathSelectionService.pathState[destFormPath]?.options;
-              track trackByEntry($index, entry)
-            ) {
-              <button
-                mat-menu-item
-                (click)="onPathSelected(destFormPath, entry.Name)"
-                [disabled]="!entry.IsDir"
-              >
-                <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
-                <span>{{ entry.Name }}</span>
-              </button>
-            } @empty {
-              @if (
-                !pathSelectionService.getLoadingState(destFormPath) &&
-                pathSelectionService.pathState[destFormPath]
-              ) {
-                <div class="no-results">
-                  <span>No items found in this directory.</span>
-                </div>
+            @if (opFormGroup.get('dest.path')?.hasError('required')) {
+              <mat-error>Destination is required</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-menu
+            #destPathAutocompleteMenu="matMenu"
+            panelClass="path-autocomplete-menu"
+            [overlapTrigger]="false"
+          >
+            @if (state.isLoading) {
+              <div class="loading-spinner">
+                <mat-spinner diameter="24"></mat-spinner> <span>Loading...</span>
+              </div>
+            } @else {
+              @if (state.currentPath) {
+                <button mat-menu-item (click)="goUp('dest')">
+                  <mat-icon svgIcon="arrow-turn-up-left"></mat-icon> <span>.. (Up a folder)</span>
+                </button>
+              }
+              @for (entry of state.options; track trackByEntry($index, entry)) {
+                <button
+                  mat-menu-item
+                  (click)="onPathSelected('dest', entry.Name)"
+                  [disabled]="!entry.IsDir"
+                >
+                  <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
+                  <span>{{ entry.Name }}</span>
+                </button>
+              } @empty {
+                @if (!state.isLoading && state.remoteName) {
+                  <div class="no-results"><span>No items found in this directory.</span></div>
+                }
               }
             }
-          }
-        </mat-menu>
-      </div>
+          </mat-menu>
+        </div>
+      }
     </div>
   }
 

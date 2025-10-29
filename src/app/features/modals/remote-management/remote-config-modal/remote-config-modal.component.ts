@@ -8,7 +8,7 @@ import {
   OnInit,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ValidatorFn, Validators, FormControl } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, FormControl } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { Subject, takeUntil } from 'rxjs';
@@ -40,8 +40,10 @@ import {
   EditTarget,
   FlagType,
   RemoteType,
-  REMOTE_NAME_REGEX,
   RemoteConfigSections,
+  InteractiveFlowState,
+  FLAG_TYPES,
+  INTERACTIVE_REMOTES,
 } from '@app/types';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
@@ -52,13 +54,6 @@ interface DialogData {
   existingConfig?: Record<string, unknown>;
   name?: string;
   restrictMode: boolean;
-}
-
-interface InteractiveFlowState {
-  isActive: boolean;
-  question: RcConfigQuestionResponse | null;
-  answer: string | boolean | number | null;
-  isProcessing: boolean;
 }
 
 interface ConfigSpec {
@@ -105,6 +100,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   // Configuration
   readonly TOTAL_STEPS = 9;
+  readonly FLAG_TYPES = FLAG_TYPES;
   readonly stepLabels = [
     'Remote Config',
     'Mount',
@@ -118,7 +114,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   ];
   private readonly FLAG_BASED_TYPES: FlagType[] = ['mount', 'copy', 'sync', 'bisync', 'move'];
   private readonly FLAG_ONLY_TYPES: FlagType[] = ['filter', 'vfs', 'backend'];
-  private readonly INTERACTIVE_REMOTES = ['iclouddrive', 'onedrive'];
 
   // Forms
   remoteForm!: FormGroup;
@@ -211,7 +206,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     vfs: { flagType: 'vfs', formPath: 'vfsConfig', staticFields: [] },
     backend: { flagType: 'backend', formPath: 'backendConfig', staticFields: [] },
   };
-
   // ============================================================================
   // LIFECYCLE HOOKS
   // ============================================================================
@@ -270,7 +264,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private addDynamicFieldsToForm(): void {
-    this.flagConfigService.FLAG_TYPES.forEach(flagType => {
+    FLAG_TYPES.forEach(flagType => {
       const optionsGroup = this.remoteConfigForm.get(`${flagType}Config.options`) as FormGroup;
       if (optionsGroup && this.dynamicFlagFields[flagType]) {
         this.dynamicFlagFields[flagType].forEach(field => {
@@ -290,7 +284,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     return this.fb.group({
       name: [
         { value: '', disabled: isEditMode && !this.cloneTarget }, // Allow edit on clone
-        [Validators.required, this.validateRemoteNameFactory()],
+        [
+          Validators.required,
+          this.validatorRegistry.createRemoteNameValidator(this.existingRemotes),
+        ],
       ],
       type: [{ value: '', disabled: isEditMode && !this.cloneTarget }, [Validators.required]], // Allow edit on clone
     });
@@ -380,7 +377,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private refreshRemoteNameValidator(): void {
     const nameCtrl = this.remoteForm?.get('name');
     if (nameCtrl) {
-      nameCtrl.setValidators([Validators.required, this.validateRemoteNameFactory()]);
+      nameCtrl.setValidators([
+        Validators.required,
+        this.validatorRegistry.createRemoteNameValidator(this.existingRemotes),
+      ]);
       nameCtrl.updateValueAndValidity({ onlySelf: true, emitEvent: false });
     }
   }
@@ -393,50 +393,63 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private setupAutoStartValidators(): void {
-    const configs = [
-      {
-        autoStart: 'mountConfig.autoStart',
-        dest: 'mountConfig.dest', // This is a simple string control for mount
-        validators: [
-          Validators.required,
-          this.validatorRegistry.getValidator('crossPlatformPath')!,
-        ],
-      },
-      {
-        autoStart: 'copyConfig.autoStart',
-        dest: 'copyConfig.dest.path', // This is a nested control
-        validators: [Validators.required],
-      },
-      {
-        autoStart: 'syncConfig.autoStart',
-        dest: 'syncConfig.dest.path', // This is a nested control
-        validators: [Validators.required],
-      },
-      {
-        autoStart: 'bisyncConfig.autoStart',
-        dest: 'bisyncConfig.dest.path', // This is a nested control
-        validators: [Validators.required],
-      },
-      {
-        autoStart: 'moveConfig.autoStart',
-        dest: 'moveConfig.dest.path', // This is a nested control
-        validators: [Validators.required],
-      },
+    const configs: {
+      configName: string;
+      opName: FlagType;
+      isMount: boolean;
+    }[] = [
+      { configName: 'mountConfig', opName: 'mount', isMount: true },
+      { configName: 'copyConfig', opName: 'copy', isMount: false },
+      { configName: 'syncConfig', opName: 'sync', isMount: false },
+      { configName: 'bisyncConfig', opName: 'bisync', isMount: false },
+      { configName: 'moveConfig', opName: 'move', isMount: false },
     ];
 
-    configs.forEach(({ autoStart, dest, validators }) => {
-      this.remoteConfigForm
-        .get(autoStart)
-        ?.valueChanges.pipe(takeUntil(this.destroy$))
-        .subscribe(enabled => {
-          const ctrl = this.remoteConfigForm.get(dest);
+    // *** FIX: Removed unused 'opName' from the destructuring ***
+    configs.forEach(({ configName, isMount }) => {
+      const opGroup = this.remoteConfigForm.get(configName);
+      if (!opGroup) return;
+
+      if (isMount) {
+        // Mount logic is simple: dest is always required if autoStart is on
+        const autoStartControl = opGroup.get('autoStart');
+        const destControl = opGroup.get('dest');
+        autoStartControl?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(enabled => {
           if (enabled) {
-            ctrl?.setValidators(validators);
+            destControl?.setValidators([
+              Validators.required,
+              this.validatorRegistry.getValidator('crossPlatformPath')!,
+            ]);
           } else {
-            ctrl?.clearValidators();
+            destControl?.clearValidators();
           }
-          ctrl?.updateValueAndValidity();
+          destControl?.updateValueAndValidity();
         });
+      } else {
+        // Logic for sync, copy, etc.
+        const sourcePathControl = opGroup.get('source.path');
+        const destPathControl = opGroup.get('dest.path');
+
+        // Apply custom validators
+        sourcePathControl?.setValidators(this.validatorRegistry.requiredIfLocal());
+        destPathControl?.setValidators(this.validatorRegistry.requiredIfLocal());
+
+        // Re-validate when dependencies change
+        const autoStartControl = opGroup.get('autoStart');
+        const sourcePathTypeControl = opGroup.get('source.pathType');
+        const destPathTypeControl = opGroup.get('dest.pathType');
+
+        autoStartControl?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
+          sourcePathControl?.updateValueAndValidity();
+          destPathControl?.updateValueAndValidity();
+        });
+        sourcePathTypeControl?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
+          sourcePathControl?.updateValueAndValidity();
+        });
+        destPathTypeControl?.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
+          destPathControl?.updateValueAndValidity();
+        });
+      }
     });
   }
 
@@ -600,8 +613,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   getCurrentStepLabel(): string {
     if (this.currentStep === 1) return 'Remote Configuration';
     const stepIndex = this.currentStep - 2;
-    if (stepIndex >= 0 && stepIndex < this.flagConfigService.FLAG_TYPES.length) {
-      const type = this.flagConfigService.FLAG_TYPES[stepIndex];
+    if (stepIndex >= 0 && stepIndex < FLAG_TYPES.length) {
+      const type = FLAG_TYPES[stepIndex];
       return type.charAt(0).toUpperCase() + type.slice(1) + ' Configuration';
     }
     return '';
@@ -698,7 +711,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.isRemoteConfigLoading = true;
     try {
       const remoteType = this.remoteForm.get('type')?.value;
-      this.useInteractiveMode = this.INTERACTIVE_REMOTES.includes(remoteType?.toLowerCase());
+      this.useInteractiveMode = INTERACTIVE_REMOTES.includes(remoteType?.toLowerCase());
       this.dynamicRemoteFields =
         await this.remoteManagementService.getRemoteConfigFields(remoteType);
       this.replaceDynamicFormControls();
@@ -1196,13 +1209,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // ============================================================================
   public getRemoteName(): string {
     return this.dialogData?.name || this.remoteForm.get('name')?.value;
-  }
-
-  private validateRemoteNameFactory(): ValidatorFn {
-    return this.validatorRegistry.createRemoteNameValidator(
-      this.existingRemotes,
-      REMOTE_NAME_REGEX
-    );
   }
 
   setFormState(disabled: boolean): void {

@@ -63,9 +63,11 @@
     }
 
     .app-team {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xxs);
       color: var(--secondary-text-color);
       margin-bottom: var(--space-md);
-      text-align: center;
     }
 
     .version-info {

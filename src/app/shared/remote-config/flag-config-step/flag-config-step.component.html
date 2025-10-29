@@ -25,21 +25,23 @@
 
       <!-- Mount Type Selector -->
       @if (field.type === 'mount-type' && isType('mount')) {
-        <mat-form-field appearance="fill">
-          <mat-label>Mount Type</mat-label>
-          <mat-select formControlName="type" placeholder="Select mount type">
-            @for (mountType of mountTypes; track mountType) {
-              <mat-option [value]="mountType">
-                {{ mountType | titlecase }}
-              </mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
+        <div class="options">
+          <mat-form-field appearance="fill">
+            <mat-label>Mount Type</mat-label>
+            <mat-select formControlName="type" placeholder="Select mount type">
+              @for (mountType of mountTypes; track mountType) {
+                <mat-option [value]="mountType">
+                  {{ mountType | titlecase }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
       }
 
       <!-- Bisync Specific Options -->
       @if (field.type === 'bisync-options' && isType('bisync')) {
-        <div class="bisync-options">
+        <div class="options">
           <h4>Bisync Options</h4>
 
           <mat-slide-toggle formControlName="dryRun"> Dry Run Mode </mat-slide-toggle>
@@ -108,7 +110,7 @@
 
       <!-- Move Specific Options -->
       @if (field.type === 'move-options' && isType('move')) {
-        <div class="move-options">
+        <div class="options">
           <h4>Move Options</h4>
 
           <mat-slide-toggle formControlName="createEmptySrcDirs">
@@ -123,7 +125,7 @@
 
       <!-- Copy/Sync Specific Options -->
       @if (field.type === 'copy-sync-options' && isType(['copy', 'sync'])) {
-        <div class="copy-sync-options">
+        <div class="options">
           <h4>{{ flagType | titlecase }} Options</h4>
 
           <mat-slide-toggle formControlName="createEmptySrcDirs">

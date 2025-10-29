@@ -112,6 +112,7 @@ export class IconService {
       'shield-halved': 'assets/icons/shield-halved.svg',
       tv: 'assets/icons/tv.svg',
       globe: 'assets/icons/globe.svg',
+      wind: 'assets/icons/wind.svg',
     };
 
     this.icons = icons;

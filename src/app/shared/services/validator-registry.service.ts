@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { AbstractControl, ValidatorFn, ValidationErrors } from '@angular/forms';
 import { ValidatorsService } from './validators.service';
+import { REMOTE_NAME_REGEX } from '@app/types';
 
 @Injectable({
   providedIn: 'root',
@@ -21,8 +22,6 @@ export class ValidatorRegistryService {
     this.regexCache.set(pattern, compiled);
     return compiled;
   }
-
-  // ------- Validator factories moved from SettingControlComponent -------
 
   arrayValidator(): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
@@ -264,10 +263,34 @@ export class ValidatorRegistryService {
     return null;
   }
 
+  requiredIfLocal(): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const pathGroup = control.parent;
+      const opGroup = pathGroup?.parent;
+
+      if (!pathGroup || !opGroup) {
+        return null; // Cannot determine context, so don't validate.
+      }
+
+      const autoStart = opGroup.get('autoStart')?.value;
+      const pathType = pathGroup.get('pathType')?.value;
+
+      // The field is required if autoStart is on, the path type is local, and there's no value.
+      if (autoStart && pathType === 'local' && !control.value) {
+        return { required: true };
+      }
+
+      return null;
+    };
+  }
+
   /**
    * Create a remote name validator with existing names and regex pattern
    */
-  createRemoteNameValidator(existingNames: string[], allowedPattern?: RegExp): ValidatorFn {
+  createRemoteNameValidator(
+    existingNames: string[],
+    allowedPattern: RegExp = REMOTE_NAME_REGEX
+  ): ValidatorFn {
     return this.validatorsService.remoteNameValidator(existingNames, allowedPattern);
   }
 
