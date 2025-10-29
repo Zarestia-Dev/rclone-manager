@@ -700,7 +700,7 @@ export class HomeComponent implements OnInit, OnDestroy {
             );
             break;
           default:
-            throw new Error(`Unsupported sync operation: ${operationType}`);
+            throw new Error(`Unsupported operation type: ${operationType}`);
         }
       },
       `Failed to start ${operationType} for ${remoteName}`
@@ -789,7 +789,10 @@ export class HomeComponent implements OnInit, OnDestroy {
         name: newName,
         editTarget: undefined,
         cloneTarget: true,
-        existingConfig: { ...clonedSpecs, ...clonedSettings },
+        existingConfig: {
+          remoteSpecs: clonedSpecs,
+          ...clonedSettings,
+        },
         restrictMode: this.restrictMode,
       },
     });
@@ -835,12 +838,12 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (!this.selectedRemote?.remoteSpecs.name) return;
 
     try {
-      const result = await this.notificationService.confirmModal(
+      const confirmed = await this.notificationService.confirmModal(
         'Reset Remote Settings',
-        `Are you sure you want to reset settings for ${this.selectedRemote?.remoteSpecs.name}? This action cannot be undone.`
+        `Are you sure you want to reset ALL settings (including operations) for ${this.selectedRemote?.remoteSpecs.name}? This action cannot be undone.`
       );
 
-      if (result) {
+      if (confirmed) {
         const remoteName = this.selectedRemote.remoteSpecs.name;
         await this.appSettingsService.resetRemoteSettings(remoteName);
         delete this.remoteSettings[remoteName];
@@ -924,10 +927,11 @@ export class HomeComponent implements OnInit, OnDestroy {
   isLocalPath(path: string): boolean {
     if (!path) return false;
     return (
-      /^[a-zA-Z]:[\\/]/.test(path) ||
-      path.startsWith('/') ||
-      path.startsWith('~/') ||
-      path.startsWith('./')
+      (/^[a-zA-Z]:[\\/]/.test(path) ||
+        path.startsWith('/') ||
+        path.startsWith('~/') ||
+        path.startsWith('./')) &&
+      !path.includes(':/')
     );
   }
 
