@@ -1,14 +1,14 @@
 # Maintainer: Hakan İSMAİL <hakanismail53@gmail.com>
 pkgname=rclone-manager-git
 appname='Rclone.Manager'
-pkgver=0.1.5
-pkgrel=1
+pkgver=0.1.5  # Set initial value, will be overwritten by pkgver()
+pkgrel=2
 pkgdesc="User-friendly GUI for Rclone"
 arch=('x86_64' 'aarch64')
 url="https://github.com/Zarestia-Dev/rclone-manager"
 license=('GPL-3.0-or-later')
 depends=('cairo' 'desktop-file-utils' 'gdk-pixbuf2' 'glib2' 'gtk3' 'hicolor-icon-theme' 'libsoup' 'pango' 'webkit2gtk-4.1' 'rclone')
-makedepends=('git' 'openssl' 'appmenu-gtk-module' 'libappindicator-gtk3' 'librsvg' 'cargo' 'npm' 'nodejs')
+makedepends=('git' 'openssl' 'appmenu-gtk-module' 'libappindicator-gtk3' 'librsvg' 'cargo' 'npm' 'nodejs' 'pkg-config' 'zstd' 'xz' 'clang' 'lld' 'nss' 'nspr')
 optdepends=('7zip: Encrypt/decrypt backup data')
 options=('!strip' '!debug')
 provides=('rclone-manager')
@@ -19,10 +19,7 @@ sha256sums=('SKIP')
 
 pkgver() {
   cd rclone-manager
-  ( set -o pipefail
-    git describe --long --abbrev=7 2>/dev/null | sed 's/\([^-]*-g\)/r\1/;s/-/./g' ||
-    printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
-  )
+  git describe --long --tags | sed 's/^v//;s/\([^-]*-\)g/r\1/;s/-/./g'
 }
 
 prepare() {
@@ -32,11 +29,38 @@ prepare() {
 
 build() {
   cd rclone-manager
-  npm run tauri build -- --bundles deb -- --no-default-features --features arch
+  
+  # Set up environment for proper linking
+  export CC=clang
+  export CXX=clang++
+  export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=clang
+  export RUSTFLAGS="-C linker=clang -C link-arg=-fuse-ld=lld -C target-cpu=native"
+  
+  # Ensure pkg-config can find all libraries
+  export PKG_CONFIG_PATH="/usr/lib/pkgconfig:/usr/share/pkgconfig"
+  
+  npm run tauri build -- --bundles deb --config '{"bundle":{"createUpdaterArtifacts":false}}' --features arch
 }
 
 package() {
-  cp -a rclone-manager/src-tauri/target/release/bundle/deb/rclone-manager_${pkgver}_*/data/* "${pkgdir}"
+  cd rclone-manager/src-tauri/target/release/bundle/deb/
+  
+  # Find the actual deb file
+  DEB_FILE=$(ls *.deb | head -1)
+  
+  # Create temporary extraction directory
+  local extracted_dir="${srcdir}/extracted"
+  mkdir -p "${extracted_dir}"
+  
+  # Extract the deb package
+  ar -x "${DEB_FILE}" --output "${extracted_dir}"
+  tar -xz -C "${extracted_dir}" -f "${extracted_dir}/data.tar.gz"
+ 
+  # Copy the entire usr directory structure
+  cp -r "${extracted_dir}/usr" "${pkgdir}/"
+
+  # Clean up
+  rm -rf "${extracted_dir}"
 }
 
 post_install() {
