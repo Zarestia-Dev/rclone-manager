@@ -85,8 +85,8 @@
     </screenshot>
   </screenshots>
   <releases>
-    <release version="0.1.4" date="2025-10-13">
-      <url type="details">https://github.com/Zarestia-Dev/rclone-manager/releases/tag/v0.1.4</url>
+    <release version="0.1.5" date="2025-10-13">
+      <url type="details">https://github.com/Zarestia-Dev/rclone-manager/releases/tag/v0.1.5</url>
       <description>
         <p>Initial release of RClone Manager for FlatHub.</p>
       </description>
