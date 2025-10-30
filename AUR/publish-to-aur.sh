@@ -218,8 +218,10 @@ push_package() {
         return 0
     fi
     
-    # Stage changes if not staged
-    if git diff --quiet; then
+    # Stage changes if nothing is staged yet
+    # `git diff --cached --quiet` returns true when there are NO staged changes,
+    # so add PKGBUILD and .SRCINFO when that's the case.
+    if git diff --cached --quiet; then
         print_info "Staging changes..."
         git add PKGBUILD .SRCINFO
     fi
