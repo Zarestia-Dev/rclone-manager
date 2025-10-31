@@ -79,6 +79,37 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
     return this.invokeCommand('save_setting', { category, key, value });
   }
 
+  /**
+   * Reset a single setting to its default value (backend command `reset_setting`).
+   * Updates the local options state to reflect the default returned by the backend.
+   */
+  async resetSetting(category: string, key: string): Promise<any> {
+    const fullKey = `${category}.${key}`;
+    const currentState = this.optionsState$.getValue();
+
+    try {
+      // Backend returns the default value for the setting
+      const defaultValue = await this.invokeCommand('reset_setting', { category, key });
+
+      if (currentState && currentState[fullKey]) {
+        const newState = {
+          ...currentState,
+          [fullKey]: {
+            ...currentState[fullKey],
+            value: defaultValue,
+          },
+        };
+        this.optionsState$.next(newState);
+      }
+
+      return defaultValue;
+    } catch (err) {
+      console.error(`Failed to reset setting ${fullKey}:`, err);
+      this.notificationService.showError(`Failed to reset ${fullKey} to default.`);
+      throw err;
+    }
+  }
+
   async resetSettings(): Promise<boolean> {
     const confirmed = await this.notificationService.confirmModal(
       'Reset Settings',

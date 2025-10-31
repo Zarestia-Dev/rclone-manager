@@ -1,7 +1,5 @@
 <div class="modal">
-  <!-- Modal Header -->
   <div class="modal-header" data-tauri-drag-region>
-    <!-- Search Toggle Button -->
     <button
       matIconButton
       (click)="toggleSearch()"
@@ -11,7 +9,6 @@
       <mat-icon svgIcon="search"></mat-icon>
     </button>
 
-    <!-- Title (Mobile) or Desktop Tabs -->
     @if (bottomTabs) {
       <p class="modal-title">Preferences</p>
     } @else {
@@ -35,13 +32,11 @@
       }
     }
 
-    <!-- Close Button -->
     <button matIconButton (click)="close()" aria-label="Close preferences dialog">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
 
-  <!-- Search Box with Animation -->
   <app-search-container
     [visible]="searchVisible"
     [searchText]="searchQuery"
@@ -50,22 +45,26 @@
     ariaLabel="Search preferences settings"
   ></app-search-container>
 
-  <!-- Loading Indicator -->
   @if (isLoading) {
     <div class="loading-overlay">
       <mat-spinner diameter="50"></mat-spinner>
     </div>
   }
 
-  <!-- Modal Content -->
   @if (!isLoading) {
     <main class="modal-content">
       <div class="tab-content">
         <div class="settings-list" role="list">
-          <!-- 1. Render Search Results -->
           @if (hasSearchResults) {
             @for (result of searchResults; track result.category + '.' + result.key) {
-              <div class="setting-item" role="listitem">
+              <div
+                class="setting-item"
+                role="listitem"
+                [class.layout-row]="
+                  getMetadata(result.category, result.key).value_type === 'bool' ||
+                  getMetadata(result.category, result.key).value_type === 'int'
+                "
+              >
                 <ng-container
                   [ngTemplateOutlet]="settingTemplate"
                   [ngTemplateOutletContext]="{
@@ -78,14 +77,20 @@
             }
           }
 
-          <!-- 2. Render Regular Tab Content -->
           @if (!searchQuery) {
             @for (category of getObjectKeys(settingsForm.controls); track category) {
               @if (selectedTabKey === category) {
                 <div class="tab-content" role="tabpanel">
                   <div class="settings-list" role="list">
                     @for (key of getObjectKeys(settingsForm.get(category)?.value); track key) {
-                      <div class="setting-item" role="listitem">
+                      <div
+                        class="setting-item"
+                        role="listitem"
+                        [class.layout-row]="
+                          getMetadata(category, key).value_type === 'bool' ||
+                          getMetadata(category, key).value_type === 'int'
+                        "
+                      >
                         <ng-container
                           [ngTemplateOutlet]="settingTemplate"
                           [ngTemplateOutletContext]="{
@@ -96,7 +101,6 @@
                         ></ng-container>
                       </div>
                     }
-                    <!-- Reset Button for General Tab -->
                     @if (isGeneralTab) {
                       <div class="actions">
                         <button
@@ -116,7 +120,6 @@
             }
           }
 
-          <!-- 3. No Results State -->
           @if (hasEmptySearchResults) {
             <div class="no-results" role="status" aria-live="polite">
               <mat-icon svgIcon="search"></mat-icon>
@@ -142,7 +145,6 @@
         </div>
       </div>
 
-      <!-- Pending Restart Changes Section -->
       @if (hasPendingRestartChanges) {
         <div class="pending-changes-section">
           <div class="pending-changes-header">
@@ -154,7 +156,6 @@
               </div>
             </div>
           </div>
-
           <div class="pending-changes-list">
             @for (change of getPendingChangesList(); track change.category + '.' + change.key) {
               <div class="pending-change-item">
@@ -176,11 +177,9 @@
               </div>
             }
           </div>
-
           <div class="pending-changes-actions">
             <button
               matButton
-              class="discard-button"
               (click)="discardPendingChanges()"
               [disabled]="isDiscardingChanges"
               aria-label="Discard pending changes"
@@ -194,8 +193,8 @@
               {{ isDiscardingChanges ? 'Discarding...' : 'Discard Changes' }}
             </button>
             <button
-              matButton="filled"
-              class="save-restart-button"
+              mat-raised-button
+              class="warn"
               (click)="savePendingChanges()"
               aria-label="Save changes and restart engine"
             >
@@ -208,8 +207,6 @@
     </main>
   }
 
-  <!-- Bottom Tabs (Mobile) -->
-  <!-- ✅ IMPROVED: Bottom tabs are hidden when searching -->
   @if (bottomTabs && !hasSearchResults) {
     <div class="tabs bottom-tabs" role="tablist" aria-label="Settings categories">
       @for (tab of filteredTabs; track tab.key; let i = $index) {
@@ -228,11 +225,6 @@
     </div>
   }
 
-  <!-- 
-    =====================================================================
-    Reusable Setting Template - This is the main rendering logic
-    =====================================================================
-  -->
   <ng-template
     #settingTemplate
     let-category="category"
@@ -240,353 +232,220 @@
     let-showCategory="showCategory"
   >
     @if (getMetadata(category, key); as meta) {
-      @switch (meta.value_type) {
-        @case ('bool') {
-          <ng-container
-            [ngTemplateOutlet]="settingInfo"
-            [ngTemplateOutletContext]="{
-              meta: meta,
-              category: category,
-              showCategory: showCategory,
-            }"
+      <div class="setting-item-header">
+        <div class="setting-info">
+          <strong>{{ meta.display_name }}</strong>
+          <p>{{ meta.help_text }}</p>
+          @if (showCategory) {
+            <small class="setting-category">{{ getCategoryDisplayName(category) }}</small>
+          }
+        </div>
+        @if (isModified(category, key)) {
+          <button
+            mat-icon-button
+            class="reset-btn"
+            (click)="resetSetting(category, key)"
+            [attr.aria-label]="'Reset ' + meta.display_name + ' to default'"
+            matTooltip="Reset to default"
+            matTooltipPosition="above"
           >
-          </ng-container>
-          <div class="setting-control">
-            <ng-container
-              [ngTemplateOutlet]="booleanControl"
-              [ngTemplateOutletContext]="{
-                category: category,
-                key: key,
-                showCategory: showCategory,
-              }"
-            >
-            </ng-container>
-          </div>
+            <mat-icon svgIcon="arrow-rotate-left"></mat-icon>
+          </button>
         }
-        @case ('int') {
-          <ng-container
-            [ngTemplateOutlet]="settingInfo"
-            [ngTemplateOutletContext]="{
-              meta: meta,
-              category: category,
-              showCategory: showCategory,
-            }"
-          >
-          </ng-container>
-          <div class="setting-control">
-            <ng-container
-              [ngTemplateOutlet]="numberControl"
-              [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
-            >
-            </ng-container>
+      </div>
+
+      <div class="setting-control">
+        <div class="control-with-reset">
+          <div class="control-field">
+            @switch (meta.value_type) {
+              @case ('bool') {
+                <mat-slide-toggle [formControl]="$any(getFormControl(category, key))">
+                </mat-slide-toggle>
+              }
+              @case ('int') {
+                <div class="stepper">
+                  <button
+                    mat-icon-button
+                    class="stepper-btn"
+                    (mousedown)="startHold('decrement', meta.step || 1, category, key, meta)"
+                    (touchstart.prevent)="
+                      startHold('decrement', meta.step || 1, category, key, meta)
+                    "
+                    (mouseup)="stopHold()"
+                    (mouseleave)="stopHold()"
+                    (touchend)="stopHold()"
+                    [disabled]="
+                      (+getFormControl(category, key).value || 0) <= (meta.min_value ?? 0)
+                    "
+                  >
+                    <mat-icon svgIcon="remove"></mat-icon>
+                  </button>
+                  <mat-form-field appearance="fill" class="number-input">
+                    <input
+                      matInput
+                      type="number"
+                      [formControl]="$any(getFormControl(category, key))"
+                      (keydown)="onIntegerInput($event)"
+                      [attr.aria-label]="meta.display_name"
+                    />
+                    @if (
+                      getFormControl(category, key).invalid && getFormControl(category, key).touched
+                    ) {
+                      <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
+                    }
+                  </mat-form-field>
+                  <button
+                    mat-icon-button
+                    class="stepper-btn"
+                    (mousedown)="startHold('increment', meta.step || 1, category, key, meta)"
+                    (touchstart.prevent)="
+                      startHold('increment', meta.step || 1, category, key, meta)
+                    "
+                    (mouseup)="stopHold()"
+                    (mouseleave)="stopHold()"
+                    (touchend)="stopHold()"
+                    [disabled]="
+                      (+getFormControl(category, key).value || 0) >=
+                      (meta.max_value ?? 1000000000000)
+                    "
+                  >
+                    <mat-icon svgIcon="add"></mat-icon>
+                  </button>
+                </div>
+              }
+              @case ('string') {
+                <mat-form-field class="input-field" appearance="fill">
+                  @if (meta.options) {
+                    <mat-select
+                      [formControl]="$any(getFormControl(category, key))"
+                      [attr.aria-label]="meta.display_name"
+                    >
+                      @for (option of meta.options; track option) {
+                        <mat-option [value]="option">{{ option }}</mat-option>
+                      }
+                    </mat-select>
+                  } @else {
+                    <input
+                      matInput
+                      [formControl]="$any(getFormControl(category, key))"
+                      [attr.aria-label]="meta.display_name"
+                      [placeholder]="meta.placeholder || ''"
+                    />
+                  }
+                  @if (
+                    getFormControl(category, key).invalid && getFormControl(category, key).touched
+                  ) {
+                    <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
+                  }
+                </mat-form-field>
+              }
+              @case ('bandwidth') {
+                <mat-form-field class="input-field" appearance="fill">
+                  <input
+                    matInput
+                    [formControl]="$any(getFormControl(category, key))"
+                    [attr.aria-label]="meta.display_name"
+                    [placeholder]="meta.placeholder || ''"
+                  />
+                  @if (
+                    getFormControl(category, key).invalid && getFormControl(category, key).touched
+                  ) {
+                    <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
+                  }
+                </mat-form-field>
+              }
+              @case ('string[]') {
+                <div class="array-control-wrapper">
+                  <div class="array-items">
+                    @for (item of getFormControl(category, key).value; track $index) {
+                      <div class="array-item">
+                        <mat-form-field appearance="fill" class="input-field">
+                          <input
+                            matInput
+                            [formControl]="getArrayItemControl(category, key, $index)"
+                            [attr.aria-label]="'Item ' + ($index + 1)"
+                          />
+                          <button
+                            matIconButton
+                            matSuffix
+                            (click)="removeArrayItem(category, key, $index)"
+                            [attr.aria-label]="'Remove item ' + ($index + 1)"
+                          >
+                            <mat-icon svgIcon="close"></mat-icon>
+                          </button>
+                        </mat-form-field>
+                      </div>
+                    }
+                  </div>
+                  @if (
+                    getFormControl(category, key).invalid && getFormControl(category, key).touched
+                  ) {
+                    <mat-error class="array-error">{{
+                      getValidationMessage(category, key)
+                    }}</mat-error>
+                  }
+                  <button
+                    mat-stroked-button
+                    (click)="addArrayItem(category, key)"
+                    [attr.aria-label]="'Add new ' + meta.display_name + ' item'"
+                  >
+                    <mat-icon svgIcon="add"></mat-icon> Add Item
+                  </button>
+                </div>
+              }
+              @case ('file') {
+                <mat-form-field appearance="fill" class="input-field">
+                  <input
+                    matInput
+                    [formControl]="$any(getFormControl(category, key))"
+                    (input)="onPathInput(category, key)"
+                    [attr.aria-label]="'File path for ' + meta.display_name"
+                  />
+                  <button
+                    matIconButton
+                    matSuffix
+                    (click)="openFilePicker(category, key)"
+                    [attr.aria-label]="'Browse for ' + meta.display_name"
+                  >
+                    <mat-icon svgIcon="file"></mat-icon>
+                  </button>
+                  @if (
+                    getFormControl(category, key).invalid && getFormControl(category, key).touched
+                  ) {
+                    <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
+                  }
+                </mat-form-field>
+              }
+              @case ('folder') {
+                <mat-form-field appearance="fill" class="input-field">
+                  <input
+                    matInput
+                    [formControl]="$any(getFormControl(category, key))"
+                    (input)="onPathInput(category, key)"
+                    [attr.aria-label]="'Folder path for ' + meta.display_name"
+                  />
+                  <button
+                    matIconButton
+                    matSuffix
+                    (click)="openFolderPicker(category, key)"
+                    [attr.aria-label]="'Browse for ' + meta.display_name"
+                  >
+                    <mat-icon svgIcon="folder"></mat-icon>
+                  </button>
+                  @if (
+                    getFormControl(category, key).invalid && getFormControl(category, key).touched
+                  ) {
+                    <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
+                  }
+                </mat-form-field>
+              }
+            }
           </div>
-        }
-        @case ('string') {
-          <div class="has-input">
-            <ng-container
-              [ngTemplateOutlet]="settingInfo"
-              [ngTemplateOutletContext]="{
-                meta: meta,
-                category: category,
-                showCategory: showCategory,
-              }"
-            >
-            </ng-container>
-            <div class="setting-control">
-              <ng-container
-                [ngTemplateOutlet]="stringControl"
-                [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
-              >
-              </ng-container>
-            </div>
-          </div>
-        }
-        @case ('bandwidth') {
-          <div class="has-input">
-            <ng-container
-              [ngTemplateOutlet]="settingInfo"
-              [ngTemplateOutletContext]="{
-                meta: meta,
-                category: category,
-                showCategory: showCategory,
-              }"
-            >
-            </ng-container>
-            <div class="setting-control">
-              <ng-container
-                [ngTemplateOutlet]="stringControl"
-                [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
-              >
-              </ng-container>
-            </div>
-          </div>
-        }
-        @case ('string[]') {
-          <div class="has-input">
-            <div class="array-setting">
-              <ng-container
-                [ngTemplateOutlet]="settingInfo"
-                [ngTemplateOutletContext]="{
-                  meta: meta,
-                  category: category,
-                  showCategory: showCategory,
-                }"
-              >
-              </ng-container>
-              <div class="array-buttons">
-                <button
-                  matIconButton
-                  class="primary"
-                  (click)="addArrayItem(category, key)"
-                  [attr.aria-label]="'Add new ' + meta.display_name + ' item'"
-                  matTooltip="Add item"
-                >
-                  <mat-icon svgIcon="add"></mat-icon>
-                </button>
-              </div>
-            </div>
-            <div class="setting-control">
-              <ng-container
-                [ngTemplateOutlet]="arrayControl"
-                [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
-              >
-              </ng-container>
-            </div>
-          </div>
-        }
-        @case ('file') {
-          <div class="has-input">
-            <ng-container
-              [ngTemplateOutlet]="settingInfo"
-              [ngTemplateOutletContext]="{
-                meta: meta,
-                category: category,
-                showCategory: showCategory,
-              }"
-            >
-            </ng-container>
-            <div class="setting-control">
-              <ng-container
-                [ngTemplateOutlet]="fileControl"
-                [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
-              >
-              </ng-container>
-            </div>
-          </div>
-        }
-        @case ('folder') {
-          <div class="has-input">
-            <ng-container
-              [ngTemplateOutlet]="settingInfo"
-              [ngTemplateOutletContext]="{
-                meta: meta,
-                category: category,
-                showCategory: showCategory,
-              }"
-            >
-            </ng-container>
-            <div class="setting-control">
-              <ng-container
-                [ngTemplateOutlet]="folderControl"
-                [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
-              >
-              </ng-container>
-            </div>
-          </div>
-        }
-      }
+        </div>
+      </div>
     }
   </ng-template>
-  <!-- Reusable Setting Info Template -->
-  <ng-template #settingInfo let-meta="meta" let-category="category" let-showCategory="showCategory">
-    <div class="setting-info">
-      <strong>{{ meta.display_name }}</strong>
-      <p>{{ meta.help_text }}</p>
-      @if (showCategory) {
-        <small class="setting-category">{{ getCategoryDisplayName(category) }}</small>
-      }
-    </div>
-  </ng-template>
 
-  <!-- Boolean Control Template -->
-  <ng-template
-    #booleanControl
-    let-category="category"
-    let-key="key"
-    let-showCategory="showCategory"
-  >
-    <div class="toggle-container">
-      <mat-slide-toggle
-        [formControl]="$any(getFormControl(category, key))"
-        (change)="updateSetting(category, key, getFormControl(category, key).value)"
-        [attr.aria-describedby]="
-          getFormControl(category, key).invalid ? category + '-' + key + '-error' : null
-        "
-      >
-      </mat-slide-toggle>
-      @if (getFormControl(category, key).invalid) {
-        <mat-icon
-          svgIcon="error"
-          class="error-icon warn"
-          [matTooltip]="getValidationMessage(category, key)"
-          matTooltipPosition="above"
-          [id]="category + '-' + key + '-error'"
-        >
-        </mat-icon>
-      }
-    </div>
-  </ng-template>
-
-  <!-- Number Control Template -->
-  <ng-template #numberControl let-category="category" let-key="key" let-meta="meta">
-    <div class="stepper">
-      <button
-        matIconButton
-        (click)="decrementNumber(category, key, meta)"
-        [disabled]="getFormControl(category, key).value <= (meta.min_value || 0)"
-        [attr.aria-label]="'Decrease ' + meta.display_name + ' value'"
-      >
-        <mat-icon svgIcon="remove"></mat-icon>
-      </button>
-
-      <div class="value-display" [attr.aria-live]="'polite'">
-        {{ getFormControl(category, key).value }}
-      </div>
-
-      <button
-        matIconButton
-        (click)="incrementNumber(category, key, meta)"
-        [disabled]="getFormControl(category, key).value >= (meta.max_value || 999999)"
-        [attr.aria-label]="'Increase ' + meta.display_name + ' value'"
-      >
-        <mat-icon svgIcon="add"></mat-icon>
-      </button>
-    </div>
-  </ng-template>
-
-  <!-- String Control Template -->
-  <ng-template #stringControl let-category="category" let-key="key" let-meta="meta">
-    <mat-form-field class="input-field" appearance="fill">
-      @if (meta.options) {
-        <mat-select
-          [formControl]="$any(getFormControl(category, key))"
-          (selectionChange)="updateSetting(category, key, $event.value)"
-          [attr.aria-label]="meta.display_name"
-        >
-          @for (option of meta.options; track option) {
-            <mat-option [value]="option">{{ option }}</mat-option>
-          }
-        </mat-select>
-      } @else {
-        <input
-          matInput
-          [formControl]="$any(getFormControl(category, key))"
-          (focus)="storeOriginalValue(category, key)"
-          (blur)="onInputBlur(category, key)"
-          [attr.aria-label]="meta.display_name"
-          [placeholder]="meta.placeholder || ''"
-        />
-      }
-      @if (getFormControl(category, key).invalid) {
-        <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
-      }
-    </mat-form-field>
-  </ng-template>
-
-  <!-- Array Control Template -->
-  <ng-template #arrayControl let-category="category" let-key="key">
-    <div class="array-input-container">
-      <div class="array-items">
-        @for (item of getFormControl(category, key).value; track $index) {
-          @if (getFormControl(category, key).invalid && $index === 0) {
-            <div class="array-error">
-              <mat-icon
-                svgIcon="error"
-                class="warn"
-                [matTooltip]="getValidationMessage(category, key)"
-                matTooltipPosition="above"
-              >
-              </mat-icon>
-              <span class="error-text">{{ getValidationMessage(category, key) }}</span>
-            </div>
-          }
-          <div class="array-item">
-            <mat-form-field appearance="fill" class="input-field">
-              <input
-                matInput
-                [formControl]="getArrayItemControl(category, key, $index)"
-                [attr.aria-label]="'Item ' + ($index + 1)"
-              />
-              <button
-                matIconButton
-                matSuffix
-                (click)="removeArrayItem(category, key, $index)"
-                [attr.aria-label]="'Remove item ' + ($index + 1)"
-              >
-                <mat-icon svgIcon="close"></mat-icon>
-              </button>
-            </mat-form-field>
-          </div>
-        }
-      </div>
-    </div>
-  </ng-template>
-
-  <!-- file Control Template -->
-  <ng-template #fileControl let-category="category" let-key="key">
-    <div class="path-input-container">
-      <mat-form-field appearance="fill" class="input-field">
-        <input
-          matInput
-          [formControl]="$any(getFormControl(category, key))"
-          (input)="onPathInput(category, key)"
-          (focus)="storeOriginalValue(category, key)"
-          (blur)="onInputBlur(category, key)"
-          [attr.aria-label]="'File path for ' + getMetadata(category, key).display_name"
-        />
-        <button
-          matIconButton
-          matSuffix
-          (click)="openFilePicker(category, key)"
-          [attr.aria-label]="'Browse for ' + getMetadata(category, key).display_name"
-        >
-          <mat-icon svgIcon="file"></mat-icon>
-        </button>
-        @if (getFormControl(category, key).invalid) {
-          <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
-        }
-      </mat-form-field>
-    </div>
-  </ng-template>
-
-  <!-- folder Control Template -->
-  <ng-template #folderControl let-category="category" let-key="key">
-    <div class="path-input-container">
-      <mat-form-field appearance="fill" class="input-field">
-        <input
-          matInput
-          [formControl]="$any(getFormControl(category, key))"
-          (input)="onPathInput(category, key)"
-          (focus)="storeOriginalValue(category, key)"
-          (blur)="onInputBlur(category, key)"
-          [attr.aria-label]="'Folder path for ' + getMetadata(category, key).display_name"
-        />
-        <button
-          matIconButton
-          matSuffix
-          (click)="openFolderPicker(category, key)"
-          [attr.aria-label]="'Browse for ' + getMetadata(category, key).display_name"
-        >
-          <mat-icon svgIcon="folder"></mat-icon>
-        </button>
-        @if (getFormControl(category, key).invalid) {
-          <mat-error>{{ getValidationMessage(category, key) }}</mat-error>
-        }
-      </mat-form-field>
-    </div>
-  </ng-template>
-
-  <!-- Floating Pending Changes Indicator -->
   @if (hasPendingRestartChanges) {
     <button
       class="floating-pending-indicator"
