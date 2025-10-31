@@ -13,22 +13,26 @@
 
     <!-- Title (Mobile) or Desktop Tabs -->
     @if (bottomTabs) {
-      <h2 class="modal-title">Preferences</h2>
+      <p class="modal-title">Preferences</p>
     } @else {
-      <div class="tabs desktop-tabs" data-tauri-drag-region role="tablist">
-        @for (tab of filteredTabs; track tab; let i = $index) {
-          <button
-            (click)="selectTab(i)"
-            [class.selected]="selectedTabIndex === i"
-            [attr.aria-selected]="selectedTabIndex === i"
-            [attr.tabindex]="selectedTabIndex === i ? 0 : -1"
-            role="tab"
-          >
-            <mat-icon [svgIcon]="tab.icon"></mat-icon>
-            <span class="tab-label">{{ tab.label }}</span>
-          </button>
-        }
-      </div>
+      @if (!hasSearchResults) {
+        <div class="tabs desktop-tabs" data-tauri-drag-region role="tablist">
+          @for (tab of filteredTabs; track tab.key; let i = $index) {
+            <button
+              (click)="selectTab(i)"
+              [class.selected]="selectedTabIndex === i"
+              [attr.aria-selected]="selectedTabIndex === i"
+              [attr.tabindex]="selectedTabIndex === i ? 0 : -1"
+              role="tab"
+            >
+              <mat-icon [svgIcon]="tab.icon"></mat-icon>
+              <span class="tab-label">{{ tab.label }}</span>
+            </button>
+          }
+        </div>
+      } @else {
+        <h2 class="modal-title search-title">Search Results</h2>
+      }
     }
 
     <!-- Close Button -->
@@ -56,94 +60,87 @@
   <!-- Modal Content -->
   @if (!isLoading) {
     <main class="modal-content">
-      <!-- Search Results Section -->
-      @if (hasSearchResults) {
-        <div class="tab-content">
-          <div class="settings-list" role="list">
+      <div class="tab-content">
+        <div class="settings-list" role="list">
+          <!-- 1. Render Search Results -->
+          @if (hasSearchResults) {
             @for (result of searchResults; track result.category + '.' + result.key) {
               <div class="setting-item" role="listitem">
-                @if (getMetadata(result.category, result.key); as meta) {
-                  <ng-container
-                    [ngTemplateOutlet]="settingTemplate"
-                    [ngTemplateOutletContext]="{
-                      meta: meta,
-                      category: result.category,
-                      key: result.key,
-                      showCategory: true,
-                    }"
-                  ></ng-container>
-                }
+                <ng-container
+                  [ngTemplateOutlet]="settingTemplate"
+                  [ngTemplateOutletContext]="{
+                    category: result.category,
+                    key: result.key,
+                    showCategory: true,
+                  }"
+                ></ng-container>
               </div>
             }
-          </div>
-        </div>
-      }
+          }
 
-      <!-- Regular Tab Content -->
-      @if (!searchQuery) {
-        @for (category of getObjectKeys(settingsForm.controls); track category) {
-          @if (selectedTab === category) {
-            <div class="tab-content">
-              <div class="settings-list" role="list">
-                @for (key of getFilteredSettings(category); track key) {
-                  <div class="setting-item" role="listitem">
-                    @if (getMetadata(category, key); as meta) {
-                      <ng-container
-                        [ngTemplateOutlet]="settingTemplate"
-                        [ngTemplateOutletContext]="{
-                          meta: meta,
-                          category: category,
-                          key: key,
-                          showCategory: false,
-                        }"
-                      ></ng-container>
+          <!-- 2. Render Regular Tab Content -->
+          @if (!searchQuery) {
+            @for (category of getObjectKeys(settingsForm.controls); track category) {
+              @if (selectedTabKey === category) {
+                <div class="tab-content" role="tabpanel">
+                  <div class="settings-list" role="list">
+                    @for (key of getObjectKeys(settingsForm.get(category)?.value); track key) {
+                      <div class="setting-item" role="listitem">
+                        <ng-container
+                          [ngTemplateOutlet]="settingTemplate"
+                          [ngTemplateOutletContext]="{
+                            category: category,
+                            key: key,
+                            showCategory: false,
+                          }"
+                        ></ng-container>
+                      </div>
+                    }
+                    <!-- Reset Button for General Tab -->
+                    @if (isGeneralTab) {
+                      <div class="actions">
+                        <button
+                          mat-button
+                          class="reset-button"
+                          (click)="resetSettings()"
+                          aria-label="Reset all settings to default values"
+                        >
+                          <mat-icon svgIcon="arrow-rotate-left"></mat-icon>
+                          Reset All Settings
+                        </button>
+                      </div>
                     }
                   </div>
-                }
+                </div>
+              }
+            }
+          }
 
-                <!-- Reset Button for General Tab -->
-                @if (isGeneralTab) {
-                  <div class="actions">
+          <!-- 3. No Results State -->
+          @if (hasEmptySearchResults) {
+            <div class="no-results" role="status" aria-live="polite">
+              <mat-icon svgIcon="search"></mat-icon>
+              <p>
+                No settings found matching <strong>"{{ searchQuery }}"</strong>
+              </p>
+              <div class="search-suggestions">
+                <small>Try searching for:</small>
+                <div class="suggestion-chips">
+                  @for (suggestion of searchSuggestions; track suggestion) {
                     <button
-                      matButton="filled"
-                      class="reset-button"
-                      (click)="resetSettings()"
-                      aria-label="Reset all settings to default values"
+                      class="chip"
+                      (click)="onSearchTextChange(suggestion)"
+                      [attr.aria-label]="'Search for ' + suggestion"
                     >
-                      <mat-icon svgIcon="arrow-rotate-left"></mat-icon>
-                      Reset All Settings
+                      {{ suggestion }}
                     </button>
-                  </div>
-                }
+                  }
+                </div>
               </div>
             </div>
           }
-        }
-      }
-
-      <!-- No Results State -->
-      @if (hasEmptySearchResults) {
-        <div class="no-results" role="status" aria-live="polite">
-          <mat-icon svgIcon="search"></mat-icon>
-          <p>
-            No settings found matching <strong>"{{ searchQuery }}"</strong>
-          </p>
-          <div class="search-suggestions">
-            <small>Try searching for:</small>
-            <div class="suggestion-chips">
-              @for (suggestion of searchSuggestions; track suggestion) {
-                <button
-                  class="chip"
-                  (click)="filterSettings(suggestion)"
-                  [attr.aria-label]="'Search for ' + suggestion"
-                >
-                  {{ suggestion }}
-                </button>
-              }
-            </div>
-          </div>
         </div>
-      }
+      </div>
 
       <!-- Pending Restart Changes Section -->
       @if (hasPendingRestartChanges) {
@@ -212,9 +209,10 @@
   }
 
   <!-- Bottom Tabs (Mobile) -->
-  @if (bottomTabs && filteredTabs.length > 0) {
+  <!-- ✅ IMPROVED: Bottom tabs are hidden when searching -->
+  @if (bottomTabs && !hasSearchResults) {
     <div class="tabs bottom-tabs" role="tablist" aria-label="Settings categories">
-      @for (tab of filteredTabs; track tab; let i = $index) {
+      @for (tab of filteredTabs; track tab.key; let i = $index) {
         <button
           (click)="selectTab(i)"
           [class.selected]="selectedTabIndex === i"
@@ -230,68 +228,20 @@
     </div>
   }
 
-  <!-- Reusable Setting Template -->
+  <!-- 
+    =====================================================================
+    Reusable Setting Template - This is the main rendering logic
+    =====================================================================
+  -->
   <ng-template
     #settingTemplate
-    let-meta="meta"
     let-category="category"
     let-key="key"
     let-showCategory="showCategory"
   >
-    <!-- Boolean Settings (Toggle) -->
-    @if (meta.value_type === 'bool') {
-      <ng-container
-        [ngTemplateOutlet]="settingInfo"
-        [ngTemplateOutletContext]="{ meta: meta, category: category, showCategory: showCategory }"
-      >
-      </ng-container>
-      <div class="setting-control">
-        <ng-container
-          [ngTemplateOutlet]="booleanControl"
-          [ngTemplateOutletContext]="{ category: category, key: key, showCategory: showCategory }"
-        >
-        </ng-container>
-      </div>
-    }
-
-    <!-- Number Input -->
-    @if (meta.value_type === 'number') {
-      <ng-container
-        [ngTemplateOutlet]="settingInfo"
-        [ngTemplateOutletContext]="{ meta: meta, category: category, showCategory: showCategory }"
-      >
-      </ng-container>
-      <div class="setting-control">
-        <ng-container
-          [ngTemplateOutlet]="numberControl"
-          [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
-        >
-        </ng-container>
-      </div>
-    }
-
-    <!-- String Settings -->
-    @if (meta.value_type === 'string') {
-      <div class="has-input">
-        <ng-container
-          [ngTemplateOutlet]="settingInfo"
-          [ngTemplateOutletContext]="{ meta: meta, category: category, showCategory: showCategory }"
-        >
-        </ng-container>
-        <div class="setting-control">
-          <ng-container
-            [ngTemplateOutlet]="stringControl"
-            [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
-          >
-          </ng-container>
-        </div>
-      </div>
-    }
-
-    <!-- Array Settings -->
-    @if (meta.value_type === 'array') {
-      <div class="has-input">
-        <div class="array-setting">
+    @if (getMetadata(category, key); as meta) {
+      @switch (meta.value_type) {
+        @case ('bool') {
           <ng-container
             [ngTemplateOutlet]="settingInfo"
             [ngTemplateOutletContext]="{
@@ -301,64 +251,152 @@
             }"
           >
           </ng-container>
-          <div class="array-buttons">
-            <button
-              matIconButton
-              class="primary"
-              (click)="addArrayItem(category, key)"
-              [attr.aria-label]="'Add new ' + meta.display_name + ' item'"
-              matTooltip="Add item"
+          <div class="setting-control">
+            <ng-container
+              [ngTemplateOutlet]="booleanControl"
+              [ngTemplateOutletContext]="{
+                category: category,
+                key: key,
+                showCategory: showCategory,
+              }"
             >
-              <mat-icon svgIcon="add"></mat-icon>
-            </button>
+            </ng-container>
           </div>
-        </div>
-        <div class="setting-control">
+        }
+        @case ('int') {
           <ng-container
-            [ngTemplateOutlet]="arrayControl"
-            [ngTemplateOutletContext]="{ category: category, key: key }"
+            [ngTemplateOutlet]="settingInfo"
+            [ngTemplateOutletContext]="{
+              meta: meta,
+              category: category,
+              showCategory: showCategory,
+            }"
           >
           </ng-container>
-        </div>
-      </div>
-    }
-
-    <!-- Path Settings -->
-    @if (meta.value_type === 'file') {
-      <div class="has-input">
-        <ng-container
-          [ngTemplateOutlet]="settingInfo"
-          [ngTemplateOutletContext]="{ meta: meta, category: category, showCategory: showCategory }"
-        >
-        </ng-container>
-        <div class="setting-control">
-          <ng-container
-            [ngTemplateOutlet]="fileControl"
-            [ngTemplateOutletContext]="{ category: category, key: key }"
-          >
-          </ng-container>
-        </div>
-      </div>
-    }
-
-    @if (meta.value_type === 'folder') {
-      <div class="has-input">
-        <ng-container
-          [ngTemplateOutlet]="settingInfo"
-          [ngTemplateOutletContext]="{ meta: meta, category: category, showCategory: showCategory }"
-        >
-        </ng-container>
-        <div class="setting-control">
-          <ng-container
-            [ngTemplateOutlet]="folderControl"
-            [ngTemplateOutletContext]="{ category: category, key: key }"
-          >
-          </ng-container>
-        </div>
-      </div>
+          <div class="setting-control">
+            <ng-container
+              [ngTemplateOutlet]="numberControl"
+              [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
+            >
+            </ng-container>
+          </div>
+        }
+        @case ('string') {
+          <div class="has-input">
+            <ng-container
+              [ngTemplateOutlet]="settingInfo"
+              [ngTemplateOutletContext]="{
+                meta: meta,
+                category: category,
+                showCategory: showCategory,
+              }"
+            >
+            </ng-container>
+            <div class="setting-control">
+              <ng-container
+                [ngTemplateOutlet]="stringControl"
+                [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
+              >
+              </ng-container>
+            </div>
+          </div>
+        }
+        @case ('bandwidth') {
+          <div class="has-input">
+            <ng-container
+              [ngTemplateOutlet]="settingInfo"
+              [ngTemplateOutletContext]="{
+                meta: meta,
+                category: category,
+                showCategory: showCategory,
+              }"
+            >
+            </ng-container>
+            <div class="setting-control">
+              <ng-container
+                [ngTemplateOutlet]="stringControl"
+                [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
+              >
+              </ng-container>
+            </div>
+          </div>
+        }
+        @case ('string[]') {
+          <div class="has-input">
+            <div class="array-setting">
+              <ng-container
+                [ngTemplateOutlet]="settingInfo"
+                [ngTemplateOutletContext]="{
+                  meta: meta,
+                  category: category,
+                  showCategory: showCategory,
+                }"
+              >
+              </ng-container>
+              <div class="array-buttons">
+                <button
+                  matIconButton
+                  class="primary"
+                  (click)="addArrayItem(category, key)"
+                  [attr.aria-label]="'Add new ' + meta.display_name + ' item'"
+                  matTooltip="Add item"
+                >
+                  <mat-icon svgIcon="add"></mat-icon>
+                </button>
+              </div>
+            </div>
+            <div class="setting-control">
+              <ng-container
+                [ngTemplateOutlet]="arrayControl"
+                [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
+              >
+              </ng-container>
+            </div>
+          </div>
+        }
+        @case ('file') {
+          <div class="has-input">
+            <ng-container
+              [ngTemplateOutlet]="settingInfo"
+              [ngTemplateOutletContext]="{
+                meta: meta,
+                category: category,
+                showCategory: showCategory,
+              }"
+            >
+            </ng-container>
+            <div class="setting-control">
+              <ng-container
+                [ngTemplateOutlet]="fileControl"
+                [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
+              >
+              </ng-container>
+            </div>
+          </div>
+        }
+        @case ('folder') {
+          <div class="has-input">
+            <ng-container
+              [ngTemplateOutlet]="settingInfo"
+              [ngTemplateOutletContext]="{
+                meta: meta,
+                category: category,
+                showCategory: showCategory,
+              }"
+            >
+            </ng-container>
+            <div class="setting-control">
+              <ng-container
+                [ngTemplateOutlet]="folderControl"
+                [ngTemplateOutletContext]="{ category: category, key: key, meta: meta }"
+              >
+              </ng-container>
+            </div>
+          </div>
+        }
+      }
     }
   </ng-template>
-
   <!-- Reusable Setting Info Template -->
   <ng-template #settingInfo let-meta="meta" let-category="category" let-showCategory="showCategory">
     <div class="setting-info">
@@ -379,7 +417,7 @@
   >
     <div class="toggle-container">
       <mat-slide-toggle
-        [formControl]="getFormControl(category, key)"
+        [formControl]="$any(getFormControl(category, key))"
         (change)="updateSetting(category, key, getFormControl(category, key).value)"
         [attr.aria-describedby]="
           getFormControl(category, key).invalid ? category + '-' + key + '-error' : null
@@ -431,7 +469,7 @@
     <mat-form-field class="input-field" appearance="fill">
       @if (meta.options) {
         <mat-select
-          [formControl]="getFormControl(category, key)"
+          [formControl]="$any(getFormControl(category, key))"
           (selectionChange)="updateSetting(category, key, $event.value)"
           [attr.aria-label]="meta.display_name"
         >
@@ -442,7 +480,7 @@
       } @else {
         <input
           matInput
-          [formControl]="getFormControl(category, key)"
+          [formControl]="$any(getFormControl(category, key))"
           (focus)="storeOriginalValue(category, key)"
           (blur)="onInputBlur(category, key)"
           [attr.aria-label]="meta.display_name"
@@ -500,7 +538,7 @@
       <mat-form-field appearance="fill" class="input-field">
         <input
           matInput
-          [formControl]="getFormControl(category, key)"
+          [formControl]="$any(getFormControl(category, key))"
           (input)="onPathInput(category, key)"
           (focus)="storeOriginalValue(category, key)"
           (blur)="onInputBlur(category, key)"
@@ -527,7 +565,7 @@
       <mat-form-field appearance="fill" class="input-field">
         <input
           matInput
-          [formControl]="getFormControl(category, key)"
+          [formControl]="$any(getFormControl(category, key))"
           (input)="onPathInput(category, key)"
           (focus)="storeOriginalValue(category, key)"
           (blur)="onInputBlur(category, key)"

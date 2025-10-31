@@ -1,46 +1,39 @@
-// use regex::Regex;
+use serde_json::json;
 use std::collections::HashMap;
 
-use crate::utils::types::all_types::{
-    AppSettings, CoreSettings, DeveloperSettings, GeneralSettings, SettingMetadata,
+use crate::utils::types::settings::{
+    AppSettings, CoreSettings, DeveloperSettings, GeneralSettings, RuntimeSettings, SettingMetadata,
 };
 
-/// Macro to create SettingMetadata with only required and commonly used fields
-/// This reduces boilerplate and makes the code more readable
 macro_rules! setting_meta {
     (
         $display_name:expr,
         $value_type:expr,
-        $help_text:expr
-        $(, validation_type = $validation_type:expr)?
-        $(, validation_message = $validation_message:expr)?
+        $help_text:expr,
+        default = $default:expr
         $(, min = $min_value:expr)?
         $(, max = $max_value:expr)?
         $(, step = $step:expr)?
         $(, placeholder = $placeholder:expr)?
         $(, required = $required:expr)?
-        $(, requires_restart = $requires_restart:expr)?
-        $(, group = $group:expr)?
-        $(, depends_on = $depends_on:expr)?
-        $(, depends_value = $depends_value:expr)?
+        $(, engine_restart = $engine_restart:expr)?
     ) => {
         SettingMetadata {
             display_name: $display_name.to_string(),
             value_type: $value_type.to_string(),
             help_text: $help_text.to_string(),
-            validation_type: None $(.or(Some($validation_type.to_string())))?,
-            validation_pattern: None,
-            validation_message: None $(.or(Some($validation_message.to_string())))?,
+            default: json!($default),
+            value: None,
             min_value: None $(.or(Some($min_value)))?,
             max_value: None $(.or(Some($max_value)))?,
             step: None $(.or(Some($step)))?,
             placeholder: None $(.or(Some($placeholder.to_string())))?,
             options: None,
             required: None $(.or(Some($required)))?,
-            requires_restart: None $(.or(Some($requires_restart)))?        }
+            engine_restart: None $(.or(Some($engine_restart)))?,
+        }
     };
 }
-
 pub fn default_terminal_apps() -> Vec<String> {
     #[cfg(target_os = "linux")]
     {
@@ -89,7 +82,6 @@ pub fn default_terminal_apps() -> Vec<String> {
     }
 }
 
-/// ✅ Default settings
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
@@ -97,12 +89,12 @@ impl Default for AppSettings {
                 tray_enabled: true,
                 start_on_startup: false,
                 notifications: true,
-                restrict: true, // default to true for security
+                restrict: true,
             },
             core: CoreSettings {
                 max_tray_items: 5,
-                rclone_api_port: 51900,   // change port to dynamic port
-                rclone_oauth_port: 51901, // change port to dynamic port
+                rclone_api_port: 51900,
+                rclone_oauth_port: 51901,
                 connection_check_urls: vec![
                     "https://www.google.com".to_string(),
                     "https://www.dropbox.com".to_string(),
@@ -118,6 +110,16 @@ impl Default for AppSettings {
             developer: DeveloperSettings {
                 debug_logging: false,
             },
+
+            runtime: RuntimeSettings {
+                theme: "system".to_string(),
+                app_auto_check_updates: true,
+                app_skipped_updates: vec![],
+                app_update_channel: "stable".to_string(),
+                rclone_auto_check_updates: true,
+                rclone_skipped_updates: vec![],
+                rclone_update_channel: "stable".to_string(),
+            },
         }
     }
 }
@@ -125,16 +127,17 @@ impl Default for AppSettings {
 impl AppSettings {
     pub fn get_metadata() -> HashMap<String, SettingMetadata> {
         let mut metadata = HashMap::new();
+        let defaults = AppSettings::default();
 
-        // General Settings (App-level)
+        // General Settings
         metadata.insert(
             "general.start_on_startup".to_string(),
             setting_meta!(
                 "Start on Startup",
                 "bool",
                 "Automatically start the app when the system starts.",
-                required = true,
-                requires_restart = false
+                default = defaults.general.start_on_startup,
+                required = true
             ),
         );
 
@@ -144,8 +147,8 @@ impl AppSettings {
                 "Enable Notifications",
                 "bool",
                 "Show notifications for mount events.",
-                required = true,
-                requires_restart = false
+                default = defaults.general.notifications,
+                required = true
             ),
         );
 
@@ -155,8 +158,8 @@ impl AppSettings {
                 "Enable Tray Icon",
                 "bool",
                 "Show an icon in the system tray. Also enables the background service.",
-                required = true,
-                requires_restart = false
+                default = defaults.general.tray_enabled,
+                required = true
             ),
         );
 
@@ -166,41 +169,36 @@ impl AppSettings {
                 "Restrict Values",
                 "bool",
                 "Restrict some specific values for security purposes (e.g., Token, Client ID, etc.)",
-                required = true,
-                requires_restart = false
+                default = defaults.general.restrict,
+                required = true
             ),
         );
 
-        // RClone Settings - Network Group
+        // Core Settings
         metadata.insert(
             "core.bandwidth_limit".to_string(),
             setting_meta!(
                 "Bandwidth Limit",
-                "string",
+                "bandwidth",
                 "Limit the bandwidth used by Rclone transfers. It can be specified as 'upload:download'",
-                validation_type = "frontend:bandwidthFormat",
-                validation_message = "The bandwidth should be of the form 1M|2M|1G|1K|1.1K etc. Can also be specified as (upload:download). Keep it empty for no limit.",
-                placeholder = "e.g., 10M or 5M:2M",
-                required = false,
-                requires_restart = false
+                default = defaults.core.bandwidth_limit,
+                placeholder = "e.g., 10M or 5M:2M"
             ),
         );
 
-        // RClone Settings - Engine Group
         metadata.insert(
             "core.rclone_api_port".to_string(),
             setting_meta!(
                 "Rclone API Port",
-                "number",
+                "int",
                 "Port used for Rclone API communication (1024-65535).",
-                validation_type = "frontend:portRange",
-                validation_message = "Must be a valid port number between 1024 and 65535",
+                default = defaults.core.rclone_api_port,
                 min = 1024,
                 max = 65535,
                 step = 1,
                 placeholder = "e.g., 51900",
                 required = true,
-                requires_restart = true
+                engine_restart = true
             ),
         );
 
@@ -208,16 +206,14 @@ impl AppSettings {
             "core.rclone_oauth_port".to_string(),
             setting_meta!(
                 "Rclone OAuth Port",
-                "number",
+                "int",
                 "Port used for Rclone OAuth communication (1024-65535).",
-                validation_type = "frontend:portRange",
-                validation_message = "Must be a valid port number between 1024 and 65535",
+                default = defaults.core.rclone_oauth_port,
                 min = 1024,
                 max = 65535,
                 step = 1,
                 placeholder = "e.g., 51901",
-                required = true,
-                requires_restart = false
+                required = true
             ),
         );
 
@@ -225,31 +221,26 @@ impl AppSettings {
             "core.connection_check_urls".to_string(),
             setting_meta!(
                 "Connection Check URLs",
-                "array",
+                "string[]",
                 "List of URLs to check for internet connectivity",
-                validation_type = "frontend:urlList",
-                validation_message = "All items must be valid URLs",
+                default = json!(defaults.core.connection_check_urls),
                 placeholder = "https://google.com",
-                required = true,
-                requires_restart = false
+                required = true
             ),
         );
 
-        // App-level Core Settings (no group = appears in Preferences)
         metadata.insert(
             "core.max_tray_items".to_string(),
             setting_meta!(
                 "Max Tray Items",
-                "number",
+                "int",
                 "Maximum number of items to show in the tray (1-40).",
-                validation_type = "frontend:trayItemsRange",
-                validation_message = "Must be between 1 and 40",
+                default = defaults.core.max_tray_items,
                 min = 1,
                 max = 40,
                 step = 1,
                 placeholder = "e.g., 5",
-                required = true,
-                requires_restart = false
+                required = true
             ),
         );
 
@@ -259,23 +250,20 @@ impl AppSettings {
                 "Completed Onboarding",
                 "bool",
                 "Indicates if the onboarding process is completed.",
-                required = true,
-                requires_restart = false
+                default = defaults.core.completed_onboarding,
+                required = true
             ),
         );
 
-        // RClone Settings - Paths Group
         metadata.insert(
             "core.rclone_config_file".to_string(),
             setting_meta!(
                 "Rclone Config File",
                 "file",
                 "Path to rclone config file. Leave empty to use default location.",
-                validation_type = "frontend:crossPlatformPath",
-                validation_message = "Must be a valid file path",
+                default = defaults.core.rclone_config_file,
                 placeholder = "e.g., /home/user/.config/rclone/rclone.conf",
-                required = false,
-                requires_restart = true
+                engine_restart = true
             ),
         );
 
@@ -285,11 +273,9 @@ impl AppSettings {
                 "Rclone Binary Path",
                 "folder",
                 "Path to rclone binary or directory. Leave empty for auto-detection, use 'system' for system PATH.",
-                validation_type = "frontend:crossPlatformPath",
-                validation_message = "Must be a valid file or directory path",
-                placeholder = "e.g., /usr/bin/rclone or 'system'",
-                required = false,
-                requires_restart = true
+                default = defaults.core.rclone_path,
+                placeholder = "e.g., /path/to/rclone or 'system'",
+                engine_restart = true
             ),
         );
 
@@ -297,41 +283,14 @@ impl AppSettings {
             "core.terminal_apps".to_string(),
             setting_meta!(
                 "Preferred Terminal Apps",
-                "array",
+                "string[]",
                 "List of terminal applications to use for commands.",
-                validation_message = "All items must be valid terminal app names",
+                default = json!(defaults.core.terminal_apps),
                 placeholder = "e.g., gnome-terminal, x-terminal-emulator",
-                required = true,
-                requires_restart = false
+                required = true
             ),
         );
 
-        metadata.insert(
-            "core.rclone_path".to_string(),
-            setting_meta!(
-                "Rclone Binary Path",
-                "folder",
-                "Path to rclone binary or directory. Leave empty for auto-detection, use 'system' for system PATH.",
-                validation_type = "frontend:crossPlatformPath",
-                validation_message = "Must be a valid file or directory path",
-                placeholder = "e.g., /usr/bin/rclone or 'system'",
-                required = false,
-                requires_restart = true
-            ),
-        );
-
-        metadata.insert(
-            "core.terminal_apps".to_string(),
-            setting_meta!(
-                "Preferred Terminal Apps",
-                "array",
-                "List of terminal applications to use for commands.",
-                validation_message = "All items must be valid terminal app names",
-                placeholder = "e.g., gnome-terminal, x-terminal-emulator",
-                required = true,
-                requires_restart = false
-            ),
-        );
         // Developer Settings
         metadata.insert(
             "developer.debug_logging".to_string(),
@@ -339,8 +298,83 @@ impl AppSettings {
                 "Enable Debug Logging",
                 "bool",
                 "Enable detailed logging for debugging.",
-                required = true,
-                requires_restart = false
+                default = defaults.developer.debug_logging,
+                required = true
+            ),
+        );
+
+        // Runtime Settings
+        metadata.insert(
+            "runtime.theme".to_string(),
+            setting_meta!(
+                "Application Theme",
+                "string",
+                "The current UI theme (system, light, or dark).",
+                default = defaults.runtime.theme
+            ),
+        );
+
+        metadata.insert(
+            "runtime.app_auto_check_updates".to_string(),
+            setting_meta!(
+                "App Auto Check Updates",
+                "bool",
+                "Automatically check for application updates.",
+                default = true,
+                required = true
+            ),
+        );
+        metadata.insert(
+            "runtime.app_skipped_updates".to_string(),
+            setting_meta!(
+                "App Skipped Updates",
+                "string[]",
+                "List of application versions to skip during update checks.",
+                default = json!([]),
+                required = true
+            ),
+        );
+        metadata.insert(
+            "runtime.app_update_channel".to_string(),
+            setting_meta!(
+                "App Update Channel",
+                "string",
+                "The update channel for the application (stable, beta, etc.).",
+                default = "stable",
+                required = true
+            ),
+        );
+
+        metadata.insert(
+            "runtime.rclone_auto_check_updates".to_string(),
+            setting_meta!(
+                "Rclone Auto Check Updates",
+                "bool",
+                "Automatically check for rclone updates.",
+                default = true,
+                required = true
+            ),
+        );
+
+        metadata.insert(
+            "runtime.rclone_skipped_updates".to_string(),
+            setting_meta!(
+                "Rclone Skipped Updates",
+                "string[]",
+                "List of rclone versions to skip during update checks.",
+                default = json!([]),
+                required = true
+            ),
+        );
+
+        metadata.insert(
+            "runtime.rclone_update_channel".to_string(),
+            setting_meta!(
+                "Rclone Update Channel",
+                "string",
+                "The update channel for rclone (stable, beta, etc.).",
+                default = "stable",
+                required = true
             ),
         );
 

@@ -4,7 +4,7 @@ use tauri::{AppHandle, Manager, State};
 use tauri_plugin_store::StoreBuilder;
 use tokio::sync::Mutex;
 
-use crate::utils::types::all_types::SettingsState;
+use crate::utils::types::settings::SettingsState;
 
 /// **RClone Backend Settings Manager**
 ///

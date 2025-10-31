@@ -32,7 +32,7 @@ use crate::{
                 restore_manager::{restore_encrypted_settings, restore_settings},
             },
             operations::core::{
-                load_setting_value, load_settings, reset_setting, reset_settings, save_settings,
+                load_settings, load_startup_settings, reset_setting, reset_settings, save_setting,
             },
             rclone_backend::{
                 get_rclone_backend_store_path, load_rclone_backend_options,
@@ -91,7 +91,7 @@ use crate::{
             provision::provision_rclone,
             updater::{check_rclone_update, update_rclone},
         },
-        types::all_types::{AppSettings, RcloneState, SettingsState},
+        types::{all_types::RcloneState, settings::SettingsState},
     },
 };
 
@@ -186,14 +186,8 @@ pub fn run() {
             app.manage(env_manager);
             app.manage(credential_store);
 
-            // Load settings with better error handling
-            let settings_json = tauri::async_runtime::block_on(load_settings(
-                app.state::<SettingsState<tauri::Wry>>(),
-            ))
-            .map_err(|e| format!("Failed to load settings: {e}"))?;
-
-            let settings: AppSettings = serde_json::from_value(settings_json["settings"].clone())
-                .map_err(|e| format!("Failed to parse settings: {e}"))?;
+            let settings = load_startup_settings(&app.state::<SettingsState<tauri::Wry>>())
+                .map_err(|e| format!("Failed to load settings for startup: {e}"))?;
 
             // Check if --tray argument is provided to override tray settings
             let force_tray = std::env::args().any(|arg| arg == "--tray");
@@ -378,8 +372,7 @@ pub fn run() {
             set_rclone_option,
             // Settings
             load_settings,
-            load_setting_value,
-            save_settings,
+            save_setting,
             reset_settings,
             reset_setting,
             // RClone Backend Settings

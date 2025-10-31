@@ -39,7 +39,9 @@ export class OnboardingStateService {
   private async initializeOnboardingState(): Promise<void> {
     try {
       const completed =
-        (await this.appSettingsService.loadSettingValue('core', 'completed_onboarding')) ?? false;
+        (await this.appSettingsService.getSettingValue<boolean>('core.completed_onboarding')) ||
+        false;
+      console.log('Loaded onboarding completion status from settings:', completed);
 
       this._isCompleted$.next(completed);
       this._isInitialized$.next(true);

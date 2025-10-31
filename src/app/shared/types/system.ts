@@ -143,18 +143,17 @@ export interface SettingTab {
 
 export interface SettingMetadata {
   display_name: string;
+  value_type: 'bool' | 'int' | 'string' | 'bandwidth' | 'file' | 'folder' | 'string[]';
   help_text: string;
-  value_type: 'bool' | 'number' | 'string' | 'array' | 'path' | 'file' | 'folder';
-  required?: boolean;
-  validation_type?: string; // 'regex' | 'frontend:<validatorName>' | other types
-  validation_pattern?: string;
-  validation_message?: string;
+  default: any;
+  value?: any;
   min_value?: number;
   max_value?: number;
   step?: number;
-  options?: string[];
   placeholder?: string;
-  requires_restart?: boolean;
+  options?: string[];
+  required?: boolean;
+  engine_restart?: boolean;
 }
 
 export interface SearchResult {

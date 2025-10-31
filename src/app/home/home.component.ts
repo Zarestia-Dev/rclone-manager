@@ -860,7 +860,8 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private async loadRestrictMode(): Promise<void> {
     try {
-      this.restrictMode = await this.appSettingsService.loadSettingValue('general', 'restrict');
+      this.restrictMode =
+        (await this.appSettingsService.getSettingValue<boolean>('general.restrict')) ?? true;
     } catch (error) {
       this.handleError('Failed to load restrict setting', error);
     }

@@ -11,7 +11,10 @@ use crate::{
     },
     utils::{
         app::builder::setup_tray,
-        types::all_types::{AppSettings, RcApiEngine, RcloneState},
+        types::{
+            all_types::{RcApiEngine, RcloneState},
+            settings::AppSettings,
+        },
     },
 };
 

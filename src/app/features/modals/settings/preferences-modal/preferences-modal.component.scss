@@ -21,6 +21,13 @@
     z-index: 1000;
   }
 
+  .search-title {
+    flex: 1;
+    text-align: center;
+    font-size: var(--font-size-lg);
+    font-weight: 500;
+  }
+
   // Floating Pending Changes Indicator
   .floating-pending-indicator {
     position: fixed;
@@ -783,16 +790,5 @@
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes slideInFromRight {
-  from {
-    opacity: 0;
-    transform: translateX(100px) scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
   }
 }

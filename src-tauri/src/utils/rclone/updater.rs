@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
-use crate::core::settings::operations::core::save_settings;
+use crate::core::settings::operations::core::save_setting;
 use crate::{rclone::queries::get_rclone_info, utils::types::all_types::RcloneState};
 
 // ============================================================================
@@ -357,14 +357,16 @@ fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
 
 /// Update the rclone path in application settings
 async fn update_rclone_path_in_settings(app_handle: &AppHandle, new_path: &Path) {
-    let settings_update = json!({
-        "core": {
-            "rclone_path": new_path.display().to_string()
-        }
-    });
-
-    match save_settings(app_handle.state(), settings_update, app_handle.clone()).await {
-        Ok(_) => info!("Updated rclone path in settings to: {new_path:?}"),
+    match save_setting(
+        "core".to_string(),
+        "rclone_path".to_string(),
+        serde_json::json!(new_path.display().to_string()),
+        app_handle.state(),
+        app_handle.clone(),
+    )
+    .await
+    {
+        Ok(_) => info!("Updated rclone path in settings to: {:?}", new_path),
         Err(e) => {
             log::error!("Failed to save rclone path to settings: {e}");
             // Don't fail the update process for settings save errors

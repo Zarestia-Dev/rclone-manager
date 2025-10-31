@@ -208,7 +208,9 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   // Channel management methods
   async getChannel(): Promise<string> {
     try {
-      const channel = await this.appSettingsService.loadSettingValue('rclone', 'update_channel');
+      const channel = await this.appSettingsService.getSettingValue<string>(
+        'runtime.rclone_update_channel'
+      );
       return channel || 'stable';
     } catch (error) {
       console.error('Failed to load rclone update channel:', error);
@@ -218,7 +220,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
 
   async setChannel(channel: string): Promise<void> {
     try {
-      await this.appSettingsService.saveSetting('rclone', 'update_channel', channel);
+      await this.appSettingsService.saveSetting('runtime', 'rclone_update_channel', channel);
       this.updateChannelSubject.next(channel);
 
       // Clear update status when channel is changed
@@ -243,7 +245,9 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   // Version skipping methods
   async getSkippedVersions(): Promise<string[]> {
     try {
-      const skipped = await this.appSettingsService.loadSettingValue('rclone', 'skipped_updates');
+      const skipped = await this.appSettingsService.getSettingValue<string[]>(
+        'runtime.rclone_skipped_updates'
+      );
       return Array.isArray(skipped) ? skipped : [];
     } catch (error) {
       console.error('Failed to load skipped rclone versions:', error);
@@ -256,7 +260,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
       const currentSkipped = await this.getSkippedVersions();
       if (!currentSkipped.includes(version)) {
         const newSkipped = [...currentSkipped, version];
-        await this.appSettingsService.saveSetting('rclone', 'skipped_updates', newSkipped);
+        await this.appSettingsService.saveSetting('runtime', 'rclone_skipped_updates', newSkipped);
         this.skippedVersionsSubject.next(newSkipped);
 
         // Immediately update the UI to hide the available update
@@ -285,7 +289,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
     try {
       const currentSkipped = await this.getSkippedVersions();
       const newSkipped = currentSkipped.filter(v => v !== version);
-      await this.appSettingsService.saveSetting('rclone', 'skipped_updates', newSkipped);
+      await this.appSettingsService.saveSetting('runtime', 'rclone_skipped_updates', newSkipped);
       this.skippedVersionsSubject.next(newSkipped);
 
       // Immediately check for updates to refresh the UI
@@ -305,9 +309,8 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   // Auto-check methods
   async getAutoCheckEnabled(): Promise<boolean> {
     try {
-      const enabled = await this.appSettingsService.loadSettingValue(
-        'rclone',
-        'auto_check_updates'
+      const enabled = await this.appSettingsService.getSettingValue<boolean>(
+        'runtime.rclone_auto_check_updates'
       );
       return enabled ?? true;
     } catch (error) {
@@ -318,7 +321,7 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
 
   async setAutoCheckEnabled(enabled: boolean): Promise<void> {
     try {
-      await this.appSettingsService.saveSetting('rclone', 'auto_check_updates', enabled);
+      await this.appSettingsService.saveSetting('runtime', 'rclone_auto_check_updates', enabled);
       this.autoCheckSubject.next(enabled);
 
       this.notificationService.openSnackBar(

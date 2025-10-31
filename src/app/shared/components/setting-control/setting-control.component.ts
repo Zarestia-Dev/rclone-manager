@@ -98,8 +98,6 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     this.createControl();
   }
 
-  @Input() selectedProvider?: string; // For remote-specific settings
-
   @Output() valueCommit = new EventEmitter<void>();
   @Output() valueChanged = new EventEmitter<boolean>();
 
@@ -150,6 +148,10 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   private readonly COMMA_ARRAY_TYPES = ['Bits', 'Encoding', 'CommaSepList', 'DumpFlags'];
   // Types that need machine-to-human conversion
   private readonly CONVERTIBLE_TYPES = ['Duration', 'SizeSuffix', 'BwTimetable', 'FileMode'];
+  private holdInterval: any = null;
+  private holdTimeout: any = null;
+  private readonly HOLD_DELAY = 400;
+  private readonly HOLD_INTERVAL = 80;
 
   //
   // ─── CORE LOGIC ──────────────────────────────────────────────────────────────
@@ -499,6 +501,144 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     return value;
   }
 
+  /**
+   * Increments the number value in the control.
+   * @param step The amount to increment by. Defaults to 1. For floats, uses 'any'.
+   * @param commit Whether to commit the value immediately. Defaults to true.
+   */
+  increment(step: number | 'any' = 1, commit = true): void {
+    // Add commit parameter
+    if (!this.control) return;
+    const isFloat = this.option.Type === 'float64';
+    const currentValue = isFloat
+      ? parseFloat(this.control.value)
+      : parseInt(this.control.value, 10);
+    const numValue = isNaN(currentValue) ? 0 : currentValue;
+
+    const effectiveStep = step === 'any' ? 1.0 : step;
+    const newValue = numValue + effectiveStep;
+
+    const finalValue = isFloat ? parseFloat(newValue.toPrecision(15)) : newValue;
+
+    this.control.setValue(finalValue);
+    if (commit) {
+      // Only commit if requested
+      this.commitValue();
+    }
+  }
+
+  /**
+   * Decrements the number value in the control.
+   * @param step The amount to decrement by. Defaults to 1. For floats, uses 'any'.
+   * @param commit Whether to commit the value immediately. Defaults to true.
+   */
+  decrement(step: number | 'any' = 1, commit = true): void {
+    // Add commit parameter
+    if (!this.control) return;
+    const isFloat = this.option.Type === 'float64';
+    const currentValue = isFloat
+      ? parseFloat(this.control.value)
+      : parseInt(this.control.value, 10);
+    const numValue = isNaN(currentValue) ? 0 : currentValue;
+
+    const effectiveStep = step === 'any' ? 1.0 : step;
+    const newValue = numValue - effectiveStep;
+
+    const finalValue = isFloat ? parseFloat(newValue.toPrecision(15)) : newValue;
+
+    this.control.setValue(finalValue);
+    if (commit) {
+      // Only commit if requested
+      this.commitValue();
+    }
+  }
+
+  /**
+   * Prevents non-numeric key presses for integer type inputs for a better UX.
+   * The form validator remains the ultimate source of truth.
+   * @param event The keyboard event.
+   */
+  onIntegerInput(event: KeyboardEvent): void {
+    if (['int', 'int64', 'uint32'].includes(this.option.Type)) {
+      // Allow control keys, navigation, and clipboard actions
+      if (
+        [
+          'Backspace',
+          'Delete',
+          'Tab',
+          'Escape',
+          'Enter',
+          'Home',
+          'End',
+          'ArrowLeft',
+          'ArrowRight',
+          'ArrowUp',
+          'ArrowDown',
+        ].includes(event.key) ||
+        event.ctrlKey ||
+        event.metaKey // Allow Ctrl+A, C, V, X etc.
+      ) {
+        return;
+      }
+
+      // Allow the negative sign only at the beginning for signed integers
+      if (event.key === '-' && this.option.Type !== 'uint32') {
+        const input = event.target as HTMLInputElement;
+        if (input.selectionStart === 0 && !input.value.includes('-')) {
+          return;
+        }
+      }
+
+      // Prevent any key press that is not a digit
+      if (!/^\d$/.test(event.key)) {
+        event.preventDefault();
+      }
+    }
+  }
+
+  /**
+   * Starts the process of continuously changing the value when a button is held.
+   * @param action The action to perform ('increment' or 'decrement').
+   * @param step The step value for the action.
+   */
+  startHold(action: 'increment' | 'decrement', step: number | 'any'): void {
+    // Clear any existing timers to be safe
+    this.stopHold(false); // Don't commit on start
+
+    // Perform the action once immediately on click/press
+    if (action === 'increment') {
+      this.increment(step, false);
+    } else {
+      this.decrement(step, false);
+    }
+
+    // Set a timeout to begin the repeating interval
+    this.holdTimeout = setTimeout(() => {
+      this.holdInterval = setInterval(() => {
+        if (action === 'increment') {
+          this.increment(step, false); // Pass false to prevent commit on each tick
+        } else {
+          this.decrement(step, false); // Pass false to prevent commit on each tick
+        }
+      }, this.HOLD_INTERVAL);
+    }, this.HOLD_DELAY);
+  }
+
+  /**
+   * Stops the continuous value change and commits the final value.
+   * @param commit Final value after stopping. Defaults to true.
+   */
+  stopHold(commit = true): void {
+    clearTimeout(this.holdTimeout);
+    clearInterval(this.holdInterval);
+    this.holdTimeout = null;
+    this.holdInterval = null;
+
+    if (commit) {
+      this.commitValue(); // Commit the final value once the user releases the button
+    }
+  }
+
   //
   // ─── VALIDATORS ──────────────────────────────────────────────────────────────
   //
@@ -579,14 +719,6 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       errors['enum']?.message ||
       'Invalid value'
     );
-  }
-
-  get shouldShow(): boolean {
-    // If no provider specified on this field, always show
-    if (!this.option.Provider) return true;
-
-    // If provider specified, only show if it matches selected
-    return this.option.Provider === this.selectedProvider;
   }
 
   ngOnDestroy(): void {

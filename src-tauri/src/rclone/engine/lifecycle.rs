@@ -5,9 +5,10 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     RcloneState,
-    core::initialization::apply_core_settings,
-    core::settings::operations::core::load_settings,
-    utils::types::all_types::{AppSettings, RcApiEngine, SettingsState},
+    core::{
+        initialization::apply_core_settings, settings::operations::core::load_startup_settings,
+    },
+    utils::types::{all_types::RcApiEngine, settings::SettingsState},
 };
 
 impl RcApiEngine {
@@ -158,15 +159,16 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
 
                 // Reapply core settings after successful engine start
                 let app_handle = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Ok(settings_json) =
-                        load_settings(app_handle.state::<SettingsState<tauri::Wry>>()).await
-                        && let Ok(settings) =
-                            serde_json::from_value::<AppSettings>(settings_json["settings"].clone())
-                    {
-                        apply_core_settings(&app_handle, &settings).await;
+                match load_startup_settings(&app_handle.state::<SettingsState<tauri::Wry>>()) {
+                    Ok(settings) => {
+                        tauri::async_runtime::spawn(async move {
+                            apply_core_settings(&app_handle, &settings).await;
+                        });
                     }
-                });
+                    Err(e) => {
+                        error!("Failed to load settings to apply after engine start: {}", e);
+                    }
+                }
             } else {
                 error!("❌ Failed to start Rclone API within timeout.");
                 // Clean up the failed process

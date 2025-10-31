@@ -4,7 +4,7 @@ use log::{debug, error, info};
 use tauri::{Manager, State};
 
 use crate::{
-    core::{check_binaries::check_rclone_available, settings::operations::core::save_settings},
+    core::{check_binaries::check_rclone_available, settings::operations::core::save_setting},
     utils::types::all_types::RcloneState,
 };
 
@@ -34,13 +34,11 @@ pub async fn provision_rclone(
     match check_rclone_available(app_handle.clone(), "").await {
         Ok(available) => {
             if available {
-                if let Err(e) = save_settings(
+                if let Err(e) = save_setting(
+                    "core".to_string(),
+                    "rclone_path".to_string(),
+                    serde_json::json!("system"),
                     app_handle.state(),
-                    serde_json::json!({
-                        "core": {
-                            "rclone_path": "system"
-                        }
-                    }),
                     app_handle.clone(),
                 )
                 .await
@@ -120,13 +118,11 @@ pub async fn provision_rclone(
         install_path.display()
     );
     // 🔥 Emit the event so frontend updates
-    if let Err(e) = save_settings(
+    if let Err(e) = save_setting(
+        "core".to_string(),
+        "rclone_path".to_string(),
+        serde_json::json!(install_path.to_str().unwrap()),
         app_handle.state(),
-        serde_json::json!({
-            "core": {
-                "rclone_path": install_path.to_str().unwrap()
-            }
-        }),
         app_handle.clone(),
     )
     .await

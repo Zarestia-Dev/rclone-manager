@@ -113,7 +113,9 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
     this.connectionStatus = 'checking';
     try {
-      const links = await this.appSettingsService.loadSettingValue('core', 'connection_check_urls');
+      const links =
+        (await this.appSettingsService.getSettingValue<string[]>('core.connection_check_urls')) ||
+        [];
 
       console.log('Loaded connection check URLs:', links);
 
