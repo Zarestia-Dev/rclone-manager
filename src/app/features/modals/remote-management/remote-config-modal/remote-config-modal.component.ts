@@ -927,6 +927,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   private buildConfig(flagType: FlagType, remoteData: any, configData: any): any {
     const spec = this.configSpecs[flagType];
+
+    // For types with no static fields (like filter, vfs, backend),
+    // the entire config is just the cleaned dynamic options.
+    if (spec.staticFields.length === 0) {
+      return this.cleanData(configData.options, this.dynamicFlagFields[flagType], flagType);
+    }
+
     const result: any = {};
 
     spec.staticFields.forEach(field => {
@@ -937,9 +944,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Place dynamic flag values under an `options` object so static fields
-    // (source, dest, autoStart, etc.) remain at the top level.
-    // cleanData returns a map of FieldName => value for dynamic flags.
+    // For types with static fields, place dynamic flags under an `options` object.
     result.options = this.cleanData(configData.options, this.dynamicFlagFields[flagType], flagType);
 
     return result;
