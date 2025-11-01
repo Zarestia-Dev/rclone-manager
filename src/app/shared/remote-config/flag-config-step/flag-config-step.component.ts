@@ -56,6 +56,8 @@ export class FlagConfigStepComponent implements OnChanges {
   @Input() dynamicFlagFields: RcConfigOption[] = [];
   @Input() mountTypes: string[] = [];
 
+  @Input() getControlKey!: (flagType: FlagType, field: RcConfigOption) => string;
+
   @Output() sourceFolderSelected = new EventEmitter<void>();
   @Output() destFolderSelected = new EventEmitter<void>();
 

@@ -154,6 +154,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   private pendingConfig: { remoteData: any; finalConfig: RemoteConfigSections } | null = null;
   private changedRemoteFields = new Set<string>();
+  private optionToFlagTypeMap: Record<string, FlagType> = {};
+  private optionToFieldNameMap: Record<string, string> = {};
+  private isPopulatingForm = false;
 
   // Config specifications for each flag type
   private readonly configSpecs: Record<FlagType, ConfigSpec> = {
@@ -266,13 +269,22 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private addDynamicFieldsToForm(): void {
     FLAG_TYPES.forEach(flagType => {
       const optionsGroup = this.remoteConfigForm.get(`${flagType}Config.options`) as FormGroup;
-      if (optionsGroup && this.dynamicFlagFields[flagType]) {
-        this.dynamicFlagFields[flagType].forEach(field => {
-          const defaultValue = field.Value !== undefined ? field.Value : field.Default;
-          optionsGroup.addControl(field.Name, new FormControl(defaultValue));
-        });
-      }
+      if (!optionsGroup || !this.dynamicFlagFields[flagType]) return;
+
+      this.dynamicFlagFields[flagType].forEach(field => {
+        const uniqueKey = this.getUniqueControlKey(flagType, field);
+        const defaultValue = field.Value !== undefined ? field.Value : field.Default;
+
+        this.optionToFlagTypeMap[uniqueKey] = flagType;
+        this.optionToFieldNameMap[uniqueKey] = field.FieldName;
+
+        optionsGroup.addControl(uniqueKey, new FormControl(defaultValue));
+      });
     });
+  }
+
+  public getUniqueControlKey(flagType: FlagType, field: RcConfigOption): string {
+    return `${flagType}---${field.Name}`;
   }
 
   // ============================================================================
@@ -498,9 +510,14 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private async populateRemoteForm(config: any): Promise<void> {
+    this.isPopulatingForm = true;
     this.remoteForm.patchValue({ name: config.name, type: config.type });
     await this.onRemoteTypeChange();
     this.remoteForm.patchValue(config);
+    // Use setTimeout to ensure all async value change events have fired
+    setTimeout(() => {
+      this.isPopulatingForm = false;
+    }, 100);
   }
 
   private populateFlagForm(flagType: FlagType, config: any): void {
@@ -508,58 +525,81 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     const spec = this.configSpecs[flagType];
     if (!spec) return;
 
+    // 1. Populate static fields
+    const baseConfig = this.buildStaticFieldsConfig(flagType, config);
+    this.remoteConfigForm.get(spec.formPath)?.patchValue(baseConfig);
+
+    // 2. Populate dynamic options
+    this.populateDynamicOptions(flagType, config);
+  }
+
+  private buildStaticFieldsConfig(flagType: FlagType, config: any): Record<string, any> {
+    const spec = this.configSpecs[flagType];
     const baseConfig: Record<string, any> = {};
+    const remoteName = this.getRemoteName();
 
     spec.staticFields.forEach(field => {
-      if (field === 'source' || field === 'dest') {
-        // Handle path objects
-        baseConfig[field] = this.parsePathString(
-          config[field],
-          field === 'source' ? 'currentRemote' : 'local',
-          this.getRemoteName()
-        );
-      } else if (
-        field.includes('Empty') ||
-        field.includes('Dirs') ||
-        field === 'autoStart' ||
-        field === 'dryRun' ||
-        field === 'resync' ||
-        field === 'checkAccess' ||
-        field === 'force' ||
-        field === 'checkSync' ||
-        field === 'ignoreListingChecksum' ||
-        field === 'resilient' ||
-        field === 'noCleanup'
-      ) {
+      if (field === 'source') {
+        baseConfig[field] = this.parsePathString(config[field], 'currentRemote', remoteName);
+      } else if (field === 'dest') {
+        // Mount has simple string dest, others have path object
+        if (flagType === 'mount') {
+          baseConfig[field] = config[field] || '';
+        } else {
+          baseConfig[field] = this.parsePathString(config[field], 'local', remoteName);
+        }
+      } else if (this.isBooleanField(field)) {
         baseConfig[field] = config[field] ?? false;
       } else {
         baseConfig[field] = config[field] || '';
       }
     });
 
-    if (flagType === 'mount') {
-      // Mount 'source' is a path group, but 'dest' is just a string
-      baseConfig['source'] = this.parsePathString(
-        config['source'],
-        'currentRemote',
-        this.getRemoteName()
-      );
-      baseConfig['dest'] = config['dest'] || '';
-    }
+    return baseConfig;
+  }
 
-    this.remoteConfigForm.get(spec.formPath)?.patchValue(baseConfig);
-
+  private populateDynamicOptions(flagType: FlagType, config: any): void {
+    const spec = this.configSpecs[flagType];
     const optionsGroup = this.remoteConfigForm.get(`${spec.formPath}.options`);
-    if (optionsGroup && this.dynamicFlagFields[flagType]) {
-      const dynamicFieldNames = this.dynamicFlagFields[flagType].map(f => f.Name);
-      const optionsToPopulate: Record<string, any> = {};
-      dynamicFieldNames.forEach(fieldName => {
-        if (fieldName in config) {
-          optionsToPopulate[fieldName] = config[fieldName];
-        }
-      });
-      optionsGroup.patchValue(optionsToPopulate);
-    }
+
+    if (!optionsGroup || !this.dynamicFlagFields[flagType]) return;
+
+    const optionsToPopulate: Record<string, any> = {};
+
+    // Support new shape where dynamic flags live under `config.options` and
+    // fallback to older top-level FieldName properties for backward compatibility.
+    const source =
+      config && typeof config === 'object' && config.options ? config.options : config || {};
+
+    this.dynamicFlagFields[flagType].forEach(field => {
+      const uniqueKey = this.getUniqueControlKey(flagType, field);
+
+      // Check if field exists in the source using FieldName
+      if (Object.prototype.hasOwnProperty.call(source, field.FieldName)) {
+        optionsToPopulate[uniqueKey] = source[field.FieldName];
+      }
+    });
+
+    optionsGroup.patchValue(optionsToPopulate);
+  }
+
+  // Helper to identify boolean fields
+  private isBooleanField(field: string): boolean {
+    const booleanFields = [
+      'autoStart',
+      'dryRun',
+      'resync',
+      'checkAccess',
+      'force',
+      'checkSync',
+      'ignoreListingChecksum',
+      'resilient',
+      'noCleanup',
+      'createEmptySrcDirs',
+      'removeEmptyDirs',
+      'deleteEmptySrcDirs',
+    ];
+    return booleanFields.includes(field);
   }
 
   // Helper to parse a path string (e.g., "myRemote:/path") into a form object
@@ -765,6 +805,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   // --- Field Change Tracking ---
   onRemoteFieldChanged(fieldName: string, isChanged: boolean): void {
+    // Ignore change events during form population to prevent false positives
+    if (this.isPopulatingForm) {
+      return;
+    }
+
     if (isChanged) {
       this.changedRemoteFields.add(fieldName);
     } else if (this.editTarget === 'remote') {
@@ -886,15 +931,17 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
     spec.staticFields.forEach(field => {
       if (field === 'source' || field === 'dest') {
-        // Build path string from path object
         result[field] = this.buildPathString(configData[field], remoteData.name);
       } else {
         result[field] = configData[field];
       }
     });
 
-    // Pass flagType to cleanData
-    Object.assign(result, this.cleanData(configData.options, this.dynamicFlagFields[flagType]));
+    // Place dynamic flag values under an `options` object so static fields
+    // (source, dest, autoStart, etc.) remain at the top level.
+    // cleanData returns a map of FieldName => value for dynamic flags.
+    result.options = this.cleanData(configData.options, this.dynamicFlagFields[flagType], flagType);
+
     return result;
   }
 
@@ -934,40 +981,43 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // ============================================================================
   private cleanFormData(formData: any): any {
     const result: any = {
-      name: formData.name, // Always include name
-      type: formData.type, // Always include type
+      name: formData.name,
+      type: formData.type,
     };
 
     this.dynamicRemoteFields.forEach(field => {
-      // Skip if the field doesn't exist in the form data
       if (!Object.prototype.hasOwnProperty.call(formData, field.Name)) return;
 
       const value = formData[field.Name];
-      const isEdited = this.changedRemoteFields.has(field.Name);
+      const wasChanged = this.changedRemoteFields.has(field.Name);
 
-      if (this.editTarget === 'remote' && !this.cloneTarget) {
-        // **EDIT MODE LOGIC:**
-        if (isEdited) {
-          result[field.Name] = value;
-        }
-      } else {
-        // **CREATE or CLONE MODE LOGIC:**
-        if (!this.isDefaultValue(value, field)) {
-          result[field.Name] = value;
-        }
+      // Include field if:
+      // 1. Value is not at default, OR
+      // 2. User explicitly changed it (even if changed back to default)
+      if (!this.isDefaultValue(value, field) || wasChanged) {
+        // Use FieldName if available, otherwise fall back to Name
+        const outputKey = field.FieldName || field.Name;
+        result[outputKey] = value;
       }
     });
 
     return result;
   }
 
-  private cleanData(formData: any, fieldDefinitions: RcConfigOption[]): Record<string, unknown> {
+  private cleanData(
+    formData: any,
+    fieldDefinitions: RcConfigOption[],
+    flagType: FlagType
+  ): Record<string, unknown> {
     return fieldDefinitions.reduce(
       (acc, field) => {
-        if (!Object.prototype.hasOwnProperty.call(formData, field.Name)) return acc;
-        const value = formData[field.Name];
+        const uniqueKey = this.getUniqueControlKey(flagType, field);
+        if (!Object.prototype.hasOwnProperty.call(formData, uniqueKey)) return acc;
+
+        const value = formData[uniqueKey];
         if (!this.isDefaultValue(value, field)) {
-          acc[field.Name] = value;
+          // Use FieldName for output
+          acc[field.FieldName] = value;
         }
         return acc;
       },
