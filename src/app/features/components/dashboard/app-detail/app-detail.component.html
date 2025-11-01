@@ -56,11 +56,7 @@
         </div>
 
         <div class="sync-operation-content">
-          <mat-tab-group
-            class="operation-tabs"
-            (selectedTabChange)="onMainTabChange($event)"
-            animationDuration="300ms"
-          >
+          <mat-tab-group class="operation-tabs" animationDuration="300ms">
             <!-- Monitoring Tab -->
             <mat-tab>
               <ng-template mat-tab-label>
@@ -81,6 +77,24 @@
                   class="control-panel"
                 >
                 </app-operation-control>
+
+                <!-- Job Completed Notice -->
+                @if (!getOperationActiveState() && hasCompletedTransfers) {
+                  <mat-card class="info-card">
+                    <mat-card-header>
+                      <div class="info-avatar">
+                        <mat-icon svgIcon="circle-check" class="info-icon"></mat-icon>
+                      </div>
+                      Operation Completed Successfully
+                    </mat-card-header>
+                    <mat-card-content>
+                      <p>
+                        The operation has finished successfully. You can review the transfer history
+                        and results below.
+                      </p>
+                    </mat-card-content>
+                  </mat-card>
+                }
 
                 <!-- Job Information Panel -->
                 <app-job-info-panel
@@ -190,14 +204,43 @@
                     </mat-card>
                   }
                 }
-                <!-- Settings Sections -->
-                @for (section of remoteSettingsSections; track section.key) {
-                  <app-settings-panel
-                    [config]="getSettingsPanelConfig(section)"
-                    (editSettings)="onEditSettings($event)"
-                    class="settings-section"
-                  ></app-settings-panel>
-                }
+                <div class="settings-layout">
+                  @if (operationSettingsSections.length) {
+                    <section class="settings-group operation-settings">
+                      <header class="group-header">
+                        <h3 class="group-title">{{ operationSettingsHeading }}</h3>
+                        <p class="group-description">{{ operationSettingsDescription }}</p>
+                      </header>
+                      <div class="group-panels">
+                        @for (section of operationSettingsSections; track section.key) {
+                          <app-settings-panel
+                            [config]="getSettingsPanelConfig(section)"
+                            (editSettings)="onEditSettings($event)"
+                            class="settings-section"
+                          ></app-settings-panel>
+                        }
+                      </div>
+                    </section>
+                  }
+
+                  @if (sharedSettingsSections.length) {
+                    <section class="settings-group shared-settings">
+                      <header class="group-header">
+                        <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
+                        <p class="group-description">{{ sharedSettingsDescription }}</p>
+                      </header>
+                      <div class="group-panels">
+                        @for (section of sharedSettingsSections; track section.key) {
+                          <app-settings-panel
+                            [config]="getSettingsPanelConfig(section)"
+                            (editSettings)="onEditSettings($event)"
+                            class="settings-section"
+                          ></app-settings-panel>
+                        }
+                      </div>
+                    </section>
+                  }
+                </div>
               </div>
             </mat-tab>
           </mat-tab-group>
@@ -228,14 +271,43 @@
             class="mount-control-panel"
           ></app-operation-control>
 
-          <!-- Configuration Sections for Mount -->
-          @for (section of remoteSettingsSections; track section.key) {
-            <app-settings-panel
-              [config]="getSettingsPanelConfig(section)"
-              (editSettings)="onEditSettings($event)"
-              class="mount-settings-section"
-            ></app-settings-panel>
-          }
+          <div class="settings-layout">
+            @if (operationSettingsSections.length) {
+              <section class="settings-group operation-settings">
+                <header class="group-header">
+                  <h3 class="group-title">{{ operationSettingsHeading }}</h3>
+                  <p class="group-description">{{ operationSettingsDescription }}</p>
+                </header>
+                <div class="group-panels">
+                  @for (section of operationSettingsSections; track section.key) {
+                    <app-settings-panel
+                      [config]="getSettingsPanelConfig(section)"
+                      (editSettings)="onEditSettings($event)"
+                      class="mount-settings-section"
+                    ></app-settings-panel>
+                  }
+                </div>
+              </section>
+            }
+
+            @if (sharedSettingsSections.length) {
+              <section class="settings-group shared-settings">
+                <header class="group-header">
+                  <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
+                  <p class="group-description">{{ sharedSettingsDescription }}</p>
+                </header>
+                <div class="group-panels">
+                  @for (section of sharedSettingsSections; track section.key) {
+                    <app-settings-panel
+                      [config]="getSettingsPanelConfig(section)"
+                      (editSettings)="onEditSettings($event)"
+                      class="mount-settings-section"
+                    ></app-settings-panel>
+                  }
+                </div>
+              </section>
+            }
+          </div>
         </div>
       </div>
     }

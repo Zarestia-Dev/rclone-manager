@@ -1,16 +1,17 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  Output,
+  ChangeDetectionStrategy,
+  inject,
+} from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { RemoteCardComponent } from '../remote-card/remote-card.component';
-import {
-  AppTab,
-  PrimaryActionType,
-  Remote,
-  RemoteAction,
-  RemoteActionProgress,
-  RemoteCardVariant,
-} from '@app/types';
+import { AppTab, PrimaryActionType, Remote, RemoteAction, RemoteActionProgress } from '@app/types';
+import { IconService } from '../../services/icon.service';
 
 @Component({
   selector: 'app-remotes-panel',
@@ -24,9 +25,7 @@ export class RemotesPanelComponent {
   @Input() title = '';
   @Input() icon = '';
   @Input() remotes: Remote[] = [];
-  @Input() variant: RemoteCardVariant = 'inactive';
   @Input() mode: AppTab = 'general';
-  @Input() iconService!: { getIconName: (type: string) => string };
   @Input() actionInProgress: RemoteActionProgress = {};
   @Input() primaryActionLabel = 'Start';
   @Input() activeIcon = 'circle-check';
@@ -36,8 +35,25 @@ export class RemotesPanelComponent {
   @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
   @Output() stopJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
 
+  readonly iconService = inject(IconService);
+
   get count(): number {
     return this.remotes.length;
+  }
+
+  get hasActiveRemotes(): boolean {
+    return this.remotes.some(
+      remote =>
+        remote.mountState?.mounted || remote.syncState?.isOnSync || remote.copyState?.isOnCopy
+    );
+  }
+
+  get panelClass(): string {
+    return this.hasActiveRemotes ? 'active-remotes-panel' : 'inactive-remotes-panel';
+  }
+
+  get iconClass(): string {
+    return this.hasActiveRemotes ? 'active-icon' : 'inactive-icon';
   }
 
   onRemoteSelected(remote: Remote): void {
@@ -50,41 +66,5 @@ export class RemotesPanelComponent {
 
   getActionState(remoteName: string): RemoteAction | null {
     return this.actionInProgress[remoteName] || null;
-  }
-
-  shouldShowOpenButton(remote: Remote): boolean {
-    if (this.mode === 'mount') return true;
-    if (this.mode === 'sync') {
-      return (
-        remote.syncState?.isLocal ||
-        remote.copyState?.isLocal ||
-        remote.moveState?.isLocal ||
-        remote.bisyncState?.isLocal ||
-        false
-      );
-    }
-    if (this.mode === 'general') return remote.mountState?.mounted === true;
-    return false;
-  }
-
-  getCardVariant(remote: Remote): RemoteCardVariant {
-    // For general mode, determine variant based on remote state
-    if (this.mode === 'general') {
-      // Check if remote has any active operations
-      if (
-        remote.mountState?.mounted === true ||
-        remote.syncState?.isOnSync === true ||
-        remote.copyState?.isOnCopy === true ||
-        remote.moveState?.isOnMove === true ||
-        remote.bisyncState?.isOnBisync === true
-      ) {
-        return 'active';
-      }
-
-      return 'inactive';
-    }
-
-    // For specific modes, use the provided variant
-    return this.variant;
   }
 }

@@ -1,5 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  Output,
+  ChangeDetectionStrategy,
+  inject,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -16,7 +23,7 @@ import {
   RemoteAction,
   RemoteCardVariant,
 } from '@app/types';
-// Variant moved to shared types
+import { IconService } from '../../services/icon.service';
 
 @Component({
   selector: 'app-remote-card',
@@ -38,11 +45,8 @@ import {
 })
 export class RemoteCardComponent {
   @Input() remote!: Remote;
-  @Input() variant: RemoteCardVariant = 'inactive';
   @Input() mode: AppTab = 'general';
-  @Input() iconService!: { getIconName: (type: string) => string };
   @Input() actionState: RemoteAction = null;
-  @Input() showOpenButton = false;
   @Input() primaryActionLabel = 'Start';
   @Input() activeIcon = 'circle-check';
   @Input() primaryActions?: PrimaryActionType[] = [];
@@ -52,17 +56,10 @@ export class RemoteCardComponent {
 
   @Output() remoteClick = new EventEmitter<Remote>();
   @Output() openInFiles = new EventEmitter<string>();
-  @Output() mountAction = new EventEmitter<string>();
-  @Output() unmountAction = new EventEmitter<string>();
-  @Output() syncAction = new EventEmitter<string>();
-  @Output() copyAction = new EventEmitter<string>();
-  @Output() stopSyncAction = new EventEmitter<string>();
-  @Output() stopCopyAction = new EventEmitter<string>();
-  @Output() moveAction = new EventEmitter<string>();
-  @Output() bisyncAction = new EventEmitter<string>();
-  @Output() stopMoveAction = new EventEmitter<string>();
-  @Output() stopBisyncAction = new EventEmitter<string>();
+  @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
+  @Output() stopJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
 
+  readonly iconService = inject(IconService);
   get isOpening(): boolean {
     return this.actionState === 'open';
   }
@@ -100,7 +97,7 @@ export class RemoteCardComponent {
     // Mount mode - simple mount/unmount logic
     if (this.mode === 'mount') {
       // For mount mode, limit primary buttons to maxMountButtons and always show Browse last when mounted
-      if (this.variant === 'active') {
+      if (this.cardVariant() === 'active') {
         // Create primary buttons (though mount mode usually has only mount-related action)
         const primary = this.buildPrimaryActions(this.maxMountButtons, /*includeMount=*/ true);
         for (const a of primary) {
@@ -109,7 +106,7 @@ export class RemoteCardComponent {
         }
 
         // Open/Browse button for mounted remotes (always last)
-        if (this.showOpenButton) {
+        if (this.showOpenButton()) {
           buttons.push({
             id: 'open',
             icon: 'folder',
@@ -119,7 +116,7 @@ export class RemoteCardComponent {
             cssClass: 'accent',
           });
         }
-      } else if (this.variant === 'inactive') {
+      } else if (this.cardVariant() === 'inactive') {
         // For inactive, show mount button as primary (respecting maxMountButtons)
         const primary = this.buildPrimaryActions(this.maxMountButtons, /*includeMount=*/ true);
         for (const a of primary) {
@@ -142,9 +139,9 @@ export class RemoteCardComponent {
   private getSyncModeActionButtons(): QuickActionButton[] {
     const buttons: QuickActionButton[] = [];
 
-    if (this.variant === 'active') {
+    if (this.cardVariant() === 'active') {
       // For active sync operations, show browse button if destination is local
-      if (this.showOpenButton) {
+      if (this.showOpenButton()) {
         buttons.push({
           id: 'open',
           icon: 'folder',
@@ -199,7 +196,7 @@ export class RemoteCardComponent {
           cssClass: 'warn',
         });
       }
-    } else if (this.variant === 'inactive') {
+    } else if (this.cardVariant() === 'inactive') {
       // For inactive remotes, show start buttons for available sync operations.
       // Build an ordered, deduplicated list of actions (exclude 'mount' here)
       const actionsToShow = this.buildPrimaryActions(this.maxSyncButtons, /*includeMount=*/ false);
@@ -402,63 +399,54 @@ export class RemoteCardComponent {
 
   onActionButtonClick(action: { id: string; event: Event }): void {
     action.event.stopPropagation();
+    const remoteName = this.remote.remoteSpecs.name;
 
     switch (action.id) {
       case 'open':
-        this.onOpenInFiles(action.event);
+      case 'browse': // 'browse' is also used in getGeneralActionButtons
+        this.openInFiles.emit(remoteName);
         break;
       case 'mount':
-        // Handle mount/unmount based on current state
         if (this.remote.mountState?.mounted) {
-          this.onUnmountAction(action.event); // unmount
+          this.stopJob.emit({ type: 'mount', remoteName });
         } else {
-          this.onMountAction(action.event); // mount
+          this.startJob.emit({ type: 'mount', remoteName });
         }
         break;
       case 'sync':
-        // Handle sync/stop-sync based on current state
         if (this.remote.syncState?.isOnSync) {
-          this.onStopSyncAction(action.event); // stop-sync
+          this.stopJob.emit({ type: 'sync', remoteName });
         } else {
-          this.onSyncAction(action.event); // sync
+          this.startJob.emit({ type: 'sync', remoteName });
         }
         break;
       case 'copy':
-        // Handle copy/stop-copy based on current state
         if (this.remote.copyState?.isOnCopy) {
-          this.onStopCopyAction(action.event); // stop-copy
+          this.stopJob.emit({ type: 'copy', remoteName });
         } else {
-          this.onCopyAction(action.event); // copy
+          this.startJob.emit({ type: 'copy', remoteName });
         }
         break;
       case 'move':
-        // Handle move/stop-move based on current state
         if (this.remote.moveState?.isOnMove) {
-          this.onStopMoveAction(action.event); // stop-move
+          this.stopJob.emit({ type: 'move', remoteName });
         } else {
-          this.onMoveAction(action.event); // move
+          this.startJob.emit({ type: 'move', remoteName });
         }
         break;
       case 'bisync':
-        // Handle bisync/stop-bisync based on current state
         if (this.remote.bisyncState?.isOnBisync) {
-          this.onStopBisyncAction(action.event); // stop-bisync
+          this.stopJob.emit({ type: 'bisync', remoteName });
         } else {
-          this.onBisyncAction(action.event); // bisync
+          this.startJob.emit({ type: 'bisync', remoteName });
         }
-        break;
-      case 'browse':
-        this.onBrowseAction(action.event);
-        break;
-      case 'fix':
-        // Handle fix action
         break;
     }
   }
 
   get remoteCardClasses(): Record<string, boolean> {
     return {
-      [`${this.variant}-remote`]: true,
+      [`${this.cardVariant()}-remote`]: true,
       mounted: !!this.remote.mountState?.mounted,
       syncing: !!this.remote.syncState?.isOnSync,
       copying: !!this.remote.copyState?.isOnCopy,
@@ -476,58 +464,46 @@ export class RemoteCardComponent {
     this.openInFiles.emit(this.remote.remoteSpecs.name);
   }
 
-  onMountAction(event: Event): void {
-    event.stopPropagation();
-    this.mountAction.emit(this.remote.remoteSpecs.name);
+  showOpenButton(): boolean {
+    if (this.mode === 'mount') return true;
+    if (this.mode === 'sync') {
+      return (
+        this.remote.syncState?.isLocal ||
+        this.remote.copyState?.isLocal ||
+        this.remote.moveState?.isLocal ||
+        this.remote.bisyncState?.isLocal ||
+        false
+      );
+    }
+    if (this.mode === 'general') return this.remote.mountState?.mounted === true;
+    return false;
   }
 
-  onSyncAction(event: Event): void {
-    event.stopPropagation();
-    this.syncAction.emit(this.remote.remoteSpecs.name);
-  }
-
-  onCopyAction(event: Event): void {
-    event.stopPropagation();
-    this.copyAction.emit(this.remote.remoteSpecs.name);
-  }
-
-  onBrowseAction(event: Event): void {
-    event.stopPropagation();
-    this.openInFiles.emit(this.remote.remoteSpecs.name);
-  }
-
-  onUnmountAction(event: Event): void {
-    event.stopPropagation();
-    this.unmountAction.emit(this.remote.remoteSpecs.name);
-  }
-
-  onStopSyncAction(event: Event): void {
-    event.stopPropagation();
-    this.stopSyncAction.emit(this.remote.remoteSpecs.name);
-  }
-
-  onStopCopyAction(event: Event): void {
-    event.stopPropagation();
-    this.stopCopyAction.emit(this.remote.remoteSpecs.name);
-  }
-
-  onMoveAction(event: Event): void {
-    event.stopPropagation();
-    this.moveAction.emit(this.remote.remoteSpecs.name);
-  }
-
-  onStopMoveAction(event: Event): void {
-    event.stopPropagation();
-    this.stopMoveAction.emit(this.remote.remoteSpecs.name);
-  }
-
-  onBisyncAction(event: Event): void {
-    event.stopPropagation();
-    this.bisyncAction.emit(this.remote.remoteSpecs.name);
-  }
-
-  onStopBisyncAction(event: Event): void {
-    event.stopPropagation();
-    this.stopBisyncAction.emit(this.remote.remoteSpecs.name);
+  cardVariant(): RemoteCardVariant {
+    // For general mode, determine variant based on remote state
+    if (this.mode === 'general') {
+      // Check if remote has any active operations
+      if (
+        this.remote.mountState?.mounted === true ||
+        this.remote.syncState?.isOnSync === true ||
+        this.remote.copyState?.isOnCopy === true ||
+        this.remote.moveState?.isOnMove === true ||
+        this.remote.bisyncState?.isOnBisync === true
+      ) {
+        return 'active';
+      }
+    }
+    if (this.mode === 'mount') {
+      return this.remote.mountState?.mounted === true ? 'active' : 'inactive';
+    } else if (this.mode === 'sync') {
+      return this.remote.syncState?.isOnSync === true ||
+        this.remote.copyState?.isOnCopy === true ||
+        this.remote.moveState?.isOnMove === true ||
+        this.remote.bisyncState?.isOnBisync === true
+        ? 'active'
+        : 'inactive';
+    } else {
+      return 'inactive';
+    }
   }
 }

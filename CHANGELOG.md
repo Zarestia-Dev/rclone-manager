@@ -1,6 +1,13 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
+
+## [Not released]
+### Changed
+- Settings management optimizations and code cleanup in Preferences Modal.
+- Improved the Preferences Modal with enhanced form handling and reset functionality.
+- Improved the Dashboard component code structure and readability. Also make small UI improvements.
+
 ## [v0.1.5] - 2025-10-30
 ### Added
 - Added a Backend Settings modal. You can now set the backend options globally for all remotes. If you wants to override the backend options for a specific remote, you can do it in the remote settings. (e.g. mount options, vfs options, etc.). Also added the export and import feature for the backend settings on export modal.

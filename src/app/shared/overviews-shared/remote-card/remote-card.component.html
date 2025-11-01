@@ -8,7 +8,7 @@
         ></mat-icon>
       </div>
       <div class="remote-details">
-        <h4 class="remote-name" [matTooltip]="remote.remoteSpecs.name">
+        <h4 class="remote-name" [matTooltip]="remote.remoteSpecs.name" matTooltipShowDelay="500">
           {{ remote.remoteSpecs.name }}
         </h4>
         <span class="remote-type">{{ remote.remoteSpecs.type | titlecase }}</span>

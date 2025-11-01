@@ -16,9 +16,7 @@
         [title]="'Quick Remote Access'"
         [icon]="'cloud'"
         [remotes]="allRemotes"
-        [variant]="'inactive'"
         [mode]="'general'"
-        [iconService]="iconService"
         [actionInProgress]="actionInProgress"
         [primaryActionLabel]="'Mount'"
         [activeIcon]="'mount'"
@@ -92,9 +90,9 @@
               <div class="bandwidth-details">
                 @for (
                   detail of [
-                    { label: 'Upload:', value: bandwidthDetails.upload },
-                    { label: 'Download:', value: bandwidthDetails.download },
-                    { label: 'Total:', value: bandwidthDetails.total },
+                    { label: 'Upload:', value: (bandwidthDetails.upload | formatBytes) },
+                    { label: 'Download:', value: (bandwidthDetails.download | formatBytes) },
+                    { label: 'Total:', value: (bandwidthDetails.total | formatBytes) },
                   ];
                   track trackByIndex($index, detail)
                 ) {
@@ -139,10 +137,10 @@
             @for (
               item of [
                 { label: 'RClone Status:', value: rcloneStatus | titlecase, status: rcloneStatus },
-                { label: 'Total Remotes:', value: _totalRemotes },
-                { label: 'Active Jobs:', value: _activeJobsCount },
-                { label: 'Memory Usage:', value: systemStats.memoryUsage },
-                { label: 'Uptime:', value: systemStats.uptime },
+                { label: 'Total Remotes:', value: totalRemotes },
+                { label: 'Active Jobs:', value: activeJobsCount },
+                { label: 'Memory Usage:', value: (systemStats.memoryUsage | formatMemoryUsage) },
+                { label: 'Uptime:', value: (systemStats.uptime | formatTime) },
               ];
               track trackByIndex($index, item)
             ) {
@@ -172,10 +170,10 @@
             </div>
           </mat-panel-title>
           <mat-panel-description>
-            <span [ngClass]="{ 'active-jobs-indicator': _activeJobsCount > 0 }">
+            <span [ngClass]="{ 'active-jobs-indicator': activeJobsCount > 0 }">
               {{
-                _activeJobsCount > 0
-                  ? _activeJobsCount + ' active job' + (_activeJobsCount !== 1 ? 's' : '')
+                activeJobsCount > 0
+                  ? activeJobsCount + ' active job' + (activeJobsCount !== 1 ? 's' : '')
                   : 'No active jobs'
               }}
             </span>
@@ -194,23 +192,23 @@
                 <div class="progress-header" role="row">
                   <span class="label" role="gridcell">Progress:</span>
                   <span class="value" role="gridcell"
-                    >{{ _jobCompletionPercentage | number: '1.0-1' }}%</span
+                    >{{ jobCompletionPercentage | number: '1.0-1' }}%</span
                   >
                 </div>
                 <mat-progress-bar
                   mode="determinate"
-                  [value]="_jobCompletionPercentage"
+                  [value]="jobCompletionPercentage"
                   role="progressbar"
-                  [attr.aria-valuenow]="_jobCompletionPercentage"
+                  [attr.aria-valuenow]="jobCompletionPercentage"
                   aria-valuemin="0"
                   aria-valuemax="100"
                 ></mat-progress-bar>
                 <div class="progress-details" role="row">
                   <span role="gridcell"
-                    >{{ formatBytes(jobStats.bytes) }} of
-                    {{ formatBytes(jobStats.totalBytes) }}</span
+                    >{{ jobStats.bytes | formatBytes }} of
+                    {{ jobStats.totalBytes | formatBytes }}</span
                   >
-                  <span role="gridcell">ETA: {{ formatEta(jobStats.eta) }}</span>
+                  <span role="gridcell">ETA: {{ jobStats.eta | formatEta }}</span>
                 </div>
               </div>
             }
@@ -218,7 +216,7 @@
             <div class="job-stats-grid" role="grid">
               @for (
                 item of [
-                  { label: 'Transfer Speed:', value: formatBytes(jobStats.speed) + '/s' },
+                  { label: 'Transfer Speed:', value: (jobStats.speed | formatBytes) + '/s' },
                   {
                     label: 'Transfers:',
                     value: jobStats.transfers + ' / ' + jobStats.totalTransfers,
@@ -262,7 +260,7 @@
               </div>
             }
 
-            @if (_activeJobsCount === 0) {
+            @if (activeJobsCount === 0) {
               <div class="no-jobs-message" role="status">
                 <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                 <span>No active jobs are currently running.</span>

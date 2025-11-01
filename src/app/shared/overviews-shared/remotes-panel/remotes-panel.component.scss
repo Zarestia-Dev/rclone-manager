@@ -21,20 +21,27 @@
     box-shadow: var(--shadow-elevated);
   }
 
-  // Panel-Specific Styling Based on Remote Type
-  &.active-remotes-panel .panel-title-content .remote-count {
-    background: rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.1);
-    border: 1px solid rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.2);
+  // Dynamic styling based on panel state
+  &.active-remotes-panel .panel-title-content {
+    .active-icon {
+      color: var(--mode-primary-color, var(--primary-color));
+    }
+
+    .remote-count {
+      background: rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.1);
+      border: 1px solid rgba(var(--mode-primary-color-rgb, var(--primary-color-rgb)), 0.2);
+    }
   }
 
-  &.inactive-remotes-panel .panel-title-content .remote-count {
-    background: rgba(var(--purple-rgb), 0.1);
-    border: 1px solid rgba(var(--purple-rgb), 0.2);
-  }
+  &.inactive-remotes-panel .panel-title-content {
+    .inactive-icon {
+      color: var(--purple);
+    }
 
-  &.error-remotes-panel .panel-title-content .remote-count {
-    background: rgba(var(--warn-color-rgb), 0.1);
-    border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+    .remote-count {
+      background: rgba(var(--purple-rgb), 0.1);
+      border: 1px solid rgba(var(--purple-rgb), 0.2);
+    }
   }
 
   // Remotes Panel Header
@@ -50,17 +57,9 @@
       gap: var(--space-sm);
       font-weight: 500;
 
-      .active-icon {
-        color: var(--mode-primary-color, var(--primary-color));
-        width: var(--icon-size-md);
-        height: var(--icon-size-md);
-        transition: var(--transition-standard);
-        will-change: color;
-      }
-
-      .inactive-icon {
-        color: var(--purple);
-        font-size: var(--icon-size-md);
+      .active-icon,
+      .inactive-icon,
+      .error-icon {
         width: var(--icon-size-md);
         height: var(--icon-size-md);
         transition: var(--transition-standard);
@@ -69,11 +68,6 @@
 
       .error-icon {
         color: var(--warn-color);
-        font-size: var(--icon-size-md);
-        width: var(--icon-size-md);
-        height: var(--icon-size-md);
-        transition: var(--transition-standard);
-        will-change: color;
       }
 
       .remote-count {

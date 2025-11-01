@@ -23,7 +23,6 @@ import { catchError, EMPTY, Subject, takeUntil } from 'rxjs';
 // App Types
 import {
   AppTab,
-  BandwidthLimitResponse,
   DiskUsage,
   JobInfo,
   MountedRemote,
@@ -124,7 +123,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   mountedRemotes$ = this.mountManagementService.mountedRemotes$;
   selectedRemote: Remote | null = null;
   remoteSettings: RemoteSettings = {};
-  bandwidthLimit: BandwidthLimitResponse | null = null;
 
   // ============================================================================
   // PROPERTIES - LIFECYCLE

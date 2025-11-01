@@ -107,10 +107,7 @@
             <app-general-overview
               [remotes]="remotes"
               [jobs]="jobs"
-              [iconService]="iconService"
               [actionInProgress]="actionInProgress"
-              [bandwidthLimit]="bandwidthLimit"
-              [systemInfoService]="systemInfoService"
               (startJob)="startJob($event.type, $event.remoteName)"
               (stopJob)="stopJob($event.type, $event.remoteName)"
               (browseRemote)="openRemoteInFiles($event, 'mount')"
@@ -136,7 +133,6 @@
           @default {
             <app-app-overview
               [mode]="currentTab"
-              [iconService]="iconService"
               [remotes]="remotes"
               [actionInProgress]="actionInProgress"
               (remoteSelected)="selectRemote($event)"
@@ -156,7 +152,6 @@
             <app-general-detail
               [restrictMode]="restrictMode"
               [jobs]="getJobsForRemote(selectedRemote.remoteSpecs.name)"
-              [iconService]="iconService"
               [selectedRemote]="selectedRemote"
               (stopJob)="stopJob($event.type, $event.remoteName)"
               (openRemoteConfigModal)="

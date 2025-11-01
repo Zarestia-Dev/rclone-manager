@@ -56,8 +56,8 @@ export interface PanelState {
 }
 
 export interface SystemStats {
-  memoryUsage: string;
-  uptime: string;
+  memoryUsage: MemoryStats | null;
+  uptime: number;
 }
 
 export type RcloneStatus = 'active' | 'inactive' | 'error';
