@@ -61,13 +61,23 @@ pub async fn check_rclone_update(
     let channel = channel.unwrap_or_else(|| "stable".to_string());
     let update_check_result = check_rclone_selfupdate(&app_handle, &channel).await?;
 
+    // Fetch release notes from GitHub if update is available
+    let (release_notes, release_date, release_url) = if update_check_result.update_available {
+        fetch_rclone_release_info(&update_check_result.latest_version, &channel).await
+    } else {
+        (None, None, None)
+    };
+
     Ok(json!({
         "current_version": current_version,
         "latest_version": update_check_result.latest_version,
         "update_available": update_check_result.update_available,
         "current_version_clean": clean_version(&current_version),
         "latest_version_clean": clean_version(&update_check_result.latest_version),
-        "channel": channel
+        "channel": channel,
+        "release_notes": release_notes,
+        "release_date": release_date,
+        "release_url": release_url
     }))
 }
 
@@ -446,6 +456,124 @@ async fn check_rclone_selfupdate(
         update_available,
         latest_version: target_version,
     })
+}
+
+/// Fetch release notes from Rclone's GitHub repository (stable releases only)
+async fn fetch_rclone_release_info(
+    version: &str,
+    channel: &str,
+) -> (Option<String>, Option<String>, Option<String>) {
+    // Beta releases are not published on GitHub, only stable releases
+    if channel == "beta" {
+        log::debug!("Skipping changelog fetch for beta release");
+        return (None, None, None);
+    }
+
+    use serde::Deserialize;
+
+    #[derive(Deserialize)]
+    struct GitHubRelease {
+        published_at: Option<String>,
+        html_url: String,
+    }
+
+    let client = match reqwest::Client::builder()
+        .user_agent("rclone-manager")
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            log::warn!("Failed to create HTTP client: {e}");
+            return (None, None, None);
+        }
+    };
+
+    // Fetch release metadata from GitHub
+    let version_clean = clean_version(version);
+    let tag = format!("v{version_clean}");
+    let url = format!("https://api.github.com/repos/rclone/rclone/releases/tags/{tag}");
+
+    let release = match client.get(&url).send().await {
+        Ok(resp) if resp.status().is_success() => match resp.json::<GitHubRelease>().await {
+            Ok(r) => r,
+            Err(e) => {
+                log::warn!("Failed to parse release: {e}");
+                return (None, None, None);
+            }
+        },
+        Ok(resp) => {
+            log::debug!("GitHub API status: {}", resp.status());
+            return (None, None, None);
+        }
+        Err(e) => {
+            log::warn!("Failed to fetch release: {e}");
+            return (None, None, None);
+        }
+    };
+
+    // Fetch full changelog from changelog.md
+    fetch_stable_changelog(&client, version, release.published_at, release.html_url).await
+}
+
+/// Fetch changelog for stable releases from changelog.md
+async fn fetch_stable_changelog(
+    client: &reqwest::Client,
+    version: &str,
+    release_date: Option<String>,
+    release_url: String,
+) -> (Option<String>, Option<String>, Option<String>) {
+    let version_clean = clean_version(version);
+    let tag = format!("v{version_clean}");
+    let url = format!(
+        "https://raw.githubusercontent.com/rclone/rclone/{}/docs/content/changelog.md",
+        tag
+    );
+
+    // Try to fetch and parse changelog
+    let changelog = match client.get(&url).send().await {
+        Ok(resp) if resp.status().is_success() => match resp.text().await {
+            Ok(content) => extract_version_changelog(&content, version),
+            Err(e) => {
+                log::warn!("Failed to read changelog: {e}");
+                None
+            }
+        },
+        Ok(resp) => {
+            log::debug!("Failed to fetch changelog: status {}", resp.status());
+            None
+        }
+        Err(e) => {
+            log::warn!("Failed to fetch changelog: {e}");
+            None
+        }
+    };
+
+    // Return changelog or fallback message
+    let message = changelog.unwrap_or_else(|| {
+        format!(
+            "## Rclone {}\n\n[View full changelog]({})",
+            version, release_url
+        )
+    });
+
+    (Some(message), release_date, Some(release_url))
+}
+
+/// Extract changelog section for a specific version from changelog.md
+fn extract_version_changelog(changelog: &str, version: &str) -> Option<String> {
+    let version_clean = clean_version(version);
+    let header = format!("## v{}", version_clean);
+
+    let start = changelog.find(&header)?;
+    let after_header = &changelog[start..];
+
+    // Find next version header or use rest of file
+    let end = after_header[header.len()..]
+        .find("\n## ")
+        .map(|i| header.len() + i)
+        .unwrap_or(after_header.len());
+
+    Some(after_header[..end].trim().to_string())
 }
 
 /// Perform rclone selfupdate with optional output path

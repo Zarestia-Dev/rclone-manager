@@ -78,24 +78,6 @@
                 >
                 </app-operation-control>
 
-                <!-- Job Completed Notice -->
-                @if (!getOperationActiveState() && hasCompletedTransfers) {
-                  <mat-card class="info-card">
-                    <mat-card-header>
-                      <div class="info-avatar">
-                        <mat-icon svgIcon="circle-check" class="info-icon"></mat-icon>
-                      </div>
-                      Operation Completed Successfully
-                    </mat-card-header>
-                    <mat-card-content>
-                      <p>
-                        The operation has finished successfully. You can review the transfer history
-                        and results below.
-                      </p>
-                    </mat-card-content>
-                  </mat-card>
-                }
-
                 <!-- Job Information Panel -->
                 <app-job-info-panel
                   [config]="getJobInfoConfig()"
@@ -142,24 +124,6 @@
                       </mat-card-content>
                     </mat-card>
                   </div>
-                }
-
-                <!-- Error Display -->
-                @if (errorSummary) {
-                  <mat-card class="error-card">
-                    <mat-card-header>
-                      <div mat-card-avatar class="error-avatar">
-                        <mat-icon svgIcon="error" class="error-icon"></mat-icon>
-                      </div>
-                      <mat-card-title>Operation Errors</mat-card-title>
-                    </mat-card-header>
-                    <mat-card-content>
-                      <p class="error-message">{{ errorSummary }}</p>
-                      @if (jobStats.lastError) {
-                        <p class="last-error">Last Error: {{ jobStats.lastError }}</p>
-                      }
-                    </mat-card-content>
-                  </mat-card>
                 }
               </div>
             </mat-tab>

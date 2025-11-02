@@ -101,10 +101,10 @@ impl RcApiEngine {
 
         let rclone_command = build_rclone_command(_app, None, None, None);
 
-        // Simple approach: try listremotes with --ask-password=false
+        // Don't use env_clear() as it removes PATH and prevents rclone from finding
+        // system utilities like getent on Linux systems.
         let output = match rclone_command
             .args(["listremotes", "--ask-password=false"])
-            .env_clear()
             .output()
             .await
         {

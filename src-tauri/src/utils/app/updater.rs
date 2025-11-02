@@ -37,6 +37,9 @@ pub mod app_updates {
         prerelease: bool,
         draft: bool,
         assets: Vec<GitHubAsset>,
+        body: Option<String>,         // Release notes/changelog
+        published_at: Option<String>, // Release date
+        html_url: String,             // Link to release page
     }
 
     #[derive(Debug, Deserialize)]
@@ -51,7 +54,6 @@ pub mod app_updates {
         pub downloaded_bytes: AtomicU64,
         pub is_complete: AtomicBool,
         pub is_failed: AtomicBool,
-        // store a short failure message; use a Mutex<String> for simplicity
         pub failure_message: std::sync::Mutex<Option<String>>,
     }
 
@@ -61,6 +63,9 @@ pub mod app_updates {
         version: String,
         current_version: String,
         release_tag: String,
+        release_notes: Option<String>,
+        release_date: Option<String>,
+        release_url: Option<String>,
     }
 
     #[derive(serde::Serialize)]
@@ -90,7 +95,6 @@ pub mod app_updates {
 
         // Get releases from GitHub API
         let client = reqwest::Client::new();
-        // configure owner/repo and optional token (use org name as owner)
         let owner = "Zarestia-Dev";
         let repo = "rclone-manager";
         let url = format!(
@@ -108,7 +112,7 @@ pub mod app_updates {
         // Filter and find the appropriate release for the channel
         let suitable_release = releases
             .into_iter()
-            .filter(|release| !release.draft) // Skip draft releases
+            .filter(|release| !release.draft)
             .find(|release| is_release_for_channel(release, &channel));
 
         let release = match suitable_release {
@@ -136,7 +140,6 @@ pub mod app_updates {
                 &asset.browser_download_url
             }
             None => {
-                // Fallback: construct the JSON URL based on release tag
                 info!("No JSON asset found, constructing URL from release tag");
                 &format!(
                     "https://github.com/Zarestia-Dev/rclone-manager/releases/download/{}/latest.json",
@@ -151,10 +154,7 @@ pub mod app_updates {
         let update = app
             .updater_builder()
             .endpoints(vec![json_url.parse()?])?
-            .version_comparator(|current, update| {
-                // Allow any version change (including downgrades for different channels)
-                update.version != current
-            })
+            .version_comparator(|current, update| update.version != current)
             .on_before_exit({
                 move || {
                     let app = app.clone();
@@ -169,15 +169,8 @@ pub mod app_updates {
             .check()
             .await?;
 
-        // If the updater selected a download URL that uses a different release tag
-        // (for example `v0.1.4` instead of the actual `v0.1.4-beta`), fix the URL
-        // by replacing the `/download/v{version}/` segment with the real release tag
-        // from GitHub (`release.tag_name`). This handles cases where the JSON's
-        // `version` field doesn't include the prerelease suffix.
         let mut update = update;
         if let Some(ref mut u) = update {
-            // The updater usually places the version in the download path as `/download/v{version}/`.
-            // Attempt to replace that with the actual release tag if they differ.
             let current_version_segment = format!("/download/v{}/", u.version);
             let release_tag_segment = format!("/download/{}/", release.tag_name);
 
@@ -207,6 +200,9 @@ pub mod app_updates {
             version: update.version.clone(),
             current_version: update.current_version.clone(),
             release_tag: release.tag_name.clone(),
+            release_notes: release.body.clone(),
+            release_date: release.published_at.clone(),
+            release_url: Some(release.html_url.clone()),
         });
 
         *pending_update.0.lock().unwrap() = update;
@@ -214,21 +210,11 @@ pub mod app_updates {
         Ok(update_metadata)
     }
 
-    /// Determine if a release belongs to the specified channel
     fn is_release_for_channel(release: &GitHubRelease, channel: &str) -> bool {
         match channel {
-            "stable" => {
-                // Stable channel: not prerelease and doesn't contain beta in tag
-                !release.prerelease && !release.tag_name.to_lowercase().contains("beta")
-            }
-            "beta" => {
-                // Beta channel: prerelease OR contains beta in tag name
-                release.prerelease || release.tag_name.to_lowercase().contains("beta")
-            }
-            _ => {
-                // Default to stable behavior
-                !release.prerelease && !release.tag_name.to_lowercase().contains("beta")
-            }
+            "stable" => !release.prerelease && !release.tag_name.to_lowercase().contains("beta"),
+            "beta" => release.prerelease || release.tag_name.to_lowercase().contains("beta"),
+            _ => !release.prerelease && !release.tag_name.to_lowercase().contains("beta"),
         }
     }
 
@@ -268,11 +254,9 @@ pub mod app_updates {
         };
 
         info!("Starting update installation...");
-        // Log chosen download URL and signature for diagnostics
         info!("Preparing to download update from: {}", update.download_url);
         debug!("Update signature: {}", update.signature);
 
-        // Perform a quick HEAD request to validate the download URL before starting
         let client = reqwest::Client::new();
         match client.head(update.download_url.as_str()).send().await {
             Ok(resp) => {
@@ -287,28 +271,19 @@ pub mod app_updates {
             }
         }
 
-        // Wrap the download to log progress and capture errors
         let res = update
             .download_and_install(
                 |chunk_length, content_length| {
-                    // Store total bytes once
                     if let Some(content_length) = content_length {
                         download_state
                             .total_bytes
                             .store(content_length, Ordering::Relaxed);
                     }
 
-                    // Increment downloaded bytes
-                    let new = download_state
+                    let _new = download_state
                         .downloaded_bytes
                         .fetch_add(chunk_length as u64, Ordering::Relaxed)
                         + chunk_length as u64;
-
-                    // Log aggregated progress
-                    let total = download_state.total_bytes.load(Ordering::Relaxed);
-                    if total > 0 {
-                        let _pct = (new as f64 / total as f64) * 100.0;
-                    }
                 },
                 || {
                     download_state.is_complete.store(true, Ordering::Relaxed);
@@ -320,14 +295,12 @@ pub mod app_updates {
         match res {
             Ok(_) => {
                 info!("Update installation process completed");
-                // ensure not failed
                 download_state.is_failed.store(false, Ordering::Relaxed);
                 *download_state.failure_message.lock().unwrap() = None;
                 Ok(())
             }
             Err(e) => {
                 warn!("Update installation failed: {}", e);
-                // store failure state and message so frontend can observe it
                 download_state.is_failed.store(true, Ordering::Relaxed);
                 *download_state.failure_message.lock().unwrap() = Some(e.to_string());
                 Err(Error::Updater(e))

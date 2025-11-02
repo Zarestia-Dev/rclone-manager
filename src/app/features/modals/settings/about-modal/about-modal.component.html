@@ -132,14 +132,15 @@
           </div>
 
           <!-- Update Status -->
+          <!-- Add this button in the update card where update is available -->
           @if (updateAvailable) {
             <div class="update-card available">
               <div class="update-header">
                 <mat-icon svgIcon="circle-up"></mat-icon>
                 <div class="update-title">
                   <h4>Update Available</h4>
-                  <span class="new-version"
-                    >Version {{ updateAvailable.version }}
+                  <span class="new-version">
+                    Version {{ updateAvailable.version }}
                     @if (updateReleaseChannel) {
                       <span class="release-badge badge-{{ updateReleaseChannel }}">
                         {{ updateReleaseChannel | titlecase }}
@@ -149,6 +150,14 @@
                 </div>
               </div>
 
+              <!-- NEW: What's New Button -->
+              @if (updateAvailable.releaseNotes) {
+                <button mat-button class="whats-new-button" (click)="showWhatsNew('app')">
+                  <mat-icon svgIcon="file-lines"></mat-icon>
+                  What's New
+                </button>
+              }
+
               @if (downloadInProgress) {
                 <div class="download-progress">
                   <mat-progress-bar
@@ -157,10 +166,10 @@
                   ></mat-progress-bar>
                   <div class="progress-info">
                     <span>Downloading...</span>
-                    <span
-                      >{{ downloadProgress | formatFileSize }} /
-                      {{ downloadTotal | formatFileSize }}</span
-                    >
+                    <span>
+                      {{ downloadProgress | formatFileSize }} /
+                      {{ downloadTotal | formatFileSize }}
+                    </span>
                   </div>
                 </div>
               }
@@ -281,6 +290,51 @@
               </div>
             </div>
           }
+
+          <!-- What's New Overlay (on top of updates page) -->
+          @if (showingWhatsNew && whatsNewType === 'app') {
+            <div class="whats-new-overlay" [@slideOverlay]>
+              <div class="overlay-header" data-tauri-drag-region>
+                <button mat-icon-button (click)="closeWhatsNew()">
+                  <mat-icon svgIcon="chevron-left"></mat-icon>
+                </button>
+                <p>What's New</p>
+                <button mat-icon-button (click)="close()">
+                  <mat-icon svgIcon="close"></mat-icon>
+                </button>
+              </div>
+
+              <div class="overlay-content whats-new-content">
+                @if (updateAvailable) {
+                  <div class="release-header">
+                    <div class="release-version">
+                      <h2>Version {{ updateAvailable.version }}</h2>
+                      @if (updateAvailable.releaseDate) {
+                        <span class="release-date">
+                          {{ formatReleaseDate(updateAvailable.releaseDate) }}
+                        </span>
+                      }
+                    </div>
+                    @if (updateAvailable.releaseUrl) {
+                      <button
+                        mat-stroked-button
+                        (click)="openLink(updateAvailable.releaseUrl)"
+                        class="view-on-github"
+                      >
+                        <mat-icon svgIcon="open-link"></mat-icon>
+                        View on GitHub
+                      </button>
+                    }
+                  </div>
+
+                  <div
+                    class="release-notes"
+                    [innerHTML]="getFormattedReleaseNotes(updateAvailable.releaseNotes)"
+                  ></div>
+                }
+              </div>
+            </div>
+          }
         </div>
       }
 
@@ -349,6 +403,7 @@
             <h3>Rclone Updates</h3>
 
             <!-- Rclone Update Status -->
+            <!-- Similarly for Rclone updates -->
             @if (rcloneUpdateStatus.updateInfo?.update_available) {
               <div class="update-card available">
                 <div class="update-header">
@@ -367,6 +422,14 @@
                     </span>
                   </div>
                 </div>
+
+                <!-- NEW: What's New Button for Rclone -->
+                @if (rcloneUpdateStatus.updateInfo?.release_notes) {
+                  <button mat-button class="whats-new-button" (click)="showWhatsNew('rclone')">
+                    <mat-icon svgIcon="file-lines"></mat-icon>
+                    What's New in Rclone
+                  </button>
+                }
 
                 <div class="update-buttons">
                   <button
@@ -481,6 +544,87 @@
               </div>
             }
           </div>
+
+          <!-- What's New Overlay (on top of updates/About Rclone page) -->
+          @if (showingWhatsNew) {
+            <div class="whats-new-overlay" [@slideOverlay]>
+              <div class="overlay-header" data-tauri-drag-region>
+                <button mat-icon-button (click)="closeWhatsNew()">
+                  <mat-icon svgIcon="chevron-left"></mat-icon>
+                </button>
+                <p>What's New</p>
+                <button mat-icon-button (click)="close()">
+                  <mat-icon svgIcon="close"></mat-icon>
+                </button>
+              </div>
+
+              <div class="overlay-content whats-new-content">
+                @if (whatsNewType === 'app' && updateAvailable) {
+                  <div class="release-header">
+                    <div class="release-version">
+                      <h2>Version {{ updateAvailable.version }}</h2>
+                      @if (updateAvailable.releaseDate) {
+                        <span class="release-date">
+                          {{ formatReleaseDate(updateAvailable.releaseDate) }}
+                        </span>
+                      }
+                    </div>
+                    @if (updateAvailable.releaseUrl) {
+                      <button
+                        mat-stroked-button
+                        (click)="openLink(updateAvailable.releaseUrl)"
+                        class="view-on-github"
+                      >
+                        <mat-icon svgIcon="open-link"></mat-icon>
+                        View on GitHub
+                      </button>
+                    }
+                  </div>
+
+                  <div
+                    class="release-notes"
+                    [innerHTML]="getFormattedReleaseNotes(updateAvailable.releaseNotes)"
+                  ></div>
+                }
+
+                @if (whatsNewType === 'rclone' && rcloneUpdateStatus.updateInfo) {
+                  <div class="release-header">
+                    <div class="release-version">
+                      <h2>
+                        Rclone
+                        {{
+                          rcloneUpdateStatus.updateInfo.latest_version_clean ||
+                            rcloneUpdateStatus.updateInfo.latest_version
+                        }}
+                      </h2>
+                      @if (rcloneUpdateStatus.updateInfo.release_date) {
+                        <span class="release-date">
+                          {{ formatReleaseDate(rcloneUpdateStatus.updateInfo.release_date) }}
+                        </span>
+                      }
+                    </div>
+                    @if (rcloneUpdateStatus.updateInfo.release_url) {
+                      <button
+                        mat-stroked-button
+                        (click)="openLink(rcloneUpdateStatus.updateInfo.release_url)"
+                        class="view-on-github"
+                      >
+                        <mat-icon svgIcon="open-link"></mat-icon>
+                        View on GitHub
+                      </button>
+                    }
+                  </div>
+
+                  <div
+                    class="release-notes"
+                    [innerHTML]="
+                      getFormattedReleaseNotes(rcloneUpdateStatus.updateInfo.release_notes)
+                    "
+                  ></div>
+                }
+              </div>
+            </div>
+          }
         </div>
       }
 

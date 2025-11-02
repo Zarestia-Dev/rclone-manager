@@ -261,16 +261,6 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     return this.isSyncType();
   }
 
-  get hasCompletedTransfers(): boolean {
-    return this.completedTransfers.length > 0;
-  }
-
-  get errorSummary(): string {
-    if (this.jobStats.fatalError) return this.jobStats.lastError || 'Fatal error occurred';
-    if (this.jobStats.errors) return `${this.jobStats.errors} error(s) occurred`;
-    return '';
-  }
-
   // Config getters
   getOperationControlConfig(): OperationControlConfig {
     const op = this.getCurrentOperation();

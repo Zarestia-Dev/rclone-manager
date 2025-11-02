@@ -99,9 +99,10 @@ export interface RcloneUpdateInfo {
   update_available: boolean;
   current_version_clean: string;
   latest_version_clean: string;
-  release_notes?: string;
+  channel: string;
+  release_notes?: string; // Add release notes support
   release_date?: string;
-  download_url?: string;
+  release_url?: string;
 }
 
 export interface UpdateStatus {

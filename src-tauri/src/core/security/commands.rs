@@ -1,9 +1,12 @@
-use crate::core::{
-    check_binaries::build_rclone_command,
-    security::{CredentialStore, SafeEnvironmentManager},
+use crate::{
+    core::{
+        check_binaries::build_rclone_command,
+        security::{CredentialStore, SafeEnvironmentManager},
+    },
+    rclone::commands::unlock_rclone_config,
 };
 use log::{debug, error, info, warn};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 /// Store the rclone config password securely
 #[tauri::command]
@@ -217,9 +220,12 @@ pub async fn is_config_encrypted_cached(app: AppHandle) -> Result<bool, String> 
 pub async fn is_config_encrypted(app: AppHandle) -> Result<bool, String> {
     debug!("🔍 Checking if rclone config is encrypted");
 
+    // Don't use env_clear() as it removes PATH and prevents rclone from finding
+    // system utilities like getent. The SafeEnvironmentManager only sets
+    // RCLONE_CONFIG_PASS when explicitly configured, so we can safely inherit
+    // the parent process environment here.
     let output = build_rclone_command(&app, None, None, None)
         .args(["listremotes", "--ask-password=false"])
-        .env_clear()
         .output()
         .await
         .map_err(|e| format!("Failed to execute rclone: {e}"))?;
@@ -298,6 +304,8 @@ pub async fn encrypt_config(
 
         // Set environment variable for current session using safe manager
         env_manager.set_config_password(password.clone());
+        // Ensure config is unlocked for current session
+        unlock_rclone_config(app.clone(), password, app.state()).await?;
 
         info!("✅ Configuration encrypted successfully");
         Ok(())

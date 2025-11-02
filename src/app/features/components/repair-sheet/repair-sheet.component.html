@@ -1,7 +1,5 @@
 <mat-nav-list class="repair-sheet" [class.repairing]="installing">
-  <!-- Header Section with Icon and Content -->
   <div class="sheet-header">
-    <!-- Top section with icon and main content -->
     <div class="repair-header-top">
       <div class="repair-icon">
         <mat-icon [svgIcon]="getRepairIcon()"></mat-icon>
@@ -26,7 +24,6 @@
       </div>
     }
 
-    <!-- Password Section for Password-Required Repairs -->
     @if (requiresPassword()) {
       <div class="password-row">
         <app-password-manager
@@ -36,22 +33,48 @@
           [hasError]="hasPasswordError"
           [errorMessage]="passwordErrorMessage"
           [showStoreOption]="!!data.showStoreOption"
-          [disabled]="installing"
+          [disabled]="installing || showConfigOptions"
           [shakeTrigger]="errorCount"
           (passwordChange)="password = $event"
           (storePasswordChange)="storePassword = $event"
           (unlock)="submitPassword()"
         ></app-password-manager>
       </div>
+
+      <div class="advanced-toggle" style="margin-top: 1rem">
+        <button
+          matButton="filled"
+          class="accent"
+          (click)="toggleConfigOptions()"
+          [disabled]="installing || isSubmittingPassword"
+        >
+          <mat-icon
+            svgIcon="caret-down"
+            [style.transform]="showConfigOptions ? 'rotate(180deg)' : 'rotate(0deg)'"
+            style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+          ></mat-icon>
+          {{ showConfigOptions ? 'Hide Config Options' : 'Use Different Config File' }}
+        </button>
+      </div>
+
+      @if (showConfigOptions) {
+        <app-installation-options
+          [mode]="'config'"
+          [tabOptions]="configTabOptions"
+          [disabled]="installing"
+          (dataChange)="onInstallationOptionsChange($event)"
+          (validChange)="onInstallationValidChange($event)"
+        >
+        </app-installation-options>
+      }
     }
 
-    <!-- Advanced Options for Rclone Path Repair -->
     @if (isRclonePathRepair()) {
       <div class="advanced-toggle">
         <button
           matButton="filled"
           class="accent"
-          (click)="toggleAdvanced()"
+          (click)="toggleInstallOptions()"
           [disabled]="installing"
         >
           <mat-icon
@@ -65,6 +88,7 @@
 
       @if (showAdvanced) {
         <app-installation-options
+          [mode]="'install'"
           [disabled]="installing"
           (dataChange)="onInstallationOptionsChange($event)"
           (validChange)="onInstallationValidChange($event)"
@@ -74,35 +98,7 @@
     }
   </div>
 
-  <!-- Actions Section -->
   <div class="sheet-actions">
-    @if (isMountPluginRepair()) {
-      <button
-        matButton="outlined"
-        [disabled]="isRefreshingStatus || installing"
-        class="refresh-button"
-        (click)="refreshMountPluginStatus()"
-        [attr.aria-label]="
-          isRefreshingStatus ? 'Checking status...' : 'Check if mount plugin is now installed'
-        "
-        [matTooltip]="
-          'Check if the mount plugin is now installed. Use this if you installed it manually or the automatic detection failed.'
-        "
-      >
-        @if (isRefreshingStatus) {
-          <ng-container>
-            <mat-progress-spinner diameter="20" mode="indeterminate"></mat-progress-spinner>
-            Checking Status...
-          </ng-container>
-        } @else {
-          <ng-container>
-            <mat-icon svgIcon="refresh"></mat-icon>
-            Check Status
-          </ng-container>
-        }
-      </button>
-    }
-
     <button
       matButton="filled"
       [disabled]="!canRepair()"
@@ -111,25 +107,32 @@
       [attr.aria-label]="installing ? 'Repairing in progress' : 'Start repair process'"
       [matTooltip]="
         !canRepair() && !installing && !isSubmittingPassword
-          ? requiresPassword() && !password
-            ? 'Please enter the configuration password first'
-            : requiresPassword()
-              ? 'Account is temporarily locked due to failed attempts'
-              : installationData.installLocation === 'custom' &&
-                  installationData.customPath.trim().length === 0
-                ? 'Please select an installation path first'
-                : installationData.installLocation === 'existing' &&
-                    installationData.existingBinaryPath.trim().length === 0
-                  ? 'Please select a binary file first'
+          ? showConfigOptions
+            ? installationData.installLocation === 'custom' &&
+              installationData.customPath.trim().length === 0
+              ? 'Please select a config file first'
+              : !installationValid
+                ? 'Please fix validation errors'
+                : ''
+            : requiresPassword() && !password
+              ? 'Please enter the configuration password first'
+              : requiresPassword()
+                ? 'Account is temporarily locked due to failed attempts'
+                : installationData.installLocation === 'custom' &&
+                    installationData.customPath.trim().length === 0
+                  ? 'Please select an installation path first'
                   : installationData.installLocation === 'existing' &&
-                      installationData.binaryTestResult === 'invalid'
-                    ? 'The selected file is not a valid rclone binary'
+                      installationData.existingBinaryPath.trim().length === 0
+                    ? 'Please select a binary file first'
                     : installationData.installLocation === 'existing' &&
-                        installationData.binaryTestResult === 'untested'
-                      ? 'Please test the selected binary first'
-                      : !installationValid
-                        ? 'Please fix validation errors'
-                        : ''
+                        installationData.binaryTestResult === 'invalid'
+                      ? 'The selected file is not a valid rclone binary'
+                      : installationData.installLocation === 'existing' &&
+                          installationData.binaryTestResult === 'untested'
+                        ? 'Please test the selected binary first'
+                        : !installationValid
+                          ? 'Please fix validation errors'
+                          : ''
           : ''
       "
     >
@@ -141,13 +144,7 @@
           : getRepairButtonText()
       }}
       <mat-icon
-        [svgIcon]="
-          installing || isSubmittingPassword
-            ? installing
-              ? 'refresh'
-              : 'download'
-            : getRepairButtonIcon()
-        "
+        [svgIcon]="getRepairButtonIcon()"
         [class.animate-spin]="installing || isSubmittingPassword"
       ></mat-icon>
     </button>
