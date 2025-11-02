@@ -2,7 +2,7 @@
 # All notable changes to this project will be documented in this file.
 
 
-## [Not released]
+## [v0.1.6] - 2025-11-02
 ### Added
 - Added `Whats New` to the About modal when a new version exists. It shows the new features and changes in the new version. It fetches the release notes from GitHub releases for app. For rclone, it shows the release notes from the rclone website.
 ### Changed
