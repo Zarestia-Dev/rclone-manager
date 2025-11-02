@@ -15,10 +15,6 @@
     <mat-tab-group [(selectedIndex)]="selectedSecurityTab" class="security-tabs">
       <!-- Overview Tab -->
       <mat-tab label="Overview">
-        <ng-template mat-tab-label>
-          <span>Overview</span>
-        </ng-template>
-
         <div class="tab-content">
           <!-- Configuration Not Encrypted -->
           @if (isUnencryptedConfig) {
@@ -133,7 +129,10 @@
                 </p>
               </div>
               <div class="card-content">
-                <form [formGroup]="overviewForm">
+                <form
+                  [formGroup]="overviewForm"
+                  (keydown.enter)="canValidatePassword && validatePassword()"
+                >
                   <mat-form-field appearance="fill">
                     <mat-label>Configuration Password</mat-label>
                     <input
@@ -205,10 +204,6 @@
 
       <!-- Encryption Tab -->
       <mat-tab label="Encryption">
-        <ng-template mat-tab-label>
-          <span>Encryption</span>
-        </ng-template>
-
         <div class="tab-content">
           <div class="card">
             <div class="card-header">
@@ -233,7 +228,15 @@
                     : 'Configuration is not encrypted'
                 }}</span>
               </div>
-              <form [formGroup]="encryptionForm" class="encryption-form">
+              <form
+                [formGroup]="encryptionForm"
+                class="encryption-form"
+                (keydown.enter)="
+                  isEncryptedConfig
+                    ? canUnencrypt && unencryptConfig()
+                    : canEncrypt && encryptConfig()
+                "
+              >
                 <mat-form-field appearance="fill">
                   <mat-label>{{
                     isEncryptedConfig ? 'Password for Decryption' : 'Password for Encryption'
@@ -328,7 +331,11 @@
                 </p>
               </div>
               <div class="card-content">
-                <form [formGroup]="changePasswordForm" class="password-change-form">
+                <form
+                  [formGroup]="changePasswordForm"
+                  class="password-change-form"
+                  (keydown.enter)="canChangePassword && changePassword()"
+                >
                   <mat-form-field appearance="fill">
                     <mat-label>Current Password</mat-label>
                     <input
@@ -399,61 +406,52 @@
       <!-- Advanced Tab -->
       @if (isEncryptedConfig) {
         <mat-tab label="Advanced">
-          <ng-template mat-tab-label>
-            <span>Advanced</span>
-          </ng-template>
-
           <div class="tab-content">
-            <!-- Environment Variables (only for encrypted configs) -->
-            @if (isEncryptedConfig) {
-              <div class="card">
-                <div class="card-header">
-                  <div class="card-title">
-                    <mat-icon svgIcon="terminal"></mat-icon>
-                    <h3>Environment Variables</h3>
-                  </div>
-                  <p class="card-description">
-                    Manage password environment variables for the current session
-                  </p>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">
+                  <mat-icon svgIcon="terminal"></mat-icon>
+                  <h3>Environment Variables</h3>
                 </div>
-                <div class="card-content">
-                  <div class="status-grid">
-                    <div class="status-item">
-                      <div class="status-indicator">
-                        <mat-icon
-                          [svgIcon]="hasEnvPassword ? 'circle-check' : 'circle-info'"
-                        ></mat-icon>
-                      </div>
-                      <div class="status-details">
-                        <h4>RCLONE_CONFIG_PASS:</h4>
-                        <p>{{ hasEnvPassword ? 'Set' : 'Not set' }}</p>
-                      </div>
+                <p class="card-description">
+                  Manage password environment variables for the current session
+                </p>
+              </div>
+              <div class="card-content">
+                <div class="status-grid">
+                  <div class="status-item">
+                    <div class="status-indicator">
+                      <mat-icon
+                        [svgIcon]="hasEnvPassword ? 'circle-check' : 'circle-info'"
+                      ></mat-icon>
+                    </div>
+                    <div class="status-details">
+                      <h4>RCLONE_CONFIG_PASS:</h4>
+                      <p>{{ hasEnvPassword ? 'Set' : 'Not set' }}</p>
                     </div>
                   </div>
                 </div>
-                <div class="card-actions">
-                  <button
-                    mat-stroked-button
-                    (click)="setEnvPassword()"
-                    [disabled]="!hasStoredPassword || passwordLoading.isSettingEnv"
-                  >
-                    <mat-icon svgIcon="terminal"></mat-icon>
-                    {{ passwordLoading.isSettingEnv ? 'Saving...' : 'Set Environment Variable' }}
-                  </button>
-                  <button
-                    matButton="filled"
-                    class="warn"
-                    (click)="clearEnvPassword()"
-                    [disabled]="!hasEnvPassword || passwordLoading.isClearingEnv"
-                  >
-                    <mat-icon svgIcon="close"></mat-icon>
-                    {{
-                      passwordLoading.isClearingEnv ? 'Clearing...' : 'Clear Environment Variable'
-                    }}
-                  </button>
-                </div>
               </div>
-            }
+              <div class="card-actions">
+                <button
+                  mat-stroked-button
+                  (click)="setEnvPassword()"
+                  [disabled]="!hasStoredPassword || passwordLoading.isSettingEnv"
+                >
+                  <mat-icon svgIcon="terminal"></mat-icon>
+                  {{ passwordLoading.isSettingEnv ? 'Saving...' : 'Set Environment Variable' }}
+                </button>
+                <button
+                  matButton="filled"
+                  class="warn"
+                  (click)="clearEnvPassword()"
+                  [disabled]="!hasEnvPassword || passwordLoading.isClearingEnv"
+                >
+                  <mat-icon svgIcon="close"></mat-icon>
+                  {{ passwordLoading.isClearingEnv ? 'Clearing...' : 'Clear Environment Variable' }}
+                </button>
+              </div>
+            </div>
           </div>
         </mat-tab>
       }

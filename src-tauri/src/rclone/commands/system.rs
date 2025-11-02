@@ -15,7 +15,7 @@ use crate::{
     rclone::state::ENGINE_STATE,
     utils::{
         rclone::{
-            endpoints::{EndpointHelper, core},
+            endpoints::{EndpointHelper, config, core},
             process_common::create_rclone_command,
         },
         types::all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
@@ -227,6 +227,37 @@ pub async fn set_bandwidth_limit(
         error!("❌ Failed to emit bandwidth limit changed event: {e}",);
     }
     Ok(response_data)
+}
+
+pub async fn unlock_rclone_config(
+    app: AppHandle,
+    password: String,
+    state: State<'_, RcloneState>,
+) -> Result<(), String> {
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::UNLOCK);
+
+    let payload = json!({ "config_password": password });
+
+    let response = state
+        .client
+        .post(&url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        let error = format!("HTTP {status}: {body}");
+        return Err(error);
+    }
+
+    app.emit("rclone_config_unlocked", json!({}))
+        .map_err(|e| format!("Failed to emit config unlocked event: {e}"))?;
+
+    Ok(())
 }
 
 // pub async fn set_rclone_config_file(app: AppHandle, config_path: String) -> Result<(), String> {

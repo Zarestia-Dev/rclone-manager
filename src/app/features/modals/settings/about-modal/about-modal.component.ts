@@ -15,6 +15,7 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 // Services
 import { AnimationsService } from '../../../../shared/services/animations.service';
@@ -49,22 +50,25 @@ import { NotificationService } from 'src/app/shared/services/notification.servic
 export class AboutModalComponent implements OnInit {
   readonly rCloneManagerVersion = appVersion;
 
-  dialogRef = inject(MatDialogRef<AboutModalComponent>);
-  systemInfoService = inject(SystemInfoService);
-  notificationService = inject(NotificationService);
-  appUpdaterService = inject(AppUpdaterService);
-  rcloneUpdateService = inject(RcloneUpdateService);
+  private dialogRef = inject(MatDialogRef<AboutModalComponent>);
+  private systemInfoService = inject(SystemInfoService);
+  private notificationService = inject(NotificationService);
+  private appUpdaterService = inject(AppUpdaterService);
+  private rcloneUpdateService = inject(RcloneUpdateService);
+  private eventListenersService = inject(EventListenersService);
+  private sanitizer = inject(DomSanitizer);
 
   currentPage = 'main';
-
   scrolled = false;
+
+  // What's New overlay (separate from main navigation)
+  showingWhatsNew = false;
+  whatsNewType: 'app' | 'rclone' | null = null;
 
   rcloneInfo: RcloneInfo | null = null;
   loadingRclone = false;
   rcloneError: string | null = null;
-  private eventListenersService = inject(EventListenersService);
 
-  // Platform detection - null means source build, string means packaged build
   buildType: string | null = null;
   updatesDisabled = false;
 
@@ -107,17 +111,8 @@ export class AboutModalComponent implements OnInit {
     { value: 'beta', label: 'Beta', description: 'Beta releases with latest features' },
   ];
 
-  trackByChannel(index: number, channel: { value: string }): string {
-    return channel.value;
-  }
-
-  trackByVersion(index: number, version: string): string {
-    return version;
-  }
-
   async ngOnInit(): Promise<void> {
-    // Initialize all services in parallel
-    const [, , ,] = await Promise.all([
+    await Promise.all([
       this.loadPlatformInfo(),
       this.loadRcloneInfo(),
       this.appUpdaterService.initialize(),
@@ -126,11 +121,9 @@ export class AboutModalComponent implements OnInit {
 
     await this.loadRclonePID();
 
-    // Subscribe to updater service observables
     this.setupUpdaterSubscriptions();
     this.setupRcloneUpdaterSubscriptions();
 
-    // Load settings (no await needed as they're handled by subscriptions)
     this.loadAutoCheckSetting();
     this.loadChannelSetting();
     this.loadRcloneSettings();
@@ -138,18 +131,7 @@ export class AboutModalComponent implements OnInit {
     this.eventListenersService.listenToRcloneEngine().subscribe({
       next: async event => {
         try {
-          console.log('Rclone Engine event payload:', event);
-
-          // Handle both new structured payload and legacy string payload
-          let isReady = false;
-
           if (typeof event === 'object' && event?.status === 'ready') {
-            // New structured payload
-            isReady = true;
-            console.log('Rclone API ready (new format):', event);
-          }
-
-          if (isReady) {
             await this.loadRcloneInfo();
             await this.loadRclonePID();
           }
@@ -158,6 +140,65 @@ export class AboutModalComponent implements OnInit {
         }
       },
     });
+  }
+
+  // What's New Methods
+  showWhatsNew(type: 'app' | 'rclone'): void {
+    this.whatsNewType = type;
+    this.showingWhatsNew = true;
+  }
+
+  closeWhatsNew(): void {
+    this.showingWhatsNew = false;
+    this.whatsNewType = null;
+  }
+
+  getFormattedReleaseNotes(markdown: string | undefined | null): SafeHtml {
+    if (!markdown) {
+      return this.sanitizer.sanitize(1, '<p>No release notes available.</p>') || '';
+    }
+
+    // Simple markdown to HTML conversion (you can use a library like 'marked' for better results)
+    let html = markdown
+      // Headers
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      // Bold
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      // Italic
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      // Links
+      .replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
+      )
+      // Lists
+      .replace(/^\* (.+)$/gim, '<li>$1</li>')
+      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+      // Line breaks
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/\n/g, '<br>');
+
+    // Wrap in paragraph if not already wrapped
+    if (!html.startsWith('<')) {
+      html = `<p>${html}</p>`;
+    }
+
+    return this.sanitizer.sanitize(1, html) || '';
+  }
+
+  formatReleaseDate(dateString: string): string {
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      });
+    } catch {
+      return dateString;
+    }
   }
 
   private getChannelFromTag(tag: string): string {
@@ -185,10 +226,7 @@ export class AboutModalComponent implements OnInit {
     try {
       const pid = await this.systemInfoService.getRclonePID();
       if (this.rcloneInfo) {
-        this.rcloneInfo = {
-          ...this.rcloneInfo,
-          pid: pid,
-        };
+        this.rcloneInfo = { ...this.rcloneInfo, pid };
       }
     } catch (error) {
       console.error('Error fetching rclone PID:', error);
@@ -204,7 +242,7 @@ export class AboutModalComponent implements OnInit {
       this.systemInfoService.killProcess(this.rcloneInfo.pid).then(
         () => {
           this.notificationService.openSnackBar('Rclone process killed successfully', 'Close');
-          this.rcloneInfo = null; // Clear info after killing
+          this.rcloneInfo = null;
         },
         error => {
           console.error('Failed to kill rclone process:', error);
@@ -222,7 +260,13 @@ export class AboutModalComponent implements OnInit {
 
   @HostListener('document:keydown.escape', ['$event'])
   close(): void {
-    this.dialogRef.close();
+    if (this.showingWhatsNew) {
+      this.closeWhatsNew();
+    } else if (this.currentPage !== 'main') {
+      this.navigateTo('main');
+    } else {
+      this.dialogRef.close();
+    }
   }
 
   openLink(link: string): void {
@@ -245,10 +289,9 @@ export class AboutModalComponent implements OnInit {
     this.currentPage = page;
   }
 
-  // Updater methods
+  // App Updater methods
   async checkForUpdates(): Promise<void> {
     if (this.checkingForUpdates) return;
-
     this.checkingForUpdates = true;
     try {
       await this.appUpdaterService.checkForUpdates();
@@ -259,8 +302,6 @@ export class AboutModalComponent implements OnInit {
 
   async installUpdate(): Promise<void> {
     if (this.installingUpdate) return;
-
-    // When the user starts an installation, hide any previous error banner
     this.updateErrorDismissed = true;
     this.updateErrorMessage = null;
     await this.appUpdaterService.installUpdate();
@@ -272,7 +313,6 @@ export class AboutModalComponent implements OnInit {
 
   async skipUpdate(): Promise<void> {
     if (!this.updateAvailable) return;
-
     await this.appUpdaterService.skipVersion(this.updateAvailable.version);
   }
 
@@ -296,7 +336,6 @@ export class AboutModalComponent implements OnInit {
     } catch (error) {
       console.error('Failed to toggle auto-check:', error);
       this.notificationService.showError('Failed to update setting');
-      // Revert on error
       this.autoCheckUpdates = !this.autoCheckUpdates;
     }
   }
@@ -304,12 +343,10 @@ export class AboutModalComponent implements OnInit {
   async changeChannel(channel: string): Promise<void> {
     try {
       await this.appUpdaterService.setChannel(channel);
-      // Clear current update when channel changes
       this.updateAvailable = null;
     } catch (error) {
       console.error('Failed to change channel:', error);
       this.notificationService.showError('Failed to change update channel');
-      // Revert on error
       this.updateChannel = this.appUpdaterService.getCurrentChannel();
     }
   }
@@ -319,7 +356,7 @@ export class AboutModalComponent implements OnInit {
       this.autoCheckUpdates = await this.appUpdaterService.getAutoCheckEnabled();
     } catch (error) {
       console.error('Failed to load auto-check setting:', error);
-      this.autoCheckUpdates = true; // Default fallback
+      this.autoCheckUpdates = true;
     }
   }
 
@@ -328,7 +365,7 @@ export class AboutModalComponent implements OnInit {
       this.updateChannel = await this.appUpdaterService.getChannel();
     } catch (error) {
       console.error('Failed to load channel setting:', error);
-      this.updateChannel = 'stable'; // Default fallback
+      this.updateChannel = 'stable';
     }
   }
 
@@ -336,7 +373,6 @@ export class AboutModalComponent implements OnInit {
     try {
       this.buildType = await this.systemInfoService.getBuildType();
       this.updatesDisabled = await this.systemInfoService.areUpdatesDisabled();
-      console.log('Build type:', this.buildType, 'Updates disabled:', this.updatesDisabled);
     } catch (error) {
       console.error('Failed to load platform info:', error);
       this.buildType = null;
@@ -345,10 +381,8 @@ export class AboutModalComponent implements OnInit {
   }
 
   private setupUpdaterSubscriptions(): void {
-    // Subscribe to updater service observables
     this.appUpdaterService.updateAvailable$.subscribe(update => {
       this.updateAvailable = update;
-      // derive release tag and channel for better UI feedback
       if (update?.releaseTag) {
         this.updateReleaseTag = update.releaseTag;
         this.updateReleaseChannel = this.getChannelFromTag(update.releaseTag);
@@ -370,25 +404,21 @@ export class AboutModalComponent implements OnInit {
       this.skippedVersions = versions;
     });
 
-    // Subscribe to download status
     this.appUpdaterService.downloadStatus$.subscribe(status => {
       this.downloadProgress = status.downloadedBytes;
       this.downloadTotal = status.totalBytes;
       this.downloadPercentage = status.percentage;
       this.downloadInProgress = status.downloadedBytes > 0 && !status.isComplete;
 
-      // Update installingUpdate based on completion
       if (status.isComplete) {
         this.installingUpdate = false;
       }
 
-      // Handle error display
       if (status.isFailed && status.failureMessage !== this.updateErrorMessage) {
         this.updateErrorMessage = status.failureMessage ?? 'Update installation failed.';
         this.updateErrorDismissed = false;
       }
 
-      // Hide errors when new download starts
       if (this.downloadInProgress || this.installingUpdate) {
         this.updateErrorDismissed = true;
       }
@@ -451,11 +481,18 @@ export class AboutModalComponent implements OnInit {
 
   async changeRcloneChannel(channel: string): Promise<void> {
     await this.rcloneUpdateService.setChannel(channel);
-    // Clear current update when channel changes
     this.rcloneUpdateStatus = {
       ...this.rcloneUpdateStatus,
       available: false,
       updateInfo: null,
     };
+  }
+
+  trackByChannel(index: number, channel: { value: string }): string {
+    return channel.value;
+  }
+
+  trackByVersion(index: number, version: string): string {
+    return version;
   }
 }

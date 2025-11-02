@@ -1,6 +1,6 @@
 use crate::{
     core::settings::backup::archive_utils::find_7z_executable,
-    rclone::queries::get_rclone_config_file, utils::types::all_types::SettingsState,
+    rclone::queries::get_rclone_config_file, utils::types::settings::SettingsState,
 };
 use log::{debug, info};
 use serde_json::json;

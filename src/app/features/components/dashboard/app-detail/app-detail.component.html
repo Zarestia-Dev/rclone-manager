@@ -56,11 +56,7 @@
         </div>
 
         <div class="sync-operation-content">
-          <mat-tab-group
-            class="operation-tabs"
-            (selectedTabChange)="onMainTabChange($event)"
-            animationDuration="300ms"
-          >
+          <mat-tab-group class="operation-tabs" animationDuration="300ms">
             <!-- Monitoring Tab -->
             <mat-tab>
               <ng-template mat-tab-label>
@@ -129,24 +125,6 @@
                     </mat-card>
                   </div>
                 }
-
-                <!-- Error Display -->
-                @if (errorSummary) {
-                  <mat-card class="error-card">
-                    <mat-card-header>
-                      <div mat-card-avatar class="error-avatar">
-                        <mat-icon svgIcon="error" class="error-icon"></mat-icon>
-                      </div>
-                      <mat-card-title>Operation Errors</mat-card-title>
-                    </mat-card-header>
-                    <mat-card-content>
-                      <p class="error-message">{{ errorSummary }}</p>
-                      @if (jobStats.lastError) {
-                        <p class="last-error">Last Error: {{ jobStats.lastError }}</p>
-                      }
-                    </mat-card-content>
-                  </mat-card>
-                }
               </div>
             </mat-tab>
 
@@ -190,14 +168,43 @@
                     </mat-card>
                   }
                 }
-                <!-- Settings Sections -->
-                @for (section of remoteSettingsSections; track section.key) {
-                  <app-settings-panel
-                    [config]="getSettingsPanelConfig(section)"
-                    (editSettings)="onEditSettings($event)"
-                    class="settings-section"
-                  ></app-settings-panel>
-                }
+                <div class="settings-layout">
+                  @if (operationSettingsSections.length) {
+                    <section class="settings-group operation-settings">
+                      <header class="group-header">
+                        <h3 class="group-title">{{ operationSettingsHeading }}</h3>
+                        <p class="group-description">{{ operationSettingsDescription }}</p>
+                      </header>
+                      <div class="group-panels">
+                        @for (section of operationSettingsSections; track section.key) {
+                          <app-settings-panel
+                            [config]="getSettingsPanelConfig(section)"
+                            (editSettings)="onEditSettings($event)"
+                            class="settings-section"
+                          ></app-settings-panel>
+                        }
+                      </div>
+                    </section>
+                  }
+
+                  @if (sharedSettingsSections.length) {
+                    <section class="settings-group shared-settings">
+                      <header class="group-header">
+                        <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
+                        <p class="group-description">{{ sharedSettingsDescription }}</p>
+                      </header>
+                      <div class="group-panels">
+                        @for (section of sharedSettingsSections; track section.key) {
+                          <app-settings-panel
+                            [config]="getSettingsPanelConfig(section)"
+                            (editSettings)="onEditSettings($event)"
+                            class="settings-section"
+                          ></app-settings-panel>
+                        }
+                      </div>
+                    </section>
+                  }
+                </div>
               </div>
             </mat-tab>
           </mat-tab-group>
@@ -228,14 +235,43 @@
             class="mount-control-panel"
           ></app-operation-control>
 
-          <!-- Configuration Sections for Mount -->
-          @for (section of remoteSettingsSections; track section.key) {
-            <app-settings-panel
-              [config]="getSettingsPanelConfig(section)"
-              (editSettings)="onEditSettings($event)"
-              class="mount-settings-section"
-            ></app-settings-panel>
-          }
+          <div class="settings-layout">
+            @if (operationSettingsSections.length) {
+              <section class="settings-group operation-settings">
+                <header class="group-header">
+                  <h3 class="group-title">{{ operationSettingsHeading }}</h3>
+                  <p class="group-description">{{ operationSettingsDescription }}</p>
+                </header>
+                <div class="group-panels">
+                  @for (section of operationSettingsSections; track section.key) {
+                    <app-settings-panel
+                      [config]="getSettingsPanelConfig(section)"
+                      (editSettings)="onEditSettings($event)"
+                      class="mount-settings-section"
+                    ></app-settings-panel>
+                  }
+                </div>
+              </section>
+            }
+
+            @if (sharedSettingsSections.length) {
+              <section class="settings-group shared-settings">
+                <header class="group-header">
+                  <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
+                  <p class="group-description">{{ sharedSettingsDescription }}</p>
+                </header>
+                <div class="group-panels">
+                  @for (section of sharedSettingsSections; track section.key) {
+                    <app-settings-panel
+                      [config]="getSettingsPanelConfig(section)"
+                      (editSettings)="onEditSettings($event)"
+                      class="mount-settings-section"
+                    ></app-settings-panel>
+                  }
+                </div>
+              </section>
+            }
+          </div>
         </div>
       </div>
     }

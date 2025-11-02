@@ -9,8 +9,6 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   TrackByFunction,
-  OnChanges,
-  SimpleChanges,
   inject,
   NgZone,
 } from '@angular/core';
@@ -49,11 +47,9 @@ import {
   RemoteActionProgress,
   SystemStats,
 } from '@app/types';
-import { FormatFileSizePipe } from '../../../../shared/pipes/format-file-size.pipe';
 import { FormatTimePipe } from '../../../../shared/pipes/format-time.pipe';
 import { FormatEtaPipe } from '../../../../shared/pipes/format-eta.pipe';
 import { FormatMemoryUsagePipe } from '../../../../shared/pipes/format-memory-usage.pipe';
-import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
 
 // Services
@@ -61,6 +57,7 @@ import { AnimationsService } from '../../../../shared/services/animations.servic
 import { EventListenersService } from '@app/services';
 import { SystemInfoService } from '@app/services';
 import { FormatBytes } from '@app/pipes';
+import { IconService } from 'src/app/shared/services/icon.service';
 
 /** Polling interval for system stats in milliseconds */
 const POLLING_INTERVAL = 5000;
@@ -82,20 +79,21 @@ const POLLING_INTERVAL = 5000;
     MatTooltipModule,
     MatSnackBarModule,
     RemotesPanelComponent,
+    FormatTimePipe,
+    FormatEtaPipe,
+    FormatMemoryUsagePipe,
+    FormatBytes,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
   animations: [AnimationsService.fadeInOut()],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
+export class GeneralOverviewComponent implements OnInit, OnDestroy {
   // Input/Output Properties
   @Input() remotes: Remote[] = [];
   @Input() jobs: JobInfo[] = [];
-  @Input() iconService!: { getIconName: (type: string) => string };
   @Input() actionInProgress: RemoteActionProgress = {};
-  @Input() bandwidthLimit: BandwidthLimitResponse | null = null;
-  @Input() systemInfoService!: SystemInfoService;
 
   @Output() selectRemote = new EventEmitter<Remote>();
   @Output() startJob = new EventEmitter<{
@@ -110,19 +108,15 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
 
   // Component State
   rcloneStatus: RcloneStatus = 'inactive';
-  systemStats: SystemStats = { memoryUsage: '0 MB', uptime: '0s' };
+  systemStats: SystemStats = { memoryUsage: null, uptime: 0 };
   jobStats: GlobalStats = { ...DEFAULT_JOB_STATS };
   isLoadingStats = false;
 
   // Panel states
+  bandwidthLimit: BandwidthLimitResponse | null = null;
   bandwidthPanelOpenState = false;
   systemInfoPanelOpenState = false;
   jobInfoPanelOpenState = false;
-
-  // Computed properties
-  _totalRemotes = 0;
-  _activeJobsCount = 0;
-  _jobCompletionPercentage = 0;
 
   // Private members
   private readonly PANEL_STATE_KEY = 'dashboard_panel_states';
@@ -136,18 +130,12 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   private cdr = inject(ChangeDetectorRef);
   private ngZone = inject(NgZone);
   private snackBar = inject(MatSnackBar);
+  private systemInfoService = inject(SystemInfoService);
+  public iconService = inject(IconService);
 
   // Track by functions
   readonly trackByRemoteName: TrackByFunction<Remote> = (_, remote) => remote.remoteSpecs.name;
   readonly trackByIndex: TrackByFunction<unknown> = index => index;
-
-  // Pipes
-  FormatFileSizePipe = new FormatFileSizePipe();
-  FormatTimePipe = new FormatTimePipe();
-  FormatEtaPipe = new FormatEtaPipe();
-  FormatMemoryUsagePipe = new FormatMemoryUsagePipe();
-  FormatRateValuePipe = new FormatRateValuePipe();
-  FormatBytes = new FormatBytes();
 
   ngOnInit(): void {
     this.restorePanelStates();
@@ -168,13 +156,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
 
   ngOnDestroy(): void {
     this.cleanup();
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['remotes'] || changes['jobs'] || changes['actionInProgress']) {
-      this.updateComputedValues();
-      this.statsUpdateDebounce$.next();
-    }
   }
 
   // Panel state management
@@ -221,13 +202,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   private setupPolling(): void {
     this.stopPolling();
 
-    // Immediate first load
-    this.loadSystemStats().catch(err => {
-      console.error('Initial system stats load failed:', err);
-    });
-
-    // Start regular polling
-    this.pollingSubscription = timer(POLLING_INTERVAL, POLLING_INTERVAL)
+    this.pollingSubscription = timer(0, POLLING_INTERVAL)
       .pipe(
         takeUntil(this.destroy$),
         filter(() => !this.isLoadingStats),
@@ -265,6 +240,20 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
+  get totalRemotes(): number {
+    return this.remotes?.length || 0;
+  }
+
+  get activeJobsCount(): number {
+    return this.jobs?.filter(job => job.status === 'Running').length || 0;
+  }
+
+  get jobCompletionPercentage(): number {
+    const totalBytes = this.jobStats.totalBytes || 0;
+    const bytes = this.jobStats.bytes || 0;
+    return totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
+  }
+
   private async loadSystemStats(): Promise<void> {
     if (this.isLoadingStats) return;
 
@@ -283,14 +272,13 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
 
       this.ngZone.run(async () => {
         this.updateSystemStats(memoryStats, coreStats);
-        this.updateComputedValues();
         this.checkRcloneStatus();
       });
     } catch (error) {
       console.error('Error loading system stats:', error);
       this.ngZone.run(() => {
         this.jobStats = { ...DEFAULT_JOB_STATS };
-        this.systemStats = { memoryUsage: 'Error', uptime: 'Error' };
+        this.systemStats = { memoryUsage: null, uptime: 0 };
       });
     } finally {
       this.isLoadingStats = false;
@@ -301,22 +289,13 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   private updateSystemStats(memoryStats: MemoryStats | null, coreStats: GlobalStats | null): void {
     if (coreStats) {
       this.jobStats = { ...this.jobStats, ...coreStats };
-      this.systemStats.memoryUsage = this.formatMemoryUsage(memoryStats);
-      this.systemStats.uptime = this.formatUptime(coreStats.elapsedTime || 0);
+      this.systemStats.memoryUsage = memoryStats;
+      this.systemStats.uptime = coreStats.elapsedTime || 0;
     } else {
       this.jobStats = { ...DEFAULT_JOB_STATS };
-      this.systemStats.memoryUsage = this.formatMemoryUsage(memoryStats);
-      this.systemStats.uptime = '0s';
+      this.systemStats.memoryUsage = memoryStats;
+      this.systemStats.uptime = 0;
     }
-  }
-
-  private updateComputedValues(): void {
-    this._totalRemotes = this.remotes?.length || 0;
-    this._activeJobsCount = this.jobs?.filter(job => job.status === 'Running').length || 0;
-
-    const totalBytes = this.jobStats.totalBytes || 0;
-    const bytes = this.jobStats.bytes || 0;
-    this._jobCompletionPercentage = totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
   }
 
   private setupTauriListeners(): void {
@@ -329,6 +308,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
             .getBandwidthLimit()
             .catch(() => null as BandwidthLimitResponse | null);
           this.statsUpdateDebounce$.next();
+          this.cdr.detectChanges();
         },
       });
   }
@@ -357,23 +337,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
-  // Formatting methods (keep existing implementations)
-  formatBytes(bytes: number): string {
-    return this.FormatFileSizePipe.transform(bytes);
-  }
-  private formatMemoryUsage(memoryStats: MemoryStats | null): string {
-    return this.FormatMemoryUsagePipe.transform(memoryStats);
-  }
-  formatUptime(elapsedTimeSeconds: number): string {
-    return this.FormatTimePipe.transform(elapsedTimeSeconds);
-  }
-  formatEta(eta: number | string): string {
-    return this.FormatEtaPipe.transform(eta);
-  }
-  private formatRateValue(rate: string): string {
-    return this.FormatRateValuePipe.transform(rate);
-  }
-
   get isBandwidthLimited(): boolean {
     if (!this.bandwidthLimit) return false;
     return (
@@ -382,18 +345,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
       this.bandwidthLimit.rate !== '' &&
       this.bandwidthLimit.bytesPerSecond > 0
     );
-  }
-
-  get formattedBandwidthRate(): string {
-    if (
-      !this.bandwidthLimit ||
-      this.bandwidthLimit.rate === 'off' ||
-      this.bandwidthLimit.rate === '' ||
-      this.bandwidthLimit.bytesPerSecond <= 0
-    ) {
-      return 'Unlimited';
-    }
-    return this.formatRateValue(this.bandwidthLimit.rate);
   }
 
   get bandwidthDisplayValue(): string {
@@ -407,22 +358,22 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
     ) {
       return 'Unlimited';
     }
-    return this.formatRateValue(this.bandwidthLimit.rate);
+    return this.bandwidthLimit.rate;
   }
 
-  get bandwidthDetails(): { upload: string; download: string; total: string } {
-    if (!this.bandwidthLimit) return { upload: 'Unknown', download: 'Unknown', total: 'Unknown' };
+  get bandwidthDetails(): { upload: number; download: number; total: number } {
+    if (!this.bandwidthLimit) return { upload: 0, download: 0, total: 0 };
     const isUnlimited = (value: number): boolean => value <= 0;
     return {
       upload: isUnlimited(this.bandwidthLimit.bytesPerSecondTx)
-        ? 'Unlimited'
-        : this.FormatBytes.transform(this.bandwidthLimit.bytesPerSecondTx),
+        ? 0
+        : this.bandwidthLimit.bytesPerSecondTx,
       download: isUnlimited(this.bandwidthLimit.bytesPerSecondRx)
-        ? 'Unlimited'
-        : this.FormatBytes.transform(this.bandwidthLimit.bytesPerSecondRx),
+        ? 0
+        : this.bandwidthLimit.bytesPerSecondRx,
       total: isUnlimited(this.bandwidthLimit.bytesPerSecond)
-        ? 'Unlimited'
-        : this.FormatBytes.transform(this.bandwidthLimit.bytesPerSecond),
+        ? 0
+        : this.bandwidthLimit.bytesPerSecond,
     };
   }
 
@@ -533,22 +484,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy, OnChanges {
   // Remotes categorization for panel view
   get allRemotes(): Remote[] {
     return this.remotes || [];
-  }
-
-  get mountedRemotes(): Remote[] {
-    return this.remotes.filter(remote => remote.mountState?.mounted === true);
-  }
-
-  get unmountedRemotes(): Remote[] {
-    return this.remotes.filter(remote => !remote.mountState?.mounted);
-  }
-
-  get syncingRemotes(): Remote[] {
-    return this.remotes.filter(remote => remote.syncState?.isOnSync === true);
-  }
-
-  get copyingRemotes(): Remote[] {
-    return this.remotes.filter(remote => remote.copyState?.isOnCopy === true);
   }
 
   // Event handlers for remotes panel

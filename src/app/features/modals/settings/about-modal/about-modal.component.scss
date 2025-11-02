@@ -516,3 +516,233 @@
     color: var(--primary-color);
   }
 }
+
+// Add these styles to your existing about-modal.component.scss
+
+.whats-new-button {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: var(--space-md);
+  color: var(--accent-color);
+  border: 1px solid rgba(var(--accent-color-rgb), 0.3);
+  background: rgba(var(--accent-color-rgb), 0.05);
+
+  &:hover {
+    background: rgba(var(--accent-color-rgb), 0.1);
+    border-color: rgba(var(--accent-color-rgb), 0.5);
+  }
+
+  mat-icon {
+    margin-right: var(--space-xs);
+  }
+}
+
+// What's New overlay (nested on top of updates/About Rclone pages)
+.whats-new-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--app-background);
+  display: flex;
+  flex-direction: column;
+  z-index: 20; // Higher than main overlay (z-index: 10)
+
+  .overlay-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    padding: var(--space-xs);
+  }
+}
+
+.whats-new-content {
+  .release-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--space-xl);
+    padding-bottom: var(--space-lg);
+    border-bottom: 2px solid var(--divider-color);
+
+    .release-version {
+      h2 {
+        margin: 0 0 var(--space-xs) 0;
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--primary-color);
+      }
+
+      .release-date {
+        font-size: 14px;
+        color: var(--secondary-text-color);
+        font-weight: 500;
+      }
+    }
+
+    .view-on-github {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      color: var(--accent-color);
+      border-color: rgba(var(--accent-color-rgb), 0.3);
+
+      &:hover {
+        background: rgba(var(--accent-color-rgb), 0.1);
+        border-color: rgba(var(--accent-color-rgb), 0.5);
+      }
+    }
+  }
+
+  .release-notes {
+    font-size: 15px;
+    line-height: 1.8;
+    color: var(--app-text-color);
+
+    ::ng-deep {
+      h1,
+      h2,
+      h3 {
+        margin: var(--space-lg) 0 var(--space-md) 0;
+        color: var(--app-text-color);
+        font-weight: 600;
+      }
+
+      h1 {
+        font-size: 24px;
+        border-bottom: 2px solid var(--divider-color);
+        padding-bottom: var(--space-sm);
+      }
+
+      h2 {
+        font-size: 20px;
+        color: var(--primary-color);
+      }
+
+      h3 {
+        font-size: 18px;
+      }
+
+      p {
+        margin: var(--space-md) 0;
+        line-height: 1.8;
+      }
+
+      ul,
+      ol {
+        margin: var(--space-md) 0;
+        padding-left: var(--space-xl);
+
+        li {
+          margin: var(--space-sm) 0;
+          line-height: 1.6;
+        }
+      }
+
+      ul {
+        list-style-type: disc;
+      }
+
+      a {
+        color: var(--accent-color);
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+        transition: var(--transition-fast);
+
+        &:hover {
+          border-bottom-color: var(--accent-color);
+        }
+      }
+
+      strong {
+        font-weight: 600;
+        color: var(--primary-color);
+      }
+
+      em {
+        font-style: italic;
+        color: var(--secondary-text-color);
+      }
+
+      code {
+        background: rgba(var(--app-text-color-rgb), 0.08);
+        padding: 2px 6px;
+        border-radius: var(--radius-xs);
+        font-family: var(--font-mono, "Monaco", "Consolas", monospace);
+        font-size: 14px;
+        color: var(--accent-color);
+      }
+
+      pre {
+        background: rgba(var(--app-text-color-rgb), 0.05);
+        border: 1px solid var(--divider-color);
+        border-radius: var(--radius-md);
+        padding: var(--space-md);
+        overflow-x: auto;
+        margin: var(--space-md) 0;
+
+        code {
+          background: none;
+          padding: 0;
+          color: var(--app-text-color);
+        }
+      }
+
+      blockquote {
+        border-left: 4px solid var(--primary-color);
+        padding-left: var(--space-md);
+        margin: var(--space-md) 0;
+        color: var(--secondary-text-color);
+        font-style: italic;
+      }
+
+      img {
+        max-width: 100%;
+        height: auto;
+        border-radius: var(--radius-md);
+        margin: var(--space-md) 0;
+      }
+
+      hr {
+        border: none;
+        border-top: 1px solid var(--divider-color);
+        margin: var(--space-xl) 0;
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .whats-new-content {
+    .release-header {
+      flex-direction: column;
+      gap: var(--space-md);
+
+      .release-version h2 {
+        font-size: 24px;
+      }
+
+      .view-on-github {
+        width: 100%;
+      }
+    }
+
+    .release-notes {
+      font-size: 14px;
+
+      ::ng-deep {
+        h1 {
+          font-size: 20px;
+        }
+
+        h2 {
+          font-size: 18px;
+        }
+
+        h3 {
+          font-size: 16px;
+        }
+      }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 import { Pipe, PipeTransform } from '@angular/core';
 
 @Pipe({
-  name: 'formatBytesPerSecond',
+  name: 'formatBytes',
   standalone: true,
   pure: true,
 })

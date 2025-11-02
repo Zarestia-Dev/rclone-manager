@@ -80,6 +80,7 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private async initializeApp(): Promise<void> {
     try {
+      await this.appSettingsService.loadSettings();
       await this.checkOnboardingStatus();
     } catch (error) {
       console.error('App initialization failed:', error);

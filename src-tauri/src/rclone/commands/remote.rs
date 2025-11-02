@@ -140,6 +140,10 @@ pub async fn continue_create_remote_interactive(
 
     let value: Value =
         serde_json::from_str(&body_text).unwrap_or_else(|_| json!({ "raw": body_text }));
+
+    app.emit("remote_presence_changed", &name)
+        .map_err(|e| format!("Failed to emit event: {e}"))?;
+
     Ok(value)
 }
 

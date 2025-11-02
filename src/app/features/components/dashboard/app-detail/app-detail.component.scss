@@ -1,184 +1,182 @@
 @use "../../../../styles/_shared_components";
 
-/* Main Container */
+// Main container
 .remote-details {
   display: flex;
   flex-direction: column;
   padding-top: var(--container-padding);
+}
 
-  /* Header Section */
-  .detail-header {
-    text-align: center;
-    margin-bottom: var(--container-gap);
+// Header
+.detail-header {
+  text-align: center;
+  margin-bottom: var(--container-gap);
 
-    .header-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--header-gap);
-      margin-bottom: var(--header-gap);
-
-      .remote-info-section {
-        display: flex;
-        align-items: center;
-        gap: var(--space-md);
-
-        .icon-container {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: var(--icon-container-size);
-          height: var(--icon-container-size);
-          border-radius: var(--icon-radius);
-          background: rgba(var(--app-text-color-rgb), var(--background-opacity));
-          border: 2px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-          transition: var(--transition-standard);
-
-          .remote-type-icon {
-            width: var(--icon-size-lg);
-            height: var(--icon-size-lg);
-            color: var(--secondary-text-color);
-            transition: var(--transition-standard);
-          }
-
-          &.sync {
-            .remote-type-icon {
-              color: var(--primary-color);
-            }
-            background: linear-gradient(
-              135deg,
-              rgba(var(--primary-color-rgb), 0.1) 0%,
-              rgba(var(--primary-color-rgb), 0.1) 100%
-            );
-            border: 2px solid rgba(var(--primary-color-rgb), 0.2);
-          }
-          &.copy {
-            .remote-type-icon {
-              color: var(--yellow);
-            }
-            background: linear-gradient(
-              135deg,
-              rgba(var(--yellow-rgb), 0.1) 0%,
-              rgba(var(--yellow-rgb), 0.1) 100%
-            );
-            border: 2px solid rgba(var(--yellow-rgb), 0.2);
-          }
-          &.move {
-            .remote-type-icon {
-              color: var(--orange);
-            }
-            background: linear-gradient(
-              135deg,
-              rgba(var(--orange-rgb), 0.1) 0%,
-              rgba(var(--orange-rgb), 0.1) 100%
-            );
-            border: 2px solid rgba(var(--orange-rgb), 0.2);
-          }
-
-          &.bisync {
-            .remote-type-icon {
-              color: var(--purple);
-            }
-            background: linear-gradient(
-              135deg,
-              rgba(var(--purple-rgb), 0.1) 0%,
-              rgba(var(--purple-rgb), 0.1) 100%
-            );
-            border: 2px solid rgba(var(--purple-rgb), 0.2);
-          }
-
-          &.mount {
-            .remote-type-icon {
-              color: var(--accent-color);
-            }
-            background: linear-gradient(
-              135deg,
-              rgba(var(--accent-color-rgb), 0.1) 0%,
-              rgba(var(--accent-color-rgb), 0.1) 100%
-            );
-            border: 2px solid rgba(var(--accent-color-rgb), 0.2);
-          }
-        }
-
-        .remote-text-info {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: var(--space-xxs);
-
-          .remote-name {
-            font-size: var(--font-size-xl);
-            font-weight: 500;
-            margin: 0;
-            color: var(--app-text-color);
-            letter-spacing: -0.5px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 300px;
-          }
-
-          .remote-type {
-            font-size: var(--font-size-base);
-            color: var(--secondary-text-color);
-            font-weight: 400;
-          }
-        }
-      }
-    }
-  }
-
-  /* Detail Content Section */
-  .detail-content {
+  .header-content {
     display: flex;
     flex-direction: column;
-    gap: var(--panel-gap);
-
-    .operation-buttons {
-      display: flex;
-      justify-content: center;
-      gap: var(--button-gap);
-      padding: var(--space-sm);
-      background: rgba(var(--app-text-color-rgb), var(--background-opacity));
-      border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-
-      .operation-button.active {
-        box-shadow: 0 0 0 2px var(--operation-color);
-      }
-    }
-
-    /* Operation Monitor Section */
-    .operation-monitor {
-      display: flex;
-      flex-direction: column;
-      gap: var(--panel-gap);
-      padding: var(--container-padding);
-    }
-
-    /* Configuration Content Section */
-    .configuration-content {
-      display: flex;
-      flex-direction: column;
-      gap: var(--panel-gap);
-      padding: var(--container-padding);
-    }
+    align-items: center;
+    gap: var(--header-gap);
+    margin-bottom: var(--header-gap);
   }
 
-  /* Operation type specific classes */
-  .sync-operation {
-    --operation-color: var(--primary-color);
-    --operation-color-rgb: var(--primary-color-rgb);
+  .remote-info-section {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
   }
 
-  .copy-operation {
-    --operation-color: var(--accent-color);
-    --operation-color-rgb: var(--accent-color-rgb);
+  .remote-text-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-xxs);
+
+    .remote-name {
+      font-size: var(--font-size-xl);
+      font-weight: 500;
+      margin: 0;
+      color: var(--app-text-color);
+      letter-spacing: -0.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 300px;
+    }
+
+    .remote-type {
+      font-size: var(--font-size-base);
+      color: var(--secondary-text-color);
+      font-weight: 400;
+    }
   }
 }
 
+// Icon container with operation states
+.icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-container-size);
+  height: var(--icon-container-size);
+  border-radius: var(--icon-radius, 12px);
+  background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+  border: 2px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+  transition: var(--transition-standard);
+
+  .remote-type-icon {
+    width: var(--icon-size-lg);
+    height: var(--icon-size-lg);
+    color: var(--secondary-text-color);
+    transition: var(--transition-standard);
+  }
+
+  // Mixin for operation states
+  @mixin operation-state($color-var, $color-rgb-var) {
+    .remote-type-icon {
+      color: var($color-var);
+    }
+    background: linear-gradient(
+      135deg,
+      rgba(var($color-rgb-var), 0.1) 0%,
+      rgba(var($color-rgb-var), 0.1) 100%
+    );
+    border: 2px solid rgba(var($color-rgb-var), 0.2);
+  }
+
+  &.sync {
+    @include operation-state(--primary-color, --primary-color-rgb);
+  }
+  &.copy {
+    @include operation-state(--yellow, --yellow-rgb);
+  }
+  &.move {
+    @include operation-state(--orange, --orange-rgb);
+  }
+  &.bisync {
+    @include operation-state(--purple, --purple-rgb);
+  }
+  &.mount {
+    @include operation-state(--accent-color, --accent-color-rgb);
+  }
+}
+
+// Content area
+.detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap);
+}
+
+// Operation buttons
+.operation-buttons {
+  display: flex;
+  justify-content: center;
+  gap: var(--button-gap);
+  padding: var(--space-sm);
+  background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+
+  .operation-button.active {
+    box-shadow: 0 0 0 2px var(--operation-color);
+  }
+}
+
+// Monitor and configuration sections
+.operation-monitor,
+.configuration-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--panel-gap);
+  padding: var(--container-padding);
+}
+
+// Settings layout
+.settings-layout {
+  display: grid;
+  gap: var(--panel-gap);
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+  border-radius: var(--icon-radius, 12px);
+
+  .group-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xxs);
+
+    .group-title {
+      margin: 0;
+      font-size: var(--font-size-lg);
+      color: var(--app-text-color);
+      font-weight: 500;
+    }
+
+    .group-description {
+      margin: 0;
+      font-size: var(--font-size-sm);
+      color: var(--secondary-text-color);
+    }
+  }
+
+  .group-panels {
+    display: flex;
+    flex-direction: column;
+    gap: var(--panel-gap);
+  }
+}
+
+// Performance graphs
 .performance-graphs {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 
   .graph-card {
@@ -195,8 +193,7 @@
     }
 
     h4 {
-      margin-top: 0;
-      margin-bottom: 12px;
+      margin: 0 0 12px 0;
       font-size: 14px;
       color: var(--app-text-color);
     }
@@ -208,15 +205,6 @@
   }
 }
 
-.visually-hidden {
-  position: absolute;
-  left: -10000px;
-  top: auto;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-}
-
 .empty-state {
   color: var(--secondary-text-color);
   font-size: 13px;
@@ -224,20 +212,24 @@
   padding: 16px 0;
 }
 
-/* Responsive Design */
+// Responsive design
 @media (max-width: 768px) {
-  .remote-details {
-    .detail-header {
-      .header-content {
-        .remote-info-section {
-          flex-direction: column;
-          gap: var(--space-xs);
-        }
-      }
-    }
+  .remote-info-section {
+    flex-direction: column !important;
+    gap: var(--space-xs) !important;
   }
 
   .performance-graphs {
     grid-template-columns: 1fr;
+  }
+
+  .settings-group {
+    padding: var(--space-sm);
+  }
+}
+
+@media (min-width: 1024px) {
+  .settings-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -56,8 +56,8 @@ export interface PanelState {
 }
 
 export interface SystemStats {
-  memoryUsage: string;
-  uptime: string;
+  memoryUsage: MemoryStats | null;
+  uptime: number;
 }
 
 export type RcloneStatus = 'active' | 'inactive' | 'error';
@@ -99,9 +99,10 @@ export interface RcloneUpdateInfo {
   update_available: boolean;
   current_version_clean: string;
   latest_version_clean: string;
-  release_notes?: string;
+  channel: string;
+  release_notes?: string; // Add release notes support
   release_date?: string;
-  download_url?: string;
+  release_url?: string;
 }
 
 export interface UpdateStatus {
@@ -143,18 +144,17 @@ export interface SettingTab {
 
 export interface SettingMetadata {
   display_name: string;
+  value_type: 'bool' | 'int' | 'string' | 'bandwidth' | 'file' | 'folder' | 'string[]';
   help_text: string;
-  value_type: 'bool' | 'number' | 'string' | 'array' | 'path' | 'file' | 'folder';
-  required?: boolean;
-  validation_type?: string; // 'regex' | 'frontend:<validatorName>' | other types
-  validation_pattern?: string;
-  validation_message?: string;
+  default: any;
+  value?: any;
   min_value?: number;
   max_value?: number;
   step?: number;
-  options?: string[];
   placeholder?: string;
-  requires_restart?: boolean;
+  options?: string[];
+  required?: boolean;
+  engine_restart?: boolean;
 }
 
 export interface SearchResult {

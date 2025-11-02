@@ -189,7 +189,7 @@ export class AppUpdaterService {
       const currentSkipped = await this.getSkippedVersions();
       if (!currentSkipped.includes(version)) {
         const newSkipped = [...currentSkipped, version];
-        await this.appSettingsService.saveSetting('general', 'skipped_updates', newSkipped);
+        await this.appSettingsService.saveSetting('runtime', 'app_skipped_updates', newSkipped);
         this.skippedVersionsSubject.next(newSkipped);
         this.updateAvailableSubject.next(null);
         this.notificationService.showInfo(`Update ${version} will be skipped`);
@@ -204,7 +204,7 @@ export class AppUpdaterService {
     try {
       const currentSkipped = await this.getSkippedVersions();
       const newSkipped = currentSkipped.filter(v => v !== version);
-      await this.appSettingsService.saveSetting('general', 'skipped_updates', newSkipped);
+      await this.appSettingsService.saveSetting('runtime', 'app_skipped_updates', newSkipped);
       this.skippedVersionsSubject.next(newSkipped);
     } catch (error) {
       console.error('Failed to unskip version:', error);
@@ -218,7 +218,9 @@ export class AppUpdaterService {
 
   async getSkippedVersions(): Promise<string[]> {
     try {
-      const skipped = await this.appSettingsService.loadSettingValue('general', 'skipped_updates');
+      const skipped = await this.appSettingsService.getSettingValue<string[]>(
+        'runtime.app_skipped_updates'
+      );
       return Array.isArray(skipped) ? skipped : [];
     } catch (error) {
       console.error('Failed to load skipped versions:', error);
@@ -228,9 +230,8 @@ export class AppUpdaterService {
 
   async getAutoCheckEnabled(): Promise<boolean> {
     try {
-      const enabled = await this.appSettingsService.loadSettingValue(
-        'general',
-        'auto_check_updates'
+      const enabled = await this.appSettingsService.getSettingValue<boolean>(
+        'runtime.app_auto_check_updates'
       );
       return enabled ?? true;
     } catch (error) {
@@ -241,7 +242,7 @@ export class AppUpdaterService {
 
   async setAutoCheckEnabled(enabled: boolean): Promise<void> {
     try {
-      await this.appSettingsService.saveSetting('general', 'auto_check_updates', enabled);
+      await this.appSettingsService.saveSetting('runtime', 'app_auto_check_updates', enabled);
     } catch (error) {
       console.error('Failed to save auto-check setting:', error);
       this.notificationService.showError('Failed to save update settings');
@@ -254,7 +255,7 @@ export class AppUpdaterService {
 
   async setChannel(channel: string): Promise<void> {
     try {
-      await this.appSettingsService.saveSetting('general', 'update_channel', channel);
+      await this.appSettingsService.saveSetting('runtime', 'app_update_channel', channel);
       this.updateChannelSubject.next(channel);
 
       // Clear update status when channel is changed
@@ -271,7 +272,9 @@ export class AppUpdaterService {
 
   async getChannel(): Promise<string> {
     try {
-      const channel = await this.appSettingsService.loadSettingValue('general', 'update_channel');
+      const channel = await this.appSettingsService.getSettingValue<string>(
+        'runtime.app_update_channel'
+      );
       return channel || 'stable';
     } catch (error) {
       console.error('Failed to load update channel:', error);

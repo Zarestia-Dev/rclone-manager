@@ -51,6 +51,36 @@
     box-shadow: var(--shadow-elevated);
   }
 
+  .setting-control {
+    .stepper-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .stepper-input.mat-mdc-form-field {
+      width: 100px;
+      flex-grow: 0;
+
+      // Center the text inside the input field
+      input {
+        display: flex;
+        justify-content: center;
+        text-align: center;
+      }
+      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+    }
+
+    // Hide the default browser spinner for number inputs for a cleaner look
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+  }
+
   .setting-info {
     flex: 1;
     min-width: 0;

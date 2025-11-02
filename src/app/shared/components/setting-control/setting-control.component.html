@@ -51,6 +51,49 @@
         </div>
       </div>
     </ng-template>
+    <ng-template #stepperInput let-opt let-inputType="inputType" let-inputStep="inputStep">
+      <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
+      <div class="setting-control">
+        <div class="stepper-container">
+          <button
+            mat-icon-button
+            class="stepper-btn"
+            [attr.aria-label]="'Decrease ' + opt.Name"
+            (mousedown)="startHold('decrement', inputStep)"
+            (touchstart.prevent)="startHold('decrement', inputStep)"
+            (mouseup)="stopHold()"
+            (mouseleave)="stopHold()"
+            (touchend)="stopHold()"
+          >
+            <mat-icon svgIcon="remove"></mat-icon>
+          </button>
+          <mat-form-field class="input-field stepper-input" appearance="fill">
+            <input
+              matInput
+              [type]="inputType"
+              [step]="inputStep"
+              [formControl]="$any(control)"
+              [attr.aria-label]="opt.Name"
+              [placeholder]="opt.DefaultStr || ''"
+              (keydown)="onIntegerInput($event)"
+              (blur)="commitValue()"
+            />
+          </mat-form-field>
+          <button
+            mat-icon-button
+            class="stepper-btn"
+            [attr.aria-label]="'Increase ' + opt.Name"
+            (mousedown)="startHold('increment', inputStep)"
+            (touchstart.prevent)="startHold('increment', inputStep)"
+            (mouseup)="stopHold()"
+            (mouseleave)="stopHold()"
+            (touchend)="stopHold()"
+          >
+            <mat-icon svgIcon="add"></mat-icon>
+          </button>
+        </div>
+      </div>
+    </ng-template>
     <ng-template #standardSelect let-opt>
       <div class="setting-full-width">
         <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
@@ -223,31 +266,38 @@
             *ngTemplateOutlet="standardInput; context: { $implicit: option }"
           ></ng-container>
         }
-
         @case ('int') {
           <ng-container
-            *ngTemplateOutlet="standardInput; context: { $implicit: option, inputType: 'number' }"
+            *ngTemplateOutlet="
+              stepperInput;
+              context: { $implicit: option, inputType: 'number', inputStep: 1 }
+            "
           ></ng-container>
         }
         @case ('int64') {
           <ng-container
-            *ngTemplateOutlet="standardInput; context: { $implicit: option, inputType: 'number' }"
+            *ngTemplateOutlet="
+              stepperInput;
+              context: { $implicit: option, inputType: 'number', inputStep: 1 }
+            "
           ></ng-container>
         }
         @case ('uint32') {
           <ng-container
-            *ngTemplateOutlet="standardInput; context: { $implicit: option, inputType: 'number' }"
+            *ngTemplateOutlet="
+              stepperInput;
+              context: { $implicit: option, inputType: 'number', inputStep: 1 }
+            "
           ></ng-container>
         }
         @case ('float64') {
           <ng-container
             *ngTemplateOutlet="
-              standardInput;
+              stepperInput;
               context: { $implicit: option, inputType: 'number', inputStep: 'any' }
             "
           ></ng-container>
         }
-
         @case ('Bits') {
           <ng-container
             *ngTemplateOutlet="

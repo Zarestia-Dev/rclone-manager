@@ -6,7 +6,7 @@ use std::{
 };
 use tauri::{AppHandle, Emitter, State};
 
-use crate::utils::types::all_types::SettingsState;
+use crate::utils::types::settings::SettingsState;
 
 /// **Remote Settings Management**
 ///

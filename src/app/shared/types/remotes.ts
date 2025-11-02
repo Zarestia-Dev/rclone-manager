@@ -20,6 +20,7 @@ export interface RemoteSettingsSection {
   key: string;
   title: string;
   icon: string;
+  group?: 'operation' | 'shared';
 }
 
 export interface MountedRemote {

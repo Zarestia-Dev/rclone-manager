@@ -16,4 +16,7 @@ export interface UpdateMetadata {
   version: string;
   currentVersion: string;
   releaseTag: string;
+  releaseNotes?: string; // Markdown content from GitHub release
+  releaseDate?: string;
+  releaseUrl?: string;
 }

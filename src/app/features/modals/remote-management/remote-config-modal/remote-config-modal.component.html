@@ -95,6 +95,7 @@
               [mountTypes]="mountTypes"
               [currentRemoteName]="getRemoteName()"
               [isNewRemote]="!editTarget"
+              [getControlKey]="getUniqueControlKey.bind(this)"
               (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
               (destFolderSelected)="handleDestFolderSelect(flagType)"
             />

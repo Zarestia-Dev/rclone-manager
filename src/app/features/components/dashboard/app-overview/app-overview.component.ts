@@ -1,5 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  Input,
+  Output,
+  ChangeDetectionStrategy,
+  inject,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -35,10 +42,11 @@ import { AnimationsService } from '../../../../shared/services/animations.servic
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppOverviewComponent {
-  @Input() mode: AppTab = 'mount'; // Default to 'mount' mode
+  readonly iconService = inject(IconService);
+
+  @Input() mode: AppTab = 'mount';
   @Input() remotes: Remote[] = [];
   @Input() selectedRemote: Remote | null = null;
-  @Input() iconService!: IconService;
   @Input() actionInProgress: RemoteActionProgress = {};
 
   @Output() remoteSelected = new EventEmitter<Remote>();
@@ -46,37 +54,26 @@ export class AppOverviewComponent {
   @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
   @Output() stopJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
 
-  // Computed properties based on mode
+  private isRemoteActive(remote: Remote): boolean {
+    if (this.mode === 'mount') {
+      return remote.mountState?.mounted === true;
+    } else if (this.mode === 'sync') {
+      return (
+        remote.syncState?.isOnSync === true ||
+        remote.copyState?.isOnCopy === true ||
+        remote.moveState?.isOnMove === true ||
+        remote.bisyncState?.isOnBisync === true
+      );
+    }
+    return false;
+  }
+
   get activeRemotes(): Remote[] {
-    return this.remotes.filter(remote => {
-      if (this.mode === 'mount') {
-        return remote.mountState?.mounted === true;
-      } else if (this.mode === 'sync') {
-        return (
-          remote.syncState?.isOnSync === true ||
-          remote.copyState?.isOnCopy === true ||
-          remote.moveState?.isOnMove === true ||
-          remote.bisyncState?.isOnBisync === true
-        );
-      }
-      return false;
-    });
+    return this.remotes.filter(remote => this.isRemoteActive(remote));
   }
 
   get inactiveRemotes(): Remote[] {
-    return this.remotes.filter(remote => {
-      if (this.mode === 'mount') {
-        return !remote.mountState?.mounted;
-      } else if (this.mode === 'sync') {
-        return (
-          !remote.syncState?.isOnSync &&
-          !remote.copyState?.isOnCopy &&
-          !remote.moveState?.isOnMove &&
-          !remote.bisyncState?.isOnBisync
-        );
-      }
-      return false;
-    });
+    return this.remotes.filter(remote => !this.isRemoteActive(remote));
   }
 
   get activeCount(): number {
@@ -141,17 +138,6 @@ export class AppOverviewComponent {
         return 'Inactive Remotes';
       default:
         return 'Inactive Remotes';
-    }
-  }
-
-  getErrorTitle(): string {
-    switch (this.mode) {
-      case 'mount':
-        return 'Remotes with Mount Errors';
-      case 'sync':
-        return 'Remotes with Sync Errors';
-      default:
-        return 'Remotes with Problems';
     }
   }
 

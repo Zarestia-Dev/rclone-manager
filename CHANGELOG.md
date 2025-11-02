@@ -1,6 +1,20 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
+
+## [Not released]
+### Added
+- Added `Whats New` to the About modal when a new version exists. It shows the new features and changes in the new version. It fetches the release notes from GitHub releases for app. For rclone, it shows the release notes from the rclone website.
+### Changed
+- Optimized the **Preferences Modal** with improved settings management, enhanced form handling, and a new reset-to-defaults function.
+- Refactored the **Dashboard** and **Security Settings** components for improved code structure and readability, including minor UI enhancements.
+- Enhanced the **Repair Sheet**: The password repair step now also allows you to change the `rclone.conf` file path, giving you more control during recovery.
+
+### Fixed
+- Fixed a critical bug where job-specific settings (like `mount` parameters or `bisync` filters) were not being saved or applied correctly.
+- Resolved several issues in the remote editing modal, including bugs related to path parsing and cloning remotes.
+- Fixed an issue where the `rclone.conf` file would remain locked after setting or changing the config password. The app now handles this automatically without requiring an engine restart.
+
 ## [v0.1.5] - 2025-10-30
 ### Added
 - Added a Backend Settings modal. You can now set the backend options globally for all remotes. If you wants to override the backend options for a specific remote, you can do it in the remote settings. (e.g. mount options, vfs options, etc.). Also added the export and import feature for the backend settings on export modal.

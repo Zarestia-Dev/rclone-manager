@@ -413,16 +413,16 @@ pub mod config {
     // /// - path - path to the config file to use
     // pub const SETPATH: &str = "config/setpath";
 
-    // /// Unlock the config file.
-    // ///
-    // /// Unlocks the config file if it is locked.
-    // ///
-    // /// Parameters:
-    // ///
-    // /// - 'config_password' - password to unlock the config file
-    // ///
-    // /// A good idea is to disable AskPassword before making this call
-    // pub const UNLOCK: &str = "config/unlock";
+    /// Unlock the config file.
+    ///
+    /// Unlocks the config file if it is locked.
+    ///
+    /// Parameters:
+    ///
+    /// - 'config_password' - password to unlock the config file
+    ///
+    /// A good idea is to disable AskPassword before making this call
+    pub const UNLOCK: &str = "config/unlock";
 
     /// Update the config for a remote.
     ///

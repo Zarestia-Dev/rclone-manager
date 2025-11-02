@@ -15,6 +15,7 @@ import { QuickActionButton } from '@app/types';
         <button
           matMiniFab
           [matTooltip]="button.tooltip"
+          matTooltipShowDelay="500"
           [disabled]="button.isDisabled"
           [class]="button.cssClass || ''"
           (click)="onButtonClick(button.id, $event)"

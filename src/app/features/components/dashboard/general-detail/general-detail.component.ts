@@ -33,6 +33,7 @@ import {
   JobsPanelComponent,
   SettingsPanelComponent,
 } from '../../../../shared/detail-shared';
+import { IconService } from 'src/app/shared/services/icon.service';
 
 interface ActionConfig {
   key: PrimaryActionType;
@@ -104,8 +105,9 @@ const ACTION_CONFIGS: ActionConfig[] = [
 })
 export class GeneralDetailComponent implements OnChanges {
   cdr = inject(ChangeDetectorRef);
+  readonly iconService = inject(IconService);
+
   @Input() selectedRemote!: Remote;
-  @Input() iconService!: { getIconName: (type: string) => string };
   @Input() jobs: JobInfo[] = [];
   @Input() restrictMode!: boolean;
 
@@ -184,7 +186,7 @@ export class GeneralDetailComponent implements OnChanges {
 
   getJobsPanelConfig(): JobsPanelConfig {
     return {
-      jobs: this.getRemoteJobs(),
+      jobs: this.jobs,
       displayedColumns: this.displayedColumns,
     };
   }
@@ -194,10 +196,6 @@ export class GeneralDetailComponent implements OnChanges {
       editTarget: 'remote',
       existingConfig: this.selectedRemote.remoteSpecs,
     });
-  }
-
-  private getRemoteJobs(): JobInfo[] {
-    return this.jobs.filter(job => job.remote_name === this.selectedRemote?.remoteSpecs.name);
   }
 
   // Accessibility helpers

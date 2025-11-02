@@ -183,23 +183,11 @@ export class ValidatorRegistryService {
       this.validatorsService.crossPlatformPathValidator()
     );
 
-    // URL validator
-    this.registerValidator('url', this.validatorsService.urlValidator());
-
-    // Port validator
-    this.registerValidator('port', this.validatorsService.portValidator());
-
-    // Port range validator
-    this.registerValidator('portRange', this.validatorsService.portRangeValidator(1024, 65535));
-
     // URL array validator (for arrays of URLs)
     this.registerValidator('urlList', this.validatorsService.urlArrayValidator());
 
     // Bandwidth format validator
     this.registerValidator('bandwidthFormat', this.validatorsService.bandwidthValidator());
-
-    // Numeric range validators
-    this.registerValidator('trayItemsRange', this.validatorsService.numericRangeValidator(1, 40));
   }
 
   /**
@@ -221,46 +209,6 @@ export class ValidatorRegistryService {
    */
   getValidatorNames(): string[] {
     return Array.from(this.validators.keys());
-  }
-
-  /**
-   * Create a validator from metadata (supports both regex and named validators)
-   */
-  createValidatorFromMetadata(metadata: {
-    validation_type?: string;
-    validation_pattern?: string;
-    validation_message?: string;
-    value_type?: string;
-  }): ValidatorFn | null {
-    // If validation_type starts with "frontend:", use the named validator
-    if (metadata.validation_type?.startsWith('frontend:')) {
-      const validatorName = metadata.validation_type.substring('frontend:'.length);
-      const validator = this.getValidator(validatorName);
-
-      if (!validator) {
-        console.warn(`Frontend validator '${validatorName}' not found in registry`);
-        return null;
-      }
-
-      return validator;
-    }
-
-    // If validation_type is "regex" or we have a validation_pattern, use regex
-    if (metadata.validation_type === 'regex' || metadata.validation_pattern) {
-      const pattern = metadata.validation_pattern;
-      const message = metadata.validation_message || 'Invalid format';
-
-      if (pattern) {
-        return this.validatorsService.regexValidator(pattern, message);
-      }
-    }
-
-    // For path types, always apply cross-platform path validation
-    if (metadata.value_type === 'path') {
-      return this.getValidator('crossPlatformPath');
-    }
-
-    return null;
   }
 
   requiredIfLocal(): ValidatorFn {
