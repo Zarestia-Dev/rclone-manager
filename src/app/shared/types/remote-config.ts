@@ -39,6 +39,7 @@ export interface MountConfig {
 
 export interface CopyConfig {
   autoStart: boolean;
+  cronEnabled?: boolean;
   source: string;
   dest: string;
   createEmptySrcDirs?: boolean;
@@ -49,6 +50,7 @@ export interface CopyConfig {
 
 export interface SyncConfig {
   autoStart: boolean;
+  cronEnabled?: boolean;
   source: string;
   dest: string;
   createEmptySrcDirs?: boolean;
@@ -74,6 +76,7 @@ export interface BackendConfig {
 
 export interface MoveConfig {
   autoStart: boolean;
+  cronEnabled?: boolean;
   source: string;
   dest: string;
   createEmptySrcDirs?: boolean;
@@ -85,6 +88,7 @@ export interface MoveConfig {
 
 export interface BisyncConfig {
   autoStart: boolean;
+  cronEnabled?: boolean;
   source: string;
   dest: string;
   dryRun?: boolean;

@@ -4,6 +4,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::task::spawn_blocking;
 
 use crate::{
+    core::scheduler::commands::SCHEDULER,
     rclone::{
         commands::{stop_job, unmount_all_remotes},
         engine::ENGINE,
@@ -68,6 +69,18 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     // Stop the mounted remote watcher
     info!("🔍 Stopping mounted remote watcher...");
     stop_mounted_remote_watcher();
+
+    // Stop the scheduler
+    info!("⏰ Stopping cron scheduler...");
+    let scheduler_stop_task = async {
+        let mut scheduler = SCHEDULER.write().await;
+        scheduler.stop().await
+    };
+
+    match scheduler_stop_task.await {
+        Ok(()) => info!("✅ Cron scheduler stopped successfully"),
+        Err(e) => error!("❌ Failed to stop cron scheduler: {e}"),
+    }
 
     // // Unregister global shortcuts
     #[cfg(desktop)]

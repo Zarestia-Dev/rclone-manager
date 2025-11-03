@@ -170,18 +170,34 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     copy: {
       flagType: 'copy',
       formPath: 'copyConfig',
-      staticFields: ['autoStart', 'source', 'dest', 'createEmptySrcDirs'],
+      staticFields: [
+        'autoStart',
+        'cronEnabled',
+        'cronExpression',
+        'source',
+        'dest',
+        'createEmptySrcDirs',
+      ],
     },
     sync: {
       flagType: 'sync',
       formPath: 'syncConfig',
-      staticFields: ['autoStart', 'source', 'dest', 'createEmptySrcDirs'],
+      staticFields: [
+        'autoStart',
+        'cronEnabled',
+        'cronExpression',
+        'source',
+        'dest',
+        'createEmptySrcDirs',
+      ],
     },
     bisync: {
       flagType: 'bisync',
       formPath: 'bisyncConfig',
       staticFields: [
         'autoStart',
+        'cronEnabled',
+        'cronExpression',
         'source',
         'dest',
         'dryRun',
@@ -205,7 +221,15 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     move: {
       flagType: 'move',
       formPath: 'moveConfig',
-      staticFields: ['autoStart', 'source', 'dest', 'createEmptySrcDirs', 'deleteEmptySrcDirs'],
+      staticFields: [
+        'autoStart',
+        'cronEnabled',
+        'cronExpression',
+        'source',
+        'dest',
+        'createEmptySrcDirs',
+        'deleteEmptySrcDirs',
+      ],
     },
     filter: { flagType: 'filter', formPath: 'filterConfig', staticFields: [] },
     vfs: { flagType: 'vfs', formPath: 'vfsConfig', staticFields: [] },
@@ -311,10 +335,26 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private createRemoteConfigForm(): FormGroup {
     return this.fb.group({
       mountConfig: this.createConfigGroup(['autoStart', 'dest', 'source', 'type']),
-      copyConfig: this.createConfigGroup(['autoStart', 'source', 'dest', 'createEmptySrcDirs']),
-      syncConfig: this.createConfigGroup(['autoStart', 'source', 'dest', 'createEmptySrcDirs']),
+      copyConfig: this.createConfigGroup([
+        'autoStart',
+        'cronEnabled',
+        'cronExpression',
+        'source',
+        'dest',
+        'createEmptySrcDirs',
+      ]),
+      syncConfig: this.createConfigGroup([
+        'autoStart',
+        'cronEnabled',
+        'cronExpression',
+        'source',
+        'dest',
+        'createEmptySrcDirs',
+      ]),
       bisyncConfig: this.createConfigGroup([
         'autoStart',
+        'cronEnabled',
+        'cronExpression',
         'source',
         'dest',
         'dryRun',
@@ -336,6 +376,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       ]),
       moveConfig: this.createConfigGroup([
         'autoStart',
+        'cronEnabled',
+        'cronExpression',
         'source',
         'dest',
         'createEmptySrcDirs',
@@ -354,6 +396,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         field.includes('Empty') ||
         field.includes('Dirs') ||
         field === 'autoStart' ||
+        field === 'cronEnabled' ||
         field === 'dryRun' ||
         field === 'resync' ||
         field === 'checkAccess' ||

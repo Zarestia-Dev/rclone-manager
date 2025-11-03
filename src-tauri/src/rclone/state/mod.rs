@@ -11,7 +11,7 @@ pub use engine::ENGINE_STATE;
 pub use job::{JOB_CACHE, delete_job, get_active_jobs, get_job_status, get_jobs};
 pub use log::{LOG_CACHE, clear_remote_logs, get_remote_logs};
 pub use scheduled_tasks::{
-    SCHEDULED_TASKS_CACHE, get_scheduled_task, get_scheduled_tasks, get_scheduled_tasks_stats,
+    get_scheduled_task, get_scheduled_tasks, get_scheduled_tasks_stats,
     reload_scheduled_tasks_from_configs,
 };
 pub use watcher::{

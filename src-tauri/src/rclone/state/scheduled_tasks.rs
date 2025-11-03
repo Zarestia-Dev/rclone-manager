@@ -51,9 +51,23 @@ impl ScheduledTasksCache {
 
             for op_type in operation_types {
                 if let Some(op_config) = config_obj.get(op_type).and_then(|v| v.as_object()) {
-                    // Check if autoStart is enabled and cronExpression exists
-                    let auto_start = op_config
-                        .get("autoStart")
+                    // Determine task type from operation type
+                    use crate::utils::types::scheduled_task::TaskType;
+
+                    let task_type = match op_type {
+                        "copyConfig" => TaskType::Copy,
+                        "syncConfig" => TaskType::Sync,
+                        "bisyncConfig" => TaskType::Bisync,
+                        "moveConfig" => TaskType::Move,
+                        _ => continue,
+                    };
+
+                    // Create task ID (hash of remote name + task type)
+                    let task_id = format!("{}-{}", remote_name, task_type.as_str());
+
+                    // Check if cronEnabled is true and cronExpression exists
+                    let cron_enabled = op_config
+                        .get("cronEnabled")
                         .and_then(|v| v.as_bool())
                         .unwrap_or(false);
 
@@ -62,19 +76,22 @@ impl ScheduledTasksCache {
                         .and_then(|v| v.as_str())
                         .map(|s| s.to_string());
 
-                    if auto_start && cron_expression.is_some() {
+                    // If task is disabled or has no cron expression, remove it from cache if it exists
+                    if !cron_enabled || cron_expression.is_none() {
+                        let mut tasks = self.tasks.write().await;
+                        if tasks.remove(&task_id).is_some() {
+                            info!(
+                                "🗑️  Removed disabled task from cache: {} - {}",
+                                remote_name,
+                                task_type.as_str()
+                            );
+                        }
+                        continue;
+                    }
+
+                    // Only load task if cronEnabled is true AND cronExpression is not empty
+                    if cron_enabled && cron_expression.is_some() {
                         let cron = cron_expression.unwrap();
-
-                        // Determine task type from operation type
-                        use crate::utils::types::scheduled_task::TaskType;
-
-                        let task_type = match op_type {
-                            "copyConfig" => TaskType::Copy,
-                            "syncConfig" => TaskType::Sync,
-                            "bisyncConfig" => TaskType::Bisync,
-                            "moveConfig" => TaskType::Move,
-                            _ => continue,
-                        };
 
                         // Extract paths
                         let source = op_config
@@ -184,9 +201,6 @@ impl ScheduledTasksCache {
                             }
                         }
 
-                        // Create task ID (hash of remote name + task type + paths)
-                        let task_id = format!("{}-{}", remote_name, task_type.as_str());
-
                         // Calculate next run
                         let next_run = get_next_run(&cron).ok();
 
@@ -222,12 +236,13 @@ impl ScheduledTasksCache {
                                 task_type: task_type.clone(),
                                 cron_expression: cron.clone(),
                                 status: TaskStatus::Enabled,
-                                args: serde_json::Value::Object(args), // <-- This has the correct args
+                                args: serde_json::Value::Object(args),
                                 created_at: chrono::Utc::now(),
                                 last_run: None,
                                 next_run,
                                 last_error: None,
                                 current_job_id: None,
+                                scheduler_job_id: None,
                                 run_count: 0,
                                 success_count: 0,
                                 failure_count: 0,
@@ -281,16 +296,6 @@ impl ScheduledTasksCache {
     pub async fn get_all_tasks(&self) -> Vec<ScheduledTask> {
         let tasks = self.tasks.read().await;
         tasks.values().cloned().collect()
-    }
-
-    /// Get tasks by status
-    pub async fn get_tasks_by_status(&self, status: TaskStatus) -> Vec<ScheduledTask> {
-        let tasks = self.tasks.read().await;
-        tasks
-            .values()
-            .filter(|task| task.status == status)
-            .cloned()
-            .collect()
     }
 
     /// Update an existing task (runtime only, not persisted)

@@ -125,17 +125,20 @@ pub async fn toggle_scheduled_task(task_id: String) -> Result<ScheduledTask, Str
 
     let task = SCHEDULED_TASKS_CACHE.toggle_task_status(&task_id).await?;
 
-    // Reschedule if now enabled
-    if task.status == crate::utils::types::scheduled_task::TaskStatus::Enabled {
-        let scheduler = SCHEDULER.read().await;
-        match scheduler.schedule_task(&task).await {
-            Ok(_) => {
-                info!("✅ Task enabled and scheduled");
-            }
-            Err(e) => {
-                error!("⚠️  Failed to schedule task: {}", e);
-            }
-        }
+    // Reload all tasks to properly schedule/unschedule
+    let scheduler = SCHEDULER.read().await;
+    if let Err(e) = scheduler.reload_tasks().await {
+        error!("⚠️  Failed to reload tasks after toggle: {}", e);
+    } else {
+        info!(
+            "✅ Task {} {}",
+            if task.status == crate::utils::types::scheduled_task::TaskStatus::Enabled {
+                "enabled and scheduled"
+            } else {
+                "disabled and unscheduled"
+            },
+            task.name
+        );
     }
 
     Ok(task)

@@ -20,7 +20,7 @@ use crate::{
         initialization::{async_startup, init_rclone_state, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
         scheduler::commands::{
-            SCHEDULER, add_scheduled_task, clear_all_scheduled_tasks, reload_scheduled_tasks,
+            add_scheduled_task, clear_all_scheduled_tasks, reload_scheduled_tasks,
             remove_scheduled_task, toggle_scheduled_task, update_scheduled_task, validate_cron,
         },
         security::{
@@ -265,21 +265,6 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 async_startup(app_handle_clone.clone(), settings).await;
                 handle_startup(app_handle_clone.clone()).await;
-
-                // Initialize and start the cron scheduler
-                // Note: Scheduled tasks will be loaded from remote configs via frontend
-                let mut scheduler = SCHEDULER.write().await;
-                if let Err(e) = scheduler.initialize(app_handle_clone.clone()).await {
-                    error!("Failed to initialize cron scheduler: {}", e);
-                } else if let Err(e) = scheduler.start().await {
-                    error!("Failed to start cron scheduler: {}", e);
-                } else {
-                    info!(
-                        "✅ Cron scheduler initialized. Tasks will be loaded from remote configs."
-                    );
-                }
-                drop(scheduler); // Release the write lock
-
                 monitor_network_changes(app_handle_clone).await;
             });
 

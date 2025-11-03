@@ -68,8 +68,12 @@ pub struct ScheduledTask {
     /// Last error message if task failed
     pub last_error: Option<String>,
 
-    /// Current job ID if task is running
+    /// Current rclone job ID if task is running
     pub current_job_id: Option<u64>,
+
+    /// Scheduler job UUID (used to unschedule the task)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scheduler_job_id: Option<String>,
 
     /// Total number of times this task has run
     pub run_count: u64,
@@ -95,6 +99,7 @@ impl ScheduledTask {
             next_run: None,
             last_error: None,
             current_job_id: None,
+            scheduler_job_id: None,
             run_count: 0,
             success_count: 0,
             failure_count: 0,
@@ -121,7 +126,14 @@ impl ScheduledTask {
         self.status = TaskStatus::Failed;
     }
 
-    /// Mark task as running
+    /// Mark task as starting execution (without job ID yet)
+    pub fn mark_starting(&mut self) {
+        self.status = TaskStatus::Running;
+        self.last_run = Some(Utc::now());
+        self.current_job_id = None;
+    }
+
+    /// Mark task as running with job ID (after operation starts)
     pub fn mark_running(&mut self, job_id: u64) {
         self.status = TaskStatus::Running;
         self.current_job_id = Some(job_id);

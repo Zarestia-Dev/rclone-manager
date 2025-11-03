@@ -20,6 +20,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatDividerModule } from '@angular/material/divider';
 import { Subject, takeUntil, Observable, of } from 'rxjs';
 import { FlagType, Entry, CronValidationResponse } from '@app/types';
 import { PathSelectionService, PathSelectionState } from '@app/services';
@@ -44,6 +45,7 @@ type PathGroup = 'source' | 'dest';
     MatSelectModule,
     MatMenuModule,
     MatExpansionModule,
+    MatDividerModule,
     TitleCasePipe,
     MatProgressSpinnerModule,
     CronInputComponent,

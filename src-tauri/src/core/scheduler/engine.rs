@@ -146,7 +146,18 @@ impl CronScheduler {
             .await
             .map_err(|e| format!("Failed to add job to scheduler: {}", e))?;
 
-        info!("📅 Scheduled task '{}' with cron: {}", task.name, cron_expr);
+        // Store the scheduler job ID in the task
+        SCHEDULED_TASKS_CACHE
+            .update_task(&task.id, |t| {
+                t.scheduler_job_id = Some(job_id.to_string());
+            })
+            .await
+            .ok(); // Ignore errors here
+
+        info!(
+            "📅 Scheduled task '{}' with cron: {} (job ID: {})",
+            task.name, cron_expr, job_id
+        );
 
         Ok(job_id)
     }
@@ -171,6 +182,36 @@ impl CronScheduler {
     /// Reload all tasks from cache and reschedule them
     pub async fn reload_tasks(&self) -> Result<(), String> {
         info!("🔄 Reloading all scheduled tasks...");
+
+        // Get all tasks to check for disabled ones
+        let all_tasks = SCHEDULED_TASKS_CACHE.get_all_tasks().await;
+        let disabled_tasks: Vec<_> = all_tasks
+            .iter()
+            .filter(|t| t.status == TaskStatus::Disabled && t.scheduler_job_id.is_some())
+            .collect();
+
+        // Unschedule disabled tasks that still have scheduler job IDs
+        if !disabled_tasks.is_empty() {
+            info!("🗑️  Unscheduling {} disabled task(s)", disabled_tasks.len());
+            for task in disabled_tasks {
+                if let Some(job_id_str) = &task.scheduler_job_id {
+                    if let Ok(job_id) = uuid::Uuid::parse_str(job_id_str) {
+                        if let Err(e) = self.unschedule_task(job_id).await {
+                            warn!("Failed to unschedule task {}: {}", task.name, e);
+                        } else {
+                            info!("✅ Unscheduled disabled task: {}", task.name);
+                            // Clear the scheduler job ID from the task
+                            SCHEDULED_TASKS_CACHE
+                                .update_task(&task.id, |t| {
+                                    t.scheduler_job_id = None;
+                                })
+                                .await
+                                .ok();
+                        }
+                    }
+                }
+            }
+        }
 
         let mut scheduler_guard = self.scheduler.write().await;
 
@@ -285,6 +326,13 @@ impl CronScheduler {
             match new_scheduler.add(job).await {
                 Ok(job_id) => {
                     info!("✅ Scheduled task: {} ({})", task.name, job_id);
+                    // Store the scheduler job ID in the task
+                    SCHEDULED_TASKS_CACHE
+                        .update_task(&task.id, |t| {
+                            t.scheduler_job_id = Some(job_id.to_string());
+                        })
+                        .await
+                        .ok();
                 }
                 Err(e) => {
                     error!("❌ Failed to schedule task {}: {}", task.name, e);
@@ -422,11 +470,10 @@ async fn execute_scheduled_task(task_id: &str, app_handle: &AppHandle) -> Result
         return Err(format!("Task cannot run (status: {:?})", task.status));
     }
 
-    // Mark task as running
+    // Mark task as starting execution
     SCHEDULED_TASKS_CACHE
         .update_task(task_id, |t| {
-            t.status = TaskStatus::Running;
-            t.last_run = Some(Utc::now());
+            t.mark_starting();
         })
         .await?;
 
@@ -441,6 +488,17 @@ async fn execute_scheduled_task(task_id: &str, app_handle: &AppHandle) -> Result
     // Update task based on result
     match result {
         Ok(job_id) => {
+            // First mark as running with the job ID
+            if let Some(rclone_job_id) = job_id {
+                SCHEDULED_TASKS_CACHE
+                    .update_task(task_id, |t| {
+                        t.mark_running(rclone_job_id);
+                    })
+                    .await
+                    .ok(); // Ignore errors, will be marked success anyway
+            }
+
+            // Then mark as success (which sets status back to Enabled)
             SCHEDULED_TASKS_CACHE
                 .update_task(task_id, |t| {
                     t.mark_success(job_id);

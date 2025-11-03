@@ -181,6 +181,8 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     }
     return this.fb.group({
       autoStart: new FormControl(false),
+      cronEnabled: new FormControl(false),
+      cronExpression: new FormControl(''),
       source: this.createOperationPathGroup('currentRemote'),
       dest: this.createOperationPathGroup('local'),
     });
@@ -398,20 +400,26 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
     const createConfig = (
-      op: any,
-      opType: 'copy' | 'sync' | 'bisync' | 'move'
-    ): { source: string; dest: string; autoStart: boolean; cronExpression?: string | null } => ({
+      op: any
+    ): {
+      source: string;
+      dest: string;
+      autoStart: boolean;
+      cronEnabled?: boolean;
+      cronExpression?: string | null;
+    } => ({
       source: this.buildPathString(op.source, remoteName),
       dest: this.buildPathString(op.dest, remoteName),
       autoStart: op.autoStart || false,
-      cronExpression: this.cronExpressions[opType] || null,
+      cronEnabled: op.cronEnabled || false,
+      cronExpression: op.cronExpression || null,
     });
     return {
-      mountConfig: { ...createConfig(operations.mount, 'copy'), type: 'mount' },
-      copyConfig: createConfig(operations.copy, 'copy'),
-      syncConfig: createConfig(operations.sync, 'sync'),
-      bisyncConfig: createConfig(operations.bisync, 'bisync'),
-      moveConfig: createConfig(operations.move, 'move'),
+      mountConfig: { ...createConfig(operations.mount), type: 'mount' },
+      copyConfig: createConfig(operations.copy),
+      syncConfig: createConfig(operations.sync),
+      bisyncConfig: createConfig(operations.bisync),
+      moveConfig: createConfig(operations.move),
       filterConfig: {},
       vfsConfig: { CacheMode: 'full', ChunkSize: '32M' },
       backendConfig: {},
