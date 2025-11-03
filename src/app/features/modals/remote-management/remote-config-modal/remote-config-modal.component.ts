@@ -26,6 +26,7 @@ import {
   MountManagementService,
   AppSettingsService,
   FileSystemService,
+  SchedulerService,
 } from '@app/services';
 import {
   BackendConfig,
@@ -91,6 +92,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private readonly mountManagementService = inject(MountManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
+  private readonly schedulerService = inject(SchedulerService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly dialogData = inject(MAT_DIALOG_DATA, { optional: true }) as DialogData; // Make injection optional
   private readonly cdRef = inject(ChangeDetectorRef);
@@ -292,6 +294,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // ============================================================================
   private createRemoteForm(): FormGroup {
     const isEditMode = this.editTarget === 'remote' && !!this.dialogData?.existingConfig;
+    console.log('Existing data for remote form:', this.dialogData?.existingConfig);
 
     return this.fb.group({
       name: [
@@ -380,6 +383,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     } else if (fields.includes('dest') && fields.includes('type')) {
       // This is mount, 'dest' is a simple control
       group['dest'] = [''];
+    }
+
+    // Add cronExpression field for non-mount configs
+    if (fields.includes('autoStart') && !fields.includes('type')) {
+      group['cronExpression'] = [null];
     }
 
     group['options'] = this.fb.group({});
@@ -554,6 +562,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         baseConfig[field] = config[field] || '';
       }
     });
+
+    // Include cronExpression if present (for non-mount configs)
+    if (config['cronExpression'] !== undefined && flagType !== 'mount') {
+      baseConfig['cronExpression'] = config['cronExpression'];
+    }
 
     return baseConfig;
   }
@@ -944,6 +957,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       }
     });
 
+    // Add cronExpression if present (for non-mount configs)
+    if (configData.cronExpression !== undefined) {
+      result.cronExpression = configData.cronExpression;
+    }
+
     // For types with static fields, place dynamic flags under an `options` object.
     result.options = this.cleanData(configData.options, this.dynamicFlagFields[flagType], flagType);
 
@@ -1186,6 +1204,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       backendConfig,
     } = finalConfig;
 
+    // Mount operations (always run immediately if autoStart is enabled)
     if (mountConfig.autoStart && mountConfig.dest) {
       await this.mountManagementService.mountRemote(
         remoteName,
@@ -1199,53 +1218,92 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       );
     }
 
-    if (copyConfig.autoStart && copyConfig.dest) {
-      await this.jobManagementService.startCopy(
-        remoteName,
-        copyConfig.source,
-        copyConfig.dest,
-        copyConfig.createEmptySrcDirs,
-        copyConfig.options,
-        filterConfig,
-        backendConfig
-      );
-    }
+    // Helper to handle operation with cron or immediate execution
+    const handleOperation = async (
+      opType: 'copy' | 'sync' | 'bisync' | 'move',
+      config: CopyConfig | SyncConfig | BisyncConfig | MoveConfig
+    ): Promise<void> => {
+      if (!config.autoStart || !config.source || !config.dest) return;
 
-    if (syncConfig.autoStart && syncConfig.dest) {
-      await this.jobManagementService.startSync(
-        remoteName,
-        syncConfig.source,
-        syncConfig.dest,
-        syncConfig.createEmptySrcDirs,
-        syncConfig.options,
-        filterConfig,
-        backendConfig
-      );
-    }
+      // If cron expression is set, create scheduled task
+      if (config.cronExpression) {
+        await this.schedulerService.addScheduledTask({
+          name: `${remoteName} - ${opType}`,
+          taskType: opType,
+          cronExpression: config.cronExpression,
+          args: {
+            remoteName,
+            source: config.source,
+            dest: config.dest,
+            options: {
+              ...config.options,
+              filterConfig,
+              backendConfig,
+              ...(opType !== 'bisync' && 'createEmptySrcDirs' in config
+                ? { createEmptySrcDirs: config.createEmptySrcDirs }
+                : {}),
+              ...(opType === 'move' && 'deleteEmptySrcDirs' in config
+                ? { deleteEmptySrcDirs: config.deleteEmptySrcDirs }
+                : {}),
+            },
+          },
+        });
+      } else {
+        // No cron: run immediately (once on startup)
+        switch (opType) {
+          case 'copy':
+            await this.jobManagementService.startCopy(
+              remoteName,
+              config.source,
+              config.dest,
+              (config as CopyConfig).createEmptySrcDirs,
+              config.options,
+              filterConfig,
+              backendConfig
+            );
+            break;
+          case 'sync':
+            await this.jobManagementService.startSync(
+              remoteName,
+              config.source,
+              config.dest,
+              (config as SyncConfig).createEmptySrcDirs,
+              config.options,
+              filterConfig,
+              backendConfig
+            );
+            break;
+          case 'bisync':
+            await this.jobManagementService.startBisync(
+              remoteName,
+              config.source,
+              config.dest,
+              config.options,
+              filterConfig,
+              backendConfig
+            );
+            break;
+          case 'move':
+            await this.jobManagementService.startMove(
+              remoteName,
+              config.source,
+              config.dest,
+              (config as MoveConfig).createEmptySrcDirs,
+              (config as MoveConfig).deleteEmptySrcDirs,
+              config.options,
+              filterConfig,
+              backendConfig
+            );
+            break;
+        }
+      }
+    };
 
-    if (bisyncConfig.autoStart && bisyncConfig.dest) {
-      await this.jobManagementService.startBisync(
-        remoteName,
-        bisyncConfig.source,
-        bisyncConfig.dest,
-        bisyncConfig.options,
-        filterConfig,
-        backendConfig
-      );
-    }
-
-    if (moveConfig.autoStart && moveConfig.dest) {
-      await this.jobManagementService.startMove(
-        remoteName,
-        moveConfig.source,
-        moveConfig.dest,
-        moveConfig.createEmptySrcDirs,
-        moveConfig.deleteEmptySrcDirs,
-        moveConfig.options,
-        filterConfig,
-        backendConfig
-      );
-    }
+    // Handle each operation type
+    await handleOperation('copy', copyConfig);
+    await handleOperation('sync', syncConfig);
+    await handleOperation('bisync', bisyncConfig);
+    await handleOperation('move', moveConfig);
   }
 
   async cancelAuth(): Promise<void> {

@@ -1,6 +1,6 @@
 use std::sync::{Arc, atomic::AtomicBool};
 
-use log::{debug, error};
+use log::{debug, error, info};
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_store::StoreBuilder;
 use tokio::sync::Mutex;
@@ -19,6 +19,10 @@ use crate::{
         check_binaries::{check_rclone_available, is_7z_available},
         initialization::{async_startup, init_rclone_state, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
+        scheduler::commands::{
+            SCHEDULER, add_scheduled_task, clear_all_scheduled_tasks, reload_scheduled_tasks,
+            remove_scheduled_task, toggle_scheduled_task, update_scheduled_task, validate_cron,
+        },
         security::{
             change_config_password, clear_config_password_env, clear_encryption_cache,
             encrypt_config, get_cached_encryption_status, get_config_password,
@@ -70,7 +74,8 @@ use crate::{
         state::{
             clear_remote_logs, delete_job, force_check_mounted_remotes, get_active_jobs,
             get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status, get_jobs,
-            get_remote_logs, get_settings,
+            get_remote_logs, get_scheduled_task, get_scheduled_tasks, get_scheduled_tasks_stats,
+            get_settings, reload_scheduled_tasks_from_configs,
         },
     },
     utils::{
@@ -260,6 +265,21 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 async_startup(app_handle_clone.clone(), settings).await;
                 handle_startup(app_handle_clone.clone()).await;
+
+                // Initialize and start the cron scheduler
+                // Note: Scheduled tasks will be loaded from remote configs via frontend
+                let mut scheduler = SCHEDULER.write().await;
+                if let Err(e) = scheduler.initialize(app_handle_clone.clone()).await {
+                    error!("Failed to initialize cron scheduler: {}", e);
+                } else if let Err(e) = scheduler.start().await {
+                    error!("Failed to start cron scheduler: {}", e);
+                } else {
+                    info!(
+                        "✅ Cron scheduler initialized. Tasks will be loaded from remote configs."
+                    );
+                }
+                drop(scheduler); // Release the write lock
+
                 monitor_network_changes(app_handle_clone).await;
             });
 
@@ -413,6 +433,18 @@ pub fn run() {
             get_job_status,
             stop_job,
             delete_job,
+            // Scheduled Tasks
+            get_scheduled_tasks,
+            get_scheduled_task,
+            get_scheduled_tasks_stats,
+            add_scheduled_task,
+            remove_scheduled_task,
+            update_scheduled_task,
+            toggle_scheduled_task,
+            validate_cron,
+            reload_scheduled_tasks,
+            reload_scheduled_tasks_from_configs,
+            clear_all_scheduled_tasks,
             // Mount
             force_check_mounted_remotes,
             get_mount_types,

@@ -113,6 +113,8 @@ export class IconService {
       tv: 'assets/icons/tv.svg',
       globe: 'assets/icons/globe.svg',
       wind: 'assets/icons/wind.svg',
+      calendar: 'assets/icons/calendar.svg',
+      clock: 'assets/icons/clock.svg',
     };
 
     this.icons = icons;

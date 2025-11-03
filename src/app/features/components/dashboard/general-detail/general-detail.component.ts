@@ -27,6 +27,7 @@ import {
   Remote,
   RemoteSettings,
   SettingsPanelConfig,
+  ScheduledTask,
 } from '@app/types';
 import {
   DiskUsagePanelComponent,
@@ -34,6 +35,9 @@ import {
   SettingsPanelComponent,
 } from '../../../../shared/detail-shared';
 import { IconService } from 'src/app/shared/services/icon.service';
+import { SchedulerService } from '@app/services';
+import { OnInit, OnDestroy } from '@angular/core';
+import { Subject, takeUntil } from 'rxjs';
 
 interface ActionConfig {
   key: PrimaryActionType;
@@ -103,9 +107,14 @@ const ACTION_CONFIGS: ActionConfig[] = [
   styleUrl: './general-detail.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GeneralDetailComponent implements OnChanges {
+export class GeneralDetailComponent implements OnChanges, OnInit, OnDestroy {
   cdr = inject(ChangeDetectorRef);
   readonly iconService = inject(IconService);
+  private readonly schedulerService = inject(SchedulerService);
+  private readonly destroy$ = new Subject<void>();
+
+  // Scheduled tasks for this remote
+  remoteScheduledTasks: ScheduledTask[] = [];
 
   @Input() selectedRemote!: Remote;
   @Input() jobs: JobInfo[] = [];
@@ -126,10 +135,46 @@ export class GeneralDetailComponent implements OnChanges {
   readonly maxPrimaryActions = 3;
   readonly actionConfigs = ACTION_CONFIGS;
 
+  ngOnInit(): void {
+    this.loadScheduledTasks();
+    this.setupScheduledTasksListener();
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['selectedRemote']) {
+      this.loadScheduledTasks();
       this.cdr.markForCheck();
     }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupScheduledTasksListener(): void {
+    this.schedulerService.scheduledTasks$.pipe(takeUntil(this.destroy$)).subscribe({
+      next: (tasks: ScheduledTask[]) => {
+        this.updateRemoteScheduledTasks(tasks);
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private loadScheduledTasks(): void {
+    this.schedulerService.getScheduledTasks().catch(err => {
+      console.error('Error loading scheduled tasks:', err);
+    });
+  }
+
+  private updateRemoteScheduledTasks(allTasks: ScheduledTask[]): void {
+    if (!this.selectedRemote) {
+      this.remoteScheduledTasks = [];
+      return;
+    }
+    this.remoteScheduledTasks = allTasks.filter(
+      task => task.args['remoteName'] === this.selectedRemote.remoteSpecs.name
+    );
   }
 
   // Action status methods
@@ -214,5 +259,32 @@ export class GeneralDetailComponent implements OnChanges {
   // Track by function for better performance
   trackByActionKey(index: number, config: ActionConfig): PrimaryActionType {
     return config.key;
+  }
+
+  trackByTaskId(index: number, task: ScheduledTask): string {
+    return task.id;
+  }
+
+  // Scheduled tasks helpers
+  get hasScheduledTasks(): boolean {
+    return this.remoteScheduledTasks.length > 0;
+  }
+
+  getFormattedNextRun(task: ScheduledTask): string {
+    if (!task.nextRun) return 'Not scheduled';
+    return new Date(task.nextRun).toLocaleString();
+  }
+
+  getFormattedLastRun(task: ScheduledTask): string {
+    if (!task.lastRun) return 'Never';
+    return new Date(task.lastRun).toLocaleString();
+  }
+
+  async toggleScheduledTask(taskId: string): Promise<void> {
+    try {
+      await this.schedulerService.toggleScheduledTask(taskId);
+    } catch (error) {
+      console.error('Error toggling scheduled task:', error);
+    }
   }
 }

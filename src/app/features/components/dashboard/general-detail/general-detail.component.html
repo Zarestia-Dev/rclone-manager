@@ -74,6 +74,153 @@
     >
     </app-jobs-panel>
 
+    <!-- Scheduled Tasks Panel -->
+    @if (hasScheduledTasks) {
+      <mat-card class="scheduled-tasks-card">
+        <mat-card-header>
+          <mat-card-title>
+            <div class="panel-title">
+              <mat-icon svgIcon="clock"></mat-icon>
+              <span>Scheduled Tasks</span>
+            </div>
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="tasks-detailed-list">
+            @for (task of remoteScheduledTasks; track trackByTaskId($index, task)) {
+              <div class="task-detail-card" [class.disabled]="task.status === 'disabled'">
+                <div class="task-detail-header">
+                  <div class="task-info">
+                    <div class="task-title-row">
+                      <mat-icon
+                        [svgIcon]="
+                          task.taskType === 'sync'
+                            ? 'sync'
+                            : task.taskType === 'copy'
+                              ? 'copy'
+                              : task.taskType === 'move'
+                                ? 'move'
+                                : 'right-left'
+                        "
+                        class="task-type-icon"
+                      ></mat-icon>
+                      <h4>{{ task.name }}</h4>
+                      <span class="task-status-badge" [ngClass]="task.status">
+                        {{ task.status | titlecase }}
+                      </span>
+                    </div>
+                    <p class="task-type-label">{{ task.taskType | titlecase }} Operation</p>
+                  </div>
+                  <button
+                    mat-icon-button
+                    (click)="toggleScheduledTask(task.id)"
+                    [matTooltip]="task.status === 'enabled' ? 'Disable task' : 'Enable task'"
+                    [color]="task.status === 'enabled' ? 'primary' : ''"
+                  >
+                    <mat-icon [svgIcon]="task.status === 'enabled' ? 'pause' : 'play'"></mat-icon>
+                  </button>
+                </div>
+
+                <mat-divider></mat-divider>
+
+                <div class="task-detail-body">
+                  <!-- Schedule Information -->
+                  <div class="detail-section">
+                    <h5 class="section-title">
+                      <mat-icon svgIcon="clock"></mat-icon>
+                      Schedule
+                    </h5>
+                    <div class="detail-grid">
+                      <div class="detail-item">
+                        <span class="label">Cron Expression:</span>
+                        <span class="value cron-expression">{{ task.cronExpression }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="label">Next Run:</span>
+                        <span class="value highlight">{{ getFormattedNextRun(task) }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="label">Last Run:</span>
+                        <span class="value">{{ getFormattedLastRun(task) }}</span>
+                      </div>
+                      <div class="detail-item">
+                        <span class="label">Created:</span>
+                        <span class="value">{{ task.createdAt | date: 'medium' }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Statistics -->
+                  <div class="detail-section">
+                    <h5 class="section-title">
+                      <mat-icon svgIcon="chart"></mat-icon>
+                      Statistics
+                    </h5>
+                    <div class="stats-grid">
+                      <div class="stat-card success">
+                        <div class="stat-value">{{ task.successCount }}</div>
+                        <div class="stat-label">Successful</div>
+                      </div>
+                      <div class="stat-card failed">
+                        <div class="stat-value">{{ task.failureCount }}</div>
+                        <div class="stat-label">Failed</div>
+                      </div>
+                      <div class="stat-card total">
+                        <div class="stat-value">{{ task.runCount }}</div>
+                        <div class="stat-label">Total Runs</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Path Information -->
+                  <div class="detail-section">
+                    <h5 class="section-title">
+                      <mat-icon svgIcon="folder"></mat-icon>
+                      Paths
+                    </h5>
+                    <div class="path-grid">
+                      <div class="path-item">
+                        <span class="path-label">Source:</span>
+                        <code class="path-value">{{ task.args['source'] }}</code>
+                      </div>
+                      <div class="path-item">
+                        <span class="path-label">Destination:</span>
+                        <code class="path-value">{{ task.args['dest'] }}</code>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Error Information -->
+                  @if (task.lastError) {
+                    <div class="detail-section error-section">
+                      <h5 class="section-title">
+                        <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
+                        Last Error
+                      </h5>
+                      <div class="error-message">
+                        {{ task.lastError }}
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Running Job -->
+                  @if (task.currentJobId) {
+                    <div class="detail-section running-section">
+                      <h5 class="section-title">
+                        <mat-icon svgIcon="play" class="running-icon"></mat-icon>
+                        Currently Running
+                      </h5>
+                      <div class="running-info">Job ID: {{ task.currentJobId }}</div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+
     <!-- Remote Configuration Panel -->
     <app-settings-panel
       [config]="getRemoteConfigurationPanelConfig()"

@@ -21,9 +21,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { Subject, takeUntil, Observable, of } from 'rxjs';
-import { FlagType, Entry } from '@app/types';
+import { FlagType, Entry, CronValidationResponse } from '@app/types';
 import { PathSelectionService, PathSelectionState } from '@app/services';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { CronInputComponent } from '@app/shared/components';
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathGroup = 'source' | 'dest';
@@ -41,8 +43,10 @@ type PathGroup = 'source' | 'dest';
     MatIconModule,
     MatSelectModule,
     MatMenuModule,
+    MatExpansionModule,
     TitleCasePipe,
     MatProgressSpinnerModule,
+    CronInputComponent,
   ],
   templateUrl: './app-operation-config.component.html',
   styleUrls: ['./app-operation-config.component.scss'],
@@ -58,6 +62,7 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
 
   @Output() sourceFolderSelected = new EventEmitter<void>();
   @Output() destFolderSelected = new EventEmitter<void>();
+  @Output() cronExpressionChange = new EventEmitter<string | null>();
 
   readonly pathSelectionService = inject(PathSelectionService);
   private readonly cdRef = inject(ChangeDetectorRef);
@@ -66,6 +71,11 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   // Observables to drive the template
   sourcePathState$!: Observable<PathSelectionState>;
   destPathState$!: Observable<PathSelectionState>;
+
+  // Cron scheduling
+  cronExpression: string | null = null;
+  cronValidationResult: CronValidationResponse | null = null;
+  isPanelExpanded = false;
 
   isMount = false;
   otherRemotes: string[] = [];
@@ -92,6 +102,7 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     this.isMount = this.operationType === 'mount';
     this.otherRemotes = this.existingRemotes.filter(r => r !== this.currentRemoteName);
     this.initializePathListeners();
+    this.initializeCronListener();
   }
 
   ngOnDestroy(): void {
@@ -242,5 +253,61 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
       return this.opFormGroup.get('source.path');
     }
     return this.isMount ? this.opFormGroup.get('dest') : this.opFormGroup.get('dest.path');
+  }
+
+  // ============================================================================
+  // CRON SCHEDULING
+  // ============================================================================
+
+  onCronChange(cron: string | null): void {
+    this.cronExpression = cron;
+    this.cronExpressionChange.emit(cron);
+    this.isPanelExpanded = !!cron;
+
+    // ⬇️ ADD THIS BLOCK ⬇️
+    // Update the parent form group's control
+    const cronControl = this.opFormGroup.get('cronExpression');
+    if (cronControl && cronControl.value !== cron) {
+      cronControl.setValue(cron, { emitEvent: false });
+    }
+  }
+
+  clearSchedule(event: Event): void {
+    event.stopPropagation(); // Prevent panel toggle
+    this.cronExpression = null;
+    this.cronExpressionChange.emit(null);
+    this.isPanelExpanded = false;
+
+    // ⬇️ ADD THIS BLOCK ⬇️
+    // Update the parent form group's control
+    const cronControl = this.opFormGroup.get('cronExpression');
+    if (cronControl && cronControl.value !== null) {
+      cronControl.setValue(null, { emitEvent: false });
+    }
+
+    this.cdRef.markForCheck();
+  }
+
+  onCronValidationChange(result: CronValidationResponse): void {
+    this.cronValidationResult = result;
+  }
+
+  private initializeCronListener(): void {
+    const cronControl = this.opFormGroup.get('cronExpression');
+    if (cronControl) {
+      // Set initial value from the form group
+      this.cronExpression = cronControl.value;
+      this.isPanelExpanded = !!this.cronExpression;
+
+      // Listen for parent form changes (e.g., modal populating)
+      cronControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
+        if (value !== this.cronExpression) {
+          // Prevent self-triggering loops
+          this.cronExpression = value;
+          this.isPanelExpanded = !!value;
+          this.cdRef.markForCheck(); // Notify change detection
+        }
+      });
+    }
   }
 }

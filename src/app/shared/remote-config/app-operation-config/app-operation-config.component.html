@@ -4,6 +4,53 @@
       Enable Auto-{{ operationType | titlecase }}
     </mat-slide-toggle>
     <p class="section-description">{{ description }}</p>
+
+    @if (opFormGroup.get('autoStart')?.value && !isMount) {
+      <mat-expansion-panel class="cron-panel" [expanded]="isPanelExpanded">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            Scheduling Options
+            @if (cronExpression) {
+              <button
+                mat-icon-button
+                class="clear-schedule-btn"
+                (click)="clearSchedule($event)"
+                matTooltip="Clear schedule (run once on startup)"
+                type="button"
+              >
+                <mat-icon svgIcon="circle-xmark"></mat-icon>
+              </button>
+            }
+          </mat-panel-title>
+          <mat-panel-description>
+            <span [class.no-schedule]="!cronExpression">
+              {{ cronExpression || 'Run once on startup' }}
+            </span>
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+        <div class="cron-content">
+          <div class="scheduling-info">
+            <mat-icon svgIcon="info" class="info-icon"></mat-icon>
+            <div class="info-text">
+              <p><strong>How scheduling works:</strong></p>
+              <ul>
+                <li><strong>No schedule:</strong> Operation runs <em>once</em> when app starts</li>
+                <li>
+                  <strong>With cron schedule:</strong> Operation runs <em>recurring</em> based on
+                  your expression
+                </li>
+              </ul>
+            </div>
+          </div>
+          <app-cron-input
+            [initialValue]="cronExpression"
+            [taskName]="operationType"
+            (cronChange)="onCronChange($event)"
+            (validationChange)="onCronValidationChange($event)"
+          ></app-cron-input>
+        </div>
+      </mat-expansion-panel>
+    }
   </div>
 
   <div class="path-section" formGroupName="source">

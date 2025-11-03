@@ -7,7 +7,8 @@
     "paths": {
       "@app/services": ["src/app/services/index.ts"],
       "@app/types": ["src/app/shared/types/index.ts"],
-      "@app/pipes": ["src/app/shared/pipes/index.ts"]
+      "@app/pipes": ["src/app/shared/pipes/index.ts"],
+      "@app/shared/components": ["src/app/shared/components/index.ts"]
     },
     "forceConsistentCasingInFileNames": true,
     "strict": true,

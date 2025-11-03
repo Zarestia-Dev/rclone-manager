@@ -39,7 +39,6 @@ import {
   GlobalStats,
   JobInfo,
   MemoryStats,
-  PanelState,
   PrimaryActionType,
   RcloneStatus,
   Remote,
@@ -54,10 +53,11 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 
 // Services
 import { AnimationsService } from '../../../../shared/services/animations.service';
-import { EventListenersService } from '@app/services';
+import { EventListenersService, SchedulerService } from '@app/services';
 import { SystemInfoService } from '@app/services';
 import { FormatBytes } from '@app/pipes';
 import { IconService } from 'src/app/shared/services/icon.service';
+import { ScheduledTask } from '@app/types';
 
 /** Polling interval for system stats in milliseconds */
 const POLLING_INTERVAL = 5000;
@@ -117,12 +117,18 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   bandwidthPanelOpenState = false;
   systemInfoPanelOpenState = false;
   jobInfoPanelOpenState = false;
+  scheduledTasksPanelOpenState = false;
+
+  // Scheduled tasks
+  scheduledTasks: ScheduledTask[] = [];
+  isLoadingScheduledTasks = false;
 
   // Private members
   private readonly PANEL_STATE_KEY = 'dashboard_panel_states';
   private eventListenersService = inject(EventListenersService);
   private destroy$ = new Subject<void>();
   private pollingSubscription: Subscription | null = null;
+  private scheduledTasksSubscription: Subscription | null = null;
   private panelStateChange$ = new Subject<void>();
   private statsUpdateDebounce$ = new Subject<void>();
 
@@ -131,6 +137,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   private ngZone = inject(NgZone);
   private snackBar = inject(MatSnackBar);
   private systemInfoService = inject(SystemInfoService);
+  private schedulerService = inject(SchedulerService);
   public iconService = inject(IconService);
 
   // Track by functions
@@ -142,6 +149,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     this.setupTauriListeners();
     this.setupPolling();
     this.loadInitialData();
+    this.setupScheduledTasksListener();
 
     // Debounce panel state changes to prevent rapid toggling
     this.panelStateChange$
@@ -163,6 +171,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     this.bandwidthPanelOpenState = true;
     this.systemInfoPanelOpenState = true;
     this.jobInfoPanelOpenState = true;
+    this.scheduledTasksPanelOpenState = true;
     this.savePanelStates();
   }
 
@@ -170,6 +179,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     this.bandwidthPanelOpenState = false;
     this.systemInfoPanelOpenState = false;
     this.jobInfoPanelOpenState = false;
+    this.scheduledTasksPanelOpenState = false;
     this.savePanelStates();
   }
 
@@ -192,9 +202,19 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     this.panelStateChange$.next();
   }
 
+  onScheduledTasksPanelStateChange(isOpen: boolean): void {
+    this.scheduledTasksPanelOpenState = isOpen;
+    this.savePanelStates();
+    this.panelStateChange$.next();
+  }
+
   // Private methods
   private cleanup(): void {
     this.stopPolling();
+    if (this.scheduledTasksSubscription) {
+      this.scheduledTasksSubscription.unsubscribe();
+      this.scheduledTasksSubscription = null;
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -313,11 +333,41 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
       });
   }
 
+  private setupScheduledTasksListener(): void {
+    // Initial load
+    this.loadScheduledTasks();
+
+    // Subscribe to updates
+    this.scheduledTasksSubscription = this.schedulerService.scheduledTasks$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (tasks: ScheduledTask[]) => {
+          this.scheduledTasks = tasks;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  private async loadScheduledTasks(): Promise<void> {
+    this.isLoadingScheduledTasks = true;
+    this.cdr.markForCheck();
+
+    try {
+      await this.schedulerService.getScheduledTasks();
+    } catch (error) {
+      console.error('Error loading scheduled tasks:', error);
+    } finally {
+      this.isLoadingScheduledTasks = false;
+      this.cdr.markForCheck();
+    }
+  }
+
   private savePanelStates(): void {
-    const state: PanelState = {
+    const state = {
       bandwidth: this.bandwidthPanelOpenState,
       system: this.systemInfoPanelOpenState,
       jobs: this.jobInfoPanelOpenState,
+      scheduledTasks: this.scheduledTasksPanelOpenState,
     };
     localStorage.setItem(this.PANEL_STATE_KEY, JSON.stringify(state));
   }
@@ -326,10 +376,11 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     const state = localStorage.getItem(this.PANEL_STATE_KEY);
     if (state) {
       try {
-        const parsed = JSON.parse(state) as PanelState;
+        const parsed = JSON.parse(state);
         this.bandwidthPanelOpenState = parsed.bandwidth ?? false;
         this.systemInfoPanelOpenState = parsed.system ?? false;
         this.jobInfoPanelOpenState = parsed.jobs ?? false;
+        this.scheduledTasksPanelOpenState = parsed.scheduledTasks ?? false;
       } catch (err) {
         console.error('Failed to parse panel state:', err);
         localStorage.removeItem(this.PANEL_STATE_KEY);
@@ -509,6 +560,38 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
       });
     } catch {
       this.snackBar.open('Failed to copy error', 'Close', {
+        duration: 2000,
+      });
+    }
+  }
+
+  // Scheduled tasks helpers
+  get activeScheduledTasksCount(): number {
+    return this.scheduledTasks.filter(task => task.status === 'enabled').length;
+  }
+
+  get totalScheduledTasksCount(): number {
+    return this.scheduledTasks.length;
+  }
+
+  getTasksByRemote(remoteName: string): ScheduledTask[] {
+    return this.scheduledTasks.filter(task => task.args['remoteName'] === remoteName);
+  }
+
+  getFormattedNextRun(task: ScheduledTask): string {
+    if (!task.nextRun) return 'Not scheduled';
+    return new Date(task.nextRun).toLocaleString();
+  }
+
+  async toggleScheduledTask(taskId: string): Promise<void> {
+    try {
+      await this.schedulerService.toggleScheduledTask(taskId);
+      this.snackBar.open('Scheduled task toggled successfully', 'Close', {
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error('Error toggling scheduled task:', error);
+      this.snackBar.open('Failed to toggle scheduled task', 'Close', {
         duration: 2000,
       });
     }

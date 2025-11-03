@@ -4,6 +4,7 @@ pub mod config_extractor;
 pub mod event_listener;
 pub mod initialization;
 pub mod lifecycle;
+pub mod scheduler;
 pub mod security;
 pub mod settings;
 pub mod spawn_helpers;

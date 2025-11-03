@@ -42,6 +42,7 @@ export interface CopyConfig {
   source: string;
   dest: string;
   createEmptySrcDirs?: boolean;
+  cronExpression?: string | null;
   options?: any;
   [key: string]: any;
 }
@@ -51,6 +52,7 @@ export interface SyncConfig {
   source: string;
   dest: string;
   createEmptySrcDirs?: boolean;
+  cronExpression?: string | null;
   options?: any;
   [key: string]: any;
 }
@@ -76,6 +78,7 @@ export interface MoveConfig {
   dest: string;
   createEmptySrcDirs?: boolean;
   deleteEmptySrcDirs?: boolean;
+  cronExpression?: string | null;
   options?: any;
   [key: string]: any;
 }
@@ -100,6 +103,7 @@ export interface BisyncConfig {
   backupdir1?: string;
   backupdir2?: string;
   noCleanup?: boolean;
+  cronExpression?: string | null;
   options?: any;
   [key: string]: any;
 }

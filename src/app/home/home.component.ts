@@ -58,6 +58,7 @@ import {
   JobManagementService,
   SystemInfoService,
   AppSettingsService,
+  SchedulerService,
 } from '@app/services';
 
 @Component({
@@ -98,6 +99,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly notificationService = inject(NotificationService);
   private readonly eventListenersService = inject(EventListenersService);
+  private readonly schedulerService = inject(SchedulerService);
   readonly systemInfoService = inject(SystemInfoService);
   readonly iconService = inject(IconService);
 
@@ -226,6 +228,20 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.remotes = this.createRemotesFromConfigs(remoteConfigs);
       await this.loadActiveJobs();
       this.loadDiskUsageInBackground(); // Fire and forget
+
+      // Load scheduled tasks from remote settings (not rclone configs)
+      try {
+        const loadedCount = await this.schedulerService.reloadScheduledTasksFromConfigs(
+          this.remoteSettings
+        );
+        await this.schedulerService.reloadScheduledTasks();
+        if (loadedCount > 0) {
+          console.log(`✅ Loaded ${loadedCount} scheduled tasks from remote settings`);
+        }
+      } catch (error) {
+        console.error('Failed to load scheduled tasks from settings:', error);
+      }
+
       this.cdr.markForCheck();
     } catch (error) {
       this.handleError('Failed to load remotes', error);

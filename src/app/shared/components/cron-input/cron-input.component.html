@@ -1,0 +1,159 @@
+<div class="cron-input-container">
+  <mat-tab-group>
+    <mat-tab label="Visual Builder">
+      <div class="tab-content">
+        <div class="preset-title">Start with a preset:</div>
+        <div class="preset-buttons">
+          <button
+            type="button"
+            class="preset-chip"
+            (click)="applyVisualPreset('hourly')"
+            matTooltip="Run every hour (at minute 0)"
+          >
+            Hourly Sync
+          </button>
+          <button
+            type="button"
+            class="preset-chip"
+            (click)="applyVisualPreset('daily')"
+            matTooltip="Run every day at 2:00 AM"
+          >
+            Daily Backup
+          </button>
+          <button
+            type="button"
+            class="preset-chip"
+            (click)="applyVisualPreset('weekly')"
+            matTooltip="Run every Sunday at 3:00 AM"
+          >
+            Weekly Archive
+          </button>
+        </div>
+        <div [formGroup]="visualForm" class="visual-builder">
+          <mat-form-field appearance="fill">
+            <mat-label>Frequency</mat-label>
+            <mat-select formControlName="frequency">
+              <mat-option value="daily">Daily</mat-option>
+              <mat-option value="weekly">Weekly</mat-option>
+              <mat-option value="monthly">Monthly</mat-option>
+              <mat-option value="custom">Custom Interval</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="fill">
+            <mat-label>Time (Local - UTC{{ userTimezone }})</mat-label>
+            <input matInput [matTimepicker]="timePicker" formControlName="time" />
+            <mat-timepicker #timePicker />
+          </mat-form-field>
+
+          @if (visualForm.get('frequency')?.value === 'weekly') {
+            <mat-form-field appearance="fill">
+              <mat-label>Day of Week</mat-label>
+              <mat-select formControlName="dayOfWeek">
+                <mat-option value="0">Sunday</mat-option>
+                <mat-option value="1">Monday</mat-option>
+                <mat-option value="2">Tuesday</mat-option>
+                <mat-option value="3">Wednesday</mat-option>
+                <mat-option value="4">Thursday</mat-option>
+                <mat-option value="5">Friday</mat-option>
+                <mat-option value="6">Saturday</mat-option>
+              </mat-select>
+            </mat-form-field>
+          }
+
+          @if (visualForm.get('frequency')?.value === 'monthly') {
+            <mat-form-field appearance="fill">
+              <mat-label>Day of Month</mat-label>
+              <mat-select formControlName="dayOfMonth">
+                @for (day of daysOfMonth; track day) {
+                  <mat-option [value]="day">{{ day }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          }
+
+          @if (visualForm.get('frequency')?.value === 'custom') {
+            <mat-form-field appearance="fill">
+              <mat-label>Every (hours)</mat-label>
+              <mat-select formControlName="intervalHours">
+                <mat-option value="1">1 hour</mat-option>
+                <mat-option value="2">2 hours</mat-option>
+                <mat-option value="3">3 hours</mat-option>
+                <mat-option value="4">4 hours</mat-option>
+                <mat-option value="6">6 hours</mat-option>
+                <mat-option value="8">8 hours</mat-option>
+                <mat-option value="12">12 hours</mat-option>
+              </mat-select>
+            </mat-form-field>
+          }
+
+          <div class="generated-preview">
+            <mat-icon svgIcon="info"></mat-icon>
+            <div class="preview-text">
+              <strong>Cron Expression:</strong>
+              <code>{{ cronControl.value || 'Configure settings above' }}</code>
+            </div>
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+
+    <mat-tab label="Manual Entry">
+      <div class="tab-content">
+        <mat-form-field appearance="fill" class="cron-field">
+          <mat-label>Cron Expression</mat-label>
+          <mat-icon matPrefix svgIcon="clock"></mat-icon>
+          <input
+            matInput
+            [formControl]="cronControl"
+            placeholder="0 0 * * * (Daily at midnight)"
+            [attr.aria-label]="'Cron expression for ' + taskName"
+          />
+          @if (cronControl.value) {
+            <button
+              matSuffix
+              mat-icon-button
+              type="button"
+              (click)="cronControl.reset()"
+              aria-label="Clear cron expression"
+            >
+              <mat-icon svgIcon="circle-xmark"></mat-icon>
+            </button>
+          }
+          @if (cronControl.hasError('invalidCron')) {
+            <mat-error>{{ validationError }}</mat-error>
+          }
+        </mat-form-field>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+
+  <div class="cron-info">
+    @if (validationResponse && validationResponse.isValid && cronControl.value) {
+      <div class="cron-description">
+        <mat-icon svgIcon="info" class="info-icon"></mat-icon>
+        <div class="description-text">
+          <strong>Schedule:</strong>
+          {{ validationResponse.humanReadable || cronControl.value }}
+        </div>
+      </div>
+      @if (validationResponse.nextRun) {
+        <div class="next-run">
+          <mat-icon svgIcon="calendar" class="calendar-icon"></mat-icon>
+          <div class="next-run-text">
+            <strong>Next run:</strong> {{ formatNextRun(validationResponse.nextRun) }}
+          </div>
+        </div>
+      }
+      <div class="timezone-note">
+        <mat-icon svgIcon="globe" class="info-icon"></mat-icon>
+        <div class="description-text">
+          <em
+            >Times are entered in your local timezone (UTC{{ userTimezone }}) and automatically
+            converted to UTC for scheduling.</em
+          >
+        </div>
+      </div>
+    }
+  </div>
+</div>

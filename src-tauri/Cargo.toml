@@ -48,6 +48,8 @@ thiserror = "2.0"
 netstat2 = "0.11.2"
 sysinfo = "0.33.1"
 tauri-plugin-shell = "2"
+tokio-cron-scheduler = "0.13.0"
+croner = "2.0.6"
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.30.1"

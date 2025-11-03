@@ -269,6 +269,113 @@
           </div>
         }
       </mat-expansion-panel>
+
+      <!-- Scheduled Tasks Panel -->
+      <mat-expansion-panel
+        [(expanded)]="scheduledTasksPanelOpenState"
+        (expandedChange)="onScheduledTasksPanelStateChange($event)"
+        class="scheduled-tasks-panel"
+        role="region"
+      >
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <div class="panel-title-content">
+              <mat-icon svgIcon="clock" class="schedule-icon" aria-hidden="true"></mat-icon>
+              <span>Scheduled Tasks</span>
+            </div>
+          </mat-panel-title>
+          <mat-panel-description>
+            <span [ngClass]="{ 'active-tasks-indicator': activeScheduledTasksCount > 0 }">
+              {{
+                totalScheduledTasksCount > 0
+                  ? activeScheduledTasksCount + ' active / ' + totalScheduledTasksCount + ' total'
+                  : 'No scheduled tasks'
+              }}
+            </span>
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        @if (isLoadingScheduledTasks) {
+          <div class="loading fade-in" aria-live="polite">
+            <mat-spinner diameter="24" aria-label="Loading scheduled tasks"></mat-spinner>
+            <span>Loading scheduled tasks...</span>
+          </div>
+        } @else {
+          <div class="scheduled-tasks-content">
+            @if (totalScheduledTasksCount === 0) {
+              <div class="no-tasks-message" role="status">
+                <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                <span
+                  >No scheduled tasks configured. Configure auto-start operations with cron
+                  expressions to create scheduled tasks.</span
+                >
+              </div>
+            } @else {
+              <div class="tasks-list">
+                @for (task of scheduledTasks; track task.id) {
+                  <div class="task-card" [class.disabled]="task.status === 'disabled'">
+                    <div class="task-header">
+                      <div class="task-name-section">
+                        <mat-icon
+                          [svgIcon]="
+                            task.taskType === 'sync'
+                              ? 'sync'
+                              : task.taskType === 'copy'
+                                ? 'copy'
+                                : task.taskType === 'move'
+                                  ? 'move'
+                                  : 'right-left'
+                          "
+                          class="task-type-icon"
+                          [matTooltip]="task.taskType | titlecase"
+                        ></mat-icon>
+                        <span class="task-name">{{ task.name }}</span>
+                        <span class="task-status-badge" [ngClass]="task.status">
+                          {{ task.status | titlecase }}
+                        </span>
+                      </div>
+                      <button
+                        mat-icon-button
+                        (click)="toggleScheduledTask(task.id)"
+                        [matTooltip]="task.status === 'enabled' ? 'Disable task' : 'Enable task'"
+                      >
+                        <mat-icon
+                          [svgIcon]="task.status === 'enabled' ? 'pause' : 'play'"
+                        ></mat-icon>
+                      </button>
+                    </div>
+                    <div class="task-details">
+                      <div class="detail-row">
+                        <span class="label">Cron:</span>
+                        <span class="value cron-expression">{{ task.cronExpression }}</span>
+                      </div>
+                      <div class="detail-row">
+                        <span class="label">Next Run:</span>
+                        <span class="value">{{ getFormattedNextRun(task) }}</span>
+                      </div>
+                      <div class="detail-row">
+                        <span class="label">Statistics:</span>
+                        <span class="value">
+                          {{ task.successCount }} success, {{ task.failureCount }} failed ({{
+                            task.runCount
+                          }}
+                          total)
+                        </span>
+                      </div>
+                      @if (task.lastError) {
+                        <div class="detail-row error-row">
+                          <span class="label">Last Error:</span>
+                          <span class="value error-text">{{ task.lastError }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </mat-expansion-panel>
     </mat-accordion>
   </div>
 </div>

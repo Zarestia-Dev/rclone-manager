@@ -3,6 +3,7 @@ export * from './system/event-listeners.service';
 export * from './system/logging.service';
 export * from './system/rclone-update.service';
 export * from './system/app-updater.service';
+export * from './system/scheduler.service';
 export * from './ui/ui-state.service';
 export * from './ui/onboarding-state.service';
 export * from './ui/window.service';

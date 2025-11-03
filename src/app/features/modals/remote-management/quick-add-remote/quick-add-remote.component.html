@@ -122,6 +122,7 @@
                     description="Automatically sync this remote to a local folder when created."
                     (destFolderSelected)="selectFolder('sync', 'dest')"
                     (sourceFolderSelected)="selectFolder('sync', 'source')"
+                    (cronExpressionChange)="onCronExpressionChange('sync', $event)"
                   ></app-operation-config>
                 </mat-tab>
 
@@ -134,6 +135,7 @@
                     description="Automatically copy this remote to a local folder when created."
                     (destFolderSelected)="selectFolder('copy', 'dest')"
                     (sourceFolderSelected)="selectFolder('copy', 'source')"
+                    (cronExpressionChange)="onCronExpressionChange('copy', $event)"
                   ></app-operation-config>
                 </mat-tab>
 
@@ -146,6 +148,7 @@
                     description="Automatically bisync this remote with a local folder when created."
                     (destFolderSelected)="selectFolder('bisync', 'dest')"
                     (sourceFolderSelected)="selectFolder('bisync', 'source')"
+                    (cronExpressionChange)="onCronExpressionChange('bisync', $event)"
                   ></app-operation-config>
                 </mat-tab>
 
@@ -158,6 +161,7 @@
                     description="Automatically move this remote to a local folder when created."
                     (destFolderSelected)="selectFolder('move', 'dest')"
                     (sourceFolderSelected)="selectFolder('move', 'source')"
+                    (cronExpressionChange)="onCronExpressionChange('move', $event)"
                   ></app-operation-config>
                 </mat-tab>
               </mat-tab-group>

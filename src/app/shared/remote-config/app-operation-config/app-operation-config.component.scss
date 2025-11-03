@@ -26,6 +26,117 @@
       color: var(--app-text-color-secondary);
       margin: 0;
     }
+
+    .cron-panel {
+      margin-top: var(--space-md);
+      background: rgba(var(--primary-color-rgb), 0.1);
+      box-shadow: none;
+
+      ::ng-deep .mat-expansion-panel-header {
+        padding: var(--space-sm) var(--space-md);
+      }
+
+      ::ng-deep .mat-expansion-panel-body {
+        padding: var(--space-md);
+      }
+
+      ::ng-deep .mat-panel-title {
+        display: flex;
+        align-items: center;
+        gap: var(--space-xxs);
+        font-weight: 500;
+
+        mat-icon {
+          font-size: 1.2rem;
+          height: 1.2rem;
+          width: 1.2rem;
+        }
+      }
+
+      ::ng-deep .mat-panel-description {
+        font-size: var(--font-size-sm);
+        color: var(--app-text-color-secondary);
+        display: flex;
+        align-items: center;
+        gap: var(--space-xs);
+        flex: 1;
+
+        .no-schedule {
+          font-style: italic;
+          opacity: 0.7;
+        }
+
+        .clear-schedule-btn {
+          width: 24px;
+          height: 24px;
+          line-height: 24px;
+          margin-left: auto;
+
+          mat-icon {
+            font-size: 14px;
+            width: 14px;
+            height: 14px;
+          }
+
+          &:hover {
+            background-color: rgba(var(--error-rgb), 0.1);
+            color: var(--error);
+          }
+        }
+      }
+
+      .cron-content {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+      }
+
+      .scheduling-info {
+        display: flex;
+        gap: var(--space-sm);
+        padding: var(--space-sm);
+        background: rgba(var(--accent-color-rgb), 0.1);
+        border-radius: var(--border-radius);
+        border-left: 3px solid var(--accent-color);
+
+        .info-icon {
+          flex-shrink: 0;
+          font-size: 1.2rem;
+          height: 1.2rem;
+          width: 1.2rem;
+          color: var(--accent-color);
+          margin-top: 2px;
+        }
+
+        .info-text {
+          font-size: var(--font-size-sm);
+          color: var(--app-text-color-secondary);
+
+          p {
+            margin: 0 0 var(--space-xxs) 0;
+          }
+
+          ul {
+            margin: 0;
+            padding-left: var(--space-md);
+
+            li {
+              margin: var(--space-xxs) 0;
+
+              strong {
+                color: var(--app-text-color);
+              }
+
+              em {
+                color: var(--accent-color);
+                font-style: normal;
+                font-weight: 500;
+              }
+            }
+          }
+        }
+      }
+    }
   }
 
   .message {
