@@ -1,6 +1,11 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Added
+- Added schedule support for sync, copy, move, and bisync operations. You can now schedule these operations to run at specific times or intervals using a cron-like syntax. You can find the scheduling options in the remote operation settings.
+- New time picker module added for better clock time selection.
+
 
 ## [v0.1.6] - 2025-11-02
 ### Added

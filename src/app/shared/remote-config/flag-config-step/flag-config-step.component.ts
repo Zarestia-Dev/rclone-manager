@@ -120,12 +120,6 @@ export class FlagConfigStepComponent implements OnChanges {
     this.destFolderSelected.emit();
   }
 
-  onCronExpressionChange(cronExpression: string | null): void {
-    console.log('Cron expression changed to:', cronExpression);
-
-    this.configGroup.patchValue({ cronExpression });
-  }
-
   get configGroup(): FormGroup {
     return this.form.get(`${this.flagType}Config`) as FormGroup;
   }

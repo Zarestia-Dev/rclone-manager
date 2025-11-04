@@ -29,6 +29,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatNativeDateModule, provideNativeDateAdapter } from '@angular/material/core';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
 import { RcConfigOption } from '@app/types';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -52,6 +53,7 @@ import { ValidatorRegistryService } from '../../services/validator-registry.serv
     MatDatepickerModule,
     MatNativeDateModule,
     ScrollingModule,
+    NgxMatTimepickerModule,
     LineBreaksPipe,
   ],
   templateUrl: './setting-control.component.html',
@@ -459,8 +461,28 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
 
   private combineDateTime(): string {
     const date = this.dateControl.value;
-    const time = this.timeControl.value || '00:00';
+    let time = this.timeControl.value || '00:00';
     if (!date) return '';
+
+    // Handle time string - extract HH:mm and handle potential AM/PM format
+    if (typeof time === 'string') {
+      // Extract just HH:mm part (remove seconds and AM/PM if present)
+      const timeMatch = time.match(/^(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        let hours = parseInt(timeMatch[1], 10);
+        const minutes = timeMatch[2];
+
+        // Handle 12-hour format if AM/PM is present
+        if (time.toLowerCase().includes('pm') && hours < 12) {
+          hours += 12;
+        } else if (time.toLowerCase().includes('am') && hours === 12) {
+          hours = 0;
+        }
+
+        time = `${hours.toString().padStart(2, '0')}:${minutes}`;
+      }
+    }
+
     // Ensure time includes minutes; we append seconds and Z to match ISO expected format
     const seconds = ':00';
     return `${date}T${time}${seconds}Z`;

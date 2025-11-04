@@ -135,6 +135,8 @@ export class GeneralDetailComponent implements OnChanges, OnInit, OnDestroy {
   readonly maxPrimaryActions = 3;
   readonly actionConfigs = ACTION_CONFIGS;
 
+  currentTaskCardIndex = 0;
+
   ngOnInit(): void {
     this.loadScheduledTasks();
     this.setupScheduledTasksListener();
@@ -170,11 +172,17 @@ export class GeneralDetailComponent implements OnChanges, OnInit, OnDestroy {
   private updateRemoteScheduledTasks(allTasks: ScheduledTask[]): void {
     if (!this.selectedRemote) {
       this.remoteScheduledTasks = [];
+      this.currentTaskCardIndex = 0;
       return;
     }
+
     this.remoteScheduledTasks = allTasks.filter(
       task => task.args['remoteName'] === this.selectedRemote.remoteSpecs.name
     );
+
+    if (this.currentTaskCardIndex >= this.remoteScheduledTasks.length) {
+      this.currentTaskCardIndex = 0;
+    }
   }
 
   // Action status methods
@@ -286,5 +294,25 @@ export class GeneralDetailComponent implements OnChanges, OnInit, OnDestroy {
     } catch (error) {
       console.error('Error toggling scheduled task:', error);
     }
+  }
+
+  nextTaskCard(): void {
+    if (this.currentTaskCardIndex < this.remoteScheduledTasks.length - 1) {
+      this.currentTaskCardIndex++;
+    }
+  }
+
+  previousTaskCard(): void {
+    if (this.currentTaskCardIndex > 0) {
+      this.currentTaskCardIndex--;
+    }
+  }
+
+  goToTaskCard(index: number): void {
+    this.currentTaskCardIndex = index;
+  }
+
+  get currentTask(): ScheduledTask | null {
+    return this.remoteScheduledTasks[this.currentTaskCardIndex] || null;
   }
 }

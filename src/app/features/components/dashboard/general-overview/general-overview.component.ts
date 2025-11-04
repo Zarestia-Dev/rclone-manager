@@ -583,17 +583,70 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     return new Date(task.nextRun).toLocaleString();
   }
 
+  getFormattedLastRun(task: ScheduledTask): string {
+    if (!task.lastRun) return 'Never';
+    return new Date(task.lastRun).toLocaleString();
+  }
+
   async toggleScheduledTask(taskId: string): Promise<void> {
     try {
       await this.schedulerService.toggleScheduledTask(taskId);
-      this.snackBar.open('Scheduled task toggled successfully', 'Close', {
-        duration: 2000,
-      });
     } catch (error) {
       console.error('Error toggling scheduled task:', error);
       this.snackBar.open('Failed to toggle scheduled task', 'Close', {
         duration: 2000,
       });
+    }
+  }
+
+  // Navigate to remote details when task is clicked
+  onTaskClick(task: ScheduledTask): void {
+    const remoteName = task.args['remoteName'];
+    if (remoteName) {
+      const remote = this.remotes.find(r => r.remoteSpecs.name === remoteName);
+      if (remote) {
+        this.selectRemote.emit(remote);
+      }
+    }
+  }
+
+  // Handle keyboard navigation for task cards
+  onTaskKeydown(event: KeyboardEvent, task: ScheduledTask): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.onTaskClick(task);
+    }
+  }
+
+  // Get task type icon
+  getTaskTypeIcon(taskType: string): string {
+    switch (taskType) {
+      case 'sync':
+        return 'sync';
+      case 'copy':
+        return 'copy';
+      case 'move':
+        return 'move';
+      case 'bisync':
+        return 'right-left';
+      default:
+        return 'circle-info';
+    }
+  }
+
+  // Get task type color class
+  getTaskTypeColor(taskType: string): string {
+    switch (taskType) {
+      case 'sync':
+        return 'sync-color';
+      case 'copy':
+        return 'copy-color';
+      case 'move':
+        return 'move-color';
+      case 'bisync':
+        return 'bisync-color';
+      default:
+        return '';
     }
   }
 }

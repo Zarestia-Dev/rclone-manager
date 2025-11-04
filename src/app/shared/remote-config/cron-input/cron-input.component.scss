@@ -1,0 +1,216 @@
+.cron-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.tab-content {
+  padding: 1rem 0;
+}
+
+// Preset buttons section
+.preset-title {
+  margin: 0 0 0.625rem 0;
+  font-size: 0.813rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.preset-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.preset-chip {
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--border-color);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.813rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  white-space: nowrap;
+
+  &:hover:not(:disabled) {
+    background-color: rgba(var(--accent-color-rgb), 0.12);
+    border-color: var(--accent-color);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// Form builders
+.visual-builder,
+.advanced-builder {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+// Info sections
+.advanced-description,
+.generated-preview {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: rgba(var(--accent-color-rgb), 0.08);
+  border-radius: 0.25rem;
+  border-left: 3px solid var(--accent-color);
+  font-size: 0.875rem;
+
+  mat-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.advanced-description {
+  margin-bottom: 1rem;
+}
+
+.preview-text {
+  flex: 1;
+  line-height: 1.5;
+
+  code {
+    display: inline-block;
+    background: rgba(0, 0, 0, 0.1);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.188rem;
+    font-family: "Courier New", monospace;
+    font-size: 0.813rem;
+    word-break: break-all;
+  }
+}
+
+// Manual entry
+.cron-field {
+  width: 100%;
+}
+
+// Validation info
+.cron-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.cron-description,
+.next-run,
+.timezone-note {
+  display: flex;
+  align-items: start;
+  gap: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.25rem;
+  border-left: 3px solid;
+}
+
+.cron-description {
+  background-color: rgba(var(--accent-color-rgb), 0.08);
+  border-left-color: var(--accent-color);
+}
+
+.next-run {
+  background-color: rgba(var(--accent-color-rgb), 0.08);
+  border-left-color: var(--accent-color);
+}
+
+.timezone-note {
+  background-color: rgba(128, 128, 128, 0.08);
+  border-left-color: #888;
+  font-size: 0.813rem;
+  font-style: italic;
+  color: var(--text-secondary);
+
+  .info-icon {
+    opacity: 0.7;
+  }
+}
+
+.info-icon,
+.calendar-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.description-text,
+.next-run-text {
+  flex: 1;
+  line-height: 1.4;
+}
+
+// Timepicker styling
+::ng-deep {
+  .ngx-mat-timepicker-field {
+    mat-icon[matsuffix] {
+      cursor: pointer;
+      color: var(--accent-color);
+      transition: transform 0.2s ease;
+
+      &:hover {
+        transform: scale(1.1);
+      }
+    }
+  }
+
+  .ngx-mat-timepicker-dialog {
+    .mat-mdc-dialog-container {
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+
+    .ngx-mat-timepicker-content {
+      padding: 1rem;
+    }
+
+    .ngx-mat-timepicker-time-display {
+      background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+      color: white;
+      padding: 1.5rem;
+      font-size: 3rem;
+      font-weight: 300;
+      letter-spacing: 0.031rem;
+    }
+
+    .ngx-mat-timepicker-toggle-button {
+      background-color: var(--accent-color);
+      color: white;
+
+      &:hover {
+        background-color: var(--accent-color-hover, var(--accent-color));
+        filter: brightness(1.1);
+      }
+    }
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .preset-buttons {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .visual-builder,
+  .advanced-builder {
+    grid-template-columns: 1fr;
+  }
+}

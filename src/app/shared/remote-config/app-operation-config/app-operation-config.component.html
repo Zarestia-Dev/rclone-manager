@@ -1,4 +1,5 @@
 <div class="operation-config" [formGroup]="opFormGroup">
+  <!-- Auto-start and Cron Scheduling Section -->
   <div class="header-section">
     <mat-slide-toggle formControlName="autoStart" class="operation-enable">
       Enable Auto-{{ operationType | titlecase }} on Startup
@@ -7,6 +8,7 @@
 
     @if (!isMount) {
       <mat-divider></mat-divider>
+
       <mat-slide-toggle formControlName="cronEnabled" class="cron-enable">
         Enable Scheduled {{ operationType | titlecase }}
       </mat-slide-toggle>
@@ -15,11 +17,11 @@
         below.
       </p>
 
-      @if (opFormGroup.get('cronEnabled')?.value) {
+      @if (isCronEnabled) {
         <mat-expansion-panel class="cron-panel" [expanded]="isPanelExpanded">
           <mat-expansion-panel-header>
-            <mat-panel-title>
-              Cron Schedule
+            <mat-panel-title> Cron Schedule </mat-panel-title>
+            <mat-panel-description>
               @if (cronExpression) {
                 <button
                   mat-icon-button
@@ -27,27 +29,18 @@
                   (click)="clearSchedule($event)"
                   matTooltip="Clear schedule"
                   type="button"
+                  aria-label="Clear cron schedule"
                 >
                   <mat-icon svgIcon="circle-xmark"></mat-icon>
                 </button>
               }
-            </mat-panel-title>
-            <mat-panel-description>
               <span [class.no-schedule]="!cronExpression">
                 {{ cronExpression || 'Not configured' }}
               </span>
             </mat-panel-description>
           </mat-expansion-panel-header>
+
           <div class="cron-content">
-            <div class="scheduling-info">
-              <mat-icon svgIcon="info" class="info-icon"></mat-icon>
-              <div class="info-text">
-                <p><strong>Configure recurring schedule:</strong></p>
-                <p>
-                  Set a cron expression to automatically run this operation at specified intervals.
-                </p>
-              </div>
-            </div>
             <app-cron-input
               [initialValue]="cronExpression"
               [taskName]="operationType"
@@ -60,6 +53,7 @@
     }
   </div>
 
+  <!-- Source Path Section -->
   <div class="path-section" formGroupName="source">
     @if (isMount) {
       @if (sourcePathState$ | async; as state) {
@@ -88,12 +82,14 @@
           >
             @if (state.isLoading) {
               <div class="loading-spinner">
-                <mat-spinner diameter="24"></mat-spinner> <span>Loading...</span>
+                <mat-spinner diameter="24"></mat-spinner>
+                <span>Loading...</span>
               </div>
             } @else {
               @if (state.currentPath) {
                 <button mat-menu-item (click)="goUp('source')">
-                  <mat-icon svgIcon="arrow-turn-up-left"></mat-icon> <span>.. (Up a folder)</span>
+                  <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+                  <span>.. (Up a folder)</span>
                 </button>
               }
               @for (entry of state.options; track trackByEntry($index, entry)) {
@@ -107,7 +103,9 @@
                 </button>
               } @empty {
                 @if (!state.isLoading && state.remoteName) {
-                  <div class="no-results"><span>No items found in this directory.</span></div>
+                  <div class="no-results">
+                    <span>No items found in this directory.</span>
+                  </div>
                 }
               }
             }
@@ -133,7 +131,8 @@
               <mat-select-trigger>
                 @switch (sourcePathType) {
                   @case ('local') {
-                    <mat-icon svgIcon="folder" class="purple"></mat-icon> <span>Local Path</span>
+                    <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                    <span>Local Path</span>
                   }
                   @case ('currentRemote') {
                     <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
@@ -145,17 +144,22 @@
                   }
                 }
               </mat-select-trigger>
+
               <mat-option value="local">
-                <mat-icon svgIcon="folder" class="purple"></mat-icon> Local Path
+                <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                Local Path
               </mat-option>
               <mat-option value="currentRemote">
-                <mat-icon svgIcon="hard-drive" class="primary"></mat-icon> {{ currentRemoteName }}:/
+                <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+                {{ currentRemoteName }}:/
               </mat-option>
+
               @if (otherRemotes.length) {
                 <mat-optgroup label="Other Remotes">
                   @for (remote of otherRemotes; track remote) {
                     <mat-option [value]="'otherRemote:' + remote">
-                      <mat-icon class="accent" svgIcon="cloud"></mat-icon> {{ remote }}:/
+                      <mat-icon class="accent" svgIcon="cloud"></mat-icon>
+                      {{ remote }}:/
                     </mat-option>
                   }
                 </mat-optgroup>
@@ -192,12 +196,14 @@
           >
             @if (state.isLoading) {
               <div class="loading-spinner">
-                <mat-spinner diameter="24"></mat-spinner> <span>Loading...</span>
+                <mat-spinner diameter="24"></mat-spinner>
+                <span>Loading...</span>
               </div>
             } @else {
               @if (state.currentPath) {
                 <button mat-menu-item (click)="goUp('source')">
-                  <mat-icon svgIcon="arrow-turn-up-left"></mat-icon> <span>.. (Up a folder)</span>
+                  <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+                  <span>.. (Up a folder)</span>
                 </button>
               }
               @for (entry of state.options; track trackByEntry($index, entry)) {
@@ -211,7 +217,9 @@
                 </button>
               } @empty {
                 @if (!state.isLoading && state.remoteName) {
-                  <div class="no-results"><span>No items found in this directory.</span></div>
+                  <div class="no-results">
+                    <span>No items found in this directory.</span>
+                  </div>
                 }
               }
             }
@@ -221,6 +229,7 @@
     }
   </div>
 
+  <!-- Destination Path Section -->
   @if (isMount) {
     <div class="path-section">
       <mat-form-field appearance="fill">
@@ -269,7 +278,8 @@
               <mat-select-trigger>
                 @switch (destPathType) {
                   @case ('local') {
-                    <mat-icon svgIcon="folder" class="purple"></mat-icon> <span>Local Path</span>
+                    <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                    <span>Local Path</span>
                   }
                   @case ('currentRemote') {
                     <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
@@ -281,17 +291,22 @@
                   }
                 }
               </mat-select-trigger>
+
               <mat-option value="local">
-                <mat-icon svgIcon="folder" class="purple"></mat-icon> Local Path
+                <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                Local Path
               </mat-option>
               <mat-option value="currentRemote">
-                <mat-icon svgIcon="hard-drive" class="primary"></mat-icon> {{ currentRemoteName }}:/
+                <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
+                {{ currentRemoteName }}:/
               </mat-option>
+
               @if (otherRemotes.length) {
                 <mat-optgroup label="Other Remotes">
                   @for (remote of otherRemotes; track remote) {
                     <mat-option [value]="'otherRemote:' + remote">
-                      <mat-icon class="accent" svgIcon="cloud"></mat-icon> {{ remote }}:/
+                      <mat-icon class="accent" svgIcon="cloud"></mat-icon>
+                      {{ remote }}:/
                     </mat-option>
                   }
                 </mat-optgroup>
@@ -331,12 +346,14 @@
           >
             @if (state.isLoading) {
               <div class="loading-spinner">
-                <mat-spinner diameter="24"></mat-spinner> <span>Loading...</span>
+                <mat-spinner diameter="24"></mat-spinner>
+                <span>Loading...</span>
               </div>
             } @else {
               @if (state.currentPath) {
                 <button mat-menu-item (click)="goUp('dest')">
-                  <mat-icon svgIcon="arrow-turn-up-left"></mat-icon> <span>.. (Up a folder)</span>
+                  <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+                  <span>.. (Up a folder)</span>
                 </button>
               }
               @for (entry of state.options; track trackByEntry($index, entry)) {
@@ -350,7 +367,9 @@
                 </button>
               } @empty {
                 @if (!state.isLoading && state.remoteName) {
-                  <div class="no-results"><span>No items found in this directory.</span></div>
+                  <div class="no-results">
+                    <span>No items found in this directory.</span>
+                  </div>
                 }
               }
             }
@@ -361,9 +380,9 @@
   }
 
   @if (isNewRemote) {
-    <div class="message warning" role="status">
+    <div class="message warning" role="alert">
       <mat-icon svgIcon="info" class="orange"></mat-icon>
-      <span> Note: Remote path completion available after creation of the remote. </span>
+      <span>Note: Remote path completion available after creation of the remote.</span>
     </div>
   }
 </div>

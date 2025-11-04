@@ -39,7 +39,7 @@
         <mat-expansion-panel-header>
           <mat-panel-title>
             <div class="panel-title-content">
-              <mat-icon svgIcon="right-left" class="bandwidth-icon" aria-hidden="true"></mat-icon>
+              <mat-icon svgIcon="right-left" class="primary" aria-hidden="true"></mat-icon>
               <span>Bandwidth Limit</span>
             </div>
           </mat-panel-title>
@@ -117,7 +117,7 @@
         <mat-expansion-panel-header>
           <mat-panel-title>
             <div class="panel-title-content">
-              <mat-icon svgIcon="question" class="info-icon" aria-hidden="true"></mat-icon>
+              <mat-icon svgIcon="question" class="orange" aria-hidden="true"></mat-icon>
               <span>System Information</span>
             </div>
           </mat-panel-title>
@@ -165,7 +165,7 @@
         <mat-expansion-panel-header>
           <mat-panel-title>
             <div class="panel-title-content">
-              <mat-icon svgIcon="jobs" class="job-icon" aria-hidden="true"></mat-icon>
+              <mat-icon svgIcon="jobs" class="yellow" aria-hidden="true"></mat-icon>
               <span>Global Job Information</span>
             </div>
           </mat-panel-title>
@@ -280,7 +280,7 @@
         <mat-expansion-panel-header>
           <mat-panel-title>
             <div class="panel-title-content">
-              <mat-icon svgIcon="clock" class="schedule-icon" aria-hidden="true"></mat-icon>
+              <mat-icon svgIcon="clock" class="accent" aria-hidden="true"></mat-icon>
               <span>Scheduled Tasks</span>
             </div>
           </mat-panel-title>
@@ -311,64 +311,99 @@
                 >
               </div>
             } @else {
-              <div class="tasks-list">
+              <div class="tasks-grid">
                 @for (task of scheduledTasks; track task.id) {
-                  <div class="task-card" [class.disabled]="task.status === 'disabled'">
+                  <div
+                    class="task-card"
+                    [class.disabled]="task.status === 'disabled'"
+                    (click)="onTaskClick(task)"
+                    (keydown)="onTaskKeydown($event, task)"
+                    role="button"
+                    tabindex="0"
+                    [attr.aria-label]="
+                      'Scheduled ' +
+                      (task.taskType | titlecase) +
+                      ' task for ' +
+                      task.args['remoteName'] +
+                      '. Status: ' +
+                      (task.status | titlecase)
+                    "
+                  >
                     <div class="task-header">
-                      <div class="task-name-section">
-                        <mat-icon
-                          [svgIcon]="
-                            task.taskType === 'sync'
-                              ? 'sync'
-                              : task.taskType === 'copy'
-                                ? 'copy'
-                                : task.taskType === 'move'
-                                  ? 'move'
-                                  : 'right-left'
-                          "
-                          class="task-type-icon"
-                          [matTooltip]="task.taskType | titlecase"
-                        ></mat-icon>
-                        <span class="task-name">{{ task.name }}</span>
-                        <span class="task-status-badge" [ngClass]="task.status">
-                          {{ task.status | titlecase }}
-                        </span>
+                      <div class="task-info-section">
+                        <div class="task-icon-wrapper" [class]="getTaskTypeColor(task.taskType)">
+                          <mat-icon
+                            [svgIcon]="getTaskTypeIcon(task.taskType)"
+                            class="task-type-icon"
+                          ></mat-icon>
+                        </div>
+                        <div class="task-title-section">
+                          <div class="task-name-row">
+                            <span class="task-name">{{ task.name }}</span>
+                            <span class="task-status-badge" [ngClass]="task.status">
+                              {{ task.status | titlecase }}
+                            </span>
+                            @if (task.currentJobId) {
+                              <div class="task-running-badge">
+                                <mat-icon svgIcon="play" class="running-icon"></mat-icon>
+                                <span>Running</span>
+                              </div>
+                            }
+                          </div>
+                          <span class="task-remote-name">{{ task.args['remoteName'] }}</span>
+                        </div>
                       </div>
                       <button
                         mat-icon-button
-                        (click)="toggleScheduledTask(task.id)"
+                        (click)="toggleScheduledTask(task.id); $event.stopPropagation()"
                         [matTooltip]="task.status === 'enabled' ? 'Disable task' : 'Enable task'"
+                        class="task-toggle-btn"
                       >
                         <mat-icon
                           [svgIcon]="task.status === 'enabled' ? 'pause' : 'play'"
                         ></mat-icon>
                       </button>
                     </div>
-                    <div class="task-details">
-                      <div class="detail-row">
-                        <span class="label">Cron:</span>
-                        <span class="value cron-expression">{{ task.cronExpression }}</span>
+
+                    <div class="task-stats">
+                      <div class="stat-item">
+                        <mat-icon svgIcon="circle-check" class="stat-icon success"></mat-icon>
+                        <span class="stat-value">{{ task.successCount }}</span>
                       </div>
-                      <div class="detail-row">
-                        <span class="label">Next Run:</span>
-                        <span class="value">{{ getFormattedNextRun(task) }}</span>
+                      <div class="stat-item">
+                        <mat-icon svgIcon="circle-exclamation" class="stat-icon error"></mat-icon>
+                        <span class="stat-value">{{ task.failureCount }}</span>
                       </div>
-                      <div class="detail-row">
-                        <span class="label">Statistics:</span>
-                        <span class="value">
-                          {{ task.successCount }} success, {{ task.failureCount }} failed ({{
-                            task.runCount
-                          }}
-                          total)
-                        </span>
+                      <div class="stat-item">
+                        <mat-icon svgIcon="clock" class="stat-icon"></mat-icon>
+                        <span class="stat-value">{{ task.runCount }}</span>
                       </div>
-                      @if (task.lastError) {
-                        <div class="detail-row error-row">
-                          <span class="label">Last Error:</span>
-                          <span class="value error-text">{{ task.lastError }}</span>
+                    </div>
+
+                    <div class="task-schedule">
+                      <div class="schedule-item">
+                        <span class="schedule-label">Next Run:</span>
+                        <span class="schedule-value">{{ getFormattedNextRun(task) }}</span>
+                      </div>
+                      @if (task.lastRun) {
+                        <div class="schedule-item">
+                          <span class="schedule-label">Last Run:</span>
+                          <span class="schedule-value">{{ getFormattedLastRun(task) }}</span>
                         </div>
                       }
                     </div>
+
+                    <div class="task-cron">
+                      <mat-icon svgIcon="code" class="cron-icon"></mat-icon>
+                      <code class="cron-expression">{{ task.cronExpression }}</code>
+                    </div>
+
+                    @if (task.lastError) {
+                      <div class="task-error">
+                        <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
+                        <span class="error-text">{{ task.lastError }}</span>
+                      </div>
+                    }
                   </div>
                 }
               </div>

@@ -1,160 +1,114 @@
 .operation-config {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xxs);
+  gap: var(--space-sm);
   padding: var(--space-md);
+}
 
-  .header-section {
+// ============================================================================
+// HEADER SECTION (Auto-start & Cron Scheduling)
+// ============================================================================
+
+.header-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 2px solid var(--primary-color);
+  border-radius: var(--panel-radius);
+  background: rgba(var(--primary-color-rgb), 0.05);
+
+  .operation-enable,
+  .cron-enable {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-xxs);
-    padding: var(--space-md);
-    margin-bottom: var(--space-sm);
-    border: 2px solid var(--primary-color);
-    border-radius: var(--panel-radius);
-    background: rgba(var(--primary-color-rgb), 0.1);
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    font-weight: 500;
+  }
 
-    .operation-enable {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      width: 100%;
-      font-weight: 500;
-    }
-    .section-description {
-      font-size: var(--font-size-sm);
-      color: var(--app-text-color-secondary);
-      margin: 0;
-    }
+  .section-description {
+    font-size: var(--font-size-sm);
+    color: var(--app-text-color-secondary);
+    margin: 0 0 var(--space-xs) 0;
+    line-height: 1.5;
 
-    .cron-panel {
-      margin-top: var(--space-md);
-      background: rgba(var(--primary-color-rgb), 0.1);
-      box-shadow: none;
-
-      ::ng-deep .mat-expansion-panel-header {
-        padding: var(--space-sm) var(--space-md);
-      }
-
-      ::ng-deep .mat-expansion-panel-body {
-        padding: var(--space-md);
-      }
-
-      ::ng-deep .mat-panel-title {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xxs);
-        font-weight: 500;
-
-        mat-icon {
-          font-size: 1.2rem;
-          height: 1.2rem;
-          width: 1.2rem;
-        }
-      }
-
-      ::ng-deep .mat-panel-description {
-        font-size: var(--font-size-sm);
-        color: var(--app-text-color-secondary);
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        flex: 1;
-
-        .no-schedule {
-          font-style: italic;
-          opacity: 0.7;
-        }
-
-        .clear-schedule-btn {
-          width: 24px;
-          height: 24px;
-          line-height: 24px;
-          margin-left: auto;
-
-          mat-icon {
-            font-size: 14px;
-            width: 14px;
-            height: 14px;
-          }
-
-          &:hover {
-            background-color: rgba(var(--error-rgb), 0.1);
-            color: var(--error);
-          }
-        }
-      }
-
-      .cron-content {
-        display: flex;
-        flex-direction: column;
-        gap: var(--space-md);
-      }
-
-      .scheduling-info {
-        display: flex;
-        gap: var(--space-sm);
-        padding: var(--space-sm);
-        background: rgba(var(--accent-color-rgb), 0.1);
-        border-radius: var(--border-radius);
-        border-left: 3px solid var(--accent-color);
-
-        .info-icon {
-          flex-shrink: 0;
-          font-size: 1.2rem;
-          height: 1.2rem;
-          width: 1.2rem;
-          color: var(--accent-color);
-          margin-top: 2px;
-        }
-
-        .info-text {
-          font-size: var(--font-size-sm);
-          color: var(--app-text-color-secondary);
-
-          p {
-            margin: 0 0 var(--space-xxs) 0;
-          }
-
-          ul {
-            margin: 0;
-            padding-left: var(--space-md);
-
-            li {
-              margin: var(--space-xxs) 0;
-
-              strong {
-                color: var(--app-text-color);
-              }
-
-              em {
-                color: var(--accent-color);
-                font-style: normal;
-                font-weight: 500;
-              }
-            }
-          }
-        }
-      }
+    strong {
+      color: var(--app-text-color);
     }
   }
 
-  .message {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xxs);
-    font-size: var(--font-size-md);
-    margin-top: var(--space-sm);
-    border-radius: var(--border-radius);
-
-    &.warning {
-      color: var(--orange);
-      background: rgba(var(--orange-rgb), 0.1);
-      padding: var(--space-xxs) var(--space-sm);
-      border: 1px solid var(--orange);
-    }
+  mat-divider {
+    margin: var(--space-sm) 0;
   }
 }
+
+// ============================================================================
+// CRON PANEL
+// ============================================================================
+
+.cron-panel {
+  margin-top: var(--space-sm);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: var(--border-radius);
+
+  ::ng-deep .mat-expansion-panel-header {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  ::ng-deep .mat-expansion-panel-body {
+    padding: var(--space-md);
+  }
+
+  ::ng-deep .mat-panel-title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-weight: 500;
+    flex: 0 0 auto;
+  }
+
+  ::ng-deep .mat-panel-description {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: var(--font-size-sm);
+    color: var(--app-text-color-secondary);
+    justify-content: flex-end;
+    margin-left: auto;
+
+    .no-schedule {
+      font-style: italic;
+      opacity: 0.7;
+    }
+
+    .clear-schedule-btn {
+      width: 28px;
+      height: 28px;
+      line-height: 28px;
+
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+      }
+
+      &:hover {
+        background-color: rgba(var(--error-rgb), 0.1);
+        color: var(--error);
+      }
+    }
+  }
+
+  .cron-content {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+// ============================================================================
+// PATH SECTIONS
+// ============================================================================
 
 .path-section {
   display: flex;
@@ -173,11 +127,9 @@
     gap: var(--space-xxs);
   }
 
+  // Mount variants (locked, no dropdown)
   &.mount-local,
   &.mount-remote {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xxs);
     padding: 19.4px;
   }
 
@@ -194,19 +146,11 @@
   ::ng-deep .mat-mdc-select-arrow-wrapper {
     display: none;
   }
-
-  /* Apply styles to the trigger */
-  ::ng-deep .mat-mdc-select-trigger {
-    transition: all 150ms ease-in-out;
-    min-width: 0;
-  }
-
   &.mount-local,
   &.local ::ng-deep .mat-mdc-select-trigger {
     background: rgba(var(--purple-rgb), 0.1);
     color: var(--purple);
   }
-
   &.mount-remote,
   &.remote ::ng-deep .mat-mdc-select-trigger {
     background: rgba(var(--primary-color-rgb), 0.1);
@@ -221,7 +165,6 @@
   &.locked {
     cursor: default;
   }
-
   mat-icon {
     font-size: 1.1rem;
     height: 1.1rem;
@@ -229,20 +172,49 @@
   }
 }
 
-.path-input-wrapper {
-  position: relative;
-}
+// ============================================================================
+// AUTOCOMPLETE MENU
+// ============================================================================
+
 ::ng-deep .mat-mdc-menu-content {
   max-height: 260px;
   overflow-y: auto;
 }
+
 .loading-spinner,
 .no-results {
   display: flex;
   align-items: center;
-  flex-direction: row;
   gap: var(--space-sm);
   padding: var(--space-sm) var(--space-md);
   color: var(--app-text-color-secondary);
   font-style: italic;
+  font-size: var(--font-size-sm);
+}
+
+// ============================================================================
+// MESSAGES
+// ============================================================================
+
+.message {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-sm);
+  margin-top: var(--space-sm);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+
+  mat-icon {
+    flex-shrink: 0;
+    font-size: 1.2rem;
+    height: 1.2rem;
+    width: 1.2rem;
+  }
+
+  &.warning {
+    color: var(--orange);
+    background: rgba(var(--orange-rgb), 0.1);
+    border: 1px solid var(--orange);
+  }
 }

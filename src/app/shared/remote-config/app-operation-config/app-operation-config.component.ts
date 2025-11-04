@@ -64,31 +64,36 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
 
   @Output() sourceFolderSelected = new EventEmitter<void>();
   @Output() destFolderSelected = new EventEmitter<void>();
-  @Output() cronExpressionChange = new EventEmitter<string | null>();
 
-  readonly pathSelectionService = inject(PathSelectionService);
+  private readonly pathSelectionService = inject(PathSelectionService);
   private readonly cdRef = inject(ChangeDetectorRef);
   private readonly destroy$ = new Subject<void>();
 
-  // Observables to drive the template
+  // Path state observables
   sourcePathState$!: Observable<PathSelectionState>;
   destPathState$!: Observable<PathSelectionState>;
 
-  // Cron scheduling
-  cronExpression: string | null = null;
-  cronValidationResult: CronValidationResponse | null = null;
-  isPanelExpanded = false;
-
+  // Component state
   isMount = false;
   otherRemotes: string[] = [];
   sourcePathType: PathType = 'currentRemote';
   destPathType: PathType = 'local';
+  isPanelExpanded = false;
 
-  get sourceFieldId(): string {
+  private get sourceFieldId(): string {
     return `${this.operationType}-source`;
   }
-  get destFieldId(): string {
+
+  private get destFieldId(): string {
     return `${this.operationType}-dest`;
+  }
+
+  get cronExpression(): string | null {
+    return this.opFormGroup.get('cronExpression')?.value || null;
+  }
+
+  get isCronEnabled(): boolean {
+    return this.opFormGroup.get('cronEnabled')?.value || false;
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -96,13 +101,13 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
       this.isMount = this.operationType === 'mount';
     }
     if (changes['existingRemotes'] || changes['currentRemoteName']) {
-      this.otherRemotes = this.existingRemotes.filter(r => r !== this.currentRemoteName);
+      this.updateOtherRemotes();
     }
   }
 
   ngOnInit(): void {
     this.isMount = this.operationType === 'mount';
-    this.otherRemotes = this.existingRemotes.filter(r => r !== this.currentRemoteName);
+    this.updateOtherRemotes();
     this.initializePathListeners();
     this.initializeCronListener();
   }
@@ -114,6 +119,14 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     this.pathSelectionService.unregisterField(this.destFieldId);
   }
 
+  // ============================================================================
+  // INITIALIZATION
+  // ============================================================================
+
+  private updateOtherRemotes(): void {
+    this.otherRemotes = this.existingRemotes.filter(r => r !== this.currentRemoteName);
+  }
+
   private initializePathListeners(): void {
     this.watchPathType('source');
     if (!this.isMount) {
@@ -121,40 +134,93 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     }
   }
 
+  private initializeCronListener(): void {
+    const cronControl = this.opFormGroup.get('cronExpression');
+    const cronEnabledControl = this.opFormGroup.get('cronEnabled');
+
+    if (cronControl) {
+      // Set initial panel state
+      this.isPanelExpanded = !!cronControl.value;
+
+      // Listen for external changes (e.g., from modal population)
+      cronControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
+        this.isPanelExpanded = !!value;
+        this.cdRef.markForCheck();
+      });
+    }
+
+    // Auto-expand panel when cron is enabled
+    if (cronEnabledControl) {
+      cronEnabledControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(enabled => {
+        if (enabled && !this.isPanelExpanded) {
+          this.isPanelExpanded = true;
+          this.cdRef.markForCheck();
+        }
+      });
+    }
+  }
+
+  // ============================================================================
+  // PATH TYPE MANAGEMENT
+  // ============================================================================
+
   private watchPathType(group: PathGroup): void {
     const formGroup = this.getFormGroup(group);
     const pathTypeControl = formGroup?.get('pathType');
     if (!pathTypeControl) return;
 
-    // Set initial state and register the field
+    // Set initial state
     this.handlePathTypeChange(group, pathTypeControl.value);
 
-    // Watch for future changes
+    // Watch for changes
     pathTypeControl.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(value => this.handlePathTypeChange(group, value));
   }
 
   private handlePathTypeChange(group: PathGroup, value: string): void {
-    this.updatePathTypeState(group, value); // Update local visual state
-    const fieldId = group === 'source' ? this.sourceFieldId : this.destFieldId;
+    this.updatePathTypeState(group, value);
+    this.registerPathField(group, value);
+    this.cdRef.markForCheck();
+  }
+
+  private updatePathTypeState(group: PathGroup, value: string): void {
+    const pathType = this.parsePathType(value);
     const remoteName = this.getRemoteNameFromValue(value);
 
-    // Unregister the old field to clear its state
+    if (group === 'source') {
+      this.sourcePathType = pathType;
+    } else {
+      this.destPathType = pathType;
+    }
+
+    // Update otherRemoteName control for display purposes
+    const otherRemoteControl = this.getFormGroup(group)?.get('otherRemoteName');
+    if (otherRemoteControl && pathType === 'otherRemote') {
+      otherRemoteControl.patchValue(remoteName || '', { emitEvent: false });
+    }
+  }
+
+  private registerPathField(group: PathGroup, pathTypeValue: string): void {
+    const fieldId = group === 'source' ? this.sourceFieldId : this.destFieldId;
+    const remoteName = this.getRemoteNameFromValue(pathTypeValue);
+
+    // Unregister old field to clear state
     this.pathSelectionService.unregisterField(fieldId);
 
-    if (remoteName && !this.isNewRemoteCurrentPath(group, value)) {
+    // Register new field if it's a remote path
+    if (remoteName && !this.isNewRemoteCurrentPath(pathTypeValue)) {
       const formGroup = this.getFormGroup(group);
       const initialPath = formGroup?.get('path')?.value || '';
-      // Register the new field, get its state observable
       const state$ = this.pathSelectionService.registerField(fieldId, remoteName, initialPath);
+
       if (group === 'source') {
         this.sourcePathState$ = state$;
       } else {
         this.destPathState$ = state$;
       }
     } else {
-      // If it's a local path, use an empty observable
+      // Use empty state for local paths
       const emptyState$ = of({} as PathSelectionState);
       if (group === 'source') {
         this.sourcePathState$ = emptyState$;
@@ -162,44 +228,29 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
         this.destPathState$ = emptyState$;
       }
     }
-
-    this.cdRef.markForCheck();
   }
 
-  public clearPathOnTypeChange(group: PathGroup): void {
-    // 1. Clear the visible input field
-    this.getFormGroup(group)?.get('path')?.setValue('');
+  clearPathOnTypeChange(group: PathGroup): void {
+    const formGroup = this.getFormGroup(group);
+    formGroup?.get('path')?.setValue('', { emitEvent: false });
 
-    // 2. Tell the service to reset its internal path state to root
     const fieldId = group === 'source' ? this.sourceFieldId : this.destFieldId;
     this.pathSelectionService.resetPath(fieldId);
   }
 
-  // This method now only updates the component's internal visual state
-  private updatePathTypeState(group: PathGroup, value: string): void {
-    const pathType = this.parsePathType(value);
-    const remoteName = this.getRemoteNameFromValue(value);
-
-    if (group === 'source') this.sourcePathType = pathType;
-    else this.destPathType = pathType;
-
-    const otherRemoteControl = this.getFormGroup(group)?.get('otherRemoteName');
-    if (otherRemoteControl) {
-      const newValue = pathType === 'otherRemote' ? remoteName : '';
-      otherRemoteControl.patchValue(newValue || '', { emitEvent: false });
-    }
-  }
-
   // ============================================================================
-  // EVENT HANDLERS
+  // PATH SELECTION EVENT HANDLERS
   // ============================================================================
 
   onInputChanged(event: Event, group: PathGroup): void {
     const value = (event.target as HTMLInputElement).value;
     const fieldId = group === 'source' ? this.sourceFieldId : this.destFieldId;
+
+    // Skip if it's a new remote and current remote is selected
     if (this.isNewRemote && this.getFormGroup(group)?.get('pathType')?.value === 'currentRemote') {
       return;
     }
+
     this.pathSelectionService.updateInput(fieldId, value);
   }
 
@@ -216,8 +267,11 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   onSelectFolder(pathType: PathGroup): void {
-    if (pathType === 'source') this.sourceFolderSelected.emit();
-    else this.destFolderSelected.emit();
+    if (pathType === 'source') {
+      this.sourceFolderSelected.emit();
+    } else {
+      this.destFolderSelected.emit();
+    }
   }
 
   trackByEntry(_index: number, entry: Entry): string {
@@ -225,7 +279,38 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   // ============================================================================
-  // HELPERS
+  // CRON SCHEDULING
+  // ============================================================================
+
+  onCronChange(cron: string | null): void {
+    const cronControl = this.opFormGroup.get('cronExpression');
+    if (cronControl && cronControl.value !== cron) {
+      cronControl.setValue(cron, { emitEvent: false });
+    }
+  }
+
+  onCronValidationChange(result: CronValidationResponse): void {
+    // Store validation result in form if needed
+    const validationControl = this.opFormGroup.get('cronValidation');
+    if (validationControl) {
+      validationControl.setValue(result, { emitEvent: false });
+    }
+  }
+
+  clearSchedule(event: Event): void {
+    event.stopPropagation();
+
+    const cronControl = this.opFormGroup.get('cronExpression');
+    if (cronControl) {
+      cronControl.setValue(null, { emitEvent: false });
+    }
+
+    this.isPanelExpanded = false;
+    this.cdRef.markForCheck();
+  }
+
+  // ============================================================================
+  // HELPER METHODS
   // ============================================================================
 
   private parsePathType(value: string): PathType {
@@ -237,16 +322,18 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
 
   private getRemoteNameFromValue(value: string): string | null {
     if (value === 'currentRemote') return this.currentRemoteName;
-    if (value?.startsWith('otherRemote:')) return value.split(':')[1] || null;
+    if (value?.startsWith('otherRemote:')) {
+      return value.substring('otherRemote:'.length) || null;
+    }
     return null;
   }
 
-  private isNewRemoteCurrentPath(group: PathGroup, pathTypeValue: string): boolean {
+  private isNewRemoteCurrentPath(pathTypeValue: string): boolean {
     return this.isNewRemote && pathTypeValue === 'currentRemote';
   }
 
   private getFormGroup(group: PathGroup): FormGroup | null {
-    const control = this.opFormGroup.get(group as string);
+    const control = this.opFormGroup.get(group);
     return control instanceof FormGroup ? control : null;
   }
 
@@ -255,61 +342,5 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
       return this.opFormGroup.get('source.path');
     }
     return this.isMount ? this.opFormGroup.get('dest') : this.opFormGroup.get('dest.path');
-  }
-
-  // ============================================================================
-  // CRON SCHEDULING
-  // ============================================================================
-
-  onCronChange(cron: string | null): void {
-    this.cronExpression = cron;
-    this.cronExpressionChange.emit(cron);
-    this.isPanelExpanded = !!cron;
-
-    // ⬇️ ADD THIS BLOCK ⬇️
-    // Update the parent form group's control
-    const cronControl = this.opFormGroup.get('cronExpression');
-    if (cronControl && cronControl.value !== cron) {
-      cronControl.setValue(cron, { emitEvent: false });
-    }
-  }
-
-  clearSchedule(event: Event): void {
-    event.stopPropagation(); // Prevent panel toggle
-    this.cronExpression = null;
-    this.cronExpressionChange.emit(null);
-    this.isPanelExpanded = false;
-
-    // ⬇️ ADD THIS BLOCK ⬇️
-    // Update the parent form group's control
-    const cronControl = this.opFormGroup.get('cronExpression');
-    if (cronControl && cronControl.value !== null) {
-      cronControl.setValue(null, { emitEvent: false });
-    }
-
-    this.cdRef.markForCheck();
-  }
-
-  onCronValidationChange(result: CronValidationResponse): void {
-    this.cronValidationResult = result;
-  }
-
-  private initializeCronListener(): void {
-    const cronControl = this.opFormGroup.get('cronExpression');
-    if (cronControl) {
-      // Set initial value from the form group
-      this.cronExpression = cronControl.value;
-      this.isPanelExpanded = !!this.cronExpression;
-
-      // Listen for parent form changes (e.g., modal populating)
-      cronControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
-        if (value !== this.cronExpression) {
-          // Prevent self-triggering loops
-          this.cronExpression = value;
-          this.isPanelExpanded = !!value;
-          this.cdRef.markForCheck(); // Notify change detection
-        }
-      });
-    }
   }
 }

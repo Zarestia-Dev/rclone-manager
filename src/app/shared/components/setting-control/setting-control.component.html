@@ -232,11 +232,13 @@
                 <mat-label>Time</mat-label>
                 <input
                   matInput
-                  type="time"
+                  [ngxMatTimepicker]="timePicker"
                   [formControl]="timeControl"
                   [attr.aria-label]="option.Name + ' time'"
-                  (blur)="commitValue()"
+                  readonly
                 />
+                <mat-icon matSuffix (click)="timePicker.open()" svgIcon="clock"></mat-icon>
+                <ngx-mat-timepicker #timePicker [enableKeyboardInput]="true"></ngx-mat-timepicker>
               </mat-form-field>
             </div>
           </div>
