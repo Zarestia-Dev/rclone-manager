@@ -151,8 +151,6 @@ Install RClone Manager from your favorite package manager.
 | **Winget**          | ![Winget](https://img.shields.io/winget/v/RClone-Manager.rclone-manager?style=flat&label=&color=2ec27e)                                                                                 | `winget install RClone-Manager.rclone-manager`                                                                                                                              |
 | **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?style=flat&logo=github" alt="Download"></a> |
 
-> 💡 **More package managers coming soon!** We have submissions under review for Flathub, Homebrew, Scoop, and Winget.
-
 ---
 
 ### 🛠️ Runtime Requirements
@@ -235,7 +233,7 @@ Known bugs and technical limitations are tracked in two places:
 
 We organize development on our [**GitHub Project Board**](https://github.com/users/Zarestia-Dev/projects/2) — track features, bugs, and long-term goals.
 
-> 🧠 **Want to influence the direction?** Star the repo, watch the project board, and share your ideas in [Discussions](https://github.com/Zarestia-Dev/rclone-manager/discussions) or [Issues](https://github.com/Zarestia-Dev/rclone-manager/issues)!
+> 🧠 **Want to influence the direction?** Star the repo, watch the project board, and share your ideas in [Discussions](https://github.com/Zarestia-Dev/discussions) or [Issues](https://github.com/Zarestia-Dev/rclone-manager/issues)!
 
 ---
 
@@ -278,7 +276,7 @@ You are free to use, modify, and distribute this software under the terms of the
 
 - 💬 [GitHub Discussions](https://github.com/Zarestia-Dev/rclone-manager/discussions) – Ask questions and chat with the community
 - 🐛 [Issue Tracker](https://github.com/Zarestia-Dev/rclone-manager/issues) – Report bugs or request features
-- 📖 [Documentation](https://github.com/Zarestia-Dev/rclone-manager/wiki) – Guides and tutorials (coming soon)
+- 📖 [Documentation](https://github.com/Zarestia-Dev/rclone-manager/wiki) – Guides and tutorials
 
 ### Stay Updated
 
