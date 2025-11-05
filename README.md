@@ -123,13 +123,15 @@ Install RClone Manager from your favorite package manager.
 | **AUR**             | [![AUR Version](https://img.shields.io/aur/version/rclone-manager?style=flat&label=)](https://aur.archlinux.org/packages/rclone-manager)                                                | `yay -S rclone-manager`                                                                                                                                                     |
 | **AUR (Git)**       | [![AUR Version](https://img.shields.io/aur/version/rclone-manager-git?style=flat&label=)](https://aur.archlinux.org/packages/rclone-manager-git)                                        | `yay -S rclone-manager-git`                                                                                                                                                 |
 | **Direct Download** | [![Latest Release](https://img.shields.io/github/v/release/Zarestia-Dev/rclone-manager?style=flat&label=&color=2ec27e)](https://github.com/Zarestia-Dev/rclone-manager/releases/latest) | <a href="https://github.com/Zarestia-Dev/rclone-manager/releases/latest"><img src="https://img.shields.io/badge/Download-3584e4?style=flat&logo=github" alt="Download"></a> |
-| **Flathub**         | ![Pending](https://img.shields.io/badge/Pending-gray?style=flat)                                                                                                                        | `flatpak install flathub xxxxxxxxxxxxxxxxxxxxx`                                                                                                                             |
+| **Flathub**         | [![Flathub](https://img.shields.io/flathub/v/io.github.zarestia_dev.rclone-manager?style=flat&label=&color=2ec27e)](https://flathub.org/en/apps/io.github.zarestia_dev.rclone-manager)  | `flatpak install io.github.zarestia_dev.rclone-manager`                                                                                                                     |
 
-<!-- <p align="left">
-  <a href="https://flathub.org/apps/io.github.rclonemanager">
+<p align="left">
+  <a href="https://flathub.org/en/apps/io.github.zarestia_dev.rclone-manager">
     <img src="https://dl.flathub.org/assets/badges/flathub-badge-en.png" alt="Download on Flathub" height="50">
   </a>
-</p> -->
+</p>
+
+> **Note:** For Linux installation instructions and troubleshooting, check the installation guide: [Installation - Linux](https://github.com/Zarestia-Dev/rclone-manager/wiki/Installation-Linux)
 
 #### 🍎 macOS
 
