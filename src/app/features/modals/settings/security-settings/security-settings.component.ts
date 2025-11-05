@@ -15,7 +15,6 @@ import {
   ValidationErrors,
 } from '@angular/forms';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { Subject } from 'rxjs';
 import { RclonePasswordService } from '@app/services';
 
@@ -210,13 +209,6 @@ export class SecuritySettingsComponent implements OnInit, OnDestroy {
   // UI Actions
   switchToEncryptionTab(): void {
     this.selectedSecurityTab = 1;
-  }
-
-  learnMoreAboutEncryption(): void {
-    openUrl('https://rclone.org/docs/#configuration-encryption').catch(err => {
-      console.error('Failed to open URL:', err);
-      this.showError('Failed to open documentation');
-    });
   }
 
   // Password Operations

@@ -4,6 +4,7 @@ import { BehaviorSubject } from 'rxjs';
 import { EventListenersService } from '../system/event-listeners.service';
 import { platform } from '@tauri-apps/plugin-os';
 import { AppTab, ToastMessage, Remote } from '@app/types';
+import { ApiClientService } from '../core/api-client.service';
 
 // ToastMessage moved to shared types
 
@@ -31,8 +32,9 @@ export class UiStateService {
   public showToast$ = this._showToast$.asObservable();
 
   // Window and platform
-  public platform = platform();
+  public platform: string;
   private windowService = inject(WindowService);
+  private apiClient = inject(ApiClientService);
 
   // Viewport settings configuration
   private viewportSettings = {
@@ -53,6 +55,16 @@ export class UiStateService {
   private eventListenersService = inject(EventListenersService);
 
   constructor() {
+    // Initialize platform safely for headless mode
+    if (this.apiClient.isHeadless()) {
+      this.platform = 'web';
+    } else {
+      try {
+        this.platform = platform();
+      } catch {
+        this.platform = 'linux'; // Fallback
+      }
+    }
     this.initializeMaximizeListener();
     this.setupRemoteDeletionListener();
   }

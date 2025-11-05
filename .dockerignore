@@ -1,0 +1,77 @@
+# Docker ignore file for RClone Manager
+# This prevents unnecessary files from being sent to Docker build context
+
+# Node modules
+node_modules/
+npm-debug.log*
+
+# Build outputs
+dist/
+.angular/
+target/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+
+# Test files
+*.spec.ts
+*.test.ts
+e2e/
+cypress/
+
+# Environment files (keep these local)
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Logs
+logs/
+*.log
+
+# Cache
+.cache/
+.npm/
+.eslintcache
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+azure-pipelines.yml
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Rust debug builds (we only need release)
+src-tauri/target/debug/
+
+# Tauri specific
+src-tauri/gen/
+
+# Docker files (don't include in build context)
+Dockerfile
+docker-compose*.yml
+.dockerignore

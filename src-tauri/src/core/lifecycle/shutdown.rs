@@ -82,14 +82,23 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         Err(e) => error!("❌ Failed to stop cron scheduler: {e}"),
     }
 
-    // // Unregister global shortcuts
+    // Unregister global shortcuts (only if plugin is available)
+    // In headless mode, the global shortcut plugin is not initialized, so we skip this
     #[cfg(desktop)]
     {
-        use crate::utils::shortcuts::unregister_global_shortcuts;
+        // Check if global shortcut plugin is available before trying to use it
+        if app_handle
+            .try_state::<tauri_plugin_global_shortcut::GlobalShortcut<tauri::Wry>>()
+            .is_some()
+        {
+            use crate::utils::shortcuts::unregister_global_shortcuts;
 
-        info!("⌨️ Unregistering global shortcuts...");
-        if let Err(e) = unregister_global_shortcuts(&app_handle) {
-            error!("Failed to unregister global shortcuts: {e}");
+            info!("⌨️ Unregistering global shortcuts...");
+            if let Err(e) = unregister_global_shortcuts(&app_handle) {
+                error!("Failed to unregister global shortcuts: {e}");
+            }
+        } else {
+            debug!("Global shortcut plugin not available, skipping unregister");
         }
     }
 
