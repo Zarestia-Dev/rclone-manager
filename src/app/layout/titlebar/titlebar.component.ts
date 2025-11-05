@@ -58,7 +58,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   appUpdaterService = inject(AppUpdaterService);
   rcloneUpdateService = inject(RcloneUpdateService);
 
-  isMacOS = false;
+  windowButtons = true;
   connectionStatus: ConnectionStatus = 'online';
   connectionHistory: { timestamp: Date; result: CheckResult }[] = [];
   result?: CheckResult;
@@ -70,8 +70,8 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   currentTheme$ = this.windowService.theme$;
 
   constructor() {
-    if (this.uiStateService.platform === 'macos') {
-      this.isMacOS = true;
+    if (this.uiStateService.platform === 'macos' || this.uiStateService.platform === 'web') {
+      this.windowButtons = false;
     }
   }
 

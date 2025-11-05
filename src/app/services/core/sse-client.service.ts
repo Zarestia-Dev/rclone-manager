@@ -1,0 +1,128 @@
+import { Injectable, OnDestroy } from '@angular/core';
+import { Observable, Subject } from 'rxjs';
+
+export interface SseEvent {
+  event: string;
+  payload: unknown;
+}
+
+/**
+ * Server-Sent Events (SSE) client for headless mode
+ * Replaces Tauri event listeners when running in web mode
+ */
+@Injectable({
+  providedIn: 'root',
+})
+export class SseClientService implements OnDestroy {
+  private eventSource: EventSource | null = null;
+  private eventSubject = new Subject<SseEvent>();
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectDelay = 1000; // Start with 1 second
+
+  /**
+   * Connect to the SSE endpoint
+   */
+  connect(url = 'http://localhost:8080/api/events'): void {
+    if (this.eventSource) {
+      console.warn('SSE already connected');
+      return;
+    }
+
+    this.createEventSource(url);
+  }
+
+  /**
+   * Disconnect from SSE
+   */
+  disconnect(): void {
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+      console.log('🔌 SSE disconnected');
+    }
+  }
+
+  /**
+   * Listen to a specific event
+   */
+  listen<T = unknown>(eventName: string): Observable<T> {
+    return new Observable(observer => {
+      const subscription = this.eventSubject.subscribe(event => {
+        if (event.event === eventName) {
+          observer.next(event.payload as T);
+        }
+      });
+
+      return () => subscription.unsubscribe();
+    });
+  }
+
+  /**
+   * Listen to all events
+   */
+  listenAll(): Observable<SseEvent> {
+    return this.eventSubject.asObservable();
+  }
+
+  private createEventSource(url: string): void {
+    console.log('🔌 Connecting to SSE:', url);
+    this.eventSource = new EventSource(url);
+
+    this.eventSource.onopen = (): void => {
+      console.log('✅ SSE connected');
+      this.reconnectAttempts = 0;
+      this.reconnectDelay = 1000;
+    };
+
+    this.eventSource.onerror = (error): void => {
+      console.error('❌ SSE connection error:', error);
+      this.eventSource?.close();
+      this.eventSource = null;
+
+      // Attempt to reconnect with exponential backoff
+      if (this.reconnectAttempts < this.maxReconnectAttempts) {
+        this.reconnectAttempts++;
+        const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+        console.log(`🔄 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})...`);
+
+        setTimeout(() => {
+          this.createEventSource(url);
+        }, delay);
+      } else {
+        console.error('❌ Max reconnection attempts reached. Giving up.');
+      }
+    };
+
+    // Handle all incoming messages with a generic handler
+    this.eventSource.onmessage = (event): void => {
+      if (event.data === 'keep-alive') {
+        return; // Ignore keep-alive messages
+      }
+
+      try {
+        const data = JSON.parse(event.data);
+        // The backend sends { event: string, payload: any }
+        if (data.event && data.payload !== undefined) {
+          this.eventSubject.next({
+            event: data.event,
+            payload: data.payload,
+          });
+        } else {
+          // Fallback for simple messages
+          this.eventSubject.next({
+            event: event.type || 'message',
+            payload: data,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to parse SSE message:', error);
+      }
+    };
+  }
+
+  ngOnDestroy(): void {
+    this.disconnect();
+    this.eventSubject.complete();
+  }
+}

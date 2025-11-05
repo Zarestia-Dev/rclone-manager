@@ -1,13 +1,13 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
-import { invoke } from '@tauri-apps/api/core';
+import { TauriBaseService } from '../core/tauri-base.service';
 
 // PasswordLockoutStatus moved to shared types
 
 @Injectable({
   providedIn: 'root',
 })
-export class RclonePasswordService {
+export class RclonePasswordService extends TauriBaseService {
   private passwordRequiredSubject = new BehaviorSubject<boolean>(false);
   public passwordRequired$ = this.passwordRequiredSubject.asObservable();
 
@@ -16,7 +16,7 @@ export class RclonePasswordService {
    */
   async hasStoredPassword(): Promise<boolean> {
     try {
-      return await invoke('has_stored_password');
+      return await this.invokeCommand<boolean>('has_stored_password');
     } catch (error) {
       console.error('Failed to check stored password:', error);
       return false;
@@ -28,7 +28,7 @@ export class RclonePasswordService {
    */
   async hasConfigPasswordEnv(): Promise<boolean> {
     try {
-      return await invoke<boolean>('has_config_password_env');
+      return await this.invokeCommand<boolean>('has_config_password_env');
     } catch (error) {
       console.error('Failed to check config password env:', error);
       throw error;
@@ -40,7 +40,7 @@ export class RclonePasswordService {
    */
   async getStoredPassword(): Promise<string | null> {
     try {
-      return await invoke('get_config_password');
+      return await this.invokeCommand<string>('get_config_password');
     } catch (error) {
       console.debug('No stored password found:', error);
       return null;
@@ -52,7 +52,7 @@ export class RclonePasswordService {
    */
   async storePassword(password: string): Promise<void> {
     try {
-      await invoke('store_config_password', { password });
+      await this.invokeCommand('store_config_password', { password });
     } catch (error) {
       console.error(error);
       throw error;
@@ -64,7 +64,7 @@ export class RclonePasswordService {
    */
   async clearPasswordEnvironment(): Promise<void> {
     try {
-      await invoke('clear_config_password_env');
+      await this.invokeCommand('clear_config_password_env');
     } catch (error) {
       console.error('Failed to clear config password env:', error);
       throw error;
@@ -76,7 +76,7 @@ export class RclonePasswordService {
    */
   async removeStoredPassword(): Promise<void> {
     try {
-      await invoke('remove_config_password');
+      await this.invokeCommand('remove_config_password');
     } catch (error) {
       console.error(error);
       throw error;
@@ -88,7 +88,7 @@ export class RclonePasswordService {
    */
   async setConfigPasswordEnv(password: string): Promise<boolean> {
     try {
-      await invoke('set_config_password_env', { password });
+      await this.invokeCommand('set_config_password_env', { password });
       return true;
     } catch (error) {
       console.error('Failed to set config password env:', error);
@@ -101,7 +101,7 @@ export class RclonePasswordService {
    */
   async validatePassword(password: string): Promise<void> {
     try {
-      await invoke('validate_rclone_password', { password });
+      await this.invokeCommand('validate_rclone_password', { password });
     } catch (error) {
       console.error(error);
       throw error;
@@ -113,7 +113,7 @@ export class RclonePasswordService {
    */
   async isConfigEncryptedCached(): Promise<boolean> {
     try {
-      const result = await invoke('is_config_encrypted_cached');
+      const result = await this.invokeCommand('is_config_encrypted_cached');
       console.log('Cached encryption check result:', result);
       return result as boolean;
     } catch (error) {
@@ -127,7 +127,7 @@ export class RclonePasswordService {
    */
   async getCachedEncryptionStatus(): Promise<boolean | null> {
     try {
-      const result = await invoke('get_cached_encryption_status');
+      const result = await this.invokeCommand('get_cached_encryption_status');
       return result as boolean | null;
     } catch (error) {
       console.error('Failed to get cached encryption status:', error);
@@ -140,7 +140,7 @@ export class RclonePasswordService {
    */
   async clearEncryptionCache(): Promise<void> {
     try {
-      await invoke('clear_encryption_cache');
+      await this.invokeCommand('clear_encryption_cache');
     } catch (error) {
       console.error('Failed to clear encryption cache:', error);
     }
@@ -151,7 +151,7 @@ export class RclonePasswordService {
    */
   async isConfigEncrypted(): Promise<boolean | unknown> {
     try {
-      const result = await invoke('is_config_encrypted');
+      const result = await this.invokeCommand('is_config_encrypted');
       console.log(result);
 
       return result;
@@ -166,7 +166,7 @@ export class RclonePasswordService {
    */
   async encryptConfig(password: string): Promise<void> {
     try {
-      await invoke('encrypt_config', { password: password });
+      await this.invokeCommand('encrypt_config', { password: password });
     } catch (error) {
       console.error('Failed to encrypt config:', error);
       throw error;
@@ -178,7 +178,7 @@ export class RclonePasswordService {
    */
   async unencryptConfig(password: string): Promise<void> {
     try {
-      await invoke('unencrypt_config', { password: password });
+      await this.invokeCommand('unencrypt_config', { password: password });
     } catch (error) {
       console.error('Failed to unencrypt config:', error);
       throw error;
@@ -190,7 +190,7 @@ export class RclonePasswordService {
    */
   async changeConfigPassword(currentPassword: string, newPassword: string): Promise<void> {
     try {
-      await invoke('change_config_password', {
+      await this.invokeCommand('change_config_password', {
         currentPassword: currentPassword,
         newPassword: newPassword,
       });

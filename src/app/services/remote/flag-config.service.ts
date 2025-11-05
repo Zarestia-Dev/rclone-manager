@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { FLAG_TYPES, FlagType, RcConfigOption } from '@app/types';
-import { invoke } from '@tauri-apps/api/core';
+import { TauriBaseService } from '../core/tauri-base.service';
 
 // Define the shape of the grouped data returned by our new Rust command
 type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
@@ -13,14 +13,16 @@ type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
 @Injectable({
   providedIn: 'root',
 })
-export class FlagConfigService {
+export class FlagConfigService extends TauriBaseService {
   // A cache for our master data object to prevent redundant backend calls.
 
   /**
    * Fetches the master data object: all options, with live values, pre-grouped by the backend.
    */
   async getGroupedOptions(): Promise<GroupedRCloneOptions> {
-    const response = await invoke<GroupedRCloneOptions>('get_grouped_options_with_values');
+    const response = await this.invokeCommand<GroupedRCloneOptions>(
+      'get_grouped_options_with_values'
+    );
     console.log('Fetched and cached grouped RClone options:', response);
     return response;
   }
@@ -31,7 +33,7 @@ export class FlagConfigService {
   async getOptionBlocks(): Promise<string[]> {
     try {
       // The Rust command returns `{ "options": [...] }` so we need to unpack it.
-      const response = await invoke<{ options: string[] }>('get_option_blocks');
+      const response = await this.invokeCommand<{ options: string[] }>('get_option_blocks');
       return response.options;
     } catch (error) {
       console.error('Failed to get RClone option blocks:', error);
@@ -43,7 +45,7 @@ export class FlagConfigService {
 
   async saveOption(block: string, fullFieldName: string, value: unknown): Promise<void> {
     try {
-      await invoke('set_rclone_option', {
+      await this.invokeCommand('set_rclone_option', {
         blockName: block,
         optionName: fullFieldName,
         value,
@@ -87,7 +89,7 @@ export class FlagConfigService {
   private async loadFlagFields(type: FlagType): Promise<RcConfigOption[]> {
     try {
       const command = `get_${type}_flags`;
-      const flags = await invoke<RcConfigOption[]>(command);
+      const flags = await this.invokeCommand<RcConfigOption[]>(command);
       return flags ?? [];
     } catch (error) {
       console.error(`Error loading ${type} flags:`, error);

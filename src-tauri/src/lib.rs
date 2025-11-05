@@ -1,13 +1,14 @@
 use std::sync::{Arc, atomic::AtomicBool};
 
-use log::{debug, error, info};
+use log::{debug, error};
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_store::StoreBuilder;
 use tokio::sync::Mutex;
 
-mod core;
-mod rclone;
-mod utils;
+// Make modules public for headless binary
+pub mod core;
+pub mod rclone;
+pub mod utils;
 
 #[cfg(all(desktop, feature = "updater"))]
 use crate::utils::app::updater::app_updates::{
