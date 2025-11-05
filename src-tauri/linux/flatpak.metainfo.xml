@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>io.github.zarestia_dev.rclone-manager</id>
-  <name>Rclone Manager</name>
-  <summary>Cross-platform User Friendly UI for rclone</summary>
+  <name>RClone Manager</name>
+  <summary>User Friendly UI for rclone</summary>
   <metadata_license>MIT</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <developer id="io.github.zarestia_dev.rclone-manager">
-    <name>Rclone Manager</name>
+    <name>Zarestia Dev</name>
   </developer>
   <supports>
     <control>pointing</control>
