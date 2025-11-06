@@ -6,7 +6,8 @@ use tauri::{
 };
 
 use crate::rclone::state::{
-    JOB_CACHE, get_cached_mounted_remotes, get_cached_remotes, get_settings,
+    cache::{get_cached_mounted_remotes, get_cached_remotes, get_settings},
+    job::JOB_CACHE,
 };
 
 static OLD_MAX_TRAY_ITEMS: AtomicUsize = AtomicUsize::new(0);

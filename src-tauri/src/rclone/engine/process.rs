@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter};
 use tauri_plugin_shell::process::CommandChild;
 
 use crate::{
-    rclone::state::ENGINE_STATE,
+    rclone::state::engine::ENGINE_STATE,
     utils::{
         process::process_manager::{kill_all_rclone_processes, kill_processes_on_port},
         rclone::{

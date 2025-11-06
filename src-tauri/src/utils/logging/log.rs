@@ -4,7 +4,7 @@ use log::SetLoggerError;
 use serde_json::Value;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use crate::rclone::state::LOG_CACHE;
+use crate::rclone::state::log::LOG_CACHE;
 use crate::utils::types::all_types::DynamicLogger;
 use crate::utils::types::all_types::LogEntry;
 use crate::utils::types::all_types::LogLevel;

@@ -8,7 +8,10 @@ use crate::{
     core::{
         initialization::apply_core_settings, settings::operations::core::load_startup_settings,
     },
-    utils::types::{all_types::RcApiEngine, settings::SettingsState},
+    utils::types::{
+        all_types::RcApiEngine,
+        settings::SettingsState,
+    },
 };
 
 impl RcApiEngine {

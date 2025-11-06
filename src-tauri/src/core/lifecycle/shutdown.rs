@@ -8,7 +8,7 @@ use crate::{
     rclone::{
         commands::{stop_job, unmount_all_remotes},
         engine::ENGINE,
-        state::{get_active_jobs, stop_mounted_remote_watcher},
+        state::{job::get_active_jobs, watcher::stop_mounted_remote_watcher},
     },
     utils::process::process_manager::kill_all_rclone_processes,
 };

@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::{
     RcloneState,
-    rclone::state::{ENGINE_STATE, clear_remote_logs},
+    rclone::state::{engine::ENGINE_STATE, log::clear_remote_logs},
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, config},

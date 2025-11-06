@@ -47,7 +47,6 @@
   // Remotes Panel Header
   .remotes-header {
     padding: var(--space-xl) var(--space-xl) var(--space-md) var(--space-xl);
-    margin-bottom: 8px;
 
     .panel-title-content {
       color: var(--app-text-color);
@@ -91,7 +90,6 @@
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: var(--space-md);
-      margin-top: 8px;
     }
   }
 }

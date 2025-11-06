@@ -12,7 +12,7 @@ use tokio::{sync::Mutex, time::sleep};
 
 use crate::{
     RcloneState,
-    rclone::state::ENGINE_STATE,
+    rclone::state::engine::ENGINE_STATE,
     utils::{
         rclone::{
             endpoints::{EndpointHelper, config, core},

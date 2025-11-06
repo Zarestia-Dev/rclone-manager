@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use tauri::{State, command};
 
 use crate::RcloneState;
-use crate::rclone::state::ENGINE_STATE;
+use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{EndpointHelper, config};
 
 #[command]

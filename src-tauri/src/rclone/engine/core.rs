@@ -2,7 +2,7 @@ use log::error;
 use once_cell::sync::Lazy;
 use std::sync::{Arc, Mutex};
 
-use crate::{rclone::state::ENGINE_STATE, utils::types::all_types::RcApiEngine};
+use crate::{rclone::state::engine::ENGINE_STATE, utils::types::all_types::RcApiEngine};
 
 pub static ENGINE: Lazy<Arc<Mutex<RcApiEngine>>> =
     Lazy::new(|| Arc::new(Mutex::new(RcApiEngine::default())));

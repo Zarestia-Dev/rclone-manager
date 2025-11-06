@@ -13,7 +13,7 @@ use crate::{
     },
     rclone::{
         commands::{stop_job, unmount_remote},
-        state::{CACHE, JOB_CACHE},
+        state::{cache::CACHE, job::JOB_CACHE},
     },
     utils::{
         app::{builder::create_app_window, notification::send_notification},

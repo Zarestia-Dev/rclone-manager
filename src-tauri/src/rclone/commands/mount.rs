@@ -7,7 +7,8 @@ use tauri::{AppHandle, Emitter, State};
 use crate::{
     RcloneState,
     rclone::state::{
-        ENGINE_STATE, JOB_CACHE, force_check_mounted_remotes, get_cached_mounted_remotes,
+        cache::get_cached_mounted_remotes, engine::ENGINE_STATE, job::JOB_CACHE,
+        watcher::force_check_mounted_remotes,
     },
     utils::{
         logging::log::log_operation,

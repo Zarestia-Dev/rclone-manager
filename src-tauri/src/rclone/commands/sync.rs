@@ -6,7 +6,7 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::{
     RcloneState,
-    rclone::state::{ENGINE_STATE, JOB_CACHE},
+    rclone::state::{engine::ENGINE_STATE, job::JOB_CACHE},
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, sync},

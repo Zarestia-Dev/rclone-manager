@@ -9,6 +9,7 @@ import {
   ScheduledTaskStats,
   ScheduledTaskCompletedEvent,
   ScheduledTaskErrorEvent,
+  ScheduledTaskStoppedEvent,
 } from '@app/types';
 
 /**
@@ -43,6 +44,12 @@ export class SchedulerService extends TauriBaseService {
     // Listen for task error events
     this.listenToEvent<ScheduledTaskErrorEvent>('scheduled-task-error').subscribe(event => {
       console.error('Scheduled task error:', event.taskId, event.error);
+      this.refreshScheduledTasks();
+    });
+
+    // Listen for task stopped events
+    this.listenToEvent<ScheduledTaskStoppedEvent>('scheduled-task-stopped').subscribe(event => {
+      console.log('Scheduled task stopped:', event.taskId, event.jobId);
       this.refreshScheduledTasks();
     });
   }
@@ -160,6 +167,13 @@ export class SchedulerService extends TauriBaseService {
    */
   listenToTaskErrors(): Observable<ScheduledTaskErrorEvent> {
     return this.listenToEvent<ScheduledTaskErrorEvent>('scheduled-task-error');
+  }
+
+  /**
+   * Listen to task stopped events
+   */
+  listenToTaskStopped(): Observable<ScheduledTaskStoppedEvent> {
+    return this.listenToEvent<ScheduledTaskStoppedEvent>('scheduled-task-stopped');
   }
 
   /**

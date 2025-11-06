@@ -7,7 +7,7 @@ use crate::{
     rclone::{
         commands::set_bandwidth_limit,
         queries::flags::set_rclone_option,
-        state::{CACHE, ENGINE_STATE},
+        state::{cache::CACHE, engine::ENGINE_STATE},
     },
     utils::{
         app::builder::setup_tray,

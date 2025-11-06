@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
 
 use crate::RcloneState;
-use crate::rclone::state::ENGINE_STATE;
+use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::config;
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, core},

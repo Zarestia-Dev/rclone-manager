@@ -139,6 +139,13 @@ impl ScheduledTask {
         self.current_job_id = Some(job_id);
     }
 
+    /// Mark task as stopped/cancelled (job was manually stopped)
+    pub fn mark_stopped(&mut self) {
+        self.last_run = Some(Utc::now());
+        self.current_job_id = None;
+        self.status = TaskStatus::Enabled; // Reset to enabled since it was manually stopped
+    }
+
     /// Check if task is enabled and can run
     pub fn can_run(&self) -> bool {
         self.status == TaskStatus::Enabled && self.current_job_id.is_none()

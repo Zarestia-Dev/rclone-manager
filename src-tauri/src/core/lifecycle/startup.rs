@@ -6,10 +6,10 @@ use crate::core::config_extractor::{
 };
 use crate::core::scheduler::commands::SCHEDULER;
 use crate::core::spawn_helpers::{spawn_bisync, spawn_copy, spawn_mount, spawn_move, spawn_sync};
+use crate::rclone::state::cache::{CACHE, get_cached_remotes};
 // spawn_helpers now construct rclone param structs; no direct command param imports needed here
-use crate::rclone::state::{
-    CACHE, get_cached_remotes, scheduled_tasks::SCHEDULED_TASKS_CACHE, start_mounted_remote_watcher,
-};
+use crate::rclone::state::scheduled_tasks::SCHEDULED_TASKS_CACHE;
+use crate::rclone::state::watcher::start_mounted_remote_watcher;
 
 /// Helper function to handle auto-start logic for a given operation.
 async fn handle_auto_start<C, T, E, F, Fut>(

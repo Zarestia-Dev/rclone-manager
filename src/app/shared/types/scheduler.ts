@@ -112,3 +112,11 @@ export interface ScheduledTaskErrorEvent {
   taskId: string;
   error: string;
 }
+
+/**
+ * Event payload when a scheduled task is manually stopped
+ */
+export interface ScheduledTaskStoppedEvent {
+  taskId: string;
+  jobId: number;
+}

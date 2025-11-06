@@ -5,7 +5,7 @@ use tokio::try_join;
 
 use crate::{
     RcloneState,
-    rclone::state::ENGINE_STATE,
+    rclone::state::engine::ENGINE_STATE,
     utils::rclone::endpoints::{EndpointHelper, options},
 };
 

@@ -6,7 +6,7 @@ use tokio::time::sleep;
 
 use crate::{
     RcloneState,
-    rclone::state::{ENGINE_STATE, JOB_CACHE},
+    rclone::state::{engine::ENGINE_STATE, job::JOB_CACHE, scheduled_tasks::SCHEDULED_TASKS_CACHE},
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, core, job},
@@ -218,6 +218,29 @@ pub async fn stop_job(
             let error = format!("HTTP {status}: {body}");
             error!("❌ Failed to stop job {jobid}: {error}");
             return Err(error);
+        }
+    } else {
+        // Job was successfully stopped via API, now check if it was a scheduled task
+        if let Some(task) = SCHEDULED_TASKS_CACHE.get_task_by_job_id(jobid).await {
+            info!(
+                "🛑 Job {} was associated with scheduled task '{}', marking task as stopped",
+                jobid, task.name
+            );
+            SCHEDULED_TASKS_CACHE
+                .update_task(&task.id, |t| {
+                    t.mark_stopped();
+                })
+                .await
+                .ok(); // Ignore errors here
+
+            // Emit event to notify frontend that scheduled task was stopped
+            let _ = app.emit(
+                "scheduled-task-stopped",
+                serde_json::json!({
+                    "taskId": task.id,
+                    "jobId": jobid,
+                }),
+            );
         }
     }
 
