@@ -55,10 +55,14 @@ use crate::{
     },
     rclone::{
         commands::{
-            continue_create_remote_interactive, create_remote, create_remote_interactive,
-            delete_remote, mount_remote, quit_rclone_oauth, set_bandwidth_limit, start_bisync,
-            start_copy, start_move, start_sync, stop_job, unmount_all_remotes, unmount_remote,
-            update_remote,
+            job::stop_job,
+            mount::{mount_remote, unmount_all_remotes, unmount_remote},
+            remote::{
+                continue_create_remote_interactive, create_remote, create_remote_interactive,
+                delete_remote, update_remote,
+            },
+            sync::{start_bisync, start_copy, start_move, start_sync},
+            system::{quit_rclone_oauth, set_bandwidth_limit},
         },
         queries::{
             flags::{
@@ -132,7 +136,14 @@ pub fn run() {
         .on_window_event(|window, event| match event {
             WindowEvent::CloseRequested { api, .. } => {
                 let state = window.app_handle().state::<RcloneState>();
-                if *state.tray_enabled.read().unwrap() {
+                let tray_enabled = match state.tray_enabled.read() {
+                    Ok(enabled) => *enabled,
+                    Err(e) => {
+                        error!("Failed to read tray_enabled state: {e}");
+                        false // Default to false if we can't read
+                    }
+                };
+                if tray_enabled {
                     if let Err(e) = window.hide() {
                         error!("Failed to hide window: {e}");
                     }

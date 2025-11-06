@@ -97,7 +97,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     this.cleanup();
   }
 
-  // --- Theme Method (Simplified) ---
   async setTheme(theme: Theme, event?: MouseEvent): Promise<void> {
     if (event) {
       event.preventDefault();

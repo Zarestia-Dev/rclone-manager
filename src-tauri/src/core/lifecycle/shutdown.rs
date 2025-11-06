@@ -6,11 +6,12 @@ use tokio::task::spawn_blocking;
 use crate::{
     core::scheduler::commands::SCHEDULER,
     rclone::{
-        commands::{stop_job, unmount_all_remotes},
+        commands::{job::stop_job, mount::unmount_all_remotes},
         engine::ENGINE,
-        state::{job::get_active_jobs, watcher::stop_mounted_remote_watcher},
+        state::{engine::ENGINE_STATE, job::get_active_jobs, watcher::stop_mounted_remote_watcher},
     },
     utils::process::process_manager::kill_all_rclone_processes,
+    utils::types::events::APP_EVENT,
 };
 // use crate::utils::shortcuts::unregister_global_shortcuts;
 
@@ -24,7 +25,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 
     app_handle
         .emit(
-            "app_event",
+            APP_EVENT,
             json!({
                 "status": "shutting_down",
                 "message": "Shutting down RClone Manager"
@@ -148,8 +149,10 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         Ok(Err(e)) => error!("Failed to spawn engine shutdown task: {e:?}"),
         Err(_) => {
             error!("Engine shutdown timed out after 3 seconds, forcing cleanup");
-            // Force kill any remaining rclone processes as a last resort
-            if let Err(e) = kill_all_rclone_processes() {
+            // Force kill any remaining rclone processes on OUR managed ports as a last resort
+            let (_, api_port) = ENGINE_STATE.get_api();
+            let (_, oauth_port) = ENGINE_STATE.get_oauth();
+            if let Err(e) = kill_all_rclone_processes(api_port, oauth_port) {
                 error!("Failed to force kill rclone processes: {e}");
             }
         }

@@ -9,7 +9,10 @@ use crate::{
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, config},
-        types::all_types::LogLevel,
+        types::{
+            all_types::LogLevel,
+            events::{REMOTE_DELETED, REMOTE_PRESENCE_CHANGED},
+        },
     },
 };
 
@@ -141,7 +144,7 @@ pub async fn continue_create_remote_interactive(
     let value: Value =
         serde_json::from_str(&body_text).unwrap_or_else(|_| json!({ "raw": body_text }));
 
-    app.emit("remote_presence_changed", &name)
+    app.emit(REMOTE_PRESENCE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(value)
@@ -238,7 +241,7 @@ pub async fn create_remote(
     )
     .await;
 
-    app.emit("remote_presence_changed", &name)
+    app.emit(REMOTE_PRESENCE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(())
@@ -315,7 +318,7 @@ pub async fn update_remote(
     )
     .await;
 
-    app.emit("remote_presence_changed", &name)
+    app.emit(REMOTE_PRESENCE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(())
@@ -349,11 +352,11 @@ pub async fn delete_remote(
 
     // Emit two events:
     // 1. The standard presence changed event
-    app.emit("remote_presence_changed", &name)
+    app.emit(REMOTE_PRESENCE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     // 2. A new specific event for deletion
-    app.emit("remote_deleted", &name)
+    app.emit(REMOTE_DELETED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     clear_remote_logs(Some(name.clone()))

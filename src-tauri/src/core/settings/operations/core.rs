@@ -2,6 +2,7 @@ use log::{debug, info};
 use serde_json::json;
 use tauri::{Emitter, State};
 
+use crate::utils::types::events::SYSTEM_SETTINGS_CHANGED;
 use crate::utils::types::settings::{AppSettings, SettingMetadata, SettingsState};
 
 pub fn load_startup_settings(
@@ -15,7 +16,8 @@ pub fn load_startup_settings(
     let default_settings = AppSettings::default();
 
     // Merge stored settings on top of defaults.
-    let mut merged = serde_json::to_value(default_settings).unwrap();
+    let mut merged = serde_json::to_value(default_settings)
+        .map_err(|e| format!("Failed to serialize default settings: {e}"))?;
     if let (Some(merged_obj), Some(stored_obj)) = (merged.as_object_mut(), stored_val.as_object()) {
         for (category, values) in stored_obj {
             if let Some(merged_cat) = merged_obj.get_mut(category)
@@ -101,14 +103,14 @@ pub async fn save_setting(
     if stored_settings.get(&category).is_none() {
         stored_settings
             .as_object_mut()
-            .unwrap()
+            .ok_or_else(|| "stored_settings is not an object".to_string())?
             .insert(category.clone(), json!({}));
     }
     let stored_category = stored_settings
         .get_mut(&category)
-        .unwrap()
+        .ok_or_else(|| format!("Category {} not found", category))?
         .as_object_mut()
-        .unwrap();
+        .ok_or_else(|| format!("Category {} is not an object", category))?;
 
     if value == default_value {
         stored_category.remove(&key);
@@ -125,7 +127,10 @@ pub async fn save_setting(
     }
 
     if stored_category.is_empty() {
-        stored_settings.as_object_mut().unwrap().remove(&category);
+        stored_settings
+            .as_object_mut()
+            .ok_or_else(|| "stored_settings is not an object for removal".to_string())?
+            .remove(&category);
     }
 
     store.set("app_settings".to_string(), stored_settings);
@@ -133,8 +138,8 @@ pub async fn save_setting(
 
     let change_payload = json!({ category.clone(): { key.clone(): value } });
     app_handle
-        .emit("system_settings_changed", change_payload)
-        .unwrap();
+        .emit(SYSTEM_SETTINGS_CHANGED, change_payload)
+        .map_err(|e| format!("Failed to emit settings change event: {e}"))?;
 
     info!("✅ Setting {}.{} saved successfully.", category, key);
     Ok(())
@@ -177,8 +182,8 @@ pub async fn reset_settings(
 
     let default_settings = AppSettings::default();
     app_handle
-        .emit("system_settings_changed", &default_settings)
-        .unwrap();
+        .emit(SYSTEM_SETTINGS_CHANGED, &default_settings)
+        .map_err(|e| format!("Failed to emit settings reset event: {e}"))?;
     info!("✅ All settings have been reset to default.");
     Ok(())
 }

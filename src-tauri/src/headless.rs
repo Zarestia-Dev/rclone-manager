@@ -220,8 +220,12 @@ async fn start_web_server(
         // Settings
         "system_settings_changed",
         // RClone engine
-        "rclone_engine",
-        "rclone-engine",
+        "rclone_engine_ready",
+        "rclone_engine_error",
+        "rclone_engine_password_error",
+        "rclone_engine_path_error",
+        "rclone_engine_updating",
+        "rclone_password_stored",
         // State changes
         "remote_state_changed",
         // App updates
@@ -391,7 +395,7 @@ async fn health_handler() -> Json<ApiResponse<String>> {
 
 async fn get_remotes_handler()
 -> Result<Json<ApiResponse<Vec<String>>>, (StatusCode, Json<ApiResponse<Vec<String>>>)> {
-    use rclone_manager_lib::rclone::state::get_cached_remotes;
+    use rclone_manager_lib::rclone::state::cache::get_cached_remotes;
 
     match get_cached_remotes().await {
         Ok(remotes) => {
@@ -496,7 +500,7 @@ async fn get_jobs_handler(
     State(_state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
 {
-    use rclone_manager_lib::rclone::state::get_jobs;
+    use rclone_manager_lib::rclone::state::job::get_jobs;
 
     match get_jobs().await {
         Ok(jobs) => {
@@ -526,7 +530,7 @@ async fn get_active_jobs_handler(
     State(_state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
 {
-    use rclone_manager_lib::rclone::state::get_active_jobs;
+    use rclone_manager_lib::rclone::state::job::get_active_jobs;
 
     match get_active_jobs().await {
         Ok(active_jobs) => {
@@ -594,7 +598,7 @@ async fn get_settings_handler(
     State(_state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
 {
-    use rclone_manager_lib::rclone::state::get_settings;
+    use rclone_manager_lib::rclone::state::cache::get_settings;
 
     match get_settings().await {
         Ok(settings) => Ok(Json(ApiResponse::success(settings))),
@@ -1179,7 +1183,7 @@ async fn get_cached_mounted_remotes_handler(
     State(_state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
 {
-    use rclone_manager_lib::rclone::state::get_cached_mounted_remotes;
+    use rclone_manager_lib::rclone::state::cache::get_cached_mounted_remotes;
 
     match get_cached_mounted_remotes().await {
         Ok(mounted_remotes) => {
@@ -1212,7 +1216,7 @@ async fn get_configs_handler(
     State(_state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
 {
-    use rclone_manager_lib::rclone::state::get_configs;
+    use rclone_manager_lib::rclone::state::cache::get_configs;
 
     match get_configs().await {
         Ok(configs) => Ok(Json(ApiResponse::success(configs))),

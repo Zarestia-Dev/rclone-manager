@@ -1,6 +1,6 @@
 use log::{error, info, warn};
 use std::time::Duration;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 // Make sure you are using CommandChild from the shell plugin
 use tauri_plugin_shell::process::CommandChild;
 
@@ -27,14 +27,7 @@ impl RcApiEngine {
             Err(e) => {
                 let error_msg = format!("Failed to create engine command: {e}");
                 error!("❌ {}", error_msg);
-                let _ = app.emit(
-                    "rclone_engine",
-                    serde_json::json!({
-                        "status": "error",
-                        "message": error_msg,
-                        "error_type": "spawn_failed"
-                    }),
-                );
+                // Error already emitted by check_binaries if it's a path issue
                 return Err(error_msg);
             }
         };
@@ -44,18 +37,19 @@ impl RcApiEngine {
             // We ignore the receiver (`_rx`) for now and just keep the child process.
             Ok((_rx, child)) => {
                 info!("✅ Rclone process spawned successfully");
+                self.path_error = false;
                 Ok(child)
             }
             Err(e) => {
                 error!("❌ Failed to spawn Rclone process: {e}");
-                let _ = app.emit(
-                    "rclone_engine",
-                    serde_json::json!({
-                        "status": "error",
-                        "message": format!("Failed to spawn Rclone process: {e}"),
-                        "error_type": "spawn_failed"
-                    }),
-                );
+                // Check if it's a "file not found" error
+                let err_text = e.to_string();
+                if err_text.contains("No such file or directory") || err_text.contains("os error 2")
+                {
+                    self.path_error = true;
+                } else {
+                    self.path_error = false;
+                }
                 Err(format!("Failed to spawn Rclone process: {e}"))
             }
         }
@@ -108,6 +102,8 @@ impl RcApiEngine {
     }
 
     pub fn kill_all_rclone_rcd() -> Result<(), String> {
-        kill_all_rclone_processes()
+        let (_, api_port) = ENGINE_STATE.get_api();
+        let (_, oauth_port) = ENGINE_STATE.get_oauth();
+        kill_all_rclone_processes(api_port, oauth_port)
     }
 }

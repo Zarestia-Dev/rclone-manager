@@ -147,51 +147,20 @@ export class OnboardingComponent implements OnInit, OnDestroy {
         await this.checkMountPlugin();
         // Subscribe to engine events so we can react to password errors
         this.rcloneEngineSub = this.eventListenersService
-          .listenToRcloneEngine()
-          .subscribe(payload => {
+          .listenToRcloneEngineReady()
+          .subscribe(() => {
             try {
-              // payload can be a string or an object; guard accordingly
-              if (typeof payload !== 'string' && 'status' in (payload || {})) {
-                const ev = payload as { status?: string };
-                // If engine not yet started due to a recent path/config change,
-                // ignore password_error spam until we see a ready event.
-                if (ev.status === 'password_error') {
-                  if (this.waitingForEngineStart) {
-                    return;
-                  }
+              // Engine is healthy: stop waiting and clear transient errors
+              this.waitingForEngineStart = false;
+              this.passwordValidationError = null;
 
-                  // Only react to password errors when we actually expect a password
-                  // (for example, user selected an encrypted config). This avoids
-                  // spamming the UI when other parts of the app emit password errors.
-                  if (
-                    !this.expectingPassword &&
-                    !this.cards.some(c => c.title === 'Configuration Password Required')
-                  ) {
-                    console.debug(
-                      'Ignoring unsolicited password_error (no password card expected)'
-                    );
-                    return;
-                  }
-
-                  // Ensure password card present and surface to user
-                  this.configEncrypted = true;
-                  this.ensurePasswordCardPresent();
-                }
-
-                if (ev.status === 'ready') {
-                  // Engine is healthy: stop waiting and clear transient errors
-                  this.waitingForEngineStart = false;
-                  this.passwordValidationError = null;
-
-                  // If we were expecting a password (for example after saving config)
-                  // ensure the password card is present so user can unlock.
-                  if (this.expectingPassword) {
-                    this.ensurePasswordCardPresent();
-                  }
-                }
+              // If we were expecting a password (for example after saving config)
+              // ensure the password card is present so user can unlock.
+              if (this.expectingPassword) {
+                this.ensurePasswordCardPresent();
               }
             } catch (err) {
-              console.error('Error handling rclone engine event:', err);
+              console.error('Error handling rclone engine ready event:', err);
               this.animationState = 'visible';
             }
           });

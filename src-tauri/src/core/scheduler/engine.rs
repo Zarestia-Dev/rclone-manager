@@ -1,4 +1,5 @@
 use crate::rclone::state::scheduled_tasks::SCHEDULED_TASKS_CACHE;
+use crate::utils::types::events::{SCHEDULED_TASK_COMPLETED, SCHEDULED_TASK_ERROR};
 use crate::utils::types::scheduled_task::{ScheduledTask, TaskStatus, TaskType};
 use chrono::{Local, Utc};
 use log::{debug, error, info, warn};
@@ -120,7 +121,7 @@ impl CronScheduler {
 
                     // Send error event to frontend
                     let _ = app_handle.emit(
-                        "scheduled-task-error",
+                        SCHEDULED_TASK_ERROR,
                         serde_json::json!({
                             "taskId": task_id,
                             "error": e,
@@ -131,7 +132,7 @@ impl CronScheduler {
 
                     // Send success event to frontend
                     let _ = app_handle.emit(
-                        "scheduled-task-completed",
+                        SCHEDULED_TASK_COMPLETED,
                         serde_json::json!({
                             "taskId": task_id,
                         }),
@@ -294,7 +295,7 @@ impl CronScheduler {
                     if let Err(e) = execute_scheduled_task(&task_id, &app_handle).await {
                         error!("❌ Failed to execute scheduled task {}: {}", task_id, e);
                         let _ = app_handle.emit(
-                            "scheduled-task-error",
+                            SCHEDULED_TASK_ERROR,
                             serde_json::json!({
                                 "taskId": task_id,
                                 "error": e,
@@ -303,7 +304,7 @@ impl CronScheduler {
                     } else {
                         info!("✅ Successfully executed scheduled task: {}", task_id);
                         let _ = app_handle.emit(
-                            "scheduled-task-completed",
+                            SCHEDULED_TASK_COMPLETED,
                             serde_json::json!({
                                 "taskId": task_id,
                             }),

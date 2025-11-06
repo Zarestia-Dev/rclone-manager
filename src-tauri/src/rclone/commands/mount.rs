@@ -13,7 +13,10 @@ use crate::{
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, mount},
-        types::all_types::{JobInfo, JobResponse, JobStatus, LogLevel},
+        types::{
+            all_types::{JobInfo, JobResponse, JobStatus, LogLevel},
+            events::REMOTE_STATE_CHANGED,
+        },
     },
 };
 
@@ -214,7 +217,7 @@ pub async fn mount_remote(
         return Err(e.to_string());
     }
 
-    app.emit("remote_state_changed", &params.remote_name)
+    app.emit(REMOTE_STATE_CHANGED, &params.remote_name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     // Force refresh mounted remotes after mount operation
@@ -264,7 +267,7 @@ pub async fn unmount_remote(
         if status.as_u16() == 500 && body.contains("\"mount not found\"") {
             warn!("🚨 Mount not found for {mount_point}, updating mount cache",);
             // Update the cached mounted remotes
-            app.emit("remote_state_changed", &mount_point)
+            app.emit(REMOTE_STATE_CHANGED, &mount_point)
                 .map_err(|e| format!("Failed to emit event: {e}"))?;
         }
 
@@ -290,7 +293,7 @@ pub async fn unmount_remote(
     )
     .await;
 
-    app.emit("remote_state_changed", &mount_point)
+    app.emit(REMOTE_STATE_CHANGED, &mount_point)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     // Force refresh mounted remotes after unmount operation
@@ -329,7 +332,7 @@ pub async fn unmount_all_remotes(
     }
 
     if context != "shutdown" {
-        app.emit("remote_state_changed", "all")
+        app.emit(REMOTE_STATE_CHANGED, "all")
             .map_err(|e| format!("Failed to emit event: {e}"))?;
 
         // Force refresh mounted remotes after unmount all operation

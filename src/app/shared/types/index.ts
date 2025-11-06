@@ -1,4 +1,5 @@
 export * from './components';
+export * from './events';
 export * from './jobs';
 export * from './logs';
 export * from './maintenance';

@@ -11,6 +11,7 @@ use crate::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, core, job},
         types::all_types::{JobStatus, LogLevel},
+        types::events::{JOB_CACHE_CHANGED, SCHEDULED_TASK_STOPPED},
     },
 };
 
@@ -103,7 +104,7 @@ pub async fn monitor_job(
                         .complete_job(jobid, false)
                         .await
                         .map_err(RcloneError::JobError)?;
-                    app.emit("job_cache_changed", jobid)
+                    app.emit(JOB_CACHE_CHANGED, jobid)
                         .map_err(|e| RcloneError::JobError(e.to_string()))?;
                     return Err(RcloneError::JobError(format!(
                         "Too many errors monitoring job {jobid}: {e}"
@@ -138,7 +139,7 @@ pub async fn handle_job_completion(
         .complete_job(jobid, success)
         .await
         .map_err(RcloneError::JobError)?;
-    app.emit("job_cache_changed", jobid)
+    app.emit(JOB_CACHE_CHANGED, jobid)
         .map_err(|e| RcloneError::JobError(e.to_string()))?;
 
     if !error_msg.is_empty() {
@@ -235,7 +236,7 @@ pub async fn stop_job(
 
             // Emit event to notify frontend that scheduled task was stopped
             let _ = app.emit(
-                "scheduled-task-stopped",
+                SCHEDULED_TASK_STOPPED,
                 serde_json::json!({
                     "taskId": task.id,
                     "jobId": jobid,
@@ -253,7 +254,7 @@ pub async fn stop_job(
     )
     .await;
 
-    app.emit("job_cache_changed", jobid)
+    app.emit(JOB_CACHE_CHANGED, jobid)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     info!("✅ Stopped job {jobid}");

@@ -1,7 +1,26 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { RcloneEnginePayload } from '@app/types';
+import {
+  AppEventPayloadType,
+  REMOTE_DELETED,
+  ENGINE_RESTARTED,
+  MOUNT_CACHE_UPDATED,
+  REMOTE_CACHE_UPDATED,
+  // NOTIFY_UI,
+  JOB_CACHE_CHANGED,
+  MOUNT_PLUGIN_INSTALLED,
+  RCLONE_OAUTH,
+  APP_EVENT,
+  NETWORK_STATUS_CHANGED,
+  BANDWIDTH_LIMIT_CHANGED,
+  RCLONE_ENGINE_READY,
+  RCLONE_ENGINE_ERROR,
+  RCLONE_ENGINE_PASSWORD_ERROR,
+  RCLONE_ENGINE_PATH_ERROR,
+  RCLONE_ENGINE_UPDATING,
+  RCLONE_PASSWORD_STORED,
+} from '@app/types';
 
 /**
  * Service for handling installations of rclone and plugins
@@ -21,82 +40,117 @@ export class EventListenersService extends TauriBaseService {
   /**
    * Listen to remote deleted events
    */
-  listenToRemoteDeleted(): Observable<{ payload: string }> {
-    return this.listenToEvent<{ payload: string }>('remote_deleted');
+  listenToRemoteDeleted(): Observable<string> {
+    return this.listenToEvent<string>(REMOTE_DELETED);
   }
 
   /**
    * Listen to engine restarted events
    */
-  listenToEngineRestarted(): Observable<{ payload: { reason: string } }> {
-    return this.listenToEvent<{ payload: { reason: string } }>('engine_restarted');
+  listenToEngineRestarted(): Observable<{ reason: string }> {
+    return this.listenToEvent<{ reason: string }>(ENGINE_RESTARTED);
   }
   /**
    * Listen to mount cache updated events
    */
   listenToMountCacheUpdated(): Observable<unknown> {
-    return this.listenToEvent<unknown>('mount_cache_updated');
+    return this.listenToEvent<unknown>(MOUNT_CACHE_UPDATED);
   }
 
   /**
    * Listen to remote cache updated events
    */
   listenToRemoteCacheUpdated(): Observable<unknown> {
-    return this.listenToEvent<unknown>('remote_cache_updated');
+    return this.listenToEvent<unknown>(REMOTE_CACHE_UPDATED);
   }
 
-  /**
-   * Listen to notify UI events
-   */
-  listenToNotifyUi(): Observable<{ payload: string }> {
-    return this.listenToEvent<{ payload: string }>('notify_ui');
-  }
+  // /**
+  //  * Listen to notify UI events
+  //  */
+  // listenToNotifyUi(): Observable<string> {
+  //   return this.listenToEvent<string>(NOTIFY_UI);
+  // }
 
   /**
    * Listen to job cache changed events
    */
   listenToJobCacheChanged(): Observable<unknown> {
-    return this.listenToEvent<unknown>('job_cache_changed');
+    return this.listenToEvent<unknown>(JOB_CACHE_CHANGED);
   }
   /**
    * Listen to mount plugin installation events
    */
   listenToMountPluginInstalled(): Observable<unknown> {
-    return this.listenToEvent<unknown>('mount_plugin_installed');
+    return this.listenToEvent<unknown>(MOUNT_PLUGIN_INSTALLED);
   }
 
   /**
-   * Listen to rclone engine events
+   * Listen to rclone engine ready events
    */
-  listenToRcloneEngine(): Observable<RcloneEnginePayload> {
-    return this.listenToEvent<RcloneEnginePayload>('rclone_engine');
+  listenToRcloneEngineReady(): Observable<void> {
+    return this.listenToEvent<void>(RCLONE_ENGINE_READY);
+  }
+
+  /**
+   * Listen to rclone engine error events
+   */
+  listenToRcloneEngineError(): Observable<void> {
+    return this.listenToEvent<void>(RCLONE_ENGINE_ERROR);
+  }
+
+  /**
+   * Listen to rclone engine password error events
+   */
+  listenToRcloneEnginePasswordError(): Observable<void> {
+    return this.listenToEvent<void>(RCLONE_ENGINE_PASSWORD_ERROR);
+  }
+
+  /**
+   * Listen to rclone engine path error events
+   */
+  listenToRcloneEnginePathError(): Observable<void> {
+    return this.listenToEvent<void>(RCLONE_ENGINE_PATH_ERROR);
+  }
+
+  /**
+   * Listen to rclone engine updating events
+   */
+  listenToRcloneEngineUpdating(): Observable<void> {
+    return this.listenToEvent<void>(RCLONE_ENGINE_UPDATING);
+  }
+
+  /**
+   * Listen to rclone password stored events
+   */
+  listenToRclonePasswordStored(): Observable<void> {
+    return this.listenToEvent<void>(RCLONE_PASSWORD_STORED);
   }
 
   /**
    * Listen to rclone OAuth events
    */
-  listenToRcloneOAuth(): Observable<RcloneEnginePayload> {
-    return this.listenToEvent<RcloneEnginePayload>('rclone_oauth');
+  listenToRcloneOAuth(): Observable<unknown> {
+    return this.listenToEvent<unknown>(RCLONE_OAUTH);
   }
 
   /**
    * Listen to app events
    */
-  listenToAppEvents(): Observable<RcloneEnginePayload> {
-    return this.listenToEvent<RcloneEnginePayload>('app_event');
+  listenToAppEvents(): Observable<AppEventPayloadType> {
+    return this.listenToEvent<AppEventPayloadType>(APP_EVENT);
   }
 
   /**
    * Listen to network status changed events
    */
   listenToNetworkStatusChanged(): Observable<{ isMetered: boolean }> {
-    return this.listenToEvent<{ isMetered: boolean }>('network-status-changed');
+    return this.listenToEvent<{ isMetered: boolean }>(NETWORK_STATUS_CHANGED);
   }
 
   /**
    * Listen to bandwidth limit changed events
    */
   listenToBandwidthLimitChanged(): Observable<unknown> {
-    return this.listenToEvent<unknown>('bandwidth_limit_changed');
+    return this.listenToEvent<unknown>(BANDWIDTH_LIMIT_CHANGED);
   }
 }

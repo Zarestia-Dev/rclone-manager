@@ -18,6 +18,8 @@ pub mod app_updates {
         InvalidUrl(#[from] url::ParseError),
         #[error("HTTP error: {0}")]
         Http(#[from] reqwest::Error),
+        #[error("mutex error: {0}")]
+        Mutex(String),
     }
 
     impl serde::Serialize for Error {
@@ -205,7 +207,10 @@ pub mod app_updates {
             release_url: Some(release.html_url.clone()),
         });
 
-        *pending_update.0.lock().unwrap() = update;
+        *pending_update
+            .0
+            .lock()
+            .map_err(|e| Error::Mutex(format!("Failed to lock pending update: {e}")))? = update;
 
         Ok(update_metadata)
     }
@@ -226,7 +231,11 @@ pub mod app_updates {
         let total = download_state.total_bytes.load(Ordering::Relaxed);
         let is_complete = download_state.is_complete.load(Ordering::Relaxed);
         let is_failed = download_state.is_failed.load(Ordering::Relaxed);
-        let failure_message = download_state.failure_message.lock().unwrap().clone();
+        let failure_message = download_state
+            .failure_message
+            .lock()
+            .map_err(|e| Error::Mutex(format!("Failed to lock failure message: {e}")))?
+            .clone();
 
         let percentage = if total > 0 {
             (downloaded as f64 / total as f64) * 100.0
@@ -249,7 +258,12 @@ pub mod app_updates {
         pending_update: State<'_, PendingUpdate>,
         download_state: State<'_, DownloadState>,
     ) -> Result<()> {
-        let Some(update) = pending_update.0.lock().unwrap().take() else {
+        let Some(update) = pending_update
+            .0
+            .lock()
+            .map_err(|e| Error::Mutex(format!("Failed to lock pending update: {e}")))?
+            .take()
+        else {
             return Err(Error::NoPendingUpdate);
         };
 
@@ -296,13 +310,21 @@ pub mod app_updates {
             Ok(_) => {
                 info!("Update installation process completed");
                 download_state.is_failed.store(false, Ordering::Relaxed);
-                *download_state.failure_message.lock().unwrap() = None;
+                *download_state
+                    .failure_message
+                    .lock()
+                    .map_err(|e| Error::Mutex(format!("Failed to lock failure message: {e}")))? =
+                    None;
                 Ok(())
             }
             Err(e) => {
                 warn!("Update installation failed: {}", e);
                 download_state.is_failed.store(true, Ordering::Relaxed);
-                *download_state.failure_message.lock().unwrap() = Some(e.to_string());
+                *download_state
+                    .failure_message
+                    .lock()
+                    .map_err(|e| Error::Mutex(format!("Failed to lock failure message: {e}")))? =
+                    Some(e.to_string());
                 Err(Error::Updater(e))
             }
         }

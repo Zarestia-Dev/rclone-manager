@@ -6,7 +6,10 @@
 - Added schedule support for sync, copy, move, and bisync operations. You can now schedule these operations to run at specific times or intervals using a cron-like syntax. You can find the scheduling options in the remote operation settings.
 - New time picker module added for better clock time selection.
 
+### Fixed
+- Critical fix for proccess management. Now the app correctly find own rclone processes via ports.
 
+  
 ## [v0.1.6] - 2025-11-02
 ### Added
 - Added `Whats New` to the About modal when a new version exists. It shows the new features and changes in the new version. It fetches the release notes from GitHub releases for app. For rclone, it shows the release notes from the rclone website.

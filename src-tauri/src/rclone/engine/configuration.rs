@@ -3,7 +3,10 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     core::{check_binaries::build_rclone_command, security::SafeEnvironmentManager},
-    utils::types::all_types::RcApiEngine,
+    utils::types::{
+        all_types::RcApiEngine,
+        events::{RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR, RCLONE_ENGINE_PATH_ERROR},
+    },
 };
 
 impl RcApiEngine {
@@ -145,55 +148,44 @@ impl RcApiEngine {
             Ok(_) => {
                 info!("✅ Rclone configuration and password are valid");
                 self.password_error = false;
+                self.path_error = false;
                 true
             }
             Err(e) => {
                 error!("❌ Rclone configuration validation failed: {}", e);
 
-                // Categorize the error type and set appropriate flags
-                let (status, user_message) = if e.contains("Rclone binary not found") {
-                    // This is a binary path issue, not a password issue
+                if e.contains("Rclone binary not found") {
+                    // Missing executable on filesystem
                     self.password_error = false;
                     self.path_error = true;
-                    (
-                        "path_error",
-                        "Rclone executable was not found. Please ensure rclone is installed correctly.",
-                    )
                 } else if e.contains("Wrong password") || e.contains("Invalid environment password")
                 {
-                    // This is a password issue
+                    // Stored password is incorrect
                     self.password_error = true;
-                    (
-                        "password_error",
-                        "The password for your encrypted rclone configuration is incorrect. Please update your password.",
-                    )
+                    self.path_error = false;
                 } else if e.contains("no password is available") {
-                    // This is also a password issue (missing password)
+                    // Encrypted config without password
                     self.password_error = true;
-                    (
-                        "password_error",
-                        "Your rclone configuration is encrypted but no password was provided. Please set a password.",
-                    )
+                    self.path_error = false;
                 } else if e.contains("Failed to load rclone config file") {
-                    // This could be a config file issue, not necessarily password
+                    // Config file issue, treat as generic error for now
                     self.password_error = false;
-                    (
-                        "config_error",
-                        "Could not load your rclone configuration file. It may be corrupted or missing.",
-                    )
+                    self.path_error = false;
                 } else {
-                    // Unknown error - don't assume it's a password issue
+                    // Unknown error, fall back to generic handling
                     self.password_error = false;
-                    ("error", e.as_str())
+                    self.path_error = false;
+                }
+
+                let event = if self.path_error {
+                    RCLONE_ENGINE_PATH_ERROR
+                } else if self.password_error {
+                    RCLONE_ENGINE_PASSWORD_ERROR
+                } else {
+                    RCLONE_ENGINE_ERROR
                 };
 
-                if let Err(emit_err) = app.emit(
-                    "rclone_engine",
-                    serde_json::json!({
-                        "status": status,
-                        "message": user_message
-                    }),
-                ) {
+                if let Err(emit_err) = app.emit(event, ()) {
                     error!("Failed to emit validation error event: {emit_err}");
                 }
                 false

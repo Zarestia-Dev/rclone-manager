@@ -5,6 +5,7 @@ use tauri::{
 };
 
 use crate::core::tray::{actions::show_main_window, menu::create_tray_menu};
+use crate::utils::types::events::UPDATE_TRAY_MENU;
 
 pub async fn setup_tray(app: AppHandle, max_tray_items: usize) -> tauri::Result<()> {
     let mut old_max_tray_items = 0;
@@ -41,7 +42,7 @@ pub async fn setup_tray(app: AppHandle, max_tray_items: usize) -> tauri::Result<
         })
         .build(&app_clone)?;
 
-    app.emit("tray_menu_updated", ())?;
+    app.emit(UPDATE_TRAY_MENU, ())?;
     Ok(())
 }
 

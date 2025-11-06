@@ -65,14 +65,25 @@ pub fn is_7z_available() -> bool {
 // }
 
 /// Internal helper that borrows the `AppHandle` so Rust call-sites don't need to clone it.
+/// Returns Ok(true) if rclone is available, Ok(false) if not found.
+/// Emits RCLONE_ENGINE_PATH_ERROR event when binary is missing.
 #[tauri::command]
 pub async fn check_rclone_available(app: AppHandle, path: &str) -> Result<bool, String> {
+    check_rclone_available_internal(&app, path, true).await
+}
+
+/// Internal version that optionally emits events
+async fn check_rclone_available_internal(
+    app: &AppHandle,
+    path: &str,
+    emit_event: bool,
+) -> Result<bool, String> {
     let rclone_path = if !path.is_empty() {
         // Use the explicit path if provided
         get_rclone_binary_path(&PathBuf::from(path))
     } else {
         // Read the configured path from app state
-        read_rclone_path(&app)
+        read_rclone_path(app)
     };
 
     debug!(
@@ -93,6 +104,14 @@ pub async fn check_rclone_available(app: AppHandle, path: &str) -> Result<bool, 
             Err(e) => Err(format!("Failed to execute rclone: {}", e)),
         }
     } else {
+        if emit_event {
+            use crate::utils::types::events::RCLONE_ENGINE_PATH_ERROR;
+            use tauri::Emitter;
+
+            if let Err(e) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
+                error!("Failed to emit path error event: {e}");
+            }
+        }
         Err(format!(
             "Rclone binary not found at {}",
             rclone_path.display()
@@ -129,7 +148,13 @@ pub fn build_rclone_command(
         }
     } else {
         let rclone_state = app.state::<RcloneState>();
-        let cfg = rclone_state.rclone_config_file.read().unwrap().clone();
+        let cfg = match rclone_state.rclone_config_file.read() {
+            Ok(cfg) => cfg.clone(),
+            Err(e) => {
+                error!("Failed to read rclone_config_file: {e}");
+                String::new()
+            }
+        };
         if !cfg.is_empty() {
             cmd = cmd.arg("--config").arg(cfg);
         }
@@ -156,7 +181,13 @@ pub fn get_rclone_binary_path(base_path: &std::path::Path) -> PathBuf {
 
 pub fn read_rclone_path(app: &AppHandle) -> PathBuf {
     let rclone_state = app.state::<RcloneState>();
-    let configured_base_path = rclone_state.rclone_path.read().unwrap().clone();
+    let configured_base_path = match rclone_state.rclone_path.read() {
+        Ok(path) => path.clone(),
+        Err(e) => {
+            error!("Failed to read rclone_path: {e}");
+            PathBuf::from("system")
+        }
+    };
     debug!(
         "🔄 Reading configured rclone base path: {}",
         configured_base_path.to_string_lossy()

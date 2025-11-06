@@ -13,6 +13,8 @@ import {
   MoveParams,
   SyncOptions,
   SyncParams,
+  UI_JOB_UPDATE,
+  UI_JOB_COMPLETED,
 } from '@app/types';
 
 /**
@@ -266,7 +268,7 @@ export class JobManagementService extends TauriBaseService {
    */
   private setupJobListeners(): void {
     // Listen for job updates
-    this.listenToEvent<any>('ui_job_update').subscribe(payload => {
+    this.listenToEvent<any>(UI_JOB_UPDATE).subscribe(payload => {
       const jobs = this.activeJobsSubject.value;
       const jobIndex = jobs.findIndex(j => j.jobid === payload.jobid);
 
@@ -277,7 +279,7 @@ export class JobManagementService extends TauriBaseService {
     });
 
     // Listen for job completion
-    this.listenToEvent<any>('ui_job_completed').subscribe(payload => {
+    this.listenToEvent<any>(UI_JOB_COMPLETED).subscribe(payload => {
       const jobs = this.activeJobsSubject.value;
       const jobIndex = jobs.findIndex(j => j.jobid === payload.jobid);
 

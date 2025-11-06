@@ -1,3 +1,4 @@
+use crate::utils::types::events::{REMOTE_PRESENCE_CHANGED, SYSTEM_SETTINGS_CHANGED};
 use crate::{
     core::settings::backup::archive_utils::find_7z_executable,
     rclone::queries::get_rclone_config_file, utils::types::settings::SettingsState,
@@ -131,10 +132,10 @@ pub async fn restore_settings_from_path(
     let new_settings: serde_json::Value = serde_json::from_str(&settings_content)
         .map_err(|e| format!("Failed to parse settings file: {e}"))?;
 
-    app_handle.emit("remote_presence_changed", json!({})).ok();
+    app_handle.emit(REMOTE_PRESENCE_CHANGED, ()).ok();
     app_handle
         .emit(
-            "system_settings_changed",
+            SYSTEM_SETTINGS_CHANGED,
             serde_json::to_value(new_settings.get("app_settings")).unwrap(),
         )
         .ok();

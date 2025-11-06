@@ -121,7 +121,11 @@ pub async fn provision_rclone(
     if let Err(e) = save_setting(
         "core".to_string(),
         "rclone_path".to_string(),
-        serde_json::json!(install_path.to_str().unwrap()),
+        serde_json::json!(
+            install_path
+                .to_str()
+                .ok_or("Invalid UTF-8 in install path")?
+        ),
         app_handle.state(),
         app_handle.clone(),
     )

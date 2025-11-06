@@ -12,7 +12,7 @@ use crate::{
         spawn_helpers::{spawn_bisync, spawn_copy, spawn_mount, spawn_move, spawn_sync},
     },
     rclone::{
-        commands::{stop_job, unmount_remote},
+        commands::{job::stop_job, mount::unmount_remote},
         state::{cache::CACHE, job::JOB_CACHE},
     },
     utils::{
@@ -327,7 +327,7 @@ pub fn handle_move_remote(app: AppHandle, id: &str) {
         "Move",
         MoveConfig::from_settings,
         spawn_move,
-        Some(|app| Box::pin(CACHE.refresh_all(app))),
+        None,
     ));
 }
 
@@ -338,8 +338,8 @@ pub fn handle_bisync_remote(app: AppHandle, id: &str) {
         "bisync-",
         "BiSync",
         BisyncConfig::from_settings,
-        spawn_bisync, // Assumes spawn_bisync is updated to return a Job ID
-        Some(|app| Box::pin(CACHE.refresh_all(app))),
+        spawn_bisync,
+        None,
     ));
 }
 

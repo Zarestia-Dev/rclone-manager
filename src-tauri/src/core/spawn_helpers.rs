@@ -5,8 +5,8 @@ use crate::core::config_extractor::{
     BisyncConfig, CopyConfig, MountConfig, MoveConfig, SyncConfig,
 };
 use crate::rclone::commands::{
-    BisyncParams, CopyParams, MountParams, MoveParams, SyncParams, mount_remote, start_bisync,
-    start_copy, start_move, start_sync,
+    mount::{mount_remote, MountParams},
+    sync::{start_bisync, start_copy, start_move, start_sync, BisyncParams, CopyParams, MoveParams, SyncParams},
 };
 
 /// Result type for spawn operations

@@ -231,13 +231,8 @@ export class HomeComponent implements OnInit, OnDestroy {
 
       // Load scheduled tasks from remote settings (not rclone configs)
       try {
-        const loadedCount = await this.schedulerService.reloadScheduledTasksFromConfigs(
-          this.remoteSettings
-        );
+        await this.schedulerService.reloadScheduledTasksFromConfigs(this.remoteSettings);
         await this.schedulerService.reloadScheduledTasks();
-        if (loadedCount > 0) {
-          console.log(`✅ Loaded ${loadedCount} scheduled tasks from remote settings`);
-        }
       } catch (error) {
         console.error('Failed to load scheduled tasks from settings:', error);
       }
@@ -388,7 +383,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   // ============================================================================
   private setupTauriListeners(): void {
     this.listenToAppEvents();
-    this.listenToNotifyUi();
+    // this.listenToNotifyUi();
     this.listenToMountCache();
     this.listenToRemoteCache();
     this.listenToRcloneEngine();
@@ -412,22 +407,21 @@ export class HomeComponent implements OnInit, OnDestroy {
       });
   }
 
-  private listenToNotifyUi(): void {
-    this.eventListenersService
-      .listenToNotifyUi()
-      .pipe(
-        takeUntil(this.destroy$),
-        catchError(error => (console.error('Event listener error (NotifyUi):', error), EMPTY))
-      )
-      .subscribe({
-        next: event => {
-          const message = event.payload;
-          if (message) {
-            this.notificationService.openSnackBar(message, 'Close');
-          }
-        },
-      });
-  }
+  // private listenToNotifyUi(): void {
+  //   this.eventListenersService
+  //     .listenToNotifyUi()
+  //     .pipe(
+  //       takeUntil(this.destroy$),
+  //       catchError(error => (console.error('Event listener error (NotifyUi):', error), EMPTY))
+  //     )
+  //     .subscribe({
+  //       next: message => {
+  //         if (message) {
+  //           this.notificationService.openSnackBar(message, 'Close');
+  //         }
+  //       },
+  //     });
+  // }
 
   private listenToMountCache(): void {
     this.eventListenersService
@@ -471,21 +465,21 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private listenToRcloneEngine(): void {
     this.eventListenersService
-      .listenToRcloneEngine()
+      .listenToRcloneEngineReady()
       .pipe(
         takeUntil(this.destroy$),
-        catchError(error => (console.error('Event listener error (RcloneEngine):', error), EMPTY))
+        catchError(
+          error => (console.error('Event listener error (RcloneEngineReady):', error), EMPTY)
+        )
       )
       .subscribe({
-        next: async event => {
+        next: async () => {
           try {
-            if (typeof event === 'object' && event?.status === 'ready') {
-              await this.refreshData();
-              await this.loadRestrictMode();
-              this.cdr.markForCheck();
-            }
+            await this.refreshData();
+            await this.loadRestrictMode();
+            this.cdr.markForCheck();
           } catch (error) {
-            this.handleError('Error handling rclone_engine', error);
+            this.handleError('Error handling rclone_engine_ready', error);
           }
         },
       });

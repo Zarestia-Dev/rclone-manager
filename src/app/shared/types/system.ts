@@ -77,20 +77,16 @@ export const SENSITIVE_KEYS = [
 ];
 
 // === Engine & App Events ===
-export interface RcloneEngineEvent {
+// Note: Engine events now use dedicated event constants with no payload
+// The event name itself indicates the state (ready, error, etc.)
+
+// App events have payloads with status and message
+export interface AppEventPayload {
   status: string;
-  port?: number;
-  timestamp?: string;
-  message?: string;
-  error_type?: string;
-}
-
-export interface UpdateResult {
-  success: boolean;
   message?: string;
 }
 
-export type RcloneEnginePayload = RcloneEngineEvent | string;
+export type AppEventPayloadType = AppEventPayload | string;
 
 // === Update Info ===
 export interface RcloneUpdateInfo {
@@ -112,6 +108,13 @@ export interface UpdateStatus {
   error: string | null;
   lastCheck: Date | null;
   updateInfo: RcloneUpdateInfo | null;
+}
+
+export interface UpdateResult {
+  success: boolean;
+  message?: string;
+  output?: string;
+  channel?: string;
 }
 
 // === Security / Passwords ===

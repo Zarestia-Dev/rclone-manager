@@ -19,7 +19,11 @@ pub async fn open_terminal_config(
 
     // Add config file path if specified in state
     let rclone_state = app.state::<RcloneState>();
-    let config_file = rclone_state.rclone_config_file.read().unwrap().clone();
+    let config_file = rclone_state
+        .rclone_config_file
+        .read()
+        .map_err(|e| format!("Failed to read rclone config file: {e}"))?
+        .clone();
     if !config_file.is_empty() {
         command_parts.push("--config".to_string());
         command_parts.push(config_file);
@@ -100,7 +104,11 @@ pub async fn open_terminal_config(
 
 async fn open_terminal_with_command(rclone_command: String, app: AppHandle) -> Result<(), String> {
     let rclone_state = app.state::<RcloneState>();
-    let preferred_terminals = rclone_state.terminal_apps.read().unwrap().clone();
+    let preferred_terminals = rclone_state
+        .terminal_apps
+        .read()
+        .map_err(|e| format!("Failed to read terminal apps: {e}"))?
+        .clone();
 
     #[cfg(target_os = "windows")]
     return open_windows_terminal(&rclone_command, &preferred_terminals, &app).await;

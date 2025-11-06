@@ -137,9 +137,8 @@ export class UiStateService {
   // === Remote Deletion Listener ===
   private async setupRemoteDeletionListener(): Promise<void> {
     try {
-      this.eventListenersService.listenToRemoteDeleted().subscribe(event => {
+      this.eventListenersService.listenToRemoteDeleted().subscribe(deletedRemoteName => {
         this.ngZone.run(() => {
-          const deletedRemoteName = event.payload;
           const currentRemote = this.selectedRemoteSource.value;
 
           if (currentRemote?.remoteSpecs?.name === deletedRemoteName) {

@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { emit } from '@tauri-apps/api/event';
+// import { emit } from '@tauri-apps/api/event';
 import { getCurrentWindow, Window } from '@tauri-apps/api/window';
 import { Observable } from 'rxjs';
 import { ApiClientService } from './api-client.service';
@@ -10,44 +10,6 @@ import { SseClientService } from './sse-client.service';
 const isTauriRuntime = (): boolean =>
   typeof window !== 'undefined' &&
   !!(window as unknown as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__;
-
-interface HeadlessWindowShim {
-  isMaximized(): Promise<boolean>;
-  minimize(): Promise<void>;
-  toggleMaximize(): Promise<void>;
-  close(): Promise<void>;
-  show(): Promise<void>;
-  hide(): Promise<void>;
-}
-
-const createHeadlessWindow = (): HeadlessWindowShim => {
-  const warn = (action: string): void =>
-    console.warn(`[Headless] Window action "${action}" is not supported in web mode.`);
-
-  return {
-    async isMaximized(): Promise<boolean> {
-      warn('isMaximized');
-      return false;
-    },
-    async minimize(): Promise<void> {
-      warn('minimize');
-    },
-    async toggleMaximize(): Promise<void> {
-      warn('toggleMaximize');
-    },
-    async close(): Promise<void> {
-      warn('close');
-    },
-    async show(): Promise<void> {
-      warn('show');
-    },
-    async hide(): Promise<void> {
-      warn('hide');
-    },
-  };
-};
-
-const headlessWindowShim = createHeadlessWindow();
 
 /**
  * Base service for Tauri communication
@@ -71,30 +33,28 @@ export class TauriBaseService {
   /**
    * Get the current Tauri window instance
    */
-  protected getCurrentTauriWindow(): Window {
+  protected getCurrentTauriWindow(): any {
     if (this.isTauriEnvironment) {
       return getCurrentWindow();
     }
-
-    return headlessWindowShim as unknown as Window;
   }
 
-  /**
-   * Emit a Tauri event
-   */
-  protected async emitEvent<T>(eventName: string, payload?: T): Promise<void> {
-    try {
-      if (!this.isTauriEnvironment) {
-        console.debug(`[Headless] emitEvent skipped for ${eventName}`, payload);
-        return;
-      }
+  // /**
+  //  * Emit a Tauri event (NOT USE THAT IF POSSIBLE, PREFER invokeCommand INSTEAD)
+  //  */
+  // protected async emitEvent<T>(eventName: string, payload?: T): Promise<void> {
+  //   try {
+  //     if (!this.isTauriEnvironment) {
+  //       console.debug(`[Headless] emitEvent skipped for ${eventName}`, payload);
+  //       return;
+  //     }
 
-      await emit(eventName, payload);
-    } catch (error) {
-      console.error(`Error emitting event ${eventName}:`, error);
-      throw error;
-    }
-  }
+  //     await emit(eventName, payload);
+  //   } catch (error) {
+  //     console.error(`Error emitting event ${eventName}:`, error);
+  //     throw error;
+  //   }
+  // }
 
   /**
    * Invoke a Tauri command with error handling

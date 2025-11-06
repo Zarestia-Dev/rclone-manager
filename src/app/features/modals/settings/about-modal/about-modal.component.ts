@@ -127,13 +127,11 @@ export class AboutModalComponent implements OnInit {
     this.loadChannelSetting();
     this.loadRcloneSettings();
 
-    this.eventListenersService.listenToRcloneEngine().subscribe({
-      next: async event => {
+    this.eventListenersService.listenToRcloneEngineReady().subscribe({
+      next: async () => {
         try {
-          if (typeof event === 'object' && event?.status === 'ready') {
-            await this.loadRcloneInfo();
-            await this.loadRclonePID();
-          }
+          await this.loadRcloneInfo();
+          await this.loadRclonePID();
         } catch (error) {
           console.error('Error handling Rclone API ready event:', error);
         }

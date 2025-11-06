@@ -7,7 +7,7 @@ use tokio::time;
 use super::cache::CACHE;
 use crate::RcloneState;
 use crate::rclone::queries::mount::get_mounted_remotes;
-use crate::utils::types::all_types::MountedRemote;
+use crate::utils::types::{all_types::MountedRemote, events::REMOTE_STATE_CHANGED};
 
 /// Global flag to control the mounted remote watcher
 static WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
@@ -82,7 +82,7 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
                     "reason": "externally_unmounted"
                 });
 
-                if let Err(e) = app_handle.emit("remote_state_changed", &event_payload) {
+                if let Err(e) = app_handle.emit(REMOTE_STATE_CHANGED, &event_payload) {
                     warn!("⚠️ Failed to emit remote_state_changed event: {e}");
                 }
 
@@ -111,7 +111,7 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
                     "reason": "externally_mounted"
                 });
 
-                if let Err(e) = app_handle.emit("remote_state_changed", &event_payload) {
+                if let Err(e) = app_handle.emit(REMOTE_STATE_CHANGED, &event_payload) {
                     warn!("⚠️ Failed to emit remote_state_changed event: {e}");
                 }
 
@@ -189,7 +189,7 @@ pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), St
             "reason": "externally_unmounted"
         });
 
-        if let Err(e) = app_handle.emit("remote_state_changed", &event_payload) {
+        if let Err(e) = app_handle.emit(REMOTE_STATE_CHANGED, &event_payload) {
             warn!("⚠️ Failed to emit remote_state_changed event: {e}");
         }
 
@@ -207,7 +207,7 @@ pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), St
             "reason": "externally_mounted"
         });
 
-        if let Err(e) = app_handle.emit("remote_state_changed", &event_payload) {
+        if let Err(e) = app_handle.emit(REMOTE_STATE_CHANGED, &event_payload) {
             warn!("⚠️ Failed to emit remote_state_changed event: {e}");
         }
 

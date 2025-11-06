@@ -1,7 +1,13 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { RemoteProvider, RemoteConfig, RcConfigQuestionResponse, Entry } from '@app/types';
+import {
+  RemoteProvider,
+  RemoteConfig,
+  RcConfigQuestionResponse,
+  Entry,
+  REMOTE_DELETED,
+} from '@app/types';
 
 /**
  * Service for managing rclone remotes
@@ -11,14 +17,6 @@ import { RemoteProvider, RemoteConfig, RcConfigQuestionResponse, Entry } from '@
   providedIn: 'root',
 })
 export class RemoteManagementService extends TauriBaseService {
-  async forceRefreshMountedRemotes(): Promise<void> {
-    try {
-      await this.emitEvent('remote_state_changed');
-    } catch (error) {
-      console.error('Failed to refresh mounted remotes:', error);
-      throw error;
-    }
-  }
   private remotesCache = new BehaviorSubject<string[]>([]);
   public remotes$ = this.remotesCache.asObservable();
 
@@ -168,7 +166,7 @@ export class RemoteManagementService extends TauriBaseService {
    * Listen to remote deletion events
    */
   listenToRemoteDeletion(): Observable<string> {
-    return this.listenToEvent<string>('remote_deleted');
+    return this.listenToEvent<string>(REMOTE_DELETED);
   }
 
   /**

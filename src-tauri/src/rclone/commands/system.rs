@@ -1,7 +1,6 @@
 use log::{debug, error, info, warn};
 use serde_json::{Value, json};
 use std::{
-    collections::HashMap,
     sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
@@ -18,7 +17,10 @@ use crate::{
             endpoints::{EndpointHelper, config, core},
             process_common::create_rclone_command,
         },
-        types::all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
+        types::{
+            all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
+            events::{BANDWIDTH_LIMIT_CHANGED, RCLONE_CONFIG_UNLOCKED},
+        },
     },
 };
 
@@ -58,13 +60,21 @@ impl std::fmt::Display for RcloneError {
 }
 
 pub fn redact_sensitive_values(
-    params: &HashMap<String, Value>,
+    params: &std::collections::HashMap<String, Value>,
     restrict_mode: &Arc<RwLock<bool>>,
 ) -> Value {
+    let restrict_enabled = restrict_mode
+        .read()
+        .map(|guard| *guard)
+        .unwrap_or_else(|e| {
+            log::error!("Failed to read restrict_mode: {e}");
+            false // Default to false if we can't read
+        });
+
     params
         .iter()
         .map(|(k, v)| {
-            let value = if *restrict_mode.read().unwrap()
+            let value = if restrict_enabled
                 && SENSITIVE_KEYS
                     .iter()
                     .any(|sk| k.to_lowercase().contains(sk))
@@ -77,7 +87,6 @@ pub fn redact_sensitive_values(
         })
         .collect()
 }
-
 pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let mut guard = OAUTH_PROCESS.lock().await;
     let port = ENGINE_STATE.get_oauth().1;
@@ -223,7 +232,7 @@ pub async fn set_bandwidth_limit(
         serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
 
     debug!("🪢 Bandwidth limit set: {response_data:?}");
-    if let Err(e) = app.emit("bandwidth_limit_changed", response_data.clone()) {
+    if let Err(e) = app.emit(BANDWIDTH_LIMIT_CHANGED, response_data.clone()) {
         error!("❌ Failed to emit bandwidth limit changed event: {e}",);
     }
     Ok(response_data)
@@ -254,7 +263,7 @@ pub async fn unlock_rclone_config(
         return Err(error);
     }
 
-    app.emit("rclone_config_unlocked", json!({}))
+    app.emit(RCLONE_CONFIG_UNLOCKED, ())
         .map_err(|e| format!("Failed to emit config unlocked event: {e}"))?;
 
     Ok(())

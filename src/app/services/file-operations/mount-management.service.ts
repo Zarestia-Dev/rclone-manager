@@ -101,20 +101,8 @@ export class MountManagementService extends TauriBaseService {
   /**
    * Force check mounted remotes
    */
-  async forceCheckMountedRemotes(): Promise<void> {
-    try {
-      await this.invokeCommand('force_check_mounted_remotes');
-      this.notificationService.openSnackBar(
-        'Force check mounted remotes completed successfully',
-        'Close'
-      );
-    } catch (error) {
-      this.notificationService.openSnackBar(
-        `Failed to force check mounted remotes: ${error}`,
-        'Close'
-      );
-      throw error;
-    }
+  public async forceCheckMountedRemotes(): Promise<void> {
+    await this.invokeCommand('force_check_mounted_remotes');
   }
 
   /**

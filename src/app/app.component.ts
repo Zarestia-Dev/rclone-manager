@@ -13,7 +13,7 @@ import { AppTab, RepairData, RepairSheetType } from '@app/types';
 import { RepairSheetComponent } from './features/components/repair-sheet/repair-sheet.component';
 import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.directive';
 import { BannerComponent } from './layout/banners/banner.component';
-import { PasswordPromptResult, RcloneEngineEvent } from '@app/types';
+import { PasswordPromptResult } from '@app/types';
 
 // Services
 import {
@@ -107,23 +107,56 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private setupRcloneEngineListener(): void {
+    // Listen to rclone engine ready events
     this.eventListenersService
-      .listenToRcloneEngine()
-      .pipe(
-        takeUntil(this.destroy$),
-        filter(event => typeof event === 'object' && event !== null)
-      )
+      .listenToRcloneEngineReady()
+      .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: async event => {
+        next: async () => {
           try {
-            console.log('Rclone engine event received:', event);
-
-            await this.handleRcloneEngineEvent(event as RcloneEngineEvent);
+            console.log('Rclone engine ready');
+            this.handleRcloneReady();
           } catch (error) {
-            console.error('Error in Rclone engine event handler:', error);
+            console.error('Error in Rclone engine ready handler:', error);
           }
         },
-        error: error => console.error('Rclone engine event subscription error:', error),
+        error: error => console.error('Rclone engine ready subscription error:', error),
+      });
+
+    // Listen to rclone engine path error events
+    this.eventListenersService
+      .listenToRcloneEnginePathError()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: async () => {
+          try {
+            console.log('Rclone engine path error');
+            if (this.completedOnboarding) {
+              this.handleRclonePathError();
+            }
+          } catch (error) {
+            console.error('Error in Rclone engine path error handler:', error);
+          }
+        },
+        error: error => console.error('Rclone engine path error subscription error:', error),
+      });
+
+    // Listen to rclone engine password error events
+    this.eventListenersService
+      .listenToRcloneEnginePasswordError()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: async () => {
+          try {
+            console.log('Rclone engine password error');
+            if (this.completedOnboarding) {
+              await this.handlePasswordRequired();
+            }
+          } catch (error) {
+            console.error('Error in Rclone engine password error handler:', error);
+          }
+        },
+        error: error => console.error('Rclone engine password error subscription error:', error),
       });
   }
 
@@ -137,7 +170,7 @@ export class AppComponent implements OnInit, OnDestroy {
       .subscribe({
         next: async event => {
           try {
-            await this.handleRcloneOAuthEvent(event as RcloneEngineEvent);
+            await this.handleRcloneOAuthEvent(event);
           } catch (error) {
             console.error('Error in OAuth event handler:', error);
           }
@@ -237,77 +270,42 @@ export class AppComponent implements OnInit, OnDestroy {
       });
   }
 
-  private async handleRcloneEngineEvent(event: RcloneEngineEvent): Promise<void> {
-    console.log('Rclone Engine event:', event);
-
-    try {
-      // Handle different event types
-      switch (event.status) {
-        case 'path_error':
-          if (this.completedOnboarding) {
-            this.handleRclonePathError();
-          }
-          break;
-
-        case 'password_error':
-          console.log('🔑 Password required detected from engine event');
-          if (this.completedOnboarding) {
-            await this.handlePasswordRequired();
-          }
-          break;
-
-        case 'ready':
-          console.log('Rclone API ready');
-          this.handleRcloneReady();
-          break;
-
-        default:
-          // Log unknown events for debugging
-          if (event.status) {
-            console.log(`Unhandled Rclone event status: ${event.status}`);
-          }
-          break;
-      }
-    } catch (error) {
-      console.error('Error handling Rclone Engine event:', error);
-    }
-  }
-
-  private async handleRcloneOAuthEvent(event: RcloneEngineEvent): Promise<void> {
+  private async handleRcloneOAuthEvent(event: unknown): Promise<void> {
     console.log('OAuth event received:', event);
 
     try {
       // Handle different OAuth event types
-      switch (event.status) {
-        case 'password_error':
-          console.log('🔑 OAuth password error detected:', event.message);
-          if (this.completedOnboarding) {
-            await this.handlePasswordRequired();
-          }
-          break;
+      if (typeof event === 'object' && event !== null && 'status' in event) {
+        const typedEvent = event as { status: string; message?: string };
+        switch (typedEvent.status) {
+          case 'password_error':
+            console.log('🔑 OAuth password error detected:', typedEvent.message);
+            if (this.completedOnboarding) {
+              await this.handlePasswordRequired();
+            }
+            break;
 
-        case 'spawn_failed':
-          console.error('🚫 OAuth process failed to start:', event.message);
-          // Could show a notification or repair sheet for OAuth spawn failures
-          break;
+          case 'spawn_failed':
+            console.error('🚫 OAuth process failed to start:', typedEvent.message);
+            // Could show a notification or repair sheet for OAuth spawn failures
+            break;
 
-        case 'startup_timeout':
-          console.error('⏰ OAuth process startup timeout:', event.message);
-          // Could show a notification or repair sheet for OAuth timeouts
-          break;
+          case 'startup_timeout':
+            console.error('⏰ OAuth process startup timeout:', typedEvent.message);
+            // Could show a notification or repair sheet for OAuth timeouts
+            break;
 
-        case 'success':
-          console.log('✅ OAuth process started successfully:', event.message);
-          break;
+          case 'success':
+            console.log('✅ OAuth process started successfully:', typedEvent.message);
+            break;
 
-        default:
-          // Log unknown OAuth events for debugging
-          if (event.status) {
-            console.log(`Unhandled OAuth event status: ${event.status}`);
-          } else {
-            console.warn('Unknown OAuth error:', event.message);
-          }
-          break;
+          default:
+            // Log unknown OAuth events for debugging
+            console.log(`Unhandled OAuth event status: ${typedEvent.status}`);
+            break;
+        }
+      } else {
+        console.warn('Unknown OAuth event format:', event);
       }
     } catch (error) {
       console.error('Error handling OAuth event:', error);

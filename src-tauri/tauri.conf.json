@@ -20,9 +20,10 @@
     "targets": ["nsis", "msi", "dmg", "app", "deb", "rpm", "appimage"],
     "category": "Utility",
     "shortDescription": "User-friendly GUI for RClone",
-    "publisher": "RClone Manager",
+    "homepage": "https://github.com/Zarestia-Dev/rclone-manager",
+    "publisher": "Zarestia Dev",
     "longDescription": "RClone Manager is a user-friendly GUI for RClone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge.",
-    "copyright": "Copyright © 2025 RClone Manager",
+    "copyright": "Copyright © 2025 Zarestia Dev",
     "license": "GNU GPLv3",
     "linux": {
       "deb": {
@@ -35,7 +36,7 @@
       },
       "rpm": {
         "desktopTemplate": "linux/template.desktop",
-        "depends": ["rclone", "libappindicator-gtk3 or libayatana-appindicator-gtk3"],
+        "depends": ["rclone", "(libappindicator-gtk3 or libayatana-appindicator-gtk3)"],
         "recommends": ["7z"]
       }
     },

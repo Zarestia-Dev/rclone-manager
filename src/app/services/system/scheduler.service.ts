@@ -10,6 +10,9 @@ import {
   ScheduledTaskCompletedEvent,
   ScheduledTaskErrorEvent,
   ScheduledTaskStoppedEvent,
+  SCHEDULED_TASK_COMPLETED,
+  SCHEDULED_TASK_ERROR,
+  SCHEDULED_TASK_STOPPED,
 } from '@app/types';
 
 /**
@@ -36,19 +39,19 @@ export class SchedulerService extends TauriBaseService {
    */
   private initializeEventListeners(): void {
     // Listen for task completion events
-    this.listenToEvent<ScheduledTaskCompletedEvent>('scheduled-task-completed').subscribe(event => {
+    this.listenToEvent<ScheduledTaskCompletedEvent>(SCHEDULED_TASK_COMPLETED).subscribe(event => {
       console.log('Scheduled task completed:', event.taskId);
       this.refreshScheduledTasks();
     });
 
     // Listen for task error events
-    this.listenToEvent<ScheduledTaskErrorEvent>('scheduled-task-error').subscribe(event => {
+    this.listenToEvent<ScheduledTaskErrorEvent>(SCHEDULED_TASK_ERROR).subscribe(event => {
       console.error('Scheduled task error:', event.taskId, event.error);
       this.refreshScheduledTasks();
     });
 
     // Listen for task stopped events
-    this.listenToEvent<ScheduledTaskStoppedEvent>('scheduled-task-stopped').subscribe(event => {
+    this.listenToEvent<ScheduledTaskStoppedEvent>(SCHEDULED_TASK_STOPPED).subscribe(event => {
       console.log('Scheduled task stopped:', event.taskId, event.jobId);
       this.refreshScheduledTasks();
     });
@@ -159,21 +162,21 @@ export class SchedulerService extends TauriBaseService {
    * Listen to task completion events
    */
   listenToTaskCompletion(): Observable<ScheduledTaskCompletedEvent> {
-    return this.listenToEvent<ScheduledTaskCompletedEvent>('scheduled-task-completed');
+    return this.listenToEvent<ScheduledTaskCompletedEvent>(SCHEDULED_TASK_COMPLETED);
   }
 
   /**
    * Listen to task error events
    */
   listenToTaskErrors(): Observable<ScheduledTaskErrorEvent> {
-    return this.listenToEvent<ScheduledTaskErrorEvent>('scheduled-task-error');
+    return this.listenToEvent<ScheduledTaskErrorEvent>(SCHEDULED_TASK_ERROR);
   }
 
   /**
    * Listen to task stopped events
    */
   listenToTaskStopped(): Observable<ScheduledTaskStoppedEvent> {
-    return this.listenToEvent<ScheduledTaskStoppedEvent>('scheduled-task-stopped');
+    return this.listenToEvent<ScheduledTaskStoppedEvent>(SCHEDULED_TASK_STOPPED);
   }
 
   /**

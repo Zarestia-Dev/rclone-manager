@@ -5,7 +5,7 @@ use tauri::Manager;
 use crate::{
     core::event_listener::setup_event_listener,
     rclone::{
-        commands::set_bandwidth_limit,
+        commands::system::set_bandwidth_limit,
         queries::flags::set_rclone_option,
         state::{cache::CACHE, engine::ENGINE_STATE},
     },
@@ -65,8 +65,10 @@ pub async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) 
     //     error!("Failed to register global shortcuts: {}", e);
     // }
 
-    CACHE.refresh_all(app_handle.clone()).await;
-    debug!("🔄 Cache refreshed");
+    match CACHE.refresh_all(app_handle.clone()).await {
+        Ok(_) => debug!("🔄 Caches refreshed successfully during startup"),
+        Err(e) => error!("Failed to refresh caches: {e}"),
+    }
 
     // Check if --tray argument is provided to override settings
     let force_tray = std::env::args().any(|arg| arg == "--tray");

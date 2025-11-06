@@ -11,6 +11,7 @@ use crate::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, sync},
         types::all_types::{JobInfo, JobResponse, JobStatus, LogLevel},
+        types::events::JOB_CACHE_CHANGED,
     },
 };
 
@@ -155,7 +156,7 @@ pub async fn start_sync(
         .await;
     });
 
-    app.emit("job_cache_changed", jobid)
+    app.emit(JOB_CACHE_CHANGED, jobid)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
     Ok(job.jobid)
 }
@@ -297,7 +298,7 @@ pub async fn start_copy(
     )
     .await;
 
-    app.emit("job_cache_changed", jobid)
+    app.emit(JOB_CACHE_CHANGED, jobid)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
     Ok(job.jobid)
 }
@@ -532,7 +533,7 @@ pub async fn start_bisync(
         .await;
     });
 
-    app.emit("job_cache_changed", jobid)
+    app.emit(JOB_CACHE_CHANGED, jobid)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
     Ok(job.jobid)
 }
@@ -668,7 +669,7 @@ pub async fn start_move(
         Some(json!({"jobid": jobid})),
     )
     .await;
-    app.emit("job_cache_changed", jobid)
+    app.emit(JOB_CACHE_CHANGED, jobid)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
     Ok(job.jobid)
 }

@@ -6,6 +6,7 @@ use std::{
 };
 use tauri::{AppHandle, Emitter, State};
 
+use crate::utils::types::events::REMOTE_PRESENCE_CHANGED;
 use crate::utils::types::settings::SettingsState;
 
 /// **Remote Settings Management**
@@ -70,7 +71,7 @@ pub async fn save_remote_settings(
 
     info!("✅ Remote settings saved at {remote_config_path:?}");
 
-    app_handle.emit("remote_presence_changed", remote_name).ok();
+    app_handle.emit(REMOTE_PRESENCE_CHANGED, remote_name).ok();
     Ok(())
 }
 
@@ -89,7 +90,7 @@ pub async fn delete_remote_settings(
     if !remote_config_path.exists() {
         warn!("⚠️ Remote settings for '{remote_name}' not found, but that's okay.");
         // Don't return an error - just emit the event and return success
-        app_handle.emit("remote_presence_changed", remote_name).ok();
+        app_handle.emit(REMOTE_PRESENCE_CHANGED, remote_name).ok();
         return Ok(()); // Return success instead of error
     }
 
@@ -100,7 +101,7 @@ pub async fn delete_remote_settings(
 
     info!("✅ Remote settings for '{remote_name}' deleted.");
 
-    app_handle.emit("remote_presence_changed", remote_name).ok();
+    app_handle.emit(REMOTE_PRESENCE_CHANGED, remote_name).ok();
     Ok(())
 }
 
