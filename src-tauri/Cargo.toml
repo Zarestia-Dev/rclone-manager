@@ -1,6 +1,6 @@
 [package]
 name = "rclone-manager"
-version = "0.1.6"
+version = "0.1.7"
 description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"
@@ -15,10 +15,11 @@ default-run = "rclone-manager"
 name = "rclone_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[[bin]]
-name = "rclone-manager-headless"
-path = "src/headless.rs"
-required-features = ["web-server"]
+# Uncomment the following lines to build the headless server binary
+# [[bin]]
+# name = "rclone-manager-headless"
+# path = "src/headless.rs"
+# required-features = ["web-server"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

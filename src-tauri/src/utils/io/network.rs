@@ -198,6 +198,7 @@ pub fn is_metered() -> bool {
 #[cfg(target_os = "macos")]
 pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     // Always emit is_metered: false, since macOS does not support metered detection.
+    use log::error;
     let payload = NetworkStatusPayload { is_metered: false };
     if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
         error!("Failed to emit network status change event: {e}");
@@ -229,6 +230,7 @@ pub fn is_metered() -> bool {
 
 #[cfg(windows)]
 pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+    use log::error;
     use windows::Networking::Connectivity::{NetworkInformation, NetworkStatusChangedEventHandler};
 
     let handler = NetworkStatusChangedEventHandler::new(move |_| {
@@ -241,8 +243,10 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
         Ok(())
     });
 
-    let _token = NetworkInformation::NetworkStatusChanged(&handler)
-        .map_err(|e| format!("Failed to register network status changed handler: {e}"))?;
+    if let Err(e) = NetworkInformation::NetworkStatusChanged(&handler) {
+        error!("Failed to register network status changed handler: {e}");
+        return;
+    }
 }
 
 #[tauri::command]
