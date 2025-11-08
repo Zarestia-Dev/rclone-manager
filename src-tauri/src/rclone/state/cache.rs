@@ -6,8 +6,8 @@ use tokio::sync::RwLock;
 
 use crate::{
     core::settings::remote::manager::get_remote_settings,
-    rclone::queries::{get_all_remote_configs, get_mounted_remotes, get_remotes},
-    utils::types::all_types::{MountedRemote, RemoteCache},
+    rclone::queries::{get_all_remote_configs, get_mounted_remotes, get_remotes, list_serves},
+    utils::types::all_types::{MountedRemote, RemoteCache, ServeInstance},
 };
 
 // fn redact_sensitive_values(
@@ -65,6 +65,7 @@ pub static CACHE: Lazy<RemoteCache> = Lazy::new(|| RemoteCache {
     configs: RwLock::new(json!({})),
     settings: RwLock::new(json!({})),
     mounted: RwLock::new(Vec::new()),
+    serves: RwLock::new(Vec::new()),
 });
 
 impl RemoteCache {
@@ -166,6 +167,52 @@ impl RemoteCache {
     pub async fn get_mounted_remotes(&self) -> Vec<MountedRemote> {
         self.mounted.read().await.clone()
     }
+
+    pub async fn refresh_serves(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
+        match list_serves(app_handle.state()).await {
+            Ok(response) => {
+                let serves_list = response
+                    .get("list")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|item| {
+                                let id = item.get("id")?.as_str()?.to_string();
+                                let addr = item.get("addr")?.as_str()?.to_string();
+                                let params = item.get("params")?;
+                                let fs = params.get("fs")?.as_str()?.to_string();
+                                let serve_type = params.get("type")?.as_str()?.to_string();
+
+                                // Extract remote name from fs (e.g., "remote:path" -> "remote")
+                                let remote_name = fs.split(':').next()?.to_string();
+
+                                Some(ServeInstance {
+                                    id,
+                                    addr,
+                                    serve_type,
+                                    fs,
+                                    remote_name,
+                                })
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default();
+
+                let mut serves = self.serves.write().await;
+                *serves = serves_list;
+                debug!("🔄 Updated serves cache: {} active serves", serves.len());
+                Ok(())
+            }
+            Err(e) => {
+                error!("❌ Failed to refresh serves: {e}");
+                Err("Failed to refresh serves".into())
+            }
+        }
+    }
+
+    pub async fn get_serves(&self) -> Vec<ServeInstance> {
+        self.serves.read().await.clone()
+    }
 }
 
 #[tauri::command]
@@ -186,4 +233,9 @@ pub async fn get_settings() -> Result<serde_json::Value, String> {
 #[tauri::command]
 pub async fn get_cached_mounted_remotes() -> Result<Vec<MountedRemote>, String> {
     Ok(CACHE.mounted.read().await.clone())
+}
+
+#[tauri::command]
+pub async fn get_cached_serves() -> Result<Vec<ServeInstance>, String> {
+    Ok(CACHE.serves.read().await.clone())
 }

@@ -9,7 +9,7 @@ use crate::core::spawn_helpers::{spawn_bisync, spawn_copy, spawn_mount, spawn_mo
 use crate::rclone::state::cache::{CACHE, get_cached_remotes};
 // spawn_helpers now construct rclone param structs; no direct command param imports needed here
 use crate::rclone::state::scheduled_tasks::SCHEDULED_TASKS_CACHE;
-use crate::rclone::state::watcher::start_mounted_remote_watcher;
+use crate::rclone::state::watcher::{start_mounted_remote_watcher, start_serve_watcher};
 
 /// Helper function to handle auto-start logic for a given operation.
 async fn handle_auto_start<C, T, E, F, Fut>(
@@ -83,6 +83,10 @@ pub async fn handle_startup(app_handle: AppHandle) {
     // Start the mounted remote watcher for continuous monitoring
     info!("📡 Starting mounted remote watcher...");
     tokio::spawn(start_mounted_remote_watcher(app_handle.clone()));
+
+    // Start the serve watcher for monitoring running serves
+    info!("📡 Starting serve watcher...");
+    start_serve_watcher(app_handle.clone());
 }
 
 /// Initialize the cron scheduler with tasks loaded from remote configs

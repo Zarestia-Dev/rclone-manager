@@ -69,6 +69,15 @@ export interface Remote {
     moveJobID?: number;
     isLocal?: boolean;
   };
+  serveState?: {
+    hasActiveServes?: boolean;
+    serveCount?: number;
+    serves?: {
+      id: string;
+      addr: string;
+      serve_type: string;
+    }[];
+  };
   primaryActions?: PrimaryActionType[];
   selectedSyncOperation?: SyncOperationType;
 }

@@ -102,8 +102,6 @@ impl RcApiEngine {
     }
 
     pub fn kill_all_rclone_rcd() -> Result<(), String> {
-        let (_, api_port) = ENGINE_STATE.get_api();
-        let (_, oauth_port) = ENGINE_STATE.get_oauth();
-        kill_all_rclone_processes(api_port, oauth_port)
+        kill_all_rclone_processes()
     }
 }

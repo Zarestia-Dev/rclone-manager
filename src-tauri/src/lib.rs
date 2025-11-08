@@ -61,6 +61,7 @@ use crate::{
                 continue_create_remote_interactive, create_remote, create_remote_interactive,
                 delete_remote, update_remote,
             },
+            serve::{start_serve, stop_all_serves, stop_serve},
             sync::{start_bisync, start_copy, start_move, start_sync},
             system::{quit_rclone_oauth, set_bandwidth_limit},
         },
@@ -74,17 +75,20 @@ use crate::{
             get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats,
             get_mount_types, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info,
             get_rclone_pid, get_remote_config, get_remote_config_fields, get_remote_paths,
-            get_remote_types, get_remotes,
+            get_remote_types, get_remotes, get_serve_flags, get_serve_types, list_serves,
         },
         state::{
-            cache::{get_cached_mounted_remotes, get_cached_remotes, get_configs, get_settings},
+            cache::{
+                get_cached_mounted_remotes, get_cached_remotes, get_cached_serves, get_configs,
+                get_settings,
+            },
             job::{delete_job, get_active_jobs, get_job_status, get_jobs},
             log::{clear_remote_logs, get_remote_logs},
             scheduled_tasks::{
                 get_scheduled_task, get_scheduled_tasks, get_scheduled_tasks_stats,
                 reload_scheduled_tasks_from_configs,
             },
-            watcher::force_check_mounted_remotes,
+            watcher::{force_check_mounted_remotes, force_check_serves},
         },
     },
     utils::{
@@ -372,6 +376,16 @@ pub fn run() {
             // Rclone Query API
             mount_remote,
             unmount_remote,
+            unmount_all_remotes,
+            get_mount_types,
+            // Serve API
+            start_serve,
+            stop_serve,
+            stop_all_serves,
+            get_serve_types,
+            get_serve_flags,
+            list_serves,
+            // Remote management
             create_remote_interactive,
             continue_create_remote_interactive,
             create_remote,
@@ -422,6 +436,7 @@ pub fn run() {
             get_configs,
             get_settings,
             get_cached_mounted_remotes,
+            get_cached_serves,
             // Binaries
             check_rclone_available,
             is_7z_available,
@@ -448,6 +463,7 @@ pub fn run() {
             clear_all_scheduled_tasks,
             // Mount
             force_check_mounted_remotes,
+            force_check_serves,
             get_mount_types,
             // Application control
             handle_shutdown,

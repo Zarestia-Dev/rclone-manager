@@ -41,6 +41,8 @@ import { GeneralDetailComponent } from '../features/components/dashboard/general
 import { GeneralOverviewComponent } from '../features/components/dashboard/general-overview/general-overview.component';
 import { AppDetailComponent } from '../features/components/dashboard/app-detail/app-detail.component';
 import { AppOverviewComponent } from '../features/components/dashboard/app-overview/app-overview.component';
+import { ServeOverviewComponent } from '../features/components/dashboard/serve-overview/serve-overview.component';
+import { ServeDetailComponent } from '../features/components/dashboard/serve-detail/serve-detail.component';
 import { LogsModalComponent } from '../features/modals/monitoring/logs-modal/logs-modal.component';
 import { ExportModalComponent } from '../features/modals/settings/export-modal/export-modal.component';
 import { RemoteConfigModalComponent } from '../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
@@ -59,6 +61,7 @@ import {
   SystemInfoService,
   AppSettingsService,
   SchedulerService,
+  ServeManagementService,
 } from '@app/services';
 
 @Component({
@@ -80,6 +83,8 @@ import {
     GeneralOverviewComponent,
     AppDetailComponent,
     AppOverviewComponent,
+    ServeOverviewComponent,
+    ServeDetailComponent,
     LoadingOverlayComponent,
   ],
   templateUrl: './home.component.html',
@@ -94,6 +99,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly uiStateService = inject(UiStateService);
   private readonly mountManagementService = inject(MountManagementService);
+  private readonly serveManagementService = inject(ServeManagementService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
@@ -123,6 +129,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   remotes: Remote[] = [];
   mountedRemotes: MountedRemote[] = [];
   mountedRemotes$ = this.mountManagementService.mountedRemotes$;
+  runningServes$ = this.serveManagementService.runningServes$;
   selectedRemote: Remote | null = null;
   remoteSettings: RemoteSettings = {};
 
@@ -199,6 +206,12 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.updateRemoteMountStates();
       this.cdr.markForCheck();
     });
+
+    // Subscribe to running serves changes
+    this.runningServes$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.updateRemoteServeStates();
+      this.cdr.markForCheck();
+    });
   }
 
   private async loadInitialData(): Promise<void> {
@@ -218,6 +231,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private async refreshData(): Promise<void> {
     await this.getRemoteSettings(); // Load settings first
     await this.mountManagementService.getMountedRemotes(); // This will trigger the observable
+    await this.serveManagementService.refreshServes(); // Load running serves
     await this.loadRemotes(); // Then remotes
     await this.loadJobs();
   }
@@ -229,10 +243,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       await this.loadActiveJobs();
       this.loadDiskUsageInBackground(); // Fire and forget
 
-      // Load scheduled tasks from remote settings (not rclone configs)
+      // Load scheduled tasks from remote settings
       try {
         await this.schedulerService.reloadScheduledTasksFromConfigs(this.remoteSettings);
-        await this.schedulerService.reloadScheduledTasks();
       } catch (error) {
         console.error('Failed to load scheduled tasks from settings:', error);
       }
@@ -602,6 +615,25 @@ export class HomeComponent implements OnInit, OnDestroy {
     );
   }
 
+  /**
+   * Handle the start serve event from serve components
+   * This will open the remote config modal with start serve mode
+   */
+  onStartServe(remoteName: string): void {
+    const remoteSettings = this.loadRemoteSettings(remoteName);
+    const serveConfig = remoteSettings?.['serveConfig'];
+
+    console.log('Starting serve with config:', serveConfig);
+
+    this.serveManagementService.startServe(
+      remoteName,
+      serveConfig?.['options'],
+      serveConfig?.['filterConfig'],
+      serveConfig?.['backendConfig'],
+      serveConfig?.['vfsConfig']
+    );
+  }
+
   async deleteRemote(remoteName: string): Promise<void> {
     if (!remoteName) return;
 
@@ -754,7 +786,11 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
   }
 
-  openRemoteConfigModal(editTarget?: string, existingConfig?: RemoteSettings): void {
+  openRemoteConfigModal(
+    editTarget?: string,
+    existingConfig?: RemoteSettings,
+    initialSection?: string
+  ): void {
     this.dialog.open(RemoteConfigModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
@@ -763,6 +799,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         editTarget,
         existingConfig,
         restrictMode: this.restrictMode,
+        initialSection,
       },
     });
   }
@@ -1058,6 +1095,29 @@ export class HomeComponent implements OnInit, OnDestroy {
         mountState: {
           ...remote.mountState,
           mounted: this.isRemoteMounted(remote.remoteSpecs.name),
+        },
+      };
+      this.updateRemoteInList(updatedRemote);
+    });
+  }
+
+  private updateRemoteServeStates(): void {
+    const serves = this.serveManagementService.getRunningServes();
+    this.remotes.forEach(remote => {
+      const remoteServes = serves.filter(s => {
+        const remoteName = s.params.fs.split(':')[0];
+        return remoteName === remote.remoteSpecs.name;
+      });
+      const updatedRemote = {
+        ...remote,
+        serveState: {
+          hasActiveServes: remoteServes.length > 0,
+          serveCount: remoteServes.length,
+          serves: remoteServes.map(s => ({
+            id: s.id,
+            addr: s.addr,
+            serve_type: s.params.type,
+          })),
         },
       };
       this.updateRemoteInList(updatedRemote);

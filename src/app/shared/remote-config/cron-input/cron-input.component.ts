@@ -57,7 +57,7 @@ type PresetType =
 })
 export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
   @Input() initialValue?: string | null;
-  @Input() taskName = 'this task';
+  @Input() taskName: string | null = null;
   @Output() cronChange = new EventEmitter<string | null>();
   @Output() validationChange = new EventEmitter<CronValidationResponse>();
 

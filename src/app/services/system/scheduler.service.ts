@@ -182,7 +182,7 @@ export class SchedulerService extends TauriBaseService {
   /**
    * Refresh the scheduled tasks cache
    */
-  private async refreshScheduledTasks(): Promise<void> {
+  public async refreshScheduledTasks(): Promise<void> {
     try {
       const tasks = await this.getScheduledTasks();
       const stats = await this.getScheduledTasksStats();

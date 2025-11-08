@@ -1,4 +1,4 @@
-export type AppTab = 'mount' | 'sync' | 'files' | 'general';
+export type AppTab = 'mount' | 'sync' | 'serve' | 'general';
 
 export interface ModalSize {
   width: string;

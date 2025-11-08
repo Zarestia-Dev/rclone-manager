@@ -22,7 +22,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { Subject, takeUntil, Observable, of } from 'rxjs';
-import { FlagType, Entry, CronValidationResponse } from '@app/types';
+import { Entry, CronValidationResponse, EditTarget } from '@app/types';
 import { PathSelectionService, PathSelectionState } from '@app/services';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
@@ -56,7 +56,7 @@ type PathGroup = 'source' | 'dest';
 })
 export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   @Input({ required: true }) opFormGroup!: FormGroup;
-  @Input({ required: true }) operationType: FlagType = 'mount';
+  @Input({ required: true }) operationType: EditTarget = 'mount';
   @Input({ required: true }) currentRemoteName = 'remote';
   @Input() existingRemotes: string[] = [];
   @Input() description = '';
@@ -75,10 +75,10 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
 
   // Component state
   isMount = false;
+  isServe = false;
   otherRemotes: string[] = [];
   sourcePathType: PathType = 'currentRemote';
   destPathType: PathType = 'local';
-  isPanelExpanded = false;
 
   private get sourceFieldId(): string {
     return `${this.operationType}-source`;
@@ -99,6 +99,7 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['operationType']) {
       this.isMount = this.operationType === 'mount';
+      this.isServe = this.operationType === 'serve';
     }
     if (changes['existingRemotes'] || changes['currentRemoteName']) {
       this.updateOtherRemotes();
@@ -107,9 +108,12 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
 
   ngOnInit(): void {
     this.isMount = this.operationType === 'mount';
+    this.isServe = this.operationType === 'serve';
     this.updateOtherRemotes();
     this.initializePathListeners();
-    this.initializeCronListener();
+    if (!this.isServe) {
+      this.initializeCronListener();
+    }
   }
 
   ngOnDestroy(): void {
@@ -129,7 +133,7 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
 
   private initializePathListeners(): void {
     this.watchPathType('source');
-    if (!this.isMount) {
+    if (!this.isMount && !this.isServe) {
       this.watchPathType('dest');
     }
   }
@@ -139,21 +143,18 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     const cronEnabledControl = this.opFormGroup.get('cronEnabled');
 
     if (cronControl) {
-      // Set initial panel state
-      this.isPanelExpanded = !!cronControl.value;
-
       // Listen for external changes (e.g., from modal population)
       cronControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
-        this.isPanelExpanded = !!value;
-        this.cdRef.markForCheck();
+        if (value) {
+          this.cdRef.markForCheck();
+        }
       });
     }
 
     // Auto-expand panel when cron is enabled
     if (cronEnabledControl) {
       cronEnabledControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(enabled => {
-        if (enabled && !this.isPanelExpanded) {
-          this.isPanelExpanded = true;
+        if (enabled) {
           this.cdRef.markForCheck();
         }
       });
@@ -305,7 +306,6 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
       cronControl.setValue(null, { emitEvent: false });
     }
 
-    this.isPanelExpanded = false;
     this.cdRef.markForCheck();
   }
 

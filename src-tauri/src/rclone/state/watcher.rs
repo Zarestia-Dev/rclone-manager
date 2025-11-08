@@ -6,8 +6,11 @@ use tokio::time;
 
 use super::cache::CACHE;
 use crate::RcloneState;
-use crate::rclone::queries::mount::get_mounted_remotes;
-use crate::utils::types::{all_types::MountedRemote, events::REMOTE_STATE_CHANGED};
+use crate::rclone::queries::{list_serves, mount::get_mounted_remotes};
+use crate::utils::types::{
+    all_types::{MountedRemote, ServeInstance},
+    events::{REMOTE_STATE_CHANGED, SERVE_STATE_CHANGED},
+};
 
 /// Global flag to control the mounted remote watcher
 static WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
@@ -218,4 +221,210 @@ pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), St
     }
 
     Ok(())
+}
+
+/// Force refresh serves and check for changes
+/// This can be called manually when needed, for example after serve operations
+#[tauri::command]
+pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
+    debug!("🔍 Force checking running serves");
+
+    // Get current state from cache
+    let cached_serves = CACHE.get_serves().await;
+
+    // Get current state from live API
+    let api_response = list_serves(app_handle.state::<RcloneState>()).await?;
+    let api_serves: Vec<ServeInstance> = api_response
+        .get("list")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|item| {
+                    let id = item.get("id")?.as_str()?.to_string();
+                    let addr = item.get("addr")?.as_str()?.to_string();
+                    let params = item.get("params")?;
+                    let fs = params.get("fs")?.as_str()?.to_string();
+                    let serve_type = params.get("type")?.as_str()?.to_string();
+                    let remote_name = fs.split(':').next()?.to_string();
+
+                    Some(ServeInstance {
+                        id,
+                        addr,
+                        serve_type,
+                        fs,
+                        remote_name,
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // Check for stopped serves
+    let stopped_serves: Vec<&ServeInstance> = cached_serves
+        .iter()
+        .filter(|cached| !api_serves.iter().any(|api| api.id == cached.id))
+        .collect();
+
+    // Check for new serves
+    let new_serves: Vec<&ServeInstance> = api_serves
+        .iter()
+        .filter(|api| !cached_serves.iter().any(|cached| cached.id == api.id))
+        .collect();
+
+    // If there are differences, update the cache
+    if !stopped_serves.is_empty() || !new_serves.is_empty() {
+        debug!("🔍 Detected serve changes - updating cache");
+        CACHE.refresh_serves(app_handle.clone()).await?;
+    }
+
+    // Emit events for stopped serves
+    for serve in stopped_serves {
+        let event_payload = serde_json::json!({
+            "id": serve.id,
+            "fs": serve.fs,
+            "type": serve.serve_type,
+            "reason": "externally_stopped"
+        });
+
+        if let Err(e) = app_handle.emit(SERVE_STATE_CHANGED, &event_payload) {
+            warn!("⚠️ Failed to emit serve_state_changed event: {e}");
+        }
+
+        debug!(
+            "📡 Emitted serve_state_changed event for stopped: {}",
+            serve.id
+        );
+    }
+
+    // Emit events for new serves
+    for serve in new_serves {
+        let event_payload = serde_json::json!({
+            "id": serve.id,
+            "fs": serve.fs,
+            "type": serve.serve_type,
+            "addr": serve.addr,
+            "reason": "externally_started"
+        });
+
+        if let Err(e) = app_handle.emit(SERVE_STATE_CHANGED, &event_payload) {
+            warn!("⚠️ Failed to emit serve_state_changed event: {e}");
+        }
+
+        debug!(
+            "📡 Emitted serve_state_changed event for started: {}",
+            serve.id
+        );
+    }
+
+    Ok(())
+}
+
+/// Start a background watcher that monitors running serves
+/// and emits events when serves are started/stopped externally
+pub fn start_serve_watcher(app_handle: AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        debug!("🔍 Starting serve watcher");
+        let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
+
+        loop {
+            interval.tick().await;
+
+            // Get current state from cache
+            let cached_serves = CACHE.get_serves().await;
+
+            // Get current state from live API
+            match list_serves(app_handle.state::<RcloneState>()).await {
+                Ok(api_response) => {
+                    let api_serves: Vec<ServeInstance> = api_response
+                        .get("list")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|item| {
+                                    let id = item.get("id")?.as_str()?.to_string();
+                                    let addr = item.get("addr")?.as_str()?.to_string();
+                                    let params = item.get("params")?;
+                                    let fs = params.get("fs")?.as_str()?.to_string();
+                                    let serve_type = params.get("type")?.as_str()?.to_string();
+                                    let remote_name = fs.split(':').next()?.to_string();
+
+                                    Some(ServeInstance {
+                                        id,
+                                        addr,
+                                        serve_type,
+                                        fs,
+                                        remote_name,
+                                    })
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default();
+
+                    // Check for stopped serves
+                    let stopped_serves: Vec<&ServeInstance> = cached_serves
+                        .iter()
+                        .filter(|cached| !api_serves.iter().any(|api| api.id == cached.id))
+                        .collect();
+
+                    // Check for new serves
+                    let new_serves: Vec<&ServeInstance> = api_serves
+                        .iter()
+                        .filter(|api| !cached_serves.iter().any(|cached| cached.id == api.id))
+                        .collect();
+
+                    // If there are differences, update the cache
+                    if !stopped_serves.is_empty() || !new_serves.is_empty() {
+                        debug!("🔍 Detected serve changes - updating cache");
+                        if let Err(e) = CACHE.refresh_serves(app_handle.clone()).await {
+                            warn!("⚠️ Failed to refresh serves cache: {e}");
+                        }
+                    }
+
+                    // Emit events for stopped serves
+                    for serve in stopped_serves {
+                        let event_payload = serde_json::json!({
+                            "id": serve.id,
+                            "fs": serve.fs,
+                            "type": serve.serve_type,
+                            "reason": "externally_stopped"
+                        });
+
+                        if let Err(e) = app_handle.emit(SERVE_STATE_CHANGED, &event_payload) {
+                            warn!("⚠️ Failed to emit serve_state_changed event: {e}");
+                        }
+
+                        debug!(
+                            "📡 Emitted serve_state_changed event for stopped: {}",
+                            serve.id
+                        );
+                    }
+
+                    // Emit events for new serves
+                    for serve in new_serves {
+                        let event_payload = serde_json::json!({
+                            "id": serve.id,
+                            "fs": serve.fs,
+                            "type": serve.serve_type,
+                            "addr": serve.addr,
+                            "reason": "externally_started"
+                        });
+
+                        if let Err(e) = app_handle.emit(SERVE_STATE_CHANGED, &event_payload) {
+                            warn!("⚠️ Failed to emit serve_state_changed event: {e}");
+                        }
+
+                        debug!(
+                            "📡 Emitted serve_state_changed event for started: {}",
+                            serve.id
+                        );
+                    }
+                }
+                Err(e) => {
+                    warn!("⚠️ Failed to check running serves: {e}");
+                }
+            }
+        }
+    });
+
+    debug!("✅ Serve watcher started");
 }

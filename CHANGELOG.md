@@ -5,6 +5,7 @@
 ### Added
 - Added schedule support for sync, copy, move, and bisync operations. You can now schedule these operations to run at specific times or intervals using a cron-like syntax. You can find the scheduling options in the remote operation settings.
 - New time picker module added for better clock time selection.
+- Rclone Serve support added. You can now start and stop rclone serve commands. The serve status is displayed in the sidebar for easy access. You can find the serve options in the remote detail view.
 
 ### Fixed
 - Critical fix for proccess management. Now the app correctly find own rclone processes via ports.

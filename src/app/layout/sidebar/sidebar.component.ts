@@ -132,4 +132,20 @@ export class SidebarComponent {
       ? `${availableOperations.join(', ')} Available`
       : 'Sync Operations Available';
   }
+
+  getServeTooltip(remote: Remote): string {
+    if (!remote.serveState || !remote.serveState.hasActiveServes) {
+      return 'No active serves';
+    }
+
+    const count = remote.serveState.serveCount || 0;
+    const serves = remote.serveState.serves || [];
+
+    if (count === 1 && serves.length > 0) {
+      const serve = serves[0];
+      return `Serving via ${serve.serve_type.toUpperCase()} on ${serve.addr}`;
+    }
+
+    return `${count} active serve${count !== 1 ? 's' : ''}`;
+  }
 }

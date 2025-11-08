@@ -41,8 +41,6 @@ export class FlagConfigService extends TauriBaseService {
     }
   }
 
-  // --- Data Mutation ---
-
   async saveOption(block: string, fullFieldName: string, value: unknown): Promise<void> {
     try {
       await this.invokeCommand('set_rclone_option', {
@@ -55,8 +53,6 @@ export class FlagConfigService extends TauriBaseService {
       throw error;
     }
   }
-
-  // --- Flag Fetching for Specific Commands ---
 
   /**
    * Loads all flag fields for all defined flag types.

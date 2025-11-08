@@ -115,6 +115,9 @@ export class IconService {
       wind: 'assets/icons/wind.svg',
       calendar: 'assets/icons/calendar.svg',
       clock: 'assets/icons/clock.svg',
+      'satellite-dish': 'assets/icons/satellite-dish.svg',
+      serve: 'assets/icons/satellite-dish.svg',
+      fingerprint: 'assets/icons/fingerprint.svg',
     };
 
     this.icons = icons;

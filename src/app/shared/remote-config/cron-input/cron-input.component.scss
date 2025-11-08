@@ -5,7 +5,7 @@
 }
 
 .tab-content {
-  padding: 1rem 0;
+  padding: var(--space-md);
 }
 
 // Preset buttons section
@@ -61,8 +61,7 @@
 }
 
 // Info sections
-.advanced-description,
-.generated-preview {
+.advanced-description {
   grid-column: 1 / -1;
   display: flex;
   align-items: start;

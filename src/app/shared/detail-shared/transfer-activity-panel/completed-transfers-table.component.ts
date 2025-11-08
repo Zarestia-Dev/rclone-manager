@@ -37,31 +37,6 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
                   <span class="file-name" [title]="transfer.name">{{
                     getFileName(transfer.name)
                   }}</span>
-                  @if (transfer.status === 'failed') {
-                    <mat-icon
-                      svgIcon="circle-exclamation"
-                      class="error-icon warn"
-                      matTooltip="{{ transfer.error }}"
-                    ></mat-icon>
-                  } @else if (transfer.status === 'checked') {
-                    <mat-icon
-                      svgIcon="circle-check"
-                      class="check-icon accent"
-                      matTooltip="File was checked/skipped"
-                    ></mat-icon>
-                  } @else if (transfer.status === 'partial') {
-                    <mat-icon
-                      svgIcon="circle-exclamation"
-                      class="partial-icon warn"
-                      matTooltip="Partial transfer"
-                    ></mat-icon>
-                  } @else {
-                    <mat-icon
-                      svgIcon="circle-check"
-                      class="success-icon primary"
-                      matTooltip="Transfer completed"
-                    ></mat-icon>
-                  }
                 </div>
               </td>
             </ng-container>
@@ -80,21 +55,21 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
                 } @else if (transfer.status === 'checked') {
                   <mat-chip class="status-chip checked">
                     <span>
-                      <mat-icon svgIcon="circle-check" class="chip-icon"></mat-icon>
+                      <mat-icon svgIcon="circle-check" class="chip-icon accent"></mat-icon>
                       Checked
                     </span>
                   </mat-chip>
                 } @else if (transfer.status === 'partial') {
                   <mat-chip class="status-chip partial">
                     <span>
-                      <mat-icon svgIcon="circle-exclamation" class="chip-icon"></mat-icon>
+                      <mat-icon svgIcon="circle-exclamation" class="chip-icon warn"></mat-icon>
                       Partial
                     </span>
                   </mat-chip>
                 } @else {
                   <mat-chip class="status-chip success">
                     <span>
-                      <mat-icon svgIcon="circle-check" class="chip-icon"></mat-icon>
+                      <mat-icon svgIcon="circle-check" class="chip-icon accent"></mat-icon>
                       Completed
                     </span>
                   </mat-chip>

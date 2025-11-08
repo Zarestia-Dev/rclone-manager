@@ -53,11 +53,11 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 
 // Services
 import { AnimationsService } from '../../../../shared/services/animations.service';
-import { EventListenersService, SchedulerService } from '@app/services';
+import { EventListenersService, SchedulerService, ServeManagementService } from '@app/services';
 import { SystemInfoService } from '@app/services';
 import { FormatBytes } from '@app/pipes';
 import { IconService } from 'src/app/shared/services/icon.service';
-import { ScheduledTask } from '@app/types';
+import { ScheduledTask, ServeListItem } from '@app/types';
 
 /** Polling interval for system stats in milliseconds */
 const POLLING_INTERVAL = 5000;
@@ -118,10 +118,15 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   systemInfoPanelOpenState = false;
   jobInfoPanelOpenState = false;
   scheduledTasksPanelOpenState = false;
+  servesPanelOpenState = false;
 
   // Scheduled tasks
   scheduledTasks: ScheduledTask[] = [];
   isLoadingScheduledTasks = false;
+
+  // Running serves
+  runningServes: ServeListItem[] = [];
+  isLoadingServes = false;
 
   // Private members
   private readonly PANEL_STATE_KEY = 'dashboard_panel_states';
@@ -138,11 +143,13 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   private snackBar = inject(MatSnackBar);
   private systemInfoService = inject(SystemInfoService);
   private schedulerService = inject(SchedulerService);
+  private serveManagementService = inject(ServeManagementService);
   public iconService = inject(IconService);
 
   // Track by functions
   readonly trackByRemoteName: TrackByFunction<Remote> = (_, remote) => remote.remoteSpecs.name;
   readonly trackByIndex: TrackByFunction<unknown> = index => index;
+  readonly Object = Object; // Expose Object to template
 
   ngOnInit(): void {
     this.restorePanelStates();
@@ -150,6 +157,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     this.setupPolling();
     this.loadInitialData();
     this.setupScheduledTasksListener();
+    this.setupRunningServesListener();
 
     // Debounce panel state changes to prevent rapid toggling
     this.panelStateChange$
@@ -172,6 +180,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     this.systemInfoPanelOpenState = true;
     this.jobInfoPanelOpenState = true;
     this.scheduledTasksPanelOpenState = true;
+    this.servesPanelOpenState = true;
     this.savePanelStates();
   }
 
@@ -180,6 +189,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     this.systemInfoPanelOpenState = false;
     this.jobInfoPanelOpenState = false;
     this.scheduledTasksPanelOpenState = false;
+    this.servesPanelOpenState = false;
     this.savePanelStates();
   }
 
@@ -206,6 +216,15 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     this.scheduledTasksPanelOpenState = isOpen;
     this.savePanelStates();
     this.panelStateChange$.next();
+  }
+
+  onServesPanelStateChange(isOpen: boolean): void {
+    this.servesPanelOpenState = isOpen;
+    this.savePanelStates();
+    this.panelStateChange$.next();
+    if (isOpen) {
+      this.loadRunningServes();
+    }
   }
 
   // Private methods
@@ -362,12 +381,55 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
+  private setupRunningServesListener(): void {
+    // Subscribe to running serves updates
+    this.serveManagementService.runningServes$.pipe(takeUntil(this.destroy$)).subscribe({
+      next: (serves: ServeListItem[]) => {
+        this.runningServes = serves;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private async loadRunningServes(): Promise<void> {
+    this.isLoadingServes = true;
+    this.cdr.markForCheck();
+
+    try {
+      await this.serveManagementService.refreshServes();
+    } catch (error) {
+      console.error('Error loading running serves:', error);
+    } finally {
+      this.isLoadingServes = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  async stopServe(serverId: string, remoteName: string): Promise<void> {
+    try {
+      await this.serveManagementService.stopServe(serverId, remoteName);
+      this.snackBar.open(`Serve stopped successfully`, 'Close', { duration: 3000 });
+    } catch (error) {
+      console.error('Error stopping serve:', error);
+      this.snackBar.open(`Failed to stop serve`, 'Close', { duration: 5000 });
+    }
+  }
+
+  getServeRemoteName(serve: ServeListItem): string {
+    return serve.params.fs.split(':')[0];
+  }
+
+  getServeProtocol(serve: ServeListItem): string {
+    return serve.params.type.toUpperCase();
+  }
+
   private savePanelStates(): void {
     const state = {
       bandwidth: this.bandwidthPanelOpenState,
       system: this.systemInfoPanelOpenState,
       jobs: this.jobInfoPanelOpenState,
       scheduledTasks: this.scheduledTasksPanelOpenState,
+      serves: this.servesPanelOpenState,
     };
     localStorage.setItem(this.PANEL_STATE_KEY, JSON.stringify(state));
   }
@@ -381,6 +443,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
         this.systemInfoPanelOpenState = parsed.system ?? false;
         this.jobInfoPanelOpenState = parsed.jobs ?? false;
         this.scheduledTasksPanelOpenState = parsed.scheduledTasks ?? false;
+        this.servesPanelOpenState = parsed.serves ?? false;
       } catch (err) {
         console.error('Failed to parse panel state:', err);
         localStorage.removeItem(this.PANEL_STATE_KEY);

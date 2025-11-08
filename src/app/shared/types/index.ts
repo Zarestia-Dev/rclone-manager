@@ -8,5 +8,6 @@ export * from './params';
 export * from './remote-config';
 export * from './remotes';
 export * from './scheduler';
+export * from './serve';
 export * from './system';
 export * from './ui';

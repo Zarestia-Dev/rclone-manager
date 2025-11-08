@@ -8,7 +8,7 @@ use crate::{
     rclone::{
         commands::{job::stop_job, mount::unmount_all_remotes},
         engine::ENGINE,
-        state::{engine::ENGINE_STATE, job::get_active_jobs, watcher::stop_mounted_remote_watcher},
+        state::{job::get_active_jobs, watcher::stop_mounted_remote_watcher},
     },
     utils::process::process_manager::kill_all_rclone_processes,
     utils::types::events::APP_EVENT,
@@ -150,9 +150,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         Err(_) => {
             error!("Engine shutdown timed out after 3 seconds, forcing cleanup");
             // Force kill any remaining rclone processes on OUR managed ports as a last resort
-            let (_, api_port) = ENGINE_STATE.get_api();
-            let (_, oauth_port) = ENGINE_STATE.get_oauth();
-            if let Err(e) = kill_all_rclone_processes(api_port, oauth_port) {
+            if let Err(e) = kill_all_rclone_processes() {
                 error!("Failed to force kill rclone processes: {e}");
             }
         }

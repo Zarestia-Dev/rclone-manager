@@ -35,6 +35,15 @@ pub struct MountedRemote {
     pub mount_point: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ServeInstance {
+    pub id: String,
+    pub addr: String,
+    pub serve_type: String,
+    pub fs: String,
+    pub remote_name: String,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DiskUsage {
     pub free: String,
@@ -105,6 +114,7 @@ pub struct RemoteCache {
     pub configs: RwLock<serde_json::Value>,
     pub settings: RwLock<serde_json::Value>,
     pub mounted: RwLock<Vec<MountedRemote>>,
+    pub serves: RwLock<Vec<ServeInstance>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

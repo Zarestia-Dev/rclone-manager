@@ -9,7 +9,7 @@ export const FLAG_TYPES: FlagType[] = [
   'vfs',
   'backend',
 ];
-export type EditTarget = FlagType | 'remote' | null;
+export type EditTarget = FlagType | 'remote' | 'serve' | null;
 export const INTERACTIVE_REMOTES = ['iclouddrive', 'onedrive'];
 
 export interface LoadingState {

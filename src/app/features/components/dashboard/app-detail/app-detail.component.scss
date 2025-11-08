@@ -135,7 +135,6 @@
 .settings-layout {
   display: grid;
   gap: var(--panel-gap);
-  grid-template-columns: minmax(0, 1fr);
 }
 
 .settings-group {

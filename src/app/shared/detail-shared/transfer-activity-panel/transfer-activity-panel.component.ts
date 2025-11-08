@@ -14,14 +14,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSortModule } from '@angular/material/sort';
 import { MatChipsModule } from '@angular/material/chips';
 import { ActiveTransfersTableComponent } from './active-transfers-table.component';
 import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
 import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '../../types';
-import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
+import { distinctUntilChanged, Subject } from 'rxjs';
 
 @Component({
   selector: 'app-transfer-activity-panel',
@@ -33,7 +32,6 @@ import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
     MatTableModule,
     MatButtonModule,
     MatProgressBarModule,
-    MatTooltipModule,
     MatTabsModule,
     MatSortModule,
     MatChipsModule,
@@ -122,14 +120,9 @@ export class TransferActivityPanelComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.update$
-      .pipe(
-        debounceTime(200), // Wait 200ms after last update
-        distinctUntilChanged()
-      )
-      .subscribe(() => {
-        // Force change detection if needed
-        this.cdr.markForCheck();
-      });
+    this.update$.pipe(distinctUntilChanged()).subscribe(() => {
+      // Force change detection if needed
+      this.cdr.markForCheck();
+    });
   }
 }

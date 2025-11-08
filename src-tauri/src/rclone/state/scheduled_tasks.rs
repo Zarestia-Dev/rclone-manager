@@ -301,7 +301,10 @@ impl ScheduledTasksCache {
     /// Get a task by its current job ID
     pub async fn get_task_by_job_id(&self, job_id: u64) -> Option<ScheduledTask> {
         let tasks = self.tasks.read().await;
-        tasks.values().find(|t| t.current_job_id == Some(job_id)).cloned()
+        tasks
+            .values()
+            .find(|t| t.current_job_id == Some(job_id))
+            .cloned()
     }
 
     /// Update an existing task (runtime only, not persisted)

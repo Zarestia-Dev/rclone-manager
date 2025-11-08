@@ -376,6 +376,8 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       return this.splitToArray(this.option.ValueStr || this.option.DefaultStr, /\s+/);
     }
     // stringArray
+    console.log('Getting initial array value:', this.option);
+
     return (Array.isArray(this.option.Value) ? this.option.Value : []).filter(v => v);
   }
 

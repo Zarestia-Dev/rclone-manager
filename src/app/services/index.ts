@@ -19,6 +19,7 @@ export * from './file-operations/job-management.service';
 export * from './file-operations/repair.service';
 export * from './file-operations/file-system.service';
 export * from './file-operations/mount-management.service';
+export * from './file-operations/serve-management.service';
 export * from './security/rclone-password.service';
 
 // Backward-compatible re-exports of shared types for consumers importing from '@app/services'

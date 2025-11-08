@@ -1,6 +1,6 @@
 {
   "name": "rclone-manager",
-  "version": "0.1.6",
+  "version": "0.1.7-beta",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",

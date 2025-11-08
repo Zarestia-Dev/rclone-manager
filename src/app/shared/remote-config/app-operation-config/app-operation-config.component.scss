@@ -12,12 +12,20 @@
 .header-section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  padding: var(--space-md);
+  padding: var(--space-sm);
   border: 2px solid var(--primary-color);
   border-radius: var(--panel-radius);
   background: rgba(var(--primary-color-rgb), 0.05);
+}
 
+.paths-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.header-section {
   .operation-enable,
   .cron-enable {
     display: flex;
@@ -40,69 +48,6 @@
 
   mat-divider {
     margin: var(--space-sm) 0;
-  }
-}
-
-// ============================================================================
-// CRON PANEL
-// ============================================================================
-
-.cron-panel {
-  margin-top: var(--space-sm);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border-radius: var(--border-radius);
-
-  ::ng-deep .mat-expansion-panel-header {
-    padding: var(--space-sm) var(--space-md);
-  }
-
-  ::ng-deep .mat-expansion-panel-body {
-    padding: var(--space-md);
-  }
-
-  ::ng-deep .mat-panel-title {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    font-weight: 500;
-    flex: 0 0 auto;
-  }
-
-  ::ng-deep .mat-panel-description {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    font-size: var(--font-size-sm);
-    color: var(--app-text-color-secondary);
-    justify-content: flex-end;
-    margin-left: auto;
-
-    .no-schedule {
-      font-style: italic;
-      opacity: 0.7;
-    }
-
-    .clear-schedule-btn {
-      width: 28px;
-      height: 28px;
-      line-height: 28px;
-
-      mat-icon {
-        font-size: 16px;
-        width: 16px;
-        height: 16px;
-      }
-
-      &:hover {
-        background-color: rgba(var(--error-rgb), 0.1);
-        color: var(--error);
-      }
-    }
-  }
-
-  .cron-content {
-    display: flex;
-    flex-direction: column;
   }
 }
 

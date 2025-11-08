@@ -1,0 +1,48 @@
+<!-- serve-overview.component.html -->
+<div class="serve-overview" @fadeInOut>
+  <!-- Header Section -->
+  <app-overview-header mode="serve"></app-overview-header>
+
+  <div class="overview-content">
+    <!-- Status Overview Panel -->
+    <app-status-overview-panel
+      mode="serve"
+      [totalCount]="remotes.length"
+      [activeCount]="activeCount"
+      [inactiveCount]="inactiveCount"
+    >
+    </app-status-overview-panel>
+
+    <!-- Active Serves Panel -->
+    @if (activeCount > 0) {
+      <app-remotes-panel
+        [title]="getActiveTitle()"
+        [icon]="activeIcon"
+        [remotes]="activeRemotes"
+        mode="serve"
+        [actionInProgress]="actionInProgress"
+        [primaryActionLabel]="primaryActionLabel"
+        [activeIcon]="activeIcon"
+        (remoteSelected)="selectRemote($event)"
+        (startJob)="triggerStartServe($event.remoteName)"
+      >
+      </app-remotes-panel>
+    }
+
+    <!-- Available Remotes Panel -->
+    @if (inactiveCount > 0) {
+      <app-remotes-panel
+        [title]="getInactiveTitle()"
+        [icon]="'circle-xmark'"
+        [remotes]="inactiveRemotes"
+        mode="serve"
+        [actionInProgress]="actionInProgress"
+        [primaryActionLabel]="primaryActionLabel"
+        [activeIcon]="activeIcon"
+        (remoteSelected)="selectRemote($event)"
+        (startJob)="triggerStartServe($event.remoteName)"
+      >
+      </app-remotes-panel>
+    }
+  </div>
+</div>

@@ -1,0 +1,374 @@
+// serve-detail.component.scss
+.serve-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  padding: var(--space-xl);
+  height: 100%;
+  overflow-y: auto;
+
+  // Header (No Changes)
+  .detail-header {
+    text-align: center;
+    margin-bottom: var(--container-gap);
+
+    .header-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--header-gap);
+      margin-bottom: var(--header-gap);
+    }
+
+    .remote-info-section {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .remote-text-info {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--space-xxs);
+
+      .remote-name {
+        font-size: var(--font-size-xl);
+        font-weight: 500;
+        margin: 0;
+        color: var(--app-text-color);
+        letter-spacing: -0.5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 300px;
+      }
+
+      .remote-type {
+        font-size: var(--font-size-base);
+        color: var(--secondary-text-color);
+        font-weight: 400;
+      }
+    }
+
+    .icon-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: var(--icon-container-size);
+      height: var(--icon-container-size);
+      border-radius: var(--icon-radius, 12px);
+      background: rgba(var(--accent-color-rgb), 0.1);
+      border: 2px solid rgba(var(--accent-color-rgb), 0.2);
+      transition: var(--transition-standard);
+
+      .remote-type-icon {
+        width: var(--icon-size-lg);
+        height: var(--icon-size-lg);
+        color: var(--accent-color);
+        transition: var(--transition-standard);
+      }
+    }
+
+    .start-serve-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      flex-shrink: 0;
+    }
+  }
+
+  // Serves Section (STYLES ADDED/MODIFIED)
+  .serves-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin: 0;
+      font-size: var(--font-size-xl);
+      font-weight: 600;
+      color: var(--app-text-color);
+
+      mat-icon {
+        color: rgb(76, 175, 80);
+      }
+
+      .serves-count {
+        margin-left: auto;
+        padding: 4px 12px;
+        border-radius: 16px;
+        background: rgba(76, 175, 80, 0.15);
+        color: rgb(76, 175, 80);
+        font-size: var(--font-size-sm);
+        font-weight: 700;
+      }
+    }
+
+    // Empty State (No Changes)
+    .empty-state-card {
+      background: var(--surface-bg, rgba(255, 255, 255, 0.03));
+      border: 1px dashed rgba(var(--app-text-color-rgb), 0.2);
+
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: var(--space-2xl);
+        gap: var(--space-md);
+
+        .empty-icon {
+          width: 64px;
+          height: 64px;
+          font-size: 64px;
+          color: var(--secondary-text-color);
+          opacity: 0.5;
+        }
+
+        h4 {
+          margin: 0;
+          font-size: var(--font-size-lg);
+          color: var(--app-text-color);
+        }
+
+        p {
+          margin: 0;
+          max-width: 500px;
+          color: var(--secondary-text-color);
+          line-height: 1.6;
+        }
+      }
+    }
+
+    // Serves Grid (STYLES ADDED/MODIFIED)
+    .serves-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: var(--space-md);
+
+      .serve-card {
+        background: var(--surface-bg, rgba(255, 255, 255, 0.03));
+        border: 1px solid rgba(76, 175, 80, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+        &:hover {
+          border-color: rgb(76, 175, 80);
+          box-shadow: 0 4px 16px rgba(76, 175, 80, 0.25);
+          transform: translateY(-2px);
+        }
+
+        .serve-card-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: var(--space-md);
+          margin-bottom: var(--space-md);
+
+          .serve-info {
+            display: flex;
+            gap: var(--space-md);
+            flex: 1;
+            min-width: 0;
+
+            .serve-icon-wrapper {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: 40px;
+              height: 40px;
+              border-radius: 10px;
+              background: rgba(76, 175, 80, 0.15);
+              flex-shrink: 0;
+
+              .serve-icon {
+                width: 20px;
+                height: 20px;
+                color: rgb(76, 175, 80);
+              }
+            }
+
+            .serve-details {
+              display: flex;
+              flex-direction: column;
+              gap: 6px; // Increased gap slightly
+              min-width: 0;
+
+              .serve-title-row {
+                display: flex;
+                align-items: center;
+                gap: var(--space-xs);
+              }
+
+              .serve-protocol-badge {
+                padding: 2px 8px;
+                border-radius: 10px;
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                background: rgba(76, 175, 80, 0.2);
+                color: rgb(76, 175, 80);
+              }
+
+              // NEW: URL Container
+              .serve-url-container {
+                display: flex;
+                align-items: center;
+                gap: var(--space-xs);
+
+                .serve-url {
+                  font-size: 13px;
+                  font-weight: 600;
+                  color: var(--primary-color); // Use primary color for link
+                  font-family: "Courier New", monospace;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: nowrap;
+                }
+              }
+
+              // Original address style (now a fallback)
+              .serve-address {
+                font-size: 13px;
+                font-weight: 600;
+                color: var(--app-text-color); // Use normal text color
+                font-family: "Courier New", monospace;
+              }
+
+              .serve-fs {
+                font-size: 12px;
+                color: var(--secondary-text-color);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+              }
+            }
+          }
+
+          .stop-btn {
+            flex-shrink: 0;
+          }
+        }
+
+        .serve-metadata {
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-xs);
+          padding: var(--space-md);
+          background: rgba(0, 0, 0, 0.2);
+          border-radius: 8px;
+
+          .metadata-row {
+            display: flex;
+            align-items: center;
+            gap: var(--space-xs);
+            font-size: 12px;
+
+            .metadata-icon {
+              width: 16px;
+              height: 16px;
+              color: var(--secondary-text-color);
+            }
+
+            .metadata-label {
+              color: var(--secondary-text-color);
+              font-weight: 600;
+            }
+
+            .metadata-value {
+              color: var(--app-text-color);
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+              font-family: "Courier New", monospace;
+
+              &.options-value {
+                // Make it clear this is interactive
+                cursor: help;
+                border-bottom: 1px dashed var(--secondary-text-color);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Settings layout (No Changes)
+  .settings-layout {
+    display: grid;
+    gap: var(--panel-gap);
+  }
+
+  .settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+    border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+    border-radius: var(--icon-radius, 12px);
+
+    .group-header {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xxs);
+
+      .group-title {
+        margin: 0;
+        font-size: var(--font-size-lg);
+        color: var(--app-text-color);
+        font-weight: 500;
+      }
+
+      .group-description {
+        margin: 0;
+        font-size: var(--font-size-sm);
+        color: var(--secondary-text-color);
+      }
+    }
+
+    .group-panels {
+      display: flex;
+      flex-direction: column;
+      gap: var(--panel-gap);
+    }
+  }
+
+  // Responsive (No Changes)
+  @media (max-width: 768px) {
+    padding: var(--space-md);
+
+    .detail-header {
+      flex-direction: column;
+      align-items: stretch;
+
+      .start-serve-btn {
+        width: 100%;
+      }
+    }
+
+    .serves-section .serves-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+@media (min-width: 1024px) {
+  .settings-layout {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+// NEW: Global style override for multiline tooltip
+// Needs to be here or in a global stylesheet.
+::ng-deep .pre-line-tooltip {
+  .mdc-tooltip__surface {
+    white-space: pre-line;
+  }
+}

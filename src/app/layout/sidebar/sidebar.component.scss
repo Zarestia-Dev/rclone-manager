@@ -104,6 +104,7 @@
         align-items: center;
         justify-content: space-between;
         gap: var(--space-xs);
+        position: relative;
 
         h4 {
           margin: 0;
@@ -115,13 +116,19 @@
           text-overflow: ellipsis;
           flex: 1;
           letter-spacing: -0.1px;
+          padding-right: 60px;
         }
 
         .status-indicators {
+          position: absolute;
+          top: 0;
+          right: 0;
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           gap: 6px;
-          flex-shrink: 0;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+          max-width: 72px; // Allows ~3 dots (24px + 6px gap each)
         }
       }
 
@@ -195,6 +202,25 @@
             &:hover {
               background: rgba(var(--primary-color-rgb), 0.18);
               box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.25);
+              transform: scale(1.12);
+            }
+          }
+        }
+
+        // Serve Status
+        &.serve {
+          &.active {
+            background: rgba(var(--accent-color-rgb), 0.12);
+            border-color: rgba(var(--accent-color-rgb), 0.4);
+            box-shadow: 0 0 0 1px rgba(var(--accent-color-rgb), 0.15);
+
+            mat-icon {
+              color: var(--accent-color);
+            }
+
+            &:hover {
+              background: rgba(var(--accent-color-rgb), 0.18);
+              box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.25);
               transform: scale(1.12);
             }
           }

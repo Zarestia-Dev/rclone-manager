@@ -411,6 +411,113 @@
           </div>
         }
       </mat-expansion-panel>
+
+      <!-- Running Serves Panel -->
+      <mat-expansion-panel
+        [(expanded)]="servesPanelOpenState"
+        (expandedChange)="onServesPanelStateChange($event)"
+        class="serves-panel"
+        role="region"
+      >
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <div class="panel-title-content">
+              <mat-icon svgIcon="satellite-dish" class="green" aria-hidden="true"></mat-icon>
+              <span>Running Serves</span>
+            </div>
+          </mat-panel-title>
+          <mat-panel-description>
+            <span [ngClass]="{ 'active-serves-indicator': runningServes.length > 0 }">
+              {{
+                runningServes.length > 0
+                  ? runningServes.length + ' active serve' + (runningServes.length !== 1 ? 's' : '')
+                  : 'No active serves'
+              }}
+            </span>
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        @if (isLoadingServes) {
+          <div class="loading fade-in" aria-live="polite">
+            <mat-spinner diameter="24" aria-label="Loading running serves"></mat-spinner>
+            <span>Loading running serves...</span>
+          </div>
+        } @else {
+          <div class="serves-content">
+            @if (runningServes.length === 0) {
+              <div class="no-serves-message" role="status">
+                <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                <span
+                  >No active serves running. Start serving a remote to make it accessible via
+                  network protocols like HTTP, WebDAV, FTP, or SFTP.</span
+                >
+              </div>
+            } @else {
+              <div class="serves-grid">
+                @for (serve of runningServes; track serve.id) {
+                  <div
+                    class="serve-card"
+                    role="article"
+                    [attr.aria-label]="
+                      'Serve instance: ' +
+                      getServeRemoteName(serve) +
+                      ' via ' +
+                      getServeProtocol(serve) +
+                      ' on ' +
+                      serve.addr
+                    "
+                  >
+                    <div class="serve-header">
+                      <div class="serve-info-section">
+                        <div class="serve-icon-wrapper">
+                          <mat-icon svgIcon="satellite-dish" class="serve-icon"></mat-icon>
+                        </div>
+                        <div class="serve-details">
+                          <div class="serve-title-row">
+                            <span class="serve-remote">{{ getServeRemoteName(serve) }}</span>
+                            <span class="serve-protocol-badge">
+                              {{ getServeProtocol(serve) }}
+                            </span>
+                          </div>
+                          <span class="serve-address">{{ serve.addr }}</span>
+                          <span class="serve-fs">{{ serve.params.fs }}</span>
+                        </div>
+                      </div>
+                      <button
+                        mat-icon-button
+                        color="warn"
+                        (click)="stopServe(serve.id, getServeRemoteName(serve))"
+                        matTooltip="Stop serve"
+                        class="serve-stop-btn"
+                        aria-label="Stop this serve instance"
+                      >
+                        <mat-icon svgIcon="stop"></mat-icon>
+                      </button>
+                    </div>
+
+                    <div class="serve-metadata">
+                      <div class="metadata-item">
+                        <mat-icon svgIcon="folder" class="metadata-icon"></mat-icon>
+                        <span class="metadata-label">Path:</span>
+                        <span class="metadata-value">{{ serve.params.fs }}</span>
+                      </div>
+                      @if (serve.params.opt && Object.keys(serve.params.opt).length > 0) {
+                        <div class="metadata-item">
+                          <mat-icon svgIcon="gear" class="metadata-icon"></mat-icon>
+                          <span class="metadata-label">Options:</span>
+                          <span class="metadata-value">{{
+                            Object.keys(serve.params.opt).length
+                          }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
+      </mat-expansion-panel>
     </mat-accordion>
   </div>
 </div>
