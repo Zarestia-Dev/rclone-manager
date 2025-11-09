@@ -1,0 +1,80 @@
+<mat-card class="serve-card" (click)="onCardClick()">
+  <mat-card-content>
+    <div class="serve-card-header">
+      <div class="serve-info">
+        <div class="serve-icon-wrapper">
+          <mat-icon
+            [svgIcon]="getServeTypeInfo(serve.params.type).icon"
+            class="serve-icon"
+          ></mat-icon>
+        </div>
+        <div class="serve-details">
+          <div class="serve-title-row">
+            @if (showRemoteName) {
+              <span class="serve-remote-name">{{ getRemoteName(serve) }}</span>
+            }
+            <span class="serve-protocol-badge">
+              {{ serve.params.type | uppercase }}
+            </span>
+          </div>
+
+          @if (getServeUrl(serve); as url) {
+            <div class="serve-url-container">
+              <span
+                class="serve-url copyable-text"
+                matTooltip="Click to copy URL"
+                (click)="onCopyToClipboard(url, 'URL Copied!'); $event.stopPropagation()"
+                role="button"
+                tabindex="0"
+              >
+                {{ url }}
+              </span>
+            </div>
+          } @else {
+            <span class="serve-address">{{ serve.addr }}</span>
+          }
+          <span class="serve-fs">{{ serve.params.fs }}</span>
+        </div>
+      </div>
+      <button
+        mat-icon-button
+        color="warn"
+        (click)="onStopServe(); $event.stopPropagation()"
+        matTooltip="Stop this serve"
+        class="stop-btn"
+      >
+        <mat-icon svgIcon="stop"></mat-icon>
+      </button>
+    </div>
+
+    <div class="serve-metadata">
+      <div class="metadata-row">
+        <mat-icon svgIcon="fingerprint" class="metadata-icon"></mat-icon>
+        <span class="metadata-label">ID:</span>
+        <span
+          class="metadata-value copyable-text"
+          matTooltip="Click to copy ID"
+          (click)="onCopyToClipboard(serve.id, 'ID Copied!'); $event.stopPropagation()"
+          role="button"
+          tabindex="1"
+        >
+          {{ serve.id }}
+        </span>
+      </div>
+
+      @if (getOptionKeys(serve.params).length > 0) {
+        <div class="metadata-row">
+          <mat-icon svgIcon="gear" class="metadata-icon"></mat-icon>
+          <span class="metadata-label">Options:</span>
+          <span
+            class="metadata-value options-value"
+            [matTooltip]="getOptionsTooltip(serve.params)"
+            matTooltipClass="pre-line-tooltip"
+          >
+            {{ getOptionKeys(serve.params).length }} active
+          </span>
+        </div>
+      }
+    </div>
+  </mat-card-content>
+</mat-card>

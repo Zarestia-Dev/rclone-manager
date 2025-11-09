@@ -1,0 +1,159 @@
+.serve-card {
+  background: var(--surface-bg, rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &:hover {
+    border-color: rgb(76, 175, 80);
+    box-shadow: 0 4px 16px rgba(76, 175, 80, 0.25);
+    transform: translateY(-2px);
+  }
+
+  .serve-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-md);
+    margin-bottom: var(--space-md);
+
+    .serve-info {
+      display: flex;
+      gap: var(--space-md);
+      flex: 1;
+      min-width: 0;
+
+      .serve-icon-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: rgba(76, 175, 80, 0.15);
+        flex-shrink: 0;
+
+        .serve-icon {
+          width: 20px;
+          height: 20px;
+          color: rgb(76, 175, 80);
+        }
+      }
+
+      .serve-details {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+
+        .serve-title-row {
+          display: flex;
+          align-items: center;
+          gap: var(--space-xs);
+          flex-wrap: wrap;
+        }
+
+        .serve-remote-name {
+          font-size: 14px;
+          font-weight: 600;
+          color: var(--app-text-color);
+        }
+
+        .serve-protocol-badge {
+          padding: 2px 8px;
+          border-radius: 10px;
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          background: rgba(76, 175, 80, 0.2);
+          color: rgb(76, 175, 80);
+        }
+
+        .serve-url-container {
+          display: flex;
+          align-items: center;
+          gap: var(--space-xs);
+
+          .serve-url {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary-color);
+            font-family: "Courier New", monospace;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+        }
+
+        .serve-address {
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--app-text-color);
+          font-family: "Courier New", monospace;
+        }
+
+        .serve-fs {
+          font-size: 12px;
+          color: var(--secondary-text-color);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+    }
+
+    .stop-btn {
+      flex-shrink: 0;
+    }
+  }
+
+  .serve-metadata {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    padding: var(--space-md);
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+
+    .metadata-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      font-size: 12px;
+
+      .metadata-icon {
+        width: 16px;
+        height: 16px;
+        color: var(--secondary-text-color);
+      }
+
+      .metadata-label {
+        color: var(--secondary-text-color);
+        font-weight: 600;
+      }
+
+      .metadata-value {
+        color: var(--app-text-color);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-family: "Courier New", monospace;
+
+        &.options-value {
+          cursor: help;
+          border-bottom: 1px dashed var(--secondary-text-color);
+        }
+      }
+    }
+  }
+}
+
+// Global style for copyable text
+.copyable-text {
+  cursor: pointer;
+  transition: color 0.2s ease;
+
+  &:hover {
+    color: var(--primary-color);
+  }
+}

@@ -21,29 +21,8 @@ import { IconService } from '../../../../shared/services/icon.service';
 import { ServeManagementService } from '@app/services';
 import { Subject, takeUntil } from 'rxjs';
 import { SettingsPanelComponent } from '../../../../shared/detail-shared';
-import { ClipboardModule, Clipboard } from '@angular/cdk/clipboard';
-
-// --- Interfaces and Constants ---
-interface TypeInfo {
-  icon: string;
-  description: string;
-}
-
-const TYPE_INFO: Record<string, TypeInfo> = {
-  http: { icon: 'globe', description: 'Serve files via HTTP' },
-  webdav: { icon: 'cloud', description: 'WebDAV for file access' },
-  ftp: { icon: 'file-arrow-up', description: 'FTP file transfer' },
-  sftp: { icon: 'lock', description: 'Secure FTP over SSH' },
-  nfs: { icon: 'server', description: 'Network File System' },
-  dlna: { icon: 'tv', description: 'DLNA media server' },
-  restic: { icon: 'shield', description: 'Restic REST server' },
-  s3: { icon: 'bucket', description: 'Amazon S3 compatible server' },
-};
-
-const DEFAULT_TYPE_INFO: TypeInfo = { icon: 'satellite-dish', description: 'Serve' };
-
-const URL_BASED_PROTOCOLS = ['http', 'webdav', 'ftp', 'sftp', 's3'];
-// ----------------------------------
+import { Clipboard } from '@angular/cdk/clipboard';
+import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
 interface SettingsSection {
   key: string;
@@ -64,7 +43,7 @@ interface SettingsSection {
     MatTooltipModule,
     MatSnackBarModule,
     SettingsPanelComponent,
-    ClipboardModule,
+    ServeCardComponent,
   ],
   templateUrl: './serve-detail.component.html',
   styleUrl: './serve-detail.component.scss',
@@ -165,73 +144,18 @@ export class ServeDetailComponent implements OnInit, OnDestroy {
     }
   }
 
+  handleCopyToClipboard(event: { text: string; message: string }): void {
+    this.clipboard.copy(event.text);
+    this.snackBar.open(event.message, 'Close', { duration: 2000 });
+  }
+
+  handleServeCardClick(_serve: ServeListItem): void {
+    // In serve-detail view, clicking the card doesn't need to navigate
+    // since we're already showing details for this remote
+    // Could potentially highlight/focus the specific serve in the future
+  }
+
   onStartServeClick(): void {
     this.startServeClick.emit(this.selectedRemote.remoteSpecs.name);
-  }
-
-  // --- Helper Methods ---
-
-  /**
-   * Gets the icon and description for a serve type.
-   */
-  getServeTypeInfo(type: string): TypeInfo {
-    return TYPE_INFO[type.toLowerCase()] || DEFAULT_TYPE_INFO;
-  }
-
-  /**
-   * Generates a full URL for URL-based protocols.
-   */
-  getServeUrl(serve: ServeListItem): string | null {
-    const type = serve.params.type.toLowerCase();
-    if (URL_BASED_PROTOCOLS.includes(type)) {
-      return `${type}://${serve.addr}`;
-    }
-    return null;
-  }
-
-  /**
-   * Formats the serve options for a tooltip.
-   */
-  getOptionsTooltip(params: ServeListItem['params']): string {
-    // Remove keys that are already displayed elsewhere
-    const { fs, type, ...options } = params;
-
-    const keys = Object.keys(options);
-    if (keys.length === 0) {
-      return 'No additional options';
-    }
-
-    // Format as "key: value" pairs
-    return keys
-      .map(key => {
-        const value = options[key as keyof typeof options];
-        if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-          // Handle nested objects like vfsOpt
-          const nestedOptions = Object.entries(value)
-            .map(([k, v]) => `  ${k}: ${v}`)
-            .join('\n');
-          return `${key}:\n${nestedOptions}`;
-        }
-        // Handle simple values, arrays, or null
-        return `${key}: ${JSON.stringify(value)}`;
-      })
-      .join('\n');
-  }
-
-  /**
-   * Copies text to the clipboard and shows a snackbar.
-   */
-  copyToClipboard(text: string, message: string): void {
-    this.clipboard.copy(text);
-    this.snackBar.open(message, 'Close', { duration: 2000 });
-  }
-
-  /**
-   * Gets the keys of the options object, excluding 'fs' and 'type'.
-   */
-  getOptionKeys(params: ServeListItem['params']): string[] {
-    if (!params) return [];
-    const { fs, type, ...options } = params;
-    return Object.keys(options);
   }
 }

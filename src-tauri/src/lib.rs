@@ -74,8 +74,8 @@ use crate::{
             get_all_remote_configs, get_bandwidth_limit, get_completed_transfers, get_core_stats,
             get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats,
             get_mount_types, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info,
-            get_rclone_pid, get_remote_config, get_remote_config_fields, get_remote_paths,
-            get_remote_types, get_remotes, get_serve_flags, get_serve_types, list_serves,
+            get_rclone_pid, get_remote_config, get_remote_paths, get_remote_types, get_remotes,
+            get_serve_flags, get_serve_types, list_serves,
         },
         state::{
             cache::{
@@ -365,7 +365,6 @@ pub fn run() {
             get_remote_config,
             get_remote_types,
             get_oauth_supported_remotes,
-            get_remote_config_fields,
             get_mounted_remotes,
             set_bandwidth_limit,
             // Rclone Sync API

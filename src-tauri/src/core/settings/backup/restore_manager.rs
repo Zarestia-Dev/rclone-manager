@@ -1,9 +1,12 @@
+// Add to restore_manager.rs
+
+use crate::rclone::commands::remote::create_remote;
 use crate::utils::types::events::{REMOTE_PRESENCE_CHANGED, SYSTEM_SETTINGS_CHANGED};
 use crate::{
     core::settings::backup::archive_utils::find_7z_executable,
     rclone::queries::get_rclone_config_file, utils::types::settings::SettingsState,
 };
-use log::{debug, info};
+use log::{debug, info, warn};
 use serde_json::json;
 use std::{
     fs::{self, File},
@@ -11,8 +14,32 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use zip::ZipArchive;
+
+/// Create or update remote via RC API
+async fn restore_remote_via_rc(
+    app_handle: AppHandle,
+    remote_name: String,
+    config: &serde_json::Value,
+) -> Result<String, String> {
+    // Try to create the remote
+    match create_remote(
+        app_handle.clone(),
+        remote_name.to_string(),
+        config.clone(),
+        app_handle.state::<crate::RcloneState>(),
+    )
+    .await
+    {
+        Ok(_) => Ok(format!("Remote '{}' created successfully.", remote_name)),
+        Err(e) => {
+            // If creation fails, try updating by deleting and recreating
+            warn!("Failed to create remote '{}': {}.", remote_name, e);
+            Err(format!("Failed to create '{}': {}", remote_name, e))
+        }
+    }
+}
 
 #[tauri::command]
 pub async fn restore_settings(
@@ -66,6 +93,48 @@ pub async fn restore_settings_from_path(
         .filter(|s| !s.trim().is_empty())
         .map(PathBuf::from);
 
+    // **NEW: Check for rclone_remotes directory and restore via RC API**
+    let rclone_remotes_dir = extracted_dir.join("rclone_remotes");
+    if rclone_remotes_dir.exists() {
+        info!("Found rclone_remotes directory, attempting to restore via RC API");
+
+        for entry in walkdir::WalkDir::new(&rclone_remotes_dir)
+            .into_iter()
+            .filter_map(Result::ok)
+            .filter(|e| e.file_type().is_file())
+        {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                info!("Restoring rclone remote from: {:?}", path);
+
+                match fs::read_to_string(path) {
+                    Ok(content) => match serde_json::from_str::<serde_json::Value>(&content) {
+                        Ok(mut config) => {
+                            if let Some(obj) = config.as_object_mut() {
+                                obj.insert("config_is_local".to_string(), json!("false"));
+                            }
+                            let remote_name = export_info
+                                .as_ref()
+                                .and_then(|info| info.get("remote_name"))
+                                .and_then(|v| v.as_str())
+                                .map(|s| s.to_string())
+                                .unwrap_or("Google Drive".to_string());
+                            match restore_remote_via_rc(app_handle.clone(), remote_name, &config)
+                                .await
+                            {
+                                Ok(msg) => info!("{}", msg),
+                                Err(e) => warn!("Failed to restore remote: {}", e),
+                            }
+                        }
+                        Err(e) => warn!("Failed to parse remote config from {:?}: {}", path, e),
+                    },
+                    Err(e) => warn!("Failed to read remote config from {:?}: {}", path, e),
+                }
+            }
+        }
+    }
+
+    // Rest of the restoration logic (existing code)
     for entry in walkdir::WalkDir::new(extracted_dir)
         .into_iter()
         .filter_map(Result::ok)
@@ -74,14 +143,20 @@ pub async fn restore_settings_from_path(
         let relative_path = entry.path().strip_prefix(extracted_dir).unwrap();
         let file_name = relative_path.to_string_lossy();
 
+        // Skip rclone_remotes files as they're handled above
+        if file_name.starts_with("rclone_remotes/") {
+            continue;
+        }
+
         let out_path = match file_name.as_ref() {
             "settings.json" => state.config_dir.join("settings.json"),
+
+            "backend.json" => state.config_dir.join("backend.json"),
 
             "rclone.conf" => {
                 if let Some(ref custom) = exported_rclone_path {
                     custom.clone()
                 } else {
-                    // fallback to default logic
                     let store = state.store.lock().await;
                     let settings = store.get("app_settings").unwrap_or_else(|| json!({}));
                     let custom_path = settings
@@ -125,20 +200,23 @@ pub async fn restore_settings_from_path(
 
         info!("Restored: {out_path:?}");
     }
-    // Load the settings from the restored settings.json
-    let settings_path = state.config_dir.join("settings.json");
-    let settings_content = fs::read_to_string(&settings_path)
-        .map_err(|e| format!("Failed to read settings file: {e}"))?;
-    let new_settings: serde_json::Value = serde_json::from_str(&settings_content)
-        .map_err(|e| format!("Failed to parse settings file: {e}"))?;
 
-    app_handle.emit(REMOTE_PRESENCE_CHANGED, ()).ok();
-    app_handle
-        .emit(
-            SYSTEM_SETTINGS_CHANGED,
-            serde_json::to_value(new_settings.get("app_settings")).unwrap(),
-        )
-        .ok();
+    // Load and emit settings
+    let settings_path = state.config_dir.join("settings.json");
+    if settings_path.exists() {
+        let settings_content = fs::read_to_string(&settings_path)
+            .map_err(|e| format!("Failed to read settings file: {e}"))?;
+        let new_settings: serde_json::Value = serde_json::from_str(&settings_content)
+            .map_err(|e| format!("Failed to parse settings file: {e}"))?;
+
+        app_handle.emit(REMOTE_PRESENCE_CHANGED, ()).ok();
+        app_handle
+            .emit(
+                SYSTEM_SETTINGS_CHANGED,
+                serde_json::to_value(new_settings.get("app_settings")).unwrap(),
+            )
+            .ok();
+    }
 
     Ok("Settings restored successfully.".to_string())
 }
@@ -150,7 +228,6 @@ pub async fn restore_encrypted_settings(
     state: State<'_, SettingsState<tauri::Wry>>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
-    // example: 7z x archive_path -p{password} -o{temp_dir}
     let temp_dir = tempfile::tempdir().map_err(|e| e.to_string())?;
     let out_path = temp_dir.path().to_str().unwrap();
 
@@ -170,6 +247,5 @@ pub async fn restore_encrypted_settings(
         ));
     }
 
-    // Use same logic from `restore_settings` to restore from `out_path`
     restore_settings_from_path(Path::new(out_path), state, app_handle).await
 }

@@ -1,4 +1,5 @@
-use log::{debug, error, warn};
+use log::{debug, warn};
+use serde_json::json;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -15,122 +16,7 @@ use crate::utils::types::{
 /// Global flag to control the mounted remote watcher
 static WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
 
-/// Background task that monitors mounted remotes for changes
-///
-/// This task runs continuously and checks if any mounted remotes have been
-/// unmounted externally (outside of the app). If a remote is detected as
-/// unmounted, it updates the cache and emits an event to notify the frontend.
-pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
-    // Prevent multiple watchers from running
-    if WATCHER_RUNNING.swap(true, Ordering::SeqCst) {
-        debug!("🔍 Mounted remote watcher already running");
-        return;
-    }
-    let mut interval = time::interval(Duration::from_secs(5)); // Check every 5 seconds
-    let mut last_known_mounts: Vec<MountedRemote> = Vec::new();
-
-    loop {
-        interval.tick().await;
-
-        // Check if we should stop the watcher
-        if !WATCHER_RUNNING.load(Ordering::SeqCst) {
-            debug!("🔍 Stopping mounted remote watcher");
-            break;
-        }
-
-        // **Optimization**: Skip monitoring if cache is empty (no remotes configured)
-        let cached_remotes = CACHE.get_mounted_remotes().await;
-        if cached_remotes.is_empty() && last_known_mounts.is_empty() {
-            debug!("🔍 No remotes in cache, skipping API check");
-            continue;
-        }
-
-        debug!("🔍 Checking mounted remotes...");
-
-        // Get current mounted remotes from the live API using existing function
-        let current_mounts = match get_mounted_remotes_from_api(&app_handle).await {
-            Ok(mounts) => mounts,
-            Err(e) => {
-                debug!("🔍 Failed to get mounted remotes from API: {e}");
-                // Fall back to cache if API is not available
-                cached_remotes
-            }
-        };
-
-        // If this is the first run, just store the current state
-        if last_known_mounts.is_empty() {
-            last_known_mounts = current_mounts;
-            continue;
-        }
-
-        // Check for changes: both unmounted and newly mounted remotes
-        let unmounted_remotes = find_unmounted_remotes(&last_known_mounts, &current_mounts);
-        let newly_mounted_remotes = find_unmounted_remotes(&current_mounts, &last_known_mounts);
-
-        // Handle unmounted remotes
-        if !unmounted_remotes.is_empty() {
-            debug!("🔍 Detected unmounted remotes: {unmounted_remotes:?}");
-
-            // Refresh the cache to get the latest state
-            if let Err(e) = CACHE.refresh_mounted_remotes(app_handle.clone()).await {
-                error!("❌ Failed to refresh mounted remotes cache: {e}");
-                continue;
-            }
-
-            // Emit events for each unmounted remote
-            for remote in &unmounted_remotes {
-                let event_payload = serde_json::json!({
-                    "fs": remote.fs,
-                    "mount_point": remote.mount_point,
-                    "reason": "externally_unmounted"
-                });
-
-                if let Err(e) = app_handle.emit(REMOTE_STATE_CHANGED, &event_payload) {
-                    warn!("⚠️ Failed to emit remote_state_changed event: {e}");
-                }
-
-                debug!(
-                    "📡 Emitted remote_state_changed event for unmounted: {}",
-                    remote.fs
-                );
-            }
-        }
-
-        // Handle newly mounted remotes
-        if !newly_mounted_remotes.is_empty() {
-            debug!("🔍 Detected newly mounted remotes: {newly_mounted_remotes:?}");
-
-            // Refresh the cache to get the latest state
-            if let Err(e) = CACHE.refresh_mounted_remotes(app_handle.clone()).await {
-                error!("❌ Failed to refresh mounted remotes cache: {e}");
-                continue;
-            }
-
-            // Emit events for each newly mounted remote
-            for remote in &newly_mounted_remotes {
-                let event_payload = serde_json::json!({
-                    "fs": remote.fs,
-                    "mount_point": remote.mount_point,
-                    "reason": "externally_mounted"
-                });
-
-                if let Err(e) = app_handle.emit(REMOTE_STATE_CHANGED, &event_payload) {
-                    warn!("⚠️ Failed to emit remote_state_changed event: {e}");
-                }
-
-                debug!(
-                    "📡 Emitted remote_state_changed event for mounted: {}",
-                    remote.fs
-                );
-            }
-        }
-
-        // Update last known state with current mounts
-        last_known_mounts = current_mounts;
-    }
-}
-
-/// Get mounted remotes from API using the existing function
+/// Helper to get mounted remotes directly from the API
 async fn get_mounted_remotes_from_api(
     app_handle: &AppHandle,
 ) -> Result<Vec<MountedRemote>, String> {
@@ -138,21 +24,11 @@ async fn get_mounted_remotes_from_api(
     get_mounted_remotes(state).await
 }
 
-/// Stop the mounted remote watcher
-pub fn stop_mounted_remote_watcher() {
-    WATCHER_RUNNING.store(false, Ordering::SeqCst);
-    debug!("🔍 Mounted remote watcher stop requested");
-}
-
-/// Find remotes that were previously mounted but are no longer mounted
-fn find_unmounted_remotes(
-    previous: &[MountedRemote],
-    current: &[MountedRemote],
-) -> Vec<MountedRemote> {
+/// Helper to find differences between two lists of mounts
+fn find_mount_changes(previous: &[MountedRemote], current: &[MountedRemote]) -> Vec<MountedRemote> {
     previous
         .iter()
         .filter(|prev_remote| {
-            // Check if this remote is still in the current list
             !current.iter().any(|curr_remote| {
                 curr_remote.fs == prev_remote.fs
                     && curr_remote.mount_point == prev_remote.mount_point
@@ -162,77 +38,99 @@ fn find_unmounted_remotes(
         .collect()
 }
 
-/// Force refresh mounted remotes and check for changes
-/// This can be called manually when needed, for example after mount operations
-#[tauri::command]
-pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), String> {
-    debug!("🔍 Force checking mounted remotes");
+/// Core logic to check and reconcile mounted remotes
+async fn check_and_reconcile_mounts(app_handle: AppHandle) -> Result<(), String> {
+    debug!("🔍 Reconciling mounted remotes...");
 
-    // Get current state from cache
-    let cached_mounts = CACHE.get_mounted_remotes().await.to_vec();
+    let cached_mounts = CACHE.get_mounted_remotes().await;
+    let api_mounts = match get_mounted_remotes_from_api(&app_handle).await {
+        Ok(mounts) => mounts,
+        Err(e) => {
+            warn!("🔍 Failed to get mounts from API, skipping reconciliation: {e}");
+            return Err(e);
+        }
+    };
 
-    // Get current state from live API using existing function
-    let api_mounts = get_mounted_remotes_from_api(&app_handle).await?;
+    let unmounted_remotes = find_mount_changes(&cached_mounts, &api_mounts);
+    let newly_mounted = find_mount_changes(&api_mounts, &cached_mounts);
 
-    // Check for changes between cache and API
-    let unmounted_remotes = find_unmounted_remotes(&cached_mounts, &api_mounts);
-    let newly_mounted = find_unmounted_remotes(&api_mounts, &cached_mounts);
-
-    // If there are differences, update the cache
-    if !unmounted_remotes.is_empty() || !newly_mounted.is_empty() {
-        debug!("🔍 Detected mount changes - updating cache");
-        CACHE.refresh_mounted_remotes(app_handle.clone()).await?;
+    if unmounted_remotes.is_empty() && newly_mounted.is_empty() {
+        return Ok(()); // No changes
     }
+
+    debug!("🔍 Detected mount changes - updating cache");
+    CACHE.refresh_mounted_remotes(app_handle.clone()).await?;
 
     // Emit events for unmounted remotes
     for remote in unmounted_remotes {
-        let event_payload = serde_json::json!({
+        let event_payload = json!({
             "fs": remote.fs,
             "mount_point": remote.mount_point,
             "reason": "externally_unmounted"
         });
-
         if let Err(e) = app_handle.emit(REMOTE_STATE_CHANGED, &event_payload) {
             warn!("⚠️ Failed to emit remote_state_changed event: {e}");
         }
-
-        debug!(
-            "📡 Emitted remote_state_changed event for unmounted: {}",
-            remote.fs
-        );
     }
 
     // Emit events for newly mounted remotes
     for remote in newly_mounted {
-        let event_payload = serde_json::json!({
+        let event_payload = json!({
             "fs": remote.fs,
             "mount_point": remote.mount_point,
             "reason": "externally_mounted"
         });
-
         if let Err(e) = app_handle.emit(REMOTE_STATE_CHANGED, &event_payload) {
             warn!("⚠️ Failed to emit remote_state_changed event: {e}");
         }
-
-        debug!(
-            "📡 Emitted remote_state_changed event for mounted: {}",
-            remote.fs
-        );
     }
 
     Ok(())
 }
 
-/// Force refresh serves and check for changes
-/// This can be called manually when needed, for example after serve operations
+/// Background task that monitors mounted remotes
+pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
+    if WATCHER_RUNNING.swap(true, Ordering::SeqCst) {
+        debug!("🔍 Mounted remote watcher already running");
+        return;
+    }
+    let mut interval = time::interval(Duration::from_secs(5));
+
+    loop {
+        interval.tick().await;
+        if !WATCHER_RUNNING.load(Ordering::SeqCst) {
+            debug!("🔍 Stopping mounted remote watcher");
+            break;
+        }
+
+        // **Optimization**: Skip monitoring if cache is empty
+        if CACHE.get_mounted_remotes().await.is_empty() {
+            debug!("🔍 No remotes in cache, skipping API check");
+            continue;
+        }
+
+        // Call the new helper function
+        if let Err(e) = check_and_reconcile_mounts(app_handle.clone()).await {
+            debug!("🔍 Watcher failed to reconcile mounts: {e}");
+        }
+    }
+}
+
+/// Stop the mounted remote watcher
+pub fn stop_mounted_remote_watcher() {
+    WATCHER_RUNNING.store(false, Ordering::SeqCst);
+    debug!("🔍 Mounted remote watcher stop requested");
+}
+
+/// Force refresh mounted remotes
 #[tauri::command]
-pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
-    debug!("🔍 Force checking running serves");
+pub async fn force_check_mounted_remotes(app_handle: AppHandle) -> Result<(), String> {
+    debug!("🔍 Force checking mounted remotes");
+    check_and_reconcile_mounts(app_handle).await
+}
 
-    // Get current state from cache
-    let cached_serves = CACHE.get_serves().await;
-
-    // Get current state from live API
+/// Helper to get running serves from the API
+async fn get_serves_from_api(app_handle: &AppHandle) -> Result<Vec<ServeInstance>, String> {
     let api_response = list_serves(app_handle.state::<RcloneState>()).await?;
     let api_serves: Vec<ServeInstance> = api_response
         .get("list")
@@ -258,69 +156,79 @@ pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
                 .collect()
         })
         .unwrap_or_default();
+    Ok(api_serves)
+}
 
-    // Check for stopped serves
-    let stopped_serves: Vec<&ServeInstance> = cached_serves
+/// Core logic to check and reconcile running serves
+async fn check_and_reconcile_serves(app_handle: AppHandle) -> Result<(), String> {
+    debug!("🔍 Reconciling running serves...");
+
+    let cached_serves = CACHE.get_serves().await;
+    let api_serves = match get_serves_from_api(&app_handle).await {
+        Ok(serves) => serves,
+        Err(e) => {
+            warn!("🔍 Failed to get serves from API, skipping reconciliation: {e}");
+            return Err(e);
+        }
+    };
+
+    let stopped_serves: Vec<ServeInstance> = cached_serves
         .iter()
         .filter(|cached| !api_serves.iter().any(|api| api.id == cached.id))
+        .cloned()
         .collect();
 
-    // Check for new serves
-    let new_serves: Vec<&ServeInstance> = api_serves
+    let new_serves: Vec<ServeInstance> = api_serves
         .iter()
         .filter(|api| !cached_serves.iter().any(|cached| cached.id == api.id))
+        .cloned()
         .collect();
 
-    // If there are differences, update the cache
-    if !stopped_serves.is_empty() || !new_serves.is_empty() {
-        debug!("🔍 Detected serve changes - updating cache");
-        CACHE.refresh_serves(app_handle.clone()).await?;
+    if stopped_serves.is_empty() && new_serves.is_empty() {
+        return Ok(()); // No changes
     }
+
+    debug!("🔍 Detected serve changes - updating cache");
+    CACHE.refresh_serves(app_handle.clone()).await?;
 
     // Emit events for stopped serves
     for serve in stopped_serves {
-        let event_payload = serde_json::json!({
+        let event_payload = json!({
             "id": serve.id,
             "fs": serve.fs,
             "type": serve.serve_type,
             "reason": "externally_stopped"
         });
-
         if let Err(e) = app_handle.emit(SERVE_STATE_CHANGED, &event_payload) {
             warn!("⚠️ Failed to emit serve_state_changed event: {e}");
         }
-
-        debug!(
-            "📡 Emitted serve_state_changed event for stopped: {}",
-            serve.id
-        );
     }
 
     // Emit events for new serves
     for serve in new_serves {
-        let event_payload = serde_json::json!({
+        let event_payload = json!({
             "id": serve.id,
             "fs": serve.fs,
             "type": serve.serve_type,
             "addr": serve.addr,
             "reason": "externally_started"
         });
-
         if let Err(e) = app_handle.emit(SERVE_STATE_CHANGED, &event_payload) {
             warn!("⚠️ Failed to emit serve_state_changed event: {e}");
         }
-
-        debug!(
-            "📡 Emitted serve_state_changed event for started: {}",
-            serve.id
-        );
     }
 
     Ok(())
 }
 
+/// Force refresh serves
+#[tauri::command]
+pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
+    debug!("🔍 Force checking running serves");
+    check_and_reconcile_serves(app_handle).await
+}
+
 /// Start a background watcher that monitors running serves
-/// and emits events when serves are started/stopped externally
 pub fn start_serve_watcher(app_handle: AppHandle) {
     tauri::async_runtime::spawn(async move {
         debug!("🔍 Starting serve watcher");
@@ -329,102 +237,11 @@ pub fn start_serve_watcher(app_handle: AppHandle) {
         loop {
             interval.tick().await;
 
-            // Get current state from cache
-            let cached_serves = CACHE.get_serves().await;
-
-            // Get current state from live API
-            match list_serves(app_handle.state::<RcloneState>()).await {
-                Ok(api_response) => {
-                    let api_serves: Vec<ServeInstance> = api_response
-                        .get("list")
-                        .and_then(|v| v.as_array())
-                        .map(|arr| {
-                            arr.iter()
-                                .filter_map(|item| {
-                                    let id = item.get("id")?.as_str()?.to_string();
-                                    let addr = item.get("addr")?.as_str()?.to_string();
-                                    let params = item.get("params")?;
-                                    let fs = params.get("fs")?.as_str()?.to_string();
-                                    let serve_type = params.get("type")?.as_str()?.to_string();
-                                    let remote_name = fs.split(':').next()?.to_string();
-
-                                    Some(ServeInstance {
-                                        id,
-                                        addr,
-                                        serve_type,
-                                        fs,
-                                        remote_name,
-                                    })
-                                })
-                                .collect()
-                        })
-                        .unwrap_or_default();
-
-                    // Check for stopped serves
-                    let stopped_serves: Vec<&ServeInstance> = cached_serves
-                        .iter()
-                        .filter(|cached| !api_serves.iter().any(|api| api.id == cached.id))
-                        .collect();
-
-                    // Check for new serves
-                    let new_serves: Vec<&ServeInstance> = api_serves
-                        .iter()
-                        .filter(|api| !cached_serves.iter().any(|cached| cached.id == api.id))
-                        .collect();
-
-                    // If there are differences, update the cache
-                    if !stopped_serves.is_empty() || !new_serves.is_empty() {
-                        debug!("🔍 Detected serve changes - updating cache");
-                        if let Err(e) = CACHE.refresh_serves(app_handle.clone()).await {
-                            warn!("⚠️ Failed to refresh serves cache: {e}");
-                        }
-                    }
-
-                    // Emit events for stopped serves
-                    for serve in stopped_serves {
-                        let event_payload = serde_json::json!({
-                            "id": serve.id,
-                            "fs": serve.fs,
-                            "type": serve.serve_type,
-                            "reason": "externally_stopped"
-                        });
-
-                        if let Err(e) = app_handle.emit(SERVE_STATE_CHANGED, &event_payload) {
-                            warn!("⚠️ Failed to emit serve_state_changed event: {e}");
-                        }
-
-                        debug!(
-                            "📡 Emitted serve_state_changed event for stopped: {}",
-                            serve.id
-                        );
-                    }
-
-                    // Emit events for new serves
-                    for serve in new_serves {
-                        let event_payload = serde_json::json!({
-                            "id": serve.id,
-                            "fs": serve.fs,
-                            "type": serve.serve_type,
-                            "addr": serve.addr,
-                            "reason": "externally_started"
-                        });
-
-                        if let Err(e) = app_handle.emit(SERVE_STATE_CHANGED, &event_payload) {
-                            warn!("⚠️ Failed to emit serve_state_changed event: {e}");
-                        }
-
-                        debug!(
-                            "📡 Emitted serve_state_changed event for started: {}",
-                            serve.id
-                        );
-                    }
-                }
-                Err(e) => {
-                    warn!("⚠️ Failed to check running serves: {e}");
-                }
+            // Call the new helper function
+            if let Err(e) = check_and_reconcile_serves(app_handle.clone()).await {
+                debug!("🔍 Watcher failed to reconcile serves: {e}");
             }
         }
     });
-
     debug!("✅ Serve watcher started");
 }

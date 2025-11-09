@@ -3,9 +3,10 @@ use crate::core::scheduler::engine::{
 };
 use crate::rclone::state::scheduled_tasks::SCHEDULED_TASKS_CACHE;
 use crate::utils::types::scheduled_task::{
-    CreateScheduledTaskRequest, CronValidationResponse, ScheduledTask, UpdateScheduledTaskRequest,
+    CreateScheduledTaskRequest, CronValidationResponse, ScheduledTask, TaskStatus,
+    UpdateScheduledTaskRequest,
 };
-use log::{error, info};
+use log::{error, info, warn};
 use once_cell::sync::Lazy;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -21,13 +22,9 @@ pub async fn add_scheduled_task(
 ) -> Result<ScheduledTask, String> {
     info!("📝 Adding new scheduled task: {}", request.name);
 
-    // Validate cron expression
     validate_cron_expression(&request.cron_expression)?;
-
-    // Calculate next run
     let next_run = get_next_run(&request.cron_expression).ok();
 
-    // Create task
     let mut task = ScheduledTask::new(
         request.name,
         request.task_type,
@@ -36,10 +33,8 @@ pub async fn add_scheduled_task(
     );
     task.next_run = next_run;
 
-    // Add to cache
     let task = SCHEDULED_TASKS_CACHE.add_task(task).await?;
 
-    // Schedule it
     let scheduler = SCHEDULER.read().await;
     match scheduler.schedule_task(&task).await {
         Ok(job_id) => {
@@ -47,7 +42,6 @@ pub async fn add_scheduled_task(
         }
         Err(e) => {
             error!("⚠️  Failed to schedule task: {}", e);
-            // Task is still saved, just not scheduled yet
         }
     }
 
@@ -59,14 +53,26 @@ pub async fn add_scheduled_task(
 pub async fn remove_scheduled_task(task_id: String) -> Result<(), String> {
     info!("🗑️  Removing scheduled task: {}", task_id);
 
-    // Remove from cache (this will also save to store)
+    let task = SCHEDULED_TASKS_CACHE.get_task(&task_id).await;
+
+    if let Some(task) = task {
+        if let Some(job_id_str) = task.scheduler_job_id {
+            if let Ok(job_id) = uuid::Uuid::parse_str(&job_id_str) {
+                let scheduler = SCHEDULER.read().await;
+                if let Err(e) = scheduler.unschedule_task(job_id).await {
+                    warn!("Failed to unschedule job {}: {}", job_id, e);
+                } else {
+                    info!("Unscheduled job {} for task {}", job_id, task_id);
+                }
+            }
+        }
+    } else {
+        return Err("Task not found in cache".to_string());
+    }
+
     SCHEDULED_TASKS_CACHE.remove_task(&task_id).await?;
 
     info!("✅ Task removed successfully");
-
-    // Note: We don't have direct access to job_id from task_id
-    // The scheduler will handle cleanup on next reload
-
     Ok(())
 }
 
@@ -78,13 +84,11 @@ pub async fn update_scheduled_task(
 ) -> Result<ScheduledTask, String> {
     info!("🔄 Updating scheduled task: {}", task_id);
 
-    // Validate cron if provided
     if let Some(ref cron_expr) = request.cron_expression {
         validate_cron_expression(cron_expr)?;
     }
 
-    // Update task
-    let task = SCHEDULED_TASKS_CACHE
+    let updated_task = SCHEDULED_TASKS_CACHE
         .update_task(&task_id, |task| {
             if let Some(name) = &request.name {
                 task.name = name.clone();
@@ -102,20 +106,14 @@ pub async fn update_scheduled_task(
         })
         .await?;
 
-    // Reschedule if enabled
-    if task.status == crate::utils::types::scheduled_task::TaskStatus::Enabled {
-        let scheduler = SCHEDULER.read().await;
-        match scheduler.schedule_task(&task).await {
-            Ok(_) => {
-                info!("✅ Task rescheduled successfully");
-            }
-            Err(e) => {
-                error!("⚠️  Failed to reschedule task: {}", e);
-            }
-        }
+    let scheduler = SCHEDULER.read().await;
+    if let Err(e) = scheduler.reschedule_task(&updated_task).await {
+        error!("⚠️  Failed to reschedule task: {}", e);
+    } else {
+        info!("✅ Task rescheduled successfully");
     }
 
-    Ok(task)
+    Ok(updated_task)
 }
 
 /// Toggle task enabled/disabled
@@ -125,14 +123,13 @@ pub async fn toggle_scheduled_task(task_id: String) -> Result<ScheduledTask, Str
 
     let task = SCHEDULED_TASKS_CACHE.toggle_task_status(&task_id).await?;
 
-    // Reload all tasks to properly schedule/unschedule
     let scheduler = SCHEDULER.read().await;
-    if let Err(e) = scheduler.reload_tasks().await {
+    if let Err(e) = scheduler.reschedule_task(&task).await {
         error!("⚠️  Failed to reload tasks after toggle: {}", e);
     } else {
         info!(
             "✅ Task {} {}",
-            if task.status == crate::utils::types::scheduled_task::TaskStatus::Enabled {
+            if task.status == TaskStatus::Enabled {
                 "enabled and scheduled"
             } else {
                 "disabled and unscheduled"
@@ -177,7 +174,6 @@ pub async fn reload_scheduled_tasks() -> Result<(), String> {
     scheduler.reload_tasks().await?;
 
     info!("✅ Scheduled tasks reloaded");
-
     Ok(())
 }
 
@@ -186,9 +182,21 @@ pub async fn reload_scheduled_tasks() -> Result<(), String> {
 pub async fn clear_all_scheduled_tasks() -> Result<(), String> {
     info!("⚠️  Clearing all scheduled tasks");
 
+    let tasks = SCHEDULED_TASKS_CACHE.get_all_tasks().await;
+    let scheduler = SCHEDULER.read().await;
+
+    for task in tasks {
+        if let Some(job_id_str) = task.scheduler_job_id {
+            if let Ok(job_id) = uuid::Uuid::parse_str(&job_id_str) {
+                if let Err(e) = scheduler.unschedule_task(job_id).await {
+                    warn!("Failed to unschedule job {}: {}", job_id, e);
+                }
+            }
+        }
+    }
+
     SCHEDULED_TASKS_CACHE.clear_all_tasks().await?;
 
     info!("✅ All scheduled tasks cleared");
-
     Ok(())
 }

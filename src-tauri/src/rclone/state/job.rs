@@ -25,28 +25,47 @@ impl JobCache {
         }
     }
 
-    pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
+    /// A generic function to update a job using a closure
+    pub async fn update_job(
+        &self,
+        jobid: u64,
+        update_fn: impl FnOnce(&mut JobInfo),
+    ) -> Result<JobInfo, String> {
         let mut jobs = self.jobs.write().await;
         if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
-            job.stats = Some(stats);
-            Ok(())
+            update_fn(job);
+            Ok(job.clone())
         } else {
             Err("JobInfo not found".to_string())
         }
     }
 
+    pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
+        self.update_job(jobid, |job| {
+            job.stats = Some(stats);
+        })
+        .await?;
+        Ok(())
+    }
+
     pub async fn complete_job(&self, jobid: u64, success: bool) -> Result<(), String> {
-        let mut jobs = self.jobs.write().await;
-        if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
+        self.update_job(jobid, |job| {
             job.status = if success {
                 JobStatus::Completed
             } else {
                 JobStatus::Failed
             };
-            Ok(())
-        } else {
-            Err("JobInfo not found".to_string())
-        }
+        })
+        .await?;
+        Ok(())
+    }
+
+    pub async fn stop_job(&self, jobid: u64) -> Result<(), String> {
+        self.update_job(jobid, |job| {
+            job.status = JobStatus::Stopped;
+        })
+        .await?;
+        Ok(())
     }
 
     pub async fn get_jobs(&self) -> Vec<JobInfo> {
@@ -67,16 +86,6 @@ impl JobCache {
             .iter()
             .find(|j| j.jobid == jobid)
             .cloned()
-    }
-
-    pub async fn stop_job(&self, jobid: u64) -> Result<(), String> {
-        let mut jobs = self.jobs.write().await;
-        if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
-            job.status = JobStatus::Stopped;
-            Ok(())
-        } else {
-            Err("JobInfo not found".to_string())
-        }
     }
 }
 

@@ -56,29 +56,6 @@ pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, S
 }
 
 #[tauri::command]
-pub async fn get_remote_config_fields(
-    remote_type: String,
-    state: State<'_, RcloneState>,
-) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::GET);
-
-    let response = state
-        .client
-        .post(&url)
-        .query(&[("name", &remote_type)])
-        .send()
-        .await
-        .map_err(|e| format!("❌ Failed to fetch remote config fields: {e}"))?;
-
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
-
-    Ok(json)
-}
-
-#[tauri::command]
 pub async fn get_remote_config(
     remote_name: String,
     state: State<'_, RcloneState>,

@@ -455,63 +455,13 @@
             } @else {
               <div class="serves-grid">
                 @for (serve of runningServes; track serve.id) {
-                  <div
-                    class="serve-card"
-                    role="article"
-                    [attr.aria-label]="
-                      'Serve instance: ' +
-                      getServeRemoteName(serve) +
-                      ' via ' +
-                      getServeProtocol(serve) +
-                      ' on ' +
-                      serve.addr
-                    "
-                  >
-                    <div class="serve-header">
-                      <div class="serve-info-section">
-                        <div class="serve-icon-wrapper">
-                          <mat-icon svgIcon="satellite-dish" class="serve-icon"></mat-icon>
-                        </div>
-                        <div class="serve-details">
-                          <div class="serve-title-row">
-                            <span class="serve-remote">{{ getServeRemoteName(serve) }}</span>
-                            <span class="serve-protocol-badge">
-                              {{ getServeProtocol(serve) }}
-                            </span>
-                          </div>
-                          <span class="serve-address">{{ serve.addr }}</span>
-                          <span class="serve-fs">{{ serve.params.fs }}</span>
-                        </div>
-                      </div>
-                      <button
-                        mat-icon-button
-                        color="warn"
-                        (click)="stopServe(serve.id, getServeRemoteName(serve))"
-                        matTooltip="Stop serve"
-                        class="serve-stop-btn"
-                        aria-label="Stop this serve instance"
-                      >
-                        <mat-icon svgIcon="stop"></mat-icon>
-                      </button>
-                    </div>
-
-                    <div class="serve-metadata">
-                      <div class="metadata-item">
-                        <mat-icon svgIcon="folder" class="metadata-icon"></mat-icon>
-                        <span class="metadata-label">Path:</span>
-                        <span class="metadata-value">{{ serve.params.fs }}</span>
-                      </div>
-                      @if (serve.params.opt && Object.keys(serve.params.opt).length > 0) {
-                        <div class="metadata-item">
-                          <mat-icon svgIcon="gear" class="metadata-icon"></mat-icon>
-                          <span class="metadata-label">Options:</span>
-                          <span class="metadata-value">{{
-                            Object.keys(serve.params.opt).length
-                          }}</span>
-                        </div>
-                      }
-                    </div>
-                  </div>
+                  <app-serve-card
+                    [serve]="serve"
+                    [showRemoteName]="true"
+                    (stopServe)="stopServe($event)"
+                    (copyToClipboard)="handleCopyToClipboard($event)"
+                    (cardClick)="handleServeCardClick($event)"
+                  ></app-serve-card>
                 }
               </div>
             }

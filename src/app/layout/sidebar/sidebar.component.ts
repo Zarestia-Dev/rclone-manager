@@ -62,8 +62,9 @@ export class SidebarComponent {
   }
 
   @HostListener('document:keydown.control.f', ['$event'])
-  onControlF(event: KeyboardEvent): void {
-    event.preventDefault();
+  onControlF(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    keyboardEvent.preventDefault();
     this.toggleSearch();
     if (this.searchVisible && this.searchContainer) {
       this.searchContainer.focus();

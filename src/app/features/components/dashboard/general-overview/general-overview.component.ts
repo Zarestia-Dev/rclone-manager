@@ -53,11 +53,17 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 
 // Services
 import { AnimationsService } from '../../../../shared/services/animations.service';
-import { EventListenersService, SchedulerService, ServeManagementService } from '@app/services';
+import {
+  EventListenersService,
+  SchedulerService,
+  ServeManagementService,
+  UiStateService,
+} from '@app/services';
 import { SystemInfoService } from '@app/services';
 import { FormatBytes } from '@app/pipes';
 import { IconService } from 'src/app/shared/services/icon.service';
 import { ScheduledTask, ServeListItem } from '@app/types';
+import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
 /** Polling interval for system stats in milliseconds */
 const POLLING_INTERVAL = 5000;
@@ -83,6 +89,7 @@ const POLLING_INTERVAL = 5000;
     FormatEtaPipe,
     FormatMemoryUsagePipe,
     FormatBytes,
+    ServeCardComponent,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
@@ -144,6 +151,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   private systemInfoService = inject(SystemInfoService);
   private schedulerService = inject(SchedulerService);
   private serveManagementService = inject(ServeManagementService);
+  private uiStateService = inject(UiStateService);
   public iconService = inject(IconService);
 
   // Track by functions
@@ -405,9 +413,10 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  async stopServe(serverId: string, remoteName: string): Promise<void> {
+  async stopServe(serve: ServeListItem): Promise<void> {
     try {
-      await this.serveManagementService.stopServe(serverId, remoteName);
+      const remoteName = serve.params.fs.split(':')[0];
+      await this.serveManagementService.stopServe(serve.id, remoteName);
       this.snackBar.open(`Serve stopped successfully`, 'Close', { duration: 3000 });
     } catch (error) {
       console.error('Error stopping serve:', error);
@@ -415,12 +424,36 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  getServeRemoteName(serve: ServeListItem): string {
-    return serve.params.fs.split(':')[0];
+  handleCopyToClipboard(data: { text: string; message: string }): void {
+    try {
+      navigator.clipboard.writeText(data.text);
+      this.snackBar.open(data.message, 'Close', { duration: 2000 });
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      this.snackBar.open('Failed to copy to clipboard', 'Close', { duration: 2000 });
+    }
   }
 
-  getServeProtocol(serve: ServeListItem): string {
-    return serve.params.type.toUpperCase();
+  handleServeCardClick(serve: ServeListItem): void {
+    const remoteName = serve.params.fs.split(':')[0];
+    const remote = this.remotes.find(r => r.remoteSpecs.name === remoteName);
+    if (remote) {
+      // Switch to serve tab and select the remote
+      this.uiStateService.setTab('serve');
+      this.uiStateService.setSelectedRemote(remote);
+      // Ensure the main content scrolls to top so the selected remote detail is visible
+      // Delay briefly so view updates (tab switch) can occur before scrolling.
+      setTimeout(() => {
+        const el = document.querySelector('.main-content') as HTMLElement | null;
+        const target = el || document.scrollingElement || document.documentElement;
+        try {
+          target.scrollTo({ top: 0, behavior: 'smooth' } as ScrollToOptions);
+        } catch {
+          // Fallback for older environments
+          (target as HTMLElement).scrollTop = 0;
+        }
+      }, 60);
+    }
   }
 
   private savePanelStates(): void {

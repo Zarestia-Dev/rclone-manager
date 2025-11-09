@@ -120,14 +120,15 @@
         }
 
         .status-indicators {
-          position: absolute;
           top: 0;
+          gap: 6px;
           right: 0;
           display: flex;
-          align-items: center;
-          gap: 6px;
-          flex-wrap: wrap;
           max-width: 58px;
+          flex-wrap: wrap;
+          position: absolute;
+          align-items: center;
+          justify-content: center;
         }
       }
 
