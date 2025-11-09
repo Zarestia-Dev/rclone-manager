@@ -45,14 +45,6 @@ export interface ExportOption {
   readonly description: string;
 }
 
-export interface InputField {
-  name: string;
-  label: string;
-  type: 'text' | 'password' | 'number' | 'select' | 'folder';
-  required: boolean;
-  options?: string[]; // for select type
-}
-
 export interface ToastMessage {
   message: string;
   type: 'success' | 'error' | 'info' | 'warning';

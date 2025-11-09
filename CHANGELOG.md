@@ -7,10 +7,12 @@
 - New time picker module added for better clock time selection.
 - Rclone Serve support added. You can now start and stop rclone serve commands. The serve status is displayed in the sidebar for easy access. You can find the serve options in the remote detail view.
 
-### Fixed
-- Critical fix for proccess management. Now the app correctly find own rclone processes via ports.
+### Changed
+- Backup and Restore system has been completely redesigned and rewritten for better reliability and performance. Old backup files are not compatible with the new system. Please create a new backup after updating to this version.
 
-  
+### Fixed
+- Critical fix for process management. Now the app correctly find own rclone processes via ports.
+
 ## [v0.1.6] - 2025-11-02
 ### Added
 - Added `Whats New` to the About modal when a new version exists. It shows the new features and changes in the new version. It fetches the release notes from GitHub releases for app. For rclone, it shows the release notes from the rclone website.

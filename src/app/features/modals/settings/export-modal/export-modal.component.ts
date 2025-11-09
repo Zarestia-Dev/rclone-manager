@@ -17,7 +17,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Subject } from 'rxjs';
 
 import { ExportModalData, ExportOption, ExportType } from '@app/types';
 import { AnimationsService } from '../../../../shared/services/animations.service';
@@ -63,6 +62,8 @@ export class ExportModalComponent implements OnInit {
   readonly remotes = signal<readonly string[]>([]);
   readonly isLoading = signal<boolean>(false);
   readonly isExporting = signal<boolean>(false);
+  readonly userNote = signal<string>('');
+  readonly folderSelectionInProgress = signal<boolean>(false);
 
   // Expose ExportType enum for template
   readonly ExportType = ExportType;
@@ -138,10 +139,6 @@ export class ExportModalComponent implements OnInit {
   readonly showPasswordField = computed(() => this.withPassword() && this.sevenZipSupported());
 
   readonly showSecurityWarning = computed(() => !this.sevenZipSupported());
-
-  // Subject for debouncing password input to reduce unnecessary computations
-  private readonly passwordChange$ = new Subject<string>();
-  readonly folderSelectionInProgress = signal<boolean>(false);
 
   async ngOnInit(): Promise<void> {
     try {
@@ -219,6 +216,7 @@ export class ExportModalComponent implements OnInit {
           this.selectedOption() === ExportType.SpecificRemote
             ? this.selectedRemoteName().trim()
             : '',
+        userNote: this.userNote().trim() ? this.userNote().trim() : null,
       };
 
       // Validate parameters before sending to backend
@@ -234,7 +232,8 @@ export class ExportModalComponent implements OnInit {
         exportParams.path,
         exportParams.type,
         exportParams.password,
-        exportParams.remoteName
+        exportParams.remoteName,
+        exportParams.userNote
       );
     } catch (error) {
       console.error('Export failed:', error);
@@ -244,14 +243,18 @@ export class ExportModalComponent implements OnInit {
     }
   }
 
+  // Use proper signal setter instead of custom input handler
+  onNoteChange(value: string): void {
+    this.userNote.set(value);
+  }
+
   togglePasswordVisibility(): void {
     this.showPassword.update(show => !show);
   }
 
-  // Event handlers with proper typing and validation
-  onPasswordInput(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    this.password.set(input.value);
+  // Use proper signal setter
+  onPasswordChange(value: string): void {
+    this.password.set(value);
   }
 
   onExportOptionChange(option: ExportType): void {

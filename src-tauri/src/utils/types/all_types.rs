@@ -22,13 +22,6 @@ pub struct RcloneState {
     pub terminal_apps: Arc<std::sync::RwLock<Vec<String>>>,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BackupAnalysis {
-    pub is_encrypted: bool,
-    pub archive_type: String,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MountedRemote {
     pub fs: String,
@@ -198,16 +191,6 @@ pub struct JobResponse {
 pub struct NetworkStatusPayload {
     #[serde(rename = "isMetered")]
     pub is_metered: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ExportType {
-    All,
-    Settings,
-    Remotes,
-    RemoteConfigs,
-    SpecificRemote,
-    RCloneBackend,
 }
 
 pub const SERVICE_NAME: &str = env!("CARGO_PKG_NAME");

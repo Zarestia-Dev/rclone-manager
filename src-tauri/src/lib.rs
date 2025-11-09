@@ -34,7 +34,7 @@ use crate::{
         settings::{
             backup::{
                 backup_manager::{analyze_backup_file, backup_settings},
-                restore_manager::{restore_encrypted_settings, restore_settings},
+                restore_manager::restore_settings,
             },
             operations::core::{
                 load_settings, load_startup_settings, reset_setting, reset_settings, save_setting,
@@ -422,7 +422,6 @@ pub fn run() {
             delete_remote_settings,
             backup_settings,
             analyze_backup_file,
-            restore_encrypted_settings,
             restore_settings,
             // Network
             check_links,
