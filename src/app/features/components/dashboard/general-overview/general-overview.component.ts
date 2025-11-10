@@ -697,7 +697,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
 
   // Navigate to remote details when task is clicked
   onTaskClick(task: ScheduledTask): void {
-    const remoteName = task.args['remoteName'];
+    const remoteName = task.args['remote_name'];
     if (remoteName) {
       const remote = this.remotes.find(r => r.remoteSpecs.name === remoteName);
       if (remote) {

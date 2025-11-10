@@ -177,7 +177,7 @@ export class GeneralDetailComponent implements OnChanges, OnInit, OnDestroy {
     }
 
     this.remoteScheduledTasks = allTasks.filter(
-      task => task.args['remoteName'] === this.selectedRemote.remoteSpecs.name
+      task => task.args['remote_name'] === this.selectedRemote.remoteSpecs.name
     );
 
     if (this.currentTaskCardIndex >= this.remoteScheduledTasks.length) {

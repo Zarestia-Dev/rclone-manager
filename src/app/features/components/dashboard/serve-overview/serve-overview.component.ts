@@ -15,6 +15,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Remote, RemoteActionProgress, ServeListItem } from '@app/types';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
@@ -25,6 +26,7 @@ import { IconService } from '../../../../shared/services/icon.service';
 import { AnimationsService } from '../../../../shared/services/animations.service';
 import { ServeManagementService } from '@app/services';
 import { Subject, takeUntil } from 'rxjs';
+import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
 @Component({
   selector: 'app-serve-overview',
@@ -40,6 +42,9 @@ import { Subject, takeUntil } from 'rxjs';
     OverviewHeaderComponent,
     StatusOverviewPanelComponent,
     RemotesPanelComponent,
+    // Serve cards for active serve instances
+    ServeCardComponent,
+    MatSnackBarModule,
   ],
   animations: [AnimationsService.fadeInOut()],
   templateUrl: './serve-overview.component.html',
@@ -49,6 +54,7 @@ import { Subject, takeUntil } from 'rxjs';
 export class ServeOverviewComponent implements OnInit, OnDestroy {
   readonly iconService = inject(IconService);
   private readonly serveManagementService = inject(ServeManagementService);
+  private readonly snackBar = inject(MatSnackBar);
   private destroy$ = new Subject<void>();
 
   @Input() remotes: Remote[] = [];
@@ -113,5 +119,53 @@ export class ServeOverviewComponent implements OnInit, OnDestroy {
 
   triggerStartServe(remoteName: string): void {
     this.startServe.emit(remoteName);
+  }
+
+  /**
+   * Handle stop event from a child serve card
+   */
+  async onStopServe(serve: ServeListItem): Promise<void> {
+    try {
+      const remoteName = serve.params.fs.split(':')[0];
+      await this.serveManagementService.stopServe(serve.id, remoteName);
+      try {
+        this.snackBar.open?.('Serve stopped successfully', 'Close', { duration: 3000 });
+      } catch {
+        // ignore snackBar failures
+      }
+    } catch (error) {
+      try {
+        this.snackBar.open?.('Failed to stop serve', 'Close', { duration: 5000 });
+      } catch {
+        // ignore
+      }
+      console.error('Error stopping serve:', error);
+    }
+  }
+
+  handleCopyToClipboard(data: { text: string; message: string }): void {
+    try {
+      navigator.clipboard.writeText(data.text);
+      try {
+        this.snackBar.open?.(data.message, 'Close', { duration: 2000 });
+      } catch {
+        // ignore
+      }
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      try {
+        this.snackBar.open?.('Failed to copy to clipboard', 'Close', { duration: 2000 });
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  handleServeCardClick(serve: ServeListItem): void {
+    const remoteName = serve.params.fs.split(':')[0];
+    const remote = this.remotes.find(r => r.remoteSpecs.name === remoteName);
+    if (remote) {
+      this.selectRemote(remote);
+    }
   }
 }

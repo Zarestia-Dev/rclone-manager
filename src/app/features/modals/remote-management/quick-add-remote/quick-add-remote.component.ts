@@ -572,35 +572,19 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     ): Promise<void> => {
       if (!config.autoStart || !config.source || !config.dest) return;
 
-      // If cron expression is set, create scheduled task
-      if (config.cronExpression) {
-        await this.schedulerService.addScheduledTask({
-          name: `${remoteName} - ${opType}`,
-          taskType: opType,
-          cronExpression: config.cronExpression,
-          args: {
-            remoteName,
-            source: config.source,
-            dest: config.dest,
-            options: config.options || {},
-          },
-        });
-      } else {
-        // No cron: run immediately (once on startup)
-        switch (opType) {
-          case 'copy':
-            await this.jobManagementService.startCopy(remoteName, config.source, config.dest);
-            break;
-          case 'sync':
-            await this.jobManagementService.startSync(remoteName, config.source, config.dest);
-            break;
-          case 'bisync':
-            await this.jobManagementService.startBisync(remoteName, config.source, config.dest);
-            break;
-          case 'move':
-            await this.jobManagementService.startMove(remoteName, config.source, config.dest);
-            break;
-        }
+      switch (opType) {
+        case 'copy':
+          await this.jobManagementService.startCopy(remoteName, config.source, config.dest);
+          break;
+        case 'sync':
+          await this.jobManagementService.startSync(remoteName, config.source, config.dest);
+          break;
+        case 'bisync':
+          await this.jobManagementService.startBisync(remoteName, config.source, config.dest);
+          break;
+        case 'move':
+          await this.jobManagementService.startMove(remoteName, config.source, config.dest);
+          break;
       }
     };
 
@@ -641,7 +625,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     return remote ? remote.label : 'Select Remote Type';
   }
 
-  @HostListener('document:keydown.escape', ['$event'])
+  @HostListener('document:keydown.escape')
   close(): void {
     if (!this.isAuthInProgress) {
       this.dialogRef.close();

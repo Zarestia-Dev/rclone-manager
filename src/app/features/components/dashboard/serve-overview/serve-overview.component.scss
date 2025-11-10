@@ -15,3 +15,34 @@
     width: 100%;
   }
 }
+
+.remotes-panel.active-remotes-panel {
+  border-radius: var(--card-border-radius-large);
+  padding: 0;
+
+  .remotes-header {
+    padding: var(--space-xl) var(--space-xl) var(--space-md) var(--space-xl);
+  }
+
+  .remotes-content {
+    padding: var(--panel-padding) 32px 32px 32px;
+
+    .remotes-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 16px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .remotes-content {
+      padding: var(--panel-padding-mobile) var(--panel-padding) var(--panel-padding)
+        var(--panel-padding);
+
+      .remotes-grid {
+        grid-template-columns: 1fr;
+        gap: var(--panel-padding-mobile);
+      }
+    }
+  }
+}

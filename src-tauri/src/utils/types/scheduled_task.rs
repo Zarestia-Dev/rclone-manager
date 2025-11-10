@@ -107,11 +107,10 @@ impl ScheduledTask {
     }
 
     /// Update the task after a successful run
-    pub fn mark_success(&mut self, job_id: Option<u64>) {
+    pub fn mark_success(&mut self) {
         self.last_run = Some(Utc::now());
         self.last_error = None;
-        self.current_job_id = job_id;
-        self.run_count += 1;
+        self.current_job_id = None;
         self.success_count += 1;
         self.status = TaskStatus::Enabled;
     }
@@ -121,7 +120,6 @@ impl ScheduledTask {
         self.last_run = Some(Utc::now());
         self.last_error = Some(error);
         self.current_job_id = None;
-        self.run_count += 1;
         self.failure_count += 1;
         self.status = TaskStatus::Failed;
     }
@@ -131,6 +129,7 @@ impl ScheduledTask {
         self.status = TaskStatus::Running;
         self.last_run = Some(Utc::now());
         self.current_job_id = None;
+        self.run_count += 1;
     }
 
     /// Mark task as running with job ID (after operation starts)
@@ -150,26 +149,6 @@ impl ScheduledTask {
     pub fn can_run(&self) -> bool {
         self.status == TaskStatus::Enabled && self.current_job_id.is_none()
     }
-}
-
-/// Request to create a new scheduled task
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CreateScheduledTaskRequest {
-    pub name: String,
-    pub task_type: TaskType,
-    pub cron_expression: String,
-    pub args: Value,
-}
-
-/// Request to update an existing scheduled task
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateScheduledTaskRequest {
-    pub name: Option<String>,
-    pub cron_expression: Option<String>,
-    pub status: Option<TaskStatus>,
-    pub args: Option<Value>,
 }
 
 /// Response for cron validation

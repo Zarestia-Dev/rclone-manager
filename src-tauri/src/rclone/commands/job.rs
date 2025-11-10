@@ -6,6 +6,7 @@ use tokio::time::sleep;
 
 use crate::{
     RcloneState,
+    core::scheduler::engine::get_next_run,
     rclone::state::{engine::ENGINE_STATE, job::JOB_CACHE, scheduled_tasks::SCHEDULED_TASKS_CACHE},
     utils::{
         logging::log::log_operation,
@@ -141,6 +142,35 @@ pub async fn handle_job_completion(
         .map_err(RcloneError::JobError)?;
     app.emit(JOB_CACHE_CHANGED, jobid)
         .map_err(|e| RcloneError::JobError(e.to_string()))?;
+
+    // Check if this job was part of a scheduled task and update its status
+    if let Some(task) = SCHEDULED_TASKS_CACHE.get_task_by_job_id(jobid).await {
+        info!(
+            "Job {} was associated with scheduled task '{}', updating task status.",
+            jobid, task.name
+        );
+        
+        // Get the next run time *now* that the task is finished
+        let next_run = get_next_run(&task.cron_expression).ok();
+
+        if success {
+            SCHEDULED_TASKS_CACHE
+                .update_task(&task.id, |t| {
+                    t.mark_success();
+                    t.next_run = next_run;
+                })
+                .await
+                .ok(); // Log errors but don't fail the operation
+        } else {
+            SCHEDULED_TASKS_CACHE
+                .update_task(&task.id, |t| {
+                    t.mark_failure(error_msg.clone());
+                    t.next_run = next_run;
+                })
+                .await
+                .ok();
+        }
+    }
 
     if !error_msg.is_empty() {
         log_operation(

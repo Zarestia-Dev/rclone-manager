@@ -30,12 +30,14 @@
       <li>🎨 User-Friendly Theme – Clean, intuitive interface designed for ease of use, making remote management accessible for everyone</li>
       <li>🛠 Remote Management – Add, edit, and delete remotes easily with support for nearly all Rclone remotes (Google Drive, Dropbox, OneDrive, S3, and many more)</li>
       <li>🔐 OAuth Support – Authenticate with popular providers effortlessly</li>
+      <li>⏰ Scheduled Tasks – Automate syncs with a built-in scheduler. Create, edit, enable/disable, and monitor scheduled jobs</li>
       <li>🔑 Encrypted Configuration File Support – Keep your remotes safe with optional encryption</li>
       <li>⚙️ Advanced VFS Options – Tune caching, read sizes, and other performance options</li>
       <li>🖥 Tray Icon Support – Quick access to your remotes from the system tray</li>
       <li>🌗 Light &amp; Dark Modes – GTK-inspired themes with a modern, responsive layout</li>
       <li>📁 File Browser – Browse and manage files across your remotes</li>
       <li>🔄 Sync, Copy, Mount – Full support for rclone operations including mounting remotes (Needs flatpak spawn access)</li>
+      <li>🔌 Serve Remotes – Expose remotes over HTTP, WebDAV, FTP, SFTP and more.</li>
       <li>📊 Job Management – Track and manage your rclone operations</li>
       <li>🚀 Cross-Platform – Works seamlessly on Windows, Linux, and macOS</li>
     </ul>
@@ -85,8 +87,8 @@
     </screenshot>
   </screenshots>
   <releases>
-    <release version="0.1.6" date="2025-10-13">
-      <url type="details">https://github.com/Zarestia-Dev/rclone-manager/releases/tag/v0.1.5</url>
+    <release version="0.1.7" date="2025-10-13">
+      <url type="details">https://github.com/Zarestia-Dev/rclone-manager/releases/tag/v0.1.7</url>
       <description>
         <p>Initial release of RClone Manager for FlatHub.</p>
       </description>

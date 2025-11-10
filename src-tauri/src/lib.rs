@@ -21,8 +21,7 @@ use crate::{
         initialization::{async_startup, init_rclone_state, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
         scheduler::commands::{
-            add_scheduled_task, clear_all_scheduled_tasks, reload_scheduled_tasks,
-            remove_scheduled_task, toggle_scheduled_task, update_scheduled_task, validate_cron,
+            clear_all_scheduled_tasks, reload_scheduled_tasks, toggle_scheduled_task, validate_cron,
         },
         security::{
             change_config_password, clear_config_password_env, clear_encryption_cache,
@@ -451,9 +450,6 @@ pub fn run() {
             get_scheduled_tasks,
             get_scheduled_task,
             get_scheduled_tasks_stats,
-            add_scheduled_task,
-            remove_scheduled_task,
-            update_scheduled_task,
             toggle_scheduled_task,
             validate_cron,
             reload_scheduled_tasks,

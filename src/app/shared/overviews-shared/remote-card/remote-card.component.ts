@@ -133,6 +133,14 @@ export class RemoteCardComponent {
       return this.getSyncModeActionButtons();
     }
 
+    if (this.mode === 'serve') {
+      // For serve mode, show serve start button
+      if (this.cardVariant() === 'inactive') {
+        const serveButton = this.createOperationButton('serve');
+        if (serveButton) buttons.push(serveButton);
+      }
+    }
+
     return buttons;
   }
 
@@ -224,6 +232,8 @@ export class RemoteCardComponent {
         return ['sync', 'bisync', 'copy', 'move']; // Sync-focused defaults
       case 'mount':
         return ['mount']; // Mount tab only shows one sync operation
+      case 'serve':
+        return ['serve']; // Serve tab shows serve operation
       default:
         return ['mount', 'bisync'];
     }
@@ -343,6 +353,16 @@ export class RemoteCardComponent {
           cssClass: this.remote.bisyncState?.isOnBisync ? 'warn' : 'purple',
         };
 
+      case 'serve':
+        return {
+          id: 'serve',
+          icon: this.remote.serveState?.hasActiveServes ? 'stop' : 'satellite-dish',
+          tooltip: this.remote.serveState?.hasActiveServes ? 'Stop Serve' : 'Start Serve',
+          isLoading: isActionInProgress,
+          isDisabled: isActionInProgress,
+          cssClass: this.remote.serveState?.hasActiveServes ? 'warn' : 'primary',
+        };
+
       default:
         return null;
     }
@@ -439,6 +459,11 @@ export class RemoteCardComponent {
           this.stopJob.emit({ type: 'bisync', remoteName });
         } else {
           this.startJob.emit({ type: 'bisync', remoteName });
+        }
+        break;
+      case 'serve':
+        if (!this.remote.serveState?.hasActiveServes) {
+          this.startJob.emit({ type: 'serve', remoteName });
         }
         break;
     }

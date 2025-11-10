@@ -1527,76 +1527,51 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       if (!config.autoStart || !config.source || !config.dest) return;
 
       // If cron expression is set, create scheduled task
-      if (config.cronExpression) {
-        await this.schedulerService.addScheduledTask({
-          name: `${remoteName} - ${opType}`,
-          taskType: opType,
-          cronExpression: config.cronExpression,
-          args: {
+      switch (opType) {
+        case 'copy':
+          await this.jobManagementService.startCopy(
             remoteName,
-            source: config.source,
-            dest: config.dest,
-            options: {
-              ...config.options,
-              filterConfig,
-              backendConfig,
-              ...(opType !== 'bisync' && 'createEmptySrcDirs' in config
-                ? { createEmptySrcDirs: config.createEmptySrcDirs }
-                : {}),
-              ...(opType === 'move' && 'deleteEmptySrcDirs' in config
-                ? { deleteEmptySrcDirs: config.deleteEmptySrcDirs }
-                : {}),
-            },
-          },
-        });
-      } else {
-        // No cron: run immediately (once on startup)
-        switch (opType) {
-          case 'copy':
-            await this.jobManagementService.startCopy(
-              remoteName,
-              config.source,
-              config.dest,
-              (config as CopyConfig).createEmptySrcDirs,
-              config.options,
-              filterConfig,
-              backendConfig
-            );
-            break;
-          case 'sync':
-            await this.jobManagementService.startSync(
-              remoteName,
-              config.source,
-              config.dest,
-              (config as SyncConfig).createEmptySrcDirs,
-              config.options,
-              filterConfig,
-              backendConfig
-            );
-            break;
-          case 'bisync':
-            await this.jobManagementService.startBisync(
-              remoteName,
-              config.source,
-              config.dest,
-              config.options,
-              filterConfig,
-              backendConfig
-            );
-            break;
-          case 'move':
-            await this.jobManagementService.startMove(
-              remoteName,
-              config.source,
-              config.dest,
-              (config as MoveConfig).createEmptySrcDirs,
-              (config as MoveConfig).deleteEmptySrcDirs,
-              config.options,
-              filterConfig,
-              backendConfig
-            );
-            break;
-        }
+            config.source,
+            config.dest,
+            (config as CopyConfig).createEmptySrcDirs,
+            config.options,
+            filterConfig,
+            backendConfig
+          );
+          break;
+        case 'sync':
+          await this.jobManagementService.startSync(
+            remoteName,
+            config.source,
+            config.dest,
+            (config as SyncConfig).createEmptySrcDirs,
+            config.options,
+            filterConfig,
+            backendConfig
+          );
+          break;
+        case 'bisync':
+          await this.jobManagementService.startBisync(
+            remoteName,
+            config.source,
+            config.dest,
+            config.options,
+            filterConfig,
+            backendConfig
+          );
+          break;
+        case 'move':
+          await this.jobManagementService.startMove(
+            remoteName,
+            config.source,
+            config.dest,
+            (config as MoveConfig).createEmptySrcDirs,
+            (config as MoveConfig).deleteEmptySrcDirs,
+            config.options,
+            filterConfig,
+            backendConfig
+          );
+          break;
       }
     };
 

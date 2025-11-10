@@ -21,8 +21,9 @@
           @if (getServeUrl(serve); as url) {
             <div class="serve-url-container">
               <span
-                class="serve-url copyable-text"
+                class="serve-url"
                 matTooltip="Click to copy URL"
+                matTooltipShowDelay="500"
                 (click)="onCopyToClipboard(url, 'URL Copied!'); $event.stopPropagation()"
                 role="button"
                 tabindex="0"
@@ -38,10 +39,10 @@
       </div>
       <button
         mat-icon-button
-        color="warn"
+        class="warn"
         (click)="onStopServe(); $event.stopPropagation()"
         matTooltip="Stop this serve"
-        class="stop-btn"
+        matTooltipShowDelay="500"
       >
         <mat-icon svgIcon="stop"></mat-icon>
       </button>
@@ -52,8 +53,9 @@
         <mat-icon svgIcon="fingerprint" class="metadata-icon"></mat-icon>
         <span class="metadata-label">ID:</span>
         <span
-          class="metadata-value copyable-text"
+          class="metadata-value"
           matTooltip="Click to copy ID"
+          matTooltipShowDelay="500"
           (click)="onCopyToClipboard(serve.id, 'ID Copied!'); $event.stopPropagation()"
           role="button"
           tabindex="1"
@@ -69,7 +71,7 @@
           <span
             class="metadata-value options-value"
             [matTooltip]="getOptionsTooltip(serve.params)"
-            matTooltipClass="pre-line-tooltip"
+            matTooltipShowDelay="500"
           >
             {{ getOptionKeys(serve.params).length }} active
           </span>

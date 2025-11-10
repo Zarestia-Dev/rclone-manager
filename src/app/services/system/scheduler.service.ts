@@ -3,8 +3,6 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import {
   ScheduledTask,
-  CreateScheduledTaskRequest,
-  UpdateScheduledTaskRequest,
   CronValidationResponse,
   ScheduledTaskStats,
   ScheduledTaskCompletedEvent,
@@ -80,38 +78,6 @@ export class SchedulerService extends TauriBaseService {
     const stats = await this.invokeCommand<ScheduledTaskStats>('get_scheduled_tasks_stats');
     this.statsCache.next(stats);
     return stats;
-  }
-
-  /**
-   * Create a new scheduled task
-   */
-  async addScheduledTask(request: CreateScheduledTaskRequest): Promise<ScheduledTask> {
-    const task = await this.invokeCommand<ScheduledTask>('add_scheduled_task', { request });
-    await this.refreshScheduledTasks();
-    return task;
-  }
-
-  /**
-   * Remove a scheduled task
-   */
-  async removeScheduledTask(taskId: string): Promise<void> {
-    await this.invokeCommand('remove_scheduled_task', { taskId });
-    await this.refreshScheduledTasks();
-  }
-
-  /**
-   * Update an existing scheduled task
-   */
-  async updateScheduledTask(
-    taskId: string,
-    request: UpdateScheduledTaskRequest
-  ): Promise<ScheduledTask> {
-    const task = await this.invokeCommand<ScheduledTask>('update_scheduled_task', {
-      taskId,
-      request,
-    });
-    await this.refreshScheduledTasks();
-    return task;
   }
 
   /**

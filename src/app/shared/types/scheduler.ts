@@ -56,26 +56,6 @@ export interface ScheduledTask {
 }
 
 /**
- * Request to create a new scheduled task
- */
-export interface CreateScheduledTaskRequest {
-  name: string;
-  taskType: TaskType;
-  cronExpression: string;
-  args: Record<string, unknown>;
-}
-
-/**
- * Request to update an existing scheduled task
- */
-export interface UpdateScheduledTaskRequest {
-  name?: string;
-  cronExpression?: string;
-  status?: TaskStatus;
-  args?: Record<string, unknown>;
-}
-
-/**
  * Response for cron validation
  */
 export interface CronValidationResponse {

@@ -1,11 +1,9 @@
 .serve-card {
-  background: var(--surface-bg, rgba(255, 255, 255, 0.03));
-  border: 1px solid rgba(76, 175, 80, 0.3);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--app-background);
+  transition: var(--transition-standard);
 
   &:hover {
-    border-color: rgb(76, 175, 80);
-    box-shadow: 0 4px 16px rgba(76, 175, 80, 0.25);
+    box-shadow: 0 4px 16px rgba(var(--primary-color-rgb), 0.25);
     transform: translateY(-2px);
   }
 
@@ -29,13 +27,13 @@
         width: 40px;
         height: 40px;
         border-radius: 10px;
-        background: rgba(76, 175, 80, 0.15);
+        background: rgba(var(--primary-color-rgb), 0.15);
         flex-shrink: 0;
 
         .serve-icon {
           width: 20px;
           height: 20px;
-          color: rgb(76, 175, 80);
+          color: var(--primary-color);
         }
       }
 
@@ -65,8 +63,8 @@
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          background: rgba(76, 175, 80, 0.2);
-          color: rgb(76, 175, 80);
+          background: rgba(var(--primary-color-rgb), 0.2);
+          color: var(--primary-color);
         }
 
         .serve-url-container {
@@ -77,11 +75,12 @@
           .serve-url {
             font-size: 13px;
             font-weight: 600;
-            color: var(--primary-color);
-            font-family: "Courier New", monospace;
+            color: var(--accent-color);
+            font-family: monospace;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            cursor: pointer;
           }
         }
 
@@ -89,7 +88,9 @@
           font-size: 13px;
           font-weight: 600;
           color: var(--app-text-color);
-          font-family: "Courier New", monospace;
+          opacity: 0.8;
+          font-style: italic;
+          font-family: monospace;
         }
 
         .serve-fs {
@@ -100,10 +101,6 @@
           white-space: nowrap;
         }
       }
-    }
-
-    .stop-btn {
-      flex-shrink: 0;
     }
   }
 
@@ -137,7 +134,8 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        font-family: "Courier New", monospace;
+        font-family: monospace;
+        cursor: pointer;
 
         &.options-value {
           cursor: help;
@@ -145,15 +143,5 @@
         }
       }
     }
-  }
-}
-
-// Global style for copyable text
-.copyable-text {
-  cursor: pointer;
-  transition: color 0.2s ease;
-
-  &:hover {
-    color: var(--primary-color);
   }
 }

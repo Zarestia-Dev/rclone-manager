@@ -2,7 +2,13 @@
   <div class="detail-header">
     <div class="header-content">
       <div class="remote-info-section">
-        <div class="icon-container">
+        <div
+          [ngClass]="{
+            'animate-pulse-green': remoteServes.length > 0,
+            'icon-container': true,
+            served: remoteServes.length > 0,
+          }"
+        >
           <mat-icon
             [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"
             class="remote-type-icon"
@@ -56,7 +62,7 @@
       }
       <button
         matButton="filled"
-        color="primary"
+        class="primary"
         (click)="onStartServeClick()"
         class="start-serve-btn"
       >

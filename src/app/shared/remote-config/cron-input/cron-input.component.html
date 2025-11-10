@@ -1,95 +1,106 @@
 <div class="cron-input-container">
   <mat-tab-group>
-    <mat-tab label="Visual Builder">
+    <mat-tab label="Simple">
       <div class="tab-content">
-        <div class="preset-title">Quick Presets:</div>
-        <div class="preset-buttons">
-          @for (
-            preset of [
-              { key: 'every-minute', label: 'Every Minute', tooltip: '* * * * *' },
-              { key: 'every-5-min', label: 'Every 5 Minutes', tooltip: '*/5 * * * *' },
-              { key: 'every-15-min', label: 'Every 15 Minutes', tooltip: '*/15 * * * *' },
-              { key: 'every-30-min', label: 'Every 30 Minutes', tooltip: '*/30 * * * *' },
-              { key: 'hourly', label: 'Every Hour', tooltip: '0 * * * *' },
-              { key: 'every-2-hours', label: 'Every 2 Hours', tooltip: '0 */2 * * *' },
-              { key: 'every-6-hours', label: 'Every 6 Hours', tooltip: '0 */6 * * *' },
-              { key: 'daily', label: 'Daily at 2 AM', tooltip: '0 2 * * *' },
-              { key: 'weekly', label: 'Weekly (Sunday)', tooltip: '0 3 * * 0' },
-              { key: 'monthly', label: 'Monthly (1st)', tooltip: '0 0 1 * *' },
-            ];
-            track preset.key
-          ) {
+        <div class="section-title">Choose a common schedule:</div>
+        <div class="preset-cards">
+          @for (preset of presetOptions; track preset.key) {
             <button
               type="button"
-              class="preset-chip"
-              (click)="applyVisualPreset($any(preset.key))"
-              [matTooltip]="preset.tooltip"
+              class="preset-card"
+              [class.selected]="selectedPreset === preset.key"
+              (click)="applyPreset(preset.key, preset.cron)"
+              [matTooltip]="preset.cron"
             >
-              {{ preset.label }}
+              <div class="preset-title">{{ preset.title }}</div>
+              <div class="preset-description">{{ preset.description }}</div>
             </button>
           }
         </div>
 
-        <div [formGroup]="visualForm" class="visual-builder">
-          <mat-form-field appearance="fill">
-            <mat-label>Frequency</mat-label>
-            <mat-select formControlName="frequency">
-              <mat-option value="daily">Daily</mat-option>
-              <mat-option value="weekly">Weekly</mat-option>
-              <mat-option value="monthly">Monthly</mat-option>
-              <mat-option value="custom">Custom Interval</mat-option>
-            </mat-select>
-          </mat-form-field>
+        <div class="divider">
+          <span>or customize</span>
+        </div>
 
-          <mat-form-field appearance="fill">
-            <mat-label>Time (Local - UTC{{ userTimezone }})</mat-label>
-            <input matInput [ngxMatTimepicker]="timePicker" formControlName="time" readonly />
-            <mat-icon matSuffix (click)="timePicker.open()" svgIcon="clock"></mat-icon>
-            <ngx-mat-timepicker #timePicker [enableKeyboardInput]="true"></ngx-mat-timepicker>
-          </mat-form-field>
-
-          @if (visualForm.get('frequency')?.value === 'weekly') {
-            <mat-form-field appearance="fill">
-              <mat-label>Day of Week</mat-label>
-              <mat-select formControlName="dayOfWeek">
-                @for (
-                  day of [
-                    { value: '0', label: 'Sunday' },
-                    { value: '1', label: 'Monday' },
-                    { value: '2', label: 'Tuesday' },
-                    { value: '3', label: 'Wednesday' },
-                    { value: '4', label: 'Thursday' },
-                    { value: '5', label: 'Friday' },
-                    { value: '6', label: 'Saturday' },
-                  ];
-                  track day.value
-                ) {
-                  <mat-option [value]="day.value">{{ day.label }}</mat-option>
-                }
+        <div class="custom-builder" [formGroup]="simpleForm">
+          <div class="builder-row">
+            <span class="builder-label">Run this task</span>
+            <mat-form-field class="inline-field">
+              <mat-select formControlName="frequency">
+                <mat-option value="daily">every day</mat-option>
+                <mat-option value="weekly">every week</mat-option>
+                <mat-option value="monthly">every month</mat-option>
+                <mat-option value="interval">every few hours</mat-option>
               </mat-select>
             </mat-form-field>
+          </div>
+
+          @if (simpleForm.get('frequency')?.value === 'weekly') {
+            <div class="builder-row">
+              <span class="builder-label">on</span>
+              <mat-form-field class="inline-field">
+                <mat-select formControlName="dayOfWeek">
+                  <mat-option value="1">Monday</mat-option>
+                  <mat-option value="2">Tuesday</mat-option>
+                  <mat-option value="3">Wednesday</mat-option>
+                  <mat-option value="4">Thursday</mat-option>
+                  <mat-option value="5">Friday</mat-option>
+                  <mat-option value="6">Saturday</mat-option>
+                  <mat-option value="0">Sunday</mat-option>
+                  <mat-option value="1-5">Weekdays (Mon-Fri)</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
           }
 
-          @if (visualForm.get('frequency')?.value === 'monthly') {
-            <mat-form-field appearance="fill">
-              <mat-label>Day of Month</mat-label>
-              <mat-select formControlName="dayOfMonth">
-                @for (day of daysOfMonth; track day) {
-                  <mat-option [value]="day">{{ day }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
+          @if (simpleForm.get('frequency')?.value === 'monthly') {
+            <div class="builder-row">
+              <span class="builder-label">on day</span>
+              <mat-form-field class="inline-field">
+                <mat-select formControlName="dayOfMonth">
+                  @for (day of daysOfMonth; track day) {
+                    <mat-option [value]="day">{{ day }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <span class="builder-label">of the month</span>
+            </div>
           }
 
-          @if (visualForm.get('frequency')?.value === 'custom') {
-            <mat-form-field appearance="fill">
-              <mat-label>Every (hours)</mat-label>
-              <mat-select formControlName="intervalHours">
-                @for (hour of [1, 2, 3, 4, 6, 8, 12]; track hour) {
-                  <mat-option [value]="hour">{{ hour }} hour{{ hour > 1 ? 's' : '' }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
+          @if (simpleForm.get('frequency')?.value === 'interval') {
+            <div class="builder-row">
+              <span class="builder-label">every</span>
+              <mat-form-field class="inline-field">
+                <mat-select formControlName="intervalHours">
+                  <mat-option [value]="2">2 hours</mat-option>
+                  <mat-option [value]="4">4 hours</mat-option>
+                  <mat-option [value]="6">6 hours</mat-option>
+                  <mat-option [value]="8">8 hours</mat-option>
+                  <mat-option [value]="12">12 hours</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+          }
+
+          @if (simpleForm.get('frequency')?.value !== 'interval') {
+            <div class="builder-row">
+              <span class="builder-label">at</span>
+              <mat-form-field class="inline-field">
+                <input
+                  matInput
+                  [ngxMatTimepicker]="timePicker"
+                  formControlName="time"
+                  readonly
+                  (click)="timePicker.open()"
+                />
+                <mat-icon matSuffix svgIcon="clock"></mat-icon>
+                <ngx-mat-timepicker
+                  #timePicker
+                  [enableKeyboardInput]="true"
+                  (timeSet)="onSimpleFormChange()"
+                ></ngx-mat-timepicker>
+              </mat-form-field>
+            </div>
           }
         </div>
       </div>
@@ -97,173 +108,161 @@
 
     <mat-tab label="Advanced">
       <div class="tab-content">
-        <div class="advanced-description">
+        <div class="advanced-intro">
           <mat-icon svgIcon="info"></mat-icon>
-          <span>
-            Configure individual cron fields. Use * for "any", */n for "every n", or specific
-            values.
-          </span>
-        </div>
-
-        <div [formGroup]="advancedForm" class="advanced-builder">
-          <mat-form-field appearance="fill">
-            <mat-label>Minute (0-59)</mat-label>
-            <mat-select formControlName="minute">
-              <mat-option value="*">* (Every minute)</mat-option>
-              <mat-option value="0">0 (On the hour)</mat-option>
-              <mat-option value="*/5">*/5 (Every 5 minutes)</mat-option>
-              <mat-option value="*/10">*/10 (Every 10 minutes)</mat-option>
-              <mat-option value="*/15">*/15 (Every 15 minutes)</mat-option>
-              <mat-option value="*/30">*/30 (Every 30 minutes)</mat-option>
-              @for (min of [0, 15, 30, 45]; track min) {
-                <mat-option [value]="min.toString()">{{ min }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="fill">
-            <mat-label>Hour (0-23)</mat-label>
-            <mat-select formControlName="hour">
-              <mat-option value="*">* (Every hour)</mat-option>
-              <mat-option value="0">0 (Midnight)</mat-option>
-              <mat-option value="*/2">*/2 (Every 2 hours)</mat-option>
-              <mat-option value="*/3">*/3 (Every 3 hours)</mat-option>
-              <mat-option value="*/4">*/4 (Every 4 hours)</mat-option>
-              <mat-option value="*/6">*/6 (Every 6 hours)</mat-option>
-              <mat-option value="*/12">*/12 (Every 12 hours)</mat-option>
-              @for (hour of [0, 6, 12, 18]; track hour) {
-                <mat-option [value]="hour.toString()">{{ hour }}:00</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="fill">
-            <mat-label>Day of Month (1-31)</mat-label>
-            <mat-select formControlName="dayOfMonth">
-              <mat-option value="*">* (Every day)</mat-option>
-              <mat-option value="1">1 (First day)</mat-option>
-              <mat-option value="15">15 (Middle)</mat-option>
-              <mat-option value="*/2">*/2 (Every 2 days)</mat-option>
-              <mat-option value="*/5">*/5 (Every 5 days)</mat-option>
-              @for (day of [1, 7, 14, 21, 28]; track day) {
-                <mat-option [value]="day.toString()">{{ day }}</mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="fill">
-            <mat-label>Month (1-12)</mat-label>
-            <mat-select formControlName="month">
-              <mat-option value="*">* (Every month)</mat-option>
-              @for (
-                month of [
-                  { value: 1, label: 'January' },
-                  { value: 2, label: 'February' },
-                  { value: 3, label: 'March' },
-                  { value: 4, label: 'April' },
-                  { value: 5, label: 'May' },
-                  { value: 6, label: 'June' },
-                  { value: 7, label: 'July' },
-                  { value: 8, label: 'August' },
-                  { value: 9, label: 'September' },
-                  { value: 10, label: 'October' },
-                  { value: 11, label: 'November' },
-                  { value: 12, label: 'December' },
-                ];
-                track month.value
-              ) {
-                <mat-option [value]="month.value.toString()">{{ month.label }}</mat-option>
-              }
-              <mat-option value="*/2">*/2 (Every 2 months)</mat-option>
-              <mat-option value="*/3">*/3 (Every 3 months)</mat-option>
-              <mat-option value="*/6">*/6 (Every 6 months)</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <mat-form-field appearance="fill">
-            <mat-label>Day of Week</mat-label>
-            <mat-select formControlName="dayOfWeek">
-              <mat-option value="*">* (Every day)</mat-option>
-              @for (
-                day of [
-                  { value: '0', label: 'Sunday' },
-                  { value: '1', label: 'Monday' },
-                  { value: '2', label: 'Tuesday' },
-                  { value: '3', label: 'Wednesday' },
-                  { value: '4', label: 'Thursday' },
-                  { value: '5', label: 'Friday' },
-                  { value: '6', label: 'Saturday' },
-                ];
-                track day.value
-              ) {
-                <mat-option [value]="day.value">{{ day.label }}</mat-option>
-              }
-              <mat-option value="1-5">1-5 (Weekdays)</mat-option>
-              <mat-option value="0,6">0,6 (Weekends)</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <div class="generated-preview">
-            <mat-icon svgIcon="info"></mat-icon>
-            <div class="preview-text">
-              <strong>Cron Expression:</strong>
-              <code>{{ cronControl.value || 'Configure fields above' }}</code>
-            </div>
+          <div>
+            <strong>For advanced users:</strong> Configure individual cron fields or enter a
+            complete cron expression manually. Use * for "any value", */n for "every n units", or
+            specific values.
           </div>
         </div>
-      </div>
-    </mat-tab>
 
-    <mat-tab label="Manual Entry">
-      <div class="tab-content">
-        <mat-form-field appearance="fill" class="cron-field">
-          <mat-label>Cron Expression</mat-label>
-          <mat-icon matPrefix svgIcon="clock"></mat-icon>
-          <input
-            matInput
-            [formControl]="cronControl"
-            placeholder="0 0 * * * (Daily at midnight)"
-            [attr.aria-label]="'Cron expression for ' + taskName"
-          />
-          @if (cronControl.value) {
-            <button
-              matSuffix
-              mat-icon-button
-              type="button"
-              (click)="cronControl.reset()"
-              aria-label="Clear cron expression"
-            >
-              <mat-icon svgIcon="circle-xmark"></mat-icon>
-            </button>
-          }
-          @if (cronControl.hasError('invalidCron')) {
-            <mat-error>{{ validationError }}</mat-error>
-          }
-        </mat-form-field>
+        <div class="advanced-section">
+          <div class="section-title">Field Builder</div>
+          <div [formGroup]="advancedForm" class="advanced-fields">
+            <mat-form-field>
+              <mat-label>Minute (0-59)</mat-label>
+              <mat-select formControlName="minute">
+                <mat-option value="*">* (Every minute)</mat-option>
+                <mat-option value="0">0 (On the hour)</mat-option>
+                <mat-option value="*/5">*/5 (Every 5 minutes)</mat-option>
+                <mat-option value="*/10">*/10 (Every 10 minutes)</mat-option>
+                <mat-option value="*/15">*/15 (Every 15 minutes)</mat-option>
+                <mat-option value="*/30">*/30 (Every 30 minutes)</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Hour (0-23)</mat-label>
+              <mat-select formControlName="hour">
+                <mat-option value="*">* (Every hour)</mat-option>
+                <mat-option value="0">0 (Midnight)</mat-option>
+                <mat-option value="*/2">*/2 (Every 2 hours)</mat-option>
+                <mat-option value="*/4">*/4 (Every 4 hours)</mat-option>
+                <mat-option value="*/6">*/6 (Every 6 hours)</mat-option>
+                @for (hour of [6, 9, 12, 15, 18, 21]; track hour) {
+                  <mat-option [value]="hour.toString()">{{ hour }}:00</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Day of Month (1-31)</mat-label>
+              <mat-select formControlName="dayOfMonth">
+                <mat-option value="*">* (Every day)</mat-option>
+                <mat-option value="1">1 (First day)</mat-option>
+                <mat-option value="15">15 (Middle)</mat-option>
+                <mat-option value="*/2">*/2 (Every 2 days)</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Month (1-12)</mat-label>
+              <mat-select formControlName="month">
+                <mat-option value="*">* (Every month)</mat-option>
+                @for (
+                  month of [
+                    { value: 1, label: 'January' },
+                    { value: 2, label: 'February' },
+                    { value: 3, label: 'March' },
+                    { value: 4, label: 'April' },
+                    { value: 5, label: 'May' },
+                    { value: 6, label: 'June' },
+                    { value: 7, label: 'July' },
+                    { value: 8, label: 'August' },
+                    { value: 9, label: 'September' },
+                    { value: 10, label: 'October' },
+                    { value: 11, label: 'November' },
+                    { value: 12, label: 'December' },
+                  ];
+                  track month.value
+                ) {
+                  <mat-option [value]="month.value.toString()">{{ month.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <mat-form-field>
+              <mat-label>Day of Week</mat-label>
+              <mat-select formControlName="dayOfWeek">
+                <mat-option value="*">* (Every day)</mat-option>
+                <mat-option value="1">Monday</mat-option>
+                <mat-option value="2">Tuesday</mat-option>
+                <mat-option value="3">Wednesday</mat-option>
+                <mat-option value="4">Thursday</mat-option>
+                <mat-option value="5">Friday</mat-option>
+                <mat-option value="6">Saturday</mat-option>
+                <mat-option value="0">Sunday</mat-option>
+                <mat-option value="1-5">1-5 (Weekdays)</mat-option>
+                <mat-option value="0,6">0,6 (Weekends)</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+        </div>
+
+        <div class="advanced-section">
+          <div class="section-title">Or enter manually</div>
+          <mat-form-field class="manual-field">
+            <mat-label>Cron Expression</mat-label>
+            <mat-icon matPrefix svgIcon="terminal"></mat-icon>
+            <input
+              matInput
+              [formControl]="cronControl"
+              placeholder="0 9 * * * (Daily at 9 AM)"
+              [attr.aria-label]="'Cron expression for ' + taskName"
+            />
+            @if (cronControl.value) {
+              <button
+                matSuffix
+                mat-icon-button
+                type="button"
+                (click)="cronControl.reset()"
+                aria-label="Clear"
+              >
+                <mat-icon svgIcon="circle-xmark"></mat-icon>
+              </button>
+            }
+            @if (cronControl.hasError('invalidCron')) {
+              <mat-error>{{ validationError }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
       </div>
     </mat-tab>
   </mat-tab-group>
 
-  <div class="cron-info">
-    @if (validationResponse?.isValid && cronControl.value) {
-      @if (validationResponse?.nextRun) {
-        <div class="next-run">
-          <mat-icon svgIcon="calendar" class="calendar-icon"></mat-icon>
-          <div class="next-run-text">
-            <strong>Next run:</strong> {{ formatNextRun($any(validationResponse?.nextRun)) }}
-          </div>
-        </div>
-      }
-
-      <div class="timezone-note">
-        <mat-icon svgIcon="globe" class="info-icon"></mat-icon>
-        <div class="description-text">
-          <em>
-            Times are entered in your local timezone (UTC{{ userTimezone }}) and automatically
-            converted to UTC for scheduling.
-          </em>
-        </div>
+  @if (cronControl.value && validationResponse?.isValid) {
+    <div class="schedule-preview">
+      <div class="preview-header">
+        <mat-icon svgIcon="circle-check" class="success-icon"></mat-icon>
+        <span class="preview-title">Your Schedule</span>
       </div>
-    }
-  </div>
+      <div class="preview-content">
+        <div class="preview-description">
+          {{ getHumanReadableSchedule() }}
+        </div>
+        @if (validationResponse?.nextRun) {
+          <div class="preview-next-runs">
+            <div class="next-run-item">
+              <strong>Next run:</strong>
+              {{ formatNextRun(validationResponse?.nextRun ?? null) }}
+            </div>
+          </div>
+        }
+      </div>
+      <div class="preview-technical">
+        <code>{{ cronControl.value }}</code>
+      </div>
+    </div>
+  }
+
+  @if (validationResponse?.isValid && cronControl.value) {
+    <div class="timezone-note">
+      <mat-icon svgIcon="globe"></mat-icon>
+      <span>
+        Times are in your local timezone (UTC{{ userTimezone }}) and automatically converted to UTC
+        for scheduling.
+      </span>
+    </div>
+  }
 </div>

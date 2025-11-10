@@ -1052,6 +1052,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       copy: () => settings?.copyConfig?.dest,
       bisync: () => settings?.bisyncConfig?.dest,
       move: () => settings?.moveConfig?.dest,
+      serve: () => settings?.serveConfig?.dest,
     };
     const getPath = configMap[usePath];
     if (!getPath) {

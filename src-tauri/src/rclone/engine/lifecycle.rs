@@ -8,7 +8,7 @@ use crate::{
         initialization::apply_core_settings, settings::operations::core::load_startup_settings,
         tray::core::update_tray_menu,
     },
-    rclone::state::{cache::CACHE, scheduled_tasks::reload_scheduled_tasks_from_configs},
+    rclone::state::cache::CACHE,
     utils::types::{
         all_types::RcApiEngine,
         events::{
@@ -172,13 +172,6 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                                 Ok(_) => debug!("Caches refreshed successfully after engine ready"),
                                 Err(e) => error!("Failed to refresh caches: {e}"),
                             }
-
-                            let settings = CACHE.settings.read().await;
-                            let all_settings = serde_json::json!(settings.clone());
-
-                            // Reload scheduled tasks from remote configs
-                            info!("📋 Loading scheduled tasks from remote configs...");
-                            let _ = reload_scheduled_tasks_from_configs(all_settings).await;
 
                             if let Err(e) = update_tray_menu(app_handle.clone(), 0).await {
                                 error!("Failed to update tray menu: {e}");

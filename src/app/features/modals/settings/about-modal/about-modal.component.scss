@@ -469,7 +469,7 @@
 
       .version {
         font-weight: 500;
-        font-family: var(--font-mono, "Monaco", "Consolas", monospace);
+        font-family: monospace;
         color: var(--app-text-color);
       }
 
@@ -667,7 +667,7 @@
         background: rgba(var(--app-text-color-rgb), 0.08);
         padding: 2px 6px;
         border-radius: var(--radius-xs);
-        font-family: var(--font-mono, "Monaco", "Consolas", monospace);
+        font-family: monospace;
         font-size: 14px;
         color: var(--accent-color);
       }

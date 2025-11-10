@@ -9,7 +9,10 @@ use crate::{
     rclone::{
         commands::system::set_bandwidth_limit,
         engine::ENGINE,
-        state::{cache::CACHE, engine::ENGINE_STATE},
+        state::{
+            cache::CACHE, engine::ENGINE_STATE,
+            scheduled_tasks::reload_scheduled_tasks_from_configs,
+        },
     },
     utils::{
         app::builder::setup_tray,
@@ -117,6 +120,13 @@ fn handle_remote_presence_changed(app: &AppHandle) {
             );
             if let (Err(e1), Err(e2), Err(e3)) = refresh_tasks {
                 error!("Failed to refresh cache: {e1}, {e2}, {e3}");
+            }
+            // After the CACHE has been refreshed from remote changes,
+            // ensure the scheduler reloads tasks from the updated configs.
+            info!("Remote presence changed, reloading scheduled tasks from configs...");
+            let all_configs = CACHE.configs.read().await.clone();
+            if let Err(e) = reload_scheduled_tasks_from_configs(all_configs).await {
+                error!("❌ Failed to reload scheduled tasks after remote change: {e}");
             }
             if let Err(e) = update_tray_menu(app_clone.clone(), 0).await {
                 error!("Failed to update tray menu: {e}");

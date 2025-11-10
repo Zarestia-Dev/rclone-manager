@@ -56,15 +56,24 @@
       width: var(--icon-container-size);
       height: var(--icon-container-size);
       border-radius: var(--icon-radius, 12px);
-      background: rgba(var(--accent-color-rgb), 0.1);
-      border: 2px solid rgba(var(--accent-color-rgb), 0.2);
+      background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+      border: 2px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
       transition: var(--transition-standard);
 
       .remote-type-icon {
         width: var(--icon-size-lg);
         height: var(--icon-size-lg);
-        color: var(--accent-color);
+        color: var(--secondary-text-color);
         transition: var(--transition-standard);
+      }
+
+      &.served {
+        background: rgba(var(--primary-color-rgb), 0.15);
+        border-color: rgba(var(--primary-color-rgb), 0.4);
+
+        .remote-type-icon {
+          color: var(--primary-color);
+        }
       }
     }
 
@@ -90,21 +99,19 @@
         display: flex;
         align-items: center;
         gap: var(--space-sm);
-        margin: 0;
         font-size: var(--font-size-xl);
         font-weight: 600;
         color: var(--app-text-color);
 
         mat-icon {
-          color: rgb(76, 175, 80);
+          color: var(--primary-color);
         }
 
         .serves-count {
-          margin-left: auto;
-          padding: 4px 12px;
-          border-radius: 16px;
-          background: rgba(76, 175, 80, 0.15);
-          color: rgb(76, 175, 80);
+          padding: var(--space-xxs) var(--space-sm);
+          border-radius: var(--badge-radius);
+          background: rgba(var(--primary-color-rgb), 0.15);
+          color: var(--primary-color);
           font-size: var(--font-size-sm);
           font-weight: 700;
         }
@@ -112,8 +119,9 @@
 
       // Empty State (No Changes)
       .empty-state-card {
-        background: var(--surface-bg, rgba(255, 255, 255, 0.03));
-        border: 1px dashed rgba(var(--app-text-color-rgb), 0.2);
+        background: var(--secondary-background);
+        border: 2px dashed rgba(var(--app-text-color-rgb), 0.2);
+        box-shadow: none;
 
         .empty-state {
           display: flex;
@@ -152,10 +160,19 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
         gap: var(--space-md);
+        background: var(--secondary-background);
+        padding: var(--space-xl);
+        box-shadow: var(--shadow-light);
+        border-radius: var(--card-border-radius);
+        transition: var(--transition-standard);
+
+        &:hover {
+          box-shadow: var(--shadow-elevated);
+        }
       }
     }
 
-    // Settings layout (No Changes)
+    // Settings layout
     .settings-layout {
       display: grid;
       gap: var(--panel-gap);
@@ -168,7 +185,7 @@
       padding: var(--space-sm);
       background: rgba(var(--app-text-color-rgb), var(--background-opacity));
       border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-      border-radius: var(--icon-radius, 12px);
+      border-radius: var(--icon-radius);
 
       .group-header {
         display: flex;
@@ -196,7 +213,6 @@
       }
     }
 
-    // Responsive (No Changes)
     @media (max-width: 768px) {
       padding: var(--space-md);
 
@@ -219,13 +235,5 @@
 @media (min-width: 1024px) {
   .settings-layout {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-// NEW: Global style override for multiline tooltip
-// Needs to be here or in a global stylesheet.
-::ng-deep .pre-line-tooltip {
-  .mdc-tooltip__surface {
-    white-space: pre-line;
   }
 }

@@ -122,7 +122,7 @@
       .terminal-log-area {
         background: var(--terminal-background);
         color: var(--terminal-text);
-        font-family: "JetBrains Mono", "Fira Code", "Courier New", monospace;
+        font-family: monospace;
         padding: var(--terminal-padding);
         flex: 1;
         overflow-y: auto;

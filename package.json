@@ -54,6 +54,7 @@
     "@tauri-apps/plugin-store": "^2.2.0",
     "@tauri-apps/plugin-updater": "^2.9.0",
     "chart.js": "^4.4.9",
+    "cronstrue": "^3.9.0",
     "ngx-mat-timepicker": "^20.0.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",

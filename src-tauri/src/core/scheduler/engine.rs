@@ -7,7 +7,7 @@ use log::{debug, error, info, warn};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::RwLock;
-use tokio_cron_scheduler::{Job, JobScheduler};
+use tokio_cron_scheduler::{JobBuilder, JobScheduler};
 use uuid::Uuid;
 
 /// Global scheduler instance
@@ -57,7 +57,6 @@ impl CronScheduler {
 
     /// Stop the scheduler
     pub async fn stop(&mut self) -> Result<(), String> {
-        // ... (this function is correct, no changes needed) ...
         let mut scheduler_guard = self.scheduler.write().await;
         let scheduler = scheduler_guard
             .as_mut()
@@ -92,66 +91,72 @@ impl CronScheduler {
         let task_id = task.id.clone();
         let task_name = task.name.clone();
         let task_type = task.task_type.clone();
-        let cron_expr = task.cron_expression.clone();
+        let cron_expr_5_field = task.cron_expression.clone();
+        // tokio-cron-scheduler requires 6 fields, but users provide 5.
+        // Prepend "0 " to represent "at second 0".
+        let cron_expr_6_field = format!("0 {}", cron_expr_5_field);
 
-        validate_cron_expression(&cron_expr)?;
+        // 2. Create the job using JobBuilder to apply the local timezone
+        let job = JobBuilder::new()
+            .with_timezone(Local) // <-- This is the magic: run job in local time
+            .with_cron_job_type()
+            .with_schedule(&cron_expr_6_field) // <-- Use the user's cron string directly
+            .map_err(|e| format!("Invalid cron schedule ('{}'): {}", cron_expr_6_field, e))?
+            .with_run_async(Box::new(move |_uuid, _l| {
+                // This is the async closure that runs on schedule
+                let task_id = task_id.clone();
+                let task_name = task_name.clone();
+                let task_type = task_type.clone();
+                let app_handle = app_handle.clone();
 
-        // We must convert the local cron string to a UTC cron string
-        // before giving it to the UTC scheduler.
-        let utc_cron = convert_local_cron_to_utc(&cron_expr)?;
-        let cron_with_seconds = format!("0 {}", utc_cron);
-
-        // Create the job
-        let job = Job::new_async(cron_with_seconds.as_str(), move |_uuid, _l| {
-            let task_id = task_id.clone();
-            let task_name = task_name.clone();
-            let task_type = task_type.clone();
-            let app_handle = app_handle.clone();
-
-            Box::pin(async move {
-                info!(
-                    "⏰ Executing scheduled task: {} ({}) - Type: {:?}",
-                    task_name, task_id, task_type
-                );
-
-                if let Err(e) = execute_scheduled_task(&task_id, &app_handle).await {
-                    error!("❌ Failed to execute scheduled task {}: {}", task_id, e);
-                    let _ = app_handle.emit(
-                        SCHEDULED_TASK_ERROR,
-                        serde_json::json!({
-                            "taskId": task_id,
-                            "error": e,
-                        }),
+                Box::pin(async move {
+                    info!(
+                        "⏰ Executing task with local timezone: {} ({}) - Type: {:?}",
+                        task_name, task_id, task_type
                     );
-                } else {
-                    info!("✅ Successfully executed scheduled task: {}", task_id);
-                    let _ = app_handle.emit(
-                        SCHEDULED_TASK_COMPLETED,
-                        serde_json::json!({
-                            "taskId": task_id,
-                        }),
-                    );
-                }
-            })
-        })
-        .map_err(|e| format!("Failed to create job: {}", e))?;
 
+                    if let Err(e) = execute_scheduled_task(&task_id, &app_handle).await {
+                        error!("❌ Task execution failed {}: {}", task_id, e);
+                        // Emit error event to frontend
+                        let _ = app_handle.emit(
+                            SCHEDULED_TASK_ERROR,
+                            serde_json::json!({
+                                "taskId": task_id,
+                                "error": e,
+                            }),
+                        );
+                    } else {
+                        info!("✅ Task execution completed: {}", task_id);
+                        // Emit success event to frontend
+                        let _ = app_handle.emit(
+                            SCHEDULED_TASK_COMPLETED,
+                            serde_json::json!({
+                                "taskId": task_id,
+                            }),
+                        );
+                    }
+                })
+            }))
+            .build()
+            .map_err(|e| format!("Failed to build job: {}", e))?;
+
+        // 3. Add the newly built job to the scheduler
         let job_id = scheduler
             .add(job)
             .await
             .map_err(|e| format!("Failed to add job to scheduler: {}", e))?;
 
-        // Store the scheduler job ID in the task
+        // 4. Store the scheduler's job ID in our task cache
         SCHEDULED_TASKS_CACHE
             .update_task(&task.id, |t| {
                 t.scheduler_job_id = Some(job_id.to_string());
             })
             .await
-            .ok(); // Ignore errors here
+            .ok(); // Log errors but don't fail the whole operation
 
         info!(
-            "📅 Scheduled task '{}' with cron: {} (UTC: {}) (job ID: {})",
-            task.name, cron_expr, utc_cron, job_id
+            "📅 Scheduled task '{}' with local timezone: {} (job ID: {})",
+            task.name, cron_expr_6_field, job_id
         );
 
         Ok(job_id)
@@ -238,75 +243,6 @@ impl CronScheduler {
     }
 }
 
-/// Convert a local time cron expression to UTC
-/// Takes a 5-field cron expression in local time and converts it to UTC
-pub fn convert_local_cron_to_utc(local_cron: &str) -> Result<String, String> {
-    let parts: Vec<&str> = local_cron.trim().split_whitespace().collect();
-    if parts.len() != 5 {
-        return Err(
-            "Cron expression must have 5 fields (minute hour day month weekday)".to_string(),
-        );
-    }
-
-    let minute = parts[0];
-    let hour = parts[1];
-    let day = parts[2];
-    let month = parts[3];
-    let weekday = parts[4];
-
-    // If hour is a wildcard/range, we cannot safely convert it.
-    // Return the original string and warn the user.
-    if hour.contains('*') || hour.contains('/') || hour.contains('-') || hour.contains(',') {
-        warn!(
-            "⚠️  Cron expression '{}' uses a wildcard/range for the hour. Scheduling as-is. This may not run at the intended local time.",
-            local_cron
-        );
-        return Ok(local_cron.to_string());
-    }
-
-    // Get local timezone offset in hours
-    let now = Local::now();
-    let offset_seconds = now.offset().local_minus_utc();
-    let offset_hours = offset_seconds / 3600; // Can be positive or negative
-
-    let hour_val: i32 = hour
-        .parse()
-        .map_err(|_| format!("Invalid hour value: {}", hour))?;
-
-    // Calculate UTC hour
-    let mut utc_hour = hour_val - offset_hours;
-    let mut day_adjustment = 0;
-
-    // Handle day rollover
-    if utc_hour < 0 {
-        utc_hour += 24;
-        day_adjustment = -1; // Ran on the previous day in UTC
-    } else if utc_hour >= 24 {
-        utc_hour -= 24;
-        day_adjustment = 1; // Ran on the next day in UTC
-    }
-
-    // If we had a day adjustment, we must check if the day/weekday fields are also restricted.
-    // This is a very complex problem (e.g., "0 1 * * 1" -> "0 23 * * 0" in -2 TZ)
-    // For now, we will just adjust the hour and warn if a day adjustment happened.
-    if day_adjustment != 0 && (day != "*" || weekday != "*") {
-        warn!(
-            "⚠️  Cron expression '{}' crosses a day boundary when converted to UTC. Day/Weekday fields may not be accurate.",
-            local_cron
-        );
-    }
-
-    let utc_cron = format!("{} {} {} {} {}", minute, utc_hour, day, month, weekday);
-
-    info!(
-        "🌐 Converted cron from local to UTC: '{}' -> '{}' (offset: {} hours)",
-        local_cron, utc_cron, offset_hours
-    );
-
-    Ok(utc_cron)
-}
-
-/// Validate a cron expression using the `croner` library
 pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
     croner::Cron::new(cron_expr)
         .parse()
@@ -320,21 +256,13 @@ pub fn get_next_run(cron_expr: &str) -> Result<chrono::DateTime<Utc>, String> {
         .parse()
         .map_err(|e| format!("Invalid cron expression: {}", e))?;
 
-    // Calculate next run time from Local::now()
+    // Calculate next occurrence in local time
     let next_local = cron
         .find_next_occurrence(&Local::now(), false)
         .map_err(|e| format!("Failed to calculate next run: {}", e))?;
 
-    // Convert the resulting local time to UTC for storage
+    // Return as UTC for consistent storage/display
     Ok(next_local.with_timezone(&Utc))
-}
-
-/// Get human-readable description of cron expression
-pub fn get_cron_description(cron_expr: &str) -> Result<String, String> {
-    let cron = croner::Cron::new(cron_expr)
-        .parse()
-        .map_err(|e| format!("Invalid cron expression: {}", e))?;
-    Ok(cron.pattern.to_string())
 }
 
 /// Execute a scheduled task
@@ -371,17 +299,15 @@ async fn execute_scheduled_task(task_id: &str, app_handle: &AppHandle) -> Result
                     .await
                     .ok();
             }
-            SCHEDULED_TASKS_CACHE
-                .update_task(task_id, |t| {
-                    t.mark_success(job_id);
-                })
-                .await?;
             Ok(())
         }
         Err(e) => {
+            let next_run = get_next_run(&task.cron_expression).ok();
+
             SCHEDULED_TASKS_CACHE
                 .update_task(task_id, |t| {
                     t.mark_failure(e.clone());
+                    t.next_run = next_run; // ← Add this
                 })
                 .await?;
             Err(e)

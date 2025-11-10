@@ -17,24 +17,20 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatSelectModule } from '@angular/material/select';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { NgxMatTimepickerModule } from 'ngx-mat-timepicker';
-import { Subject, distinctUntilChanged, takeUntil } from 'rxjs';
+import { Subject, distinctUntilChanged, takeUntil, debounceTime } from 'rxjs';
 import { SchedulerService } from '@app/services';
 import { CronValidationResponse } from '@app/types';
+import { toString as cronstrue } from 'cronstrue';
 
-type PresetType =
-  | 'every-minute'
-  | 'every-5-min'
-  | 'every-15-min'
-  | 'every-30-min'
-  | 'hourly'
-  | 'every-2-hours'
+type PresetKey =
+  | 'daily-9am'
+  | 'daily-6pm'
+  | 'weekday-9am'
+  | 'weekly-monday'
   | 'every-6-hours'
-  | 'daily'
-  | 'weekly'
-  | 'monthly';
+  | 'monthly-1st';
 
 @Component({
   selector: 'app-cron-input',
@@ -48,7 +44,6 @@ type PresetType =
     MatTooltipModule,
     MatTabsModule,
     MatSelectModule,
-    MatCheckboxModule,
     MatButtonModule,
     NgxMatTimepickerModule,
   ],
@@ -69,15 +64,18 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
   validationResponse: CronValidationResponse | null = null;
   validationError = '';
   userTimezone = this.getUserTimezoneOffset();
+  selectedPreset: PresetKey | null = null;
 
-  visualForm = new FormGroup({
+  // Simple form for user-friendly building
+  simpleForm = new FormGroup({
     frequency: new FormControl<string>('daily', { nonNullable: true }),
-    time: new FormControl<string>('00:00', { nonNullable: true }),
-    dayOfWeek: new FormControl<string>('0', { nonNullable: true }),
+    time: new FormControl<string>('09:00', { nonNullable: true }),
+    dayOfWeek: new FormControl<string>('1', { nonNullable: true }),
     dayOfMonth: new FormControl<number>(1, { nonNullable: true }),
     intervalHours: new FormControl<number>(6, { nonNullable: true }),
   });
 
+  // Advanced form for power users
   advancedForm = new FormGroup({
     minute: new FormControl<string>('0', { nonNullable: true }),
     hour: new FormControl<string>('0', { nonNullable: true }),
@@ -88,18 +86,49 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
 
   readonly daysOfMonth = Array.from({ length: 31 }, (_, i) => i + 1);
 
-  private readonly presetMap: Record<PresetType, string> = {
-    'every-minute': '* * * * *',
-    'every-5-min': '*/5 * * * *',
-    'every-15-min': '*/15 * * * *',
-    'every-30-min': '*/30 * * * *',
-    hourly: '0 * * * *',
-    'every-2-hours': '0 */2 * * *',
-    'every-6-hours': '0 */6 * * *',
-    daily: '0 2 * * *',
-    weekly: '0 3 * * 0',
-    monthly: '0 0 1 * *',
-  };
+  readonly presetOptions: {
+    key: PresetKey;
+    title: string;
+    description: string;
+    cron: string;
+  }[] = [
+    {
+      key: 'daily-9am',
+      title: 'Daily at 9 AM',
+      description: 'Every day at 9:00 AM',
+      cron: '0 9 * * *',
+    },
+    {
+      key: 'daily-6pm',
+      title: 'Daily at 6 PM',
+      description: 'Every day at 6:00 PM',
+      cron: '0 18 * * *',
+    },
+    {
+      key: 'weekday-9am',
+      title: 'Weekdays at 9 AM',
+      description: 'Monday-Friday at 9:00 AM',
+      cron: '0 9 * * 1-5',
+    },
+    {
+      key: 'weekly-monday',
+      title: 'Weekly on Monday',
+      description: 'Every Monday at 9:00 AM',
+      cron: '0 9 * * 1',
+    },
+    {
+      key: 'every-6-hours',
+      title: 'Every 6 hours',
+      description: '4 times per day',
+      cron: '0 */6 * * *',
+    },
+    {
+      key: 'monthly-1st',
+      title: 'First of month',
+      description: '1st day at midnight',
+      cron: '0 0 1 * *',
+    },
+  ];
 
   private getUserTimezoneOffset(): string {
     const offset = -new Date().getTimezoneOffset();
@@ -115,8 +144,20 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
       changes['initialValue'].currentValue !== this.cronControl.value
     ) {
       const value = changes['initialValue'].currentValue;
-      this.cronControl.setValue(value || '', { emitEvent: false });
-      this.validationResponse = value ? null : { isValid: true };
+
+      if (value) {
+        try {
+          this.cronControl.setValue(value, { emitEvent: false });
+          this.syncFormsFromCron(value);
+          this.validateCron(value);
+        } catch (error) {
+          console.error('Failed to initialize cron value:', error);
+          this.cronControl.setValue(value, { emitEvent: false });
+        }
+      } else {
+        this.cronControl.setValue('', { emitEvent: false });
+        this.validationResponse = { isValid: true };
+      }
     }
   }
 
@@ -126,7 +167,8 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     this.setupCronControlSubscription();
-    this.setupFormSubscriptions();
+    this.setupAdvancedFormSubscription();
+    this.setupSimpleFormSubscription();
   }
 
   ngOnDestroy(): void {
@@ -136,10 +178,13 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
 
   private setupCronControlSubscription(): void {
     this.cronControl.valueChanges
-      .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe(async value => {
         const trimmedValue = value?.trim();
         if (trimmedValue) {
+          if (!this.isInternalUpdate) {
+            this.syncFormsFromCron(trimmedValue);
+          }
           await this.validateCron(trimmedValue);
         } else {
           this.resetValidation();
@@ -147,16 +192,136 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
       });
   }
 
-  private setupFormSubscriptions(): void {
-    this.visualForm.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
-      if (!this.isInternalUpdate) {
-        this.generateCronFromVisualForm();
-      }
-    });
+  private syncFormsFromCron(cron: string): void {
+    // 1. Check for a matching preset
+    const matchingPreset = this.presetOptions.find(p => p.cron === cron);
+    this.selectedPreset = matchingPreset ? matchingPreset.key : null;
 
-    this.advancedForm.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
+    // 2. Sync the advanced form
+    const parts = cron.split(' ');
+    if (parts.length === 5) {
+      this.isInternalUpdate = true; // Prevent feedback loop
+      try {
+        this.advancedForm.setValue(
+          {
+            minute: parts[0],
+            hour: parts[1],
+            dayOfMonth: parts[2],
+            month: parts[3],
+            dayOfWeek: parts[4],
+          },
+          { emitEvent: false }
+        );
+
+        // 3. Sync the simple form
+        this.syncSimpleForm(parts);
+      } catch (e) {
+        console.error('Error syncing forms from cron:', e);
+      } finally {
+        setTimeout(() => (this.isInternalUpdate = false), 0);
+      }
+    }
+  }
+
+  /**
+   * Tries to parse a 5-part cron array into the simple form.
+   */
+  private syncSimpleForm(parts: string[]): void {
+    const [minute, hour, dayOfMonth, month, dayOfWeek] = parts;
+    const isNumeric = (val: string): boolean => /^\d+$/.test(val);
+
+    try {
+      // Pattern 1: Interval (e.g., 0 */6 * * *)
+      if (
+        minute === '0' &&
+        hour.startsWith('*/') &&
+        dayOfMonth === '*' &&
+        month === '*' &&
+        dayOfWeek === '*'
+      ) {
+        const interval = parseInt(hour.split('/')[1], 10);
+        this.simpleForm.patchValue(
+          {
+            frequency: 'interval',
+            intervalHours: interval,
+          },
+          { emitEvent: false }
+        );
+      }
+      // Pattern 2: Monthly (e.g., 0 9 1 * *)
+      else if (
+        isNumeric(minute) &&
+        isNumeric(hour) &&
+        isNumeric(dayOfMonth) &&
+        month === '*' &&
+        dayOfWeek === '*'
+      ) {
+        const time = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+        this.simpleForm.patchValue(
+          {
+            frequency: 'monthly',
+            time: time,
+            dayOfMonth: parseInt(dayOfMonth, 10),
+          },
+          { emitEvent: false }
+        );
+      }
+      // Pattern 3: Weekly (e.g., 0 9 * * 1)
+      else if (
+        isNumeric(minute) &&
+        isNumeric(hour) &&
+        dayOfMonth === '*' &&
+        month === '*' &&
+        (isNumeric(dayOfWeek) || dayOfWeek === '1-5')
+      ) {
+        const time = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+        this.simpleForm.patchValue(
+          {
+            frequency: 'weekly',
+            time: time,
+            dayOfWeek: dayOfWeek, // '1' or '1-5' etc.
+          },
+          { emitEvent: false }
+        );
+      }
+      // Pattern 4: Daily (e.g., 0 9 * * *)
+      else if (
+        isNumeric(minute) &&
+        isNumeric(hour) &&
+        dayOfMonth === '*' &&
+        month === '*' &&
+        dayOfWeek === '*'
+      ) {
+        const time = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+        this.simpleForm.patchValue(
+          {
+            frequency: 'daily',
+            time: time,
+          },
+          { emitEvent: false }
+        );
+      }
+    } catch (e) {
+      console.error('Failed to sync simple form:', e);
+    }
+  }
+
+  private setupAdvancedFormSubscription(): void {
+    this.advancedForm.valueChanges
+      .pipe(debounceTime(100), takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (!this.isInternalUpdate) {
+          this.selectedPreset = null;
+          this.generateCronFromAdvancedForm();
+        }
+      });
+  }
+
+  private setupSimpleFormSubscription(): void {
+    this.simpleForm.valueChanges.pipe(debounceTime(100), takeUntil(this.destroy$)).subscribe(() => {
       if (!this.isInternalUpdate) {
-        this.generateCronFromAdvancedForm();
+        this.selectedPreset = null;
+        this.generateCronFromSimpleForm();
       }
     });
   }
@@ -168,31 +333,22 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
     this.validationChange.emit({ isValid: true });
   }
 
-  applyVisualPreset(preset: PresetType): void {
-    const cronExpression = this.presetMap[preset];
-    if (cronExpression) {
-      this.isInternalUpdate = true;
-      this.cronControl.setValue(cronExpression);
-      // Reset flag after Angular change detection cycle
-      setTimeout(() => (this.isInternalUpdate = false), 0);
+  applyPreset(key: PresetKey, cron: string): void {
+    this.selectedPreset = key;
+    this.isInternalUpdate = true;
+    this.cronControl.setValue(cron);
+    this.syncFormsFromCron(cron);
+  }
+
+  onSimpleFormChange(): void {
+    if (!this.isInternalUpdate) {
+      this.selectedPreset = null;
+      this.generateCronFromSimpleForm();
     }
   }
 
-  private generateCronFromAdvancedForm(): void {
-    const formValue = this.advancedForm.getRawValue();
-    const cronExpression = [
-      formValue.minute,
-      formValue.hour,
-      formValue.dayOfMonth,
-      formValue.month,
-      formValue.dayOfWeek,
-    ].join(' ');
-
-    this.cronControl.setValue(cronExpression, { emitEvent: true });
-  }
-
-  private generateCronFromVisualForm(): void {
-    const formValue = this.visualForm.getRawValue();
+  private generateCronFromSimpleForm(): void {
+    const formValue = this.simpleForm.getRawValue();
     const { hours, minutes } = this.parseTime(formValue.time);
 
     let cronExpression = '';
@@ -206,12 +362,25 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
       case 'monthly':
         cronExpression = `${minutes} ${hours} ${formValue.dayOfMonth} * *`;
         break;
-      case 'custom':
-        cronExpression = `${minutes} */${formValue.intervalHours} * * *`;
+      case 'interval':
+        cronExpression = `0 */${formValue.intervalHours} * * *`;
         break;
       default:
         return;
     }
+
+    this.cronControl.setValue(cronExpression, { emitEvent: true });
+  }
+
+  private generateCronFromAdvancedForm(): void {
+    const formValue = this.advancedForm.getRawValue();
+    const cronExpression = [
+      formValue.minute,
+      formValue.hour,
+      formValue.dayOfMonth,
+      formValue.month,
+      formValue.dayOfWeek,
+    ].join(' ');
 
     this.cronControl.setValue(cronExpression, { emitEvent: true });
   }
@@ -271,6 +440,20 @@ export class CronInputComponent implements OnInit, OnDestroy, OnChanges {
       isValid: false,
       errorMessage: 'Failed to validate cron expression',
     });
+  }
+
+  getHumanReadableSchedule(): string {
+    const cron = this.cronControl.value?.trim();
+    if (!cron) {
+      return '';
+    }
+
+    try {
+      return cronstrue(cron);
+    } catch (e) {
+      console.error('Error parsing cron string with cronstrue:', e);
+      return cron;
+    }
   }
 
   formatNextRun(dateString: string | null): string {

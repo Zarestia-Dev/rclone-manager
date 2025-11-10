@@ -1,5 +1,5 @@
 use crate::{
-    core::scheduler::engine::get_next_run,
+    core::scheduler::{commands::SCHEDULER, engine::get_next_run},
     utils::types::scheduled_task::{ScheduledTask, ScheduledTaskStats, TaskStatus, TaskType},
 };
 use log::{debug, info, warn};
@@ -67,15 +67,20 @@ impl ScheduledTasksCache {
                         Ok(Some(task)) => {
                             // Task is valid and enabled, add its ID to the active set
                             active_task_ids.insert(task.id.clone());
+                            // Clone necessary fields to avoid borrow-after-move issues
+                            let task_id = task.id.clone();
+                            let task_name = task.name.clone();
                             let mut tasks = self.tasks.write().await;
 
                             // Update existing task or insert new one
+                            let mut needs_reschedule = false;
                             if let Some(existing_task) = tasks.get_mut(&task.id) {
                                 debug!(
                                     "ℹ️  Updating existing task: {} ({})",
                                     task.name,
                                     task.task_type.as_str()
                                 );
+
                                 if existing_task.cron_expression != task.cron_expression {
                                     info!(
                                         "🔄 Updating cron for {}: {} -> {}",
@@ -83,12 +88,15 @@ impl ScheduledTasksCache {
                                         existing_task.cron_expression,
                                         task.cron_expression
                                     );
+                                    existing_task.cron_expression = task.cron_expression;
+                                    needs_reschedule = true;
                                 }
-                                existing_task.cron_expression = task.cron_expression;
+
                                 existing_task.next_run = task.next_run;
                                 existing_task.args = task.args;
                                 if existing_task.status == TaskStatus::Failed {
                                     existing_task.status = TaskStatus::Enabled;
+                                    needs_reschedule = true;
                                 }
                             } else {
                                 info!(
@@ -99,6 +107,30 @@ impl ScheduledTasksCache {
                                 );
                                 tasks.insert(task.id.clone(), task);
                                 loaded_count += 1;
+                            }
+
+                            if needs_reschedule {
+                                // We must drop the write lock on the cache so the scheduler can read it
+                                drop(tasks);
+
+                                info!("Hot-reloading scheduler for task: {}", task_name);
+                                let scheduler = SCHEDULER.read().await;
+
+                                // We clone the task to avoid lifetime issues with the lock
+                                let task_to_reschedule =
+                                    self.tasks.read().await.get(&task_id).cloned();
+
+                                if let Some(task_clone) = task_to_reschedule {
+                                    if let Err(e) = scheduler.reschedule_task(&task_clone).await {
+                                        warn!(
+                                            "⚠️ Failed to hot-reload task {} after config change: {}",
+                                            task_id, e
+                                        );
+                                    }
+                                }
+
+                                // Re-acquire the lock for the next loop iteration
+                                let _ = self.tasks.write().await;
                             }
                         }
                         Ok(None) => {
@@ -135,7 +167,6 @@ impl ScheduledTasksCache {
         Ok(loaded_count)
     }
 
-    /// **NEW HELPER:** Parses a single operation config into a ScheduledTask.
     async fn parse_task_from_config(
         &self,
         remote_name: &str,
@@ -223,7 +254,6 @@ impl ScheduledTasksCache {
         Ok(Some(task))
     }
 
-    /// **NEW HELPER:** Builds the `args` JSON map for a specific task.
     fn build_task_args(
         &self,
         remote_name: &str,
