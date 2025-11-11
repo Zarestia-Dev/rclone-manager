@@ -27,7 +27,8 @@ export const RCLONE_CONFIG_UNLOCKED = 'rclone_config_unlocked';
 export const UPDATE_TRAY_MENU = 'tray_menu_updated';
 export const JOB_CACHE_CHANGED = 'job_cache_changed';
 export const NOTIFY_UI = 'notify_ui';
-export const MOUNT_CACHE_UPDATED = 'mount_cache_updated';
+export const MOUNT_STATE_CHANGED = 'mount_state_changed';
+export const SERVE_STATE_CHANGED = 'serve_state_changed';
 
 // Plugin and installation events
 export const MOUNT_PLUGIN_INSTALLED = 'mount_plugin_installed';

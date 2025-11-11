@@ -18,153 +18,155 @@ pub struct ScheduledTasksCache {
 }
 
 impl ScheduledTasksCache {
-    /// Load scheduled tasks from remote configs.
-    /// This is the main entry point, now refactored to be a coordinator.
-    pub async fn load_from_remote_configs(
-        &self,
-        remote_configs: &serde_json::Value,
-    ) -> Result<usize, String> {
-        info!("🔄 Loading scheduled tasks from remote configs...");
+    /// Load tasks from remote configs, preserving existing task states
+    pub async fn load_from_remote_configs(&self, all_settings: &Value) -> Result<usize, String> {
+        let settings_obj = all_settings
+            .as_object()
+            .ok_or("Settings is not an object")?;
 
         let mut loaded_count = 0;
-        let mut active_task_ids = HashSet::new(); // To track which tasks are still in config
+        let mut new_task_ids = HashSet::new();
 
-        let configs = remote_configs
-            .as_object()
-            .ok_or("Remote configs must be an object")?;
+        for (remote_name, remote_settings) in settings_obj {
+            // Get filter and backend configs
+            let filter_config = remote_settings.get("filterConfig").unwrap_or(&Value::Null);
+            let backend_config = remote_settings.get("backendConfig").unwrap_or(&Value::Null);
 
-        for (remote_name, config) in configs.iter() {
-            let config_obj = match config.as_object() {
-                Some(obj) => obj,
-                None => continue,
-            };
-
-            // Get common configs for this remote
-            let filter_config = config_obj
-                .get("filterConfig")
-                .cloned()
-                .unwrap_or(Value::Null);
-            let backend_config = config_obj
-                .get("backendConfig")
-                .cloned()
-                .unwrap_or(Value::Null);
-
-            let operation_types = vec!["copyConfig", "syncConfig", "bisyncConfig", "moveConfig"];
+            // Check each operation type (copyConfig, syncConfig, moveConfig, bisyncConfig)
+            let operation_types = ["copyConfig", "syncConfig", "moveConfig", "bisyncConfig"];
 
             for op_type in operation_types {
-                if let Some(op_config) = config_obj.get(op_type).and_then(|v| v.as_object()) {
-                    // Call the helper to parse this specific operation
+                if let Some(op_config) = remote_settings.get(op_type).and_then(|v| v.as_object()) {
+                    // Parse the task from config using your existing function
                     match self
                         .parse_task_from_config(
                             remote_name,
                             op_type,
                             op_config,
-                            &filter_config,
-                            &backend_config,
+                            filter_config,
+                            backend_config,
                         )
                         .await
                     {
-                        Ok(Some(task)) => {
-                            // Task is valid and enabled, add its ID to the active set
-                            active_task_ids.insert(task.id.clone());
-                            // Clone necessary fields to avoid borrow-after-move issues
-                            let task_id = task.id.clone();
-                            let task_name = task.name.clone();
-                            let mut tasks = self.tasks.write().await;
+                        Ok(Some(task_from_config)) => {
+                            let task_id = task_from_config.id.clone();
+                            new_task_ids.insert(task_id.clone());
 
-                            // Update existing task or insert new one
-                            let mut needs_reschedule = false;
-                            if let Some(existing_task) = tasks.get_mut(&task.id) {
-                                debug!(
-                                    "ℹ️  Updating existing task: {} ({})",
-                                    task.name,
-                                    task.task_type.as_str()
-                                );
+                            // Check if we already have this task
+                            if let Some(existing_task) = self.get_task(&task_id).await {
+                                // Task exists - check if configuration changed
+                                let config_changed = existing_task.cron_expression
+                                    != task_from_config.cron_expression
+                                    || existing_task.args != task_from_config.args
+                                    || existing_task.name != task_from_config.name
+                                    || existing_task.task_type != task_from_config.task_type;
 
-                                if existing_task.cron_expression != task.cron_expression {
+                                if config_changed {
+                                    // Update task but preserve status, scheduler_job_id, and stats
+                                    self.update_task(&task_id, |t| {
+                                        t.name = task_from_config.name.clone();
+                                        t.cron_expression =
+                                            task_from_config.cron_expression.clone();
+                                        t.args = task_from_config.args.clone();
+                                        t.task_type = task_from_config.task_type.clone();
+                                        t.next_run = task_from_config.next_run;
+                                        // PRESERVE: status, scheduler_job_id, created_at, last_run,
+                                        // last_error, current_job_id, run_count, success_count, failure_count
+                                    })
+                                    .await?;
+
                                     info!(
-                                        "🔄 Updating cron for {}: {} -> {}",
-                                        task.name,
-                                        existing_task.cron_expression,
-                                        task.cron_expression
+                                        "✏️ Updated existing task config: {} ({})",
+                                        existing_task.name, task_id
                                     );
-                                    existing_task.cron_expression = task.cron_expression;
-                                    needs_reschedule = true;
-                                }
-
-                                existing_task.next_run = task.next_run;
-                                existing_task.args = task.args;
-                                if existing_task.status == TaskStatus::Failed {
-                                    existing_task.status = TaskStatus::Enabled;
-                                    needs_reschedule = true;
+                                } else {
+                                    debug!("Task {} unchanged, skipping", task_id);
                                 }
                             } else {
-                                info!(
-                                    "✅ Loaded scheduled task: {} ({}) - {}",
-                                    task.name,
-                                    task.task_type.as_str(),
-                                    task.cron_expression
-                                );
-                                tasks.insert(task.id.clone(), task);
+                                // New task - add it
+                                self.add_task(task_from_config.clone()).await?;
                                 loaded_count += 1;
-                            }
-
-                            if needs_reschedule {
-                                // We must drop the write lock on the cache so the scheduler can read it
-                                drop(tasks);
-
-                                info!("Hot-reloading scheduler for task: {}", task_name);
-                                let scheduler = SCHEDULER.read().await;
-
-                                // We clone the task to avoid lifetime issues with the lock
-                                let task_to_reschedule =
-                                    self.tasks.read().await.get(&task_id).cloned();
-
-                                if let Some(task_clone) = task_to_reschedule {
-                                    if let Err(e) = scheduler.reschedule_task(&task_clone).await {
-                                        warn!(
-                                            "⚠️ Failed to hot-reload task {} after config change: {}",
-                                            task_id, e
-                                        );
-                                    }
-                                }
-
-                                // Re-acquire the lock for the next loop iteration
-                                let _ = self.tasks.write().await;
+                                info!("➕ Added new task: {} ({})", task_from_config.name, task_id);
                             }
                         }
                         Ok(None) => {
-                            // Task is disabled, invalid, or has no cron.
-                            // We do nothing, and it won't be in `active_task_ids`.
+                            // Task is disabled or invalid, check if we need to remove it
+                            let task_id =
+                                format!("{}-{}", remote_name, op_type.trim_end_matches("Config"));
+                            if self.get_task(&task_id).await.is_some() {
+                                info!("🗑️ Removing disabled/invalid task: {}", task_id);
+                                self.remove_task(&task_id).await?;
+                            }
                         }
                         Err(e) => {
-                            warn!("⚠️  Failed to parse task for remote {}: {}", remote_name, e);
+                            warn!(
+                                "Failed to parse task from {} for {}: {}",
+                                op_type, remote_name, e
+                            );
                         }
                     }
                 }
             }
         }
 
-        // --- Pruning Phase ---
-        // Remove any tasks from the cache that are no longer in the config
-        let mut tasks = self.tasks.write().await;
-        let cached_task_ids: Vec<String> = tasks.keys().cloned().collect();
-        for task_id in cached_task_ids {
-            if !active_task_ids.contains(&task_id) {
-                if let Some(removed_task) = tasks.remove(&task_id) {
-                    info!(
-                        "🗑️  Removed stale/disabled task from cache: {} ({})",
-                        removed_task.name, task_id
-                    );
+        // Remove tasks that are no longer in any configs
+        let all_tasks = self.get_all_tasks().await;
+        for task in all_tasks {
+            if !new_task_ids.contains(&task.id) {
+                info!(
+                    "🗑️ Removing task no longer in configs: {} ({})",
+                    task.name, task.id
+                );
+                self.remove_task(&task.id).await?;
+            }
+        }
+
+        Ok(loaded_count)
+    }
+
+    /// Remove a task and unschedule it
+    pub async fn remove_task(&self, task_id: &str) -> Result<(), String> {
+        let task = self
+            .get_task(task_id)
+            .await
+            .ok_or_else(|| format!("Task not found: {}", task_id))?;
+
+        // Unschedule if it has a scheduler job ID
+        if let Some(job_id_str) = &task.scheduler_job_id {
+            if let Ok(job_id) = uuid::Uuid::parse_str(job_id_str) {
+                let scheduler = SCHEDULER.read().await;
+                if let Err(e) = scheduler.unschedule_task(job_id).await {
+                    warn!("Failed to unschedule task {}: {}", task_id, e);
                 }
             }
         }
 
-        info!(
-            "✅ Loaded {} new scheduled tasks from remote configs",
-            loaded_count
-        );
-        Ok(loaded_count)
+        // Remove from cache
+        let mut tasks = self.tasks.write().await;
+        tasks.remove(task_id);
+
+        info!("🗑️ Removed task: {}", task_id);
+        Ok(())
+    }
+
+    /// Remove all tasks for a specific remote
+    pub async fn remove_tasks_for_remote(&self, remote_name: &str) -> Result<Vec<String>, String> {
+        let tasks = self.get_all_tasks().await;
+        let mut removed_ids = Vec::new();
+
+        for task in tasks {
+            // Check if task ID starts with the remote name (format: "remotename-operation")
+            if task.id.starts_with(&format!("{}-", remote_name)) {
+                info!(
+                    "🗑️ Removing task '{}' associated with remote '{}'",
+                    task.name, remote_name
+                );
+                self.remove_task(&task.id).await?;
+                removed_ids.push(task.id);
+            }
+        }
+
+        Ok(removed_ids)
     }
 
     async fn parse_task_from_config(
@@ -412,18 +414,6 @@ impl ScheduledTasksCache {
         Ok(updated_task)
     }
 
-    /// Remove a scheduled task (runtime only, not persisted)
-    pub async fn remove_task(&self, task_id: &str) -> Result<ScheduledTask, String> {
-        let mut tasks = self.tasks.write().await;
-
-        let task = tasks
-            .remove(task_id)
-            .ok_or(format!("Task with ID {} not found", task_id))?;
-
-        info!("🗑️  Removed scheduled task: {} ({})", task.name, task.id);
-        Ok(task)
-    }
-
     /// Toggle task enabled/disabled status
     pub async fn toggle_task_status(&self, task_id: &str) -> Result<ScheduledTask, String> {
         self.update_task(task_id, |task| {
@@ -494,11 +484,23 @@ pub async fn get_scheduled_tasks_stats() -> Result<ScheduledTaskStats, String> {
     Ok(SCHEDULED_TASKS_CACHE.get_stats().await)
 }
 
+// Reload scheduled tasks from configs (Tauri command)
 #[tauri::command]
 pub async fn reload_scheduled_tasks_from_configs(
-    remote_configs: serde_json::Value,
+    all_settings: serde_json::Value,
 ) -> Result<usize, String> {
-    SCHEDULED_TASKS_CACHE
-        .load_from_remote_configs(&remote_configs)
-        .await
+    info!("🔄 Reloading scheduled tasks from configs...");
+
+    // Load tasks from configs (this preserves existing task states)
+    let task_count = SCHEDULED_TASKS_CACHE
+        .load_from_remote_configs(&all_settings)
+        .await?;
+
+    info!("📅 Loaded/updated {} scheduled task(s)", task_count);
+
+    // Reschedule all tasks in the scheduler
+    let scheduler = SCHEDULER.read().await;
+    scheduler.reload_tasks().await?;
+
+    Ok(task_count)
 }

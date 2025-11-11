@@ -2,7 +2,7 @@
  * Serve-related types
  */
 
-import { BackendOptions, FilterOptions, VfsOptions } from './params';
+import { BackendOptions, FilterOptions, ServeOptions, VfsOptions } from './params';
 
 /**
  * Parameters for starting a serve instance
@@ -12,7 +12,7 @@ export interface ServeParams {
   fs: string;
   serveType: string;
   vfsOptions?: VfsOptions;
-  serveOptions?: Record<string, unknown>;
+  serveOptions?: ServeOptions;
   backendOptions?: BackendOptions;
   filterOptions?: FilterOptions;
 }
@@ -34,10 +34,10 @@ export interface ServeListItem {
   params: {
     fs: string;
     type: string;
-    opt?: Record<string, any>;
-    vfsOpt?: Record<string, unknown>;
-    _config?: Record<string, unknown>;
-    _filter?: Record<string, unknown>;
+    opt?: ServeOptions;
+    vfsOpt?: VfsOptions;
+    _config?: BackendOptions;
+    _filter?: FilterOptions;
   };
 }
 

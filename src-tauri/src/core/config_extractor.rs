@@ -282,3 +282,51 @@ impl IsValid for BisyncConfig {
         BisyncConfig::is_valid(self)
     }
 }
+
+/// Configuration extractor for serve operations
+#[derive(Clone)]
+pub struct ServeConfig {
+    pub source: String,
+    pub serve_options: Option<std::collections::HashMap<String, Value>>,
+    pub backend_options: Option<std::collections::HashMap<String, Value>>,
+    pub filter_options: Option<std::collections::HashMap<String, Value>>,
+    pub vfs_options: Option<std::collections::HashMap<String, Value>>,
+}
+
+impl ServeConfig {
+    pub fn from_settings(settings: &Value) -> Self {
+        let serve_cfg = &settings["serveConfig"];
+
+        Self {
+            source: get_string(serve_cfg, &["source"]),
+            serve_options: json_to_hashmap(serve_cfg.get("options")),
+            backend_options: json_to_hashmap(settings.get("backendConfig")),
+            filter_options: json_to_hashmap(settings.get("filterConfig")),
+            vfs_options: json_to_hashmap(settings.get("vfsConfig")),
+        }
+    }
+
+    /// Valid if either a top-level source is provided or the options.fs is set
+    pub fn is_valid(&self) -> bool {
+        if !self.source.is_empty() {
+            return true;
+        }
+
+        // try to detect fs in serve_options
+        if let Some(opts) = &self.serve_options {
+            if let Some(val) = opts.get("fs") {
+                if !val.as_str().unwrap_or("").is_empty() {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+}
+
+impl IsValid for ServeConfig {
+    fn is_valid(&self) -> bool {
+        ServeConfig::is_valid(self)
+    }
+}

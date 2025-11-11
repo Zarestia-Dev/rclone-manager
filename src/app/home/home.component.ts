@@ -60,7 +60,6 @@ import {
   JobManagementService,
   SystemInfoService,
   AppSettingsService,
-  SchedulerService,
   ServeManagementService,
 } from '@app/services';
 
@@ -105,7 +104,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly notificationService = inject(NotificationService);
   private readonly eventListenersService = inject(EventListenersService);
-  private readonly schedulerService = inject(SchedulerService);
   readonly systemInfoService = inject(SystemInfoService);
   readonly iconService = inject(IconService);
 
@@ -242,13 +240,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.remotes = this.createRemotesFromConfigs(remoteConfigs);
       await this.loadActiveJobs();
       this.loadDiskUsageInBackground(); // Fire and forget
-
-      // Load scheduled tasks from remote settings
-      try {
-        await this.schedulerService.reloadScheduledTasksFromConfigs(this.remoteSettings);
-      } catch (error) {
-        console.error('Failed to load scheduled tasks from settings:', error);
-      }
 
       this.cdr.markForCheck();
     } catch (error) {
@@ -449,7 +440,7 @@ export class HomeComponent implements OnInit, OnDestroy {
             // Just trigger a refresh - the observable subscription will handle the update
             await this.mountManagementService.getMountedRemotes();
           } catch (error) {
-            this.handleError('Error handling mount_cache_updated', error);
+            this.handleError('Error handling mount_state_changed', error);
           }
         },
       });

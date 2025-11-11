@@ -179,20 +179,9 @@ impl RemoteCache {
                             .filter_map(|item| {
                                 let id = item.get("id")?.as_str()?.to_string();
                                 let addr = item.get("addr")?.as_str()?.to_string();
-                                let params = item.get("params")?;
-                                let fs = params.get("fs")?.as_str()?.to_string();
-                                let serve_type = params.get("type")?.as_str()?.to_string();
+                                let params = item.get("params")?.clone();
 
-                                // Extract remote name from fs (e.g., "remote:path" -> "remote")
-                                let remote_name = fs.split(':').next()?.to_string();
-
-                                Some(ServeInstance {
-                                    id,
-                                    addr,
-                                    serve_type,
-                                    fs,
-                                    remote_name,
-                                })
+                                Some(ServeInstance { id, addr, params })
                             })
                             .collect()
                     })

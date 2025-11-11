@@ -18,9 +18,9 @@ use crate::{
         app::builder::setup_tray,
         logging::log::update_log_level,
         types::events::{
-            JOB_CACHE_CHANGED, MOUNT_CACHE_UPDATED, RCLONE_API_URL_UPDATED, RCLONE_PASSWORD_STORED,
+            JOB_CACHE_CHANGED, MOUNT_STATE_CHANGED, RCLONE_API_URL_UPDATED, RCLONE_PASSWORD_STORED,
             REMOTE_CACHE_UPDATED, REMOTE_PRESENCE_CHANGED, REMOTE_STATE_CHANGED,
-            SYSTEM_SETTINGS_CHANGED, UPDATE_TRAY_MENU,
+            SERVE_STATE_CHANGED, SYSTEM_SETTINGS_CHANGED, UPDATE_TRAY_MENU,
         },
     },
 };
@@ -100,7 +100,7 @@ fn handle_remote_state_changed(app: &AppHandle) {
 
             let _ = app
                 .clone()
-                .emit(MOUNT_CACHE_UPDATED, "remote_presence")
+                .emit(MOUNT_STATE_CHANGED, "remote_presence")
                 .map_err(|e| {
                     error!("❌ Failed to emit event to frontend: {e}");
                 });
@@ -121,13 +121,19 @@ fn handle_remote_presence_changed(app: &AppHandle) {
             if let (Err(e1), Err(e2), Err(e3)) = refresh_tasks {
                 error!("Failed to refresh cache: {e1}, {e2}, {e3}");
             }
-            // After the CACHE has been refreshed from remote changes,
-            // ensure the scheduler reloads tasks from the updated configs.
+
             info!("Remote presence changed, reloading scheduled tasks from configs...");
-            let all_configs = CACHE.configs.read().await.clone();
+            let all_configs = CACHE.settings.read().await.clone();
             if let Err(e) = reload_scheduled_tasks_from_configs(all_configs).await {
                 error!("❌ Failed to reload scheduled tasks after remote change: {e}");
             }
+
+            use crate::core::scheduler::commands::SCHEDULER;
+            let scheduler = SCHEDULER.read().await;
+            if let Err(e) = scheduler.reload_tasks().await {
+                error!("❌ Failed to reschedule tasks: {e}");
+            }
+
             if let Err(e) = update_tray_menu(app_clone.clone(), 0).await {
                 error!("Failed to update tray menu: {e}");
             }
@@ -162,6 +168,29 @@ fn handle_job_cache_changed(app: &AppHandle) {
         tauri::async_runtime::spawn(async move {
             if let Err(e) = update_tray_menu(app, 0).await {
                 error!("Failed to update tray menu: {e}");
+            }
+        });
+    });
+}
+
+fn handle_serve_state_changed(app: &AppHandle) {
+    let app_clone = app.clone();
+    app.listen(SERVE_STATE_CHANGED, move |event| {
+        let app = app_clone.clone();
+        tauri::async_runtime::spawn(async move {
+            debug!("🔄 Serve state changed! Raw payload: {:?}", event.payload());
+
+            // Refresh the serves cache
+            if let Err(e) = crate::rclone::state::cache::CACHE
+                .refresh_serves(app.clone())
+                .await
+            {
+                error!("❌ Failed to refresh serves cache: {e}");
+            }
+
+            // Update tray menu to reflect serve changes (0 -> use default)
+            if let Err(e) = crate::core::tray::core::update_tray_menu(app.clone(), 0).await {
+                error!("Failed to update tray menu after serve change: {e}");
             }
         });
     });
@@ -452,6 +481,7 @@ pub fn setup_event_listener(app: &AppHandle) {
     handle_rclone_api_url_updated(app);
     handle_rclone_password_stored(app);
     handle_remote_state_changed(app);
+    handle_serve_state_changed(app);
     handle_remote_presence_changed(app);
     handle_settings_changed(app);
     tray_menu_updated(app);

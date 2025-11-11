@@ -18,7 +18,7 @@ use crate::utils::app::updater::app_updates::{
 use crate::{
     core::{
         check_binaries::{check_rclone_available, is_7z_available},
-        initialization::{async_startup, init_rclone_state, setup_config_dir},
+        initialization::{init_rclone_state, initialization, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
         scheduler::commands::{
             clear_all_scheduled_tasks, reload_scheduled_tasks, toggle_scheduled_task, validate_cron,
@@ -282,7 +282,7 @@ pub fn run() {
             // Async startup
             let app_handle_clone = app_handle.clone();
             tauri::async_runtime::spawn(async move {
-                async_startup(app_handle_clone.clone(), settings).await;
+                initialization(app_handle_clone.clone(), settings).await;
                 handle_startup(app_handle_clone.clone()).await;
                 monitor_network_changes(app_handle_clone).await;
             });

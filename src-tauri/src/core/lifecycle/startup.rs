@@ -1,15 +1,14 @@
 use log::{debug, error, info};
 use tauri::AppHandle;
 
+use crate::core::config_extractor::ServeConfig;
 use crate::core::config_extractor::{
     BisyncConfig, CopyConfig, IsValid, MountConfig, MoveConfig, SyncConfig,
 };
-use crate::core::scheduler::commands::SCHEDULER;
+use crate::core::spawn_helpers::spawn_serve;
 use crate::core::spawn_helpers::{spawn_bisync, spawn_copy, spawn_mount, spawn_move, spawn_sync};
 use crate::rclone::state::cache::{CACHE, get_cached_remotes};
 // spawn_helpers now construct rclone param structs; no direct command param imports needed here
-use crate::rclone::state::scheduled_tasks::SCHEDULED_TASKS_CACHE;
-use crate::rclone::state::watcher::{start_mounted_remote_watcher, start_serve_watcher};
 
 /// Helper function to handle auto-start logic for a given operation.
 async fn handle_auto_start<C, T, E, F, Fut>(
@@ -71,49 +70,6 @@ pub async fn handle_startup(app_handle: AppHandle) {
             handle_remote_startup(remote.to_string(), app_handle.clone()).await;
         }
     }
-
-    // Initialize and start the cron scheduler
-    info!("⏰ Initializing cron scheduler...");
-    if let Err(e) = initialize_scheduler(app_handle.clone()).await {
-        error!("❌ Failed to initialize cron scheduler: {}", e);
-    } else {
-        info!("✅ Cron scheduler initialized and started successfully");
-    }
-
-    // Start the mounted remote watcher for continuous monitoring
-    info!("📡 Starting mounted remote watcher...");
-    tokio::spawn(start_mounted_remote_watcher(app_handle.clone()));
-
-    // Start the serve watcher for monitoring running serves
-    info!("📡 Starting serve watcher...");
-    start_serve_watcher(app_handle.clone());
-}
-
-/// Initialize the cron scheduler with tasks loaded from remote configs
-async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
-    // Get all remote settings from cache
-    let settings = CACHE.settings.read().await;
-    let all_settings = serde_json::json!(settings.clone());
-
-    // Load scheduled tasks from remote configs
-    info!("📋 Loading scheduled tasks from remote configs...");
-    let task_count = SCHEDULED_TASKS_CACHE
-        .load_from_remote_configs(&all_settings)
-        .await?;
-
-    info!("📅 Loaded {} scheduled task(s)", task_count);
-
-    // Initialize the scheduler with the app handle
-    let mut scheduler = SCHEDULER.write().await;
-    scheduler.initialize(app_handle.clone()).await?;
-
-    // Start the scheduler
-    scheduler.start().await?;
-
-    // Reload all tasks (this will schedule them)
-    scheduler.reload_tasks().await?;
-
-    Ok(())
 }
 
 /// Fetches the list of available remotes.
@@ -177,6 +133,17 @@ async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
         app_handle.clone(),
         BisyncConfig::from_settings,
         spawn_bisync,
+    )
+    .await;
+
+    // Handle serve auto-start as well
+    handle_auto_start(
+        &remote_name,
+        &settings,
+        "serveConfig",
+        app_handle.clone(),
+        ServeConfig::from_settings,
+        spawn_serve,
     )
     .await;
 }

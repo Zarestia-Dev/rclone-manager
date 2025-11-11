@@ -4,6 +4,7 @@ import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../../shared/services/notification.service';
 
 import { ServeStartResponse, ServeListResponse, ServeListItem, RcConfigOption } from '@app/types';
+import { EventListenersService } from '../system/event-listeners.service';
 
 /**
  * Service for managing rclone serve instances
@@ -14,6 +15,7 @@ import { ServeStartResponse, ServeListResponse, ServeListItem, RcConfigOption } 
 })
 export class ServeManagementService extends TauriBaseService {
   private readonly notificationService = inject(NotificationService);
+  private readonly eventListeners = inject(EventListenersService);
 
   // Observable for running serves list
   private runningServesSubject = new BehaviorSubject<ServeListItem[]>([]);
@@ -24,6 +26,13 @@ export class ServeManagementService extends TauriBaseService {
     // Initialize by loading running serves
     this.refreshServes().catch(error => {
       console.error('Failed to initialize running serves:', error);
+    });
+
+    // Subscribe to serve state changes emitted from the backend and refresh list
+    this.eventListeners.listenToServeStateChanged().subscribe(() => {
+      this.refreshServes().catch(err => {
+        console.error('Failed to refresh serves after serve_state_changed:', err);
+      });
     });
   }
 
@@ -49,18 +58,47 @@ export class ServeManagementService extends TauriBaseService {
   }
 
   /**
-   * Refresh the list of running serves
+   * Refresh serves from cache
    */
-  async refreshServes(): Promise<void> {
+  async refreshServesFromCache(): Promise<void> {
     try {
-      const response = await this.listServes();
-      this.runningServesSubject.next(response.list || []);
+      // 1. Correct the type: Expect an Array, not ServeListResponse
+      const response = await this.invokeCommand<ServeListItem[]>('get_cached_serves');
+      console.log('Fetched serves from cache:', response);
+
+      // 2. Correct the check: Check `response` itself, not `response.list`
+      if (response && Array.isArray(response)) {
+        this.runningServesSubject.next(response); // <-- Pass the array directly
+      } else {
+        // This branch is now correctly for actual empty/invalid responses
+        this.runningServesSubject.next([]);
+      }
+      console.log('Refreshed serves from cache successfully');
+      console.log(this.runningServesSubject.value); // <-- This will now log the array
     } catch (error) {
-      console.error('Failed to refresh serves:', error);
-      this.runningServesSubject.next([]);
+      console.error('Failed to refresh serves from cache:', error);
+      throw error; // Re-throw to be caught by refreshServes if needed
     }
   }
 
+  /**
+   * Refresh the list of running serves with fallback logic
+   */
+  async refreshServes(): Promise<void> {
+    try {
+      await this.refreshServesFromCache();
+    } catch (cacheErr) {
+      console.debug('Cache failed, falling back to API:', cacheErr);
+      try {
+        const response = await this.listServes();
+        this.runningServesSubject.next(response?.list ?? []);
+      } catch (apiErr) {
+        console.error('Both cache and API failed:', apiErr);
+        // Don't clear the list if both fail - preserve last known state
+        // this.runningServesSubject.next([]);
+      }
+    }
+  }
   /**
    * Start a new serve instance
    */

@@ -1,13 +1,18 @@
 use log::{debug, error, info};
 use std::path::PathBuf;
-use tauri::Manager;
+use tauri::{AppHandle, Manager};
 
 use crate::{
-    core::event_listener::setup_event_listener,
+    core::{event_listener::setup_event_listener, scheduler::commands::SCHEDULER},
     rclone::{
         commands::system::set_bandwidth_limit,
         queries::flags::set_rclone_option,
-        state::{cache::CACHE, engine::ENGINE_STATE},
+        state::{
+            cache::CACHE,
+            engine::ENGINE_STATE,
+            scheduled_tasks::{SCHEDULED_TASKS_CACHE, reload_scheduled_tasks_from_configs},
+            watcher::{start_mounted_remote_watcher, start_serve_watcher},
+        },
     },
     utils::{
         app::builder::setup_tray,
@@ -55,7 +60,7 @@ pub fn setup_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String
 }
 
 /// Handles async startup tasks
-pub async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
+pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings) {
     debug!("🚀 Starting async startup tasks");
 
     setup_event_listener(&app_handle);
@@ -65,10 +70,33 @@ pub async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) 
     //     error!("Failed to register global shortcuts: {}", e);
     // }
 
+    // Initialize and start the cron scheduler
+    info!("⏰ Initializing cron scheduler...");
+    if let Err(e) = initialize_scheduler(app_handle.clone()).await {
+        error!("❌ Failed to initialize cron scheduler: {}", e);
+    } else {
+        info!("✅ Cron scheduler initialized and started successfully");
+    }
+
     match CACHE.refresh_all(app_handle.clone()).await {
-        Ok(_) => debug!("🔄 Caches refreshed successfully during startup"),
+        Ok(_) => {
+            debug!("🔄 Caches refreshed successfully during startup");
+            info!("Remote presence changed, reloading scheduled tasks from configs...");
+            let all_configs = CACHE.settings.read().await.clone();
+            if let Err(e) = reload_scheduled_tasks_from_configs(all_configs).await {
+                error!("❌ Failed to reload scheduled tasks after remote change: {e}");
+            }
+        }
         Err(e) => error!("Failed to refresh caches: {e}"),
     }
+
+    // Start the mounted remote watcher for continuous monitoring
+    info!("📡 Starting mounted remote watcher...");
+    tokio::spawn(start_mounted_remote_watcher(app_handle.clone()));
+
+    // Start the serve watcher for monitoring running serves
+    info!("📡 Starting serve watcher...");
+    start_serve_watcher(app_handle.clone());
 
     // Check if --tray argument is provided to override settings
     let force_tray = std::env::args().any(|arg| arg == "--tray");
@@ -83,6 +111,33 @@ pub async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) 
             error!("Failed to setup tray: {e}");
         }
     }
+}
+
+/// Initialize the cron scheduler with tasks loaded from remote configs
+async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
+    // Get all remote settings from cache
+    let settings = CACHE.settings.read().await;
+    let all_settings = serde_json::json!(settings.clone());
+
+    // Load scheduled tasks from remote configs
+    info!("📋 Loading scheduled tasks from remote configs...");
+    let task_count = SCHEDULED_TASKS_CACHE
+        .load_from_remote_configs(&all_settings)
+        .await?;
+
+    info!("📅 Loaded {} scheduled task(s)", task_count);
+
+    // Initialize the scheduler with the app handle
+    let mut scheduler = SCHEDULER.write().await;
+    scheduler.initialize(app_handle.clone()).await?;
+
+    // Start the scheduler
+    scheduler.start().await?;
+
+    // Reload all tasks (this will schedule them)
+    scheduler.reload_tasks().await?;
+
+    Ok(())
 }
 
 pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSettings) {

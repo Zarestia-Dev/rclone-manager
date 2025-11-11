@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::{error, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, State};
@@ -348,6 +348,26 @@ pub async fn delete_remote(
         let error = format!("HTTP {status}: {body}");
         error!("❌ Failed to delete remote: {error}");
         return Err(error);
+    }
+
+    use crate::rclone::state::scheduled_tasks::SCHEDULED_TASKS_CACHE;
+
+    match SCHEDULED_TASKS_CACHE.remove_tasks_for_remote(&name).await {
+        Ok(removed_ids) => {
+            if !removed_ids.is_empty() {
+                info!(
+                    "Removed {} scheduled task(s) for deleted remote '{}'",
+                    removed_ids.len(),
+                    name
+                );
+            }
+        }
+        Err(e) => {
+            warn!(
+                "Failed to clean up scheduled tasks for remote '{}': {}",
+                name, e
+            );
+        }
     }
 
     // Emit two events:

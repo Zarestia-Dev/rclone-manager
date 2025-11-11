@@ -27,7 +27,7 @@ pub const RCLONE_CONFIG_UNLOCKED: &str = "rclone_config_unlocked";
 pub const UPDATE_TRAY_MENU: &str = "tray_menu_updated";
 pub const JOB_CACHE_CHANGED: &str = "job_cache_changed";
 pub const NOTIFY_UI: &str = "notify_ui";
-pub const MOUNT_CACHE_UPDATED: &str = "mount_cache_updated";
+pub const MOUNT_STATE_CHANGED: &str = "mount_state_changed";
 pub const SERVE_STATE_CHANGED: &str = "serve_state_changed";
 
 // Plugin and installation events

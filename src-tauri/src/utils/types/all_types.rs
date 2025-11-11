@@ -32,9 +32,7 @@ pub struct MountedRemote {
 pub struct ServeInstance {
     pub id: String,
     pub addr: String,
-    pub serve_type: String,
-    pub fs: String,
-    pub remote_name: String,
+    pub params: Value,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

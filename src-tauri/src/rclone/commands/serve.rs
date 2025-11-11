@@ -32,6 +32,31 @@ pub struct ServeStartResponse {
     pub addr: String, // Address server is listening on
 }
 
+/// Helper function to handle rclone API responses
+async fn handle_rclone_response(
+    response: reqwest::Response,
+    operation: &str,
+    remote_name: &str,
+) -> Result<String, String> {
+    let status = response.status();
+    let body = response.text().await.unwrap_or_default();
+
+    if !status.is_success() {
+        let error = format!("HTTP {status}: {body}");
+        log_operation(
+            LogLevel::Error,
+            Some(remote_name.to_string()),
+            Some(operation.to_string()),
+            format!("Failed to {}: {error}", operation.to_lowercase()),
+            Some(json!({"response": body})),
+        )
+        .await;
+        return Err(error);
+    }
+
+    Ok(body)
+}
+
 /// Start a serve instance
 #[tauri::command]
 pub async fn start_serve(
@@ -39,7 +64,19 @@ pub async fn start_serve(
     params: ServeParams,
     state: State<'_, RcloneState>,
 ) -> Result<ServeStartResponse, String> {
-    debug!("🚀 Starting serve with params: {params:#?}");
+    // Validate remote name
+    if params.remote_name.trim().is_empty() {
+        return Err("Remote name cannot be empty".to_string());
+    }
+
+    // Validate serve type is specified
+    let serve_type = params
+        .serve_options
+        .as_ref()
+        .and_then(|opts| opts.get("type"))
+        .ok_or_else(|| "Serve type must be specified".to_string())?;
+
+    debug!("🚀 Starting {serve_type} serve for {}", params.remote_name);
 
     // Prepare logging context
     let log_context = json!({
@@ -90,22 +127,16 @@ pub async fn start_serve(
     // Add serve-type specific options directly to payload
     if let Some(opts) = params.serve_options.clone() {
         for (key, value) in opts {
-            // Handle arrays by converting to comma-separated string
-            let converted_value = if let Value::Array(arr) = value {
-                let strings: Vec<String> = arr
-                    .iter()
-                    .map(|v| match v {
-                        Value::String(s) => s.clone(),
-                        Value::Number(n) => n.to_string(),
-                        Value::Bool(b) => b.to_string(),
-                        _ => v.to_string(),
-                    })
-                    .collect();
-                Value::String(strings.join(","))
+            // Handle 'addr' potentially being a single-element array from frontend config
+            let final_value = if key == "addr" {
+                match &value {
+                    Value::Array(arr) if arr.len() == 1 && arr[0].is_string() => arr[0].clone(),
+                    _ => value,
+                }
             } else {
                 value
             };
-            payload.insert(key, converted_value);
+            payload.insert(key, final_value);
         }
     }
 
@@ -155,54 +186,26 @@ pub async fn start_serve(
         })?;
 
     // Handle response
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    debug!("📥 Serve start response: status={}, body={}", status, body);
-
-    if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
-        log_operation(
-            LogLevel::Error,
-            Some(params.remote_name.clone()),
-            Some("Start serve".to_string()),
-            format!("Failed to start serve: {error}"),
-            Some(json!({"response": body})),
-        )
-        .await;
-        return Err(error);
-    }
+    let body = handle_rclone_response(response, "Start serve", &params.remote_name).await?;
 
     // Try to parse the response - handle different possible formats
-    let serve_response = if let Ok(response) = serde_json::from_str::<ServeStartResponse>(&body) {
-        response
-    } else {
-        // Try to parse as a response with just addr
-        #[derive(serde::Deserialize)]
-        struct PartialResponse {
-            addr: String,
-        }
-        let partial: PartialResponse =
-            serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
-
-        // Generate ID for partial response
-        use uuid::Uuid;
-        let id = format!(
-            "{}-{}",
-            params
-                .serve_options
-                .as_ref()
-                .and_then(|opts| opts.get("type"))
-                .unwrap_or(&Value::from("unknown")),
-            Uuid::new_v4().simple()
-        );
-        debug!("🔧 Generated serve ID for partial response: {}", id);
-
-        ServeStartResponse {
-            id,
-            addr: partial.addr,
-        }
-    };
+    let serve_response: ServeStartResponse = serde_json::from_str(&body).map_err(|e| {
+        let err_msg = format!("Failed to parse successful serve response: {e}. Body: {body}");
+        error!("{err_msg}");
+        // Log this unexpected (but successful status) response
+        let remote_name_clone = params.remote_name.clone();
+        tauri::async_runtime::spawn(async move {
+            log_operation(
+                LogLevel::Error,
+                Some(remote_name_clone),
+                Some("Start serve".to_string()),
+                err_msg,
+                Some(json!({"response": body})),
+            )
+            .await;
+        });
+        format!("Failed to parse response: {e}")
+    })?;
 
     log_operation(
         LogLevel::Info,
@@ -239,10 +242,6 @@ pub async fn stop_serve(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<String, String> {
-    if server_id.trim().is_empty() {
-        return Err("Server ID cannot be empty".to_string());
-    }
-
     log_operation(
         LogLevel::Info,
         Some(remote_name.clone()),
@@ -263,22 +262,7 @@ pub async fn stop_serve(
         .await
         .map_err(|e| format!("Request failed: {e}"))?;
 
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
-        log_operation(
-            LogLevel::Error,
-            Some(remote_name.clone()),
-            Some("Stop serve".to_string()),
-            error.clone(),
-            Some(json!({"response": body})),
-        )
-        .await;
-        error!("❌ Failed to stop serve {server_id}: {error}");
-        return Err(error);
-    }
+    let _body = handle_rclone_response(response, "Stop serve", &remote_name).await?;
 
     log_operation(
         LogLevel::Info,
@@ -315,14 +299,7 @@ pub async fn stop_all_serves(
         .await
         .map_err(|e| format!("Request failed: {e}"))?;
 
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
-        error!("❌ Failed to stop all serves: {error}");
-        return Err(error);
-    }
+    let _body = handle_rclone_response(response, "Stop all serves", "").await?;
 
     if context != "shutdown" {
         app.emit(SERVE_STATE_CHANGED, "all")

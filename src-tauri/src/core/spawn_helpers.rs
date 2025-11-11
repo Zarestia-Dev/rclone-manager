@@ -5,8 +5,12 @@ use crate::core::config_extractor::{
     BisyncConfig, CopyConfig, MountConfig, MoveConfig, SyncConfig,
 };
 use crate::rclone::commands::{
-    mount::{mount_remote, MountParams},
-    sync::{start_bisync, start_copy, start_move, start_sync, BisyncParams, CopyParams, MoveParams, SyncParams},
+    mount::{MountParams, mount_remote},
+    serve::{ServeParams, start_serve},
+    sync::{
+        BisyncParams, CopyParams, MoveParams, SyncParams, start_bisync, start_copy, start_move,
+        start_sync,
+    },
 };
 
 /// Result type for spawn operations
@@ -188,6 +192,37 @@ pub async fn spawn_bisync(
         }
         Err(err) => {
             error!("❌ Failed to bisync {remote_name}:{source}: {err}");
+            Err(err)
+        }
+    }
+}
+
+/// Spawn a serve task and return the server ID.
+pub async fn spawn_serve(
+    remote_name: String,
+    cfg: crate::core::config_extractor::ServeConfig,
+    app: AppHandle,
+) -> SpawnResult<String> {
+    let app_clone = app.clone();
+
+    let params = ServeParams {
+        remote_name: remote_name.clone(),
+        serve_options: cfg.serve_options,
+        backend_options: cfg.backend_options,
+        filter_options: cfg.filter_options,
+        vfs_options: cfg.vfs_options,
+    };
+
+    match start_serve(app_clone.clone(), params, app_clone.state()).await {
+        Ok(resp) => {
+            info!(
+                "✅ Started serve for {} at {} (id={})",
+                remote_name, resp.addr, resp.id
+            );
+            Ok(resp.id)
+        }
+        Err(err) => {
+            error!("❌ Failed to start serve for {}: {err}", remote_name);
             Err(err)
         }
     }

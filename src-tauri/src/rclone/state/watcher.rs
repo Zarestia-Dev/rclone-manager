@@ -16,6 +16,9 @@ use crate::utils::types::{
 /// Global flag to control the mounted remote watcher
 static WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
 
+/// Global flag to control the serve watcher
+static SERVE_WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
+
 /// Helper to get mounted remotes directly from the API
 async fn get_mounted_remotes_from_api(
     app_handle: &AppHandle,
@@ -140,18 +143,9 @@ async fn get_serves_from_api(app_handle: &AppHandle) -> Result<Vec<ServeInstance
                 .filter_map(|item| {
                     let id = item.get("id")?.as_str()?.to_string();
                     let addr = item.get("addr")?.as_str()?.to_string();
-                    let params = item.get("params")?;
-                    let fs = params.get("fs")?.as_str()?.to_string();
-                    let serve_type = params.get("type")?.as_str()?.to_string();
-                    let remote_name = fs.split(':').next()?.to_string();
+                    let params = item.get("params")?.clone();
 
-                    Some(ServeInstance {
-                        id,
-                        addr,
-                        serve_type,
-                        fs,
-                        remote_name,
-                    })
+                    Some(ServeInstance { id, addr, params })
                 })
                 .collect()
         })
@@ -193,10 +187,20 @@ async fn check_and_reconcile_serves(app_handle: AppHandle) -> Result<(), String>
 
     // Emit events for stopped serves
     for serve in stopped_serves {
+        let fs = serve
+            .params
+            .get("fs")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let serve_type = serve
+            .params
+            .get("type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         let event_payload = json!({
             "id": serve.id,
-            "fs": serve.fs,
-            "type": serve.serve_type,
+            "fs": fs,
+            "type": serve_type,
             "reason": "externally_stopped"
         });
         if let Err(e) = app_handle.emit(SERVE_STATE_CHANGED, &event_payload) {
@@ -206,10 +210,20 @@ async fn check_and_reconcile_serves(app_handle: AppHandle) -> Result<(), String>
 
     // Emit events for new serves
     for serve in new_serves {
+        let fs = serve
+            .params
+            .get("fs")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let serve_type = serve
+            .params
+            .get("type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
         let event_payload = json!({
             "id": serve.id,
-            "fs": serve.fs,
-            "type": serve.serve_type,
+            "fs": fs,
+            "type": serve_type,
             "addr": serve.addr,
             "reason": "externally_started"
         });
@@ -230,12 +244,27 @@ pub async fn force_check_serves(app_handle: AppHandle) -> Result<(), String> {
 
 /// Start a background watcher that monitors running serves
 pub fn start_serve_watcher(app_handle: AppHandle) {
+    if SERVE_WATCHER_RUNNING.swap(true, Ordering::SeqCst) {
+        debug!("🔍 Serve watcher already running");
+        return;
+    }
+
     tauri::async_runtime::spawn(async move {
         debug!("🔍 Starting serve watcher");
         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(5));
 
         loop {
             interval.tick().await;
+
+            if !SERVE_WATCHER_RUNNING.load(Ordering::SeqCst) {
+                debug!("🔍 Stopping serve watcher");
+                break;
+            }
+
+            if CACHE.get_serves().await.is_empty() {
+                debug!("🔍 No serves in cache, skipping API check");
+                continue;
+            }
 
             // Call the new helper function
             if let Err(e) = check_and_reconcile_serves(app_handle.clone()).await {
@@ -244,4 +273,10 @@ pub fn start_serve_watcher(app_handle: AppHandle) {
         }
     });
     debug!("✅ Serve watcher started");
+}
+
+/// Stop the serve watcher
+pub fn stop_serve_watcher() {
+    SERVE_WATCHER_RUNNING.store(false, Ordering::SeqCst);
+    debug!("🔍 Serve watcher stop requested");
 }

@@ -6,14 +6,13 @@ use tokio::task::spawn_blocking;
 use crate::{
     core::scheduler::commands::SCHEDULER,
     rclone::{
-        commands::{job::stop_job, mount::unmount_all_remotes},
+        commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
         engine::ENGINE,
         state::{job::get_active_jobs, watcher::stop_mounted_remote_watcher},
     },
     utils::process::process_manager::kill_all_rclone_processes,
     utils::types::events::APP_EVENT,
 };
-// use crate::utils::shortcuts::unregister_global_shortcuts;
 
 /// Main entry point for handling shutdown tasks
 #[tauri::command]
@@ -35,7 +34,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
             error!("Failed to emit an app_event: {e}");
         });
 
-    // Get active jobs before shutdown
+    // Get active jobs and serves before shutdown
     let active_jobs = match get_active_jobs().await {
         Ok(jobs) => jobs,
         Err(e) => {
@@ -44,10 +43,17 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         }
     };
 
-    // If there are active jobs, notify UI
+    let active_serves = crate::rclone::state::cache::CACHE.get_serves().await;
+
+    // Notify UI about active operations
     if !active_jobs.is_empty() {
         let job_count = active_jobs.len();
         info!("⚠️ Stopping {job_count} active jobs during shutdown");
+    }
+
+    if !active_serves.is_empty() {
+        let serve_count = active_serves.len();
+        info!("⚠️ Stopping {serve_count} active serves during shutdown");
     }
 
     // Run cleanup tasks in parallel with individual timeouts
@@ -65,11 +71,25 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         stop_all_jobs(app_handle.clone()),
     );
 
-    let (unmount_result, stop_jobs_result) = tokio::join!(unmount_task, stop_jobs_task);
+    let stop_serves_task = tokio::time::timeout(
+        tokio::time::Duration::from_secs(5),
+        stop_all_serves(
+            app_handle.clone(),
+            app_handle.state(),
+            "shutdown".to_string(),
+        ),
+    );
+
+    let (unmount_result, stop_jobs_result, stop_serves_result) =
+        tokio::join!(unmount_task, stop_jobs_task, stop_serves_task);
 
     // Stop the mounted remote watcher
     info!("🔍 Stopping mounted remote watcher...");
     stop_mounted_remote_watcher();
+
+    // Stop the serve watcher
+    info!("🔍 Stopping serve watcher...");
+    crate::rclone::state::watcher::stop_serve_watcher();
 
     // Stop the scheduler
     info!("⏰ Stopping cron scheduler...");
@@ -118,9 +138,16 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 
     // Handle job stopping results
     match stop_jobs_result {
-        Ok(Ok(_)) => info!("All jobs stopped successfully"),
-        Ok(Err(e)) => error!("Failed to stop all jobs: {e}"),
-        Err(_) => error!("Job stopping operation timed out after 5 seconds"),
+        Ok(Ok(_)) => info!("✅ All jobs stopped successfully"),
+        Ok(Err(e)) => error!("❌ Failed to stop all jobs: {e}"),
+        Err(_) => error!("❌ Job stopping operation timed out after 5 seconds"),
+    }
+
+    // Handle serve stopping results
+    match stop_serves_result {
+        Ok(Ok(_)) => info!("✅ All serves stopped successfully"),
+        Ok(Err(e)) => error!("❌ Failed to stop all serves: {e}"),
+        Err(_) => error!("❌ Serve stopping operation timed out after 5 seconds"),
     }
 
     // Perform engine shutdown in a blocking task with timeout

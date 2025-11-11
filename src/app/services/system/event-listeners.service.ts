@@ -5,7 +5,7 @@ import {
   AppEventPayloadType,
   REMOTE_DELETED,
   ENGINE_RESTARTED,
-  MOUNT_CACHE_UPDATED,
+  MOUNT_STATE_CHANGED,
   REMOTE_CACHE_UPDATED,
   // NOTIFY_UI,
   JOB_CACHE_CHANGED,
@@ -14,6 +14,7 @@ import {
   APP_EVENT,
   NETWORK_STATUS_CHANGED,
   BANDWIDTH_LIMIT_CHANGED,
+  SERVE_STATE_CHANGED,
   RCLONE_ENGINE_READY,
   RCLONE_ENGINE_ERROR,
   RCLONE_ENGINE_PASSWORD_ERROR,
@@ -54,7 +55,7 @@ export class EventListenersService extends TauriBaseService {
    * Listen to mount cache updated events
    */
   listenToMountCacheUpdated(): Observable<unknown> {
-    return this.listenToEvent<unknown>(MOUNT_CACHE_UPDATED);
+    return this.listenToEvent<unknown>(MOUNT_STATE_CHANGED);
   }
 
   /**
@@ -62,6 +63,13 @@ export class EventListenersService extends TauriBaseService {
    */
   listenToRemoteCacheUpdated(): Observable<unknown> {
     return this.listenToEvent<unknown>(REMOTE_CACHE_UPDATED);
+  }
+
+  /**
+   * Listen to serve state changed events
+   */
+  listenToServeStateChanged(): Observable<unknown> {
+    return this.listenToEvent<unknown>(SERVE_STATE_CHANGED);
   }
 
   // /**
