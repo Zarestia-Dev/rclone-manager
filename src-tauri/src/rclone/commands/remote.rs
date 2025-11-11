@@ -9,10 +9,7 @@ use crate::{
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, config},
-        types::{
-            all_types::LogLevel,
-            events::{REMOTE_DELETED, REMOTE_PRESENCE_CHANGED},
-        },
+        types::{all_types::LogLevel, events::REMOTE_PRESENCE_CHANGED},
     },
 };
 
@@ -370,13 +367,8 @@ pub async fn delete_remote(
         }
     }
 
-    // Emit two events:
     // 1. The standard presence changed event
     app.emit(REMOTE_PRESENCE_CHANGED, &name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
-
-    // 2. A new specific event for deletion
-    app.emit(REMOTE_DELETED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     clear_remote_logs(Some(name.clone()))

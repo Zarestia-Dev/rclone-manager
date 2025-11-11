@@ -104,7 +104,11 @@
           <div class="task-carousel-container">
             <div class="task-carousel-slide-wrapper">
               @if (currentTask) {
-                <div class="task-detail-card" [class.disabled]="currentTask.status === 'disabled'">
+                <div
+                  class="task-detail-card"
+                  [class.disabled]="currentTask.status === 'disabled'"
+                  [class.stopping]="currentTask.status === 'stopping'"
+                >
                   <div class="task-detail-header">
                     <div class="task-info">
                       <div class="task-title-row">
@@ -125,7 +129,11 @@
                           [class.bisync-color]="currentTask.taskType === 'bisync'"
                         ></mat-icon>
                         <h4>{{ currentTask.name }}</h4>
-                        <span class="task-status-badge" [ngClass]="currentTask.status">
+                        <span
+                          class="task-status-badge"
+                          [ngClass]="currentTask.status"
+                          [matTooltip]="getTaskStatusTooltip(currentTask.status)"
+                        >
                           {{ currentTask.status | titlecase }}
                         </span>
                       </div>
@@ -136,14 +144,10 @@
                     <button
                       mat-icon-button
                       (click)="toggleScheduledTask(currentTask.id)"
-                      [matTooltip]="
-                        currentTask.status === 'enabled' ? 'Disable task' : 'Enable task'
-                      "
-                      [color]="currentTask.status === 'enabled' ? 'primary' : ''"
+                      [matTooltip]="getToggleTooltip(currentTask.status)"
+                      [disabled]="currentTask.status === 'stopping'"
                     >
-                      <mat-icon
-                        [svgIcon]="currentTask.status === 'enabled' ? 'pause' : 'play'"
-                      ></mat-icon>
+                      <mat-icon [svgIcon]="getToggleIcon(currentTask.status)"></mat-icon>
                     </button>
                   </div>
 

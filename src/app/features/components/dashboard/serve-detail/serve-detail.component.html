@@ -65,8 +65,13 @@
         class="primary"
         (click)="onStartServeClick()"
         class="start-serve-btn"
+        [disabled]="actionInProgress === 'serve'"
       >
-        <mat-icon svgIcon="play"></mat-icon>
+        @if (actionInProgress === 'serve') {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          <mat-icon svgIcon="play"></mat-icon>
+        }
         <span>Start Serve</span>
       </button>
     </div>

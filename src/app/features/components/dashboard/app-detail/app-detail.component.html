@@ -78,6 +78,14 @@
                 >
                 </app-operation-control>
 
+                <!-- Human Readable Cron Expression -->
+                @if (isCronEnabled()) {
+                  <div class="cron-human-readable">
+                    <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
+                    <span>{{ getHumanReadableCron() }}</span>
+                  </div>
+                }
+
                 <!-- Job Information Panel -->
                 <app-job-info-panel
                   [config]="getJobInfoConfig()"

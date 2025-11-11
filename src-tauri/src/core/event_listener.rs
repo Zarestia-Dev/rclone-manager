@@ -128,12 +128,6 @@ fn handle_remote_presence_changed(app: &AppHandle) {
                 error!("❌ Failed to reload scheduled tasks after remote change: {e}");
             }
 
-            use crate::core::scheduler::commands::SCHEDULER;
-            let scheduler = SCHEDULER.read().await;
-            if let Err(e) = scheduler.reload_tasks().await {
-                error!("❌ Failed to reschedule tasks: {e}");
-            }
-
             if let Err(e) = update_tray_menu(app_clone.clone(), 0).await {
                 error!("Failed to update tray menu: {e}");
             }

@@ -71,6 +71,16 @@ pub async fn save_remote_settings(
 
     info!("✅ Remote settings saved at {remote_config_path:?}");
 
+    use crate::rclone::state::scheduled_tasks::SCHEDULED_TASKS_CACHE;
+
+    match SCHEDULED_TASKS_CACHE
+        .add_or_update_task_for_remote(&remote_name, &settings)
+        .await
+    {
+        Ok(_) => info!("✅ Scheduled tasks updated for remote '{remote_name}'"),
+        Err(e) => warn!("⚠️  Failed to update scheduled tasks for remote '{remote_name}': {e}"),
+    }
+
     app_handle.emit(REMOTE_PRESENCE_CHANGED, remote_name).ok();
     Ok(())
 }

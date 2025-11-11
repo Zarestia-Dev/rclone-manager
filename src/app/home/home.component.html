@@ -159,6 +159,7 @@
             <app-serve-detail
               [selectedRemote]="selectedRemote"
               [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
+              [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]"
               (startServeClick)="onStartServe($event)"
               (openRemoteConfigModal)="
                 openRemoteConfigModal(

@@ -390,6 +390,11 @@
   &.disabled {
     opacity: 0.6;
   }
+
+  &.stopping {
+    border-color: var(--orange);
+    background-color: rgba(var(--orange-rgb), 0.05);
+  }
 }
 
 .task-detail-header {
@@ -458,6 +463,11 @@
   &.failed {
     background: rgba(var(--warn-color-rgb), 0.2);
     color: var(--warn-color);
+  }
+
+  &.stopping {
+    background-color: rgba(var(--orange-rgb), 0.2);
+    color: var(--orange);
   }
 }
 

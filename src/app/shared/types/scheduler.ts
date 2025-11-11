@@ -6,7 +6,7 @@ export type TaskType = 'copy' | 'sync' | 'move' | 'delete' | 'purge' | 'bisync';
 /**
  * Status of a scheduled task
  */
-export type TaskStatus = 'enabled' | 'disabled' | 'running' | 'failed';
+export type TaskStatus = 'enabled' | 'disabled' | 'running' | 'failed' | 'stopping';
 
 /**
  * Represents a scheduled task with cron configuration

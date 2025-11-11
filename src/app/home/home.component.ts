@@ -610,18 +610,22 @@ export class HomeComponent implements OnInit, OnDestroy {
    * Handle the start serve event from serve components
    * This will open the remote config modal with start serve mode
    */
-  onStartServe(remoteName: string): void {
-    const remoteSettings = this.loadRemoteSettings(remoteName);
-    const serveConfig = remoteSettings?.['serveConfig'];
-
-    console.log('Starting serve with config:', serveConfig);
-
-    this.serveManagementService.startServe(
+  async onStartServe(remoteName: string): Promise<void> {
+    await this.executeRemoteAction(
       remoteName,
-      serveConfig?.['options'],
-      serveConfig?.['filterConfig'],
-      serveConfig?.['backendConfig'],
-      serveConfig?.['vfsConfig']
+      'serve',
+      async () => {
+        const remoteSettings = this.loadRemoteSettings(remoteName);
+        const serveConfig = remoteSettings?.['serveConfig'];
+        await this.serveManagementService.startServe(
+          remoteName,
+          serveConfig?.['options'],
+          serveConfig?.['filterConfig'],
+          serveConfig?.['backendConfig'],
+          serveConfig?.['vfsConfig']
+        );
+      },
+      `Failed to start serve for ${remoteName}`
     );
   }
 
@@ -648,6 +652,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         },
         `Failed to delete remote ${remoteName}`
       );
+      this.uiStateService.setSelectedRemote(null);
     } catch (error) {
       this.handleError(`Failed to delete remote ${remoteName}`, error);
     }

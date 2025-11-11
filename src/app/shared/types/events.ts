@@ -16,7 +16,6 @@ export const RCLONE_PASSWORD_STORED = 'rclone_password_stored';
 export const REMOTE_STATE_CHANGED = 'remote_state_changed';
 export const REMOTE_PRESENCE_CHANGED = 'remote_presence_changed';
 export const REMOTE_CACHE_UPDATED = 'remote_cache_updated';
-export const REMOTE_DELETED = 'remote_deleted';
 
 // System and settings events
 export const SYSTEM_SETTINGS_CHANGED = 'system_settings_changed';

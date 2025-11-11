@@ -316,6 +316,7 @@
                   <div
                     class="task-card"
                     [class.disabled]="task.status === 'disabled'"
+                    [class.stopping]="task.status === 'stopping'"
                     (click)="onTaskClick(task)"
                     (keydown)="onTaskKeydown($event, task)"
                     role="button"
@@ -340,7 +341,11 @@
                         <div class="task-title-section">
                           <div class="task-name-row">
                             <span class="task-name">{{ task.name }}</span>
-                            <span class="task-status-badge" [ngClass]="task.status">
+                            <span
+                              class="task-status-badge"
+                              [ngClass]="task.status"
+                              [matTooltip]="getTaskStatusTooltip(task.status)"
+                            >
                               {{ task.status | titlecase }}
                             </span>
                             @if (task.currentJobId) {
@@ -356,12 +361,11 @@
                       <button
                         mat-icon-button
                         (click)="toggleScheduledTask(task.id); $event.stopPropagation()"
-                        [matTooltip]="task.status === 'enabled' ? 'Disable task' : 'Enable task'"
+                        [matTooltip]="getToggleTooltip(task.status)"
                         class="task-toggle-btn"
+                        [disabled]="task.status === 'stopping'"
                       >
-                        <mat-icon
-                          [svgIcon]="task.status === 'enabled' ? 'pause' : 'play'"
-                        ></mat-icon>
+                        <mat-icon [svgIcon]="getToggleIcon(task.status)"></mat-icon>
                       </button>
                     </div>
 

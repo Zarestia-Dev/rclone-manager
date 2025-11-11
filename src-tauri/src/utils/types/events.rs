@@ -16,7 +16,6 @@ pub const RCLONE_PASSWORD_STORED: &str = "rclone_password_stored";
 pub const REMOTE_STATE_CHANGED: &str = "remote_state_changed";
 pub const REMOTE_PRESENCE_CHANGED: &str = "remote_presence_changed";
 pub const REMOTE_CACHE_UPDATED: &str = "remote_cache_updated";
-pub const REMOTE_DELETED: &str = "remote_deleted";
 
 // System and settings events
 pub const SYSTEM_SETTINGS_CHANGED: &str = "system_settings_changed";

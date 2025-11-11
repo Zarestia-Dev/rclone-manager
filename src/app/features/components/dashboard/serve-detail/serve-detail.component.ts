@@ -15,8 +15,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { Remote, ServeListItem, RemoteSettings, SettingsPanelConfig } from '@app/types';
+import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Remote, ServeListItem, RemoteSettings, SettingsPanelConfig, RemoteAction } from '@app/types';
 import { IconService } from '../../../../shared/services/icon.service';
 import { ServeManagementService } from '@app/services';
 import { Subject, takeUntil } from 'rxjs';
@@ -41,6 +42,7 @@ interface SettingsSection {
     MatCardModule,
     MatDividerModule,
     MatTooltipModule,
+    MatProgressSpinnerModule,
     MatSnackBarModule,
     SettingsPanelComponent,
     ServeCardComponent,
@@ -59,6 +61,7 @@ export class ServeDetailComponent implements OnInit, OnDestroy {
 
   @Input() selectedRemote!: Remote;
   @Input() remoteSettings: RemoteSettings = {};
+  @Input() actionInProgress: RemoteAction = null;
   @Output() startServeClick = new EventEmitter<string>();
   @Output() openRemoteConfigModal = new EventEmitter<{
     editTarget?: string;

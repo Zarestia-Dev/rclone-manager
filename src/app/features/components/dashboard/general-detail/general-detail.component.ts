@@ -279,6 +279,12 @@ export class GeneralDetailComponent implements OnChanges, OnInit, OnDestroy {
   }
 
   getFormattedNextRun(task: ScheduledTask): string {
+    if (task.status === 'disabled') {
+      return 'Task is disabled';
+    }
+    if (task.status === 'stopping') {
+      return 'Disabling after current run';
+    }
     if (!task.nextRun) return 'Not scheduled';
     return new Date(task.nextRun).toLocaleString();
   }
@@ -314,5 +320,52 @@ export class GeneralDetailComponent implements OnChanges, OnInit, OnDestroy {
 
   get currentTask(): ScheduledTask | null {
     return this.remoteScheduledTasks[this.currentTaskCardIndex] || null;
+  }
+
+  getTaskStatusTooltip(status: string): string {
+    switch (status) {
+      case 'enabled':
+        return 'Task is enabled and will run on schedule.';
+      case 'disabled':
+        return 'Task is disabled and will not run.';
+      case 'running':
+        return 'Task is currently running.';
+      case 'failed':
+        return 'Task failed on its last run.';
+      case 'stopping':
+        return 'Task is stopping and will be disabled after the current run finishes.';
+      default:
+        return '';
+    }
+  }
+
+  getToggleTooltip(status: string): string {
+    switch (status) {
+      case 'enabled':
+      case 'running':
+        return 'Disable task';
+      case 'disabled':
+      case 'failed':
+        return 'Enable task';
+      case 'stopping':
+        return 'Task is stopping...';
+      default:
+        return '';
+    }
+  }
+
+  getToggleIcon(status: string): string {
+    switch (status) {
+      case 'enabled':
+      case 'running':
+        return 'pause';
+      case 'disabled':
+      case 'failed':
+        return 'play';
+      case 'stopping':
+        return 'stop';
+      default:
+        return 'help';
+    }
   }
 }

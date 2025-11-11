@@ -3,7 +3,7 @@
 
 ## [Unreleased]
 ### Added
-- Added schedule support for sync, copy, move, and bisync operations. You can now schedule these operations to run at specific times or intervals using a cron-like syntax. You can find the scheduling options in the remote sync operation settings. (Supports detailed cron expressions. Example `15,45 8-18/2 * 1,11 1-5`: Every 2 hours at minutes 15 and 45 between 8 AM and 6 PM on Mondays and Fridays in January and November) [Needs fix for When create new remote or delete remote, reload the scheduled tasks for that remote.]
+- Added schedule support for sync, copy, move, and bisync operations. You can now schedule these operations to run at specific times or intervals using a cron-like syntax. You can find the scheduling options in the remote sync operation settings. (Supports detailed cron expressions. Example `15,45 8-18/2 * 1,11 1-5`: Every 2 hours at minutes 15 and 45 between 8 AM and 6 PM on Mondays and Fridays in January and November) [Needs MORE IMPROVEMENTS. WHAT IS THIS CODE.]
 - New time picker module added for better clock time selection.
 - Rclone Serve support added. You can now start and stop rclone serve commands. The serve status is displayed in the sidebar for easy access. You can find the serve options in the Serve Tab. Serve configurations (vfs, backend and filter) separated from the other configurations.
 

@@ -66,7 +66,6 @@ export class UiStateService {
       }
     }
     this.initializeMaximizeListener();
-    this.setupRemoteDeletionListener();
   }
 
   // === Tab Management ===
@@ -132,23 +131,5 @@ export class UiStateService {
     const settings = isMaximized ? this.viewportSettings.maximized : this.viewportSettings.default;
 
     document.documentElement.style.setProperty('--app-border-radius', settings.radii.app);
-  }
-
-  // === Remote Deletion Listener ===
-  private async setupRemoteDeletionListener(): Promise<void> {
-    try {
-      this.eventListenersService.listenToRemoteDeleted().subscribe(deletedRemoteName => {
-        this.ngZone.run(() => {
-          const currentRemote = this.selectedRemoteSource.value;
-
-          if (currentRemote?.remoteSpecs?.name === deletedRemoteName) {
-            this.resetSelectedRemote();
-            this.showToast(`Remote ${deletedRemoteName} deleted`, 'success');
-          }
-        });
-      });
-    } catch (error) {
-      console.warn('Failed to setup remote deletion listener:', error);
-    }
   }
 }

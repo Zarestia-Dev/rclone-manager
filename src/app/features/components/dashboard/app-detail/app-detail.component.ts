@@ -60,6 +60,7 @@ import {
 } from '../../../../shared/detail-shared';
 import { IconService } from '../../../../shared/services/icon.service';
 import { JobManagementService } from '@app/services';
+import { toString as cronstrue } from 'cronstrue';
 
 @Component({
   selector: 'app-app-detail',
@@ -766,5 +767,23 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     this.progressChart?.destroy();
     this.speedChart = undefined;
     this.progressChart = undefined;
+  }
+
+  isCronEnabled(): boolean {
+    const config = this.remoteSettings?.[`${this.selectedSyncOperation}Config`];
+    return !!config?.['cronEnabled'];
+  }
+
+  getHumanReadableCron(): string {
+    const config = this.remoteSettings?.[`${this.selectedSyncOperation}Config`];
+    const cronExpression = config?.['cronExpression'] as string;
+    if (!cronExpression) {
+      return 'No schedule set.';
+    }
+    try {
+      return cronstrue(cronExpression);
+    } catch {
+      return 'Invalid cron expression.';
+    }
   }
 }

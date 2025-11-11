@@ -131,6 +131,23 @@
   padding: var(--container-padding);
 }
 
+.cron-human-readable {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(var(--primary-color-rgb), 0.05);
+  border: 1px solid rgba(var(--primary-color-rgb), 0.1);
+  border-radius: var(--icon-radius);
+  color: var(--primary-color);
+  font-size: var(--font-size-md);
+  font-weight: 500;
+
+  .cron-icon {
+    color: var(--primary-color);
+  }
+}
+
 // Settings layout
 .settings-layout {
   display: grid;

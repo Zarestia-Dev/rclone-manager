@@ -1,13 +1,7 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import {
-  RemoteProvider,
-  RemoteConfig,
-  RcConfigQuestionResponse,
-  Entry,
-  REMOTE_DELETED,
-} from '@app/types';
+import { RemoteProvider, RemoteConfig, RcConfigQuestionResponse, Entry } from '@app/types';
 
 /**
  * Service for managing rclone remotes
@@ -160,13 +154,6 @@ export class RemoteManagementService extends TauriBaseService {
   ): Promise<{ list: Entry[] }> {
     const response = await this.invokeCommand('get_remote_paths', { remote, path, options });
     return response as { list: Entry[] };
-  }
-
-  /**
-   * Listen to remote deletion events
-   */
-  listenToRemoteDeletion(): Observable<string> {
-    return this.listenToEvent<string>(REMOTE_DELETED);
   }
 
   /**

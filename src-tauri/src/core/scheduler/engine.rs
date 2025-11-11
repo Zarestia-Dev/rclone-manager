@@ -24,9 +24,9 @@ impl CronScheduler {
         }
     }
 
-    /// Initialize the scheduler with the app handle in UTC.
+    /// Initialize the scheduler with the app handle in Local.
     pub async fn initialize(&self, app_handle: AppHandle) -> Result<(), String> {
-        info!("🕐 Initializing cron scheduler in UTC...");
+        info!("🕐 Initializing cron scheduler in Local...");
 
         let scheduler = JobScheduler::new()
             .await
@@ -164,7 +164,6 @@ impl CronScheduler {
 
     /// Unschedule a task
     pub async fn unschedule_task(&self, job_id: Uuid) -> Result<(), String> {
-        // ... (this function is correct, no changes needed) ...
         let scheduler_guard = self.scheduler.read().await;
         let scheduler = scheduler_guard
             .as_ref()
@@ -244,16 +243,16 @@ impl CronScheduler {
 }
 
 pub fn validate_cron_expression(cron_expr: &str) -> Result<(), String> {
-    croner::Cron::new(cron_expr)
-        .parse()
+    croner::parser::CronParser::new()
+        .parse(cron_expr)
         .map_err(|e| format!("Invalid cron expression: {}", e))?;
     Ok(())
 }
 
 /// Get next run time for a cron expression
 pub fn get_next_run(cron_expr: &str) -> Result<chrono::DateTime<Utc>, String> {
-    let cron = croner::Cron::new(cron_expr)
-        .parse()
+    let cron = croner::parser::CronParser::new()
+        .parse(cron_expr)
         .map_err(|e| format!("Invalid cron expression: {}", e))?;
 
     // Calculate next occurrence in local time
@@ -307,7 +306,7 @@ async fn execute_scheduled_task(task_id: &str, app_handle: &AppHandle) -> Result
             SCHEDULED_TASKS_CACHE
                 .update_task(task_id, |t| {
                     t.mark_failure(e.clone());
-                    t.next_run = next_run; // ← Add this
+                    t.next_run = next_run;
                 })
                 .await?;
             Err(e)

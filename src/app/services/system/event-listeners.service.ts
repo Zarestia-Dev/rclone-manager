@@ -3,7 +3,6 @@ import { Observable } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import {
   AppEventPayloadType,
-  REMOTE_DELETED,
   ENGINE_RESTARTED,
   MOUNT_STATE_CHANGED,
   REMOTE_CACHE_UPDATED,
@@ -36,13 +35,6 @@ export class EventListenersService extends TauriBaseService {
    */
   listenToWindowResize(): Observable<unknown> {
     return this.listenToEvent<unknown>('tauri://resize');
-  }
-
-  /**
-   * Listen to remote deleted events
-   */
-  listenToRemoteDeleted(): Observable<string> {
-    return this.listenToEvent<string>(REMOTE_DELETED);
   }
 
   /**

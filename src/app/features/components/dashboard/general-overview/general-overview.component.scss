@@ -431,6 +431,11 @@
       }
     }
 
+    &.stopping {
+      border-color: var(--orange);
+      background-color: rgba(var(--orange-rgb), 0.1);
+    }
+
     .task-header {
       display: flex;
       align-items: flex-start;
@@ -545,6 +550,11 @@
             &.failed {
               background: rgba(244, 67, 54, 0.2);
               color: #f44336;
+            }
+
+            &.stopping {
+              background-color: rgba(var(--orange-rgb), 0.1);
+              color: var(--orange);
             }
           }
         }

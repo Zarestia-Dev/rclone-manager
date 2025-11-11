@@ -32,6 +32,7 @@ pub enum TaskStatus {
     Disabled,
     Running,
     Failed,
+    Stopping,
 }
 
 /// Represents a scheduled task with cron configuration
@@ -112,7 +113,11 @@ impl ScheduledTask {
         self.last_error = None;
         self.current_job_id = None;
         self.success_count += 1;
-        self.status = TaskStatus::Enabled;
+        self.status = if self.status == TaskStatus::Stopping {
+            TaskStatus::Disabled
+        } else {
+            TaskStatus::Enabled
+        };
     }
 
     /// Update the task after a failed run
@@ -121,7 +126,11 @@ impl ScheduledTask {
         self.last_error = Some(error);
         self.current_job_id = None;
         self.failure_count += 1;
-        self.status = TaskStatus::Failed;
+        self.status = if self.status == TaskStatus::Stopping {
+            TaskStatus::Disabled
+        } else {
+            TaskStatus::Failed
+        };
     }
 
     /// Mark task as starting execution (without job ID yet)
@@ -134,7 +143,6 @@ impl ScheduledTask {
 
     /// Mark task as running with job ID (after operation starts)
     pub fn mark_running(&mut self, job_id: u64) {
-        self.status = TaskStatus::Running;
         self.current_job_id = Some(job_id);
     }
 
@@ -142,7 +150,11 @@ impl ScheduledTask {
     pub fn mark_stopped(&mut self) {
         self.last_run = Some(Utc::now());
         self.current_job_id = None;
-        self.status = TaskStatus::Enabled; // Reset to enabled since it was manually stopped
+        self.status = if self.status == TaskStatus::Stopping {
+            TaskStatus::Disabled
+        } else {
+            TaskStatus::Enabled
+        };
     }
 
     /// Check if task is enabled and can run
