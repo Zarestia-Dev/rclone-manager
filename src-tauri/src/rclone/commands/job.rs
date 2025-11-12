@@ -136,22 +136,28 @@ pub async fn handle_job_completion(
         .trim()
         .to_string();
 
+    // ATOMIC: Update both job cache AND task cache in a transaction-like manner
+    let task = SCHEDULED_TASKS_CACHE.get_task_by_job_id(jobid).await;
+
+    // Calculate next run BEFORE any updates
+    let next_run = if let Some(ref t) = task {
+        get_next_run(&t.cron_expression).ok()
+    } else {
+        None
+    };
+
+    // Update job cache
     JOB_CACHE
         .complete_job(jobid, success)
         .await
         .map_err(RcloneError::JobError)?;
-    app.emit(JOB_CACHE_CHANGED, jobid)
-        .map_err(|e| RcloneError::JobError(e.to_string()))?;
 
-    // Check if this job was part of a scheduled task and update its status
-    if let Some(task) = SCHEDULED_TASKS_CACHE.get_task_by_job_id(jobid).await {
+    // Update task cache if this was a scheduled task
+    if let Some(task) = task {
         info!(
             "Job {} was associated with scheduled task '{}', updating task status.",
             jobid, task.name
         );
-        
-        // Get the next run time *now* that the task is finished
-        let next_run = get_next_run(&task.cron_expression).ok();
 
         if success {
             SCHEDULED_TASKS_CACHE
@@ -160,7 +166,7 @@ pub async fn handle_job_completion(
                     t.next_run = next_run;
                 })
                 .await
-                .ok(); // Log errors but don't fail the operation
+                .map_err(|e| RcloneError::JobError(e))?; // Don't ignore errors
         } else {
             SCHEDULED_TASKS_CACHE
                 .update_task(&task.id, |t| {
@@ -168,10 +174,15 @@ pub async fn handle_job_completion(
                     t.next_run = next_run;
                 })
                 .await
-                .ok();
+                .map_err(|e| RcloneError::JobError(e))?;
         }
     }
 
+    // Emit event AFTER all state updates
+    app.emit(JOB_CACHE_CHANGED, jobid)
+        .map_err(|e| RcloneError::JobError(e.to_string()))?;
+
+    // Log and return result
     if !error_msg.is_empty() {
         log_operation(
             LogLevel::Error,
@@ -215,10 +226,7 @@ pub async fn stop_job(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    // First mark the job as stopped in the cache
-    JOB_CACHE.stop_job(jobid).await.map_err(|e| e.to_string())?;
-
-    // Then try to stop it via API
+    // First try to stop via API, THEN update cache
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, job::STOP);
     let payload = json!({ "jobid": jobid });
 
@@ -233,38 +241,46 @@ pub async fn stop_job(
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
 
-    if !status.is_success() {
-        // If job not found, we've already marked it as stopped
-        if status.as_u16() == 500 && body.contains("\"job not found\"") {
-            log_operation(
-                LogLevel::Warn,
-                Some(remote_name.clone()),
-                Some("Stop job".to_string()),
-                format!("Job {jobid} not found, tagged as stopped"),
-                None,
-            )
-            .await;
-            warn!("Job {jobid} not found, tagged as stopped.");
-        } else {
-            let error = format!("HTTP {status}: {body}");
-            error!("❌ Failed to stop job {jobid}: {error}");
-            return Err(error);
-        }
+    let job_stopped = if status.is_success() {
+        true
+    } else if status.as_u16() == 500 && body.contains("\"job not found\"") {
+        // Job already gone
+        log_operation(
+            LogLevel::Warn,
+            Some(remote_name.clone()),
+            Some("Stop job".to_string()),
+            format!("Job {jobid} not found in rclone, marking as stopped"),
+            None,
+        )
+        .await;
+        warn!("Job {jobid} not found in rclone, marking as stopped.");
+        true
     } else {
-        // Job was successfully stopped via API, now check if it was a scheduled task
+        // Real error
+        let error = format!("HTTP {status}: {body}");
+        error!("❌ Failed to stop job {jobid}: {error}");
+        return Err(error);
+    };
+
+    if job_stopped {
+        // NOW mark as stopped in cache
+        JOB_CACHE.stop_job(jobid).await.map_err(|e| e.to_string())?;
+
+        // Check if it was a scheduled task
         if let Some(task) = SCHEDULED_TASKS_CACHE.get_task_by_job_id(jobid).await {
             info!(
                 "🛑 Job {} was associated with scheduled task '{}', marking task as stopped",
                 jobid, task.name
             );
+
             SCHEDULED_TASKS_CACHE
                 .update_task(&task.id, |t| {
                     t.mark_stopped();
                 })
                 .await
-                .ok(); // Ignore errors here
+                .map_err(|e| format!("Failed to update task state: {}", e))?;
 
-            // Emit event to notify frontend that scheduled task was stopped
+            // Emit event to notify frontend
             let _ = app.emit(
                 SCHEDULED_TASK_STOPPED,
                 serde_json::json!({
@@ -273,20 +289,21 @@ pub async fn stop_job(
                 }),
             );
         }
+
+        log_operation(
+            LogLevel::Info,
+            Some(remote_name.clone()),
+            Some("Stop job".to_string()),
+            format!("Job {jobid} stopped successfully"),
+            None,
+        )
+        .await;
+
+        app.emit(JOB_CACHE_CHANGED, jobid)
+            .map_err(|e| format!("Failed to emit event: {e}"))?;
+
+        info!("✅ Stopped job {jobid}");
     }
 
-    log_operation(
-        LogLevel::Info,
-        Some(remote_name.clone()),
-        Some("Stop job".to_string()),
-        format!("Job {jobid} stopped successfully"),
-        None,
-    )
-    .await;
-
-    app.emit(JOB_CACHE_CHANGED, jobid)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
-
-    info!("✅ Stopped job {jobid}");
     Ok(())
 }

@@ -43,8 +43,6 @@ fn find_mount_changes(previous: &[MountedRemote], current: &[MountedRemote]) -> 
 
 /// Core logic to check and reconcile mounted remotes
 async fn check_and_reconcile_mounts(app_handle: AppHandle) -> Result<(), String> {
-    debug!("🔍 Reconciling mounted remotes...");
-
     let cached_mounts = CACHE.get_mounted_remotes().await;
     let api_mounts = match get_mounted_remotes_from_api(&app_handle).await {
         Ok(mounts) => mounts,
@@ -155,8 +153,6 @@ async fn get_serves_from_api(app_handle: &AppHandle) -> Result<Vec<ServeInstance
 
 /// Core logic to check and reconcile running serves
 async fn check_and_reconcile_serves(app_handle: AppHandle) -> Result<(), String> {
-    debug!("🔍 Reconciling running serves...");
-
     let cached_serves = CACHE.get_serves().await;
     let api_serves = match get_serves_from_api(&app_handle).await {
         Ok(serves) => serves,

@@ -4,15 +4,16 @@ use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::{
-    core::{
-        config_extractor::{
-            BisyncConfig, CopyConfig, IsValid, MountConfig, MoveConfig, SyncConfig,
-        },
-        settings::remote::manager::save_remote_settings,
-        spawn_helpers::{spawn_bisync, spawn_copy, spawn_mount, spawn_move, spawn_sync},
-    },
+    core::settings::remote::manager::save_remote_settings,
     rclone::{
-        commands::{job::stop_job, mount::unmount_remote},
+        commands::{
+            job::stop_job,
+            mount::{MountParams, mount_remote, unmount_remote},
+            sync::{
+                BisyncParams, CopyParams, MoveParams, SyncParams, start_bisync, start_copy,
+                start_move, start_sync,
+            },
+        },
         state::{cache::CACHE, job::JOB_CACHE},
     },
     utils::{
@@ -28,19 +29,18 @@ fn notify(app: &AppHandle, title: &str, body: &str) {
 
 type PostSuccess = fn(AppHandle) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>;
 
-async fn handle_job_action<T, C, E, F, Fut>(
+async fn handle_job_action<T, P, F, Fut>(
     app: AppHandle,
     id: String,
     id_prefix: &str,
     action_name: &str,
-    config_from_settings: E,
+    params_from_settings: fn(String, &serde_json::Value) -> Option<P>,
     spawn_job: F,
     post_success: Option<PostSuccess>,
 ) where
-    E: Fn(&serde_json::Value) -> C + Send + Sync + 'static,
-    C: IsValid + Send + Sync + Clone + 'static,
+    P: Send + Sync + Clone + 'static,
     T: Send + 'static,
-    F: Fn(String, C, AppHandle) -> Fut + Send + Sync + 'static,
+    F: Fn(AppHandle, P) -> Fut + Send + Sync + 'static,
     Fut: std::future::Future<Output = Result<T, String>> + Send,
 {
     let remote_name = id.replace(id_prefix, "");
@@ -52,18 +52,20 @@ async fn handle_job_action<T, C, E, F, Fut>(
         }
     };
 
-    let config = config_from_settings(&settings);
-    if !config.is_valid() {
-        error!("🚨 {action_name} configuration incomplete for {remote_name}");
-        notify(
-            &app,
-            &format!("{action_name} Failed"),
-            &format!("{action_name} configuration incomplete for {remote_name}"),
-        );
-        return;
-    }
+    let params = match params_from_settings(remote_name.clone(), &settings) {
+        Some(p) => p,
+        None => {
+            error!("🚨 {action_name} configuration incomplete for {remote_name}");
+            notify(
+                &app,
+                &format!("{action_name} Failed"),
+                &format!("{action_name} configuration incomplete for {remote_name}"),
+            );
+            return;
+        }
+    };
 
-    match spawn_job(remote_name.clone(), config, app.clone()).await {
+    match spawn_job(app.clone(), params).await {
         Ok(_) => {
             info!("✅ Started {action_name} for {remote_name}");
             notify(
@@ -199,10 +201,21 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
             }
         };
 
-        let cfg = MountConfig::from_settings(&settings);
+        let mut params = match MountParams::from_settings(remote_name.clone(), &settings) {
+            Some(p) => p,
+            None => {
+                error!("🚨 Mount configuration incomplete for {remote_name}");
+                notify(
+                    &app,
+                    "Mount Failed",
+                    &format!("Mount configuration incomplete for {remote_name}"),
+                );
+                return;
+            }
+        };
 
-        let mount_point = if !cfg.dest.is_empty() {
-            cfg.dest.clone()
+        let mount_point = if !params.mount_point.is_empty() {
+            params.mount_point.clone()
         } else {
             match prompt_mount_point(&app, &remote_name).await {
                 Some(path) => path,
@@ -212,15 +225,9 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                 }
             }
         };
+        params.mount_point = mount_point.clone();
 
-        match spawn_mount(
-            remote_name.clone(),
-            cfg.clone(),
-            Some(mount_point.clone()),
-            app.clone(),
-        )
-        .await
-        {
+        match mount_remote(app.clone(), params.clone()).await {
             Ok(_) => {
                 info!("✅ Successfully mounted {remote_name}");
                 notify(
@@ -228,7 +235,7 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                     "Mount Successful",
                     &format!(
                         "Successfully mounted {remote_name}:{} at {}",
-                        cfg.source, mount_point
+                        params.source, mount_point
                     ),
                 );
                 // Save the mount point if it was newly selected
@@ -236,7 +243,7 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                     .get("mountConfig")
                     .and_then(|v| v.get("dest"))
                     .and_then(|v| v.as_str())
-                    .is_none()
+                    .map_or(true, |s| s.is_empty())
                 {
                     let mut new_settings = settings.clone();
                     new_settings["mountConfig"]["dest"] = serde_json::Value::String(mount_point);
@@ -301,8 +308,8 @@ pub fn handle_sync_remote(app: AppHandle, id: &str) {
         id.to_string(),
         "sync-",
         "Sync",
-        SyncConfig::from_settings,
-        spawn_sync,
+        SyncParams::from_settings,
+        start_sync,
         None,
     ));
 }
@@ -313,8 +320,8 @@ pub fn handle_copy_remote(app: AppHandle, id: &str) {
         id.to_string(),
         "copy-",
         "Copy",
-        CopyConfig::from_settings,
-        spawn_copy,
+        CopyParams::from_settings,
+        start_copy,
         None,
     ));
 }
@@ -325,8 +332,8 @@ pub fn handle_move_remote(app: AppHandle, id: &str) {
         id.to_string(),
         "move-",
         "Move",
-        MoveConfig::from_settings,
-        spawn_move,
+        MoveParams::from_settings,
+        start_move,
         None,
     ));
 }
@@ -337,8 +344,8 @@ pub fn handle_bisync_remote(app: AppHandle, id: &str) {
         id.to_string(),
         "bisync-",
         "BiSync",
-        BisyncConfig::from_settings,
-        spawn_bisync,
+        BisyncParams::from_settings,
+        start_bisync,
         None,
     ));
 }

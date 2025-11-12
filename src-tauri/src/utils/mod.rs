@@ -1,5 +1,6 @@
 pub mod app;
 pub mod io;
+pub mod json_helpers;
 pub mod logging;
 pub mod process;
 pub mod rclone;

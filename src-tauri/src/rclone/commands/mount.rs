@@ -2,7 +2,7 @@ use chrono::Utc;
 use log::{debug, error, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
     RcloneState,
@@ -11,6 +11,7 @@ use crate::{
         watcher::force_check_mounted_remotes,
     },
     utils::{
+        json_helpers::{get_string, json_to_hashmap},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, mount},
         types::{
@@ -23,7 +24,7 @@ use crate::{
 use super::{job::monitor_job, system::redact_sensitive_values};
 
 /// Parameters for mounting a remote filesystem
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct MountParams {
     pub remote_name: String,
     pub source: String,
@@ -35,15 +36,48 @@ pub struct MountParams {
     pub backend_options: Option<HashMap<String, Value>>, // backend options
 }
 
+impl MountParams {
+    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
+        let mount_cfg = settings.get("mountConfig")?;
+
+        let source = get_string(mount_cfg, &["source"]);
+        let dest = get_string(mount_cfg, &["dest"]);
+
+        if source.is_empty() || dest.is_empty() {
+            return None;
+        }
+
+        Some(Self {
+            remote_name,
+            source,
+            mount_point: dest,
+            mount_type: mount_cfg
+                .get("type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("mount")
+                .to_string(),
+            mount_options: json_to_hashmap(mount_cfg.get("options")),
+            vfs_options: json_to_hashmap(settings.get("vfsConfig")),
+            filter_options: json_to_hashmap(settings.get("filterConfig")),
+            backend_options: json_to_hashmap(settings.get("backendConfig")),
+        })
+    }
+
+    pub fn should_auto_start(settings: &Value) -> bool {
+        settings
+            .get("mountConfig")
+            .and_then(|v| v.get("autoStart"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    }
+}
+
 /// Mount a remote filesystem
 #[tauri::command]
-pub async fn mount_remote(
-    app: AppHandle,
-    params: MountParams,
-    state: State<'_, RcloneState>,
-) -> Result<(), String> {
+pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), String> {
     debug!("Received mount_remote params: {params:#?}");
     let mounted_remotes = get_cached_mounted_remotes().await?;
+    let state = app.state::<RcloneState>();
 
     // Check if mount point is in use
     if let Some(existing) = mounted_remotes

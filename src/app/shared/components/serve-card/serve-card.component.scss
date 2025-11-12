@@ -1,22 +1,23 @@
 .serve-card {
-  background: var(--app-background);
+  position: relative;
   transition: var(--transition-standard);
+  border-radius: var(--card-border-radius);
+  background: var(--app-background);
+  box-shadow: var(--shadow-light);
+  border: 1px solid var(--theme-border);
+  animation: fadeIn 0.6s ease-out;
+  animation-fill-mode: both;
+  will-change: transform, box-shadow;
 
   &:hover {
-    box-shadow: 0 4px 16px rgba(var(--primary-color-rgb), 0.25);
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-elevated);
   }
 
   .serve-card-header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--space-md);
-    margin-bottom: var(--space-md);
-
     .serve-info {
       display: flex;
-      gap: var(--space-md);
+      gap: var(--space-xs);
       flex: 1;
       min-width: 0;
 
@@ -108,9 +109,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-xs);
-    padding: var(--space-md);
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
+    margin: var(--space-sm);
+    padding: var(--space-sm);
+    background: rgba(var(--secondary-text-color-rgb), 0.4);
+    border-radius: var(--border-radius);
 
     .metadata-row {
       display: flex;

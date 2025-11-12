@@ -2,16 +2,19 @@ use chrono::Utc;
 use log::{debug, error};
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
     RcloneState,
     rclone::state::{engine::ENGINE_STATE, job::JOB_CACHE},
     utils::{
+        json_helpers::{get_bool, get_string, json_to_hashmap},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, sync},
-        types::all_types::{JobInfo, JobResponse, JobStatus, LogLevel},
-        types::events::JOB_CACHE_CHANGED,
+        types::{
+            all_types::{JobInfo, JobResponse, JobStatus, LogLevel},
+            events::JOB_CACHE_CHANGED,
+        },
     },
 };
 
@@ -20,7 +23,6 @@ use super::job::monitor_job;
 // --- Internal Helper Function ---
 async fn start_sync_like_job(
     app: AppHandle,
-    state: State<'_, RcloneState>,
     remote_name: String,
     source: String,
     dest: String,
@@ -33,6 +35,7 @@ async fn start_sync_like_job(
         "Calling start_sync_like_job for {}: {} -> {}",
         operation_name, source, dest
     );
+    let state = app.state::<RcloneState>();
 
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, endpoint);
 
@@ -103,7 +106,7 @@ async fn start_sync_like_job(
 // --- Parameters Structs (Unchanged) ---
 
 /// Parameters for starting a sync operation
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct SyncParams {
     pub remote_name: String,
     pub source: String,
@@ -114,8 +117,42 @@ pub struct SyncParams {
     pub backend_options: Option<HashMap<String, Value>>,
 }
 
+impl SyncParams {
+    /// Create SyncParams from settings JSON, returns None if invalid
+    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
+        let sync_cfg = settings.get("syncConfig")?;
+
+        let source = get_string(sync_cfg, &["source"]);
+        let dest = get_string(sync_cfg, &["dest"]);
+
+        // Validate required fields
+        if source.is_empty() || dest.is_empty() {
+            return None;
+        }
+
+        Some(Self {
+            remote_name,
+            source,
+            dest,
+            create_empty_src_dirs: get_bool(sync_cfg, &["createEmptySrcDirs"], false),
+            sync_options: json_to_hashmap(sync_cfg.get("options")),
+            filter_options: json_to_hashmap(settings.get("filterConfig")),
+            backend_options: json_to_hashmap(settings.get("backendConfig")),
+        })
+    }
+
+    /// Check if the auto-start flag is enabled
+    pub fn should_auto_start(settings: &Value) -> bool {
+        settings
+            .get("syncConfig")
+            .and_then(|v| v.get("autoStart"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    }
+}
+
 /// Parameters for starting a copy operation
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct CopyParams {
     pub remote_name: String,
     pub source: String,
@@ -126,8 +163,39 @@ pub struct CopyParams {
     pub backend_options: Option<HashMap<String, Value>>,
 }
 
+impl CopyParams {
+    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
+        let copy_cfg = settings.get("copyConfig")?;
+
+        let source = get_string(copy_cfg, &["source"]);
+        let dest = get_string(copy_cfg, &["dest"]);
+
+        if source.is_empty() || dest.is_empty() {
+            return None;
+        }
+
+        Some(Self {
+            remote_name,
+            source,
+            dest,
+            create_empty_src_dirs: get_bool(copy_cfg, &["createEmptySrcDirs"], false),
+            copy_options: json_to_hashmap(copy_cfg.get("options")),
+            filter_options: json_to_hashmap(settings.get("filterConfig")),
+            backend_options: json_to_hashmap(settings.get("backendConfig")),
+        })
+    }
+
+    pub fn should_auto_start(settings: &Value) -> bool {
+        settings
+            .get("copyConfig")
+            .and_then(|v| v.get("autoStart"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    }
+}
+
 /// Parameters for starting a bisync operation
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct BisyncParams {
     pub remote_name: String,
     pub source: String,
@@ -153,8 +221,84 @@ pub struct BisyncParams {
     pub backend_options: Option<HashMap<String, Value>>,
 }
 
+impl BisyncParams {
+    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
+        let bisync_cfg = settings.get("bisyncConfig")?;
+
+        let source = get_string(bisync_cfg, &["source"]);
+        let dest = get_string(bisync_cfg, &["dest"]);
+
+        if source.is_empty() || dest.is_empty() {
+            return None;
+        }
+
+        Some(Self {
+            remote_name,
+            source,
+            dest,
+            dry_run: Some(get_bool(bisync_cfg, &["dryRun"], false)),
+            resync: get_bool(bisync_cfg, &["resync"], false),
+            check_access: Some(get_bool(bisync_cfg, &["checkAccess"], false)),
+            check_filename: bisync_cfg
+                .get("checkFilename")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            max_delete: Some(
+                bisync_cfg
+                    .get("maxDelete")
+                    .and_then(|v| v.as_i64())
+                    .unwrap_or(0),
+            ),
+            force: Some(get_bool(bisync_cfg, &["force"], false)),
+            check_sync: bisync_cfg.get("checkSync").and_then(|v| {
+                if let Some(b) = v.as_bool() {
+                    Some(if b {
+                        "true".to_string()
+                    } else {
+                        "false".to_string()
+                    })
+                } else {
+                    v.as_str().map(|s| s.to_string())
+                }
+            }),
+            create_empty_src_dirs: Some(get_bool(bisync_cfg, &["createEmptySrcDirs"], false)),
+            remove_empty_dirs: Some(get_bool(bisync_cfg, &["removeEmptyDirs"], false)),
+            filters_file: bisync_cfg
+                .get("filtersFile")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            ignore_listing_checksum: Some(get_bool(bisync_cfg, &["ignoreListingChecksum"], false)),
+            resilient: Some(get_bool(bisync_cfg, &["resilient"], false)),
+            workdir: bisync_cfg
+                .get("workdir")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            backupdir1: bisync_cfg
+                .get("backupdir1")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            backupdir2: bisync_cfg
+                .get("backupdir2")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string()),
+            no_cleanup: Some(get_bool(bisync_cfg, &["noCleanup"], false)),
+            bisync_options: json_to_hashmap(bisync_cfg.get("options")),
+            filter_options: json_to_hashmap(settings.get("filterConfig")),
+            backend_options: json_to_hashmap(settings.get("backendConfig")),
+        })
+    }
+
+    pub fn should_auto_start(settings: &Value) -> bool {
+        settings
+            .get("bisyncConfig")
+            .and_then(|v| v.get("autoStart"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    }
+}
+
 /// Parameters for starting a move operation
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct MoveParams {
     pub remote_name: String,
     pub source: String,
@@ -164,6 +308,38 @@ pub struct MoveParams {
     pub move_options: Option<HashMap<String, Value>>, // rclone move-specific options
     pub filter_options: Option<HashMap<String, Value>>, // filter options
     pub backend_options: Option<HashMap<String, Value>>, // backend options
+}
+
+impl MoveParams {
+    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
+        let move_cfg = settings.get("moveConfig")?;
+
+        let source = get_string(move_cfg, &["source"]);
+        let dest = get_string(move_cfg, &["dest"]);
+
+        if source.is_empty() || dest.is_empty() {
+            return None;
+        }
+
+        Some(Self {
+            remote_name,
+            source,
+            dest,
+            create_empty_src_dirs: get_bool(move_cfg, &["createEmptySrcDirs"], false),
+            delete_empty_src_dirs: get_bool(move_cfg, &["deleteEmptySrcDirs"], false),
+            move_options: json_to_hashmap(move_cfg.get("options")),
+            filter_options: json_to_hashmap(settings.get("filterConfig")),
+            backend_options: json_to_hashmap(settings.get("backendConfig")),
+        })
+    }
+
+    pub fn should_auto_start(settings: &Value) -> bool {
+        settings
+            .get("moveConfig")
+            .and_then(|v| v.get("autoStart"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    }
 }
 
 // --- Helper for merging options ---
@@ -187,11 +363,7 @@ fn merge_options(
 
 /// Start a sync operation
 #[tauri::command]
-pub async fn start_sync(
-    app: AppHandle,
-    params: SyncParams,
-    state: State<'_, RcloneState>,
-) -> Result<u64, String> {
+pub async fn start_sync(app: AppHandle, params: SyncParams) -> Result<u64, String> {
     debug!("Received start_sync params: {params:#?}");
     let operation_name = "Sync operation";
     log_operation(
@@ -235,8 +407,7 @@ pub async fn start_sync(
     }
 
     start_sync_like_job(
-        app,
-        state,
+        app.clone(),
         params.remote_name,
         params.source,
         params.dest,
@@ -249,11 +420,7 @@ pub async fn start_sync(
 }
 
 #[tauri::command]
-pub async fn start_copy(
-    app: AppHandle,
-    params: CopyParams,
-    state: State<'_, RcloneState>,
-) -> Result<u64, String> {
+pub async fn start_copy(app: AppHandle, params: CopyParams) -> Result<u64, String> {
     debug!("Received start_copy params: {params:#?}");
     let operation_name = "Copy operation";
     log_operation(
@@ -297,7 +464,6 @@ pub async fn start_copy(
 
     start_sync_like_job(
         app,
-        state,
         params.remote_name,
         params.source,
         params.dest,
@@ -310,11 +476,7 @@ pub async fn start_copy(
 }
 
 #[tauri::command]
-pub async fn start_bisync(
-    app: AppHandle,
-    params: BisyncParams,
-    state: State<'_, RcloneState>,
-) -> Result<u64, String> {
+pub async fn start_bisync(app: AppHandle, params: BisyncParams) -> Result<u64, String> {
     debug!("Received start_bisync params: {params:#?}");
     let operation_name = "Bisync operation";
     log_operation(
@@ -405,7 +567,6 @@ pub async fn start_bisync(
 
     start_sync_like_job(
         app,
-        state,
         params.remote_name,
         params.source,
         params.dest,
@@ -418,11 +579,7 @@ pub async fn start_bisync(
 }
 
 #[tauri::command]
-pub async fn start_move(
-    app: AppHandle,
-    params: MoveParams,
-    state: State<'_, RcloneState>,
-) -> Result<u64, String> {
+pub async fn start_move(app: AppHandle, params: MoveParams) -> Result<u64, String> {
     debug!("Received start_move params: {params:#?}");
     let operation_name = "Move operation";
     log_operation(
@@ -469,7 +626,6 @@ pub async fn start_move(
 
     start_sync_like_job(
         app,
-        state,
         params.remote_name,
         params.source,
         params.dest,

@@ -1,41 +1,50 @@
 use log::{debug, error, info};
+use serde_json::Value;
 use tauri::AppHandle;
 
-use crate::core::config_extractor::ServeConfig;
-use crate::core::config_extractor::{
-    BisyncConfig, CopyConfig, IsValid, MountConfig, MoveConfig, SyncConfig,
+use crate::rclone::{
+    commands::{
+        mount::{MountParams, mount_remote},
+        serve::{ServeParams, start_serve},
+        sync::{
+            BisyncParams, CopyParams, MoveParams, SyncParams, start_bisync, start_copy, start_move,
+            start_sync,
+        },
+    },
+    state::cache::{CACHE, get_cached_remotes},
 };
-use crate::core::spawn_helpers::spawn_serve;
-use crate::core::spawn_helpers::{spawn_bisync, spawn_copy, spawn_mount, spawn_move, spawn_sync};
-use crate::rclone::state::cache::{CACHE, get_cached_remotes};
-// spawn_helpers now construct rclone param structs; no direct command param imports needed here
 
-/// Helper function to handle auto-start logic for a given operation.
-async fn handle_auto_start<C, T, E, F, Fut>(
+/// Generic handler for auto-start operations
+use std::future::Future;
+use std::pin::Pin;
+
+async fn handle_auto_start<P, F, T>(
     remote_name: &str,
-    settings: &serde_json::Value,
-    config_name: &str,
+    settings: &Value,
+    operation_name: &str,
     app_handle: AppHandle,
-    extractor: E,
+    from_settings: fn(String, &Value) -> Option<P>,
+    should_start: fn(&Value) -> bool,
     spawn_fn: F,
 ) where
-    E: Fn(&serde_json::Value) -> C + Send + Sync + 'static,
-    C: IsValid + Clone + Send + Sync + 'static,
-    F: Fn(String, C, AppHandle) -> Fut + Send + Sync + 'static,
-    Fut: std::future::Future<Output = Result<T, String>> + Send,
+    F: Fn(AppHandle, P) -> Pin<Box<dyn Future<Output = Result<T, String>> + Send>>
+        + Send
+        + Sync
+        + 'static,
+    P: Send + 'static,
+    T: Send + 'static,
 {
-    let should_auto = settings
-        .get(config_name)
-        .and_then(|v| v.get("autoStart"))
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
+    if !should_start(settings) {
+        debug!(
+            "Skipping {} for {}: autoStart is not enabled",
+            operation_name, remote_name
+        );
+        return;
+    }
 
-    let operation_name = config_name.trim_end_matches("Config");
-
-    if should_auto {
-        let cfg = extractor(settings);
-        if cfg.is_valid() {
-            if let Err(e) = spawn_fn(remote_name.to_string(), cfg.clone(), app_handle).await {
+    match from_settings(remote_name.to_string(), settings) {
+        Some(params) => {
+            if let Err(e) = spawn_fn(app_handle.clone(), params).await {
                 error!(
                     "Failed to auto-start {} for {}: {}",
                     operation_name, remote_name, e
@@ -43,17 +52,13 @@ async fn handle_auto_start<C, T, E, F, Fut>(
             } else {
                 debug!("{} task spawned for {}", operation_name, remote_name);
             }
-        } else {
+        }
+        None => {
             error!(
                 "❌ {} configuration incomplete for {}",
                 operation_name, remote_name
             );
         }
-    } else {
-        debug!(
-            "Skipping {} for {}: autoStart is not enabled",
-            operation_name, remote_name
-        );
     }
 }
 
@@ -62,88 +67,93 @@ pub async fn handle_startup(app_handle: AppHandle) {
     info!("🚀 Checking startup options...");
 
     // Initialize remotes
-    let remotes_result = initialize_remotes().await;
-
-    // Process remotes after retrieval
-    if let Ok(remotes) = remotes_result {
-        for remote in remotes.iter() {
-            handle_remote_startup(remote.to_string(), app_handle.clone()).await;
-        }
-    }
-}
-
-/// Fetches the list of available remotes.
-async fn initialize_remotes() -> Result<Vec<String>, String> {
-    let remotes = get_cached_remotes().await?;
-    Ok(remotes)
-}
-
-/// Handles startup logic for an individual remote.
-async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
-    // Get settings from cache (consistent with actions.rs)
-    let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
-        Some(s) => s,
-        None => {
-            error!("Remote {remote_name} not found in cached settings");
+    let remotes = match get_cached_remotes().await {
+        Ok(r) => r,
+        Err(e) => {
+            error!("Failed to get remotes: {}", e);
             return;
         }
     };
 
-    // Handle auto-start for each operation, using extractor functions and spawn helpers
+    for remote in remotes {
+        handle_remote_startup(&remote, app_handle.clone()).await;
+    }
+}
+
+/// Handles startup logic for an individual remote.
+async fn handle_remote_startup(remote_name: &str, app_handle: AppHandle) {
+    let settings = match CACHE.settings.read().await.get(remote_name).cloned() {
+        Some(s) => s,
+        None => {
+            error!("Remote {} not found in cached settings", remote_name);
+            return;
+        }
+    };
+
+    // Handle each operation type
     handle_auto_start(
-        &remote_name,
+        remote_name,
         &settings,
-        "mountConfig",
+        "mount",
         app_handle.clone(),
-        MountConfig::from_settings,
-        |r, c, a| spawn_mount(r, c, None, a),
-    )
-    .await;
-    handle_auto_start(
-        &remote_name,
-        &settings,
-        "syncConfig",
-        app_handle.clone(),
-        SyncConfig::from_settings,
-        spawn_sync,
-    )
-    .await;
-    handle_auto_start(
-        &remote_name,
-        &settings,
-        "copyConfig",
-        app_handle.clone(),
-        CopyConfig::from_settings,
-        spawn_copy,
-    )
-    .await;
-    handle_auto_start(
-        &remote_name,
-        &settings,
-        "moveConfig",
-        app_handle.clone(),
-        MoveConfig::from_settings,
-        spawn_move,
-    )
-    .await;
-    handle_auto_start(
-        &remote_name,
-        &settings,
-        "bisyncConfig",
-        app_handle.clone(),
-        BisyncConfig::from_settings,
-        spawn_bisync,
+        MountParams::from_settings,
+        MountParams::should_auto_start,
+        |app, params| Box::pin(mount_remote(app, params)),
     )
     .await;
 
-    // Handle serve auto-start as well
     handle_auto_start(
-        &remote_name,
+        remote_name,
         &settings,
-        "serveConfig",
+        "sync",
         app_handle.clone(),
-        ServeConfig::from_settings,
-        spawn_serve,
+        SyncParams::from_settings,
+        SyncParams::should_auto_start,
+        |app, params| Box::pin(start_sync(app, params)),
+    )
+    .await;
+
+    handle_auto_start(
+        remote_name,
+        &settings,
+        "copy",
+        app_handle.clone(),
+        CopyParams::from_settings,
+        CopyParams::should_auto_start,
+        |app, params| Box::pin(start_copy(app, params)),
+    )
+    .await;
+
+    handle_auto_start(
+        remote_name,
+        &settings,
+        "move",
+        app_handle.clone(),
+        MoveParams::from_settings,
+        MoveParams::should_auto_start,
+        |app, params| Box::pin(start_move(app, params)),
+    )
+    .await;
+
+    handle_auto_start(
+        remote_name,
+        &settings,
+        "bisync",
+        app_handle.clone(),
+        BisyncParams::from_settings,
+        BisyncParams::should_auto_start,
+        |app, params| Box::pin(start_bisync(app, params)),
+    )
+    .await;
+
+    handle_auto_start(
+        remote_name,
+        &settings,
+        "serve",
+        app_handle.clone(),
+        ServeParams::from_settings,
+        ServeParams::should_auto_start,
+        |app, params| Box::pin(start_serve(app, params)),
     )
     .await;
 }

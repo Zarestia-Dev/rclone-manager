@@ -104,12 +104,12 @@
           <div class="task-carousel-container">
             <div class="task-carousel-slide-wrapper">
               @if (currentTask) {
-                <div
+                <mat-card
                   class="task-detail-card"
                   [class.disabled]="currentTask.status === 'disabled'"
                   [class.stopping]="currentTask.status === 'stopping'"
                 >
-                  <div class="task-detail-header">
+                  <mat-card-header class="task-detail-header">
                     <div class="task-info">
                       <div class="task-title-row">
                         <mat-icon
@@ -149,11 +149,9 @@
                     >
                       <mat-icon [svgIcon]="getToggleIcon(currentTask.status)"></mat-icon>
                     </button>
-                  </div>
+                  </mat-card-header>
 
-                  <mat-divider></mat-divider>
-
-                  <div class="task-detail-body">
+                  <mat-card-footer class="task-detail-body">
                     <div class="detail-section">
                       <h5 class="section-title">
                         <mat-icon svgIcon="clock"></mat-icon>
@@ -242,8 +240,8 @@
                         <div class="running-info">Job ID: {{ currentTask.currentJobId }}</div>
                       </div>
                     }
-                  </div>
-                </div>
+                  </mat-card-footer>
+                </mat-card>
               }
             </div>
           </div>

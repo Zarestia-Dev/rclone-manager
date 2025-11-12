@@ -26,18 +26,17 @@ impl ScheduledTasksCache {
 
         let mut loaded_count = 0;
         let mut new_task_ids = HashSet::new();
+        let mut tasks_to_update = Vec::new();
 
+        // Phase 1: Collect all tasks from configs
         for (remote_name, remote_settings) in settings_obj {
-            // Get filter and backend configs
             let filter_config = remote_settings.get("filterConfig").unwrap_or(&Value::Null);
             let backend_config = remote_settings.get("backendConfig").unwrap_or(&Value::Null);
 
-            // Check each operation type (copyConfig, syncConfig, moveConfig, bisyncConfig)
             let operation_types = ["copyConfig", "syncConfig", "moveConfig", "bisyncConfig"];
 
             for op_type in operation_types {
                 if let Some(op_config) = remote_settings.get(op_type).and_then(|v| v.as_object()) {
-                    // Parse the task from config using your existing function
                     match self
                         .parse_task_from_config(
                             remote_name,
@@ -51,53 +50,9 @@ impl ScheduledTasksCache {
                         Ok(Some(task_from_config)) => {
                             let task_id = task_from_config.id.clone();
                             new_task_ids.insert(task_id.clone());
-
-                            // Check if we already have this task
-                            if let Some(existing_task) = self.get_task(&task_id).await {
-                                // Task exists - check if configuration changed
-                                let config_changed = existing_task.cron_expression
-                                    != task_from_config.cron_expression
-                                    || existing_task.args != task_from_config.args
-                                    || existing_task.name != task_from_config.name
-                                    || existing_task.task_type != task_from_config.task_type;
-
-                                if config_changed {
-                                    // Update task but preserve status, scheduler_job_id, and stats
-                                    self.update_task(&task_id, |t| {
-                                        t.name = task_from_config.name.clone();
-                                        t.cron_expression =
-                                            task_from_config.cron_expression.clone();
-                                        t.args = task_from_config.args.clone();
-                                        t.task_type = task_from_config.task_type.clone();
-                                        t.next_run = task_from_config.next_run;
-                                        // PRESERVE: status, scheduler_job_id, created_at, last_run,
-                                        // last_error, current_job_id, run_count, success_count, failure_count
-                                    })
-                                    .await?;
-
-                                    info!(
-                                        "✏️ Updated existing task config: {} ({})",
-                                        existing_task.name, task_id
-                                    );
-                                } else {
-                                    debug!("Task {} unchanged, skipping", task_id);
-                                }
-                            } else {
-                                // New task - add it
-                                self.add_task(task_from_config.clone()).await?;
-                                loaded_count += 1;
-                                info!("➕ Added new task: {} ({})", task_from_config.name, task_id);
-                            }
+                            tasks_to_update.push((task_id, task_from_config));
                         }
-                        Ok(None) => {
-                            // Task is disabled or invalid, check if we need to remove it
-                            let task_id =
-                                format!("{}-{}", remote_name, op_type.trim_end_matches("Config"));
-                            if self.get_task(&task_id).await.is_some() {
-                                info!("🗑️ Removing disabled/invalid task: {}", task_id);
-                                self.remove_task(&task_id).await?;
-                            }
-                        }
+                        Ok(None) => {}
                         Err(e) => {
                             warn!(
                                 "Failed to parse task from {} for {}: {}",
@@ -109,7 +64,45 @@ impl ScheduledTasksCache {
             }
         }
 
-        // Remove tasks that are no longer in any configs
+        // Phase 2: Apply updates (minimizes lock time)
+        for (task_id, task_from_config) in tasks_to_update {
+            if let Some(existing_task) = self.get_task(&task_id).await {
+                // Check if configuration changed
+                let config_changed = existing_task.cron_expression
+                    != task_from_config.cron_expression
+                    || existing_task.args != task_from_config.args
+                    || existing_task.name != task_from_config.name
+                    || existing_task.task_type != task_from_config.task_type;
+
+                if config_changed {
+                    // Preserve runtime state
+                    self.update_task(&task_id, |t| {
+                        t.name = task_from_config.name.clone();
+                        t.cron_expression = task_from_config.cron_expression.clone();
+                        t.args = task_from_config.args.clone();
+                        t.task_type = task_from_config.task_type.clone();
+                        t.next_run = task_from_config.next_run;
+                        // Preserve: status, scheduler_job_id, created_at, last_run,
+                        // last_error, current_job_id, run_count, success_count, failure_count
+                    })
+                    .await?;
+
+                    info!(
+                        "✏️ Updated existing task config: {} ({})",
+                        existing_task.name, task_id
+                    );
+                } else {
+                    debug!("Task {} unchanged, skipping", task_id);
+                }
+            } else {
+                // New task - add it
+                self.add_task(task_from_config.clone()).await?;
+                loaded_count += 1;
+                info!("➕ Added new task: {} ({})", task_from_config.name, task_id);
+            }
+        }
+
+        // Phase 3: Remove obsolete tasks
         let all_tasks = self.get_all_tasks().await;
         for task in all_tasks {
             if !new_task_ids.contains(&task.id) {

@@ -318,7 +318,10 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   async selectFolder(opName: string, pathType: 'source' | 'dest'): Promise<void> {
     try {
-      const selectedPath = await this.fileSystemService.selectFolder(true);
+      // Only require an empty folder when selecting a mount destination.
+      // Other operations (sync/copy/etc.) do not need an empty local folder.
+      const requireEmpty = opName === 'mount' && pathType === 'dest';
+      const selectedPath = await this.fileSystemService.selectFolder(requireEmpty);
       if (selectedPath) {
         let controlPath: string;
         if (opName === 'mount' && pathType === 'dest') {

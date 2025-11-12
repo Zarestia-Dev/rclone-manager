@@ -5,7 +5,7 @@ use crate::utils::types::scheduled_task::{ScheduledTask, TaskStatus, TaskType};
 use chrono::{Local, Utc};
 use log::{debug, error, info, warn};
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter};
 use tokio::sync::RwLock;
 use tokio_cron_scheduler::{JobBuilder, JobScheduler};
 use uuid::Uuid;
@@ -320,12 +320,11 @@ async fn execute_copy_task(
     app_handle: &AppHandle,
 ) -> Result<Option<u64>, String> {
     use crate::rclone::commands::sync::start_copy;
-    let state: State<crate::utils::types::all_types::RcloneState> = app_handle.state();
 
     let params: CopyParams = serde_json::from_value(task.args.clone())
         .map_err(|e| format!("Failed to parse copy task args: {}", e))?;
 
-    let result = start_copy(app_handle.clone(), params, state).await?;
+    let result = start_copy(app_handle.clone(), params).await?;
     Ok(Some(result))
 }
 
@@ -335,12 +334,11 @@ async fn execute_sync_task(
     app_handle: &AppHandle,
 ) -> Result<Option<u64>, String> {
     use crate::rclone::commands::sync::start_sync;
-    let state: State<crate::utils::types::all_types::RcloneState> = app_handle.state();
 
     let params: SyncParams = serde_json::from_value(task.args.clone())
         .map_err(|e| format!("Failed to parse sync task args: {}", e))?;
 
-    let result = start_sync(app_handle.clone(), params, state).await?;
+    let result = start_sync(app_handle.clone(), params).await?;
     Ok(Some(result))
 }
 
@@ -350,12 +348,11 @@ async fn execute_move_task(
     app_handle: &AppHandle,
 ) -> Result<Option<u64>, String> {
     use crate::rclone::commands::sync::start_move;
-    let state: State<crate::utils::types::all_types::RcloneState> = app_handle.state();
 
     let params: MoveParams = serde_json::from_value(task.args.clone())
         .map_err(|e| format!("Failed to parse move task args: {}", e))?;
 
-    let result = start_move(app_handle.clone(), params, state).await?;
+    let result = start_move(app_handle.clone(), params).await?;
     Ok(Some(result))
 }
 
@@ -365,11 +362,10 @@ async fn execute_bisync_task(
     app_handle: &AppHandle,
 ) -> Result<Option<u64>, String> {
     use crate::rclone::commands::sync::start_bisync;
-    let state: State<crate::utils::types::all_types::RcloneState> = app_handle.state();
 
     let params: BisyncParams = serde_json::from_value(task.args.clone())
         .map_err(|e| format!("Failed to parse bisync task args: {}", e))?;
 
-    let result = start_bisync(app_handle.clone(), params, state).await?;
+    let result = start_bisync(app_handle.clone(), params).await?;
     Ok(Some(result))
 }

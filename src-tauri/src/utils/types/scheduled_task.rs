@@ -1,7 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use uuid::Uuid;
 
 /// Type of scheduled task
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -86,25 +85,43 @@ pub struct ScheduledTask {
     pub failure_count: u64,
 }
 
+// In scheduled_task.rs
 impl ScheduledTask {
-    pub fn new(name: String, task_type: TaskType, cron_expression: String, args: Value) -> Self {
-        Self {
-            id: Uuid::new_v4().to_string(),
-            name,
-            task_type,
-            cron_expression,
-            status: TaskStatus::Enabled,
-            args,
-            created_at: Utc::now(),
-            last_run: None,
-            next_run: None,
-            last_error: None,
-            current_job_id: None,
-            scheduler_job_id: None,
-            run_count: 0,
-            success_count: 0,
-            failure_count: 0,
+    /// Validate and transition task state
+    pub fn transition_to(&mut self, new_status: TaskStatus) -> Result<(), String> {
+        let valid_transition = match (&self.status, &new_status) {
+            // From Enabled
+            (TaskStatus::Enabled, TaskStatus::Disabled) => true,
+            (TaskStatus::Enabled, TaskStatus::Running) => true,
+
+            // From Disabled
+            (TaskStatus::Disabled, TaskStatus::Enabled) => true,
+
+            // From Running
+            (TaskStatus::Running, TaskStatus::Enabled) => true, // Success
+            (TaskStatus::Running, TaskStatus::Failed) => true,
+            (TaskStatus::Running, TaskStatus::Stopping) => true,
+
+            // From Stopping
+            (TaskStatus::Stopping, TaskStatus::Disabled) => true,
+            (TaskStatus::Stopping, TaskStatus::Enabled) => true,
+
+            // From Failed
+            (TaskStatus::Failed, TaskStatus::Enabled) => true,
+            (TaskStatus::Failed, TaskStatus::Disabled) => true,
+
+            _ => false,
+        };
+
+        if !valid_transition {
+            return Err(format!(
+                "Invalid state transition from {:?} to {:?}",
+                self.status, new_status
+            ));
         }
+
+        self.status = new_status;
+        Ok(())
     }
 
     /// Update the task after a successful run
@@ -113,6 +130,8 @@ impl ScheduledTask {
         self.last_error = None;
         self.current_job_id = None;
         self.success_count += 1;
+
+        // Clear transition: Running -> Enabled or Stopping -> Disabled
         self.status = if self.status == TaskStatus::Stopping {
             TaskStatus::Disabled
         } else {
@@ -126,24 +145,31 @@ impl ScheduledTask {
         self.last_error = Some(error);
         self.current_job_id = None;
         self.failure_count += 1;
+
         self.status = if self.status == TaskStatus::Stopping {
             TaskStatus::Disabled
         } else {
-            TaskStatus::Failed
+            TaskStatus::Enabled
         };
     }
 
-    /// Mark task as starting execution (without job ID yet)
-    pub fn mark_starting(&mut self) {
-        self.status = TaskStatus::Running;
+    /// Mark task as starting execution
+    pub fn mark_starting(&mut self) -> Result<(), String> {
+        if !self.can_run() {
+            return Err(format!("Task cannot start from status {:?}", self.status));
+        }
+
+        self.transition_to(TaskStatus::Running)?;
         self.last_run = Some(Utc::now());
         self.current_job_id = None;
         self.run_count += 1;
+        Ok(())
     }
 
     /// Mark task as running with job ID (after operation starts)
     pub fn mark_running(&mut self, job_id: u64) {
         self.current_job_id = Some(job_id);
+        self.status = TaskStatus::Running;
     }
 
     /// Mark task as stopped/cancelled (job was manually stopped)
@@ -157,7 +183,7 @@ impl ScheduledTask {
         };
     }
 
-    /// Check if task is enabled and can run
+    /// Check if task can transition to running
     pub fn can_run(&self) -> bool {
         self.status == TaskStatus::Enabled && self.current_job_id.is_none()
     }

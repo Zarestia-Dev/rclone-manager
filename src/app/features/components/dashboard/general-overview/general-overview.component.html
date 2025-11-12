@@ -313,7 +313,7 @@
             } @else {
               <div class="tasks-grid">
                 @for (task of scheduledTasks; track task.id) {
-                  <div
+                  <mat-card
                     class="task-card"
                     [class.disabled]="task.status === 'disabled'"
                     [class.stopping]="task.status === 'stopping'"
@@ -330,7 +330,7 @@
                       (task.status | titlecase)
                     "
                   >
-                    <div class="task-header">
+                    <mat-card-header class="task-header">
                       <div class="task-info-section">
                         <div class="task-icon-wrapper" [class]="getTaskTypeColor(task.taskType)">
                           <mat-icon
@@ -367,48 +367,50 @@
                       >
                         <mat-icon [svgIcon]="getToggleIcon(task.status)"></mat-icon>
                       </button>
-                    </div>
+                    </mat-card-header>
 
-                    <div class="task-stats">
-                      <div class="stat-item">
-                        <mat-icon svgIcon="circle-check" class="stat-icon success"></mat-icon>
-                        <span class="stat-value">{{ task.successCount }}</span>
+                    <mat-card-footer class="task-footer">
+                      <div class="task-stats">
+                        <div class="stat-item">
+                          <mat-icon svgIcon="circle-check" class="stat-icon success"></mat-icon>
+                          <span class="stat-value">{{ task.successCount }}</span>
+                        </div>
+                        <div class="stat-item">
+                          <mat-icon svgIcon="circle-exclamation" class="stat-icon error"></mat-icon>
+                          <span class="stat-value">{{ task.failureCount }}</span>
+                        </div>
+                        <div class="stat-item">
+                          <mat-icon svgIcon="clock" class="stat-icon"></mat-icon>
+                          <span class="stat-value">{{ task.runCount }}</span>
+                        </div>
                       </div>
-                      <div class="stat-item">
-                        <mat-icon svgIcon="circle-exclamation" class="stat-icon error"></mat-icon>
-                        <span class="stat-value">{{ task.failureCount }}</span>
-                      </div>
-                      <div class="stat-item">
-                        <mat-icon svgIcon="clock" class="stat-icon"></mat-icon>
-                        <span class="stat-value">{{ task.runCount }}</span>
-                      </div>
-                    </div>
 
-                    <div class="task-schedule">
-                      <div class="schedule-item">
-                        <span class="schedule-label">Next Run:</span>
-                        <span class="schedule-value">{{ getFormattedNextRun(task) }}</span>
-                      </div>
-                      @if (task.lastRun) {
+                      <div class="task-schedule">
                         <div class="schedule-item">
-                          <span class="schedule-label">Last Run:</span>
-                          <span class="schedule-value">{{ getFormattedLastRun(task) }}</span>
+                          <span class="schedule-label">Next Run:</span>
+                          <span class="schedule-value">{{ getFormattedNextRun(task) }}</span>
+                        </div>
+                        @if (task.lastRun) {
+                          <div class="schedule-item">
+                            <span class="schedule-label">Last Run:</span>
+                            <span class="schedule-value">{{ getFormattedLastRun(task) }}</span>
+                          </div>
+                        }
+                      </div>
+
+                      <div class="task-cron">
+                        <mat-icon svgIcon="terminal" class="cron-icon"></mat-icon>
+                        <code class="cron-expression">{{ task.cronExpression }}</code>
+                      </div>
+
+                      @if (task.lastError) {
+                        <div class="task-error">
+                          <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
+                          <span class="error-text">{{ task.lastError }}</span>
                         </div>
                       }
-                    </div>
-
-                    <div class="task-cron">
-                      <mat-icon svgIcon="terminal" class="cron-icon"></mat-icon>
-                      <code class="cron-expression">{{ task.cronExpression }}</code>
-                    </div>
-
-                    @if (task.lastError) {
-                      <div class="task-error">
-                        <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
-                        <span class="error-text">{{ task.lastError }}</span>
-                      </div>
-                    }
-                  </div>
+                    </mat-card-footer>
+                  </mat-card>
                 }
               </div>
             }

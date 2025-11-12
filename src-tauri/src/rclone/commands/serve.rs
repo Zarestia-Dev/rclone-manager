@@ -1,12 +1,13 @@
 use log::{debug, error, info};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
     RcloneState,
     rclone::state::engine::ENGINE_STATE,
     utils::{
+        json_helpers::{get_string, json_to_hashmap},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, serve},
         types::{all_types::LogLevel, events::SERVE_STATE_CHANGED},
@@ -23,6 +24,43 @@ pub struct ServeParams {
     pub backend_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub vfs_options: Option<HashMap<String, Value>>,
+}
+
+impl ServeParams {
+    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
+        let serve_cfg = settings.get("serveConfig")?;
+
+        let source = get_string(serve_cfg, &["source"]);
+
+        // Valid if either source is set or fs is in options
+        let has_source = !source.is_empty();
+        let has_fs = serve_cfg
+            .get("options")
+            .and_then(|opts| opts.get("fs"))
+            .and_then(|v| v.as_str())
+            .map(|s| !s.is_empty())
+            .unwrap_or(false);
+
+        if !has_source && !has_fs {
+            return None;
+        }
+
+        Some(Self {
+            remote_name,
+            serve_options: json_to_hashmap(serve_cfg.get("options")),
+            backend_options: json_to_hashmap(settings.get("backendConfig")),
+            filter_options: json_to_hashmap(settings.get("filterConfig")),
+            vfs_options: json_to_hashmap(settings.get("vfsConfig")),
+        })
+    }
+
+    pub fn should_auto_start(settings: &Value) -> bool {
+        settings
+            .get("serveConfig")
+            .and_then(|v| v.get("autoStart"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    }
 }
 
 /// Response from starting a serve instance
@@ -62,12 +100,12 @@ async fn handle_rclone_response(
 pub async fn start_serve(
     app: AppHandle,
     params: ServeParams,
-    state: State<'_, RcloneState>,
 ) -> Result<ServeStartResponse, String> {
     // Validate remote name
     if params.remote_name.trim().is_empty() {
         return Err("Remote name cannot be empty".to_string());
     }
+    let state = app.state::<RcloneState>();
 
     // Validate serve type is specified
     let serve_type = params
