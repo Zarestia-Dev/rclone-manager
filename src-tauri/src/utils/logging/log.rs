@@ -1,13 +1,18 @@
 use chrono::Utc;
 use log::LevelFilter;
 use log::SetLoggerError;
+use once_cell::sync::OnceCell;
 use serde_json::Value;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use tokio::sync::mpsc;
 
 use crate::rclone::state::log::LOG_CACHE;
 use crate::utils::types::all_types::DynamicLogger;
 use crate::utils::types::all_types::LogEntry;
 use crate::utils::types::all_types::LogLevel;
+
+// This will hold the "sender" part of our logging channel.
+static LOG_SENDER: OnceCell<mpsc::Sender<LogEntry>> = OnceCell::new();
 
 static LOG_LEVEL: AtomicUsize = AtomicUsize::new(LevelFilter::Info as usize);
 
@@ -44,7 +49,18 @@ fn current_log_level() -> LevelFilter {
 }
 
 pub fn init_logging(enable_debug: bool) -> Result<(), SetLoggerError> {
-    //Init only once
+    let (tx, mut rx) = mpsc::channel::<LogEntry>(1000);
+
+    tauri::async_runtime::spawn(async move {
+        while let Some(entry) = rx.recv().await {
+            LOG_CACHE.add_entry_from_processor(entry).await;
+        }
+    });
+
+    if LOG_SENDER.set(tx).is_err() {
+        eprintln!("CRITICAL: Failed to set LOG_SENDER. Logging will not work.");
+    }
+
     let level = if enable_debug {
         LevelFilter::Debug
     } else {
@@ -68,7 +84,8 @@ pub fn update_log_level(enable_debug: bool) {
     log::set_max_level(level);
 }
 
-pub async fn log_operation(
+// Fire and forget logging function.
+pub fn log_operation(
     level: LogLevel,
     remote_name: Option<String>,
     operation: Option<String>,
@@ -84,19 +101,14 @@ pub async fn log_operation(
         operation,
     };
 
-    // Log to both console and cache
-    // Uncomment the following lines if you want to log to console as well
-    // use log::debug;
-    // use log::error;
-    // use log::info;
-    // use log::warn;
-    // match level.clone() {
-    //     LogLevel::Error => error!("{entry:?}"),
-    //     LogLevel::Warn => warn!("{entry:?}"),
-    //     LogLevel::Info => info!("{entry:?}"),
-    //     LogLevel::Debug => debug!("{entry:?}"),
-    //     LogLevel::Trace => debug!("{entry:?}"),
-    // }
-
-    LOG_CACHE.add_entry(entry).await;
+    if let Some(sender) = LOG_SENDER.get() {
+        if let Err(e) = sender.try_send(entry) {
+            eprintln!(
+                "Failed to send log message to processor (channel full?): {}",
+                e
+            );
+        }
+    } else {
+        eprintln!("Log sender not initialized. Log entry dropped.");
+    }
 }

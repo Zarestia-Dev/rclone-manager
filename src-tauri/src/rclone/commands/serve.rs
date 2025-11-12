@@ -87,8 +87,7 @@ async fn handle_rclone_response(
             Some(operation.to_string()),
             format!("Failed to {}: {error}", operation.to_lowercase()),
             Some(json!({"response": body})),
-        )
-        .await;
+        );
         return Err(error);
     }
 
@@ -156,8 +155,7 @@ pub async fn start_serve(
                 .unwrap_or("unknown"),
         ),
         Some(log_context),
-    )
-    .await;
+    );
 
     // Prepare payload
     let mut payload = serde_json::Map::new();
@@ -217,8 +215,7 @@ pub async fn start_serve(
                     Some("Start serve".to_string()),
                     error_for_log,
                     Some(json!({"payload": payload_clone})),
-                )
-                .await;
+                );
             });
             error
         })?;
@@ -239,8 +236,7 @@ pub async fn start_serve(
                 Some("Start serve".to_string()),
                 err_msg,
                 Some(json!({"response": body})),
-            )
-            .await;
+            );
         });
         format!("Failed to parse response: {e}")
     })?;
@@ -257,8 +253,7 @@ pub async fn start_serve(
             "id": serve_response.id,
             "addr": serve_response.addr
         })),
-    )
-    .await;
+    );
 
     // Emit event for UI update
     app.emit(SERVE_STATE_CHANGED, &params.remote_name)
@@ -286,8 +281,7 @@ pub async fn stop_serve(
         Some("Stop serve".to_string()),
         format!("Attempting to stop serve with ID {server_id}"),
         None,
-    )
-    .await;
+    );
 
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::STOP);
     let payload = json!({ "id": server_id });
@@ -308,8 +302,7 @@ pub async fn stop_serve(
         Some("Stop serve".to_string()),
         format!("Successfully stopped serve {server_id}"),
         None,
-    )
-    .await;
+    );
 
     app.emit(SERVE_STATE_CHANGED, &remote_name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;

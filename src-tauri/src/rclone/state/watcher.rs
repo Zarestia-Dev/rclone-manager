@@ -106,7 +106,7 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
 
         // **Optimization**: Skip monitoring if cache is empty
         if CACHE.get_mounted_remotes().await.is_empty() {
-            debug!("🔍 No remotes in cache, skipping API check");
+            debug!("🔍 No mounted remotes in cache, skipping API check");
             continue;
         }
 

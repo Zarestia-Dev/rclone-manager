@@ -9,12 +9,16 @@ use crate::{
         commands::{
             job::stop_job,
             mount::{MountParams, mount_remote, unmount_remote},
+            serve::{ServeParams, start_serve, stop_all_serves, stop_serve},
             sync::{
                 BisyncParams, CopyParams, MoveParams, SyncParams, start_bisync, start_copy,
                 start_move, start_sync,
             },
         },
-        state::{cache::CACHE, job::JOB_CACHE},
+        state::{
+            cache::{CACHE, get_cached_serves},
+            job::JOB_CACHE,
+        },
     },
     utils::{
         app::{builder::create_app_window, notification::send_notification},
@@ -28,7 +32,6 @@ fn notify(app: &AppHandle, title: &str, body: &str) {
 }
 
 type PostSuccess = fn(AppHandle) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>;
-
 async fn handle_job_action<T, P, F, Fut>(
     app: AppHandle,
     id: String,
@@ -87,7 +90,6 @@ async fn handle_job_action<T, P, F, Fut>(
         }
     }
 }
-
 async fn handle_stop_job(
     app: AppHandle,
     id: String,
@@ -129,7 +131,6 @@ async fn handle_stop_job(
         );
     }
 }
-
 async fn prompt_mount_point(app: &AppHandle, remote_name: &str) -> Option<String> {
     let response = app
         .dialog()
@@ -168,7 +169,6 @@ async fn prompt_mount_point(app: &AppHandle, remote_name: &str) -> Option<String
         }
     }
 }
-
 fn get_mount_point(settings: &serde_json::Value) -> String {
     settings
         .get("mountConfig")
@@ -177,7 +177,6 @@ fn get_mount_point(settings: &serde_json::Value) -> String {
         .unwrap_or("")
         .to_string()
 }
-
 pub fn show_main_window(app: AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         debug!("🪟 Showing main window");
@@ -190,8 +189,10 @@ pub fn show_main_window(app: AppHandle) {
     }
 }
 
-pub fn handle_mount_remote(app: AppHandle, id: &str) {
-    let remote_name = id.replace("mount-", "");
+// ... (handle_mount_remote, handle_unmount_remote, ... handle_stop_bisync, handle_stop_all_jobs, handle_browse_remote are unchanged) ...
+// (Find these functions from the original file)
+pub fn handle_mount_remote(app: AppHandle, remote_name: &str) {
+    let remote_name = remote_name.to_string();
     tauri::async_runtime::spawn(async move {
         let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
             Some(s) => s,
@@ -238,7 +239,6 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
                         params.source, mount_point
                     ),
                 );
-                // Save the mount point if it was newly selected
                 if settings
                     .get("mountConfig")
                     .and_then(|v| v.get("dest"))
@@ -266,11 +266,9 @@ pub fn handle_mount_remote(app: AppHandle, id: &str) {
         }
     });
 }
-
-pub fn handle_unmount_remote(app: AppHandle, id: &str) {
-    let remote = id.replace("unmount-", "");
+pub fn handle_unmount_remote(app: AppHandle, remote_name: &str) {
     let app_clone = app.clone();
-
+    let remote = remote_name.to_string();
     tauri::async_runtime::spawn(async move {
         let remote_name = remote.to_string();
         let settings_result = CACHE.settings.read().await;
@@ -301,11 +299,10 @@ pub fn handle_unmount_remote(app: AppHandle, id: &str) {
         }
     });
 }
-
-pub fn handle_sync_remote(app: AppHandle, id: &str) {
+pub fn handle_sync_remote(app: AppHandle, remote_name: &str) {
     tauri::async_runtime::spawn(handle_job_action(
         app,
-        id.to_string(),
+        remote_name.to_string(),
         "sync-",
         "Sync",
         SyncParams::from_settings,
@@ -313,11 +310,10 @@ pub fn handle_sync_remote(app: AppHandle, id: &str) {
         None,
     ));
 }
-
-pub fn handle_copy_remote(app: AppHandle, id: &str) {
+pub fn handle_copy_remote(app: AppHandle, remote_name: &str) {
     tauri::async_runtime::spawn(handle_job_action(
         app,
-        id.to_string(),
+        remote_name.to_string(),
         "copy-",
         "Copy",
         CopyParams::from_settings,
@@ -325,11 +321,10 @@ pub fn handle_copy_remote(app: AppHandle, id: &str) {
         None,
     ));
 }
-
-pub fn handle_move_remote(app: AppHandle, id: &str) {
+pub fn handle_move_remote(app: AppHandle, remote_name: &str) {
     tauri::async_runtime::spawn(handle_job_action(
         app,
-        id.to_string(),
+        remote_name.to_string(),
         "move-",
         "Move",
         MoveParams::from_settings,
@@ -337,11 +332,10 @@ pub fn handle_move_remote(app: AppHandle, id: &str) {
         None,
     ));
 }
-
-pub fn handle_bisync_remote(app: AppHandle, id: &str) {
+pub fn handle_bisync_remote(app: AppHandle, remote_name: &str) {
     tauri::async_runtime::spawn(handle_job_action(
         app,
-        id.to_string(),
+        remote_name.to_string(),
         "bisync-",
         "BiSync",
         BisyncParams::from_settings,
@@ -349,50 +343,45 @@ pub fn handle_bisync_remote(app: AppHandle, id: &str) {
         None,
     ));
 }
-
-pub fn handle_stop_sync(app: AppHandle, id: &str) {
+pub fn handle_stop_sync(app: AppHandle, remote_name: &str) {
     tauri::async_runtime::spawn(handle_stop_job(
         app,
-        id.to_string(),
+        remote_name.to_string(),
         "stop_sync-",
         "sync",
         "Sync",
     ));
 }
-
-pub fn handle_stop_copy(app: AppHandle, id: &str) {
+pub fn handle_stop_copy(app: AppHandle, remote_name: &str) {
     tauri::async_runtime::spawn(handle_stop_job(
         app,
-        id.to_string(),
+        remote_name.to_string(),
         "stop_copy-",
         "copy",
         "Copy",
     ));
 }
-
-pub fn handle_stop_move(app: AppHandle, id: &str) {
+pub fn handle_stop_move(app: AppHandle, remote_name: &str) {
     tauri::async_runtime::spawn(handle_stop_job(
         app,
-        id.to_string(),
+        remote_name.to_string(),
         "stop_move-",
         "move",
         "Move",
     ));
 }
-
-pub fn handle_stop_bisync(app: AppHandle, id: &str) {
+pub fn handle_stop_bisync(app: AppHandle, remote_name: &str) {
     tauri::async_runtime::spawn(handle_stop_job(
         app,
-        id.to_string(),
+        remote_name.to_string(),
         "stop_bisync-",
         "bisync",
         "BiSync",
     ));
 }
-
 pub fn handle_stop_all_jobs(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
-        let active_jobs = JOB_CACHE.get_jobs().await;
+        let active_jobs = JOB_CACHE.get_active_jobs().await;
         if active_jobs.is_empty() {
             return;
         }
@@ -413,9 +402,8 @@ pub fn handle_stop_all_jobs(app: AppHandle) {
         );
     });
 }
-
-pub fn handle_browse_remote(app: &AppHandle, id: &str) {
-    let remote = id.replace("browse-", "");
+pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
+    let remote = remote_name.to_string();
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         let settings_result = CACHE.settings.read().await;
@@ -431,6 +419,119 @@ pub fn handle_browse_remote(app: &AppHandle, id: &str) {
             }
             Err(e) => {
                 error!("🚨 Failed to open file manager for {remote}: {e}");
+            }
+        }
+    });
+}
+
+pub fn handle_start_serve(app: AppHandle, remote_name: &str) {
+    let app_clone = app.clone();
+    let remote_name_clone = remote_name.to_string();
+
+    tauri::async_runtime::spawn(async move {
+        let settings = match CACHE.settings.read().await.get(&remote_name_clone).cloned() {
+            Some(s) => s,
+            _ => {
+                error!("🚨 Remote {remote_name_clone} not found in settings");
+                return;
+            }
+        };
+
+        let params = match ServeParams::from_settings(remote_name_clone.clone(), &settings) {
+            Some(p) => p,
+            None => {
+                error!("🚨 Serve configuration incomplete for {remote_name_clone}");
+                notify(
+                    &app_clone,
+                    "Serve Failed",
+                    &format!("Serve configuration incomplete for {remote_name_clone}"),
+                );
+                return;
+            }
+        };
+
+        match start_serve(app_clone.clone(), params).await {
+            Ok(response) => {
+                info!(
+                    "✅ Started serve for {remote_name_clone} at {}",
+                    response.addr
+                );
+                notify(
+                    &app_clone,
+                    "Serve Started",
+                    &format!("Started serve for {remote_name_clone} at {}", response.addr),
+                );
+            }
+            Err(e) => {
+                error!("🚨 Failed to start serve for {remote_name_clone}: {e}");
+                notify(
+                    &app_clone,
+                    "Serve Failed",
+                    &format!("Failed to start serve for {remote_name_clone}: {e}"),
+                );
+            }
+        }
+    });
+}
+
+pub fn handle_stop_serve(app: AppHandle, serve_id: &str) {
+    let app_clone = app.clone();
+    let serve_id_clone = serve_id.to_string();
+
+    tauri::async_runtime::spawn(async move {
+        // Find the remote name associated with this serve_id for logging
+        let all_serves = get_cached_serves().await.unwrap_or_default();
+        let remote_name = all_serves
+            .iter()
+            .find(|s| s.id == serve_id_clone)
+            .and_then(|s| s.params["fs"].as_str())
+            .map(|fs| fs.split(':').next().unwrap_or("").to_string())
+            .unwrap_or_else(|| "unknown_remote".to_string());
+
+        match stop_serve(
+            app_clone.clone(),
+            serve_id_clone.clone(),
+            remote_name.clone(),
+            app_clone.state(),
+        )
+        .await
+        {
+            Ok(_) => {
+                info!("🛑 Stopped serve {serve_id_clone} for {remote_name}");
+                notify(
+                    &app_clone,
+                    "Serve Stopped",
+                    &format!("Stopped serve for {remote_name}"),
+                );
+            }
+            Err(e) => {
+                error!("🚨 Failed to stop serve {serve_id_clone}: {e}");
+                notify(
+                    &app_clone,
+                    "Stop Serve Failed",
+                    &format!("Failed to stop serve for {remote_name}: {e}"),
+                );
+            }
+        }
+    });
+}
+
+pub fn handle_stop_all_serves(app: AppHandle) {
+    info!("🛑 Stopping all active serves from tray action");
+    let app_clone = app.clone();
+    tauri::async_runtime::spawn(async move {
+        match stop_all_serves(app_clone.clone(), app_clone.state(), "menu".to_string()).await {
+            Ok(_) => {
+                info!("✅ All serves stopped successfully");
+                notify(&app_clone, "All Serves Stopped", "All serves stopped");
+            }
+            Err(e) => {
+                error!("🚨 Failed to stop all serves: {e}");
+                notify(
+                    &app_clone,
+                    "Stop All Serves Failed",
+                    &format!("Failed to stop serves: {e}"),
+                );
             }
         }
     });

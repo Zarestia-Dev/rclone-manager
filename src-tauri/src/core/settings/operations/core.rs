@@ -5,10 +5,10 @@ use tauri::{Emitter, State};
 use crate::utils::types::events::SYSTEM_SETTINGS_CHANGED;
 use crate::utils::types::settings::{AppSettings, SettingMetadata, SettingsState};
 
-pub fn load_startup_settings(
-    state: &State<SettingsState<tauri::Wry>>,
+pub async fn load_startup_settings(
+    state: &State<'_, SettingsState<tauri::Wry>>,
 ) -> Result<AppSettings, String> {
-    let store = state.store.blocking_lock();
+    let store = state.store.lock().await;
     let stored_val = store
         .get("app_settings")
         .clone()
@@ -96,10 +96,9 @@ pub async fn save_setting(
 
     let default_value = AppSettings::get_metadata()
         .get(&format!("{}.{}", category, key))
-        .map(|meta| meta.default.clone()) // Directly access the default
+        .map(|meta| meta.default.clone())
         .unwrap_or(serde_json::Value::Null);
 
-    // The rest of the logic is now perfect
     if stored_settings.get(&category).is_none() {
         stored_settings
             .as_object_mut()

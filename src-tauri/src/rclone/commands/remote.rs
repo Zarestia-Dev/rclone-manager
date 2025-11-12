@@ -178,8 +178,7 @@ pub async fn create_remote(
             "type": remote_type,
             "parameters": params_obj
         })),
-    )
-    .await;
+    );
 
     // Handle OAuth process
     ensure_oauth_process(&app)
@@ -223,8 +222,7 @@ pub async fn create_remote(
             Some("New remote creation".to_string()),
             "Failed to create remote".to_string(),
             Some(json!({"response": body})),
-        )
-        .await;
+        );
 
         return Err(error);
     }
@@ -235,8 +233,7 @@ pub async fn create_remote(
         Some("New remote creation".to_string()),
         "Remote created successfully".to_string(),
         None,
-    )
-    .await;
+    );
 
     app.emit(REMOTE_PRESENCE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
@@ -269,8 +266,7 @@ pub async fn update_remote(
             "type": remote_type,
             "parameters": params_obj
         })),
-    )
-    .await;
+    );
 
     ensure_oauth_process(&app)
         .await
@@ -301,8 +297,7 @@ pub async fn update_remote(
             Some("Remote update".to_string()),
             "Failed to update remote".to_string(),
             Some(json!({"response": body})),
-        )
-        .await;
+        );
         return Err(error);
     }
 
@@ -312,8 +307,7 @@ pub async fn update_remote(
         Some("Remote update".to_string()),
         "Remote updated successfully".to_string(),
         None,
-    )
-    .await;
+    );
 
     app.emit(REMOTE_PRESENCE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;

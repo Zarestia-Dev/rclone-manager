@@ -193,17 +193,16 @@ impl RcApiEngine {
         }
     }
 
-    pub fn update_port(&mut self, app: &AppHandle, new_port: u16) {
+    pub async fn update_port(&mut self, app: &AppHandle, new_port: u16) {
         info!(
             "🔄 Updating Rclone API port from {} to {}",
             self.current_api_port, new_port
         );
 
-        // Import the stop and start methods from lifecycle module
-        if let Err(e) = crate::rclone::engine::lifecycle::stop(self) {
+        if let Err(e) = crate::rclone::engine::lifecycle::stop(self).await {
             error!("Failed to stop Rclone process: {e}");
         }
         self.current_api_port = new_port;
-        crate::rclone::engine::lifecycle::start(self, app);
+        crate::rclone::engine::lifecycle::start(self, app).await;
     }
 }

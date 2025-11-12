@@ -66,8 +66,7 @@ pub async fn open_terminal_config(
         Some("Terminal config".to_string()),
         "Opening terminal for rclone config".to_string(),
         Some(json!({ "command": &rclone_command_string })),
-    )
-    .await;
+    );
 
     // Step 3: Pass the correctly formatted string to the OS-specific functions.
     let result = open_terminal_with_command(rclone_command_string, app.clone()).await;
@@ -81,8 +80,7 @@ pub async fn open_terminal_config(
                 Some("Terminal config".to_string()),
                 message.clone(),
                 None,
-            )
-            .await;
+            );
             info!("✅ {message}");
             Ok(())
         }
@@ -94,8 +92,7 @@ pub async fn open_terminal_config(
                 Some("Terminal config".to_string()),
                 "Failed to open terminal".to_string(),
                 Some(json!({"error": e.to_string()})),
-            )
-            .await;
+            );
             error!("❌ {error_msg}");
             Err(error_msg)
         }

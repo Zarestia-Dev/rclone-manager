@@ -112,9 +112,7 @@ pub async fn update_rclone(
 
     // Step 1: Initialize update process
     {
-        let mut engine = ENGINE
-            .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
+        let mut engine = ENGINE.lock().await;
         engine.updating = true;
         debug!("🔍 Starting rclone update process");
     }
@@ -128,9 +126,7 @@ pub async fn update_rclone(
 
     if !update_available {
         // Set updating to false before returning
-        let mut engine = ENGINE
-            .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
+        let mut engine = ENGINE.lock().await;
         engine.updating = false;
         debug!("🔍 No update available for rclone");
         return Ok(json!({
@@ -164,9 +160,7 @@ pub async fn update_rclone(
             current_path = system_path;
         } else {
             // Set updating to false before returning
-            let mut engine = ENGINE
-                .lock()
-                .map_err(|e| format!("Failed to lock engine: {e}"))?;
+            let mut engine = ENGINE.lock().await;
             engine.updating = false;
             debug!(
                 "🔍 Current rclone binary not found at: {}",
@@ -186,10 +180,7 @@ pub async fn update_rclone(
 
     // Actually stop the engine process
     {
-        use crate::rclone::engine::ENGINE;
-        let mut engine = ENGINE
-            .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
+        let mut engine = ENGINE.lock().await;
         if let Err(e) = engine.kill_process() {
             log::error!("Failed to stop engine before update: {e}");
         }
@@ -219,9 +210,7 @@ pub async fn update_rclone(
 
     // Set updating to false at the end (regardless of success/failure)
     {
-        let mut engine = ENGINE
-            .lock()
-            .map_err(|e| format!("Failed to lock engine: {e}"))?;
+        let mut engine = ENGINE.lock().await;
         log::info!("Setting updating to false");
         engine.updating = false;
     }

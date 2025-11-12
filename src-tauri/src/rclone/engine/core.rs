@@ -1,6 +1,6 @@
-use log::error;
 use once_cell::sync::Lazy;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::{Mutex, MutexGuard};
 
 use crate::{rclone::state::engine::ENGINE_STATE, utils::types::all_types::RcApiEngine};
 
@@ -16,19 +16,12 @@ impl RcApiEngine {
             updating: false,
             path_error: false,
             password_error: false,
-            // rclone_path: std::path::PathBuf::new(),
-            current_api_port: ENGINE_STATE.get_api().1, // Initialize with current port
-            config_encrypted: None,                     // Not determined yet
+            current_api_port: ENGINE_STATE.get_api().1,
+            config_encrypted: None,
         }
     }
 
-    pub fn lock_engine() -> Result<std::sync::MutexGuard<'static, RcApiEngine>, String> {
-        match ENGINE.lock() {
-            Ok(guard) => Ok(guard),
-            Err(poisoned) => {
-                error!("❗ Engine mutex poisoned. Recovering...");
-                Ok(poisoned.into_inner())
-            }
-        }
+    pub async fn lock_engine() -> MutexGuard<'static, RcApiEngine> {
+        ENGINE.lock().await
     }
 }

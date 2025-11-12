@@ -13,7 +13,7 @@ impl LogCache {
         }
     }
 
-    pub async fn add_entry(&self, entry: LogEntry) {
+    pub async fn add_entry_from_processor(&self, entry: LogEntry) {
         let mut entries = self.entries.write().await;
         entries.push(entry);
 

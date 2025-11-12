@@ -277,7 +277,7 @@ async fn execute_scheduled_task(task_id: &str, app_handle: &AppHandle) -> Result
 
     SCHEDULED_TASKS_CACHE
         .update_task(task_id, |t| {
-            t.mark_starting();
+            let _ = t.mark_starting();
         })
         .await?;
 

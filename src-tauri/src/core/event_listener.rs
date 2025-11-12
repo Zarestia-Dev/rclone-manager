@@ -8,7 +8,6 @@ use crate::{
     core::{lifecycle::shutdown::handle_shutdown, tray::core::update_tray_menu},
     rclone::{
         commands::system::set_bandwidth_limit,
-        engine::ENGINE,
         state::{
             cache::CACHE, engine::ENGINE_STATE,
             scheduled_tasks::reload_scheduled_tasks_from_configs,
@@ -17,10 +16,14 @@ use crate::{
     utils::{
         app::builder::setup_tray,
         logging::log::update_log_level,
-        types::events::{
-            JOB_CACHE_CHANGED, MOUNT_STATE_CHANGED, RCLONE_API_URL_UPDATED, RCLONE_PASSWORD_STORED,
-            REMOTE_CACHE_UPDATED, REMOTE_PRESENCE_CHANGED, REMOTE_STATE_CHANGED,
-            SERVE_STATE_CHANGED, SYSTEM_SETTINGS_CHANGED, UPDATE_TRAY_MENU,
+        types::{
+            all_types::RcApiEngine,
+            events::{
+                JOB_CACHE_CHANGED, MOUNT_STATE_CHANGED, RCLONE_API_URL_UPDATED,
+                RCLONE_PASSWORD_STORED, REMOTE_CACHE_UPDATED, REMOTE_PRESENCE_CHANGED,
+                REMOTE_STATE_CHANGED, SERVE_STATE_CHANGED, SYSTEM_SETTINGS_CHANGED,
+                UPDATE_TRAY_MENU,
+            },
         },
     },
 };
@@ -48,18 +51,9 @@ fn handle_rclone_api_url_updated(app: &AppHandle) {
         let app = app_handle.clone();
         tauri::async_runtime::spawn(async move {
             let port = ENGINE_STATE.get_api().1;
-            let result = tauri::async_runtime::spawn_blocking(move || {
-                let mut engine = match ENGINE.lock() {
-                    Ok(guard) => guard,
-                    Err(poisoned) => poisoned.into_inner(),
-                };
-                engine.update_port(&app, port)
-            })
-            .await;
 
-            if let Err(e) = result {
-                error!("Failed to update Rclone API port: {e}");
-            }
+            let mut engine = RcApiEngine::lock_engine().await;
+            engine.update_port(&app, port).await;
         });
     });
 }
@@ -69,15 +63,8 @@ fn handle_rclone_password_stored(app: &AppHandle) {
     app.listen(RCLONE_PASSWORD_STORED, move |_| {
         let _app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            // Clear the engine flag and attempt a restart if engine not running
-            tauri::async_runtime::spawn_blocking(move || {
-                let mut engine = match ENGINE.lock() {
-                    Ok(guard) => guard,
-                    Err(poisoned) => poisoned.into_inner(),
-                };
-
-                engine.password_error = false;
-            });
+            let mut engine = RcApiEngine::lock_engine().await;
+            engine.password_error = false;
         });
     });
 }
@@ -174,7 +161,6 @@ fn handle_serve_state_changed(app: &AppHandle) {
         tauri::async_runtime::spawn(async move {
             debug!("🔄 Serve state changed! Raw payload: {:?}", event.payload());
 
-            // Refresh the serves cache
             if let Err(e) = crate::rclone::state::cache::CACHE
                 .refresh_serves(app.clone())
                 .await
@@ -182,7 +168,6 @@ fn handle_serve_state_changed(app: &AppHandle) {
                 error!("❌ Failed to refresh serves cache: {e}");
             }
 
-            // Update tray menu to reflect serve changes (0 -> use default)
             if let Err(e) = crate::core::tray::core::update_tray_menu(app.clone(), 0).await {
                 error!("Failed to update tray menu after serve change: {e}");
             }
@@ -286,7 +271,6 @@ fn handle_settings_changed(app: &AppHandle) {
                             bandwidth_limit.as_u64().map(|n| n.to_string())
                         };
                         tauri::async_runtime::spawn(async move {
-                            // Get the RcloneState from tauri's state management
                             let app_clone = app.clone();
                             let rclone_state = app.state::<RcloneState>();
                             if let Err(e) = set_bandwidth_limit(
@@ -321,9 +305,8 @@ fn handle_settings_changed(app: &AppHandle) {
                             }
                         };
                         *guard = config_path.to_string();
-                        drop(guard); // Release the lock
+                        drop(guard);
 
-                        // Restart engine with new rclone config file
                         if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
                             &app_handle,
                             "rclone_config_file",
@@ -342,14 +325,6 @@ fn handle_settings_changed(app: &AppHandle) {
                                 }
                             }
                         );
-
-                        // let config_path = config_path.to_string();
-                        // let app_handle_clone = app_handle.clone();
-                        // tauri::async_runtime::spawn(async move {
-                        //     if let Err(e) = set_rclone_config_file(app_handle_clone.clone(), config_path).await {
-                        //         error!("Failed to set Rclone config path: {e}");
-                        //     }
-                        // });
                     }
 
                     if let Some(rclone_path) = core.get("rclone_path").and_then(|v| v.as_str()) {
@@ -374,7 +349,6 @@ fn handle_settings_changed(app: &AppHandle) {
                             *path_guard = std::path::PathBuf::from(rclone_path);
                         }
 
-                        // Restart engine with new rclone path
                         if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
                             &app_handle,
                             "rclone_path",
@@ -404,7 +378,6 @@ fn handle_settings_changed(app: &AppHandle) {
                         {
                             error!("Failed to set Rclone API Port: {e}");
                         } else {
-                            // Restart engine with new API port
                             if let Err(e) =
                                 crate::rclone::engine::lifecycle::restart_for_config_change(
                                     &app_handle,

@@ -127,8 +127,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         Some("Mount remote".to_string()),
         format!("Attempting to mount at {}", params.mount_point),
         Some(log_context),
-    )
-    .await;
+    );
 
     // Prepare payload
     let mut payload = json!({
@@ -190,8 +189,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
                     Some("Mount remote".to_string()),
                     error_for_log,
                     Some(json!({"payload": payload_clone})),
-                )
-                .await;
+                );
             });
             error
         })?;
@@ -208,8 +206,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
             Some("Mount remote".to_string()),
             format!("Failed to mount remote: {error}"),
             Some(json!({"response": body})),
-        )
-        .await;
+        );
         return Err(error);
     }
 
@@ -222,8 +219,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
         Some("Mount remote".to_string()),
         format!("Mount job started with ID {}", job_response.jobid),
         Some(json!({"jobid": job_response.jobid})),
-    )
-    .await;
+    );
 
     // Extract job ID and monitor the job
     let jobid = job_response.jobid;
@@ -280,8 +276,7 @@ pub async fn unmount_remote(
         Some("Unmount remote".to_string()),
         format!("Attempting to unmount {mount_point}"),
         None,
-    )
-    .await;
+    );
 
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::UNMOUNT);
     let payload = json!({ "mountPoint": mount_point });
@@ -312,8 +307,7 @@ pub async fn unmount_remote(
             Some("Unmount remote".to_string()),
             error.clone(),
             Some(json!({"response": body})),
-        )
-        .await;
+        );
         error!("❌ Failed to unmount {mount_point}: {error}");
         return Err(error);
     }
@@ -324,8 +318,7 @@ pub async fn unmount_remote(
         Some("Unmount remote".to_string()),
         format!("Successfully unmounted {mount_point}"),
         None,
-    )
-    .await;
+    );
 
     app.emit(REMOTE_STATE_CHANGED, &mount_point)
         .map_err(|e| format!("Failed to emit event: {e}"))?;

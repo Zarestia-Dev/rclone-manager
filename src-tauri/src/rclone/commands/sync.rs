@@ -58,8 +58,7 @@ async fn start_sync_like_job(
             Some(operation_name.to_string()),
             format!("Failed to start {job_type} job"),
             Some(json!({"response": body_text})),
-        )
-        .await;
+        );
         error!("❌ Failed to start {job_type} job: {error}");
         return Err(error);
     }
@@ -74,8 +73,7 @@ async fn start_sync_like_job(
         Some(operation_name.to_string()),
         format!("{operation_name} job started with ID {jobid}"),
         Some(json!({"jobid": jobid})),
-    )
-    .await;
+    );
 
     JOB_CACHE
         .add_job(JobInfo {
@@ -379,8 +377,7 @@ pub async fn start_sync(app: AppHandle, params: SyncParams) -> Result<u64, Strin
             "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
             "backend_options": params.backend_options.as_ref().map(|b| b.keys().collect::<Vec<_>>())
         })),
-    )
-    .await;
+    );
 
     // Construct the JSON body
     let mut body = Map::new();
@@ -436,8 +433,7 @@ pub async fn start_copy(app: AppHandle, params: CopyParams) -> Result<u64, Strin
             "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
             "backend_options": params.backend_options.as_ref().map(|b| b.keys().collect::<Vec<_>>())
         })),
-    )
-    .await;
+    );
 
     let mut body = Map::new();
     body.insert("srcFs".to_string(), Value::String(params.source.clone()));
@@ -496,8 +492,7 @@ pub async fn start_bisync(app: AppHandle, params: BisyncParams) -> Result<u64, S
             "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
             "backend_options": params.backend_options.as_ref().map(|b| b.keys().collect::<Vec<_>>())
         })),
-    )
-    .await;
+    );
 
     // Construct the JSON body
     let mut body = Map::new();
@@ -596,8 +591,7 @@ pub async fn start_move(app: AppHandle, params: MoveParams) -> Result<u64, Strin
             "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
             "backend_options": params.backend_options.as_ref().map(|b| b.keys().collect::<Vec<_>>())
         })),
-    )
-    .await;
+    );
     let mut body = Map::new();
     body.insert("srcFs".to_string(), Value::String(params.source.clone()));
     body.insert("dstFs".to_string(), Value::String(params.dest.clone()));

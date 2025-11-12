@@ -42,6 +42,30 @@ async fn handle_auto_start<P, F, T>(
         return;
     }
 
+    /*This gonna be removed later*/
+
+    // List of operations that can also be managed by the scheduler
+    const SCHEDULER_OPS: &[&str] = &["sync", "copy", "move", "bisync"];
+
+    if SCHEDULER_OPS.contains(&operation_name) {
+        let config_key = format!("{}Config", operation_name); // e.g., "syncConfig"
+
+        // Check if cron is *also* enabled for this operation
+        let cron_enabled = settings
+            .get(&config_key)
+            .and_then(|v| v.get("cronEnabled"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+
+        if cron_enabled {
+            debug!(
+                "Skipping autoStart for {}: This operation is managed by the scheduler (cronEnabled is true)",
+                operation_name
+            );
+            return; // Let the scheduler handle it, preventing the duplicate job
+        }
+    }
+
     match from_settings(remote_name.to_string(), settings) {
         Some(params) => {
             if let Err(e) = spawn_fn(app_handle.clone(), params).await {

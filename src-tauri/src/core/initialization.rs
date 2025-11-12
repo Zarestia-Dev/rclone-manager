@@ -39,7 +39,7 @@ pub fn init_rclone_state(
         .set_oauth(oauth_url, settings.core.rclone_oauth_port)
         .map_err(|e| format!("Failed to set Rclone OAuth: {e}"))?;
 
-    let mut engine = RcApiEngine::lock_engine()?;
+    let mut engine = tauri::async_runtime::block_on(RcApiEngine::lock_engine());
     engine.init(app_handle);
 
     info!("🔄 Rclone engine initialized");

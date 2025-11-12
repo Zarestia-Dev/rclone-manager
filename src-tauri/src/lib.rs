@@ -45,11 +45,15 @@ use crate::{
             },
             remote::manager::{delete_remote_settings, get_remote_settings, save_remote_settings},
         },
-        tray::actions::{
-            handle_bisync_remote, handle_browse_remote, handle_copy_remote, handle_mount_remote,
-            handle_move_remote, handle_stop_all_jobs, handle_stop_bisync, handle_stop_copy,
-            handle_stop_move, handle_stop_sync, handle_sync_remote, handle_unmount_remote,
-            show_main_window,
+        tray::{
+            actions::{
+                handle_bisync_remote, handle_browse_remote, handle_copy_remote,
+                handle_mount_remote, handle_move_remote, handle_start_serve, handle_stop_all_jobs,
+                handle_stop_all_serves, handle_stop_bisync, handle_stop_copy, handle_stop_move,
+                handle_stop_serve, handle_stop_sync, handle_sync_remote, handle_unmount_remote,
+                show_main_window,
+            },
+            tray_action::TrayAction,
         },
     },
     rclone::{
@@ -210,8 +214,10 @@ pub fn run() {
             app.manage(env_manager);
             app.manage(credential_store);
 
-            let settings = load_startup_settings(&app.state::<SettingsState<tauri::Wry>>())
-                .map_err(|e| format!("Failed to load settings for startup: {e}"))?;
+            let settings = tauri::async_runtime::block_on(load_startup_settings(
+                &app.state::<SettingsState<tauri::Wry>>(),
+            ))
+            .map_err(|e| format!("Failed to load settings for startup: {e}"))?;
 
             // Check if --tray argument is provided to override tray settings
             let force_tray = std::env::args().any(|arg| arg == "--tray");
@@ -295,42 +301,55 @@ pub fn run() {
 
             Ok(())
         })
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "show_app" => show_main_window(app.clone()),
-            "stop_all_jobs" => handle_stop_all_jobs(app.clone()),
-            "unmount_all" => {
-                let app_clone = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(e) = unmount_all_remotes(
-                        app_clone.clone(),
-                        app_clone.state(),
-                        "menu".to_string(),
-                    )
-                    .await
-                    {
-                        error!("Failed to unmount all remotes: {e}");
-                    }
-                });
+        .on_menu_event(|app, event| {
+            // First, try to parse it as a dynamic TrayAction
+            if let Some(action) = TrayAction::from_id(event.id.as_ref()) {
+                match action {
+                    TrayAction::Mount(remote) => handle_mount_remote(app.clone(), &remote),
+                    TrayAction::Unmount(remote) => handle_unmount_remote(app.clone(), &remote),
+                    TrayAction::Sync(remote) => handle_sync_remote(app.clone(), &remote),
+                    TrayAction::StopSync(remote) => handle_stop_sync(app.clone(), &remote),
+                    TrayAction::Copy(remote) => handle_copy_remote(app.clone(), &remote),
+                    TrayAction::StopCopy(remote) => handle_stop_copy(app.clone(), &remote),
+                    TrayAction::Move(remote) => handle_move_remote(app.clone(), &remote),
+                    TrayAction::StopMove(remote) => handle_stop_move(app.clone(), &remote),
+                    TrayAction::Bisync(remote) => handle_bisync_remote(app.clone(), &remote),
+                    TrayAction::StopBisync(remote) => handle_stop_bisync(app.clone(), &remote),
+                    TrayAction::Browse(remote) => handle_browse_remote(app, &remote),
+                    TrayAction::Serve(remote) => handle_start_serve(app.clone(), &remote),
+                    TrayAction::StopServe(serve_id) => handle_stop_serve(app.clone(), &serve_id),
+                }
+                return;
             }
-            "quit" => {
-                let app_clone = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    app_clone.state::<RcloneState>().set_shutting_down();
-                    handle_shutdown(app_clone).await;
-                });
+
+            // Handle static, non-remote-specific menu items
+            match event.id.as_ref() {
+                "show_app" => show_main_window(app.clone()),
+                "stop_all_jobs" => handle_stop_all_jobs(app.clone()),
+                "stop_all_serves" => handle_stop_all_serves(app.clone()),
+                "unmount_all" => {
+                    let app_clone = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) = unmount_all_remotes(
+                            app_clone.clone(),
+                            app_clone.state(),
+                            "menu".to_string(),
+                        )
+                        .await
+                        {
+                            error!("Failed to unmount all remotes: {e}");
+                        }
+                    });
+                }
+                "quit" => {
+                    let app_clone = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        app_clone.state::<RcloneState>().set_shutting_down();
+                        handle_shutdown(app_clone).await;
+                    });
+                }
+                _ => {}
             }
-            id if id.starts_with("mount-") => handle_mount_remote(app.clone(), id),
-            id if id.starts_with("unmount-") => handle_unmount_remote(app.clone(), id),
-            id if id.starts_with("sync-") => handle_sync_remote(app.clone(), id),
-            id if id.starts_with("copy-") => handle_copy_remote(app.clone(), id),
-            id if id.starts_with("move-") => handle_move_remote(app.clone(), id),
-            id if id.starts_with("bisync-") => handle_bisync_remote(app.clone(), id),
-            id if id.starts_with("stop_sync-") => handle_stop_sync(app.clone(), id),
-            id if id.starts_with("stop_copy-") => handle_stop_copy(app.clone(), id),
-            id if id.starts_with("stop_move-") => handle_stop_move(app.clone(), id),
-            id if id.starts_with("stop_bisync-") => handle_stop_bisync(app.clone(), id),
-            id if id.starts_with("browse-") => handle_browse_remote(app, id),
-            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             // File operations

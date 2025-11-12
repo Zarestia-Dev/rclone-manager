@@ -190,8 +190,7 @@ pub async fn handle_job_completion(
             Some(operation.to_string()),
             format!("{operation} Job {jobid} failed: {error_msg}"),
             Some(json!({"jobid": jobid, "status": job_status})),
-        )
-        .await;
+        );
         Err(RcloneError::JobError(error_msg))
     } else if success {
         log_operation(
@@ -200,8 +199,7 @@ pub async fn handle_job_completion(
             Some(operation.to_string()),
             format!("{operation} Job {jobid} completed successfully"),
             Some(json!({"jobid": jobid, "status": job_status})),
-        )
-        .await;
+        );
         Ok(())
     } else {
         log_operation(
@@ -210,8 +208,7 @@ pub async fn handle_job_completion(
             Some(operation.to_string()),
             format!("{operation} Job {jobid} completed without success but no error message"),
             Some(json!({"jobid": jobid, "status": job_status})),
-        )
-        .await;
+        );
         Err(RcloneError::JobError(
             "Job completed without success".to_string(),
         ))
@@ -251,8 +248,7 @@ pub async fn stop_job(
             Some("Stop job".to_string()),
             format!("Job {jobid} not found in rclone, marking as stopped"),
             None,
-        )
-        .await;
+        );
         warn!("Job {jobid} not found in rclone, marking as stopped.");
         true
     } else {
@@ -296,8 +292,7 @@ pub async fn stop_job(
             Some("Stop job".to_string()),
             format!("Job {jobid} stopped successfully"),
             None,
-        )
-        .await;
+        );
 
         app.emit(JOB_CACHE_CHANGED, jobid)
             .map_err(|e| format!("Failed to emit event: {e}"))?;
