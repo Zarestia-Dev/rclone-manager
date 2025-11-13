@@ -20,6 +20,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
 use crate::core::settings::operations::core::save_setting;
+use crate::rclone::engine::core::ENGINE;
 use crate::{
     rclone::queries::get_rclone_info,
     utils::types::{all_types::RcloneState, events::RCLONE_ENGINE_UPDATING},
@@ -108,8 +109,6 @@ pub async fn update_rclone(
     app_handle: tauri::AppHandle,
     channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    use crate::rclone::engine::ENGINE;
-
     // Step 1: Initialize update process
     {
         let mut engine = ENGINE.lock().await;

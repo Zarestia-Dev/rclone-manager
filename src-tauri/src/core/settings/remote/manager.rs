@@ -8,6 +8,9 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::utils::types::events::REMOTE_PRESENCE_CHANGED;
 use crate::utils::types::settings::SettingsState;
+use crate::{
+    core::scheduler::engine::CronScheduler, rclone::state::scheduled_tasks::ScheduledTasksCache,
+};
 
 /// **Remote Settings Management**
 ///
@@ -21,6 +24,8 @@ pub async fn save_remote_settings(
     remote_name: String,
     mut settings: Value, // **Accepts dynamic JSON**
     state: State<'_, SettingsState<tauri::Wry>>,
+    cache: State<'_, ScheduledTasksCache>,
+    scheduler: State<'_, CronScheduler>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
     if let Some(settings_obj) = settings.as_object_mut() {
@@ -71,10 +76,8 @@ pub async fn save_remote_settings(
 
     info!("✅ Remote settings saved at {remote_config_path:?}");
 
-    use crate::rclone::state::scheduled_tasks::SCHEDULED_TASKS_CACHE;
-
-    match SCHEDULED_TASKS_CACHE
-        .add_or_update_task_for_remote(&remote_name, &settings)
+    match cache
+        .add_or_update_task_for_remote(&remote_name, &settings, scheduler)
         .await
     {
         Ok(_) => info!("✅ Scheduled tasks updated for remote '{remote_name}'"),
@@ -127,7 +130,6 @@ pub async fn get_remote_settings(
         .join(format!("{remote_name}.json"));
 
     if !remote_config_path.exists() {
-        warn!("⚠️ Remote settings for '{remote_name}' not found.");
         return Err(format!("⚠️ Remote settings for '{remote_name}' not found.",));
     }
 

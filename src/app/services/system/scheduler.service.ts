@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import {
   ScheduledTask,
@@ -37,20 +37,17 @@ export class SchedulerService extends TauriBaseService {
    */
   private initializeEventListeners(): void {
     // Listen for task completion events
-    this.listenToEvent<ScheduledTaskCompletedEvent>(SCHEDULED_TASK_COMPLETED).subscribe(event => {
-      console.log('Scheduled task completed:', event.taskId);
+    this.listenToEvent<ScheduledTaskCompletedEvent>(SCHEDULED_TASK_COMPLETED).subscribe(_ => {
       this.refreshScheduledTasks();
     });
 
     // Listen for task error events
-    this.listenToEvent<ScheduledTaskErrorEvent>(SCHEDULED_TASK_ERROR).subscribe(event => {
-      console.error('Scheduled task error:', event.taskId, event.error);
+    this.listenToEvent<ScheduledTaskErrorEvent>(SCHEDULED_TASK_ERROR).subscribe(_ => {
       this.refreshScheduledTasks();
     });
 
     // Listen for task stopped events
-    this.listenToEvent<ScheduledTaskStoppedEvent>(SCHEDULED_TASK_STOPPED).subscribe(event => {
-      console.log('Scheduled task stopped:', event.taskId, event.jobId);
+    this.listenToEvent<ScheduledTaskStoppedEvent>(SCHEDULED_TASK_STOPPED).subscribe(_ => {
       this.refreshScheduledTasks();
     });
   }
@@ -125,27 +122,6 @@ export class SchedulerService extends TauriBaseService {
   }
 
   /**
-   * Listen to task completion events
-   */
-  listenToTaskCompletion(): Observable<ScheduledTaskCompletedEvent> {
-    return this.listenToEvent<ScheduledTaskCompletedEvent>(SCHEDULED_TASK_COMPLETED);
-  }
-
-  /**
-   * Listen to task error events
-   */
-  listenToTaskErrors(): Observable<ScheduledTaskErrorEvent> {
-    return this.listenToEvent<ScheduledTaskErrorEvent>(SCHEDULED_TASK_ERROR);
-  }
-
-  /**
-   * Listen to task stopped events
-   */
-  listenToTaskStopped(): Observable<ScheduledTaskStoppedEvent> {
-    return this.listenToEvent<ScheduledTaskStoppedEvent>(SCHEDULED_TASK_STOPPED);
-  }
-
-  /**
    * Refresh the scheduled tasks cache
    */
   public async refreshScheduledTasks(): Promise<void> {
@@ -157,19 +133,5 @@ export class SchedulerService extends TauriBaseService {
     } catch (error) {
       console.error('Failed to refresh scheduled tasks:', error);
     }
-  }
-
-  /**
-   * Get cached scheduled tasks (synchronous)
-   */
-  getCachedScheduledTasks(): ScheduledTask[] {
-    return this.scheduledTasksCache.getValue();
-  }
-
-  /**
-   * Get cached stats (synchronous)
-   */
-  getCachedStats(): ScheduledTaskStats | null {
-    return this.statsCache.getValue();
   }
 }

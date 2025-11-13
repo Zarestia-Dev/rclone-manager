@@ -1,9 +1,9 @@
 use log::{debug, error, info};
-use serde_json::Value;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
-use crate::rclone::{
-    commands::{
+use crate::{
+    RcloneState,
+    rclone::commands::{
         mount::{MountParams, mount_remote},
         serve::{ServeParams, start_serve},
         sync::{
@@ -11,173 +11,161 @@ use crate::rclone::{
             start_sync,
         },
     },
-    state::cache::{CACHE, get_cached_remotes},
+    utils::types::all_types::{JobCache, RemoteCache},
 };
-
-/// Generic handler for auto-start operations
-use std::future::Future;
-use std::pin::Pin;
-
-async fn handle_auto_start<P, F, T>(
-    remote_name: &str,
-    settings: &Value,
-    operation_name: &str,
-    app_handle: AppHandle,
-    from_settings: fn(String, &Value) -> Option<P>,
-    should_start: fn(&Value) -> bool,
-    spawn_fn: F,
-) where
-    F: Fn(AppHandle, P) -> Pin<Box<dyn Future<Output = Result<T, String>> + Send>>
-        + Send
-        + Sync
-        + 'static,
-    P: Send + 'static,
-    T: Send + 'static,
-{
-    if !should_start(settings) {
-        debug!(
-            "Skipping {} for {}: autoStart is not enabled",
-            operation_name, remote_name
-        );
-        return;
-    }
-
-    /*This gonna be removed later*/
-
-    // List of operations that can also be managed by the scheduler
-    const SCHEDULER_OPS: &[&str] = &["sync", "copy", "move", "bisync"];
-
-    if SCHEDULER_OPS.contains(&operation_name) {
-        let config_key = format!("{}Config", operation_name); // e.g., "syncConfig"
-
-        // Check if cron is *also* enabled for this operation
-        let cron_enabled = settings
-            .get(&config_key)
-            .and_then(|v| v.get("cronEnabled"))
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-
-        if cron_enabled {
-            debug!(
-                "Skipping autoStart for {}: This operation is managed by the scheduler (cronEnabled is true)",
-                operation_name
-            );
-            return; // Let the scheduler handle it, preventing the duplicate job
-        }
-    }
-
-    match from_settings(remote_name.to_string(), settings) {
-        Some(params) => {
-            if let Err(e) = spawn_fn(app_handle.clone(), params).await {
-                error!(
-                    "Failed to auto-start {} for {}: {}",
-                    operation_name, remote_name, e
-                );
-            } else {
-                debug!("{} task spawned for {}", operation_name, remote_name);
-            }
-        }
-        None => {
-            error!(
-                "❌ {} configuration incomplete for {}",
-                operation_name, remote_name
-            );
-        }
-    }
-}
 
 /// Main entry point for handling startup tasks.
 pub async fn handle_startup(app_handle: AppHandle) {
     info!("🚀 Checking startup options...");
 
+    // --- Get RemoteCache from app_handle ---
+    let cache = app_handle.state::<RemoteCache>();
+
     // Initialize remotes
-    let remotes = match get_cached_remotes().await {
-        Ok(r) => r,
-        Err(e) => {
-            error!("Failed to get remotes: {}", e);
+    let remotes = match cache.get_remotes().await {
+        // <-- Use cache method
+        r if !r.is_empty() => r,
+        _ => {
+            error!("Failed to get remotes or no remotes found");
             return;
         }
     };
 
     for remote in remotes {
-        handle_remote_startup(&remote, app_handle.clone()).await;
+        handle_remote_startup(&remote, app_handle.clone(), cache.clone()).await;
     }
 }
 
 /// Handles startup logic for an individual remote.
-async fn handle_remote_startup(remote_name: &str, app_handle: AppHandle) {
-    let settings = match CACHE.settings.read().await.get(remote_name).cloned() {
-        Some(s) => s,
-        None => {
-            error!("Remote {} not found in cached settings", remote_name);
-            return;
-        }
+async fn handle_remote_startup(
+    remote_name: &str,
+    app_handle: AppHandle,
+    cache: tauri::State<'_, RemoteCache>,
+) {
+    let settings = match cache.get_settings().await {
+        settings_val => match settings_val.get(remote_name).cloned() {
+            Some(s) => s,
+            None => {
+                error!("Remote {} not found in cached settings", remote_name);
+                return;
+            }
+        },
     };
 
-    // Handle each operation type
-    handle_auto_start(
-        remote_name,
-        &settings,
-        "mount",
-        app_handle.clone(),
-        MountParams::from_settings,
-        MountParams::should_auto_start,
-        |app, params| Box::pin(mount_remote(app, params)),
-    )
-    .await;
+    let job_cache_state = app_handle.state::<JobCache>();
+    let rclone_state = app_handle.state::<RcloneState>();
 
-    handle_auto_start(
-        remote_name,
-        &settings,
-        "sync",
-        app_handle.clone(),
-        SyncParams::from_settings,
-        SyncParams::should_auto_start,
-        |app, params| Box::pin(start_sync(app, params)),
-    )
-    .await;
+    // --- Handle mount operation ---
+    if MountParams::should_auto_start(&settings) {
+        match MountParams::from_settings(remote_name.to_string(), &settings) {
+            Some(params) => {
+                if let Err(e) =
+                    mount_remote(app_handle.clone(), job_cache_state.clone(), cache, params).await
+                {
+                    error!("Failed to auto-start mount for {}: {}", remote_name, e);
+                } else {
+                    debug!("Mount task spawned for {}", remote_name);
+                }
+            }
+            None => error!("❌ Mount configuration incomplete for {}", remote_name),
+        }
+    }
 
-    handle_auto_start(
-        remote_name,
-        &settings,
-        "copy",
-        app_handle.clone(),
-        CopyParams::from_settings,
-        CopyParams::should_auto_start,
-        |app, params| Box::pin(start_copy(app, params)),
-    )
-    .await;
+    // --- Handle sync operation ---
+    if SyncParams::should_auto_start(&settings) {
+        match SyncParams::from_settings(remote_name.to_string(), &settings) {
+            Some(params) => {
+                if let Err(e) = start_sync(
+                    app_handle.clone(),
+                    job_cache_state.clone(),
+                    rclone_state.clone(),
+                    params,
+                )
+                .await
+                {
+                    error!("Failed to auto-start sync for {}: {}", remote_name, e);
+                } else {
+                    debug!("Sync task spawned for {}", remote_name);
+                }
+            }
+            None => error!("❌ Sync configuration incomplete for {}", remote_name),
+        }
+    }
 
-    handle_auto_start(
-        remote_name,
-        &settings,
-        "move",
-        app_handle.clone(),
-        MoveParams::from_settings,
-        MoveParams::should_auto_start,
-        |app, params| Box::pin(start_move(app, params)),
-    )
-    .await;
+    // --- Handle copy operation ---
+    if CopyParams::should_auto_start(&settings) {
+        match CopyParams::from_settings(remote_name.to_string(), &settings) {
+            Some(params) => {
+                if let Err(e) = start_copy(
+                    app_handle.clone(),
+                    job_cache_state.clone(),
+                    rclone_state.clone(),
+                    params,
+                )
+                .await
+                {
+                    error!("Failed to auto-start copy for {}: {}", remote_name, e);
+                } else {
+                    debug!("Copy task spawned for {}", remote_name);
+                }
+            }
+            None => error!("❌ Copy configuration incomplete for {}", remote_name),
+        }
+    }
 
-    handle_auto_start(
-        remote_name,
-        &settings,
-        "bisync",
-        app_handle.clone(),
-        BisyncParams::from_settings,
-        BisyncParams::should_auto_start,
-        |app, params| Box::pin(start_bisync(app, params)),
-    )
-    .await;
+    // --- Handle move operation ---
+    if MoveParams::should_auto_start(&settings) {
+        match MoveParams::from_settings(remote_name.to_string(), &settings) {
+            Some(params) => {
+                if let Err(e) = start_move(
+                    app_handle.clone(),
+                    job_cache_state.clone(),
+                    rclone_state.clone(),
+                    params,
+                )
+                .await
+                {
+                    error!("Failed to auto-start move for {}: {}", remote_name, e);
+                } else {
+                    debug!("Move task spawned for {}", remote_name);
+                }
+            }
+            None => error!("❌ Move configuration incomplete for {}", remote_name),
+        }
+    }
 
-    handle_auto_start(
-        remote_name,
-        &settings,
-        "serve",
-        app_handle.clone(),
-        ServeParams::from_settings,
-        ServeParams::should_auto_start,
-        |app, params| Box::pin(start_serve(app, params)),
-    )
-    .await;
+    // --- Handle bisync operation ---
+    if BisyncParams::should_auto_start(&settings) {
+        match BisyncParams::from_settings(remote_name.to_string(), &settings) {
+            Some(params) => {
+                if let Err(e) = start_bisync(
+                    app_handle.clone(),
+                    job_cache_state.clone(),
+                    rclone_state.clone(),
+                    params,
+                )
+                .await
+                {
+                    error!("Failed to auto-start bisync for {}: {}", remote_name, e);
+                } else {
+                    debug!("Bisync task spawned for {}", remote_name);
+                }
+            }
+            None => error!("❌ Bisync configuration incomplete for {}", remote_name),
+        }
+    }
+
+    // --- Handle serve operation ---
+    if ServeParams::should_auto_start(&settings) {
+        match ServeParams::from_settings(remote_name.to_string(), &settings) {
+            Some(params) => {
+                if let Err(e) = start_serve(app_handle.clone(), params).await {
+                    error!("Failed to auto-start serve for {}: {}", remote_name, e);
+                } else {
+                    debug!("Serve task spawned for {}", remote_name);
+                }
+            }
+            None => error!("❌ Serve configuration incomplete for {}", remote_name),
+        }
+    }
 }

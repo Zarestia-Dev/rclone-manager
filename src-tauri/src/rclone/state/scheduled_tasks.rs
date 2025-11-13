@@ -1,26 +1,32 @@
 use crate::{
-    core::scheduler::{commands::SCHEDULER, engine::get_next_run},
+    core::scheduler::engine::{CronScheduler, get_next_run},
     rclone::commands::sync::{BisyncParams, CopyParams, MoveParams, SyncParams},
     utils::types::scheduled_task::{ScheduledTask, ScheduledTaskStats, TaskStatus, TaskType},
 };
 use log::{debug, info, warn};
-use once_cell::sync::Lazy;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
+use tauri::State;
 use tokio::sync::RwLock;
 
-/// Global cache for scheduled tasks (in-memory only, loaded from remote configs)
-pub static SCHEDULED_TASKS_CACHE: Lazy<ScheduledTasksCache> = Lazy::new(|| ScheduledTasksCache {
-    tasks: RwLock::new(HashMap::new()),
-});
-
+// --- Make struct public ---
 pub struct ScheduledTasksCache {
     tasks: RwLock<HashMap<String, ScheduledTask>>,
 }
 
 impl ScheduledTasksCache {
+    pub fn new() -> Self {
+        Self {
+            tasks: RwLock::new(HashMap::new()),
+        }
+    }
+
     /// Load tasks from remote configs, preserving existing task states
-    pub async fn load_from_remote_configs(&self, all_settings: &Value) -> Result<usize, String> {
+    pub async fn load_from_remote_configs(
+        &self,
+        all_settings: &Value,
+        scheduler: State<'_, CronScheduler>, // Pass in scheduler state
+    ) -> Result<usize, String> {
         let settings_obj = all_settings
             .as_object()
             .ok_or("Settings is not an object")?;
@@ -111,7 +117,7 @@ impl ScheduledTasksCache {
                     "🗑️ Removing task no longer in configs: {} ({})",
                     task.name, task.id
                 );
-                self.remove_task(&task.id).await?;
+                self.remove_task(&task.id, scheduler.clone()).await?;
             }
         }
 
@@ -119,7 +125,11 @@ impl ScheduledTasksCache {
     }
 
     /// Remove a task and unschedule it
-    pub async fn remove_task(&self, task_id: &str) -> Result<(), String> {
+    pub async fn remove_task(
+        &self,
+        task_id: &str,
+        scheduler: State<'_, CronScheduler>, // Pass in scheduler
+    ) -> Result<(), String> {
         let task = self
             .get_task(task_id)
             .await
@@ -128,7 +138,6 @@ impl ScheduledTasksCache {
         // Unschedule if it has a scheduler job ID
         if let Some(job_id_str) = &task.scheduler_job_id {
             if let Ok(job_id) = uuid::Uuid::parse_str(job_id_str) {
-                let scheduler = SCHEDULER.read().await;
                 if let Err(e) = scheduler.unschedule_task(job_id).await {
                     warn!("Failed to unschedule task {}: {}", task_id, e);
                 }
@@ -144,7 +153,11 @@ impl ScheduledTasksCache {
     }
 
     /// Remove all tasks for a specific remote
-    pub async fn remove_tasks_for_remote(&self, remote_name: &str) -> Result<Vec<String>, String> {
+    pub async fn remove_tasks_for_remote(
+        &self,
+        remote_name: &str,
+        scheduler: State<'_, CronScheduler>, // Pass in scheduler
+    ) -> Result<Vec<String>, String> {
         let tasks = self.get_all_tasks().await;
         let mut removed_ids = Vec::new();
 
@@ -155,7 +168,7 @@ impl ScheduledTasksCache {
                     "🗑️ Removing task '{}' associated with remote '{}'",
                     task.name, remote_name
                 );
-                self.remove_task(&task.id).await?;
+                self.remove_task(&task.id, scheduler.clone()).await?;
                 removed_ids.push(task.id);
             }
         }
@@ -168,6 +181,7 @@ impl ScheduledTasksCache {
         &self,
         remote_name: &str,
         remote_settings: &Value,
+        scheduler: State<'_, CronScheduler>, // Pass in scheduler
     ) -> Result<(), String> {
         let operation_types = [
             TaskType::Copy,
@@ -224,7 +238,7 @@ impl ScheduledTasksCache {
                     let task_id = format!("{}-{}", remote_name, task_type.as_str());
                     if self.get_task(&task_id).await.is_some() {
                         info!("🗑️ Removing disabled/invalid task: {}", task_id);
-                        self.remove_task(&task_id).await?;
+                        self.remove_task(&task_id, scheduler.clone()).await?;
                     }
                 }
                 Err(e) => {
@@ -462,37 +476,45 @@ impl ScheduledTasksCache {
 
 // Tauri commands
 #[tauri::command]
-pub async fn get_scheduled_tasks() -> Result<Vec<ScheduledTask>, String> {
-    Ok(SCHEDULED_TASKS_CACHE.get_all_tasks().await)
+pub async fn get_scheduled_tasks(
+    cache: State<'_, ScheduledTasksCache>,
+) -> Result<Vec<ScheduledTask>, String> {
+    Ok(cache.get_all_tasks().await)
 }
 
 #[tauri::command]
-pub async fn get_scheduled_task(task_id: String) -> Result<Option<ScheduledTask>, String> {
-    Ok(SCHEDULED_TASKS_CACHE.get_task(&task_id).await)
+pub async fn get_scheduled_task(
+    cache: State<'_, ScheduledTasksCache>,
+    task_id: String,
+) -> Result<Option<ScheduledTask>, String> {
+    Ok(cache.get_task(&task_id).await)
 }
 
 #[tauri::command]
-pub async fn get_scheduled_tasks_stats() -> Result<ScheduledTaskStats, String> {
-    Ok(SCHEDULED_TASKS_CACHE.get_stats().await)
+pub async fn get_scheduled_tasks_stats(
+    cache: State<'_, ScheduledTasksCache>,
+) -> Result<ScheduledTaskStats, String> {
+    Ok(cache.get_stats().await)
 }
 
 // Reload scheduled tasks from configs (Tauri command)
 #[tauri::command]
 pub async fn reload_scheduled_tasks_from_configs(
+    cache: State<'_, ScheduledTasksCache>,
+    scheduler: State<'_, CronScheduler>,
     all_settings: serde_json::Value,
 ) -> Result<usize, String> {
     info!("🔄 Reloading scheduled tasks from configs...");
 
     // Load tasks from configs (this preserves existing task states)
-    let task_count = SCHEDULED_TASKS_CACHE
-        .load_from_remote_configs(&all_settings)
+    let task_count = cache
+        .load_from_remote_configs(&all_settings, scheduler.clone())
         .await?;
 
     info!("📅 Loaded/updated {} scheduled task(s)", task_count);
 
     // Reschedule all tasks in the scheduler
-    let scheduler = SCHEDULER.read().await;
-    scheduler.reload_tasks().await?;
+    scheduler.reload_tasks(cache).await?;
 
     Ok(task_count)
 }

@@ -20,8 +20,12 @@ use crate::{
         check_binaries::{check_rclone_available, is_7z_available},
         initialization::{init_rclone_state, initialization, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
-        scheduler::commands::{
-            clear_all_scheduled_tasks, reload_scheduled_tasks, toggle_scheduled_task, validate_cron,
+        scheduler::{
+            commands::{
+                clear_all_scheduled_tasks, reload_scheduled_tasks, toggle_scheduled_task,
+                validate_cron,
+            },
+            engine::CronScheduler,
         },
         security::{
             change_config_password, clear_config_password_env, clear_encryption_cache,
@@ -88,8 +92,8 @@ use crate::{
             job::{delete_job, get_active_jobs, get_job_status, get_jobs},
             log::{clear_remote_logs, get_remote_logs},
             scheduled_tasks::{
-                get_scheduled_task, get_scheduled_tasks, get_scheduled_tasks_stats,
-                reload_scheduled_tasks_from_configs,
+                ScheduledTasksCache, get_scheduled_task, get_scheduled_tasks,
+                get_scheduled_tasks_stats, reload_scheduled_tasks_from_configs,
             },
             watcher::{force_check_mounted_remotes, force_check_serves},
         },
@@ -112,7 +116,10 @@ use crate::{
             provision::provision_rclone,
             updater::{check_rclone_update, update_rclone},
         },
-        types::{all_types::RcloneState, settings::SettingsState},
+        types::{
+            all_types::{JobCache, LogCache, RcApiEngine, RcloneState, RemoteCache},
+            settings::SettingsState,
+        },
     },
 };
 
@@ -192,8 +199,6 @@ pub fn run() {
                 config_dir: config_dir.clone(),
             });
 
-            // Initialize RClone Backend Store for backend.json
-            // Uses the same config directory as settings for consistency
             use crate::core::settings::rclone_backend::RCloneBackendStore;
             let rclone_backend_store = RCloneBackendStore::new(app_handle, &config_dir)
                 .map_err(|e| format!("Failed to initialize RClone backend store: {e}"))?;
@@ -202,11 +207,8 @@ pub fn run() {
             // Initialize SafeEnvironmentManager for secure password handling
             use crate::core::security::{CredentialStore, SafeEnvironmentManager};
             let env_manager = SafeEnvironmentManager::new();
-
-            // Initialize CredentialStore once and manage as state
             let credential_store = CredentialStore::new();
 
-            // Initialize with any stored credentials
             if let Err(e) = env_manager.init_with_stored_credentials(&credential_store) {
                 error!("Failed to initialize environment manager with stored credentials: {e}");
             }
@@ -219,7 +221,6 @@ pub fn run() {
             ))
             .map_err(|e| format!("Failed to load settings for startup: {e}"))?;
 
-            // Check if --tray argument is provided to override tray settings
             let force_tray = std::env::args().any(|arg| arg == "--tray");
             let tray_enabled = settings.general.tray_enabled || force_tray;
 
@@ -242,12 +243,18 @@ pub fn run() {
                 )),
             });
 
+            app.manage(JobCache::new());
+            app.manage(LogCache::new(1000));
+            app.manage(ScheduledTasksCache::new());
+            app.manage(CronScheduler::new());
+            app.manage(RemoteCache::new());
+            app.manage(RcApiEngine::new());
+
             #[cfg(all(desktop, feature = "updater"))]
             app.manage(PendingUpdate(std::sync::Mutex::new(None)));
             #[cfg(all(desktop, feature = "updater"))]
             app.manage(DownloadState::default());
 
-            // Setup global shortcuts
             #[cfg(desktop)]
             {
                 use crate::utils::shortcuts::handle_global_shortcut_event;
@@ -256,10 +263,8 @@ pub fn run() {
                     Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
                 };
 
-                // Define shortcuts
                 let ctrl_q_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyQ);
 
-                // Setup global shortcut plugin with handler
                 app_handle.plugin(
                     tauri_plugin_global_shortcut::Builder::new()
                         .with_handler(move |app, shortcut, event| {
@@ -270,7 +275,6 @@ pub fn run() {
                         .build(),
                 )?;
 
-                // Register shortcuts
                 match app_handle.global_shortcut().register(ctrl_q_shortcut) {
                     Ok(_) => info!("Successfully registered Ctrl+Q shortcut"),
                     Err(e) => error!("Failed to register Ctrl+Q shortcut: {e}"),
@@ -279,13 +283,12 @@ pub fn run() {
                 info!("🔗 Global shortcuts registered successfully");
             }
 
-            init_logging(settings.developer.debug_logging)
+            init_logging(settings.developer.debug_logging, app_handle.clone())
                 .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
             init_rclone_state(app_handle, &settings)
                 .map_err(|e| format!("Rclone initialization failed: {e}"))?;
 
-            // Async startup
             let app_handle_clone = app_handle.clone();
             tauri::async_runtime::spawn(async move {
                 initialization(app_handle_clone.clone(), settings).await;
@@ -293,7 +296,6 @@ pub fn run() {
                 monitor_network_changes(app_handle_clone).await;
             });
 
-            // Only create window if not starting with tray
             if !std::env::args().any(|arg| arg == "--tray") {
                 debug!("Creating main window");
                 create_app_window(app.handle().clone());
@@ -302,7 +304,6 @@ pub fn run() {
             Ok(())
         })
         .on_menu_event(|app, event| {
-            // First, try to parse it as a dynamic TrayAction
             if let Some(action) = TrayAction::from_id(event.id.as_ref()) {
                 match action {
                     TrayAction::Mount(remote) => handle_mount_remote(app.clone(), &remote),
@@ -322,7 +323,6 @@ pub fn run() {
                 return;
             }
 
-            // Handle static, non-remote-specific menu items
             match event.id.as_ref() {
                 "show_app" => show_main_window(app.clone()),
                 "stop_all_jobs" => handle_stop_all_jobs(app.clone()),
@@ -368,7 +368,6 @@ pub fn run() {
             get_rclone_pid,
             check_rclone_update,
             update_rclone,
-            // get_rclone_update_info,
             kill_process_by_pid,
             // Rclone Command API
             get_all_remote_configs,
@@ -465,7 +464,7 @@ pub fn run() {
             get_job_status,
             stop_job,
             delete_job,
-            // Scheduled Tasks
+            // Scheduled Tasks (Now require state)
             get_scheduled_tasks,
             get_scheduled_task,
             get_scheduled_tasks_stats,

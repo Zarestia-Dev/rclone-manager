@@ -1,24 +1,21 @@
 use crate::core::scheduler::engine::{CronScheduler, get_next_run, validate_cron_expression};
-use crate::rclone::state::scheduled_tasks::SCHEDULED_TASKS_CACHE;
+use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::utils::types::scheduled_task::{CronValidationResponse, ScheduledTask, TaskStatus};
 use log::{error, info, warn};
-use once_cell::sync::Lazy;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
-/// Global scheduler instance
-pub static SCHEDULER: Lazy<Arc<RwLock<CronScheduler>>> =
-    Lazy::new(|| Arc::new(RwLock::new(CronScheduler::new())));
+use tauri::State;
 
 /// Toggle task enabled/disabled
 #[tauri::command]
-pub async fn toggle_scheduled_task(task_id: String) -> Result<ScheduledTask, String> {
+pub async fn toggle_scheduled_task(
+    cache: State<'_, ScheduledTasksCache>,
+    scheduler: State<'_, CronScheduler>,
+    task_id: String,
+) -> Result<ScheduledTask, String> {
     info!("🔄 Toggling scheduled task: {}", task_id);
 
-    let task = SCHEDULED_TASKS_CACHE.toggle_task_status(&task_id).await?;
+    let task = cache.toggle_task_status(&task_id).await?;
 
-    let scheduler = SCHEDULER.read().await;
-    if let Err(e) = scheduler.reschedule_task(&task).await {
+    if let Err(e) = scheduler.reschedule_task(&task, cache).await {
         error!("⚠️  Failed to reload tasks after toggle: {}", e);
     } else {
         info!(
@@ -61,11 +58,13 @@ pub async fn validate_cron(cron_expression: String) -> Result<CronValidationResp
 
 /// Reload all scheduled tasks (useful after app restart or manual intervention)
 #[tauri::command]
-pub async fn reload_scheduled_tasks() -> Result<(), String> {
+pub async fn reload_scheduled_tasks(
+    cache: State<'_, ScheduledTasksCache>,
+    scheduler: State<'_, CronScheduler>,
+) -> Result<(), String> {
     info!("🔄 Reloading all scheduled tasks");
 
-    let scheduler = SCHEDULER.read().await;
-    scheduler.reload_tasks().await?;
+    scheduler.reload_tasks(cache).await?;
 
     info!("✅ Scheduled tasks reloaded");
     Ok(())
@@ -73,11 +72,13 @@ pub async fn reload_scheduled_tasks() -> Result<(), String> {
 
 /// Clear all scheduled tasks (dangerous!)
 #[tauri::command]
-pub async fn clear_all_scheduled_tasks() -> Result<(), String> {
+pub async fn clear_all_scheduled_tasks(
+    cache: State<'_, ScheduledTasksCache>,
+    scheduler: State<'_, CronScheduler>,
+) -> Result<(), String> {
     info!("⚠️  Clearing all scheduled tasks");
 
-    let tasks = SCHEDULED_TASKS_CACHE.get_all_tasks().await;
-    let scheduler = SCHEDULER.read().await;
+    let tasks = cache.get_all_tasks().await;
 
     for task in tasks {
         if let Some(job_id_str) = task.scheduler_job_id {
@@ -89,7 +90,7 @@ pub async fn clear_all_scheduled_tasks() -> Result<(), String> {
         }
     }
 
-    SCHEDULED_TASKS_CACHE.clear_all_tasks().await?;
+    cache.clear_all_tasks().await?;
 
     info!("✅ All scheduled tasks cleared");
     Ok(())

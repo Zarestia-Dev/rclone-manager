@@ -1,18 +1,18 @@
 use chrono::Utc;
-use log::{debug, error};
+use log::{debug, error, warn};
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Emitter, State};
 
 use crate::{
     RcloneState,
-    rclone::state::{engine::ENGINE_STATE, job::JOB_CACHE},
+    rclone::engine::core::ENGINE,
     utils::{
         json_helpers::{get_bool, get_string, json_to_hashmap},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, sync},
         types::{
-            all_types::{JobInfo, JobResponse, JobStatus, LogLevel},
+            all_types::{JobCache, JobInfo, JobResponse, JobStatus, LogLevel},
             events::JOB_CACHE_CHANGED,
         },
     },
@@ -23,6 +23,8 @@ use super::job::monitor_job;
 // --- Internal Helper Function ---
 async fn start_sync_like_job(
     app: AppHandle,
+    job_cache: State<'_, JobCache>,
+    state: State<'_, RcloneState>,
     remote_name: String,
     source: String,
     dest: String,
@@ -35,9 +37,18 @@ async fn start_sync_like_job(
         "Calling start_sync_like_job for {}: {} -> {}",
         operation_name, source, dest
     );
-    let state = app.state::<RcloneState>();
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, endpoint);
+    if job_cache.is_job_running(&remote_name, job_type).await {
+        let err_msg = format!(
+            "A '{}' job for remote '{}' is already in progress.",
+            job_type, remote_name
+        );
+        warn!("{}", err_msg);
+        return Err(err_msg);
+    }
+
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, endpoint);
 
     let response = state
         .client
@@ -75,7 +86,7 @@ async fn start_sync_like_job(
         Some(json!({"jobid": jobid})),
     );
 
-    JOB_CACHE
+    job_cache
         .add_job(JobInfo {
             jobid,
             job_type: job_type.to_string(),
@@ -100,8 +111,6 @@ async fn start_sync_like_job(
         .map_err(|e| format!("Failed to emit event: {e}"))?;
     Ok(jobid)
 }
-
-// --- Parameters Structs (Unchanged) ---
 
 /// Parameters for starting a sync operation
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -361,7 +370,12 @@ fn merge_options(
 
 /// Start a sync operation
 #[tauri::command]
-pub async fn start_sync(app: AppHandle, params: SyncParams) -> Result<u64, String> {
+pub async fn start_sync(
+    app: AppHandle,
+    job_cache: State<'_, JobCache>,
+    rclone_state: State<'_, RcloneState>,
+    params: SyncParams,
+) -> Result<u64, String> {
     debug!("Received start_sync params: {params:#?}");
     let operation_name = "Sync operation";
     log_operation(
@@ -405,6 +419,8 @@ pub async fn start_sync(app: AppHandle, params: SyncParams) -> Result<u64, Strin
 
     start_sync_like_job(
         app.clone(),
+        job_cache,
+        rclone_state,
         params.remote_name,
         params.source,
         params.dest,
@@ -417,7 +433,12 @@ pub async fn start_sync(app: AppHandle, params: SyncParams) -> Result<u64, Strin
 }
 
 #[tauri::command]
-pub async fn start_copy(app: AppHandle, params: CopyParams) -> Result<u64, String> {
+pub async fn start_copy(
+    app: AppHandle,
+    job_cache: State<'_, JobCache>,
+    rclone_state: State<'_, RcloneState>,
+    params: CopyParams,
+) -> Result<u64, String> {
     debug!("Received start_copy params: {params:#?}");
     let operation_name = "Copy operation";
     log_operation(
@@ -460,6 +481,8 @@ pub async fn start_copy(app: AppHandle, params: CopyParams) -> Result<u64, Strin
 
     start_sync_like_job(
         app,
+        job_cache,
+        rclone_state,
         params.remote_name,
         params.source,
         params.dest,
@@ -472,7 +495,12 @@ pub async fn start_copy(app: AppHandle, params: CopyParams) -> Result<u64, Strin
 }
 
 #[tauri::command]
-pub async fn start_bisync(app: AppHandle, params: BisyncParams) -> Result<u64, String> {
+pub async fn start_bisync(
+    app: AppHandle,
+    job_cache: State<'_, JobCache>,
+    rclone_state: State<'_, RcloneState>,
+    params: BisyncParams,
+) -> Result<u64, String> {
     debug!("Received start_bisync params: {params:#?}");
     let operation_name = "Bisync operation";
     log_operation(
@@ -486,7 +514,6 @@ pub async fn start_bisync(app: AppHandle, params: BisyncParams) -> Result<u64, S
         Some(json!({
             "source (path1)": params.source,
             "destination (path2)": params.dest,
-            // ... (logging other params as before)
             "resync": params.resync,
             "bisync_options": params.bisync_options.as_ref().map(|o| o.keys().collect::<Vec<_>>()),
             "filters": params.filter_options.as_ref().map(|f| f.keys().collect::<Vec<_>>()),
@@ -562,6 +589,8 @@ pub async fn start_bisync(app: AppHandle, params: BisyncParams) -> Result<u64, S
 
     start_sync_like_job(
         app,
+        job_cache,
+        rclone_state,
         params.remote_name,
         params.source,
         params.dest,
@@ -574,7 +603,12 @@ pub async fn start_bisync(app: AppHandle, params: BisyncParams) -> Result<u64, S
 }
 
 #[tauri::command]
-pub async fn start_move(app: AppHandle, params: MoveParams) -> Result<u64, String> {
+pub async fn start_move(
+    app: AppHandle,
+    job_cache: State<'_, JobCache>,
+    rclone_state: State<'_, RcloneState>,
+    params: MoveParams,
+) -> Result<u64, String> {
     debug!("Received start_move params: {params:#?}");
     let operation_name = "Move operation";
     log_operation(
@@ -620,6 +654,8 @@ pub async fn start_move(app: AppHandle, params: MoveParams) -> Result<u64, Strin
 
     start_sync_like_job(
         app,
+        job_cache,
+        rclone_state,
         params.remote_name,
         params.source,
         params.dest,

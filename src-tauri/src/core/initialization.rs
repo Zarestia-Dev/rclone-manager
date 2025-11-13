@@ -3,21 +3,19 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 
 use crate::{
-    core::{event_listener::setup_event_listener, scheduler::commands::SCHEDULER},
+    core::{event_listener::setup_event_listener, scheduler::engine::CronScheduler},
     rclone::{
         commands::system::set_bandwidth_limit,
         queries::flags::set_rclone_option,
         state::{
-            cache::CACHE,
-            engine::ENGINE_STATE,
-            scheduled_tasks::SCHEDULED_TASKS_CACHE,
+            scheduled_tasks::ScheduledTasksCache,
             watcher::{start_mounted_remote_watcher, start_serve_watcher},
         },
     },
     utils::{
         app::builder::setup_tray,
         types::{
-            all_types::{RcApiEngine, RcloneState},
+            all_types::{RcApiEngine, RcloneState, RemoteCache},
             settings::AppSettings,
         },
     },
@@ -31,15 +29,13 @@ pub fn init_rclone_state(
     let api_url = format!("http://127.0.0.1:{}", settings.core.rclone_api_port);
     let oauth_url = format!("http://127.0.0.1:{}", settings.core.rclone_oauth_port);
 
-    ENGINE_STATE
-        .set_api(api_url, settings.core.rclone_api_port)
-        .map_err(|e| format!("Failed to set Rclone API: {e}"))?;
-
-    ENGINE_STATE
-        .set_oauth(oauth_url, settings.core.rclone_oauth_port)
-        .map_err(|e| format!("Failed to set Rclone OAuth: {e}"))?;
-
     let mut engine = tauri::async_runtime::block_on(RcApiEngine::lock_engine());
+    engine.api_url = api_url;
+    engine.api_port = settings.core.rclone_api_port;
+    engine.oauth_url = oauth_url;
+    engine.oauth_port = settings.core.rclone_oauth_port;
+
+    // Call the engine's init function
     engine.init(app_handle);
 
     info!("🔄 Rclone engine initialized");
@@ -60,7 +56,6 @@ pub fn setup_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String
 }
 
 /// Handles async startup tasks
-// In initialization.rs - improved initialization
 pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings) {
     debug!("🚀 Starting async startup tasks");
 
@@ -68,13 +63,14 @@ pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings)
 
     // Step 1: Refresh caches FIRST (need data for scheduler)
     info!("📊 Refreshing caches...");
-    match CACHE.refresh_all(app_handle.clone()).await {
+    let cache = app_handle.state::<RemoteCache>();
+
+    match cache.refresh_all(app_handle.clone()).await {
         Ok(_) => {
             info!("✅ Caches refreshed successfully");
         }
         Err(e) => {
             error!("❌ Failed to refresh caches: {e}");
-            // Consider if this should be fatal
         }
     }
 
@@ -86,7 +82,6 @@ pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings)
         }
         Err(e) => {
             error!("❌ Failed to initialize cron scheduler: {}", e);
-            // Scheduler failure might not be fatal for the app
         }
     }
 
@@ -115,27 +110,23 @@ pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings)
 
 /// Initialize the cron scheduler with tasks loaded from remote configs
 async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
-    // Get all remote settings from cache
-    let settings = CACHE.settings.read().await;
+    let cache_state = app_handle.state::<ScheduledTasksCache>();
+    let scheduler_state = app_handle.state::<CronScheduler>();
+    let remote_cache = app_handle.state::<RemoteCache>();
+
+    let settings = remote_cache.get_settings().await;
     let all_settings = serde_json::json!(settings.clone());
 
-    // Load scheduled tasks from remote configs
     info!("📋 Loading scheduled tasks from remote configs...");
-    let task_count = SCHEDULED_TASKS_CACHE
-        .load_from_remote_configs(&all_settings)
+    let task_count = cache_state
+        .load_from_remote_configs(&all_settings, scheduler_state.clone())
         .await?;
 
     info!("📅 Loaded {} scheduled task(s)", task_count);
 
-    // Initialize the scheduler with the app handle
-    let mut scheduler = SCHEDULER.write().await;
-    scheduler.initialize(app_handle.clone()).await?;
-
-    // Start the scheduler
-    scheduler.start().await?;
-
-    // Reload all tasks (this will schedule them)
-    scheduler.reload_tasks().await?;
+    scheduler_state.initialize(app_handle.clone()).await?;
+    scheduler_state.start().await?;
+    scheduler_state.reload_tasks(cache_state).await?;
 
     Ok(())
 }
@@ -163,19 +154,6 @@ pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSe
     if let Err(e) = apply_backend_settings(app_handle).await {
         error!("Failed to apply backend settings: {e}");
     }
-
-    // if !settings.core.rclone_config_file.is_empty() {
-    //     debug!(
-    //         "🔗 Setting Rclone config path: {}",
-    //         settings.core.rclone_config_file
-    //     );
-    //     if let Err(e) =
-    //         set_rclone_config_file(app_handle.clone(), settings.core.rclone_config_file.clone())
-    //             .await
-    //     {
-    //         error!("Failed to set Rclone config path: {e}");
-    //     }
-    // }
 }
 
 /// Apply RClone backend settings from backend.json file
@@ -184,14 +162,12 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
 
     debug!("🔧 Applying RClone backend settings from backend.json");
 
-    // Load backend options from store
     let backend_options = load_rclone_backend_options(app_handle.clone())
         .await
         .map_err(|e| format!("Failed to load backend options: {}", e))?;
 
     let rclone_state = app_handle.state::<RcloneState>();
 
-    // Apply each block's options
     if let Some(backend_obj) = backend_options.as_object() {
         for (block_name, block_options) in backend_obj {
             if let Some(options_obj) = block_options.as_object() {
@@ -213,7 +189,6 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
                             "Failed to set RClone option {}.{}: {}",
                             block_name, option_name, e
                         );
-                        // Continue with other options even if one fails
                     }
                 }
             }

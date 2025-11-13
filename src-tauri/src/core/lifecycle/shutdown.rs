@@ -1,20 +1,21 @@
 use log::{debug, error, info, warn};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager};
-// CHANGED: Removed spawn_blocking
-// use tokio::task::spawn_blocking;
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
-    core::scheduler::commands::SCHEDULER,
     rclone::{
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
-        state::{job::get_active_jobs, watcher::stop_mounted_remote_watcher},
+        state::watcher::stop_mounted_remote_watcher,
     },
     utils::{
         process::process_manager::kill_all_rclone_processes,
         types::{all_types::RcApiEngine, events::APP_EVENT},
     },
 };
+
+use crate::core::scheduler::engine::CronScheduler;
+use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
+use crate::utils::types::all_types::{JobCache, RemoteCache};
 
 #[tauri::command]
 pub async fn handle_shutdown(app_handle: AppHandle) {
@@ -34,15 +35,13 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
             error!("Failed to emit an app_event: {e}");
         });
 
-    // ... (rest of the job/serve shutdown logic is unchanged) ...
-    let active_jobs = match get_active_jobs().await {
-        Ok(jobs) => jobs,
-        Err(e) => {
-            error!("Failed to get active jobs: {e}");
-            vec![]
-        }
-    };
-    let active_serves = crate::rclone::state::cache::CACHE.get_serves().await;
+    let job_cache_state = app_handle.state::<JobCache>();
+    let remote_cache_state = app_handle.state::<RemoteCache>();
+    let scheduler_state = app_handle.state::<CronScheduler>();
+
+    let active_jobs = job_cache_state.get_active_jobs().await;
+    let active_serves = remote_cache_state.get_serves().await;
+
     if !active_jobs.is_empty() {
         let job_count = active_jobs.len();
         info!("⚠️ Stopping {job_count} active jobs during shutdown");
@@ -61,7 +60,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     );
     let stop_jobs_task = tokio::time::timeout(
         tokio::time::Duration::from_secs(5),
-        stop_all_jobs(app_handle.clone()),
+        stop_all_jobs(app_handle.clone(), job_cache_state.clone()),
     );
     let stop_serves_task = tokio::time::timeout(
         tokio::time::Duration::from_secs(5),
@@ -80,11 +79,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     crate::rclone::state::watcher::stop_serve_watcher();
 
     info!("⏰ Stopping cron scheduler...");
-    let scheduler_stop_task = async {
-        let mut scheduler = SCHEDULER.write().await;
-        scheduler.stop().await
-    };
-    match scheduler_stop_task.await {
+    match scheduler_state.stop().await {
         Ok(()) => info!("✅ Cron scheduler stopped successfully"),
         Err(e) => error!("❌ Failed to stop cron scheduler: {e}"),
     }
@@ -105,7 +100,6 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         }
     }
 
-    // ... (rest of the job/serve result handling is unchanged) ...
     match unmount_result {
         Ok(Ok(info)) => info!("Unmounted all remotes successfully: {info:?}"),
         Ok(Err(e)) => {
@@ -128,11 +122,10 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         Err(_) => error!("❌ Serve stopping operation timed out after 5 seconds"),
     }
 
-    // CHANGED: Replaced spawn_blocking with a simple async block
+    // --- Use global ENGINE for shutdown ---
     let engine_shutdown_task =
         tokio::time::timeout(tokio::time::Duration::from_secs(3), async move {
             info!("🔄 Shutting down engine gracefully...");
-            // Await the async lock and async shutdown
             let mut engine = RcApiEngine::lock_engine().await;
             engine.shutdown().await;
             Ok::<(), String>(())
@@ -140,10 +133,11 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
 
     match engine_shutdown_task.await {
         Ok(Ok(_)) => info!("Engine shutdown completed successfully."),
-        Ok(Err(e)) => error!("Engine shutdown task failed: {e:?}"), // This shouldn't happen with the new async block
+        Ok(Err(e)) => error!("Engine shutdown task failed: {e:?}"),
         Err(_) => {
             error!("Engine shutdown timed out after 3 seconds, forcing cleanup");
-            if let Err(e) = kill_all_rclone_processes() {
+            let engine = RcApiEngine::lock_engine().await;
+            if let Err(e) = kill_all_rclone_processes(engine.api_port, engine.oauth_port).await {
                 error!("Failed to force kill rclone processes: {e}");
             }
         }
@@ -161,13 +155,22 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     app_handle.exit(0);
 }
 
-// ... (stop_all_jobs function is unchanged) ...
-async fn stop_all_jobs(app: AppHandle) -> Result<(), String> {
-    let active_jobs = get_active_jobs().await?;
+async fn stop_all_jobs(app: AppHandle, job_cache: State<'_, JobCache>) -> Result<(), String> {
+    let active_jobs = job_cache.get_active_jobs().await;
     let mut errors = Vec::new();
 
+    let scheduled_cache = app.state::<ScheduledTasksCache>();
     for job in active_jobs {
-        if let Err(e) = stop_job(app.clone(), job.jobid, "".to_string(), app.state()).await {
+        if let Err(e) = stop_job(
+            app.clone(),
+            job_cache.clone(),
+            scheduled_cache.clone(),
+            job.jobid,
+            "".to_string(),
+            app.state(),
+        )
+        .await
+        {
             errors.push(format!("Job {}: {e}", job.jobid));
         }
     }

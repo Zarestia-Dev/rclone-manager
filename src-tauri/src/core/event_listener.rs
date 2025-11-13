@@ -5,19 +5,20 @@ use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
     RcloneState,
-    core::{lifecycle::shutdown::handle_shutdown, tray::core::update_tray_menu},
+    core::{
+        lifecycle::shutdown::handle_shutdown, scheduler::engine::CronScheduler,
+        tray::core::update_tray_menu,
+    },
     rclone::{
         commands::system::set_bandwidth_limit,
-        state::{
-            cache::CACHE, engine::ENGINE_STATE,
-            scheduled_tasks::reload_scheduled_tasks_from_configs,
-        },
+        engine::core::ENGINE,
+        state::scheduled_tasks::{ScheduledTasksCache, reload_scheduled_tasks_from_configs},
     },
     utils::{
         app::builder::setup_tray,
         logging::log::update_log_level,
         types::{
-            all_types::RcApiEngine,
+            all_types::{RcApiEngine, RemoteCache},
             events::{
                 JOB_CACHE_CHANGED, MOUNT_STATE_CHANGED, RCLONE_API_URL_UPDATED,
                 RCLONE_PASSWORD_STORED, REMOTE_CACHE_UPDATED, REMOTE_PRESENCE_CHANGED,
@@ -50,9 +51,8 @@ fn handle_rclone_api_url_updated(app: &AppHandle) {
     app.listen(RCLONE_API_URL_UPDATED, move |_| {
         let app = app_handle.clone();
         tauri::async_runtime::spawn(async move {
-            let port = ENGINE_STATE.get_api().1;
-
             let mut engine = RcApiEngine::lock_engine().await;
+            let port = engine.api_port; // <-- Get port from engine itself
             engine.update_port(&app, port).await;
         });
     });
@@ -61,7 +61,7 @@ fn handle_rclone_api_url_updated(app: &AppHandle) {
 fn handle_rclone_password_stored(app: &AppHandle) {
     let app_clone = app.clone();
     app.listen(RCLONE_PASSWORD_STORED, move |_| {
-        let _app = app_clone.clone();
+        let _app = app_clone.clone(); // _app is not used, but good to keep
         tauri::async_runtime::spawn(async move {
             let mut engine = RcApiEngine::lock_engine().await;
             engine.password_error = false;
@@ -78,7 +78,8 @@ fn handle_remote_state_changed(app: &AppHandle) {
         );
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            if let Err(e) = CACHE.refresh_mounted_remotes(app.clone()).await {
+            let cache = app.state::<RemoteCache>(); // <-- Get managed RemoteCache
+            if let Err(e) = cache.refresh_mounted_remotes(app.clone()).await {
                 error!("Failed to refresh mounted remotes: {e}");
             }
             if let Err(e) = update_tray_menu(app.clone(), 0).await {
@@ -100,18 +101,25 @@ fn handle_remote_presence_changed(app: &AppHandle) {
     app.listen(REMOTE_PRESENCE_CHANGED, move |_| {
         let app_clone = app_clone.clone();
         tauri::async_runtime::spawn(async move {
+            let cache = app_clone.state::<RemoteCache>();
             let refresh_tasks = tokio::join!(
-                CACHE.refresh_remote_list(app_clone.clone()),
-                CACHE.refresh_remote_configs(app_clone.clone()),
-                CACHE.refresh_remote_settings(app_clone.clone()),
+                cache.refresh_remote_list(app_clone.clone()),
+                cache.refresh_remote_configs(app_clone.clone()),
+                cache.refresh_remote_settings(app_clone.clone()),
             );
             if let (Err(e1), Err(e2), Err(e3)) = refresh_tasks {
                 error!("Failed to refresh cache: {e1}, {e2}, {e3}");
             }
 
             info!("Remote presence changed, reloading scheduled tasks from configs...");
-            let all_configs = CACHE.settings.read().await.clone();
-            if let Err(e) = reload_scheduled_tasks_from_configs(all_configs).await {
+            let all_configs = cache.get_settings().await;
+
+            let cache_state = app_clone.state::<ScheduledTasksCache>();
+            let scheduler_state = app_clone.state::<CronScheduler>();
+
+            if let Err(e) =
+                reload_scheduled_tasks_from_configs(cache_state, scheduler_state, all_configs).await
+            {
                 error!("❌ Failed to reload scheduled tasks after remote change: {e}");
             }
 
@@ -161,10 +169,8 @@ fn handle_serve_state_changed(app: &AppHandle) {
         tauri::async_runtime::spawn(async move {
             debug!("🔄 Serve state changed! Raw payload: {:?}", event.payload());
 
-            if let Err(e) = crate::rclone::state::cache::CACHE
-                .refresh_serves(app.clone())
-                .await
-            {
+            let cache = app.state::<RemoteCache>();
+            if let Err(e) = cache.refresh_serves(app.clone()).await {
                 error!("❌ Failed to refresh serves cache: {e}");
             }
 
@@ -371,34 +377,39 @@ fn handle_settings_changed(app: &AppHandle) {
 
                     if let Some(api_port) = core.get("rclone_api_port").and_then(|v| v.as_u64()) {
                         debug!("🔌 Rclone API Port changed to: {api_port}");
-                        let old_port = ENGINE_STATE.get_api().1.to_string();
 
-                        if let Err(e) = ENGINE_STATE
-                            .set_api(format!("http://127.0.0.1:{api_port}"), api_port as u16)
-                        {
-                            error!("Failed to set Rclone API Port: {e}");
-                        } else {
+                        let app_handle_clone = app_handle.clone(); // Clone for the new task
+                        tauri::async_runtime::spawn(async move {
+                            let old_port = async {
+                                let mut engine = ENGINE.lock().await;
+                                let old = engine.api_port;
+                                engine.api_port = api_port as u16;
+                                engine.api_url = format!("http://127.0.0.1:{api_port}");
+                                old
+                            }
+                            .await;
+
                             if let Err(e) =
                                 crate::rclone::engine::lifecycle::restart_for_config_change(
-                                    &app_handle,
+                                    &app_handle_clone, // Use the clone
                                     "api_port",
-                                    &old_port,
+                                    &old_port.to_string(),
                                     &api_port.to_string(),
                                 )
                             {
                                 error!("Failed to restart engine for API port change: {e}");
                             }
-                        }
+                        });
                     }
 
                     if let Some(oauth_port) = core.get("rclone_oauth_port").and_then(|v| v.as_u64())
                     {
                         debug!("🔑 Rclone OAuth Port changed to: {oauth_port}");
-                        if let Err(e) = ENGINE_STATE
-                            .set_oauth(format!("http://127.0.0.1:{oauth_port}"), oauth_port as u16)
-                        {
-                            error!("Failed to set Rclone OAuth Port: {e}");
-                        }
+                        tauri::async_runtime::spawn(async move {
+                            let mut engine = ENGINE.lock().await;
+                            engine.oauth_port = oauth_port as u16;
+                            engine.oauth_url = format!("http://127.0.0.1:{oauth_port}");
+                        });
                     }
 
                     if let Some(max_items) = core.get("max_tray_items").and_then(|v| v.as_u64()) {

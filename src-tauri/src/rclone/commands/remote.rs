@@ -1,19 +1,25 @@
 use log::{error, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
     RcloneState,
-    rclone::state::{engine::ENGINE_STATE, log::clear_remote_logs},
+    core::scheduler::engine::CronScheduler,
+    rclone::{
+        commands::system::{ensure_oauth_process, redact_sensitive_values},
+        engine::core::ENGINE,
+        state::scheduled_tasks::ScheduledTasksCache,
+    },
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, config},
-        types::{all_types::LogLevel, events::REMOTE_PRESENCE_CHANGED},
+        types::{
+            all_types::{LogCache, LogLevel},
+            events::REMOTE_PRESENCE_CHANGED,
+        },
     },
 };
-
-use super::system::{ensure_oauth_process, redact_sensitive_values};
 
 /// Start non-interactive remote configuration
 /// This calls config/create with opt.nonInteractive=true and returns the raw JSON response
@@ -51,10 +57,8 @@ pub async fn create_remote_interactive(
     }
     body["opt"] = opt_obj;
 
-    let url = EndpointHelper::build_url(
-        &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
-        config::CREATE,
-    );
+    let oauth_url = ENGINE.lock().await.get_oauth_url();
+    let url = EndpointHelper::build_url(&oauth_url, config::CREATE);
 
     let response = state
         .client
@@ -118,10 +122,8 @@ pub async fn continue_create_remote_interactive(
     }
     body["opt"] = opt_obj;
 
-    let url = EndpointHelper::build_url(
-        &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
-        config::UPDATE,
-    );
+    let oauth_url = ENGINE.lock().await.get_oauth_url();
+    let url = EndpointHelper::build_url(&oauth_url, config::UPDATE);
 
     let response = tauri_state
         .client
@@ -191,10 +193,8 @@ pub async fn create_remote(
         "parameters": parameters
     });
 
-    let url = EndpointHelper::build_url(
-        &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
-        config::CREATE,
-    );
+    let oauth_url = ENGINE.lock().await.get_oauth_url();
+    let url = EndpointHelper::build_url(&oauth_url, config::CREATE);
 
     let response = state
         .client
@@ -208,10 +208,11 @@ pub async fn create_remote(
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
+        let oauth_port = ENGINE.lock().await.get_oauth_port();
         let error = if body.contains("failed to get oauth token") {
             "OAuth authentication failed or was not completed".to_string()
         } else if body.contains("bind: address already in use") {
-            format!("Port {} already in use", ENGINE_STATE.get_oauth().1)
+            format!("Port {} already in use", oauth_port)
         } else {
             format!("HTTP {status}: {body}")
         };
@@ -272,10 +273,8 @@ pub async fn update_remote(
         .await
         .map_err(|e| e.to_string())?;
 
-    let url = EndpointHelper::build_url(
-        &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
-        config::UPDATE,
-    );
+    let oauth_url = ENGINE.lock().await.get_oauth_url();
+    let url = EndpointHelper::build_url(&oauth_url, config::UPDATE);
     let body = json!({ "name": name, "parameters": parameters });
 
     let response = state
@@ -320,10 +319,13 @@ pub async fn delete_remote(
     app: AppHandle,
     name: String,
     state: State<'_, RcloneState>,
+    cache: State<'_, ScheduledTasksCache>,
+    scheduler: State<'_, CronScheduler>,
 ) -> Result<(), String> {
     info!("🗑️ Deleting remote: {name}");
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::DELETE);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, config::DELETE);
 
     let response = state
         .client
@@ -341,9 +343,7 @@ pub async fn delete_remote(
         return Err(error);
     }
 
-    use crate::rclone::state::scheduled_tasks::SCHEDULED_TASKS_CACHE;
-
-    match SCHEDULED_TASKS_CACHE.remove_tasks_for_remote(&name).await {
+    match cache.remove_tasks_for_remote(&name, scheduler).await {
         Ok(removed_ids) => {
             if !removed_ids.is_empty() {
                 info!(
@@ -365,9 +365,9 @@ pub async fn delete_remote(
     app.emit(REMOTE_PRESENCE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
-    clear_remote_logs(Some(name.clone()))
-        .await
-        .unwrap_or_default();
+    let log_cache = app.state::<LogCache>();
+    log_cache.clear_for_remote(&name).await;
+
     info!("✅ Remote {name} deleted successfully");
     Ok(())
 }

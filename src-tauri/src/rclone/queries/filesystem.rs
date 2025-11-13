@@ -3,7 +3,7 @@ use serde_json::json;
 use tauri::State;
 
 use crate::RcloneState;
-use crate::rclone::state::engine::ENGINE_STATE;
+use crate::rclone::engine::core::ENGINE;
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, operations},
     types::all_types::{DiskUsage, ListOptions},
@@ -15,7 +15,8 @@ pub async fn get_fs_info(
     path: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::FSINFO);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, operations::FSINFO);
 
     let fs_name = if remote.ends_with(':') {
         remote
@@ -53,7 +54,8 @@ pub async fn get_remote_paths(
     options: Option<ListOptions>,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::LIST);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, operations::LIST);
     debug!("📂 Listing remote paths: remote={remote}, path={path:?}, options={options:?}");
     let mut params = serde_json::Map::new();
     // Ensure remote name ends with colon for proper rclone format
@@ -97,7 +99,8 @@ pub async fn get_disk_usage(
     path: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<DiskUsage, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::ABOUT);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, operations::ABOUT);
 
     let fs_name = if remote.ends_with(':') {
         remote

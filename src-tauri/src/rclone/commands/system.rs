@@ -11,7 +11,7 @@ use tokio::{sync::Mutex, time::sleep};
 
 use crate::{
     RcloneState,
-    rclone::state::engine::ENGINE_STATE,
+    rclone::engine::core::ENGINE,
     utils::{
         rclone::{
             endpoints::{EndpointHelper, config, core},
@@ -89,7 +89,7 @@ pub fn redact_sensitive_values(
 }
 pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let mut guard = OAUTH_PROCESS.lock().await;
-    let port = ENGINE_STATE.get_oauth().1;
+    let port = ENGINE.lock().await.get_oauth_port();
 
     // Check if process is already running (in memory or port open)
     let mut process_running = guard.is_some();
@@ -111,8 +111,6 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     }
 
     // Start new process
-    let port = ENGINE_STATE.get_oauth().1;
-
     let oauth_cmd = match create_rclone_command(port, app, "oauth").await {
         Ok(cmd) => cmd,
         Err(e) => {
@@ -156,7 +154,11 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
     info!("🛑 Quitting Rclone OAuth process");
 
     let mut guard = OAUTH_PROCESS.lock().await;
-    let port = ENGINE_STATE.get_oauth().1;
+    let (oauth_url, port) = {
+        let engine = ENGINE.lock().await;
+        (engine.get_oauth_url(), engine.get_oauth_port())
+    };
+
     let mut found_process = false;
 
     // Check if process is tracked in memory
@@ -175,7 +177,7 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
         return Ok(());
     }
 
-    let url = EndpointHelper::build_url(&format!("http://127.0.0.1:{port}"), core::QUIT);
+    let url = EndpointHelper::build_url(&oauth_url, core::QUIT);
 
     if let Err(e) = state.client.post(&url).send().await {
         warn!("⚠️ Failed to send quit request: {e}");
@@ -209,7 +211,8 @@ pub async fn set_bandwidth_limit(
         _ => "off".to_string(),
     };
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::BWLIMIT);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, core::BWLIMIT);
     let payload = json!({ "rate": rate_value });
 
     let response = state
@@ -243,7 +246,8 @@ pub async fn unlock_rclone_config(
     password: String,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::UNLOCK);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, config::UNLOCK);
 
     let payload = json!({ "config_password": password });
 
@@ -268,31 +272,3 @@ pub async fn unlock_rclone_config(
 
     Ok(())
 }
-
-// pub async fn set_rclone_config_file(app: AppHandle, config_path: String) -> Result<(), String> {
-//     let state = app.state::<RcloneState>();
-//     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::SETPATH);
-
-//     let payload = json!({ "path": config_path });
-
-//     let response = state
-//         .client
-//         .post(&url)
-//         .json(&payload)
-//         .send()
-//         .await
-//         .map_err(|e| format!("Request failed: {e}"))?;
-
-//     let status = response.status();
-//     let body = response.text().await.unwrap_or_default();
-
-//     if !status.is_success() {
-//         let error = format!("HTTP {status}: {body}");
-//         return Err(error);
-//     }
-
-//     app.emit("remote_presence_changed", json!({}))
-//         .map_err(|e| format!("Failed to emit remote presence changed event: {e}"))?;
-
-//     Ok(())
-// }

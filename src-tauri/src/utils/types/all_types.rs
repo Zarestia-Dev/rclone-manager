@@ -14,8 +14,6 @@ pub struct RcloneState {
     pub rclone_config_file: Arc<std::sync::RwLock<String>>,
     pub tray_enabled: Arc<std::sync::RwLock<bool>>,
     pub is_shutting_down: AtomicBool,
-    // pub is_updating: AtomicBool,
-    // pub is_starting: AtomicBool,
     pub notifications_enabled: Arc<std::sync::RwLock<bool>>,
     pub rclone_path: Arc<std::sync::RwLock<PathBuf>>,
     pub restrict_mode: Arc<std::sync::RwLock<bool>>,
@@ -79,9 +77,11 @@ pub struct RcApiEngine {
     pub updating: bool,
     pub path_error: bool,
     pub password_error: bool,
-    // pub rclone_path: std::path::PathBuf,
-    pub current_api_port: u16,
     pub config_encrypted: Option<bool>,
+    pub api_url: String,
+    pub api_port: u16,
+    pub oauth_url: String,
+    pub oauth_port: u16,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -89,15 +89,6 @@ pub struct CheckResult {
     pub successful: Vec<String>,
     pub failed: HashMap<String, String>,
     pub retries_used: HashMap<String, usize>,
-}
-
-/// State Structs (state.rs)
-#[derive(Debug)]
-pub struct EngineState {
-    pub api_url: std::sync::Mutex<String>,
-    pub api_port: std::sync::Mutex<u16>,
-    pub oauth_url: std::sync::Mutex<String>,
-    pub oauth_port: std::sync::Mutex<u16>,
 }
 
 pub struct RemoteCache {

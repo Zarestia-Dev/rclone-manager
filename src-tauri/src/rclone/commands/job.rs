@@ -1,18 +1,20 @@
 use log::{debug, error, info, warn};
 use serde_json::{Value, json};
 use std::time::Duration;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::time::sleep;
 
 use crate::{
     RcloneState,
     core::scheduler::engine::get_next_run,
-    rclone::state::{engine::ENGINE_STATE, job::JOB_CACHE, scheduled_tasks::SCHEDULED_TASKS_CACHE},
+    rclone::{engine::core::ENGINE, state::scheduled_tasks::ScheduledTasksCache},
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, core, job},
-        types::all_types::{JobStatus, LogLevel},
-        types::events::{JOB_CACHE_CHANGED, SCHEDULED_TASK_STOPPED},
+        types::{
+            all_types::{JobCache, JobStatus, LogLevel},
+            events::{JOB_CACHE_CHANGED, SCHEDULED_TASK_STOPPED},
+        },
     },
 };
 
@@ -25,8 +27,12 @@ pub async fn monitor_job(
     app: AppHandle,
     client: reqwest::Client,
 ) -> Result<(), RcloneError> {
-    let job_status_url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, job::STATUS);
-    let stats_url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
+    let job_cache = app.state::<JobCache>();
+    let scheduled_tasks_cache = app.state::<ScheduledTasksCache>();
+
+    let api_url = ENGINE.lock().await.get_api_url();
+    let job_status_url = EndpointHelper::build_url(&api_url, job::STATUS);
+    let stats_url = EndpointHelper::build_url(&api_url, core::STATS);
 
     info!("Starting monitoring for job {jobid} ({operation})");
 
@@ -35,7 +41,7 @@ pub async fn monitor_job(
 
     loop {
         // Check if job is still in cache and not stopped
-        match JOB_CACHE.get_job(jobid).await {
+        match job_cache.get_job(jobid).await {
             Some(job) if job.status == JobStatus::Stopped => {
                 debug!("Job {jobid} was stopped, ending monitoring");
                 return Ok(());
@@ -67,7 +73,7 @@ pub async fn monitor_job(
 
                 // Process stats
                 if let Ok(stats) = serde_json::from_str::<Value>(&stats_body) {
-                    JOB_CACHE
+                    job_cache
                         .update_job_stats(jobid, stats)
                         .await
                         .map_err(RcloneError::JobError)?;
@@ -81,12 +87,15 @@ pub async fn monitor_job(
                             .and_then(|v| v.as_bool())
                             .unwrap_or(false) =>
                     {
+                        // --- Pass *all* required state to the completion handler ---
                         return handle_job_completion(
                             jobid,
                             &remote_name,
                             operation,
                             job_status,
                             &app,
+                            job_cache,
+                            scheduled_tasks_cache,
                         )
                         .await;
                     }
@@ -101,7 +110,7 @@ pub async fn monitor_job(
 
                 if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
                     error!("Too many errors monitoring job {jobid}, giving up");
-                    JOB_CACHE
+                    job_cache
                         .complete_job(jobid, false)
                         .await
                         .map_err(RcloneError::JobError)?;
@@ -124,6 +133,8 @@ pub async fn handle_job_completion(
     operation: &str,
     job_status: Value,
     app: &AppHandle,
+    job_cache: State<'_, JobCache>,
+    scheduled_tasks_cache: State<'_, ScheduledTasksCache>, // <-- Accept this state
 ) -> Result<(), RcloneError> {
     let success = job_status
         .get("success")
@@ -136,8 +147,7 @@ pub async fn handle_job_completion(
         .trim()
         .to_string();
 
-    // ATOMIC: Update both job cache AND task cache in a transaction-like manner
-    let task = SCHEDULED_TASKS_CACHE.get_task_by_job_id(jobid).await;
+    let task = scheduled_tasks_cache.get_task_by_job_id(jobid).await;
 
     // Calculate next run BEFORE any updates
     let next_run = if let Some(ref t) = task {
@@ -147,7 +157,7 @@ pub async fn handle_job_completion(
     };
 
     // Update job cache
-    JOB_CACHE
+    job_cache
         .complete_job(jobid, success)
         .await
         .map_err(RcloneError::JobError)?;
@@ -160,7 +170,7 @@ pub async fn handle_job_completion(
         );
 
         if success {
-            SCHEDULED_TASKS_CACHE
+            scheduled_tasks_cache // <-- Use injected state
                 .update_task(&task.id, |t| {
                     t.mark_success();
                     t.next_run = next_run;
@@ -168,7 +178,7 @@ pub async fn handle_job_completion(
                 .await
                 .map_err(|e| RcloneError::JobError(e))?; // Don't ignore errors
         } else {
-            SCHEDULED_TASKS_CACHE
+            scheduled_tasks_cache // <-- Use injected state
                 .update_task(&task.id, |t| {
                     t.mark_failure(error_msg.clone());
                     t.next_run = next_run;
@@ -219,12 +229,15 @@ pub async fn handle_job_completion(
 #[tauri::command]
 pub async fn stop_job(
     app: AppHandle,
+    job_cache: State<'_, JobCache>,
+    scheduled_tasks_cache: State<'_, ScheduledTasksCache>, // <-- Inject state
     jobid: u64,
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    // First try to stop via API, THEN update cache
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, job::STOP);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, job::STOP);
+
     let payload = json!({ "jobid": jobid });
 
     let response = state
@@ -260,16 +273,16 @@ pub async fn stop_job(
 
     if job_stopped {
         // NOW mark as stopped in cache
-        JOB_CACHE.stop_job(jobid).await.map_err(|e| e.to_string())?;
+        job_cache.stop_job(jobid).await.map_err(|e| e.to_string())?;
 
         // Check if it was a scheduled task
-        if let Some(task) = SCHEDULED_TASKS_CACHE.get_task_by_job_id(jobid).await {
+        if let Some(task) = scheduled_tasks_cache.get_task_by_job_id(jobid).await {
             info!(
                 "🛑 Job {} was associated with scheduled task '{}', marking task as stopped",
                 jobid, task.name
             );
 
-            SCHEDULED_TASKS_CACHE
+            scheduled_tasks_cache // <-- Use injected state
                 .update_task(&task.id, |t| {
                     t.mark_stopped();
                 })

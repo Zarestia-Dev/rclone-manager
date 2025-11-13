@@ -7,9 +7,8 @@ use crate::{
         initialization::apply_core_settings, settings::operations::core::load_startup_settings,
         tray::core::update_tray_menu,
     },
-    rclone::state::cache::CACHE,
     utils::types::{
-        all_types::RcApiEngine,
+        all_types::{RcApiEngine, RemoteCache},
         events::{
             ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
             RCLONE_ENGINE_PATH_ERROR, RCLONE_ENGINE_READY,
@@ -85,7 +84,7 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
             error!("Failed to stop Rclone process: {e}");
         }
     }
-    if let Err(e) = RcApiEngine::kill_all_rclone_rcd() {
+    if let Err(e) = RcApiEngine::kill_all_rclone_rcd(&engine).await {
         error!("Failed to emergency cleanup: {e}");
     }
     if let Err(e) = engine.kill_port_processes() {
@@ -98,7 +97,7 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
 
             if engine.wait_until_ready(app, 10).await {
                 engine.running = true;
-                let port = engine.current_api_port;
+                let port = engine.api_port; // <-- Use field from self
                 info!("✅ Rclone API started successfully on port {port}");
                 if let Err(e) = app.emit(RCLONE_ENGINE_READY, ()) {
                     error!("Failed to emit ready event: {e}");
@@ -115,7 +114,12 @@ pub async fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                             engine.path_error = false;
                             engine.password_error = false;
 
-                            match CACHE.refresh_all(app_handle.clone()).await {
+                            // Drop lock before async cache operations
+                            drop(engine);
+
+                            let cache = app_handle.state::<RemoteCache>();
+
+                            match cache.refresh_all(app_handle.clone()).await {
                                 Ok(_) => debug!("Caches refreshed successfully after engine ready"),
                                 Err(e) => error!("Failed to refresh caches: {e}"),
                             }
@@ -213,55 +217,27 @@ async fn restart_engine_async(app: &AppHandle, change_type: &str) -> Result<(), 
     match change_type {
         "rclone_path" => {
             debug!("🔄 Updating rclone path...");
-            let configured_path = crate::core::check_binaries::read_rclone_path(app);
-
-            let check_result = tauri::async_runtime::block_on(
-                crate::core::check_binaries::check_rclone_available(app.clone(), ""),
-            );
-
-            match check_result {
-                Ok(available) => {
-                    if !available {
-                        error!(
-                            "❌ Configured rclone path is invalid: {}",
-                            configured_path.display()
-                        );
-                        engine.path_error = true;
-                        if let Err(e) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
-                            error!("Failed to emit path_error event: {e}");
-                        }
-                        return Err(format!(
-                            "Configured rclone path is invalid: {}",
-                            configured_path.display()
-                        ));
-                    } else {
-                        engine.path_error = false;
-                    }
-                }
-                Err(e) => {
-                    error!("❌ Error checking rclone availability: {}", e);
-                    engine.path_error = true;
-                    if let Err(emit_err) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
-                        error!("Failed to emit path_error event: {emit_err}");
-                    }
-                    return Err(e);
-                }
+            // The validation check is now handled by validate_config_async
+            if !engine.validate_config_async(app).await {
+                error!("❌ Rclone path validation failed, aborting engine restart");
+                return Err("Rclone path validation failed".to_string());
             }
         }
         "api_port" => {
-            debug!("🔄 API port updated in ENGINE_STATE");
+            debug!("🔄 API port updated in ENGINE");
         }
         "rclone_config_file" => {
             debug!("🔄 Config file updated in RcloneState");
-            engine.validate_config_sync(app);
+            // Use the new async-safe function
+            engine.validate_config_async(app).await;
         }
         _ => {
             debug!("🔄 Generic restart for {change_type}");
         }
     }
+    drop(engine); // Drop lock before re-locking in start()
 
-    drop(engine);
-
+    // --- Get engine from the global static again ---
     let mut engine = RcApiEngine::lock_engine().await;
     debug!("🚀 Starting engine with new configuration...");
     start(&mut engine, app).await;

@@ -15,122 +15,21 @@ use crate::{
                 start_move, start_sync,
             },
         },
-        state::{
-            cache::{CACHE, get_cached_serves},
-            job::JOB_CACHE,
-        },
+        state::scheduled_tasks::ScheduledTasksCache,
     },
     utils::{
         app::{builder::create_app_window, notification::send_notification},
         io::file_helper::get_folder_location,
-        types::all_types::JobStatus,
+        types::all_types::{JobCache, JobStatus, RcloneState, RemoteCache},
     },
 };
+
+use crate::core::scheduler::engine::CronScheduler;
 
 fn notify(app: &AppHandle, title: &str, body: &str) {
     send_notification(app, title, body);
 }
 
-type PostSuccess = fn(AppHandle) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>>;
-async fn handle_job_action<T, P, F, Fut>(
-    app: AppHandle,
-    id: String,
-    id_prefix: &str,
-    action_name: &str,
-    params_from_settings: fn(String, &serde_json::Value) -> Option<P>,
-    spawn_job: F,
-    post_success: Option<PostSuccess>,
-) where
-    P: Send + Sync + Clone + 'static,
-    T: Send + 'static,
-    F: Fn(AppHandle, P) -> Fut + Send + Sync + 'static,
-    Fut: std::future::Future<Output = Result<T, String>> + Send,
-{
-    let remote_name = id.replace(id_prefix, "");
-    let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
-        Some(s) => s,
-        _ => {
-            error!("🚨 Remote {remote_name} not found in settings");
-            return;
-        }
-    };
-
-    let params = match params_from_settings(remote_name.clone(), &settings) {
-        Some(p) => p,
-        None => {
-            error!("🚨 {action_name} configuration incomplete for {remote_name}");
-            notify(
-                &app,
-                &format!("{action_name} Failed"),
-                &format!("{action_name} configuration incomplete for {remote_name}"),
-            );
-            return;
-        }
-    };
-
-    match spawn_job(app.clone(), params).await {
-        Ok(_) => {
-            info!("✅ Started {action_name} for {remote_name}");
-            notify(
-                &app,
-                &format!("{action_name} Started"),
-                &format!("Started {action_name} for {remote_name}"),
-            );
-            if let Some(post) = post_success {
-                post(app.clone()).await;
-            }
-        }
-        Err(e) => {
-            error!("🚨 Failed to start {action_name} for {remote_name}: {e}");
-            notify(
-                &app,
-                &format!("{action_name} Failed"),
-                &format!("Failed to start {action_name} for {remote_name}: {e}"),
-            );
-        }
-    }
-}
-async fn handle_stop_job(
-    app: AppHandle,
-    id: String,
-    prefix: &str,
-    job_type: &str,
-    action_name: &str,
-) {
-    let remote_name = id.replace(prefix, "");
-    if let Some(job) = JOB_CACHE.get_jobs().await.iter().find(|j| {
-        j.remote_name == remote_name && j.job_type == job_type && j.status == JobStatus::Running
-    }) {
-        match stop_job(app.clone(), job.jobid, remote_name.clone(), app.state()).await {
-            Ok(_) => {
-                info!(
-                    "🛑 Stopped {} job {} for {}",
-                    job_type, job.jobid, remote_name
-                );
-                notify(
-                    &app,
-                    &format!("{} Stopped", action_name),
-                    &format!("Stopped {} job for {}", job_type, remote_name),
-                );
-            }
-            Err(e) => {
-                error!("🚨 Failed to stop {} job {}: {}", job_type, job.jobid, e);
-                notify(
-                    &app,
-                    &format!("Stop {} Failed", action_name),
-                    &format!("Failed to stop {} job for {}: {}", job_type, remote_name, e),
-                );
-            }
-        }
-    } else {
-        error!("🚨 No active {} job found for {}", job_type, remote_name);
-        notify(
-            &app,
-            &format!("Stop {} Failed", action_name),
-            &format!("No active {} job found for {}", job_type, remote_name),
-        );
-    }
-}
 async fn prompt_mount_point(app: &AppHandle, remote_name: &str) -> Option<String> {
     let response = app
         .dialog()
@@ -189,27 +88,29 @@ pub fn show_main_window(app: AppHandle) {
     }
 }
 
-// ... (handle_mount_remote, handle_unmount_remote, ... handle_stop_bisync, handle_stop_all_jobs, handle_browse_remote are unchanged) ...
-// (Find these functions from the original file)
 pub fn handle_mount_remote(app: AppHandle, remote_name: &str) {
-    let remote_name = remote_name.to_string();
+    let app_clone = app.clone();
+    let remote_name_clone = remote_name.to_string();
     tauri::async_runtime::spawn(async move {
-        let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
-            Some(s) => s,
-            _ => {
-                error!("🚨 Remote {remote_name} not found in settings");
-                return;
-            }
+        let cache = app_clone.state::<RemoteCache>();
+        let settings = match cache.get_settings().await {
+            settings_val => match settings_val.get(&remote_name_clone).cloned() {
+                Some(s) => s,
+                _ => {
+                    error!("🚨 Remote {remote_name_clone} not found in settings");
+                    return;
+                }
+            },
         };
 
-        let mut params = match MountParams::from_settings(remote_name.clone(), &settings) {
+        let mut params = match MountParams::from_settings(remote_name_clone.clone(), &settings) {
             Some(p) => p,
             None => {
-                error!("🚨 Mount configuration incomplete for {remote_name}");
+                error!("🚨 Mount configuration incomplete for {remote_name_clone}");
                 notify(
-                    &app,
+                    &app_clone,
                     "Mount Failed",
-                    &format!("Mount configuration incomplete for {remote_name}"),
+                    &format!("Mount configuration incomplete for {remote_name_clone}"),
                 );
                 return;
             }
@@ -218,7 +119,7 @@ pub fn handle_mount_remote(app: AppHandle, remote_name: &str) {
         let mount_point = if !params.mount_point.is_empty() {
             params.mount_point.clone()
         } else {
-            match prompt_mount_point(&app, &remote_name).await {
+            match prompt_mount_point(&app_clone, &remote_name_clone).await {
                 Some(path) => path,
                 _ => {
                     info!("❌ Mounting cancelled - no mount point selected");
@@ -228,14 +129,23 @@ pub fn handle_mount_remote(app: AppHandle, remote_name: &str) {
         };
         params.mount_point = mount_point.clone();
 
-        match mount_remote(app.clone(), params.clone()).await {
+        let job_cache_state = app_clone.state::<JobCache>();
+
+        match mount_remote(
+            app_clone.clone(),
+            job_cache_state,
+            cache.clone(),
+            params.clone(),
+        )
+        .await
+        {
             Ok(_) => {
-                info!("✅ Successfully mounted {remote_name}");
+                info!("✅ Successfully mounted {remote_name_clone}");
                 notify(
-                    &app,
+                    &app_clone,
                     "Mount Successful",
                     &format!(
-                        "Successfully mounted {remote_name}:{} at {}",
+                        "Successfully mounted {remote_name_clone}:{} at {}",
                         params.source, mount_point
                     ),
                 );
@@ -247,35 +157,45 @@ pub fn handle_mount_remote(app: AppHandle, remote_name: &str) {
                 {
                     let mut new_settings = settings.clone();
                     new_settings["mountConfig"]["dest"] = serde_json::Value::String(mount_point);
-                    if let Err(e) =
-                        save_remote_settings(remote_name, new_settings, app.state(), app.clone())
-                            .await
+                    if let Err(e) = save_remote_settings(
+                        remote_name_clone,
+                        new_settings,
+                        app_clone.state(),
+                        app_clone.state::<ScheduledTasksCache>(),
+                        app_clone.state::<CronScheduler>(),
+                        app_clone.clone(),
+                    )
+                    .await
                     {
                         error!("🚨 Failed to save mount point: {e}");
                     }
                 }
             }
             Err(e) => {
-                error!("🚨 Failed to mount {remote_name}: {e}");
+                error!("🚨 Failed to mount {remote_name_clone}: {e}");
                 notify(
-                    &app,
+                    &app_clone,
                     "Mount Failed",
-                    &format!("Failed to mount {remote_name}: {e}"),
+                    &format!("Failed to mount {remote_name_clone}: {e}"),
                 );
             }
         }
     });
 }
+
 pub fn handle_unmount_remote(app: AppHandle, remote_name: &str) {
     let app_clone = app.clone();
     let remote = remote_name.to_string();
     tauri::async_runtime::spawn(async move {
+        let cache = app_clone.state::<RemoteCache>();
         let remote_name = remote.to_string();
-        let settings_result = CACHE.settings.read().await;
-        let settings = settings_result.get(&remote).cloned().unwrap_or_else(|| {
-            error!("🚨 Remote {remote} not found in cached settings");
-            serde_json::Value::Null
-        });
+        let settings = match cache.get_settings().await {
+            // <-- Use cache
+            settings_val => settings_val.get(&remote).cloned().unwrap_or_else(|| {
+                error!("🚨 Remote {remote} not found in cached settings");
+                serde_json::Value::Null
+            }),
+        };
 
         let mount_point = get_mount_point(&settings);
         let state = app_clone.state();
@@ -299,50 +219,270 @@ pub fn handle_unmount_remote(app: AppHandle, remote_name: &str) {
         }
     });
 }
+
 pub fn handle_sync_remote(app: AppHandle, remote_name: &str) {
-    tauri::async_runtime::spawn(handle_job_action(
-        app,
-        remote_name.to_string(),
-        "sync-",
-        "Sync",
-        SyncParams::from_settings,
-        start_sync,
-        None,
-    ));
+    let app_clone = app.clone();
+    let remote_name_clone = remote_name.to_string();
+    tauri::async_runtime::spawn(async move {
+        let cache = app_clone.state::<RemoteCache>();
+        let settings = match cache.get_settings().await {
+            settings_val => match settings_val.get(&remote_name_clone).cloned() {
+                Some(s) => s,
+                _ => {
+                    error!("🚨 Remote {remote_name_clone} not found in settings");
+                    return;
+                }
+            },
+        };
+
+        let params = match SyncParams::from_settings(remote_name_clone.clone(), &settings) {
+            Some(p) => p,
+            None => {
+                error!("🚨 Sync configuration incomplete for {remote_name_clone}");
+                notify(
+                    &app_clone,
+                    "Sync Failed",
+                    &format!("Sync configuration incomplete for {remote_name_clone}"),
+                );
+                return;
+            }
+        };
+
+        // Get managed state
+        let job_cache = app_clone.state::<JobCache>();
+        let rclone_state = app_clone.state::<RcloneState>();
+
+        match start_sync(app_clone.clone(), job_cache, rclone_state, params).await {
+            Ok(_) => {
+                info!("✅ Started Sync for {remote_name_clone}");
+                notify(
+                    &app_clone,
+                    "Sync Started",
+                    &format!("Started Sync for {remote_name_clone}"),
+                );
+            }
+            Err(e) => {
+                error!("🚨 Failed to start Sync for {remote_name_clone}: {e}");
+                notify(
+                    &app_clone,
+                    "Sync Failed",
+                    &format!("Failed to start Sync for {remote_name_clone}: {e}"),
+                );
+            }
+        }
+    });
 }
+
 pub fn handle_copy_remote(app: AppHandle, remote_name: &str) {
-    tauri::async_runtime::spawn(handle_job_action(
-        app,
-        remote_name.to_string(),
-        "copy-",
-        "Copy",
-        CopyParams::from_settings,
-        start_copy,
-        None,
-    ));
+    let app_clone = app.clone();
+    let remote_name_clone = remote_name.to_string();
+    tauri::async_runtime::spawn(async move {
+        let cache = app_clone.state::<RemoteCache>();
+        let settings = match cache.get_settings().await {
+            settings_val => match settings_val.get(&remote_name_clone).cloned() {
+                Some(s) => s,
+                _ => {
+                    error!("🚨 Remote {remote_name_clone} not found in settings");
+                    return;
+                }
+            },
+        };
+
+        let params = match CopyParams::from_settings(remote_name_clone.clone(), &settings) {
+            Some(p) => p,
+            None => {
+                error!("🚨 Copy configuration incomplete for {remote_name_clone}");
+                notify(
+                    &app_clone,
+                    "Copy Failed",
+                    &format!("Copy configuration incomplete for {remote_name_clone}"),
+                );
+                return;
+            }
+        };
+
+        let job_cache = app_clone.state::<JobCache>();
+        let rclone_state = app_clone.state::<RcloneState>();
+
+        match start_copy(app_clone.clone(), job_cache, rclone_state, params).await {
+            Ok(_) => {
+                info!("✅ Started Copy for {remote_name_clone}");
+                notify(
+                    &app_clone,
+                    "Copy Started",
+                    &format!("Started Copy for {remote_name_clone}"),
+                );
+            }
+            Err(e) => {
+                error!("🚨 Failed to start Copy for {remote_name_clone}: {e}");
+                notify(
+                    &app_clone,
+                    "Copy Failed",
+                    &format!("Failed to start Copy for {remote_name_clone}: {e}"),
+                );
+            }
+        }
+    });
 }
+
 pub fn handle_move_remote(app: AppHandle, remote_name: &str) {
-    tauri::async_runtime::spawn(handle_job_action(
-        app,
-        remote_name.to_string(),
-        "move-",
-        "Move",
-        MoveParams::from_settings,
-        start_move,
-        None,
-    ));
+    let app_clone = app.clone();
+    let remote_name_clone = remote_name.to_string();
+    tauri::async_runtime::spawn(async move {
+        let cache = app_clone.state::<RemoteCache>();
+        let settings = match cache.get_settings().await {
+            settings_val => match settings_val.get(&remote_name_clone).cloned() {
+                Some(s) => s,
+                _ => {
+                    error!("🚨 Remote {remote_name_clone} not found in settings");
+                    return;
+                }
+            },
+        };
+
+        let params = match MoveParams::from_settings(remote_name_clone.clone(), &settings) {
+            Some(p) => p,
+            None => {
+                error!("🚨 Move configuration incomplete for {remote_name_clone}");
+                notify(
+                    &app_clone,
+                    "Move Failed",
+                    &format!("Move configuration incomplete for {remote_name_clone}"),
+                );
+                return;
+            }
+        };
+
+        let job_cache = app_clone.state::<JobCache>();
+        let rclone_state = app_clone.state::<RcloneState>();
+
+        match start_move(app_clone.clone(), job_cache, rclone_state, params).await {
+            Ok(_) => {
+                info!("✅ Started Move for {remote_name_clone}");
+                notify(
+                    &app_clone,
+                    "Move Started",
+                    &format!("Started Move for {remote_name_clone}"),
+                );
+            }
+            Err(e) => {
+                error!("🚨 Failed to start Move for {remote_name_clone}: {e}");
+                notify(
+                    &app_clone,
+                    "Move Failed",
+                    &format!("Failed to start Move for {remote_name_clone}: {e}"),
+                );
+            }
+        }
+    });
 }
+
 pub fn handle_bisync_remote(app: AppHandle, remote_name: &str) {
-    tauri::async_runtime::spawn(handle_job_action(
-        app,
-        remote_name.to_string(),
-        "bisync-",
-        "BiSync",
-        BisyncParams::from_settings,
-        start_bisync,
-        None,
-    ));
+    let app_clone = app.clone();
+    let remote_name_clone = remote_name.to_string();
+    tauri::async_runtime::spawn(async move {
+        let cache = app_clone.state::<RemoteCache>();
+        let settings = match cache.get_settings().await {
+            settings_val => match settings_val.get(&remote_name_clone).cloned() {
+                Some(s) => s,
+                _ => {
+                    error!("🚨 Remote {remote_name_clone} not found in settings");
+                    return;
+                }
+            },
+        };
+
+        let params = match BisyncParams::from_settings(remote_name_clone.clone(), &settings) {
+            Some(p) => p,
+            None => {
+                error!("🚨 BiSync configuration incomplete for {remote_name_clone}");
+                notify(
+                    &app_clone,
+                    "BiSync Failed",
+                    &format!("BiSync configuration incomplete for {remote_name_clone}"),
+                );
+                return;
+            }
+        };
+
+        let job_cache = app_clone.state::<JobCache>();
+        let rclone_state = app_clone.state::<RcloneState>();
+
+        match start_bisync(app_clone.clone(), job_cache, rclone_state, params).await {
+            Ok(_) => {
+                info!("✅ Started BiSync for {remote_name_clone}");
+                notify(
+                    &app_clone,
+                    "BiSync Started",
+                    &format!("Started BiSync for {remote_name_clone}"),
+                );
+            }
+            Err(e) => {
+                error!("🚨 Failed to start BiSync for {remote_name_clone}: {e}");
+                notify(
+                    &app_clone,
+                    "BiSync Failed",
+                    &format!("Failed to start BiSync for {remote_name_clone}: {e}"),
+                );
+            }
+        }
+    });
 }
+
+async fn handle_stop_job(
+    app: AppHandle,
+    id: String,
+    prefix: &str,
+    job_type: &str,
+    action_name: &str,
+) {
+    let job_cache_state = app.state::<JobCache>();
+    let remote_name = id.replace(prefix, "");
+
+    if let Some(job) = job_cache_state.get_jobs().await.iter().find(|j| {
+        j.remote_name == remote_name && j.job_type == job_type && j.status == JobStatus::Running
+    }) {
+        let scheduled_cache = app.state::<ScheduledTasksCache>();
+        match stop_job(
+            app.clone(),
+            job_cache_state,
+            scheduled_cache,
+            job.jobid,
+            remote_name.clone(),
+            app.state(),
+        )
+        .await
+        {
+            Ok(_) => {
+                info!(
+                    "🛑 Stopped {} job {} for {}",
+                    job_type, job.jobid, remote_name
+                );
+                notify(
+                    &app,
+                    &format!("{} Stopped", action_name),
+                    &format!("Stopped {} job for {}", job_type, remote_name),
+                );
+            }
+            Err(e) => {
+                error!("🚨 Failed to stop {} job {}: {}", job_type, job.jobid, e);
+                notify(
+                    &app,
+                    &format!("Stop {} Failed", action_name),
+                    &format!("Failed to stop {} job for {}: {}", job_type, remote_name, e),
+                );
+            }
+        }
+    } else {
+        error!("🚨 No active {} job found for {}", job_type, remote_name);
+        notify(
+            &app,
+            &format!("Stop {} Failed", action_name),
+            &format!("No active {} job found for {}", job_type, remote_name),
+        );
+    }
+}
+
 pub fn handle_stop_sync(app: AppHandle, remote_name: &str) {
     tauri::async_runtime::spawn(handle_stop_job(
         app,
@@ -381,12 +521,23 @@ pub fn handle_stop_bisync(app: AppHandle, remote_name: &str) {
 }
 pub fn handle_stop_all_jobs(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
-        let active_jobs = JOB_CACHE.get_active_jobs().await;
+        let job_cache_state = app.state::<JobCache>();
+        let active_jobs = job_cache_state.get_active_jobs().await;
         if active_jobs.is_empty() {
             return;
         }
         for job in active_jobs.clone() {
-            match stop_job(app.clone(), job.jobid, job.remote_name.clone(), app.state()).await {
+            let scheduled_cache = app.state::<ScheduledTasksCache>();
+            match stop_job(
+                app.clone(),
+                job_cache_state.clone(),
+                scheduled_cache,
+                job.jobid,
+                job.remote_name.clone(),
+                app.state(),
+            )
+            .await
+            {
                 Ok(_) => {
                     info!("🛑 Stopped job {}", job.jobid);
                 }
@@ -406,11 +557,13 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
     let remote = remote_name.to_string();
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
-        let settings_result = CACHE.settings.read().await;
-        let settings = settings_result.get(&remote).cloned().unwrap_or_else(|| {
-            error!("🚨 Remote {remote} not found in cached settings");
-            serde_json::Value::Null
-        });
+        let cache = app_clone.state::<RemoteCache>();
+        let settings = match cache.get_settings().await {
+            settings_val => settings_val.get(&remote).cloned().unwrap_or_else(|| {
+                error!("🚨 Remote {remote} not found in cached settings");
+                serde_json::Value::Null
+            }),
+        };
         let mount_point = get_mount_point(&settings);
 
         match app_clone.opener().open_path(mount_point, None::<&str>) {
@@ -429,12 +582,15 @@ pub fn handle_start_serve(app: AppHandle, remote_name: &str) {
     let remote_name_clone = remote_name.to_string();
 
     tauri::async_runtime::spawn(async move {
-        let settings = match CACHE.settings.read().await.get(&remote_name_clone).cloned() {
-            Some(s) => s,
-            _ => {
-                error!("🚨 Remote {remote_name_clone} not found in settings");
-                return;
-            }
+        let cache = app_clone.state::<RemoteCache>();
+        let settings = match cache.get_settings().await {
+            settings_val => match settings_val.get(&remote_name_clone).cloned() {
+                Some(s) => s,
+                _ => {
+                    error!("🚨 Remote {remote_name_clone} not found in settings");
+                    return;
+                }
+            },
         };
 
         let params = match ServeParams::from_settings(remote_name_clone.clone(), &settings) {
@@ -479,8 +635,8 @@ pub fn handle_stop_serve(app: AppHandle, serve_id: &str) {
     let serve_id_clone = serve_id.to_string();
 
     tauri::async_runtime::spawn(async move {
-        // Find the remote name associated with this serve_id for logging
-        let all_serves = get_cached_serves().await.unwrap_or_default();
+        let cache = app_clone.state::<RemoteCache>();
+        let all_serves = cache.get_serves().await; // <-- Use cache
         let remote_name = all_serves
             .iter()
             .find(|s| s.id == serve_id_clone)

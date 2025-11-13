@@ -229,7 +229,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private async refreshData(): Promise<void> {
     await this.getRemoteSettings(); // Load settings first
     await this.mountManagementService.getMountedRemotes(); // This will trigger the observable
-    await this.serveManagementService.refreshServes(); // Load running serves
+    await this.loadServes(); // Load running serves
     await this.loadRemotes(); // Then remotes
     await this.loadJobs();
   }
@@ -253,6 +253,16 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     } catch (error) {
       this.handleError('Failed to load jobs', error);
+      throw error;
+    }
+  }
+
+  private async loadServes(): Promise<void> {
+    try {
+      await this.serveManagementService.refreshServes();
+      this.cdr.markForCheck();
+    } catch (error) {
+      this.handleError('Failed to load serves', error);
       throw error;
     }
   }
@@ -392,6 +402,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.listenToRemoteCache();
     this.listenToRcloneEngine();
     this.listenToJobCache();
+    this.listenToServeCache();
   }
 
   private listenToAppEvents(): void {
@@ -504,6 +515,25 @@ export class HomeComponent implements OnInit, OnDestroy {
             this.cdr.markForCheck();
           } catch (error) {
             this.handleError('Error handling job_cache_changed', error);
+          }
+        },
+      });
+  }
+
+  private listenToServeCache(): void {
+    this.eventListenersService
+      .listenToServeStateChanged()
+      .pipe(
+        takeUntil(this.destroy$),
+        catchError(error => (console.error('Event listener error (ServeCache):', error), EMPTY))
+      )
+      .subscribe({
+        next: async () => {
+          try {
+            await this.loadServes();
+            this.cdr.markForCheck();
+          } catch (error) {
+            this.handleError('Error handling serve_state_changed', error);
           }
         },
       });

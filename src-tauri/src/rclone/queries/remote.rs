@@ -4,14 +4,15 @@ use std::collections::HashMap;
 use tauri::{State, command};
 
 use crate::RcloneState;
-use crate::rclone::state::engine::ENGINE_STATE;
+use crate::rclone::engine::core::ENGINE;
 use crate::utils::rclone::endpoints::{EndpointHelper, config};
 
 #[command]
 pub async fn get_all_remote_configs(
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::DUMP);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, config::DUMP);
 
     let response = state
         .client
@@ -30,7 +31,8 @@ pub async fn get_all_remote_configs(
 
 #[command]
 pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::LISTREMOTES);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, config::LISTREMOTES);
     debug!("📡 Fetching remotes from: {url}");
 
     let response = state.client.post(url).send().await.map_err(|e| {
@@ -60,7 +62,8 @@ pub async fn get_remote_config(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::GET);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, config::GET);
 
     let response = state
         .client
@@ -82,7 +85,8 @@ pub async fn get_remote_config(
 async fn fetch_remote_providers(
     state: &State<'_, RcloneState>,
 ) -> Result<HashMap<String, Vec<Value>>, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::PROVIDERS);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, config::PROVIDERS);
 
     let response = state
         .client

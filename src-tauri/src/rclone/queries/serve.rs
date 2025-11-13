@@ -4,14 +4,15 @@ use tauri::State;
 
 use crate::{
     RcloneState,
-    rclone::state::engine::ENGINE_STATE,
+    rclone::engine::core::ENGINE,
     utils::rclone::endpoints::{EndpointHelper, options, serve},
 };
 
 /// Get all supported serve types from rclone
 #[tauri::command]
 pub async fn get_serve_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::TYPES);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, serve::TYPES);
 
     debug!("🔍 Fetching serve types from {url}");
 
@@ -49,7 +50,8 @@ pub async fn get_serve_types(state: State<'_, RcloneState>) -> Result<Vec<String
 /// List all currently running serve instances
 #[tauri::command]
 pub async fn list_serves(state: State<'_, RcloneState>) -> Result<Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::LIST);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, serve::LIST);
 
     debug!("🔍 Listing running serves from {url}");
 
@@ -84,8 +86,8 @@ pub async fn get_serve_flags(
     serve_type: String,
     state: State<'_, RcloneState>,
 ) -> Result<Vec<Value>, String> {
-    // <-- Changed return type to Vec<Value>
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::INFO);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, options::INFO);
 
     debug!("🔍 Fetching serve flags for type '{serve_type}' from {url}");
 

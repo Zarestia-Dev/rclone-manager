@@ -1,18 +1,20 @@
+use crate::RcloneState;
 use crate::rclone::commands::sync::{BisyncParams, CopyParams, MoveParams, SyncParams};
-use crate::rclone::state::scheduled_tasks::SCHEDULED_TASKS_CACHE;
+use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
+use crate::utils::types::all_types::JobCache;
 use crate::utils::types::events::{SCHEDULED_TASK_COMPLETED, SCHEDULED_TASK_ERROR};
 use crate::utils::types::scheduled_task::{ScheduledTask, TaskStatus, TaskType};
 use chrono::{Local, Utc};
 use log::{debug, error, info, warn};
 use std::sync::Arc;
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::sync::RwLock;
 use tokio_cron_scheduler::{JobBuilder, JobScheduler};
 use uuid::Uuid;
 
 /// Global scheduler instance
 pub struct CronScheduler {
-    scheduler: Arc<RwLock<Option<JobScheduler>>>,
+    pub scheduler: Arc<RwLock<Option<JobScheduler>>>,
     app_handle: Arc<RwLock<Option<AppHandle>>>,
 }
 
@@ -40,7 +42,7 @@ impl CronScheduler {
     }
 
     /// Start the scheduler
-    pub async fn start(&mut self) -> Result<(), String> {
+    pub async fn start(&self) -> Result<(), String> {
         let mut scheduler_guard = self.scheduler.write().await;
         let scheduler = scheduler_guard
             .as_mut()
@@ -56,12 +58,13 @@ impl CronScheduler {
     }
 
     /// Stop the scheduler
-    pub async fn stop(&mut self) -> Result<(), String> {
+    pub async fn stop(&self) -> Result<(), String> {
         let mut scheduler_guard = self.scheduler.write().await;
         let scheduler = scheduler_guard
             .as_mut()
             .ok_or("Scheduler not initialized")?;
 
+        // Attempt to shutdown the scheduler. If shutdown fails, return an error.
         scheduler
             .shutdown()
             .await
@@ -72,7 +75,11 @@ impl CronScheduler {
     }
 
     /// Schedule a task
-    pub async fn schedule_task(&self, task: &ScheduledTask) -> Result<Uuid, String> {
+    pub async fn schedule_task(
+        &self,
+        task: &ScheduledTask,
+        cache: State<'_, ScheduledTasksCache>,
+    ) -> Result<Uuid, String> {
         if task.status != TaskStatus::Enabled {
             return Err("Task is not enabled".to_string());
         }
@@ -98,9 +105,9 @@ impl CronScheduler {
 
         // 2. Create the job using JobBuilder to apply the local timezone
         let job = JobBuilder::new()
-            .with_timezone(Local) // <-- This is the magic: run job in local time
+            .with_timezone(Local)
             .with_cron_job_type()
-            .with_schedule(&cron_expr_6_field) // <-- Use the user's cron string directly
+            .with_schedule(&cron_expr_6_field)
             .map_err(|e| format!("Invalid cron schedule ('{}'): {}", cron_expr_6_field, e))?
             .with_run_async(Box::new(move |_uuid, _l| {
                 // This is the async closure that runs on schedule
@@ -115,7 +122,10 @@ impl CronScheduler {
                         task_name, task_id, task_type
                     );
 
-                    if let Err(e) = execute_scheduled_task(&task_id, &app_handle).await {
+                    // --- Get cache from app_handle for the spawned task ---
+                    let cache = app_handle.state::<ScheduledTasksCache>();
+
+                    if let Err(e) = execute_scheduled_task(&task_id, &app_handle, cache).await {
                         error!("❌ Task execution failed {}: {}", task_id, e);
                         // Emit error event to frontend
                         let _ = app_handle.emit(
@@ -147,7 +157,7 @@ impl CronScheduler {
             .map_err(|e| format!("Failed to add job to scheduler: {}", e))?;
 
         // 4. Store the scheduler's job ID in our task cache
-        SCHEDULED_TASKS_CACHE
+        cache
             .update_task(&task.id, |t| {
                 t.scheduler_job_id = Some(job_id.to_string());
             })
@@ -179,7 +189,11 @@ impl CronScheduler {
     }
 
     /// Atomically replace a job in the scheduler.
-    pub async fn reschedule_task(&self, task: &ScheduledTask) -> Result<(), String> {
+    pub async fn reschedule_task(
+        &self,
+        task: &ScheduledTask,
+        cache: State<'_, ScheduledTasksCache>,
+    ) -> Result<(), String> {
         // 1. Remove the old job, if it exists
         if let Some(job_id_str) = &task.scheduler_job_id {
             if let Ok(job_id) = Uuid::parse_str(job_id_str) {
@@ -193,7 +207,7 @@ impl CronScheduler {
         // 2. Schedule the new job, if the task is enabled
         if task.status == TaskStatus::Enabled {
             info!("Task {} is enabled, scheduling it...", task.name);
-            match self.schedule_task(task).await {
+            match self.schedule_task(task, cache.clone()).await {
                 Ok(new_job_id) => info!(
                     "Successfully rescheduled task {} with new job {}",
                     task.name, new_job_id
@@ -201,7 +215,7 @@ impl CronScheduler {
                 Err(e) => {
                     error!("Failed to reschedule task {}: {}", task.name, e);
                     // Mark task as failed if scheduling fails
-                    SCHEDULED_TASKS_CACHE
+                    cache
                         .update_task(&task.id, |t| t.mark_failure(e.clone()))
                         .await?;
                     return Err(e);
@@ -213,7 +227,7 @@ impl CronScheduler {
                 task.name
             );
             // Task is disabled, clear its job ID
-            SCHEDULED_TASKS_CACHE
+            cache
                 .update_task(&task.id, |t| {
                     t.scheduler_job_id = None;
                 })
@@ -225,14 +239,15 @@ impl CronScheduler {
     }
 
     /// Reloads all tasks from the cache and syncs the scheduler state.
-    pub async fn reload_tasks(&self) -> Result<(), String> {
+    pub async fn reload_tasks(&self, cache: State<'_, ScheduledTasksCache>) -> Result<(), String> {
         info!("🔄 Reloading all scheduled tasks...");
 
-        let tasks = SCHEDULED_TASKS_CACHE.get_all_tasks().await;
+        let tasks = cache.get_all_tasks().await;
         info!("Found {} tasks in cache to sync", tasks.len());
 
         for task in tasks {
-            if let Err(e) = self.reschedule_task(&task).await {
+            if let Err(e) = self.reschedule_task(&task, cache.clone()).await {
+                // <-- Pass cache
                 error!("Failed to reload task {} ({}): {}", task.name, task.id, e);
             }
         }
@@ -265,33 +280,66 @@ pub fn get_next_run(cron_expr: &str) -> Result<chrono::DateTime<Utc>, String> {
 }
 
 /// Execute a scheduled task
-async fn execute_scheduled_task(task_id: &str, app_handle: &AppHandle) -> Result<(), String> {
-    let task = SCHEDULED_TASKS_CACHE
-        .get_task(task_id)
-        .await
-        .ok_or("Task not found")?;
+async fn execute_scheduled_task(
+    task_id: &str,
+    app_handle: &AppHandle,
+    cache: State<'_, ScheduledTasksCache>,
+) -> Result<(), String> {
+    let task = cache.get_task(task_id).await.ok_or("Task not found")?;
 
     if !task.can_run() {
         return Err(format!("Task cannot run (status: {:?})", task.status));
     }
 
-    SCHEDULED_TASKS_CACHE
+    // --- Get Managed State ---
+    let job_cache = app_handle.state::<JobCache>();
+    let rclone_state = app_handle.state::<RcloneState>();
+
+    // --- Add Job Cache Check ---
+    let remote_name = match task.args.get("remote_name").and_then(|v| v.as_str()) {
+        Some(name) => name.to_string(),
+        None => {
+            return Err(format!(
+                "Task {} is invalid: missing 'remote_name' in args",
+                task.id
+            ));
+        }
+    };
+    let job_type = task.task_type.as_str();
+
+    if job_cache.is_job_running(&remote_name, job_type).await {
+        warn!(
+            "Scheduler skipping task '{}': A '{}' job for remote '{}' is already running.",
+            task.name, job_type, remote_name
+        );
+        return Ok(());
+    }
+
+    cache
         .update_task(task_id, |t| {
             let _ = t.mark_starting();
         })
         .await?;
 
     let result = match task.task_type {
-        TaskType::Copy => execute_copy_task(&task, app_handle).await,
-        TaskType::Sync => execute_sync_task(&task, app_handle).await,
-        TaskType::Move => execute_move_task(&task, app_handle).await,
-        TaskType::Bisync => execute_bisync_task(&task, app_handle).await,
+        TaskType::Copy => {
+            execute_copy_task(&task, app_handle, job_cache.clone(), rclone_state.clone()).await
+        }
+        TaskType::Sync => {
+            execute_sync_task(&task, app_handle, job_cache.clone(), rclone_state.clone()).await
+        }
+        TaskType::Move => {
+            execute_move_task(&task, app_handle, job_cache.clone(), rclone_state.clone()).await
+        }
+        TaskType::Bisync => {
+            execute_bisync_task(&task, app_handle, job_cache.clone(), rclone_state.clone()).await
+        }
     };
 
     match result {
         Ok(job_id) => {
             if let Some(rclone_job_id) = job_id {
-                SCHEDULED_TASKS_CACHE
+                cache
                     .update_task(task_id, |t| {
                         t.mark_running(rclone_job_id);
                     })
@@ -303,7 +351,7 @@ async fn execute_scheduled_task(task_id: &str, app_handle: &AppHandle) -> Result
         Err(e) => {
             let next_run = get_next_run(&task.cron_expression).ok();
 
-            SCHEDULED_TASKS_CACHE
+            cache
                 .update_task(task_id, |t| {
                     t.mark_failure(e.clone());
                     t.next_run = next_run;
@@ -318,13 +366,15 @@ async fn execute_scheduled_task(task_id: &str, app_handle: &AppHandle) -> Result
 async fn execute_copy_task(
     task: &ScheduledTask,
     app_handle: &AppHandle,
+    job_cache: State<'_, JobCache>,
+    rclone_state: State<'_, RcloneState>,
 ) -> Result<Option<u64>, String> {
     use crate::rclone::commands::sync::start_copy;
 
     let params: CopyParams = serde_json::from_value(task.args.clone())
         .map_err(|e| format!("Failed to parse copy task args: {}", e))?;
 
-    let result = start_copy(app_handle.clone(), params).await?;
+    let result = start_copy(app_handle.clone(), job_cache, rclone_state, params).await?;
     Ok(Some(result))
 }
 
@@ -332,13 +382,15 @@ async fn execute_copy_task(
 async fn execute_sync_task(
     task: &ScheduledTask,
     app_handle: &AppHandle,
+    job_cache: State<'_, JobCache>,
+    rclone_state: State<'_, RcloneState>,
 ) -> Result<Option<u64>, String> {
     use crate::rclone::commands::sync::start_sync;
 
     let params: SyncParams = serde_json::from_value(task.args.clone())
         .map_err(|e| format!("Failed to parse sync task args: {}", e))?;
 
-    let result = start_sync(app_handle.clone(), params).await?;
+    let result = start_sync(app_handle.clone(), job_cache, rclone_state, params).await?;
     Ok(Some(result))
 }
 
@@ -346,13 +398,15 @@ async fn execute_sync_task(
 async fn execute_move_task(
     task: &ScheduledTask,
     app_handle: &AppHandle,
+    job_cache: State<'_, JobCache>,
+    rclone_state: State<'_, RcloneState>,
 ) -> Result<Option<u64>, String> {
     use crate::rclone::commands::sync::start_move;
 
     let params: MoveParams = serde_json::from_value(task.args.clone())
         .map_err(|e| format!("Failed to parse move task args: {}", e))?;
 
-    let result = start_move(app_handle.clone(), params).await?;
+    let result = start_move(app_handle.clone(), job_cache, rclone_state, params).await?;
     Ok(Some(result))
 }
 
@@ -360,12 +414,14 @@ async fn execute_move_task(
 async fn execute_bisync_task(
     task: &ScheduledTask,
     app_handle: &AppHandle,
+    job_cache: State<'_, JobCache>,
+    rclone_state: State<'_, RcloneState>,
 ) -> Result<Option<u64>, String> {
     use crate::rclone::commands::sync::start_bisync;
 
     let params: BisyncParams = serde_json::from_value(task.args.clone())
         .map_err(|e| format!("Failed to parse bisync task args: {}", e))?;
 
-    let result = start_bisync(app_handle.clone(), params).await?;
+    let result = start_bisync(app_handle.clone(), job_cache, rclone_state, params).await?;
     Ok(Some(result))
 }

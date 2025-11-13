@@ -5,9 +5,9 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::time;
 
-use super::cache::CACHE;
 use crate::RcloneState;
 use crate::rclone::queries::{list_serves, mount::get_mounted_remotes};
+use crate::utils::types::all_types::RemoteCache;
 use crate::utils::types::{
     all_types::{MountedRemote, ServeInstance},
     events::{REMOTE_STATE_CHANGED, SERVE_STATE_CHANGED},
@@ -43,7 +43,9 @@ fn find_mount_changes(previous: &[MountedRemote], current: &[MountedRemote]) -> 
 
 /// Core logic to check and reconcile mounted remotes
 async fn check_and_reconcile_mounts(app_handle: AppHandle) -> Result<(), String> {
-    let cached_mounts = CACHE.get_mounted_remotes().await;
+    let cache = app_handle.state::<RemoteCache>();
+
+    let cached_mounts = cache.get_mounted_remotes().await;
     let api_mounts = match get_mounted_remotes_from_api(&app_handle).await {
         Ok(mounts) => mounts,
         Err(e) => {
@@ -60,7 +62,7 @@ async fn check_and_reconcile_mounts(app_handle: AppHandle) -> Result<(), String>
     }
 
     debug!("🔍 Detected mount changes - updating cache");
-    CACHE.refresh_mounted_remotes(app_handle.clone()).await?;
+    cache.refresh_mounted_remotes(app_handle.clone()).await?;
 
     // Emit events for unmounted remotes
     for remote in unmounted_remotes {
@@ -104,8 +106,10 @@ pub async fn start_mounted_remote_watcher(app_handle: AppHandle) {
             break;
         }
 
+        let cache = app_handle.state::<RemoteCache>();
+
         // **Optimization**: Skip monitoring if cache is empty
-        if CACHE.get_mounted_remotes().await.is_empty() {
+        if cache.get_mounted_remotes().await.is_empty() {
             debug!("🔍 No mounted remotes in cache, skipping API check");
             continue;
         }
@@ -153,7 +157,9 @@ async fn get_serves_from_api(app_handle: &AppHandle) -> Result<Vec<ServeInstance
 
 /// Core logic to check and reconcile running serves
 async fn check_and_reconcile_serves(app_handle: AppHandle) -> Result<(), String> {
-    let cached_serves = CACHE.get_serves().await;
+    let cache = app_handle.state::<RemoteCache>();
+
+    let cached_serves = cache.get_serves().await;
     let api_serves = match get_serves_from_api(&app_handle).await {
         Ok(serves) => serves,
         Err(e) => {
@@ -179,7 +185,8 @@ async fn check_and_reconcile_serves(app_handle: AppHandle) -> Result<(), String>
     }
 
     debug!("🔍 Detected serve changes - updating cache");
-    CACHE.refresh_serves(app_handle.clone()).await?;
+    // --- Use managed state ---
+    cache.refresh_serves(app_handle.clone()).await?;
 
     // Emit events for stopped serves
     for serve in stopped_serves {
@@ -257,7 +264,9 @@ pub fn start_serve_watcher(app_handle: AppHandle) {
                 break;
             }
 
-            if CACHE.get_serves().await.is_empty() {
+            let cache = app_handle.state::<RemoteCache>();
+
+            if cache.get_serves().await.is_empty() {
                 debug!("🔍 No serves in cache, skipping API check");
                 continue;
             }

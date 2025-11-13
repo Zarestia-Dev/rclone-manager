@@ -143,7 +143,38 @@ impl RcApiEngine {
 
         // Use blocking call for synchronous validation
         let result = tauri::async_runtime::block_on(self.validate_config_before_start(app));
+        // Call the new helper
+        self.handle_validation_result(app, result)
+    }
 
+    // In src/rclone/engine/configuration.rs, inside impl RcApiEngine
+
+    /// Async version of config validation
+    pub async fn validate_config_async(&mut self, app: &AppHandle) -> bool {
+        info!("🧪 Testing rclone configuration and password asynchronously...");
+        // Use .await for async validation
+        let result = self.validate_config_before_start(app).await;
+        // Call the same helper
+        self.handle_validation_result(app, result)
+    }
+
+    pub async fn update_port(&mut self, app: &AppHandle, new_port: u16) {
+        info!(
+            "🔄 Updating Rclone API port from {} to {}",
+            self.api_port, new_port
+        );
+
+        if let Err(e) = crate::rclone::engine::lifecycle::stop(self).await {
+            error!("Failed to stop Rclone process: {e}");
+        }
+        self.api_port = new_port;
+        crate::rclone::engine::lifecycle::start(self, app).await;
+    }
+
+    // In src/rclone/engine/configuration.rs, inside impl RcApiEngine
+
+    /// Handles the result of config validation, sets flags, and returns success
+    fn handle_validation_result(&mut self, app: &AppHandle, result: Result<(), String>) -> bool {
         match result {
             Ok(_) => {
                 info!("✅ Rclone configuration and password are valid");
@@ -191,18 +222,5 @@ impl RcApiEngine {
                 false
             }
         }
-    }
-
-    pub async fn update_port(&mut self, app: &AppHandle, new_port: u16) {
-        info!(
-            "🔄 Updating Rclone API port from {} to {}",
-            self.current_api_port, new_port
-        );
-
-        if let Err(e) = crate::rclone::engine::lifecycle::stop(self).await {
-            error!("Failed to stop Rclone process: {e}");
-        }
-        self.current_api_port = new_port;
-        crate::rclone::engine::lifecycle::start(self, app).await;
     }
 }

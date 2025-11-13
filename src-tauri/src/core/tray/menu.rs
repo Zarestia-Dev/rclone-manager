@@ -1,16 +1,15 @@
 use log::{error, warn};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tauri::{
-    AppHandle, Runtime,
+    AppHandle, Manager, Runtime,
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
 };
 
 use crate::{
-    rclone::state::{
-        cache::{get_cached_mounted_remotes, get_cached_remotes, get_cached_serves, get_settings},
-        job::JOB_CACHE,
+    rclone::state::cache::{
+        get_cached_mounted_remotes, get_cached_remotes, get_cached_serves, get_settings,
     },
-    utils::types::all_types::ServeInstance,
+    utils::types::all_types::{JobCache, ServeInstance},
 };
 
 use super::tray_action::TrayAction;
@@ -135,23 +134,37 @@ pub async fn create_tray_menu<R: Runtime>(
 
     let quit_item = MenuItem::with_id(&handle, "quit", "Quit", true, None::<&str>)?;
 
-    let remotes = get_cached_remotes().await.unwrap_or_else(|err| {
-        error!("Failed to fetch cached remotes: {err}");
-        vec![]
-    });
-    let mounted_remotes = get_cached_mounted_remotes().await.unwrap_or_else(|err| {
-        error!("Failed to fetch mounted remotes: {err}");
-        vec![]
-    });
-    let all_serves = get_cached_serves().await.unwrap_or_else(|err| {
-        error!("Failed to fetch cached serves: {err}");
-        vec![]
-    });
-    let active_jobs = JOB_CACHE.get_active_jobs().await;
-    let cached_settings = get_settings().await.unwrap_or_else(|_| {
-        error!("Failed to fetch cached settings");
-        serde_json::Value::Null
-    });
+    // --- Get state from app handle ---
+    let job_cache = app.state::<JobCache>();
+
+    let remotes = get_cached_remotes(app.state::<crate::utils::types::all_types::RemoteCache>())
+        .await
+        .unwrap_or_else(|err| {
+            error!("Failed to fetch cached remotes: {err}");
+            vec![]
+        });
+    let mounted_remotes =
+        get_cached_mounted_remotes(app.state::<crate::utils::types::all_types::RemoteCache>())
+            .await
+            .unwrap_or_else(|err| {
+                error!("Failed to fetch mounted remotes: {err}");
+                vec![]
+            });
+    let all_serves = get_cached_serves(app.state::<crate::utils::types::all_types::RemoteCache>())
+        .await
+        .unwrap_or_else(|err| {
+            error!("Failed to fetch cached serves: {err}");
+            vec![]
+        });
+    // --- Use injected job_cache state ---
+    let active_jobs = job_cache.get_active_jobs().await;
+
+    let cached_settings = get_settings(app.state::<crate::utils::types::all_types::RemoteCache>())
+        .await
+        .unwrap_or_else(|_| {
+            error!("Failed to fetch cached settings");
+            serde_json::Value::Null
+        });
 
     let remotes_to_show = remotes
         .iter()

@@ -28,8 +28,7 @@ impl RcApiEngine {
     }
 
     async fn check_api_response(&self, app: &AppHandle) -> bool {
-        let base_url = format!("http://127.0.0.1:{}", self.current_api_port);
-        let url = EndpointHelper::build_url(&base_url, core::VERSION);
+        let url = EndpointHelper::build_url(&self.api_url, core::VERSION);
 
         let client = &app.state::<RcloneState>().client;
 

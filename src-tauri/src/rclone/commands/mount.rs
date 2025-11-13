@@ -6,16 +6,13 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
     RcloneState,
-    rclone::state::{
-        cache::get_cached_mounted_remotes, engine::ENGINE_STATE, job::JOB_CACHE,
-        watcher::force_check_mounted_remotes,
-    },
+    rclone::{engine::core::ENGINE, state::watcher::force_check_mounted_remotes},
     utils::{
         json_helpers::{get_string, json_to_hashmap},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, mount},
         types::{
-            all_types::{JobInfo, JobResponse, JobStatus, LogLevel},
+            all_types::{JobCache, JobInfo, JobResponse, JobStatus, LogLevel, RemoteCache},
             events::REMOTE_STATE_CHANGED,
         },
     },
@@ -74,9 +71,14 @@ impl MountParams {
 
 /// Mount a remote filesystem
 #[tauri::command]
-pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), String> {
+pub async fn mount_remote(
+    app: AppHandle,
+    job_cache: State<'_, JobCache>,
+    cache: State<'_, RemoteCache>,
+    params: MountParams,
+) -> Result<(), String> {
     debug!("Received mount_remote params: {params:#?}");
-    let mounted_remotes = get_cached_mounted_remotes().await?;
+    let mounted_remotes = cache.get_mounted_remotes().await;
     let state = app.state::<RcloneState>();
 
     // Check if mount point is in use
@@ -168,7 +170,8 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     }
 
     // Make the request
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::MOUNT);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, mount::MOUNT);
     let response = state
         .client
         .post(&url)
@@ -224,7 +227,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     // Extract job ID and monitor the job
     let jobid = job_response.jobid;
     // Add to job cache
-    JOB_CACHE
+    job_cache
         .add_job(JobInfo {
             jobid,
             job_type: "mount".to_string(),
@@ -242,6 +245,7 @@ pub async fn mount_remote(app: AppHandle, params: MountParams) -> Result<(), Str
     let app_clone = app.clone();
     let remote_name_clone = params.remote_name.clone();
     let client = state.client.clone();
+    // monitor_job will get the JobCache from the app_clone handle
     if let Err(e) = monitor_job(remote_name_clone, "Mount remote", jobid, app_clone, client).await {
         error!("Job {jobid} returned an error: {e}");
         return Err(e.to_string());
@@ -278,7 +282,8 @@ pub async fn unmount_remote(
         None,
     );
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::UNMOUNT);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, mount::UNMOUNT);
     let payload = json!({ "mountPoint": mount_point });
 
     let response = state
@@ -340,7 +345,8 @@ pub async fn unmount_all_remotes(
 ) -> Result<String, String> {
     info!("🗑️ Unmounting all remotes");
 
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::UNMOUNTALL);
+    let api_url = ENGINE.lock().await.get_api_url();
+    let url = EndpointHelper::build_url(&api_url, mount::UNMOUNTALL);
 
     let response = state
         .client

@@ -4,10 +4,11 @@ use log::SetLoggerError;
 use once_cell::sync::OnceCell;
 use serde_json::Value;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use tauri::{AppHandle, Manager};
 use tokio::sync::mpsc;
 
-use crate::rclone::state::log::LOG_CACHE;
 use crate::utils::types::all_types::DynamicLogger;
+use crate::utils::types::all_types::LogCache;
 use crate::utils::types::all_types::LogEntry;
 use crate::utils::types::all_types::LogLevel;
 
@@ -48,12 +49,15 @@ fn current_log_level() -> LevelFilter {
     }
 }
 
-pub fn init_logging(enable_debug: bool) -> Result<(), SetLoggerError> {
+// --- Modified function to accept AppHandle ---
+pub fn init_logging(enable_debug: bool, app_handle: AppHandle) -> Result<(), SetLoggerError> {
     let (tx, mut rx) = mpsc::channel::<LogEntry>(1000);
 
+    let app_handle_clone = app_handle.clone();
     tauri::async_runtime::spawn(async move {
+        let log_cache = app_handle_clone.state::<LogCache>();
         while let Some(entry) = rx.recv().await {
-            LOG_CACHE.add_entry_from_processor(entry).await;
+            log_cache.add_entry_from_processor(entry).await;
         }
     });
 
@@ -84,7 +88,7 @@ pub fn update_log_level(enable_debug: bool) {
     log::set_max_level(level);
 }
 
-// Fire and forget logging function.
+// It uses the mpsc channel (LOG_SENDER), not LOG_CACHE directly.
 pub fn log_operation(
     level: LogLevel,
     remote_name: Option<String>,
