@@ -124,6 +124,8 @@ export class ServeManagementService extends TauriBaseService {
         vfs_options: vfsOptions || null,
       };
 
+      console.log('Invoking start_serve with params:', params);
+
       const response = await this.invokeCommand<ServeStartResponse>('start_serve', { params });
 
       this.notificationService.showSuccess(

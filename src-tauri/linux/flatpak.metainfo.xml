@@ -37,7 +37,7 @@
       <li>🌗 Light &amp; Dark Modes – GTK-inspired themes with a modern, responsive layout</li>
       <li>📁 File Browser – Browse and manage files across your remotes</li>
       <li>🔄 Sync, Copy, Mount – Full support for rclone operations including mounting remotes (Needs flatpak spawn access)</li>
-      <li>🔌 Serve Remotes – Expose remotes over HTTP, WebDAV, FTP, SFTP and more.</li>
+      <li>📡 Serve Remotes – Expose remotes over HTTP, WebDAV, FTP, SFTP and more.</li>
       <li>📊 Job Management – Track and manage your rclone operations</li>
       <li>🚀 Cross-Platform – Works seamlessly on Windows, Linux, and macOS</li>
     </ul>
@@ -62,33 +62,56 @@
   <url type="vcs-browser">https://github.com/Zarestia-Dev/rclone-manager</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.4/assets/desktop-ui.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/desktop-ui.png</image>
       <caption>Desktop UI - Light and Dark modes</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.4/assets/general-home.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/general-home.png</image>
       <caption>General Home View</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.4/assets/general-remote.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/general-remote.png</image>
       <caption>Remote Management Interface</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.4/assets/job-watcher.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/serve-control.png</image>
+      <caption>Serve Management Interface</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/job-watcher.png</image>
       <caption>Job Watcher - Monitor your rclone operations</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.4/assets/mount-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/mount-control.png</image>
       <caption>Mount Control Panel</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.4/assets/mobile-ui.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/mobile-ui.png</image>
       <caption>Mobile UI - Responsive design</caption>
     </screenshot>
   </screenshots>
   <releases>
-    <release version="0.1.7" date="2025-10-13">
-      <url type="details">https://github.com/Zarestia-Dev/rclone-manager/releases/tag/v0.1.7</url>
+    <release version="0.1.7" date="2025-11-14">
+      <description>
+        <h3>Added</h3>
+        <ul>
+          <li>Added schedule support for sync, copy, move, and bisync operations. You can now schedule these operations to run at specific times or intervals using a cron-like syntax. You can find the scheduling options in the remote sync operation settings. (Supports detailed cron expressions. Example <code>15,45 8-18/2 * 1,11 1-5</code>: Every 2 hours at minutes 15 and 45 between 8 AM and 6 PM on Mondays and Fridays in January and November)</li>
+          <li>New time picker module added for better clock time selection.</li>
+          <li>Rclone Serve support added. You can now start and stop rclone serve commands. The serve status is displayed in the sidebar for easy access. You can find the serve options in the Serve Tab. Serve configurations (vfs, backend and filter) separated from the other configurations.</li>
+        </ul>
+        <h3>Changed</h3>
+        <ul>
+          <li>Backup and Restore system has been completely redesigned and rewritten for better reliability and performance. Old backup files are not compatible with the new system. Please create a new backup after updating to this version.</li>
+          <li>A lot of Rust backend refactoring and optimizations have been made for better performance and maintainability.</li>
+        </ul>
+        <h3>Fixed</h3>
+        <ul>
+          <li>Critical fix for process management. Now the app correctly find own rclone processes via ports.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.1.6" date="2025-10-13">
+      <url type="details">https://github.com/Zarestia-Dev/rclone-manager/releases/tag/v0.1.6</url>
       <description>
         <p>Initial release of RClone Manager for FlatHub.</p>
       </description>

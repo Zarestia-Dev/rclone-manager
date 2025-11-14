@@ -553,7 +553,9 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
 
   // Scheduled tasks helpers
   get activeScheduledTasksCount(): number {
-    return this.scheduledTasks.filter(task => task.status === 'enabled').length;
+    return this.scheduledTasks.filter(
+      task => task.status === 'enabled' || task.status === 'running'
+    ).length;
   }
 
   get totalScheduledTasksCount(): number {

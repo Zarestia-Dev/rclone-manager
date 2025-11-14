@@ -27,7 +27,7 @@ async fn fetch_all_options_info(
 async fn fetch_current_options(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::INFO);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::GET);
     let response = state.client.post(&url).json(&json!({})).send().await?;
     if response.status().is_success() {
         Ok(response.json().await?)
@@ -43,7 +43,7 @@ async fn fetch_current_options(
 async fn fetch_option_blocks(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::INFO);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::BLOCKS);
     let response = state.client.post(&url).json(&json!({})).send().await?;
     if response.status().is_success() {
         Ok(response.json().await?)
@@ -341,7 +341,7 @@ pub async fn set_rclone_option(
     option_name: String,
     value: Value,
 ) -> Result<Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::INFO);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::SET);
     let parts: Vec<&str> = option_name.split('.').collect();
     let nested_value = parts
         .iter()

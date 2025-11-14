@@ -729,9 +729,9 @@ export class HomeComponent implements OnInit, OnDestroy {
             await this.serveManagementService.startServe(
               remoteName,
               config.options,
-              settings.filterConfig,
-              settings.backendConfig,
-              settings.vfsConfig
+              config.filterConfig,
+              config.backendConfig,
+              config.vfsConfig
             );
             break;
           default:
