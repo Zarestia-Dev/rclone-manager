@@ -1,2 +1,1 @@
-#npx lint-staged
-#Code need improvements. I disabled lint-staged for now.
+npx lint-staged
