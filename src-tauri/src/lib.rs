@@ -117,7 +117,7 @@ use crate::{
             updater::{check_rclone_update, update_rclone},
         },
         types::{
-            all_types::{JobCache, LogCache, RcApiEngine, RcloneState, RemoteCache},
+            all_types::{JobCache, LogCache, RcloneState, RemoteCache},
             settings::SettingsState,
         },
     },
@@ -216,10 +216,8 @@ pub fn run() {
             app.manage(env_manager);
             app.manage(credential_store);
 
-            let settings = tauri::async_runtime::block_on(load_startup_settings(
-                &app.state::<SettingsState<tauri::Wry>>(),
-            ))
-            .map_err(|e| format!("Failed to load settings for startup: {e}"))?;
+            let settings = load_startup_settings(&app.state::<SettingsState<tauri::Wry>>())
+                .map_err(|e| format!("Failed to load startup settings: {e}"))?;
 
             let force_tray = std::env::args().any(|arg| arg == "--tray");
             let tray_enabled = settings.general.tray_enabled || force_tray;
@@ -248,7 +246,6 @@ pub fn run() {
             app.manage(ScheduledTasksCache::new());
             app.manage(CronScheduler::new());
             app.manage(RemoteCache::new());
-            app.manage(RcApiEngine::new());
 
             #[cfg(all(desktop, feature = "updater"))]
             app.manage(PendingUpdate(std::sync::Mutex::new(None)));

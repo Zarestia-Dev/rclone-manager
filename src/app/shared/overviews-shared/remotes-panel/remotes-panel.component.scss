@@ -57,16 +57,11 @@
       font-weight: 500;
 
       .active-icon,
-      .inactive-icon,
-      .error-icon {
+      .inactive-icon {
         width: var(--icon-size-md);
         height: var(--icon-size-md);
         transition: var(--transition-standard);
         will-change: color;
-      }
-
-      .error-icon {
-        color: var(--warn-color);
       }
 
       .remote-count {

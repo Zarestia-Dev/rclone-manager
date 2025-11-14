@@ -3,7 +3,7 @@ use serde_json::json;
 use tauri::State;
 
 use crate::RcloneState;
-use crate::rclone::engine::core::ENGINE;
+use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{EndpointHelper, core};
 
 /// Utility to normalize Windows extended-length paths (e.g., //?/C:/path or \\?\C:\path) to C:/path, only on Windows
@@ -19,8 +19,7 @@ fn normalize_windows_path(path: &str) -> String {
 /// Get RClone core statistics  
 #[tauri::command]
 pub async fn get_core_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, core::STATS);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
 
     let response = state
         .client
@@ -46,8 +45,7 @@ pub async fn get_core_stats_filtered(
     jobid: Option<u64>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, core::STATS);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
 
     let mut payload = json!({});
 
@@ -96,8 +94,7 @@ pub async fn get_completed_transfers(
     state: State<'_, RcloneState>,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, core::TRANSFERRED);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::TRANSFERRED);
 
     let mut payload = json!({});
     if let Some(group) = group {
@@ -163,8 +160,7 @@ pub async fn get_job_stats(
     jobid: u64,
     group: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, core::STATS);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
 
     let mut payload = json!({ "jobid": jobid });
     if let Some(group) = group {

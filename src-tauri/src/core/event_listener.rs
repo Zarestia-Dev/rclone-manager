@@ -12,13 +12,16 @@ use crate::{
     rclone::{
         commands::system::set_bandwidth_limit,
         engine::core::ENGINE,
-        state::scheduled_tasks::{ScheduledTasksCache, reload_scheduled_tasks_from_configs},
+        state::{
+            engine::ENGINE_STATE,
+            scheduled_tasks::{ScheduledTasksCache, reload_scheduled_tasks_from_configs},
+        },
     },
     utils::{
         app::builder::setup_tray,
         logging::log::update_log_level,
         types::{
-            all_types::{RcApiEngine, RemoteCache},
+            all_types::RemoteCache,
             events::{
                 JOB_CACHE_CHANGED, MOUNT_STATE_CHANGED, RCLONE_API_URL_UPDATED,
                 RCLONE_PASSWORD_STORED, REMOTE_CACHE_UPDATED, REMOTE_PRESENCE_CHANGED,
@@ -51,9 +54,19 @@ fn handle_rclone_api_url_updated(app: &AppHandle) {
     app.listen(RCLONE_API_URL_UPDATED, move |_| {
         let app = app_handle.clone();
         tauri::async_runtime::spawn(async move {
-            let mut engine = RcApiEngine::lock_engine().await;
-            let port = engine.api_port; // <-- Get port from engine itself
-            engine.update_port(&app, port).await;
+            let port = ENGINE_STATE.get_api().1;
+            let result = tauri::async_runtime::spawn_blocking(move || {
+                let mut engine = match ENGINE.lock() {
+                    Ok(guard) => guard,
+                    Err(poisoned) => poisoned.into_inner(),
+                };
+                engine.update_port(&app, port)
+            })
+            .await;
+
+            if let Err(e) = result {
+                error!("Failed to update Rclone API port: {e}");
+            }
         });
     });
 }
@@ -61,10 +74,17 @@ fn handle_rclone_api_url_updated(app: &AppHandle) {
 fn handle_rclone_password_stored(app: &AppHandle) {
     let app_clone = app.clone();
     app.listen(RCLONE_PASSWORD_STORED, move |_| {
-        let _app = app_clone.clone(); // _app is not used, but good to keep
+        let _app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            let mut engine = RcApiEngine::lock_engine().await;
-            engine.password_error = false;
+            // Clear the engine flag and attempt a restart if engine not running
+            tauri::async_runtime::spawn_blocking(move || {
+                let mut engine = match ENGINE.lock() {
+                    Ok(guard) => guard,
+                    Err(poisoned) => poisoned.into_inner(),
+                };
+
+                engine.password_error = false;
+            });
         });
     });
 }
@@ -355,6 +375,7 @@ fn handle_settings_changed(app: &AppHandle) {
                             *path_guard = std::path::PathBuf::from(rclone_path);
                         }
 
+                        // Restart engine with new rclone path
                         if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
                             &app_handle,
                             "rclone_path",
@@ -377,39 +398,35 @@ fn handle_settings_changed(app: &AppHandle) {
 
                     if let Some(api_port) = core.get("rclone_api_port").and_then(|v| v.as_u64()) {
                         debug!("🔌 Rclone API Port changed to: {api_port}");
+                        let old_port = ENGINE_STATE.get_api().1.to_string();
 
-                        let app_handle_clone = app_handle.clone(); // Clone for the new task
-                        tauri::async_runtime::spawn(async move {
-                            let old_port = async {
-                                let mut engine = ENGINE.lock().await;
-                                let old = engine.api_port;
-                                engine.api_port = api_port as u16;
-                                engine.api_url = format!("http://127.0.0.1:{api_port}");
-                                old
-                            }
-                            .await;
-
+                        if let Err(e) = ENGINE_STATE
+                            .set_api(format!("http://127.0.0.1:{api_port}"), api_port as u16)
+                        {
+                            error!("Failed to set Rclone API Port: {e}");
+                        } else {
+                            // Restart engine with new API port
                             if let Err(e) =
                                 crate::rclone::engine::lifecycle::restart_for_config_change(
-                                    &app_handle_clone, // Use the clone
+                                    &app_handle,
                                     "api_port",
-                                    &old_port.to_string(),
+                                    &old_port,
                                     &api_port.to_string(),
                                 )
                             {
                                 error!("Failed to restart engine for API port change: {e}");
                             }
-                        });
+                        }
                     }
 
                     if let Some(oauth_port) = core.get("rclone_oauth_port").and_then(|v| v.as_u64())
                     {
                         debug!("🔑 Rclone OAuth Port changed to: {oauth_port}");
-                        tauri::async_runtime::spawn(async move {
-                            let mut engine = ENGINE.lock().await;
-                            engine.oauth_port = oauth_port as u16;
-                            engine.oauth_url = format!("http://127.0.0.1:{oauth_port}");
-                        });
+                        if let Err(e) = ENGINE_STATE
+                            .set_oauth(format!("http://127.0.0.1:{oauth_port}"), oauth_port as u16)
+                        {
+                            error!("Failed to set Rclone OAuth Port: {e}");
+                        }
                     }
 
                     if let Some(max_items) = core.get("max_tray_items").and_then(|v| v.as_u64()) {

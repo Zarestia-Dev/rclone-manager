@@ -8,6 +8,7 @@ use crate::{
         commands::system::set_bandwidth_limit,
         queries::flags::set_rclone_option,
         state::{
+            engine::ENGINE_STATE,
             scheduled_tasks::ScheduledTasksCache,
             watcher::{start_mounted_remote_watcher, start_serve_watcher},
         },
@@ -29,13 +30,15 @@ pub fn init_rclone_state(
     let api_url = format!("http://127.0.0.1:{}", settings.core.rclone_api_port);
     let oauth_url = format!("http://127.0.0.1:{}", settings.core.rclone_oauth_port);
 
-    let mut engine = tauri::async_runtime::block_on(RcApiEngine::lock_engine());
-    engine.api_url = api_url;
-    engine.api_port = settings.core.rclone_api_port;
-    engine.oauth_url = oauth_url;
-    engine.oauth_port = settings.core.rclone_oauth_port;
+    ENGINE_STATE
+        .set_api(api_url, settings.core.rclone_api_port)
+        .map_err(|e| format!("Failed to set Rclone API: {e}"))?;
 
-    // Call the engine's init function
+    ENGINE_STATE
+        .set_oauth(oauth_url, settings.core.rclone_oauth_port)
+        .map_err(|e| format!("Failed to set Rclone OAuth: {e}"))?;
+
+    let mut engine = RcApiEngine::lock_engine()?;
     engine.init(app_handle);
 
     info!("🔄 Rclone engine initialized");

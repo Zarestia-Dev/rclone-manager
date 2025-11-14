@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
     RcloneState,
-    rclone::engine::core::ENGINE,
+    rclone::state::engine::ENGINE_STATE,
     utils::{
         json_helpers::{get_string, json_to_hashmap},
         logging::log::log_operation,
@@ -196,8 +196,7 @@ pub async fn start_serve(
     let payload = Value::Object(payload);
 
     // Make the request
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, serve::START);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::START);
     let response = state
         .client
         .post(&url)
@@ -284,8 +283,7 @@ pub async fn stop_serve(
         None,
     );
 
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, serve::STOP);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::STOP);
     let payload = json!({ "id": server_id });
 
     let response = state
@@ -323,8 +321,7 @@ pub async fn stop_all_serves(
 ) -> Result<String, String> {
     info!("🗑️ Stopping all serves");
 
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, serve::STOPALL);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::STOPALL);
 
     let response = state
         .client

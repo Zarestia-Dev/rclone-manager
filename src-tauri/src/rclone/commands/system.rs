@@ -11,7 +11,7 @@ use tokio::{sync::Mutex, time::sleep};
 
 use crate::{
     RcloneState,
-    rclone::engine::core::ENGINE,
+    rclone::state::engine::ENGINE_STATE,
     utils::{
         rclone::{
             endpoints::{EndpointHelper, config, core},
@@ -89,7 +89,7 @@ pub fn redact_sensitive_values(
 }
 pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let mut guard = OAUTH_PROCESS.lock().await;
-    let port = ENGINE.lock().await.get_oauth_port();
+    let port = ENGINE_STATE.get_oauth().1;
 
     // Check if process is already running (in memory or port open)
     let mut process_running = guard.is_some();
@@ -154,10 +154,7 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
     info!("🛑 Quitting Rclone OAuth process");
 
     let mut guard = OAUTH_PROCESS.lock().await;
-    let (oauth_url, port) = {
-        let engine = ENGINE.lock().await;
-        (engine.get_oauth_url(), engine.get_oauth_port())
-    };
+    let port = ENGINE_STATE.get_oauth().1;
 
     let mut found_process = false;
 
@@ -177,7 +174,7 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
         return Ok(());
     }
 
-    let url = EndpointHelper::build_url(&oauth_url, core::QUIT);
+    let url = EndpointHelper::build_url(&format!("http://127.0.0.1:{port}"), core::QUIT);
 
     if let Err(e) = state.client.post(&url).send().await {
         warn!("⚠️ Failed to send quit request: {e}");
@@ -211,8 +208,7 @@ pub async fn set_bandwidth_limit(
         _ => "off".to_string(),
     };
 
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, core::BWLIMIT);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::BWLIMIT);
     let payload = json!({ "rate": rate_value });
 
     let response = state
@@ -246,8 +242,7 @@ pub async fn unlock_rclone_config(
     password: String,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, config::UNLOCK);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::UNLOCK);
 
     let payload = json!({ "config_password": password });
 

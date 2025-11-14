@@ -7,7 +7,7 @@ use tokio::time::sleep;
 use crate::{
     RcloneState,
     core::scheduler::engine::get_next_run,
-    rclone::{engine::core::ENGINE, state::scheduled_tasks::ScheduledTasksCache},
+    rclone::state::{engine::ENGINE_STATE, scheduled_tasks::ScheduledTasksCache},
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, core, job},
@@ -30,9 +30,8 @@ pub async fn monitor_job(
     let job_cache = app.state::<JobCache>();
     let scheduled_tasks_cache = app.state::<ScheduledTasksCache>();
 
-    let api_url = ENGINE.lock().await.get_api_url();
-    let job_status_url = EndpointHelper::build_url(&api_url, job::STATUS);
-    let stats_url = EndpointHelper::build_url(&api_url, core::STATS);
+    let job_status_url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, job::STATUS);
+    let stats_url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
 
     info!("Starting monitoring for job {jobid} ({operation})");
 
@@ -235,8 +234,8 @@ pub async fn stop_job(
     remote_name: String,
     state: State<'_, RcloneState>,
 ) -> Result<(), String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, job::STOP);
+    // First try to stop via API, THEN update cache
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, job::STOP);
 
     let payload = json!({ "jobid": jobid });
 

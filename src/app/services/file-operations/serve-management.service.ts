@@ -62,17 +62,20 @@ export class ServeManagementService extends TauriBaseService {
    */
   async refreshServesFromCache(): Promise<void> {
     try {
-      // 1. Correct the type: Expect an Array, not ServeListResponse
-      const response = await this.invokeCommand<ServeListItem[]>('get_cached_serves');
+      const response = await this.invokeCommand<ServeListItem[] | ServeListResponse>(
+        'get_cached_serves'
+      );
       console.log('Fetched serves from cache:', response);
 
-      // 2. Correct the check: Check `response` itself, not `response.list`
-      if (response && Array.isArray(response)) {
-        this.runningServesSubject.next(response); // <-- Pass the array directly
-      } else {
-        // This branch is now correctly for actual empty/invalid responses
-        this.runningServesSubject.next([]);
+      let servesToUpdate: ServeListItem[] = [];
+      if (Array.isArray(response)) {
+        servesToUpdate = response;
+      } else if (response && 'list' in response && Array.isArray(response.list)) {
+        servesToUpdate = response.list;
       }
+
+      this.runningServesSubject.next(servesToUpdate);
+      console.log('Updated running serves from cache:', servesToUpdate);
       console.log('Refreshed serves from cache successfully');
       console.log(this.runningServesSubject.value); // <-- This will now log the array
     } catch (error) {
@@ -94,8 +97,6 @@ export class ServeManagementService extends TauriBaseService {
         this.runningServesSubject.next(response?.list ?? []);
       } catch (apiErr) {
         console.error('Both cache and API failed:', apiErr);
-        // Don't clear the list if both fail - preserve last known state
-        // this.runningServesSubject.next([]);
       }
     }
   }

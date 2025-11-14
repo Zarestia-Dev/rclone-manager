@@ -84,11 +84,12 @@ impl RemoteCache {
     }
 
     pub async fn refresh_all(&self, app_handle: tauri::AppHandle) -> Result<(), String> {
-        let (res1, res2, res3, res4) = tokio::join!(
+        let (res1, res2, res3, res4, res5) = tokio::join!(
             self.refresh_remote_list(app_handle.clone()),
             self.refresh_remote_settings(app_handle.clone()),
             self.refresh_remote_configs(app_handle.clone()),
             self.refresh_mounted_remotes(app_handle.clone()),
+            self.refresh_serves(app_handle.clone()),
         );
 
         if let Err(e) = res1 {
@@ -102,6 +103,9 @@ impl RemoteCache {
         }
         if let Err(e) = res4 {
             error!("Failed to refresh mounted remotes: {e}");
+        }
+        if let Err(e) = res5 {
+            error!("Failed to refresh serves: {e}");
         }
 
         Ok(())

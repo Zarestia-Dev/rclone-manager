@@ -8,8 +8,7 @@ use crate::{
     core::scheduler::engine::CronScheduler,
     rclone::{
         commands::system::{ensure_oauth_process, redact_sensitive_values},
-        engine::core::ENGINE,
-        state::scheduled_tasks::ScheduledTasksCache,
+        state::{engine::ENGINE_STATE, scheduled_tasks::ScheduledTasksCache},
     },
     utils::{
         logging::log::log_operation,
@@ -57,8 +56,7 @@ pub async fn create_remote_interactive(
     }
     body["opt"] = opt_obj;
 
-    let oauth_url = ENGINE.lock().await.get_oauth_url();
-    let url = EndpointHelper::build_url(&oauth_url, config::CREATE);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_oauth().0, config::CREATE);
 
     let response = state
         .client
@@ -122,8 +120,7 @@ pub async fn continue_create_remote_interactive(
     }
     body["opt"] = opt_obj;
 
-    let oauth_url = ENGINE.lock().await.get_oauth_url();
-    let url = EndpointHelper::build_url(&oauth_url, config::UPDATE);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_oauth().0, config::UPDATE);
 
     let response = tauri_state
         .client
@@ -193,8 +190,7 @@ pub async fn create_remote(
         "parameters": parameters
     });
 
-    let oauth_url = ENGINE.lock().await.get_oauth_url();
-    let url = EndpointHelper::build_url(&oauth_url, config::CREATE);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_oauth().0, config::CREATE);
 
     let response = state
         .client
@@ -208,11 +204,10 @@ pub async fn create_remote(
     let body = response.text().await.unwrap_or_default();
 
     if !status.is_success() {
-        let oauth_port = ENGINE.lock().await.get_oauth_port();
         let error = if body.contains("failed to get oauth token") {
             "OAuth authentication failed or was not completed".to_string()
         } else if body.contains("bind: address already in use") {
-            format!("Port {} already in use", oauth_port)
+            format!("Port {} already in use", ENGINE_STATE.get_oauth().1)
         } else {
             format!("HTTP {status}: {body}")
         };
@@ -273,8 +268,10 @@ pub async fn update_remote(
         .await
         .map_err(|e| e.to_string())?;
 
-    let oauth_url = ENGINE.lock().await.get_oauth_url();
-    let url = EndpointHelper::build_url(&oauth_url, config::UPDATE);
+    let url = EndpointHelper::build_url(
+        &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
+        config::UPDATE,
+    );
     let body = json!({ "name": name, "parameters": parameters });
 
     let response = state
@@ -324,8 +321,7 @@ pub async fn delete_remote(
 ) -> Result<(), String> {
     info!("🗑️ Deleting remote: {name}");
 
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, config::DELETE);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::DELETE);
 
     let response = state
         .client

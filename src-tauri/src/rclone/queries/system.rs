@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
 
 use crate::RcloneState;
-use crate::rclone::engine::core::ENGINE;
+use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::config;
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, core},
@@ -15,8 +15,7 @@ use crate::utils::{
 pub async fn get_bandwidth_limit(
     state: State<'_, RcloneState>,
 ) -> Result<BandwidthLimitResponse, String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, core::BWLIMIT);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::BWLIMIT);
 
     let response = state
         .client
@@ -42,8 +41,7 @@ pub async fn get_bandwidth_limit(
 
 #[tauri::command]
 pub async fn get_rclone_info(state: State<'_, RcloneState>) -> Result<RcloneCoreVersion, String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, core::VERSION);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::VERSION);
 
     let response = state
         .client
@@ -64,8 +62,7 @@ pub async fn get_rclone_info(state: State<'_, RcloneState>) -> Result<RcloneCore
 
 #[tauri::command]
 pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>, String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, core::PID);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::PID);
     match state.client.post(&url).send().await {
         Ok(resp) => {
             debug!("📡 Querying rclone /core/pid: {url}");
@@ -97,8 +94,7 @@ pub async fn get_rclone_pid(state: State<'_, RcloneState>) -> Result<Option<u32>
 /// Get RClone memory statistics
 #[tauri::command]
 pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_json::Value, String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, core::MEMSTATS);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::MEMSTATS);
 
     let response = state
         .client
@@ -120,8 +116,7 @@ pub async fn get_memory_stats(state: State<'_, RcloneState>) -> Result<serde_jso
 #[tauri::command]
 pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
     let state = app.state::<RcloneState>();
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, config::PATHS);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::PATHS);
 
     let response = state
         .client

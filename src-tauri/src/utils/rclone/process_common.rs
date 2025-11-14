@@ -4,7 +4,6 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::core::check_binaries::build_rclone_command;
 use crate::core::security::{CredentialStore, SafeEnvironmentManager};
 use crate::rclone::engine::core::ENGINE;
-use crate::utils::types::all_types::RcApiEngine;
 use crate::utils::types::events::RCLONE_ENGINE_PASSWORD_ERROR;
 
 /// Clear cached encryption status (e.g., when config changes)
@@ -26,6 +25,7 @@ pub fn get_cached_encryption_status() -> Option<bool> {
 
 /// Check if config is encrypted, using cached value if available
 async fn is_config_encrypted_cached(app: &AppHandle) -> bool {
+    // Try to get cached value from engine state first
     if let Ok(engine_guard) = ENGINE.try_lock()
         && let Some(cached_status) = engine_guard.config_encrypted
     {
@@ -33,13 +33,16 @@ async fn is_config_encrypted_cached(app: &AppHandle) -> bool {
         return cached_status;
     }
 
+    // If not cached, check and cache the result
     match crate::core::security::is_config_encrypted(app.clone()).await {
         Ok(is_encrypted) => {
             info!("🔍 Config encryption status determined: {}", is_encrypted);
 
-            let mut engine_guard = RcApiEngine::lock_engine().await;
-            engine_guard.config_encrypted = Some(is_encrypted);
-            info!("💾 Cached encryption status for future use");
+            // Cache the result in engine state
+            if let Ok(mut engine_guard) = ENGINE.try_lock() {
+                engine_guard.config_encrypted = Some(is_encrypted);
+                info!("💾 Cached encryption status for future use");
+            }
 
             is_encrypted
         }
@@ -49,8 +52,10 @@ async fn is_config_encrypted_cached(app: &AppHandle) -> bool {
                 e
             );
 
-            let mut engine_guard = RcApiEngine::lock_engine().await;
-            engine_guard.config_encrypted = Some(false);
+            // Cache the "not encrypted" assumption
+            if let Ok(mut engine_guard) = ENGINE.try_lock() {
+                engine_guard.config_encrypted = Some(false);
+            }
 
             false
         }
@@ -65,6 +70,7 @@ pub async fn setup_rclone_environment(
 ) -> Result<tauri_plugin_shell::process::Command, String> {
     let mut password_found = false;
 
+    // Try to get password from SafeEnvironmentManager first (GUI context)
     if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
         let env_vars = env_manager.get_env_vars();
         if !env_vars.is_empty() && env_vars.contains_key("RCLONE_CONFIG_PASS") {
@@ -79,6 +85,7 @@ pub async fn setup_rclone_environment(
         }
     }
 
+    // If no password found in environment manager, try credential store
     if !password_found {
         if let Some(credential_store) = app.try_state::<CredentialStore>() {
             match credential_store.get_config_password() {
@@ -90,6 +97,7 @@ pub async fn setup_rclone_environment(
                     command = command.env("RCLONE_CONFIG_PASS", &password);
                     password_found = true;
 
+                    // Also update the environment manager for future use
                     if let Some(env_manager) = app.try_state::<SafeEnvironmentManager>() {
                         env_manager.set_config_password(password);
                     }
@@ -106,7 +114,9 @@ pub async fn setup_rclone_environment(
         }
     }
 
+    // Only check encryption status if no password found and this is main engine
     if !password_found && process_type == "main_engine" {
+        // Use cached encryption check for performance
         if is_config_encrypted_cached(app).await {
             info!(
                 "🔒 Configuration is encrypted but no password available, emitting password error"
@@ -130,6 +140,7 @@ pub async fn create_rclone_command(
 ) -> Result<tauri_plugin_shell::process::Command, String> {
     let command = build_rclone_command(app, None, None, None);
 
+    // Standard rclone daemon arguments
     let command = command.args([
         "rcd",
         "--rc-no-auth",
@@ -137,6 +148,7 @@ pub async fn create_rclone_command(
         &format!("--rc-addr=127.0.0.1:{}", port),
     ]);
 
+    // Set up environment variables
     let command = setup_rclone_environment(app, command, process_type).await?;
 
     Ok(command)

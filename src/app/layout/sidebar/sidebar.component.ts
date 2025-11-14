@@ -144,7 +144,7 @@ export class SidebarComponent {
 
     if (count === 1 && serves.length > 0) {
       const serve = serves[0];
-      return `Serving via ${serve.serve_type.toUpperCase()} on ${serve.addr}`;
+      return `Serving via ${serve.params.type.toUpperCase()} on ${serve.addr}`;
     }
 
     return `${count} active serve${count !== 1 ? 's' : ''}`;

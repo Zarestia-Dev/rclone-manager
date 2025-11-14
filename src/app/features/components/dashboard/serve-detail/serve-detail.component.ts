@@ -6,8 +6,9 @@ import {
   Output,
   ChangeDetectionStrategy,
   inject,
-  OnInit,
   OnDestroy,
+  OnChanges,
+  SimpleChanges,
   ChangeDetectorRef,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,12 +16,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Remote, ServeListItem, RemoteSettings, SettingsPanelConfig, RemoteAction } from '@app/types';
+import {
+  Remote,
+  ServeListItem,
+  RemoteSettings,
+  SettingsPanelConfig,
+  RemoteAction,
+} from '@app/types';
 import { IconService } from '../../../../shared/services/icon.service';
-import { ServeManagementService } from '@app/services';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject } from 'rxjs';
 import { SettingsPanelComponent } from '../../../../shared/detail-shared';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
@@ -51,10 +57,8 @@ interface SettingsSection {
   styleUrl: './serve-detail.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ServeDetailComponent implements OnInit, OnDestroy {
+export class ServeDetailComponent implements OnDestroy, OnChanges {
   readonly iconService = inject(IconService);
-  private readonly serveManagementService = inject(ServeManagementService);
-  private readonly snackBar = inject(MatSnackBar);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly clipboard = inject(Clipboard);
   private destroy$ = new Subject<void>();
@@ -62,7 +66,9 @@ export class ServeDetailComponent implements OnInit, OnDestroy {
   @Input() selectedRemote!: Remote;
   @Input() remoteSettings: RemoteSettings = {};
   @Input() actionInProgress: RemoteAction = null;
-  @Output() startServeClick = new EventEmitter<string>();
+  @Input() runningServes: ServeListItem[] = [];
+  @Output() startJob = new EventEmitter<{ type: 'serve'; remoteName: string }>();
+  @Output() stopJob = new EventEmitter<{ type: 'serve'; remoteName: string; serveId: string }>();
   @Output() openRemoteConfigModal = new EventEmitter<{
     editTarget?: string;
     existingConfig?: RemoteSettings;
@@ -81,16 +87,21 @@ export class ServeDetailComponent implements OnInit, OnDestroy {
     { key: 'backend', title: 'Backend Config', icon: 'server', configKey: 'backendConfig' },
   ];
 
-  ngOnInit(): void {
-    this.serveManagementService.runningServes$.pipe(takeUntil(this.destroy$)).subscribe(serves => {
-      this.remoteServes = this.filterRemoteServes(serves);
-      this.cdr.markForCheck();
-    });
-  }
-
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['runningServes'] || changes['selectedRemote']) {
+      const serves = this.runningServes || [];
+      if (this.selectedRemote) {
+        this.remoteServes = this.filterRemoteServes(serves);
+      } else {
+        this.remoteServes = [];
+      }
+      this.cdr.markForCheck();
+    }
   }
 
   private filterRemoteServes(serves: ServeListItem[]): ServeListItem[] {
@@ -137,28 +148,15 @@ export class ServeDetailComponent implements OnInit, OnDestroy {
   }
 
   async stopServe(serve: ServeListItem): Promise<void> {
-    try {
-      const remoteName = serve.params.fs.split(':')[0];
-      await this.serveManagementService.stopServe(serve.id, remoteName);
-      this.snackBar.open('Serve stopped successfully', 'Close', { duration: 3000 });
-    } catch (error) {
-      console.error('Error stopping serve:', error);
-      this.snackBar.open('Failed to stop serve', 'Close', { duration: 5000 });
-    }
+    const remoteName = serve.params.fs.split(':')[0];
+    this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
   }
 
   handleCopyToClipboard(event: { text: string; message: string }): void {
     this.clipboard.copy(event.text);
-    this.snackBar.open(event.message, 'Close', { duration: 2000 });
-  }
-
-  handleServeCardClick(_serve: ServeListItem): void {
-    // In serve-detail view, clicking the card doesn't need to navigate
-    // since we're already showing details for this remote
-    // Could potentially highlight/focus the specific serve in the future
   }
 
   onStartServeClick(): void {
-    this.startServeClick.emit(this.selectedRemote.remoteSpecs.name);
+    this.startJob.emit({ type: 'serve', remoteName: this.selectedRemote.remoteSpecs.name });
   }
 }

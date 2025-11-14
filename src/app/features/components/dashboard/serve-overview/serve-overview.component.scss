@@ -22,6 +22,31 @@
 
   .remotes-header {
     padding: var(--space-xl) var(--space-xl) var(--space-md) var(--space-xl);
+
+    .panel-title-content {
+      color: var(--app-text-color);
+      font-size: var(--font-size-md);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      font-weight: 500;
+
+      .active-icon {
+        width: var(--icon-size-md);
+        height: var(--icon-size-md);
+        color: var(--primary-color);
+      }
+
+      .remote-count {
+        color: var(--secondary-text-color);
+        font-size: var(--font-size-base);
+        font-weight: 400;
+        padding: var(--space-xxs) var(--space-xs);
+        border-radius: var(--radius-sm);
+        background: rgba(var(--primary-color-rgb), 0.1);
+        border: 1px solid rgba(var(--primary-color-rgb), 0.2);
+      }
+    }
   }
 
   .remotes-content {

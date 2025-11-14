@@ -128,7 +128,6 @@
     rgba(var(--accent-color-rgb), 0.12)
   );
   border-radius: 0.75rem;
-  border-left: 4px solid var(--accent-color);
 }
 
 .preview-header {
@@ -196,7 +195,6 @@
   padding: 1rem;
   background: rgba(128, 128, 128, 0.08);
   border-radius: 0.5rem;
-  border-left: 3px solid #888;
   margin-bottom: 1.5rem;
   font-size: 0.875rem;
 
@@ -233,7 +231,6 @@
   padding: 1rem;
   background: rgba(var(--accent-color-rgb), 0.08);
   border-radius: 0.5rem;
-  border-left: 3px solid var(--accent-color);
   font-size: 0.875rem;
 
   mat-icon {

@@ -16,10 +16,10 @@ name = "rclone_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 # Uncomment the following lines to build the headless server binary
-# [[bin]]
-# name = "rclone-manager-headless"
-# path = "src/headless.rs"
-# required-features = ["web-server"]
+[[bin]]
+name = "rclone-manager-headless"
+path = "src/headless.rs"
+required-features = ["web-server"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

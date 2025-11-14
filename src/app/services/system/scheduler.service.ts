@@ -107,7 +107,7 @@ export class SchedulerService extends TauriBaseService {
    */
   async reloadScheduledTasksFromConfigs(remoteConfigs: unknown): Promise<number> {
     const loadedCount = await this.invokeCommand<number>('reload_scheduled_tasks_from_configs', {
-      remoteConfigs,
+      remote_configs: remoteConfigs,
     });
     await this.refreshScheduledTasks();
     return loadedCount;

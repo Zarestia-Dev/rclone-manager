@@ -30,7 +30,13 @@
               <app-serve-card
                 [serve]="serve"
                 [showRemoteName]="true"
-                (stopServe)="onStopServe($event)"
+                (stopServe)="
+                  stopJob.emit({
+                    type: 'serve',
+                    serveId: $event.id,
+                    remoteName: $event.params.fs.split(':')[0],
+                  })
+                "
                 (copyToClipboard)="handleCopyToClipboard($event)"
                 (cardClick)="handleServeCardClick($event)"
               >

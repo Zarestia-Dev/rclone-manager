@@ -6,7 +6,7 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::{
     RcloneState,
-    rclone::engine::core::ENGINE,
+    rclone::state::engine::ENGINE_STATE,
     utils::{
         json_helpers::{get_bool, get_string, json_to_hashmap},
         logging::log::log_operation,
@@ -47,8 +47,7 @@ async fn start_sync_like_job(
         return Err(err_msg);
     }
 
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, endpoint);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, endpoint);
 
     let response = state
         .client

@@ -110,6 +110,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   @Output() stopJob = new EventEmitter<{
     type: PrimaryActionType;
     remoteName: string;
+    serveId?: string;
   }>();
   @Output() browseRemote = new EventEmitter<string>();
 
@@ -132,11 +133,9 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   isLoadingScheduledTasks = false;
 
   // Running serves
-  runningServes: ServeListItem[] = [];
   isLoadingServes = false;
 
   // Private members
-  private readonly PANEL_STATE_KEY = 'dashboard_panel_states';
   private eventListenersService = inject(EventListenersService);
   private destroy$ = new Subject<void>();
   private pollingSubscription: Subscription | null = null;
@@ -160,12 +159,10 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   readonly Object = Object; // Expose Object to template
 
   ngOnInit(): void {
-    this.restorePanelStates();
     this.setupTauriListeners();
     this.setupPolling();
     this.loadInitialData();
     this.setupScheduledTasksListener();
-    this.setupRunningServesListener();
 
     // Debounce panel state changes to prevent rapid toggling
     this.panelStateChange$
@@ -180,59 +177,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.cleanup();
-  }
-
-  // Panel state management
-  expandAllPanels(): void {
-    this.bandwidthPanelOpenState = true;
-    this.systemInfoPanelOpenState = true;
-    this.jobInfoPanelOpenState = true;
-    this.scheduledTasksPanelOpenState = true;
-    this.servesPanelOpenState = true;
-    this.savePanelStates();
-  }
-
-  collapseAllPanels(): void {
-    this.bandwidthPanelOpenState = false;
-    this.systemInfoPanelOpenState = false;
-    this.jobInfoPanelOpenState = false;
-    this.scheduledTasksPanelOpenState = false;
-    this.servesPanelOpenState = false;
-    this.savePanelStates();
-  }
-
-  // Panel state change handlers
-  onBandwidthPanelStateChange(isOpen: boolean): void {
-    this.bandwidthPanelOpenState = isOpen;
-    this.savePanelStates();
-    this.panelStateChange$.next();
-  }
-
-  onSystemInfoPanelStateChange(isOpen: boolean): void {
-    this.systemInfoPanelOpenState = isOpen;
-    this.savePanelStates();
-    this.panelStateChange$.next();
-  }
-
-  onJobInfoPanelStateChange(isOpen: boolean): void {
-    this.jobInfoPanelOpenState = isOpen;
-    this.savePanelStates();
-    this.panelStateChange$.next();
-  }
-
-  onScheduledTasksPanelStateChange(isOpen: boolean): void {
-    this.scheduledTasksPanelOpenState = isOpen;
-    this.savePanelStates();
-    this.panelStateChange$.next();
-  }
-
-  onServesPanelStateChange(isOpen: boolean): void {
-    this.servesPanelOpenState = isOpen;
-    this.savePanelStates();
-    this.panelStateChange$.next();
-    if (isOpen) {
-      this.loadRunningServes();
-    }
   }
 
   // Private methods
@@ -293,6 +237,10 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
 
   get activeJobsCount(): number {
     return this.jobs?.filter(job => job.status === 'Running').length || 0;
+  }
+
+  get allRunningServes(): ServeListItem[] {
+    return this.remotes.flatMap(remote => remote.serveState?.serves || []);
   }
 
   get jobCompletionPercentage(): number {
@@ -389,39 +337,9 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  private setupRunningServesListener(): void {
-    // Subscribe to running serves updates
-    this.serveManagementService.runningServes$.pipe(takeUntil(this.destroy$)).subscribe({
-      next: (serves: ServeListItem[]) => {
-        this.runningServes = serves;
-        this.cdr.markForCheck();
-      },
-    });
-  }
-
-  private async loadRunningServes(): Promise<void> {
-    this.isLoadingServes = true;
-    this.cdr.markForCheck();
-
-    try {
-      await this.serveManagementService.refreshServes();
-    } catch (error) {
-      console.error('Error loading running serves:', error);
-    } finally {
-      this.isLoadingServes = false;
-      this.cdr.markForCheck();
-    }
-  }
-
   async stopServe(serve: ServeListItem): Promise<void> {
-    try {
-      const remoteName = serve.params.fs.split(':')[0];
-      await this.serveManagementService.stopServe(serve.id, remoteName);
-      this.snackBar.open(`Serve stopped successfully`, 'Close', { duration: 3000 });
-    } catch (error) {
-      console.error('Error stopping serve:', error);
-      this.snackBar.open(`Failed to stop serve`, 'Close', { duration: 5000 });
-    }
+    const remoteName = serve.params.fs.split(':')[0];
+    this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
   }
 
   handleCopyToClipboard(data: { text: string; message: string }): void {
@@ -453,34 +371,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
           (target as HTMLElement).scrollTop = 0;
         }
       }, 60);
-    }
-  }
-
-  private savePanelStates(): void {
-    const state = {
-      bandwidth: this.bandwidthPanelOpenState,
-      system: this.systemInfoPanelOpenState,
-      jobs: this.jobInfoPanelOpenState,
-      scheduledTasks: this.scheduledTasksPanelOpenState,
-      serves: this.servesPanelOpenState,
-    };
-    localStorage.setItem(this.PANEL_STATE_KEY, JSON.stringify(state));
-  }
-
-  private restorePanelStates(): void {
-    const state = localStorage.getItem(this.PANEL_STATE_KEY);
-    if (state) {
-      try {
-        const parsed = JSON.parse(state);
-        this.bandwidthPanelOpenState = parsed.bandwidth ?? false;
-        this.systemInfoPanelOpenState = parsed.system ?? false;
-        this.jobInfoPanelOpenState = parsed.jobs ?? false;
-        this.scheduledTasksPanelOpenState = parsed.scheduledTasks ?? false;
-        this.servesPanelOpenState = parsed.serves ?? false;
-      } catch (err) {
-        console.error('Failed to parse panel state:', err);
-        localStorage.removeItem(this.PANEL_STATE_KEY);
-      }
     }
   }
 

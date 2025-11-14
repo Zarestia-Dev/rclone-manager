@@ -77,8 +77,25 @@ export class ApiClientService {
     const endpoint = this.mapCommandToEndpoint(command);
 
     // Commands that need POST with JSON body
-    const postCommands = ['save_setting', 'reset_setting', 'save_remote_settings'];
-    const isPostCommand = postCommands.includes(command);
+    const postCommands = new Set([
+      'save_setting',
+      'reset_setting',
+      'save_remote_settings',
+      'reload_scheduled_tasks_from_configs',
+      'mount_remote',
+      'unmount_remote',
+      'save_rclone_backend_option',
+      'set_rclone_option',
+      'remove_rclone_backend_option',
+      'create_remote',
+      'quit_rclone_oauth',
+      'toggle_scheduled_task',
+      'remove_config_password',
+      'store_config_password',
+      'unencrypt_config',
+      'encrypt_config',
+    ]);
+    const isPostCommand = postCommands.has(command);
 
     try {
       const response = await firstValueFrom(
@@ -166,6 +183,22 @@ export class ApiClientService {
 
       // Bandwidth
       get_bandwidth_limit: '/bandwidth/limit',
+      get_grouped_options_with_values: '/get-grouped-options-with-values',
+      get_oauth_supported_remotes: '/get-oauth-supported-remotes',
+      get_cached_remotes: '/get-cached-remotes',
+      create_remote: '/create-remote',
+      quit_rclone_oauth: '/quit-rclone-oauth',
+      toggle_scheduled_task: '/toggle-scheduled-task',
+      get_scheduled_tasks_stats: '/get-scheduled-tasks-stats',
+      get_cached_encryption_status: '/get-cached-encryption-status',
+      has_stored_password: '/has-stored-password',
+      is_config_encrypted_cached: '/is-config-encrypted-cached',
+      has_config_password_env: '/has-config-password-env',
+      remove_config_password: '/remove-config-password',
+      validate_rclone_password: '/validate-rclone-password',
+      store_config_password: '/store-config-password',
+      unencrypt_config: '/unencrypt-config',
+      encrypt_config: '/encrypt-config',
     };
 
     return commandMap[command] || `/${command.replace(/_/g, '-')}`;

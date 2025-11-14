@@ -6,7 +6,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
     RcloneState,
-    rclone::{engine::core::ENGINE, state::watcher::force_check_mounted_remotes},
+    rclone::state::{engine::ENGINE_STATE, watcher::force_check_mounted_remotes},
     utils::{
         json_helpers::{get_string, json_to_hashmap},
         logging::log::log_operation,
@@ -170,8 +170,7 @@ pub async fn mount_remote(
     }
 
     // Make the request
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, mount::MOUNT);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::MOUNT);
     let response = state
         .client
         .post(&url)
@@ -282,8 +281,7 @@ pub async fn unmount_remote(
         None,
     );
 
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, mount::UNMOUNT);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::UNMOUNT);
     let payload = json!({ "mountPoint": mount_point });
 
     let response = state
@@ -345,8 +343,7 @@ pub async fn unmount_all_remotes(
 ) -> Result<String, String> {
     info!("🗑️ Unmounting all remotes");
 
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, mount::UNMOUNTALL);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::UNMOUNTALL);
 
     let response = state
         .client

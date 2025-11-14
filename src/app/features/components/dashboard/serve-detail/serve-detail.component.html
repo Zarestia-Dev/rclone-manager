@@ -53,9 +53,14 @@
           @for (serve of remoteServes; track serve.id) {
             <app-serve-card
               [serve]="serve"
-              (stopServe)="stopServe($event)"
+              (stopServe)="
+                stopJob.emit({
+                  type: 'serve',
+                  remoteName: $event.params.fs.split(':')[0],
+                  serveId: $event.id,
+                })
+              "
               (copyToClipboard)="handleCopyToClipboard($event)"
-              (cardClick)="handleServeCardClick($event)"
             ></app-serve-card>
           }
         </div>

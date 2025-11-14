@@ -1,14 +1,14 @@
+use log::error;
 use once_cell::sync::Lazy;
-use std::sync::Arc;
-use tokio::sync::{Mutex, MutexGuard};
+use std::sync::{Arc, Mutex};
 
-use crate::utils::types::all_types::RcApiEngine;
+use crate::{rclone::state::engine::ENGINE_STATE, utils::types::all_types::RcApiEngine};
 
 pub static ENGINE: Lazy<Arc<Mutex<RcApiEngine>>> =
-    Lazy::new(|| Arc::new(Mutex::new(RcApiEngine::new())));
+    Lazy::new(|| Arc::new(Mutex::new(RcApiEngine::default())));
 
 impl RcApiEngine {
-    pub fn new() -> Self {
+    pub fn default() -> Self {
         Self {
             process: None,
             should_exit: false,
@@ -16,30 +16,19 @@ impl RcApiEngine {
             updating: false,
             path_error: false,
             password_error: false,
-            config_encrypted: None,
-            api_url: "http://127.0.0.1:51900".to_string(),
-            api_port: 51900,
-            oauth_url: "http://127.0.0.1:51901".to_string(),
-            oauth_port: 51901,
+            // rclone_path: std::path::PathBuf::new(),
+            current_api_port: ENGINE_STATE.get_api().1, // Initialize with current port
+            config_encrypted: None,                     // Not determined yet
         }
     }
 
-    pub async fn lock_engine() -> MutexGuard<'static, RcApiEngine> {
-        ENGINE.lock().await
-    }
-
-    /// Get the API URL. Use this instead of ENGINE_STATE.
-    pub fn get_api_url(&self) -> String {
-        self.api_url.clone()
-    }
-
-    /// Get the OAuth URL. Use this instead of ENGINE_STATE.
-    pub fn get_oauth_url(&self) -> String {
-        self.oauth_url.clone()
-    }
-
-    /// Get the OAuth port.
-    pub fn get_oauth_port(&self) -> u16 {
-        self.oauth_port
+    pub fn lock_engine() -> Result<std::sync::MutexGuard<'static, RcApiEngine>, String> {
+        match ENGINE.lock() {
+            Ok(guard) => Ok(guard),
+            Err(poisoned) => {
+                error!("❗ Engine mutex poisoned. Recovering...");
+                Ok(poisoned.into_inner())
+            }
+        }
     }
 }

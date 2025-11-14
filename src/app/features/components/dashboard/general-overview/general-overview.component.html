@@ -32,7 +32,6 @@
       <!-- Bandwidth Limit Panel -->
       <mat-expansion-panel
         [(expanded)]="bandwidthPanelOpenState"
-        (expandedChange)="onBandwidthPanelStateChange($event)"
         class="bandwidth-panel"
         role="region"
       >
@@ -110,7 +109,6 @@
       <!-- System Info Panel -->
       <mat-expansion-panel
         [(expanded)]="systemInfoPanelOpenState"
-        (expandedChange)="onSystemInfoPanelStateChange($event)"
         class="system-info-panel"
         role="region"
       >
@@ -158,7 +156,6 @@
       <!-- Job Information Panel -->
       <mat-expansion-panel
         [(expanded)]="jobInfoPanelOpenState"
-        (expandedChange)="onJobInfoPanelStateChange($event)"
         class="job-info-panel"
         role="region"
       >
@@ -273,7 +270,6 @@
       <!-- Scheduled Tasks Panel -->
       <mat-expansion-panel
         [(expanded)]="scheduledTasksPanelOpenState"
-        (expandedChange)="onScheduledTasksPanelStateChange($event)"
         class="scheduled-tasks-panel"
         role="region"
       >
@@ -419,12 +415,7 @@
       </mat-expansion-panel>
 
       <!-- Running Serves Panel -->
-      <mat-expansion-panel
-        [(expanded)]="servesPanelOpenState"
-        (expandedChange)="onServesPanelStateChange($event)"
-        class="serves-panel"
-        role="region"
-      >
+      <mat-expansion-panel [(expanded)]="servesPanelOpenState" class="serves-panel" role="region">
         <mat-expansion-panel-header>
           <mat-panel-title>
             <div class="panel-title-content">
@@ -433,10 +424,12 @@
             </div>
           </mat-panel-title>
           <mat-panel-description>
-            <span [ngClass]="{ 'active-serves-indicator': runningServes.length > 0 }">
+            <span [ngClass]="{ 'active-serves-indicator': allRunningServes.length > 0 }">
               {{
-                runningServes.length > 0
-                  ? runningServes.length + ' active serve' + (runningServes.length !== 1 ? 's' : '')
+                allRunningServes.length > 0
+                  ? allRunningServes.length +
+                    ' active serve' +
+                    (allRunningServes.length !== 1 ? 's' : '')
                   : 'No active serves'
               }}
             </span>
@@ -450,7 +443,7 @@
           </div>
         } @else {
           <div class="serves-content">
-            @if (runningServes.length === 0) {
+            @if (allRunningServes.length === 0) {
               <div class="no-serves-message" role="status">
                 <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                 <span
@@ -460,7 +453,7 @@
               </div>
             } @else {
               <div class="serves-grid">
-                @for (serve of runningServes; track serve.id) {
+                @for (serve of allRunningServes; track serve.id) {
                   <app-serve-card
                     [serve]="serve"
                     [showRemoteName]="true"

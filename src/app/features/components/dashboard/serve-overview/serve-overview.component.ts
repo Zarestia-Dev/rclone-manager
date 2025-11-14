@@ -6,7 +6,6 @@ import {
   Output,
   ChangeDetectionStrategy,
   inject,
-  OnInit,
   OnDestroy,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,7 +14,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { Remote, RemoteActionProgress, ServeListItem } from '@app/types';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
@@ -24,8 +23,7 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 // Services
 import { IconService } from '../../../../shared/services/icon.service';
 import { AnimationsService } from '../../../../shared/services/animations.service';
-import { ServeManagementService } from '@app/services';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject } from 'rxjs';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
 @Component({
@@ -51,26 +49,17 @@ import { ServeCardComponent } from '../../../../shared/components/serve-card/ser
   styleUrl: './serve-overview.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ServeOverviewComponent implements OnInit, OnDestroy {
+export class ServeOverviewComponent implements OnDestroy {
   readonly iconService = inject(IconService);
-  private readonly serveManagementService = inject(ServeManagementService);
-  private readonly snackBar = inject(MatSnackBar);
   private destroy$ = new Subject<void>();
 
   @Input() remotes: Remote[] = [];
   @Input() actionInProgress: RemoteActionProgress = {};
+  @Input() runningServes: ServeListItem[] = [];
 
   @Output() remoteSelected = new EventEmitter<Remote>();
-  @Output() startServe = new EventEmitter<string>();
-
-  runningServes: ServeListItem[] = [];
-
-  ngOnInit(): void {
-    // Subscribe to running serves
-    this.serveManagementService.runningServes$.pipe(takeUntil(this.destroy$)).subscribe(serves => {
-      this.runningServes = serves;
-    });
-  }
+  @Output() startJob = new EventEmitter<{ type: 'serve'; remoteName: string }>();
+  @Output() stopJob = new EventEmitter<{ type: 'serve'; remoteName: string; serveId: string }>();
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -106,11 +95,11 @@ export class ServeOverviewComponent implements OnInit, OnDestroy {
   readonly primaryActionIcon = 'play';
 
   getActiveTitle(): string {
-    return `Active Serves (${this.activeCount})`;
+    return `Active Serves`;
   }
 
   getInactiveTitle(): string {
-    return `Available Remotes (${this.inactiveCount})`;
+    return `Available Remotes`;
   }
 
   selectRemote(remote: Remote): void {
@@ -118,46 +107,22 @@ export class ServeOverviewComponent implements OnInit, OnDestroy {
   }
 
   triggerStartServe(remoteName: string): void {
-    this.startServe.emit(remoteName);
+    this.startJob.emit({ type: 'serve', remoteName });
   }
 
   /**
    * Handle stop event from a child serve card
    */
-  async onStopServe(serve: ServeListItem): Promise<void> {
-    try {
-      const remoteName = serve.params.fs.split(':')[0];
-      await this.serveManagementService.stopServe(serve.id, remoteName);
-      try {
-        this.snackBar.open?.('Serve stopped successfully', 'Close', { duration: 3000 });
-      } catch {
-        // ignore snackBar failures
-      }
-    } catch (error) {
-      try {
-        this.snackBar.open?.('Failed to stop serve', 'Close', { duration: 5000 });
-      } catch {
-        // ignore
-      }
-      console.error('Error stopping serve:', error);
-    }
+  onStopServe(serve: ServeListItem): void {
+    const remoteName = serve.params.fs.split(':')[0];
+    this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
   }
 
   handleCopyToClipboard(data: { text: string; message: string }): void {
     try {
       navigator.clipboard.writeText(data.text);
-      try {
-        this.snackBar.open?.(data.message, 'Close', { duration: 2000 });
-      } catch {
-        // ignore
-      }
     } catch (error) {
       console.error('Error copying to clipboard:', error);
-      try {
-        this.snackBar.open?.('Failed to copy to clipboard', 'Close', { duration: 2000 });
-      } catch {
-        // ignore
-      }
     }
   }
 

@@ -5,7 +5,7 @@ use tokio::try_join;
 
 use crate::{
     RcloneState,
-    rclone::engine::core::ENGINE,
+    rclone::state::engine::ENGINE_STATE,
     utils::rclone::endpoints::{EndpointHelper, options},
 };
 
@@ -15,8 +15,7 @@ use crate::{
 async fn fetch_all_options_info(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, options::INFO);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::INFO);
     let response = state.client.post(&url).json(&json!({})).send().await?;
     if response.status().is_success() {
         Ok(response.json().await?)
@@ -28,8 +27,7 @@ async fn fetch_all_options_info(
 async fn fetch_current_options(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, options::GET);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::INFO);
     let response = state.client.post(&url).json(&json!({})).send().await?;
     if response.status().is_success() {
         Ok(response.json().await?)
@@ -45,8 +43,7 @@ async fn fetch_current_options(
 async fn fetch_option_blocks(
     state: State<'_, RcloneState>,
 ) -> Result<Value, Box<dyn Error + Send + Sync>> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, options::BLOCKS);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::INFO);
     let response = state.client.post(&url).json(&json!({})).send().await?;
     if response.status().is_success() {
         Ok(response.json().await?)
@@ -344,8 +341,7 @@ pub async fn set_rclone_option(
     option_name: String,
     value: Value,
 ) -> Result<Value, String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, options::SET);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::INFO);
     let parts: Vec<&str> = option_name.split('.').collect();
     let nested_value = parts
         .iter()

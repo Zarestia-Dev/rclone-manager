@@ -109,7 +109,7 @@
               [jobs]="jobs"
               [actionInProgress]="actionInProgress"
               (startJob)="startJob($event.type, $event.remoteName)"
-              (stopJob)="stopJob($event.type, $event.remoteName)"
+              (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
               (browseRemote)="openRemoteInFiles($event, 'mount')"
               (selectRemote)="selectRemote($event)"
             >
@@ -118,8 +118,10 @@
           @case ('serve') {
             <app-serve-overview
               [remotes]="remotes"
+              [runningServes]="runningServes"
               (remoteSelected)="selectRemote($event)"
-              (startServe)="onStartServe($event)"
+              (startJob)="startJob($event.type, $event.remoteName)"
+              (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
             >
             </app-serve-overview>
           }
@@ -158,9 +160,11 @@
           @case ('serve') {
             <app-serve-detail
               [selectedRemote]="selectedRemote"
+              [runningServes]="runningServes"
               [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
               [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]"
-              (startServeClick)="onStartServe($event)"
+              (startJob)="startJob($event.type, $event.remoteName)"
+              (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
               (openRemoteConfigModal)="
                 openRemoteConfigModal(
                   $event.editTarget,

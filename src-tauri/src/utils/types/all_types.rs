@@ -68,7 +68,6 @@ pub struct RcloneCoreVersion {
     pub linking: String,
     pub go_tags: String,
 }
-
 #[derive(Default)]
 pub struct RcApiEngine {
     pub process: Option<tauri_plugin_shell::process::CommandChild>,
@@ -77,11 +76,9 @@ pub struct RcApiEngine {
     pub updating: bool,
     pub path_error: bool,
     pub password_error: bool,
+    // pub rclone_path: std::path::PathBuf,
+    pub current_api_port: u16,
     pub config_encrypted: Option<bool>,
-    pub api_url: String,
-    pub api_port: u16,
-    pub oauth_url: String,
-    pub oauth_port: u16,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -89,6 +86,15 @@ pub struct CheckResult {
     pub successful: Vec<String>,
     pub failed: HashMap<String, String>,
     pub retries_used: HashMap<String, usize>,
+}
+
+/// State Structs (state.rs)
+#[derive(Debug)]
+pub struct EngineState {
+    pub api_url: std::sync::Mutex<String>,
+    pub api_port: std::sync::Mutex<u16>,
+    pub oauth_url: std::sync::Mutex<String>,
+    pub oauth_port: std::sync::Mutex<u16>,
 }
 
 pub struct RemoteCache {

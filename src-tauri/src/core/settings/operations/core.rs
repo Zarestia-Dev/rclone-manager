@@ -5,10 +5,10 @@ use tauri::{Emitter, State};
 use crate::utils::types::events::SYSTEM_SETTINGS_CHANGED;
 use crate::utils::types::settings::{AppSettings, SettingMetadata, SettingsState};
 
-pub async fn load_startup_settings(
-    state: &State<'_, SettingsState<tauri::Wry>>,
+pub fn load_startup_settings(
+    state: &State<SettingsState<tauri::Wry>>,
 ) -> Result<AppSettings, String> {
-    let store = state.store.lock().await;
+    let store = state.store.blocking_lock();
     let stored_val = store
         .get("app_settings")
         .clone()

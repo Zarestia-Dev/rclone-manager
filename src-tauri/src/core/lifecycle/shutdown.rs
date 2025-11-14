@@ -1,26 +1,24 @@
 use log::{debug, error, info, warn};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State, async_runtime::spawn_blocking};
 
 use crate::{
     rclone::{
         commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
+        engine::core::ENGINE,
         state::watcher::stop_mounted_remote_watcher,
     },
-    utils::{
-        process::process_manager::kill_all_rclone_processes,
-        types::{all_types::RcApiEngine, events::APP_EVENT},
-    },
+    utils::{process::process_manager::kill_all_rclone_processes, types::events::APP_EVENT},
 };
 
 use crate::core::scheduler::engine::CronScheduler;
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
 use crate::utils::types::all_types::{JobCache, RemoteCache};
 
+/// Main entry point for handling shutdown tasks
 #[tauri::command]
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("🔴 Beginning shutdown sequence...");
-
     app_handle.state::<crate::RcloneState>().set_shutting_down();
 
     app_handle
@@ -99,7 +97,6 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
             debug!("Global shortcut plugin not available, skipping unregister");
         }
     }
-
     match unmount_result {
         Ok(Ok(info)) => info!("Unmounted all remotes successfully: {info:?}"),
         Ok(Err(e)) => {
@@ -122,27 +119,47 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         Err(_) => error!("❌ Serve stopping operation timed out after 5 seconds"),
     }
 
-    // --- Use global ENGINE for shutdown ---
-    let engine_shutdown_task =
-        tokio::time::timeout(tokio::time::Duration::from_secs(3), async move {
-            info!("🔄 Shutting down engine gracefully...");
-            let mut engine = RcApiEngine::lock_engine().await;
-            engine.shutdown().await;
-            Ok::<(), String>(())
-        });
+    // Perform engine shutdown in a blocking task with timeout
+    let engine_shutdown_task = tokio::time::timeout(
+        tokio::time::Duration::from_secs(3),
+        spawn_blocking(move || -> Result<(), String> {
+            match ENGINE.lock() {
+                Ok(mut engine) => {
+                    info!("🔄 Shutting down engine gracefully...");
+                    engine.shutdown();
+                    Ok(())
+                }
+                Err(poisoned) => {
+                    error!("Failed to acquire lock on RcApiEngine: {poisoned}");
+                    let mut guard = poisoned.into_inner();
+                    guard.shutdown();
+                    Ok(())
+                }
+            }
+        }),
+    );
 
     match engine_shutdown_task.await {
-        Ok(Ok(_)) => info!("Engine shutdown completed successfully."),
-        Ok(Err(e)) => error!("Engine shutdown task failed: {e:?}"),
+        Ok(Ok(Ok(_))) => info!("Engine shutdown completed successfully."),
+        Ok(Ok(Err(e))) => error!("Engine shutdown task failed: {e:?}"),
+        Ok(Err(e)) => error!("Failed to spawn engine shutdown task: {e:?}"),
         Err(_) => {
             error!("Engine shutdown timed out after 3 seconds, forcing cleanup");
-            let engine = RcApiEngine::lock_engine().await;
-            if let Err(e) = kill_all_rclone_processes(engine.api_port, engine.oauth_port).await {
+            // Force kill any remaining rclone processes on OUR managed ports as a last resort
+            if let Err(e) = kill_all_rclone_processes() {
                 error!("Failed to force kill rclone processes: {e}");
             }
         }
     }
 
+    // Clear any in-memory config password (RCLONE_CONFIG_PASS) from our safe
+    // environment manager so it isn't leaked into future processes.
+    // Note: this is technically unnecessary because SafeEnvironmentManager
+    // lives in-process and will be dropped when the application exits, but
+    // we keep the explicit clear as a defensive measure — it documents intent
+    // and ensures no accidental late spawns during shutdown can read the
+    // secret. Do NOT remove the stored password from keyring here; that is
+    // managed separately by user actions.
     if let Some(env_manager) =
         app_handle.try_state::<crate::core::security::SafeEnvironmentManager>()
     {

@@ -4,15 +4,14 @@ use tauri::State;
 
 use crate::{
     RcloneState,
-    rclone::engine::core::ENGINE,
+    rclone::state::engine::ENGINE_STATE,
     utils::rclone::endpoints::{EndpointHelper, options, serve},
 };
 
 /// Get all supported serve types from rclone
 #[tauri::command]
 pub async fn get_serve_types(state: State<'_, RcloneState>) -> Result<Vec<String>, String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, serve::TYPES);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::TYPES);
 
     debug!("🔍 Fetching serve types from {url}");
 
@@ -50,8 +49,7 @@ pub async fn get_serve_types(state: State<'_, RcloneState>) -> Result<Vec<String
 /// List all currently running serve instances
 #[tauri::command]
 pub async fn list_serves(state: State<'_, RcloneState>) -> Result<Value, String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, serve::LIST);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::LIST);
 
     debug!("🔍 Listing running serves from {url}");
 
@@ -86,8 +84,7 @@ pub async fn get_serve_flags(
     serve_type: String,
     state: State<'_, RcloneState>,
 ) -> Result<Vec<Value>, String> {
-    let api_url = ENGINE.lock().await.get_api_url();
-    let url = EndpointHelper::build_url(&api_url, options::INFO);
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::INFO);
 
     debug!("🔍 Fetching serve flags for type '{serve_type}' from {url}");
 
