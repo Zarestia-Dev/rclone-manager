@@ -99,6 +99,7 @@ export class OperationControlComponent {
       bisync: { active: 'BiSyncing', inactive: 'Stopped' },
       move: { active: 'Moving', inactive: 'Stopped' },
       copy: { active: 'Copying', inactive: 'Stopped' },
+      serve: { active: 'Serving', inactive: 'Stopped' },
     };
 
     // Determine the current state

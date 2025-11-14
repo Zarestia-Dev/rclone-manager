@@ -59,7 +59,6 @@ export class IconService {
       refresh: 'assets/icons/rotate.svg',
       server: 'assets/icons/server.svg',
       'rclone-symbolic': 'assets/rclone-symbolic.svg',
-      'file-operations': 'assets/icons/file-operations.svg',
       stop: 'assets/icons/stop.svg',
       sync: 'assets/icons/folder-sync.svg',
       move: 'assets/icons/move.svg',
@@ -113,6 +112,15 @@ export class IconService {
       tv: 'assets/icons/tv.svg',
       globe: 'assets/icons/globe.svg',
       wind: 'assets/icons/wind.svg',
+      calendar: 'assets/icons/calendar.svg',
+      clock: 'assets/icons/clock.svg',
+      'satellite-dish': 'assets/icons/satellite-dish.svg',
+      serve: 'assets/icons/satellite-dish.svg',
+      fingerprint: 'assets/icons/fingerprint.svg',
+      comment: 'assets/icons/comment.svg',
+      'file-zipper': 'assets/icons/file-zipper.svg',
+      tag: 'assets/icons/tag.svg',
+      'note-sticky': 'assets/icons/note-sticky.svg',
     };
 
     this.icons = icons;

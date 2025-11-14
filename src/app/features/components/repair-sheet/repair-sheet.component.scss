@@ -86,7 +86,6 @@
           width: var(--icon-size-sm);
           height: var(--icon-size-sm);
           color: var(--warn-color);
-          flex-shrink: 0;
         }
 
         strong {
@@ -98,7 +97,6 @@
   }
 
   .sheet-actions {
-    flex-shrink: 0;
     display: flex;
     justify-content: flex-end;
     gap: var(--space-sm);

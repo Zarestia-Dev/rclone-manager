@@ -14,25 +14,23 @@ pub struct RcloneState {
     pub rclone_config_file: Arc<std::sync::RwLock<String>>,
     pub tray_enabled: Arc<std::sync::RwLock<bool>>,
     pub is_shutting_down: AtomicBool,
-    // pub is_updating: AtomicBool,
-    // pub is_starting: AtomicBool,
     pub notifications_enabled: Arc<std::sync::RwLock<bool>>,
     pub rclone_path: Arc<std::sync::RwLock<PathBuf>>,
     pub restrict_mode: Arc<std::sync::RwLock<bool>>,
     pub terminal_apps: Arc<std::sync::RwLock<Vec<String>>>,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct BackupAnalysis {
-    pub is_encrypted: bool,
-    pub archive_type: String,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MountedRemote {
     pub fs: String,
     pub mount_point: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ServeInstance {
+    pub id: String,
+    pub addr: String,
+    pub params: Value,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -70,7 +68,6 @@ pub struct RcloneCoreVersion {
     pub linking: String,
     pub go_tags: String,
 }
-
 #[derive(Default)]
 pub struct RcApiEngine {
     pub process: Option<tauri_plugin_shell::process::CommandChild>,
@@ -105,6 +102,7 @@ pub struct RemoteCache {
     pub configs: RwLock<serde_json::Value>,
     pub settings: RwLock<serde_json::Value>,
     pub mounted: RwLock<Vec<MountedRemote>>,
+    pub serves: RwLock<Vec<ServeInstance>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -188,16 +186,6 @@ pub struct JobResponse {
 pub struct NetworkStatusPayload {
     #[serde(rename = "isMetered")]
     pub is_metered: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ExportType {
-    All,
-    Settings,
-    Remotes,
-    RemoteConfigs,
-    SpecificRemote,
-    RCloneBackend,
 }
 
 pub const SERVICE_NAME: &str = env!("CARGO_PKG_NAME");

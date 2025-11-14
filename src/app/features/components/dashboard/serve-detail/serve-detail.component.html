@@ -1,0 +1,122 @@
+<div class="serve-detail">
+  <div class="detail-header">
+    <div class="header-content">
+      <div class="remote-info-section">
+        <div
+          [ngClass]="{
+            'animate-pulse-green': remoteServes.length > 0,
+            'icon-container': true,
+            served: remoteServes.length > 0,
+          }"
+        >
+          <mat-icon
+            [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"
+            class="remote-type-icon"
+          ></mat-icon>
+        </div>
+        <div class="remote-text-info">
+          <h2 class="remote-name" matTooltip="{{ selectedRemote.remoteSpecs.name }}">
+            {{ selectedRemote.remoteSpecs.name }}
+          </h2>
+          <span class="remote-type">{{ selectedRemote.remoteSpecs.type | titlecase }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="header-divider"></div>
+  </div>
+
+  <div class="detail-content">
+    <div class="serves-section">
+      <h3 class="section-title">
+        <mat-icon svgIcon="satellite-dish"></mat-icon>
+        <span>Active Serves</span>
+        @if (remoteServes.length > 0) {
+          <span class="serves-count">{{ remoteServes.length }}</span>
+        }
+      </h3>
+
+      @if (remoteServes.length === 0) {
+        <mat-card class="empty-state-card">
+          <mat-card-content>
+            <div class="empty-state">
+              <mat-icon svgIcon="satellite-dish" class="empty-icon"></mat-icon>
+              <h4>No Active Serves</h4>
+              <p>
+                This remote is not currently being served via any network protocol. Click "Start
+                Serve" to make it accessible over HTTP, WebDAV, FTP, SFTP, or other protocols.
+              </p>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      } @else {
+        <div class="serves-grid">
+          @for (serve of remoteServes; track serve.id) {
+            <app-serve-card
+              [serve]="serve"
+              (stopServe)="
+                stopJob.emit({
+                  type: 'serve',
+                  remoteName: $event.params.fs.split(':')[0],
+                  serveId: $event.id,
+                })
+              "
+              (copyToClipboard)="handleCopyToClipboard($event)"
+            ></app-serve-card>
+          }
+        </div>
+      }
+      <button
+        matButton="filled"
+        class="primary"
+        (click)="onStartServeClick()"
+        class="start-serve-btn"
+        [disabled]="actionInProgress === 'serve'"
+      >
+        @if (actionInProgress === 'serve') {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          <mat-icon svgIcon="play"></mat-icon>
+        }
+        <span>Start Serve</span>
+      </button>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <div class="settings-layout">
+      <section class="settings-group">
+        <header class="group-header">
+          <h3 class="group-title">Serve Configuration</h3>
+          <p class="group-description">
+            Configure how files are served from this remote over network protocols.
+          </p>
+        </header>
+        <div class="group-panels">
+          @for (section of SERVE_SECTIONS; track section.key) {
+            <app-settings-panel
+              [config]="getSettingsPanelConfig(section)"
+              (editSettings)="onEditSettings($event)"
+            ></app-settings-panel>
+          }
+        </div>
+      </section>
+
+      <section class="settings-group">
+        <header class="group-header">
+          <h3 class="group-title">Advanced Settings</h3>
+          <p class="group-description">
+            Additional filtering, VFS, and backend options for serve operations.
+          </p>
+        </header>
+        <div class="group-panels">
+          @for (section of ADVANCED_SECTIONS; track section.key) {
+            <app-settings-panel
+              [config]="getSettingsPanelConfig(section)"
+              (editSettings)="onEditSettings($event)"
+            ></app-settings-panel>
+          }
+        </div>
+      </section>
+    </div>
+  </div>
+</div>

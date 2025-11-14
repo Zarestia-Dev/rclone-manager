@@ -19,8 +19,8 @@ impl EngineState {
 
     pub fn get_api(&self) -> (String, u16) {
         (
-            self.api_url.lock().unwrap().clone(),
-            *self.api_port.lock().unwrap(),
+            self.api_url.lock().expect("Failed to lock api_url").clone(),
+            *self.api_port.lock().expect("Failed to lock api_port"),
         )
     }
 
@@ -32,8 +32,11 @@ impl EngineState {
 
     pub fn get_oauth(&self) -> (String, u16) {
         (
-            self.oauth_url.lock().unwrap().clone(),
-            *self.oauth_port.lock().unwrap(),
+            self.oauth_url
+                .lock()
+                .expect("Failed to lock oauth_url")
+                .clone(),
+            *self.oauth_port.lock().expect("Failed to lock oauth_port"),
         )
     }
 }

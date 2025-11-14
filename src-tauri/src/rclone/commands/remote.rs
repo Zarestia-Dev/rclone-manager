@@ -1,19 +1,24 @@
-use log::{error, info};
+use log::{error, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
     RcloneState,
-    rclone::state::{ENGINE_STATE, clear_remote_logs},
+    core::scheduler::engine::CronScheduler,
+    rclone::{
+        commands::system::{ensure_oauth_process, redact_sensitive_values},
+        state::{engine::ENGINE_STATE, scheduled_tasks::ScheduledTasksCache},
+    },
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, config},
-        types::all_types::LogLevel,
+        types::{
+            all_types::{LogCache, LogLevel},
+            events::REMOTE_PRESENCE_CHANGED,
+        },
     },
 };
-
-use super::system::{ensure_oauth_process, redact_sensitive_values};
 
 /// Start non-interactive remote configuration
 /// This calls config/create with opt.nonInteractive=true and returns the raw JSON response
@@ -51,10 +56,7 @@ pub async fn create_remote_interactive(
     }
     body["opt"] = opt_obj;
 
-    let url = EndpointHelper::build_url(
-        &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
-        config::CREATE,
-    );
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_oauth().0, config::CREATE);
 
     let response = state
         .client
@@ -118,10 +120,7 @@ pub async fn continue_create_remote_interactive(
     }
     body["opt"] = opt_obj;
 
-    let url = EndpointHelper::build_url(
-        &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
-        config::UPDATE,
-    );
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_oauth().0, config::UPDATE);
 
     let response = tauri_state
         .client
@@ -141,7 +140,7 @@ pub async fn continue_create_remote_interactive(
     let value: Value =
         serde_json::from_str(&body_text).unwrap_or_else(|_| json!({ "raw": body_text }));
 
-    app.emit("remote_presence_changed", &name)
+    app.emit(REMOTE_PRESENCE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(value)
@@ -178,8 +177,7 @@ pub async fn create_remote(
             "type": remote_type,
             "parameters": params_obj
         })),
-    )
-    .await;
+    );
 
     // Handle OAuth process
     ensure_oauth_process(&app)
@@ -192,10 +190,7 @@ pub async fn create_remote(
         "parameters": parameters
     });
 
-    let url = EndpointHelper::build_url(
-        &format!("http://127.0.0.1:{}", ENGINE_STATE.get_oauth().1),
-        config::CREATE,
-    );
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_oauth().0, config::CREATE);
 
     let response = state
         .client
@@ -223,8 +218,7 @@ pub async fn create_remote(
             Some("New remote creation".to_string()),
             "Failed to create remote".to_string(),
             Some(json!({"response": body})),
-        )
-        .await;
+        );
 
         return Err(error);
     }
@@ -235,10 +229,9 @@ pub async fn create_remote(
         Some("New remote creation".to_string()),
         "Remote created successfully".to_string(),
         None,
-    )
-    .await;
+    );
 
-    app.emit("remote_presence_changed", &name)
+    app.emit(REMOTE_PRESENCE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(())
@@ -269,8 +262,7 @@ pub async fn update_remote(
             "type": remote_type,
             "parameters": params_obj
         })),
-    )
-    .await;
+    );
 
     ensure_oauth_process(&app)
         .await
@@ -301,8 +293,7 @@ pub async fn update_remote(
             Some("Remote update".to_string()),
             "Failed to update remote".to_string(),
             Some(json!({"response": body})),
-        )
-        .await;
+        );
         return Err(error);
     }
 
@@ -312,10 +303,9 @@ pub async fn update_remote(
         Some("Remote update".to_string()),
         "Remote updated successfully".to_string(),
         None,
-    )
-    .await;
+    );
 
-    app.emit("remote_presence_changed", &name)
+    app.emit(REMOTE_PRESENCE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     Ok(())
@@ -326,6 +316,8 @@ pub async fn delete_remote(
     app: AppHandle,
     name: String,
     state: State<'_, RcloneState>,
+    cache: State<'_, ScheduledTasksCache>,
+    scheduler: State<'_, CronScheduler>,
 ) -> Result<(), String> {
     info!("🗑️ Deleting remote: {name}");
 
@@ -347,18 +339,31 @@ pub async fn delete_remote(
         return Err(error);
     }
 
-    // Emit two events:
+    match cache.remove_tasks_for_remote(&name, scheduler).await {
+        Ok(removed_ids) => {
+            if !removed_ids.is_empty() {
+                info!(
+                    "Removed {} scheduled task(s) for deleted remote '{}'",
+                    removed_ids.len(),
+                    name
+                );
+            }
+        }
+        Err(e) => {
+            warn!(
+                "Failed to clean up scheduled tasks for remote '{}': {}",
+                name, e
+            );
+        }
+    }
+
     // 1. The standard presence changed event
-    app.emit("remote_presence_changed", &name)
+    app.emit(REMOTE_PRESENCE_CHANGED, &name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
-    // 2. A new specific event for deletion
-    app.emit("remote_deleted", &name)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
+    let log_cache = app.state::<LogCache>();
+    log_cache.clear_for_remote(&name).await;
 
-    clear_remote_logs(Some(name.clone()))
-        .await
-        .unwrap_or_default();
     info!("✅ Remote {name} deleted successfully");
     Ok(())
 }

@@ -1,14 +1,16 @@
-use once_cell::sync::Lazy;
 use serde_json::Value;
+use tauri::State;
 use tokio::sync::RwLock;
 
 use crate::utils::types::all_types::{JobCache, JobInfo, JobStatus};
 
-pub static JOB_CACHE: Lazy<JobCache> = Lazy::new(|| JobCache {
-    jobs: RwLock::new(Vec::new()),
-});
-
 impl JobCache {
+    pub fn new() -> Self {
+        Self {
+            jobs: RwLock::new(Vec::new()),
+        }
+    }
+
     pub async fn add_job(&self, job: JobInfo) {
         let mut jobs = self.jobs.write().await;
         jobs.push(job);
@@ -25,28 +27,47 @@ impl JobCache {
         }
     }
 
-    pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
+    /// A generic function to update a job using a closure
+    pub async fn update_job(
+        &self,
+        jobid: u64,
+        update_fn: impl FnOnce(&mut JobInfo),
+    ) -> Result<JobInfo, String> {
         let mut jobs = self.jobs.write().await;
         if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
-            job.stats = Some(stats);
-            Ok(())
+            update_fn(job);
+            Ok(job.clone())
         } else {
             Err("JobInfo not found".to_string())
         }
     }
 
+    pub async fn update_job_stats(&self, jobid: u64, stats: Value) -> Result<(), String> {
+        self.update_job(jobid, |job| {
+            job.stats = Some(stats);
+        })
+        .await?;
+        Ok(())
+    }
+
     pub async fn complete_job(&self, jobid: u64, success: bool) -> Result<(), String> {
-        let mut jobs = self.jobs.write().await;
-        if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
+        self.update_job(jobid, |job| {
             job.status = if success {
                 JobStatus::Completed
             } else {
                 JobStatus::Failed
             };
-            Ok(())
-        } else {
-            Err("JobInfo not found".to_string())
-        }
+        })
+        .await?;
+        Ok(())
+    }
+
+    pub async fn stop_job(&self, jobid: u64) -> Result<(), String> {
+        self.update_job(jobid, |job| {
+            job.status = JobStatus::Stopped;
+        })
+        .await?;
+        Ok(())
     }
 
     pub async fn get_jobs(&self) -> Vec<JobInfo> {
@@ -69,33 +90,36 @@ impl JobCache {
             .cloned()
     }
 
-    pub async fn stop_job(&self, jobid: u64) -> Result<(), String> {
-        let mut jobs = self.jobs.write().await;
-        if let Some(job) = jobs.iter_mut().find(|j| j.jobid == jobid) {
-            job.status = JobStatus::Stopped;
-            Ok(())
-        } else {
-            Err("JobInfo not found".to_string())
-        }
+    /// Checks if a job of a specific type is already running for a specific remote.
+    pub async fn is_job_running(&self, remote_name: &str, job_type: &str) -> bool {
+        let jobs = self.jobs.read().await;
+        jobs.iter().any(|job| {
+            job.remote_name == remote_name
+                && job.job_type == job_type
+                && job.status == JobStatus::Running
+        })
     }
 }
 
 #[tauri::command]
-pub async fn get_jobs() -> Result<Vec<JobInfo>, String> {
-    Ok(JOB_CACHE.get_jobs().await)
+pub async fn get_jobs(job_cache: State<'_, JobCache>) -> Result<Vec<JobInfo>, String> {
+    Ok(job_cache.get_jobs().await)
 }
 
 #[tauri::command]
-pub async fn delete_job(jobid: u64) -> Result<(), String> {
-    JOB_CACHE.delete_job(jobid).await
+pub async fn delete_job(job_cache: State<'_, JobCache>, jobid: u64) -> Result<(), String> {
+    job_cache.delete_job(jobid).await
 }
 
 #[tauri::command]
-pub async fn get_job_status(jobid: u64) -> Result<Option<JobInfo>, String> {
-    Ok(JOB_CACHE.get_job(jobid).await)
+pub async fn get_job_status(
+    job_cache: State<'_, JobCache>,
+    jobid: u64,
+) -> Result<Option<JobInfo>, String> {
+    Ok(job_cache.get_job(jobid).await)
 }
 
 #[tauri::command]
-pub async fn get_active_jobs() -> Result<Vec<JobInfo>, String> {
-    Ok(JOB_CACHE.get_active_jobs().await)
+pub async fn get_active_jobs(job_cache: State<'_, JobCache>) -> Result<Vec<JobInfo>, String> {
+    Ok(job_cache.get_active_jobs().await)
 }

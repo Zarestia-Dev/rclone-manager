@@ -20,7 +20,11 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
 use crate::core::settings::operations::core::save_setting;
-use crate::{rclone::queries::get_rclone_info, utils::types::all_types::RcloneState};
+use crate::rclone::engine::core::ENGINE;
+use crate::{
+    rclone::queries::get_rclone_info,
+    utils::types::{all_types::RcloneState, events::RCLONE_ENGINE_UPDATING},
+};
 
 // ============================================================================
 // Types and Constants
@@ -105,8 +109,6 @@ pub async fn update_rclone(
     app_handle: tauri::AppHandle,
     channel: Option<String>,
 ) -> Result<serde_json::Value, String> {
-    use crate::rclone::engine::ENGINE;
-
     // Step 1: Initialize update process
     {
         let mut engine = ENGINE
@@ -139,7 +141,11 @@ pub async fn update_rclone(
 
     // Get current rclone path and resolve the actual binary path
     let rclone_state = app_handle.state::<RcloneState>();
-    let base_path = rclone_state.rclone_path.read().unwrap().clone();
+    let base_path = rclone_state
+        .rclone_path
+        .read()
+        .map_err(|e| format!("Failed to read rclone path: {e}"))?
+        .clone();
     let mut current_path = get_rclone_binary_path(&base_path);
 
     if !current_path.exists() {
@@ -174,18 +180,11 @@ pub async fn update_rclone(
 
     // Stop the engine before updating (to release the binary)
     app_handle
-        .emit(
-            "rclone_engine",
-            json!({
-                "status": "updating",
-                "message": "Updating rclone to the latest version"
-            }),
-        )
+        .emit(RCLONE_ENGINE_UPDATING, ())
         .map_err(|e| format!("Failed to emit update event: {e}"))?;
 
     // Actually stop the engine process
     {
-        use crate::rclone::engine::ENGINE;
         let mut engine = ENGINE
             .lock()
             .map_err(|e| format!("Failed to lock engine: {e}"))?;
@@ -214,15 +213,7 @@ pub async fn update_rclone(
         .map(|r| r["success"].as_bool().unwrap_or(false))
         .unwrap_or(false);
 
-    app_handle
-        .emit(
-            "rclone_engine",
-            json!({
-                "status": "updated",
-                "message": "Rclone has been updated successfully"
-            }),
-        )
-        .map_err(|e| format!("Failed to emit update event: {e}"))?;
+    // Note: Completion is signaled by ENGINE_RESTARTED event with reason 'rclone_update'
 
     // Set updating to false at the end (regardless of success/failure)
     {
@@ -240,13 +231,11 @@ pub async fn update_rclone(
             "rclone_update",
             update_check
                 .get("current_version")
-                .unwrap()
-                .as_str()
+                .and_then(|v| v.as_str())
                 .unwrap_or("unknown"),
             update_check
                 .get("latest_version")
-                .unwrap()
-                .as_str()
+                .and_then(|v| v.as_str())
                 .unwrap_or("unknown"),
         )
     {
@@ -348,7 +337,11 @@ fn can_update_in_place(rclone_path: &Path) -> bool {
 fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
     // Prefer any configured rclone_path in application state (if not "system" or empty)
     let rclone_state = app_handle.state::<RcloneState>();
-    let configured = rclone_state.rclone_path.read().unwrap().clone();
+    let configured = rclone_state
+        .rclone_path
+        .read()
+        .map_err(|e| format!("Failed to read rclone path: {e}"))?
+        .clone();
     let configured_str = configured.to_string_lossy();
 
     if !configured_str.is_empty() && configured_str != "system" {
@@ -627,9 +620,7 @@ async fn perform_rclone_selfupdate(
             debug!("Update stderr: {stderr}");
         }
 
-        app_handle
-            .emit("rclone-engine", json!({"status": "updated"}))
-            .map_err(|e| format!("Failed to emit update event: {e}"))?;
+        // Note: Update completion is signaled by ENGINE_RESTARTED event
 
         Ok(json!({
             "success": true,

@@ -62,8 +62,9 @@ export class SidebarComponent {
   }
 
   @HostListener('document:keydown.control.f', ['$event'])
-  onControlF(event: KeyboardEvent): void {
-    event.preventDefault();
+  onControlF(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    keyboardEvent.preventDefault();
     this.toggleSearch();
     if (this.searchVisible && this.searchContainer) {
       this.searchContainer.focus();
@@ -131,5 +132,21 @@ export class SidebarComponent {
     return availableOperations.length > 0
       ? `${availableOperations.join(', ')} Available`
       : 'Sync Operations Available';
+  }
+
+  getServeTooltip(remote: Remote): string {
+    if (!remote.serveState || !remote.serveState.hasActiveServes) {
+      return 'No active serves';
+    }
+
+    const count = remote.serveState.serveCount || 0;
+    const serves = remote.serveState.serves || [];
+
+    if (count === 1 && serves.length > 0) {
+      const serve = serves[0];
+      return `Serving via ${serve.params.type.toUpperCase()} on ${serve.addr}`;
+    }
+
+    return `${count} active serve${count !== 1 ? 's' : ''}`;
   }
 }

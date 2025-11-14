@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use tauri::{Emitter, State};
 
-use crate::RcloneState;
+use crate::{RcloneState, utils::types::events::MOUNT_PLUGIN_INSTALLED};
 
 #[cfg(target_os = "macos")]
 /// Checks for the presence of any compatible FUSE implementation on macOS.
@@ -147,12 +147,12 @@ pub async fn install_mount_plugin(
                 "-e",
                 &format!(
                     "do shell script \"installer -pkg '{}' -target /\" with administrator privileges",
-                    local_file.to_str().unwrap()
+                    local_file.to_str().ok_or("Invalid UTF-8 in file path")?
                 ),
             ])
             .status()
     } else {
-        execute_as_admin_powershell(local_file.to_str().unwrap())
+        execute_as_admin_powershell(local_file.to_str().ok_or("Invalid UTF-8 in file path")?)
     };
 
     // Clean up the downloaded file
@@ -165,7 +165,7 @@ pub async fn install_mount_plugin(
 
             if installation_verified {
                 window
-                    .emit("mount_plugin_installed", ())
+                    .emit(MOUNT_PLUGIN_INSTALLED, ())
                     .map_err(|e| e.to_string())?;
                 Ok("Mount plugin installed successfully".to_string())
             } else {

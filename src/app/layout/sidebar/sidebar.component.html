@@ -64,6 +64,17 @@
                       <mat-icon [svgIcon]="getActiveSyncOperationIcon(remote)"></mat-icon>
                     </div>
                   }
+
+                  @if (remote.serveState && remote.serveState.hasActiveServes) {
+                    <div
+                      class="status-dot serve"
+                      [class.active]="remote.serveState.hasActiveServes"
+                      [matTooltip]="getServeTooltip(remote)"
+                      aria-label="Serve status"
+                    >
+                      <mat-icon svgIcon="satellite-dish"></mat-icon>
+                    </div>
+                  }
                 </div>
               </div>
 

@@ -39,7 +39,6 @@ import {
   GlobalStats,
   JobInfo,
   MemoryStats,
-  PanelState,
   PrimaryActionType,
   RcloneStatus,
   Remote,
@@ -54,10 +53,17 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 
 // Services
 import { AnimationsService } from '../../../../shared/services/animations.service';
-import { EventListenersService } from '@app/services';
+import {
+  EventListenersService,
+  SchedulerService,
+  ServeManagementService,
+  UiStateService,
+} from '@app/services';
 import { SystemInfoService } from '@app/services';
 import { FormatBytes } from '@app/pipes';
 import { IconService } from 'src/app/shared/services/icon.service';
+import { ScheduledTask, ServeListItem } from '@app/types';
+import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
 /** Polling interval for system stats in milliseconds */
 const POLLING_INTERVAL = 5000;
@@ -83,6 +89,7 @@ const POLLING_INTERVAL = 5000;
     FormatEtaPipe,
     FormatMemoryUsagePipe,
     FormatBytes,
+    ServeCardComponent,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
@@ -103,6 +110,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   @Output() stopJob = new EventEmitter<{
     type: PrimaryActionType;
     remoteName: string;
+    serveId?: string;
   }>();
   @Output() browseRemote = new EventEmitter<string>();
 
@@ -117,12 +125,21 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   bandwidthPanelOpenState = false;
   systemInfoPanelOpenState = false;
   jobInfoPanelOpenState = false;
+  scheduledTasksPanelOpenState = false;
+  servesPanelOpenState = false;
+
+  // Scheduled tasks
+  scheduledTasks: ScheduledTask[] = [];
+  isLoadingScheduledTasks = false;
+
+  // Running serves
+  isLoadingServes = false;
 
   // Private members
-  private readonly PANEL_STATE_KEY = 'dashboard_panel_states';
   private eventListenersService = inject(EventListenersService);
   private destroy$ = new Subject<void>();
   private pollingSubscription: Subscription | null = null;
+  private scheduledTasksSubscription: Subscription | null = null;
   private panelStateChange$ = new Subject<void>();
   private statsUpdateDebounce$ = new Subject<void>();
 
@@ -131,17 +148,21 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   private ngZone = inject(NgZone);
   private snackBar = inject(MatSnackBar);
   private systemInfoService = inject(SystemInfoService);
+  private schedulerService = inject(SchedulerService);
+  private serveManagementService = inject(ServeManagementService);
+  private uiStateService = inject(UiStateService);
   public iconService = inject(IconService);
 
   // Track by functions
   readonly trackByRemoteName: TrackByFunction<Remote> = (_, remote) => remote.remoteSpecs.name;
   readonly trackByIndex: TrackByFunction<unknown> = index => index;
+  readonly Object = Object; // Expose Object to template
 
   ngOnInit(): void {
-    this.restorePanelStates();
     this.setupTauriListeners();
     this.setupPolling();
     this.loadInitialData();
+    this.setupScheduledTasksListener();
 
     // Debounce panel state changes to prevent rapid toggling
     this.panelStateChange$
@@ -158,43 +179,13 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     this.cleanup();
   }
 
-  // Panel state management
-  expandAllPanels(): void {
-    this.bandwidthPanelOpenState = true;
-    this.systemInfoPanelOpenState = true;
-    this.jobInfoPanelOpenState = true;
-    this.savePanelStates();
-  }
-
-  collapseAllPanels(): void {
-    this.bandwidthPanelOpenState = false;
-    this.systemInfoPanelOpenState = false;
-    this.jobInfoPanelOpenState = false;
-    this.savePanelStates();
-  }
-
-  // Panel state change handlers
-  onBandwidthPanelStateChange(isOpen: boolean): void {
-    this.bandwidthPanelOpenState = isOpen;
-    this.savePanelStates();
-    this.panelStateChange$.next();
-  }
-
-  onSystemInfoPanelStateChange(isOpen: boolean): void {
-    this.systemInfoPanelOpenState = isOpen;
-    this.savePanelStates();
-    this.panelStateChange$.next();
-  }
-
-  onJobInfoPanelStateChange(isOpen: boolean): void {
-    this.jobInfoPanelOpenState = isOpen;
-    this.savePanelStates();
-    this.panelStateChange$.next();
-  }
-
   // Private methods
   private cleanup(): void {
     this.stopPolling();
+    if (this.scheduledTasksSubscription) {
+      this.scheduledTasksSubscription.unsubscribe();
+      this.scheduledTasksSubscription = null;
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -246,6 +237,10 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
 
   get activeJobsCount(): number {
     return this.jobs?.filter(job => job.status === 'Running').length || 0;
+  }
+
+  get allRunningServes(): ServeListItem[] {
+    return this.remotes.flatMap(remote => remote.serveState?.serves || []);
   }
 
   get jobCompletionPercentage(): number {
@@ -313,27 +308,69 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
       });
   }
 
-  private savePanelStates(): void {
-    const state: PanelState = {
-      bandwidth: this.bandwidthPanelOpenState,
-      system: this.systemInfoPanelOpenState,
-      jobs: this.jobInfoPanelOpenState,
-    };
-    localStorage.setItem(this.PANEL_STATE_KEY, JSON.stringify(state));
+  private setupScheduledTasksListener(): void {
+    // Initial load
+    this.loadScheduledTasks();
+
+    // Subscribe to updates
+    this.scheduledTasksSubscription = this.schedulerService.scheduledTasks$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (tasks: ScheduledTask[]) => {
+          this.scheduledTasks = tasks;
+          this.cdr.markForCheck();
+        },
+      });
   }
 
-  private restorePanelStates(): void {
-    const state = localStorage.getItem(this.PANEL_STATE_KEY);
-    if (state) {
-      try {
-        const parsed = JSON.parse(state) as PanelState;
-        this.bandwidthPanelOpenState = parsed.bandwidth ?? false;
-        this.systemInfoPanelOpenState = parsed.system ?? false;
-        this.jobInfoPanelOpenState = parsed.jobs ?? false;
-      } catch (err) {
-        console.error('Failed to parse panel state:', err);
-        localStorage.removeItem(this.PANEL_STATE_KEY);
-      }
+  private async loadScheduledTasks(): Promise<void> {
+    this.isLoadingScheduledTasks = true;
+    this.cdr.markForCheck();
+
+    try {
+      await this.schedulerService.getScheduledTasks();
+    } catch (error) {
+      console.error('Error loading scheduled tasks:', error);
+    } finally {
+      this.isLoadingScheduledTasks = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  async stopServe(serve: ServeListItem): Promise<void> {
+    const remoteName = serve.params.fs.split(':')[0];
+    this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
+  }
+
+  handleCopyToClipboard(data: { text: string; message: string }): void {
+    try {
+      navigator.clipboard.writeText(data.text);
+      this.snackBar.open(data.message, 'Close', { duration: 2000 });
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      this.snackBar.open('Failed to copy to clipboard', 'Close', { duration: 2000 });
+    }
+  }
+
+  handleServeCardClick(serve: ServeListItem): void {
+    const remoteName = serve.params.fs.split(':')[0];
+    const remote = this.remotes.find(r => r.remoteSpecs.name === remoteName);
+    if (remote) {
+      // Switch to serve tab and select the remote
+      this.uiStateService.setTab('serve');
+      this.uiStateService.setSelectedRemote(remote);
+      // Ensure the main content scrolls to top so the selected remote detail is visible
+      // Delay briefly so view updates (tab switch) can occur before scrolling.
+      setTimeout(() => {
+        const el = document.querySelector('.main-content') as HTMLElement | null;
+        const target = el || document.scrollingElement || document.documentElement;
+        try {
+          target.scrollTo({ top: 0, behavior: 'smooth' } as ScrollToOptions);
+        } catch {
+          // Fallback for older environments
+          (target as HTMLElement).scrollTop = 0;
+        }
+      }, 60);
     }
   }
 
@@ -511,6 +548,146 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
       this.snackBar.open('Failed to copy error', 'Close', {
         duration: 2000,
       });
+    }
+  }
+
+  // Scheduled tasks helpers
+  get activeScheduledTasksCount(): number {
+    return this.scheduledTasks.filter(
+      task => task.status === 'enabled' || task.status === 'running'
+    ).length;
+  }
+
+  get totalScheduledTasksCount(): number {
+    return this.scheduledTasks.length;
+  }
+
+  getTasksByRemote(remoteName: string): ScheduledTask[] {
+    return this.scheduledTasks.filter(task => task.args['remoteName'] === remoteName);
+  }
+
+  getFormattedNextRun(task: ScheduledTask): string {
+    if (task.status === 'disabled') {
+      return 'Task is disabled';
+    }
+    if (task.status === 'stopping') {
+      return 'Disabling after current run';
+    }
+    if (!task.nextRun) return 'Not scheduled';
+    return new Date(task.nextRun).toLocaleString();
+  }
+
+  getFormattedLastRun(task: ScheduledTask): string {
+    if (!task.lastRun) return 'Never';
+    return new Date(task.lastRun).toLocaleString();
+  }
+
+  async toggleScheduledTask(taskId: string): Promise<void> {
+    try {
+      await this.schedulerService.toggleScheduledTask(taskId);
+    } catch (error) {
+      console.error('Error toggling scheduled task:', error);
+      this.snackBar.open('Failed to toggle scheduled task', 'Close', {
+        duration: 2000,
+      });
+    }
+  }
+
+  // Navigate to remote details when task is clicked
+  onTaskClick(task: ScheduledTask): void {
+    const remoteName = task.args['remote_name'];
+    if (remoteName) {
+      const remote = this.remotes.find(r => r.remoteSpecs.name === remoteName);
+      if (remote) {
+        this.selectRemote.emit(remote);
+      }
+    }
+  }
+
+  // Handle keyboard navigation for task cards
+  onTaskKeydown(event: KeyboardEvent, task: ScheduledTask): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.onTaskClick(task);
+    }
+  }
+
+  // Get task type icon
+  getTaskTypeIcon(taskType: string): string {
+    switch (taskType) {
+      case 'sync':
+        return 'sync';
+      case 'copy':
+        return 'copy';
+      case 'move':
+        return 'move';
+      case 'bisync':
+        return 'right-left';
+      default:
+        return 'circle-info';
+    }
+  }
+
+  // Get task type color class
+  getTaskTypeColor(taskType: string): string {
+    switch (taskType) {
+      case 'sync':
+        return 'sync-color';
+      case 'copy':
+        return 'copy-color';
+      case 'move':
+        return 'move-color';
+      case 'bisync':
+        return 'bisync-color';
+      default:
+        return '';
+    }
+  }
+
+  getTaskStatusTooltip(status: string): string {
+    switch (status) {
+      case 'enabled':
+        return 'Task is enabled and will run on schedule.';
+      case 'disabled':
+        return 'Task is disabled and will not run.';
+      case 'running':
+        return 'Task is currently running.';
+      case 'failed':
+        return 'Task failed on its last run.';
+      case 'stopping':
+        return 'Task is stopping and will be disabled after the current run finishes.';
+      default:
+        return '';
+    }
+  }
+
+  getToggleTooltip(status: string): string {
+    switch (status) {
+      case 'enabled':
+      case 'running':
+        return 'Disable task';
+      case 'disabled':
+      case 'failed':
+        return 'Enable task';
+      case 'stopping':
+        return 'Task is stopping...';
+      default:
+        return '';
+    }
+  }
+
+  getToggleIcon(status: string): string {
+    switch (status) {
+      case 'enabled':
+      case 'running':
+        return 'pause';
+      case 'disabled':
+      case 'failed':
+        return 'play';
+      case 'stopping':
+        return 'stop';
+      default:
+        return 'help';
     }
   }
 }

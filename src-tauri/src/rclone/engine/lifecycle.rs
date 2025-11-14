@@ -1,5 +1,4 @@
 use log::{debug, error, info};
-use serde_json;
 use std::thread;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -7,8 +6,16 @@ use crate::{
     RcloneState,
     core::{
         initialization::apply_core_settings, settings::operations::core::load_startup_settings,
+        tray::core::update_tray_menu,
     },
-    utils::types::{all_types::RcApiEngine, settings::SettingsState},
+    utils::types::{
+        all_types::{RcApiEngine, RemoteCache},
+        events::{
+            ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
+            RCLONE_ENGINE_PATH_ERROR, RCLONE_ENGINE_READY,
+        },
+        settings::SettingsState,
+    },
 };
 
 impl RcApiEngine {
@@ -86,27 +93,13 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
 
     if engine.password_error {
         debug!("⏸️ Engine has password error, not starting until resolved");
-        app.emit(
-            "rclone_engine",
-            serde_json::json!({
-                "status": "password_error",
-                "message": "Rclone password is required"
-            }),
-        )
-        .ok();
+        app.emit(RCLONE_ENGINE_PASSWORD_ERROR, ()).ok();
         return;
     }
 
     if engine.path_error {
         debug!("⏸️ Engine has path error, not starting until resolved");
-        app.emit(
-            "rclone_engine",
-            serde_json::json!({
-                "status": "path_error",
-                "message": "Rclone binary path is invalid"
-            }),
-        )
-        .ok();
+        app.emit(RCLONE_ENGINE_PATH_ERROR, ()).ok();
         return;
     }
 
@@ -148,12 +141,7 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 engine.running = true;
                 let port = engine.current_api_port;
                 info!("✅ Rclone API started successfully on port {port}");
-                if let Err(e) = app.emit(
-                    "rclone_engine",
-                    serde_json::json!({
-                        "status": "ready"
-                    }),
-                ) {
+                if let Err(e) = app.emit(RCLONE_ENGINE_READY, ()) {
                     error!("Failed to emit ready event: {e}");
                 }
 
@@ -163,6 +151,31 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                     Ok(settings) => {
                         tauri::async_runtime::spawn(async move {
                             apply_core_settings(&app_handle, &settings).await;
+
+                            // Moved event_listeners to here to ensure they are set after engine is ready
+                            // and race conditions are avoided
+                            tauri::async_runtime::spawn_blocking(move || {
+                                match RcApiEngine::lock_engine() {
+                                    Ok(mut engine) => {
+                                        engine.path_error = false;
+                                        engine.password_error = false;
+                                    }
+                                    Err(e) => {
+                                        error!("Failed to lock engine to clear errors: {e}");
+                                    }
+                                }
+                            });
+
+                            let cache = app_handle.state::<RemoteCache>();
+
+                            match cache.refresh_all(app_handle.clone()).await {
+                                Ok(_) => debug!("Caches refreshed successfully after engine ready"),
+                                Err(e) => error!("Failed to refresh caches: {e}"),
+                            }
+
+                            if let Err(e) = update_tray_menu(app_handle.clone(), 0).await {
+                                error!("Failed to update tray menu: {e}");
+                            }
                         });
                     }
                     Err(e) => {
@@ -174,38 +187,26 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 // Clean up the failed process
                 engine.process = None;
                 engine.running = false;
-                if let Err(e) = app.emit(
-                    "rclone_engine",
-                    serde_json::json!({
-                        "status": "error",
-                        "message": "Failed to start Rclone API: {e}"
-                    }),
-                ) {
+                if let Err(e) = app.emit(RCLONE_ENGINE_ERROR, ()) {
                     error!("Failed to emit event: {e}");
                 }
             }
         }
         Ok(Err(e)) => {
             error!("❌ Failed to spawn Rclone process: {e}");
-            if let Err(e) = app.emit(
-                "rclone_engine",
-                serde_json::json!({
-                    "status": "error",
-                    "message": format!("Failed to spawn Rclone process: {e}")
-                }),
-            ) {
-                error!("Failed to emit event: {e}");
+            if engine.path_error {
+                if let Err(err) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
+                    error!("Failed to emit path error event: {err}");
+                }
+            } else {
+                if let Err(err) = app.emit(RCLONE_ENGINE_ERROR, ()) {
+                    error!("Failed to emit event: {err}");
+                }
             }
         }
         Err(e) => {
             error!("❌ Failed to create runtime for Rclone process: {e}");
-            if let Err(e) = app.emit(
-                "rclone_engine",
-                serde_json::json!({
-                    "status": "error",
-                    "message": format!("Failed to create runtime: {e}")
-                }),
-            ) {
+            if let Err(e) = app.emit(RCLONE_ENGINE_ERROR, ()) {
                 error!("Failed to emit event: {e}");
             }
         }
@@ -245,7 +246,7 @@ pub fn restart_for_config_change(
 
                 // Emit success event
                 if let Err(e) = app_handle.emit(
-                    "engine_restarted",
+                    ENGINE_RESTARTED,
                     serde_json::json!({
                         "reason": change_type,
                         "old_value": old_value,
@@ -260,15 +261,7 @@ pub fn restart_for_config_change(
                 error!("❌ Failed to restart engine for {change_type} change: {e}");
 
                 // Emit failure event
-                if let Err(emit_err) = app_handle.emit(
-                    "rclone_engine",
-                    serde_json::json!({
-                        "reason": change_type,
-                        "old_value": old_value,
-                        "new_value": new_value,
-                        "error": e
-                    }),
-                ) {
+                if let Err(emit_err) = app_handle.emit(RCLONE_ENGINE_ERROR, ()) {
                     error!("Failed to emit engine restart failure event: {emit_err}");
                 }
             }
@@ -312,13 +305,7 @@ fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> Result<(), Str
                         );
                         engine.path_error = true;
                         // Inform the frontend about the path error
-                        if let Err(e) = app.emit(
-                            "rclone_engine",
-                            serde_json::json!({
-                                "status": "path_error",
-                                "message": format!("Rclone binary not found at: {}", configured_path.display())
-                            }),
-                        ) {
+                        if let Err(e) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
                             error!("Failed to emit path_error event: {e}");
                         }
                         return Err(format!(
@@ -332,13 +319,7 @@ fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> Result<(), Str
                 Err(e) => {
                     error!("❌ Error checking rclone availability: {}", e);
                     engine.path_error = true;
-                    if let Err(emit_err) = app.emit(
-                        "rclone_engine",
-                        serde_json::json!({
-                            "status": "path_error",
-                            "message": format!("Error checking rclone: {}", e)
-                        }),
-                    ) {
+                    if let Err(emit_err) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
                         error!("Failed to emit path_error event: {emit_err}");
                     }
                     return Err(e);
@@ -370,22 +351,3 @@ fn restart_engine_blocking(app: &AppHandle, change_type: &str) -> Result<(), Str
         Err("Engine failed to start after restart".to_string())
     }
 }
-
-// /// **Convenience function for async restart**
-// /// Use this when you want to restart the engine from an async context
-// pub async fn restart_for_config_change_async(
-//     app: AppHandle,
-//     change_type: &str,
-//     old_value: &str,
-//     new_value: &str,
-// ) -> Result<(), String> {
-//     let change_type = change_type.to_string();
-//     let old_value = old_value.to_string();
-//     let new_value = new_value.to_string();
-
-//     tauri::async_runtime::spawn_blocking(move || {
-//         restart_engine_blocking(&app, &change_type)
-//     })
-//     .await
-//     .map_err(|e| format!("Failed to execute engine restart: {}", e))?
-// }

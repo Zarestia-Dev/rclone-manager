@@ -1,7 +1,6 @@
 use log::{debug, error, info, warn};
 use serde_json::{Value, json};
 use std::{
-    collections::HashMap,
     sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
@@ -12,13 +11,16 @@ use tokio::{sync::Mutex, time::sleep};
 
 use crate::{
     RcloneState,
-    rclone::state::ENGINE_STATE,
+    rclone::state::engine::ENGINE_STATE,
     utils::{
         rclone::{
             endpoints::{EndpointHelper, config, core},
             process_common::create_rclone_command,
         },
-        types::all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
+        types::{
+            all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
+            events::{BANDWIDTH_LIMIT_CHANGED, RCLONE_CONFIG_UNLOCKED},
+        },
     },
 };
 
@@ -58,13 +60,21 @@ impl std::fmt::Display for RcloneError {
 }
 
 pub fn redact_sensitive_values(
-    params: &HashMap<String, Value>,
+    params: &std::collections::HashMap<String, Value>,
     restrict_mode: &Arc<RwLock<bool>>,
 ) -> Value {
+    let restrict_enabled = restrict_mode
+        .read()
+        .map(|guard| *guard)
+        .unwrap_or_else(|e| {
+            log::error!("Failed to read restrict_mode: {e}");
+            false // Default to false if we can't read
+        });
+
     params
         .iter()
         .map(|(k, v)| {
-            let value = if *restrict_mode.read().unwrap()
+            let value = if restrict_enabled
                 && SENSITIVE_KEYS
                     .iter()
                     .any(|sk| k.to_lowercase().contains(sk))
@@ -77,7 +87,6 @@ pub fn redact_sensitive_values(
         })
         .collect()
 }
-
 pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     let mut guard = OAUTH_PROCESS.lock().await;
     let port = ENGINE_STATE.get_oauth().1;
@@ -102,8 +111,6 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
     }
 
     // Start new process
-    let port = ENGINE_STATE.get_oauth().1;
-
     let oauth_cmd = match create_rclone_command(port, app, "oauth").await {
         Ok(cmd) => cmd,
         Err(e) => {
@@ -148,6 +155,7 @@ pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), Stri
 
     let mut guard = OAUTH_PROCESS.lock().await;
     let port = ENGINE_STATE.get_oauth().1;
+
     let mut found_process = false;
 
     // Check if process is tracked in memory
@@ -223,7 +231,7 @@ pub async fn set_bandwidth_limit(
         serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
 
     debug!("🪢 Bandwidth limit set: {response_data:?}");
-    if let Err(e) = app.emit("bandwidth_limit_changed", response_data.clone()) {
+    if let Err(e) = app.emit(BANDWIDTH_LIMIT_CHANGED, response_data.clone()) {
         error!("❌ Failed to emit bandwidth limit changed event: {e}",);
     }
     Ok(response_data)
@@ -254,36 +262,8 @@ pub async fn unlock_rclone_config(
         return Err(error);
     }
 
-    app.emit("rclone_config_unlocked", json!({}))
+    app.emit(RCLONE_CONFIG_UNLOCKED, ())
         .map_err(|e| format!("Failed to emit config unlocked event: {e}"))?;
 
     Ok(())
 }
-
-// pub async fn set_rclone_config_file(app: AppHandle, config_path: String) -> Result<(), String> {
-//     let state = app.state::<RcloneState>();
-//     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::SETPATH);
-
-//     let payload = json!({ "path": config_path });
-
-//     let response = state
-//         .client
-//         .post(&url)
-//         .json(&payload)
-//         .send()
-//         .await
-//         .map_err(|e| format!("Request failed: {e}"))?;
-
-//     let status = response.status();
-//     let body = response.text().await.unwrap_or_default();
-
-//     if !status.is_success() {
-//         let error = format!("HTTP {status}: {body}");
-//         return Err(error);
-//     }
-
-//     app.emit("remote_presence_changed", json!({}))
-//         .map_err(|e| format!("Failed to emit remote presence changed event: {e}"))?;
-
-//     Ok(())
-// }

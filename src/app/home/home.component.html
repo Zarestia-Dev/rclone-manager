@@ -109,26 +109,21 @@
               [jobs]="jobs"
               [actionInProgress]="actionInProgress"
               (startJob)="startJob($event.type, $event.remoteName)"
-              (stopJob)="stopJob($event.type, $event.remoteName)"
+              (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
               (browseRemote)="openRemoteInFiles($event, 'mount')"
               (selectRemote)="selectRemote($event)"
             >
             </app-general-overview>
           }
-          @case ('files') {
-            <div class="under-construction-wrapper">
-              <div class="icon-container">
-                <mat-icon svgIcon="wrench" class="construction-icon"></mat-icon>
-              </div>
-              <h2>Under Construction</h2>
-              <p>
-                This feature is currently being built.<br />
-                Please check back soon!
-              </p>
-              <div class="construction-bar">
-                <div class="bar"></div>
-              </div>
-            </div>
+          @case ('serve') {
+            <app-serve-overview
+              [remotes]="remotes"
+              [runningServes]="runningServes"
+              (remoteSelected)="selectRemote($event)"
+              (startJob)="startJob($event.type, $event.remoteName)"
+              (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
+            >
+            </app-serve-overview>
           }
           @default {
             <app-app-overview
@@ -162,20 +157,23 @@
             >
             </app-general-detail>
           }
-          @case ('files') {
-            <div class="under-construction-wrapper">
-              <div class="icon-container">
-                <mat-icon svgIcon="wrench" class="construction-icon"></mat-icon>
-              </div>
-              <h2>Under Construction</h2>
-              <p>
-                This feature is currently being built.<br />
-                Please check back soon!
-              </p>
-              <div class="construction-bar">
-                <div class="bar"></div>
-              </div>
-            </div>
+          @case ('serve') {
+            <app-serve-detail
+              [selectedRemote]="selectedRemote"
+              [runningServes]="runningServes"
+              [remoteSettings]="loadRemoteSettings(selectedRemote.remoteSpecs.name)"
+              [actionInProgress]="actionInProgress[selectedRemote.remoteSpecs.name]"
+              (startJob)="startJob($event.type, $event.remoteName)"
+              (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
+              (openRemoteConfigModal)="
+                openRemoteConfigModal(
+                  $event.editTarget,
+                  $event.existingConfig,
+                  $event.initialSection
+                )
+              "
+            >
+            </app-serve-detail>
           }
           @default {
             <app-app-detail

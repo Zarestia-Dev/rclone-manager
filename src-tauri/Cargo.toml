@@ -1,9 +1,10 @@
 [package]
 name = "rclone-manager"
-version = "0.1.6"
+version = "0.1.7"
 description = "RClone Manager is a user-friendly GUI for Rclone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge."
 authors = ["Hakan İSMAİL"]
 edition = "2024"
+default-run = "rclone-manager"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -13,6 +14,12 @@ edition = "2024"
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
 name = "rclone_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+# Uncomment the following lines to build the headless server binary
+#[[bin]]
+#name = "rclone-manager-headless"
+#path = "src/headless.rs"
+#required-features = ["web-server"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -48,6 +55,17 @@ thiserror = "2.0"
 netstat2 = "0.11.2"
 sysinfo = "0.33.1"
 tauri-plugin-shell = "2"
+tokio-cron-scheduler = "0.13.0"
+croner = "3.0.1"
+
+# Web server dependencies (optional)
+axum = { version = "0.7", optional = true }
+tower = { version = "0.5", optional = true }
+tower-http = { version = "0.5", features = ["cors", "fs", "trace"], optional = true }
+clap = { version = "4.5", features = ["derive"], optional = true }
+tokio-stream = { version = "0.1", optional = true }
+futures = { version = "0.3", optional = true }
+async-stream = { version = "0.3", optional = true }
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.30.1"
@@ -76,6 +94,7 @@ url = { version = "2.5", optional = true }
 [features]
 default = ["updater"]
 updater = ["tauri-plugin-updater", "url"]
+web-server = ["axum", "tower", "tower-http", "clap", "tokio-stream", "futures", "async-stream"]
 flatpak = []
 deb = []
 rpm = []

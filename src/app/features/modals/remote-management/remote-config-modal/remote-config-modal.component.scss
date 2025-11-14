@@ -1,7 +1,6 @@
 .modal-container {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   width: 100%;
   height: 100%;
   background: var(--app-background);
@@ -43,7 +42,6 @@
           border-radius: var(--button-border-radius);
           color: var(--secondary-text-color);
           transition: all 0.3s ease;
-          flex-shrink: 0;
 
           mat-icon {
             width: 20px;
@@ -78,21 +76,17 @@
             opacity: 0.6;
           }
         }
-
-        &.clickable {
-          cursor: pointer;
-        }
       }
     }
   }
 
   // =============================================
-  // MODAL CONTENT - UPDATED
+  // MODAL CONTENT
   // =============================================
   .modal-content {
     position: relative;
     flex: 1;
-    overflow: hidden; // Changed from auto to hidden
+    overflow: hidden;
     display: flex;
     flex-direction: column;
 
@@ -100,10 +94,9 @@
       flex: 1;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
 
-      // Ensure child components take full height
-      app-remote-config-step,
-      app-flag-config-step {
+      .step {
         flex: 1;
         display: flex;
         flex-direction: column;

@@ -1634,136 +1634,136 @@ pub mod options {
 //     pub const NOOPAUTH: &str = "rc/noopauth";
 // }
 
-// /// Serve endpoints
-// pub mod serve {
-//     /// Show running servers.
-//     ///
-//     /// Show running servers with IDs.
-//     ///
-//     /// This takes no parameters and returns
-//     ///
-//     /// - list: list of running serve commands
-//     ///
-//     /// Each list element will have
-//     ///
-//     /// - id: ID of the server
-//     /// - addr: address the server is running on
-//     /// - params: parameters used to start the server
-//     ///
-//     /// Eg
-//     ///
-//     ///     rclone rc serve/list
-//     ///
-//     /// Returns
-//     ///
-//     /// ```json
-//     /// {
-//     ///     "list": [
-//     ///         {
-//     ///             "addr": "[::]:4321",
-//     ///             "id": "nfs-ffc2a4e5",
-//     ///             "params": {
-//     ///                 "fs": "remote:",
-//     ///                 "opt": {
-//     ///                     "ListenAddr": ":4321"
-//     ///                 },
-//     ///                 "type": "nfs",
-//     ///                 "vfsOpt": {
-//     ///                     "CacheMode": "full"
-//     ///                 }
-//     ///             }
-//     ///         }
-//     ///     ]
-//     /// }
-//     /// ```
-//     pub const LIST: &str = "serve/list";
+/// Serve endpoints
+pub mod serve {
+    /// Show running servers.
+    ///
+    /// Show running servers with IDs.
+    ///
+    /// This takes no parameters and returns
+    ///
+    /// - list: list of running serve commands
+    ///
+    /// Each list element will have
+    ///
+    /// - id: ID of the server
+    /// - addr: address the server is running on
+    /// - params: parameters used to start the server
+    ///
+    /// Eg
+    ///
+    ///     rclone rc serve/list
+    ///
+    /// Returns
+    ///
+    /// ```json
+    /// {
+    ///     "list": [
+    ///         {
+    ///             "addr": "[::]:4321",
+    ///             "id": "nfs-ffc2a4e5",
+    ///             "params": {
+    ///                 "fs": "remote:",
+    ///                 "opt": {
+    ///                     "ListenAddr": ":4321"
+    ///                 },
+    ///                 "type": "nfs",
+    ///                 "vfsOpt": {
+    ///                     "CacheMode": "full"
+    ///                 }
+    ///             }
+    ///         }
+    ///     ]
+    /// }
+    /// ```
+    pub const LIST: &str = "serve/list";
 
-//     /// Create a new server.
-//     ///
-//     /// Create a new server with the specified parameters.
-//     ///
-//     /// This takes the following parameters:
-//     ///
-//     /// - `type` - type of server: `http`, `webdav`, `ftp`, `sftp`, `nfs`, etc.
-//     /// - `fs` - remote storage path to serve
-//     /// - `addr` - the ip:port to run the server on, eg ":1234" or "localhost:1234"
-//     ///
-//     /// Other parameters are as described in the documentation for the
-//     /// relevant [rclone serve](/commands/rclone_serve/) command line options.
-//     /// To translate a command line option to an rc parameter, remove the
-//     /// leading `--` and replace `-` with `_`, so `--vfs-cache-mode` becomes
-//     /// `vfs_cache_mode`. Note that global parameters must be set with
-//     /// `_config` and `_filter` as described above.
-//     ///
-//     /// Examples:
-//     ///
-//     ///     rclone rc serve/start type=nfs fs=remote: addr=:4321 vfs_cache_mode=full
-//     ///     rclone rc serve/start --json '{"type":"nfs","fs":"remote:","addr":":1234","vfs_cache_mode":"full"}'
-//     ///
-//     /// This will give the reply
-//     ///
-//     /// ```json
-//     /// {
-//     ///     "addr": "[::]:4321", // Address the server was started on
-//     ///     "id": "nfs-ecfc6852" // Unique identifier for the server instance
-//     /// }
-//     /// ```
-//     ///
-//     /// Or an error if it failed to start.
-//     ///
-//     /// Stop the server with `serve/stop` and list the running servers with `serve/list`.
-//     pub const START: &str = "serve/start";
+    /// Create a new server.
+    ///
+    /// Create a new server with the specified parameters.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - `type` - type of server: `http`, `webdav`, `ftp`, `sftp`, `nfs`, etc.
+    /// - `fs` - remote storage path to serve
+    /// - `addr` - the ip:port to run the server on, eg ":1234" or "localhost:1234"
+    ///
+    /// Other parameters are as described in the documentation for the
+    /// relevant [rclone serve](/commands/rclone_serve/) command line options.
+    /// To translate a command line option to an rc parameter, remove the
+    /// leading `--` and replace `-` with `_`, so `--vfs-cache-mode` becomes
+    /// `vfs_cache_mode`. Note that global parameters must be set with
+    /// `_config` and `_filter` as described above.
+    ///
+    /// Examples:
+    ///
+    ///     rclone rc serve/start type=nfs fs=remote: addr=:4321 vfs_cache_mode=full
+    ///     rclone rc serve/start --json '{"type":"nfs","fs":"remote:","addr":":1234","vfs_cache_mode":"full"}'
+    ///
+    /// This will give the reply
+    ///
+    /// ```json
+    /// {
+    ///     "addr": "[::]:4321", // Address the server was started on
+    ///     "id": "nfs-ecfc6852" // Unique identifier for the server instance
+    /// }
+    /// ```
+    ///
+    /// Or an error if it failed to start.
+    ///
+    /// Stop the server with `serve/stop` and list the running servers with `serve/list`.
+    pub const START: &str = "serve/start";
 
-//     /// Unserve selected active serve.
-//     ///
-//     /// Stops a running `serve` instance by ID.
-//     ///
-//     /// This takes the following parameters:
-//     ///
-//     /// - id: as returned by serve/start
-//     ///
-//     /// This will give an empty response if successful or an error if not.
-//     ///
-//     /// Example:
-//     ///
-//     ///     rclone rc serve/stop id=12345
-//     pub const STOP: &str = "serve/stop";
+    /// Unserve selected active serve.
+    ///
+    /// Stops a running `serve` instance by ID.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - id: as returned by serve/start
+    ///
+    /// This will give an empty response if successful or an error if not.
+    ///
+    /// Example:
+    ///
+    ///     rclone rc serve/stop id=12345
+    pub const STOP: &str = "serve/stop";
 
-//     /// Stop all active servers.
-//     ///
-//     /// This will stop all active servers.
-//     ///
-//     ///     rclone rc serve/stopall
-//     pub const STOPALL: &str = "serve/stopall";
+    /// Stop all active servers.
+    ///
+    /// This will stop all active servers.
+    ///
+    ///     rclone rc serve/stopall
+    pub const STOPALL: &str = "serve/stopall";
 
-//     /// Show all possible serve types.
-//     ///
-//     /// This shows all possible serve types and returns them as a list.
-//     ///
-//     /// This takes no parameters and returns
-//     ///
-//     /// - types: list of serve types, eg "nfs", "sftp", etc
-//     ///
-//     /// The serve types are strings like "serve", "serve2", "cserve" and can
-//     /// be passed to serve/start as the serveType parameter.
-//     ///
-//     /// Eg
-//     ///
-//     ///     rclone rc serve/types
-//     ///
-//     /// Returns
-//     ///
-//     /// ```json
-//     /// {
-//     ///     "types": [
-//     ///         "http",
-//     ///         "sftp",
-//     ///         "nfs"
-//     ///     ]
-//     /// }
-//     /// ```
-//     pub const TYPES: &str = "serve/types";
-// }
+    /// Show all possible serve types.
+    ///
+    /// This shows all possible serve types and returns them as a list.
+    ///
+    /// This takes no parameters and returns
+    ///
+    /// - types: list of serve types, eg "nfs", "sftp", etc
+    ///
+    /// The serve types are strings like "serve", "serve2", "cserve" and can
+    /// be passed to serve/start as the serveType parameter.
+    ///
+    /// Eg
+    ///
+    ///     rclone rc serve/types
+    ///
+    /// Returns
+    ///
+    /// ```json
+    /// {
+    ///     "types": [
+    ///         "http",
+    ///         "sftp",
+    ///         "nfs"
+    ///     ]
+    /// }
+    /// ```
+    pub const TYPES: &str = "serve/types";
+}
 
 /// Endpoint utilities and helpers
 pub struct EndpointHelper;

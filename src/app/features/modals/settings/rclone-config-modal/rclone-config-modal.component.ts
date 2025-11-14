@@ -589,7 +589,7 @@ export class RcloneConfigModalComponent implements OnInit, OnDestroy {
     return `${this.currentPage}---${this.currentCategory}---${option.Name}`;
   }
 
-  @HostListener('document:keydown.escape', ['$event'])
+  @HostListener('document:keydown.escape')
   close(): void {
     this.dialogRef.close();
   }

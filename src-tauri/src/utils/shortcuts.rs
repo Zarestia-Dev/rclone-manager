@@ -2,7 +2,7 @@ use log::{debug, error};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
-use crate::{core::lifecycle::shutdown::handle_shutdown, utils::types::all_types::RcloneState};
+use crate::{RcloneState, core::lifecycle::shutdown::handle_shutdown};
 
 /// Handle global shortcut events
 pub fn handle_global_shortcut_event(app: &AppHandle, shortcut: Shortcut) {
@@ -33,8 +33,8 @@ pub fn handle_global_shortcut_event(app: &AppHandle, shortcut: Shortcut) {
         //                 if let Err(e) = app_clone.emit("notify_ui", "Refreshed mounted remotes") {
         //                     error!("Failed to emit notify_ui event: {e}");
         //                 }
-        //                 if let Err(e) = app_clone.emit("mount_cache_updated", ()) {
-        //                     error!("Failed to emit mount_cache_updated event: {e}");
+        //                 if let Err(e) = app_clone.emit("mount_state_changed", ()) {
+        //                     error!("Failed to emit mount_state_changed event: {e}");
         //                 }
         //             }
         //             Err(e) => {

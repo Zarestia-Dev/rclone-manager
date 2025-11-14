@@ -3,7 +3,7 @@ import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../../shared/services/notification.service';
 import { BehaviorSubject, firstValueFrom, Observable, Subject } from 'rxjs';
 import { map, distinctUntilChanged, filter, takeUntil, first } from 'rxjs/operators';
-import { CheckResult, SettingMetadata } from '@app/types';
+import { CheckResult, SettingMetadata, SYSTEM_SETTINGS_CHANGED } from '@app/types';
 
 @Injectable({
   providedIn: 'root',
@@ -19,7 +19,7 @@ export class AppSettingsService extends TauriBaseService implements OnDestroy {
   constructor() {
     super();
 
-    this.listenToEvent<Record<string, Record<string, any>>>('system_settings_changed')
+    this.listenToEvent<Record<string, Record<string, any>>>(SYSTEM_SETTINGS_CHANGED)
       .pipe(takeUntil(this.destroyed$))
       .subscribe(payload => {
         console.log('Received settings change from backend:', payload);

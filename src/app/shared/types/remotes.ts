@@ -1,4 +1,5 @@
 import { PrimaryActionType, SyncOperationType } from './operations';
+import { ServeListItem } from './serve';
 // ============================================================================
 // REMOTE CONFIGURATION & SPECS
 // ============================================================================
@@ -68,6 +69,11 @@ export interface Remote {
     isOnMove?: boolean;
     moveJobID?: number;
     isLocal?: boolean;
+  };
+  serveState?: {
+    hasActiveServes?: boolean;
+    serveCount?: number;
+    serves?: ServeListItem[];
   };
   primaryActions?: PrimaryActionType[];
   selectedSyncOperation?: SyncOperationType;

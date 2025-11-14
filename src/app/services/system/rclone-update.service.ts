@@ -71,28 +71,23 @@ export class RcloneUpdateService extends TauriBaseService implements OnDestroy {
   private setupEventListeners(): void {
     // Listen for engine update started
     this.eventListenersService
-      .listenToRcloneEngine()
+      .listenToRcloneEngineUpdating()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: async event => {
+        next: () => {
           try {
-            console.log('Rclone Engine event payload:', event);
-
-            if (typeof event === 'object' && event?.status === 'updating') {
-              this.updateStatus({ updating: true });
-            } else if (typeof event === 'object' && event?.status === 'updated') {
-              this.updateStatus({ updating: false });
-              this.checkForUpdates();
-            }
+            console.log('Rclone Engine updating started');
+            this.updateStatus({ updating: true });
           } catch (error) {
-            console.error('Error handling Rclone Engine event:', error);
+            console.error('Error handling Rclone Engine updating event:', error);
           }
         },
       });
 
-    // Listen for engine restarted
+    // Listen for engine restarted (indicates update completion)
     this.eventListenersService.listenToEngineRestarted().subscribe(event => {
-      if (event.payload.reason === 'rclone_update') {
+      if (event.reason === 'rclone_update') {
+        this.updateStatus({ updating: false });
         this.checkForUpdates();
       }
     });

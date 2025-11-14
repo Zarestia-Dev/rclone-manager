@@ -27,6 +27,7 @@ import {
   Remote,
   RemoteSettings,
   SettingsPanelConfig,
+  ScheduledTask,
 } from '@app/types';
 import {
   DiskUsagePanelComponent,
@@ -34,6 +35,9 @@ import {
   SettingsPanelComponent,
 } from '../../../../shared/detail-shared';
 import { IconService } from 'src/app/shared/services/icon.service';
+import { SchedulerService } from '@app/services';
+import { OnInit, OnDestroy } from '@angular/core';
+import { Subject, takeUntil } from 'rxjs';
 
 interface ActionConfig {
   key: PrimaryActionType;
@@ -103,9 +107,14 @@ const ACTION_CONFIGS: ActionConfig[] = [
   styleUrl: './general-detail.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class GeneralDetailComponent implements OnChanges {
+export class GeneralDetailComponent implements OnChanges, OnInit, OnDestroy {
   cdr = inject(ChangeDetectorRef);
   readonly iconService = inject(IconService);
+  private readonly schedulerService = inject(SchedulerService);
+  private readonly destroy$ = new Subject<void>();
+
+  // Scheduled tasks for this remote
+  remoteScheduledTasks: ScheduledTask[] = [];
 
   @Input() selectedRemote!: Remote;
   @Input() jobs: JobInfo[] = [];
@@ -126,9 +135,53 @@ export class GeneralDetailComponent implements OnChanges {
   readonly maxPrimaryActions = 3;
   readonly actionConfigs = ACTION_CONFIGS;
 
+  currentTaskCardIndex = 0;
+
+  ngOnInit(): void {
+    this.loadScheduledTasks();
+    this.setupScheduledTasksListener();
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['selectedRemote']) {
+      this.loadScheduledTasks();
       this.cdr.markForCheck();
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  private setupScheduledTasksListener(): void {
+    this.schedulerService.scheduledTasks$.pipe(takeUntil(this.destroy$)).subscribe({
+      next: (tasks: ScheduledTask[]) => {
+        this.updateRemoteScheduledTasks(tasks);
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private loadScheduledTasks(): void {
+    this.schedulerService.getScheduledTasks().catch(err => {
+      console.error('Error loading scheduled tasks:', err);
+    });
+  }
+
+  private updateRemoteScheduledTasks(allTasks: ScheduledTask[]): void {
+    if (!this.selectedRemote) {
+      this.remoteScheduledTasks = [];
+      this.currentTaskCardIndex = 0;
+      return;
+    }
+
+    this.remoteScheduledTasks = allTasks.filter(
+      task => task.args['remote_name'] === this.selectedRemote.remoteSpecs.name
+    );
+
+    if (this.currentTaskCardIndex >= this.remoteScheduledTasks.length) {
+      this.currentTaskCardIndex = 0;
     }
   }
 
@@ -214,5 +267,105 @@ export class GeneralDetailComponent implements OnChanges {
   // Track by function for better performance
   trackByActionKey(index: number, config: ActionConfig): PrimaryActionType {
     return config.key;
+  }
+
+  trackByTaskId(index: number, task: ScheduledTask): string {
+    return task.id;
+  }
+
+  // Scheduled tasks helpers
+  get hasScheduledTasks(): boolean {
+    return this.remoteScheduledTasks.length > 0;
+  }
+
+  getFormattedNextRun(task: ScheduledTask): string {
+    if (task.status === 'disabled') {
+      return 'Task is disabled';
+    }
+    if (task.status === 'stopping') {
+      return 'Disabling after current run';
+    }
+    if (!task.nextRun) return 'Not scheduled';
+    return new Date(task.nextRun).toLocaleString();
+  }
+
+  getFormattedLastRun(task: ScheduledTask): string {
+    if (!task.lastRun) return 'Never';
+    return new Date(task.lastRun).toLocaleString();
+  }
+
+  async toggleScheduledTask(taskId: string): Promise<void> {
+    try {
+      await this.schedulerService.toggleScheduledTask(taskId);
+    } catch (error) {
+      console.error('Error toggling scheduled task:', error);
+    }
+  }
+
+  nextTaskCard(): void {
+    if (this.currentTaskCardIndex < this.remoteScheduledTasks.length - 1) {
+      this.currentTaskCardIndex++;
+    }
+  }
+
+  previousTaskCard(): void {
+    if (this.currentTaskCardIndex > 0) {
+      this.currentTaskCardIndex--;
+    }
+  }
+
+  goToTaskCard(index: number): void {
+    this.currentTaskCardIndex = index;
+  }
+
+  get currentTask(): ScheduledTask | null {
+    return this.remoteScheduledTasks[this.currentTaskCardIndex] || null;
+  }
+
+  getTaskStatusTooltip(status: string): string {
+    switch (status) {
+      case 'enabled':
+        return 'Task is enabled and will run on schedule.';
+      case 'disabled':
+        return 'Task is disabled and will not run.';
+      case 'running':
+        return 'Task is currently running.';
+      case 'failed':
+        return 'Task failed on its last run.';
+      case 'stopping':
+        return 'Task is stopping and will be disabled after the current run finishes.';
+      default:
+        return '';
+    }
+  }
+
+  getToggleTooltip(status: string): string {
+    switch (status) {
+      case 'enabled':
+      case 'running':
+        return 'Disable task';
+      case 'disabled':
+      case 'failed':
+        return 'Enable task';
+      case 'stopping':
+        return 'Task is stopping...';
+      default:
+        return '';
+    }
+  }
+
+  getToggleIcon(status: string): string {
+    switch (status) {
+      case 'enabled':
+      case 'running':
+        return 'pause';
+      case 'disabled':
+      case 'failed':
+        return 'play';
+      case 'stopping':
+        return 'stop';
+      default:
+        return 'help';
+    }
   }
 }

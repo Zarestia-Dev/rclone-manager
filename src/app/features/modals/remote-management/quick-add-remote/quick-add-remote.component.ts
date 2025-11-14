@@ -35,6 +35,7 @@ import {
   MountManagementService,
   AppSettingsService,
   FileSystemService,
+  SchedulerService,
 } from '@app/services';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {
@@ -43,6 +44,10 @@ import {
   RemoteConfigSections,
   InteractiveFlowState,
   INTERACTIVE_REMOTES,
+  CopyConfig,
+  SyncConfig,
+  BisyncConfig,
+  MoveConfig,
 } from '@app/types';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { ValidatorRegistryService } from 'src/app/shared/services/validator-registry.service';
@@ -82,6 +87,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly mountManagementService = inject(MountManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
+  private readonly schedulerService = inject(SchedulerService);
   private readonly cdRef = inject(ChangeDetectorRef);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
 
@@ -103,6 +109,14 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     remoteData: { name: string; type: string };
     finalConfig: RemoteConfigSections;
   } | null = null;
+
+  // Store cron expressions for each operation type
+  private cronExpressions: {
+    sync?: string | null;
+    copy?: string | null;
+    bisync?: string | null;
+    move?: string | null;
+  } = {};
 
   constructor() {
     this.quickAddForm = this.createQuickAddForm();
@@ -167,6 +181,8 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     }
     return this.fb.group({
       autoStart: new FormControl(false),
+      cronEnabled: new FormControl(false),
+      cronExpression: new FormControl(''),
       source: this.createOperationPathGroup('currentRemote'),
       dest: this.createOperationPathGroup('local'),
     });
@@ -302,7 +318,10 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   async selectFolder(opName: string, pathType: 'source' | 'dest'): Promise<void> {
     try {
-      const selectedPath = await this.fileSystemService.selectFolder(true);
+      // Only require an empty folder when selecting a mount destination.
+      // Other operations (sync/copy/etc.) do not need an empty local folder.
+      const requireEmpty = opName === 'mount' && pathType === 'dest';
+      const selectedPath = await this.fileSystemService.selectFolder(requireEmpty);
       if (selectedPath) {
         let controlPath: string;
         if (opName === 'mount' && pathType === 'dest') {
@@ -383,10 +402,20 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
-    const createConfig = (op: any): { source: string; dest: string; autoStart: boolean } => ({
+    const createConfig = (
+      op: any
+    ): {
+      source: string;
+      dest: string;
+      autoStart: boolean;
+      cronEnabled?: boolean;
+      cronExpression?: string | null;
+    } => ({
       source: this.buildPathString(op.source, remoteName),
       dest: this.buildPathString(op.dest, remoteName),
       autoStart: op.autoStart || false,
+      cronEnabled: op.cronEnabled || false,
+      cronExpression: op.cronExpression || null,
     });
     return {
       mountConfig: { ...createConfig(operations.mount), type: 'mount' },
@@ -507,6 +536,13 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     }
   }
 
+  onCronExpressionChange(
+    operationType: 'sync' | 'copy' | 'bisync' | 'move',
+    cronExpression: string | null
+  ): void {
+    this.cronExpressions[operationType] = cronExpression;
+  }
+
   private async finalizeRemoteCreation(): Promise<void> {
     if (!this.pendingConfig) return;
     const { remoteData, finalConfig } = this.pendingConfig;
@@ -522,49 +558,44 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   ): Promise<void> {
     const { mountConfig, copyConfig, syncConfig, bisyncConfig, moveConfig } = finalConfig;
 
-    const operations = [
-      {
-        opName: 'mount',
-        config: mountConfig,
-        service: (): Promise<void> =>
-          this.mountManagementService.mountRemote(
-            remoteName,
-            mountConfig.source,
-            mountConfig.dest,
-            mountConfig.type
-          ),
-      },
-      {
-        opName: 'copy',
-        config: copyConfig,
-        service: (): Promise<number> =>
-          this.jobManagementService.startCopy(remoteName, copyConfig.source, copyConfig.dest),
-      },
-      {
-        opName: 'sync',
-        config: syncConfig,
-        service: (): Promise<number> =>
-          this.jobManagementService.startSync(remoteName, syncConfig.source, syncConfig.dest),
-      },
-      {
-        opName: 'bisync',
-        config: bisyncConfig,
-        service: (): Promise<number> =>
-          this.jobManagementService.startBisync(remoteName, bisyncConfig.source, bisyncConfig.dest),
-      },
-      {
-        opName: 'move',
-        config: moveConfig,
-        service: (): Promise<number> =>
-          this.jobManagementService.startMove(remoteName, moveConfig.source, moveConfig.dest),
-      },
-    ];
-
-    for (const { opName, config, service } of operations) {
-      if (config.autoStart && (opName === 'mount' ? config.dest : config.source && config.dest)) {
-        await service();
-      }
+    // Mount operations (always run immediately if autoStart is enabled)
+    if (mountConfig.autoStart && mountConfig.dest) {
+      await this.mountManagementService.mountRemote(
+        remoteName,
+        mountConfig.source,
+        mountConfig.dest,
+        mountConfig.type
+      );
     }
+
+    // Helper to handle operation with cron or immediate execution
+    const handleOperation = async (
+      opType: 'copy' | 'sync' | 'bisync' | 'move',
+      config: CopyConfig | SyncConfig | BisyncConfig | MoveConfig
+    ): Promise<void> => {
+      if (!config.autoStart || !config.source || !config.dest) return;
+
+      switch (opType) {
+        case 'copy':
+          await this.jobManagementService.startCopy(remoteName, config.source, config.dest);
+          break;
+        case 'sync':
+          await this.jobManagementService.startSync(remoteName, config.source, config.dest);
+          break;
+        case 'bisync':
+          await this.jobManagementService.startBisync(remoteName, config.source, config.dest);
+          break;
+        case 'move':
+          await this.jobManagementService.startMove(remoteName, config.source, config.dest);
+          break;
+      }
+    };
+
+    // Handle each operation type
+    await handleOperation('copy', copyConfig);
+    await handleOperation('sync', syncConfig);
+    await handleOperation('bisync', bisyncConfig);
+    await handleOperation('move', moveConfig);
   }
 
   async cancelAuth(): Promise<void> {
@@ -597,7 +628,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     return remote ? remote.label : 'Select Remote Type';
   }
 
-  @HostListener('document:keydown.escape', ['$event'])
+  @HostListener('document:keydown.escape')
   close(): void {
     if (!this.isAuthInProgress) {
       this.dialogRef.close();

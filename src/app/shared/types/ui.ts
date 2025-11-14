@@ -1,4 +1,4 @@
-export type AppTab = 'mount' | 'sync' | 'files' | 'general';
+export type AppTab = 'mount' | 'sync' | 'serve' | 'general';
 
 export interface ModalSize {
   width: string;
@@ -43,14 +43,6 @@ export interface ExportOption {
   readonly value: ExportType;
   readonly label: string;
   readonly description: string;
-}
-
-export interface InputField {
-  name: string;
-  label: string;
-  type: 'text' | 'password' | 'number' | 'select' | 'folder';
-  required: boolean;
-  options?: string[]; // for select type
 }
 
 export interface ToastMessage {

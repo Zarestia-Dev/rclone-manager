@@ -1,12 +1,13 @@
 {
   "name": "rclone-manager",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "tauri": "tauri",
+    "headless": "npm run build && cd src-tauri && cargo run --bin rclone-manager-headless --features web-server -- --port 8080",
     "lint": "ng lint",
     "lint:fix": "ng lint --fix",
     "format": "prettier --write \"src/**/*.{ts,html,scss,json}\"",
@@ -53,6 +54,8 @@
     "@tauri-apps/plugin-store": "^2.2.0",
     "@tauri-apps/plugin-updater": "^2.9.0",
     "chart.js": "^4.4.9",
+    "cronstrue": "^3.9.0",
+    "ngx-mat-timepicker": "^20.0.1",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"

@@ -1,11 +1,11 @@
 import { Injectable, inject } from '@angular/core';
-import { invoke } from '@tauri-apps/api/core';
 import { BehaviorSubject, interval, Subscription } from 'rxjs';
 import { debounceTime, takeWhile } from 'rxjs/operators';
 import { NotificationService } from '../../shared/services/notification.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { UpdateStateService } from './update-state.service';
 import { UpdateMetadata } from '@app/types';
+import { TauriBaseService } from '../core/tauri-base.service';
 
 export interface DownloadStatus {
   downloadedBytes: number;
@@ -19,7 +19,7 @@ export interface DownloadStatus {
 @Injectable({
   providedIn: 'root',
 })
-export class AppUpdaterService {
+export class AppUpdaterService extends TauriBaseService {
   private notificationService = inject(NotificationService);
   private appSettingsService = inject(AppSettingsService);
   private updateStateService = inject(UpdateStateService);
@@ -63,7 +63,7 @@ export class AppUpdaterService {
         return null;
       }
 
-      const result = await invoke<UpdateMetadata | null>('fetch_update', {
+      const result = await this.invokeCommand<UpdateMetadata | null>('fetch_update', {
         channel: this.updateChannelSubject.value,
       });
 
@@ -111,7 +111,7 @@ export class AppUpdaterService {
       this.startStatusPolling();
 
       // Start the download/install process
-      await invoke('install_update');
+      await this.invokeCommand('install_update');
 
       // The polling will automatically detect when the download is complete
       // and handle the UI updates
@@ -133,7 +133,7 @@ export class AppUpdaterService {
       )
       .subscribe(async () => {
         try {
-          const status = await invoke<DownloadStatus>('get_download_status');
+          const status = await this.invokeCommand<DownloadStatus>('get_download_status');
           this.downloadStatusSubject.next(status);
 
           // If backend reported a failure, stop polling and notify
@@ -295,7 +295,7 @@ export class AppUpdaterService {
         this.getSkippedVersions(),
         this.getChannel(),
         this.checkIfUpdatesDisabled(),
-        invoke<string>('get_build_type'),
+        this.invokeCommand<string>('get_build_type'),
       ]);
 
       this.skippedVersionsSubject.next(skippedVersions);
@@ -316,7 +316,7 @@ export class AppUpdaterService {
 
   private async checkIfUpdatesDisabled(): Promise<boolean> {
     try {
-      return await invoke<boolean>('are_updates_disabled');
+      return await this.invokeCommand<boolean>('are_updates_disabled');
     } catch (error) {
       console.error('Failed to check if updates are disabled:', error);
       return false; // Default to allowing updates if check fails

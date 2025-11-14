@@ -25,10 +25,10 @@
   </button>
   <button
     matIconButton
-    matTooltip="File"
-    (click)="tabSelected.emit('files')"
-    [class.selected]="currentTab === 'files'"
+    matTooltip="Serve"
+    (click)="tabSelected.emit('serve')"
+    [class.selected]="currentTab === 'serve'"
   >
-    <mat-icon svgIcon="file-operations"></mat-icon>
+    <mat-icon svgIcon="satellite-dish"></mat-icon>
   </button>
 </div>

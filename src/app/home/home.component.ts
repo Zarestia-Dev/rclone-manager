@@ -33,6 +33,7 @@ import {
   RemoteSettings,
   STANDARD_MODAL_SIZE,
   SyncOperationType,
+  ServeListItem,
 } from '@app/types';
 
 // App Components
@@ -41,6 +42,8 @@ import { GeneralDetailComponent } from '../features/components/dashboard/general
 import { GeneralOverviewComponent } from '../features/components/dashboard/general-overview/general-overview.component';
 import { AppDetailComponent } from '../features/components/dashboard/app-detail/app-detail.component';
 import { AppOverviewComponent } from '../features/components/dashboard/app-overview/app-overview.component';
+import { ServeOverviewComponent } from '../features/components/dashboard/serve-overview/serve-overview.component';
+import { ServeDetailComponent } from '../features/components/dashboard/serve-detail/serve-detail.component';
 import { LogsModalComponent } from '../features/modals/monitoring/logs-modal/logs-modal.component';
 import { ExportModalComponent } from '../features/modals/settings/export-modal/export-modal.component';
 import { RemoteConfigModalComponent } from '../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
@@ -58,6 +61,7 @@ import {
   JobManagementService,
   SystemInfoService,
   AppSettingsService,
+  ServeManagementService,
 } from '@app/services';
 
 @Component({
@@ -79,6 +83,8 @@ import {
     GeneralOverviewComponent,
     AppDetailComponent,
     AppOverviewComponent,
+    ServeOverviewComponent,
+    ServeDetailComponent,
     LoadingOverlayComponent,
   ],
   templateUrl: './home.component.html',
@@ -93,6 +99,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly uiStateService = inject(UiStateService);
   private readonly mountManagementService = inject(MountManagementService);
+  private readonly serveManagementService = inject(ServeManagementService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
@@ -121,6 +128,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   remotes: Remote[] = [];
   mountedRemotes: MountedRemote[] = [];
   mountedRemotes$ = this.mountManagementService.mountedRemotes$;
+  runningServes$ = this.serveManagementService.runningServes$;
+  runningServes: ServeListItem[] = [];
   selectedRemote: Remote | null = null;
   remoteSettings: RemoteSettings = {};
 
@@ -197,6 +206,13 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.updateRemoteMountStates();
       this.cdr.markForCheck();
     });
+
+    // Subscribe to running serves changes and keep local copy to pass to child components
+    this.runningServes$.pipe(takeUntil(this.destroy$)).subscribe(serves => {
+      this.runningServes = serves || [];
+      this.updateRemoteServeStates();
+      this.cdr.markForCheck();
+    });
   }
 
   private async loadInitialData(): Promise<void> {
@@ -216,6 +232,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   private async refreshData(): Promise<void> {
     await this.getRemoteSettings(); // Load settings first
     await this.mountManagementService.getMountedRemotes(); // This will trigger the observable
+    await this.serveManagementService.refreshServes();
+    this.runningServes = this.serveManagementService.getRunningServes(); // Ensure serves are loaded before remotes
     await this.loadRemotes(); // Then remotes
     await this.loadJobs();
   }
@@ -226,6 +244,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.remotes = this.createRemotesFromConfigs(remoteConfigs);
       await this.loadActiveJobs();
       this.loadDiskUsageInBackground(); // Fire and forget
+
       this.cdr.markForCheck();
     } catch (error) {
       this.handleError('Failed to load remotes', error);
@@ -247,6 +266,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     return Object.keys(remoteConfigs).map(name => {
       const existingRemote = this.remotes.find(r => r.remoteSpecs.name === name);
       const settings = this.loadRemoteSettings(name);
+      const remoteServes = this.runningServes.filter(s => {
+        const remoteName = s.params.fs.split(':')[0];
+        return remoteName === name;
+      });
       return {
         remoteSpecs: { name, ...remoteConfigs[name] },
         primaryActions: settings?.primaryActions || [],
@@ -257,6 +280,11 @@ export class HomeComponent implements OnInit, OnDestroy {
           loading: true,
         },
         mountState: { mounted: mountedSet.has(name) },
+        serveState: {
+          hasActiveServes: remoteServes.length > 0,
+          serveCount: remoteServes.length,
+          serves: remoteServes,
+        },
         syncState: this.getInitialJobState(settings, 'sync', existingRemote?.syncState),
         copyState: this.getInitialJobState(settings, 'copy', existingRemote?.copyState),
         bisyncState: this.getInitialJobState(settings, 'bisync', existingRemote?.bisyncState),
@@ -372,7 +400,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   // ============================================================================
   private setupTauriListeners(): void {
     this.listenToAppEvents();
-    this.listenToNotifyUi();
+    // this.listenToNotifyUi();
     this.listenToMountCache();
     this.listenToRemoteCache();
     this.listenToRcloneEngine();
@@ -396,22 +424,21 @@ export class HomeComponent implements OnInit, OnDestroy {
       });
   }
 
-  private listenToNotifyUi(): void {
-    this.eventListenersService
-      .listenToNotifyUi()
-      .pipe(
-        takeUntil(this.destroy$),
-        catchError(error => (console.error('Event listener error (NotifyUi):', error), EMPTY))
-      )
-      .subscribe({
-        next: event => {
-          const message = event.payload;
-          if (message) {
-            this.notificationService.openSnackBar(message, 'Close');
-          }
-        },
-      });
-  }
+  // private listenToNotifyUi(): void {
+  //   this.eventListenersService
+  //     .listenToNotifyUi()
+  //     .pipe(
+  //       takeUntil(this.destroy$),
+  //       catchError(error => (console.error('Event listener error (NotifyUi):', error), EMPTY))
+  //     )
+  //     .subscribe({
+  //       next: message => {
+  //         if (message) {
+  //           this.notificationService.openSnackBar(message, 'Close');
+  //         }
+  //       },
+  //     });
+  // }
 
   private listenToMountCache(): void {
     this.eventListenersService
@@ -426,7 +453,7 @@ export class HomeComponent implements OnInit, OnDestroy {
             // Just trigger a refresh - the observable subscription will handle the update
             await this.mountManagementService.getMountedRemotes();
           } catch (error) {
-            this.handleError('Error handling mount_cache_updated', error);
+            this.handleError('Error handling mount_state_changed', error);
           }
         },
       });
@@ -455,21 +482,21 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private listenToRcloneEngine(): void {
     this.eventListenersService
-      .listenToRcloneEngine()
+      .listenToRcloneEngineReady()
       .pipe(
         takeUntil(this.destroy$),
-        catchError(error => (console.error('Event listener error (RcloneEngine):', error), EMPTY))
+        catchError(
+          error => (console.error('Event listener error (RcloneEngineReady):', error), EMPTY)
+        )
       )
       .subscribe({
-        next: async event => {
+        next: async () => {
           try {
-            if (typeof event === 'object' && event?.status === 'ready') {
-              await this.refreshData();
-              await this.loadRestrictMode();
-              this.cdr.markForCheck();
-            }
+            await this.refreshData();
+            await this.loadRestrictMode();
+            this.cdr.markForCheck();
           } catch (error) {
-            this.handleError('Error handling rclone_engine', error);
+            this.handleError('Error handling rclone_engine_ready', error);
           }
         },
       });
@@ -615,6 +642,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         },
         `Failed to delete remote ${remoteName}`
       );
+      this.uiStateService.setSelectedRemote(null);
     } catch (error) {
       this.handleError(`Failed to delete remote ${remoteName}`, error);
     }
@@ -697,6 +725,15 @@ export class HomeComponent implements OnInit, OnDestroy {
               settings.backendConfig
             );
             break;
+          case 'serve':
+            await this.serveManagementService.startServe(
+              remoteName,
+              config.options,
+              config.filterConfig,
+              config.backendConfig,
+              config.vfsConfig
+            );
+            break;
           default:
             throw new Error(`Unsupported operation type: ${operationType}`);
         }
@@ -705,13 +742,16 @@ export class HomeComponent implements OnInit, OnDestroy {
     );
   }
 
-  async stopJob(type: PrimaryActionType, remoteName: string): Promise<void> {
+  async stopJob(type: PrimaryActionType, remoteName: string, serveId?: string): Promise<void> {
     await this.executeRemoteAction(
       remoteName,
       'stop',
       async () => {
         if (type === 'mount') {
           await this.unmountRemote(remoteName);
+        } else if (type === 'serve') {
+          if (!serveId) throw new Error('Serve ID is required to stop a serve');
+          await this.serveManagementService.stopServe(serveId, remoteName);
         } else {
           const remote = this.remotes.find(r => r.remoteSpecs.name === remoteName);
           const jobId = this.getJobIdForOperation(remote, type as SyncOperationType);
@@ -744,7 +784,11 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
   }
 
-  openRemoteConfigModal(editTarget?: string, existingConfig?: RemoteSettings): void {
+  openRemoteConfigModal(
+    editTarget?: string,
+    existingConfig?: RemoteSettings,
+    initialSection?: string
+  ): void {
     this.dialog.open(RemoteConfigModalComponent, {
       ...STANDARD_MODAL_SIZE,
       disableClose: true,
@@ -753,6 +797,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         editTarget,
         existingConfig,
         restrictMode: this.restrictMode,
+        initialSection,
       },
     });
   }
@@ -1005,6 +1050,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       copy: () => settings?.copyConfig?.dest,
       bisync: () => settings?.bisyncConfig?.dest,
       move: () => settings?.moveConfig?.dest,
+      serve: () => settings?.serveConfig?.dest,
     };
     const getPath = configMap[usePath];
     if (!getPath) {
@@ -1048,6 +1094,25 @@ export class HomeComponent implements OnInit, OnDestroy {
         mountState: {
           ...remote.mountState,
           mounted: this.isRemoteMounted(remote.remoteSpecs.name),
+        },
+      };
+      this.updateRemoteInList(updatedRemote);
+    });
+  }
+
+  private updateRemoteServeStates(): void {
+    const serves = this.serveManagementService.getRunningServes();
+    this.remotes.forEach(remote => {
+      const remoteServes = serves.filter(s => {
+        const remoteName = s.params.fs.split(':')[0];
+        return remoteName === remote.remoteSpecs.name;
+      });
+      const updatedRemote = {
+        ...remote,
+        serveState: {
+          hasActiveServes: remoteServes.length > 0,
+          serveCount: remoteServes.length,
+          serves: remoteServes,
         },
       };
       this.updateRemoteInList(updatedRemote);

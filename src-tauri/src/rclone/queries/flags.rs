@@ -5,7 +5,7 @@ use tokio::try_join;
 
 use crate::{
     RcloneState,
-    rclone::state::ENGINE_STATE,
+    rclone::state::engine::ENGINE_STATE,
     utils::rclone::endpoints::{EndpointHelper, options},
 };
 
@@ -57,7 +57,6 @@ async fn fetch_option_blocks(
 }
 
 // --- DATA TRANSFORMATION LOGIC ---
-
 fn merge_options(options_info: &mut Value, current_options: &Value) {
     if let Some(info_map) = options_info.as_object_mut() {
         for (block_name, options_array) in info_map {
@@ -148,10 +147,9 @@ fn group_options(merged_info: &Value) -> Value {
         }
     }
     final_grouped_data
-} // --- MASTER DATA COMMANDS ---
+}
 
-/// **MASTER COMMAND 1**: Fetches, merges, and returns a flat list of options.
-/// Used internally by all `get_..._flags` commands.
+// --- MASTER DATA COMMANDS ---
 #[command]
 pub async fn get_all_options_with_values(state: State<'_, RcloneState>) -> Result<Value, String> {
     let (mut options_info, current_options) = try_join!(
@@ -164,7 +162,6 @@ pub async fn get_all_options_with_values(state: State<'_, RcloneState>) -> Resul
     Ok(options_info)
 }
 
-/// **MASTER COMMAND 2**: Fetches, merges, and GROUPS options for the main config UI.
 #[command]
 pub async fn get_grouped_options_with_values(
     state: State<'_, RcloneState>,
@@ -175,14 +172,11 @@ pub async fn get_grouped_options_with_values(
 }
 
 // --- GENERAL & FLAG-SPECIFIC COMMANDS ---
-
-/// Gets a simple list of block names (e.g., "main", "vfs").
 #[command]
 pub async fn get_option_blocks(state: State<'_, RcloneState>) -> Result<Value, String> {
     fetch_option_blocks(state).await.map_err(|e| e.to_string())
 }
 
-/// Generic internal helper to filter flags by group and name.
 fn get_flags_by_category_internal(
     merged_json: &Value,
     category: &str,
@@ -214,7 +208,6 @@ fn get_flags_by_category_internal(
         .collect()
 }
 
-/// A generic public command to get flags for a category with optional filters.
 #[command]
 pub async fn get_flags_by_category(
     state: State<'_, RcloneState>,
@@ -231,7 +224,6 @@ pub async fn get_flags_by_category(
     ))
 }
 
-/// Fetches flags for copy operations.
 #[command]
 pub async fn get_copy_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(state).await?;
@@ -243,7 +235,6 @@ pub async fn get_copy_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>,
     ))
 }
 
-/// Fetches flags for sync operations.
 #[command]
 pub async fn get_sync_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(state).await?;
@@ -259,7 +250,6 @@ pub async fn get_sync_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>,
     ))
 }
 
-/// Fetches filter flags, excluding metadata-related ones.
 #[command]
 pub async fn get_filter_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(state).await?;
@@ -285,7 +275,6 @@ pub async fn get_filter_flags(state: State<'_, RcloneState>) -> Result<Vec<Value
     Ok(filtered)
 }
 
-/// **IMPROVED**: Fetches a specific set of "backend" flags, now using the efficient master command.
 #[command]
 pub async fn get_backend_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(state).await?;
@@ -316,7 +305,6 @@ pub async fn get_backend_flags(state: State<'_, RcloneState>) -> Result<Vec<Valu
     Ok(backend_flags)
 }
 
-/// Fetches VFS flags.
 #[command]
 pub async fn get_vfs_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(state).await?;
@@ -328,7 +316,6 @@ pub async fn get_vfs_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, 
     ))
 }
 
-/// Fetches mount flags.
 #[command]
 pub async fn get_mount_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
     let merged_json = get_all_options_with_values(state).await?;

@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use tauri::Emitter;
 use tauri::command;
 
-use crate::utils::types::all_types::{CheckResult, LinkChecker};
+use crate::utils::types::{
+    all_types::{CheckResult, LinkChecker},
+    events::NETWORK_STATUS_CHANGED,
+};
 
 #[command]
 pub async fn check_links(
@@ -177,7 +180,7 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
             is_metered: is_metered(),
         };
 
-        if let Err(e) = app_handle.emit("network-status-changed", payload) {
+        if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
             error!("Failed to emit network status change event: {e}");
         }
     }
@@ -195,8 +198,11 @@ pub fn is_metered() -> bool {
 #[cfg(target_os = "macos")]
 pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
     // Always emit is_metered: false, since macOS does not support metered detection.
+    use log::error;
     let payload = NetworkStatusPayload { is_metered: false };
-    app_handle.emit("network-status-changed", payload).unwrap();
+    if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
+        error!("Failed to emit network status change event: {e}");
+    }
 
     // Optionally, you can skip the loop entirely, or just sleep forever.
     // loop { tokio::time::sleep(std::time::Duration::from_secs(3600)).await; }
@@ -206,28 +212,41 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
 pub fn is_metered() -> bool {
     use windows::Networking::Connectivity::{NetworkCostType, NetworkInformation};
 
-    let profile = NetworkInformation::GetInternetConnectionProfile().unwrap();
-    let cost = profile.GetConnectionCost().unwrap();
+    let profile = match NetworkInformation::GetInternetConnectionProfile() {
+        Ok(p) => p,
+        Err(_) => return false,
+    };
+    let cost = match profile.GetConnectionCost() {
+        Ok(c) => c,
+        Err(_) => return false,
+    };
 
     matches!(
-        cost.NetworkCostType().unwrap(),
+        cost.NetworkCostType()
+            .unwrap_or(NetworkCostType::Unrestricted),
         NetworkCostType::Fixed | NetworkCostType::Variable
     )
 }
 
 #[cfg(windows)]
 pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
+    use log::error;
     use windows::Networking::Connectivity::{NetworkInformation, NetworkStatusChangedEventHandler};
 
     let handler = NetworkStatusChangedEventHandler::new(move |_| {
         let payload = NetworkStatusPayload {
             is_metered: is_metered(),
         };
-        app_handle.emit("network-status-changed", payload).unwrap();
+        if let Err(e) = app_handle.emit(NETWORK_STATUS_CHANGED, payload) {
+            error!("Failed to emit network status change event: {e}");
+        }
         Ok(())
     });
 
-    let _token = NetworkInformation::NetworkStatusChanged(&handler).unwrap();
+    if let Err(e) = NetworkInformation::NetworkStatusChanged(&handler) {
+        error!("Failed to register network status changed handler: {e}");
+        return;
+    }
 }
 
 #[tauri::command]

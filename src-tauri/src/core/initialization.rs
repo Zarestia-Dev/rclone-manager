@@ -1,18 +1,22 @@
 use log::{debug, error, info};
 use std::path::PathBuf;
-use tauri::Manager;
+use tauri::{AppHandle, Manager};
 
 use crate::{
-    core::event_listener::setup_event_listener,
+    core::{event_listener::setup_event_listener, scheduler::engine::CronScheduler},
     rclone::{
-        commands::set_bandwidth_limit,
+        commands::system::set_bandwidth_limit,
         queries::flags::set_rclone_option,
-        state::{CACHE, ENGINE_STATE},
+        state::{
+            engine::ENGINE_STATE,
+            scheduled_tasks::ScheduledTasksCache,
+            watcher::{start_mounted_remote_watcher, start_serve_watcher},
+        },
     },
     utils::{
         app::builder::setup_tray,
         types::{
-            all_types::{RcApiEngine, RcloneState},
+            all_types::{RcApiEngine, RcloneState, RemoteCache},
             settings::AppSettings,
         },
     },
@@ -55,22 +59,44 @@ pub fn setup_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String
 }
 
 /// Handles async startup tasks
-pub async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) {
+pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings) {
     debug!("🚀 Starting async startup tasks");
 
     setup_event_listener(&app_handle);
 
-    // TODO: Register global shortcuts once tauri-plugin-global-shortcut API is clarified
-    // if let Err(e) = register_global_shortcuts(&app_handle) {
-    //     error!("Failed to register global shortcuts: {}", e);
-    // }
+    // Step 1: Refresh caches FIRST (need data for scheduler)
+    info!("📊 Refreshing caches...");
+    let cache = app_handle.state::<RemoteCache>();
 
-    CACHE.refresh_all(app_handle.clone()).await;
-    debug!("🔄 Cache refreshed");
+    match cache.refresh_all(app_handle.clone()).await {
+        Ok(_) => {
+            info!("✅ Caches refreshed successfully");
+        }
+        Err(e) => {
+            error!("❌ Failed to refresh caches: {e}");
+        }
+    }
 
-    // Check if --tray argument is provided to override settings
+    // Step 2: Initialize and start scheduler with loaded config
+    info!("⏰ Initializing cron scheduler...");
+    match initialize_scheduler(app_handle.clone()).await {
+        Ok(_) => {
+            info!("✅ Cron scheduler initialized and started successfully");
+        }
+        Err(e) => {
+            error!("❌ Failed to initialize cron scheduler: {}", e);
+        }
+    }
+
+    // Step 3: Start watchers
+    info!("📡 Starting mounted remote watcher...");
+    tokio::spawn(start_mounted_remote_watcher(app_handle.clone()));
+
+    info!("📡 Starting serve watcher...");
+    start_serve_watcher(app_handle.clone());
+
+    // Step 4: Setup tray if needed
     let force_tray = std::env::args().any(|arg| arg == "--tray");
-
     if settings.general.tray_enabled || force_tray {
         if force_tray {
             debug!("🧊 Setting up tray (forced by --tray argument)");
@@ -81,6 +107,31 @@ pub async fn async_startup(app_handle: tauri::AppHandle, settings: AppSettings) 
             error!("Failed to setup tray: {e}");
         }
     }
+
+    info!("🎉 Initialization complete");
+}
+
+/// Initialize the cron scheduler with tasks loaded from remote configs
+async fn initialize_scheduler(app_handle: AppHandle) -> Result<(), String> {
+    let cache_state = app_handle.state::<ScheduledTasksCache>();
+    let scheduler_state = app_handle.state::<CronScheduler>();
+    let remote_cache = app_handle.state::<RemoteCache>();
+
+    let settings = remote_cache.get_settings().await;
+    let all_settings = serde_json::json!(settings.clone());
+
+    info!("📋 Loading scheduled tasks from remote configs...");
+    let task_count = cache_state
+        .load_from_remote_configs(&all_settings, scheduler_state.clone())
+        .await?;
+
+    info!("📅 Loaded {} scheduled task(s)", task_count);
+
+    scheduler_state.initialize(app_handle.clone()).await?;
+    scheduler_state.start().await?;
+    scheduler_state.reload_tasks(cache_state).await?;
+
+    Ok(())
 }
 
 pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSettings) {
@@ -106,19 +157,6 @@ pub async fn apply_core_settings(app_handle: &tauri::AppHandle, settings: &AppSe
     if let Err(e) = apply_backend_settings(app_handle).await {
         error!("Failed to apply backend settings: {e}");
     }
-
-    // if !settings.core.rclone_config_file.is_empty() {
-    //     debug!(
-    //         "🔗 Setting Rclone config path: {}",
-    //         settings.core.rclone_config_file
-    //     );
-    //     if let Err(e) =
-    //         set_rclone_config_file(app_handle.clone(), settings.core.rclone_config_file.clone())
-    //             .await
-    //     {
-    //         error!("Failed to set Rclone config path: {e}");
-    //     }
-    // }
 }
 
 /// Apply RClone backend settings from backend.json file
@@ -127,14 +165,12 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
 
     debug!("🔧 Applying RClone backend settings from backend.json");
 
-    // Load backend options from store
     let backend_options = load_rclone_backend_options(app_handle.clone())
         .await
         .map_err(|e| format!("Failed to load backend options: {}", e))?;
 
     let rclone_state = app_handle.state::<RcloneState>();
 
-    // Apply each block's options
     if let Some(backend_obj) = backend_options.as_object() {
         for (block_name, block_options) in backend_obj {
             if let Some(options_obj) = block_options.as_object() {
@@ -156,7 +192,6 @@ pub async fn apply_backend_settings(app_handle: &tauri::AppHandle) -> Result<(),
                             "Failed to set RClone option {}.{}: {}",
                             block_name, option_name, e
                         );
-                        // Continue with other options even if one fails
                     }
                 }
             }

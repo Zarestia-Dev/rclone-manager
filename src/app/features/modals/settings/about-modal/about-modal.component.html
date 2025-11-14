@@ -93,30 +93,40 @@
       @if (currentPage === 'details') {
         <div class="overlay-content">
           <div class="stacked-buttons">
-            <button
+            <a
               matButton
               class="about-item"
-              (click)="openLink('https://github.com/Zarestia-Dev/rclone-manager')"
+              href="https://github.com/Zarestia-Dev/rclone-manager"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               <span>Website</span>
               <mat-icon svgIcon="open-link"></mat-icon>
-            </button>
+            </a>
             <mat-divider></mat-divider>
-            <button
+            <a
               matButton
               class="about-item"
-              (click)="openLink('https://github.com/Zarestia-Dev/rclone-manager/issues')"
+              href="https://github.com/Zarestia-Dev/rclone-manager/issues"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               <span>Report Issues</span>
               <mat-icon svgIcon="open-link"></mat-icon>
-            </button>
+            </a>
           </div>
 
           <div class="about-list">
-            <button matButton class="about-item" (click)="openLink('https://rclone.org')">
+            <a
+              matButton
+              class="about-item"
+              href="https://rclone.org"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <span>Rclone Website</span>
               <mat-icon svgIcon="open-link"></mat-icon>
-            </button>
+            </a>
           </div>
         </div>
       }
@@ -316,14 +326,16 @@
                       }
                     </div>
                     @if (updateAvailable.releaseUrl) {
-                      <button
+                      <a
                         mat-stroked-button
-                        (click)="openLink(updateAvailable.releaseUrl)"
+                        [href]="updateAvailable.releaseUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         class="view-on-github"
                       >
                         <mat-icon svgIcon="open-link"></mat-icon>
                         View on GitHub
-                      </button>
+                      </a>
                     }
                   </div>
 
@@ -570,14 +582,16 @@
                       }
                     </div>
                     @if (updateAvailable.releaseUrl) {
-                      <button
+                      <a
                         mat-stroked-button
-                        (click)="openLink(updateAvailable.releaseUrl)"
+                        [href]="updateAvailable.releaseUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         class="view-on-github"
                       >
                         <mat-icon svgIcon="open-link"></mat-icon>
                         View on GitHub
-                      </button>
+                      </a>
                     }
                   </div>
 
@@ -604,14 +618,16 @@
                       }
                     </div>
                     @if (rcloneUpdateStatus.updateInfo.release_url) {
-                      <button
+                      <a
                         mat-stroked-button
-                        (click)="openLink(rcloneUpdateStatus.updateInfo.release_url)"
+                        [href]="rcloneUpdateStatus.updateInfo.release_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         class="view-on-github"
                       >
                         <mat-icon svgIcon="open-link"></mat-icon>
                         View on GitHub
-                      </button>
+                      </a>
                     }
                   </div>
 
@@ -649,13 +665,14 @@
           <h4>License</h4>
           <p>
             This application is free and open source software distributed under the
-            <button
-              type="button"
+            <a
               class="link-button"
-              (click)="openLink('https://www.gnu.org/licenses/gpl-3.0.html')"
+              href="https://www.gnu.org/licenses/gpl-3.0.html"
+              target="_blank"
+              rel="noopener noreferrer"
             >
               GNU General Public License v3
-            </button>
+            </a>
             or later.
           </p>
 

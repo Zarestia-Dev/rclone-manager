@@ -3,7 +3,7 @@ use serde_json::json;
 use tauri::State;
 
 use crate::RcloneState;
-use crate::rclone::state::ENGINE_STATE;
+use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{EndpointHelper, core};
 
 /// Utility to normalize Windows extended-length paths (e.g., //?/C:/path or \\?\C:\path) to C:/path, only on Windows

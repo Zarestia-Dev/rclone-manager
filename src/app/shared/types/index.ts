@@ -1,4 +1,5 @@
 export * from './components';
+export * from './events';
 export * from './jobs';
 export * from './logs';
 export * from './maintenance';
@@ -6,5 +7,7 @@ export * from './operations';
 export * from './params';
 export * from './remote-config';
 export * from './remotes';
+export * from './scheduler';
+export * from './serve';
 export * from './system';
 export * from './ui';

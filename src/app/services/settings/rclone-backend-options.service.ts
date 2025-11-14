@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { RcConfigOption } from '@app/types';
-import { invoke } from '@tauri-apps/api/core';
+import { TauriBaseService } from '../core/tauri-base.service';
 
 type RCloneOptionsInfo = Record<string, RcConfigOption[]>;
 
@@ -13,10 +13,10 @@ type RCloneOptionsInfo = Record<string, RcConfigOption[]>;
 @Injectable({
   providedIn: 'root',
 })
-export class RcloneBackendOptionsService {
+export class RcloneBackendOptionsService extends TauriBaseService {
   async getOptionBlocks(): Promise<string[]> {
     try {
-      const response = await invoke<{ options: string[] }>('get_option_blocks');
+      const response = await this.invokeCommand<{ options: string[] }>('get_option_blocks');
       return response.options;
     } catch (error) {
       console.error('Failed to get RClone option blocks:', error);
@@ -26,7 +26,7 @@ export class RcloneBackendOptionsService {
 
   async getAllOptionsInfo(): Promise<RCloneOptionsInfo> {
     try {
-      const response = await invoke<RCloneOptionsInfo>('get_all_options_info');
+      const response = await this.invokeCommand<RCloneOptionsInfo>('get_all_options_info');
       return response;
     } catch (error) {
       console.error('Failed to get all RClone options info:', error);
@@ -36,7 +36,7 @@ export class RcloneBackendOptionsService {
 
   async setRCloneOption(block: string, option: string, value: unknown): Promise<void> {
     try {
-      await invoke('set_rclone_option', {
+      await this.invokeCommand('set_rclone_option', {
         blockName: block,
         optionName: option,
         value,
@@ -53,7 +53,7 @@ export class RcloneBackendOptionsService {
    */
   async loadRcloneConfigFile(): Promise<string> {
     try {
-      const path = await invoke<string>('get_rclone_config_file');
+      const path = await this.invokeCommand<string>('get_rclone_config_file');
       return path;
     } catch (error) {
       console.error('Failed to get RClone config file:', error);
@@ -66,7 +66,7 @@ export class RcloneBackendOptionsService {
    */
   async loadOptions(): Promise<Record<string, Record<string, unknown>>> {
     try {
-      const options = await invoke<Record<string, Record<string, unknown>>>(
+      const options = await this.invokeCommand<Record<string, Record<string, unknown>>>(
         'load_rclone_backend_options'
       );
       return options;
@@ -81,7 +81,7 @@ export class RcloneBackendOptionsService {
    */
   async saveOptions(options: Record<string, Record<string, unknown>>): Promise<void> {
     try {
-      await invoke('save_rclone_backend_options', { options });
+      await this.invokeCommand('save_rclone_backend_options', { options });
     } catch (error) {
       console.error('Failed to save RClone backend options:', error);
       throw error;
@@ -97,7 +97,7 @@ export class RcloneBackendOptionsService {
    */
   async saveOption(block: string, option: string, value: unknown): Promise<void> {
     try {
-      await invoke('save_rclone_backend_option', {
+      await this.invokeCommand('save_rclone_backend_option', {
         block,
         option,
         value,
@@ -113,7 +113,7 @@ export class RcloneBackendOptionsService {
    */
   async resetOptions(): Promise<void> {
     try {
-      await invoke('reset_rclone_backend_options');
+      await this.invokeCommand('reset_rclone_backend_options');
     } catch (error) {
       console.error('Failed to reset RClone backend options:', error);
       throw error;
@@ -125,7 +125,7 @@ export class RcloneBackendOptionsService {
    */
   async getStorePath(): Promise<string> {
     try {
-      const path = await invoke<string>('get_rclone_backend_store_path');
+      const path = await this.invokeCommand<string>('get_rclone_backend_store_path');
       return path;
     } catch (error) {
       console.error('Failed to get RClone backend store path:', error);
@@ -166,6 +166,6 @@ export class RcloneBackendOptionsService {
   }
 
   async removeOption(service: string, option: string): Promise<void> {
-    await invoke('remove_rclone_backend_option', { block: service, option });
+    await this.invokeCommand('remove_rclone_backend_option', { block: service, option });
   }
 }

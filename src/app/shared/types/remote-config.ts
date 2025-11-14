@@ -9,7 +9,7 @@ export const FLAG_TYPES: FlagType[] = [
   'vfs',
   'backend',
 ];
-export type EditTarget = FlagType | 'remote' | null;
+export type EditTarget = FlagType | 'remote' | 'serve' | null;
 export const INTERACTIVE_REMOTES = ['iclouddrive', 'onedrive'];
 
 export interface LoadingState {
@@ -39,18 +39,22 @@ export interface MountConfig {
 
 export interface CopyConfig {
   autoStart: boolean;
+  cronEnabled?: boolean;
   source: string;
   dest: string;
   createEmptySrcDirs?: boolean;
+  cronExpression?: string | null;
   options?: any;
   [key: string]: any;
 }
 
 export interface SyncConfig {
   autoStart: boolean;
+  cronEnabled?: boolean;
   source: string;
   dest: string;
   createEmptySrcDirs?: boolean;
+  cronExpression?: string | null;
   options?: any;
   [key: string]: any;
 }
@@ -72,16 +76,19 @@ export interface BackendConfig {
 
 export interface MoveConfig {
   autoStart: boolean;
+  cronEnabled?: boolean;
   source: string;
   dest: string;
   createEmptySrcDirs?: boolean;
   deleteEmptySrcDirs?: boolean;
+  cronExpression?: string | null;
   options?: any;
   [key: string]: any;
 }
 
 export interface BisyncConfig {
   autoStart: boolean;
+  cronEnabled?: boolean;
   source: string;
   dest: string;
   dryRun?: boolean;
@@ -100,6 +107,7 @@ export interface BisyncConfig {
   backupdir1?: string;
   backupdir2?: string;
   noCleanup?: boolean;
+  cronExpression?: string | null;
   options?: any;
   [key: string]: any;
 }

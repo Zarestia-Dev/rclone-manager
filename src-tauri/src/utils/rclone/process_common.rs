@@ -4,6 +4,7 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::core::check_binaries::build_rclone_command;
 use crate::core::security::{CredentialStore, SafeEnvironmentManager};
 use crate::rclone::engine::core::ENGINE;
+use crate::utils::types::events::RCLONE_ENGINE_PASSWORD_ERROR;
 
 /// Clear cached encryption status (e.g., when config changes)
 pub fn clear_encryption_cache() {
@@ -120,13 +121,7 @@ pub async fn setup_rclone_environment(
             info!(
                 "🔒 Configuration is encrypted but no password available, emitting password error"
             );
-            if let Err(e) = app.emit(
-                "rclone_engine",
-                serde_json::json!({
-                    "status": "password_error",
-                    "message": "Rclone configuration requires a password but none is available"
-                }),
-            ) {
+            if let Err(e) = app.emit(RCLONE_ENGINE_PASSWORD_ERROR, ()) {
                 error!("Failed to emit password error event: {e}");
             }
         } else {

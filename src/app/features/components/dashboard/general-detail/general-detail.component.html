@@ -15,7 +15,6 @@
           <span class="remote-type">{{ selectedRemote.remoteSpecs.type | titlecase }}</span>
         </div>
       </div>
-      <!-- Status Indicators -->
       <div class="remote-status-indicators" role="group" aria-label="Remote action quick selection">
         @for (actionConfig of actionConfigs; track trackByActionKey($index, actionConfig)) {
           <div
@@ -33,22 +32,18 @@
             (keydown.enter)="onToggleAction(actionConfig.key)"
             (keydown.space)="onToggleAction(actionConfig.key)"
           >
-            <!-- Status indicator dot with icon -->
             <div class="status-dot">
               <mat-icon [svgIcon]="actionConfig.icon"></mat-icon>
             </div>
 
-            <!-- Selection badge showing position -->
             @if (isActionSelected(actionConfig.key)) {
               <span class="selection-badge" aria-hidden="true">
                 {{ getActionPosition(actionConfig.key) }}
               </span>
             }
 
-            <!-- Action label -->
             <span class="status-label">{{ actionConfig.label }}</span>
 
-            <!-- Screen reader only text for selection state -->
             @if (isActionSelected(actionConfig.key)) {
               <span class="cdk-visually-hidden">
                 {{ actionConfig.label }} selected as quick action
@@ -63,10 +58,8 @@
   </div>
 
   <div class="detail-content">
-    <!-- Disk Usage Panel -->
     <app-disk-usage-panel [config]="getDiskUsageConfig()"></app-disk-usage-panel>
 
-    <!-- Jobs Panel -->
     <app-jobs-panel
       [config]="getJobsPanelConfig()"
       (stopJob)="stopJob.emit({ type: $event.type, remoteName: $event.remoteName })"
@@ -74,7 +67,210 @@
     >
     </app-jobs-panel>
 
-    <!-- Remote Configuration Panel -->
+    @if (hasScheduledTasks) {
+      <mat-card class="scheduled-tasks-card">
+        <mat-card-header>
+          <mat-card-title>
+            <div class="panel-title">
+              <mat-icon svgIcon="clock"></mat-icon>
+              <span>Scheduled Tasks</span>
+              <span class="task-counter"
+                >{{ currentTaskCardIndex + 1 }} / {{ remoteScheduledTasks.length }}</span
+              >
+            </div>
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (remoteScheduledTasks.length > 1) {
+            <div class="carousel-indicators">
+              @for (
+                task of remoteScheduledTasks;
+                track trackByTaskId($index, task);
+                let i = $index
+              ) {
+                <div
+                  class="indicator"
+                  [class.active]="i === currentTaskCardIndex"
+                  (click)="goToTaskCard(i)"
+                  [matTooltip]="task.name"
+                  role="button"
+                  tabindex="0"
+                  [attr.aria-label]="'Go to task ' + (i + 1)"
+                ></div>
+              }
+            </div>
+          }
+
+          <div class="task-carousel-container">
+            <div class="task-carousel-slide-wrapper">
+              @if (currentTask) {
+                <mat-card
+                  class="task-detail-card"
+                  [class.disabled]="currentTask.status === 'disabled'"
+                  [class.stopping]="currentTask.status === 'stopping'"
+                >
+                  <mat-card-header class="task-detail-header">
+                    <div class="task-info">
+                      <div class="task-title-row">
+                        <mat-icon
+                          [svgIcon]="
+                            currentTask.taskType === 'sync'
+                              ? 'sync'
+                              : currentTask.taskType === 'copy'
+                                ? 'copy'
+                                : currentTask.taskType === 'move'
+                                  ? 'move'
+                                  : 'right-left'
+                          "
+                          class="task-type-icon"
+                          [class.sync-color]="currentTask.taskType === 'sync'"
+                          [class.copy-color]="currentTask.taskType === 'copy'"
+                          [class.move-color]="currentTask.taskType === 'move'"
+                          [class.bisync-color]="currentTask.taskType === 'bisync'"
+                        ></mat-icon>
+                        <h4>{{ currentTask.name }}</h4>
+                        <span
+                          class="task-status-badge"
+                          [ngClass]="currentTask.status"
+                          [matTooltip]="getTaskStatusTooltip(currentTask.status)"
+                        >
+                          {{ currentTask.status | titlecase }}
+                        </span>
+                      </div>
+                      <p class="task-type-label">
+                        {{ currentTask.taskType | titlecase }} Operation
+                      </p>
+                    </div>
+                    <button
+                      mat-icon-button
+                      (click)="toggleScheduledTask(currentTask.id)"
+                      [matTooltip]="getToggleTooltip(currentTask.status)"
+                      [disabled]="currentTask.status === 'stopping'"
+                    >
+                      <mat-icon [svgIcon]="getToggleIcon(currentTask.status)"></mat-icon>
+                    </button>
+                  </mat-card-header>
+
+                  <mat-card-footer class="task-detail-body">
+                    <div class="detail-section">
+                      <h5 class="section-title">
+                        <mat-icon svgIcon="clock"></mat-icon>
+                        Schedule
+                      </h5>
+                      <div class="detail-grid">
+                        <div class="detail-item">
+                          <span class="label">Cron Expression:</span>
+                          <span class="value cron-expression">{{
+                            currentTask.cronExpression
+                          }}</span>
+                        </div>
+                        <div class="detail-item">
+                          <span class="label">Next Run:</span>
+                          <span class="value highlight">{{
+                            getFormattedNextRun(currentTask)
+                          }}</span>
+                        </div>
+                        <div class="detail-item">
+                          <span class="label">Last Run:</span>
+                          <span class="value">{{ getFormattedLastRun(currentTask) }}</span>
+                        </div>
+                        <div class="detail-item">
+                          <span class="label">Created:</span>
+                          <span class="value">{{ currentTask.createdAt | date: 'medium' }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="detail-section">
+                      <h5 class="section-title">
+                        <mat-icon svgIcon="chart"></mat-icon>
+                        Statistics
+                      </h5>
+                      <div class="stats-grid">
+                        <div class="stat-card success">
+                          <div class="stat-value">{{ currentTask.successCount }}</div>
+                          <div class="stat-label">Successful</div>
+                        </div>
+                        <div class="stat-card failed">
+                          <div class="stat-value">{{ currentTask.failureCount }}</div>
+                          <div class="stat-label">Failed</div>
+                        </div>
+                        <div class="stat-card total">
+                          <div class="stat-value">{{ currentTask.runCount }}</div>
+                          <div class="stat-label">Total Runs</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="detail-section">
+                      <h5 class="section-title">
+                        <mat-icon svgIcon="folder"></mat-icon>
+                        Paths
+                      </h5>
+                      <div class="path-grid">
+                        <div class="path-item">
+                          <span class="path-label">Source:</span>
+                          <code class="path-value">{{ currentTask.args['source'] }}</code>
+                        </div>
+                        <div class="path-item">
+                          <span class="path-label">Destination:</span>
+                          <code class="path-value">{{ currentTask.args['dest'] }}</code>
+                        </div>
+                      </div>
+                    </div>
+
+                    @if (currentTask.lastError) {
+                      <div class="detail-section error-section">
+                        <h5 class="section-title">
+                          <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
+                          Last Error
+                        </h5>
+                        <div class="error-message">
+                          {{ currentTask.lastError }}
+                        </div>
+                      </div>
+                    }
+
+                    @if (currentTask.currentJobId) {
+                      <div class="detail-section running-section">
+                        <h5 class="section-title">
+                          <mat-icon svgIcon="play" class="running-icon"></mat-icon>
+                          Currently Running
+                        </h5>
+                        <div class="running-info">Job ID: {{ currentTask.currentJobId }}</div>
+                      </div>
+                    }
+                  </mat-card-footer>
+                </mat-card>
+              }
+            </div>
+          </div>
+          @if (remoteScheduledTasks.length > 1) {
+            <div class="carousel-navigation">
+              <button
+                mat-icon-button
+                (click)="previousTaskCard()"
+                [disabled]="currentTaskCardIndex === 0"
+                [matTooltip]="'Previous task'"
+                class="nav-button"
+              >
+                <mat-icon svgIcon="left-arrow"></mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                (click)="nextTaskCard()"
+                [disabled]="currentTaskCardIndex === remoteScheduledTasks.length - 1"
+                [matTooltip]="'Next task'"
+                class="nav-button"
+              >
+                <mat-icon svgIcon="right-arrow"></mat-icon>
+              </button>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    }
+
     <app-settings-panel
       [config]="getRemoteConfigurationPanelConfig()"
       (editSettings)="onEditRemoteConfiguration()"

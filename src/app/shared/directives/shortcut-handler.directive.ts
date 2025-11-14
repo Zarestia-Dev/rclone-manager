@@ -8,7 +8,7 @@ import { PreferencesModalComponent } from '../../features/modals/settings/prefer
 import { RcloneConfigModalComponent } from '../../features/modals/settings/rclone-config-modal/rclone-config-modal.component';
 
 // Services
-import { WindowService } from '@app/services';
+import { MountManagementService, WindowService } from '@app/services';
 import { RemoteManagementService } from '@app/services';
 import { OnboardingStateService } from '@app/services';
 import { NotificationService } from '../services/notification.service';
@@ -24,6 +24,7 @@ export class ShortcutHandlerDirective {
   private windowService = inject(WindowService);
   private remoteManagementService = inject(RemoteManagementService);
   private onboardingStateService = inject(OnboardingStateService);
+  private mountManagementService = inject(MountManagementService);
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
@@ -168,7 +169,7 @@ export class ShortcutHandlerDirective {
 
   private async forceRefreshMountedRemotes(): Promise<void> {
     try {
-      await this.remoteManagementService.forceRefreshMountedRemotes();
+      await this.mountManagementService.forceCheckMountedRemotes();
       this.notificationService.showSuccess('Mounted remotes refreshed successfully');
     } catch (error) {
       this.notificationService.showError('Failed to refresh mounted remotes: ' + error);

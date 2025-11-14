@@ -2,24 +2,26 @@ use chrono::Utc;
 use log::{debug, error, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
     RcloneState,
-    rclone::state::{
-        ENGINE_STATE, JOB_CACHE, force_check_mounted_remotes, get_cached_mounted_remotes,
-    },
+    rclone::state::{engine::ENGINE_STATE, watcher::force_check_mounted_remotes},
     utils::{
+        json_helpers::{get_string, json_to_hashmap},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, mount},
-        types::all_types::{JobInfo, JobResponse, JobStatus, LogLevel},
+        types::{
+            all_types::{JobCache, JobInfo, JobResponse, JobStatus, LogLevel, RemoteCache},
+            events::REMOTE_STATE_CHANGED,
+        },
     },
 };
 
 use super::{job::monitor_job, system::redact_sensitive_values};
 
 /// Parameters for mounting a remote filesystem
-#[derive(Debug, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
 pub struct MountParams {
     pub remote_name: String,
     pub source: String,
@@ -31,15 +33,53 @@ pub struct MountParams {
     pub backend_options: Option<HashMap<String, Value>>, // backend options
 }
 
+impl MountParams {
+    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
+        let mount_cfg = settings.get("mountConfig")?;
+
+        let source = get_string(mount_cfg, &["source"]);
+        let dest = get_string(mount_cfg, &["dest"]);
+
+        if source.is_empty() || dest.is_empty() {
+            return None;
+        }
+
+        Some(Self {
+            remote_name,
+            source,
+            mount_point: dest,
+            mount_type: mount_cfg
+                .get("type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("mount")
+                .to_string(),
+            mount_options: json_to_hashmap(mount_cfg.get("options")),
+            vfs_options: json_to_hashmap(settings.get("vfsConfig")),
+            filter_options: json_to_hashmap(settings.get("filterConfig")),
+            backend_options: json_to_hashmap(settings.get("backendConfig")),
+        })
+    }
+
+    pub fn should_auto_start(settings: &Value) -> bool {
+        settings
+            .get("mountConfig")
+            .and_then(|v| v.get("autoStart"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+    }
+}
+
 /// Mount a remote filesystem
 #[tauri::command]
 pub async fn mount_remote(
     app: AppHandle,
+    job_cache: State<'_, JobCache>,
+    cache: State<'_, RemoteCache>,
     params: MountParams,
-    state: State<'_, RcloneState>,
 ) -> Result<(), String> {
     debug!("Received mount_remote params: {params:#?}");
-    let mounted_remotes = get_cached_mounted_remotes().await?;
+    let mounted_remotes = cache.get_mounted_remotes().await;
+    let state = app.state::<RcloneState>();
 
     // Check if mount point is in use
     if let Some(existing) = mounted_remotes
@@ -89,8 +129,7 @@ pub async fn mount_remote(
         Some("Mount remote".to_string()),
         format!("Attempting to mount at {}", params.mount_point),
         Some(log_context),
-    )
-    .await;
+    );
 
     // Prepare payload
     let mut payload = json!({
@@ -152,8 +191,7 @@ pub async fn mount_remote(
                     Some("Mount remote".to_string()),
                     error_for_log,
                     Some(json!({"payload": payload_clone})),
-                )
-                .await;
+                );
             });
             error
         })?;
@@ -170,8 +208,7 @@ pub async fn mount_remote(
             Some("Mount remote".to_string()),
             format!("Failed to mount remote: {error}"),
             Some(json!({"response": body})),
-        )
-        .await;
+        );
         return Err(error);
     }
 
@@ -184,13 +221,12 @@ pub async fn mount_remote(
         Some("Mount remote".to_string()),
         format!("Mount job started with ID {}", job_response.jobid),
         Some(json!({"jobid": job_response.jobid})),
-    )
-    .await;
+    );
 
     // Extract job ID and monitor the job
     let jobid = job_response.jobid;
     // Add to job cache
-    JOB_CACHE
+    job_cache
         .add_job(JobInfo {
             jobid,
             job_type: "mount".to_string(),
@@ -208,12 +244,13 @@ pub async fn mount_remote(
     let app_clone = app.clone();
     let remote_name_clone = params.remote_name.clone();
     let client = state.client.clone();
+    // monitor_job will get the JobCache from the app_clone handle
     if let Err(e) = monitor_job(remote_name_clone, "Mount remote", jobid, app_clone, client).await {
         error!("Job {jobid} returned an error: {e}");
         return Err(e.to_string());
     }
 
-    app.emit("remote_state_changed", &params.remote_name)
+    app.emit(REMOTE_STATE_CHANGED, &params.remote_name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     // Force refresh mounted remotes after mount operation
@@ -242,8 +279,7 @@ pub async fn unmount_remote(
         Some("Unmount remote".to_string()),
         format!("Attempting to unmount {mount_point}"),
         None,
-    )
-    .await;
+    );
 
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::UNMOUNT);
     let payload = json!({ "mountPoint": mount_point });
@@ -263,7 +299,7 @@ pub async fn unmount_remote(
         if status.as_u16() == 500 && body.contains("\"mount not found\"") {
             warn!("🚨 Mount not found for {mount_point}, updating mount cache",);
             // Update the cached mounted remotes
-            app.emit("remote_state_changed", &mount_point)
+            app.emit(REMOTE_STATE_CHANGED, &mount_point)
                 .map_err(|e| format!("Failed to emit event: {e}"))?;
         }
 
@@ -274,8 +310,7 @@ pub async fn unmount_remote(
             Some("Unmount remote".to_string()),
             error.clone(),
             Some(json!({"response": body})),
-        )
-        .await;
+        );
         error!("❌ Failed to unmount {mount_point}: {error}");
         return Err(error);
     }
@@ -286,10 +321,9 @@ pub async fn unmount_remote(
         Some("Unmount remote".to_string()),
         format!("Successfully unmounted {mount_point}"),
         None,
-    )
-    .await;
+    );
 
-    app.emit("remote_state_changed", &mount_point)
+    app.emit(REMOTE_STATE_CHANGED, &mount_point)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 
     // Force refresh mounted remotes after unmount operation
@@ -328,7 +362,7 @@ pub async fn unmount_all_remotes(
     }
 
     if context != "shutdown" {
-        app.emit("remote_state_changed", "all")
+        app.emit(REMOTE_STATE_CHANGED, "all")
             .map_err(|e| format!("Failed to emit event: {e}"))?;
 
         // Force refresh mounted remotes after unmount all operation

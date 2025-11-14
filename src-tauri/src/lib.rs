@@ -5,9 +5,10 @@ use tauri::{Manager, WindowEvent};
 use tauri_plugin_store::StoreBuilder;
 use tokio::sync::Mutex;
 
-mod core;
-mod rclone;
-mod utils;
+// Make modules public for headless binary
+pub mod core;
+pub mod rclone;
+pub mod utils;
 
 #[cfg(all(desktop, feature = "updater"))]
 use crate::utils::app::updater::app_updates::{
@@ -17,8 +18,15 @@ use crate::utils::app::updater::app_updates::{
 use crate::{
     core::{
         check_binaries::{check_rclone_available, is_7z_available},
-        initialization::{async_startup, init_rclone_state, setup_config_dir},
+        initialization::{init_rclone_state, initialization, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
+        scheduler::{
+            commands::{
+                clear_all_scheduled_tasks, reload_scheduled_tasks, toggle_scheduled_task,
+                validate_cron,
+            },
+            engine::CronScheduler,
+        },
         security::{
             change_config_password, clear_config_password_env, clear_encryption_cache,
             encrypt_config, get_cached_encryption_status, get_config_password,
@@ -29,7 +37,7 @@ use crate::{
         settings::{
             backup::{
                 backup_manager::{analyze_backup_file, backup_settings},
-                restore_manager::{restore_encrypted_settings, restore_settings},
+                restore_manager::restore_settings,
             },
             operations::core::{
                 load_settings, load_startup_settings, reset_setting, reset_settings, save_setting,
@@ -41,19 +49,28 @@ use crate::{
             },
             remote::manager::{delete_remote_settings, get_remote_settings, save_remote_settings},
         },
-        tray::actions::{
-            handle_bisync_remote, handle_browse_remote, handle_copy_remote, handle_mount_remote,
-            handle_move_remote, handle_stop_all_jobs, handle_stop_bisync, handle_stop_copy,
-            handle_stop_move, handle_stop_sync, handle_sync_remote, handle_unmount_remote,
-            show_main_window,
+        tray::{
+            actions::{
+                handle_bisync_remote, handle_browse_remote, handle_copy_remote,
+                handle_mount_remote, handle_move_remote, handle_start_serve, handle_stop_all_jobs,
+                handle_stop_all_serves, handle_stop_bisync, handle_stop_copy, handle_stop_move,
+                handle_stop_serve, handle_stop_sync, handle_sync_remote, handle_unmount_remote,
+                show_main_window,
+            },
+            tray_action::TrayAction,
         },
     },
     rclone::{
         commands::{
-            continue_create_remote_interactive, create_remote, create_remote_interactive,
-            delete_remote, mount_remote, quit_rclone_oauth, set_bandwidth_limit, start_bisync,
-            start_copy, start_move, start_sync, stop_job, unmount_all_remotes, unmount_remote,
-            update_remote,
+            job::stop_job,
+            mount::{mount_remote, unmount_all_remotes, unmount_remote},
+            remote::{
+                continue_create_remote_interactive, create_remote, create_remote_interactive,
+                delete_remote, update_remote,
+            },
+            serve::{start_serve, stop_all_serves, stop_serve},
+            sync::{start_bisync, start_copy, start_move, start_sync},
+            system::{quit_rclone_oauth, set_bandwidth_limit},
         },
         queries::{
             flags::{
@@ -64,13 +81,21 @@ use crate::{
             get_all_remote_configs, get_bandwidth_limit, get_completed_transfers, get_core_stats,
             get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats,
             get_mount_types, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info,
-            get_rclone_pid, get_remote_config, get_remote_config_fields, get_remote_paths,
-            get_remote_types, get_remotes,
+            get_rclone_pid, get_remote_config, get_remote_paths, get_remote_types, get_remotes,
+            get_serve_flags, get_serve_types, list_serves,
         },
         state::{
-            clear_remote_logs, delete_job, force_check_mounted_remotes, get_active_jobs,
-            get_cached_mounted_remotes, get_cached_remotes, get_configs, get_job_status, get_jobs,
-            get_remote_logs, get_settings,
+            cache::{
+                get_cached_mounted_remotes, get_cached_remotes, get_cached_serves, get_configs,
+                get_settings,
+            },
+            job::{delete_job, get_active_jobs, get_job_status, get_jobs},
+            log::{clear_remote_logs, get_remote_logs},
+            scheduled_tasks::{
+                ScheduledTasksCache, get_scheduled_task, get_scheduled_tasks,
+                get_scheduled_tasks_stats, reload_scheduled_tasks_from_configs,
+            },
+            watcher::{force_check_mounted_remotes, force_check_serves},
         },
     },
     utils::{
@@ -91,7 +116,10 @@ use crate::{
             provision::provision_rclone,
             updater::{check_rclone_update, update_rclone},
         },
-        types::{all_types::RcloneState, settings::SettingsState},
+        types::{
+            all_types::{JobCache, LogCache, RcloneState, RemoteCache},
+            settings::SettingsState,
+        },
     },
 };
 
@@ -122,7 +150,14 @@ pub fn run() {
         .on_window_event(|window, event| match event {
             WindowEvent::CloseRequested { api, .. } => {
                 let state = window.app_handle().state::<RcloneState>();
-                if *state.tray_enabled.read().unwrap() {
+                let tray_enabled = match state.tray_enabled.read() {
+                    Ok(enabled) => *enabled,
+                    Err(e) => {
+                        error!("Failed to read tray_enabled state: {e}");
+                        false // Default to false if we can't read
+                    }
+                };
+                if tray_enabled {
                     if let Err(e) = window.hide() {
                         error!("Failed to hide window: {e}");
                     }
@@ -164,8 +199,6 @@ pub fn run() {
                 config_dir: config_dir.clone(),
             });
 
-            // Initialize RClone Backend Store for backend.json
-            // Uses the same config directory as settings for consistency
             use crate::core::settings::rclone_backend::RCloneBackendStore;
             let rclone_backend_store = RCloneBackendStore::new(app_handle, &config_dir)
                 .map_err(|e| format!("Failed to initialize RClone backend store: {e}"))?;
@@ -174,11 +207,8 @@ pub fn run() {
             // Initialize SafeEnvironmentManager for secure password handling
             use crate::core::security::{CredentialStore, SafeEnvironmentManager};
             let env_manager = SafeEnvironmentManager::new();
-
-            // Initialize CredentialStore once and manage as state
             let credential_store = CredentialStore::new();
 
-            // Initialize with any stored credentials
             if let Err(e) = env_manager.init_with_stored_credentials(&credential_store) {
                 error!("Failed to initialize environment manager with stored credentials: {e}");
             }
@@ -187,9 +217,8 @@ pub fn run() {
             app.manage(credential_store);
 
             let settings = load_startup_settings(&app.state::<SettingsState<tauri::Wry>>())
-                .map_err(|e| format!("Failed to load settings for startup: {e}"))?;
+                .map_err(|e| format!("Failed to load startup settings: {e}"))?;
 
-            // Check if --tray argument is provided to override tray settings
             let force_tray = std::env::args().any(|arg| arg == "--tray");
             let tray_enabled = settings.general.tray_enabled || force_tray;
 
@@ -212,12 +241,17 @@ pub fn run() {
                 )),
             });
 
+            app.manage(JobCache::new());
+            app.manage(LogCache::new(1000));
+            app.manage(ScheduledTasksCache::new());
+            app.manage(CronScheduler::new());
+            app.manage(RemoteCache::new());
+
             #[cfg(all(desktop, feature = "updater"))]
             app.manage(PendingUpdate(std::sync::Mutex::new(None)));
             #[cfg(all(desktop, feature = "updater"))]
             app.manage(DownloadState::default());
 
-            // Setup global shortcuts
             #[cfg(desktop)]
             {
                 use crate::utils::shortcuts::handle_global_shortcut_event;
@@ -226,10 +260,8 @@ pub fn run() {
                     Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
                 };
 
-                // Define shortcuts
                 let ctrl_q_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyQ);
 
-                // Setup global shortcut plugin with handler
                 app_handle.plugin(
                     tauri_plugin_global_shortcut::Builder::new()
                         .with_handler(move |app, shortcut, event| {
@@ -240,7 +272,6 @@ pub fn run() {
                         .build(),
                 )?;
 
-                // Register shortcuts
                 match app_handle.global_shortcut().register(ctrl_q_shortcut) {
                     Ok(_) => info!("Successfully registered Ctrl+Q shortcut"),
                     Err(e) => error!("Failed to register Ctrl+Q shortcut: {e}"),
@@ -249,21 +280,19 @@ pub fn run() {
                 info!("🔗 Global shortcuts registered successfully");
             }
 
-            init_logging(settings.developer.debug_logging)
+            init_logging(settings.developer.debug_logging, app_handle.clone())
                 .map_err(|e| format!("Failed to initialize logging: {e}"))?;
 
             init_rclone_state(app_handle, &settings)
                 .map_err(|e| format!("Rclone initialization failed: {e}"))?;
 
-            // Async startup
             let app_handle_clone = app_handle.clone();
             tauri::async_runtime::spawn(async move {
-                async_startup(app_handle_clone.clone(), settings).await;
+                initialization(app_handle_clone.clone(), settings).await;
                 handle_startup(app_handle_clone.clone()).await;
                 monitor_network_changes(app_handle_clone).await;
             });
 
-            // Only create window if not starting with tray
             if !std::env::args().any(|arg| arg == "--tray") {
                 debug!("Creating main window");
                 create_app_window(app.handle().clone());
@@ -271,42 +300,53 @@ pub fn run() {
 
             Ok(())
         })
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            "show_app" => show_main_window(app.clone()),
-            "stop_all_jobs" => handle_stop_all_jobs(app.clone()),
-            "unmount_all" => {
-                let app_clone = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    if let Err(e) = unmount_all_remotes(
-                        app_clone.clone(),
-                        app_clone.state(),
-                        "menu".to_string(),
-                    )
-                    .await
-                    {
-                        error!("Failed to unmount all remotes: {e}");
-                    }
-                });
+        .on_menu_event(|app, event| {
+            if let Some(action) = TrayAction::from_id(event.id.as_ref()) {
+                match action {
+                    TrayAction::Mount(remote) => handle_mount_remote(app.clone(), &remote),
+                    TrayAction::Unmount(remote) => handle_unmount_remote(app.clone(), &remote),
+                    TrayAction::Sync(remote) => handle_sync_remote(app.clone(), &remote),
+                    TrayAction::StopSync(remote) => handle_stop_sync(app.clone(), &remote),
+                    TrayAction::Copy(remote) => handle_copy_remote(app.clone(), &remote),
+                    TrayAction::StopCopy(remote) => handle_stop_copy(app.clone(), &remote),
+                    TrayAction::Move(remote) => handle_move_remote(app.clone(), &remote),
+                    TrayAction::StopMove(remote) => handle_stop_move(app.clone(), &remote),
+                    TrayAction::Bisync(remote) => handle_bisync_remote(app.clone(), &remote),
+                    TrayAction::StopBisync(remote) => handle_stop_bisync(app.clone(), &remote),
+                    TrayAction::Browse(remote) => handle_browse_remote(app, &remote),
+                    TrayAction::Serve(remote) => handle_start_serve(app.clone(), &remote),
+                    TrayAction::StopServe(serve_id) => handle_stop_serve(app.clone(), &serve_id),
+                }
+                return;
             }
-            "quit" => {
-                let app_clone = app.clone();
-                tauri::async_runtime::spawn(async move {
-                    app_clone.state::<RcloneState>().set_shutting_down();
-                    handle_shutdown(app_clone).await;
-                });
+
+            match event.id.as_ref() {
+                "show_app" => show_main_window(app.clone()),
+                "stop_all_jobs" => handle_stop_all_jobs(app.clone()),
+                "stop_all_serves" => handle_stop_all_serves(app.clone()),
+                "unmount_all" => {
+                    let app_clone = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) = unmount_all_remotes(
+                            app_clone.clone(),
+                            app_clone.state(),
+                            "menu".to_string(),
+                        )
+                        .await
+                        {
+                            error!("Failed to unmount all remotes: {e}");
+                        }
+                    });
+                }
+                "quit" => {
+                    let app_clone = app.clone();
+                    tauri::async_runtime::spawn(async move {
+                        app_clone.state::<RcloneState>().set_shutting_down();
+                        handle_shutdown(app_clone).await;
+                    });
+                }
+                _ => {}
             }
-            id if id.starts_with("mount-") => handle_mount_remote(app.clone(), id),
-            id if id.starts_with("unmount-") => handle_unmount_remote(app.clone(), id),
-            id if id.starts_with("sync-") => handle_sync_remote(app.clone(), id),
-            id if id.starts_with("copy-") => handle_copy_remote(app.clone(), id),
-            id if id.starts_with("move-") => handle_move_remote(app.clone(), id),
-            id if id.starts_with("bisync-") => handle_bisync_remote(app.clone(), id),
-            id if id.starts_with("stop_sync-") => handle_stop_sync(app.clone(), id),
-            id if id.starts_with("stop_copy-") => handle_stop_copy(app.clone(), id),
-            id if id.starts_with("stop_move-") => handle_stop_move(app.clone(), id),
-            id if id.starts_with("stop_bisync-") => handle_stop_bisync(app.clone(), id),
-            id if id.starts_with("browse-") => handle_browse_remote(app, id),
-            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             // File operations
@@ -325,7 +365,6 @@ pub fn run() {
             get_rclone_pid,
             check_rclone_update,
             update_rclone,
-            // get_rclone_update_info,
             kill_process_by_pid,
             // Rclone Command API
             get_all_remote_configs,
@@ -340,7 +379,6 @@ pub fn run() {
             get_remote_config,
             get_remote_types,
             get_oauth_supported_remotes,
-            get_remote_config_fields,
             get_mounted_remotes,
             set_bandwidth_limit,
             // Rclone Sync API
@@ -351,6 +389,16 @@ pub fn run() {
             // Rclone Query API
             mount_remote,
             unmount_remote,
+            unmount_all_remotes,
+            get_mount_types,
+            // Serve API
+            start_serve,
+            stop_serve,
+            stop_all_serves,
+            get_serve_types,
+            get_serve_flags,
+            list_serves,
+            // Remote management
             create_remote_interactive,
             continue_create_remote_interactive,
             create_remote,
@@ -388,7 +436,6 @@ pub fn run() {
             delete_remote_settings,
             backup_settings,
             analyze_backup_file,
-            restore_encrypted_settings,
             restore_settings,
             // Network
             check_links,
@@ -401,6 +448,7 @@ pub fn run() {
             get_configs,
             get_settings,
             get_cached_mounted_remotes,
+            get_cached_serves,
             // Binaries
             check_rclone_available,
             is_7z_available,
@@ -413,8 +461,18 @@ pub fn run() {
             get_job_status,
             stop_job,
             delete_job,
+            // Scheduled Tasks (Now require state)
+            get_scheduled_tasks,
+            get_scheduled_task,
+            get_scheduled_tasks_stats,
+            toggle_scheduled_task,
+            validate_cron,
+            reload_scheduled_tasks,
+            reload_scheduled_tasks_from_configs,
+            clear_all_scheduled_tasks,
             // Mount
             force_check_mounted_remotes,
+            force_check_serves,
             get_mount_types,
             // Application control
             handle_shutdown,

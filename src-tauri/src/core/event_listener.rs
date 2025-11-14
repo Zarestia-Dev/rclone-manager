@@ -5,36 +5,37 @@ use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
     RcloneState,
-    core::{lifecycle::shutdown::handle_shutdown, tray::core::update_tray_menu},
-    rclone::{
-        commands::set_bandwidth_limit,
-        engine::ENGINE,
-        state::{CACHE, ENGINE_STATE},
+    core::{
+        lifecycle::shutdown::handle_shutdown, scheduler::engine::CronScheduler,
+        tray::core::update_tray_menu,
     },
-    utils::{app::builder::setup_tray, logging::log::update_log_level},
+    rclone::{
+        commands::system::set_bandwidth_limit,
+        engine::core::ENGINE,
+        state::{
+            engine::ENGINE_STATE,
+            scheduled_tasks::{ScheduledTasksCache, reload_scheduled_tasks_from_configs},
+        },
+    },
+    utils::{
+        app::builder::setup_tray,
+        logging::log::update_log_level,
+        types::{
+            all_types::RemoteCache,
+            events::{
+                JOB_CACHE_CHANGED, MOUNT_STATE_CHANGED, RCLONE_API_URL_UPDATED,
+                RCLONE_PASSWORD_STORED, REMOTE_CACHE_UPDATED, REMOTE_PRESENCE_CHANGED,
+                REMOTE_STATE_CHANGED, SERVE_STATE_CHANGED, SYSTEM_SETTINGS_CHANGED,
+                UPDATE_TRAY_MENU,
+            },
+        },
+    },
 };
-
-mod events {
-    pub const RCLONE_ENGINE: &str = "rclone_engine";
-    pub const RCLONE_API_URL_UPDATED: &str = "rclone_api_url_updated";
-    pub const REMOTE_STATE_CHANGED: &str = "remote_state_changed";
-    pub const REMOTE_PRESENCE_CHANGED: &str = "remote_presence_changed";
-    pub const SYSTEM_SETTINGS_CHANGED: &str = "system_settings_changed";
-    pub const TRAY_MENU_UPDATED: &str = "tray_menu_updated";
-    pub const JOB_CACHE_CHANGED: &str = "job_cache_changed";
-}
 
 fn parse_payload<T: for<'de> serde::Deserialize<'de>>(payload: Option<&str>) -> Result<T, String> {
     payload
         .ok_or_else(|| "No payload".into())
         .and_then(|p| serde_json::from_str(p).map_err(|e| e.to_string()))
-}
-
-async fn refresh_and_update_tray(app: AppHandle, max_items: usize) {
-    CACHE.refresh_all(app.clone()).await;
-    if let Err(e) = update_tray_menu(app, max_items).await {
-        error!("Failed to update tray menu: {e}");
-    }
 }
 
 fn handle_ctrl_c(app: &AppHandle) {
@@ -50,7 +51,7 @@ fn handle_ctrl_c(app: &AppHandle) {
 
 fn handle_rclone_api_url_updated(app: &AppHandle) {
     let app_handle = app.clone();
-    app.listen(events::RCLONE_API_URL_UPDATED, move |_| {
+    app.listen(RCLONE_API_URL_UPDATED, move |_| {
         let app = app_handle.clone();
         tauri::async_runtime::spawn(async move {
             let port = ENGINE_STATE.get_api().1;
@@ -70,59 +71,35 @@ fn handle_rclone_api_url_updated(app: &AppHandle) {
     });
 }
 
-fn handle_rclone_api_ready(app: &AppHandle) {
+fn handle_rclone_password_stored(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen(events::RCLONE_ENGINE, move |event| {
-        let app = app_clone.clone();
+    app.listen(RCLONE_PASSWORD_STORED, move |_| {
+        let _app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            // Parse the payload as JSON
-            if let Ok(payload) = parse_payload::<serde_json::Value>(Some(event.payload())) {
-                match payload.get("status").and_then(|s| s.as_str()) {
-                    Some("ready") => {
-                        debug!("RCLONE_ENGINE is ready");
-                        if let Some(port) = payload.get("port") {
-                            debug!("API ready on port: {}", port);
-                        }
-                        refresh_and_update_tray(app, 0).await;
-                    }
-                    Some("password_stored") => {
-                        // Clear the engine flag and attempt a restart if engine not running
-                        tauri::async_runtime::spawn_blocking(move || {
-                            let mut engine = match ENGINE.lock() {
-                                Ok(guard) => guard,
-                                Err(poisoned) => poisoned.into_inner(),
-                            };
+            // Clear the engine flag and attempt a restart if engine not running
+            tauri::async_runtime::spawn_blocking(move || {
+                let mut engine = match ENGINE.lock() {
+                    Ok(guard) => guard,
+                    Err(poisoned) => poisoned.into_inner(),
+                };
 
-                            engine.password_error = false;
-                        });
-                    }
-                    Some("error") => {
-                        if let Some(message) = payload.get("message").and_then(|m| m.as_str()) {
-                            error!("RCLONE_ENGINE error: {}", message);
-                        } else {
-                            error!("RCLONE_ENGINE encountered an error");
-                        }
-                    }
-                    Some(status) => {
-                        debug!("RCLONE_ENGINE unknown status: {}", status);
-                    }
-                    _ => {}
-                }
-            }
+                engine.password_error = false;
+            });
         });
     });
 }
 
 fn handle_remote_state_changed(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen(events::REMOTE_STATE_CHANGED, move |event| {
+    app.listen(REMOTE_STATE_CHANGED, move |event| {
         debug!(
             "🔄 Remote state changed! Raw payload: {:?}",
             event.payload()
         );
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
-            if let Err(e) = CACHE.refresh_mounted_remotes(app.clone()).await {
+            let cache = app.state::<RemoteCache>(); // <-- Get managed RemoteCache
+            if let Err(e) = cache.refresh_mounted_remotes(app.clone()).await {
                 error!("Failed to refresh mounted remotes: {e}");
             }
             if let Err(e) = update_tray_menu(app.clone(), 0).await {
@@ -131,7 +108,7 @@ fn handle_remote_state_changed(app: &AppHandle) {
 
             let _ = app
                 .clone()
-                .emit("mount_cache_updated", "remote_presence")
+                .emit(MOUNT_STATE_CHANGED, "remote_presence")
                 .map_err(|e| {
                     error!("❌ Failed to emit event to frontend: {e}");
                 });
@@ -141,23 +118,37 @@ fn handle_remote_state_changed(app: &AppHandle) {
 
 fn handle_remote_presence_changed(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen(events::REMOTE_PRESENCE_CHANGED, move |_| {
+    app.listen(REMOTE_PRESENCE_CHANGED, move |_| {
         let app_clone = app_clone.clone();
         tauri::async_runtime::spawn(async move {
+            let cache = app_clone.state::<RemoteCache>();
             let refresh_tasks = tokio::join!(
-                CACHE.refresh_remote_list(app_clone.clone()),
-                CACHE.refresh_remote_configs(app_clone.clone()),
-                CACHE.refresh_remote_settings(app_clone.clone()),
+                cache.refresh_remote_list(app_clone.clone()),
+                cache.refresh_remote_configs(app_clone.clone()),
+                cache.refresh_remote_settings(app_clone.clone()),
             );
             if let (Err(e1), Err(e2), Err(e3)) = refresh_tasks {
                 error!("Failed to refresh cache: {e1}, {e2}, {e3}");
             }
+
+            info!("Remote presence changed, reloading scheduled tasks from configs...");
+            let all_configs = cache.get_settings().await;
+
+            let cache_state = app_clone.state::<ScheduledTasksCache>();
+            let scheduler_state = app_clone.state::<CronScheduler>();
+
+            if let Err(e) =
+                reload_scheduled_tasks_from_configs(cache_state, scheduler_state, all_configs).await
+            {
+                error!("❌ Failed to reload scheduled tasks after remote change: {e}");
+            }
+
             if let Err(e) = update_tray_menu(app_clone.clone(), 0).await {
                 error!("Failed to update tray menu: {e}");
             }
 
             let _ = app_clone
-                .emit("remote_cache_updated", "remote_presence")
+                .emit(REMOTE_CACHE_UPDATED, "remote_presence")
                 .map_err(|e| {
                     error!("❌ Failed to emit event to frontend: {e}");
                 });
@@ -167,7 +158,7 @@ fn handle_remote_presence_changed(app: &AppHandle) {
 
 fn tray_menu_updated(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen(events::TRAY_MENU_UPDATED, move |_| {
+    app.listen(UPDATE_TRAY_MENU, move |_| {
         let app = app_clone.clone();
         tauri::async_runtime::spawn(async move {
             if let Err(e) = update_tray_menu(app, 0).await {
@@ -179,7 +170,7 @@ fn tray_menu_updated(app: &AppHandle) {
 
 fn handle_job_cache_changed(app: &AppHandle) {
     let app_clone = app.clone();
-    app.listen(events::JOB_CACHE_CHANGED, move |event| {
+    app.listen(JOB_CACHE_CHANGED, move |event| {
         debug!("🔄 Job cache changed! Raw payload: {:?}", event.payload());
 
         let app = app_clone.clone();
@@ -191,11 +182,30 @@ fn handle_job_cache_changed(app: &AppHandle) {
     });
 }
 
+fn handle_serve_state_changed(app: &AppHandle) {
+    let app_clone = app.clone();
+    app.listen(SERVE_STATE_CHANGED, move |event| {
+        let app = app_clone.clone();
+        tauri::async_runtime::spawn(async move {
+            debug!("🔄 Serve state changed! Raw payload: {:?}", event.payload());
+
+            let cache = app.state::<RemoteCache>();
+            if let Err(e) = cache.refresh_serves(app.clone()).await {
+                error!("❌ Failed to refresh serves cache: {e}");
+            }
+
+            if let Err(e) = crate::core::tray::core::update_tray_menu(app.clone(), 0).await {
+                error!("Failed to update tray menu after serve change: {e}");
+            }
+        });
+    });
+}
+
 fn handle_settings_changed(app: &AppHandle) {
     let app_handle = app.clone();
 
     let app_handle_clone = app_handle.clone();
-    app.listen(events::SYSTEM_SETTINGS_CHANGED, move |event| {
+    app.listen(SYSTEM_SETTINGS_CHANGED, move |event| {
         let app_handle = app_handle_clone.clone();
         debug!("🔄 Settings saved! Raw payload: {:?}", event.payload());
 
@@ -207,8 +217,13 @@ fn handle_settings_changed(app: &AppHandle) {
                     {
                         debug!("💬 Notifications changed to: {notification}");
                         let notifications_enabled = app_handle.state::<RcloneState>();
-                        let mut guard =
-                            notifications_enabled.notifications_enabled.write().unwrap();
+                        let mut guard = match notifications_enabled.notifications_enabled.write() {
+                            Ok(g) => g,
+                            Err(e) => {
+                                error!("Failed to write notifications_enabled: {e}");
+                                return;
+                            }
+                        };
                         *guard = notification;
                     }
 
@@ -229,7 +244,13 @@ fn handle_settings_changed(app: &AppHandle) {
                         let app_handle_clone = app_handle.clone();
                         tauri::async_runtime::spawn(async move {
                             let tray_state = app_handle_clone.state::<RcloneState>();
-                            let mut guard = tray_state.tray_enabled.write().unwrap();
+                            let mut guard = match tray_state.tray_enabled.write() {
+                                Ok(g) => g,
+                                Err(e) => {
+                                    error!("Failed to write tray_enabled: {e}");
+                                    return;
+                                }
+                            };
                             *guard = tray_enabled;
                             debug!("🛠️ Tray visibility changed to: {tray_enabled}");
                             if let Some(tray) = app_handle_clone.tray_by_id("main-tray") {
@@ -247,11 +268,17 @@ fn handle_settings_changed(app: &AppHandle) {
                     if let Some(restrict) = general.get("restrict").and_then(|v| v.as_bool()) {
                         debug!("🔒 Restrict mode changed to: {restrict}");
                         let rclone_state = app_handle.state::<RcloneState>();
-                        let mut guard = rclone_state.restrict_mode.write().unwrap();
+                        let mut guard = match rclone_state.restrict_mode.write() {
+                            Ok(g) => g,
+                            Err(e) => {
+                                error!("Failed to write restrict_mode: {e}");
+                                return;
+                            }
+                        };
                         *guard = restrict;
                         let app_handle_clone = app_handle.clone();
                         app_handle_clone
-                            .emit("remote_presence_changed", "restrict_mode_changed")
+                            .emit(REMOTE_PRESENCE_CHANGED, "restrict_mode_changed")
                             .unwrap_or_else(|e| {
                                 error!("❌ Failed to emit remote presence changed event: {e}");
                             });
@@ -270,7 +297,6 @@ fn handle_settings_changed(app: &AppHandle) {
                             bandwidth_limit.as_u64().map(|n| n.to_string())
                         };
                         tauri::async_runtime::spawn(async move {
-                            // Get the RcloneState from tauri's state management
                             let app_clone = app.clone();
                             let rclone_state = app.state::<RcloneState>();
                             if let Err(e) = set_bandwidth_limit(
@@ -290,13 +316,23 @@ fn handle_settings_changed(app: &AppHandle) {
                     {
                         debug!("🔄 Rclone config path changed to: {config_path}");
                         let rclone_state = app_handle.state::<RcloneState>();
-                        let old_rclone_config_file =
-                            rclone_state.rclone_config_file.read().unwrap().to_string();
-                        let mut guard = rclone_state.rclone_config_file.write().unwrap();
+                        let old_rclone_config_file = match rclone_state.rclone_config_file.read() {
+                            Ok(cfg) => cfg.to_string(),
+                            Err(e) => {
+                                error!("Failed to read rclone_config_file: {e}");
+                                return;
+                            }
+                        };
+                        let mut guard = match rclone_state.rclone_config_file.write() {
+                            Ok(g) => g,
+                            Err(e) => {
+                                error!("Failed to write rclone_config_file: {e}");
+                                return;
+                            }
+                        };
                         *guard = config_path.to_string();
-                        drop(guard); // Release the lock
+                        drop(guard);
 
-                        // Restart engine with new rclone config file
                         if let Err(e) = crate::rclone::engine::lifecycle::restart_for_config_change(
                             &app_handle,
                             "rclone_config_file",
@@ -307,25 +343,35 @@ fn handle_settings_changed(app: &AppHandle) {
                         }
                         info!(
                             "Rclone config file updated to: {}",
-                            rclone_state.rclone_config_file.read().unwrap()
+                            match rclone_state.rclone_config_file.read() {
+                                Ok(cfg) => cfg,
+                                Err(e) => {
+                                    error!("Failed to read rclone_config_file for logging: {e}");
+                                    return;
+                                }
+                            }
                         );
-
-                        // let config_path = config_path.to_string();
-                        // let app_handle_clone = app_handle.clone();
-                        // tauri::async_runtime::spawn(async move {
-                        //     if let Err(e) = set_rclone_config_file(app_handle_clone.clone(), config_path).await {
-                        //         error!("Failed to set Rclone config path: {e}");
-                        //     }
-                        // });
                     }
 
                     if let Some(rclone_path) = core.get("rclone_path").and_then(|v| v.as_str()) {
                         debug!("🔄 Rclone path changed to: {rclone_path}");
                         let rclone_state = app_handle.state::<RcloneState>();
-                        let old_rclone_path = rclone_state.rclone_path.read().unwrap().clone();
+                        let old_rclone_path = match rclone_state.rclone_path.read() {
+                            Ok(path) => path.clone(),
+                            Err(e) => {
+                                error!("Failed to read rclone_path: {e}");
+                                return;
+                            }
+                        };
                         debug!("Old rclone path: {}", old_rclone_path.to_string_lossy());
                         {
-                            let mut path_guard = rclone_state.rclone_path.write().unwrap();
+                            let mut path_guard = match rclone_state.rclone_path.write() {
+                                Ok(g) => g,
+                                Err(e) => {
+                                    error!("Failed to write rclone_path: {e}");
+                                    return;
+                                }
+                            };
                             *path_guard = std::path::PathBuf::from(rclone_path);
                         }
 
@@ -340,7 +386,13 @@ fn handle_settings_changed(app: &AppHandle) {
                         }
                         info!(
                             "Rclone path updated to: {}",
-                            rclone_state.rclone_path.read().unwrap().to_string_lossy()
+                            match rclone_state.rclone_path.read() {
+                                Ok(path) => path.to_string_lossy().to_string(),
+                                Err(e) => {
+                                    error!("Failed to read rclone_path for logging: {e}");
+                                    return;
+                                }
+                            }
                         );
                     }
 
@@ -392,7 +444,13 @@ fn handle_settings_changed(app: &AppHandle) {
                     {
                         debug!("🖥️ Terminal apps changed: {terminal_apps:?}");
                         let rclone_state = app_handle.state::<RcloneState>();
-                        let mut terminal_apps_guard = rclone_state.terminal_apps.write().unwrap();
+                        let mut terminal_apps_guard = match rclone_state.terminal_apps.write() {
+                            Ok(g) => g,
+                            Err(e) => {
+                                error!("Failed to write terminal_apps: {e}");
+                                return;
+                            }
+                        };
                         *terminal_apps_guard = terminal_apps
                             .iter()
                             .filter_map(|v| v.as_str().map(String::from))
@@ -416,8 +474,9 @@ fn handle_settings_changed(app: &AppHandle) {
 pub fn setup_event_listener(app: &AppHandle) {
     handle_ctrl_c(app);
     handle_rclone_api_url_updated(app);
-    handle_rclone_api_ready(app);
+    handle_rclone_password_stored(app);
     handle_remote_state_changed(app);
+    handle_serve_state_changed(app);
     handle_remote_presence_changed(app);
     handle_settings_changed(app);
     tray_menu_updated(app);

@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use tauri::{State, command};
 
 use crate::RcloneState;
-use crate::rclone::state::ENGINE_STATE;
+use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{EndpointHelper, config};
 
 #[command]
@@ -53,29 +53,6 @@ pub async fn get_remotes(state: State<'_, RcloneState>) -> Result<Vec<String>, S
 
     debug!("📡 Found {} remotes: {:?}", remotes.len(), remotes);
     Ok(remotes)
-}
-
-#[tauri::command]
-pub async fn get_remote_config_fields(
-    remote_type: String,
-    state: State<'_, RcloneState>,
-) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::GET);
-
-    let response = state
-        .client
-        .post(&url)
-        .query(&[("name", &remote_type)])
-        .send()
-        .await
-        .map_err(|e| format!("❌ Failed to fetch remote config fields: {e}"))?;
-
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
-
-    Ok(json)
 }
 
 #[tauri::command]

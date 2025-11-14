@@ -48,7 +48,7 @@
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
             "tsConfig": "tsconfig.app.json",
-            "assets": ["src/assets"],
+            "assets": ["src/assets", "src/favicon.ico"],
             "styles": ["src/custom-theme.scss"]
           },
           "configurations": {
@@ -56,8 +56,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kb",
-                  "maximumError": "2.5mb"
+                  "maximumWarning": "2mb",
+                  "maximumError": "2.6mb"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -66,14 +66,6 @@
                 }
               ],
               "outputHashing": "all"
-            },
-            "headless": {
-              "fileReplacements": [
-                {
-                  "replace": "src/app/services/index.ts",
-                  "with": "src/app/services-headless/index.ts"
-                }
-              ]
             },
             "development": {
               "optimization": false,

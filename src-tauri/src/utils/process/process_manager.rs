@@ -158,7 +158,13 @@ fn is_rclone_executable(filename: &str) -> bool {
 /// Kill all rclone rcd processes (emergency cleanup)
 /// WARNING: This kills ALL rclone processes including OAuth. Only use during application shutdown.
 pub fn kill_all_rclone_processes() -> Result<(), String> {
-    info!("🧹 Emergency cleanup: killing ALL rclone processes (including OAuth)");
+    use crate::rclone::state::engine::ENGINE_STATE;
+
+    // Get ports from the app state
+    let (_, api_port) = ENGINE_STATE.get_api();
+    let (_, oauth_port) = ENGINE_STATE.get_oauth();
+
+    info!("🧹 Cleaning up rclone processes on managed ports: API={api_port}, OAuth={oauth_port}");
 
     #[cfg(target_os = "windows")]
     const TARGET_NAMES: &[&str] = &["rclone.exe"];
@@ -166,24 +172,48 @@ pub fn kill_all_rclone_processes() -> Result<(), String> {
     const TARGET_NAMES: &[&str] = &["rclone"];
 
     if !IS_SUPPORTED_SYSTEM {
-        warn!("⚠️ sysinfo does not support this platform; falling back to no-op cleanup");
+        warn!("⚠️ sysinfo does not support this platform; falling back to port-only cleanup");
+        // Fallback: just kill by port
+        kill_processes_on_port(api_port)?;
+        kill_processes_on_port(oauth_port)?;
         return Ok(());
     }
 
+    // Step 1: Find PIDs listening on our managed ports
+    let api_pids = find_pids_on_port(api_port).unwrap_or_default();
+    let oauth_pids = find_pids_on_port(oauth_port).unwrap_or_default();
+
+    let mut port_pids: Vec<u32> = api_pids.into_iter().chain(oauth_pids).collect();
+    port_pids.sort_unstable();
+    port_pids.dedup();
+
+    if port_pids.is_empty() {
+        info!("✅ No processes found on managed ports");
+        return Ok(());
+    }
+
+    info!(
+        "🎯 Found {} process(es) using managed ports: {:?}",
+        port_pids.len(),
+        port_pids
+    );
+
+    // Step 2: Verify these are rclone processes before killing
     let mut system = System::new();
     system.refresh_processes(ProcessesToUpdate::All, true);
 
-    let mut target_pids: Vec<u32> = system
-        .processes()
-        .iter()
-        .filter_map(|(pid, process)| {
-            // Check process name (exact match)
+    let mut killed_count = 0;
+    let mut already_gone_count = 0;
+    let mut failed_count = 0;
+
+    for pid in port_pids {
+        // Verify it's an rclone process
+        let is_rclone = if let Some(process) = system.process((pid as usize).into()) {
             let process_name = process.name().to_string_lossy();
             let matches_name = TARGET_NAMES
                 .iter()
                 .any(|expected| process_name.eq_ignore_ascii_case(expected));
 
-            // Check command line arguments (extract filename and exact match)
             let matches_cmd = process.cmd().iter().any(|arg| {
                 let arg = arg.to_string_lossy();
                 if let Some(filename) = Path::new(arg.as_ref()).file_name() {
@@ -195,49 +225,34 @@ pub fn kill_all_rclone_processes() -> Result<(), String> {
             });
 
             if matches_name || matches_cmd {
-                info!(
-                    "🎯 Found rclone process: PID {}, name: {}",
-                    pid.as_u32(),
+                info!("✅ Verified PID {pid} is rclone: {}", process_name);
+                true
+            } else {
+                warn!(
+                    "⚠️ PID {pid} on managed port is NOT rclone (name: {}), skipping for safety!",
                     process_name
                 );
-                Some(pid.as_u32())
-            } else {
-                None
+                false
             }
-        })
-        .collect();
+        } else {
+            info!("ℹ️ Process {pid} already exited");
+            false
+        };
 
-    target_pids.sort_unstable();
-    target_pids.dedup();
-
-    if target_pids.is_empty() {
-        info!("No rclone processes found to kill");
-        return Ok(());
-    }
-
-    info!(
-        "Found {} rclone process(es) to terminate: {:?}",
-        target_pids.len(),
-        target_pids
-    );
-
-    let mut killed_count = 0;
-    let mut already_gone_count = 0;
-    let mut failed_count = 0;
-
-    for pid in target_pids {
-        match kill_process_by_pid(pid) {
-            Ok(_) => {
-                killed_count += 1;
-                info!("✅ Killed rclone process {pid}");
-            }
-            Err(e) => {
-                // Don't warn if process already exited
-                if e.contains("already exited") {
-                    already_gone_count += 1;
-                } else {
-                    warn!("⚠️ Failed to kill rclone process {pid}: {e}");
-                    failed_count += 1;
+        // Step 3: Only kill if verified as rclone
+        if is_rclone {
+            match kill_process_by_pid(pid) {
+                Ok(_) => {
+                    killed_count += 1;
+                    info!("✅ Killed rclone process {pid}");
+                }
+                Err(e) => {
+                    if e.contains("already exited") {
+                        already_gone_count += 1;
+                    } else {
+                        warn!("⚠️ Failed to kill rclone process {pid}: {e}");
+                        failed_count += 1;
+                    }
                 }
             }
         }

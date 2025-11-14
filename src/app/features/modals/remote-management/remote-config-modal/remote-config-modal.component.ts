@@ -15,6 +15,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
+import { ServeConfigStepComponent } from '../../../../shared/remote-config/serve-config-step/serve-config-step.component';
 import { RcConfigQuestionResponse } from '@app/services';
 import { AnimationsService } from '../../../../shared/services/animations.service';
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
@@ -26,6 +27,8 @@ import {
   MountManagementService,
   AppSettingsService,
   FileSystemService,
+  SchedulerService,
+  ServeManagementService,
 } from '@app/services';
 import {
   BackendConfig,
@@ -54,6 +57,13 @@ interface DialogData {
   existingConfig?: Record<string, unknown>;
   name?: string;
   restrictMode: boolean;
+  initialSection?: string;
+}
+
+interface PendingRemoteData {
+  name: string;
+  type?: string;
+  [key: string]: unknown;
 }
 
 interface ConfigSpec {
@@ -71,6 +81,7 @@ interface ConfigSpec {
     MatButtonModule,
     RemoteConfigStepComponent,
     FlagConfigStepComponent,
+    ServeConfigStepComponent,
     InteractiveConfigStepComponent,
     MatProgressSpinner,
   ],
@@ -91,9 +102,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private readonly mountManagementService = inject(MountManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
+  private readonly schedulerService = inject(SchedulerService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly dialogData = inject(MAT_DIALOG_DATA, { optional: true }) as DialogData; // Make injection optional
   private readonly cdRef = inject(ChangeDetectorRef);
+  private readonly serveManagementService = inject(ServeManagementService);
   readonly flagConfigService = inject(FlagConfigService);
 
   private destroy$ = new Subject<void>();
@@ -115,8 +128,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private readonly FLAG_BASED_TYPES: FlagType[] = ['mount', 'copy', 'sync', 'bisync', 'move'];
   private readonly FLAG_ONLY_TYPES: FlagType[] = ['filter', 'vfs', 'backend'];
 
+  // Serve mode step configuration
+  readonly SERVE_TOTAL_STEPS = 4;
+  readonly serveStepLabels = ['Serve Config', 'Filter', 'VFS', 'Backend'];
+
   // Forms
   remoteForm!: FormGroup;
+  serveConfigForm!: FormGroup;
   remoteConfigForm!: FormGroup;
 
   // State
@@ -135,9 +153,16 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     backend: [],
   };
 
+  // Serve state
+  availableServeTypes: string[] = [];
+  selectedServeType = 'http';
+  dynamicServeFields: RcConfigOption[] = [];
+  isLoadingServeFields = false;
+
   editTarget: EditTarget = null;
   cloneTarget = false;
   restrictMode = false;
+  initialSection: string | null = null;
   useInteractiveMode = false;
 
   isRemoteConfigLoading = false;
@@ -152,7 +177,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     isProcessing: false,
   };
 
-  private pendingConfig: { remoteData: any; finalConfig: RemoteConfigSections } | null = null;
+  private pendingConfig: {
+    remoteData: PendingRemoteData;
+    finalConfig: RemoteConfigSections;
+  } | null = null;
   private changedRemoteFields = new Set<string>();
   private optionToFlagTypeMap: Record<string, FlagType> = {};
   private optionToFieldNameMap: Record<string, string> = {};
@@ -168,18 +196,34 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     copy: {
       flagType: 'copy',
       formPath: 'copyConfig',
-      staticFields: ['autoStart', 'source', 'dest', 'createEmptySrcDirs'],
+      staticFields: [
+        'autoStart',
+        'cronEnabled',
+        'cronExpression',
+        'source',
+        'dest',
+        'createEmptySrcDirs',
+      ],
     },
     sync: {
       flagType: 'sync',
       formPath: 'syncConfig',
-      staticFields: ['autoStart', 'source', 'dest', 'createEmptySrcDirs'],
+      staticFields: [
+        'autoStart',
+        'cronEnabled',
+        'cronExpression',
+        'source',
+        'dest',
+        'createEmptySrcDirs',
+      ],
     },
     bisync: {
       flagType: 'bisync',
       formPath: 'bisyncConfig',
       staticFields: [
         'autoStart',
+        'cronEnabled',
+        'cronExpression',
         'source',
         'dest',
         'dryRun',
@@ -203,7 +247,15 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     move: {
       flagType: 'move',
       formPath: 'moveConfig',
-      staticFields: ['autoStart', 'source', 'dest', 'createEmptySrcDirs', 'deleteEmptySrcDirs'],
+      staticFields: [
+        'autoStart',
+        'cronEnabled',
+        'cronExpression',
+        'source',
+        'dest',
+        'createEmptySrcDirs',
+        'deleteEmptySrcDirs',
+      ],
     },
     filter: { flagType: 'filter', formPath: 'filterConfig', staticFields: [] },
     vfs: { flagType: 'vfs', formPath: 'vfsConfig', staticFields: [] },
@@ -216,7 +268,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.editTarget = this.dialogData?.editTarget || null;
     this.cloneTarget = this.dialogData?.cloneTarget || false;
     this.restrictMode = this.dialogData?.restrictMode || false;
+    this.initialSection = this.dialogData?.initialSection || null;
     this.remoteForm = this.createRemoteForm();
+    this.serveConfigForm = this.createServeConfigForm();
     this.remoteConfigForm = this.createRemoteConfigForm();
   }
 
@@ -224,6 +278,12 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     await this.loadExistingRemotes();
     await this.loadRemoteTypes();
     await this.loadAllFlagFields();
+
+    // Load serve types and fields if in serve mode
+    if (this.isServeMode) {
+      await this.loadServeTypes();
+      await this.loadServeFields();
+    }
     this.populateFormIfEditingOrCloning();
     this.setupFormListeners();
     this.setupAuthStateListeners();
@@ -266,6 +326,82 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.addDynamicFieldsToForm();
   }
 
+  private async loadServeTypes(): Promise<void> {
+    try {
+      const types = await this.serveManagementService.getServeTypes();
+      this.availableServeTypes = types;
+
+      // Set default type if needed
+      if (this.editTarget === 'serve' && this.dialogData?.existingConfig?.['serveConfig']) {
+        const serveConfig = this.dialogData.existingConfig['serveConfig'] as Record<
+          string,
+          unknown
+        >;
+        const options = serveConfig?.['options'] as Record<string, unknown>;
+        this.selectedServeType = options?.['type'] as string;
+      } else if (types.length > 0) {
+        this.selectedServeType = types[0];
+      }
+    } catch (error) {
+      console.error('Failed to load serve types:', error);
+    }
+  }
+
+  private async loadServeFields(): Promise<void> {
+    if (!this.selectedServeType) return;
+
+    this.isLoadingServeFields = true;
+    try {
+      const fields = await this.serveManagementService.getServeFlags(this.selectedServeType);
+      this.dynamicServeFields = fields;
+
+      // Rebuild options group
+      this.rebuildServeOptionsGroup();
+    } catch (error) {
+      console.error('Failed to load serve fields:', error);
+      this.dynamicServeFields = [];
+    } finally {
+      this.isLoadingServeFields = false;
+      this.cdRef.markForCheck();
+    }
+  }
+
+  // Note: Rclone uses Name for serve flag keys NOT FieldName
+  private rebuildServeOptionsGroup(): void {
+    const optionsGroup = this.serveConfigForm.get('options') as FormGroup;
+    if (!optionsGroup) return;
+
+    // Clear existing
+    Object.keys(optionsGroup.controls).forEach(key => {
+      optionsGroup.removeControl(key);
+    });
+
+    // Add new
+    this.dynamicServeFields.forEach(field => {
+      const defaultValue = field.Value ?? field.Default;
+      const validators = field.Required ? [Validators.required] : [];
+
+      // Keep arrays as arrays
+      const controlValue = defaultValue;
+
+      optionsGroup.addControl(field.Name, new FormControl(controlValue, validators));
+    });
+  }
+
+  async onServeTypeChange(type: string): Promise<void> {
+    this.selectedServeType = type;
+
+    // Update form
+    this.serveConfigForm.get('type')?.setValue(type, { emitEvent: false });
+
+    // Reload fields
+    await this.loadServeFields();
+  }
+
+  getServeControlKey(field: RcConfigOption): string {
+    return field.Name;
+  }
+
   private addDynamicFieldsToForm(): void {
     FLAG_TYPES.forEach(flagType => {
       const optionsGroup = this.remoteConfigForm.get(`${flagType}Config.options`) as FormGroup;
@@ -292,6 +428,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // ============================================================================
   private createRemoteForm(): FormGroup {
     const isEditMode = this.editTarget === 'remote' && !!this.dialogData?.existingConfig;
+    console.log('Existing data for remote form:', this.dialogData?.existingConfig);
 
     return this.fb.group({
       name: [
@@ -305,13 +442,41 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     });
   }
 
+  private createServeConfigForm(): FormGroup {
+    return this.fb.group({
+      autoStart: [false],
+      source: this.fb.group({
+        pathType: ['currentRemote'],
+        path: [''],
+      }),
+      type: ['http', Validators.required],
+      options: this.fb.group({}),
+    });
+  }
+
   private createRemoteConfigForm(): FormGroup {
     return this.fb.group({
       mountConfig: this.createConfigGroup(['autoStart', 'dest', 'source', 'type']),
-      copyConfig: this.createConfigGroup(['autoStart', 'source', 'dest', 'createEmptySrcDirs']),
-      syncConfig: this.createConfigGroup(['autoStart', 'source', 'dest', 'createEmptySrcDirs']),
+      copyConfig: this.createConfigGroup([
+        'autoStart',
+        'cronEnabled',
+        'cronExpression',
+        'source',
+        'dest',
+        'createEmptySrcDirs',
+      ]),
+      syncConfig: this.createConfigGroup([
+        'autoStart',
+        'cronEnabled',
+        'cronExpression',
+        'source',
+        'dest',
+        'createEmptySrcDirs',
+      ]),
       bisyncConfig: this.createConfigGroup([
         'autoStart',
+        'cronEnabled',
+        'cronExpression',
         'source',
         'dest',
         'dryRun',
@@ -333,6 +498,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       ]),
       moveConfig: this.createConfigGroup([
         'autoStart',
+        'cronEnabled',
+        'cronExpression',
         'source',
         'dest',
         'createEmptySrcDirs',
@@ -351,6 +518,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         field.includes('Empty') ||
         field.includes('Dirs') ||
         field === 'autoStart' ||
+        field === 'cronEnabled' ||
         field === 'dryRun' ||
         field === 'resync' ||
         field === 'checkAccess' ||
@@ -380,6 +548,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     } else if (fields.includes('dest') && fields.includes('type')) {
       // This is mount, 'dest' is a simple control
       group['dest'] = [''];
+    }
+
+    // Add cronExpression field for non-mount configs
+    if (fields.includes('autoStart') && !fields.includes('type')) {
+      group['cronExpression'] = [null];
     }
 
     group['options'] = this.fb.group({});
@@ -500,6 +673,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
           this.populateFlagForm(t, this.dialogData.existingConfig?.[`${t}Config`] || {})
         );
       }
+    } else if (this.editTarget === 'serve') {
+      this.populateServeForm(this.dialogData.existingConfig);
     } else if (this.editTarget) {
       this.populateFlagForm(this.editTarget as FlagType, this.dialogData.existingConfig);
     }
@@ -515,6 +690,68 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     await this.onRemoteTypeChange();
     this.remoteForm.patchValue(config);
     // Use setTimeout to ensure all async value change events have fired
+    setTimeout(() => {
+      this.isPopulatingForm = false;
+    }, 100);
+  }
+
+  private async populateServeForm(config: any): Promise<void> {
+    this.isPopulatingForm = true;
+
+    const serveConfig = config?.['serveConfig'] || {};
+    const options = serveConfig?.['options'] as Record<string, unknown>;
+
+    // Get type
+    const type = (options?.['type'] as string) || 'http';
+    this.selectedServeType = type;
+
+    // Load fields for this type
+    await this.loadServeFields();
+
+    // Populate form
+    this.serveConfigForm.patchValue({
+      autoStart: serveConfig.autoStart || false,
+      source: this.parsePathString(serveConfig.source || '', 'currentRemote', this.getRemoteName()),
+      type: type,
+    });
+
+    // Populate options AFTER rebuilding (to overwrite defaults with saved values)
+    if (options) {
+      const optionsGroup = this.serveConfigForm.get('options') as FormGroup;
+      Object.entries(options).forEach(([key, value]) => {
+        if (key !== 'type' && key !== 'fs') {
+          const control = optionsGroup.get(key);
+          if (control) {
+            control.setValue(value, { emitEvent: false });
+          }
+        }
+      });
+    }
+
+    // Populate flag configs
+    ['filter', 'vfs', 'backend'].forEach(flagType => {
+      const flagConfig = serveConfig[`${flagType}Config`] || {};
+      console.log('Populating serve flag config:', flagType, flagConfig);
+      this.populateFlagForm(flagType as FlagType, flagConfig);
+    });
+
+    // IMPORTANT: set the initial step for serve editing only after the
+    // forms and dynamic serve/flag fields have been loaded and populated.
+    // Setting the step earlier (e.g. in the constructor) caused a race where
+    // the step content would be instantiated before the dynamic controls
+    // existed, so arrays and other dynamic options weren't populated.
+    if (this.initialSection && this.editTarget === 'serve') {
+      const stepMap: Record<string, number> = {
+        serve: 1,
+        filter: 2,
+        vfs: 3,
+        backend: 4,
+      };
+      this.currentStep = stepMap[this.initialSection] || 1;
+      // Ensure OnPush views are updated now that we've changed visible step
+      this.cdRef.markForCheck();
+    }
+
     setTimeout(() => {
       this.isPopulatingForm = false;
     }, 100);
@@ -554,6 +791,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         baseConfig[field] = config[field] || '';
       }
     });
+
+    // Include cronExpression if present (for non-mount configs)
+    if (config['cronExpression'] !== undefined && flagType !== 'mount') {
+      baseConfig['cronExpression'] = config['cronExpression'];
+    }
 
     return baseConfig;
   }
@@ -647,10 +889,37 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     this.refreshRemoteNameValidator();
   }
 
-  // ============================================================================
-  // STEP NAVIGATION
-  // ============================================================================
+  get isServeMode(): boolean {
+    return this.editTarget === 'serve';
+  }
+
+  get isEditingSpecificServeSection(): boolean {
+    return this.editTarget === 'serve' && !!this.initialSection;
+  }
+
+  get hasSavedServeConfig(): boolean {
+    const serveConfig = this.dialogData?.existingConfig?.['serveConfig'] as Record<string, unknown>;
+    return serveConfig !== undefined;
+  }
+
+  get savedType(): string {
+    const serveConfig = this.dialogData?.existingConfig?.['serveConfig'] as Record<string, any>;
+    return (serveConfig?.['options'].type as string) || 'http';
+  }
+
+  get currentTotalSteps(): number {
+    return this.isServeMode ? this.SERVE_TOTAL_STEPS : this.TOTAL_STEPS;
+  }
+
+  get currentStepLabels(): string[] {
+    return this.isServeMode ? this.serveStepLabels : this.stepLabels;
+  }
+
   getCurrentStepLabel(): string {
+    if (this.isServeMode) {
+      return this.currentStepLabels[this.currentStep - 1] || 'Serve Configuration';
+    }
+
     if (this.currentStep === 1) return 'Remote Configuration';
     const stepIndex = this.currentStep - 2;
     if (stepIndex >= 0 && stepIndex < FLAG_TYPES.length) {
@@ -661,7 +930,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   goToStep(step: number): void {
-    if (step >= 1 && step <= this.TOTAL_STEPS) {
+    if (step >= 1 && step <= this.currentTotalSteps) {
       this.currentStep = step;
       this.cdRef.markForCheck();
       this.scrollToTop();
@@ -669,7 +938,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   nextStep(): void {
-    if (this.currentStep >= this.TOTAL_STEPS) return;
+    if (this.currentStep >= this.currentTotalSteps) return;
     if (this.currentStep === 1 && !this.remoteForm.valid) {
       this.remoteForm.markAllAsTouched();
       return;
@@ -687,14 +956,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }
   }
 
-  getStepProgress(): { current: number; total: number; percentage: number } {
-    return {
-      current: this.currentStep,
-      total: this.TOTAL_STEPS,
-      percentage: Math.round((this.currentStep / this.TOTAL_STEPS) * 100),
-    };
-  }
-
   getStepState(stepNumber: number): 'completed' | 'current' | 'future' {
     if (stepNumber < this.currentStep) return 'completed';
     if (stepNumber === this.currentStep) return 'current';
@@ -702,6 +963,16 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   getStepIcon(stepIndex: number): string {
+    if (this.isServeMode) {
+      const serveIconMap: Record<number, string> = {
+        0: 'satellite-dish', // Serve Config
+        1: 'filter', // Filter
+        2: 'vfs', // VFS
+        3: 'server', // Backend
+      };
+      return serveIconMap[stepIndex];
+    }
+
     const iconMap: Record<number, string> = {
       0: 'hard-drive',
       1: 'mount',
@@ -713,13 +984,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       7: 'vfs',
       8: 'server',
     };
-    return iconMap[stepIndex] || 'circle';
-  }
-
-  getStepProgressAriaLabel(): string {
-    return `Step ${this.currentStep} of ${this.TOTAL_STEPS}: ${
-      this.stepLabels[this.currentStep - 1]
-    }`;
+    return iconMap[stepIndex];
   }
 
   handleStepKeydown(event: KeyboardEvent, stepNumber: number): void {
@@ -877,6 +1142,12 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       return { success: true };
     }
 
+    if (this.editTarget === 'serve') {
+      const serveConfig = this.buildServeConfig();
+      await this.appSettingsService.saveRemoteSettings(remoteName, { serveConfig });
+      return { success: true };
+    }
+
     const updatedConfig = await this.buildUpdateConfig();
     await this.appSettingsService.saveRemoteSettings(remoteName, updatedConfig);
     return { success: true };
@@ -944,6 +1215,11 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       }
     });
 
+    // Add cronExpression if present (for non-mount configs)
+    if (configData.cronExpression !== undefined) {
+      result.cronExpression = configData.cronExpression;
+    }
+
     // For types with static fields, place dynamic flags under an `options` object.
     result.options = this.cleanData(configData.options, this.dynamicFlagFields[flagType], flagType);
 
@@ -979,6 +1255,49 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     }
 
     return updatedConfig;
+  }
+
+  private buildServeConfig(): Record<string, unknown> {
+    const remoteName = this.getRemoteName();
+    const serveData = this.serveConfigForm.getRawValue();
+    const configFormData = this.remoteConfigForm.getRawValue();
+
+    // Build fs path from source
+    const fs = this.buildPathString(serveData.source, remoteName);
+
+    // Clean serve options
+    const optionsGroup = this.serveConfigForm.get('options') as FormGroup;
+    const serveOptions = this.cleanServeOptions(optionsGroup.getRawValue());
+
+    return {
+      autoStart: serveData.autoStart,
+      source: fs,
+      options: {
+        type: serveData.type,
+        fs: fs,
+        ...serveOptions,
+      },
+      filterConfig: this.buildConfig('filter', { name: remoteName }, configFormData.filterConfig),
+      vfsConfig: this.buildConfig('vfs', { name: remoteName }, configFormData.vfsConfig),
+      backendConfig: this.buildConfig(
+        'backend',
+        { name: remoteName },
+        configFormData.backendConfig
+      ),
+    };
+  }
+
+  private cleanServeOptions(options: Record<string, unknown>): Record<string, unknown> {
+    const cleaned: Record<string, unknown> = {};
+
+    this.dynamicServeFields.forEach(field => {
+      const value = options[field.Name];
+      if (value !== undefined && !this.isDefaultValue(value, field)) {
+        cleaned[field.Name] = value;
+      }
+    });
+
+    return cleaned;
   }
 
   // ============================================================================
@@ -1186,6 +1505,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       backendConfig,
     } = finalConfig;
 
+    // Mount operations (always run immediately if autoStart is enabled)
     if (mountConfig.autoStart && mountConfig.dest) {
       await this.mountManagementService.mountRemote(
         remoteName,
@@ -1199,53 +1519,67 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       );
     }
 
-    if (copyConfig.autoStart && copyConfig.dest) {
-      await this.jobManagementService.startCopy(
-        remoteName,
-        copyConfig.source,
-        copyConfig.dest,
-        copyConfig.createEmptySrcDirs,
-        copyConfig.options,
-        filterConfig,
-        backendConfig
-      );
-    }
+    // Helper to handle operation with cron or immediate execution
+    const handleOperation = async (
+      opType: 'copy' | 'sync' | 'bisync' | 'move',
+      config: CopyConfig | SyncConfig | BisyncConfig | MoveConfig
+    ): Promise<void> => {
+      if (!config.autoStart || !config.source || !config.dest) return;
 
-    if (syncConfig.autoStart && syncConfig.dest) {
-      await this.jobManagementService.startSync(
-        remoteName,
-        syncConfig.source,
-        syncConfig.dest,
-        syncConfig.createEmptySrcDirs,
-        syncConfig.options,
-        filterConfig,
-        backendConfig
-      );
-    }
+      // If cron expression is set, create scheduled task
+      switch (opType) {
+        case 'copy':
+          await this.jobManagementService.startCopy(
+            remoteName,
+            config.source,
+            config.dest,
+            (config as CopyConfig).createEmptySrcDirs,
+            config.options,
+            filterConfig,
+            backendConfig
+          );
+          break;
+        case 'sync':
+          await this.jobManagementService.startSync(
+            remoteName,
+            config.source,
+            config.dest,
+            (config as SyncConfig).createEmptySrcDirs,
+            config.options,
+            filterConfig,
+            backendConfig
+          );
+          break;
+        case 'bisync':
+          await this.jobManagementService.startBisync(
+            remoteName,
+            config.source,
+            config.dest,
+            config.options,
+            filterConfig,
+            backendConfig
+          );
+          break;
+        case 'move':
+          await this.jobManagementService.startMove(
+            remoteName,
+            config.source,
+            config.dest,
+            (config as MoveConfig).createEmptySrcDirs,
+            (config as MoveConfig).deleteEmptySrcDirs,
+            config.options,
+            filterConfig,
+            backendConfig
+          );
+          break;
+      }
+    };
 
-    if (bisyncConfig.autoStart && bisyncConfig.dest) {
-      await this.jobManagementService.startBisync(
-        remoteName,
-        bisyncConfig.source,
-        bisyncConfig.dest,
-        bisyncConfig.options,
-        filterConfig,
-        backendConfig
-      );
-    }
-
-    if (moveConfig.autoStart && moveConfig.dest) {
-      await this.jobManagementService.startMove(
-        remoteName,
-        moveConfig.source,
-        moveConfig.dest,
-        moveConfig.createEmptySrcDirs,
-        moveConfig.deleteEmptySrcDirs,
-        moveConfig.options,
-        filterConfig,
-        backendConfig
-      );
-    }
+    // Handle each operation type
+    await handleOperation('copy', copyConfig);
+    await handleOperation('sync', syncConfig);
+    await handleOperation('bisync', bisyncConfig);
+    await handleOperation('move', moveConfig);
   }
 
   async cancelAuth(): Promise<void> {
@@ -1266,20 +1600,26 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     return this.dialogData?.name || this.remoteForm.get('name')?.value;
   }
 
+  public getServeOptions(): Record<string, unknown> | undefined {
+    if (!this.dialogData?.existingConfig?.['serveConfig']) return undefined;
+    const serveConfig = this.dialogData.existingConfig['serveConfig'] as Record<string, unknown>;
+    return serveConfig['options'] as Record<string, unknown>;
+  }
+
   setFormState(disabled: boolean): void {
     if (disabled) {
       this.remoteForm.disable();
+      this.serveConfigForm.disable();
       this.remoteConfigForm.disable();
     } else {
       if (this.editTarget === 'remote' && !this.cloneTarget) {
-        // In remote edit mode, keep name/type disabled
         this.remoteForm.enable({ emitEvent: false });
         this.remoteForm.get('name')?.disable({ emitEvent: false });
         this.remoteForm.get('type')?.disable({ emitEvent: false });
       } else {
-        // In create or clone mode, enable everything
         this.remoteForm.enable();
       }
+      this.serveConfigForm.enable();
       this.remoteConfigForm.enable();
     }
     this.cdRef.markForCheck();
@@ -1287,13 +1627,15 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   get isSaveDisabled(): boolean {
     if (this.isAuthInProgress) return true;
+
     if (this.editTarget) {
       if (this.editTarget === 'remote') return !this.remoteForm.valid;
+      if (this.editTarget === 'serve') return !this.serveConfigForm.valid;
       return !this.remoteConfigForm.get(`${this.editTarget}Config`)?.valid;
     }
+
     return !this.remoteForm.valid || !this.remoteConfigForm.valid;
   }
-
   get saveButtonLabel(): string {
     return this.isAuthInProgress && !this.isAuthCancelled
       ? 'Saving...'
@@ -1302,7 +1644,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         : 'Save';
   }
 
-  @HostListener('document:keydown.escape', ['$event'])
+  @HostListener('document:keydown.escape')
   close(): void {
     this.dialogRef.close(false);
   }

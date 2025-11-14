@@ -1,6 +1,18 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
+## [v0.1.7] - 2025-11-14
+### Added
+- Added schedule support for sync, copy, move, and bisync operations. You can now schedule these operations to run at specific times or intervals using a cron-like syntax. You can find the scheduling options in the remote sync operation settings. (Supports detailed cron expressions. Example `15,45 8-18/2 * 1,11 1-5`: Every 2 hours at minutes 15 and 45 between 8 AM and 6 PM on Mondays and Fridays in January and November)
+- New time picker module added for better clock time selection.
+- Rclone Serve support added. You can now start and stop rclone serve commands. The serve status is displayed in the sidebar for easy access. You can find the serve options in the Serve Tab. Serve configurations (vfs, backend and filter) separated from the other configurations.
+
+### Changed
+- Backup and Restore system has been completely redesigned and rewritten for better reliability and performance. Old backup files are not compatible with the new system. Please create a new backup after updating to this version.
+- A lot of Rust backend refactoring and optimizations have been made for better performance and maintainability.
+
+### Fixed
+- Critical fix for process management. Now the app correctly find own rclone processes via ports.
 
 ## [v0.1.6] - 2025-11-02
 ### Added

@@ -1,0 +1,237 @@
+<div class="restore-preview-modal">
+  <!-- Modal Header -->
+  <div class="modal-header" data-tauri-drag-region>
+    <button>
+      <mat-icon svgIcon="box-archive"></mat-icon>
+    </button>
+    <p>Restore Backup</p>
+    <button matIconButton (click)="close()" aria-label="Close restore preview">
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    </button>
+  </div>
+
+  <div class="modal-content">
+    <!-- Backup Information Card -->
+    <div class="info-card">
+      <div class="card-header">
+        <mat-icon svgIcon="circle-info" class="card-icon"></mat-icon>
+        <h4>Backup Information</h4>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-icon-wrapper">
+            <mat-icon svgIcon="calendar" class="info-icon"></mat-icon>
+          </div>
+          <div class="info-content">
+            <span class="label">Created</span>
+            <span class="value">
+              @if (analysis.createdAt) {
+                {{ analysis.createdAt | date: 'medium' }}
+              } @else {
+                Unknown
+              }
+            </span>
+          </div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-icon-wrapper">
+            <mat-icon svgIcon="tag" class="info-icon"></mat-icon>
+          </div>
+          <div class="info-content">
+            <span class="label">Type</span>
+            <span class="value">{{ analysis.backupType || 'Unknown' }}</span>
+          </div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-icon-wrapper">
+            <mat-icon svgIcon="file-zipper" class="info-icon"></mat-icon>
+          </div>
+          <div class="info-content">
+            <span class="label">Format</span>
+            <span class="value"
+              >{{ analysis.archiveType | uppercase }} · v{{ analysis.formatVersion }}</span
+            >
+          </div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-icon-wrapper" [class.encrypted]="isEncrypted()">
+            <mat-icon [svgIcon]="isEncrypted() ? 'lock' : 'lock-open'" class="info-icon"></mat-icon>
+          </div>
+          <div class="info-content">
+            <span class="label">Security</span>
+            <span class="value" [class.encrypted]="isEncrypted()">
+              @if (isEncrypted()) {
+                <span class="badge">
+                  <mat-icon svgIcon="shield" class="badge-icon"></mat-icon>
+                  Encrypted
+                </span>
+              } @else {
+                <span class="badge badge-default">
+                  <mat-icon svgIcon="shield-halved" class="badge-icon"></mat-icon>
+                  Not Encrypted
+                </span>
+              }
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contents Card -->
+    @if (hasContents()) {
+      <div class="info-card contents-card">
+        <div class="card-header">
+          <mat-icon svgIcon="file-lines" class="card-icon"></mat-icon>
+          <h4>Backup Contents</h4>
+          <span class="items-count">{{ getItemCount() }} items</span>
+        </div>
+
+        <div class="contents-list">
+          @if (analysis.contents!.settings) {
+            <div class="content-item">
+              <div class="item-icon-wrapper">
+                <mat-icon svgIcon="gear" class="item-icon"></mat-icon>
+              </div>
+              <div class="item-content">
+                <span class="item-title">Application Settings</span>
+                <span class="item-description">Your app preferences and configuration</span>
+              </div>
+              <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
+            </div>
+          }
+
+          @if (analysis.contents!.backendConfig) {
+            <div class="content-item">
+              <div class="item-icon-wrapper">
+                <mat-icon svgIcon="server" class="item-icon"></mat-icon>
+              </div>
+              <div class="item-content">
+                <span class="item-title">Backend Configuration</span>
+                <span class="item-description">RClone backend options and settings</span>
+              </div>
+              <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
+            </div>
+          }
+
+          @if (analysis.contents!.rcloneConfig) {
+            <div class="content-item">
+              <div class="item-icon-wrapper">
+                <mat-icon svgIcon="rclone-symbolic" class="item-icon"></mat-icon>
+              </div>
+              <div class="item-content">
+                <span class="item-title">RClone Configuration</span>
+                <span class="item-description">Complete rclone.conf file</span>
+              </div>
+              <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
+            </div>
+          }
+
+          @if (analysis.contents!.remoteConfigs; as remoteInfo) {
+            <div class="content-item">
+              <div class="item-icon-wrapper">
+                <mat-icon svgIcon="cloud" class="item-icon"></mat-icon>
+              </div>
+              <div class="item-content">
+                <span class="item-title">
+                  Remote Configurations
+                  <span class="count-badge">{{ remoteInfo.count }}</span>
+                </span>
+                @if (remoteInfo.names && remoteInfo.names.length > 0) {
+                  <span class="item-description">{{ remoteInfo.names.join(', ') }}</span>
+                }
+              </div>
+              <mat-icon svgIcon="circle-check" class="check-icon accent"></mat-icon>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- User Note Card -->
+    @if (hasMetadata() && analysis.metadata!.userNote) {
+      <div class="info-card note-card">
+        <div class="card-header">
+          <mat-icon svgIcon="note-sticky" class="card-icon"></mat-icon>
+          <h4>Backup Note</h4>
+        </div>
+        <div class="user-note">
+          <mat-icon svgIcon="comment" class="quote-icon"></mat-icon>
+          <pre aria-label="Backup note">{{ analysis.metadata!.userNote }}</pre>
+        </div>
+      </div>
+    }
+
+    <!-- Password Section -->
+    @if (isEncrypted()) {
+      <div class="info-card password-card">
+        <div class="card-header warning">
+          <mat-icon svgIcon="lock" class="card-icon"></mat-icon>
+          <h4>Password Required</h4>
+        </div>
+
+        <div class="password-content">
+          <div class="warning-banner">
+            <mat-icon svgIcon="shield-halved" class="warning-icon"></mat-icon>
+            <p>This backup is encrypted. Enter the correct password to decrypt and restore.</p>
+          </div>
+
+          @if (passwordError()) {
+            <div class="password-error">
+              <mat-icon svgIcon="warning"></mat-icon>
+              <span>{{ passwordError() }}</span>
+            </div>
+          }
+          <mat-form-field appearance="fill">
+            <mat-label>Backup Password</mat-label>
+            <input
+              matInput
+              [ngModel]="password()"
+              (ngModelChange)="onPasswordChange($event)"
+              [type]="showPassword() ? 'text' : 'password'"
+              placeholder="Enter your backup password"
+              [disabled]="isVerifying()"
+              (keyup.enter)="verifyAndRestore()"
+              autocomplete="current-password"
+            />
+            <mat-icon matPrefix svgIcon="key"></mat-icon>
+            <button
+              matIconButton
+              matSuffix
+              (click)="togglePasswordVisibility()"
+              [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+              [disabled]="isVerifying()"
+            >
+              <mat-icon [svgIcon]="showPassword() ? 'eye-slash' : 'eye'"></mat-icon>
+            </button>
+          </mat-form-field>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Modal Actions -->
+  <div class="modal-actions">
+    <button mat-stroked-button (click)="close()" [disabled]="isVerifying()" class="cancel-btn">
+      Cancel
+    </button>
+
+    <button
+      mat-flat-button
+      class="primary"
+      (click)="verifyAndRestore()"
+      [disabled]="isVerifying() || (isEncrypted() && !password())"
+      class="restore-btn"
+    >
+      @if (isVerifying()) {
+        <mat-spinner diameter="20"></mat-spinner>
+        <span>Verifying...</span>
+      } @else {
+        <span>{{ isEncrypted() ? 'Decrypt & Restore' : 'Restore Backup' }}</span>
+      }
+    </button>
+  </div>
+</div>

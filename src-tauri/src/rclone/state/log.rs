@@ -1,9 +1,7 @@
-use once_cell::sync::Lazy;
+use tauri::State;
 use tokio::sync::RwLock;
 
 use crate::utils::types::all_types::{LogCache, LogEntry};
-
-pub static LOG_CACHE: Lazy<LogCache> = Lazy::new(|| LogCache::new(1000));
 
 impl LogCache {
     pub fn new(max_entries: usize) -> Self {
@@ -13,7 +11,7 @@ impl LogCache {
         }
     }
 
-    pub async fn add_entry(&self, entry: LogEntry) {
+    pub async fn add_entry_from_processor(&self, entry: LogEntry) {
         let mut entries = self.entries.write().await;
         entries.push(entry);
 
@@ -56,15 +54,21 @@ impl LogCache {
 }
 
 #[tauri::command]
-pub async fn get_remote_logs(remote_name: Option<String>) -> Result<Vec<LogEntry>, String> {
-    let logs = LOG_CACHE.get_logs_for_remote(remote_name.as_deref()).await;
+pub async fn get_remote_logs(
+    log_cache: State<'_, LogCache>,
+    remote_name: Option<String>,
+) -> Result<Vec<LogEntry>, String> {
+    let logs = log_cache.get_logs_for_remote(remote_name.as_deref()).await;
     Ok(logs)
 }
 
 #[tauri::command]
-pub async fn clear_remote_logs(remote_name: Option<String>) -> Result<(), String> {
+pub async fn clear_remote_logs(
+    log_cache: State<'_, LogCache>,
+    remote_name: Option<String>,
+) -> Result<(), String> {
     if let Some(name) = remote_name {
-        LOG_CACHE.clear_for_remote(&name).await;
+        log_cache.clear_for_remote(&name).await;
     }
     Ok(())
 }

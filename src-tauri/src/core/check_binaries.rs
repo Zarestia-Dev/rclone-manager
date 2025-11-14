@@ -7,72 +7,93 @@ use tauri_plugin_shell::ShellExt;
 use crate::utils::types::all_types::RcloneState;
 
 #[tauri::command]
-pub fn is_7z_available() -> bool {
-    // Check standard executable names in PATH
-    if which::which("7z").is_ok()
-        || which::which("7za").is_ok()
-        || which::which("7z.exe").is_ok()
-        || which::which("7za.exe").is_ok()
-    {
-        return true;
+pub fn is_7z_available() -> Option<String> {
+    // Prefer the centralized detection logic in archive_utils so we don't duplicate
+    // platform-specific heuristics. Returning Option<String> lets the frontend
+    // receive the exact path (truthy) or null when not found.
+    match find_7z_executable() {
+        Ok(path) => Some(path),
+        Err(_) => None,
     }
+}
 
-    // Windows-specific checks
-    #[cfg(target_os = "windows")]
-    {
-        use shellexpand;
-        use std::path::Path;
-
-        // Check common installation paths
-        let common_paths = [
-            // Program Files locations
-            "C:\\Program Files\\7-Zip\\7z.exe",
-            "C:\\Program Files (x86)\\7-Zip\\7z.exe",
-            // Portable/Scoop/chocolatey install locations
-            "C:\\tools\\7zip\\7z.exe",
-            "~\\scoop\\apps\\7zip\\current\\7z.exe",
-            "~\\AppData\\Local\\Programs\\7-Zip\\7z.exe",
-        ];
-
-        for path in common_paths.iter() {
-            let expanded_path = shellexpand::tilde(path).to_string();
-            if Path::new(&expanded_path).exists() {
-                return true;
-            }
-
-            // // Check registry for install location
-            // if let Ok(install_path) = get_7zip_path_from_registry() {
-            //     if Path::new(&install_path).exists() {
-            //         return true;
-            //     }
-            // }
+use std::path::Path;
+///   **Find 7z executable across different platforms**
+pub fn find_7z_executable() -> Result<String, String> {
+    // Try common 7z executable names
+    for cmd in ["7z", "7za", "7z.exe", "7za.exe"] {
+        if which::which(cmd).is_ok() {
+            return Ok(cmd.to_string());
         }
     }
 
-    false
+    // Platform-specific paths
+    #[cfg(target_os = "windows")]
+    {
+        let common_paths = [
+            r"C:\Program Files\7-Zip\7z.exe",
+            r"C:\Program Files (x86)\7-Zip\7z.exe",
+            r"C:\tools\7zip\7z.exe",
+            r"~\scoop\\apps\7zip\current\7z.exe",
+            r"~\AppData\Local\Programs\7-Zip\7z.exe",
+        ];
+
+        for path in common_paths.iter() {
+            if Path::new(path).exists() {
+                return Ok(path.to_string());
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let common_paths = [
+            "/usr/local/bin/7z",
+            "/opt/homebrew/bin/7z",
+            "/Applications/Keka.app/Contents/Resources/keka7z",
+        ];
+
+        for path in common_paths.iter() {
+            if Path::new(path).exists() {
+                return Ok(path.to_string());
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let common_paths = ["/usr/bin/7z", "/usr/local/bin/7z", "/snap/bin/7z"];
+
+        for path in common_paths.iter() {
+            if Path::new(path).exists() {
+                return Ok(path.to_string());
+            }
+        }
+    }
+
+    Err("7z executable not found. Please install 7-Zip.".into())
 }
 
-// #[cfg(target_os = "windows")]
-// fn get_7zip_path_from_registry() -> Result<String, Box<dyn std::error::Error>> {
-//     use winreg::enums::*;
-//     use winreg::RegKey;
-
-//     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-//     let path = hklm.open_subkey("SOFTWARE\\7-Zip")?
-//         .get_value::<String, _>("Path")?;
-
-//     Ok(format!("{}\\7z.exe", path))
-// }
-
 /// Internal helper that borrows the `AppHandle` so Rust call-sites don't need to clone it.
+/// Returns Ok(true) if rclone is available, Ok(false) if not found.
+/// Emits RCLONE_ENGINE_PATH_ERROR event when binary is missing.
 #[tauri::command]
 pub async fn check_rclone_available(app: AppHandle, path: &str) -> Result<bool, String> {
+    check_rclone_available_internal(&app, path, true).await
+}
+
+/// Internal version that optionally emits events
+async fn check_rclone_available_internal(
+    app: &AppHandle,
+    path: &str,
+    emit_event: bool,
+) -> Result<bool, String> {
     let rclone_path = if !path.is_empty() {
         // Use the explicit path if provided
         get_rclone_binary_path(&PathBuf::from(path))
     } else {
         // Read the configured path from app state
-        read_rclone_path(&app)
+        read_rclone_path(app)
     };
 
     debug!(
@@ -93,6 +114,14 @@ pub async fn check_rclone_available(app: AppHandle, path: &str) -> Result<bool, 
             Err(e) => Err(format!("Failed to execute rclone: {}", e)),
         }
     } else {
+        if emit_event {
+            use crate::utils::types::events::RCLONE_ENGINE_PATH_ERROR;
+            use tauri::Emitter;
+
+            if let Err(e) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
+                error!("Failed to emit path error event: {e}");
+            }
+        }
         Err(format!(
             "Rclone binary not found at {}",
             rclone_path.display()
@@ -129,7 +158,13 @@ pub fn build_rclone_command(
         }
     } else {
         let rclone_state = app.state::<RcloneState>();
-        let cfg = rclone_state.rclone_config_file.read().unwrap().clone();
+        let cfg = match rclone_state.rclone_config_file.read() {
+            Ok(cfg) => cfg.clone(),
+            Err(e) => {
+                error!("Failed to read rclone_config_file: {e}");
+                String::new()
+            }
+        };
         if !cfg.is_empty() {
             cmd = cmd.arg("--config").arg(cfg);
         }
@@ -156,7 +191,13 @@ pub fn get_rclone_binary_path(base_path: &std::path::Path) -> PathBuf {
 
 pub fn read_rclone_path(app: &AppHandle) -> PathBuf {
     let rclone_state = app.state::<RcloneState>();
-    let configured_base_path = rclone_state.rclone_path.read().unwrap().clone();
+    let configured_base_path = match rclone_state.rclone_path.read() {
+        Ok(path) => path.clone(),
+        Err(e) => {
+            error!("Failed to read rclone_path: {e}");
+            PathBuf::from("system")
+        }
+    };
     debug!(
         "🔄 Reading configured rclone base path: {}",
         configured_base_path.to_string_lossy()

@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, inject, Type } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { Subject, Subscription } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { InputModalComponent } from '../../shared/modals/input-modal/input-modal.component';
+import { RestorePreviewModalComponent } from '../../features/modals/settings/restore-preview-modal/restore-preview-modal.component';
 
 import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
@@ -58,7 +58,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   appUpdaterService = inject(AppUpdaterService);
   rcloneUpdateService = inject(RcloneUpdateService);
 
-  isMacOS = false;
+  windowButtons = true;
   connectionStatus: ConnectionStatus = 'online';
   connectionHistory: { timestamp: Date; result: CheckResult }[] = [];
   result?: CheckResult;
@@ -70,8 +70,8 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   currentTheme$ = this.windowService.theme$;
 
   constructor() {
-    if (this.uiStateService.platform === 'macos') {
-      this.isMacOS = true;
+    if (this.uiStateService.platform === 'macos' || this.uiStateService.platform === 'web') {
+      this.windowButtons = false;
     }
   }
 
@@ -97,7 +97,6 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     this.cleanup();
   }
 
-  // --- Theme Method (Simplified) ---
   async setTheme(theme: Theme, event?: MouseEvent): Promise<void> {
     if (event) {
       event.preventDefault();
@@ -273,42 +272,24 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     const path = await this.fileSystemService.selectFile();
     if (!path) return;
 
-    const result = await this.backupRestoreService.analyzeBackupFile(path);
-    if (!result) return;
+    try {
+      const analysis = await this.backupRestoreService.analyzeBackupFile(path);
+      if (!analysis) return;
 
-    if (result.isEncrypted) {
-      this.handleEncryptedBackup(path);
-    } else {
-      await this.backupRestoreService.restoreSettings(path);
-    }
-  }
-
-  private handleEncryptedBackup(path: string): void {
-    const dialogRef = this.dialog.open(InputModalComponent, {
-      width: '400px',
-      disableClose: true,
-      data: {
-        title: 'Enter Password',
-        description: 'Please enter the password to decrypt the backup file.',
-        fields: [
-          {
-            name: 'password',
-            label: 'Password',
-            type: 'password',
-            required: true,
-          },
-        ],
-      },
-    });
-
-    dialogRef
-      .afterClosed()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(async inputData => {
-        if (inputData?.password) {
-          await this.backupRestoreService.restoreEncryptedSettings(path, inputData.password);
-        }
+      // Open the restore preview modal with the analysis data
+      const dialogRef = this.dialog.open(RestorePreviewModalComponent, {
+        ...STANDARD_MODAL_SIZE,
+        disableClose: true,
+        data: {
+          backupPath: path,
+          analysis,
+        },
       });
+
+      dialogRef.afterClosed().pipe(takeUntil(this.destroy$)).subscribe();
+    } catch (error) {
+      console.error('Failed to analyze backup:', error);
+    }
   }
 
   private cleanup(): void {

@@ -16,10 +16,10 @@
   </header>
 
   <!-- Step Progress Indicator (Only shown during multi-step create flow) -->
-  @if (!interactiveFlowState.isActive && !editTarget) {
+  @if (!interactiveFlowState.isActive && (!editTarget || isServeMode)) {
     <div class="step-indicator-container">
       <div class="step-indicator hide-scrollbar" role="tablist" aria-label="Configuration Steps">
-        @for (step of stepLabels; track step; let i = $index) {
+        @for (step of currentStepLabels; track step; let i = $index) {
           <button
             class="step"
             [ngClass]="getStepState(i + 1)"
@@ -28,9 +28,8 @@
             (keydown)="handleStepKeydown($event, i + 1)"
             [attr.tabindex]="editTarget ? '0' : '-1'"
             role="tab"
-            [disabled]="!remoteForm.valid || isAuthInProgress"
+            [disabled]="isAuthInProgress || (isServeMode ? false : !remoteForm.valid)"
             [attr.aria-selected]="currentStep === i + 1"
-            [attr.aria-label]="getStepProgressAriaLabel()"
           >
             <div class="step-number">
               @if (getStepState(i + 1) === 'completed') {
@@ -64,10 +63,11 @@
 
     <!-- Non-Interactive Configuration Flow -->
     @if (!interactiveFlowState.isActive) {
-      <!-- Step 1: Remote Configuration -->
-      @if (editTarget === 'remote' || (!editTarget && currentStep === 1)) {
+      <!-- Step 1: Remote Configuration or Serve Configuration -->
+      @if (editTarget === 'remote' || (!editTarget && currentStep === 1 && !isServeMode)) {
         <section class="step-container">
           <app-remote-config-step
+            class="step"
             [form]="remoteForm"
             [remoteFields]="dynamicRemoteFields"
             [remoteTypes]="remoteTypes"
@@ -82,22 +82,101 @@
         </section>
       }
 
-      <!-- Steps 2-9: Flag Configurations (Mount, Copy, Sync, etc.) -->
-      @for (flagType of FLAG_TYPES; track flagType; let i = $index) {
-        @if (editTarget === flagType || (!editTarget && currentStep === i + 2)) {
+      <!-- Step 1: Serve Configuration -->
+      @if (currentStep === 1 && isServeMode) {
+        <section class="step-container">
+          <app-serve-config-step
+            class="step"
+            [form]="serveConfigForm"
+            [remoteName]="getRemoteName()"
+            [hasSavedServeConfig]="hasSavedServeConfig"
+            [savedType]="savedType"
+            [availableServeTypes]="availableServeTypes"
+            [selectedType]="selectedServeType"
+            [dynamicServeFields]="dynamicServeFields"
+            [isLoadingFields]="isLoadingServeFields"
+            [getControlKey]="getServeControlKey.bind(this)"
+            (typeChange)="onServeTypeChange($event)"
+          />
+        </section>
+      }
+
+      <!-- Steps 2-9: Flag Configurations (Mount, Copy, Sync, etc.) or Serve Steps -->
+      @if (!isServeMode) {
+        @for (flagType of FLAG_TYPES; track flagType; let i = $index) {
+          @if (editTarget === flagType || (!editTarget && currentStep === i + 2)) {
+            <section class="step-container">
+              <app-flag-config-step
+                class="step"
+                [form]="remoteConfigForm"
+                [flagType]="flagType"
+                [isEditMode]="!!editTarget"
+                [existingRemotes]="existingRemotes"
+                [dynamicFlagFields]="dynamicFlagFields[flagType]"
+                [mountTypes]="mountTypes"
+                [currentRemoteName]="getRemoteName()"
+                [isNewRemote]="!editTarget"
+                [getControlKey]="getUniqueControlKey.bind(this)"
+                (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
+                (destFolderSelected)="handleDestFolderSelect(flagType)"
+              />
+            </section>
+          }
+        }
+      }
+
+      <!-- Serve Mode Steps -->
+      @if (isServeMode) {
+        <!-- Step 2: Filter -->
+        @if (currentStep === 2) {
           <section class="step-container">
             <app-flag-config-step
+              class="step"
               [form]="remoteConfigForm"
-              [flagType]="flagType"
-              [isEditMode]="!!editTarget"
+              [flagType]="'filter'"
+              [isEditMode]="false"
               [existingRemotes]="existingRemotes"
-              [dynamicFlagFields]="dynamicFlagFields[flagType]"
+              [dynamicFlagFields]="dynamicFlagFields['filter']"
               [mountTypes]="mountTypes"
               [currentRemoteName]="getRemoteName()"
-              [isNewRemote]="!editTarget"
+              [isNewRemote]="true"
               [getControlKey]="getUniqueControlKey.bind(this)"
-              (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
-              (destFolderSelected)="handleDestFolderSelect(flagType)"
+            />
+          </section>
+        }
+
+        <!-- Step 3: VFS -->
+        @if (currentStep === 3) {
+          <section class="step-container">
+            <app-flag-config-step
+              class="step"
+              [form]="remoteConfigForm"
+              [flagType]="'vfs'"
+              [isEditMode]="false"
+              [existingRemotes]="existingRemotes"
+              [dynamicFlagFields]="dynamicFlagFields['vfs']"
+              [mountTypes]="mountTypes"
+              [currentRemoteName]="getRemoteName()"
+              [isNewRemote]="true"
+              [getControlKey]="getUniqueControlKey.bind(this)"
+            />
+          </section>
+        }
+
+        <!-- Step 4: Backend -->
+        @if (currentStep === 4) {
+          <section class="step-container">
+            <app-flag-config-step
+              class="step"
+              [form]="remoteConfigForm"
+              [flagType]="'backend'"
+              [isEditMode]="false"
+              [existingRemotes]="existingRemotes"
+              [dynamicFlagFields]="dynamicFlagFields['backend']"
+              [mountTypes]="mountTypes"
+              [currentRemoteName]="getRemoteName()"
+              [isNewRemote]="true"
+              [getControlKey]="getUniqueControlKey.bind(this)"
             />
           </section>
         }
@@ -109,7 +188,11 @@
   <footer class="button-container">
     <!-- Left Side: Back Button -->
     <div class="button-container-inner">
-      @if (currentStep > 1 && !editTarget && !interactiveFlowState.isActive) {
+      @if (
+        currentStep > 1 &&
+        (!editTarget || (isServeMode && !isEditingSpecificServeSection)) &&
+        !interactiveFlowState.isActive
+      ) {
         <button
           matButton="filled"
           class="accent"
@@ -197,7 +280,7 @@
       }
 
       <!-- Next Button (Shown in create mode when not on last step) -->
-      @if (currentStep < TOTAL_STEPS && !editTarget && !interactiveFlowState.isActive) {
+      @if (currentStep < currentTotalSteps && !editTarget && !interactiveFlowState.isActive) {
         <button
           matButton="filled"
           class="accent"

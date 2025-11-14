@@ -121,7 +121,9 @@ pub async fn save_rclone_backend_option(
         options = json!({});
     }
 
-    let options_obj = options.as_object_mut().unwrap();
+    let options_obj = options
+        .as_object_mut()
+        .ok_or_else(|| "Options is not an object".to_string())?;
 
     // Ensure block object exists
     if !options_obj.contains_key(&block) {
@@ -192,7 +194,9 @@ pub async fn remove_rclone_backend_option(
         return Ok(()); // Nothing to remove
     }
 
-    let options_obj = options.as_object_mut().unwrap();
+    let options_obj = options
+        .as_object_mut()
+        .ok_or_else(|| "Options is not an object for removal".to_string())?;
 
     // Remove the option from the block
     if let Some(block_obj) = options_obj.get_mut(&block).and_then(|v| v.as_object_mut()) {

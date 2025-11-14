@@ -19,6 +19,8 @@ export class OverviewHeaderComponent {
         return 'Mount Overview';
       case 'sync':
         return 'Sync Overview';
+      case 'serve':
+        return 'Serve Overview';
       default:
         return 'Remotes Overview';
     }

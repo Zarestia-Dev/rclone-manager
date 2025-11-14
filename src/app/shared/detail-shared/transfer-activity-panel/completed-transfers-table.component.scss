@@ -47,8 +47,8 @@
       }
 
       &.partial {
-        border-left: 3px solid #ff9800; // Orange for partial
-        background: rgba(255, 152, 0, 0.1);
+        border-left: 3px solid var(--orange);
+        background: rgba(var(--orange-rgb), var(--background-opacity));
       }
 
       .mat-mdc-cell {
@@ -69,7 +69,6 @@
           width: 20px;
           height: 20px;
           color: var(--secondary-text-color);
-          flex-shrink: 0;
         }
 
         .file-name {
@@ -85,7 +84,6 @@
         .check-icon {
           width: 16px;
           height: 16px;
-          flex-shrink: 0;
         }
       }
     }
@@ -113,16 +111,10 @@
           height: 14px;
         }
 
+        &.checked,
         &.success {
           background: rgba(var(--accent-color-rgb), var(--active-opacity));
-          color: var(--accent-color);
           border: 1px solid rgba(var(--accent-color-rgb), 0.2);
-        }
-
-        &.checked {
-          background: rgba(var(--primary-color-rgb), var(--active-opacity));
-          color: var(--primary-color);
-          border: 1px solid rgba(var(--primary-color-rgb), 0.2);
         }
 
         &.error {
@@ -132,9 +124,9 @@
         }
 
         &.partial {
-          background: rgba(255, 152, 0, 0.15);
-          color: #ff9800;
-          border: 1px solid rgba(255, 152, 0, 0.2);
+          background: rgba(var(--orange-rgb), 0.1);
+          color: var(--orange);
+          border: 1px solid rgba(var(--orange-rgb), 0.2);
         }
       }
     }

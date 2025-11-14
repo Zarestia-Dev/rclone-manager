@@ -1,140 +1,171 @@
 use log::{debug, error, info};
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
-use crate::core::config_extractor::{
-    BisyncConfig, CopyConfig, IsValid, MountConfig, MoveConfig, SyncConfig,
+use crate::{
+    RcloneState,
+    rclone::commands::{
+        mount::{MountParams, mount_remote},
+        serve::{ServeParams, start_serve},
+        sync::{
+            BisyncParams, CopyParams, MoveParams, SyncParams, start_bisync, start_copy, start_move,
+            start_sync,
+        },
+    },
+    utils::types::all_types::{JobCache, RemoteCache},
 };
-use crate::core::spawn_helpers::{spawn_bisync, spawn_copy, spawn_mount, spawn_move, spawn_sync};
-// spawn_helpers now construct rclone param structs; no direct command param imports needed here
-use crate::rclone::state::{CACHE, get_cached_remotes, start_mounted_remote_watcher};
-
-/// Helper function to handle auto-start logic for a given operation.
-async fn handle_auto_start<C, T, E, F, Fut>(
-    remote_name: &str,
-    settings: &serde_json::Value,
-    config_name: &str,
-    app_handle: AppHandle,
-    extractor: E,
-    spawn_fn: F,
-) where
-    E: Fn(&serde_json::Value) -> C + Send + Sync + 'static,
-    C: IsValid + Clone + Send + Sync + 'static,
-    F: Fn(String, C, AppHandle) -> Fut + Send + Sync + 'static,
-    Fut: std::future::Future<Output = Result<T, String>> + Send,
-{
-    let should_auto = settings
-        .get(config_name)
-        .and_then(|v| v.get("autoStart"))
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-
-    let operation_name = config_name.trim_end_matches("Config");
-
-    if should_auto {
-        let cfg = extractor(settings);
-        if cfg.is_valid() {
-            if let Err(e) = spawn_fn(remote_name.to_string(), cfg.clone(), app_handle).await {
-                error!(
-                    "Failed to auto-start {} for {}: {}",
-                    operation_name, remote_name, e
-                );
-            } else {
-                debug!("{} task spawned for {}", operation_name, remote_name);
-            }
-        } else {
-            error!(
-                "❌ {} configuration incomplete for {}",
-                operation_name, remote_name
-            );
-        }
-    } else {
-        debug!(
-            "Skipping {} for {}: autoStart is not enabled",
-            operation_name, remote_name
-        );
-    }
-}
 
 /// Main entry point for handling startup tasks.
 pub async fn handle_startup(app_handle: AppHandle) {
     info!("🚀 Checking startup options...");
 
+    // --- Get RemoteCache from app_handle ---
+    let cache = app_handle.state::<RemoteCache>();
+
     // Initialize remotes
-    let remotes_result = initialize_remotes().await;
-
-    // Process remotes after retrieval
-    if let Ok(remotes) = remotes_result {
-        for remote in remotes.iter() {
-            handle_remote_startup(remote.to_string(), app_handle.clone()).await;
-        }
-    }
-
-    // Start the mounted remote watcher for continuous monitoring
-    info!("📡 Starting mounted remote watcher...");
-    tokio::spawn(start_mounted_remote_watcher(app_handle.clone()));
-}
-
-/// Fetches the list of available remotes.
-async fn initialize_remotes() -> Result<Vec<String>, String> {
-    let remotes = get_cached_remotes().await?;
-    Ok(remotes)
-}
-
-/// Handles startup logic for an individual remote.
-async fn handle_remote_startup(remote_name: String, app_handle: AppHandle) {
-    // Get settings from cache (consistent with actions.rs)
-    let settings = match CACHE.settings.read().await.get(&remote_name).cloned() {
-        Some(s) => s,
-        None => {
-            error!("Remote {remote_name} not found in cached settings");
+    let remotes = match cache.get_remotes().await {
+        // <-- Use cache method
+        r if !r.is_empty() => r,
+        _ => {
+            error!("Failed to get remotes or no remotes found");
             return;
         }
     };
 
-    // Handle auto-start for each operation, using extractor functions and spawn helpers
-    handle_auto_start(
-        &remote_name,
-        &settings,
-        "mountConfig",
-        app_handle.clone(),
-        MountConfig::from_settings,
-        |r, c, a| spawn_mount(r, c, None, a),
-    )
-    .await;
-    handle_auto_start(
-        &remote_name,
-        &settings,
-        "syncConfig",
-        app_handle.clone(),
-        SyncConfig::from_settings,
-        spawn_sync,
-    )
-    .await;
-    handle_auto_start(
-        &remote_name,
-        &settings,
-        "copyConfig",
-        app_handle.clone(),
-        CopyConfig::from_settings,
-        spawn_copy,
-    )
-    .await;
-    handle_auto_start(
-        &remote_name,
-        &settings,
-        "moveConfig",
-        app_handle.clone(),
-        MoveConfig::from_settings,
-        spawn_move,
-    )
-    .await;
-    handle_auto_start(
-        &remote_name,
-        &settings,
-        "bisyncConfig",
-        app_handle.clone(),
-        BisyncConfig::from_settings,
-        spawn_bisync,
-    )
-    .await;
+    for remote in remotes {
+        handle_remote_startup(&remote, app_handle.clone(), cache.clone()).await;
+    }
+}
+
+/// Handles startup logic for an individual remote.
+async fn handle_remote_startup(
+    remote_name: &str,
+    app_handle: AppHandle,
+    cache: tauri::State<'_, RemoteCache>,
+) {
+    let settings = match cache.get_settings().await {
+        settings_val => match settings_val.get(remote_name).cloned() {
+            Some(s) => s,
+            None => {
+                error!("Remote {} not found in cached settings", remote_name);
+                return;
+            }
+        },
+    };
+
+    let job_cache_state = app_handle.state::<JobCache>();
+    let rclone_state = app_handle.state::<RcloneState>();
+
+    // --- Handle mount operation ---
+    if MountParams::should_auto_start(&settings) {
+        match MountParams::from_settings(remote_name.to_string(), &settings) {
+            Some(params) => {
+                if let Err(e) =
+                    mount_remote(app_handle.clone(), job_cache_state.clone(), cache, params).await
+                {
+                    error!("Failed to auto-start mount for {}: {}", remote_name, e);
+                } else {
+                    debug!("Mount task spawned for {}", remote_name);
+                }
+            }
+            None => error!("❌ Mount configuration incomplete for {}", remote_name),
+        }
+    }
+
+    // --- Handle sync operation ---
+    if SyncParams::should_auto_start(&settings) {
+        match SyncParams::from_settings(remote_name.to_string(), &settings) {
+            Some(params) => {
+                if let Err(e) = start_sync(
+                    app_handle.clone(),
+                    job_cache_state.clone(),
+                    rclone_state.clone(),
+                    params,
+                )
+                .await
+                {
+                    error!("Failed to auto-start sync for {}: {}", remote_name, e);
+                } else {
+                    debug!("Sync task spawned for {}", remote_name);
+                }
+            }
+            None => error!("❌ Sync configuration incomplete for {}", remote_name),
+        }
+    }
+
+    // --- Handle copy operation ---
+    if CopyParams::should_auto_start(&settings) {
+        match CopyParams::from_settings(remote_name.to_string(), &settings) {
+            Some(params) => {
+                if let Err(e) = start_copy(
+                    app_handle.clone(),
+                    job_cache_state.clone(),
+                    rclone_state.clone(),
+                    params,
+                )
+                .await
+                {
+                    error!("Failed to auto-start copy for {}: {}", remote_name, e);
+                } else {
+                    debug!("Copy task spawned for {}", remote_name);
+                }
+            }
+            None => error!("❌ Copy configuration incomplete for {}", remote_name),
+        }
+    }
+
+    // --- Handle move operation ---
+    if MoveParams::should_auto_start(&settings) {
+        match MoveParams::from_settings(remote_name.to_string(), &settings) {
+            Some(params) => {
+                if let Err(e) = start_move(
+                    app_handle.clone(),
+                    job_cache_state.clone(),
+                    rclone_state.clone(),
+                    params,
+                )
+                .await
+                {
+                    error!("Failed to auto-start move for {}: {}", remote_name, e);
+                } else {
+                    debug!("Move task spawned for {}", remote_name);
+                }
+            }
+            None => error!("❌ Move configuration incomplete for {}", remote_name),
+        }
+    }
+
+    // --- Handle bisync operation ---
+    if BisyncParams::should_auto_start(&settings) {
+        match BisyncParams::from_settings(remote_name.to_string(), &settings) {
+            Some(params) => {
+                if let Err(e) = start_bisync(
+                    app_handle.clone(),
+                    job_cache_state.clone(),
+                    rclone_state.clone(),
+                    params,
+                )
+                .await
+                {
+                    error!("Failed to auto-start bisync for {}: {}", remote_name, e);
+                } else {
+                    debug!("Bisync task spawned for {}", remote_name);
+                }
+            }
+            None => error!("❌ Bisync configuration incomplete for {}", remote_name),
+        }
+    }
+
+    // --- Handle serve operation ---
+    if ServeParams::should_auto_start(&settings) {
+        match ServeParams::from_settings(remote_name.to_string(), &settings) {
+            Some(params) => {
+                if let Err(e) = start_serve(app_handle.clone(), params).await {
+                    error!("Failed to auto-start serve for {}: {}", remote_name, e);
+                } else {
+                    debug!("Serve task spawned for {}", remote_name);
+                }
+            }
+            None => error!("❌ Serve configuration incomplete for {}", remote_name),
+        }
+    }
 }

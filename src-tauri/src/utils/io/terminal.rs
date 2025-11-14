@@ -19,7 +19,11 @@ pub async fn open_terminal_config(
 
     // Add config file path if specified in state
     let rclone_state = app.state::<RcloneState>();
-    let config_file = rclone_state.rclone_config_file.read().unwrap().clone();
+    let config_file = rclone_state
+        .rclone_config_file
+        .read()
+        .map_err(|e| format!("Failed to read rclone config file: {e}"))?
+        .clone();
     if !config_file.is_empty() {
         command_parts.push("--config".to_string());
         command_parts.push(config_file);
@@ -62,8 +66,7 @@ pub async fn open_terminal_config(
         Some("Terminal config".to_string()),
         "Opening terminal for rclone config".to_string(),
         Some(json!({ "command": &rclone_command_string })),
-    )
-    .await;
+    );
 
     // Step 3: Pass the correctly formatted string to the OS-specific functions.
     let result = open_terminal_with_command(rclone_command_string, app.clone()).await;
@@ -77,8 +80,7 @@ pub async fn open_terminal_config(
                 Some("Terminal config".to_string()),
                 message.clone(),
                 None,
-            )
-            .await;
+            );
             info!("✅ {message}");
             Ok(())
         }
@@ -90,8 +92,7 @@ pub async fn open_terminal_config(
                 Some("Terminal config".to_string()),
                 "Failed to open terminal".to_string(),
                 Some(json!({"error": e.to_string()})),
-            )
-            .await;
+            );
             error!("❌ {error_msg}");
             Err(error_msg)
         }
@@ -100,7 +101,11 @@ pub async fn open_terminal_config(
 
 async fn open_terminal_with_command(rclone_command: String, app: AppHandle) -> Result<(), String> {
     let rclone_state = app.state::<RcloneState>();
-    let preferred_terminals = rclone_state.terminal_apps.read().unwrap().clone();
+    let preferred_terminals = rclone_state
+        .terminal_apps
+        .read()
+        .map_err(|e| format!("Failed to read terminal apps: {e}"))?
+        .clone();
 
     #[cfg(target_os = "windows")]
     return open_windows_terminal(&rclone_command, &preferred_terminals, &app).await;

@@ -1,9 +1,10 @@
+use crate::utils::types::events::RCLONE_PASSWORD_STORED;
 use crate::{
     core::{
         check_binaries::build_rclone_command,
         security::{CredentialStore, SafeEnvironmentManager},
     },
-    rclone::commands::unlock_rclone_config,
+    rclone::commands::system::unlock_rclone_config,
 };
 use log::{debug, error, info, warn};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -24,10 +25,7 @@ pub async fn store_config_password(
             env_manager.set_config_password(password.clone());
 
             // Emit event so OAuth can restart if needed
-            if let Err(e) = app.emit(
-                "rclone_engine",
-                serde_json::json!({ "status": "password_stored" }),
-            ) {
+            if let Err(e) = app.emit(RCLONE_PASSWORD_STORED, ()) {
                 error!("Failed to emit password_stored event: {e}");
             }
 
@@ -146,10 +144,7 @@ pub async fn set_config_password_env(
     env_manager.set_config_password(password);
     // Emit event so other parts (engine) can react and clear any
     // startup password error state.
-    if let Err(e) = app.emit(
-        "rclone_engine",
-        serde_json::json!({ "status": "password_stored" }),
-    ) {
+    if let Err(e) = app.emit(RCLONE_PASSWORD_STORED, ()) {
         error!("Failed to emit password_stored event: {e}");
     }
 

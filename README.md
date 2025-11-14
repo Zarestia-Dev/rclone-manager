@@ -40,25 +40,18 @@
 ## 📸 Screenshots
 
 <p align="center">
-  <strong>💻 Desktop Interface</strong><br/>
-  <img src="assets/desktop-ui.png" alt="Desktop UI" width="500"/>
+  <img src="assets/desktop-ui.png" alt="Desktop UI" width="40%">
 </p>
-
 <p align="center">
-  <strong>🏠 Home & Overview</strong><br/>
-  <img src="assets/general-home.png" alt="General Home" width="250"/>
-  <img src="assets/general-remote.png" alt="General Remote" width="250"/>
-</p>
 
-<p align="center">
-  <strong>⚙️ Mount Control & Job Monitoring</strong><br/>
-  <img src="assets/mount-control.png" alt="Mount Control" width="250"/>
-  <img src="assets/job-watcher.png" alt="Job Watcher" width="250"/>
-</p>
+|                                Home                                 |                             Remote Overview                             |                             Mount Control                             |
+| :-----------------------------------------------------------------: | :---------------------------------------------------------------------: | :-------------------------------------------------------------------: |
+| <img src="assets/general-home.png" alt="General Home" width="250"/> | <img src="assets/general-remote.png" alt="General Remote" width="250"/> | <img src="assets/mount-control.png" alt="Mount Control" width="250"/> |
 
-<p align="center">
-  <strong>📱 Responsive</strong><br/>
-  <img src="assets/mobile-ui.png" alt="Mobile UI" width="150"/>
+|                            Job Watcher                            |                             Serve Control                             |                          Responsive                           |
+| :---------------------------------------------------------------: | :-------------------------------------------------------------------: | :-----------------------------------------------------------: |
+| <img src="assets/job-watcher.png" alt="Job Watcher" width="250"/> | <img src="assets/serve-control.png" alt="Serve Control" width="250"/> | <img src="assets/mobile-ui.png" alt="Mobile UI" width="150"/> |
+
 </p>
 
 <p align="center">
@@ -74,7 +67,8 @@
 - 🛠 **Complete Remote Management** – Add, edit, delete, and clone remotes with an intuitive wizard
 - 🔐 **OAuth & Interactive Configuration** – Seamless authentication with providers like OneDrive, Google Drive, and iCloud
 - 🔑 **Encrypted Configuration Support** – Secure password storage using system keyring/credential store
-- 💾 **Import/Export** – Backup and restore your entire configuration, with optional 7z encryption
+- ⏰ **Scheduled Tasks** – Automate syncs with a built-in scheduler. Create, edit, enable/disable, and monitor scheduled jobs.
+- 💾 **Import/Export** – Backup and restore your settings, with optional 7z encryption.
 
 ### ⚡ File Operations
 
@@ -83,6 +77,7 @@
 - ↔️ **Bidirectional Sync (Bisync)** – Keep two locations perfectly synchronized in both directions
 - 🚚 **Move Operations** – Transfer files between locations without leaving duplicates
 - 🎯 **Primary Actions** – Set up to 3 quick-access actions per remote for instant operations
+- 📡 **Serve Remotes** – Expose remotes over HTTP, WebDAV, FTP, SFTP and more.
 
 ### 🎨 User Experience
 

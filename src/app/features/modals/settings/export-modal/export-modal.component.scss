@@ -33,6 +33,37 @@
   }
 }
 
+// ===== INFO CARD (match restore modal look) =====
+.info-card {
+  background: var(--app-background);
+  border-radius: var(--card-border-radius);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-light);
+  transition: all 0.2s ease;
+
+  &:hover {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .card-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 8px 0;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--primary-text-color);
+  }
+}
+
 // ===== REMOTE OPTION =====
 .remote-option {
   display: flex;
@@ -45,50 +76,43 @@
   }
 }
 
-// ===== SECURITY SECTION =====
+// ===== SECURITY SECTION (card style) =====
 .security-section {
-  padding: 20px;
-  background: rgba(var(--yellow-rgb), 0.05);
-  border: 2px solid rgba(var(--yellow-rgb), 0.2);
-  border-radius: var(--panel-radius);
-  transition: var(--transition-fast);
-
-  &:hover {
-    background: rgba(var(--yellow-rgb), 0.08);
-    border-color: rgba(var(--yellow-rgb), 0.3);
-    transform: translateY(-1px);
-  }
+  padding: 0;
+  background: transparent;
 
   .security-header {
     display: flex;
     align-items: center;
     gap: 12px;
     margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border-color);
 
     h3 {
       margin: 0;
-      font-size: var(--font-size-base);
+      font-size: 0.95rem;
       font-weight: 600;
-      color: var(--app-text-color);
-    }
-    mat-icon {
-      color: var(--yellow);
+      color: var(--primary-text-color);
+      flex: 1;
     }
   }
 
   .security-description {
-    font-size: var(--font-size-sm);
-    color: var(--text-muted);
+    font-size: 0.875rem;
+    color: var(--secondary-text-color);
+    margin-bottom: 8px;
   }
 
   .security-controls {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 6px;
 
     .checkbox-label {
-      font-weight: 500;
+      font-weight: 600;
+      color: var(--primary-text-color);
     }
   }
 
@@ -96,19 +120,28 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
-    background: rgba(var(--warn-color-rgb), 0.1);
-    border: 1px solid rgba(var(--warn-color-rgb), 0.3);
-    border-radius: 8px;
-    font-size: var(--font-size-sm);
+    padding: 10px 12px;
+    background: rgba(var(--warn-color-rgb), 0.06);
+    border: 1px solid rgba(var(--warn-color-rgb), 0.18);
+    border-radius: var(--border-radius);
+    font-size: 0.875rem;
     color: var(--warn-color);
   }
 }
 
-// ===== BUTTON GROUP =====
-.button-group {
+// ===== ACTIONS =====
+.modal-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
   padding: 16px;
   border-top: 1px solid var(--border-color);
+
+  .cancel-btn {
+    min-width: 92px;
+  }
+
+  button.primary {
+    min-width: 120px;
+  }
 }

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
 
 use crate::RcloneState;
-use crate::rclone::state::ENGINE_STATE;
+use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::config;
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, core},
@@ -126,8 +126,6 @@ pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
         .await
         .map_err(|e| format!("Failed to execute API request: {e}"))?;
 
-    debug!("Rclone config paths response: {response:?}");
-
     if !response.status().is_success() {
         return Err(format!(
             "API request failed with status: {}",
@@ -148,6 +146,5 @@ pub async fn get_rclone_config_file(app: AppHandle) -> Result<PathBuf, String> {
         .and_then(|v| v.as_str())
         .ok_or("No config path in response")?;
 
-    debug!("Rclone config path from API: {config_path}");
     Ok(PathBuf::from(config_path))
 }

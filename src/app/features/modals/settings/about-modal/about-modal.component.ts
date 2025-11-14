@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { MatDialogRef } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -128,13 +127,11 @@ export class AboutModalComponent implements OnInit {
     this.loadChannelSetting();
     this.loadRcloneSettings();
 
-    this.eventListenersService.listenToRcloneEngine().subscribe({
-      next: async event => {
+    this.eventListenersService.listenToRcloneEngineReady().subscribe({
+      next: async () => {
         try {
-          if (typeof event === 'object' && event?.status === 'ready') {
-            await this.loadRcloneInfo();
-            await this.loadRclonePID();
-          }
+          await this.loadRcloneInfo();
+          await this.loadRclonePID();
         } catch (error) {
           console.error('Error handling Rclone API ready event:', error);
         }
@@ -258,7 +255,7 @@ export class AboutModalComponent implements OnInit {
     this.scrolled = content.scrollTop > 10;
   }
 
-  @HostListener('document:keydown.escape', ['$event'])
+  @HostListener('document:keydown.escape')
   close(): void {
     if (this.showingWhatsNew) {
       this.closeWhatsNew();
@@ -267,10 +264,6 @@ export class AboutModalComponent implements OnInit {
     } else {
       this.dialogRef.close();
     }
-  }
-
-  openLink(link: string): void {
-    openUrl(link);
   }
 
   copyToClipboard(text: string): void {

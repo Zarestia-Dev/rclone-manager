@@ -59,7 +59,6 @@ export class LogsModalComponent implements OnInit {
   private loggingService = inject(LoggingService);
 
   ngOnInit(): void {
-    this.loadSavedFilters();
     this.loadLogs();
   }
   get uniqueRemotes(): string[] {
@@ -148,25 +147,6 @@ export class LogsModalComponent implements OnInit {
     });
   }
 
-  private loadSavedFilters(): void {
-    const savedFilters = localStorage.getItem('logFilters');
-    if (savedFilters) {
-      const filters = JSON.parse(savedFilters);
-      this.selectedLevel = filters.level || '';
-      this.selectedRemote = filters.remote || '';
-      this.searchText = filters.search || '';
-    }
-  }
-
-  saveFilters(): void {
-    const filters = {
-      level: this.selectedLevel,
-      remote: this.selectedRemote,
-      search: this.searchText,
-    };
-    localStorage.setItem('logFilters', JSON.stringify(filters));
-  }
-
   // ngAfterViewChecked() {
   //   if (this.autoScroll && this.terminalLogArea) {
   //     this.scrollToBottom();
@@ -187,9 +167,8 @@ export class LogsModalComponent implements OnInit {
     }
   }
 
-  @HostListener('document:keydown.escape', ['$event'])
+  @HostListener('document:keydown.escape')
   close(): void {
-    this.saveFilters();
     this.dialogRef.close();
   }
 }

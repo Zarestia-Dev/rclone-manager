@@ -75,7 +75,7 @@
     </button>
 
     <!-- Window Controls -->
-    @if (!isMacOS) {
+    @if (windowButtons) {
       <button matIconButton (click)="minimizeWindow()" aria-label="Minimize window">
         <mat-icon svgIcon="remove" aria-hidden="true"></mat-icon>
       </button>

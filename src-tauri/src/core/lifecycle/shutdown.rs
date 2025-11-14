@@ -1,29 +1,29 @@
 use log::{debug, error, info, warn};
 use serde_json::json;
-use tauri::{AppHandle, Emitter, Manager};
-use tokio::task::spawn_blocking;
+use tauri::{AppHandle, Emitter, Manager, State, async_runtime::spawn_blocking};
 
 use crate::{
     rclone::{
-        commands::{stop_job, unmount_all_remotes},
-        engine::ENGINE,
-        state::{get_active_jobs, stop_mounted_remote_watcher},
+        commands::{job::stop_job, mount::unmount_all_remotes, serve::stop_all_serves},
+        engine::core::ENGINE,
+        state::watcher::stop_mounted_remote_watcher,
     },
-    utils::process::process_manager::kill_all_rclone_processes,
+    utils::{process::process_manager::kill_all_rclone_processes, types::events::APP_EVENT},
 };
-// use crate::utils::shortcuts::unregister_global_shortcuts;
+
+use crate::core::scheduler::engine::CronScheduler;
+use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
+use crate::utils::types::all_types::{JobCache, RemoteCache};
 
 /// Main entry point for handling shutdown tasks
 #[tauri::command]
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("🔴 Beginning shutdown sequence...");
-
-    // Set the shutdown flag immediately to prevent new operations
     app_handle.state::<crate::RcloneState>().set_shutting_down();
 
     app_handle
         .emit(
-            "app_event",
+            APP_EVENT,
             json!({
                 "status": "shutting_down",
                 "message": "Shutting down RClone Manager"
@@ -33,22 +33,21 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
             error!("Failed to emit an app_event: {e}");
         });
 
-    // Get active jobs before shutdown
-    let active_jobs = match get_active_jobs().await {
-        Ok(jobs) => jobs,
-        Err(e) => {
-            error!("Failed to get active jobs: {e}");
-            vec![]
-        }
-    };
+    let job_cache_state = app_handle.state::<JobCache>();
+    let remote_cache_state = app_handle.state::<RemoteCache>();
+    let scheduler_state = app_handle.state::<CronScheduler>();
 
-    // If there are active jobs, notify UI
+    let active_jobs = job_cache_state.get_active_jobs().await;
+    let active_serves = remote_cache_state.get_serves().await;
+
     if !active_jobs.is_empty() {
         let job_count = active_jobs.len();
         info!("⚠️ Stopping {job_count} active jobs during shutdown");
     }
-
-    // Run cleanup tasks in parallel with individual timeouts
+    if !active_serves.is_empty() {
+        let serve_count = active_serves.len();
+        info!("⚠️ Stopping {serve_count} active serves during shutdown");
+    }
     let unmount_task = tokio::time::timeout(
         tokio::time::Duration::from_secs(5),
         unmount_all_remotes(
@@ -57,30 +56,47 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
             "shutdown".to_string(),
         ),
     );
-
     let stop_jobs_task = tokio::time::timeout(
         tokio::time::Duration::from_secs(5),
-        stop_all_jobs(app_handle.clone()),
+        stop_all_jobs(app_handle.clone(), job_cache_state.clone()),
     );
+    let stop_serves_task = tokio::time::timeout(
+        tokio::time::Duration::from_secs(5),
+        stop_all_serves(
+            app_handle.clone(),
+            app_handle.state(),
+            "shutdown".to_string(),
+        ),
+    );
+    let (unmount_result, stop_jobs_result, stop_serves_result) =
+        tokio::join!(unmount_task, stop_jobs_task, stop_serves_task);
 
-    let (unmount_result, stop_jobs_result) = tokio::join!(unmount_task, stop_jobs_task);
-
-    // Stop the mounted remote watcher
     info!("🔍 Stopping mounted remote watcher...");
     stop_mounted_remote_watcher();
+    info!("🔍 Stopping serve watcher...");
+    crate::rclone::state::watcher::stop_serve_watcher();
 
-    // // Unregister global shortcuts
-    #[cfg(desktop)]
-    {
-        use crate::utils::shortcuts::unregister_global_shortcuts;
-
-        info!("⌨️ Unregistering global shortcuts...");
-        if let Err(e) = unregister_global_shortcuts(&app_handle) {
-            error!("Failed to unregister global shortcuts: {e}");
-        }
+    info!("⏰ Stopping cron scheduler...");
+    match scheduler_state.stop().await {
+        Ok(()) => info!("✅ Cron scheduler stopped successfully"),
+        Err(e) => error!("❌ Failed to stop cron scheduler: {e}"),
     }
 
-    // Handle unmount results
+    #[cfg(desktop)]
+    {
+        if app_handle
+            .try_state::<tauri_plugin_global_shortcut::GlobalShortcut<tauri::Wry>>()
+            .is_some()
+        {
+            use crate::utils::shortcuts::unregister_global_shortcuts;
+            info!("⌨️ Unregistering global shortcuts...");
+            if let Err(e) = unregister_global_shortcuts(&app_handle) {
+                error!("Failed to unregister global shortcuts: {e}");
+            }
+        } else {
+            debug!("Global shortcut plugin not available, skipping unregister");
+        }
+    }
     match unmount_result {
         Ok(Ok(info)) => info!("Unmounted all remotes successfully: {info:?}"),
         Ok(Err(e)) => {
@@ -92,12 +108,15 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
             warn!("Some remotes may not have been unmounted properly.");
         }
     }
-
-    // Handle job stopping results
     match stop_jobs_result {
-        Ok(Ok(_)) => info!("All jobs stopped successfully"),
-        Ok(Err(e)) => error!("Failed to stop all jobs: {e}"),
-        Err(_) => error!("Job stopping operation timed out after 5 seconds"),
+        Ok(Ok(_)) => info!("✅ All jobs stopped successfully"),
+        Ok(Err(e)) => error!("❌ Failed to stop all jobs: {e}"),
+        Err(_) => error!("❌ Job stopping operation timed out after 5 seconds"),
+    }
+    match stop_serves_result {
+        Ok(Ok(_)) => info!("✅ All serves stopped successfully"),
+        Ok(Err(e)) => error!("❌ Failed to stop all serves: {e}"),
+        Err(_) => error!("❌ Serve stopping operation timed out after 5 seconds"),
     }
 
     // Perform engine shutdown in a blocking task with timeout
@@ -126,7 +145,7 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
         Ok(Err(e)) => error!("Failed to spawn engine shutdown task: {e:?}"),
         Err(_) => {
             error!("Engine shutdown timed out after 3 seconds, forcing cleanup");
-            // Force kill any remaining rclone processes as a last resort
+            // Force kill any remaining rclone processes on OUR managed ports as a last resort
             if let Err(e) = kill_all_rclone_processes() {
                 error!("Failed to force kill rclone processes: {e}");
             }
@@ -153,13 +172,22 @@ pub async fn handle_shutdown(app_handle: AppHandle) {
     app_handle.exit(0);
 }
 
-/// Stop all active jobs
-async fn stop_all_jobs(app: AppHandle) -> Result<(), String> {
-    let active_jobs = get_active_jobs().await?;
+async fn stop_all_jobs(app: AppHandle, job_cache: State<'_, JobCache>) -> Result<(), String> {
+    let active_jobs = job_cache.get_active_jobs().await;
     let mut errors = Vec::new();
 
+    let scheduled_cache = app.state::<ScheduledTasksCache>();
     for job in active_jobs {
-        if let Err(e) = stop_job(app.clone(), job.jobid, "".to_string(), app.state()).await {
+        if let Err(e) = stop_job(
+            app.clone(),
+            job_cache.clone(),
+            scheduled_cache.clone(),
+            job.jobid,
+            "".to_string(),
+            app.state(),
+        )
+        .await
+        {
             errors.push(format!("Job {}: {e}", job.jobid));
         }
     }

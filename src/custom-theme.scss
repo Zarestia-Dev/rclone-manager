@@ -724,6 +724,7 @@ h6 {
 mat-icon {
   overflow: visible !important;
   min-height: unset !important;
+  flex-shrink: 0;
 
   &.warn {
     color: var(--warn-color) !important;
@@ -743,6 +744,10 @@ mat-icon {
 
   &.purple {
     color: var(--purple) !important;
+  }
+
+  &.yellow {
+    color: var(--yellow) !important;
   }
 }
 

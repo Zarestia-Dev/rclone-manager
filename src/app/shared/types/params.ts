@@ -9,6 +9,7 @@ export type FilterOptions = Record<string, object>;
 export type MountOptions = Record<string, string | number | boolean>;
 export type VfsOptions = Record<string, string | number | boolean>;
 export type BackendOptions = Record<string, string | number | boolean>;
+export type ServeOptions = Record<string, string | number | boolean>;
 
 // Tauri command parameter payloads
 export interface SyncParams {

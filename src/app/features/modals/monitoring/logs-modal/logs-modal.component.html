@@ -22,7 +22,7 @@
     <div class="logs-toolbar">
       <mat-form-field class="level-filter">
         <mat-label>Log Level</mat-label>
-        <mat-select [(value)]="selectedLevel" (selectionChange)="saveFilters()">
+        <mat-select [(value)]="selectedLevel">
           <mat-option value="">All Levels</mat-option>
           <mat-option value="info">
             <span class="level-option info"> Info </span>
@@ -45,14 +45,13 @@
           matInput
           [(ngModel)]="searchText"
           placeholder="Type to search logs..."
-          (ngModelChange)="saveFilters()"
           [attr.aria-label]="'Search through logs'"
         />
         @if (searchText) {
           <button
             matIconButton
             matSuffix
-            (click)="searchText = ''; saveFilters()"
+            (click)="searchText = ''"
             type="button"
             aria-label="Clear search"
           >

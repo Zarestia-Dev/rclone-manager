@@ -5,7 +5,6 @@
   background: var(--app-background);
   box-shadow: var(--shadow-light);
   border: 1px solid var(--theme-border);
-  overflow: hidden;
   animation: fadeIn 0.6s ease-out;
   animation-fill-mode: both;
   will-change: transform, box-shadow;
