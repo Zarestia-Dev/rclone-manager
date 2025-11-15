@@ -1,11 +1,11 @@
 use std::path::PathBuf;
 
 use log::{debug, error, info};
-use tauri::{Manager, State};
+use tauri::Manager;
 
 use crate::{
     core::{check_binaries::check_rclone_available, settings::operations::core::save_setting},
-    utils::types::all_types::RcloneState,
+    utils::github_client,
 };
 
 use super::{
@@ -61,7 +61,7 @@ pub async fn provision_rclone(
         _ => return Err("Unsupported OS.".into()),
     };
 
-    let version = get_latest_rclone_version(&app_handle.state()).await?;
+    let version = get_latest_rclone_version().await?;
 
     let zip_bytes = download_rclone_zip(os_name, &arch, &version).await?;
 
@@ -138,30 +138,10 @@ pub async fn provision_rclone(
 }
 
 /// Get the latest rclone version from GitHub releases
-pub async fn get_latest_rclone_version(state: &State<'_, RcloneState>) -> Result<String, String> {
-    let url = "https://api.github.com/repos/rclone/rclone/releases/latest";
-
-    let response = state
-        .client
-        .get(url)
-        .header("User-Agent", "rclone-manager")
-        .send()
+pub async fn get_latest_rclone_version() -> Result<String, String> {
+    let release = github_client::get_latest_release("rclone", "rclone")
         .await
-        .map_err(|e| format!("Failed to fetch latest version: {e}"))?;
+        .map_err(|e| e.to_string())?;
 
-    if !response.status().is_success() {
-        return Err(format!("GitHub API returned status: {}", response.status()));
-    }
-
-    let release_data: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse GitHub response: {e}"))?;
-
-    let tag_name = release_data
-        .get("tag_name")
-        .and_then(|v| v.as_str())
-        .ok_or("No tag_name found in release data")?;
-
-    Ok(tag_name.to_string())
+    Ok(release.tag_name)
 }

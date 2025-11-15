@@ -21,6 +21,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use crate::core::check_binaries::{build_rclone_command, get_rclone_binary_path, read_rclone_path};
 use crate::core::settings::operations::core::save_setting;
 use crate::rclone::engine::core::ENGINE;
+use crate::utils::github_client;
 use crate::{
     rclone::queries::get_rclone_info,
     utils::types::{all_types::RcloneState, events::RCLONE_ENGINE_UPDATING},
@@ -63,11 +64,15 @@ pub async fn check_rclone_update(
 
     // Use rclone selfupdate --check to determine if update is available
     let channel = channel.unwrap_or_else(|| "stable".to_string());
-    let update_check_result = check_rclone_selfupdate(&app_handle, &channel).await?;
+    let update_check_result = check_rclone_selfupdate(&app_handle, &channel)
+        .await
+        .map_err(|e| e.to_string())?;
 
     // Fetch release notes from GitHub if update is available
     let (release_notes, release_date, release_url) = if update_check_result.update_available {
-        fetch_rclone_release_info(&update_check_result.latest_version, &channel).await
+        fetch_rclone_release_info(&update_check_result.latest_version, &channel)
+            .await
+            .map_err(|e| e.to_string())?
     } else {
         (None, None, None)
     };
@@ -451,105 +456,82 @@ async fn check_rclone_selfupdate(
     })
 }
 
-/// Fetch release notes from Rclone's GitHub repository (stable releases only)
+/// Fetch release notes from Rclone's GitHub repository.
 async fn fetch_rclone_release_info(
     version: &str,
     channel: &str,
-) -> (Option<String>, Option<String>, Option<String>) {
-    // Beta releases are not published on GitHub, only stable releases
-    if channel == "beta" {
-        log::debug!("Skipping changelog fetch for beta release");
-        return (None, None, None);
-    }
-
-    use serde::Deserialize;
-
-    #[derive(Deserialize)]
-    struct GitHubRelease {
-        published_at: Option<String>,
-        html_url: String,
-    }
-
-    let client = match reqwest::Client::builder()
-        .user_agent("rclone-manager")
-        .build()
-    {
-        Ok(c) => c,
-        Err(e) => {
-            log::warn!("Failed to create HTTP client: {e}");
-            return (None, None, None);
-        }
-    };
-
-    // Fetch release metadata from GitHub
+) -> Result<(Option<String>, Option<String>, Option<String>), github_client::Error> {
     let version_clean = clean_version(version);
     let tag = format!("v{version_clean}");
-    let url = format!("https://api.github.com/repos/rclone/rclone/releases/tags/{tag}");
 
-    let release = match client.get(&url).send().await {
-        Ok(resp) if resp.status().is_success() => match resp.json::<GitHubRelease>().await {
-            Ok(r) => r,
-            Err(e) => {
-                log::warn!("Failed to parse release: {e}");
-                return (None, None, None);
+    // Fetch release metadata from GitHub
+    // This will provide the release notes body for both stable and beta
+    match github_client::get_release_by_tag("rclone", "rclone", &tag).await {
+        Ok(release) => {
+            // Beta releases are not published on GitHub, but their tags might exist.
+            // Rclone's `selfupdate --check` gets beta info from beta.rclone.org,
+            // but the release notes are often just in the tag body on GitHub.
+            if channel == "beta" {
+                return Ok((release.body, release.published_at, Some(release.html_url)));
             }
-        },
-        Ok(resp) => {
-            log::debug!("GitHub API status: {}", resp.status());
-            return (None, None, None);
+
+            // For stable releases, try to get the detailed changelog.md
+            match fetch_stable_changelog(version, &release.published_at, &release.html_url).await {
+                Ok(changelog) => Ok((
+                    Some(changelog),
+                    release.published_at,
+                    Some(release.html_url),
+                )),
+                Err(e) => {
+                    log::warn!(
+                        "Failed to fetch stable changelog, falling back to release body: {e}"
+                    );
+                    // Fallback to the release body if changelog.md fails
+                    Ok((release.body, release.published_at, Some(release.html_url)))
+                }
+            }
         }
         Err(e) => {
-            log::warn!("Failed to fetch release: {e}");
-            return (None, None, None);
+            log::warn!("Failed to fetch GitHub release by tag {}: {}", tag, e);
+            // Can't get any info, return None
+            Ok((None, None, None))
         }
-    };
-
-    // Fetch full changelog from changelog.md
-    fetch_stable_changelog(&client, version, release.published_at, release.html_url).await
+    }
 }
 
 /// Fetch changelog for stable releases from changelog.md
 async fn fetch_stable_changelog(
-    client: &reqwest::Client,
     version: &str,
-    release_date: Option<String>,
-    release_url: String,
-) -> (Option<String>, Option<String>, Option<String>) {
+    release_date: &Option<String>,
+    release_url: &str,
+) -> Result<String, github_client::Error> {
     let version_clean = clean_version(version);
     let tag = format!("v{version_clean}");
-    let url = format!(
-        "https://raw.githubusercontent.com/rclone/rclone/{}/docs/content/changelog.md",
-        tag
-    );
+    let path = "docs/content/changelog.md";
 
     // Try to fetch and parse changelog
-    let changelog = match client.get(&url).send().await {
-        Ok(resp) if resp.status().is_success() => match resp.text().await {
-            Ok(content) => extract_version_changelog(&content, version),
-            Err(e) => {
-                log::warn!("Failed to read changelog: {e}");
-                None
-            }
-        },
-        Ok(resp) => {
-            log::debug!("Failed to fetch changelog: status {}", resp.status());
-            None
+    match github_client::get_raw_file_content("rclone", "rclone", &tag, path).await {
+        Ok(content) => {
+            let changelog = extract_version_changelog(&content, version).unwrap_or_else(|| {
+                log::warn!("Could not parse changelog.md, falling back to release URL.");
+                format!(
+                    "## Rclone {}\n\n[View full changelog]({})",
+                    version, release_url
+                )
+            });
+            Ok(changelog)
         }
         Err(e) => {
-            log::warn!("Failed to fetch changelog: {e}");
-            None
+            log::debug!("Failed to fetch changelog.md: status {}", e);
+            // Fallback message
+            Ok(format!(
+                "## Rclone {}\n\nReleased: {}\n\n[View full changelog]({})",
+                version,
+                release_date.as_deref().unwrap_or("N/A"),
+                release_url
+            ))
         }
-    };
-
-    // Return changelog or fallback message
-    let message = changelog.unwrap_or_else(|| {
-        format!(
-            "## Rclone {}\n\n[View full changelog]({})",
-            version, release_url
-        )
-    });
-
-    (Some(message), release_date, Some(release_url))
+    }
 }
 
 /// Extract changelog section for a specific version from changelog.md

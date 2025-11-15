@@ -1,4 +1,5 @@
 pub mod app;
+pub mod github_client;
 pub mod io;
 pub mod json_helpers;
 pub mod logging;

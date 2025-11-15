@@ -1,12 +1,13 @@
 #[cfg(all(desktop, feature = "updater"))]
 pub mod app_updates {
+    use crate::{
+        core::lifecycle::shutdown::handle_shutdown,
+        utils::{github_client, types::all_types::RcloneState},
+    };
     use log::{debug, info, warn};
-    use serde::Deserialize;
     use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
     use tauri::{AppHandle, Manager, State};
     use tauri_plugin_updater::{Update, UpdaterExt};
-
-    use crate::{core::lifecycle::shutdown::handle_shutdown, utils::types::all_types::RcloneState};
 
     #[derive(Debug, thiserror::Error)]
     pub enum Error {
@@ -16,8 +17,9 @@ pub mod app_updates {
         NoPendingUpdate,
         #[error("invalid URL: {0}")]
         InvalidUrl(#[from] url::ParseError),
-        #[error("HTTP error: {0}")]
-        Http(#[from] reqwest::Error),
+        // Wrap the new GitHub client error
+        #[error("GitHub API error: {0}")]
+        GitHub(#[from] github_client::Error),
         #[error("mutex error: {0}")]
         Mutex(String),
     }
@@ -32,23 +34,6 @@ pub mod app_updates {
     }
 
     type Result<T> = std::result::Result<T, Error>;
-
-    #[derive(Debug, Deserialize)]
-    struct GitHubRelease {
-        tag_name: String,
-        prerelease: bool,
-        draft: bool,
-        assets: Vec<GitHubAsset>,
-        body: Option<String>,         // Release notes/changelog
-        published_at: Option<String>, // Release date
-        html_url: String,             // Link to release page
-    }
-
-    #[derive(Debug, Deserialize)]
-    struct GitHubAsset {
-        name: String,
-        browser_download_url: String,
-    }
 
     #[derive(Default)]
     pub struct DownloadState {
@@ -95,21 +80,11 @@ pub mod app_updates {
 
         info!("Checking for updates on channel: {}", channel);
 
-        // Get releases from GitHub API
-        let client = reqwest::Client::new();
         let owner = "Zarestia-Dev";
         let repo = "rclone-manager";
-        let url = format!(
-            "https://api.github.com/repos/{}/{}/releases?per_page=100",
-            owner, repo
-        );
 
-        let req = client
-            .get(&url)
-            .header("User-Agent", "Zarestia-Dev")
-            .header("Accept", "application/vnd.github.v3+json");
-
-        let releases: Vec<GitHubRelease> = req.send().await?.json().await?;
+        let releases: Vec<github_client::Release> =
+            github_client::get_releases(owner, repo).await?;
 
         // Filter and find the appropriate release for the channel
         let suitable_release = releases
@@ -215,7 +190,7 @@ pub mod app_updates {
         Ok(update_metadata)
     }
 
-    fn is_release_for_channel(release: &GitHubRelease, channel: &str) -> bool {
+    fn is_release_for_channel(release: &github_client::Release, channel: &str) -> bool {
         match channel {
             "stable" => !release.prerelease && !release.tag_name.to_lowercase().contains("beta"),
             "beta" => release.prerelease || release.tag_name.to_lowercase().contains("beta"),
@@ -276,12 +251,12 @@ pub mod app_updates {
             Ok(resp) => {
                 if let Err(e) = resp.error_for_status() {
                     warn!("HEAD check failed for {}: {}", update.download_url, e);
-                    return Err(Error::Http(e));
+                    // Do not return an error, just a warning.
+                    // This is a fix for some servers that do not support HEAD requests.
                 }
             }
             Err(e) => {
                 warn!("HEAD request failed for {}: {}", update.download_url, e);
-                return Err(Error::Http(e));
             }
         }
 

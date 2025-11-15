@@ -15,6 +15,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { marked } from 'marked';
 
 // Services
 import { AnimationsService } from '../../../../shared/services/animations.service';
@@ -149,39 +150,11 @@ export class AboutModalComponent implements OnInit {
     this.showingWhatsNew = false;
     this.whatsNewType = null;
   }
-
   getFormattedReleaseNotes(markdown: string | undefined | null): SafeHtml {
     if (!markdown) {
       return this.sanitizer.sanitize(1, '<p>No release notes available.</p>') || '';
     }
-
-    // Simple markdown to HTML conversion (you can use a library like 'marked' for better results)
-    let html = markdown
-      // Headers
-      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-      // Bold
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      // Italic
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      // Links
-      .replace(
-        /\[([^\]]+)\]\(([^)]+)\)/g,
-        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
-      )
-      // Lists
-      .replace(/^\* (.+)$/gim, '<li>$1</li>')
-      .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
-      // Line breaks
-      .replace(/\n\n/g, '</p><p>')
-      .replace(/\n/g, '<br>');
-
-    // Wrap in paragraph if not already wrapped
-    if (!html.startsWith('<')) {
-      html = `<p>${html}</p>`;
-    }
-
+    const html = marked.parse(markdown, { gfm: true, breaks: true });
     return this.sanitizer.sanitize(1, html) || '';
   }
 

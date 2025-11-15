@@ -28,17 +28,18 @@ use tokio::sync::broadcast;
 use tower_http::cors::{Any, CorsLayer};
 
 // Re-export from lib
-use rclone_manager_lib::core::initialization::{
-    init_rclone_state, initialization, setup_config_dir,
-};
 use rclone_manager_lib::core::lifecycle::startup::handle_startup;
 use rclone_manager_lib::core::scheduler::engine::CronScheduler;
 use rclone_manager_lib::core::settings::operations::core::load_startup_settings;
+use rclone_manager_lib::core::{
+    initialization::{init_rclone_state, initialization, setup_config_dir},
+    lifecycle::shutdown::handle_shutdown,
+};
 use rclone_manager_lib::rclone::commands::mount::{MountParams, mount_remote};
 use rclone_manager_lib::rclone::commands::remote::create_remote;
 use rclone_manager_lib::utils::io::network::monitor_network_changes;
 use rclone_manager_lib::utils::logging::log::init_logging;
-use rclone_manager_lib::utils::types::all_types::{LogCache, RcApiEngine, RemoteCache};
+use rclone_manager_lib::utils::types::all_types::{LogCache, RemoteCache};
 use rclone_manager_lib::utils::types::settings::SettingsState;
 use rclone_manager_lib::{
     rclone::state::scheduled_tasks::ScheduledTasksCache,
@@ -228,9 +229,14 @@ async fn start_web_server(
 
     // Setup Tauri event listeners to forward all events to SSE clients
     // List of all events emitted by the application
+    // Forward the same events emitted by the native Tauri runtime to SSE clients so
+    // the web (headless) UI can receive the same updates as the desktop runtime.
+    // Keep this list in sync with `src/app/shared/types/events.ts` and
+    // `src-tauri/src/utils/types/events.rs`.
     let events_to_forward = vec![
-        // Settings
-        "system_settings_changed",
+        // Core
+        "rclone_api_url_updated",
+        "engine_restarted",
         // RClone engine
         "rclone_engine_ready",
         "rclone_engine_error",
@@ -238,27 +244,57 @@ async fn start_web_server(
         "rclone_engine_path_error",
         "rclone_engine_updating",
         "rclone_password_stored",
-        // State changes
+        // Remote management & state changes
         "remote_state_changed",
-        // App updates
+        "remote_presence_changed",
+        "remote_cache_updated",
+        // System & settings
+        "system_settings_changed",
+        "bandwidth_limit_changed",
+        "rclone_config_unlocked",
+        // UI & cache events
+        "tray_menu_updated",
+        "job_cache_changed",
+        "notify_ui",
+        "mount_state_changed",
+        "serve_state_changed",
+        // Plugins / installs
+        "mount_plugin_installed",
+        // Network
+        "network_status_changed",
+        // Scheduled tasks
+        "scheduled_task_error",
+        "scheduled_task_completed",
+        "scheduled_task_stopped",
+        // App wide events
+        "app_event",
+        // UI-specific job events
+        "ui_job_update",
+        "ui_job_completed",
+        // Other / updater
         "update-available",
         "update-downloaded",
         "download-progress",
-        // Other events (add more as needed)
+        // OAuth
+        "rclone_oauth",
     ];
 
     for event_name in events_to_forward {
         let event_tx_for_listener = event_tx.clone();
         let event_name_owned = event_name.to_string();
         app_handle.listen(event_name, move |event| {
-            if let Ok(payload) = serde_json::to_value(&event.payload()) {
-                let tauri_event = TauriEvent {
-                    event: event_name_owned.clone(),
-                    payload,
-                };
-                // Send to all SSE clients (ignore if no receivers)
-                let _ = event_tx_for_listener.send(tauri_event);
-            }
+            let payload_str = event.payload();
+            let payload_val: serde_json::Value = match serde_json::from_str(payload_str) {
+                Ok(v) => v,
+                Err(_) => serde_json::Value::String(payload_str.to_string()),
+            };
+
+            let tauri_event = TauriEvent {
+                event: event_name_owned.clone(),
+                payload: payload_val,
+            };
+
+            let _ = event_tx_for_listener.send(tauri_event);
         });
     }
 
@@ -303,6 +339,12 @@ async fn start_web_server(
     let jobs_router = Router::new()
         .route("/", get(get_jobs_handler))
         .route("/active", get(get_active_jobs_handler))
+        .route("/stop", post(stop_job_handler))
+        .route("/start-sync", post(start_sync_handler))
+        .route("/start-copy", post(start_copy_handler))
+        .route("/start-move", post(start_move_handler))
+        .route("/start-bisync", post(start_bisync_handler))
+        .route("/:id/status", get(get_job_status_handler))
         .with_state(state.clone());
 
     // Build API router
@@ -311,6 +353,8 @@ async fn start_web_server(
         .route("/remote/:name", get(get_remote_config_handler))
         .route("/remote-types", get(get_remote_types_handler))
         .route("/stats", get(get_stats_handler))
+        .route("/stats/filtered", get(get_core_stats_filtered_handler))
+        .route("/transfers/completed", get(get_completed_transfers_handler))
         .nest("/jobs", jobs_router)
         .route("/mounted-remotes", get(get_mounted_remotes_handler))
         .route("/settings", get(get_settings_handler))
@@ -337,12 +381,16 @@ async fn start_web_server(
         .route("/fs/info", get(get_fs_info_handler))
         .route("/disk-usage", get(get_disk_usage_handler))
         .route("/provision-rclone", get(provision_rclone_handler))
+        .route("/remote/paths", post(get_remote_paths_handler))
         .route(
             "/get-cached-mounted-remotes",
             get(get_cached_mounted_remotes_handler),
         )
         .route("/get-cached-remotes", get(get_cached_remotes_handler))
         .route("/get-cached-serves", get(get_cached_serves_handler))
+        .route("/serve/start", post(start_serve_handler))
+        .route("/serve/stop", post(stop_serve_handler))
+        .route("/handle-shutdown", post(handle_shutdown_handler))
         .route("/get-configs", get(get_configs_handler))
         .route("/save-remote-settings", post(save_remote_settings_handler))
         .route("/events", get(sse_handler))
@@ -365,6 +413,14 @@ async fn start_web_server(
             "/get-grouped-options-with-values",
             get(get_grouped_options_with_values_handler),
         )
+        .route("/flags/mount", get(get_mount_flags_handler))
+        .route("/flags/copy", get(get_copy_flags_handler))
+        .route("/flags/sync", get(get_sync_flags_handler))
+        .route("/flags/filter", get(get_filter_flags_handler))
+        .route("/flags/vfs", get(get_vfs_flags_handler))
+        .route("/flags/backend", get(get_backend_flags_handler))
+        .route("/serve/types", get(get_serve_types_handler))
+        .route("/serve/flags", get(get_serve_flags_handler))
         .route(
             "/save-rclone-backend-option",
             post(save_rclone_backend_option_handler),
@@ -379,6 +435,14 @@ async fn start_web_server(
             get(get_oauth_supported_remotes_handler),
         )
         .route("/create-remote", post(create_remote_handler))
+        .route(
+            "/create-remote-interactive",
+            post(create_remote_interactive_handler),
+        )
+        .route(
+            "/continue-create-remote-interactive",
+            post(continue_create_remote_interactive_handler),
+        )
         .route("/quit-rclone-oauth", post(quit_rclone_oauth_handler))
         .route(
             "/get-cached-encryption-status",
@@ -407,6 +471,15 @@ async fn start_web_server(
         )
         .route("/unencrypt-config", post(unencrypt_config_handler))
         .route("/encrypt-config", post(encrypt_config_handler))
+        .route("/mount-types", get(get_mount_types_handler))
+        .route("/is-7z-available", get(is_7z_available_handler))
+        .route(
+            "/delete-remote-settings",
+            post(delete_remote_settings_handler),
+        )
+        .route("/delete-remote", post(delete_remote_handler))
+        .route("/get-remote-logs", get(get_remote_logs_handler))
+        .route("/clear-remote-logs", get(clear_remote_logs_handler))
         .with_state(state.clone());
 
     // Configure CORS to allow requests from any origin (including localhost/127.0.0.1)
@@ -447,7 +520,16 @@ async fn start_web_server(
     info!("   GET  /health - Health check");
     info!("   GET  /api/remotes - List all remotes");
     info!("   GET  /api/stats - Get core stats");
+    info!("   GET  /api/stats/filtered - Get filtered core stats");
+    info!("   GET  /api/transfers/completed - Get completed transfers");
+    info!("   POST /api/remote/paths - List remote paths (body: {{ remote, path, options }})");
     info!("   GET  /api/jobs - Get active jobs");
+    info!("   GET  /api/jobs/:id/status - Get job status");
+    info!("   POST /api/jobs/start-sync - Start a sync job");
+    info!("   POST /api/jobs/start-copy - Start a copy job");
+    info!("   POST /api/jobs/start-move - Start a move job");
+    info!("   POST /api/jobs/start-bisync - Start a bisync job");
+    info!("   POST /api/jobs/stop - Stop a running job");
     info!("   GET  /api/get-scheduled-tasks - Get scheduled tasks");
     info!("   POST /api/toggle-scheduled-task - Toggle scheduled task");
     info!("   GET  /api/get-scheduled-tasks-stats - Get scheduled tasks stats");
@@ -460,6 +542,23 @@ async fn start_web_server(
     info!("   POST /api/store-config-password - Store config password");
     info!("   POST /api/unencrypt-config - Unencrypt config");
     info!("   POST /api/encrypt-config - Encrypt config");
+    info!("   GET  /api/mount-types - Get mount types");
+    info!("   POST /api/create-remote-interactive - Start non-interactive remote creation");
+    info!("   POST /api/continue-create-remote-interactive - Continue remote creation flow");
+    info!("   GET  /api/flags/mount - Get mount flags");
+    info!("   GET  /api/flags/copy - Get copy flags");
+    info!("   GET  /api/flags/sync - Get sync flags");
+    info!("   GET  /api/flags/filter - Get filter flags");
+    info!("   GET  /api/flags/vfs - Get vfs flags");
+    info!("   GET  /api/flags/backend - Get backend flags");
+    info!("   GET  /api/serve/types - Get serve types");
+    info!("   GET  /api/serve/flags - Get serve flags (query param: serveType)");
+    info!("   GET  /api/is-7z-available - Check if 7z (7-Zip) is installed/available");
+    info!("   POST /api/delete-remote-settings - Delete remote settings (body: {{ remoteName }})");
+    info!("   POST /api/delete-remote - Delete remote (body: {{ name }})");
+    info!("   GET  /api/get-remote-logs - Get remote logs (query param: remoteName)");
+    info!("   GET  /api/clear-remote-logs - Clear remote logs (query param: remoteName)");
+
     info!("");
     info!("🌍 Open http://{}:{} in your browser", host, port);
 
@@ -584,6 +683,60 @@ async fn get_stats_handler(
     }
 }
 
+async fn get_core_stats_filtered_handler(
+    State(state): State<WebServerState>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::queries::stats::get_core_stats_filtered;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    let jobid = params.get("jobid").and_then(|s| s.parse::<u64>().ok());
+
+    let group = params.get("group").cloned();
+
+    match get_core_stats_filtered(rclone_state, jobid, group).await {
+        Ok(value) => Ok(Json(ApiResponse::success(value))),
+        Err(e) => {
+            error!("Failed to get filtered core stats: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get filtered core stats: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+async fn get_completed_transfers_handler(
+    State(state): State<WebServerState>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::queries::stats::get_completed_transfers;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    let group = params.get("group").cloned();
+
+    match get_completed_transfers(rclone_state, group).await {
+        Ok(value) => Ok(Json(ApiResponse::success(value))),
+        Err(e) => {
+            error!("Failed to get completed transfers: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get completed transfers: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
 async fn get_jobs_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
@@ -643,6 +796,255 @@ async fn get_active_jobs_handler(
                     "Failed to get active jobs: {}",
                     e
                 ))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct JobStatusQuery {
+    jobid: u64,
+}
+
+async fn get_job_status_handler(
+    State(state): State<WebServerState>,
+    Query(query): Query<JobStatusQuery>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::state::job::get_job_status;
+
+    let job_cache = state.app_handle.state::<JobCache>();
+
+    match get_job_status(job_cache, query.jobid).await {
+        Ok(opt) => match opt {
+            Some(j) => match serde_json::to_value(j) {
+                Ok(json) => Ok(Json(ApiResponse::success(json))),
+                Err(e) => {
+                    error!("Failed to serialize job: {}", e);
+                    Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(ApiResponse::error("Failed to serialize job".to_string())),
+                    ))
+                }
+            },
+            None => Ok(Json(ApiResponse::success(serde_json::Value::Null))),
+        },
+        Err(e) => {
+            error!("Failed to get job status: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get job status: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct StopJobBody {
+    jobid: u64,
+    #[serde(rename = "remoteName")]
+    remote_name: String,
+}
+
+async fn stop_job_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<StopJobBody>,
+) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)> {
+    use rclone_manager_lib::rclone::commands::job::stop_job;
+
+    let job_cache = state.app_handle.state::<JobCache>();
+    let scheduled_cache = state.app_handle.state::<ScheduledTasksCache>();
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match stop_job(
+        state.app_handle.clone(),
+        job_cache,
+        scheduled_cache,
+        body.jobid,
+        body.remote_name,
+        rclone_state,
+    )
+    .await
+    {
+        Ok(_) => Ok(Json(ApiResponse::success(
+            "Job stopped successfully".to_string(),
+        ))),
+        Err(e) => {
+            error!("Failed to stop job: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!("Failed to stop job: {}", e))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct StartSyncBody {
+    params: serde_json::Value,
+}
+
+async fn start_sync_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<StartSyncBody>,
+) -> Result<Json<ApiResponse<u64>>, (StatusCode, Json<ApiResponse<u64>>)> {
+    use rclone_manager_lib::rclone::commands::sync::{SyncParams, start_sync};
+
+    let params_result: Result<SyncParams, _> = serde_json::from_value(body.params);
+
+    let params = match params_result {
+        Ok(p) => p,
+        Err(e) => {
+            error!("Invalid start_sync parameters: {}", e);
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::error(format!(
+                    "Invalid start_sync parameters: {}",
+                    e
+                ))),
+            ));
+        }
+    };
+
+    let job_cache = state.app_handle.state::<JobCache>();
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match start_sync(state.app_handle.clone(), job_cache, rclone_state, params).await {
+        Ok(jobid) => Ok(Json(ApiResponse::success(jobid))),
+        Err(e) => {
+            error!("Failed to start sync: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!("Failed to start sync: {}", e))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct StartCopyBody {
+    params: serde_json::Value,
+}
+
+async fn start_copy_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<StartCopyBody>,
+) -> Result<Json<ApiResponse<u64>>, (StatusCode, Json<ApiResponse<u64>>)> {
+    use rclone_manager_lib::rclone::commands::sync::{CopyParams, start_copy};
+
+    let params_result: Result<CopyParams, _> = serde_json::from_value(body.params);
+
+    let params = match params_result {
+        Ok(p) => p,
+        Err(e) => {
+            error!("Invalid start_copy parameters: {}", e);
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::error(format!(
+                    "Invalid start_copy parameters: {}",
+                    e
+                ))),
+            ));
+        }
+    };
+
+    let job_cache = state.app_handle.state::<JobCache>();
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match start_copy(state.app_handle.clone(), job_cache, rclone_state, params).await {
+        Ok(jobid) => Ok(Json(ApiResponse::success(jobid))),
+        Err(e) => {
+            error!("Failed to start copy: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!("Failed to start copy: {}", e))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct StartMoveBody {
+    params: serde_json::Value,
+}
+
+async fn start_move_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<StartMoveBody>,
+) -> Result<Json<ApiResponse<u64>>, (StatusCode, Json<ApiResponse<u64>>)> {
+    use rclone_manager_lib::rclone::commands::sync::{MoveParams, start_move};
+
+    let params_result: Result<MoveParams, _> = serde_json::from_value(body.params);
+
+    let params = match params_result {
+        Ok(p) => p,
+        Err(e) => {
+            error!("Invalid start_move parameters: {}", e);
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::error(format!(
+                    "Invalid start_move parameters: {}",
+                    e
+                ))),
+            ));
+        }
+    };
+
+    let job_cache = state.app_handle.state::<JobCache>();
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match start_move(state.app_handle.clone(), job_cache, rclone_state, params).await {
+        Ok(jobid) => Ok(Json(ApiResponse::success(jobid))),
+        Err(e) => {
+            error!("Failed to start move: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!("Failed to start move: {}", e))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct StartBisyncBody {
+    params: serde_json::Value,
+}
+
+async fn start_bisync_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<StartBisyncBody>,
+) -> Result<Json<ApiResponse<u64>>, (StatusCode, Json<ApiResponse<u64>>)> {
+    use rclone_manager_lib::rclone::commands::sync::{BisyncParams, start_bisync};
+
+    let params_result: Result<BisyncParams, _> = serde_json::from_value(body.params);
+
+    let params = match params_result {
+        Ok(p) => p,
+        Err(e) => {
+            error!("Invalid start_bisync parameters: {}", e);
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::error(format!(
+                    "Invalid start_bisync parameters: {}",
+                    e
+                ))),
+            ));
+        }
+    };
+
+    let job_cache = state.app_handle.state::<JobCache>();
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match start_bisync(state.app_handle.clone(), job_cache, rclone_state, params).await {
+        Ok(jobid) => Ok(Json(ApiResponse::success(jobid))),
+        Err(e) => {
+            error!("Failed to start bisync: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!("Failed to start bisync: {}", e))),
             ))
         }
     }
@@ -934,6 +1336,45 @@ async fn get_disk_usage_handler(
 }
 
 #[derive(Deserialize)]
+struct RemotePathsBody {
+    remote: String,
+    path: Option<String>,
+    options: Option<serde_json::Value>,
+}
+
+async fn get_remote_paths_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<RemotePathsBody>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::queries::get_remote_paths;
+    use rclone_manager_lib::utils::types::all_types::ListOptions;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    let options = body.options.map(|v| {
+        // Try to deserialize into ListOptions
+        serde_json::from_value::<ListOptions>(v).unwrap_or(ListOptions {
+            extra: std::collections::HashMap::new(),
+        })
+    });
+
+    match get_remote_paths(body.remote, body.path, options, rclone_state).await {
+        Ok(value) => Ok(Json(ApiResponse::success(value))),
+        Err(e) => {
+            error!("Failed to list remote paths: {}", e);
+            Err((
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::error(format!(
+                    "Failed to list remote paths: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
 struct SaveRemoteSettingsBody {
     #[serde(rename = "remoteName")]
     remote_name: String,
@@ -1021,6 +1462,17 @@ async fn check_mount_plugin_installed_handler(
 
     let installed = check_mount_plugin_installed();
     Ok(Json(ApiResponse::success(installed)))
+}
+
+async fn is_7z_available_handler(
+    State(_state): State<WebServerState>,
+) -> Result<Json<ApiResponse<Option<String>>>, (StatusCode, Json<ApiResponse<Option<String>>>)> {
+    use rclone_manager_lib::core::check_binaries::is_7z_available;
+
+    match is_7z_available() {
+        Some(path) => Ok(Json(ApiResponse::success(Some(path)))),
+        None => Ok(Json(ApiResponse::success(None))),
+    }
 }
 
 #[derive(Deserialize)]
@@ -1338,6 +1790,95 @@ async fn get_cached_serves_handler(
     }
 }
 
+#[derive(Deserialize)]
+struct StartServeBody {
+    params: serde_json::Value,
+}
+
+async fn start_serve_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<StartServeBody>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::commands::serve::{ServeParams, start_serve};
+
+    let params_result: Result<ServeParams, _> = serde_json::from_value(body.params);
+
+    let params = match params_result {
+        Ok(p) => p,
+        Err(e) => {
+            error!("Invalid start_serve parameters: {}", e);
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::error(format!(
+                    "Invalid start_serve parameters: {}",
+                    e
+                ))),
+            ));
+        }
+    };
+
+    match start_serve(state.app_handle.clone(), params).await {
+        Ok(resp) => Ok(Json(ApiResponse::success(
+            serde_json::to_value(resp).unwrap(),
+        ))),
+        Err(e) => {
+            error!("Failed to start serve: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!("Failed to start serve: {}", e))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct StopServeBody {
+    #[serde(rename = "serverId")]
+    server_id: String,
+    #[serde(rename = "remoteName")]
+    remote_name: String,
+}
+
+async fn stop_serve_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<StopServeBody>,
+) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)> {
+    use rclone_manager_lib::rclone::commands::serve::stop_serve;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match stop_serve(
+        state.app_handle.clone(),
+        body.server_id,
+        body.remote_name,
+        rclone_state,
+    )
+    .await
+    {
+        Ok(msg) => Ok(Json(ApiResponse::success(msg))),
+        Err(e) => {
+            error!("Failed to stop serve: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!("Failed to stop serve: {}", e))),
+            ))
+        }
+    }
+}
+
+async fn handle_shutdown_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)> {
+    // Spawn shutdown task so we can return a response to the HTTP client.
+    let app_handle = state.app_handle.clone();
+    tokio::spawn(async move {
+        handle_shutdown(app_handle).await;
+    });
+
+    Ok(Json(ApiResponse::success("Shutdown initiated".to_string())))
+}
+
 async fn get_configs_handler(
     State(state): State<WebServerState>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
@@ -1510,7 +2051,10 @@ async fn sse_handler(
                 Ok(event) => {
                     // Serialize the event to JSON
                     let data = serde_json::to_string(&event).unwrap_or_else(|_| "{}".to_string());
-                    yield Ok(Event::default().event(event.event).data(data));
+                    // Send data as the default message type so the browser `EventSource.onmessage`
+                    // handler receives all events (frontend SseClientService uses `onmessage`).
+                    // The JSON payload still contains the event name so frontend can dispatch.
+                    yield Ok(Event::default().data(data));
                 }
                 Err(broadcast::error::RecvError::Lagged(_)) => {
                     // Handle lagged receiver (channel full)
@@ -1620,6 +2164,198 @@ async fn get_grouped_options_with_values_handler(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiResponse::error(format!(
                     "Failed to get grouped options with values: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+async fn get_mount_flags_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::queries::flags::get_mount_flags;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match get_mount_flags(rclone_state).await {
+        Ok(flags) => match serde_json::to_value(flags) {
+            Ok(json_flags) => Ok(Json(ApiResponse::success(json_flags))),
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to serialize mount flags: {}",
+                    e
+                ))),
+            )),
+        },
+        Err(e) => {
+            error!("Failed to get mount flags: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get mount flags: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+async fn get_copy_flags_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::queries::flags::get_copy_flags;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match get_copy_flags(rclone_state).await {
+        Ok(flags) => match serde_json::to_value(flags) {
+            Ok(json_flags) => Ok(Json(ApiResponse::success(json_flags))),
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to serialize copy flags: {}",
+                    e
+                ))),
+            )),
+        },
+        Err(e) => {
+            error!("Failed to get copy flags: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get copy flags: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+async fn get_sync_flags_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::queries::flags::get_sync_flags;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match get_sync_flags(rclone_state).await {
+        Ok(flags) => match serde_json::to_value(flags) {
+            Ok(json_flags) => Ok(Json(ApiResponse::success(json_flags))),
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to serialize sync flags: {}",
+                    e
+                ))),
+            )),
+        },
+        Err(e) => {
+            error!("Failed to get sync flags: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get sync flags: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+async fn get_filter_flags_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::queries::flags::get_filter_flags;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match get_filter_flags(rclone_state).await {
+        Ok(flags) => match serde_json::to_value(flags) {
+            Ok(json_flags) => Ok(Json(ApiResponse::success(json_flags))),
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to serialize filter flags: {}",
+                    e
+                ))),
+            )),
+        },
+        Err(e) => {
+            error!("Failed to get filter flags: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get filter flags: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+async fn get_vfs_flags_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::queries::flags::get_vfs_flags;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match get_vfs_flags(rclone_state).await {
+        Ok(flags) => match serde_json::to_value(flags) {
+            Ok(json_flags) => Ok(Json(ApiResponse::success(json_flags))),
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to serialize vfs flags: {}",
+                    e
+                ))),
+            )),
+        },
+        Err(e) => {
+            error!("Failed to get vfs flags: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get vfs flags: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+async fn get_backend_flags_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::queries::flags::get_backend_flags;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match get_backend_flags(rclone_state).await {
+        Ok(flags) => match serde_json::to_value(flags) {
+            Ok(json_flags) => Ok(Json(ApiResponse::success(json_flags))),
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to serialize backend flags: {}",
+                    e
+                ))),
+            )),
+        },
+        Err(e) => {
+            error!("Failed to get backend flags: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get backend flags: {}",
                     e
                 ))),
             ))
@@ -1813,6 +2549,108 @@ async fn create_remote_handler(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiResponse::error(format!(
                     "Failed to create remote: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct CreateRemoteInteractiveBody {
+    name: String,
+    #[serde(rename = "rclone_type")]
+    rclone_type: Option<String>,
+    #[serde(rename = "rcloneType")]
+    rclone_type_alt: Option<String>,
+    parameters: Option<serde_json::Value>,
+    opt: Option<serde_json::Value>,
+}
+
+async fn create_remote_interactive_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<CreateRemoteInteractiveBody>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::commands::remote::create_remote_interactive;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    let rclone_type = body
+        .rclone_type
+        .clone()
+        .or(body.rclone_type_alt.clone())
+        .unwrap_or_else(|| "".to_string());
+
+    match create_remote_interactive(
+        state.app_handle.clone(),
+        body.name,
+        rclone_type,
+        body.parameters,
+        body.opt,
+        rclone_state,
+    )
+    .await
+    {
+        Ok(value) => Ok(Json(ApiResponse::success(value))),
+        Err(e) => {
+            error!("Failed to create remote interactively: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to create remote interactively: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct ContinueCreateRemoteInteractiveBody {
+    name: String,
+    #[serde(rename = "state_token")]
+    state_token: Option<String>,
+    #[serde(rename = "stateToken")]
+    state_token_alt: Option<String>,
+    result: serde_json::Value,
+    parameters: Option<serde_json::Value>,
+    opt: Option<serde_json::Value>,
+}
+
+async fn continue_create_remote_interactive_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<ContinueCreateRemoteInteractiveBody>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::commands::remote::continue_create_remote_interactive;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    let state_token = body
+        .state_token
+        .clone()
+        .or(body.state_token_alt.clone())
+        .unwrap_or_else(|| "".to_string());
+
+    match continue_create_remote_interactive(
+        state.app_handle.clone(),
+        body.name,
+        state_token,
+        body.result,
+        body.parameters,
+        body.opt,
+        rclone_state,
+    )
+    .await
+    {
+        Ok(value) => Ok(Json(ApiResponse::success(value))),
+        Err(e) => {
+            error!("Failed to continue remote creation flow: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to continue remote creation flow: {}",
                     e
                 ))),
             ))
@@ -2090,6 +2928,253 @@ async fn encrypt_config_handler(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiResponse::error(format!(
                     "Failed to encrypt config: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+async fn get_mount_types_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::queries::get_mount_types;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match get_mount_types(rclone_state).await {
+        Ok(types) => {
+            // Convert to JSON value
+            match serde_json::to_value(types) {
+                Ok(json_types) => Ok(Json(ApiResponse::success(json_types))),
+                Err(e) => Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ApiResponse::error(format!(
+                        "Failed to serialize mount types: {}",
+                        e
+                    ))),
+                )),
+            }
+        }
+        Err(e) => {
+            error!("Failed to get mount types: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get mount types: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+async fn get_serve_types_handler(
+    State(state): State<WebServerState>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::queries::serve::get_serve_types;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    match get_serve_types(rclone_state).await {
+        Ok(types) => match serde_json::to_value(types) {
+            Ok(value) => Ok(Json(ApiResponse::success(value))),
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to serialize serve types: {}",
+                    e
+                ))),
+            )),
+        },
+        Err(e) => {
+            error!("Failed to get serve types: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get serve types: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+async fn get_serve_flags_handler(
+    State(state): State<WebServerState>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::queries::serve::get_serve_flags;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+
+    // Accept both serveType and serve_type query param names
+    let serve_type = params
+        .get("serveType")
+        .cloned()
+        .or_else(|| params.get("serve_type").cloned())
+        .unwrap_or_else(|| "".to_string());
+
+    match get_serve_flags(serve_type, rclone_state).await {
+        Ok(flags) => match serde_json::to_value(flags) {
+            Ok(value) => Ok(Json(ApiResponse::success(value))),
+            Err(e) => Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to serialize serve flags: {}",
+                    e
+                ))),
+            )),
+        },
+        Err(e) => {
+            error!("Failed to get serve flags: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get serve flags: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct DeleteRemoteSettingsBody {
+    #[serde(rename = "remoteName")]
+    remote_name: String,
+}
+
+async fn delete_remote_settings_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<DeleteRemoteSettingsBody>,
+) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)> {
+    use rclone_manager_lib::core::settings::remote::manager::delete_remote_settings;
+
+    let settings_state: tauri::State<
+        rclone_manager_lib::utils::types::settings::SettingsState<tauri::Wry>,
+    > = state.app_handle.state();
+
+    match delete_remote_settings(body.remote_name, settings_state, state.app_handle.clone()).await {
+        Ok(_) => Ok(Json(ApiResponse::success(
+            "Remote settings deleted successfully".to_string(),
+        ))),
+        Err(e) => {
+            error!("Failed to delete remote settings: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to delete remote settings: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct DeleteRemoteBody {
+    name: String,
+}
+
+async fn delete_remote_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<DeleteRemoteBody>,
+) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)> {
+    use rclone_manager_lib::rclone::commands::remote::delete_remote;
+
+    let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
+    let cache = state.app_handle.state::<ScheduledTasksCache>();
+    let scheduler = state.app_handle.state::<CronScheduler>();
+
+    match delete_remote(
+        state.app_handle.clone(),
+        body.name,
+        rclone_state,
+        cache,
+        scheduler,
+    )
+    .await
+    {
+        Ok(_) => Ok(Json(ApiResponse::success(
+            "Remote deleted successfully".to_string(),
+        ))),
+        Err(e) => {
+            error!("Failed to delete remote: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to delete remote: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct RemoteLogsQuery {
+    #[serde(rename = "remoteName")]
+    remote_name: Option<String>,
+}
+
+async fn get_remote_logs_handler(
+    State(state): State<WebServerState>,
+    Query(query): Query<RemoteLogsQuery>,
+) -> Result<Json<ApiResponse<serde_json::Value>>, (StatusCode, Json<ApiResponse<serde_json::Value>>)>
+{
+    use rclone_manager_lib::rclone::state::log::get_remote_logs;
+
+    let log_cache = state.app_handle.state::<LogCache>();
+
+    match get_remote_logs(log_cache, query.remote_name).await {
+        Ok(logs) => {
+            // Convert to JSON value
+            match serde_json::to_value(logs) {
+                Ok(json_logs) => Ok(Json(ApiResponse::success(json_logs))),
+                Err(e) => Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ApiResponse::error(format!(
+                        "Failed to serialize remote logs: {}",
+                        e
+                    ))),
+                )),
+            }
+        }
+        Err(e) => {
+            error!("Failed to get remote logs: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to get remote logs: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+async fn clear_remote_logs_handler(
+    State(state): State<WebServerState>,
+    Query(query): Query<RemoteLogsQuery>,
+) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)> {
+    use rclone_manager_lib::rclone::state::log::clear_remote_logs;
+
+    let log_cache = state.app_handle.state::<LogCache>();
+
+    match clear_remote_logs(log_cache, query.remote_name).await {
+        Ok(_) => Ok(Json(ApiResponse::success(
+            "Remote logs cleared successfully".to_string(),
+        ))),
+        Err(e) => {
+            error!("Failed to clear remote logs: {}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::error(format!(
+                    "Failed to clear remote logs: {}",
                     e
                 ))),
             ))

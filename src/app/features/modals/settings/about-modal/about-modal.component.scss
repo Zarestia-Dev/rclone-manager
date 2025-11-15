@@ -288,6 +288,9 @@
   }
 
   .update-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
     background: var(--surface-background);
     border-radius: var(--radius-lg);
     padding: var(--space-lg);
@@ -300,6 +303,7 @@
 
     &.up-to-date {
       display: flex;
+      flex-direction: row;
       align-items: center;
       gap: var(--space-md);
       border-color: var(--primary-color);
@@ -325,7 +329,6 @@
       display: flex;
       align-items: flex-start;
       gap: var(--space-md);
-      margin-bottom: var(--space-md);
 
       mat-icon {
         color: var(--accent-color);
@@ -346,8 +349,6 @@
     }
 
     .download-progress {
-      margin: var(--space-md) 0;
-
       .progress-info {
         display: flex;
         justify-content: space-between;
@@ -360,7 +361,6 @@
     .update-buttons {
       display: flex;
       gap: var(--space-sm);
-      margin-top: var(--space-md);
     }
   }
 
@@ -517,34 +517,28 @@
   }
 }
 
-// Add these styles to your existing about-modal.component.scss
-
+// What's New Button
 .whats-new-button {
   width: 100%;
-  justify-content: center;
-  margin-bottom: var(--space-md);
   color: var(--accent-color);
   border: 1px solid rgba(var(--accent-color-rgb), 0.3);
   background: rgba(var(--accent-color-rgb), 0.05);
+  transition: var(--transition-fast);
 
   &:hover {
     background: rgba(var(--accent-color-rgb), 0.1);
     border-color: rgba(var(--accent-color-rgb), 0.5);
   }
-
-  mat-icon {
-    margin-right: var(--space-xs);
-  }
 }
 
-// What's New overlay (nested on top of updates/About Rclone pages)
 .whats-new-overlay {
+  overflow: hidden;
   position: absolute;
   inset: 0;
   background: var(--app-background);
   display: flex;
   flex-direction: column;
-  z-index: 20; // Higher than main overlay (z-index: 10)
+  z-index: 20;
 
   .overlay-header {
     display: flex;
@@ -555,16 +549,25 @@
   }
 }
 
+// What's New Content
 .whats-new-content {
+  overflow-y: auto;
+  padding: var(--space-md) var(--space-xl);
+
+  // Release Header
   .release-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: var(--space-xl);
+    gap: var(--space-md);
+    max-width: 850px;
+    width: 100%;
     padding-bottom: var(--space-lg);
-    border-bottom: 2px solid var(--divider-color);
+    border-bottom: 2px solid var(--border-color);
 
     .release-version {
+      flex: 1;
+
       h2 {
         margin: 0 0 var(--space-xs) 0;
         font-size: 28px;
@@ -574,8 +577,8 @@
 
       .release-date {
         font-size: 14px;
-        color: var(--secondary-text-color);
         font-weight: 500;
+        color: var(--secondary-text-color);
       }
     }
 
@@ -585,6 +588,7 @@
       gap: var(--space-xs);
       color: var(--accent-color);
       border-color: rgba(var(--accent-color-rgb), 0.3);
+      transition: var(--transition-fast);
 
       &:hover {
         background: rgba(var(--accent-color-rgb), 0.1);
@@ -593,55 +597,37 @@
     }
   }
 
+  // Release Notes Content
   .release-notes {
+    max-width: 850px;
+    width: 100%;
+    margin: 0 auto;
     font-size: 15px;
-    line-height: 1.8;
+    line-height: 1.7;
     color: var(--app-text-color);
 
     ::ng-deep {
       h1,
       h2,
       h3 {
-        margin: var(--space-lg) 0 var(--space-md) 0;
+        margin: var(--space-xl) 0 var(--space-sm) 0;
         color: var(--app-text-color);
-        font-weight: 600;
       }
 
       h1 {
         font-size: 24px;
         border-bottom: 2px solid var(--divider-color);
-        padding-bottom: var(--space-sm);
       }
 
       h2 {
         font-size: 20px;
-        color: var(--primary-color);
       }
 
       h3 {
         font-size: 18px;
       }
 
-      p {
-        margin: var(--space-md) 0;
-        line-height: 1.8;
-      }
-
-      ul,
-      ol {
-        margin: var(--space-md) 0;
-        padding-left: var(--space-xl);
-
-        li {
-          margin: var(--space-sm) 0;
-          line-height: 1.6;
-        }
-      }
-
-      ul {
-        list-style-type: disc;
-      }
-
+      // Links
       a {
         color: var(--accent-color);
         text-decoration: none;
@@ -653,9 +639,9 @@
         }
       }
 
-      strong {
-        font-weight: 600;
-        color: var(--primary-color);
+      li {
+        margin: var(--space-sm) 0;
+        line-height: 1.6;
       }
 
       em {
@@ -664,59 +650,59 @@
       }
 
       code {
-        background: rgba(var(--app-text-color-rgb), 0.08);
         padding: 2px 6px;
-        border-radius: var(--radius-xs);
         font-family: monospace;
         font-size: 14px;
-        color: var(--accent-color);
+        background: rgba(var(--app-text-color-rgb), 0.08);
+        border-radius: var(--radius-xs);
       }
 
       pre {
+        margin: var(--space-md) 0;
+        padding: var(--space-md);
+        overflow-x: auto;
         background: rgba(var(--app-text-color-rgb), 0.05);
         border: 1px solid var(--divider-color);
         border-radius: var(--radius-md);
-        padding: var(--space-md);
-        overflow-x: auto;
-        margin: var(--space-md) 0;
 
         code {
-          background: none;
           padding: 0;
           color: var(--app-text-color);
+          background: none;
         }
       }
 
+      // Blockquotes
       blockquote {
-        border-left: 4px solid var(--primary-color);
-        padding-left: var(--space-md);
-        margin: var(--space-md) 0;
-        color: var(--secondary-text-color);
+        padding: var(--space-sm);
         font-style: italic;
+        background: rgba(var(--secondary-text-color-rgb), 0.1);
+        border-left: 4px solid var(--secondary-text-color);
       }
 
+      // Images (auto-centered)
       img {
+        display: block;
         max-width: 100%;
         height: auto;
-        border-radius: var(--radius-md);
-        margin: var(--space-md) 0;
+        margin: var(--space-md) auto;
       }
 
+      // Horizontal Rule
       hr {
-        border: none;
-        border-top: 1px solid var(--divider-color);
-        margin: var(--space-xl) 0;
+        border: 1px solid var(--border-color);
       }
     }
   }
 }
 
-// Responsive adjustments
+// Responsive Design
 @media (max-width: 768px) {
   .whats-new-content {
     .release-header {
+      align-items: center;
       flex-direction: column;
-      gap: var(--space-md);
+      gap: var(--space-sm);
 
       .release-version h2 {
         font-size: 24px;
@@ -734,11 +720,9 @@
         h1 {
           font-size: 20px;
         }
-
         h2 {
           font-size: 18px;
         }
-
         h3 {
           font-size: 16px;
         }

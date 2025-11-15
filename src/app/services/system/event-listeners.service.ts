@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
+import { fromEvent } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import {
   AppEventPayloadType,
@@ -34,6 +35,12 @@ export class EventListenersService extends TauriBaseService {
    * Listen to tauri window resize events
    */
   listenToWindowResize(): Observable<unknown> {
+    // In the web/headless mode Tauri window events don't exist, so fall back to
+    // native window resize events when not running as Tauri runtime.
+    if (!this.isTauriEnvironment) {
+      return fromEvent(window, 'resize');
+    }
+
     return this.listenToEvent<unknown>('tauri://resize');
   }
 

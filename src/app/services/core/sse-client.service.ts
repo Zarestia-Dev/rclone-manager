@@ -96,6 +96,7 @@ export class SseClientService implements OnDestroy {
 
     // Handle all incoming messages with a generic handler
     this.eventSource.onmessage = (event): void => {
+      console.debug('🔔 SSE onmessage received:', event.data);
       if (event.data === 'keep-alive') {
         return; // Ignore keep-alive messages
       }
@@ -104,6 +105,7 @@ export class SseClientService implements OnDestroy {
         const data = JSON.parse(event.data);
         // The backend sends { event: string, payload: any }
         if (data.event && data.payload !== undefined) {
+          console.debug('🔔 SSE parsed event:', data.event);
           this.eventSubject.next({
             event: data.event,
             payload: data.payload,

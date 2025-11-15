@@ -1,6 +1,11 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+### Added
+- `marked` dependency added for markdown rendering in the About modal. This allows us to display formatted release notes fetched from GitHub in a user-friendly manner.
+
+
 ## [v0.1.7] - 2025-11-14
 ### Added
 - Added schedule support for sync, copy, move, and bisync operations. You can now schedule these operations to run at specific times or intervals using a cron-like syntax. You can find the scheduling options in the remote sync operation settings. (Supports detailed cron expressions. Example `15,45 8-18/2 * 1,11 1-5`: Every 2 hours at minutes 15 and 45 between 8 AM and 6 PM on Mondays and Fridays in January and November)
