@@ -8,7 +8,7 @@ import { PreferencesModalComponent } from '../../features/modals/settings/prefer
 import { RcloneConfigModalComponent } from '../../features/modals/settings/rclone-config-modal/rclone-config-modal.component';
 
 // Services
-import { MountManagementService, WindowService } from '@app/services';
+import { MountManagementService, WindowService, UiStateService } from '@app/services';
 import { RemoteManagementService } from '@app/services';
 import { OnboardingStateService } from '@app/services';
 import { NotificationService } from '../services/notification.service';
@@ -22,6 +22,7 @@ export class ShortcutHandlerDirective {
   private dialog = inject(MatDialog);
   private notificationService = inject(NotificationService);
   private windowService = inject(WindowService);
+  private uiStateService = inject(UiStateService);
   private remoteManagementService = inject(RemoteManagementService);
   private onboardingStateService = inject(OnboardingStateService);
   private mountManagementService = inject(MountManagementService);
@@ -51,6 +52,11 @@ export class ShortcutHandlerDirective {
     // Global shortcuts
     if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'q') {
       this.quitApplication();
+      return true;
+    }
+
+    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'f') {
+      this.openFileBrowser();
       return true;
     }
 
@@ -165,6 +171,10 @@ export class ShortcutHandlerDirective {
     } catch (error) {
       this.notificationService.showError('Failed to quit application: ' + error);
     }
+  }
+
+  private openFileBrowser(): void {
+    this.uiStateService.openNautilusOverlay();
   }
 
   private async forceRefreshMountedRemotes(): Promise<void> {

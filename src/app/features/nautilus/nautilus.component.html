@@ -1,0 +1,63 @@
+<mat-sidenav-container
+  class="nautilus-sidenav-container"
+  autosize
+  [class.overlay]="isOverlay"
+  [@slideOverlay]
+>
+  <mat-sidenav #sidenav mode="side" opened class="nautilus-sidenav">
+    <div class="sidenav-content">
+      <mat-toolbar color="transparent">Files</mat-toolbar>
+      <mat-nav-list>
+        <mat-list-item
+          *ngFor="
+            let item of ['Home', 'Recent', 'Starred', 'Network', 'Trash'];
+            trackBy: trackByIndex
+          "
+        >
+          <mat-icon matListIcon>folder</mat-icon>
+          <h4 matLine>{{ item }}</h4>
+        </mat-list-item>
+      </mat-nav-list>
+    </div>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="nautilus-main-content">
+    <mat-toolbar class="nautilus-toolbar">
+      <div class="toolbar-left">
+        <!-- Back button for browser-only / standalone mode -->
+        @if (showBackButton) {
+          <button mat-icon-button class="back-button" aria-label="Back" (click)="goBack()">
+            <mat-icon svgIcon="right-left"></mat-icon>
+            dfsfds
+          </button>
+        }
+        <span class="breadcrumb">Home</span>
+      </div>
+      <div class="toolbar-right">
+        <button mat-icon-button aria-label="search"><mat-icon>search</mat-icon></button>
+        <button mat-icon-button aria-label="more" [matMenuTriggerFor]="menu">
+          <mat-icon>more_vert</mat-icon>
+        </button>
+        <mat-menu #menu="matMenu">
+          <button mat-menu-item>New Folder</button>
+          <button mat-menu-item>Upload</button>
+        </mat-menu>
+      </div>
+    </mat-toolbar>
+
+    <div class="nautilus-grid">
+      <mat-grid-list cols="4" rowHeight="120px" gutterSize="16px">
+        <mat-grid-tile
+          *ngFor="let folder of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; trackBy: trackByIndex"
+        >
+          <mat-card class="folder-card">
+            <mat-card-content>
+              <mat-icon class="folder-icon" svgIcon="folder"></mat-icon>
+              <p class="folder-title">Folder {{ folder }}</p>
+            </mat-card-content>
+          </mat-card>
+        </mat-grid-tile>
+      </mat-grid-list>
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

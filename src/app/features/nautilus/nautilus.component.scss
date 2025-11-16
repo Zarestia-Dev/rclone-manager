@@ -1,0 +1,83 @@
+/* Nautilus Material style */
+.nautilus-sidenav-container {
+  flex: 1;
+  --sidenav-width: 220px;
+
+  .nautilus-sidenav {
+    width: var(--sidenav-width);
+    background: var(--mat-elevation-z2, #fff);
+    border-right: 1px solid rgba(0, 0, 0, 0.08);
+
+    .sidenav-content {
+      padding: 8px;
+    }
+  }
+
+  .nautilus-main-content {
+    padding: 16px;
+    background: transparent;
+  }
+
+  .nautilus-toolbar {
+    display: flex;
+    justify-content: space-between;
+    background: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  }
+
+  .nautilus-grid {
+    padding: 16px 8px;
+  }
+
+  .folder-card {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.02);
+  }
+
+  .folder-icon {
+    font-size: 42px;
+    color: #5c90ff;
+  }
+
+  .folder-title {
+    margin-top: 8px;
+    font-size: 13px;
+    color: rgba(0, 0, 0, 0.8);
+  }
+}
+/* Overlay-specific styles when Nautilus opens as overlay */
+.nautilus-sidenav-container.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1999;
+  background: rgba(0, 0, 0, 0.04);
+
+  .nautilus-sidenav {
+    box-shadow: rgba(0, 0, 0, 0.2) 0px 6px 18px;
+  }
+
+  .nautilus-main-content {
+    background: var(--app-background-color, var(--app-background));
+  }
+}
+// Add some basic styling to make it look like an overlay
+.file-browser-wrapper.overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--app-background-color, white); // Use your Adwaita theme variable
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+
+  // Example for a close button
+  button {
+    position: absolute;
+    top: 40px;
+    right: 20px;
+  }
+}

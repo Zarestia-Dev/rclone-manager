@@ -27,6 +27,14 @@ export class UiStateService {
   private _isMaximized = new BehaviorSubject<boolean>(false);
   public isMaximized$ = this._isMaximized.asObservable();
 
+  // Nautilus / Browser overlay
+  private _isNautilusOverlayOpen = new BehaviorSubject<boolean>(false);
+  public isNautilusOverlayOpen$ = this._isNautilusOverlayOpen.asObservable();
+
+  // Browser-only mode (when the app is opened as a file browser)
+  private _isBrowserOnlyMode = new BehaviorSubject<boolean>(false);
+  public isBrowserOnlyMode$ = this._isBrowserOnlyMode.asObservable();
+
   // Toast notifications
   private _showToast$ = new BehaviorSubject<ToastMessage | null>(null);
   public showToast$ = this._showToast$.asObservable();
@@ -66,6 +74,24 @@ export class UiStateService {
       }
     }
     this.initializeMaximizeListener();
+  }
+
+  // === Nautilus / File Browser Overlay ===
+  openNautilusOverlay(): void {
+    this._isNautilusOverlayOpen.next(true);
+  }
+
+  closeNautilusOverlay(): void {
+    this._isNautilusOverlayOpen.next(false);
+  }
+
+  toggleNautilusOverlay(): void {
+    this._isNautilusOverlayOpen.next(!this._isNautilusOverlayOpen.value);
+  }
+
+  // === Browser-only Mode ===
+  setBrowserOnlyMode(enabled: boolean): void {
+    this._isBrowserOnlyMode.next(enabled);
   }
 
   // === Tab Management ===
