@@ -1,21 +1,30 @@
-<mat-sidenav-container
-  class="nautilus-sidenav-container"
-  autosize
-  [class.overlay]="isOverlay"
-  [@slideOverlay]
->
+<mat-sidenav-container class="nautilus-sidenav-container" autosize [@slideOverlay]>
   <mat-sidenav #sidenav mode="side" opened class="nautilus-sidenav">
     <div class="sidenav-content">
-      <mat-toolbar color="transparent">Files</mat-toolbar>
+      <mat-toolbar>
+        <button mat-icon-button class="small-button"><mat-icon svgIcon="search"></mat-icon></button>
+        <span>Files</span>
+        <button mat-icon-button class="small-button">
+          <mat-icon svgIcon="menu-bar"></mat-icon>
+        </button>
+      </mat-toolbar>
       <mat-nav-list>
+        <!-- List real remotes from the backend. We use AsyncPipe and a trackBy for stable DOM nodes. -->
         <mat-list-item
-          *ngFor="
-            let item of ['Home', 'Recent', 'Starred', 'Network', 'Trash'];
-            trackBy: trackByIndex
-          "
+          *ngFor="let remote of remotesWithMeta$ | async; trackBy: trackByRemote"
+          (click)="selectRemote(remote)"
+          [class.selected]="(selectedRemote$ | async)?.remoteSpecs?.name === remote.name"
+          role="button"
+          tabindex="0"
         >
-          <mat-icon matListIcon>folder</mat-icon>
-          <h4 matLine>{{ item }}</h4>
+          <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+          <h4 matLine>{{ remote.name }}</h4>
+        </mat-list-item>
+
+        <!-- Show a placeholder when no remotes exist -->
+        <mat-list-item *ngIf="(remotesWithMeta$ | async)?.length === 0">
+          <mat-icon matListIcon svgIcon="cloud-offline"></mat-icon>
+          <h4 matLine>No remotes configured</h4>
         </mat-list-item>
       </mat-nav-list>
     </div>
@@ -23,25 +32,35 @@
 
   <mat-sidenav-content class="nautilus-main-content">
     <mat-toolbar class="nautilus-toolbar">
-      <div class="toolbar-left">
-        <!-- Back button for browser-only / standalone mode -->
-        @if (showBackButton) {
-          <button mat-icon-button class="back-button" aria-label="Back" (click)="goBack()">
-            <mat-icon svgIcon="right-left"></mat-icon>
-            dfsfds
+      <div class="left-section">
+        <button mat-icon-button class="secondary" aria-label="Back" (click)="goBack()">
+          <mat-icon svgIcon="chevron-left"></mat-icon>
+        </button>
+        <button mat-icon-button class="secondary" aria-label="Back" (click)="goBack()">
+          <mat-icon svgIcon="chevron-right"></mat-icon>
+        </button>
+        <button mat-icon-button class="secondary" aria-label="Back" (click)="goBack()">
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
+        </button>
+      </div>
+      <div class="right-section">
+        <!-- Window Controls -->
+        @if (windowButtons) {
+          <button matIconButton (click)="minimizeWindow()" aria-label="Minimize window">
+            <mat-icon svgIcon="remove" aria-hidden="true"></mat-icon>
+          </button>
+          <button matIconButton (click)="maximizeWindow()" aria-label="Maximize window">
+            <mat-icon svgIcon="check-box" aria-hidden="true"></mat-icon>
+          </button>
+          <button
+            matIconButton
+            (click)="closeWindow()"
+            aria-label="Close window"
+            class="close-button"
+          >
+            <mat-icon svgIcon="close" aria-hidden="true"></mat-icon>
           </button>
         }
-        <span class="breadcrumb">Home</span>
-      </div>
-      <div class="toolbar-right">
-        <button mat-icon-button aria-label="search"><mat-icon>search</mat-icon></button>
-        <button mat-icon-button aria-label="more" [matMenuTriggerFor]="menu">
-          <mat-icon>more_vert</mat-icon>
-        </button>
-        <mat-menu #menu="matMenu">
-          <button mat-menu-item>New Folder</button>
-          <button mat-menu-item>Upload</button>
-        </mat-menu>
       </div>
     </mat-toolbar>
 

@@ -174,7 +174,7 @@ export class ShortcutHandlerDirective {
   }
 
   private openFileBrowser(): void {
-    this.uiStateService.openNautilusOverlay();
+    this.uiStateService.toggleNautilusOverlay();
   }
 
   private async forceRefreshMountedRemotes(): Promise<void> {

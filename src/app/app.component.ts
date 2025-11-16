@@ -15,8 +15,7 @@ import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.d
 import { BannerComponent } from './layout/banners/banner.component';
 import { PasswordPromptResult } from '@app/types';
 
-// --- NEW IMPORTS ---
-import { Location, AsyncPipe } from '@angular/common';
+import { AsyncPipe } from '@angular/common';
 
 // Services
 import {
@@ -65,7 +64,6 @@ export class AppComponent implements OnInit, OnDestroy {
   public onboardingStateService = inject(OnboardingStateService);
   private appUpdaterService = inject(AppUpdaterService);
   private rcloneUpdateService = inject(RcloneUpdateService);
-  private location = inject(Location); // --- INJECT LOCATION ---
 
   // Subscription management
   private destroy$ = new Subject<void>();
@@ -90,30 +88,12 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private async initializeApp(): Promise<void> {
     try {
-      // --- NEW LOGIC ---
-      // Check the URL path *before* loading anything else and delegate browser mode to UiStateService
-      const isBrowserOnly = this.location.path().startsWith('/browser');
-      this.uiStateService.setBrowserOnlyMode(isBrowserOnly);
-      if (isBrowserOnly) {
-        // We can stop here, no need to load the full app state
-        return;
-      }
-
       await this.appSettingsService.loadSettings();
       await this.checkOnboardingStatus();
     } catch (error) {
       console.error('App initialization failed:', error);
       this.completedOnboarding = false;
     }
-  }
-
-  // --- NEW HANDLER METHODS ---
-  openBrowserOverlay(): void {
-    this.uiStateService.openNautilusOverlay();
-  }
-
-  closeBrowserOverlay(): void {
-    this.uiStateService.closeNautilusOverlay();
   }
 
   private closeAllSheets(): void {
@@ -501,7 +481,7 @@ export class AppComponent implements OnInit, OnDestroy {
   handleNautilusBack(): void {
     // If the app is running in browser-only mode, navigate back to the main app.
     try {
-      this.uiStateService.closeNautilusOverlay();
+      this.uiStateService.toggleNautilusOverlay();
     } catch (error) {
       console.error('Failed to navigate back from Nautilus:', error);
     }

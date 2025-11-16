@@ -3,26 +3,41 @@
   flex: 1;
   --sidenav-width: 220px;
 
-  .nautilus-sidenav {
-    width: var(--sidenav-width);
-    background: var(--mat-elevation-z2, #fff);
-    border-right: 1px solid rgba(0, 0, 0, 0.08);
-
-    .sidenav-content {
-      padding: 8px;
+  mat-toolbar {
+    display: flex;
+    justify-content: space-between;
+    background: transparent !important;
+    padding: 0 var(--space-sm);
+    height: 48px;
+    span {
+      font-weight: 700;
     }
   }
 
-  .nautilus-main-content {
-    padding: 16px;
-    background: transparent;
+  .nautilus-sidenav {
+    width: var(--sidenav-width);
+    background-color: #ebebed;
+    border-right: 1px solid #dadadc;
   }
 
   .nautilus-toolbar {
     display: flex;
     justify-content: space-between;
-    background: transparent;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    align-items: center;
+    height: calc(var(--titlebar-height) + 8px);
+    color: var(--app-text-color);
+    padding: 4px var(--title-bar-padding);
+
+    .left-section {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+
+    .right-section {
+      display: flex;
+      gap: var(--space-xxs);
+    }
   }
 
   .nautilus-grid {
@@ -50,22 +65,21 @@
   }
 }
 /* Overlay-specific styles when Nautilus opens as overlay */
-.nautilus-sidenav-container.overlay {
+.nautilus-sidenav-container {
   position: fixed;
   inset: 0;
   z-index: 1999;
-  background: rgba(0, 0, 0, 0.04);
 
   .nautilus-sidenav {
-    box-shadow: rgba(0, 0, 0, 0.2) 0px 6px 18px;
+    border-radius: 0 !important;
   }
 
   .nautilus-main-content {
-    background: var(--app-background-color, var(--app-background));
+    background: var(--secondary-background);
   }
 }
 // Add some basic styling to make it look like an overlay
-.file-browser-wrapper.overlay {
+.file-browser-wrapper {
   position: fixed;
   inset: 0;
   background: var(--app-background-color, white); // Use your Adwaita theme variable
@@ -73,11 +87,4 @@
   display: flex;
   flex-direction: column;
   padding: 20px;
-
-  // Example for a close button
-  button {
-    position: absolute;
-    top: 40px;
-    right: 20px;
-  }
 }

@@ -293,7 +293,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   }
 
   onBrowseClick(): void {
-    this.uiStateService.openNautilusOverlay();
+    this.uiStateService.toggleNautilusOverlay();
   }
 
   private cleanup(): void {

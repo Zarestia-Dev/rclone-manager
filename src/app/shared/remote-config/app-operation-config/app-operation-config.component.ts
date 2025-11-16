@@ -209,8 +209,10 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     // Unregister old field to clear state
     this.pathSelectionService.unregisterField(fieldId);
 
-    // Register new field if it's a remote path
-    if (remoteName && !this.isNewRemoteCurrentPath(pathTypeValue)) {
+    // Register new field for remote or local path. For local we return an empty
+    // string from getRemoteNameFromValue, so check against strict null instead
+    // of truthiness which would reject empty string.
+    if (remoteName !== null && !this.isNewRemoteCurrentPath(pathTypeValue)) {
       const formGroup = this.getFormGroup(group);
       const initialPath = formGroup?.get('path')?.value || '';
       const state$ = this.pathSelectionService.registerField(fieldId, remoteName, initialPath);
@@ -321,6 +323,9 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   private getRemoteNameFromValue(value: string): string | null {
+    // Return empty string for local - this signals the backend it should
+    // use the local filesystem.
+    if (value === 'local') return '';
     if (value === 'currentRemote') return this.currentRemoteName;
     if (value?.startsWith('otherRemote:')) {
       return value.substring('otherRemote:'.length) || null;

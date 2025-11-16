@@ -17,15 +17,18 @@ pub async fn get_fs_info(
 ) -> Result<serde_json::Value, String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::FSINFO);
 
-    let fs_name = if remote.ends_with(':') {
-        remote
+    let fs_path = if remote.is_empty() {
+        path.unwrap_or_else(|| "/".to_string())
     } else {
-        format!("{remote}:")
-    };
-
-    let fs_path = match path {
-        Some(p) if !p.is_empty() => format!("{fs_name}{p}"),
-        _ => fs_name,
+        let fs_name = if remote.ends_with(':') {
+            remote
+        } else {
+            format!("{remote}:")
+        };
+        match path {
+            Some(p) if !p.is_empty() => format!("{fs_name}{p}"),
+            _ => fs_name,
+        }
     };
 
     let params = json!({ "fs": fs_path });
@@ -56,16 +59,20 @@ pub async fn get_remote_paths(
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::LIST);
     debug!("📂 Listing remote paths: remote={remote}, path={path:?}, options={options:?}");
     let mut params = serde_json::Map::new();
-    // Ensure remote name ends with colon for proper rclone format
-    let fs_name = if remote.ends_with(':') {
-        remote
+    let (fs_name, remote_param) = if remote.is_empty() {
+        ("/".to_string(), path.unwrap_or_default())
     } else {
-        format!("{remote}:")
+        let fs = if remote.ends_with(':') {
+            remote
+        } else {
+            format!("{remote}:")
+        };
+        (fs, path.unwrap_or_default())
     };
     params.insert("fs".to_string(), serde_json::Value::String(fs_name));
     params.insert(
         "remote".to_string(),
-        serde_json::Value::String(path.unwrap_or_default()),
+        serde_json::Value::String(remote_param),
     );
 
     // Apply additional options if provided
@@ -99,18 +106,21 @@ pub async fn get_disk_usage(
 ) -> Result<DiskUsage, String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::ABOUT);
 
-    let fs_name = if remote.ends_with(':') {
-        remote
+    let fs_path = if remote.is_empty() {
+        path.unwrap_or_else(|| "/".to_string())
     } else {
-        format!("{remote}:")
+        let fs_name = if remote.ends_with(':') {
+            remote
+        } else {
+            format!("{remote}:")
+        };
+        match path {
+            Some(p) if !p.is_empty() => format!("{fs_name}{p}"),
+            _ => fs_name,
+        }
     };
 
-    let fs_path = match path {
-        Some(p) if !p.is_empty() => format!("{fs_name}{p}"),
-        _ => fs_name,
-    };
-
-    let params = json!({ "fs": fs_path });
+    let params = json!({ "fs": fs_path, });
 
     let response = state
         .client

@@ -1,29 +1,17 @@
-@if ((uiStateService.isBrowserOnlyMode$ | async) === false) {
-  <div class="app-wrapper" appShortcutHandler>
-    @if (!completedOnboarding) {
-      <app-onboarding class="onboarding" (completed)="finishOnboarding()"></app-onboarding>
-    }
-    <app-titlebar class="title-bar"> </app-titlebar>
-    <app-banner class="banner"></app-banner>
-    <app-home class="home-content"></app-home>
-    <app-tabs-buttons
-      data-tauri-drag-region
-      class="tabs"
-      [currentTab]="currentTab"
-      (tabSelected)="setTab($event)"
-    ></app-tabs-buttons>
-  </div>
-}
-
-@if (
-  (uiStateService.isBrowserOnlyMode$ | async) === false &&
-  (uiStateService.isNautilusOverlayOpen$ | async)
-) {
-  <app-nautilus [showBackButton]="true" [isOverlay]="true" (closeOverlay)="handleNautilusBack()">
-  </app-nautilus>
-}
-
-@if (uiStateService.isBrowserOnlyMode$ | async) {
-  <app-nautilus [isOverlay]="true" [showBackButton]="true" (closeOverlay)="handleNautilusBack()">
-  </app-nautilus>
-}
+<div class="app-wrapper" appShortcutHandler>
+  @if (uiStateService.isNautilusOverlayOpen$ | async) {
+    <app-nautilus (closeOverlay)="handleNautilusBack()"> </app-nautilus>
+  }
+  @if (!completedOnboarding) {
+    <app-onboarding class="onboarding" (completed)="finishOnboarding()"></app-onboarding>
+  }
+  <app-titlebar class="title-bar"> </app-titlebar>
+  <app-banner class="banner"></app-banner>
+  <app-home class="home-content"></app-home>
+  <app-tabs-buttons
+    data-tauri-drag-region
+    class="tabs"
+    [currentTab]="currentTab"
+    (tabSelected)="setTab($event)"
+  ></app-tabs-buttons>
+</div>

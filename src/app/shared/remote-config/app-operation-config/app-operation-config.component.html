@@ -103,7 +103,7 @@
                     <span>{{ entry.Name }}</span>
                   </button>
                 } @empty {
-                  @if (!state.isLoading && state.remoteName) {
+                  @if (!state.isLoading && (!state.options || state.options.length === 0)) {
                     <div class="no-results">
                       <span>No items found in this directory.</span>
                     </div>
@@ -174,7 +174,7 @@
                 aria-label="Source path"
                 (input)="onInputChanged($event, 'source')"
                 (click)="$event.stopPropagation()"
-                [matMenuTriggerFor]="sourcePathType !== 'local' ? sourcePathAutocompleteMenu : null"
+                [matMenuTriggerFor]="sourcePathAutocompleteMenu"
               />
 
               @if (sourcePathType === 'local') {
@@ -217,7 +217,7 @@
                     <span>{{ entry.Name }}</span>
                   </button>
                 } @empty {
-                  @if (!state.isLoading && state.remoteName) {
+                  @if (!state.isLoading && (!state.options || state.options.length === 0)) {
                     <div class="no-results">
                       <span>No items found in this directory.</span>
                     </div>
@@ -321,7 +321,7 @@
                 aria-label="Destination path"
                 (input)="onInputChanged($event, 'dest')"
                 (click)="$event.stopPropagation()"
-                [matMenuTriggerFor]="destPathType !== 'local' ? destPathAutocompleteMenu : null"
+                [matMenuTriggerFor]="destPathAutocompleteMenu"
               />
 
               @if (destPathType === 'local') {
@@ -367,7 +367,7 @@
                     <span>{{ entry.Name }}</span>
                   </button>
                 } @empty {
-                  @if (!state.isLoading && state.remoteName) {
+                  @if (!state.isLoading && (!state.options || state.options.length === 0)) {
                     <div class="no-results">
                       <span>No items found in this directory.</span>
                     </div>

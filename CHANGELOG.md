@@ -4,6 +4,7 @@
 ## [Unreleased]
 ### Added
 - `marked` dependency added for markdown rendering in the About modal. This allows us to display formatted release notes fetched from GitHub in a user-friendly manner.
+- Support for local path navigation on the remote config. User can now navigate to local paths when configuring remotes that use local file systems.
 
 
 ## [v0.1.7] - 2025-11-14
