@@ -11,10 +11,7 @@ pub fn is_7z_available() -> Option<String> {
     // Prefer the centralized detection logic in archive_utils so we don't duplicate
     // platform-specific heuristics. Returning Option<String> lets the frontend
     // receive the exact path (truthy) or null when not found.
-    match find_7z_executable() {
-        Ok(path) => Some(path),
-        Err(_) => None,
-    }
+    find_7z_executable().ok()
 }
 
 use std::path::Path;

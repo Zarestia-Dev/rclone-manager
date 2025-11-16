@@ -211,10 +211,10 @@ async fn restore_files(
             .filter(|e| e.file_type().is_file())
         {
             let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                if let Err(e) = restore_remote_from_file(path, &app_handle).await {
-                    warn!("Failed to restore remote from {:?}: {}", path, e);
-                }
+            if path.extension().and_then(|s| s.to_str()) == Some("json")
+                && let Err(e) = restore_remote_from_file(path, &app_handle).await
+            {
+                warn!("Failed to restore remote from {:?}: {}", path, e);
             }
         }
     }

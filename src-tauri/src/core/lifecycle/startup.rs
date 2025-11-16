@@ -42,14 +42,13 @@ async fn handle_remote_startup(
     app_handle: AppHandle,
     cache: tauri::State<'_, RemoteCache>,
 ) {
-    let settings = match cache.get_settings().await {
-        settings_val => match settings_val.get(remote_name).cloned() {
-            Some(s) => s,
-            None => {
-                error!("Remote {} not found in cached settings", remote_name);
-                return;
-            }
-        },
+    let settings_val = cache.get_settings().await;
+    let settings = match settings_val.get(remote_name).cloned() {
+        Some(s) => s,
+        None => {
+            error!("Remote {} not found in cached settings", remote_name);
+            return;
+        }
     };
 
     let job_cache_state = app_handle.state::<JobCache>();

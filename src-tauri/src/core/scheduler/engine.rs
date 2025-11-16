@@ -195,12 +195,12 @@ impl CronScheduler {
         cache: State<'_, ScheduledTasksCache>,
     ) -> Result<(), String> {
         // 1. Remove the old job, if it exists
-        if let Some(job_id_str) = &task.scheduler_job_id {
-            if let Ok(job_id) = Uuid::parse_str(job_id_str) {
-                match self.unschedule_task(job_id).await {
-                    Ok(_) => info!("Removed old job {} for task {}", job_id, task.name),
-                    Err(e) => warn!("Failed to remove old job {}: {}", job_id, e),
-                }
+        if let Some(job_id_str) = &task.scheduler_job_id
+            && let Ok(job_id) = Uuid::parse_str(job_id_str)
+        {
+            match self.unschedule_task(job_id).await {
+                Ok(_) => info!("Removed old job {} for task {}", job_id, task.name),
+                Err(e) => warn!("Failed to remove old job {}: {}", job_id, e),
             }
         }
 
@@ -424,4 +424,10 @@ async fn execute_bisync_task(
 
     let result = start_bisync(app_handle.clone(), job_cache, rclone_state, params).await?;
     Ok(Some(result))
+}
+
+impl Default for CronScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
 }

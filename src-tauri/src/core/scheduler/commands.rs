@@ -81,12 +81,11 @@ pub async fn clear_all_scheduled_tasks(
     let tasks = cache.get_all_tasks().await;
 
     for task in tasks {
-        if let Some(job_id_str) = task.scheduler_job_id {
-            if let Ok(job_id) = uuid::Uuid::parse_str(&job_id_str) {
-                if let Err(e) = scheduler.unschedule_task(job_id).await {
-                    warn!("Failed to unschedule job {}: {}", job_id, e);
-                }
-            }
+        if let Some(job_id_str) = task.scheduler_job_id
+            && let Ok(job_id) = uuid::Uuid::parse_str(&job_id_str)
+            && let Err(e) = scheduler.unschedule_task(job_id).await
+        {
+            warn!("Failed to unschedule job {}: {}", job_id, e);
         }
     }
 

@@ -175,7 +175,7 @@ pub async fn handle_job_completion(
                     t.next_run = next_run;
                 })
                 .await
-                .map_err(|e| RcloneError::JobError(e))?; // Don't ignore errors
+                .map_err(RcloneError::JobError)?; // Don't ignore errors
         } else {
             scheduled_tasks_cache // <-- Use injected state
                 .update_task(&task.id, |t| {
@@ -183,7 +183,7 @@ pub async fn handle_job_completion(
                     t.next_run = next_run;
                 })
                 .await
-                .map_err(|e| RcloneError::JobError(e))?;
+                .map_err(RcloneError::JobError)?;
         }
     }
 

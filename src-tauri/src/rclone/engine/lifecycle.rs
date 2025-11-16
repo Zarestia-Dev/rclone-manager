@@ -198,10 +198,8 @@ pub fn start(engine: &mut RcApiEngine, app: &AppHandle) {
                 if let Err(err) = app.emit(RCLONE_ENGINE_PATH_ERROR, ()) {
                     error!("Failed to emit path error event: {err}");
                 }
-            } else {
-                if let Err(err) = app.emit(RCLONE_ENGINE_ERROR, ()) {
-                    error!("Failed to emit event: {err}");
-                }
+            } else if let Err(err) = app.emit(RCLONE_ENGINE_ERROR, ()) {
+                error!("Failed to emit event: {err}");
             }
         }
         Err(e) => {

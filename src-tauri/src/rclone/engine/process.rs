@@ -43,12 +43,8 @@ impl RcApiEngine {
                 error!("❌ Failed to spawn Rclone process: {e}");
                 // Check if it's a "file not found" error
                 let err_text = e.to_string();
-                if err_text.contains("No such file or directory") || err_text.contains("os error 2")
-                {
-                    self.path_error = true;
-                } else {
-                    self.path_error = false;
-                }
+                self.path_error = err_text.contains("No such file or directory")
+                    || err_text.contains("os error 2");
                 Err(format!("Failed to spawn Rclone process: {e}"))
             }
         }

@@ -7,8 +7,8 @@ use crate::{rclone::state::engine::ENGINE_STATE, utils::types::all_types::RcApiE
 pub static ENGINE: Lazy<Arc<Mutex<RcApiEngine>>> =
     Lazy::new(|| Arc::new(Mutex::new(RcApiEngine::default())));
 
-impl RcApiEngine {
-    pub fn default() -> Self {
+impl Default for RcApiEngine {
+    fn default() -> Self {
         Self {
             process: None,
             should_exit: false,
@@ -21,7 +21,9 @@ impl RcApiEngine {
             config_encrypted: None,                     // Not determined yet
         }
     }
+}
 
+impl RcApiEngine {
     pub fn lock_engine() -> Result<std::sync::MutexGuard<'static, RcApiEngine>, String> {
         match ENGINE.lock() {
             Ok(guard) => Ok(guard),

@@ -193,3 +193,9 @@ pub async fn get_cached_serves(
 ) -> Result<Vec<ServeInstance>, String> {
     Ok(cache.get_serves().await)
 }
+
+impl Default for RemoteCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}

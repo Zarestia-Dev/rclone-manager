@@ -295,25 +295,25 @@ async fn gather_files_to_backup(
     }
 
     // Export specific remote from rclone.conf via RC API
-    if let ExportType::SpecificRemote = export_type {
-        if let Some(name) = remote_name {
-            match get_remote_config(name.to_string(), app_handle.state::<RcloneState>()).await {
-                Ok(config) => {
-                    let remote_config_dir = export_dir.join("remote_config");
-                    fs::create_dir_all(&remote_config_dir)
-                        .map_err(|e| format!("Failed to create remote_config dir: {e}"))?;
-                    let config_file = remote_config_dir.join(format!("{}.json", name));
-                    let config_str = serde_json::to_string_pretty(&config)
-                        .map_err(|e| format!("Failed to serialize remote config: {e}"))?;
-                    fs::write(&config_file, &config_str)
-                        .map_err(|e| format!("Failed to write remote config: {e}"))?;
-                    total_size += config_str.len() as u64;
-                    if !remote_names.contains(name) {
-                        remote_names.push(name.to_string());
-                    }
+    if let ExportType::SpecificRemote = export_type
+        && let Some(name) = remote_name
+    {
+        match get_remote_config(name.to_string(), app_handle.state::<RcloneState>()).await {
+            Ok(config) => {
+                let remote_config_dir = export_dir.join("remote_config");
+                fs::create_dir_all(&remote_config_dir)
+                    .map_err(|e| format!("Failed to create remote_config dir: {e}"))?;
+                let config_file = remote_config_dir.join(format!("{}.json", name));
+                let config_str = serde_json::to_string_pretty(&config)
+                    .map_err(|e| format!("Failed to serialize remote config: {e}"))?;
+                fs::write(&config_file, &config_str)
+                    .map_err(|e| format!("Failed to write remote config: {e}"))?;
+                total_size += config_str.len() as u64;
+                if !remote_names.contains(name) {
+                    remote_names.push(name.to_string());
                 }
-                Err(e) => warn!("Failed to export remote '{}': {}", name, e),
             }
+            Err(e) => warn!("Failed to export remote '{}': {}", name, e),
         }
     }
 

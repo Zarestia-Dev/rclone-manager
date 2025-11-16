@@ -21,6 +21,7 @@ use crate::{
 use super::job::monitor_job;
 
 // --- Internal Helper Function ---
+#[allow(clippy::too_many_arguments)]
 async fn start_sync_like_job(
     app: AppHandle,
     job_cache: State<'_, JobCache>,

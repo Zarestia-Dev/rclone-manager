@@ -93,14 +93,13 @@ pub fn handle_mount_remote(app: AppHandle, remote_name: &str) {
     let remote_name_clone = remote_name.to_string();
     tauri::async_runtime::spawn(async move {
         let cache = app_clone.state::<RemoteCache>();
-        let settings = match cache.get_settings().await {
-            settings_val => match settings_val.get(&remote_name_clone).cloned() {
-                Some(s) => s,
-                _ => {
-                    error!("🚨 Remote {remote_name_clone} not found in settings");
-                    return;
-                }
-            },
+        let settings_val = cache.get_settings().await;
+        let settings = match settings_val.get(&remote_name_clone).cloned() {
+            Some(s) => s,
+            _ => {
+                error!("🚨 Remote {remote_name_clone} not found in settings");
+                return;
+            }
         };
 
         let mut params = match MountParams::from_settings(remote_name_clone.clone(), &settings) {
@@ -153,7 +152,7 @@ pub fn handle_mount_remote(app: AppHandle, remote_name: &str) {
                     .get("mountConfig")
                     .and_then(|v| v.get("dest"))
                     .and_then(|v| v.as_str())
-                    .map_or(true, |s| s.is_empty())
+                    .is_none_or(|s| s.is_empty())
                 {
                     let mut new_settings = settings.clone();
                     new_settings["mountConfig"]["dest"] = serde_json::Value::String(mount_point);
@@ -189,13 +188,12 @@ pub fn handle_unmount_remote(app: AppHandle, remote_name: &str) {
     tauri::async_runtime::spawn(async move {
         let cache = app_clone.state::<RemoteCache>();
         let remote_name = remote.to_string();
-        let settings = match cache.get_settings().await {
-            // <-- Use cache
-            settings_val => settings_val.get(&remote).cloned().unwrap_or_else(|| {
-                error!("🚨 Remote {remote} not found in cached settings");
-                serde_json::Value::Null
-            }),
-        };
+        let settings_val = cache.get_settings().await;
+        // <-- Use cache
+        let settings = settings_val.get(&remote).cloned().unwrap_or_else(|| {
+            error!("🚨 Remote {remote} not found in cached settings");
+            serde_json::Value::Null
+        });
 
         let mount_point = get_mount_point(&settings);
         let state = app_clone.state();
@@ -225,14 +223,13 @@ pub fn handle_sync_remote(app: AppHandle, remote_name: &str) {
     let remote_name_clone = remote_name.to_string();
     tauri::async_runtime::spawn(async move {
         let cache = app_clone.state::<RemoteCache>();
-        let settings = match cache.get_settings().await {
-            settings_val => match settings_val.get(&remote_name_clone).cloned() {
-                Some(s) => s,
-                _ => {
-                    error!("🚨 Remote {remote_name_clone} not found in settings");
-                    return;
-                }
-            },
+        let settings_val = cache.get_settings().await;
+        let settings = match settings_val.get(&remote_name_clone).cloned() {
+            Some(s) => s,
+            _ => {
+                error!("🚨 Remote {remote_name_clone} not found in settings");
+                return;
+            }
         };
 
         let params = match SyncParams::from_settings(remote_name_clone.clone(), &settings) {
@@ -278,14 +275,13 @@ pub fn handle_copy_remote(app: AppHandle, remote_name: &str) {
     let remote_name_clone = remote_name.to_string();
     tauri::async_runtime::spawn(async move {
         let cache = app_clone.state::<RemoteCache>();
-        let settings = match cache.get_settings().await {
-            settings_val => match settings_val.get(&remote_name_clone).cloned() {
-                Some(s) => s,
-                _ => {
-                    error!("🚨 Remote {remote_name_clone} not found in settings");
-                    return;
-                }
-            },
+        let settings_val = cache.get_settings().await;
+        let settings = match settings_val.get(&remote_name_clone).cloned() {
+            Some(s) => s,
+            _ => {
+                error!("🚨 Remote {remote_name_clone} not found in settings");
+                return;
+            }
         };
 
         let params = match CopyParams::from_settings(remote_name_clone.clone(), &settings) {
@@ -330,14 +326,13 @@ pub fn handle_move_remote(app: AppHandle, remote_name: &str) {
     let remote_name_clone = remote_name.to_string();
     tauri::async_runtime::spawn(async move {
         let cache = app_clone.state::<RemoteCache>();
-        let settings = match cache.get_settings().await {
-            settings_val => match settings_val.get(&remote_name_clone).cloned() {
-                Some(s) => s,
-                _ => {
-                    error!("🚨 Remote {remote_name_clone} not found in settings");
-                    return;
-                }
-            },
+        let settings_val = cache.get_settings().await;
+        let settings = match settings_val.get(&remote_name_clone).cloned() {
+            Some(s) => s,
+            _ => {
+                error!("🚨 Remote {remote_name_clone} not found in settings");
+                return;
+            }
         };
 
         let params = match MoveParams::from_settings(remote_name_clone.clone(), &settings) {
@@ -382,14 +377,13 @@ pub fn handle_bisync_remote(app: AppHandle, remote_name: &str) {
     let remote_name_clone = remote_name.to_string();
     tauri::async_runtime::spawn(async move {
         let cache = app_clone.state::<RemoteCache>();
-        let settings = match cache.get_settings().await {
-            settings_val => match settings_val.get(&remote_name_clone).cloned() {
-                Some(s) => s,
-                _ => {
-                    error!("🚨 Remote {remote_name_clone} not found in settings");
-                    return;
-                }
-            },
+        let settings_val = cache.get_settings().await;
+        let settings = match settings_val.get(&remote_name_clone).cloned() {
+            Some(s) => s,
+            _ => {
+                error!("🚨 Remote {remote_name_clone} not found in settings");
+                return;
+            }
         };
 
         let params = match BisyncParams::from_settings(remote_name_clone.clone(), &settings) {
@@ -558,12 +552,11 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         let cache = app_clone.state::<RemoteCache>();
-        let settings = match cache.get_settings().await {
-            settings_val => settings_val.get(&remote).cloned().unwrap_or_else(|| {
-                error!("🚨 Remote {remote} not found in cached settings");
-                serde_json::Value::Null
-            }),
-        };
+        let settings_val = cache.get_settings().await;
+        let settings = settings_val.get(&remote).cloned().unwrap_or_else(|| {
+            error!("🚨 Remote {remote} not found in cached settings");
+            serde_json::Value::Null
+        });
         let mount_point = get_mount_point(&settings);
 
         match app_clone.opener().open_path(mount_point, None::<&str>) {
@@ -583,14 +576,13 @@ pub fn handle_start_serve(app: AppHandle, remote_name: &str) {
 
     tauri::async_runtime::spawn(async move {
         let cache = app_clone.state::<RemoteCache>();
-        let settings = match cache.get_settings().await {
-            settings_val => match settings_val.get(&remote_name_clone).cloned() {
-                Some(s) => s,
-                _ => {
-                    error!("🚨 Remote {remote_name_clone} not found in settings");
-                    return;
-                }
-            },
+        let settings_val = cache.get_settings().await;
+        let settings = match settings_val.get(&remote_name_clone).cloned() {
+            Some(s) => s,
+            _ => {
+                error!("🚨 Remote {remote_name_clone} not found in settings");
+                return;
+            }
         };
 
         let params = match ServeParams::from_settings(remote_name_clone.clone(), &settings) {

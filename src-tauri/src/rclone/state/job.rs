@@ -123,3 +123,9 @@ pub async fn get_job_status(
 pub async fn get_active_jobs(job_cache: State<'_, JobCache>) -> Result<Vec<JobInfo>, String> {
     Ok(job_cache.get_active_jobs().await)
 }
+
+impl Default for JobCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}

@@ -68,7 +68,6 @@ pub struct RcloneCoreVersion {
     pub linking: String,
     pub go_tags: String,
 }
-#[derive(Default)]
 pub struct RcApiEngine {
     pub process: Option<tauri_plugin_shell::process::CommandChild>,
     pub should_exit: bool,
