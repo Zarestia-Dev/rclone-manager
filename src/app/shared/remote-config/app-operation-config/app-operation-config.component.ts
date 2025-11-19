@@ -114,6 +114,21 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     if (!this.isServe) {
       this.initializeCronListener();
     }
+    if (this.isMount) {
+      const initialPath = this.opFormGroup.get('dest')?.value || '';
+      this.destPathState$ = this.pathSelectionService.registerField(
+        this.destFieldId,
+        '',
+        initialPath
+      );
+      // Watch for programmatic changes to the dest path
+      const destControl = this.opFormGroup.get('dest');
+      if (destControl) {
+        destControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
+          this.pathSelectionService.updateInput(this.destFieldId, value || '');
+        });
+      }
+    }
   }
 
   ngOnDestroy(): void {
