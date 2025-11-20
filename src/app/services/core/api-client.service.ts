@@ -62,6 +62,12 @@ export class ApiClientService {
     'change_config_password',
     'backup_settings',
     'restore_settings',
+    // VFS Commands
+    'vfs_forget',
+    'vfs_refresh',
+    'vfs_poll_interval',
+    'vfs_queue_set_expiry',
+    'vfs_poll_interval',
   ]);
 
   constructor() {
@@ -234,6 +240,15 @@ export class ApiClientService {
       check_mount_plugin_installed: '/check-mount-plugin-installed',
       install_mount_plugin: '/install-mount-plugin',
       force_check_mounted_remotes: '/force-check-mounted-remotes',
+
+      // VFS Operations
+      vfs_list: '/vfs/list',
+      vfs_forget: '/vfs/forget',
+      vfs_refresh: '/vfs/refresh',
+      vfs_poll_interval: '/vfs/poll-interval',
+      vfs_stats: '/vfs/stats',
+      vfs_queue: '/vfs/queue',
+      vfs_queue_set_expiry: '/vfs/queue/set-expiry',
 
       // Serve operations
       list_serves: '/serve/list',

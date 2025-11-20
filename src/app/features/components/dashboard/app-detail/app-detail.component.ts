@@ -60,6 +60,7 @@ import {
 import { IconService } from '../../../../shared/services/icon.service';
 import { JobManagementService } from '@app/services';
 import { toString as cronstrue } from 'cronstrue';
+import { VfsControlPanelComponent } from 'src/app/shared/components/vfs/vfs-control-panel.component';
 
 @Component({
   selector: 'app-app-detail',
@@ -81,6 +82,7 @@ import { toString as cronstrue } from 'cronstrue';
     StatsPanelComponent,
     SettingsPanelComponent,
     TransferActivityPanelComponent,
+    VfsControlPanelComponent,
   ],
   templateUrl: './app-detail.component.html',
   styleUrls: ['./app-detail.component.scss'],

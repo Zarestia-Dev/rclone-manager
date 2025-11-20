@@ -245,6 +245,10 @@
 
           <mat-divider></mat-divider>
 
+          <app-vfs-control-panel
+            [remoteName]="selectedRemote.remoteSpecs.name"
+          ></app-vfs-control-panel>
+
           <div class="settings-layout">
             @if (operationSettingsSections.length) {
               <section class="settings-group operation-settings">

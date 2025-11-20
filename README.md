@@ -48,9 +48,9 @@
 | :-----------------------------------------------------------------: | :---------------------------------------------------------------------: | :-------------------------------------------------------------------: |
 | <img src="assets/general-home.png" alt="General Home" width="250"/> | <img src="assets/general-remote.png" alt="General Remote" width="250"/> | <img src="assets/mount-control.png" alt="Mount Control" width="250"/> |
 
-|                            Job Watcher                            |                             Serve Control                             |                          Responsive                           |
-| :---------------------------------------------------------------: | :-------------------------------------------------------------------: | :-----------------------------------------------------------: |
-| <img src="assets/job-watcher.png" alt="Job Watcher" width="250"/> | <img src="assets/serve-control.png" alt="Serve Control" width="250"/> | <img src="assets/mobile-ui.png" alt="Mobile UI" width="150"/> |
+|                            Job Watcher                            |                             Serve Control                             |                          Dark Mode                          |
+| :---------------------------------------------------------------: | :-------------------------------------------------------------------: | :---------------------------------------------------------: |
+| <img src="assets/job-watcher.png" alt="Job Watcher" width="250"/> | <img src="assets/serve-control.png" alt="Serve Control" width="250"/> | <img src="assets/dark-ui.png" alt="Dark Mode" width="250"/> |
 
 </p>
 

@@ -82,7 +82,8 @@ use crate::{
             get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats,
             get_mount_types, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info,
             get_rclone_pid, get_remote_config, get_remote_paths, get_remote_types, get_remotes,
-            get_serve_flags, get_serve_types, list_serves,
+            get_serve_flags, get_serve_types, list_serves, vfs_forget, vfs_list, vfs_poll_interval,
+            vfs_queue, vfs_queue_set_expiry, vfs_refresh, vfs_stats,
         },
         state::{
             cache::{
@@ -391,6 +392,14 @@ pub fn run() {
             unmount_remote,
             unmount_all_remotes,
             get_mount_types,
+            // VFS Commands
+            vfs_forget,
+            vfs_list,
+            vfs_poll_interval,
+            vfs_refresh,
+            vfs_stats,
+            vfs_queue,
+            vfs_queue_set_expiry,
             // Serve API
             start_serve,
             stop_serve,

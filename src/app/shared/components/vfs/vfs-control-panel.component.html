@@ -1,0 +1,324 @@
+<mat-card class="vfs-card">
+  <mat-card-header>
+    <mat-card-title>
+      <div class="panel-title">
+        <mat-icon svgIcon="vfs"></mat-icon>
+        <span>VFS Control</span>
+        @if (selectedVfs && selectedVfs.queue.length > 0) {
+          <span class="queue-badge" matTooltip="Uploads Pending">
+            {{ selectedVfs.queue.length }}
+          </span>
+        }
+      </div>
+    </mat-card-title>
+    <div class="header-actions">
+      <button
+        mat-icon-button
+        (click)="loadAll()"
+        matTooltip="Refresh All Data"
+        [disabled]="loading"
+      >
+        <mat-icon [class.spin]="loading" svgIcon="refresh"></mat-icon>
+      </button>
+    </div>
+  </mat-card-header>
+
+  <mat-card-content>
+    @if (vfsNotFound) {
+      <div class="empty-state" style="padding: 48px 16px">
+        <mat-icon style="font-size: 48px; width: 48px; height: 48px">cloud_off</mat-icon>
+        <h3>No VFS Found</h3>
+        <p>No VFS instances are running for this remote.</p>
+        <p class="hint">Make sure the remote is mounted with VFS enabled.</p>
+      </div>
+    } @else if (vfsInstances.length === 0 && loading) {
+      <div class="loading-state" style="padding: 32px; text-align: center">
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        <p style="margin-top: 16px; opacity: 0.7">Loading VFS data...</p>
+      </div>
+    } @else if (vfsInstances.length > 0) {
+      <!-- VFS Instance Selector (only show if multiple instances) -->
+      @if (vfsInstances.length > 1) {
+        <div class="vfs-selector">
+          <mat-form-field appearance="outline" class="dense-form-field">
+            <mat-label>VFS Instance</mat-label>
+            <mat-select [(ngModel)]="selectedVfs" (selectionChange)="onVfsSelectionChange()">
+              @for (vfs of vfsInstances; track trackByVfsName($index, vfs)) {
+                <mat-option [value]="vfs">
+                  {{ vfs.name }}
+                  @if (vfs.queue.length > 0) {
+                    <span class="option-badge">({{ vfs.queue.length }} queued)</span>
+                  }
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        </div>
+      }
+
+      @if (selectedVfs) {
+        <!-- Stats Grid -->
+        @if (selectedVfs.stats) {
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="label">Disk Cache</span>
+              <span class="value">
+                {{ selectedVfs.stats.diskCache.bytesUsed | formatFileSize }}
+              </span>
+            </div>
+            <div class="stat-item">
+              <span class="label">Cached Files</span>
+              <span class="value">{{ selectedVfs.stats.diskCache.files }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">Pending Uploads</span>
+              <span class="value">
+                {{ selectedVfs.stats.diskCache.uploadsQueued }}
+              </span>
+            </div>
+            <div class="stat-item">
+              <span class="label">In Progress</span>
+              <span class="value">
+                {{ selectedVfs.stats.diskCache.uploadsInProgress }}
+              </span>
+            </div>
+            <div class="stat-item">
+              <span class="label">Metadata</span>
+              <span class="value">
+                {{ selectedVfs.stats.metadataCache.dirs + selectedVfs.stats.metadataCache.files }}
+                items
+              </span>
+            </div>
+            @if (selectedVfs.stats.diskCache.erroredFiles > 0) {
+              <div class="stat-item error">
+                <span class="label">Errors</span>
+                <span class="value">{{ selectedVfs.stats.diskCache.erroredFiles }}</span>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Upload Queue Section -->
+        <div class="queue-section">
+          <div class="section-header">
+            <h3>
+              <mat-icon svgIcon="file-arrow-up"></mat-icon>
+              Upload Queue
+              @if (selectedVfs.queue.length > 0) {
+                <span class="queue-info">
+                  ({{ getUploadingCount() }} uploading,
+                  {{ getTotalQueueSize() | formatFileSize }} total)
+                </span>
+              }
+            </h3>
+          </div>
+
+          <div class="queue-container custom-scrollbar">
+            @if (selectedVfs.queue.length === 0) {
+              <div class="empty-state">
+                <mat-icon svgIcon="circle-check"></mat-icon>
+                <p>No files queued for upload</p>
+                <p class="hint">Files are uploaded automatically based on VFS cache mode</p>
+              </div>
+            } @else {
+              <mat-list>
+                @for (item of selectedVfs.queue; track trackByFn($index, item)) {
+                  <mat-list-item class="queue-item">
+                    <mat-icon
+                      matListItemIcon
+                      [svgIcon]="item.uploading ? 'file-arrow-up' : 'clock'"
+                      [class.uploading-icon]="item.uploading"
+                    ></mat-icon>
+                    <div matListItemTitle>{{ item.name }}</div>
+                    <div matListItemLine>
+                      <span class="size-badge">{{ item.size | formatFileSize }}</span>
+                      <span class="status-text" [class.uploading]="item.uploading">
+                        {{ getQueueItemStatus(item) }}
+                      </span>
+                      @if (item.tries > 0) {
+                        <span class="tries-badge">{{ item.tries }} attempt(s)</span>
+                      }
+                    </div>
+
+                    <div matListItemMeta class="queue-actions">
+                      @if (!item.uploading && item.expiry > 5) {
+                        <button
+                          mat-icon-button
+                          (click)="prioritizeUpload(item)"
+                          matTooltip="Upload this file next"
+                          color="primary"
+                        >
+                          <mat-icon svgIcon="chevron-double-up"></mat-icon>
+                        </button>
+                      }
+                      @if (canDelayUpload(item)) {
+                        <button
+                          mat-icon-button
+                          (click)="delayUpload(item)"
+                          matTooltip="Delay upload by 11.5 days"
+                          color="accent"
+                        >
+                          <mat-icon svgIcon="pause"></mat-icon>
+                        </button>
+                      }
+                      @if (canDelayUpload(item)) {
+                        <button
+                          mat-icon-button
+                          (click)="toggleDelaySlider(item)"
+                          [matTooltip]="
+                            showDelaySlider?.id === item.id
+                              ? 'Hide delay slider'
+                              : 'Set custom delay'
+                          "
+                          [color]="showDelaySlider?.id === item.id ? 'primary' : undefined"
+                        >
+                          <mat-icon svgIcon="sliders"></mat-icon>
+                        </button>
+                      }
+                    </div>
+                  </mat-list-item>
+
+                  <!-- Custom Delay Slider -->
+                  @if (showDelaySlider?.id === item.id) {
+                    <div class="delay-slider-container">
+                      <div class="slider-header">
+                        <mat-icon svgIcon="clock"></mat-icon>
+                        <span>Set custom delay time</span>
+                      </div>
+                      <div class="slider-content">
+                        <mat-slider
+                          [min]="10"
+                          [max]="86400"
+                          [step]="10"
+                          [displayWith]="formatSliderLabel"
+                          discrete
+                        >
+                          <input matSliderThumb [(ngModel)]="delaySliderValue" />
+                        </mat-slider>
+                        <div class="slider-value">{{ formatSliderLabel(delaySliderValue) }}</div>
+                      </div>
+                      <div class="slider-actions">
+                        <button mat-button (click)="showDelaySlider = null">Cancel</button>
+                        <button mat-raised-button color="primary" (click)="setCustomDelay(item)">
+                          Apply Delay
+                        </button>
+                      </div>
+                    </div>
+                  }
+
+                  @if (!$last) {
+                    <mat-divider></mat-divider>
+                  }
+                }
+              </mat-list>
+            }
+          </div>
+        </div>
+        <div class="cache-info-section">
+          <div class="section-header">
+            <h3>
+              <mat-icon svgIcon="database"></mat-icon>
+              Cache Information
+            </h3>
+          </div>
+          <div class="cache-info-content">
+            @if (selectedVfs.stats) {
+              <div class="info-row">
+                <mat-icon svgIcon="folder"></mat-icon>
+                <div class="info-text">
+                  <div class="path-header">
+                    <strong>Cache Location:</strong>
+                    <button
+                      mat-icon-button
+                      (click)="openCacheFolder(selectedVfs.stats.diskCache.path)"
+                      matTooltip="Open cache folder"
+                      class="folder-button"
+                    >
+                      <mat-icon svgIcon="folder"></mat-icon>
+                    </button>
+                  </div>
+                  <code>{{ selectedVfs.stats.diskCache.path }}</code>
+                </div>
+              </div>
+              <div class="info-row">
+                <mat-icon svgIcon="folder-tree"></mat-icon>
+                <div class="info-text">
+                  <div class="path-header">
+                    <strong>Metadata Location:</strong>
+                    <button
+                      mat-icon-button
+                      (click)="openMetadataFolder(selectedVfs.stats.diskCache.pathMeta)"
+                      matTooltip="Open metadata folder"
+                      class="folder-button"
+                    >
+                      <mat-icon svgIcon="folder"></mat-icon>
+                    </button>
+                  </div>
+                  <code>{{ selectedVfs.stats.diskCache.pathMeta }}</code>
+                </div>
+              </div>
+              <div class="info-row">
+                <mat-icon svgIcon="info-circle"></mat-icon>
+                <div class="info-text">
+                  <span class="info-note">
+                    <strong>Note:</strong> "Clear Metadata" only removes directory listings cache.
+                    Cached files remain in the cache directory until rclone purges them
+                    automatically.
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Updated Controls Section -->
+        <div class="controls-row">
+          <div class="setting-group">
+            <mat-form-field appearance="fill" class="dense-form-field">
+              <mat-label>Poll Interval</mat-label>
+              <input
+                matInput
+                [(ngModel)]="pollIntervalInput"
+                placeholder="e.g., 1m, 30s"
+                [disabled]="loading"
+              />
+              <mat-hint>How often to check remote for changes</mat-hint>
+              <button
+                mat-icon-button
+                matSuffix
+                (click)="updatePollInterval()"
+                matTooltip="Update Poll Interval"
+                [disabled]="!pollIntervalInput.trim() || loading"
+              >
+                <mat-icon svgIcon="bolt"></mat-icon>
+              </button>
+            </mat-form-field>
+          </div>
+
+          <div class="actions-group">
+            <button
+              mat-stroked-button
+              (click)="refreshDirectory()"
+              matTooltip="Force re-read directory structure from remote"
+              [disabled]="loading"
+            >
+              <mat-icon svgIcon="refresh"></mat-icon>
+              Refresh Metadata
+            </button>
+
+            <button
+              mat-stroked-button
+              color="warn"
+              (click)="clearMetadataCache()"
+              matTooltip="Clear directory listings cache (does not delete cached files)"
+              [disabled]="loading"
+            >
+              <mat-icon svgIcon="trash"></mat-icon>
+              Clear Metadata
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </mat-card-content>
+</mat-card>
