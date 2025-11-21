@@ -9,6 +9,30 @@
 }
 
 <mat-toolbar
+  class="flatpak-warning-banner"
+  [@slideToggle]="showFlatpakWarning() ? 'visible' : 'hidden'"
+>
+  <mat-icon
+    matTooltipShowDelay="500"
+    matTooltip="Don't show again"
+    (click)="dismissFlatpakWarning()"
+    svgIcon="circle-xmark"
+    class="warning-icon"
+  ></mat-icon>
+  <span class="banner-message">Flatpak Note</span>
+  <span class="banner-subtitle"
+    >Some features may require manual permission adjustments.
+    <a
+      href="https://github.com/Zarestia-Dev/rclone-manager/wiki/Troubleshooting-Linux#-issue-2-permission-errors-flatpak-security"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Learn more
+    </a></span
+  >
+</mat-toolbar>
+
+<mat-toolbar
   [@slideToggle]="isMeteredConnection() ? 'visible' : 'hidden'"
   class="metered-banner"
   role="alert"

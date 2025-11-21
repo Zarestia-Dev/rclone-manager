@@ -3,13 +3,21 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 
 // Services
 import { AnimationsService } from '../../shared/services/animations.service';
-import { EventListenersService } from '@app/services';
-import { SystemInfoService } from '@app/services';
+import {
+  EventListenersService,
+  AppSettingsService,
+  SystemInfoService,
+  AppUpdaterService,
+} from '@app/services';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltip } from '@angular/material/tooltip';
 
 @Component({
   selector: 'app-banner',
   templateUrl: './banner.component.html',
-  imports: [MatToolbarModule],
+  standalone: true,
+  imports: [MatToolbarModule, MatButtonModule, MatIconModule, MatTooltip],
   styleUrls: ['./banner.component.scss'],
   animations: [AnimationsService.slideToggle()],
 })
@@ -17,10 +25,13 @@ export class BannerComponent {
   // --- STATE SIGNALS ---
   readonly isMeteredConnection = signal(false);
   readonly showDevelopmentBanner = signal(isDevMode());
+  readonly showFlatpakWarning = signal(false);
 
   // --- INJECTED DEPENDENCIES ---
   private readonly eventListenersService = inject(EventListenersService);
   private readonly systemInfoService = inject(SystemInfoService);
+  private readonly appSettingsService = inject(AppSettingsService);
+  private readonly appUpdaterService = inject(AppUpdaterService);
 
   constructor() {
     this.initializeComponent();
@@ -28,11 +39,33 @@ export class BannerComponent {
 
   private async initializeComponent(): Promise<void> {
     await this.checkMeteredConnection();
+    await this.checkBuildTypeAndShowWarning();
     this.eventListenersService.listenToNetworkStatusChanged().subscribe({
       next: payload => {
         this.isMeteredConnection.set(!!payload?.isMetered);
       },
     });
+  }
+
+  private async checkBuildTypeAndShowWarning(): Promise<void> {
+    try {
+      const buildType = await this.appUpdaterService.getBuildType();
+      const warningShown =
+        await this.appSettingsService.getSettingValue<boolean>('runtime.flatpak_warn');
+
+      console.log('Build type:', buildType, 'Warning shown:', warningShown);
+
+      if (buildType === 'flatpak' && warningShown) {
+        this.showFlatpakWarning.set(true);
+      }
+    } catch (error) {
+      console.error('Failed to check build type:', error);
+    }
+  }
+
+  async dismissFlatpakWarning(): Promise<void> {
+    this.showFlatpakWarning.set(false);
+    await this.appSettingsService.saveSetting('runtime', 'flatpak_warn', false);
   }
 
   private async checkMeteredConnection(): Promise<void> {

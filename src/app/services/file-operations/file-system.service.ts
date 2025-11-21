@@ -1,6 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../../shared/services/notification.service';
+import { FilePickerOptions, UiStateService } from '../ui/ui-state.service';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * Service for file system operations
@@ -11,6 +13,7 @@ import { NotificationService } from '../../shared/services/notification.service'
 })
 export class FileSystemService extends TauriBaseService {
   private notificationService = inject(NotificationService);
+  private uiStateService = inject(UiStateService);
 
   constructor() {
     super();
@@ -28,6 +31,14 @@ export class FileSystemService extends TauriBaseService {
       this.notificationService.alertModal('Error', String(error));
       throw error;
     }
+  }
+
+  /**
+   * Select a path using the integrated Nautilus file browser
+   */
+  async selectPathWithNautilus(options: FilePickerOptions): Promise<string[] | null> {
+    this.uiStateService.openFilePicker(options);
+    return firstValueFrom(this.uiStateService.filePickerResult$);
   }
 
   /**

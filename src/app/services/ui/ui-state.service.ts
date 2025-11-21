@@ -1,12 +1,17 @@
 import { inject, Injectable, NgZone } from '@angular/core';
 import { WindowService } from './window.service';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { EventListenersService } from '../system/event-listeners.service';
 import { platform } from '@tauri-apps/plugin-os';
 import { AppTab, ToastMessage, Remote } from '@app/types';
 import { ApiClientService } from '../core/api-client.service';
 
 // ToastMessage moved to shared types
+export interface FilePickerOptions {
+  selectFolders?: boolean;
+  selectFiles?: boolean;
+  multiSelection?: boolean;
+}
 
 /**
  * Service for managing UI state with focus on viewport settings
@@ -30,6 +35,15 @@ export class UiStateService {
   // Nautilus / Browser overlay
   private _isNautilusOverlayOpen = new BehaviorSubject<boolean>(false);
   public isNautilusOverlayOpen$ = this._isNautilusOverlayOpen.asObservable();
+
+  // File Picker state
+  private _filePickerState = new BehaviorSubject<{
+    isOpen: boolean;
+    options?: FilePickerOptions;
+  }>({ isOpen: false });
+  public filePickerState$ = this._filePickerState.asObservable();
+  private _filePickerResult = new Subject<string[] | null>();
+  public filePickerResult$ = this._filePickerResult.asObservable();
 
   // Toast notifications
   private _showToast$ = new BehaviorSubject<ToastMessage | null>(null);
@@ -73,7 +87,23 @@ export class UiStateService {
   }
 
   toggleNautilusOverlay(): void {
-    this._isNautilusOverlayOpen.next(!this._isNautilusOverlayOpen.value);
+    if (this._isNautilusOverlayOpen.value && this._filePickerState.value.isOpen) {
+      this.closeFilePicker(null);
+    } else {
+      this._isNautilusOverlayOpen.next(!this._isNautilusOverlayOpen.value);
+    }
+  }
+
+  // === File Picker Management ===
+  openFilePicker(options: FilePickerOptions): void {
+    this._filePickerState.next({ isOpen: true, options });
+    this._isNautilusOverlayOpen.next(true);
+  }
+
+  closeFilePicker(result: string[] | null): void {
+    this._filePickerResult.next(result);
+    this._filePickerState.next({ isOpen: false });
+    this._isNautilusOverlayOpen.next(false);
   }
 
   // === Tab Management ===

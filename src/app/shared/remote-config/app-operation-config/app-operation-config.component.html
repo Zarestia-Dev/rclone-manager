@@ -187,6 +187,16 @@
                 >
                   <mat-icon svgIcon="folder" class="purple"></mat-icon>
                 </button>
+              } @else {
+                <button
+                  matIconButton
+                  matSuffix
+                  (click)="selectRemotePath('source')"
+                  type="button"
+                  aria-label="Select remote source folder"
+                >
+                  <mat-icon svgIcon="folder" class="accent"></mat-icon>
+                </button>
               }
             </mat-form-field>
 
@@ -376,6 +386,16 @@
                   aria-label="Select destination folder"
                 >
                   <mat-icon svgIcon="folder" class="purple"></mat-icon>
+                </button>
+              } @else {
+                <button
+                  matIconButton
+                  matSuffix
+                  (click)="selectRemotePath('dest')"
+                  type="button"
+                  aria-label="Select remote destination folder"
+                >
+                  <mat-icon svgIcon="folder" class="accent"></mat-icon>
                 </button>
               }
               @if (opFormGroup.get('dest.path')?.hasError('required')) {

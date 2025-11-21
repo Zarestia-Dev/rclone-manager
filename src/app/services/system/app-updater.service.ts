@@ -291,17 +291,15 @@ export class AppUpdaterService extends TauriBaseService {
 
     try {
       // Load all initial state in parallel
-      const [skippedVersions, channel, updatesDisabled, buildType] = await Promise.all([
+      const [skippedVersions, channel, updatesDisabled] = await Promise.all([
         this.getSkippedVersions(),
         this.getChannel(),
         this.checkIfUpdatesDisabled(),
-        this.invokeCommand<string>('get_build_type'),
       ]);
 
       this.skippedVersionsSubject.next(skippedVersions);
       this.updateChannelSubject.next(channel);
       this.updateStateService.setUpdatesDisabled(updatesDisabled);
-      this.updateStateService.setBuildType(buildType);
 
       this.initialized = true;
     } catch (error) {
@@ -327,7 +325,7 @@ export class AppUpdaterService extends TauriBaseService {
     return this.updateStateService.areUpdatesDisabled();
   }
 
-  public getBuildType(): string | null {
-    return this.updateStateService.getBuildType();
+  public async getBuildType(): Promise<string> {
+    return this.invokeCommand<string>('get_build_type');
   }
 }

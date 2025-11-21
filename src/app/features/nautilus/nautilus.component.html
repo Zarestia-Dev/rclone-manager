@@ -3,7 +3,7 @@
     <div class="sidenav-content">
       <mat-toolbar>
         <button mat-icon-button class="small-button"><mat-icon svgIcon="search"></mat-icon></button>
-        <span>Files</span>
+        <span>{{ title$ | async }}</span>
         <button mat-icon-button class="small-button">
           <mat-icon svgIcon="menu-bar"></mat-icon>
         </button>
@@ -13,12 +13,21 @@
         <mat-list-item
           *ngFor="let remote of remotesWithMeta$ | async; trackBy: trackByRemote"
           (click)="selectRemote(remote)"
-          [class.selected]="(selectedRemote$ | async)?.remoteSpecs?.name === remote.name"
+          [class.selected]="(nautilusRemote$ | async)?.name === remote.name"
           role="button"
           tabindex="0"
+          class="remote-list-item"
         >
           <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
           <h4 matLine>{{ remote.name }}</h4>
+          <button
+            *ngIf="remote.isMounted"
+            mat-icon-button
+            (click)="openMountInFiles($event, remote.mountPoint)"
+            class="open-mount-button"
+          >
+            <mat-icon svgIcon="folder"></mat-icon>
+          </button>
         </mat-list-item>
 
         <!-- Show a placeholder when no remotes exist -->
@@ -36,14 +45,89 @@
         <button mat-icon-button class="secondary" aria-label="Back" (click)="goBack()">
           <mat-icon svgIcon="chevron-left"></mat-icon>
         </button>
-        <button mat-icon-button class="secondary" aria-label="Back" (click)="goBack()">
+        <button mat-icon-button class="secondary" aria-label="Forward" (click)="goForward()">
           <mat-icon svgIcon="chevron-right"></mat-icon>
         </button>
-        <button mat-icon-button class="secondary" aria-label="Back" (click)="goBack()">
-          <mat-icon svgIcon="circle-xmark"></mat-icon>
-        </button>
+        <div
+          class="path-container"
+          (click)="isEditingPath.next(true)"
+          (keydown.enter)="isEditingPath.next(true)"
+          tabindex="0"
+        >
+          <ng-container *ngIf="(isEditingPath | async) === false">
+            <button
+              mat-button
+              class="path-segment"
+              (click)="$event.stopPropagation(); navigateToPath('')"
+            >
+              {{ (nautilusRemote$ | async)?.name || 'Local' }}
+            </button>
+            <span
+              *ngFor="
+                let segment of pathSegments$ | async as segments;
+                let i = index;
+                trackBy: trackByIndex
+              "
+            >
+              /
+              <button
+                mat-button
+                class="path-segment"
+                (click)="$event.stopPropagation(); navigateToPath(getPath(segments, i))"
+              >
+                {{ segment }}
+              </button>
+            </span>
+          </ng-container>
+          <input
+            *ngIf="isEditingPath | async"
+            #pathInput
+            class="path-input"
+            [value]="(nautilusRemote$ | async)?.name + '/' + (currentPath$ | async)"
+            (keydown.enter)="navigateToPath(pathInput.value); isEditingPath.next(false)"
+            (blur)="isEditingPath.next(false)"
+          />
+        </div>
       </div>
       <div class="right-section">
+        <button mat-icon-button (click)="setLayout(layout$.value === 'grid' ? 'list' : 'grid')">
+          <mat-icon [svgIcon]="layout$.value === 'grid' ? 'view-list' : 'view-grid'"></mat-icon>
+        </button>
+        <button mat-icon-button [matMenuTriggerFor]="viewMenu">
+          <mat-icon svgIcon="dots-vertical"></mat-icon>
+        </button>
+        <mat-menu #viewMenu="matMenu">
+          <div class="view-menu-content">
+            <div class="icon-size-control">
+              <span>Icon Size</span>
+              <button mat-icon-button (click)="decreaseIconSize()">
+                <mat-icon svgIcon="minus"></mat-icon>
+              </button>
+              <button mat-icon-button (click)="increaseIconSize()">
+                <mat-icon svgIcon="plus"></mat-icon>
+              </button>
+            </div>
+            <mat-divider></mat-divider>
+            <div class="sort-options">
+              <mat-radio-group
+                [ngModel]="(sort$ | async)?.key"
+                (ngModelChange)="changeSort($event)"
+              >
+                <mat-radio-button value="name">Name</mat-radio-button>
+                <mat-radio-button value="modified">Modified</mat-radio-button>
+                <mat-radio-button value="size">Size</mat-radio-button>
+                <mat-radio-button value="type">Type</mat-radio-button>
+              </mat-radio-group>
+            </div>
+            <mat-divider></mat-divider>
+            <mat-checkbox
+              [ngModel]="showHidden$ | async"
+              (ngModelChange)="toggleShowHidden($event)"
+            >
+              Show Hidden Files
+            </mat-checkbox>
+          </div>
+        </mat-menu>
         <!-- Window Controls -->
         @if (windowButtons) {
           <button matIconButton (click)="minimizeWindow()" aria-label="Minimize window">
@@ -64,19 +148,118 @@
       </div>
     </mat-toolbar>
 
-    <div class="nautilus-grid">
-      <mat-grid-list cols="4" rowHeight="120px" gutterSize="16px">
-        <mat-grid-tile
-          *ngFor="let folder of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; trackBy: trackByIndex"
+    <div class="nautilus-content" [ngSwitch]="layout$ | async">
+      <div *ngSwitchCase="'grid'" class="nautilus-grid">
+        <mat-grid-list cols="4" [rowHeight]="(iconSize$ | async) || 120" gutterSize="16px">
+          <mat-grid-tile
+            *ngFor="let item of files$ | async as allItems; let i = index; trackBy: trackByFile"
+            (click)="onItemClick(item, $event, i, allItems)"
+            (dblclick)="navigateTo(item)"
+            [class.selected]="(selectedItems$ | async)?.has(item.Path)"
+            [class.unselectable]="!isItemSelectable(item)"
+          >
+            <mat-card class="folder-card" [class.file-card]="!item.IsDir">
+              <mat-card-content>
+                <mat-icon
+                  class="folder-icon"
+                  [style.fontSize.px]="((iconSize$ | async) || 120) / 2"
+                  [svgIcon]="item.IsDir ? 'folder' : 'file'"
+                ></mat-icon>
+                <p class="folder-title">{{ item.Name }}</p>
+              </mat-card-content>
+            </mat-card>
+          </mat-grid-tile>
+        </mat-grid-list>
+      </div>
+      <div *ngSwitchCase="'list'" class="nautilus-list">
+        <div class="list-header">
+          <div
+            class="list-col name"
+            (click)="changeSort('name')"
+            (keydown.enter)="changeSort('name')"
+            tabindex="0"
+          >
+            Name
+            <mat-icon
+              *ngIf="(sort$ | async)?.key === 'name'"
+              [svgIcon]="(sort$ | async)?.direction === 'asc' ? 'arrow-up' : 'arrow-down'"
+            ></mat-icon>
+          </div>
+          <div
+            class="list-col size"
+            (click)="changeSort('size')"
+            (keydown.enter)="changeSort('size')"
+            tabindex="0"
+          >
+            Size
+            <mat-icon
+              *ngIf="(sort$ | async)?.key === 'size'"
+              [svgIcon]="(sort$ | async)?.direction === 'asc' ? 'arrow-up' : 'arrow-down'"
+            ></mat-icon>
+          </div>
+          <div
+            class="list-col modified"
+            (click)="changeSort('modified')"
+            (keydown.enter)="changeSort('modified')"
+            tabindex="0"
+          >
+            Modified
+            <mat-icon
+              *ngIf="(sort$ | async)?.key === 'modified'"
+              [svgIcon]="(sort$ | async)?.direction === 'asc' ? 'arrow-up' : 'arrow-down'"
+            ></mat-icon>
+          </div>
+          <div class="list-col star"></div>
+        </div>
+        <div
+          *ngFor="let item of files$ | async as allItems; let i = index; trackBy: trackByFile"
+          class="list-row"
+          (click)="onItemClick(item, $event, i, allItems)"
+          (keydown.enter)="onItemKeydown(item, $event, i, allItems)"
+          (dblclick)="navigateTo(item)"
+          [class.selected]="(selectedItems$ | async)?.has(item.Path)"
+          [class.unselectable]="!isItemSelectable(item)"
+          tabindex="0"
         >
-          <mat-card class="folder-card">
-            <mat-card-content>
-              <mat-icon class="folder-icon" svgIcon="folder"></mat-icon>
-              <p class="folder-title">Folder {{ folder }}</p>
-            </mat-card-content>
-          </mat-card>
-        </mat-grid-tile>
-      </mat-grid-list>
+          <div class="list-col name">
+            <mat-icon [svgIcon]="item.IsDir ? 'folder' : 'file'"></mat-icon>
+            <span>{{ item.Name }}</span>
+          </div>
+          <div class="list-col size">
+            {{ item.IsDir ? '--' : formatBytes(item.Size) }}
+          </div>
+          <div class="list-col modified">
+            {{ formatRelativeDate(item.ModTime) }}
+          </div>
+          <div class="list-col star">
+            <mat-icon svgIcon="star-outline"></mat-icon>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="picker-actions" *ngIf="isPickerMode$ | async">
+      <button mat-stroked-button (click)="onClose()">Cancel</button>
+      <button
+        mat-flat-button
+        color="primary"
+        (click)="confirmSelection()"
+        [disabled]="isOpenDisabled"
+      >
+        Open
+      </button>
+    </div>
+    <div
+      class="selection-summary"
+      *ngIf="(selectionSummary$ | async) && (isLoading$ | async) === false"
+    >
+      {{ selectionSummary$ | async }}
+    </div>
+    <div class="loading-overlay" *ngIf="isLoading$ | async">
+      <mat-spinner diameter="24"></mat-spinner>
+      <span>Loading...</span>
+      <button mat-icon-button (click)="cancelLoad()">
+        <mat-icon svgIcon="close"></mat-icon>
+      </button>
     </div>
   </mat-sidenav-content>
 </mat-sidenav-container>

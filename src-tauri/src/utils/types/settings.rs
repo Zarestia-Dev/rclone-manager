@@ -70,6 +70,7 @@ pub struct RuntimeSettings {
     pub rclone_auto_check_updates: bool,
     pub rclone_skipped_updates: Vec<String>,
     pub rclone_update_channel: String,
+    pub flatpak_warn: bool,
 }
 
 /// The complete settings model
@@ -205,6 +206,7 @@ impl Default for AppSettings {
                 rclone_auto_check_updates: true,
                 rclone_skipped_updates: vec![],
                 rclone_update_channel: "stable".to_string(),
+                flatpak_warn: true,
             },
         }
     }
@@ -461,6 +463,17 @@ impl AppSettings {
                 "string",
                 "The update channel for rclone (stable, beta, etc.).",
                 default = "stable",
+                required = true
+            ),
+        );
+
+        metadata.insert(
+            "runtime.flatpak_warn".to_string(),
+            setting_meta!(
+                "Flatpak Warning Shown",
+                "bool",
+                "",
+                default = defaults.runtime.flatpak_warn,
                 required = true
             ),
         );

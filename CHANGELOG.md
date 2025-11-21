@@ -5,6 +5,7 @@
 ### Added
 - `marked` dependency added for markdown rendering in the About modal. This allows us to display formatted release notes fetched from GitHub in a user-friendly manner.
 - Support for local path navigation on the remote config. User can now navigate to local paths when configuring remotes that use local file systems.
+- Added Flatpak detection and warning banner. If the app is running as a Flatpak, a warning banner will be displayed to inform the user about permission limitations. The banner can be dismissed and will not show again once dismissed.
 
 
 ## [v0.1.7] - 2025-11-14

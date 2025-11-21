@@ -23,7 +23,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { Subject, takeUntil, Observable, of } from 'rxjs';
 import { Entry, CronValidationResponse, EditTarget } from '@app/types';
-import { PathSelectionService, PathSelectionState } from '@app/services';
+import { PathSelectionService, PathSelectionState, FileSystemService } from '@app/services';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CronInputComponent } from '@app/shared/components';
@@ -66,6 +66,7 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   @Output() destFolderSelected = new EventEmitter<void>();
 
   private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly fileSystemService = inject(FileSystemService);
   private readonly cdRef = inject(ChangeDetectorRef);
   private readonly destroy$ = new Subject<void>();
 
@@ -276,6 +277,24 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     const fieldId = group === 'source' ? this.sourceFieldId : this.destFieldId;
     const control = this.getPathControl(group);
     this.pathSelectionService.selectEntry(fieldId, entryName, control);
+  }
+
+  async selectRemotePath(group: PathGroup): Promise<void> {
+    const result = await this.fileSystemService.selectPathWithNautilus({
+      selectFolders: true,
+      selectFiles: false,
+      multiSelection: false,
+    });
+
+    if (result && result.length > 0) {
+      const control = this.getPathControl(group);
+      // Use emitEvent: false to prevent triggering the input change handler
+      control?.setValue(result[0], { emitEvent: false });
+
+      // Manually update the path selection service with the final path
+      const fieldId = group === 'source' ? this.sourceFieldId : this.destFieldId;
+      this.pathSelectionService.updateInput(fieldId, result[0]);
+    }
   }
 
   goUp(group: PathGroup): void {
