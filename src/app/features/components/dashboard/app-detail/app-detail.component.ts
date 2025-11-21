@@ -1,19 +1,16 @@
 import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
-  ChangeDetectorRef,
   Component,
   ElementRef,
-  EventEmitter,
-  Input,
   NgZone,
-  OnChanges,
   OnDestroy,
-  Output,
-  SimpleChanges,
   ViewChild,
-  OnInit,
+  computed,
+  effect,
   inject,
+  input,
+  output,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -33,8 +30,7 @@ import {
   CompletedTransfer,
   DEFAULT_JOB_STATS,
   GlobalStats,
-  JobInfoConfig,
-  OperationControlConfig,
+  JobInfo,
   PathDisplayConfig,
   PrimaryActionType,
   Remote,
@@ -47,7 +43,6 @@ import {
   StatsPanelConfig,
   SyncOperation,
   SyncOperationType,
-  TransferActivityPanelConfig,
   TransferFile,
 } from '@app/types';
 import {
@@ -87,25 +82,25 @@ import { VfsControlPanelComponent } from 'src/app/shared/components/vfs/vfs-cont
   templateUrl: './app-detail.component.html',
   styleUrls: ['./app-detail.component.scss'],
 })
-export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy {
+export class AppDetailComponent implements AfterViewInit, OnDestroy {
   // Inputs
-  @Input() mainOperationType: PrimaryActionType = 'mount';
-  @Input() selectedSyncOperation: SyncOperationType = 'sync';
-  @Input() selectedRemote!: Remote;
-  @Input() remoteSettings: RemoteSettings = {};
-  @Input() restrictMode!: boolean;
-  @Input() iconService!: IconService;
-  @Input() actionInProgress?: RemoteAction | null;
+  mainOperationType = input<PrimaryActionType>('mount');
+  selectedSyncOperation = input<SyncOperationType>('sync');
+  selectedRemote = input.required<Remote>();
+  remoteSettings = input<RemoteSettings>({});
+  restrictMode = input.required<boolean>();
+  iconService = input.required<IconService>();
+  actionInProgress = input<RemoteAction | null>(null);
 
   // Outputs
-  @Output() syncOperationChange = new EventEmitter<SyncOperationType>();
-  @Output() openRemoteConfigModal = new EventEmitter<{
+  syncOperationChange = output<SyncOperationType>();
+  openRemoteConfigModal = output<{
     editTarget?: string;
     existingConfig?: RemoteSettings;
   }>();
-  @Output() openInFiles = new EventEmitter<{ remoteName: string; path: string }>();
-  @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
-  @Output() stopJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
+  openInFiles = output<{ remoteName: string; path: string }>();
+  startJob = output<{ type: PrimaryActionType; remoteName: string }>();
+  stopJob = output<{ type: PrimaryActionType; remoteName: string }>();
 
   // View Children
   @ViewChild(MatSort) sort!: MatSort;
@@ -118,8 +113,6 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
   jobStats: GlobalStats = { ...DEFAULT_JOB_STATS };
   currentJobId?: number;
-  isLoading = false;
-  errorMessage = '';
 
   // Transfers tracking
   activeTransfers: TransferFile[] = [];
@@ -147,7 +140,6 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   // Services
   private readonly ngZone = inject(NgZone);
   private readonly jobService = inject(JobManagementService);
-  private readonly cdr = inject(ChangeDetectorRef);
   private readonly formatFileSize = new FormatFileSizePipe();
   private readonly formatTime = new FormatTimePipe();
 
@@ -185,35 +177,31 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
   constructor() {
     Chart.register(...registerables);
-  }
 
-  // Lifecycle
-  ngOnInit(): void {
-    this.setupSettingsSections();
+    // Effect for initialization
+    effect(() => {
+      this.setupSettingsSections();
+    });
+
+    // Effect for remote changes
+    effect(() => {
+      this.selectedRemote();
+      this.mainOperationType();
+      this.selectedSyncOperation();
+      // Trigger setup when these change
+      this.setupSettingsSections();
+      this.handleRemoteChange();
+      // If we've switched into sync mode, ensure charts are initialized.
+      if (this.isSyncType()) {
+        setTimeout(() => this.initCharts(), 100);
+      } else {
+        this.destroyCharts();
+      }
+    });
   }
 
   ngAfterViewInit(): void {
     this.dataSource.sort = this.sort;
-    this.handleRemoteChange();
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (
-      changes['mainOperationType'] ||
-      changes['selectedSyncOperation'] ||
-      changes['selectedRemote']
-    ) {
-      this.setupSettingsSections();
-      this.handleRemoteChange();
-      // If we've switched into sync mode, ensure charts are initialized.
-      // Use setTimeout to wait for any view updates so @ViewChild refs exist.
-      if (this.isSyncType()) {
-        setTimeout(() => this.initCharts(), 100);
-      } else {
-        // If leaving sync mode, destroy charts to free resources.
-        this.destroyCharts();
-      }
-    }
   }
 
   ngOnDestroy(): void {
@@ -223,16 +211,13 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
   // Public methods
   onSyncOperationChange(operation: SyncOperationType): void {
-    if (this.selectedSyncOperation !== operation) {
-      this.selectedSyncOperation = operation;
-      this.syncOperationChange.emit(operation);
-      this.handleRemoteChange();
-    }
+    this.syncOperationChange.emit(operation);
   }
 
   triggerOpenInFiles(path: string): void {
-    if (this.selectedRemote?.remoteSpecs?.name) {
-      this.openInFiles.emit({ remoteName: this.selectedRemote.remoteSpecs.name, path });
+    const remoteName = this.selectedRemote().remoteSpecs?.name;
+    if (remoteName) {
+      this.openInFiles.emit({ remoteName, path });
     }
   }
 
@@ -241,75 +226,78 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   }
 
   // State checkers
-  isSyncType(): boolean {
-    return this.mainOperationType === 'sync';
-  }
+  isSyncType = computed(() => this.mainOperationType() === 'sync');
 
-  getOperationActiveState(): boolean {
-    if (this.isSyncType()) {
-      const remote = this.selectedRemote;
+  getOperationActiveState = computed(() => {
+    const isSync = this.isSyncType();
+    const remote = this.selectedRemote();
+    const selectedOp = this.selectedSyncOperation();
+    if (isSync) {
       const states = {
         sync: remote?.syncState?.isOnSync,
         bisync: remote?.bisyncState?.isOnBisync,
         move: remote?.moveState?.isOnMove,
         copy: remote?.copyState?.isOnCopy,
       };
-      return !!states[this.selectedSyncOperation];
+      return !!states[selectedOp];
     }
-    return !!this.selectedRemote?.mountState?.mounted;
-  }
+    return !!remote?.mountState?.mounted;
+  });
 
-  shouldShowCharts(): boolean {
-    return this.isSyncType();
-  }
+  shouldShowCharts = computed(() => this.isSyncType());
 
   // Config getters
-  getOperationControlConfig(): OperationControlConfig {
+  getOperationControlConfig = computed(() => {
     const op = this.getCurrentOperation();
+    const isSync = this.isSyncType();
+    const selectedOp = this.selectedSyncOperation();
+    const mainOp = this.mainOperationType();
+    const isLoading = this.actionInProgress() === selectedOp;
     return {
-      operationType: this.isSyncType()
-        ? (this.selectedSyncOperation as PrimaryActionType)
-        : this.mainOperationType,
+      operationType: isSync ? (selectedOp as PrimaryActionType) : mainOp,
       isActive: this.getOperationActiveState(),
-      isLoading: this.isLoading,
+      isLoading: isLoading,
       cssClass: op?.cssClass || 'primary',
       pathConfig: this.getPathConfig(),
-      primaryButtonLabel: this.isLoading ? `Starting ${op?.label}...` : `Start ${op?.label}`,
-      secondaryButtonLabel: this.isLoading ? `Stopping ${op?.label}...` : `Stop ${op?.label}`,
+      primaryButtonLabel: isLoading ? `Starting ${op?.label}...` : `Start ${op?.label}`,
+      secondaryButtonLabel: isLoading ? `Stopping ${op?.label}...` : `Stop ${op?.label}`,
       primaryIcon: op?.icon || 'play_arrow',
       secondaryIcon: 'stop',
-      actionInProgress: this.actionInProgress?.toString(),
+      actionInProgress: this.actionInProgress()?.toString(),
       operationDescription: op?.description,
     };
-  }
+  });
 
-  getMountControlConfig(): OperationControlConfig {
-    const isActive = !!this.selectedRemote?.mountState?.mounted;
-    const isLoading = ['mount', 'unmount'].includes(this.actionInProgress as string);
+  getMountControlConfig = computed(() => {
+    const remote = this.selectedRemote();
+    const action = this.actionInProgress();
+    const isActive = !!remote?.mountState?.mounted;
+    const isLoading = ['mount', 'unmount'].includes(action as string);
 
     return {
-      operationType: 'mount',
+      operationType: 'mount' as PrimaryActionType,
       isActive,
       isLoading,
       cssClass: 'accent',
       pathConfig: this.getMountPathConfig(),
-      primaryButtonLabel: this.actionInProgress === 'mount' ? 'Mounting...' : 'Mount',
+      primaryButtonLabel: action === 'mount' ? 'Mounting...' : 'Mount',
       primaryIcon: 'mount',
-      secondaryButtonLabel: this.actionInProgress === 'unmount' ? 'Unmounting...' : 'Unmount',
+      secondaryButtonLabel: action === 'unmount' ? 'Unmounting...' : 'Unmount',
       secondaryIcon: 'eject',
-      actionInProgress: this.actionInProgress?.toString(),
+      actionInProgress: action?.toString(),
     };
-  }
+  });
 
-  getJobInfoConfig(): JobInfoConfig {
+  getJobInfoConfig = computed(() => {
+    const isSync = this.isSyncType();
+    const selectedOp = this.selectedSyncOperation();
+    const mainOp = this.mainOperationType();
     return {
-      operationType: this.isSyncType()
-        ? this.selectedSyncOperation
-        : (this.mainOperationType ?? 'mount'),
+      operationType: isSync ? selectedOp : (mainOp ?? 'mount'),
       jobId: this.currentJobId,
       startTime: this.jobStats.startTime ? new Date(this.jobStats.startTime) : undefined,
     };
-  }
+  });
 
   getStatsConfig(): StatsPanelConfig {
     const progress = this.calculateProgress();
@@ -356,57 +344,59 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     };
   }
 
-  getSettingsPanelConfig(section: RemoteSettingsSection): SettingsPanelConfig {
-    const settings = this.remoteSettings?.[`${section.key}Config`] || {};
+  getSettingsPanelConfig = (section: RemoteSettingsSection): SettingsPanelConfig => {
+    const settings = this.remoteSettings()[`${section.key}Config`] || {};
     return {
       section,
       settings,
       hasSettings: Object.keys(settings).length > 0,
-      restrictMode: this.restrictMode,
+      restrictMode: this.restrictMode(),
       buttonColor: this.getOperationColor(),
       buttonLabel: 'Edit Settings',
       sensitiveKeys: SENSITIVE_KEYS,
     };
-  }
+  };
 
-  getTransferActivityConfig(): TransferActivityPanelConfig {
+  getTransferActivityConfig = computed(() => {
     return {
       activeTransfers: this.activeTransfers,
       completedTransfers: this.completedTransfers,
       operationClass: this.getOperationClass(),
       operationColor: this.getOperationColor(),
-      remoteName: this.selectedRemote?.remoteSpecs?.name || '',
+      remoteName: this.selectedRemote().remoteSpecs?.name || '',
       showHistory: this.completedTransfers.length > 0,
     };
-  }
+  });
 
-  get operationSettingsHeading(): string {
-    if (this.isSyncType()) {
+  operationSettingsHeading = computed(() => {
+    const isSync = this.isSyncType();
+    if (isSync) {
       const op = this.getCurrentOperation();
       return `${op?.label || 'Sync'} Settings`;
     }
     return this.operationSettingsSections.length > 1 ? 'Mount & VFS Settings' : 'Mount Settings';
-  }
+  });
 
-  get operationSettingsDescription(): string {
-    if (this.isSyncType()) {
+  operationSettingsDescription = computed(() => {
+    const isSync = this.isSyncType();
+    if (isSync) {
       const op = this.getCurrentOperation();
       return `Adjust how the ${op?.label?.toLowerCase() || 'sync'} process behaves for this remote.`;
     }
     return 'Configure mount behavior and virtual file system tuning for this remote.';
-  }
+  });
 
   // Private helpers
-  private getCurrentOperation(): SyncOperation | null {
-    return this.syncOperations.find(op => op.type === this.selectedSyncOperation) || null;
-  }
+  private getCurrentOperation = (): SyncOperation | null => {
+    return this.syncOperations.find(op => op.type === this.selectedSyncOperation()) || null;
+  };
 
-  private setupSettingsSections(): void {
+  private setupSettingsSections = (): void => {
     if (this.isSyncType()) {
       const op = this.getCurrentOperation();
       this.operationSettingsSections = [
         {
-          key: this.selectedSyncOperation,
+          key: this.selectedSyncOperation(),
           title: `${op?.label || 'Sync'} Options`,
           icon: op?.icon || 'gear',
           group: 'operation',
@@ -423,40 +413,42 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
       { key: 'filter', title: 'Filter Options', icon: 'filter', group: 'shared' },
       { key: 'backend', title: 'Backend Config', icon: 'server', group: 'shared' },
     ];
-  }
+  };
 
-  private getPathConfig(): PathDisplayConfig {
-    const configKey = `${this.selectedSyncOperation}Config`;
+  private getPathConfig = (): PathDisplayConfig => {
+    const configKey = `${this.selectedSyncOperation()}Config`;
+    const settings = this.remoteSettings();
     return {
-      source: (this.remoteSettings?.[configKey]?.['source'] as string) || 'Not configured',
-      destination: (this.remoteSettings?.[configKey]?.['dest'] as string) || 'Not configured',
+      source: (settings[configKey]?.['source'] as string) || 'Not configured',
+      destination: (settings[configKey]?.['dest'] as string) || 'Not configured',
       showOpenButtons: true,
       isDestinationActive: true,
     };
-  }
+  };
 
-  private getMountPathConfig(): PathDisplayConfig {
+  private getMountPathConfig = (): PathDisplayConfig => {
+    const settings = this.remoteSettings();
     return {
-      source: this.remoteSettings?.['mountConfig']?.['source'] || 'Not configured',
-      destination: this.remoteSettings?.['mountConfig']?.['dest'] || 'Not configured',
+      source: settings?.['mountConfig']?.['source'] || 'Not configured',
+      destination: settings?.['mountConfig']?.['dest'] || 'Not configured',
       showOpenButtons: true,
       operationColor: 'accent',
-      isDestinationActive: !!this.selectedRemote?.mountState?.mounted,
-      actionInProgress: this.actionInProgress?.toString(),
+      isDestinationActive: !!this.selectedRemote()?.mountState?.mounted,
+      actionInProgress: this.actionInProgress()?.toString(),
     };
-  }
+  };
 
-  private getOperationClass(): string {
+  private getOperationClass = (): string => {
     return this.isSyncType()
-      ? `sync-${this.selectedSyncOperation}-operation`
-      : `${this.mainOperationType}-operation`;
-  }
+      ? `sync-${this.selectedSyncOperation()}-operation`
+      : `${this.mainOperationType()}-operation`;
+  };
 
-  private getOperationColor(): string {
+  private getOperationColor = (): string => {
     if (!this.isSyncType()) return 'accent';
     const colorMap = { sync: 'primary', copy: 'accent', move: 'warn', bisync: 'primary' };
-    return colorMap[this.selectedSyncOperation] || 'primary';
-  }
+    return colorMap[this.selectedSyncOperation()] || 'primary';
+  };
 
   // Stats formatting
   private formatProgress(): string {
@@ -497,21 +489,20 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
       this.stopPolling();
       this.activeTransfers = [];
     }
-
-    this.cdr.markForCheck();
   }
 
   private getJobId(): number | undefined {
     if (!this.isSyncType() || !this.selectedRemote) return undefined;
 
+    const remote = this.selectedRemote();
     const stateMap = {
-      sync: this.selectedRemote.syncState?.syncJobID,
-      bisync: this.selectedRemote.bisyncState?.bisyncJobID,
-      move: this.selectedRemote.moveState?.moveJobID,
-      copy: this.selectedRemote.copyState?.copyJobID,
+      sync: remote.syncState?.syncJobID,
+      bisync: remote.bisyncState?.bisyncJobID,
+      move: remote.moveState?.moveJobID,
+      copy: remote.copyState?.copyJobID,
     };
 
-    return stateMap[this.selectedSyncOperation];
+    return stateMap[this.selectedSyncOperation()];
   }
 
   // Polling
@@ -522,7 +513,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
       this.pollingInterval = window.setInterval(() => {
         if (!this.getOperationActiveState() || !this.currentJobId) {
           this.stopPolling();
-          this.fetchJobData().then(() => this.ngZone.run(() => this.cdr.markForCheck()));
+          this.fetchJobData();
           return;
         }
         this.fetchJobData();
@@ -538,10 +529,11 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   }
 
   private async fetchJobData(): Promise<void> {
-    if (!this.currentJobId || !this.selectedRemote?.remoteSpecs?.name) return;
+    const selectedRemote = this.selectedRemote();
+    if (!this.currentJobId || !selectedRemote?.remoteSpecs?.name) return;
 
     try {
-      const remoteName = this.selectedRemote.remoteSpecs.name;
+      const remoteName = selectedRemote.remoteSpecs.name;
       const group = `job/${this.currentJobId}`;
 
       const [job, remoteStats, completedTransfers] = await Promise.all([
@@ -557,7 +549,6 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
         if (completedTransfers) {
           this.completedTransfers = completedTransfers.slice(0, 50);
         }
-        this.cdr.detectChanges();
       });
     } catch (error) {
       console.error('Error fetching job status:', error);
@@ -566,41 +557,54 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
 
   private async loadCompletedTransfers(group: string): Promise<CompletedTransfer[] | null> {
     try {
-      const response: any = await this.jobService.getCompletedTransfers(group);
-      const transfers = response?.transferred || response;
+      const response: unknown = await this.jobService.getCompletedTransfers(group);
+      let transfers: unknown[] = [];
+
+      if (Array.isArray(response)) {
+        transfers = response;
+      } else if (response && typeof response === 'object' && 'transferred' in response) {
+        const transferred = (response as { transferred?: unknown }).transferred;
+        if (Array.isArray(transferred)) {
+          transfers = transferred;
+        }
+      }
 
       if (!Array.isArray(transfers)) return null;
 
-      return transfers.map((t: any) => this.mapTransfer(t));
+      return transfers.map((t: unknown) => this.mapTransfer(t as Record<string, unknown>));
     } catch {
       return null;
     }
   }
 
-  private mapTransfer(transfer: any): CompletedTransfer {
+  private mapTransfer(transfer: Record<string, unknown>): CompletedTransfer {
     let status: 'completed' | 'checked' | 'failed' | 'partial' = 'completed';
 
-    if (transfer.error) status = 'failed';
-    else if (transfer.checked) status = 'checked';
-    else if (transfer.bytes > 0 && transfer.bytes < transfer.size) status = 'partial';
+    if (transfer['error']) status = 'failed';
+    else if (transfer['checked']) status = 'checked';
+    else if (
+      (transfer['bytes'] as number) > 0 &&
+      (transfer['bytes'] as number) < (transfer['size'] as number)
+    )
+      status = 'partial';
 
     return {
-      name: transfer.name || '',
-      size: transfer.size || 0,
-      bytes: transfer.bytes || 0,
-      checked: transfer.checked || false,
-      error: transfer.error || '',
-      jobid: transfer.group ? parseInt(transfer.group.replace('job/', '')) : 0,
-      startedAt: transfer.started_at,
-      completedAt: transfer.completed_at,
-      srcFs: transfer.srcFs,
-      dstFs: transfer.dstFs,
-      group: transfer.group,
+      name: (transfer['name'] as string) || '',
+      size: (transfer['size'] as number) || 0,
+      bytes: (transfer['bytes'] as number) || 0,
+      checked: (transfer['checked'] as boolean) || false,
+      error: (transfer['error'] as string) || '',
+      jobid: transfer['group'] ? parseInt((transfer['group'] as string).replace('job/', '')) : 0,
+      startedAt: transfer['started_at'] as string,
+      completedAt: transfer['completed_at'] as string,
+      srcFs: transfer['srcFs'] as string,
+      dstFs: transfer['dstFs'] as string,
+      group: transfer['group'] as string,
       status,
     };
   }
 
-  private updateStats(job: any): void {
+  private updateStats(job: JobInfo): void {
     if (!job.stats) return;
 
     this.trackCompletedFiles(job);
@@ -613,7 +617,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     ];
   }
 
-  private processTransfers(files: any[] = []): TransferFile[] {
+  private processTransfers(files: TransferFile[] = []): TransferFile[] {
     return files.map(f => ({
       ...f,
       percentage: f.size > 0 ? Math.min(100, Math.round((f.bytes / f.size) * 100)) : 0,
@@ -639,11 +643,11 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     };
   }
 
-  private trackCompletedFiles(job: any): void {
+  private trackCompletedFiles(job: JobInfo): void {
     const currentCount = job.stats.transfers || 0;
 
     if (currentCount > this.lastTransferCount) {
-      const activeNames = new Set(job.stats.transferring?.map((f: any) => f.name) || []);
+      const activeNames = new Set(job.stats.transferring?.map((f: TransferFile) => f.name) || []);
 
       this.activeTransfers.forEach(file => {
         if (!activeNames.has(file.name) && file.percentage > 0 && file.percentage < 100) {
@@ -735,7 +739,7 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
     const { value, unit } = this.getSpeedUnit(this.jobStats.speed || 0);
     this.updateChart(this.speedChart, this.speedHistory, value);
 
-    const yScale = this.speedChart.options.scales?.['y'] as any;
+    const yScale = this.speedChart.options.scales?.['y'] as { title?: { text?: string } };
     if (yScale?.title) yScale.title.text = `Speed (${unit})`;
   }
 
@@ -771,12 +775,14 @@ export class AppDetailComponent implements OnInit, OnChanges, AfterViewInit, OnD
   }
 
   isCronEnabled(): boolean {
-    const config = this.remoteSettings?.[`${this.selectedSyncOperation}Config`];
+    const config =
+      this.remoteSettings()?.[(this.selectedSyncOperation() + 'Config') as keyof RemoteSettings];
     return !!config?.['cronEnabled'];
   }
 
   getHumanReadableCron(): string {
-    const config = this.remoteSettings?.[`${this.selectedSyncOperation}Config`];
+    const config =
+      this.remoteSettings()?.[(this.selectedSyncOperation() + 'Config') as keyof RemoteSettings];
     const cronExpression = config?.['cronExpression'] as string;
     if (!cronExpression) {
       return 'No schedule set.';

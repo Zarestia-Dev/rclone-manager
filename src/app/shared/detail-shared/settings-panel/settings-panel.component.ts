@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,14 +15,14 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '../../types';
     <mat-card class="detail-panel settings-panel">
       <mat-card-header class="panel-header">
         <mat-card-title class="panel-title-content">
-          <mat-icon [svgIcon]="config.section.icon" class="panel-icon"></mat-icon>
-          <span>{{ config.section.title }}</span>
+          <mat-icon [svgIcon]="config().section.icon" class="panel-icon"></mat-icon>
+          <span>{{ config().section.title }}</span>
         </mat-card-title>
       </mat-card-header>
 
       <mat-card-content class="panel-content">
         <div class="settings-container">
-          @if (config.hasSettings) {
+          @if (config().hasSettings) {
             <div class="settings-grid">
               @for (setting of getSettingsEntries(); track setting.key) {
                 @if (isObjectButNotArray(setting.value)) {
@@ -54,7 +54,7 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '../../types';
             </div>
           } @else {
             <div class="no-settings">
-              <mat-icon [svgIcon]="config.section.icon" class="no-settings-icon"></mat-icon>
+              <mat-icon [svgIcon]="config().section.icon" class="no-settings-icon"></mat-icon>
               <span>No configuration data available</span>
             </div>
           }
@@ -64,35 +64,35 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '../../types';
       <mat-card-actions class="panel-actions">
         <button
           matButton="filled"
-          [class]="'edit-settings-button ' + config.buttonColor"
+          [class]="'edit-settings-button ' + config().buttonColor"
           (click)="onEditSettings()"
         >
           <mat-icon svgIcon="pen"></mat-icon>
-          <span>{{ config.buttonLabel || 'Edit Settings' }}</span>
+          <span>{{ config().buttonLabel || 'Edit Settings' }}</span>
         </button>
       </mat-card-actions>
     </mat-card>
   `,
 })
 export class SettingsPanelComponent {
-  @Input() config!: SettingsPanelConfig;
-  @Output() editSettings = new EventEmitter<{ section: string; settings: any }>();
+  config = input.required<SettingsPanelConfig>();
+  editSettings = output<{ section: string; settings: Record<string, unknown> }>();
 
-  getSettingsEntries(): { key: string; value: any }[] {
-    return Object.entries(this.config.settings || {}).map(([key, value]) => ({
+  getSettingsEntries(): { key: string; value: unknown }[] {
+    return Object.entries(this.config().settings || {}).map(([key, value]) => ({
       key,
       value,
     }));
   }
 
-  getObjectEntries(obj: any): { key: string; value: any }[] {
-    return Object.entries(obj || {}).map(([key, value]) => ({
+  getObjectEntries(obj: unknown): { key: string; value: unknown }[] {
+    return Object.entries((obj as Record<string, unknown>) || {}).map(([key, value]) => ({
       key,
       value,
     }));
   }
 
-  isObjectButNotArray(value: any): boolean {
+  isObjectButNotArray(value: unknown): boolean {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
   }
 
@@ -100,18 +100,18 @@ export class SettingsPanelComponent {
     const sensitiveKeys = SENSITIVE_KEYS;
     return (
       sensitiveKeys.some(sensitive => key.toLowerCase().includes(sensitive)) &&
-      this.config.restrictMode
+      this.config().restrictMode
     );
   }
 
-  getDisplayValue(key: string, value: any): string {
+  getDisplayValue(key: string, value: unknown): string {
     if (this.isSensitiveKey(key)) {
       return 'RESTRICTED';
     }
     return this.truncateValue(value, 15);
   }
 
-  getTooltip(key: string, value: any): string {
+  getTooltip(key: string, value: unknown): string {
     if (this.isSensitiveKey(key)) {
       return '[RESTRICTED]';
     }
@@ -122,7 +122,7 @@ export class SettingsPanelComponent {
     }
   }
 
-  private truncateValue(value: any, length: number): string {
+  private truncateValue(value: unknown, length: number): string {
     if (value === null || value === undefined) return '';
 
     if (typeof value === 'object') {
@@ -140,8 +140,8 @@ export class SettingsPanelComponent {
 
   onEditSettings(): void {
     this.editSettings.emit({
-      section: this.config.section.key,
-      settings: this.config.settings,
+      section: this.config().section.key,
+      settings: this.config().settings,
     });
   }
 }

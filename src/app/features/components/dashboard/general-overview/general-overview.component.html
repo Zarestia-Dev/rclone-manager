@@ -15,10 +15,11 @@
       <app-remotes-panel
         [title]="'Quick Remote Access'"
         [icon]="'cloud'"
-        [remotes]="allRemotes"
+        [remotes]="remotes()"
         [mode]="'general'"
-        [actionInProgress]="actionInProgress"
+        [actionInProgress]="actionInProgress()"
         [primaryActionLabel]="'Mount'"
+        [primaryActions]="primaryActions()"
         [activeIcon]="'mount'"
         (remoteSelected)="onRemoteSelectedFromPanel($event)"
         (openInFiles)="onOpenInFilesFromPanel($event)"
@@ -31,7 +32,9 @@
 
       <!-- Bandwidth Limit Panel -->
       <mat-expansion-panel
-        [(expanded)]="bandwidthPanelOpenState"
+        [expanded]="bandwidthPanelOpenState()"
+        (opened)="bandwidthPanelOpenState.set(true)"
+        (closed)="bandwidthPanelOpenState.set(false)"
         class="bandwidth-panel"
         role="region"
       >
@@ -44,26 +47,26 @@
           </mat-panel-title>
           <mat-panel-description>
             <span aria-live="polite">
-              @if (bandwidthLimit?.loading) {
+              @if (bandwidthLimit()?.loading) {
                 <span aria-busy="true">Loading...</span>
-              } @else if (bandwidthLimit?.error) {
+              } @else if (bandwidthLimit()?.error) {
                 <span class="error-text">Error loading bandwidth info</span>
               } @else {
-                <span>{{ bandwidthDisplayValue }}</span>
+                <span>{{ bandwidthDisplayValue() }}</span>
               }
             </span>
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        @if (bandwidthLimit?.loading) {
+        @if (bandwidthLimit()?.loading) {
           <div class="loading fade-in" aria-live="polite">
             <mat-spinner diameter="24" aria-label="Loading bandwidth information"></mat-spinner>
             <span>Loading bandwidth information...</span>
           </div>
-        } @else if (bandwidthLimit?.error) {
+        } @else if (bandwidthLimit()?.error) {
           <div class="bandwidth-error" role="alert">
             <mat-icon class="warn" svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
-            <span>{{ bandwidthLimit?.error }}</span>
+            <span>{{ bandwidthLimit()?.error }}</span>
             <button
               matIconButton
               (click)="loadBandwidthLimit()"
@@ -77,21 +80,21 @@
           <div class="bandwidth-content">
             <div
               class="bandwidth-status"
-              [class.limited]="isBandwidthLimited"
-              [class.unlimited]="!isBandwidthLimited"
+              [class.limited]="isBandwidthLimited()"
+              [class.unlimited]="!isBandwidthLimited()"
               aria-live="polite"
             >
               <div class="status-indicator" aria-hidden="true"></div>
-              <span class="status-text">{{ bandwidthDisplayValue }}</span>
+              <span class="status-text">{{ bandwidthDisplayValue() }}</span>
             </div>
 
-            @if (isBandwidthLimited) {
+            @if (isBandwidthLimited()) {
               <div class="bandwidth-details">
                 @for (
                   detail of [
-                    { label: 'Upload:', value: (bandwidthDetails.upload | formatBytes) },
-                    { label: 'Download:', value: (bandwidthDetails.download | formatBytes) },
-                    { label: 'Total:', value: (bandwidthDetails.total | formatBytes) },
+                    { label: 'Upload:', value: (bandwidthDetails().upload | formatBytes) },
+                    { label: 'Download:', value: (bandwidthDetails().download | formatBytes) },
+                    { label: 'Total:', value: (bandwidthDetails().total | formatBytes) },
                   ];
                   track trackByIndex($index, detail)
                 ) {
@@ -108,7 +111,9 @@
 
       <!-- System Info Panel -->
       <mat-expansion-panel
-        [(expanded)]="systemInfoPanelOpenState"
+        [expanded]="systemInfoPanelOpenState()"
+        (opened)="systemInfoPanelOpenState.set(true)"
+        (closed)="systemInfoPanelOpenState.set(false)"
         class="system-info-panel"
         role="region"
       >
@@ -120,12 +125,12 @@
             </div>
           </mat-panel-title>
           <mat-panel-description>
-            <div class="status-indicator-small" [ngClass]="rcloneStatus" aria-hidden="true"></div>
-            {{ rcloneStatus | titlecase }}
+            <div class="status-indicator-small" [ngClass]="rcloneStatus()" aria-hidden="true"></div>
+            {{ rcloneStatus() | titlecase }}
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        @if (isLoadingStats) {
+        @if (isLoadingStats()) {
           <div class="loading fade-in" aria-live="polite">
             <mat-spinner diameter="24" aria-label="Loading system information"></mat-spinner>
             <span>Loading system information...</span>
@@ -134,11 +139,15 @@
           <div class="info-grid" role="grid">
             @for (
               item of [
-                { label: 'RClone Status:', value: rcloneStatus | titlecase, status: rcloneStatus },
-                { label: 'Total Remotes:', value: totalRemotes },
-                { label: 'Active Jobs:', value: activeJobsCount },
-                { label: 'Memory Usage:', value: (systemStats.memoryUsage | formatMemoryUsage) },
-                { label: 'Uptime:', value: (systemStats.uptime | formatTime) },
+                {
+                  label: 'RClone Status:',
+                  value: rcloneStatus() | titlecase,
+                  status: rcloneStatus(),
+                },
+                { label: 'Total Remotes:', value: totalRemotes() },
+                { label: 'Active Jobs:', value: activeJobsCount() },
+                { label: 'Memory Usage:', value: (systemStats().memoryUsage | formatMemoryUsage) },
+                { label: 'Uptime:', value: (systemStats().uptime | formatTime) },
               ];
               track trackByIndex($index, item)
             ) {
@@ -155,7 +164,9 @@
 
       <!-- Job Information Panel -->
       <mat-expansion-panel
-        [(expanded)]="jobInfoPanelOpenState"
+        [expanded]="jobInfoPanelOpenState()"
+        (opened)="jobInfoPanelOpenState.set(true)"
+        (closed)="jobInfoPanelOpenState.set(false)"
         class="job-info-panel"
         role="region"
       >
@@ -167,45 +178,45 @@
             </div>
           </mat-panel-title>
           <mat-panel-description>
-            <span [ngClass]="{ 'active-jobs-indicator': activeJobsCount > 0 }">
+            <span [ngClass]="{ 'active-jobs-indicator': activeJobsCount() > 0 }">
               {{
-                activeJobsCount > 0
-                  ? activeJobsCount + ' active job' + (activeJobsCount !== 1 ? 's' : '')
+                activeJobsCount() > 0
+                  ? activeJobsCount() + ' active job' + (activeJobsCount() !== 1 ? 's' : '')
                   : 'No active jobs'
               }}
             </span>
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        @if (isLoadingStats) {
+        @if (isLoadingStats()) {
           <div class="loading fade-in" aria-live="polite">
             <mat-spinner diameter="24" aria-label="Loading job information"></mat-spinner>
             <span>Loading job information...</span>
           </div>
         } @else {
           <div class="job-grid" role="grid">
-            @if (jobStats.totalBytes > 0) {
+            @if (jobStats().totalBytes > 0) {
               <div class="job-progress-section" role="rowgroup">
                 <div class="progress-header" role="row">
                   <span class="label" role="gridcell">Progress:</span>
                   <span class="value" role="gridcell"
-                    >{{ jobCompletionPercentage | number: '1.0-1' }}%</span
+                    >{{ jobCompletionPercentage() | number: '1.0-1' }}%</span
                   >
                 </div>
                 <mat-progress-bar
                   mode="determinate"
-                  [value]="jobCompletionPercentage"
+                  [value]="jobCompletionPercentage()"
                   role="progressbar"
-                  [attr.aria-valuenow]="jobCompletionPercentage"
+                  [attr.aria-valuenow]="jobCompletionPercentage()"
                   aria-valuemin="0"
                   aria-valuemax="100"
                 ></mat-progress-bar>
                 <div class="progress-details" role="row">
                   <span role="gridcell"
-                    >{{ jobStats.bytes | formatBytes }} of
-                    {{ jobStats.totalBytes | formatBytes }}</span
+                    >{{ jobStats().bytes | formatBytes }} of
+                    {{ jobStats().totalBytes | formatBytes }}</span
                   >
-                  <span role="gridcell">ETA: {{ jobStats.eta | formatEta }}</span>
+                  <span role="gridcell">ETA: {{ jobStats().eta | formatEta }}</span>
                 </div>
               </div>
             }
@@ -213,17 +224,17 @@
             <div class="job-stats-grid" role="grid">
               @for (
                 item of [
-                  { label: 'Transfer Speed:', value: (jobStats.speed | formatBytes) + '/s' },
+                  { label: 'Transfer Speed:', value: (jobStats().speed | formatBytes) + '/s' },
                   {
                     label: 'Transfers:',
-                    value: jobStats.transfers + ' / ' + jobStats.totalTransfers,
+                    value: jobStats().transfers + ' / ' + jobStats().totalTransfers,
                   },
-                  { label: 'Checks:', value: jobStats.checks + ' / ' + jobStats.totalChecks },
-                  { label: 'Errors:', value: jobStats.errors, error: jobStats.errors > 0 },
-                  { label: 'Deletes:', value: jobStats.deletes },
-                  { label: 'Renames:', value: jobStats.renames },
-                  { label: 'Server Copies:', value: jobStats.serverSideCopies },
-                  { label: 'Server Moves:', value: jobStats.serverSideMoves },
+                  { label: 'Checks:', value: jobStats().checks + ' / ' + jobStats().totalChecks },
+                  { label: 'Errors:', value: jobStats().errors, error: jobStats().errors > 0 },
+                  { label: 'Deletes:', value: jobStats().deletes },
+                  { label: 'Renames:', value: jobStats().renames },
+                  { label: 'Server Copies:', value: jobStats().serverSideCopies },
+                  { label: 'Server Moves:', value: jobStats().serverSideMoves },
                 ];
                 track trackByIndex($index, item)
               ) {
@@ -236,7 +247,7 @@
               }
             </div>
 
-            @if (jobStats.lastError) {
+            @if (jobStats().lastError) {
               <div class="error-section" role="alert">
                 <div class="label">Last Error:</div>
                 <div class="error-message">
@@ -247,17 +258,17 @@
                   ></mat-icon>
                   <span
                     matTooltip="Click to copy error"
-                    (click)="copyError(jobStats.lastError)"
+                    (click)="copyError(jobStats().lastError)"
                     tabindex="0"
                     role="button"
                     class="error-text-content"
-                    >{{ jobStats.lastError }}</span
+                    >{{ jobStats().lastError }}</span
                   >
                 </div>
               </div>
             }
 
-            @if (activeJobsCount === 0) {
+            @if (activeJobsCount() === 0) {
               <div class="no-jobs-message" role="status">
                 <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                 <span>No active jobs are currently running.</span>
@@ -269,7 +280,9 @@
 
       <!-- Scheduled Tasks Panel -->
       <mat-expansion-panel
-        [(expanded)]="scheduledTasksPanelOpenState"
+        [expanded]="scheduledTasksPanelOpenState()"
+        (opened)="scheduledTasksPanelOpenState.set(true)"
+        (closed)="scheduledTasksPanelOpenState.set(false)"
         class="scheduled-tasks-panel"
         role="region"
       >
@@ -281,24 +294,27 @@
             </div>
           </mat-panel-title>
           <mat-panel-description>
-            <span [ngClass]="{ 'active-tasks-indicator': activeScheduledTasksCount > 0 }">
+            <span [ngClass]="{ 'active-tasks-indicator': activeScheduledTasksCount() > 0 }">
               {{
-                totalScheduledTasksCount > 0
-                  ? activeScheduledTasksCount + ' active / ' + totalScheduledTasksCount + ' total'
+                totalScheduledTasksCount() > 0
+                  ? activeScheduledTasksCount() +
+                    ' active / ' +
+                    totalScheduledTasksCount() +
+                    ' total'
                   : 'No scheduled tasks'
               }}
             </span>
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        @if (isLoadingScheduledTasks) {
+        @if (isLoadingScheduledTasks()) {
           <div class="loading fade-in" aria-live="polite">
             <mat-spinner diameter="24" aria-label="Loading scheduled tasks"></mat-spinner>
             <span>Loading scheduled tasks...</span>
           </div>
         } @else {
           <div class="scheduled-tasks-content">
-            @if (totalScheduledTasksCount === 0) {
+            @if (totalScheduledTasksCount() === 0) {
               <div class="no-tasks-message" role="status">
                 <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                 <span
@@ -308,7 +324,7 @@
               </div>
             } @else {
               <div class="tasks-grid">
-                @for (task of scheduledTasks; track task.id) {
+                @for (task of scheduledTasks(); track task.id) {
                   <mat-card
                     class="task-card"
                     [class.disabled]="task.status === 'disabled'"
@@ -415,7 +431,13 @@
       </mat-expansion-panel>
 
       <!-- Running Serves Panel -->
-      <mat-expansion-panel [(expanded)]="servesPanelOpenState" class="serves-panel" role="region">
+      <mat-expansion-panel
+        [expanded]="servesPanelOpenState()"
+        (opened)="servesPanelOpenState.set(true)"
+        (closed)="servesPanelOpenState.set(false)"
+        class="serves-panel"
+        role="region"
+      >
         <mat-expansion-panel-header>
           <mat-panel-title>
             <div class="panel-title-content">
@@ -424,26 +446,26 @@
             </div>
           </mat-panel-title>
           <mat-panel-description>
-            <span [ngClass]="{ 'active-serves-indicator': allRunningServes.length > 0 }">
+            <span [ngClass]="{ 'active-serves-indicator': allRunningServes().length > 0 }">
               {{
-                allRunningServes.length > 0
-                  ? allRunningServes.length +
+                allRunningServes().length > 0
+                  ? allRunningServes().length +
                     ' active serve' +
-                    (allRunningServes.length !== 1 ? 's' : '')
+                    (allRunningServes().length !== 1 ? 's' : '')
                   : 'No active serves'
               }}
             </span>
           </mat-panel-description>
         </mat-expansion-panel-header>
 
-        @if (isLoadingServes) {
+        @if (isLoadingServes()) {
           <div class="loading fade-in" aria-live="polite">
             <mat-spinner diameter="24" aria-label="Loading running serves"></mat-spinner>
             <span>Loading running serves...</span>
           </div>
         } @else {
           <div class="serves-content">
-            @if (allRunningServes.length === 0) {
+            @if (allRunningServes().length === 0) {
               <div class="no-serves-message" role="status">
                 <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
                 <span
@@ -453,7 +475,7 @@
               </div>
             } @else {
               <div class="serves-grid">
-                @for (serve of allRunningServes; track serve.id) {
+                @for (serve of allRunningServes(); track serve.id) {
                   <app-serve-card
                     [serve]="serve"
                     [showRemoteName]="true"

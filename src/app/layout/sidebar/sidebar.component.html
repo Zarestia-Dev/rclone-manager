@@ -17,8 +17,8 @@
 
   <!-- Search Container -->
   <app-search-container
-    [visible]="searchVisible"
-    [searchText]="searchTerm"
+    [visible]="searchVisible()"
+    [searchText]="searchTerm()"
     (searchTextChange)="onSearchTextChange($event)"
     placeholder="Search remotes..."
     ariaLabel="Search remotes"
@@ -28,15 +28,13 @@
   <!-- Scrollable Content Area -->
   <div class="content-area">
     <!-- Remote List -->
-    @if (filteredRemotes.length > 0) {
+    @if (filteredRemotes().length > 0) {
       <ul>
-        @for (remote of filteredRemotes; track remote.remoteSpecs.name) {
+        @for (remote of filteredRemotes(); track remote.remoteSpecs.name) {
           <mat-card
             class="remote-card"
             (click)="selectRemote(remote)"
-            [class.selected]="
-              (selectedRemote$ | async)?.remoteSpecs?.name === remote.remoteSpecs.name
-            "
+            [class.selected]="selectedRemote()?.remoteSpecs?.name === remote.remoteSpecs.name"
           >
             <mat-card-content class="card-content">
               <!-- Remote Name with Status Indicators -->
@@ -90,11 +88,11 @@
     }
 
     <!-- No Remotes State -->
-    @if (filteredRemotes.length === 0) {
+    @if (filteredRemotes().length === 0) {
       <div class="no-remotes">
         <mat-icon svgIcon="server"></mat-icon>
-        @if (searchTerm.trim()) {
-          No remotes found matching "{{ searchTerm }}"
+        @if (searchTerm().trim()) {
+          No remotes found matching "{{ searchTerm() }}"
         } @else {
           No remotes configured
         }

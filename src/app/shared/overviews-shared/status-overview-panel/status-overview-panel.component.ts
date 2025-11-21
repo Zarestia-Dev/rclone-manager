@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, computed } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { AppTab } from '@app/types';
@@ -9,21 +9,20 @@ import { AppTab } from '@app/types';
   imports: [MatCardModule, MatIconModule],
   templateUrl: './status-overview-panel.component.html',
   styleUrl: './status-overview-panel.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StatusOverviewPanelComponent {
-  @Input() mode: AppTab = 'general';
-  @Input() totalCount = 0;
-  @Input() activeCount = 0;
-  @Input() inactiveCount = 0;
+  mode = input<AppTab>('general');
+  totalCount = input(0);
+  activeCount = input(0);
+  inactiveCount = input(0);
 
-  get title(): string {
-    const mode = this.mode.charAt(0).toUpperCase() + this.mode.slice(1);
-    return `${mode} Status Overview`;
-  }
+  title = computed(() => {
+    const mode = this.mode();
+    return `${mode.charAt(0).toUpperCase() + mode.slice(1)} Status Overview`;
+  });
 
-  get activeLabel(): string {
-    switch (this.mode) {
+  activeLabel = computed(() => {
+    switch (this.mode()) {
       case 'mount':
         return 'Mounted';
       case 'sync':
@@ -31,10 +30,10 @@ export class StatusOverviewPanelComponent {
       default:
         return 'Active';
     }
-  }
+  });
 
-  get inactiveLabel(): string {
-    switch (this.mode) {
+  inactiveLabel = computed(() => {
+    switch (this.mode()) {
       case 'mount':
         return 'Unmounted';
       case 'sync':
@@ -42,17 +41,21 @@ export class StatusOverviewPanelComponent {
       default:
         return 'Inactive';
     }
-  }
+  });
 
-  get activePercentage(): number {
-    return this.totalCount > 0 ? (this.activeCount / this.totalCount) * 100 : 0;
-  }
+  activePercentage = computed(() => {
+    const total = this.totalCount();
+    const active = this.activeCount();
+    return total > 0 ? (active / total) * 100 : 0;
+  });
 
-  get inactivePercentage(): number {
-    return this.totalCount > 0 ? (this.inactiveCount / this.totalCount) * 100 : 0;
-  }
+  inactivePercentage = computed(() => {
+    const total = this.totalCount();
+    const inactive = this.inactiveCount();
+    return total > 0 ? (inactive / total) * 100 : 0;
+  });
 
-  get hasData(): boolean {
-    return this.activeCount > 0 || this.inactiveCount > 0;
-  }
+  hasData = computed(() => {
+    return this.activeCount() > 0 || this.inactiveCount() > 0;
+  });
 }

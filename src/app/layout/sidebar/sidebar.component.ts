@@ -1,9 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Input, ViewChild, inject } from '@angular/core';
+import { Component, computed, HostListener, input, signal, ViewChild, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
-import { FormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
@@ -15,12 +15,12 @@ import { UiStateService } from '@app/services';
 
 @Component({
   selector: 'app-sidebar',
+  standalone: true,
   imports: [
     CommonModule,
     MatSidenavModule,
     MatCardModule,
     MatIconModule,
-    FormsModule,
     MatTooltipModule,
     SearchContainerComponent,
   ],
@@ -29,32 +29,30 @@ import { UiStateService } from '@app/services';
   styleUrl: './sidebar.component.scss',
 })
 export class SidebarComponent {
-  @Input() remotes: Remote[] = [];
-  @Input() iconService!: IconService;
-  // Previously emitted remoteSelected events here, now selection is managed via UiStateService
+  remotes = input.required<Remote[]>();
+  iconService = inject(IconService);
 
-  // Expose the selected remote observable directly from UiStateService
   uiStateService = inject(UiStateService);
-  selectedRemote$ = this.uiStateService.selectedRemote$;
+  selectedRemote = toSignal(this.uiStateService.selectedRemote$);
 
-  searchTerm = '';
-  searchVisible = false;
+  searchTerm = signal('');
+  searchVisible = signal(false);
   @ViewChild(SearchContainerComponent)
   searchContainer!: SearchContainerComponent;
 
   onSearchTextChange(searchText: string): void {
-    this.searchTerm = searchText.trim().toLowerCase();
+    this.searchTerm.set(searchText.trim().toLowerCase());
   }
 
-  get filteredRemotes(): Remote[] {
-    const term = this.searchTerm.trim().toLowerCase();
-    if (!term) return this.remotes;
-    return this.remotes.filter(
+  filteredRemotes = computed(() => {
+    const term = this.searchTerm().trim().toLowerCase();
+    if (!term) return this.remotes();
+    return this.remotes().filter(
       remote =>
         remote.remoteSpecs.name.toLowerCase().includes(term) ||
         remote.remoteSpecs.type.toLowerCase().includes(term)
     );
-  }
+  });
 
   selectRemote(remote: Remote): void {
     // propagate selection to global UI state so other components can react
@@ -66,7 +64,7 @@ export class SidebarComponent {
     const keyboardEvent = event as KeyboardEvent;
     keyboardEvent.preventDefault();
     this.toggleSearch();
-    if (this.searchVisible && this.searchContainer) {
+    if (this.searchVisible() && this.searchContainer) {
       this.searchContainer.focus();
     }
   }
@@ -74,14 +72,14 @@ export class SidebarComponent {
   // No local subscription needed: template uses async pipe on `selectedRemote$`
 
   toggleSearch(): void {
-    this.searchVisible = !this.searchVisible;
-    if (!this.searchVisible) {
+    this.searchVisible.update(v => !v);
+    if (!this.searchVisible()) {
       this.clearSearch();
     }
   }
 
   clearSearch(): void {
-    this.searchTerm = '';
+    this.searchTerm.set('');
     if (this.searchContainer) {
       this.searchContainer.clear();
     }

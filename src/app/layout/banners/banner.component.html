@@ -1,4 +1,4 @@
-@if (showDevelopmentBanner) {
+@if (showDevelopmentBanner()) {
   <mat-toolbar class="development-banner">
     <span class="warning-icon">🚧</span>
     <span class="banner-message">Development Build</span>
@@ -9,7 +9,7 @@
 }
 
 <mat-toolbar
-  [@slideToggle]="isMeteredConnection ? 'visible' : 'hidden'"
+  [@slideToggle]="isMeteredConnection() ? 'visible' : 'hidden'"
   class="metered-banner"
   role="alert"
 >

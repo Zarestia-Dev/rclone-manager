@@ -1,12 +1,5 @@
 import { CommonModule } from '@angular/common';
-import {
-  Component,
-  EventEmitter,
-  Input,
-  Output,
-  ChangeDetectionStrategy,
-  inject,
-} from '@angular/core';
+import { Component, computed, EventEmitter, input, Output, inject } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { RemoteCardComponent } from '../remote-card/remote-card.component';
@@ -19,16 +12,16 @@ import { IconService } from '../../services/icon.service';
   imports: [CommonModule, MatCardModule, MatIconModule, RemoteCardComponent],
   templateUrl: './remotes-panel.component.html',
   styleUrl: './remotes-panel.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class RemotesPanelComponent {
-  @Input() title = '';
-  @Input() icon = '';
-  @Input() remotes: Remote[] = [];
-  @Input() mode: AppTab = 'general';
-  @Input() actionInProgress: RemoteActionProgress = {};
-  @Input() primaryActionLabel = 'Start';
-  @Input() activeIcon = 'circle-check';
+  title = input('');
+  icon = input('');
+  remotes = input<Remote[]>([]);
+  mode = input<AppTab>('general');
+  actionInProgress = input<RemoteActionProgress>({});
+  primaryActionLabel = input('Start');
+  activeIcon = input('circle-check');
+  primaryActions = input<PrimaryActionType[]>([]);
 
   @Output() remoteSelected = new EventEmitter<Remote>();
   @Output() openInFiles = new EventEmitter<string>();
@@ -37,24 +30,20 @@ export class RemotesPanelComponent {
 
   readonly iconService = inject(IconService);
 
-  get count(): number {
-    return this.remotes.length;
-  }
+  count = computed(() => this.remotes().length);
 
-  get hasActiveRemotes(): boolean {
-    return this.remotes.some(
+  hasActiveRemotes = computed(() =>
+    this.remotes().some(
       remote =>
         remote.mountState?.mounted || remote.syncState?.isOnSync || remote.copyState?.isOnCopy
-    );
-  }
+    )
+  );
 
-  get panelClass(): string {
-    return this.hasActiveRemotes ? 'active-remotes-panel' : 'inactive-remotes-panel';
-  }
+  panelClass = computed(() =>
+    this.hasActiveRemotes() ? 'active-remotes-panel' : 'inactive-remotes-panel'
+  );
 
-  get iconClass(): string {
-    return this.hasActiveRemotes ? 'active-icon' : 'inactive-icon';
-  }
+  iconClass = computed(() => (this.hasActiveRemotes() ? 'active-icon' : 'inactive-icon'));
 
   onRemoteSelected(remote: Remote): void {
     this.remoteSelected.emit(remote);
@@ -65,6 +54,6 @@ export class RemotesPanelComponent {
   }
 
   getActionState(remoteName: string): RemoteAction | null {
-    return this.actionInProgress[remoteName] || null;
+    return this.actionInProgress()[remoteName] || null;
   }
 }

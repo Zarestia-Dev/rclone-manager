@@ -7,26 +7,26 @@
     <!-- Status Overview Panel -->
     <app-status-overview-panel
       mode="serve"
-      [totalCount]="remotes.length"
-      [activeCount]="activeCount"
-      [inactiveCount]="inactiveCount"
+      [totalCount]="remotes().length"
+      [activeCount]="activeCount()"
+      [inactiveCount]="inactiveCount()"
     >
     </app-status-overview-panel>
 
     <!-- Active Serves Panel: show individual serve cards because a remote can have multiple serves -->
-    @if (activeCount > 0) {
+    @if (activeCount() > 0) {
       <mat-card class="remotes-panel active-remotes-panel">
         <mat-card-header class="remotes-header">
           <mat-card-title class="panel-title-content">
             <mat-icon [svgIcon]="activeIcon" class="active-icon"></mat-icon>
             <span>{{ getActiveTitle() }}</span>
-            <span class="remote-count">{{ runningServes.length }}</span>
+            <span class="remote-count">{{ runningServes().length }}</span>
           </mat-card-title>
         </mat-card-header>
 
         <mat-card-content class="remotes-content">
           <div class="remotes-grid">
-            @for (serve of runningServes; track serve.id) {
+            @for (serve of runningServes(); track serve.id) {
               <app-serve-card
                 [serve]="serve"
                 [showRemoteName]="true"
@@ -48,13 +48,13 @@
     }
 
     <!-- Available Remotes Panel -->
-    @if (inactiveCount > 0) {
+    @if (inactiveCount() > 0) {
       <app-remotes-panel
         [title]="getInactiveTitle()"
         [icon]="'circle-xmark'"
-        [remotes]="inactiveRemotes"
+        [remotes]="inactiveRemotes()"
         mode="serve"
-        [actionInProgress]="actionInProgress"
+        [actionInProgress]="actionInProgress()"
         [primaryActionLabel]="primaryActionLabel"
         [activeIcon]="activeIcon"
         (remoteSelected)="selectRemote($event)"

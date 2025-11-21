@@ -1,13 +1,5 @@
 import { CommonModule } from '@angular/common';
-import {
-  Component,
-  EventEmitter,
-  Input,
-  Output,
-  ChangeDetectionStrategy,
-  inject,
-  OnDestroy,
-} from '@angular/core';
+import { Component, inject, input, output, computed } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -23,7 +15,6 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 // Services
 import { IconService } from '../../../../shared/services/icon.service';
 import { AnimationsService } from '../../../../shared/services/animations.service';
-import { Subject } from 'rxjs';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
 @Component({
@@ -47,44 +38,30 @@ import { ServeCardComponent } from '../../../../shared/components/serve-card/ser
   animations: [AnimationsService.fadeInOut()],
   templateUrl: './serve-overview.component.html',
   styleUrl: './serve-overview.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ServeOverviewComponent implements OnDestroy {
+export class ServeOverviewComponent {
   readonly iconService = inject(IconService);
-  private destroy$ = new Subject<void>();
 
-  @Input() remotes: Remote[] = [];
-  @Input() actionInProgress: RemoteActionProgress = {};
-  @Input() runningServes: ServeListItem[] = [];
+  remotes = input.required<Remote[]>();
+  actionInProgress = input<RemoteActionProgress>({});
+  runningServes = input.required<ServeListItem[]>();
 
-  @Output() remoteSelected = new EventEmitter<Remote>();
-  @Output() startJob = new EventEmitter<{ type: 'serve'; remoteName: string }>();
-  @Output() stopJob = new EventEmitter<{ type: 'serve'; remoteName: string; serveId: string }>();
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
+  remoteSelected = output<Remote>();
+  startJob = output<{ type: 'serve'; remoteName: string }>();
+  stopJob = output<{ type: 'serve'; remoteName: string; serveId: string }>();
 
   private isRemoteActive(remote: Remote): boolean {
     return remote.serveState?.hasActiveServes === true;
   }
 
-  get activeRemotes(): Remote[] {
-    return this.remotes.filter(remote => this.isRemoteActive(remote));
-  }
-
-  get inactiveRemotes(): Remote[] {
-    return this.remotes.filter(remote => !this.isRemoteActive(remote));
-  }
-
-  get activeCount(): number {
-    return this.activeRemotes.length;
-  }
-
-  get inactiveCount(): number {
-    return this.inactiveRemotes.length;
-  }
+  readonly activeRemotes = computed(() =>
+    this.remotes().filter(remote => this.isRemoteActive(remote))
+  );
+  readonly inactiveRemotes = computed(() =>
+    this.remotes().filter(remote => !this.isRemoteActive(remote))
+  );
+  readonly activeCount = computed(() => this.activeRemotes().length);
+  readonly inactiveCount = computed(() => this.inactiveRemotes().length);
 
   readonly title = 'Serve Overview';
 
@@ -128,7 +105,7 @@ export class ServeOverviewComponent implements OnDestroy {
 
   handleServeCardClick(serve: ServeListItem): void {
     const remoteName = serve.params.fs.split(':')[0];
-    const remote = this.remotes.find(r => r.remoteSpecs.name === remoteName);
+    const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
     if (remote) {
       this.selectRemote(remote);
     }

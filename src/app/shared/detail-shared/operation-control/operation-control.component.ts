@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,42 +24,42 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@a
   ],
   styleUrls: ['./operation-control.component.scss'],
   template: `
-    <mat-card class="detail-panel operation-control-panel" [class.active]="config.isActive">
-      <mat-card-header class="panel-header" [ngClass]="config.operationType">
+    <mat-card class="detail-panel operation-control-panel" [class.active]="config().isActive">
+      <mat-card-header class="panel-header" [ngClass]="config().operationType">
         <mat-card-title class="panel-title-content">
-          <mat-icon [svgIcon]="getOperationIcon()" class="panel-icon"></mat-icon>
-          <span>{{ config.operationType | titlecase }} Control</span>
+          <mat-icon [svgIcon]="operationIcon()" class="panel-icon"></mat-icon>
+          <span>{{ config().operationType | titlecase }} Control</span>
         </mat-card-title>
       </mat-card-header>
 
       <mat-card-content class="panel-content">
-        <app-path-display [config]="config.pathConfig" (openPath)="onOpenPath($event)">
+        <app-path-display [config]="config().pathConfig" (openPath)="openPath.emit($event)">
         </app-path-display>
       </mat-card-content>
 
       <mat-card-actions class="panel-actions">
-        <app-status-badge [config]="getStatusBadgeConfig()"></app-status-badge>
+        <app-status-badge [config]="statusBadgeConfig()"></app-status-badge>
         <div class="operation-controls">
           <button
             matButton="filled"
             (click)="
-              config.isActive
-                ? stopJob.emit(config.operationType)
-                : startJob.emit(config.operationType)
+              config().isActive
+                ? stopJob.emit(config().operationType)
+                : startJob.emit(config().operationType)
             "
-            [disabled]="config.isLoading"
-            [ngClass]="getButtonClass()"
+            [disabled]="config().isLoading"
+            [ngClass]="buttonClass()"
             class="operation-toggle-button"
           >
-            @if (config.isLoading) {
+            @if (config().isLoading) {
               <mat-spinner diameter="20"></mat-spinner>
             } @else {
               <mat-icon
-                [svgIcon]="config.isActive ? config.secondaryIcon : config.primaryIcon"
+                [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
               ></mat-icon>
             }
             <span>{{
-              config.isActive ? config.secondaryButtonLabel : config.primaryButtonLabel
+              config().isActive ? config().secondaryButtonLabel : config().primaryButtonLabel
             }}</span>
           </button>
         </div>
@@ -68,14 +68,14 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@a
   `,
 })
 export class OperationControlComponent {
-  @Input() config!: OperationControlConfig;
-  @Output() startJob = new EventEmitter<PrimaryActionType>();
-  @Output() stopJob = new EventEmitter<PrimaryActionType>();
-  @Output() openPath = new EventEmitter<string>();
+  config = input.required<OperationControlConfig>();
+  startJob = output<PrimaryActionType>();
+  stopJob = output<PrimaryActionType>();
+  openPath = output<string>();
 
-  getOperationIcon(): string {
+  readonly operationIcon = computed(() => {
     // Use subOperationType for sync operations
-    switch (this.config.operationType) {
+    switch (this.config().operationType) {
       case 'mount':
         return 'mount';
       case 'sync':
@@ -89,9 +89,10 @@ export class OperationControlComponent {
       default:
         return 'refresh'; // Default icon
     }
-  }
+  });
 
-  getStatusBadgeConfig(): StatusBadgeConfig {
+  readonly statusBadgeConfig = computed((): StatusBadgeConfig => {
+    const config = this.config();
     // Define status labels for each operation type
     const statusLabels: Record<PrimaryActionType, { active: string; inactive: string }> = {
       mount: { active: 'Mounted', inactive: 'Not Mounted' },
@@ -104,9 +105,9 @@ export class OperationControlComponent {
 
     // Determine the current state
     let state: 'active' | 'inactive' | 'error';
-    if (this.config.isError) {
+    if (config.isError) {
       state = 'error';
-    } else if (this.config.isActive) {
+    } else if (config.isActive) {
       state = 'active';
     } else {
       state = 'inactive';
@@ -118,14 +119,14 @@ export class OperationControlComponent {
       resolvedBadgeClass = 'error';
     } else if (state === 'active') {
       // Active operation: use mounted for mount, otherwise active-<op>
-      if (this.config.operationType === 'mount') {
+      if (config.operationType === 'mount') {
         resolvedBadgeClass = 'mounted';
       } else {
-        resolvedBadgeClass = `active-${this.config.operationType}`;
+        resolvedBadgeClass = `active-${config.operationType}`;
       }
     } else {
       // Inactive: use unmounted for mount, otherwise generic inactive
-      if (this.config.operationType === 'mount') {
+      if (config.operationType === 'mount') {
         resolvedBadgeClass = 'unmounted';
       } else {
         resolvedBadgeClass = 'inactive';
@@ -133,23 +134,20 @@ export class OperationControlComponent {
     }
 
     return {
-      isActive: this.config.isActive,
-      isError: this.config.isError,
-      isLoading: this.config.isLoading,
-      activeLabel: statusLabels[this.config.operationType].active,
-      inactiveLabel: statusLabels[this.config.operationType].inactive,
+      isActive: config.isActive,
+      isError: config.isError,
+      isLoading: config.isLoading,
+      activeLabel: statusLabels[config.operationType].active,
+      inactiveLabel: statusLabels[config.operationType].inactive,
       errorLabel: 'Error',
       badgeClass: resolvedBadgeClass,
     };
-  }
+  });
 
-  onOpenPath(path: string): void {
-    this.openPath.emit(path);
-  }
-
-  getButtonClass(): string {
+  readonly buttonClass = computed(() => {
+    const config = this.config();
     // When active, always use the warn class to emphasize stopping an active op.
-    if (this.config?.isActive) return 'warn';
-    return this.config?.cssClass || '';
-  }
+    if (config?.isActive) return 'warn';
+    return config?.cssClass || '';
+  });
 }

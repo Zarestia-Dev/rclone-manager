@@ -1,4 +1,5 @@
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, OnDestroy, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { Subject, takeUntil, firstValueFrom, filter } from 'rxjs';
 import { TitlebarComponent } from './layout/titlebar/titlebar.component';
 import { OnboardingComponent } from './features/onboarding/onboarding.component';
@@ -15,8 +16,6 @@ import { ShortcutHandlerDirective } from './shared/directives/shortcut-handler.d
 import { BannerComponent } from './layout/banners/banner.component';
 import { PasswordPromptResult } from '@app/types';
 
-import { AsyncPipe } from '@angular/common';
-
 // Services
 import {
   UiStateService,
@@ -32,7 +31,7 @@ import { NautilusComponent } from './features/nautilus/nautilus.component';
 
 @Component({
   selector: 'app-root',
-  standalone: true, // This was missing from your file, but implied
+  standalone: true,
   imports: [
     TitlebarComponent,
     OnboardingComponent,
@@ -42,41 +41,43 @@ import { NautilusComponent } from './features/nautilus/nautilus.component';
     ShortcutHandlerDirective,
     BannerComponent,
     NautilusComponent,
-    AsyncPipe,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
 })
-export class AppComponent implements OnInit, OnDestroy {
-  completedOnboarding = false;
-  alreadyReported = false;
-  currentTab: AppTab = 'general';
+export class AppComponent implements OnDestroy {
+  // --- STATE SIGNALS ---
+  readonly completedOnboarding = signal(false);
+  readonly alreadyReported = signal(false);
+  readonly passwordPromptInProgress = signal(false);
 
-  // --- NEW STATE PROPERTIES ---
+  // --- INJECTED DEPENDENCIES & SERVICES ---
+  private readonly bottomSheet = inject(MatBottomSheet);
+  private readonly installationService = inject(InstallationService);
+  readonly uiStateService = inject(UiStateService);
+  readonly appSettingsService = inject(AppSettingsService);
+  private readonly eventListenersService = inject(EventListenersService);
+  private readonly rclonePasswordService = inject(RclonePasswordService);
+  readonly onboardingStateService = inject(OnboardingStateService);
+  private readonly appUpdaterService = inject(AppUpdaterService);
+  private readonly rcloneUpdateService = inject(RcloneUpdateService);
 
-  // Services
-  private bottomSheet = inject(MatBottomSheet);
-  private installationService = inject(InstallationService);
-  public uiStateService = inject(UiStateService);
-  public appSettingsService = inject(AppSettingsService);
-  private eventListenersService = inject(EventListenersService);
-  private rclonePasswordService = inject(RclonePasswordService);
-  public onboardingStateService = inject(OnboardingStateService);
-  private appUpdaterService = inject(AppUpdaterService);
-  private rcloneUpdateService = inject(RcloneUpdateService);
+  // --- DERIVED STATE & OBSERVABLE CONVERSIONS ---
+  readonly isNautilusOverlayOpen = toSignal(this.uiStateService.isNautilusOverlayOpen$, {
+    initialValue: false,
+  });
+  readonly currentTab = toSignal(this.uiStateService.currentTab$, {
+    initialValue: 'general' as AppTab,
+  });
 
-  // Subscription management
-  private destroy$ = new Subject<void>();
-  private activeSheets = new Set<MatBottomSheetRef<RepairSheetComponent>>();
-  private passwordPromptInProgress = false; // Prevent multiple password prompts
+  // --- PRIVATE PROPERTIES ---
+  private readonly destroy$ = new Subject<void>();
+  private readonly activeSheets = new Set<MatBottomSheetRef<RepairSheetComponent>>();
 
   constructor() {
     this.initializeApp().catch(error => {
       console.error('Error during app initialization:', error);
     });
-  }
-
-  async ngOnInit(): Promise<void> {
     this.setupSubscriptions();
   }
 
@@ -92,7 +93,7 @@ export class AppComponent implements OnInit, OnDestroy {
       await this.checkOnboardingStatus();
     } catch (error) {
       console.error('App initialization failed:', error);
-      this.completedOnboarding = false;
+      this.completedOnboarding.set(false);
     }
   }
 
@@ -102,15 +103,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private setupSubscriptions(): void {
-    // Tab changes
-    this.uiStateService.currentTab$.pipe(takeUntil(this.destroy$)).subscribe(tab => {
-      this.currentTab = tab;
-    });
-
-    // Single Rclone engine event listener (consolidated)
     this.setupRcloneEngineListener();
-
-    // OAuth event listener
     this.setupRcloneOAuthListener();
   }
 
@@ -120,14 +113,7 @@ export class AppComponent implements OnInit, OnDestroy {
       .listenToRcloneEngineReady()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: async () => {
-          try {
-            console.log('Rclone engine ready');
-            this.handleRcloneReady();
-          } catch (error) {
-            console.error('Error in Rclone engine ready handler:', error);
-          }
-        },
+        next: () => this.handleRcloneReady(),
         error: error => console.error('Rclone engine ready subscription error:', error),
       });
 
@@ -136,15 +122,8 @@ export class AppComponent implements OnInit, OnDestroy {
       .listenToRcloneEnginePathError()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: async () => {
-          try {
-            console.log('Rclone engine path error');
-            if (this.completedOnboarding) {
-              this.handleRclonePathError();
-            }
-          } catch (error) {
-            console.error('Error in Rclone engine path error handler:', error);
-          }
+        next: () => {
+          if (this.completedOnboarding()) this.handleRclonePathError();
         },
         error: error => console.error('Rclone engine path error subscription error:', error),
       });
@@ -155,14 +134,7 @@ export class AppComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: async () => {
-          try {
-            console.log('Rclone engine password error');
-            if (this.completedOnboarding) {
-              await this.handlePasswordRequired();
-            }
-          } catch (error) {
-            console.error('Error in Rclone engine password error handler:', error);
-          }
+          if (this.completedOnboarding()) await this.handlePasswordRequired();
         },
         error: error => console.error('Rclone engine password error subscription error:', error),
       });
@@ -173,37 +145,25 @@ export class AppComponent implements OnInit, OnDestroy {
       .listenToRcloneOAuth()
       .pipe(
         takeUntil(this.destroy$),
-        filter(event => typeof event === 'object' && event !== null)
+        filter((event): event is object => typeof event === 'object' && event !== null)
       )
       .subscribe({
         next: async event => {
-          try {
-            await this.handleRcloneOAuthEvent(event);
-          } catch (error) {
-            console.error('Error in OAuth event handler:', error);
-          }
+          await this.handleRcloneOAuthEvent(event);
         },
         error: error => console.error('OAuth event subscription error:', error),
       });
   }
 
   private async checkOnboardingStatus(): Promise<void> {
-    try {
-      this.onboardingStateService.onboardingCompleted$
-        .pipe(takeUntil(this.destroy$))
-        .subscribe(async completed => {
-          this.completedOnboarding = completed;
-          console.log('Onboarding status updated:', completed);
-
-          // Run post-onboarding setup when completed
-          if (completed) {
-            await this.postOnboardingSetup();
-          }
-        });
-    } catch (error) {
-      console.error('Error checking onboarding status:', error);
-      this.completedOnboarding = false;
-    }
+    this.onboardingStateService.onboardingCompleted$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(async completed => {
+        this.completedOnboarding.set(completed);
+        if (completed) {
+          await this.postOnboardingSetup();
+        }
+      });
   }
 
   private async postOnboardingSetup(): Promise<void> {
@@ -253,7 +213,7 @@ export class AppComponent implements OnInit, OnDestroy {
     this.eventListenersService
       .listenToMountPluginInstalled()
       .pipe(takeUntil(this.destroy$))
-      .subscribe(async () => {
+      .subscribe(() => {
         console.log('Mount plugin installation event received');
 
         // Re-check mount plugin status after a short delay
@@ -278,17 +238,17 @@ export class AppComponent implements OnInit, OnDestroy {
       });
   }
 
-  private async handleRcloneOAuthEvent(event: unknown): Promise<void> {
+  private async handleRcloneOAuthEvent(event: object): Promise<void> {
     console.log('OAuth event received:', event);
 
     try {
       // Handle different OAuth event types
-      if (typeof event === 'object' && event !== null && 'status' in event) {
+      if ('status' in event) {
         const typedEvent = event as { status: string; message?: string };
         switch (typedEvent.status) {
           case 'password_error':
             console.log('🔑 OAuth password error detected:', typedEvent.message);
-            if (this.completedOnboarding) {
+            if (this.completedOnboarding()) {
               await this.handlePasswordRequired();
             }
             break;
@@ -324,14 +284,14 @@ export class AppComponent implements OnInit, OnDestroy {
   private async handlePasswordRequired(): Promise<void> {
     // Prevent multiple concurrent password prompts
     if (
-      this.passwordPromptInProgress ||
+      this.passwordPromptInProgress() ||
       this.hasActiveSheetOfType(RepairSheetType.RCLONE_PASSWORD)
     ) {
       console.log('Password prompt already in progress, skipping...');
       return;
     }
 
-    this.passwordPromptInProgress = true;
+    this.passwordPromptInProgress.set(true);
 
     try {
       const result = await this.promptForPassword();
@@ -345,7 +305,7 @@ export class AppComponent implements OnInit, OnDestroy {
       console.error('Error handling password requirement:', error);
       throw error;
     } finally {
-      this.passwordPromptInProgress = false;
+      this.passwordPromptInProgress.set(false);
     }
   }
 
@@ -366,9 +326,9 @@ export class AppComponent implements OnInit, OnDestroy {
 
   //#region Rclone Error Handling
   private handleRclonePathError(): void {
-    if (this.alreadyReported) return;
+    if (this.alreadyReported()) return;
 
-    this.alreadyReported = true;
+    this.alreadyReported.set(true);
     this.showRepairSheet({
       type: RepairSheetType.RCLONE_PATH,
       title: 'Rclone Path Problem',
@@ -377,8 +337,8 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   private handleRcloneReady(): void {
-    this.alreadyReported = false;
-    this.passwordPromptInProgress = false; // Reset password prompt flag
+    this.alreadyReported.set(false);
+    this.passwordPromptInProgress.set(false); // Reset password prompt flag
     this.closeSheetsByTypes([RepairSheetType.RCLONE_PATH, RepairSheetType.RCLONE_PASSWORD]);
   }
   //#endregion
@@ -418,7 +378,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.activeSheets.delete(sheetRef);
       // Reset password prompt flag when sheet is dismissed
       if (data.type === RepairSheetType.RCLONE_PASSWORD) {
-        this.passwordPromptInProgress = false;
+        this.passwordPromptInProgress.set(false);
       }
     }
   }
@@ -454,28 +414,22 @@ export class AppComponent implements OnInit, OnDestroy {
     try {
       // Use the centralized service to complete onboarding
       await this.onboardingStateService.completeOnboarding();
-      this.completedOnboarding = true;
+      this.completedOnboarding.set(true);
       console.log('Onboarding completed via OnboardingStateService');
 
       await this.postOnboardingSetup();
     } catch (error) {
       console.error('Error saving onboarding status:', error);
-      this.completedOnboarding = false;
+      this.completedOnboarding.set(false);
       throw error;
     }
   }
 
-  async setTab(tab: AppTab): Promise<void> {
-    if (this.currentTab === tab) {
+  setTab(tab: AppTab): void {
+    if (this.currentTab() === tab) {
       return;
     }
-
-    try {
-      this.currentTab = tab;
-      this.uiStateService.setTab(tab);
-    } catch (error) {
-      console.error('Error setting tab:', error);
-    }
+    this.uiStateService.setTab(tab);
   }
 
   handleNautilusBack(): void {

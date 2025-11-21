@@ -1,4 +1,4 @@
-<mat-nav-list class="repair-sheet" [class.repairing]="installing">
+<mat-nav-list class="repair-sheet" [class.repairing]="installing()">
   <div class="sheet-header">
     <div class="repair-header-top">
       <div class="repair-icon">
@@ -27,16 +27,16 @@
     @if (requiresPassword()) {
       <div class="password-row">
         <app-password-manager
-          [password]="password"
-          [storePassword]="storePassword"
-          [isSubmitting]="isSubmittingPassword"
-          [hasError]="hasPasswordError"
-          [errorMessage]="passwordErrorMessage"
+          [password]="password()"
+          [storePassword]="storePassword()"
+          [isSubmitting]="isSubmittingPassword()"
+          [hasError]="hasPasswordError()"
+          [errorMessage]="passwordErrorMessage()"
           [showStoreOption]="!!data.showStoreOption"
-          [disabled]="installing || showConfigOptions"
-          [shakeTrigger]="errorCount"
-          (passwordChange)="password = $event"
-          (storePasswordChange)="storePassword = $event"
+          [disabled]="installing() || showConfigOptions()"
+          [shakeTrigger]="errorCount()"
+          (passwordChange)="password.set($event)"
+          (storePasswordChange)="storePassword.set($event)"
           (unlock)="submitPassword()"
         ></app-password-manager>
       </div>
@@ -46,22 +46,22 @@
           matButton="filled"
           class="accent"
           (click)="toggleConfigOptions()"
-          [disabled]="installing || isSubmittingPassword"
+          [disabled]="installing() || isSubmittingPassword()"
         >
           <mat-icon
             svgIcon="caret-down"
-            [style.transform]="showConfigOptions ? 'rotate(180deg)' : 'rotate(0deg)'"
+            [style.transform]="showConfigOptions() ? 'rotate(180deg)' : 'rotate(0deg)'"
             style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
           ></mat-icon>
-          {{ showConfigOptions ? 'Hide Config Options' : 'Use Different Config File' }}
+          {{ showConfigOptions() ? 'Hide Config Options' : 'Use Different Config File' }}
         </button>
       </div>
 
-      @if (showConfigOptions) {
+      @if (showConfigOptions()) {
         <app-installation-options
           [mode]="'config'"
           [tabOptions]="configTabOptions"
-          [disabled]="installing"
+          [disabled]="installing()"
           (dataChange)="onInstallationOptionsChange($event)"
           (validChange)="onInstallationValidChange($event)"
         >
@@ -75,21 +75,21 @@
           matButton="filled"
           class="accent"
           (click)="toggleInstallOptions()"
-          [disabled]="installing"
+          [disabled]="installing()"
         >
           <mat-icon
             svgIcon="caret-down"
-            [style.transform]="showAdvanced ? 'rotate(180deg)' : 'rotate(0deg)'"
+            [style.transform]="showAdvanced() ? 'rotate(180deg)' : 'rotate(0deg)'"
             style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
           ></mat-icon>
-          {{ showAdvanced ? 'Hide' : 'Show' }} Advanced Options
+          {{ showAdvanced() ? 'Hide' : 'Show' }} Advanced Options
         </button>
       </div>
 
-      @if (showAdvanced) {
+      @if (showAdvanced()) {
         <app-installation-options
           [mode]="'install'"
-          [disabled]="installing"
+          [disabled]="installing()"
           (dataChange)="onInstallationOptionsChange($event)"
           (validChange)="onInstallationValidChange($event)"
         >
@@ -104,48 +104,48 @@
       [disabled]="!canRepair()"
       class="repair-button"
       (click)="repair()"
-      [attr.aria-label]="installing ? 'Repairing in progress' : 'Start repair process'"
+      [attr.aria-label]="installing() ? 'Repairing in progress' : 'Start repair process'"
       [matTooltip]="
-        !canRepair() && !installing && !isSubmittingPassword
-          ? showConfigOptions
-            ? installationData.installLocation === 'custom' &&
-              installationData.customPath.trim().length === 0
+        !canRepair() && !installing() && !isSubmittingPassword()
+          ? showConfigOptions()
+            ? installationData().installLocation === 'custom' &&
+              installationData().customPath.trim().length === 0
               ? 'Please select a config file first'
-              : !installationValid
+              : !installationValid()
                 ? 'Please fix validation errors'
                 : ''
-            : requiresPassword() && !password
+            : requiresPassword() && !password()
               ? 'Please enter the configuration password first'
               : requiresPassword()
                 ? 'Account is temporarily locked due to failed attempts'
-                : installationData.installLocation === 'custom' &&
-                    installationData.customPath.trim().length === 0
+                : installationData().installLocation === 'custom' &&
+                    installationData().customPath.trim().length === 0
                   ? 'Please select an installation path first'
-                  : installationData.installLocation === 'existing' &&
-                      installationData.existingBinaryPath.trim().length === 0
+                  : installationData().installLocation === 'existing' &&
+                      installationData().existingBinaryPath.trim().length === 0
                     ? 'Please select a binary file first'
-                    : installationData.installLocation === 'existing' &&
-                        installationData.binaryTestResult === 'invalid'
+                    : installationData().installLocation === 'existing' &&
+                        installationData().binaryTestResult === 'invalid'
                       ? 'The selected file is not a valid rclone binary'
-                      : installationData.installLocation === 'existing' &&
-                          installationData.binaryTestResult === 'untested'
+                      : installationData().installLocation === 'existing' &&
+                          installationData().binaryTestResult === 'untested'
                         ? 'Please test the selected binary first'
-                        : !installationValid
+                        : !installationValid()
                           ? 'Please fix validation errors'
                           : ''
           : ''
       "
     >
       {{
-        installing || isSubmittingPassword
-          ? isSubmittingPassword
+        installing() || isSubmittingPassword()
+          ? isSubmittingPassword()
             ? 'Validating Password...'
-            : getRepairProgressText()
-          : getRepairButtonText()
+            : repairProgressText()
+          : repairButtonText()
       }}
       <mat-icon
-        [svgIcon]="getRepairButtonIcon()"
-        [class.animate-spin]="installing || isSubmittingPassword"
+        [svgIcon]="repairButtonIcon()"
+        [class.animate-spin]="installing() || isSubmittingPassword()"
       ></mat-icon>
     </button>
   </div>

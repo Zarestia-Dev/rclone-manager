@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Output, EventEmitter, inject, input, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -36,78 +36,60 @@ const URL_BASED_PROTOCOLS = ['http', 'webdav', 'ftp', 'sftp', 's3'];
 export class ServeCardComponent {
   readonly iconService = inject(IconService);
 
-  @Input({ required: true }) serve!: ServeListItem;
-  @Input() showRemoteName = false; // Show remote name for general overview
+  serve = input.required<ServeListItem>();
+  showRemoteName = input(false);
 
   @Output() stopServe = new EventEmitter<ServeListItem>();
   @Output() copyToClipboard = new EventEmitter<{ text: string; message: string }>();
   @Output() cardClick = new EventEmitter<ServeListItem>();
 
-  /**
-   * Gets the icon and description for a serve type.
-   */
-  getServeTypeInfo(type: string): TypeInfo {
-    return TYPE_INFO[type.toLowerCase()] || DEFAULT_TYPE_INFO;
-  }
+  serveTypeInfo = computed<TypeInfo>(() => {
+    const serveType = this.serve().params.type.toLowerCase();
+    return TYPE_INFO[serveType] || DEFAULT_TYPE_INFO;
+  });
 
-  /**
-   * Generates a full URL for URL-based protocols.
-   */
-  getServeUrl(serve: ServeListItem): string | null {
+  serveUrl = computed<string | null>(() => {
+    const serve = this.serve();
     const type = serve.params.type.toLowerCase();
     if (URL_BASED_PROTOCOLS.includes(type)) {
       return `${type}://${serve.addr}`;
     }
     return null;
-  }
+  });
 
-  /**
-   * Formats the serve options for a tooltip.
-   */
-  getOptionsTooltip(params: ServeListItem['params']): string {
-    // Remove keys that are already displayed elsewhere
-    const { fs, type, ...options } = params;
+  optionsTooltip = computed<string>(() => {
+    const { ...options } = this.serve().params;
 
     const keys = Object.keys(options);
     if (keys.length === 0) {
       return 'No additional options';
     }
 
-    // Format as "key: value" pairs
     return keys
       .map(key => {
         const value = options[key as keyof typeof options];
         if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-          // Handle nested objects like vfsOpt
           const nestedOptions = Object.entries(value)
             .map(([k, v]) => `  ${k}: ${v}`)
             .join('\n');
           return `${key}:\n${nestedOptions}`;
         }
-        // Handle simple values, arrays, or null
         return `${key}: ${JSON.stringify(value)}`;
       })
       .join('\n');
-  }
+  });
 
-  /**
-   * Gets the keys of the options object, excluding 'fs' and 'type'.
-   */
-  getOptionKeys(params: ServeListItem['params']): string[] {
-    if (!params) return [];
-    const { fs, type, ...options } = params;
+  optionKeys = computed<string[]>(() => {
+    const { ...options } = this.serve().params;
     return Object.keys(options);
-  }
+  });
 
-  /**
-   * Extracts the remote name from the serve fs parameter.
-   */
-  getRemoteName(serve: ServeListItem): string {
-    return serve.params.fs.split(':')[0];
-  }
+  remoteName = computed<string>(() => {
+    return this.serve().params.fs.split(':')[0];
+  });
 
   onStopServe(): void {
-    this.stopServe.emit(this.serve);
+    this.stopServe.emit(this.serve());
   }
 
   onCopyToClipboard(text: string, message: string): void {
@@ -115,6 +97,6 @@ export class ServeCardComponent {
   }
 
   onCardClick(): void {
-    this.cardClick.emit(this.serve);
+    this.cardClick.emit(this.serve());
   }
 }

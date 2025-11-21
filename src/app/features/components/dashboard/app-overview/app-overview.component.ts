@@ -1,12 +1,5 @@
 import { CommonModule } from '@angular/common';
-import {
-  Component,
-  EventEmitter,
-  Input,
-  Output,
-  ChangeDetectionStrategy,
-  inject,
-} from '@angular/core';
+import { Component, computed, input, output, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
@@ -39,25 +32,25 @@ import { AnimationsService } from '../../../../shared/services/animations.servic
   animations: [AnimationsService.fadeInOut()],
   templateUrl: './app-overview.component.html',
   styleUrl: './app-overview.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppOverviewComponent {
   readonly iconService = inject(IconService);
 
-  @Input() mode: AppTab = 'mount';
-  @Input() remotes: Remote[] = [];
-  @Input() selectedRemote: Remote | null = null;
-  @Input() actionInProgress: RemoteActionProgress = {};
+  mode = input<AppTab>('mount');
+  remotes = input<Remote[]>([]);
+  selectedRemote = input<Remote | null>(null);
+  actionInProgress = input<RemoteActionProgress>({});
 
-  @Output() remoteSelected = new EventEmitter<Remote>();
-  @Output() openInFiles = new EventEmitter<string>();
-  @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
-  @Output() stopJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
+  remoteSelected = output<Remote>();
+  openInFiles = output<string>();
+  startJob = output<{ type: PrimaryActionType; remoteName: string }>();
+  stopJob = output<{ type: PrimaryActionType; remoteName: string }>();
 
-  private isRemoteActive(remote: Remote): boolean {
-    if (this.mode === 'mount') {
+  private isRemoteActive = (remote: Remote): boolean => {
+    const mode = this.mode();
+    if (mode === 'mount') {
       return remote.mountState?.mounted === true;
-    } else if (this.mode === 'sync') {
+    } else if (mode === 'sync') {
       return (
         remote.syncState?.isOnSync === true ||
         remote.copyState?.isOnCopy === true ||
@@ -66,35 +59,25 @@ export class AppOverviewComponent {
       );
     }
     return false;
-  }
+  };
 
-  get activeRemotes(): Remote[] {
-    return this.remotes.filter(remote => this.isRemoteActive(remote));
-  }
+  activeRemotes = computed(() => this.remotes().filter(remote => this.isRemoteActive(remote)));
+  inactiveRemotes = computed(() => this.remotes().filter(remote => !this.isRemoteActive(remote)));
+  activeCount = computed(() => this.activeRemotes().length);
+  inactiveCount = computed(() => this.inactiveRemotes().length);
 
-  get inactiveRemotes(): Remote[] {
-    return this.remotes.filter(remote => !this.isRemoteActive(remote));
-  }
-
-  get activeCount(): number {
-    return this.activeRemotes.length;
-  }
-
-  get inactiveCount(): number {
-    return this.inactiveRemotes.length;
-  }
-
-  get title(): string {
-    if (this.mode === 'mount') {
+  title = computed(() => {
+    const mode = this.mode();
+    if (mode === 'mount') {
       return 'Mount Overview';
-    } else if (this.mode === 'sync') {
+    } else if (mode === 'sync') {
       return 'Sync Operations Overview';
     }
     return 'Remotes Overview';
-  }
+  });
 
-  get primaryActionLabel(): string {
-    switch (this.mode) {
+  primaryActionLabel = computed(() => {
+    switch (this.mode()) {
       case 'mount':
         return 'Mount';
       case 'sync':
@@ -102,10 +85,10 @@ export class AppOverviewComponent {
       default:
         return 'Start';
     }
-  }
+  });
 
-  get activeIcon(): string {
-    switch (this.mode) {
+  activeIcon = computed(() => {
+    switch (this.mode()) {
       case 'mount':
         return 'mount';
       case 'sync':
@@ -113,14 +96,12 @@ export class AppOverviewComponent {
       default:
         return 'circle-check';
     }
-  }
+  });
 
-  get primaryActionIcon(): string {
-    return this.mode === 'mount' ? 'mount' : 'play';
-  }
+  primaryActionIcon = computed(() => (this.mode() === 'mount' ? 'mount' : 'play'));
 
-  getActiveTitle(): string {
-    switch (this.mode) {
+  getActiveTitle = computed(() => {
+    switch (this.mode()) {
       case 'mount':
         return 'Mounted Remotes';
       case 'sync':
@@ -128,10 +109,10 @@ export class AppOverviewComponent {
       default:
         return 'Active Remotes';
     }
-  }
+  });
 
-  getInactiveTitle(): string {
-    switch (this.mode) {
+  getInactiveTitle = computed(() => {
+    switch (this.mode()) {
       case 'mount':
         return 'Unmounted Remotes';
       case 'sync':
@@ -139,7 +120,7 @@ export class AppOverviewComponent {
       default:
         return 'Inactive Remotes';
     }
-  }
+  });
 
   selectRemote(remote: Remote): void {
     this.remoteSelected.emit(remote);

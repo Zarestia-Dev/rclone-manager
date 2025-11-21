@@ -18,7 +18,7 @@ pub async fn get_fs_info(
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::FSINFO);
 
     let fs_path = if remote.is_empty() {
-        path.unwrap_or_else(|| "/".to_string())
+        path.unwrap_or_default()
     } else {
         let fs_name = if remote.ends_with(':') {
             remote
