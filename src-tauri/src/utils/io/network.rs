@@ -245,7 +245,6 @@ pub async fn monitor_network_changes(app_handle: tauri::AppHandle) {
 
     if let Err(e) = NetworkInformation::NetworkStatusChanged(&handler) {
         error!("Failed to register network status changed handler: {e}");
-        return;
     }
 }
 

@@ -50,7 +50,7 @@ fn detect_macos_theme() -> Theme {
     use std::process::Command;
 
     match Command::new("defaults")
-        .args(&["read", "-g", "AppleInterfaceStyle"])
+        .args(["read", "-g", "AppleInterfaceStyle"])
         .output()
     {
         Ok(output) if output.status.success() => {
@@ -78,7 +78,7 @@ fn detect_windows_theme() -> Theme {
     use std::process::Command;
 
     match Command::new("reg")
-        .args(&[
+        .args([
             "query",
             r"HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
             "/v",

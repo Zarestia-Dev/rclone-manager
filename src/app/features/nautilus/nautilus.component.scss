@@ -131,6 +131,62 @@ mat-nav-list {
   font-size: 14px;
 }
 
+.search-input-container {
+  display: flex;
+  align-items: center;
+  background-color: var(--input-background);
+  border-radius: 8px;
+  flex-grow: 1;
+  padding: 0 var(--space-sm);
+  margin: 0 var(--space-sm);
+
+  mat-icon {
+    margin-right: var(--space-sm);
+    color: var(--secondary-text-color);
+  }
+
+  input {
+    width: 100%;
+    padding: var(--space-xs) 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--app-text-color);
+    font-size: 14px;
+
+    &::placeholder {
+      color: var(--secondary-text-color);
+    }
+  }
+}
+
+.search-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  text-align: center;
+}
+
+.search-everywhere {
+  .search-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+  }
+
+  h2 {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+
+  p {
+    color: var(--secondary-text-color);
+    margin-bottom: 24px;
+  }
+}
+
 /* 3.2 Main File Display Area */
 .nautilus-content {
   overflow-y: auto;

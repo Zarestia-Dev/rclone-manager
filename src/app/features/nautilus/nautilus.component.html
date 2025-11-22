@@ -2,7 +2,9 @@
   <mat-sidenav #sidenav mode="side" opened class="nautilus-sidenav">
     <div class="sidenav-content">
       <mat-toolbar data-tauri-drag-region>
-        <button mat-icon-button class="small-button"><mat-icon svgIcon="search"></mat-icon></button>
+        <button mat-icon-button class="small-button" (click)="toggleSearch('global')">
+          <mat-icon svgIcon="search"></mat-icon>
+        </button>
         <span>{{ title$ | async }}</span>
         <button mat-icon-button class="small-button">
           <mat-icon svgIcon="menu-bar"></mat-icon>
@@ -21,7 +23,7 @@
           <span class="remote-info">
             <span class="remote-icon">
               <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
-              <p matLine>{{ remote.name }}</p>
+              <p matLine>{{ remote.label }}</p>
             </span>
             <span class="eject">
               <mat-icon
@@ -45,7 +47,7 @@
 
   <mat-sidenav-content class="nautilus-main-content">
     <mat-toolbar class="nautilus-toolbar" data-tauri-drag-region>
-      <div class="left-section">
+      <div class="left-section" *ngIf="!isSearchEnabled()">
         <button mat-icon-button class="secondary" aria-label="Back" (click)="goBack()">
           <mat-icon svgIcon="chevron-left"></mat-icon>
         </button>
@@ -58,6 +60,7 @@
         (click)="isEditingPath.next(true)"
         (keydown.enter)="isEditingPath.next(true)"
         tabindex="0"
+        *ngIf="!isSearchEnabled()"
       >
         <ng-container *ngIf="(isEditingPath | async) === false">
           <button
@@ -98,12 +101,27 @@
           (blur)="navigateToPath(pathInput.value)"
         />
       </div>
+      <div class="search-input-container" *ngIf="isSearchEnabled()">
+        <mat-icon svgIcon="search"></mat-icon>
+        <input
+          matInput
+          [placeholder]="searchScope() === 'global' ? 'Search everywhere' : 'Search in folder'"
+          (input)="onSearchQueryChange($any($event.target).value)"
+        />
+      </div>
 
       <div class="right-section">
-        <button mat-icon-button (click)="setLayout(layout$.value === 'grid' ? 'list' : 'grid')">
+        <button mat-icon-button (click)="toggleSearch('local')">
+          <mat-icon svgIcon="folder-search"></mat-icon>
+        </button>
+        <button
+          mat-icon-button
+          (click)="setLayout(layout$.value === 'grid' ? 'list' : 'grid')"
+          *ngIf="!isSearchEnabled()"
+        >
           <mat-icon [svgIcon]="layout$.value === 'grid' ? 'view-list' : 'view-grid'"></mat-icon>
         </button>
-        <button mat-icon-button [matMenuTriggerFor]="viewMenu">
+        <button mat-icon-button [matMenuTriggerFor]="viewMenu" *ngIf="!isSearchEnabled()">
           <mat-icon svgIcon="arrow-down"></mat-icon>
         </button>
         <mat-menu #viewMenu="matMenu">
@@ -158,7 +176,11 @@
       </div>
     </mat-toolbar>
 
-    <div class="nautilus-content" [ngSwitch]="layout$ | async">
+    <div
+      class="nautilus-content"
+      [ngSwitch]="layout$ | async"
+      *ngIf="!isSearchEnabled() || searchScope() === 'local'"
+    >
       <div
         *ngSwitchCase="'grid'"
         class="nautilus-grid"
@@ -288,6 +310,16 @@
         <button mat-icon-button (click)="cancelLoad()">
           <mat-icon svgIcon="close"></mat-icon>
         </button>
+      </div>
+    </div>
+    <div
+      class="search-container"
+      *ngIf="isSearchEnabled() && searchScope() === 'global' && (searchQuery$ | async) === ''"
+    >
+      <div class="search-everywhere">
+        <mat-icon svgIcon="search" class="search-icon"></mat-icon>
+        <h2>Search Everywhere</h2>
+        <p>Find files and folders in all search locations</p>
       </div>
     </div>
     <div class="picker-actions" *ngIf="isPickerMode$ | async">

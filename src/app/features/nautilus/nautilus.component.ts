@@ -7,6 +7,7 @@ import {
   OnDestroy,
   ViewChild,
   ElementRef,
+  signal,
 } from '@angular/core';
 import { BehaviorSubject, combineLatest, Subject, of, from, concat } from 'rxjs';
 import { take, switchMap, catchError, map, finalize, takeUntil } from 'rxjs/operators';
@@ -35,6 +36,7 @@ import {
 } from '@app/services';
 import { Entry } from '@app/types';
 import { IconService } from '../../shared/services/icon.service';
+import { LocalDrive } from '@app/types';
 
 @Component({
   selector: 'app-nautilus',
@@ -61,6 +63,9 @@ import { IconService } from '../../shared/services/icon.service';
   animations: [AnimationsService.slideOverlay()],
 })
 export class NautilusComponent implements OnInit, OnDestroy {
+  public isSearchEnabled = signal(false);
+  public searchScope = signal<'global' | 'local'>('global');
+  public searchQuery$ = new BehaviorSubject<string>('');
   uiStateService = inject(UiStateService);
   windowService = inject(WindowService);
   private remoteManagement = inject(RemoteManagementService);
@@ -73,12 +78,14 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.remotes$,
     this.remoteConfigs$,
     this.mountedRemotes$,
+    from(this.remoteManagement.getLocalDrives()),
   ]).pipe(
-    map(([names, configs, mountedRemotes]) => {
+    map(([names, configs, mountedRemotes, localDrives]) => {
       const remoteList = (names || []).map(name => {
         const mountedInfo = mountedRemotes.find(mr => mr.fs.replace(/:$/, '') === name);
         return {
           name,
+          label: name,
           type: ((): string | undefined => {
             const cfg = configs?.[name] as Record<string, unknown> | undefined;
             return (
@@ -91,8 +98,14 @@ export class NautilusComponent implements OnInit, OnDestroy {
           mountPoint: mountedInfo?.mount_point,
         };
       });
-      remoteList.unshift({ name: 'Local', type: 'home', isMounted: false, mountPoint: undefined });
-      return remoteList;
+      const localDrivesList = localDrives.map((drive: LocalDrive) => ({
+        name: drive.name,
+        label: `${drive.label} (${drive.name})`,
+        type: 'home',
+        isMounted: false,
+        mountPoint: undefined,
+      }));
+      return [...localDrivesList, ...remoteList];
     })
   );
   readonly iconService = inject(IconService);
@@ -148,13 +161,28 @@ export class NautilusComponent implements OnInit, OnDestroy {
     map(response => response.list)
   );
 
-  public files$ = combineLatest([this.rawFiles$, this.sort$, this.showHidden$]).pipe(
-    map(([files, sort, showHidden]) => {
-      // 1. Filter
-      const processedFiles = showHidden ? files : files.filter(f => !f.Name.startsWith('.'));
+  public files$ = combineLatest([
+    this.rawFiles$,
+    this.sort$,
+    this.showHidden$,
+    this.searchQuery$,
+  ]).pipe(
+    map(([files, sort, showHidden, searchQuery]) => {
+      let processedFiles = files;
 
-      // 2. Sort
-      processedFiles.sort((a, b) => {
+      // 1. Search Filter (only for local search)
+      if (this.isSearchEnabled() && this.searchScope() === 'local' && searchQuery) {
+        processedFiles = processedFiles.filter(f =>
+          f.Name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
+      // 2. Filter
+      const hiddenFiltered = showHidden
+        ? processedFiles
+        : processedFiles.filter(f => !f.Name.startsWith('.'));
+
+      // 3. Sort
+      hiddenFiltered.sort((a, b) => {
         // Directories first
         if (a.IsDir && !b.IsDir) return -1;
         if (!a.IsDir && b.IsDir) return 1;
@@ -172,7 +200,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
             return a.Name.localeCompare(b.Name) * dir; // default to a-z
         }
       });
-      return processedFiles;
+      return hiddenFiltered;
     })
   );
 
@@ -483,28 +511,25 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   navigateToPath(path: string): void {
     this.isEditingPath.next(false);
-    const currentRemote = this.nautilusRemote$.getValue();
-
-    if (currentRemote?.name === 'Local') {
-      this.updatePath(path);
-      return;
-    }
+    const normalizedPath = this.normalizePath(path);
 
     this.remotesWithMeta$.pipe(take(1)).subscribe(remotes => {
-      const parts = path.split('/');
-      const potentialRemoteName = parts[0];
-      const remote = remotes.find(r => r.name === potentialRemoteName);
+      // Find which remote the path belongs to by checking if the path starts with a remote name.
+      // This handles local drives ("C:/...") and remotes ("my-remote:...").
+      const remote = remotes.find(r => normalizedPath.startsWith(r.name));
 
       if (remote) {
-        // A remote name is at the start of the path
-        const newPath = parts.slice(1).join('/');
-        if (currentRemote?.name !== remote.name) {
+        // A known remote is at the start of the path.
+        // We strip the remote name and any separator characters (like : or /) to get the clean path.
+        const newPath = normalizedPath.substring(remote.name.length).replace(/^[:\\/]+/, '');
+
+        if (this.nautilusRemote$.getValue()?.name !== remote.name) {
           this.selectRemote(remote);
         }
         this.updatePath(newPath);
       } else {
-        // No remote name, assume it's a path relative to current remote
-        this.updatePath(path);
+        // No remote name found at the start, so we assume it's a path relative to the current remote.
+        this.updatePath(normalizedPath);
       }
     });
   }
@@ -516,23 +541,28 @@ export class NautilusComponent implements OnInit, OnDestroy {
     return segments.slice(0, index + 1).join('/');
   }
 
+  private normalizePath(path: string): string {
+    return path.replace(/\\/g, '/');
+  }
+
   private updatePath(newPath: string): void {
-    this.currentPath$.next(newPath);
+    this.currentPath$.next(this.normalizePath(newPath));
     this.selectedItems.next(new Set());
     this.selectionSummary$.next('');
     this.lastSelectedIndex = null;
     // Clear forward history
     this.pathHistory.splice(this.currentHistoryIndex + 1);
-    this.pathHistory.push(newPath);
+    this.pathHistory.push(this.normalizePath(newPath));
     this.currentHistoryIndex++;
   }
 
   selectRemote(remote: { name: string; type?: string }): void {
     this.nautilusRemote$.next(remote);
-    this.currentPath$.next('');
+    const initialPath = remote.name.endsWith(':') ? '/' : '';
+    this.currentPath$.next(initialPath);
     this.selectedItems.next(new Set());
     this.lastSelectedIndex = null;
-    this.pathHistory = [''];
+    this.pathHistory = [initialPath];
     this.currentHistoryIndex = 0;
     this.selectionSummary$.next('');
   }
@@ -554,12 +584,20 @@ export class NautilusComponent implements OnInit, OnDestroy {
       }
 
       // Ensure a default selected remote if the UI has none and there are remotes available
-      this.uiStateService.selectedRemote$.pipe(take(1)).subscribe(currentSelected => {
+      this.uiStateService.selectedRemote$.pipe(take(1)).subscribe(async currentSelected => {
         if (currentSelected) {
           this.nautilusRemote$.next(currentSelected.remoteSpecs);
         } else {
-          const localRemote = { name: 'Local', type: 'local' };
-          this.nautilusRemote$.next(localRemote);
+          const drives: LocalDrive[] = await this.remoteManagement.getLocalDrives();
+          if (drives.length > 0) {
+            const defaultRemote = { name: drives[0].name, type: 'home' };
+            this.selectRemote(defaultRemote);
+          } else {
+            // Handle case where no local drives are found
+            const fallbackRemote = { name: 'Local', type: 'home' };
+            this.selectRemote(fallbackRemote);
+            console.warn('No local drives found, falling back to "Local".');
+          }
         }
       });
     } catch (error) {
@@ -573,5 +611,22 @@ export class NautilusComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  toggleSearch(scope: 'global' | 'local'): void {
+    this.isSearchEnabled.update(value => {
+      if (value) {
+        // it is currently enabled, will be disabled
+        this.searchQuery$.next('');
+      } else {
+        // it is currently disabled, will be enabled
+        this.searchScope.set(scope);
+      }
+      return !value;
+    });
+  }
+
+  onSearchQueryChange(query: string): void {
+    this.searchQuery$.next(query);
   }
 }

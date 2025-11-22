@@ -79,11 +79,11 @@ use crate::{
                 get_sync_flags, get_vfs_flags, set_rclone_option,
             },
             get_all_remote_configs, get_bandwidth_limit, get_completed_transfers, get_core_stats,
-            get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_memory_stats,
-            get_mount_types, get_mounted_remotes, get_oauth_supported_remotes, get_rclone_info,
-            get_rclone_pid, get_remote_config, get_remote_paths, get_remote_types, get_remotes,
-            get_serve_flags, get_serve_types, list_serves, vfs_forget, vfs_list, vfs_poll_interval,
-            vfs_queue, vfs_queue_set_expiry, vfs_refresh, vfs_stats,
+            get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats, get_local_drives,
+            get_memory_stats, get_mount_types, get_mounted_remotes, get_oauth_supported_remotes,
+            get_rclone_info, get_rclone_pid, get_remote_config, get_remote_paths, get_remote_types,
+            get_remotes, get_serve_flags, get_serve_types, list_serves, vfs_forget, vfs_list,
+            vfs_poll_interval, vfs_queue, vfs_queue_set_expiry, vfs_refresh, vfs_stats,
         },
         state::{
             cache::{
@@ -415,6 +415,7 @@ pub fn run() {
             delete_remote,
             quit_rclone_oauth,
             get_remote_paths,
+            get_local_drives,
             get_bandwidth_limit,
             // Flags
             get_option_blocks,

@@ -177,3 +177,8 @@ export interface Entry {
   Path: string;
   Size: number;
 }
+
+export interface LocalDrive {
+  name: string;
+  label: string;
+}

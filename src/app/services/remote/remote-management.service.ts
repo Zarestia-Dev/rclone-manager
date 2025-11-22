@@ -1,7 +1,13 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { RemoteProvider, RemoteConfig, RcConfigQuestionResponse, Entry } from '@app/types';
+import {
+  RemoteProvider,
+  RemoteConfig,
+  RcConfigQuestionResponse,
+  Entry,
+  LocalDrive,
+} from '@app/types';
 
 /**
  * Service for managing rclone remotes
@@ -154,6 +160,10 @@ export class RemoteManagementService extends TauriBaseService {
   ): Promise<{ list: Entry[] }> {
     const response = await this.invokeCommand('get_remote_paths', { remote, path, options });
     return response as { list: Entry[] };
+  }
+
+  async getLocalDrives(): Promise<LocalDrive[]> {
+    return this.invokeCommand<LocalDrive[]>('get_local_drives');
   }
 
   /**
