@@ -27,7 +27,6 @@ import {
   RcloneUpdateService,
   AppUpdaterService,
 } from '@app/services';
-import { NautilusComponent } from './features/nautilus/nautilus.component';
 
 @Component({
   selector: 'app-root',
@@ -40,7 +39,6 @@ import { NautilusComponent } from './features/nautilus/nautilus.component';
     HomeComponent,
     ShortcutHandlerDirective,
     BannerComponent,
-    NautilusComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss',
@@ -63,9 +61,6 @@ export class AppComponent implements OnDestroy {
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
 
   // --- DERIVED STATE & OBSERVABLE CONVERSIONS ---
-  readonly isNautilusOverlayOpen = toSignal(this.uiStateService.isNautilusOverlayOpen$, {
-    initialValue: false,
-  });
   readonly currentTab = toSignal(this.uiStateService.currentTab$, {
     initialValue: 'general' as AppTab,
   });
@@ -430,14 +425,5 @@ export class AppComponent implements OnDestroy {
       return;
     }
     this.uiStateService.setTab(tab);
-  }
-
-  handleNautilusBack(): void {
-    // If the app is running in browser-only mode, navigate back to the main app.
-    try {
-      this.uiStateService.toggleNautilusOverlay();
-    } catch (error) {
-      console.error('Failed to navigate back from Nautilus:', error);
-    }
   }
 }

@@ -1,4 +1,13 @@
-import { Component, EventEmitter, inject, Output, OnInit, OnDestroy } from '@angular/core';
+import {
+  Component,
+  EventEmitter,
+  inject,
+  Output,
+  OnInit,
+  OnDestroy,
+  ViewChild,
+  ElementRef,
+} from '@angular/core';
 import { BehaviorSubject, combineLatest, Subject, of, from, concat } from 'rxjs';
 import { take, switchMap, catchError, map, finalize, takeUntil } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
@@ -24,7 +33,7 @@ import {
   MountManagementService,
   FilePickerOptions,
 } from '@app/services';
-import { Remote, Entry } from '@app/types';
+import { Entry } from '@app/types';
 import { IconService } from '../../shared/services/icon.service';
 
 @Component({
@@ -82,7 +91,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
           mountPoint: mountedInfo?.mount_point,
         };
       });
-      remoteList.unshift({ name: 'Local', type: 'local', isMounted: false, mountPoint: undefined });
+      remoteList.unshift({ name: 'Local', type: 'home', isMounted: false, mountPoint: undefined });
       return remoteList;
     })
   );
@@ -168,6 +177,14 @@ export class NautilusComponent implements OnInit, OnDestroy {
   );
 
   @Output() closeOverlay = new EventEmitter<void>();
+
+  @ViewChild('pathInput') set pathInput(element: ElementRef<HTMLInputElement>) {
+    if (element) {
+      element.nativeElement.focus();
+      element.nativeElement.select();
+    }
+  }
+
   constructor() {
     this.rawFiles$.pipe(takeUntil(this.destroy$)).subscribe(files => {
       this.currentFiles = files;
@@ -188,8 +205,19 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   confirmSelection(): void {
-    const selectedPaths = Array.from(this.selectedItems.getValue());
-    this.uiStateService.closeFilePicker(selectedPaths);
+    let selectedPaths = Array.from(this.selectedItems.getValue());
+    const remote = this.nautilusRemote$.getValue();
+
+    if (selectedPaths.length === 0 && this.pickerOptions.selectFolders) {
+      selectedPaths = [this.currentPath$.getValue()];
+    }
+
+    if (remote && remote.name !== 'Local') {
+      const fullPaths = selectedPaths.map(path => `${remote.name}:${path}`);
+      this.uiStateService.closeFilePicker(fullPaths);
+    } else {
+      this.uiStateService.closeFilePicker(selectedPaths);
+    }
   }
 
   isItemSelectable(item: Entry): boolean {
@@ -210,8 +238,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   get isOpenDisabled(): boolean {
     const selected = this.selectedItems.getValue();
+
     if (selected.size === 0) {
-      return true;
+      return !this.pickerOptions.selectFolders;
     }
 
     // If multiSelection is false, ensure only one item is selected
@@ -282,6 +311,12 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.iconSize$.next(Math.max(this.iconSize$.value - 20, 80));
   }
 
+  clearSelection(): void {
+    this.selectedItems.next(new Set());
+    this.selectionSummary$.next('');
+    this.lastSelectedIndex = null;
+  }
+
   onItemKeydown(item: Entry, event: Event, index: number, allItems: Entry[] | null): void {
     if (event instanceof KeyboardEvent && event.key === 'Enter') {
       const mockMouseEvent = new MouseEvent('click', {
@@ -326,10 +361,14 @@ export class NautilusComponent implements OnInit, OnDestroy {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
   }
 
-  async openMountInFiles(event: MouseEvent, mountPoint: string | undefined): Promise<void> {
+  async openMountInFiles(
+    event: MouseEvent,
+    mountPoint: string | undefined,
+    remoteName: string
+  ): Promise<void> {
     event.stopPropagation();
     if (mountPoint) {
-      await this.mountManagement.openInFiles(mountPoint);
+      await this.mountManagement.unmountRemote(mountPoint, remoteName);
     }
   }
 
@@ -350,6 +389,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (this.currentHistoryIndex > 0) {
       this.currentHistoryIndex--;
       this.currentPath$.next(this.pathHistory[this.currentHistoryIndex]);
+      this.selectedItems.next(new Set());
+      this.selectionSummary$.next('');
+      this.lastSelectedIndex = null;
     }
   }
 
@@ -357,6 +399,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (this.currentHistoryIndex < this.pathHistory.length - 1) {
       this.currentHistoryIndex++;
       this.currentPath$.next(this.pathHistory[this.currentHistoryIndex]);
+      this.selectedItems.next(new Set());
+      this.selectionSummary$.next('');
+      this.lastSelectedIndex = null;
     }
   }
 
@@ -386,6 +431,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   onItemClick(item: Entry, event: MouseEvent, index: number, allItems: Entry[] | null): void {
+    event.stopPropagation();
     if (!allItems || (this.isPickerMode$.value && !this.isItemSelectable(item))) {
       return;
     }
@@ -436,8 +482,31 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   navigateToPath(path: string): void {
-    const newPath = path.split('/').filter(p => p);
-    this.updatePath(newPath.join('/'));
+    this.isEditingPath.next(false);
+    const currentRemote = this.nautilusRemote$.getValue();
+
+    if (currentRemote?.name === 'Local') {
+      this.updatePath(path);
+      return;
+    }
+
+    this.remotesWithMeta$.pipe(take(1)).subscribe(remotes => {
+      const parts = path.split('/');
+      const potentialRemoteName = parts[0];
+      const remote = remotes.find(r => r.name === potentialRemoteName);
+
+      if (remote) {
+        // A remote name is at the start of the path
+        const newPath = parts.slice(1).join('/');
+        if (currentRemote?.name !== remote.name) {
+          this.selectRemote(remote);
+        }
+        this.updatePath(newPath);
+      } else {
+        // No remote name, assume it's a path relative to current remote
+        this.updatePath(path);
+      }
+    });
   }
 
   getPath(segments: string[] | null, index: number): string {
@@ -449,6 +518,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   private updatePath(newPath: string): void {
     this.currentPath$.next(newPath);
+    this.selectedItems.next(new Set());
+    this.selectionSummary$.next('');
+    this.lastSelectedIndex = null;
     // Clear forward history
     this.pathHistory.splice(this.currentHistoryIndex + 1);
     this.pathHistory.push(newPath);
@@ -457,14 +529,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   selectRemote(remote: { name: string; type?: string }): void {
     this.nautilusRemote$.next(remote);
-    if (remote.name === 'Local') {
-      this.uiStateService.setSelectedRemote(null);
-    } else {
-      const selected: Remote = {
-        remoteSpecs: { name: remote.name, type: remote.type || '' },
-      } as Remote;
-      this.uiStateService.setSelectedRemote(selected);
-    }
     this.currentPath$.next('');
     this.selectedItems.next(new Set());
     this.lastSelectedIndex = null;

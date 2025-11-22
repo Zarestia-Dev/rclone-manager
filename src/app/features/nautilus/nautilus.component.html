@@ -1,7 +1,7 @@
-<mat-sidenav-container class="nautilus-sidenav-container" autosize [@slideOverlay]>
+<mat-sidenav-container class="nautilus-overlay-pane" autosize [@slideOverlay]>
   <mat-sidenav #sidenav mode="side" opened class="nautilus-sidenav">
     <div class="sidenav-content">
-      <mat-toolbar>
+      <mat-toolbar data-tauri-drag-region>
         <button mat-icon-button class="small-button"><mat-icon svgIcon="search"></mat-icon></button>
         <span>{{ title$ | async }}</span>
         <button mat-icon-button class="small-button">
@@ -13,21 +13,25 @@
         <mat-list-item
           *ngFor="let remote of remotesWithMeta$ | async; trackBy: trackByRemote"
           (click)="selectRemote(remote)"
-          [class.selected]="(nautilusRemote$ | async)?.name === remote.name"
           role="button"
           tabindex="0"
+          [class.selected]="(nautilusRemote$ | async)?.name === remote.name"
           class="remote-list-item"
         >
-          <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
-          <h4 matLine>{{ remote.name }}</h4>
-          <button
-            *ngIf="remote.isMounted"
-            mat-icon-button
-            (click)="openMountInFiles($event, remote.mountPoint)"
-            class="open-mount-button"
-          >
-            <mat-icon svgIcon="folder"></mat-icon>
-          </button>
+          <span class="remote-info">
+            <span class="remote-icon">
+              <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+              <p matLine>{{ remote.name }}</p>
+            </span>
+            <span class="eject">
+              <mat-icon
+                class="unmount-button"
+                *ngIf="remote.isMounted"
+                (click)="openMountInFiles($event, remote.mountPoint, remote.name)"
+                svgIcon="eject"
+              ></mat-icon>
+            </span>
+          </span>
         </mat-list-item>
 
         <!-- Show a placeholder when no remotes exist -->
@@ -40,7 +44,7 @@
   </mat-sidenav>
 
   <mat-sidenav-content class="nautilus-main-content">
-    <mat-toolbar class="nautilus-toolbar">
+    <mat-toolbar class="nautilus-toolbar" data-tauri-drag-region>
       <div class="left-section">
         <button mat-icon-button class="secondary" aria-label="Back" (click)="goBack()">
           <mat-icon svgIcon="chevron-left"></mat-icon>
@@ -48,53 +52,59 @@
         <button mat-icon-button class="secondary" aria-label="Forward" (click)="goForward()">
           <mat-icon svgIcon="chevron-right"></mat-icon>
         </button>
-        <div
-          class="path-container"
-          (click)="isEditingPath.next(true)"
-          (keydown.enter)="isEditingPath.next(true)"
-          tabindex="0"
-        >
-          <ng-container *ngIf="(isEditingPath | async) === false">
+      </div>
+      <div
+        class="path-container"
+        (click)="isEditingPath.next(true)"
+        (keydown.enter)="isEditingPath.next(true)"
+        tabindex="0"
+      >
+        <ng-container *ngIf="(isEditingPath | async) === false">
+          <button
+            mat-button
+            class="path-segment"
+            (click)="$event.stopPropagation(); navigateToPath('')"
+          >
+            <mat-icon [svgIcon]="(nautilusRemote$ | async)?.type || 'home'"></mat-icon>
+            {{ (nautilusRemote$ | async)?.name || 'Local' }}
+          </button>
+          <span
+            *ngFor="
+              let segment of pathSegments$ | async as segments;
+              let i = index;
+              trackBy: trackByIndex
+            "
+          >
+            /
             <button
               mat-button
               class="path-segment"
-              (click)="$event.stopPropagation(); navigateToPath('')"
+              (click)="$event.stopPropagation(); navigateToPath(getPath(segments, i))"
             >
-              {{ (nautilusRemote$ | async)?.name || 'Local' }}
+              {{ segment }}
             </button>
-            <span
-              *ngFor="
-                let segment of pathSegments$ | async as segments;
-                let i = index;
-                trackBy: trackByIndex
-              "
-            >
-              /
-              <button
-                mat-button
-                class="path-segment"
-                (click)="$event.stopPropagation(); navigateToPath(getPath(segments, i))"
-              >
-                {{ segment }}
-              </button>
-            </span>
-          </ng-container>
-          <input
-            *ngIf="isEditingPath | async"
-            #pathInput
-            class="path-input"
-            [value]="(nautilusRemote$ | async)?.name + '/' + (currentPath$ | async)"
-            (keydown.enter)="navigateToPath(pathInput.value); isEditingPath.next(false)"
-            (blur)="isEditingPath.next(false)"
-          />
-        </div>
+          </span>
+        </ng-container>
+        <input
+          *ngIf="isEditingPath | async"
+          #pathInput
+          class="path-input"
+          [value]="
+            ((nautilusRemote$ | async)?.name === 'Local'
+              ? ''
+              : (nautilusRemote$ | async)?.name + '/') + (currentPath$ | async)
+          "
+          (keydown.enter)="navigateToPath(pathInput.value)"
+          (blur)="navigateToPath(pathInput.value)"
+        />
       </div>
+
       <div class="right-section">
         <button mat-icon-button (click)="setLayout(layout$.value === 'grid' ? 'list' : 'grid')">
           <mat-icon [svgIcon]="layout$.value === 'grid' ? 'view-list' : 'view-grid'"></mat-icon>
         </button>
         <button mat-icon-button [matMenuTriggerFor]="viewMenu">
-          <mat-icon svgIcon="dots-vertical"></mat-icon>
+          <mat-icon svgIcon="arrow-down"></mat-icon>
         </button>
         <mat-menu #viewMenu="matMenu">
           <div class="view-menu-content">
@@ -149,14 +159,31 @@
     </mat-toolbar>
 
     <div class="nautilus-content" [ngSwitch]="layout$ | async">
-      <div *ngSwitchCase="'grid'" class="nautilus-grid">
-        <mat-grid-list cols="4" [rowHeight]="(iconSize$ | async) || 120" gutterSize="16px">
-          <mat-grid-tile
+      <div
+        *ngSwitchCase="'grid'"
+        class="nautilus-grid"
+        (click)="clearSelection()"
+        (keydown.space)="clearSelection()"
+        tabindex="0"
+      >
+        <!-- Responsive CSS Grid: columns auto-fit based on available width and tile min width
+             tile min width is derived from `iconSize$` (fallback 120px) so tiles adapt
+             when icon size changes. -->
+        <div
+          class="grid"
+          [style.gridTemplateColumns]="
+            'repeat(auto-fill, minmax(' + (((iconSize$ | async) || 120) + 40) + 'px, 1fr))'
+          "
+        >
+          <div
+            class="grid-item"
             *ngFor="let item of files$ | async as allItems; let i = index; trackBy: trackByFile"
             (click)="onItemClick(item, $event, i, allItems)"
+            (keydown.enter)="onItemKeydown(item, $event, i, allItems)"
             (dblclick)="navigateTo(item)"
             [class.selected]="(selectedItems$ | async)?.has(item.Path)"
             [class.unselectable]="!isItemSelectable(item)"
+            tabindex="0"
           >
             <mat-card class="folder-card" [class.file-card]="!item.IsDir">
               <mat-card-content>
@@ -168,10 +195,16 @@
                 <p class="folder-title">{{ item.Name }}</p>
               </mat-card-content>
             </mat-card>
-          </mat-grid-tile>
-        </mat-grid-list>
+          </div>
+        </div>
       </div>
-      <div *ngSwitchCase="'list'" class="nautilus-list">
+      <div
+        *ngSwitchCase="'list'"
+        class="nautilus-list"
+        (click)="clearSelection()"
+        (keydown.space)="clearSelection()"
+        tabindex="0"
+      >
         <div class="list-header">
           <div
             class="list-col name"
@@ -236,29 +269,36 @@
           </div>
         </div>
       </div>
+      <div
+        class="empty-folder-container"
+        *ngIf="(files$ | async)?.length === 0 && (isLoading$ | async) === false"
+      >
+        <mat-icon svgIcon="folder"></mat-icon>
+        <h2>Folder is Empty</h2>
+      </div>
+      <div
+        class="selection-summary"
+        *ngIf="(selectionSummary$ | async) && (isLoading$ | async) === false"
+      >
+        {{ selectionSummary$ | async }}
+      </div>
+      <div class="loading-overlay" *ngIf="isLoading$ | async">
+        <mat-spinner diameter="24"></mat-spinner>
+        <span>Loading...</span>
+        <button mat-icon-button (click)="cancelLoad()">
+          <mat-icon svgIcon="close"></mat-icon>
+        </button>
+      </div>
     </div>
     <div class="picker-actions" *ngIf="isPickerMode$ | async">
       <button mat-stroked-button (click)="onClose()">Cancel</button>
       <button
         mat-flat-button
-        color="primary"
+        class="accent"
         (click)="confirmSelection()"
         [disabled]="isOpenDisabled"
       >
         Open
-      </button>
-    </div>
-    <div
-      class="selection-summary"
-      *ngIf="(selectionSummary$ | async) && (isLoading$ | async) === false"
-    >
-      {{ selectionSummary$ | async }}
-    </div>
-    <div class="loading-overlay" *ngIf="isLoading$ | async">
-      <mat-spinner diameter="24"></mat-spinner>
-      <span>Loading...</span>
-      <button mat-icon-button (click)="cancelLoad()">
-        <mat-icon svgIcon="close"></mat-icon>
       </button>
     </div>
   </mat-sidenav-content>

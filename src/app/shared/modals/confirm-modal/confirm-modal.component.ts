@@ -65,7 +65,7 @@ export class ConfirmModalComponent {
       if (titleLower.includes('delete')) return 'trash';
       if (titleLower.includes('kill') || titleLower.includes('terminate'))
         return 'circle-exclamation';
-      if (titleLower.includes('clear') || titleLower.includes('reset')) return 'arrow-rotate-left';
+      if (titleLower.includes('clear') || titleLower.includes('reset')) return 'rotate-left';
       return 'warning';
     } else {
       // Non-destructive actions

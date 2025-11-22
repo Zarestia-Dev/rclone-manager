@@ -89,7 +89,6 @@ export class IconService {
 
       // ------------------- Navigation Icons -------------------
       'arrow-down': 'assets/icons/circle-chevron-down.svg',
-      'arrow-rotate-left': 'assets/icons/arrow-rotate-left.svg',
       'arrow-up': 'assets/icons/circle-chevron-up.svg',
       'arrow-turn-up-left': 'assets/icons/arrow-turn-up-left.svg',
       bolt: 'assets/icons/bolt.svg',

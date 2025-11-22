@@ -287,13 +287,46 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     });
 
     if (result && result.length > 0) {
-      const control = this.getPathControl(group);
-      // Use emitEvent: false to prevent triggering the input change handler
-      control?.setValue(result[0], { emitEvent: false });
+      const fullPath = result[0];
+      const parts = fullPath.split(':');
+      const formGroup = this.getFormGroup(group);
 
-      // Manually update the path selection service with the final path
-      const fieldId = group === 'source' ? this.sourceFieldId : this.destFieldId;
-      this.pathSelectionService.updateInput(fieldId, result[0]);
+      if (!formGroup) {
+        return;
+      }
+
+      let remoteName: string;
+      let path: string;
+
+      if (parts.length > 1 && parts[0]) {
+        // Handles "remote:path"
+        remoteName = parts[0];
+        path = parts.slice(1).join(':');
+      } else {
+        // Handles local paths or paths without remote prefix
+        remoteName = ''; // Represents a local path
+        path = fullPath;
+      }
+
+      const pathControl = this.getPathControl(group);
+      pathControl?.setValue(path, { emitEvent: false });
+
+      const pathTypeControl = formGroup.get('pathType');
+      if (!pathTypeControl) return;
+
+      if (remoteName === '') {
+        pathTypeControl.setValue('local');
+      } else if (remoteName === this.currentRemoteName && !this.isNewRemote) {
+        pathTypeControl.setValue('currentRemote');
+      } else if (this.otherRemotes.includes(remoteName)) {
+        pathTypeControl.setValue(`otherRemote:${remoteName}`);
+      } else if (this.isNewRemote && remoteName === this.currentRemoteName) {
+        pathTypeControl.setValue('currentRemote');
+      } else {
+        // Fallback for unhandled cases: set the full path back into the input
+        pathControl?.setValue(fullPath, { emitEvent: false });
+      }
+      this.cdRef.markForCheck();
     }
   }
 

@@ -181,7 +181,7 @@
                 <button
                   matIconButton
                   matSuffix
-                  (click)="onSelectFolder('source')"
+                  (click)="onSelectFolder('source'); $event.stopPropagation()"
                   type="button"
                   aria-label="Select source folder"
                 >
@@ -191,7 +191,7 @@
                 <button
                   matIconButton
                   matSuffix
-                  (click)="selectRemotePath('source')"
+                  (click)="selectRemotePath('source'); $event.stopPropagation()"
                   type="button"
                   aria-label="Select remote source folder"
                 >
@@ -263,7 +263,7 @@
               <button
                 matIconButton
                 matSuffix
-                (click)="onSelectFolder('dest')"
+                (click)="onSelectFolder('dest'); $event.stopPropagation()"
                 type="button"
                 aria-label="Select destination folder"
               >
@@ -381,7 +381,7 @@
                 <button
                   matIconButton
                   matSuffix
-                  (click)="onSelectFolder('dest')"
+                  (click)="onSelectFolder('dest'); $event.stopPropagation()"
                   type="button"
                   aria-label="Select destination folder"
                 >
@@ -391,7 +391,7 @@
                 <button
                   matIconButton
                   matSuffix
-                  (click)="selectRemotePath('dest')"
+                  (click)="selectRemotePath('dest'); $event.stopPropagation()"
                   type="button"
                   aria-label="Select remote destination folder"
                 >

@@ -1,7 +1,4 @@
 <div class="app-wrapper" appShortcutHandler>
-  @if (isNautilusOverlayOpen()) {
-    <app-nautilus (closeOverlay)="handleNautilusBack()"> </app-nautilus>
-  }
   @if (!completedOnboarding()) {
     <app-onboarding class="onboarding" (completed)="finishOnboarding()"></app-onboarding>
   }

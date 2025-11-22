@@ -609,6 +609,7 @@ $dark-theme: (
   --bg-elevated: rgba(var(--app-text-color-rgb), 0.03);
   --button-background: rgba(var(--app-text-color-rgb), 0.04);
   --bg-hover: rgba(var(--app-text-color-rgb), 0.05);
+  --bg-selected: rgba(var(--app-text-color-rgb), 0.1);
   --selected-border: var(--accent-color);
   --disabled-fade: rgba(255, 255, 255, 0.5);
   --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);

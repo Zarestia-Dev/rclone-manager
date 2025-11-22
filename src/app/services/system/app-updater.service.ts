@@ -297,6 +297,7 @@ export class AppUpdaterService extends TauriBaseService {
         this.checkIfUpdatesDisabled(),
       ]);
 
+      this.updateStateService.setBuildType(await this.getBuildType());
       this.skippedVersionsSubject.next(skippedVersions);
       this.updateChannelSubject.next(channel);
       this.updateStateService.setUpdatesDisabled(updatesDisabled);

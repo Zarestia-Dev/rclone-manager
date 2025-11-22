@@ -1,132 +1,226 @@
-/* Nautilus Material style */
-.nautilus-sidenav-container {
-  flex: 1;
+/* 1. Main Container & Layout
+ * -------------------------------------------------------------------------- */
+
+.nautilus-overlay-pane {
+  width: 100vw;
+  height: 100vh;
+  border-radius: var(--app-border-radius) !important;
+  overflow: hidden;
   --sidenav-width: 220px;
-
-  mat-toolbar {
-    display: flex;
-    justify-content: space-between;
-    background: transparent !important;
-    padding: 0 var(--space-sm);
-    height: 48px;
-    span {
-      font-weight: 700;
-    }
-  }
-
-  .nautilus-sidenav {
-    width: var(--sidenav-width);
-    background-color: var(--sidebar-background);
-    border-right: 1px solid var(--theme-border);
-  }
-
-  .nautilus-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: calc(var(--titlebar-height) + 8px);
-    color: var(--app-text-color);
-    padding: 4px var(--title-bar-padding);
-
-    .left-section {
-      display: flex;
-      align-items: center;
-      gap: var(--space-xs);
-    }
-
-    .right-section {
-      display: flex;
-      gap: var(--space-xxs);
-    }
-  }
-
-  .nautilus-grid {
-    padding: 16px 8px;
-  }
-
-  .folder-card {
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    background: var(--surface-overlay);
-    border-radius: var(--card-border-radius);
-    transition: var(--transition-fast);
-
-    &:hover {
-      background: var(--bg-hover);
-    }
-  }
-
-  .folder-icon {
-    font-size: 42px;
-    color: var(--accent-color);
-  }
-
-  .folder-title {
-    margin-top: 8px;
-    font-size: 13px;
-    color: var(--app-text-color);
-  }
 }
-/* Overlay-specific styles when Nautilus opens as overlay */
-.nautilus-sidenav-container {
-  position: fixed;
-  inset: 0;
-  z-index: 1999;
 
-  .nautilus-sidenav {
-    border-radius: 0 !important;
-  }
-
-  .nautilus-main-content {
-    background: var(--secondary-background);
-  }
+.nautilus-sidenav {
+  width: var(--sidenav-width);
+  background-color: var(--sidebar-background);
+  border-right: 1px solid var(--theme-border);
+  border-radius: 0 !important;
 }
-// Add some basic styling to make it look like an overlay
-.file-browser-wrapper {
-  position: fixed;
-  inset: 0;
-  background: var(--app-background-color, white); // Use your Adwaita theme variable
-  z-index: 1000;
+
+.nautilus-main-content {
+  background: var(--secondary-background);
+  height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 20px;
 }
 
-.file-card {
-  cursor: default;
+/*
+ * 2. Sidenav Content (Remotes List)
+ * -------------------------------------------------------------------------- */
+
+.nautilus-sidenav mat-toolbar {
+  display: flex;
+  justify-content: space-between;
+  background: transparent !important;
+  padding: 0 var(--space-sm);
+  height: 48px;
+
+  span {
+    font-weight: 700;
+  }
 }
 
+mat-nav-list {
+  padding: var(--space-xs);
+  gap: var(--space-xxs);
+  display: flex;
+  flex-direction: column;
+}
+
+.remote-list-item {
+  border-radius: var(--border-radius) !important;
+  height: 36px !important;
+  padding-inline: var(--space-xs);
+
+  &.selected {
+    background: var(--bg-hover);
+  }
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #67676b;
+
+    &.remote-info {
+      justify-content: space-between !important;
+      width: 100%;
+    }
+
+    mat-icon {
+      height: 16px;
+      width: 16px;
+
+      &.unmount-button {
+        padding: var(--space-xxs);
+        border-radius: var(--radius-xs);
+        &:hover {
+          background: var(--bg-hover);
+          color: var(--app-text-color);
+        }
+      }
+    }
+  }
+}
+
+/*
+ * 3. Main Content Area
+ * -------------------------------------------------------------------------- */
+
+/* 3.1 Toolbar & Path Navigation */
+.nautilus-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: calc(var(--titlebar-height) + 8px);
+  color: var(--app-text-color);
+  padding: 4px var(--title-bar-padding);
+
+  .left-section,
+  .right-section {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+}
+
+.path-container {
+  display: flex;
+  align-items: center;
+  background-color: var(--input-background);
+  border-radius: 8px;
+  flex-grow: 1;
+}
+
+.path-segment {
+  margin: var(--space-xxs);
+  padding: var(--space-xxs) var(--space-xs);
+  border-radius: var(--border-radius);
+  min-width: 0;
+  min-height: 0;
+  height: unset;
+}
+
+.path-input {
+  width: 100%;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--border-radius);
+  border: none;
+  outline: 2px solid transparent;
+  background: transparent;
+  color: var(--app-text-color);
+  font-size: 14px;
+}
+
+/* 3.2 Main File Display Area */
 .nautilus-content {
   overflow-y: auto;
-  height: calc(100% - 56px); /* Adjust based on toolbar height */
+  flex-grow: 1;
+  position: relative;
 }
 
-.picker-actions {
+/* 3.2.1 Grid View */
+.nautilus-grid {
+  padding: 16px 8px;
+  height: 100%;
+  box-sizing: border-box;
+
+  .grid {
+    display: grid;
+    gap: 16px;
+    align-items: start;
+    grid-auto-rows: 1fr;
+  }
+
+  .grid-item {
+    display: block;
+    width: 100%;
+    outline: none;
+  }
+}
+
+.folder-card {
+  box-sizing: border-box;
+  min-height: 140px;
+  max-height: 160px;
+  padding: 12px;
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  padding: 8px 16px;
-  border-top: 1px solid var(--theme-border);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-radius: var(--card-border-radius);
+  transition: var(--transition-fast);
+  background: none;
+  box-shadow: none;
+  overflow: hidden;
+
+  &:hover {
+    background: var(--bg-elevated);
+  }
 }
 
+.folder-icon {
+  width: 64px;
+  height: 64px;
+  color: var(--accent-color);
+}
+
+.folder-title {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--app-text-color);
+  text-align: center;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow: hidden;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.grid-item.selected .folder-card {
+  background: var(--bg-selected);
+}
+
+/* 3.2.2 List View */
 .nautilus-list {
+  height: 100%;
+  box-sizing: border-box;
   .list-header {
     display: flex;
     padding: 8px 16px;
-    border-bottom: 1px solid var(--theme-border);
     font-weight: 500;
   }
 
   .list-row {
     display: flex;
     padding: 8px 16px;
-    border-bottom: 1px solid var(--theme-border);
-    cursor: pointer;
     &:hover {
-      background-color: var(--bg-hover);
+      background-color: var(--bg-elevated);
+    }
+    &.selected {
+      background-color: var(--bg-selected);
     }
   }
 
@@ -150,6 +244,10 @@
   }
 }
 
+/*
+ * 4. Popups and Overlays
+ * -------------------------------------------------------------------------- */
+
 .view-menu-content {
   padding: 8px 16px;
   display: flex;
@@ -168,33 +266,7 @@
   }
 }
 
-.remote-list-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-}
-
-.open-mount-button {
-  margin-left: auto;
-}
-
-.selected {
-  background-color: rgba(var(--accent-color-rgb), 0.2);
-  border: 1px solid var(--accent-color);
-}
-
-.path-container {
-  display: flex;
-  align-items: center;
-  background-color: var(--input-background);
-  border-radius: 8px;
-  padding: 0 8px;
-  margin: 0 8px;
-  flex-grow: 1;
-  cursor: text;
-}
-
+.loading-overlay,
 .selection-summary {
   position: absolute;
   bottom: 16px;
@@ -203,47 +275,58 @@
   padding: 8px 16px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
-  font-size: 14px;
-}
-
-.path-segment {
-  min-width: 0;
-}
-
-.path-input {
-  width: 100%;
-  background-color: transparent;
-  border: none;
-  outline: none;
-  color: var(--app-text-color);
-  font-size: 14px;
-}
-
-.loading-overlay {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
-  background-color: var(--secondary-background);
-  padding: 8px 16px;
-  border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
+  font-size: 14px;
+}
+
+.empty-folder-container {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+
+  mat-icon {
+    width: 128px;
+    height: 128px;
+    font-size: 128px;
+    color: var(--theme-border);
+  }
+
+  h2 {
+    font-weight: 500;
+    color: var(--app-text-color);
+    opacity: 0.7;
+  }
+}
+
+/*
+ * 5. File Picker Actions & States
+ * -------------------------------------------------------------------------- */
+
+.picker-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 16px;
+}
+
+.file-card,
+.list-row.unselectable,
+.grid-item.unselectable .folder-card {
+  cursor: default;
 }
 
 .unselectable {
   opacity: 0.6;
-}
 
-mat-grid-tile.unselectable .folder-card:hover {
-  background: var(--surface-overlay);
-  cursor: default;
-}
-
-.list-row.unselectable:hover {
-  background-color: initial;
-  cursor: default;
+  &:hover {
+    background: transparent;
+    background-color: initial;
+  }
 }
