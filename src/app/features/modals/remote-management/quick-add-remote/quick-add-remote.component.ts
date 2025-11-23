@@ -35,7 +35,6 @@ import {
   MountManagementService,
   AppSettingsService,
   FileSystemService,
-  SchedulerService,
 } from '@app/services';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {
@@ -52,6 +51,7 @@ import {
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { ValidatorRegistryService } from 'src/app/shared/services/validator-registry.service';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
+import { IconService } from 'src/app/shared/services/icon.service';
 
 type WizardStep = 'setup' | 'operations' | 'interactive';
 
@@ -87,9 +87,9 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly mountManagementService = inject(MountManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly schedulerService = inject(SchedulerService);
   private readonly cdRef = inject(ChangeDetectorRef);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
+  readonly iconService = inject(IconService);
 
   readonly quickAddForm: FormGroup;
   remoteTypes: RemoteType[] = [];

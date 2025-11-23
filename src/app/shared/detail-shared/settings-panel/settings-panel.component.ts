@@ -12,56 +12,54 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '../../types';
   imports: [MatCardModule, MatIconModule, MatButtonModule, MatTooltipModule],
   styleUrls: ['./settings-panel.component.scss'],
   template: `
-    <mat-card class="detail-panel settings-panel">
-      <mat-card-header class="panel-header">
-        <mat-card-title class="panel-title-content">
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>
           <mat-icon [svgIcon]="config().section.icon" class="panel-icon"></mat-icon>
           <span>{{ config().section.title }}</span>
         </mat-card-title>
       </mat-card-header>
 
-      <mat-card-content class="panel-content">
-        <div class="settings-container">
-          @if (config().hasSettings) {
-            <div class="settings-grid">
-              @for (setting of getSettingsEntries(); track setting.key) {
-                @if (isObjectButNotArray(setting.value)) {
-                  @for (subSetting of getObjectEntries(setting.value); track subSetting.key) {
-                    <div class="setting-item">
-                      <div class="setting-key">{{ subSetting.key }}</div>
-                      <div
-                        class="setting-value"
-                        [matTooltip]="getTooltip(subSetting.key, subSetting.value)"
-                        [matTooltipHideDelay]="500"
-                      >
-                        {{ getDisplayValue(subSetting.key, subSetting.value) }}
-                      </div>
-                    </div>
-                  }
-                } @else {
+      <mat-card-content>
+        @if (config().hasSettings) {
+          <div class="settings-grid">
+            @for (setting of getSettingsEntries(); track setting.key) {
+              @if (isObjectButNotArray(setting.value)) {
+                @for (subSetting of getObjectEntries(setting.value); track subSetting.key) {
                   <div class="setting-item">
-                    <div class="setting-key">{{ setting.key }}</div>
+                    <div class="setting-key">{{ subSetting.key }}</div>
                     <div
                       class="setting-value"
-                      [matTooltip]="getTooltip(setting.key, setting.value)"
+                      [matTooltip]="getTooltip(subSetting.key, subSetting.value)"
                       [matTooltipHideDelay]="500"
                     >
-                      {{ getDisplayValue(setting.key, setting.value) }}
+                      {{ getDisplayValue(subSetting.key, subSetting.value) }}
                     </div>
                   </div>
                 }
+              } @else {
+                <div class="setting-item">
+                  <div class="setting-key">{{ setting.key }}</div>
+                  <div
+                    class="setting-value"
+                    [matTooltip]="getTooltip(setting.key, setting.value)"
+                    [matTooltipHideDelay]="500"
+                  >
+                    {{ getDisplayValue(setting.key, setting.value) }}
+                  </div>
+                </div>
               }
-            </div>
-          } @else {
-            <div class="no-settings">
-              <mat-icon [svgIcon]="config().section.icon" class="no-settings-icon"></mat-icon>
-              <span>No configuration data available</span>
-            </div>
-          }
-        </div>
+            }
+          </div>
+        } @else {
+          <div class="no-settings">
+            <mat-icon [svgIcon]="config().section.icon" class="no-settings-icon"></mat-icon>
+            <span>No configuration data available</span>
+          </div>
+        }
       </mat-card-content>
 
-      <mat-card-actions class="panel-actions">
+      <mat-card-actions>
         <button
           matButton="filled"
           [class]="'edit-settings-button ' + config().buttonColor"

@@ -24,45 +24,42 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@a
   ],
   styleUrls: ['./operation-control.component.scss'],
   template: `
-    <mat-card class="detail-panel operation-control-panel" [class.active]="config().isActive">
-      <mat-card-header class="panel-header" [ngClass]="config().operationType">
-        <mat-card-title class="panel-title-content">
-          <mat-icon [svgIcon]="operationIcon()" class="panel-icon"></mat-icon>
+    <mat-card [class.active]="config().isActive">
+      <mat-card-header [ngClass]="config().operationType">
+        <mat-card-title>
+          <mat-icon [svgIcon]="operationIcon()"></mat-icon>
           <span>{{ config().operationType | titlecase }} Control</span>
         </mat-card-title>
       </mat-card-header>
 
-      <mat-card-content class="panel-content">
+      <mat-card-content>
         <app-path-display [config]="config().pathConfig" (openPath)="openPath.emit($event)">
         </app-path-display>
       </mat-card-content>
 
-      <mat-card-actions class="panel-actions">
+      <mat-card-actions>
         <app-status-badge [config]="statusBadgeConfig()"></app-status-badge>
-        <div class="operation-controls">
-          <button
-            matButton="filled"
-            (click)="
-              config().isActive
-                ? stopJob.emit(config().operationType)
-                : startJob.emit(config().operationType)
-            "
-            [disabled]="config().isLoading"
-            [ngClass]="buttonClass()"
-            class="operation-toggle-button"
-          >
-            @if (config().isLoading) {
-              <mat-spinner diameter="20"></mat-spinner>
-            } @else {
-              <mat-icon
-                [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
-              ></mat-icon>
-            }
-            <span>{{
-              config().isActive ? config().secondaryButtonLabel : config().primaryButtonLabel
-            }}</span>
-          </button>
-        </div>
+        <button
+          matButton="filled"
+          (click)="
+            config().isActive
+              ? stopJob.emit(config().operationType)
+              : startJob.emit(config().operationType)
+          "
+          [disabled]="config().isLoading"
+          [ngClass]="buttonClass()"
+        >
+          @if (config().isLoading) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <mat-icon
+              [svgIcon]="config().isActive ? config().secondaryIcon : config().primaryIcon"
+            ></mat-icon>
+          }
+          <span>{{
+            config().isActive ? config().secondaryButtonLabel : config().primaryButtonLabel
+          }}</span>
+        </button>
       </mat-card-actions>
     </mat-card>
   `,

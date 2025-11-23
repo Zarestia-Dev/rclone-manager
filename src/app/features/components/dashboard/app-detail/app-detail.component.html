@@ -5,15 +5,15 @@
         <div
           [ngClass]="{
             'icon-container': true,
-            sync: isSyncType() && getOperationActiveState(),
-            copy: selectedSyncOperation() === 'copy' && getOperationActiveState(),
-            move: selectedSyncOperation() === 'move' && getOperationActiveState(),
-            bisync: selectedSyncOperation() === 'bisync' && getOperationActiveState(),
+            sync: isSyncType() && operationActiveState(),
+            copy: selectedSyncOperation() === 'copy' && operationActiveState(),
+            move: selectedSyncOperation() === 'move' && operationActiveState(),
+            bisync: selectedSyncOperation() === 'bisync' && operationActiveState(),
             mount: selectedRemote().mountState?.mounted,
           }"
         >
           <mat-icon
-            [svgIcon]="iconService().getIconName(selectedRemote().remoteSpecs.type)"
+            [svgIcon]="iconService.getIconName(selectedRemote().remoteSpecs.type)"
             class="remote-type-icon"
           ></mat-icon>
         </div>
@@ -66,7 +66,7 @@
               <div class="operation-monitor">
                 <!-- Operation Control Panel -->
                 <app-operation-control
-                  [config]="getOperationControlConfig()"
+                  [config]="operationControlConfig()"
                   (startJob)="
                     startJob.emit({ type: $event, remoteName: selectedRemote().remoteSpecs.name })
                   "
@@ -82,57 +82,24 @@
                 @if (isCronEnabled()) {
                   <div class="cron-human-readable">
                     <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
-                    <span>{{ getHumanReadableCron() }}</span>
+                    <span>{{ humanReadableCron() }}</span>
                   </div>
                 }
 
                 <!-- Job Information Panel -->
                 <app-job-info-panel
-                  [config]="getJobInfoConfig()"
+                  [config]="jobInfoConfig()"
                   class="info-panel"
                 ></app-job-info-panel>
 
                 <!-- Statistics Panel -->
-                <app-stats-panel [config]="getStatsConfig()" class="stats-panel"></app-stats-panel>
+                <app-stats-panel [config]="statsConfig()" class="stats-panel"></app-stats-panel>
 
                 <!-- Transfer Activity Panel -->
                 <app-transfer-activity-panel
-                  [config]="getTransferActivityConfig()"
+                  [config]="transferActivityConfig()"
                   class="activity-panel"
                 ></app-transfer-activity-panel>
-
-                <!-- Performance Charts Panel -->
-                @if (shouldShowCharts()) {
-                  <div class="performance-graphs">
-                    <mat-card class="graph-card speed-chart">
-                      <mat-card-header>
-                        <div mat-card-avatar>
-                          <mat-icon svgIcon="chart" class="chart-icon"></mat-icon>
-                        </div>
-                        <mat-card-title>Transfer Speed</mat-card-title>
-                      </mat-card-header>
-                      <mat-card-content>
-                        <div class="chart-container">
-                          <canvas #speedChart></canvas>
-                        </div>
-                      </mat-card-content>
-                    </mat-card>
-
-                    <mat-card class="graph-card progress-chart">
-                      <mat-card-header>
-                        <div mat-card-avatar>
-                          <mat-icon svgIcon="chart" class="chart-icon"></mat-icon>
-                        </div>
-                        <mat-card-title>Transfer Progress</mat-card-title>
-                      </mat-card-header>
-                      <mat-card-content>
-                        <div class="chart-container">
-                          <canvas #progressChart></canvas>
-                        </div>
-                      </mat-card-content>
-                    </mat-card>
-                  </div>
-                }
               </div>
             </mat-tab>
 
@@ -177,14 +144,14 @@
                   }
                 }
                 <div class="settings-layout">
-                  @if (operationSettingsSections.length) {
+                  @if (operationSettingsSections().length) {
                     <section class="settings-group operation-settings">
                       <header class="group-header">
                         <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
                         <p class="group-description">{{ operationSettingsDescription() }}</p>
                       </header>
                       <div class="group-panels">
-                        @for (section of operationSettingsSections; track section.key) {
+                        @for (section of operationSettingsSections(); track section.key) {
                           <app-settings-panel
                             [config]="getSettingsPanelConfig(section)"
                             (editSettings)="onEditSettings($event)"
@@ -195,14 +162,14 @@
                     </section>
                   }
 
-                  @if (sharedSettingsSections.length) {
+                  @if (sharedSettingsSections().length) {
                     <section class="settings-group shared-settings">
                       <header class="group-header">
                         <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
                         <p class="group-description">{{ sharedSettingsDescription }}</p>
                       </header>
                       <div class="group-panels">
-                        @for (section of sharedSettingsSections; track section.key) {
+                        @for (section of sharedSettingsSections(); track section.key) {
                           <app-settings-panel
                             [config]="getSettingsPanelConfig(section)"
                             (editSettings)="onEditSettings($event)"
@@ -233,7 +200,7 @@
             <div class="operation-monitor">
               <!-- Mount Control Panel -->
               <app-operation-control
-                [config]="getMountControlConfig()"
+                [config]="mountControlConfig()"
                 (startJob)="
                   startJob.emit({
                     type: 'mount',
@@ -266,14 +233,14 @@
 
             <div class="configuration-content">
               <div class="settings-layout">
-                @if (operationSettingsSections.length) {
+                @if (operationSettingsSections().length) {
                   <section class="settings-group operation-settings">
                     <header class="group-header">
                       <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
                       <p class="group-description">{{ operationSettingsDescription() }}</p>
                     </header>
                     <div class="group-panels">
-                      @for (section of operationSettingsSections; track section.key) {
+                      @for (section of operationSettingsSections(); track section.key) {
                         <app-settings-panel
                           [config]="getSettingsPanelConfig(section)"
                           (editSettings)="onEditSettings($event)"
@@ -284,14 +251,14 @@
                   </section>
                 }
 
-                @if (sharedSettingsSections.length) {
+                @if (sharedSettingsSections().length) {
                   <section class="settings-group shared-settings">
                     <header class="group-header">
                       <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
                       <p class="group-description">{{ sharedSettingsDescription }}</p>
                     </header>
                     <div class="group-panels">
-                      @for (section of sharedSettingsSections; track section.key) {
+                      @for (section of sharedSettingsSections(); track section.key) {
                         <app-settings-panel
                           [config]="getSettingsPanelConfig(section)"
                           (editSettings)="onEditSettings($event)"

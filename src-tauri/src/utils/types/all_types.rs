@@ -35,13 +35,15 @@ pub struct ServeInstance {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DiskUsage {
-    pub free: String,
-    pub used: String,
-    pub total: String,
+    pub free: i64,
+    pub used: i64,
+    pub total: i64,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ListOptions {
+    #[serde(default)]
+    pub metadata: bool,
     #[serde(flatten)]
     pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
@@ -63,6 +65,9 @@ pub struct RcloneCoreVersion {
     pub go_version: String,
     pub os: String,
     pub arch: String,
+    pub os_version: String,
+    pub os_kernel: String,
+    pub os_arch: String,
     pub is_beta: bool,
     pub is_git: bool,
     pub linking: String,

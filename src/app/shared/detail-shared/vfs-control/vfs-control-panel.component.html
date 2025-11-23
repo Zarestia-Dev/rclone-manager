@@ -1,40 +1,30 @@
-<mat-card class="vfs-card">
+<mat-card>
   <mat-card-header>
     <mat-card-title>
-      <div class="panel-title">
-        <mat-icon svgIcon="vfs"></mat-icon>
-        <span>VFS Control</span>
-        @if (selectedVfs() && selectedVfs()!.queue.length > 0) {
-          <span class="queue-badge" matTooltip="Uploads Pending">
-            {{ selectedVfs()!.queue.length }}
-          </span>
-        }
-      </div>
+      <mat-icon svgIcon="vfs"></mat-icon>
+      <span>VFS Control</span>
+      @if (selectedVfs()?.queue?.length) {
+        <span class="queue-badge" matTooltip="Uploads Pending">
+          {{ selectedVfs()!.queue.length }}
+        </span>
+      }
     </mat-card-title>
-    <div class="header-actions">
-      <button
-        mat-icon-button
-        (click)="loadAll()"
-        matTooltip="Refresh All Data"
-        [disabled]="loading()"
-      >
-        <mat-icon [class.spin]="loading()" svgIcon="refresh"></mat-icon>
-      </button>
-    </div>
   </mat-card-header>
 
   <mat-card-content>
     @if (vfsNotFound()) {
-      <div class="empty-state" style="padding: 48px 16px">
-        <mat-icon style="font-size: 48px; width: 48px; height: 48px">cloud_off</mat-icon>
+      <!-- No VFS State -->
+      <div class="empty-state">
+        <mat-icon svgIcon="vfs"></mat-icon>
         <h3>No VFS Found</h3>
         <p>No VFS instances are running for this remote.</p>
         <p class="hint">Make sure the remote is mounted with VFS enabled.</p>
       </div>
-    } @else if (vfsInstances().length === 0 && loading()) {
-      <div class="loading-state" style="padding: 32px; text-align: center">
+    } @else if (loading() && vfsInstances().length === 0) {
+      <!-- Loading State -->
+      <div class="loading-state">
         <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-        <p style="margin-top: 16px; opacity: 0.7">Loading VFS data...</p>
+        <p>Loading VFS data...</p>
       </div>
     } @else if (vfsInstances().length > 0) {
       <!-- VFS Instance Selector (only show if multiple instances) -->
@@ -58,41 +48,43 @@
 
       @if (selectedVfs(); as vfs) {
         <!-- Stats Grid -->
-        @if (vfs.stats) {
+        @if (vfs.stats?.diskCache; as diskCache) {
           <div class="stats-grid">
             <div class="stat-item">
               <span class="label">Disk Cache</span>
               <span class="value">
-                {{ vfs.stats.diskCache.bytesUsed | formatFileSize }}
+                {{ diskCache.bytesUsed | formatFileSize }}
               </span>
             </div>
             <div class="stat-item">
               <span class="label">Cached Files</span>
-              <span class="value">{{ vfs.stats.diskCache.files }}</span>
+              <span class="value">{{ diskCache.files }}</span>
             </div>
             <div class="stat-item">
               <span class="label">Pending Uploads</span>
               <span class="value">
-                {{ vfs.stats.diskCache.uploadsQueued }}
+                {{ diskCache.uploadsQueued }}
               </span>
             </div>
             <div class="stat-item">
               <span class="label">In Progress</span>
               <span class="value">
-                {{ vfs.stats.diskCache.uploadsInProgress }}
+                {{ diskCache.uploadsInProgress }}
               </span>
             </div>
-            <div class="stat-item">
-              <span class="label">Metadata</span>
-              <span class="value">
-                {{ vfs.stats.metadataCache.dirs + vfs.stats.metadataCache.files }}
-                items
-              </span>
-            </div>
-            @if (vfs.stats.diskCache.erroredFiles > 0) {
+            @if (vfs.stats?.metadataCache; as metadataCache) {
+              <div class="stat-item">
+                <span class="label">Metadata</span>
+                <span class="value">
+                  {{ metadataCache.dirs + metadataCache.files }}
+                  items
+                </span>
+              </div>
+            }
+            @if (diskCache.erroredFiles > 0) {
               <div class="stat-item error">
                 <span class="label">Errors</span>
-                <span class="value">{{ vfs.stats.diskCache.erroredFiles }}</span>
+                <span class="value">{{ diskCache.erroredFiles }}</span>
               </div>
             }
           </div>
@@ -217,15 +209,17 @@
             }
           </div>
         </div>
-        <div class="cache-info-section">
-          <div class="section-header">
-            <h3>
-              <mat-icon svgIcon="database"></mat-icon>
-              Cache Information
-            </h3>
-          </div>
-          <div class="cache-info-content">
-            @if (vfs.stats) {
+
+        <!-- Cache Information Section -->
+        @if (vfs.stats?.diskCache; as diskCache) {
+          <div class="cache-info-section">
+            <div class="section-header">
+              <h3>
+                <mat-icon svgIcon="database"></mat-icon>
+                Cache Information
+              </h3>
+            </div>
+            <div class="cache-info-content">
               <div class="info-row">
                 <mat-icon svgIcon="folder"></mat-icon>
                 <div class="info-text">
@@ -233,14 +227,14 @@
                     <strong>Cache Location:</strong>
                     <button
                       mat-icon-button
-                      (click)="openCacheFolder(vfs.stats.diskCache.path)"
+                      (click)="openFolder(diskCache.path)"
                       matTooltip="Open cache folder"
                       class="folder-button"
                     >
                       <mat-icon svgIcon="folder"></mat-icon>
                     </button>
                   </div>
-                  <code>{{ vfs.stats.diskCache.path }}</code>
+                  <code>{{ diskCache.path }}</code>
                 </div>
               </div>
               <div class="info-row">
@@ -250,14 +244,14 @@
                     <strong>Metadata Location:</strong>
                     <button
                       mat-icon-button
-                      (click)="openMetadataFolder(vfs.stats.diskCache.pathMeta)"
+                      (click)="openFolder(diskCache.pathMeta)"
                       matTooltip="Open metadata folder"
                       class="folder-button"
                     >
                       <mat-icon svgIcon="folder"></mat-icon>
                     </button>
                   </div>
-                  <code>{{ vfs.stats.diskCache.pathMeta }}</code>
+                  <code>{{ diskCache.pathMeta }}</code>
                 </div>
               </div>
               <div class="info-row">
@@ -270,36 +264,34 @@
                   </span>
                 </div>
               </div>
-            }
+            </div>
           </div>
-        </div>
+        }
 
-        <!-- Updated Controls Section -->
-        <div class="controls-row">
-          <div class="setting-group">
-            <mat-form-field appearance="fill" class="dense-form-field">
-              <mat-label>Poll Interval</mat-label>
-              <input
-                matInput
-                [ngModel]="pollIntervalInput()"
-                (ngModelChange)="pollIntervalInput.set($event)"
-                placeholder="e.g., 1m, 30s"
-                [disabled]="loading()"
-              />
-              <mat-hint>How often to check remote for changes</mat-hint>
-              <button
-                mat-icon-button
-                matSuffix
-                (click)="updatePollInterval()"
-                matTooltip="Update Poll Interval"
-                [disabled]="!pollIntervalInput().trim() || loading()"
-              >
-                <mat-icon svgIcon="bolt"></mat-icon>
-              </button>
-            </mat-form-field>
-          </div>
+        <!-- Actions -->
+        <mat-card-actions>
+          <mat-form-field appearance="fill" class="dense-form-field poll-interval-field">
+            <mat-label>Poll Interval</mat-label>
+            <input
+              matInput
+              [ngModel]="pollIntervalInput()"
+              (ngModelChange)="pollIntervalInput.set($event)"
+              placeholder="e.g., 1m, 30s"
+              [disabled]="loading()"
+            />
+            <mat-hint>How often to check remote for changes</mat-hint>
+            <button
+              mat-icon-button
+              matSuffix
+              (click)="updatePollInterval()"
+              matTooltip="Update Poll Interval"
+              [disabled]="!pollIntervalInput().trim() || loading()"
+            >
+              <mat-icon svgIcon="bolt"></mat-icon>
+            </button>
+          </mat-form-field>
 
-          <div class="actions-group">
+          <div class="action-buttons">
             <button
               mat-stroked-button
               (click)="refreshDirectory()"
@@ -320,8 +312,17 @@
               <mat-icon svgIcon="trash"></mat-icon>
               Clear Metadata
             </button>
+
+            <button
+              mat-icon-button
+              (click)="loadAll()"
+              matTooltip="Refresh All Data"
+              [disabled]="loading()"
+            >
+              <mat-icon [class.spin]="loading()" svgIcon="refresh"></mat-icon>
+            </button>
           </div>
-        </div>
+        </mat-card-actions>
       }
     }
   </mat-card-content>

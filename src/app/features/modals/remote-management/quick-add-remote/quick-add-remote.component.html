@@ -5,13 +5,12 @@
   aria-describedby="quick-add-modal-description"
 >
   <div class="modal-header" data-tauri-drag-region>
-    <button matIconButton aria-label="Help information">
-      <mat-icon svgIcon="question"></mat-icon>
+    <button>
+      <mat-icon
+        [svgIcon]="iconService.getIconName(quickAddForm.get('setup.remoteType')?.value)"
+      ></mat-icon>
     </button>
-    <p id="quick-add-modal-title">
-      <mat-icon svgIcon="hard-drive"></mat-icon>
-      Quick Add Remote
-    </p>
+    <p id="quick-add-modal-title">Quick Add Remote</p>
     <button matIconButton (click)="close()" aria-label="Close dialog">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>

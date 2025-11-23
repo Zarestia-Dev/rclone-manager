@@ -169,7 +169,7 @@
       display: inline-flex;
       align-items: center;
       margin: 0 6px;
-      font-size: var(--caption-font-size);
+      font-size: var(--font-size-sm);
       color: var(--secondary-text-color);
       font-weight: 400;
     }
@@ -198,7 +198,7 @@
           .key {
             height: 28px;
             padding: 0 8px;
-            font-size: var(--caption-font-size);
+            font-size: var(--font-size-sm);
             margin: 2px;
           }
         }

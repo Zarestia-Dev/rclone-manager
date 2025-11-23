@@ -1,12 +1,8 @@
-import { Component, Output, EventEmitter, ChangeDetectionStrategy, input } from '@angular/core';
+import { Component, Output, EventEmitter, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MatTableModule } from '@angular/material/table';
-import { MatButtonModule } from '@angular/material/button';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTabsModule } from '@angular/material/tabs';
-import { MatSortModule } from '@angular/material/sort';
 import { MatChipsModule } from '@angular/material/chips';
 import { ActiveTransfersTableComponent } from './active-transfers-table.component';
 import { CompletedTransfersTableComponent } from './completed-transfers-table.component';
@@ -19,16 +15,11 @@ import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '..
     CommonModule,
     MatCardModule,
     MatIconModule,
-    MatTableModule,
-    MatButtonModule,
-    MatProgressBarModule,
     MatTabsModule,
-    MatSortModule,
     MatChipsModule,
     ActiveTransfersTableComponent,
     CompletedTransfersTableComponent,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <mat-card class="detail-panel transfer-activity-panel" [ngClass]="config().operationClass">
       <mat-card-header class="panel-header">
@@ -62,6 +53,7 @@ import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '..
                 <app-active-transfers-table
                   [transfers]="config().activeTransfers"
                   [operationClass]="config().operationClass"
+                  [trackBy]="trackByActiveTransfer"
                 ></app-active-transfers-table>
               </div>
             </mat-tab>
@@ -82,11 +74,13 @@ import { CompletedTransfer, TransferActivityPanelConfig, TransferFile } from '..
           </mat-tab-group>
         } @else {
           <!-- Show only active transfers when no history -->
-          <app-active-transfers-table
-            [transfers]="config().activeTransfers"
-            [operationClass]="config().operationClass"
-            [trackBy]="trackByActiveTransfer"
-          ></app-active-transfers-table>
+          <div class="single-view-content">
+            <app-active-transfers-table
+              [transfers]="config().activeTransfers"
+              [operationClass]="config().operationClass"
+              [trackBy]="trackByActiveTransfer"
+            ></app-active-transfers-table>
+          </div>
         }
       </mat-card-content>
     </mat-card>
@@ -98,7 +92,7 @@ export class TransferActivityPanelComponent {
   @Output() refreshTransfers = new EventEmitter<void>();
 
   trackByActiveTransfer(index: number, transfer: TransferFile): string {
-    return transfer.name + transfer.percentage;
+    return transfer.name;
   }
 
   trackByCompletedTransfer(index: number, transfer: CompletedTransfer): string {

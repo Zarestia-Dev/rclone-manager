@@ -5,333 +5,352 @@
         <button mat-icon-button class="small-button" (click)="toggleSearch('global')">
           <mat-icon svgIcon="search"></mat-icon>
         </button>
-        <span>{{ title$ | async }}</span>
+        <span>{{ title() }}</span>
         <button mat-icon-button class="small-button">
           <mat-icon svgIcon="menu-bar"></mat-icon>
         </button>
       </mat-toolbar>
-      <mat-nav-list>
-        <!-- List real remotes from the backend. We use AsyncPipe and a trackBy for stable DOM nodes. -->
-        <mat-list-item
-          *ngFor="let remote of remotesWithMeta$ | async; trackBy: trackByRemote"
-          (click)="selectRemote(remote)"
-          role="button"
-          tabindex="0"
-          [class.selected]="(nautilusRemote$ | async)?.name === remote.name"
-          class="remote-list-item"
-        >
-          <span class="remote-info">
-            <span class="remote-icon">
-              <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
-              <p matLine>{{ remote.label }}</p>
-            </span>
-            <span class="eject">
-              <mat-icon
-                class="unmount-button"
-                *ngIf="remote.isMounted"
-                (click)="openMountInFiles($event, remote.mountPoint, remote.name)"
-                svgIcon="eject"
-              ></mat-icon>
-            </span>
-          </span>
-        </mat-list-item>
 
-        <!-- Show a placeholder when no remotes exist -->
-        <mat-list-item *ngIf="(remotesWithMeta$ | async)?.length === 0">
-          <mat-icon matListIcon svgIcon="cloud-offline"></mat-icon>
-          <h4 matLine>No remotes configured</h4>
-        </mat-list-item>
+      <mat-nav-list>
+        @for (remote of remotesWithMeta(); track trackByRemote($index, remote)) {
+          <mat-list-item
+            (click)="selectRemote(remote)"
+            (keydown.enter)="selectRemote(remote)"
+            (keydown.space)="selectRemote(remote)"
+            (contextmenu)="onRemoteContextMenu($any($event), remote)"
+            role="button"
+            tabindex="0"
+            [class.selected]="(nautilusRemote | async)?.name === remote.name"
+            class="remote-list-item"
+          >
+            <span class="remote-info">
+              <span class="remote-icon">
+                <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+                <p matLine>{{ remote.label }}</p>
+              </span>
+              <span class="eject">
+                @if (remote.isMounted) {
+                  <button mat-icon-button class="unmount-button">
+                    <mat-icon svgIcon="eject"></mat-icon>
+                  </button>
+                }
+              </span>
+            </span>
+          </mat-list-item>
+        }
+
+        @if (remotesWithMeta().length === 0) {
+          <mat-list-item>
+            <mat-icon matListIcon svgIcon="cloud-offline"></mat-icon>
+            <h4 matLine>No remotes configured</h4>
+          </mat-list-item>
+        }
       </mat-nav-list>
     </div>
   </mat-sidenav>
 
   <mat-sidenav-content class="nautilus-main-content">
     <mat-toolbar class="nautilus-toolbar" data-tauri-drag-region>
-      <div class="left-section" *ngIf="!isSearchEnabled()">
-        <button mat-icon-button class="secondary" aria-label="Back" (click)="goBack()">
-          <mat-icon svgIcon="chevron-left"></mat-icon>
-        </button>
-        <button mat-icon-button class="secondary" aria-label="Forward" (click)="goForward()">
-          <mat-icon svgIcon="chevron-right"></mat-icon>
-        </button>
-      </div>
-      <div
-        class="path-container"
-        (click)="isEditingPath.next(true)"
-        (keydown.enter)="isEditingPath.next(true)"
-        tabindex="0"
-        *ngIf="!isSearchEnabled()"
-      >
-        <ng-container *ngIf="(isEditingPath | async) === false">
-          <button
-            mat-button
-            class="path-segment"
-            (click)="$event.stopPropagation(); navigateToPath('')"
-          >
-            <mat-icon [svgIcon]="(nautilusRemote$ | async)?.type || 'home'"></mat-icon>
-            {{ (nautilusRemote$ | async)?.name || 'Local' }}
+      @if (!isSearchEnabled()) {
+        <div class="left-section">
+          <button mat-icon-button class="secondary" (click)="goBack()">
+            <mat-icon svgIcon="chevron-left"></mat-icon>
           </button>
-          <span
-            *ngFor="
-              let segment of pathSegments$ | async as segments;
-              let i = index;
-              trackBy: trackByIndex
-            "
-          >
-            /
+          <button mat-icon-button class="secondary" (click)="goForward()">
+            <mat-icon svgIcon="chevron-right"></mat-icon>
+          </button>
+        </div>
+
+        <div
+          class="path-container"
+          (click)="isEditingPath.set(true)"
+          (keydown.enter)="isEditingPath.set(true)"
+          tabindex="0"
+        >
+          @if (!isEditingPath()) {
             <button
               mat-button
               class="path-segment"
-              (click)="$event.stopPropagation(); navigateToPath(getPath(segments, i))"
+              (click)="$event.stopPropagation(); navigateToPath('')"
             >
-              {{ segment }}
+              <mat-icon [svgIcon]="(nautilusRemote | async)?.type || 'home'"></mat-icon>
+              {{ (nautilusRemote | async)?.name || 'Local' }}
             </button>
-          </span>
-        </ng-container>
-        <input
-          *ngIf="isEditingPath | async"
-          #pathInput
-          class="path-input"
-          [value]="
-            ((nautilusRemote$ | async)?.name === 'Local'
-              ? ''
-              : (nautilusRemote$ | async)?.name + '/') + (currentPath$ | async)
-          "
-          (keydown.enter)="navigateToPath(pathInput.value)"
-          (blur)="navigateToPath(pathInput.value)"
-        />
-      </div>
-      <div class="search-input-container" *ngIf="isSearchEnabled()">
-        <mat-icon svgIcon="search"></mat-icon>
-        <input
-          matInput
-          [placeholder]="searchScope() === 'global' ? 'Search everywhere' : 'Search in folder'"
-          (input)="onSearchQueryChange($any($event.target).value)"
-        />
-      </div>
+            @for (segment of pathSegments(); track $index) {
+              /
+              <button mat-button class="path-segment" (click)="$event.stopPropagation()">
+                {{ segment }}
+              </button>
+            }
+          } @else {
+            <input
+              #pathInput
+              class="path-input"
+              [value]="currentPath | async"
+              (keydown.enter)="navigateToPath(pathInput.value)"
+              (blur)="isEditingPath.set(false)"
+            />
+          }
+        </div>
+      }
+
+      @if (isSearchEnabled()) {
+        <div class="search-input-container">
+          <mat-icon svgIcon="search"></mat-icon>
+          <input
+            matInput
+            [placeholder]="searchScope() === 'global' ? 'Search everywhere' : 'Search in folder'"
+            [value]="searchQuery()"
+            (input)="onSearchQueryChange($any($event.target).value)"
+          />
+        </div>
+      }
 
       <div class="right-section">
-        <button mat-icon-button (click)="toggleSearch('local')">
-          <mat-icon svgIcon="folder-search"></mat-icon>
-        </button>
         <button
           mat-icon-button
-          (click)="setLayout(layout$.value === 'grid' ? 'list' : 'grid')"
-          *ngIf="!isSearchEnabled()"
+          (click)="toggleSearch('local')"
+          [class.active]="isSearchEnabled() && searchScope() === 'local'"
         >
-          <mat-icon [svgIcon]="layout$.value === 'grid' ? 'view-list' : 'view-grid'"></mat-icon>
+          <mat-icon svgIcon="folder-search"></mat-icon>
         </button>
-        <button mat-icon-button [matMenuTriggerFor]="viewMenu" *ngIf="!isSearchEnabled()">
-          <mat-icon svgIcon="arrow-down"></mat-icon>
-        </button>
-        <mat-menu #viewMenu="matMenu">
-          <div class="view-menu-content">
-            <div class="icon-size-control">
-              <span>Icon Size</span>
-              <button mat-icon-button (click)="decreaseIconSize()">
-                <mat-icon svgIcon="minus"></mat-icon>
-              </button>
-              <button mat-icon-button (click)="increaseIconSize()">
-                <mat-icon svgIcon="plus"></mat-icon>
-              </button>
-            </div>
-            <mat-divider></mat-divider>
-            <div class="sort-options">
-              <mat-radio-group
-                [ngModel]="(sort$ | async)?.key"
-                (ngModelChange)="changeSort($event)"
-              >
-                <mat-radio-button value="name">Name</mat-radio-button>
-                <mat-radio-button value="modified">Modified</mat-radio-button>
-                <mat-radio-button value="size">Size</mat-radio-button>
-                <mat-radio-button value="type">Type</mat-radio-button>
-              </mat-radio-group>
-            </div>
-            <mat-divider></mat-divider>
-            <mat-checkbox
-              [ngModel]="showHidden$ | async"
-              (ngModelChange)="toggleShowHidden($event)"
-            >
-              Show Hidden Files
-            </mat-checkbox>
-          </div>
-        </mat-menu>
-        <!-- Window Controls -->
+
+        @if (!isSearchEnabled()) {
+          <button mat-icon-button (click)="setLayout(layout() === 'grid' ? 'list' : 'grid')">
+            <mat-icon [svgIcon]="layout() === 'grid' ? 'view-list' : 'view-grid'"></mat-icon>
+          </button>
+
+          <button mat-icon-button [matMenuTriggerFor]="viewMenu">
+            <mat-icon svgIcon="arrow-down"></mat-icon>
+          </button>
+        }
+
         @if (windowButtons) {
-          <button matIconButton (click)="minimizeWindow()" aria-label="Minimize window">
-            <mat-icon svgIcon="remove" aria-hidden="true"></mat-icon>
+          <button matIconButton (click)="minimizeWindow()">
+            <mat-icon svgIcon="remove"></mat-icon>
           </button>
-          <button matIconButton (click)="maximizeWindow()" aria-label="Maximize window">
-            <mat-icon svgIcon="check-box" aria-hidden="true"></mat-icon>
+          <button matIconButton (click)="maximizeWindow()">
+            <mat-icon svgIcon="check-box"></mat-icon>
           </button>
-          <button
-            matIconButton
-            (click)="closeWindow()"
-            aria-label="Close window"
-            class="close-button"
-          >
-            <mat-icon svgIcon="close" aria-hidden="true"></mat-icon>
+          <button matIconButton (click)="closeWindow()" class="close-button">
+            <mat-icon svgIcon="close"></mat-icon>
           </button>
         }
       </div>
     </mat-toolbar>
 
-    <div
-      class="nautilus-content"
-      [ngSwitch]="layout$ | async"
-      *ngIf="!isSearchEnabled() || searchScope() === 'local'"
-    >
+    <!-- Tabs bar (hidden when only 1 tab) -->
+    <div class="tabs-bar" *ngIf="tabs.length > 1">
       <div
-        *ngSwitchCase="'grid'"
-        class="nautilus-grid"
-        (click)="clearSelection()"
-        (keydown.space)="clearSelection()"
+        class="tab"
+        *ngFor="let t of tabs; let i = index; trackBy: trackByTab"
+        [class.active]="activeTabIndex() === i"
+        role="button"
         tabindex="0"
+        (click)="switchTab(i)"
+        (keydown.enter)="switchTab(i)"
       >
-        <!-- Responsive CSS Grid: columns auto-fit based on available width and tile min width
-             tile min width is derived from `iconSize$` (fallback 120px) so tiles adapt
-             when icon size changes. -->
-        <div
-          class="grid"
-          [style.gridTemplateColumns]="
-            'repeat(auto-fill, minmax(' + (((iconSize$ | async) || 120) + 40) + 'px, 1fr))'
-          "
+        <span class="tab-title">{{ t.title }}</span>
+        <button
+          mat-icon-button
+          class="close-tab"
+          (click)="$event.stopPropagation(); closeTab(i)"
+          aria-label="Close tab"
         >
-          <div
-            class="grid-item"
-            *ngFor="let item of files$ | async as allItems; let i = index; trackBy: trackByFile"
-            (click)="onItemClick(item, $event, i, allItems)"
-            (keydown.enter)="onItemKeydown(item, $event, i, allItems)"
-            (dblclick)="navigateTo(item)"
-            [class.selected]="(selectedItems$ | async)?.has(item.Path)"
-            [class.unselectable]="!isItemSelectable(item)"
-            tabindex="0"
-          >
-            <mat-card class="folder-card" [class.file-card]="!item.IsDir">
-              <mat-card-content>
-                <mat-icon
-                  class="folder-icon"
-                  [style.fontSize.px]="((iconSize$ | async) || 120) / 2"
-                  [svgIcon]="item.IsDir ? 'folder' : 'file'"
-                ></mat-icon>
-                <p class="folder-title">{{ item.Name }}</p>
-              </mat-card-content>
-            </mat-card>
-          </div>
-        </div>
-      </div>
-      <div
-        *ngSwitchCase="'list'"
-        class="nautilus-list"
-        (click)="clearSelection()"
-        (keydown.space)="clearSelection()"
-        tabindex="0"
-      >
-        <div class="list-header">
-          <div
-            class="list-col name"
-            (click)="changeSort('name')"
-            (keydown.enter)="changeSort('name')"
-            tabindex="0"
-          >
-            Name
-            <mat-icon
-              *ngIf="(sort$ | async)?.key === 'name'"
-              [svgIcon]="(sort$ | async)?.direction === 'asc' ? 'arrow-up' : 'arrow-down'"
-            ></mat-icon>
-          </div>
-          <div
-            class="list-col size"
-            (click)="changeSort('size')"
-            (keydown.enter)="changeSort('size')"
-            tabindex="0"
-          >
-            Size
-            <mat-icon
-              *ngIf="(sort$ | async)?.key === 'size'"
-              [svgIcon]="(sort$ | async)?.direction === 'asc' ? 'arrow-up' : 'arrow-down'"
-            ></mat-icon>
-          </div>
-          <div
-            class="list-col modified"
-            (click)="changeSort('modified')"
-            (keydown.enter)="changeSort('modified')"
-            tabindex="0"
-          >
-            Modified
-            <mat-icon
-              *ngIf="(sort$ | async)?.key === 'modified'"
-              [svgIcon]="(sort$ | async)?.direction === 'asc' ? 'arrow-up' : 'arrow-down'"
-            ></mat-icon>
-          </div>
-          <div class="list-col star"></div>
-        </div>
-        <div
-          *ngFor="let item of files$ | async as allItems; let i = index; trackBy: trackByFile"
-          class="list-row"
-          (click)="onItemClick(item, $event, i, allItems)"
-          (keydown.enter)="onItemKeydown(item, $event, i, allItems)"
-          (dblclick)="navigateTo(item)"
-          [class.selected]="(selectedItems$ | async)?.has(item.Path)"
-          [class.unselectable]="!isItemSelectable(item)"
-          tabindex="0"
-        >
-          <div class="list-col name">
-            <mat-icon [svgIcon]="item.IsDir ? 'folder' : 'file'"></mat-icon>
-            <span>{{ item.Name }}</span>
-          </div>
-          <div class="list-col size">
-            {{ item.IsDir ? '--' : formatBytes(item.Size) }}
-          </div>
-          <div class="list-col modified">
-            {{ formatRelativeDate(item.ModTime) }}
-          </div>
-          <div class="list-col star">
-            <mat-icon svgIcon="star-outline"></mat-icon>
-          </div>
-        </div>
-      </div>
-      <div
-        class="empty-folder-container"
-        *ngIf="(files$ | async)?.length === 0 && (isLoading$ | async) === false"
-      >
-        <mat-icon svgIcon="folder"></mat-icon>
-        <h2>Folder is Empty</h2>
-      </div>
-      <div
-        class="selection-summary"
-        *ngIf="(selectionSummary$ | async) && (isLoading$ | async) === false"
-      >
-        {{ selectionSummary$ | async }}
-      </div>
-      <div class="loading-overlay" *ngIf="isLoading$ | async">
-        <mat-spinner diameter="24"></mat-spinner>
-        <span>Loading...</span>
-        <button mat-icon-button (click)="cancelLoad()">
           <mat-icon svgIcon="close"></mat-icon>
         </button>
       </div>
-    </div>
-    <div
-      class="search-container"
-      *ngIf="isSearchEnabled() && searchScope() === 'global' && (searchQuery$ | async) === ''"
-    >
-      <div class="search-everywhere">
-        <mat-icon svgIcon="search" class="search-icon"></mat-icon>
-        <h2>Search Everywhere</h2>
-        <p>Find files and folders in all search locations</p>
-      </div>
-    </div>
-    <div class="picker-actions" *ngIf="isPickerMode$ | async">
-      <button mat-stroked-button (click)="onClose()">Cancel</button>
       <button
-        mat-flat-button
-        class="accent"
-        (click)="confirmSelection()"
-        [disabled]="isOpenDisabled"
+        mat-icon-button
+        class="add-tab"
+        (click)="createTab(getActiveRemote(), '')"
+        aria-label="New tab"
       >
-        Open
+        <mat-icon svgIcon="plus"></mat-icon>
       </button>
     </div>
+
+    <div class="nautilus-content" [class.list-layout]="layout() === 'list'">
+      @if (layout() === 'grid') {
+        <div
+          class="nautilus-grid"
+          (click)="clearSelection()"
+          (keydown.space)="clearSelection()"
+          tabindex="0"
+        >
+          <div
+            class="grid"
+            [style.gridTemplateColumns]="
+              'repeat(auto-fill, minmax(' + (iconSize() + 40) + 'px, 1fr))'
+            "
+          >
+            @for (item of files(); track trackByFile($index, item)) {
+              <div
+                class="grid-item"
+                (click)="onItemClick(item, $event, $index)"
+                (keydown.enter)="onItemClick(item, $any($event), $index)"
+                (dblclick)="navigateTo(item)"
+                (contextmenu)="onItemContextMenu($any($event), item)"
+                tabindex="0"
+                [class.selected]="(selectedItems | async)?.has(item.Path)"
+                [class.unselectable]="!isItemSelectable(item)"
+              >
+                <mat-card class="folder-card" [class.file-card]="!item.IsDir">
+                  <mat-card-content>
+                    <mat-icon
+                      class="folder-icon"
+                      [style.fontSize.px]="iconSize() / 2"
+                      [svgIcon]="item.IsDir ? 'folder' : 'file'"
+                    ></mat-icon>
+                    <p class="folder-title">{{ item.Name }}</p>
+                  </mat-card-content>
+                </mat-card>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (layout() === 'list') {
+        <div
+          class="nautilus-list"
+          (click)="clearSelection()"
+          (keydown.space)="clearSelection()"
+          tabindex="0"
+        >
+          <div class="list-header">
+            <div
+              class="list-col name"
+              (click)="changeSort('name')"
+              (keydown.enter)="changeSort('name')"
+              tabindex="0"
+            >
+              Name
+              <mat-icon
+                *ngIf="sortKey() === 'name'"
+                [svgIcon]="sortDirection() === 'asc' ? 'arrow-up' : 'arrow-down'"
+              ></mat-icon>
+            </div>
+            <div
+              class="list-col size"
+              (click)="changeSort('size')"
+              (keydown.enter)="changeSort('size')"
+              tabindex="0"
+            >
+              Size
+            </div>
+            <div
+              class="list-col modified"
+              (click)="changeSort('modified')"
+              (keydown.enter)="changeSort('modified')"
+              tabindex="0"
+            >
+              Modified
+            </div>
+          </div>
+          @for (item of files(); track trackByFile($index, item)) {
+            <div
+              class="list-row"
+              (click)="onItemClick(item, $event, $index)"
+              (keydown.enter)="onItemClick(item, $any($event), $index)"
+              (dblclick)="navigateTo(item)"
+              (contextmenu)="onItemContextMenu($any($event), item)"
+              tabindex="0"
+              [class.selected]="(selectedItems | async)?.has(item.Path)"
+            >
+              <div class="list-col name">
+                <mat-icon [svgIcon]="item.IsDir ? 'folder' : 'file'"></mat-icon>
+                <span>{{ item.Name }}</span>
+              </div>
+              <div class="list-col size">{{ item.IsDir ? '--' : formatBytes(item.Size) }}</div>
+              <div class="list-col modified">{{ formatRelativeDate(item.ModTime) }}</div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (files().length === 0 && !isLoading()) {
+        <div class="empty-folder-container">
+          <mat-icon svgIcon="folder"></mat-icon>
+          <h2>{{ isSearchEnabled() ? 'No results found' : 'Folder is Empty' }}</h2>
+        </div>
+      }
+
+      @if (isLoading()) {
+        <div class="loading-overlay">
+          <mat-spinner diameter="24"></mat-spinner>
+          <span>Loading...</span>
+          <button mat-icon-button (click)="cancelLoad()">
+            <mat-icon svgIcon="close"></mat-icon>
+          </button>
+        </div>
+      }
+    </div>
+
+    <!-- Custom context menu -->
+    <div
+      class="context-menu"
+      *ngIf="contextMenuVisible()"
+      [style.left.px]="contextMenuX()"
+      [style.top.px]="contextMenuY()"
+      (click)="$event.stopPropagation()"
+      tabindex="0"
+      (keydown.escape)="contextMenuVisible.set(false)"
+    >
+      <button mat-menu-item (click)="openContextMenuOpen()">Open</button>
+      <button mat-menu-item (click)="openContextMenuOpenInNewTab()">Open in New Tab</button>
+      <button mat-menu-item (click)="openContextMenuProperties()">Properties</button>
+      <button mat-menu-item (click)="openContextMenuSelectToggle()">Toggle Select</button>
+      <button mat-menu-item (click)="openContextMenuCopyPath()">Copy Path</button>
+    </div>
+
+    @if (isPickerMode()) {
+      <div class="picker-actions">
+        <span class="selection-info">{{ selectionSummary() }}</span>
+        <button mat-stroked-button (click)="onClose()">Cancel</button>
+        <button mat-flat-button color="primary" (click)="confirmSelection()">Open</button>
+      </div>
+    }
   </mat-sidenav-content>
 </mat-sidenav-container>
+
+<!-- Sidebar context menu -->
+<div
+  class="sidebar-context-menu"
+  *ngIf="sideContextVisible()"
+  [style.left.px]="sideContextX()"
+  [style.top.px]="sideContextY()"
+  (click)="$event.stopPropagation()"
+  tabindex="0"
+  (keydown.escape)="sideContextVisible.set(false)"
+>
+  <button mat-menu-item (click)="selectRemote(sideContextRemote); sideContextVisible.set(false)">
+    Open
+  </button>
+  <button mat-menu-item (click)="createTab(sideContextRemote, ''); sideContextVisible.set(false)">
+    Open in New Tab
+  </button>
+  <button mat-menu-item (click)="openRemoteAboutFromSidebar()">About</button>
+</div>
+<mat-menu #viewMenu="matMenu">
+  <div
+    class="view-menu-content"
+    tabindex="0"
+    (click)="$event.stopPropagation()"
+    (keydown.tab)="$event.stopPropagation()"
+  >
+    <div class="icon-size-control">
+      <span>Icon Size</span>
+      <button mat-icon-button (click)="decreaseIconSize()">
+        <mat-icon svgIcon="minus"></mat-icon>
+      </button>
+      <button mat-icon-button (click)="increaseIconSize()">
+        <mat-icon svgIcon="plus"></mat-icon>
+      </button>
+    </div>
+    <mat-divider></mat-divider>
+    <mat-checkbox [checked]="showHidden()" (change)="toggleShowHidden($event.checked)"
+      >Show Hidden Files</mat-checkbox
+    >
+  </div>
+</mat-menu>

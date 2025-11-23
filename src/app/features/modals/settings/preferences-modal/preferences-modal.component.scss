@@ -102,7 +102,7 @@
     background: transparent;
     border: none;
     color: var(--secondary-text-color);
-    font-size: var(--caption-font-size);
+    font-size: var(--font-size-sm);
     font-weight: 500;
     transition: var(--transition-standard);
     min-width: 80px;
@@ -222,7 +222,7 @@
       }
 
       .setting-category {
-        font-size: var(--caption-font-size);
+        font-size: var(--font-size-sm);
         color: var(--primary-color);
         font-weight: 500;
         background: rgba(var(--primary-color-rgb), 0.1);
@@ -450,7 +450,7 @@
         background: rgba(var(--primary-color-rgb), 0.1);
         color: var(--primary-color);
         border-radius: var(--radius-md);
-        font-size: var(--caption-font-size);
+        font-size: var(--font-size-sm);
         font-weight: 500;
         cursor: pointer;
         transition: var(--transition-fast);
@@ -556,7 +556,7 @@
         }
 
         .change-category {
-          font-size: var(--caption-font-size);
+          font-size: var(--font-size-sm);
           color: var(--primary-color);
           font-weight: 500;
           background: rgba(var(--primary-color-rgb), 0.1);
@@ -575,7 +575,7 @@
         .boolean-value {
           padding: var(--space-xxs) var(--space-sm);
           border-radius: var(--radius-sm);
-          font-size: var(--caption-font-size);
+          font-size: var(--font-size-sm);
           font-weight: 500;
           background: rgba(var(--warn-color-rgb), 0.1);
           color: var(--warn-color);
@@ -589,7 +589,7 @@
         .array-value {
           padding: var(--space-xxs) var(--space-sm);
           border-radius: var(--radius-sm);
-          font-size: var(--caption-font-size);
+          font-size: var(--font-size-sm);
           font-weight: 500;
           background: rgba(var(--accent-color-rgb), 0.1);
           color: var(--accent-color);

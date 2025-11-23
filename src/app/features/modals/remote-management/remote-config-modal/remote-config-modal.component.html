@@ -1,11 +1,10 @@
 <div class="modal-container">
   <!-- Modal Header -->
   <header class="modal-header" data-tauri-drag-region>
-    <button matIconButton aria-label="Help" title="Help">
-      <mat-icon svgIcon="question"></mat-icon>
+    <button>
+      <mat-icon [svgIcon]="iconService.getIconName(remoteForm.get('type')?.value)"></mat-icon>
     </button>
     <p data-tauri-drag-region>
-      <mat-icon svgIcon="hard-drive" aria-hidden="true"></mat-icon>
       <span>
         {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
       </span>

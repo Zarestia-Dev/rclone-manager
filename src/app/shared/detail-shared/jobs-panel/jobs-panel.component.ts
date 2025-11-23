@@ -26,15 +26,15 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   template: `
-    <mat-card class="detail-panel jobs-panel">
-      <mat-card-header class="panel-header">
-        <mat-card-title class="panel-title-content">
-          <mat-icon svgIcon="jobs" class="panel-icon"></mat-icon>
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon svgIcon="jobs"></mat-icon>
           <span>Active Jobs</span>
           <span class="count">{{ config().jobs.length }}</span>
         </mat-card-title>
       </mat-card-header>
-      <mat-card-content class="panel-content">
+      <mat-card-content>
         <div class="jobs-table-container">
           <table mat-table [dataSource]="config().jobs" matSort class="jobs-table">
             <!-- Type Column -->

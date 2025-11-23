@@ -165,7 +165,7 @@
             <app-serve-detail
               [selectedRemote]="remote"
               [runningServes]="runningServes()"
-              [remoteSettings]="loadRemoteSettings(remote.remoteSpecs.name)"
+              [remoteSettings]="selectedRemoteSettings()"
               [actionInProgress]="actionInProgress()[remote.remoteSpecs.name]"
               (startJob)="startJob($event.type, $event.remoteName)"
               (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
@@ -183,9 +183,8 @@
             <app-app-detail
               [mainOperationType]="currentTab()"
               [selectedSyncOperation]="selectedSyncOperation()"
-              [iconService]="iconService"
               [selectedRemote]="remote"
-              [remoteSettings]="loadRemoteSettings(remote.remoteSpecs.name)"
+              [remoteSettings]="selectedRemoteSettings()"
               [restrictMode]="restrictMode()"
               [actionInProgress]="actionInProgress()[remote.remoteSpecs.name]"
               (syncOperationChange)="onSyncOperationChange($event)"

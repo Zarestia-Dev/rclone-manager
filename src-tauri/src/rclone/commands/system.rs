@@ -244,7 +244,7 @@ pub async fn unlock_rclone_config(
 ) -> Result<(), String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::UNLOCK);
 
-    let payload = json!({ "config_password": password });
+    let payload = json!({ "configPassword": password });
 
     let response = state
         .client

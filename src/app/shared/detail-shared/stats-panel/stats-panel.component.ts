@@ -12,15 +12,15 @@ import { StatsPanelConfig } from '../../types';
   imports: [CommonModule, MatCardModule, MatIconModule, MatProgressBarModule, MatTooltipModule],
   styleUrls: ['./stats-panel.component.scss'],
   template: `
-    <mat-card class="detail-panel stats-panel">
-      <mat-card-header class="panel-header">
-        <mat-card-title class="panel-title-content">
-          <mat-icon [svgIcon]="config.icon" class="panel-icon"></mat-icon>
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon [svgIcon]="config.icon"></mat-icon>
           <span>{{ config.title }}</span>
         </mat-card-title>
       </mat-card-header>
 
-      <mat-card-content class="panel-content">
+      <mat-card-content>
         <div class="stats-grid" [ngClass]="config.operationClass">
           @for (stat of config.stats; track stat.label) {
             <div

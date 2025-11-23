@@ -1,205 +1,140 @@
-<div class="log-modal">
-  <!-- Modal Header -->
+<div class="log-modal-wrapper">
+  <!-- Header Section -->
   <div class="modal-header" data-tauri-drag-region>
-    <!-- Terminal Icon -->
     <button aria-label="Terminal logs">
       <mat-icon svgIcon="terminal"></mat-icon>
     </button>
-
-    <!-- Title with Remote Name -->
-    <p data-tauri-drag-region>
-      Remote Logs: <strong>{{ data.remoteName }}</strong>
-    </p>
-
-    <!-- Close Button -->
+    <p data-tauri-drag-region>Remote Logs: {{ data.remoteName }}</p>
     <button (click)="close()" matIconButton matTooltipPosition="below">
-      <mat-icon svgIcon="close"></mat-icon>
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
 
-  <div class="modal-content">
-    <!-- Enhanced Toolbar: Level Filter, Search, Clear -->
-    <div class="logs-toolbar">
-      <mat-form-field class="level-filter">
+  <!-- Controls Toolbar -->
+  <div class="toolbar-section">
+    <div class="filter-controls">
+      <mat-form-field class="compact">
         <mat-label>Log Level</mat-label>
-        <mat-select [(value)]="selectedLevel">
+        <mat-select [value]="selectedLevel()" (selectionChange)="selectedLevel.set($event.value)">
           <mat-option value="">All Levels</mat-option>
-          <mat-option value="info">
-            <span class="level-option info"> Info </span>
-          </mat-option>
-          <mat-option value="warn">
-            <span class="level-option warn"> Warning </span>
-          </mat-option>
-          <mat-option value="error">
-            <span class="level-option error"> Error </span>
-          </mat-option>
-          <mat-option value="debug">
-            <span class="level-option debug"> Debug </span>
-          </mat-option>
+          @for (level of logLevels; track level.value) {
+            <mat-option [value]="level.value">{{ level.label }}</mat-option>
+          }
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field class="search-filter">
-        <mat-label>Search Logs</mat-label>
+      <mat-form-field>
+        <mat-icon matPrefix svgIcon="search"></mat-icon>
         <input
           matInput
-          [(ngModel)]="searchText"
-          placeholder="Type to search logs..."
-          [attr.aria-label]="'Search through logs'"
+          [ngModel]="searchText()"
+          (ngModelChange)="searchText.set($event)"
+          placeholder="Search logs..."
         />
-        @if (searchText) {
-          <button
-            matIconButton
-            matSuffix
-            (click)="searchText = ''"
-            type="button"
-            aria-label="Clear search"
-          >
+        @if (searchText()) {
+          <button mat-icon-button matSuffix (click)="searchText.set('')">
             <mat-icon svgIcon="close"></mat-icon>
           </button>
         }
-        <mat-icon matPrefix svgIcon="search" class="search-icon"></mat-icon>
       </mat-form-field>
     </div>
 
-    <!-- Enhanced Terminal-style log area -->
-    <div class="terminal-container">
-      <div class="terminal-header">
-        <div class="terminal-actions">
-          <button
-            matIconButton
-            class="warn"
-            (click)="clearLogs()"
-            [disabled]="loading"
-            [matTooltip]="'Clear all logs'"
-            matTooltipPosition="below"
-            type="button"
-            aria-label="Clear all logs"
-          >
-            <mat-icon svgIcon="trash"></mat-icon>
-          </button>
+    <div class="action-controls">
+      <button mat-icon-button (click)="clearLogs()" matTooltip="Clear All Logs" class="warn-btn">
+        <mat-icon svgIcon="trash"></mat-icon>
+      </button>
+      <div class="divider"></div>
+      <button mat-icon-button (click)="loadLogs()" matTooltip="Refresh" [disabled]="loading()">
+        <mat-icon [class.spinning]="loading()" svgIcon="refresh"></mat-icon>
+      </button>
+      <button mat-icon-button (click)="scrollToTop()" matTooltip="Scroll Top">
+        <mat-icon svgIcon="arrow-up"></mat-icon>
+      </button>
+      <button mat-icon-button (click)="scrollToBottom()" matTooltip="Scroll Bottom">
+        <mat-icon svgIcon="arrow-down"></mat-icon>
+      </button>
+    </div>
+  </div>
 
-          <button
-            matIconButton
-            (click)="scrollToBottom()"
-            [matTooltip]="'Scroll to bottom'"
-            matTooltipPosition="below"
-            type="button"
-            aria-label="Scroll to bottom"
-          >
-            <mat-icon svgIcon="arrow-down"></mat-icon>
-          </button>
-
-          <button
-            matIconButton
-            (click)="scrollToTop()"
-            [matTooltip]="'Scroll to top'"
-            matTooltipPosition="below"
-            type="button"
-            aria-label="Scroll to top"
-          >
-            <mat-icon svgIcon="arrow-up"></mat-icon>
-          </button>
-
-          <button
-            matIconButton
-            (click)="loadLogs()"
-            [disabled]="loading"
-            [matTooltip]="'Refresh logs'"
-            matTooltipPosition="below"
-            type="button"
-            aria-label="Refresh logs"
-          >
-            <mat-icon svgIcon="refresh"></mat-icon>
-          </button>
-        </div>
+  <!-- Terminal Viewport -->
+  <div class="terminal-viewport">
+    <!-- Loading Overlay -->
+    @if (loading() && logs().length === 0) {
+      <div class="status-overlay">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Fetching logs...</p>
       </div>
+    }
 
-      @if (loading) {
-        <div class="spinner-container">
-          <mat-spinner diameter="40"></mat-spinner>
-        </div>
-      }
+    <!-- Empty State -->
+    @else if (filteredLogs().length === 0) {
+      <div class="status-overlay empty">
+        <mat-icon svgIcon="search"></mat-icon>
+        <p>No logs found</p>
+        <span>Try adjusting your filters</span>
+      </div>
+    }
 
-      @if (filteredLogs.length === 0 && !loading) {
-        <div class="empty-message">
-          <mat-icon svgIcon="search"></mat-icon>
-          <p>No logs found</p>
-          @if (selectedLevel || selectedRemote || searchText) {
-            <p class="hint">Try adjusting your filters or search terms</p>
-          } @else {
-            <p class="hint">This remote hasn't generated any logs yet</p>
-          }
-        </div>
-      }
-
-      @if (filteredLogs.length > 0 && !loading) {
-        <div #terminalLogArea class="terminal-log-area" role="log" aria-live="polite">
-          @for (log of filteredLogs; track log.timestamp) {
+    <!-- Log Content -->
+    @else {
+      <div #terminalLogArea class="log-scroller">
+        @for (log of filteredLogs(); track getLogId(log)) {
+          <div
+            class="log-entry"
+            [class.expanded]="isExpanded(log)"
+            [class.has-context]="!!log.context"
+            [ngClass]="log.level"
+          >
+            <!-- Log Header Line -->
             <div
-              class="log-entry"
-              [class.has-context]="log.context"
-              [class.expanded]="isExpanded(log)"
-              [class.log-info]="log.level === 'info'"
-              [class.log-error]="log.level === 'error'"
-              [class.log-warn]="log.level === 'warn'"
-              [class.log-debug]="log.level === 'debug'"
-              [attr.aria-label]="
-                'Log entry: ' + log.level + ' level at ' + (log.timestamp | date: 'HH:mm:ss')
-              "
+              class="log-header"
+              role="button"
+              tabindex="0"
+              (click)="log.context ? toggleDetails(log) : null"
+              (keydown.enter)="log.context ? toggleDetails(log) : null"
             >
-              <span class="timestamp" [attr.title]="log.timestamp | date: 'medium'">
-                {{ log.timestamp | date: 'HH:mm:ss.SSS' }}
-              </span>
+              <span class="timestamp">{{ log.timestamp | date: 'HH:mm:ss.SSS' }}</span>
+              <span class="level-tag">{{ log.level | uppercase }}</span>
+              <span class="message" [title]="log.message">{{ log.message }}</span>
 
-              <span class="level" [ngClass]="log.level" [attr.title]="log.level + ' level log'">
-                {{ log.level.toUpperCase() }}
-              </span>
-
-              <button
-                class="message"
-                (click)="copyLog(log)"
-                (keydown.enter)="copyLog(log)"
-                (keydown.space)="copyLog(log)"
-                [matTooltip]="'Click to copy log entry'"
-                matTooltipPosition="above"
-                type="button"
-                [attr.aria-label]="'Copy log message: ' + log.message"
-              >
-                {{ log.message }}
-              </button>
-
-              <div class="log-actions">
+              <div class="actions-hover">
+                <mat-icon
+                  svgIcon="copy"
+                  (click)="$event.stopPropagation(); copyLog(log)"
+                ></mat-icon>
                 @if (log.context) {
-                  <button
-                    matIconButton
-                    [matTooltip]="isExpanded(log) ? 'Hide details' : 'Show details'"
-                    matTooltipPosition="above"
-                    (click)="toggleDetails(log)"
-                    class="details-btn"
-                    type="button"
-                    [attr.aria-label]="isExpanded(log) ? 'Hide log details' : 'Show log details'"
-                    [attr.aria-expanded]="isExpanded(log)"
-                  >
-                    <mat-icon
-                      svgIcon="caret-down"
-                      [style.transform]="isExpanded(log) ? 'rotate(180deg)' : 'rotate(0deg)'"
-                      style="transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-                    >
-                    </mat-icon>
-                  </button>
+                  <mat-icon
+                    class="expand-icon"
+                    svgIcon="caret-down"
+                    [style.transform]="isExpanded(log) ? 'rotate(180deg)' : 'rotate(0deg)'"
+                  ></mat-icon>
                 }
               </div>
-
-              @if (isExpanded(log) && log.context) {
-                <div class="log-context" role="region" [attr.aria-label]="'Detailed log context'">
-                  <pre>{{ formatContext(log.context) }}</pre>
-                </div>
-              }
             </div>
-          }
-        </div>
-      }
-    </div>
+
+            <!-- Log Detail Body (Expanded) -->
+            @if (isExpanded(log) && log.context) {
+              <div class="log-body">
+                <!-- 1. Command Output (The one with ANSI colors) -->
+                @if (getCommandOutput(log); as output) {
+                  <div class="detail-block output">
+                    <div class="block-label">Terminal Output</div>
+                    <div class="code-block terminal-theme" [innerHTML]="output | ansiToHtml"></div>
+                  </div>
+                }
+
+                <!-- 2. Raw JSON Data -->
+                <div class="detail-block json">
+                  <div class="block-label">Log Context</div>
+                  <div class="code-block json-theme">
+                    <pre>{{ formatContext(log.context) }}</pre>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
   </div>
 </div>

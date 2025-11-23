@@ -79,6 +79,12 @@ export class IconService {
       memory: 'assets/icons/remotes/memory.svg',
       onedrive: 'assets/icons/remotes/onedrive.svg',
       s3: 'assets/icons/remotes/s3.svg',
+      mega: 'assets/icons/remotes/mega.svg',
+      protondrive: 'assets/icons/remotes/protondrive.svg',
+      iclouddrive: 'assets/icons/remotes/iclouddrive.svg',
+      http: 'assets/icons/remotes/http.svg',
+      webdav: 'assets/icons/remotes/webdav.svg',
+      sftp: 'assets/icons/remotes/sftp.svg',
 
       // ------------------- Theme Icons -------------------
       'circle-check': 'assets/icons/circle-check.svg',

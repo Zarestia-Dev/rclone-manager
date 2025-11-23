@@ -4,6 +4,9 @@ export interface RcloneInfo {
   goVersion: string;
   os: string;
   arch: string;
+  osVersion: string;
+  osKernel: string;
+  osArch: string;
   isBeta: boolean;
   isGit: boolean;
   linking: string;
@@ -64,6 +67,9 @@ export type RcloneStatus = 'active' | 'inactive' | 'error';
 
 export const SENSITIVE_KEYS = [
   'password',
+  'pass',
+  'session_id',
+  '2fa',
   'secret',
   'endpoint',
   'token',

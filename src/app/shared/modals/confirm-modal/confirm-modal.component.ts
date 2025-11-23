@@ -15,14 +15,16 @@ export class ConfirmModalComponent {
   public data = inject<ConfirmDialogData>(MAT_DIALOG_DATA);
 
   @HostListener('document:keydown.escape', ['$event'])
-  onEscapeKey(event: KeyboardEvent) {
-    event.preventDefault();
+  onEscapeKey(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    keyboardEvent.preventDefault();
     this.onCancel();
   }
 
   @HostListener('document:keydown.enter', ['$event'])
-  onEnterKey(event: KeyboardEvent) {
-    event.preventDefault();
+  onEnterKey(event: Event): void {
+    const keyboardEvent = event as KeyboardEvent;
+    keyboardEvent.preventDefault();
     // Only auto-confirm if it's not a destructive action
     if (!this.isDestructiveAction()) {
       this.onConfirm();

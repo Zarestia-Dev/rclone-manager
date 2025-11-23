@@ -74,6 +74,15 @@
                 (click)="$event.stopPropagation()"
                 [matMenuTriggerFor]="!isNewRemote ? sourcePathAutocompleteMenu : null"
               />
+              <button
+                matIconButton
+                matSuffix
+                (click)="selectRemotePath('source'); $event.stopPropagation()"
+                type="button"
+                aria-label="Select remote source folder"
+              >
+                <mat-icon svgIcon="folder" class="accent"></mat-icon>
+              </button>
             </mat-form-field>
 
             <mat-menu

@@ -103,6 +103,93 @@ mat-nav-list {
   }
 }
 
+/* Tabs bar */
+.tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--secondary-background);
+  border-bottom: 1px solid var(--theme-border);
+
+  .tab {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    flex: 1 1 0;
+
+    &.active {
+      background: var(--bg-elevated);
+      font-weight: 600;
+    }
+
+    .tab-title {
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    .close-tab {
+      height: 24px;
+      width: 24px;
+      mat-icon {
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+
+  .add-tab {
+    margin-left: auto;
+  }
+}
+
+/* Simple custom context menu */
+.context-menu {
+  position: fixed;
+  z-index: 2000;
+  background: var(--secondary-background);
+  border: 1px solid var(--theme-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  button[mat-menu-item] {
+    text-align: left;
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* Sidebar context menu */
+.sidebar-context-menu {
+  position: fixed;
+  z-index: 2000;
+  background: var(--secondary-background);
+  border: 1px solid var(--theme-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+
+  button[mat-menu-item] {
+    text-align: left;
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
 .path-container {
   display: flex;
   align-items: center;

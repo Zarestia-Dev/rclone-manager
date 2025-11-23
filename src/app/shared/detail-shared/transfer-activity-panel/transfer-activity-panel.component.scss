@@ -1,18 +1,24 @@
 @use "../../../styles/_shared_components";
 
 .transfer-activity-panel {
+  display: flex;
+  flex-direction: column;
+
   .panel-header {
     .panel-title-content {
       .transfer-summary {
         display: flex;
         gap: var(--space-sm);
         align-items: center;
+        margin-left: auto;
 
         .summary-chip {
-          font-size: var(--caption-font-size);
-          height: 28px;
+          font-size: var(--font-size-sm);
+          height: 24px;
+          min-height: 24px;
           border-radius: var(--badge-radius);
           font-weight: 600;
+          padding: 0 10px;
 
           &.active {
             background: rgba(var(--primary-color-rgb), var(--active-opacity));
@@ -27,8 +33,9 @@
           }
 
           .chip-label {
-            opacity: 0.8;
-            margin-right: var(--space-xs);
+            opacity: 0.7;
+            margin-right: 4px;
+            font-weight: 500;
           }
 
           .chip-value {
@@ -38,41 +45,21 @@
       }
     }
   }
+
   .panel-content {
+    padding: 0;
+    overflow: hidden;
+
     .transfer-tabs {
       .tab-content {
-        max-height: clamp(300px, 50vh, 600px); // Responsive between 300px-600px
-        overflow-y: auto;
-        overflow-x: hidden;
-        position: relative;
+        max-height: 40vh;
       }
     }
-  }
 
-  app-active-transfers-table {
-    display: block;
-    max-height: clamp(300px, 50vh, 600px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    position: relative;
-  }
-}
-
-// Mobile responsive adjustments
-@media (max-width: 768px) {
-  .panel-content {
-    .transfer-tabs .tab-content,
-    app-active-transfers-table {
-      max-height: clamp(250px, 45vh, 500px); // Slightly smaller on mobile
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .panel-content {
-    .transfer-tabs .tab-content,
-    app-active-transfers-table {
-      max-height: clamp(200px, 40vh, 400px); // Even smaller on small screens
+    // 2. Single View (No Tabs)
+    .single-view-content {
+      max-height: 40vh;
+      overflow: hidden;
     }
   }
 }

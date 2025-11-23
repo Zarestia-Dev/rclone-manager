@@ -90,18 +90,6 @@ export interface OperationControlConfig {
   operationDescription?: string;
 }
 
-// Disk Usage Panel
-export interface DiskUsageConfig {
-  mounted: boolean | string;
-  diskUsage?: {
-    total_space?: string;
-    used_space?: string;
-    free_space?: string;
-    notSupported?: boolean;
-    loading?: boolean;
-  };
-}
-
 // Transfer Activity Panel
 export interface CompletedTransfer {
   name: string;

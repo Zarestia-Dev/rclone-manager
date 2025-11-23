@@ -142,12 +142,32 @@ export class RemoteManagementService extends TauriBaseService {
   /**
    * Get disk usage for a remote
    */
-  async getDiskUsage(remote: string): Promise<{
-    total: string;
-    used: string;
-    free: string;
+  async getDiskUsage(
+    remote: string,
+    path?: string
+  ): Promise<{
+    total: number;
+    used: number;
+    free: number;
   }> {
-    return this.invokeCommand('get_disk_usage', { remote });
+    return this.invokeCommand('get_disk_usage', { remote, path });
+  }
+
+  /**
+   * Get size for a remote
+   */
+  async getSize(
+    remote: string,
+    path?: string
+  ): Promise<{
+    count: number;
+    bytes: number;
+  }> {
+    return this.invokeCommand('get_size', { remote, path });
+  }
+
+  async getStat(remote: string, path: string): Promise<{ item: Entry }> {
+    return this.invokeCommand('get_stat', { remote, path });
   }
 
   /**

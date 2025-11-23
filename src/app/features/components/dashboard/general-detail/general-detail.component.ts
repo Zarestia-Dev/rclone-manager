@@ -20,7 +20,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatSortModule } from '@angular/material/sort';
 import {
-  DiskUsageConfig,
+  DiskUsage,
   JobInfo,
   JobsPanelConfig,
   PrimaryActionType,
@@ -204,10 +204,7 @@ export class GeneralDetailComponent {
     buttonLabel: 'Edit Configuration',
   }));
 
-  diskUsageConfig = computed<DiskUsageConfig>(() => ({
-    mounted: this.selectedRemote().mountState?.mounted || false,
-    diskUsage: this.selectedRemote().diskUsage,
-  }));
+  diskUsageConfig = computed<DiskUsage>(() => this.selectedRemote()?.diskUsage);
 
   jobsPanelConfig = computed<JobsPanelConfig>(() => ({
     jobs: this.jobs(),

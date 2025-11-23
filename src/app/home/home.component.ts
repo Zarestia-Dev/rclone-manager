@@ -1,4 +1,13 @@
-import { Component, HostListener, OnDestroy, OnInit, effect, inject, signal } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  effect,
+  inject,
+  signal,
+  computed,
+} from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatDrawerMode, MatSidenavModule } from '@angular/material/sidenav';
 import { MatCardModule } from '@angular/material/card';
@@ -103,9 +112,36 @@ export class HomeComponent implements OnInit, OnDestroy {
   // PROPERTIES - DATA & UI STATE
   // ============================================================================
   currentTab = toSignal(this.uiStateService.currentTab$, { initialValue: 'general' as any });
-  selectedRemote = toSignal(this.uiStateService.selectedRemote$, {
+
+  // Source of truth for SELECTION (from service)
+  private readonly _selectedRemoteSource = toSignal(this.uiStateService.selectedRemote$, {
     initialValue: null as Remote | null,
   });
+
+  // Local data state
+  jobs = signal<JobInfo[]>([]);
+  remotes = signal<Remote[]>([]);
+  remoteSettings = signal<RemoteSettings>({});
+
+  // Computed Source of truth for the OBJECT (merging selection with fresh data)
+  // This ensures that when 'remotes' updates (e.g. job started), the UI sees the new object immediately.
+  readonly selectedRemote = computed(() => {
+    const source = this._selectedRemoteSource();
+    const allRemotes = this.remotes();
+
+    if (!source) return null;
+
+    // Find the up-to-date object in the list using the name from the selection
+    // If not found (e.g. during loading), fallback to the source object
+    return allRemotes.find(r => r.remoteSpecs.name === source.remoteSpecs.name) || source;
+  });
+
+  selectedRemoteSettings = computed(() => {
+    const remote = this.selectedRemote();
+    if (!remote) return {};
+    return this.loadRemoteSettings(remote.remoteSpecs.name);
+  });
+
   mountedRemotes = toSignal(this.mountManagementService.mountedRemotes$, {
     initialValue: [] as MountedRemote[],
   });
@@ -121,11 +157,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   restrictMode = signal(true);
   actionInProgress = signal<RemoteActionProgress>({});
   isShuttingDown = signal(false);
-
-  // Local data state
-  jobs = signal<JobInfo[]>([]);
-  remotes = signal<Remote[]>([]);
-  remoteSettings = signal<RemoteSettings>({});
 
   // ============================================================================
   // PROPERTIES - LIFECYCLE
@@ -149,25 +180,12 @@ export class HomeComponent implements OnInit, OnDestroy {
       const remote = this.selectedRemote();
       if (remote) {
         this.loadJobsForRemote(remote.remoteSpecs.name);
-        const settings = this.loadRemoteSettings(remote.remoteSpecs.name) || {};
-        this.selectedSyncOperation.set(
-          (settings['selectedSyncOperation'] as SyncOperationType) || 'sync'
-        );
-      }
-    });
-
-    // This effect ensures that when the main `remotes` list is updated with new
-    // immutable objects, the `selectedRemote` signal is also updated with the
-    // corresponding new object from that list. This is crucial for propagating
-    // state changes to child components like `app-detail`.
-    effect(() => {
-      const remotes = this.remotes();
-      const selected = this.selectedRemote();
-      if (selected) {
-        const updatedSelected = remotes.find(r => r.remoteSpecs.name === selected.remoteSpecs.name);
-        // Only update if the remote object reference has changed to prevent infinite loops.
-        if (updatedSelected && updatedSelected !== selected) {
-          this.uiStateService.setSelectedRemote(updatedSelected);
+        const settings = this.selectedRemoteSettings();
+        // Only set this if it differs to avoid loops, though signal set() handles equality check
+        const currentOp = this.selectedSyncOperation();
+        const savedOp = (settings['selectedSyncOperation'] as SyncOperationType) || 'sync';
+        if (currentOp !== savedOp) {
+          this.selectedSyncOperation.set(savedOp);
         }
       }
     });
@@ -273,9 +291,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         remoteSpecs: { name, ...(remoteConfigs[name] as { type: string }) },
         primaryActions: settings['primaryActions'] || [],
         diskUsage: existingRemote?.diskUsage || {
-          total_space: 'Loading...',
-          used_space: 'Loading...',
-          free_space: 'Loading...',
+          total_space: 0,
+          used_space: 0,
+          free_space: 0,
           loading: true,
         },
         mountState: { mounted: mountedSet.has(name) },
@@ -328,9 +346,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       const fsInfo = await this.remoteManagementService.getFsInfo(remote.remoteSpecs.name);
       if ((fsInfo as any).Features?.About === false) {
         updateDiskUsage({
-          total_space: 'Not supported',
-          used_space: 'Not supported',
-          free_space: 'Not supported',
+          total_space: 0,
+          used_space: 0,
+          free_space: 0,
           notSupported: true,
           loading: false,
           error: false,
@@ -340,9 +358,9 @@ export class HomeComponent implements OnInit, OnDestroy {
 
       const usage = await this.remoteManagementService.getDiskUsage(remote.remoteSpecs.name);
       updateDiskUsage({
-        total_space: usage.total || 'N/A',
-        used_space: usage.used || 'N/A',
-        free_space: usage.free || 'N/A',
+        total_space: usage.total || -1,
+        used_space: usage.used || -1,
+        free_space: usage.free || -1,
         loading: false,
         error: false,
         notSupported: false,

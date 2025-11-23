@@ -7,6 +7,10 @@
 - Support for local path navigation on the remote config. User can now navigate to local paths when configuring remotes that use local file systems.
 - Added Flatpak detection and warning banner. If the app is running as a Flatpak, a warning banner will be displayed to inform the user about permission limitations. The banner can be dismissed and will not show again once dismissed.
 
+### Changed
+- Charts removed from sync, copy, move and bisync activity panels. Also chartjs dependency removed from the project to reduce the bundle size.
+- Remote Logs Modal design and functionality improvements.
+
 
 ## [v0.1.7] - 2025-11-14
 ### Added

@@ -52,7 +52,7 @@
 
     h2 {
       margin: 0;
-      font-size: 1.5rem;
+      font-size: var(--font-size-2xl);
       font-weight: 500;
       color: var(--app-text-color);
       letter-spacing: -0.025em;
@@ -60,7 +60,7 @@
 
     p {
       margin: 0;
-      font-size: 1rem;
+      font-size: var(--font-size-base);
       color: var(--secondary-text-color);
       opacity: 0.8;
       max-width: 300px;
@@ -76,11 +76,11 @@
     margin-inline: 16px;
 
     h2 {
-      font-size: 1.25rem;
+      font-size: var(--font-size-xl);
     }
 
     p {
-      font-size: 0.9rem;
+      font-size: var(--font-size-md);
     }
 
     .loading-spinner {

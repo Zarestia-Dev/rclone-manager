@@ -27,7 +27,6 @@ import {
   MountManagementService,
   AppSettingsService,
   FileSystemService,
-  SchedulerService,
   ServeManagementService,
 } from '@app/services';
 import {
@@ -50,6 +49,7 @@ import {
 } from '@app/types';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
+import { IconService } from '../../../../shared/services/icon.service';
 
 interface DialogData {
   editTarget?: EditTarget;
@@ -102,12 +102,12 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private readonly mountManagementService = inject(MountManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly schedulerService = inject(SchedulerService);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   private readonly dialogData = inject(MAT_DIALOG_DATA, { optional: true }) as DialogData; // Make injection optional
   private readonly cdRef = inject(ChangeDetectorRef);
   private readonly serveManagementService = inject(ServeManagementService);
   readonly flagConfigService = inject(FlagConfigService);
+  readonly iconService = inject(IconService);
 
   private destroy$ = new Subject<void>();
 

@@ -963,38 +963,38 @@ pub mod operations {
     // /// - remote - a path within that remote e.g. "dir"
     // pub const SETTIERFILE: &str = "operations/settierfile";
 
-    // /// Count the number of bytes and files in remote.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - fs - a remote name string e.g. "drive:path/to/dir"
-    // ///
-    // /// Returns:
-    // ///
-    // /// - count - number of files
-    // /// - bytes - number of bytes in those files
-    // ///
-    // /// See the [size](/commands/rclone_size/) command for more information on the above.
-    // pub const SIZE: &str = "operations/size";
+    /// Count the number of bytes and files in remote.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - fs - a remote name string e.g. "drive:path/to/dir"
+    ///
+    /// Returns:
+    ///
+    /// - count - number of files
+    /// - bytes - number of bytes in those files
+    ///
+    /// See the [size](/commands/rclone_size/) command for more information on the above.
+    pub const SIZE: &str = "operations/size";
 
-    // /// Give information about the supplied file or directory.
-    // ///
-    // /// This takes the following parameters
-    // ///
-    // /// - fs - a remote name string eg "drive:"
-    // /// - remote - a path within that remote eg "dir"
-    // /// - opt - a dictionary of options to control the listing (optional)
-    // ///     - see operations/list for the options
-    // ///
-    // /// The result is
-    // ///
-    // /// - item - an object as described in the lsjson command. Will be null if not found.
-    // ///
-    // /// Note that if you are only interested in files then it is much more
-    // /// efficient to set the filesOnly flag in the options.
-    // ///
-    // /// See the [lsjson](/commands/rclone_lsjson/) command for more information on the above and examples.
-    // pub const STAT: &str = "operations/stat";
+    /// Give information about the supplied file or directory.
+    ///
+    /// This takes the following parameters
+    ///
+    /// - fs - a remote name string eg "drive:"
+    /// - remote - a path within that remote eg "dir"
+    /// - opt - a dictionary of options to control the listing (optional)
+    ///     - see operations/list for the options
+    ///
+    /// The result is
+    ///
+    /// - item - an object as described in the lsjson command. Will be null if not found.
+    ///
+    /// Note that if you are only interested in files then it is much more
+    /// efficient to set the filesOnly flag in the options.
+    ///
+    /// See the [lsjson](/commands/rclone_lsjson/) command for more information on the above and examples.
+    pub const STAT: &str = "operations/stat";
 
     // /// Upload file using multiform/form-data.
     // ///

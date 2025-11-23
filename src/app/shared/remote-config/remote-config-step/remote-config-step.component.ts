@@ -58,6 +58,10 @@ export class RemoteConfigStepComponent implements OnInit, OnDestroy, OnChanges {
     if (types && types.length > 0) {
       this.remoteTypes$.next(types);
       this.remoteTypeMap = new Map(types.map(t => [t.value, t]));
+      const initialTypeValue = this.form.get('type')?.value;
+      if (initialTypeValue) {
+        this.remoteSearchCtrl.setValue(initialTypeValue, { emitEvent: false });
+      }
       this.cdRef.markForCheck(); // Mark for check when remote types change
     }
   }
@@ -81,10 +85,6 @@ export class RemoteConfigStepComponent implements OnInit, OnDestroy, OnChanges {
     this.filteredRemotes$ = combineLatest([this.remoteTypes$, searchTerm$]).pipe(
       map(([types, term]) => this.filterRemotes(types, term || ''))
     );
-    const initialTypeValue = this.form.get('type')?.value;
-    if (initialTypeValue) {
-      this.remoteSearchCtrl.setValue(initialTypeValue, { emitEvent: false });
-    }
 
     const typeControl = this.form.get('type');
     if (typeControl?.disabled) {
