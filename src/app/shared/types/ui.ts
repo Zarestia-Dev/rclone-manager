@@ -43,6 +43,7 @@ export interface ExportOption {
   readonly value: ExportType;
   readonly label: string;
   readonly description: string;
+  readonly icon: string;
 }
 
 export interface ToastMessage {
@@ -96,3 +97,9 @@ export interface AnimationConfig {
 export type Theme = 'light' | 'dark' | 'system';
 
 export type ConnectionStatus = 'online' | 'offline' | 'checking';
+
+export interface DashboardPanel {
+  id: string;
+  title: string;
+  visible: boolean;
+}

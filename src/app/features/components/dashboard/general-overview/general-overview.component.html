@@ -10,485 +10,663 @@
   </div>
 
   <div class="overview-content" role="main">
-    <mat-accordion multi>
-      <!-- Quick Remote Access Panel -->
-      <app-remotes-panel
-        [title]="'Quick Remote Access'"
-        [icon]="'cloud'"
-        [remotes]="remotes()"
-        [mode]="'general'"
-        [actionInProgress]="actionInProgress()"
-        [primaryActionLabel]="'Mount'"
-        [primaryActions]="primaryActions()"
-        [activeIcon]="'mount'"
-        (remoteSelected)="onRemoteSelectedFromPanel($event)"
-        (openInFiles)="onOpenInFilesFromPanel($event)"
-        (startJob)="startJob.emit({ type: $event.type, remoteName: $event.remoteName })"
-        (stopJob)="stopJob.emit({ type: $event.type, remoteName: $event.remoteName })"
-        role="region"
-        aria-labelledby="remotes-panel-title"
-      >
-      </app-remotes-panel>
+    @if (!isLayoutLoaded()) {
+      <div class="loading-layout">
+        <mat-spinner diameter="40"></mat-spinner>
+      </div>
+    } @else {
+      <div class="layout-grid" [@.disabled]="disableAnimations()">
+        <mat-accordion multi cdkDropList (cdkDropListDropped)="drop($event)">
+          @for (panel of dashboardPanels(); track trackByPanelId($index, panel)) {
+            @if (panel.visible || isEditingLayout()) {
+              <div
+                cdkDrag
+                [cdkDragDisabled]="!isEditingLayout()"
+                class="draggable-panel-wrapper"
+                [class.editing]="isEditingLayout()"
+                [@slideInOut]
+              >
+                <div class="custom-placeholder" *cdkDragPlaceholder></div>
 
-      <!-- Bandwidth Limit Panel -->
-      <mat-expansion-panel
-        [expanded]="bandwidthPanelOpenState()"
-        (opened)="bandwidthPanelOpenState.set(true)"
-        (closed)="bandwidthPanelOpenState.set(false)"
-        class="bandwidth-panel"
-        role="region"
-      >
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <div class="panel-title-content">
-              <mat-icon svgIcon="right-left" class="primary" aria-hidden="true"></mat-icon>
-              <span>Bandwidth Limit</span>
-            </div>
-          </mat-panel-title>
-          <mat-panel-description>
-            <span aria-live="polite">
-              @if (bandwidthLimit()?.loading) {
-                <span aria-busy="true">Loading...</span>
-              } @else if (bandwidthLimit()?.error) {
-                <span class="error-text">Error loading bandwidth info</span>
-              } @else {
-                <span>{{ bandwidthDisplayValue() }}</span>
-              }
-            </span>
-          </mat-panel-description>
-        </mat-expansion-panel-header>
+                @if (isEditingLayout()) {
+                  <div class="panel-edit-controls" cdkDragHandle [@slideInOut]>
+                    <div>
+                      <mat-icon svgIcon="menu-bar"></mat-icon>
+                    </div>
+                    <span class="panel-label">{{ panel.title }}</span>
 
-        @if (bandwidthLimit()?.loading) {
-          <div class="loading fade-in" aria-live="polite">
-            <mat-spinner diameter="24" aria-label="Loading bandwidth information"></mat-spinner>
-            <span>Loading bandwidth information...</span>
-          </div>
-        } @else if (bandwidthLimit()?.error) {
-          <div class="bandwidth-error" role="alert">
-            <mat-icon class="warn" svgIcon="circle-exclamation" aria-hidden="true"></mat-icon>
-            <span>{{ bandwidthLimit()?.error }}</span>
-            <button
-              matIconButton
-              (click)="loadBandwidthLimit()"
-              matTooltip="Retry"
-              aria-label="Retry loading bandwidth"
-            >
-              <mat-icon class="primary" svgIcon="refresh" aria-hidden="true"></mat-icon>
-            </button>
-          </div>
-        } @else {
-          <div class="bandwidth-content">
-            <div
-              class="bandwidth-status"
-              [class.limited]="isBandwidthLimited()"
-              [class.unlimited]="!isBandwidthLimited()"
-              aria-live="polite"
-            >
-              <div class="status-indicator" aria-hidden="true"></div>
-              <span class="status-text">{{ bandwidthDisplayValue() }}</span>
-            </div>
-
-            @if (isBandwidthLimited()) {
-              <div class="bandwidth-details">
-                @for (
-                  detail of [
-                    { label: 'Upload:', value: (bandwidthDetails().upload | formatBytes) },
-                    { label: 'Download:', value: (bandwidthDetails().download | formatBytes) },
-                    { label: 'Total:', value: (bandwidthDetails().total | formatBytes) },
-                  ];
-                  track trackByIndex($index, detail)
-                ) {
-                  <div class="detail-item">
-                    <span class="label">{{ detail.label }}</span>
-                    <span class="value">{{ detail.value }}</span>
+                    <div class="visibility-toggle">
+                      <span class="toggle-label">{{ panel.visible ? 'Visible' : 'Hidden' }}</span>
+                      <mat-slide-toggle
+                        [checked]="panel.visible"
+                        (change)="togglePanelVisibility(panel.id)"
+                        color="primary"
+                      >
+                      </mat-slide-toggle>
+                    </div>
                   </div>
                 }
-              </div>
-            }
-          </div>
-        }
-      </mat-expansion-panel>
 
-      <!-- System Info Panel -->
-      <mat-expansion-panel
-        [expanded]="systemInfoPanelOpenState()"
-        (opened)="systemInfoPanelOpenState.set(true)"
-        (closed)="systemInfoPanelOpenState.set(false)"
-        class="system-info-panel"
-        role="region"
-      >
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <div class="panel-title-content">
-              <mat-icon svgIcon="question" class="orange" aria-hidden="true"></mat-icon>
-              <span>System Information</span>
-            </div>
-          </mat-panel-title>
-          <mat-panel-description>
-            <div class="status-indicator-small" [ngClass]="rcloneStatus()" aria-hidden="true"></div>
-            {{ rcloneStatus() | titlecase }}
-          </mat-panel-description>
-        </mat-expansion-panel-header>
-
-        @if (isLoadingStats()) {
-          <div class="loading fade-in" aria-live="polite">
-            <mat-spinner diameter="24" aria-label="Loading system information"></mat-spinner>
-            <span>Loading system information...</span>
-          </div>
-        } @else {
-          <div class="info-grid" role="grid">
-            @for (
-              item of [
-                {
-                  label: 'RClone Status:',
-                  value: rcloneStatus() | titlecase,
-                  status: rcloneStatus(),
-                },
-                { label: 'Total Remotes:', value: totalRemotes() },
-                { label: 'Active Jobs:', value: activeJobsCount() },
-                { label: 'Memory Usage:', value: (systemStats().memoryUsage | formatMemoryUsage) },
-                { label: 'Uptime:', value: (systemStats().uptime | formatTime) },
-              ];
-              track trackByIndex($index, item)
-            ) {
-              <div class="info-item" role="row">
-                <span class="label" role="gridcell">{{ item.label }}</span>
-                <span class="value" [ngClass]="item.status || ''" role="gridcell">{{
-                  item.value
-                }}</span>
-              </div>
-            }
-          </div>
-        }
-      </mat-expansion-panel>
-
-      <!-- Job Information Panel -->
-      <mat-expansion-panel
-        [expanded]="jobInfoPanelOpenState()"
-        (opened)="jobInfoPanelOpenState.set(true)"
-        (closed)="jobInfoPanelOpenState.set(false)"
-        class="job-info-panel"
-        role="region"
-      >
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <div class="panel-title-content">
-              <mat-icon svgIcon="jobs" class="yellow" aria-hidden="true"></mat-icon>
-              <span>Global Job Information</span>
-            </div>
-          </mat-panel-title>
-          <mat-panel-description>
-            <span [ngClass]="{ 'active-jobs-indicator': activeJobsCount() > 0 }">
-              {{
-                activeJobsCount() > 0
-                  ? activeJobsCount() + ' active job' + (activeJobsCount() !== 1 ? 's' : '')
-                  : 'No active jobs'
-              }}
-            </span>
-          </mat-panel-description>
-        </mat-expansion-panel-header>
-
-        @if (isLoadingStats()) {
-          <div class="loading fade-in" aria-live="polite">
-            <mat-spinner diameter="24" aria-label="Loading job information"></mat-spinner>
-            <span>Loading job information...</span>
-          </div>
-        } @else {
-          <div class="job-grid" role="grid">
-            @if (jobStats().totalBytes > 0) {
-              <div class="job-progress-section" role="rowgroup">
-                <div class="progress-header" role="row">
-                  <span class="label" role="gridcell">Progress:</span>
-                  <span class="value" role="gridcell"
-                    >{{ jobCompletionPercentage() | number: '1.0-1' }}%</span
-                  >
-                </div>
-                <mat-progress-bar
-                  mode="determinate"
-                  [value]="jobCompletionPercentage()"
-                  role="progressbar"
-                  [attr.aria-valuenow]="jobCompletionPercentage()"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                ></mat-progress-bar>
-                <div class="progress-details" role="row">
-                  <span role="gridcell"
-                    >{{ jobStats().bytes | formatBytes }} of
-                    {{ jobStats().totalBytes | formatBytes }}</span
-                  >
-                  <span role="gridcell">ETA: {{ jobStats().eta | formatEta }}</span>
-                </div>
-              </div>
-            }
-
-            <div class="job-stats-grid" role="grid">
-              @for (
-                item of [
-                  { label: 'Transfer Speed:', value: (jobStats().speed | formatBytes) + '/s' },
-                  {
-                    label: 'Transfers:',
-                    value: jobStats().transfers + ' / ' + jobStats().totalTransfers,
-                  },
-                  { label: 'Checks:', value: jobStats().checks + ' / ' + jobStats().totalChecks },
-                  { label: 'Errors:', value: jobStats().errors, error: jobStats().errors > 0 },
-                  { label: 'Deletes:', value: jobStats().deletes },
-                  { label: 'Renames:', value: jobStats().renames },
-                  { label: 'Server Copies:', value: jobStats().serverSideCopies },
-                  { label: 'Server Moves:', value: jobStats().serverSideMoves },
-                ];
-                track trackByIndex($index, item)
-              ) {
-                <div class="info-item" role="row">
-                  <span class="label" role="gridcell">{{ item.label }}</span>
-                  <span class="value" [class.error]="item.error" role="gridcell">{{
-                    item.value
-                  }}</span>
-                </div>
-              }
-            </div>
-
-            @if (jobStats().lastError) {
-              <div class="error-section" role="alert">
-                <div class="label">Last Error:</div>
-                <div class="error-message">
-                  <mat-icon
-                    svgIcon="circle-exclamation"
-                    class="error-icon warn"
-                    aria-hidden="true"
-                  ></mat-icon>
-                  <span
-                    matTooltip="Click to copy error"
-                    (click)="copyError(jobStats().lastError)"
-                    tabindex="0"
-                    role="button"
-                    class="error-text-content"
-                    >{{ jobStats().lastError }}</span
-                  >
-                </div>
-              </div>
-            }
-
-            @if (activeJobsCount() === 0) {
-              <div class="no-jobs-message" role="status">
-                <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
-                <span>No active jobs are currently running.</span>
-              </div>
-            }
-          </div>
-        }
-      </mat-expansion-panel>
-
-      <!-- Scheduled Tasks Panel -->
-      <mat-expansion-panel
-        [expanded]="scheduledTasksPanelOpenState()"
-        (opened)="scheduledTasksPanelOpenState.set(true)"
-        (closed)="scheduledTasksPanelOpenState.set(false)"
-        class="scheduled-tasks-panel"
-        role="region"
-      >
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <div class="panel-title-content">
-              <mat-icon svgIcon="clock" class="accent" aria-hidden="true"></mat-icon>
-              <span>Scheduled Tasks</span>
-            </div>
-          </mat-panel-title>
-          <mat-panel-description>
-            <span [ngClass]="{ 'active-tasks-indicator': activeScheduledTasksCount() > 0 }">
-              {{
-                totalScheduledTasksCount() > 0
-                  ? activeScheduledTasksCount() +
-                    ' active / ' +
-                    totalScheduledTasksCount() +
-                    ' total'
-                  : 'No scheduled tasks'
-              }}
-            </span>
-          </mat-panel-description>
-        </mat-expansion-panel-header>
-
-        @if (isLoadingScheduledTasks()) {
-          <div class="loading fade-in" aria-live="polite">
-            <mat-spinner diameter="24" aria-label="Loading scheduled tasks"></mat-spinner>
-            <span>Loading scheduled tasks...</span>
-          </div>
-        } @else {
-          <div class="scheduled-tasks-content">
-            @if (totalScheduledTasksCount() === 0) {
-              <div class="no-tasks-message" role="status">
-                <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
-                <span
-                  >No scheduled tasks configured. Configure auto-start operations with cron
-                  expressions to create scheduled tasks.</span
+                <div
+                  [class.panel-hidden-visual]="isEditingLayout() && !panel.visible"
+                  class="panel-content-wrapper"
                 >
-              </div>
-            } @else {
-              <div class="tasks-grid">
-                @for (task of scheduledTasks(); track task.id) {
-                  <mat-card
-                    class="task-card"
-                    [class.disabled]="task.status === 'disabled'"
-                    [class.stopping]="task.status === 'stopping'"
-                    (click)="onTaskClick(task)"
-                    (keydown)="onTaskKeydown($event, task)"
-                    role="button"
-                    tabindex="0"
-                    [attr.aria-label]="
-                      'Scheduled ' +
-                      (task.taskType | titlecase) +
-                      ' task for ' +
-                      task.args['remoteName'] +
-                      '. Status: ' +
-                      (task.status | titlecase)
-                    "
-                  >
-                    <mat-card-header class="task-header">
-                      <div class="task-info-section">
-                        <div class="task-icon-wrapper" [class]="getTaskTypeColor(task.taskType)">
-                          <mat-icon
-                            [svgIcon]="getTaskTypeIcon(task.taskType)"
-                            class="task-type-icon"
-                          ></mat-icon>
-                        </div>
-                        <div class="task-title-section">
-                          <div class="task-name-row">
-                            <span class="task-name">{{ task.name }}</span>
-                            <span
-                              class="task-status-badge"
-                              [ngClass]="task.status"
-                              [matTooltip]="getTaskStatusTooltip(task.status)"
-                            >
-                              {{ task.status | titlecase }}
+                  @switch (panel.id) {
+                    @case ('remotes') {
+                      <!-- Quick Remote Access Panel -->
+                      <app-remotes-panel
+                        [title]="'Quick Remote Access'"
+                        [icon]="'cloud'"
+                        [remotes]="remotes()"
+                        [mode]="'general'"
+                        [actionInProgress]="actionInProgress()"
+                        [primaryActionLabel]="'Mount'"
+                        [primaryActions]="primaryActions()"
+                        [activeIcon]="'mount'"
+                        (remoteSelected)="onRemoteSelectedFromPanel($event)"
+                        (openInFiles)="onOpenInFilesFromPanel($event)"
+                        (startJob)="
+                          startJob.emit({ type: $event.type, remoteName: $event.remoteName })
+                        "
+                        (stopJob)="
+                          stopJob.emit({ type: $event.type, remoteName: $event.remoteName })
+                        "
+                        role="region"
+                        aria-labelledby="remotes-panel-title"
+                      >
+                      </app-remotes-panel>
+                    }
+                    @case ('bandwidth') {
+                      <mat-expansion-panel
+                        [expanded]="getPanelOpenState('bandwidth')"
+                        (opened)="setPanelOpenState('bandwidth', true)"
+                        (closed)="setPanelOpenState('bandwidth', false)"
+                        class="bandwidth-panel"
+                      >
+                        <mat-expansion-panel-header>
+                          <mat-panel-title>
+                            <div class="panel-title-content">
+                              <mat-icon
+                                svgIcon="right-left"
+                                class="primary"
+                                aria-hidden="true"
+                              ></mat-icon>
+                              <span>Bandwidth Limit</span>
+                            </div>
+                          </mat-panel-title>
+                          <mat-panel-description>
+                            <span aria-live="polite">
+                              @if (bandwidthLimit()?.loading) {
+                                <span aria-busy="true">Loading...</span>
+                              } @else if (bandwidthLimit()?.error) {
+                                <span class="error-text">Error loading bandwidth info</span>
+                              } @else {
+                                <span>{{ bandwidthDisplayValue() }}</span>
+                              }
                             </span>
-                            @if (task.currentJobId) {
-                              <div class="task-running-badge">
-                                <mat-icon svgIcon="play" class="running-icon"></mat-icon>
-                                <span>Running</span>
+                          </mat-panel-description>
+                        </mat-expansion-panel-header>
+
+                        @if (bandwidthLimit()?.loading) {
+                          <div class="loading fade-in" aria-live="polite">
+                            <mat-spinner
+                              diameter="24"
+                              aria-label="Loading bandwidth information"
+                            ></mat-spinner>
+                            <span>Loading bandwidth information...</span>
+                          </div>
+                        } @else if (bandwidthLimit()?.error) {
+                          <div class="bandwidth-error" role="alert">
+                            <mat-icon
+                              class="warn"
+                              svgIcon="circle-exclamation"
+                              aria-hidden="true"
+                            ></mat-icon>
+                            <span>{{ bandwidthLimit()?.error }}</span>
+                            <button
+                              matIconButton
+                              (click)="loadBandwidthLimit()"
+                              matTooltip="Retry"
+                              aria-label="Retry loading bandwidth"
+                            >
+                              <mat-icon
+                                class="primary"
+                                svgIcon="refresh"
+                                aria-hidden="true"
+                              ></mat-icon>
+                            </button>
+                          </div>
+                        } @else {
+                          <div class="bandwidth-content">
+                            <div
+                              class="bandwidth-status"
+                              [class.limited]="isBandwidthLimited()"
+                              [class.unlimited]="!isBandwidthLimited()"
+                              aria-live="polite"
+                            >
+                              <div class="status-indicator" aria-hidden="true"></div>
+                              <span class="status-text">{{ bandwidthDisplayValue() }}</span>
+                            </div>
+
+                            @if (isBandwidthLimited()) {
+                              <div class="bandwidth-details">
+                                @for (
+                                  detail of [
+                                    {
+                                      label: 'Upload:',
+                                      value: (bandwidthDetails().upload | formatBytes),
+                                    },
+                                    {
+                                      label: 'Download:',
+                                      value: (bandwidthDetails().download | formatBytes),
+                                    },
+                                    {
+                                      label: 'Total:',
+                                      value: (bandwidthDetails().total | formatBytes),
+                                    },
+                                  ];
+                                  track trackByIndex($index, detail)
+                                ) {
+                                  <div class="detail-item">
+                                    <span class="label">{{ detail.label }}</span>
+                                    <span class="value">{{ detail.value }}</span>
+                                  </div>
+                                }
                               </div>
                             }
                           </div>
-                          <span class="task-remote-name">{{ task.args['remoteName'] }}</span>
-                        </div>
-                      </div>
-                      <button
-                        mat-icon-button
-                        (click)="toggleScheduledTask(task.id); $event.stopPropagation()"
-                        [matTooltip]="getToggleTooltip(task.status)"
-                        class="task-toggle-btn"
-                        [disabled]="task.status === 'stopping'"
+                        }
+                      </mat-expansion-panel>
+                    }
+                    @case ('system') {
+                      <mat-expansion-panel
+                        [expanded]="getPanelOpenState('system')"
+                        (opened)="setPanelOpenState('system', true)"
+                        (closed)="setPanelOpenState('system', false)"
+                        class="system-info-panel"
                       >
-                        <mat-icon [svgIcon]="getToggleIcon(task.status)"></mat-icon>
-                      </button>
-                    </mat-card-header>
+                        <mat-expansion-panel-header>
+                          <mat-panel-title>
+                            <div class="panel-title-content">
+                              <mat-icon
+                                svgIcon="question"
+                                class="orange"
+                                aria-hidden="true"
+                              ></mat-icon>
+                              <span>System Information</span>
+                            </div>
+                          </mat-panel-title>
+                          <mat-panel-description>
+                            <div
+                              class="status-indicator-small"
+                              [ngClass]="rcloneStatus()"
+                              aria-hidden="true"
+                            ></div>
+                            {{ rcloneStatus() | titlecase }}
+                          </mat-panel-description>
+                        </mat-expansion-panel-header>
 
-                    <mat-card-footer class="task-footer">
-                      <div class="task-stats">
-                        <div class="stat-item">
-                          <mat-icon svgIcon="circle-check" class="stat-icon success"></mat-icon>
-                          <span class="stat-value">{{ task.successCount }}</span>
-                        </div>
-                        <div class="stat-item">
-                          <mat-icon svgIcon="circle-exclamation" class="stat-icon error"></mat-icon>
-                          <span class="stat-value">{{ task.failureCount }}</span>
-                        </div>
-                        <div class="stat-item">
-                          <mat-icon svgIcon="clock" class="stat-icon"></mat-icon>
-                          <span class="stat-value">{{ task.runCount }}</span>
-                        </div>
-                      </div>
-
-                      <div class="task-schedule">
-                        <div class="schedule-item">
-                          <span class="schedule-label">Next Run:</span>
-                          <span class="schedule-value">{{ getFormattedNextRun(task) }}</span>
-                        </div>
-                        @if (task.lastRun) {
-                          <div class="schedule-item">
-                            <span class="schedule-label">Last Run:</span>
-                            <span class="schedule-value">{{ getFormattedLastRun(task) }}</span>
+                        @if (isLoadingStats()) {
+                          <div class="loading fade-in" aria-live="polite">
+                            <mat-spinner
+                              diameter="24"
+                              aria-label="Loading system information"
+                            ></mat-spinner>
+                            <span>Loading system information...</span>
+                          </div>
+                        } @else {
+                          <div class="info-grid" role="grid">
+                            @for (
+                              item of [
+                                {
+                                  label: 'RClone Status:',
+                                  value: rcloneStatus() | titlecase,
+                                  status: rcloneStatus(),
+                                },
+                                { label: 'Total Remotes:', value: totalRemotes() },
+                                { label: 'Active Jobs:', value: activeJobsCount() },
+                                {
+                                  label: 'Memory Usage:',
+                                  value: (systemStats().memoryUsage | formatMemoryUsage),
+                                },
+                                { label: 'Uptime:', value: (systemStats().uptime | formatTime) },
+                              ];
+                              track trackByIndex($index, item)
+                            ) {
+                              <div class="info-item" role="row">
+                                <span class="label" role="gridcell">{{ item.label }}</span>
+                                <span class="value" [ngClass]="item.status || ''" role="gridcell">{{
+                                  item.value
+                                }}</span>
+                              </div>
+                            }
                           </div>
                         }
-                      </div>
+                      </mat-expansion-panel>
+                    }
+                    @case ('jobs') {
+                      <mat-expansion-panel
+                        [expanded]="getPanelOpenState('jobs')"
+                        (opened)="setPanelOpenState('jobs', true)"
+                        (closed)="setPanelOpenState('jobs', false)"
+                        class="job-info-panel"
+                      >
+                        <mat-expansion-panel-header>
+                          <mat-panel-title>
+                            <div class="panel-title-content">
+                              <mat-icon svgIcon="jobs" class="yellow" aria-hidden="true"></mat-icon>
+                              <span>Global Job Information</span>
+                            </div>
+                          </mat-panel-title>
+                          <mat-panel-description>
+                            <span [ngClass]="{ 'active-jobs-indicator': activeJobsCount() > 0 }">
+                              {{
+                                activeJobsCount() > 0
+                                  ? activeJobsCount() +
+                                    ' active job' +
+                                    (activeJobsCount() !== 1 ? 's' : '')
+                                  : 'No active jobs'
+                              }}
+                            </span>
+                          </mat-panel-description>
+                        </mat-expansion-panel-header>
 
-                      <div class="task-cron">
-                        <mat-icon svgIcon="terminal" class="cron-icon"></mat-icon>
-                        <code class="cron-expression">{{ task.cronExpression }}</code>
-                      </div>
+                        @if (isLoadingStats()) {
+                          <div class="loading fade-in" aria-live="polite">
+                            <mat-spinner
+                              diameter="24"
+                              aria-label="Loading job information"
+                            ></mat-spinner>
+                            <span>Loading job information...</span>
+                          </div>
+                        } @else {
+                          <div class="job-grid" role="grid">
+                            @if (jobStats().totalBytes > 0) {
+                              <div class="job-progress-section" role="rowgroup">
+                                <div class="progress-header" role="row">
+                                  <span class="label" role="gridcell">Progress:</span>
+                                  <span class="value" role="gridcell"
+                                    >{{ jobCompletionPercentage() | number: '1.0-1' }}%</span
+                                  >
+                                </div>
+                                <mat-progress-bar
+                                  mode="determinate"
+                                  [value]="jobCompletionPercentage()"
+                                  role="progressbar"
+                                  [attr.aria-valuenow]="jobCompletionPercentage()"
+                                  aria-valuemin="0"
+                                  aria-valuemax="100"
+                                ></mat-progress-bar>
+                                <div class="progress-details" role="row">
+                                  <span role="gridcell"
+                                    >{{ jobStats().bytes | formatBytes }} of
+                                    {{ jobStats().totalBytes | formatBytes }}</span
+                                  >
+                                  <span role="gridcell">ETA: {{ jobStats().eta | formatEta }}</span>
+                                </div>
+                              </div>
+                            }
 
-                      @if (task.lastError) {
-                        <div class="task-error">
-                          <mat-icon svgIcon="circle-exclamation" class="error-icon"></mat-icon>
-                          <span class="error-text">{{ task.lastError }}</span>
-                        </div>
-                      }
-                    </mat-card-footer>
-                  </mat-card>
-                }
+                            <div class="job-stats-grid" role="grid">
+                              @for (
+                                item of [
+                                  {
+                                    label: 'Transfer Speed:',
+                                    value: (jobStats().speed | formatBytes),
+                                  },
+                                  {
+                                    label: 'Transfers:',
+                                    value: jobStats().transfers + ' / ' + jobStats().totalTransfers,
+                                  },
+                                  {
+                                    label: 'Checks:',
+                                    value: jobStats().checks + ' / ' + jobStats().totalChecks,
+                                  },
+                                  {
+                                    label: 'Errors:',
+                                    value: jobStats().errors,
+                                    error: jobStats().errors > 0,
+                                  },
+                                  { label: 'Deletes:', value: jobStats().deletes },
+                                  { label: 'Renames:', value: jobStats().renames },
+                                  { label: 'Server Copies:', value: jobStats().serverSideCopies },
+                                  { label: 'Server Moves:', value: jobStats().serverSideMoves },
+                                ];
+                                track trackByIndex($index, item)
+                              ) {
+                                <div class="info-item" role="row">
+                                  <span class="label" role="gridcell">{{ item.label }}</span>
+                                  <span class="value" [class.error]="item.error" role="gridcell">{{
+                                    item.value
+                                  }}</span>
+                                </div>
+                              }
+                            </div>
+
+                            @if (jobStats().lastError) {
+                              <div class="error-section" role="alert">
+                                <div class="label">Last Error:</div>
+                                <div class="error-message">
+                                  <mat-icon
+                                    svgIcon="circle-exclamation"
+                                    class="error-icon warn"
+                                    aria-hidden="true"
+                                  ></mat-icon>
+                                  <span
+                                    matTooltip="Click to copy error"
+                                    (click)="copyError(jobStats().lastError)"
+                                    tabindex="0"
+                                    role="button"
+                                    class="error-text-content"
+                                    >{{ jobStats().lastError }}</span
+                                  >
+                                </div>
+                              </div>
+                            }
+
+                            @if (activeJobsCount() === 0) {
+                              <div class="no-jobs-message" role="status">
+                                <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                                <span>No active jobs are currently running.</span>
+                              </div>
+                            }
+                          </div>
+                        }
+                      </mat-expansion-panel>
+                    }
+                    @case ('tasks') {
+                      <mat-expansion-panel
+                        [expanded]="getPanelOpenState('tasks')"
+                        (opened)="setPanelOpenState('tasks', true)"
+                        (closed)="setPanelOpenState('tasks', false)"
+                        class="scheduled-tasks-panel"
+                      >
+                        <mat-expansion-panel-header>
+                          <mat-panel-title>
+                            <div class="panel-title-content">
+                              <mat-icon
+                                svgIcon="clock"
+                                class="accent"
+                                aria-hidden="true"
+                              ></mat-icon>
+                              <span>Scheduled Tasks</span>
+                            </div>
+                          </mat-panel-title>
+                          <mat-panel-description>
+                            <span
+                              [ngClass]="{
+                                'active-tasks-indicator': activeScheduledTasksCount() > 0,
+                              }"
+                            >
+                              {{
+                                totalScheduledTasksCount() > 0
+                                  ? activeScheduledTasksCount() +
+                                    ' active / ' +
+                                    totalScheduledTasksCount() +
+                                    ' total'
+                                  : 'No scheduled tasks'
+                              }}
+                            </span>
+                          </mat-panel-description>
+                        </mat-expansion-panel-header>
+
+                        @if (isLoadingScheduledTasks()) {
+                          <div class="loading fade-in" aria-live="polite">
+                            <mat-spinner
+                              diameter="24"
+                              aria-label="Loading scheduled tasks"
+                            ></mat-spinner>
+                            <span>Loading scheduled tasks...</span>
+                          </div>
+                        } @else {
+                          <div class="scheduled-tasks-content">
+                            @if (totalScheduledTasksCount() === 0) {
+                              <div class="no-tasks-message" role="status">
+                                <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                                <span
+                                  >No scheduled tasks configured. Configure auto-start operations
+                                  with cron expressions to create scheduled tasks.</span
+                                >
+                              </div>
+                            } @else {
+                              <div class="tasks-grid">
+                                @for (task of scheduledTasks(); track task.id) {
+                                  <mat-card
+                                    class="task-card"
+                                    [class.disabled]="task.status === 'disabled'"
+                                    [class.stopping]="task.status === 'stopping'"
+                                    (click)="onTaskClick(task)"
+                                    (keydown)="onTaskKeydown($event, task)"
+                                    role="button"
+                                    tabindex="0"
+                                    [attr.aria-label]="
+                                      'Scheduled ' +
+                                      (task.taskType | titlecase) +
+                                      ' task for ' +
+                                      task.args['remoteName'] +
+                                      '. Status: ' +
+                                      (task.status | titlecase)
+                                    "
+                                  >
+                                    <mat-card-header class="task-header">
+                                      <div class="task-info-section">
+                                        <div
+                                          class="task-icon-wrapper"
+                                          [class]="getTaskTypeColor(task.taskType)"
+                                        >
+                                          <mat-icon
+                                            [svgIcon]="getTaskTypeIcon(task.taskType)"
+                                            class="task-type-icon"
+                                          ></mat-icon>
+                                        </div>
+                                        <div class="task-title-section">
+                                          <div class="task-name-row">
+                                            <span class="task-name">{{ task.name }}</span>
+                                            <span
+                                              class="task-status-badge"
+                                              [ngClass]="task.status"
+                                              [matTooltip]="getTaskStatusTooltip(task.status)"
+                                            >
+                                              {{ task.status | titlecase }}
+                                            </span>
+                                            @if (task.currentJobId) {
+                                              <div class="task-running-badge">
+                                                <mat-icon
+                                                  svgIcon="play"
+                                                  class="running-icon"
+                                                ></mat-icon>
+                                                <span>Running</span>
+                                              </div>
+                                            }
+                                          </div>
+                                          <span class="task-remote-name">{{
+                                            task.args['remoteName']
+                                          }}</span>
+                                        </div>
+                                      </div>
+                                      <button
+                                        mat-icon-button
+                                        (click)="
+                                          toggleScheduledTask(task.id); $event.stopPropagation()
+                                        "
+                                        [matTooltip]="getToggleTooltip(task.status)"
+                                        class="task-toggle-btn"
+                                        [disabled]="task.status === 'stopping'"
+                                      >
+                                        <mat-icon [svgIcon]="getToggleIcon(task.status)"></mat-icon>
+                                      </button>
+                                    </mat-card-header>
+
+                                    <mat-card-footer class="task-footer">
+                                      <div class="task-stats">
+                                        <div class="stat-item">
+                                          <mat-icon
+                                            svgIcon="circle-check"
+                                            class="stat-icon success"
+                                          ></mat-icon>
+                                          <span class="stat-value">{{ task.successCount }}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                          <mat-icon
+                                            svgIcon="circle-exclamation"
+                                            class="stat-icon error"
+                                          ></mat-icon>
+                                          <span class="stat-value">{{ task.failureCount }}</span>
+                                        </div>
+                                        <div class="stat-item">
+                                          <mat-icon svgIcon="clock" class="stat-icon"></mat-icon>
+                                          <span class="stat-value">{{ task.runCount }}</span>
+                                        </div>
+                                      </div>
+
+                                      <div class="task-schedule">
+                                        <div class="schedule-item">
+                                          <span class="schedule-label">Next Run:</span>
+                                          <span class="schedule-value">{{
+                                            getFormattedNextRun(task)
+                                          }}</span>
+                                        </div>
+                                        @if (task.lastRun) {
+                                          <div class="schedule-item">
+                                            <span class="schedule-label">Last Run:</span>
+                                            <span class="schedule-value">{{
+                                              getFormattedLastRun(task)
+                                            }}</span>
+                                          </div>
+                                        }
+                                      </div>
+
+                                      <div class="task-cron">
+                                        <mat-icon svgIcon="terminal" class="cron-icon"></mat-icon>
+                                        <code class="cron-expression">{{
+                                          task.cronExpression
+                                        }}</code>
+                                      </div>
+
+                                      @if (task.lastError) {
+                                        <div class="task-error">
+                                          <mat-icon
+                                            svgIcon="circle-exclamation"
+                                            class="error-icon"
+                                          ></mat-icon>
+                                          <span class="error-text">{{ task.lastError }}</span>
+                                        </div>
+                                      }
+                                    </mat-card-footer>
+                                  </mat-card>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                      </mat-expansion-panel>
+                    }
+                    @case ('serves') {
+                      <mat-expansion-panel
+                        [expanded]="getPanelOpenState('serves')"
+                        (opened)="setPanelOpenState('serves', true)"
+                        (closed)="setPanelOpenState('serves', false)"
+                        class="serves-panel"
+                      >
+                        <mat-expansion-panel-header>
+                          <mat-panel-title>
+                            <div class="panel-title-content">
+                              <mat-icon
+                                svgIcon="satellite-dish"
+                                class="green"
+                                aria-hidden="true"
+                              ></mat-icon>
+                              <span>Running Serves</span>
+                            </div>
+                          </mat-panel-title>
+                          <mat-panel-description>
+                            <span
+                              [ngClass]="{
+                                'active-serves-indicator': allRunningServes().length > 0,
+                              }"
+                            >
+                              {{
+                                allRunningServes().length > 0
+                                  ? allRunningServes().length +
+                                    ' active serve' +
+                                    (allRunningServes().length !== 1 ? 's' : '')
+                                  : 'No active serves'
+                              }}
+                            </span>
+                          </mat-panel-description>
+                        </mat-expansion-panel-header>
+
+                        @if (isLoadingServes()) {
+                          <div class="loading fade-in" aria-live="polite">
+                            <mat-spinner
+                              diameter="24"
+                              aria-label="Loading running serves"
+                            ></mat-spinner>
+                            <span>Loading running serves...</span>
+                          </div>
+                        } @else {
+                          <div class="serves-content">
+                            @if (allRunningServes().length === 0) {
+                              <div class="no-serves-message" role="status">
+                                <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
+                                <span
+                                  >No active serves running. Start serving a remote to make it
+                                  accessible via network protocols like HTTP, WebDAV, FTP, or
+                                  SFTP.</span
+                                >
+                              </div>
+                            } @else {
+                              <div class="serves-grid">
+                                @for (serve of allRunningServes(); track serve.id) {
+                                  <app-serve-card
+                                    [serve]="serve"
+                                    [showRemoteName]="true"
+                                    (stopServe)="stopServe($event)"
+                                    (copyToClipboard)="handleCopyToClipboard($event)"
+                                    (cardClick)="handleServeCardClick($event)"
+                                  ></app-serve-card>
+                                }
+                              </div>
+                            }
+                          </div>
+                        }
+                      </mat-expansion-panel>
+                    }
+                  }
+                </div>
               </div>
             }
-          </div>
-        }
-      </mat-expansion-panel>
+          }
+        </mat-accordion>
+      </div>
+    }
 
-      <!-- Running Serves Panel -->
-      <mat-expansion-panel
-        [expanded]="servesPanelOpenState()"
-        (opened)="servesPanelOpenState.set(true)"
-        (closed)="servesPanelOpenState.set(false)"
-        class="serves-panel"
-        role="region"
+    <div class="layout-actions">
+      <button
+        mat-icon-button
+        (click)="toggleEditLayout()"
+        matTooltipPosition="left"
+        matTooltipShowDelay="500"
+        [matTooltip]="isEditingLayout() ? 'Save Layout' : 'Edit Layout'"
       >
-        <mat-expansion-panel-header>
-          <mat-panel-title>
-            <div class="panel-title-content">
-              <mat-icon svgIcon="satellite-dish" class="green" aria-hidden="true"></mat-icon>
-              <span>Running Serves</span>
-            </div>
-          </mat-panel-title>
-          <mat-panel-description>
-            <span [ngClass]="{ 'active-serves-indicator': allRunningServes().length > 0 }">
-              {{
-                allRunningServes().length > 0
-                  ? allRunningServes().length +
-                    ' active serve' +
-                    (allRunningServes().length !== 1 ? 's' : '')
-                  : 'No active serves'
-              }}
-            </span>
-          </mat-panel-description>
-        </mat-expansion-panel-header>
+        <mat-icon
+          [class]="isEditingLayout() ? 'primary' : ''"
+          [svgIcon]="isEditingLayout() ? 'circle-check' : 'pen'"
+        ></mat-icon>
+      </button>
 
-        @if (isLoadingServes()) {
-          <div class="loading fade-in" aria-live="polite">
-            <mat-spinner diameter="24" aria-label="Loading running serves"></mat-spinner>
-            <span>Loading running serves...</span>
-          </div>
-        } @else {
-          <div class="serves-content">
-            @if (allRunningServes().length === 0) {
-              <div class="no-serves-message" role="status">
-                <mat-icon svgIcon="circle-info" aria-hidden="true"></mat-icon>
-                <span
-                  >No active serves running. Start serving a remote to make it accessible via
-                  network protocols like HTTP, WebDAV, FTP, or SFTP.</span
-                >
-              </div>
-            } @else {
-              <div class="serves-grid">
-                @for (serve of allRunningServes(); track serve.id) {
-                  <app-serve-card
-                    [serve]="serve"
-                    [showRemoteName]="true"
-                    (stopServe)="stopServe($event)"
-                    (copyToClipboard)="handleCopyToClipboard($event)"
-                    (cardClick)="handleServeCardClick($event)"
-                  ></app-serve-card>
-                }
-              </div>
-            }
-          </div>
-        }
-      </mat-expansion-panel>
-    </mat-accordion>
+      @if (isEditingLayout()) {
+        <button
+          mat-icon-button
+          (click)="resetLayout()"
+          matTooltipPosition="left"
+          matTooltipShowDelay="500"
+          matTooltip="Reset Layout"
+          [@fadeInOut]
+        >
+          <mat-icon class="warn" svgIcon="rotate-left"></mat-icon>
+        </button>
+      }
+    </div>
   </div>
 </div>

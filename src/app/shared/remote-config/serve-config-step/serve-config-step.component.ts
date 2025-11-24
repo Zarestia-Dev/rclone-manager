@@ -38,8 +38,8 @@ type FormField =
 const TYPE_INFO: Record<string, TypeInfo> = {
   http: { icon: 'globe', description: 'Serve files via HTTP' },
   webdav: { icon: 'cloud', description: 'WebDAV for file access' },
-  ftp: { icon: 'folder-open', description: 'FTP file transfer' },
-  sftp: { icon: 'lock', description: 'Secure FTP over SSH' },
+  ftp: { icon: 'ftp', description: 'FTP file transfer' },
+  sftp: { icon: 'sftp', description: 'Secure FTP over SSH' },
   nfs: { icon: 'server', description: 'Network File System' },
   dlna: { icon: 'play-circle', description: 'DLNA media server' },
   docker: { icon: 'box', description: 'Docker volume plugin' },

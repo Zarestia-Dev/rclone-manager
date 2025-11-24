@@ -42,7 +42,6 @@ export class IconService {
       filter: 'assets/icons/filter.svg',
       flask: 'assets/icons/flask.svg',
       folder: 'assets/icons/folder.svg',
-      'folder-open': 'assets/icons/folder-open.svg',
       'hard-drive': 'assets/icons/hard-drive.svg',
       home: 'assets/icons/home.svg',
       info: 'assets/icons/info.svg',
@@ -85,6 +84,7 @@ export class IconService {
       http: 'assets/icons/remotes/http.svg',
       webdav: 'assets/icons/remotes/webdav.svg',
       sftp: 'assets/icons/remotes/sftp.svg',
+      hdfs: 'assets/icons/remotes/hdfs.svg',
 
       // ------------------- Theme Icons -------------------
       'circle-check': 'assets/icons/circle-check.svg',

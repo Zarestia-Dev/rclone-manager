@@ -5,6 +5,8 @@ use tauri::Runtime;
 use tauri_plugin_store::Store;
 use tokio::sync::Mutex;
 
+use crate::utils::types::all_types::DashboardPanel;
+
 /// 🛠️ Metadata for settings
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SettingMetadata {
@@ -71,6 +73,7 @@ pub struct RuntimeSettings {
     pub rclone_skipped_updates: Vec<String>,
     pub rclone_update_channel: String,
     pub flatpak_warn: bool,
+    pub dashboard_layout: Option<Vec<DashboardPanel>>,
 }
 
 /// The complete settings model
@@ -207,6 +210,7 @@ impl Default for AppSettings {
                 rclone_skipped_updates: vec![],
                 rclone_update_channel: "stable".to_string(),
                 flatpak_warn: true,
+                dashboard_layout: None,
             },
         }
     }
@@ -474,6 +478,17 @@ impl AppSettings {
                 "bool",
                 "",
                 default = defaults.runtime.flatpak_warn,
+                required = true
+            ),
+        );
+
+        metadata.insert(
+            "runtime.dashboard_layout".to_string(),
+            setting_meta!(
+                "Dashboard Layout Style",
+                "string[]",
+                "",
+                default = defaults.runtime.dashboard_layout,
                 required = true
             ),
         );

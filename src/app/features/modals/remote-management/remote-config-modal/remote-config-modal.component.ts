@@ -66,12 +66,6 @@ interface PendingRemoteData {
   [key: string]: unknown;
 }
 
-interface ConfigSpec {
-  flagType: FlagType;
-  formPath: string;
-  staticFields: string[];
-}
-
 @Component({
   selector: 'app-remote-config-modal',
   standalone: true,
@@ -186,81 +180,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private optionToFieldNameMap: Record<string, string> = {};
   private isPopulatingForm = false;
 
-  // Config specifications for each flag type
-  private readonly configSpecs: Record<FlagType, ConfigSpec> = {
-    mount: {
-      flagType: 'mount',
-      formPath: 'mountConfig',
-      staticFields: ['autoStart', 'dest', 'source', 'type'],
-    },
-    copy: {
-      flagType: 'copy',
-      formPath: 'copyConfig',
-      staticFields: [
-        'autoStart',
-        'cronEnabled',
-        'cronExpression',
-        'source',
-        'dest',
-        'createEmptySrcDirs',
-      ],
-    },
-    sync: {
-      flagType: 'sync',
-      formPath: 'syncConfig',
-      staticFields: [
-        'autoStart',
-        'cronEnabled',
-        'cronExpression',
-        'source',
-        'dest',
-        'createEmptySrcDirs',
-      ],
-    },
-    bisync: {
-      flagType: 'bisync',
-      formPath: 'bisyncConfig',
-      staticFields: [
-        'autoStart',
-        'cronEnabled',
-        'cronExpression',
-        'source',
-        'dest',
-        'dryRun',
-        'resync',
-        'checkAccess',
-        'checkFilename',
-        'maxDelete',
-        'force',
-        'checkSync',
-        'createEmptySrcDirs',
-        'removeEmptyDirs',
-        'filtersFile',
-        'ignoreListingChecksum',
-        'resilient',
-        'workdir',
-        'backupdir1',
-        'backupdir2',
-        'noCleanup',
-      ],
-    },
-    move: {
-      flagType: 'move',
-      formPath: 'moveConfig',
-      staticFields: [
-        'autoStart',
-        'cronEnabled',
-        'cronExpression',
-        'source',
-        'dest',
-        'createEmptySrcDirs',
-        'deleteEmptySrcDirs',
-      ],
-    },
-    filter: { flagType: 'filter', formPath: 'filterConfig', staticFields: [] },
-    vfs: { flagType: 'vfs', formPath: 'vfsConfig', staticFields: [] },
-    backend: { flagType: 'backend', formPath: 'backendConfig', staticFields: [] },
-  };
   // ============================================================================
   // LIFECYCLE HOOKS
   // ============================================================================
@@ -321,8 +240,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   private async loadAllFlagFields(): Promise<void> {
     this.dynamicFlagFields = await this.flagConfigService.loadAllFlagFields();
-    this.dynamicFlagFields.move = [...this.dynamicFlagFields.copy];
-    this.dynamicFlagFields.bisync = [...this.dynamicFlagFields.copy];
     this.addDynamicFieldsToForm();
   }
 
@@ -463,7 +380,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         'cronExpression',
         'source',
         'dest',
-        'createEmptySrcDirs',
       ]),
       syncConfig: this.createConfigGroup([
         'autoStart',
@@ -471,7 +387,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         'cronExpression',
         'source',
         'dest',
-        'createEmptySrcDirs',
       ]),
       bisyncConfig: this.createConfigGroup([
         'autoStart',
@@ -479,22 +394,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         'cronExpression',
         'source',
         'dest',
-        'dryRun',
-        'resync',
-        'checkAccess',
-        'checkFilename',
-        'maxDelete',
-        'force',
-        'checkSync',
-        'createEmptySrcDirs',
-        'removeEmptyDirs',
-        'filtersFile',
-        'ignoreListingChecksum',
-        'resilient',
-        'workdir',
-        'backupdir1',
-        'backupdir2',
-        'noCleanup',
       ]),
       moveConfig: this.createConfigGroup([
         'autoStart',
@@ -502,8 +401,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         'cronExpression',
         'source',
         'dest',
-        'createEmptySrcDirs',
-        'deleteEmptySrcDirs',
       ]),
       filterConfig: this.createConfigGroup([]),
       vfsConfig: this.createConfigGroup([]),
@@ -514,21 +411,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private createConfigGroup(fields: string[]): FormGroup {
     const group: Record<string, any> = {};
     fields.forEach(field => {
-      group[field] =
-        field.includes('Empty') ||
-        field.includes('Dirs') ||
-        field === 'autoStart' ||
-        field === 'cronEnabled' ||
-        field === 'dryRun' ||
-        field === 'resync' ||
-        field === 'checkAccess' ||
-        field === 'force' ||
-        field === 'checkSync' ||
-        field === 'ignoreListingChecksum' ||
-        field === 'resilient' ||
-        field === 'noCleanup'
-          ? [false]
-          : [''];
+      group[field] = field === 'autoStart' || field === 'cronEnabled' ? [false] : [''];
     });
     // Add pathType controls for relevant groups
     if (fields.includes('source')) {
@@ -759,50 +642,46 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   private populateFlagForm(flagType: FlagType, config: any): void {
     config = config || {};
-    const spec = this.configSpecs[flagType];
-    if (!spec) return;
-
-    // 1. Populate static fields
-    const baseConfig = this.buildStaticFieldsConfig(flagType, config);
-    this.remoteConfigForm.get(spec.formPath)?.patchValue(baseConfig);
-
-    // 2. Populate dynamic options
-    this.populateDynamicOptions(flagType, config);
-  }
-
-  private buildStaticFieldsConfig(flagType: FlagType, config: any): Record<string, any> {
-    const spec = this.configSpecs[flagType];
-    const baseConfig: Record<string, any> = {};
-    const remoteName = this.getRemoteName();
-
-    spec.staticFields.forEach(field => {
-      if (field === 'source') {
-        baseConfig[field] = this.parsePathString(config[field], 'currentRemote', remoteName);
-      } else if (field === 'dest') {
-        // Mount has simple string dest, others have path object
-        if (flagType === 'mount') {
-          baseConfig[field] = config[field] || '';
-        } else {
-          baseConfig[field] = this.parsePathString(config[field], 'local', remoteName);
+    const formGroup = this.remoteConfigForm.get(`${flagType}Config`);
+    if (formGroup) {
+      // Convert legacy string paths (e.g. "remote:/path") into the
+      // structured path objects the form expects (pathType/path/otherRemoteName).
+      const patchedConfig = { ...config };
+      try {
+        if (patchedConfig.source && typeof patchedConfig.source === 'string') {
+          patchedConfig.source = this.parsePathString(
+            patchedConfig.source,
+            'currentRemote',
+            this.getRemoteName()
+          );
         }
-      } else if (this.isBooleanField(field)) {
-        baseConfig[field] = config[field] ?? false;
-      } else {
-        baseConfig[field] = config[field] || '';
+      } catch (e) {
+        // Fall back — if parsing fails we still attempt to patch raw value
+        console.warn('Failed to parse source path string:', e);
       }
-    });
 
-    // Include cronExpression if present (for non-mount configs)
-    if (config['cronExpression'] !== undefined && flagType !== 'mount') {
-      baseConfig['cronExpression'] = config['cronExpression'];
+      try {
+        if (patchedConfig.dest && typeof patchedConfig.dest === 'string') {
+          // For mount dest is a simple string control, but parsePathString will
+          // return an object for remote paths; the form group will accept the
+          // proper shape for non-mount configs.
+          patchedConfig.dest = this.parsePathString(
+            patchedConfig.dest,
+            flagType === 'mount' ? 'local' : 'currentRemote',
+            this.getRemoteName()
+          );
+        }
+      } catch (e) {
+        console.warn('Failed to parse dest path string:', e);
+      }
+
+      formGroup.patchValue(patchedConfig);
+      this.populateDynamicOptions(flagType, patchedConfig);
     }
-
-    return baseConfig;
   }
 
   private populateDynamicOptions(flagType: FlagType, config: any): void {
-    const spec = this.configSpecs[flagType];
-    const optionsGroup = this.remoteConfigForm.get(`${spec.formPath}.options`);
+    const optionsGroup = this.remoteConfigForm.get(`${flagType}Config.options`);
 
     if (!optionsGroup || !this.dynamicFlagFields[flagType]) return;
 
@@ -823,25 +702,6 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     });
 
     optionsGroup.patchValue(optionsToPopulate);
-  }
-
-  // Helper to identify boolean fields
-  private isBooleanField(field: string): boolean {
-    const booleanFields = [
-      'autoStart',
-      'dryRun',
-      'resync',
-      'checkAccess',
-      'force',
-      'checkSync',
-      'ignoreListingChecksum',
-      'resilient',
-      'noCleanup',
-      'createEmptySrcDirs',
-      'removeEmptyDirs',
-      'deleteEmptySrcDirs',
-    ];
-    return booleanFields.includes(field);
   }
 
   // Helper to parse a path string (e.g., "myRemote:/path") into a form object
@@ -1197,32 +1057,15 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private buildConfig(flagType: FlagType, remoteData: any, configData: any): any {
-    const spec = this.configSpecs[flagType];
-
-    // For types with no static fields (like filter, vfs, backend),
-    // the entire config is just the cleaned dynamic options.
-    if (spec.staticFields.length === 0) {
-      return this.cleanData(configData.options, this.dynamicFlagFields[flagType], flagType);
-    }
-
     const result: any = {};
-
-    spec.staticFields.forEach(field => {
-      if (field === 'source' || field === 'dest') {
-        result[field] = this.buildPathString(configData[field], remoteData.name);
+    for (const key in configData) {
+      if (key === 'source' || key === 'dest') {
+        result[key] = this.buildPathString(configData[key], remoteData.name);
       } else {
-        result[field] = configData[field];
+        result[key] = configData[key];
       }
-    });
-
-    // Add cronExpression if present (for non-mount configs)
-    if (configData.cronExpression !== undefined) {
-      result.cronExpression = configData.cronExpression;
     }
-
-    // For types with static fields, place dynamic flags under an `options` object.
     result.options = this.cleanData(configData.options, this.dynamicFlagFields[flagType], flagType);
-
     return result;
   }
 

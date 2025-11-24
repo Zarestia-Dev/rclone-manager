@@ -194,3 +194,11 @@ pub struct NetworkStatusPayload {
 
 pub const SERVICE_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONFIG_PASSWORD_KEY: &str = "rclone_config_password";
+
+/// Dashboard panel descriptor for layout storage
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DashboardPanel {
+    pub id: String,
+    pub title: String,
+    pub visible: bool,
+}

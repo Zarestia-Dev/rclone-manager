@@ -10,6 +10,8 @@
 ### Changed
 - Charts removed from sync, copy, move and bisync activity panels. Also chartjs dependency removed from the project to reduce the bundle size.
 - Remote Logs Modal design and functionality improvements.
+- Export Modal design and functionality improvements.
+- Dashboard General Overview panel design and functionality improvements. Now it supports layout customization.
 
 
 ## [v0.1.7] - 2025-11-14

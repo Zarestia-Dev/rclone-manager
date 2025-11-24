@@ -74,9 +74,10 @@ use crate::{
         },
         queries::{
             flags::{
-                get_backend_flags, get_copy_flags, get_filter_flags, get_flags_by_category,
-                get_grouped_options_with_values, get_mount_flags, get_option_blocks,
-                get_sync_flags, get_vfs_flags, set_rclone_option,
+                get_backend_flags, get_bisync_flags, get_copy_flags, get_filter_flags,
+                get_flags_by_category, get_grouped_options_with_values, get_mount_flags,
+                get_move_flags, get_option_blocks, get_sync_flags, get_vfs_flags,
+                set_rclone_option,
             },
             get_about_remote, get_all_remote_configs, get_bandwidth_limit, get_completed_transfers,
             get_core_stats, get_core_stats_filtered, get_disk_usage, get_fs_info, get_job_stats,
@@ -427,6 +428,8 @@ pub fn run() {
             get_flags_by_category,
             get_copy_flags,
             get_sync_flags,
+            get_bisync_flags,
+            get_move_flags,
             get_filter_flags,
             get_vfs_flags,
             get_mount_flags,

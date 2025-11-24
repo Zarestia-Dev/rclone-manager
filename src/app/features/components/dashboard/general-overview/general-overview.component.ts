@@ -19,17 +19,10 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
-import {
-  catchError,
-  EMPTY,
-  filter,
-  from,
-  Subject,
-  Subscription,
-  switchMap,
-  takeUntil,
-  timer,
-} from 'rxjs';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
+
+import { catchError, EMPTY, from, Subject, Subscription, switchMap, takeUntil, timer } from 'rxjs';
 
 import {
   BandwidthLimitResponse,
@@ -42,27 +35,37 @@ import {
   Remote,
   RemoteActionProgress,
   SystemStats,
+  ScheduledTask,
+  ServeListItem,
 } from '@app/types';
+
 import { FormatTimePipe } from '../../../../shared/pipes/format-time.pipe';
 import { FormatEtaPipe } from '../../../../shared/pipes/format-eta.pipe';
 import { FormatMemoryUsagePipe } from '../../../../shared/pipes/format-memory-usage.pipe';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
-
-// Services
-import { AnimationsService } from '../../../../shared/services/animations.service';
-import { EventListenersService, SchedulerService, UiStateService } from '@app/services';
-import { SystemInfoService } from '@app/services';
-import { FormatBytes } from '@app/pipes';
-import { IconService } from 'src/app/shared/services/icon.service';
-import { ScheduledTask, ServeListItem } from '@app/types';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
-/** Polling interval for system stats in milliseconds */
-const POLLING_INTERVAL = 5000;
+import {
+  EventListenersService,
+  SchedulerService,
+  UiStateService,
+  SystemInfoService,
+  AppSettingsService,
+} from '@app/services';
+import { FormatBytes } from '@app/pipes';
+import { IconService } from 'src/app/shared/services/icon.service';
+import { AnimationsService } from 'src/app/shared/services/animations.service';
 
-/**
- * GeneralOverviewComponent displays an overview of RClone remotes and system information
- */
+const POLLING_INTERVAL = 5000;
+const ANIMATION_DELAY = 100;
+const SCROLL_DELAY = 60;
+
+interface DashboardPanel {
+  id: string;
+  title: string;
+  visible: boolean;
+}
+
 @Component({
   selector: 'app-general-overview',
   standalone: true,
@@ -76,6 +79,8 @@ const POLLING_INTERVAL = 5000;
     MatProgressBarModule,
     MatTooltipModule,
     MatSnackBarModule,
+    MatSlideToggleModule,
+    DragDropModule,
     FormatTimePipe,
     FormatEtaPipe,
     FormatMemoryUsagePipe,
@@ -85,19 +90,17 @@ const POLLING_INTERVAL = 5000;
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
-  animations: [AnimationsService.fadeInOut()],
+  animations: [AnimationsService.fadeInOut(), AnimationsService.slideInOut()],
 })
 export class GeneralOverviewComponent implements OnInit, OnDestroy {
-  // Input/Output Properties
+  // Inputs
   remotes = input<Remote[]>([]);
   jobs = input<JobInfo[]>([]);
   actionInProgress = input<RemoteActionProgress>({});
 
+  // Outputs
   @Output() selectRemote = new EventEmitter<Remote>();
-  @Output() startJob = new EventEmitter<{
-    type: PrimaryActionType;
-    remoteName: string;
-  }>();
+  @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
   @Output() stopJob = new EventEmitter<{
     type: PrimaryActionType;
     remoteName: string;
@@ -105,90 +108,353 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   }>();
   @Output() browseRemote = new EventEmitter<string>();
 
-  // Component State
+  // State signals
   rcloneStatus = signal<RcloneStatus>('inactive');
   systemStats = signal<SystemStats>({ memoryUsage: null, uptime: 0 });
   jobStats = signal<GlobalStats>({ ...DEFAULT_JOB_STATS });
   isLoadingStats = signal(false);
-
-  // Panel states
   bandwidthLimit = signal<BandwidthLimitResponse | null>(null);
-  bandwidthPanelOpenState = signal(false);
-  systemInfoPanelOpenState = signal(false);
-  jobInfoPanelOpenState = signal(false);
-  scheduledTasksPanelOpenState = signal(false);
-  servesPanelOpenState = signal(false);
-
-  // Scheduled tasks
+  isEditingLayout = signal(false);
+  dashboardPanels = signal<DashboardPanel[]>([]);
+  panelOpenStates = signal<Record<string, boolean>>({
+    remotes: true,
+    bandwidth: false,
+    system: false,
+    jobs: false,
+    tasks: false,
+    serves: false,
+  });
   scheduledTasks = signal<ScheduledTask[]>([]);
   isLoadingScheduledTasks = signal(false);
-
-  // Running serves
   isLoadingServes = signal(false);
-
-  // Private members
-  private eventListenersService = inject(EventListenersService);
-  private destroy$ = new Subject<void>();
-  private pollingSubscription: Subscription | null = null;
-  private scheduledTasksSubscription: Subscription | null = null;
+  isLayoutLoaded = signal(false);
+  disableAnimations = signal(true);
 
   // Services
+  private eventListenersService = inject(EventListenersService);
   private snackBar = inject(MatSnackBar);
   private systemInfoService = inject(SystemInfoService);
   private schedulerService = inject(SchedulerService);
   private uiStateService = inject(UiStateService);
+  private appSettingsService = inject(AppSettingsService);
   public iconService = inject(IconService);
 
+  // Subscriptions
+  private destroy$ = new Subject<void>();
+  private pollingSubscription: Subscription | null = null;
+  private scheduledTasksSubscription: Subscription | null = null;
+
+  // Constants
+  private readonly defaultPanels: DashboardPanel[] = [
+    { id: 'remotes', title: 'Quick Remote Access', visible: true },
+    { id: 'bandwidth', title: 'Bandwidth Limit', visible: true },
+    { id: 'system', title: 'System Information', visible: true },
+    { id: 'jobs', title: 'Job Information', visible: true },
+    { id: 'tasks', title: 'Scheduled Tasks', visible: true },
+    { id: 'serves', title: 'Running Serves', visible: true },
+  ];
+
   // Track by functions
+  readonly trackByPanelId: TrackByFunction<DashboardPanel> = (_, item) => item.id;
   readonly trackByRemoteName: TrackByFunction<Remote> = (_, remote) => remote.remoteSpecs.name;
   readonly trackByIndex: TrackByFunction<unknown> = index => index;
+
+  // Computed values
+  totalRemotes = computed(() => this.remotes()?.length || 0);
+  activeJobsCount = computed(
+    () => this.jobs()?.filter(job => job.status === 'Running').length || 0
+  );
+  allRunningServes = computed(() =>
+    this.remotes().flatMap(remote => remote.serveState?.serves || [])
+  );
+  primaryActions = computed<PrimaryActionType[]>(() =>
+    this.remotes().flatMap(remote => remote.primaryActions || [])
+  );
+
+  jobCompletionPercentage = computed(() => {
+    const totalBytes = this.jobStats().totalBytes || 0;
+    const bytes = this.jobStats().bytes || 0;
+    return totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
+  });
+
+  isBandwidthLimited = computed(() => {
+    const limit = this.bandwidthLimit();
+    return !!limit && limit.rate !== 'off' && limit.rate !== '' && limit.bytesPerSecond > 0;
+  });
+
+  bandwidthDisplayValue = computed(() => {
+    const limit = this.bandwidthLimit();
+    if (limit?.loading) return 'Loading...';
+    if (limit?.error) return 'Error loading limit';
+    if (!limit || limit.rate === 'off' || limit.rate === '' || limit.bytesPerSecond <= 0) {
+      return 'Unlimited';
+    }
+    return limit.rate;
+  });
+
+  bandwidthDetails = computed(() => {
+    const limit = this.bandwidthLimit();
+    if (!limit) return { upload: 0, download: 0, total: 0 };
+
+    const isUnlimited = (value: number): boolean => value <= 0;
+    return {
+      upload: isUnlimited(limit.bytesPerSecondTx) ? 0 : limit.bytesPerSecondTx,
+      download: isUnlimited(limit.bytesPerSecondRx) ? 0 : limit.bytesPerSecondRx,
+      total: isUnlimited(limit.bytesPerSecond) ? 0 : limit.bytesPerSecond,
+    };
+  });
+
+  activeScheduledTasksCount = computed(
+    () =>
+      this.scheduledTasks().filter(task => task.status === 'enabled' || task.status === 'running')
+        .length
+  );
+
+  totalScheduledTasksCount = computed(() => this.scheduledTasks().length);
 
   ngOnInit(): void {
     this.setupTauriListeners();
     this.setupPolling();
     this.loadInitialData();
     this.setupScheduledTasksListener();
+    this.loadLayoutSettings();
   }
 
   ngOnDestroy(): void {
     this.cleanup();
   }
 
+  // Layout management
+  toggleEditLayout(): void {
+    const isEditing = this.isEditingLayout();
+    if (isEditing) {
+      this.saveLayoutSettings();
+      this.showSnackbar('Dashboard layout saved');
+    }
+    this.isEditingLayout.set(!isEditing);
+  }
+
+  resetLayout(): void {
+    this.dashboardPanels.set(JSON.parse(JSON.stringify(this.defaultPanels)));
+    if (!this.isEditingLayout()) {
+      this.saveLayoutSettings();
+      this.showSnackbar('Layout reset to default');
+    }
+  }
+
+  drop(event: CdkDragDrop<DashboardPanel[]>): void {
+    const currentPanels = [...this.dashboardPanels()];
+    moveItemInArray(currentPanels, event.previousIndex, event.currentIndex);
+    this.dashboardPanels.set(currentPanels);
+  }
+
+  togglePanelVisibility(panelId: string): void {
+    this.dashboardPanels.update(panels =>
+      panels.map(p => (p.id === panelId ? { ...p, visible: !p.visible } : p))
+    );
+  }
+
+  setPanelOpenState(id: string, isOpen: boolean): void {
+    this.panelOpenStates.update(states => ({ ...states, [id]: isOpen }));
+  }
+
+  getPanelOpenState(id: string): boolean {
+    return this.panelOpenStates()[id] ?? false;
+  }
+
+  // Remote actions
+  onRemoteSelectedFromPanel(remote: Remote): void {
+    this.selectRemote.emit(remote);
+  }
+
+  onOpenInFilesFromPanel(remoteName: string): void {
+    this.browseRemote.emit(remoteName);
+  }
+
+  onSecondaryActionFromPanel(remoteName: string): void {
+    this.startJob.emit({ type: 'sync', remoteName });
+  }
+
+  // Serve actions
+  async stopServe(serve: ServeListItem): Promise<void> {
+    const remoteName = serve.params.fs.split(':')[0];
+    this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
+  }
+
+  handleServeCardClick(serve: ServeListItem): void {
+    const remoteName = serve.params.fs.split(':')[0];
+    const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
+
+    if (remote) {
+      this.uiStateService.setTab('serve');
+      this.uiStateService.setSelectedRemote(remote);
+      setTimeout(() => this.scrollToTop(), SCROLL_DELAY);
+    }
+  }
+
+  // Task actions
+  async toggleScheduledTask(taskId: string): Promise<void> {
+    try {
+      await this.schedulerService.toggleScheduledTask(taskId);
+    } catch (error) {
+      console.error('Failed to toggle scheduled task:', error);
+      this.showSnackbar('Failed to toggle scheduled task');
+    }
+  }
+
+  onTaskClick(task: ScheduledTask): void {
+    const remoteName = task.args['remote_name'];
+    if (remoteName) {
+      const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
+      if (remote) {
+        this.selectRemote.emit(remote);
+      }
+    }
+  }
+
+  onTaskKeydown(event: KeyboardEvent, task: ScheduledTask): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.onTaskClick(task);
+    }
+  }
+
+  // Clipboard actions
+  handleCopyToClipboard(data: { text: string; message: string }): void {
+    this.copyToClipboard(data.text, data.message);
+  }
+
+  async copyError(error: string): Promise<void> {
+    this.copyToClipboard(error, 'Error copied to clipboard', 'Failed to copy error');
+  }
+
+  // Task utility methods
+  getFormattedNextRun(task: ScheduledTask): string {
+    if (task.status === 'disabled') return 'Task is disabled';
+    if (task.status === 'stopping') return 'Disabling after current run';
+    if (!task.nextRun) return 'Not scheduled';
+    return new Date(task.nextRun).toLocaleString();
+  }
+
+  getFormattedLastRun(task: ScheduledTask): string {
+    return task.lastRun ? new Date(task.lastRun).toLocaleString() : 'Never';
+  }
+
+  getTaskTypeIcon(taskType: string): string {
+    const iconMap: Record<string, string> = {
+      sync: 'sync',
+      copy: 'copy',
+      move: 'move',
+      bisync: 'right-left',
+    };
+    return iconMap[taskType] || 'circle-info';
+  }
+
+  getTaskTypeColor(taskType: string): string {
+    const colorMap: Record<string, string> = {
+      sync: 'sync-color',
+      copy: 'copy-color',
+      move: 'move-color',
+      bisync: 'bisync-color',
+    };
+    return colorMap[taskType] || '';
+  }
+
+  getTaskStatusTooltip(status: string): string {
+    const tooltips: Record<string, string> = {
+      enabled: 'Task is enabled and will run on schedule.',
+      disabled: 'Task is disabled and will not run.',
+      running: 'Task is currently running.',
+      failed: 'Task failed on its last run.',
+      stopping: 'Task is stopping and will be disabled after the current run finishes.',
+    };
+    return tooltips[status] || '';
+  }
+
+  getToggleTooltip(status: string): string {
+    if (status === 'enabled' || status === 'running') return 'Disable task';
+    if (status === 'disabled' || status === 'failed') return 'Enable task';
+    if (status === 'stopping') return 'Task is stopping...';
+    return '';
+  }
+
+  getToggleIcon(status: string): string {
+    if (status === 'enabled' || status === 'running') return 'pause';
+    if (status === 'disabled' || status === 'failed') return 'play';
+    if (status === 'stopping') return 'stop';
+    return 'help';
+  }
+
   // Private methods
+  private async loadLayoutSettings(): Promise<void> {
+    try {
+      const savedLayout = await this.appSettingsService.getSettingValue<DashboardPanel[]>(
+        'runtime.dashboard_layout'
+      );
+      const finalLayout = this.mergeLayoutWithDefaults(savedLayout);
+
+      this.dashboardPanels.set(finalLayout);
+      this.isLayoutLoaded.set(true);
+
+      setTimeout(() => this.disableAnimations.set(false), ANIMATION_DELAY);
+    } catch (error) {
+      console.error('Failed to load dashboard layout:', error);
+      this.dashboardPanels.set([...this.defaultPanels]);
+      this.isLayoutLoaded.set(true);
+      this.disableAnimations.set(false);
+    }
+  }
+
+  private mergeLayoutWithDefaults(savedLayout: DashboardPanel[] | undefined): DashboardPanel[] {
+    if (!savedLayout || !Array.isArray(savedLayout)) {
+      return [...this.defaultPanels];
+    }
+
+    const mergedLayout = [...savedLayout];
+    const validIds = new Set(this.defaultPanels.map(p => p.id));
+
+    // Add missing panels
+    this.defaultPanels.forEach(defaultPanel => {
+      if (!mergedLayout.some(p => p.id === defaultPanel.id)) {
+        mergedLayout.push(defaultPanel);
+      }
+    });
+
+    // Filter obsolete panels
+    return mergedLayout.filter(p => validIds.has(p.id));
+  }
+
+  private async saveLayoutSettings(): Promise<void> {
+    try {
+      await this.appSettingsService.saveSetting(
+        'runtime',
+        'dashboard_layout',
+        this.dashboardPanels()
+      );
+    } catch (error) {
+      console.error('Failed to save dashboard layout:', error);
+    }
+  }
+
   private cleanup(): void {
     this.stopPolling();
-    if (this.scheduledTasksSubscription) {
-      this.scheduledTasksSubscription.unsubscribe();
-      this.scheduledTasksSubscription = null;
-    }
+    this.scheduledTasksSubscription?.unsubscribe();
     this.destroy$.next();
     this.destroy$.complete();
   }
 
   private setupPolling(): void {
     this.stopPolling();
-
     this.pollingSubscription = timer(0, POLLING_INTERVAL)
       .pipe(
         takeUntil(this.destroy$),
-        filter(() => !this.isLoadingStats()),
-        switchMap(() =>
-          from(this.loadSystemStats()).pipe(
-            catchError(err => {
-              console.error('Error in system stats polling:', err);
-              return EMPTY;
-            })
-          )
-        )
+        switchMap(() => from(this.loadSystemStats()).pipe(catchError(() => EMPTY)))
       )
       .subscribe();
   }
-
   private stopPolling(): void {
-    if (this.pollingSubscription) {
-      this.pollingSubscription.unsubscribe();
-      this.pollingSubscription = null;
-    }
+    this.pollingSubscription?.unsubscribe();
+    this.pollingSubscription = null;
   }
 
   private async loadInitialData(): Promise<void> {
@@ -204,43 +470,26 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  totalRemotes = computed(() => this.remotes()?.length || 0);
-  activeJobsCount = computed(
-    () => this.jobs()?.filter(job => job.status === 'Running').length || 0
-  );
-  allRunningServes = computed(() =>
-    this.remotes().flatMap(remote => remote.serveState?.serves || [])
-  );
-  jobCompletionPercentage = computed(() => {
-    const totalBytes = this.jobStats().totalBytes || 0;
-    const bytes = this.jobStats().bytes || 0;
-    return totalBytes > 0 ? Math.min(100, (bytes / totalBytes) * 100) : 0;
-  });
-
-  primaryActions = computed<PrimaryActionType[]>(() =>
-    this.remotes().flatMap(remote => remote.primaryActions || [])
-  );
-
   private async loadSystemStats(): Promise<void> {
-    if (this.isLoadingStats()) return;
+    const hasData = this.systemStats().uptime > 0 || this.systemStats().memoryUsage !== null;
 
-    this.isLoadingStats.set(true);
+    if (!hasData) {
+      this.isLoadingStats.set(true);
+    }
 
     try {
       const [memoryStats, coreStats] = await Promise.all([
         this.systemInfoService.getMemoryStats().catch(() => null as MemoryStats | null),
-        this.systemInfoService.getCoreStats().catch(err => {
-          console.error('Error loading core stats:', err);
-          return null as GlobalStats | null;
-        }),
+        this.systemInfoService.getCoreStats().catch(() => null as GlobalStats | null),
       ]);
 
       this.updateSystemStats(memoryStats, coreStats);
-      this.checkRcloneStatus();
+      await this.checkRcloneStatus();
     } catch (error) {
       console.error('Error loading system stats:', error);
-      this.jobStats.set({ ...DEFAULT_JOB_STATS });
-      this.systemStats.set({ memoryUsage: null, uptime: 0 });
+      if (!hasData) {
+        this.resetStats();
+      }
     } finally {
       this.isLoadingStats.set(false);
     }
@@ -254,9 +503,14 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
         uptime: coreStats.elapsedTime || 0,
       });
     } else {
-      this.jobStats.set({ ...DEFAULT_JOB_STATS });
-      this.systemStats.set({ memoryUsage: memoryStats, uptime: 0 });
+      this.resetStats();
+      this.systemStats.update(stats => ({ ...stats, memoryUsage: memoryStats }));
     }
+  }
+
+  private resetStats(): void {
+    this.jobStats.set({ ...DEFAULT_JOB_STATS });
+    this.systemStats.set({ memoryUsage: null, uptime: 0 });
   }
 
   private setupTauriListeners(): void {
@@ -278,9 +532,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     this.scheduledTasksSubscription = this.schedulerService.scheduledTasks$
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (tasks: ScheduledTask[]) => {
-          this.scheduledTasks.set(tasks);
-        },
+        next: (tasks: ScheduledTask[]) => this.scheduledTasks.set(tasks),
       });
   }
 
@@ -295,79 +547,22 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  async stopServe(serve: ServeListItem): Promise<void> {
-    const remoteName = serve.params.fs.split(':')[0];
-    this.stopJob.emit({ type: 'serve', remoteName, serveId: serve.id });
-  }
-
-  handleCopyToClipboard(data: { text: string; message: string }): void {
-    try {
-      navigator.clipboard.writeText(data.text);
-      this.snackBar.open(data.message, 'Close', { duration: 2000 });
-    } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      this.snackBar.open('Failed to copy to clipboard', 'Close', { duration: 2000 });
-    }
-  }
-
-  handleServeCardClick(serve: ServeListItem): void {
-    const remoteName = serve.params.fs.split(':')[0];
-    const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
-    if (remote) {
-      this.uiStateService.setTab('serve');
-      this.uiStateService.setSelectedRemote(remote);
-      setTimeout(() => {
-        const el = document.querySelector('.main-content') as HTMLElement | null;
-        const target = el || document.scrollingElement || document.documentElement;
-        try {
-          target.scrollTo({ top: 0, behavior: 'smooth' } as ScrollToOptions);
-        } catch {
-          (target as HTMLElement).scrollTop = 0;
-        }
-      }, 60);
-    }
-  }
-
-  isBandwidthLimited = computed(() => {
-    const limit = this.bandwidthLimit();
-    if (!limit) return false;
-    return !!limit && limit.rate !== 'off' && limit.rate !== '' && limit.bytesPerSecond > 0;
-  });
-
-  bandwidthDisplayValue = computed(() => {
-    const limit = this.bandwidthLimit();
-    if (limit?.loading) return 'Loading...';
-    if (limit?.error) return 'Error loading limit';
-    if (!limit || limit.rate === 'off' || limit.rate === '' || limit.bytesPerSecond <= 0) {
-      return 'Unlimited';
-    }
-    return limit.rate;
-  });
-
-  bandwidthDetails = computed(() => {
-    const limit = this.bandwidthLimit();
-    if (!limit) return { upload: 0, download: 0, total: 0 };
-    const isUnlimited = (value: number): boolean => value <= 0;
-    return {
-      upload: isUnlimited(limit.bytesPerSecondTx) ? 0 : limit.bytesPerSecondTx,
-      download: isUnlimited(limit.bytesPerSecondRx) ? 0 : limit.bytesPerSecondRx,
-      total: isUnlimited(limit.bytesPerSecond) ? 0 : limit.bytesPerSecond,
-    };
-  });
-
   async loadBandwidthLimit(): Promise<void> {
     try {
-      this.bandwidthLimit.set({
-        bytesPerSecond: 0,
-        bytesPerSecondRx: 0,
-        bytesPerSecondTx: 0,
-        rate: 'Loading...',
-        loading: true,
-      });
+      if (!this.bandwidthLimit()) {
+        this.bandwidthLimit.set({
+          bytesPerSecond: 0,
+          bytesPerSecondRx: 0,
+          bytesPerSecondTx: 0,
+          rate: 'Loading...',
+          loading: true,
+        });
+      }
 
       const response = await this.systemInfoService
         .getBandwidthLimit()
         .catch(() => null as BandwidthLimitResponse | null);
+
       this.bandwidthLimit.set(response);
     } catch (error) {
       this.bandwidthLimit.set({
@@ -381,169 +576,33 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Event handlers for remotes panel
-  onRemoteSelectedFromPanel(remote: Remote): void {
-    this.selectRemote.emit(remote);
-  }
+  // Utility methods
+  private scrollToTop(): void {
+    const el = document.querySelector('.main-content') as HTMLElement | null;
+    const target = el || document.scrollingElement || document.documentElement;
 
-  onOpenInFilesFromPanel(remoteName: string): void {
-    this.browseRemote.emit(remoteName);
-  }
-
-  onSecondaryActionFromPanel(remoteName: string): void {
-    // Secondary action could be sync operation
-    this.startJob.emit({ type: 'sync', remoteName });
-  }
-
-  // Copy error to clipboard
-  async copyError(error: string): Promise<void> {
     try {
-      await navigator.clipboard.writeText(error);
-      this.snackBar.open('Error copied to clipboard', 'Close', {
-        duration: 2000,
-      });
+      target.scrollTo({ top: 0, behavior: 'smooth' } as ScrollToOptions);
     } catch {
-      this.snackBar.open('Failed to copy error', 'Close', {
-        duration: 2000,
-      });
+      (target as HTMLElement).scrollTop = 0;
     }
   }
 
-  // Scheduled tasks helpers
-  activeScheduledTasksCount = computed(
-    () =>
-      this.scheduledTasks().filter(task => task.status === 'enabled' || task.status === 'running')
-        .length
-  );
-
-  totalScheduledTasksCount = computed(() => this.scheduledTasks().length);
-
-  getTasksByRemote(remoteName: string): ScheduledTask[] {
-    return this.scheduledTasks().filter(task => task.args['remoteName'] === remoteName);
-  }
-
-  getFormattedNextRun(task: ScheduledTask): string {
-    if (task.status === 'disabled') {
-      return 'Task is disabled';
-    }
-    if (task.status === 'stopping') {
-      return 'Disabling after current run';
-    }
-    if (!task.nextRun) return 'Not scheduled';
-    return new Date(task.nextRun).toLocaleString();
-  }
-
-  getFormattedLastRun(task: ScheduledTask): string {
-    if (!task.lastRun) return 'Never';
-    return new Date(task.lastRun).toLocaleString();
-  }
-
-  async toggleScheduledTask(taskId: string): Promise<void> {
+  private copyToClipboard(
+    text: string,
+    successMessage: string,
+    errorMessage = 'Failed to copy to clipboard'
+  ): void {
     try {
-      await this.schedulerService.toggleScheduledTask(taskId);
+      navigator.clipboard.writeText(text);
+      this.showSnackbar(successMessage);
     } catch (error) {
-      console.error('Error toggling scheduled task:', error);
-      this.snackBar.open('Failed to toggle scheduled task', 'Close', {
-        duration: 2000,
-      });
+      console.error('Error copying to clipboard:', error);
+      this.showSnackbar(errorMessage);
     }
   }
 
-  // Navigate to remote details when task is clicked
-  onTaskClick(task: ScheduledTask): void {
-    const remoteName = task.args['remote_name'];
-    if (remoteName) {
-      const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
-      if (remote) {
-        this.selectRemote.emit(remote);
-      }
-    }
-  }
-
-  // Handle keyboard navigation for task cards
-  onTaskKeydown(event: KeyboardEvent, task: ScheduledTask): void {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      this.onTaskClick(task);
-    }
-  }
-
-  // Get task type icon
-  getTaskTypeIcon(taskType: string): string {
-    switch (taskType) {
-      case 'sync':
-        return 'sync';
-      case 'copy':
-        return 'copy';
-      case 'move':
-        return 'move';
-      case 'bisync':
-        return 'right-left';
-      default:
-        return 'circle-info';
-    }
-  }
-
-  // Get task type color class
-  getTaskTypeColor(taskType: string): string {
-    switch (taskType) {
-      case 'sync':
-        return 'sync-color';
-      case 'copy':
-        return 'copy-color';
-      case 'move':
-        return 'move-color';
-      case 'bisync':
-        return 'bisync-color';
-      default:
-        return '';
-    }
-  }
-
-  getTaskStatusTooltip(status: string): string {
-    switch (status) {
-      case 'enabled':
-        return 'Task is enabled and will run on schedule.';
-      case 'disabled':
-        return 'Task is disabled and will not run.';
-      case 'running':
-        return 'Task is currently running.';
-      case 'failed':
-        return 'Task failed on its last run.';
-      case 'stopping':
-        return 'Task is stopping and will be disabled after the current run finishes.';
-      default:
-        return '';
-    }
-  }
-
-  getToggleTooltip(status: string): string {
-    switch (status) {
-      case 'enabled':
-      case 'running':
-        return 'Disable task';
-      case 'disabled':
-      case 'failed':
-        return 'Enable task';
-      case 'stopping':
-        return 'Task is stopping...';
-      default:
-        return '';
-    }
-  }
-
-  getToggleIcon(status: string): string {
-    switch (status) {
-      case 'enabled':
-      case 'running':
-        return 'pause';
-      case 'disabled':
-      case 'failed':
-        return 'play';
-      case 'stopping':
-        return 'stop';
-      default:
-        return 'help';
-    }
+  private showSnackbar(message: string, action = 'Close', duration = 2000): void {
+    this.snackBar.open(message, action, { duration });
   }
 }

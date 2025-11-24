@@ -225,40 +225,40 @@
 
   &.error {
     .level-tag {
-      color: #ff5252;
-      background: rgba(255, 82, 82, 0.15);
+      color: var(--warn-color);
+      background: rgba(var(--warn-color-rgb), 0.15);
     }
     .message {
-      color: #ff8a80;
+      color: var(--warn-color);
     }
     &.expanded .log-header {
-      border-left: 3px solid #ff5252;
-      background: rgba(255, 82, 82, 0.05);
+      border-left: 3px solid var(--warn-color);
+      background: rgba(var(--warn-color-rgb), 0.05);
     }
   }
 
   &.warn {
     .level-tag {
-      color: #ffab40;
-      background: rgba(255, 171, 64, 0.15);
+      color: var(--orange);
+      background: rgba(var(--orange-rgb), 0.15);
     }
     .message {
-      color: #ffd180;
+      color: var(--orange);
     }
     &.expanded .log-header {
-      border-left: 3px solid #ffab40;
-      background: rgba(255, 171, 64, 0.05);
+      border-left: 3px solid var(--orange);
+      background: rgba(var(--orange-rgb), 0.05);
     }
   }
 
   &.info {
     .level-tag {
-      color: #448aff;
-      background: rgba(68, 138, 255, 0.15);
+      color: var(--accent-color);
+      background: rgba(var(--accent-color-rgb), 0.15);
     }
     &.expanded .log-header {
-      border-left: 3px solid #448aff;
-      background: rgba(68, 138, 255, 0.05);
+      border-left: 3px solid var(--accent-color);
+      background: rgba(var(--accent-color-rgb), 0.05);
     }
   }
 

@@ -331,6 +331,34 @@ pub async fn get_mount_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>
     ))
 }
 
+#[command]
+pub async fn get_move_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
+    let merged_json = get_all_options_with_values(state).await?;
+    // Move largely shares the same main groups as copy; expose Copy + Performance flags
+    Ok(get_flags_by_category_internal(
+        &merged_json,
+        "main",
+        Some(vec!["Copy".to_string(), "Performance".to_string()]),
+        None,
+    ))
+}
+
+#[command]
+pub async fn get_bisync_flags(state: State<'_, RcloneState>) -> Result<Vec<Value>, String> {
+    let merged_json = get_all_options_with_values(state).await?;
+    // Bisync needs a mix of Sync and Copy related flags; include Performance as well
+    Ok(get_flags_by_category_internal(
+        &merged_json,
+        "main",
+        Some(vec![
+            "Sync".to_string(),
+            "Copy".to_string(),
+            "Performance".to_string(),
+        ]),
+        None,
+    ))
+}
+
 // --- DATA MUTATION COMMAND ---
 
 /// Saves a single RClone option value by building a nested JSON payload.
