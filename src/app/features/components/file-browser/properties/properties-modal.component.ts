@@ -86,6 +86,7 @@ export class PropertiesModalComponent implements OnInit {
       this.size = size;
       this.diskUsage = diskUsage;
       this.isLoading = false;
+      console.log('Loaded properties:', { stat, size, diskUsage });
     });
   }
 

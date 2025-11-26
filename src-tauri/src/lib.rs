@@ -92,6 +92,7 @@ use crate::{
                 get_cached_mounted_remotes, get_cached_remotes, get_cached_serves, get_configs,
                 get_settings,
             },
+            engine::get_rclone_rc_url,
             job::{delete_job, get_active_jobs, get_job_status, get_jobs},
             log::{clear_remote_logs, get_remote_logs},
             scheduled_tasks::{
@@ -359,6 +360,7 @@ pub fn run() {
             // UI
             set_theme,
             get_system_theme,
+            get_rclone_rc_url,
             // Platform
             get_build_type,
             are_updates_disabled,

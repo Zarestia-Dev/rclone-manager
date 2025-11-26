@@ -52,9 +52,10 @@ import {
   SystemInfoService,
   AppSettingsService,
 } from '@app/services';
-import { FormatBytes } from '@app/pipes';
 import { IconService } from 'src/app/shared/services/icon.service';
 import { AnimationsService } from 'src/app/shared/services/animations.service';
+import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
+import { FormatBytes } from '../../../../shared/pipes/format-bytes.pipe';
 
 const POLLING_INTERVAL = 5000;
 const ANIMATION_DELAY = 100;
@@ -84,9 +85,10 @@ interface DashboardPanel {
     FormatTimePipe,
     FormatEtaPipe,
     FormatMemoryUsagePipe,
-    FormatBytes,
     RemotesPanelComponent,
     ServeCardComponent,
+    FormatRateValuePipe,
+    FormatBytes,
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
@@ -180,28 +182,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   isBandwidthLimited = computed(() => {
     const limit = this.bandwidthLimit();
     return !!limit && limit.rate !== 'off' && limit.rate !== '' && limit.bytesPerSecond > 0;
-  });
-
-  bandwidthDisplayValue = computed(() => {
-    const limit = this.bandwidthLimit();
-    if (limit?.loading) return 'Loading...';
-    if (limit?.error) return 'Error loading limit';
-    if (!limit || limit.rate === 'off' || limit.rate === '' || limit.bytesPerSecond <= 0) {
-      return 'Unlimited';
-    }
-    return limit.rate;
-  });
-
-  bandwidthDetails = computed(() => {
-    const limit = this.bandwidthLimit();
-    if (!limit) return { upload: 0, download: 0, total: 0 };
-
-    const isUnlimited = (value: number): boolean => value <= 0;
-    return {
-      upload: isUnlimited(limit.bytesPerSecondTx) ? 0 : limit.bytesPerSecondTx,
-      download: isUnlimited(limit.bytesPerSecondRx) ? 0 : limit.bytesPerSecondRx,
-      total: isUnlimited(limit.bytesPerSecond) ? 0 : limit.bytesPerSecond,
-    };
   });
 
   activeScheduledTasksCount = computed(

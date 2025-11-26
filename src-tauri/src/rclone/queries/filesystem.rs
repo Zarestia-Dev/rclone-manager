@@ -27,14 +27,9 @@ pub async fn get_fs_info(
     let fs_path = if remote.is_empty() {
         path.unwrap_or_default()
     } else {
-        let fs_name = if remote.ends_with(':') {
-            remote
-        } else {
-            format!("{remote}:")
-        };
         match path {
-            Some(p) if !p.is_empty() => format!("{fs_name}{p}"),
-            _ => fs_name,
+            Some(p) if !p.is_empty() => format!("{remote}{p}"),
+            _ => remote,
         }
     };
 
@@ -69,12 +64,7 @@ pub async fn get_remote_paths(
     let (fs_name, remote_param) = if remote.is_empty() {
         ("/".to_string(), path.unwrap_or_default())
     } else {
-        let fs = if remote.ends_with(':') {
-            remote
-        } else {
-            format!("{remote}:")
-        };
-        (fs, path.unwrap_or_default())
+        (remote, path.unwrap_or_default())
     };
     params.insert("fs".to_string(), serde_json::Value::String(fs_name));
     params.insert(
@@ -197,14 +187,9 @@ pub async fn get_disk_usage(
     let fs_path = if remote.is_empty() {
         path.unwrap_or_else(|| "/".to_string())
     } else {
-        let fs_name = if remote.ends_with(':') {
-            remote
-        } else {
-            format!("{remote}:")
-        };
         match path {
-            Some(p) if !p.is_empty() => format!("{fs_name}{p}"),
-            _ => fs_name,
+            Some(p) if !p.is_empty() => format!("{remote}{p}"),
+            _ => remote,
         }
     };
 
@@ -225,14 +210,9 @@ pub async fn get_about_remote(
     let fs_path = if remote.is_empty() {
         path.unwrap_or_default()
     } else {
-        let fs_name = if remote.ends_with(':') {
-            remote
-        } else {
-            format!("{remote}:")
-        };
         match path {
-            Some(p) if !p.is_empty() => format!("{fs_name}{p}"),
-            _ => fs_name,
+            Some(p) if !p.is_empty() => format!("{remote}{p}"),
+            _ => remote,
         }
     };
 
@@ -266,14 +246,9 @@ pub async fn get_size(
     let fs_path = if remote.is_empty() {
         path.unwrap_or_default()
     } else {
-        let fs_name = if remote.ends_with(':') {
-            remote
-        } else {
-            format!("{remote}:")
-        };
         match path {
-            Some(p) if !p.is_empty() => format!("{fs_name}{p}"),
-            _ => fs_name,
+            Some(p) if !p.is_empty() => format!("{remote}{p}"),
+            _ => remote,
         }
     };
 
@@ -306,12 +281,9 @@ pub async fn get_stat(
 
     let fs_name = if remote.is_empty() || remote == "Local" {
         "/".to_string()
-    } else if remote.ends_with(':') {
-        remote.clone()
     } else {
-        format!("{remote}:")
+        remote
     };
-
     let params = json!({ "fs": fs_name, "remote": path });
 
     let response = state

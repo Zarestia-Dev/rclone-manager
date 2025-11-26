@@ -185,6 +185,18 @@ mat-nav-list {
       justify-content: center;
       height: 28px;
       width: 28px;
+
+      mat-icon {
+        width: 16px;
+        height: 16px;
+        padding: var(--space-xxs);
+        border-radius: var(--border-radius);
+
+        &:hover {
+          background: var(--bg-selected);
+          color: var(--app-text-color);
+        }
+      }
     }
   }
 }
@@ -530,20 +542,72 @@ mat-nav-list {
  * -------------------------------------------------------------------------- */
 
 .view-menu-content {
-  padding: 8px 16px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 200px;
 
   .icon-size-control {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 4px 8px;
+
+    span {
+      font-weight: 500;
+    }
+
+    .buttons {
+      display: flex;
+      border: 1px solid var(--theme-border);
+      border-radius: 6px;
+      overflow: hidden;
+
+      button {
+        border-radius: 0;
+        height: 28px;
+        width: 28px;
+
+        mat-icon {
+          width: 16px;
+          height: 16px;
+        }
+
+        &:hover {
+          background: var(--bg-hover);
+        }
+
+        &:first-child {
+          border-right: 1px solid var(--theme-border);
+        }
+      }
+    }
   }
 
   .sort-options {
     display: flex;
     flex-direction: column;
+    padding: 4px 8px;
+  }
+
+  .sort-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--secondary-text-color);
+  }
+
+  .sort-radio-group {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .hidden-files-checkbox {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
   }
 }
 

@@ -18,7 +18,6 @@ export class GlobalLoadingService {
         hasBackdrop: true,
         positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
         scrollStrategy: this.overlay.scrollStrategies.block(),
-        backdropClass: 'cdk-overlay-dark-backdrop',
       });
     }
 

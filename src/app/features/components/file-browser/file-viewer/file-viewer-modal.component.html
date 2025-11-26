@@ -1,0 +1,134 @@
+<div class="file-viewer-wrapper">
+  <div class="file-viewer-header" data-tauri-drag-region>
+    <div class="header-left">
+      <span class="file-name">{{ data.name }}</span>
+      <span class="file-counter">{{ data.currentIndex + 1 }} / {{ data.items.length }}</span>
+    </div>
+    <div class="header-actions">
+      <button
+        mat-icon-button
+        class="header-button"
+        (click)="download(); $event.stopPropagation()"
+        [attr.aria-label]="'Download ' + data.name"
+        [disabled]="isLoading()"
+      >
+        <mat-icon svgIcon="download"></mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        class="header-button close-button"
+        (click)="closeViewer.emit(); $event.stopPropagation()"
+        aria-label="Close viewer"
+      >
+        <mat-icon svgIcon="circle-xmark"></mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <div class="file-viewer-content">
+    <button
+      mat-icon-button
+      class="nav-button prev"
+      (click)="back(); $event.stopPropagation()"
+      [disabled]="data.currentIndex === 0"
+      [class.hidden]="data.items.length <= 1"
+      aria-label="Previous file"
+      [attr.aria-keyshortcuts]="'ArrowLeft'"
+    >
+      <mat-icon svgIcon="chevron-left"></mat-icon>
+    </button>
+
+    <main role="main" aria-live="polite">
+      @if (isLoading()) {
+        <div class="loading-spinner" role="status" aria-label="Loading content">
+          <mat-spinner diameter="50"></mat-spinner>
+        </div>
+      }
+
+      <div class="content-container" [class.loading]="isLoading()">
+        @switch (data.fileType) {
+          @case ('image') {
+            <img
+              [src]="sanitizedUrl"
+              [alt]="data.name"
+              class="preview-content image-content"
+              (load)="onLoadComplete()"
+              (error)="onLoadError()"
+            />
+          }
+          @case ('video') {
+            <video
+              [src]="sanitizedUrl"
+              controls
+              class="preview-content video-content"
+              (loadeddata)="onLoadComplete()"
+              (error)="onLoadError()"
+              [attr.aria-label]="'Video: ' + data.name"
+            ></video>
+          }
+          @case ('audio') {
+            <div class="audio-container">
+              <mat-icon svgIcon="music" aria-hidden="true"></mat-icon>
+              <audio
+                [src]="sanitizedUrl"
+                controls
+                (loadeddata)="onLoadComplete()"
+                (error)="onLoadError()"
+                [attr.aria-label]="'Audio: ' + data.name"
+              ></audio>
+            </div>
+          }
+          @case ('pdf') {
+            <iframe
+              [src]="sanitizedUrl"
+              class="pdf-viewer"
+              (load)="onLoadComplete()"
+              [attr.title]="'PDF: ' + data.name"
+            ></iframe>
+          }
+          @case ('text') {
+            <div class="text-container" role="document">
+              <pre>{{ textContent() }}</pre>
+            </div>
+          }
+          @case ('directory') {
+            <div class="unsupported-container" role="status">
+              <mat-icon svgIcon="folder" aria-hidden="true"></mat-icon>
+              @if (folderSize) {
+                <p class="unsupported-text">{{ data.name }}</p>
+                <p class="unsupported-subtext">Contains {{ folderSize.count }} files</p>
+                <p class="unsupported-subtext">
+                  Total size: {{ folderSize.bytes | formatFileSize }}
+                </p>
+              } @else {
+                <p class="unsupported-text">Calculating folder size...</p>
+              }
+            </div>
+          }
+          @default {
+            <div class="unsupported-container" role="status">
+              <mat-icon
+                [svgIcon]="iconService.getIconForFileType(data.fileType)"
+                aria-hidden="true"
+              ></mat-icon>
+              <p class="unsupported-text">Preview not available for this file type</p>
+              <p class="unsupported-subtext">{{ data.name }}</p>
+            </div>
+          }
+        }
+      </div>
+    </main>
+
+    <button
+      mat-icon-button
+      class="nav-button next"
+      (click)="next(); $event.stopPropagation()"
+      [disabled]="data.currentIndex === data.items.length - 1"
+      [class.hidden]="data.items.length <= 1"
+      aria-label="Next file"
+      [attr.aria-keyshortcuts]="'ArrowRight'"
+    >
+      <mat-icon svgIcon="chevron-right"></mat-icon>
+    </button>
+  </div>
+</div>

@@ -137,7 +137,6 @@
       >
         <span class="tab-title">{{ t.title }}</span>
         <button
-          mat-icon-button
           class="close-tab"
           (click)="$event.stopPropagation(); closeTab(i)"
           aria-label="Close tab"
@@ -181,7 +180,11 @@
                     <mat-icon
                       class="folder-icon"
                       [style.fontSize.px]="iconSize() / 2"
-                      [svgIcon]="item.IsDir ? 'folder' : 'file'"
+                      [svgIcon]="
+                        item.IsDir
+                          ? 'folder'
+                          : iconService.getIconForFileType(fileViewerService.getFileType(item))
+                      "
                     ></mat-icon>
                     <p class="folder-title">{{ item.Name }}</p>
                   </mat-card-content>
@@ -200,34 +203,15 @@
           tabindex="0"
         >
           <div class="list-header">
-            <div
-              class="list-col name"
-              (click)="changeSort('name')"
-              (keydown.enter)="changeSort('name')"
-              tabindex="0"
-            >
+            <div class="list-col name">
               Name
               <mat-icon
-                *ngIf="sortKey() === 'name'"
+                *ngIf="sortKey().startsWith('name')"
                 [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
               ></mat-icon>
             </div>
-            <div
-              class="list-col size"
-              (click)="changeSort('size')"
-              (keydown.enter)="changeSort('size')"
-              tabindex="0"
-            >
-              Size
-            </div>
-            <div
-              class="list-col modified"
-              (click)="changeSort('modified')"
-              (keydown.enter)="changeSort('modified')"
-              tabindex="0"
-            >
-              Modified
-            </div>
+            <div class="list-col size">Size</div>
+            <div class="list-col modified">Modified</div>
           </div>
           @for (item of files(); track trackByFile($index, item)) {
             <div
@@ -241,10 +225,18 @@
               [class.hidden-item]="item.Name.startsWith('.')"
             >
               <div class="list-col name">
-                <mat-icon [svgIcon]="item.IsDir ? 'folder' : 'file'"></mat-icon>
+                <mat-icon
+                  [svgIcon]="
+                    item.IsDir
+                      ? 'folder'
+                      : iconService.getIconForFileType(fileViewerService.getFileType(item))
+                  "
+                ></mat-icon>
                 <span>{{ item.Name }}</span>
               </div>
-              <div class="list-col size">{{ item.IsDir ? '--' : formatBytes(item.Size) }}</div>
+              <div class="list-col size">
+                {{ item.IsDir ? '--' : (item.Size | formatFileSize) }}
+              </div>
               <div class="list-col modified">{{ formatRelativeDate(item.ModTime) }}</div>
             </div>
           }
@@ -342,16 +334,35 @@
   >
     <div class="icon-size-control">
       <span>Icon Size</span>
-      <button mat-icon-button (click)="decreaseIconSize()">
-        <mat-icon svgIcon="remove"></mat-icon>
-      </button>
-      <button mat-icon-button (click)="increaseIconSize()">
-        <mat-icon svgIcon="add"></mat-icon>
-      </button>
+      <div class="buttons">
+        <button (click)="decreaseIconSize()">
+          <mat-icon svgIcon="remove"></mat-icon>
+        </button>
+        <button (click)="increaseIconSize()">
+          <mat-icon svgIcon="add"></mat-icon>
+        </button>
+      </div>
     </div>
     <mat-divider></mat-divider>
-    <mat-checkbox [checked]="showHidden()" (change)="toggleShowHidden($event.checked)"
-      >Show Hidden Files</mat-checkbox
+    <div class="sort-options">
+      <span class="sort-label">Sort</span>
+      <mat-radio-group
+        class="sort-radio-group"
+        [ngModel]="sortKey()"
+        (ngModelChange)="setSort($event)"
+      >
+        @for (opt of sortOptions; track trackBySortOption($index, opt)) {
+          <mat-radio-button [value]="opt.key">{{ opt.label }}</mat-radio-button>
+        }
+      </mat-radio-group>
+    </div>
+    <mat-divider></mat-divider>
+    <mat-checkbox
+      class="hidden-files-checkbox"
+      [checked]="showHidden()"
+      (change)="toggleShowHidden($event.checked)"
     >
+      <span>Show Hidden Files</span>
+    </mat-checkbox>
   </div>
 </mat-menu>

@@ -31,7 +31,6 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { FormsModule } from '@angular/forms';
-import { AnimationsService } from '../../shared/services/animations.service';
 import {
   UiStateService,
   NautilusService,
@@ -39,12 +38,14 @@ import {
   MountManagementService,
   FilePickerOptions,
 } from '@app/services';
-import { Entry } from '@app/types';
-import { IconService } from '../../shared/services/icon.service';
+import { Entry, STANDARD_MODAL_SIZE } from '@app/types';
 import { LocalDrive } from '@app/types';
-// invoke removed (search removed)
-import { PropertiesModalComponent } from '../modals/properties/properties-modal.component';
-import { FileViewerService } from '../../services/ui/file-viewer.service';
+import { RemoteAboutModalComponent } from '../remote/remote-about-modal.component';
+import { FormatFileSizePipe } from '@app/pipes';
+import { AnimationsService } from 'src/app/shared/services/animations.service';
+import { IconService } from 'src/app/shared/services/icon.service';
+import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
+import { PropertiesModalComponent } from '../properties/properties-modal.component';
 
 @Component({
   selector: 'app-nautilus',
@@ -65,6 +66,7 @@ import { FileViewerService } from '../../services/ui/file-viewer.service';
     MatRadioModule,
     MatCheckboxModule,
     FormsModule,
+    FormatFileSizePipe,
   ],
   templateUrl: './nautilus.component.html',
   styleUrl: './nautilus.component.scss',
@@ -103,7 +105,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   private remoteManagement = inject(RemoteManagementService);
   private mountManagement = inject(MountManagementService);
   public iconService = inject(IconService);
-  private fileViewerService = inject(FileViewerService);
+  public fileViewerService = inject(FileViewerService);
   private dialog = inject(MatDialog);
 
   // Signals & State
@@ -117,10 +119,19 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public title = signal('Files');
 
   public layout = signal<'grid' | 'list'>('grid');
-  public sortKey = signal<string>('name');
-  public sortDirection = signal<'asc' | 'desc'>('asc');
+  public sortKey = signal('name-asc');
+  public sortDirection = computed(() => (this.sortKey().endsWith('asc') ? 'asc' : 'desc'));
   public showHidden = signal(false);
   public iconSize = signal(120);
+
+  public sortOptions = [
+    { key: 'name-asc', label: 'A-Z' },
+    { key: 'name-desc', label: 'Z-A' },
+    { key: 'modified-desc', label: 'Last Modified' },
+    { key: 'modified-asc', label: 'First Modified' },
+    { key: 'size-desc', label: 'Size (Largest First)' },
+    { key: 'size-asc', label: 'Size (Smallest First)' },
+  ];
 
   // Navigation State
   public nautilusRemote = new BehaviorSubject<{ name: string; type?: string } | null>(null);
@@ -258,7 +269,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
         return of([]);
       }
       this.isLoading.set(true);
-      const remoteName = remote.name === 'Local' ? '' : remote.name;
+      const remoteName = remote.name === 'Local' ? '/' : remote.name + ':';
 
       return from(this.remoteManagement.getRemotePaths(remoteName, path, {})).pipe(
         map(res => res.list || []),
@@ -288,14 +299,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
           resultFiles = resultFiles.filter(f => !f.Name.startsWith('.'));
         }
 
-        // Sort
-        const getRank = (item: Entry) => {
-          const isHidden = item.Name.startsWith('.');
-          if (item.IsDir) {
-            return isHidden ? 2 : 1;
-          }
-          return isHidden ? 4 : 3;
-        };
+        // Sort: folders first, then files
+        const getRank = (item: Entry): number => (item.IsDir ? 1 : 2);
 
         return resultFiles.sort((a, b) => {
           const rankA = getRank(a);
@@ -305,10 +310,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
             return rankA - rankB;
           }
 
-          // If ranks are the same, fall back to user-selected sort
+          const sortKey = opts.sortKey.split('-')[0];
           const dir = opts.sortDirection === 'asc' ? 1 : -1;
 
-          switch (opts.sortKey) {
+          switch (sortKey) {
             case 'name':
               return a.Name.localeCompare(b.Name) * dir;
             case 'modified':
@@ -338,6 +343,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
   // Capture-phase handler for Escape key
   private _globalEscapeHandler = (event: KeyboardEvent): void => {
     if (event.key === 'Escape') {
+      // 0. If File Viewer is open, let it handle the escape event.
+      if (this.fileViewerService.isViewerOpen && this.fileViewerService.isViewerOpen()) {
+        return;
+      }
+
       // 1. If a Material Menu is open on top, let Material handle it (it consumes Escape)
       // We don't want to close Nautilus while a view menu is open.
       if (this.viewMenuTrigger && this.viewMenuTrigger.menuOpen) {
@@ -514,13 +524,12 @@ export class NautilusComponent implements OnInit, OnDestroy {
     return true;
   }
 
-  changeSort(key: string): void {
-    if (this.sortKey() === key) {
-      this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
-    } else {
-      this.sortKey.set(key);
-      this.sortDirection.set('asc');
-    }
+  setSort(sortKey: string): void {
+    this.sortKey.set(sortKey);
+  }
+
+  trackBySortOption(index: number, option: { key: string }): string {
+    return option.key;
   }
 
   setLayout(l: 'grid' | 'list'): void {
@@ -555,7 +564,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   navigateTo(item: Entry): void {
-    if (item.IsDir) this.updatePath(item.Path);
+    if (item.IsDir) {
+      this.updatePath(item.Path);
+    } else {
+      this.openFilePreview(item);
+    }
   }
 
   updatePath(newPath: string): void {
@@ -640,11 +653,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.updatePath(newPath);
   }
 
-  formatBytes(b: number): string {
-    const i = b === 0 ? 0 : Math.floor(Math.log(b) / Math.log(1024));
-    return +(b / Math.pow(1024, i)).toFixed(2) + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
-  }
-
   formatRelativeDate(d: string): string {
     return new Date(d).toLocaleDateString();
   }
@@ -726,7 +734,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
   async openFilePreview(item: Entry): Promise<void> {
     const remote = this.nautilusRemote.getValue();
     if (!remote) return;
-    this.fileViewerService.open(item, remote.name);
+
+    const files = this.files();
+    const currentIndex = files.findIndex(f => f.Path === item.Path);
+
+    this.fileViewerService.open(files, currentIndex, remote.name);
   }
 
   openContextMenuOpenInNewTab(): void {
@@ -779,8 +791,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (!item) return;
     const remote = this.nautilusRemote.getValue();
     if (!remote) return;
+    const remoteName = remote.name === 'Local' ? '' : remote.name + ':';
     this.dialog.open(PropertiesModalComponent, {
-      data: { remoteName: remote.name, path: item.Path },
+      data: { remoteName, path: `/${item.Path}` },
     });
     this.contextMenuVisible.set(false);
   }
@@ -801,13 +814,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const remote = this.sideContextRemote;
     if (!remote) return;
 
-    this.dialog.open(
-      (await import('../modals/remote/remote-about-modal.component')).RemoteAboutModalComponent,
-      {
-        data: { remote },
-        disableClose: false,
-      }
-    );
+    this.dialog.open(RemoteAboutModalComponent, {
+      data: { remote },
+      disableClose: false,
+      ...STANDARD_MODAL_SIZE,
+    });
   }
 
   private _navigate(
@@ -869,7 +880,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     return item.name;
   }
 
-  onPathScroll(event: WheelEvent) {
+  onPathScroll(event: WheelEvent): void {
     const element = event.currentTarget as HTMLElement;
     element.scrollBy(event.deltaY, 0);
     event.preventDefault();

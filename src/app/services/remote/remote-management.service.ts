@@ -136,7 +136,12 @@ export class RemoteManagementService extends TauriBaseService {
    * Get filesystem info for a remote
    */
   async getFsInfo(remote: string): Promise<unknown> {
-    return this.invokeCommand('get_fs_info', { remote });
+    try {
+      return this.invokeCommand('get_fs_info', { remote });
+    } catch (error) {
+      console.error('Error getting filesystem info:', error);
+      throw error;
+    }
   }
 
   /**

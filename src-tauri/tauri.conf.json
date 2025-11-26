@@ -11,7 +11,11 @@
   },
   "app": {
     "security": {
-      "csp": null
+      "csp": "img-src 'self' asset: http://asset.localhost; media-src 'self' asset: http://asset.localhost; object-src 'self' asset: http://asset.localhost;",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
     }
   },
   "bundle": {

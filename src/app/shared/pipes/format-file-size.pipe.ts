@@ -7,7 +7,7 @@ import { Pipe, PipeTransform } from '@angular/core';
 })
 export class FormatFileSizePipe implements PipeTransform {
   transform(bytes: number): string {
-    if (bytes < 0) return 'N/A';
+    if (bytes < 0 || bytes === undefined || bytes === null) return 'N/A';
     if (bytes === 0) return '0 B';
 
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];

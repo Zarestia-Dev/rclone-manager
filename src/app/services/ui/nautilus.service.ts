@@ -3,7 +3,7 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
-import { NautilusComponent } from '../../features/nautilus/nautilus.component';
+import { NautilusComponent } from 'src/app/features/components/file-browser/nautilus/nautilus.component';
 
 // File picker options shared with UiStateService
 export interface FilePickerOptions {

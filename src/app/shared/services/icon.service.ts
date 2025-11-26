@@ -114,7 +114,6 @@ export class IconService {
       star: 'assets/icons/star.svg',
       package: 'assets/icons/package.svg',
       skull: 'assets/icons/skull.svg',
-      'file-lines': 'assets/icons/file-lines.svg',
       bucket: 'assets/icons/bucket.svg',
       'shield-halved': 'assets/icons/shield-halved.svg',
       tv: 'assets/icons/tv.svg',
@@ -126,9 +125,16 @@ export class IconService {
       serve: 'assets/icons/satellite-dish.svg',
       fingerprint: 'assets/icons/fingerprint.svg',
       comment: 'assets/icons/comment.svg',
-      'file-zipper': 'assets/icons/file-zipper.svg',
       tag: 'assets/icons/tag.svg',
       'note-sticky': 'assets/icons/note-sticky.svg',
+
+      'file-zipper': 'assets/icons/file-zipper.svg',
+      'file-lines': 'assets/icons/file-lines.svg',
+      'file-audio': 'assets/icons/file-audio.svg',
+      'file-video': 'assets/icons/video.svg',
+      'file-image': 'assets/icons/image.svg',
+      'file-pdf': 'assets/icons/file-pdf.svg',
+      music: 'assets/icons/music.svg',
 
       list: 'assets/icons/list.svg',
       grid: 'assets/icons/grid.svg',
@@ -145,5 +151,22 @@ export class IconService {
       return name;
     }
     return this.fallbackIcon;
+  }
+
+  getIconForFileType(fileType: string): string {
+    switch (fileType) {
+      case 'image':
+        return 'file-image';
+      case 'video':
+        return 'file-video';
+      case 'audio':
+        return 'file-audio';
+      case 'pdf':
+        return 'file-pdf';
+      case 'text':
+        return 'file-lines';
+      default:
+        return 'file';
+    }
   }
 }
