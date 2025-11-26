@@ -1,7 +1,6 @@
-use log::{debug, error};
+use log::debug;
 use serde::Serialize;
 use serde_json::json;
-use std::path::PathBuf;
 use tauri::State;
 
 use crate::RcloneState;
@@ -107,81 +106,6 @@ pub async fn get_remote_paths(
         .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
 
     Ok(json)
-}
-
-#[tauri::command]
-pub async fn search_remote_files(
-    remote: String,
-    query: String,
-    state: State<'_, RcloneState>,
-) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, "core/command");
-    debug!("🔍 Searching remote files: remote={remote}, query={query}");
-
-    // Resolve path:
-    // 1. If remote is empty or "Local", use User Home Dir (safer than /)
-    // 2. Otherwise use the remote name.
-    let fs_name = if remote.is_empty() || remote == "Local" {
-        dirs::home_dir()
-            .unwrap_or_else(|| PathBuf::from("/"))
-            .to_string_lossy()
-            .to_string()
-    } else if remote.ends_with(':') {
-        remote
-    } else {
-        format!("{remote}:")
-    };
-
-    let params = json!({
-        "command": "lsjson",
-        "arg": [
-            fs_name,
-            "-R",
-            "--files-only",
-            "--no-modtime",
-            "--no-mimetype",
-            "--ignore-errors", // [FIX] Skip permission denied errors
-            "--include",
-            format!("*{}*", query)
-        ],
-        "opt": {}
-    });
-
-    let response = state
-        .client
-        .post(&url)
-        .json(&params)
-        .send()
-        .await
-        .map_err(|e| format!("❌ Failed to execute search: {e}"))?;
-
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse search response: {e}"))?;
-
-    // [FIX] Prioritize returning data if "result" is a list, ignoring "error": true flags
-    // that might be triggered by non-fatal permission errors.
-    if let Some(result_array) = json.get("result").and_then(|r| r.as_array()) {
-        return Ok(json!({ "list": result_array }));
-    }
-
-    // Only return empty list if there is an error AND no result list
-    if let Some(is_error) = json.get("error") {
-        let has_error = is_error.as_bool().unwrap_or(false) || is_error.as_str().is_some();
-
-        if has_error {
-            let error_msg = json
-                .get("result")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Unknown error");
-            error!("❌ Rclone search error: {}", error_msg);
-            return Ok(json!({ "list": [] }));
-        }
-    }
-
-    // Default fallback
-    Ok(json!({ "list": [] }))
 }
 
 #[cfg(windows)]

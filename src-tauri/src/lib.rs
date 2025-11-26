@@ -84,8 +84,8 @@ use crate::{
             get_local_drives, get_memory_stats, get_mount_types, get_mounted_remotes,
             get_oauth_supported_remotes, get_rclone_info, get_rclone_pid, get_remote_config,
             get_remote_paths, get_remote_types, get_remotes, get_serve_flags, get_serve_types,
-            get_size, get_stat, list_serves, search_remote_files, vfs_forget, vfs_list,
-            vfs_poll_interval, vfs_queue, vfs_queue_set_expiry, vfs_refresh, vfs_stats,
+            get_size, get_stat, list_serves, vfs_forget, vfs_list, vfs_poll_interval, vfs_queue,
+            vfs_queue_set_expiry, vfs_refresh, vfs_stats,
         },
         state::{
             cache::{
@@ -420,7 +420,6 @@ pub fn run() {
             delete_remote,
             quit_rclone_oauth,
             get_remote_paths,
-            search_remote_files,
             get_local_drives,
             get_bandwidth_limit,
             // Flags

@@ -1,21 +1,10 @@
 import { inject, Injectable, NgZone } from '@angular/core';
 import { WindowService } from './window.service';
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import { EventListenersService } from '../system/event-listeners.service';
 import { platform } from '@tauri-apps/plugin-os';
 import { AppTab, ToastMessage, Remote } from '@app/types';
 import { ApiClientService } from '../core/api-client.service';
-import { Overlay, OverlayRef } from '@angular/cdk/overlay';
-import { ComponentPortal } from '@angular/cdk/portal';
-import { NautilusComponent } from '../../features/nautilus/nautilus.component';
-import { take } from 'rxjs/operators';
-
-// ToastMessage moved to shared types
-export interface FilePickerOptions {
-  selectFolders?: boolean;
-  selectFiles?: boolean;
-  multiSelection?: boolean;
-}
 
 /**
  * Service for managing UI state with focus on viewport settings
@@ -35,19 +24,6 @@ export class UiStateService {
   // Viewport state
   private _isMaximized = new BehaviorSubject<boolean>(false);
   public isMaximized$ = this._isMaximized.asObservable();
-
-  // Nautilus / Browser overlay
-  private _isNautilusOverlayOpen = new BehaviorSubject<boolean>(false);
-  public isNautilusOverlayOpen$ = this._isNautilusOverlayOpen.asObservable();
-
-  // File Picker state
-  private _filePickerState = new BehaviorSubject<{
-    isOpen: boolean;
-    options?: FilePickerOptions;
-  }>({ isOpen: false });
-  public filePickerState$ = this._filePickerState.asObservable();
-  private _filePickerResult = new Subject<string[] | null>();
-  public filePickerResult$ = this._filePickerResult.asObservable();
 
   // Toast notifications
   private _showToast$ = new BehaviorSubject<ToastMessage | null>(null);
@@ -75,8 +51,6 @@ export class UiStateService {
   private ngZone = inject(NgZone);
 
   private eventListenersService = inject(EventListenersService);
-  private overlay = inject(Overlay);
-  private overlayRef: OverlayRef | null = null;
 
   constructor() {
     // Initialize platform safely for headless mode
@@ -90,57 +64,6 @@ export class UiStateService {
       }
     }
     this.initializeMaximizeListener();
-  }
-
-  toggleNautilusOverlay(): void {
-    if (this.overlayRef) {
-      this.closeFilePicker(null);
-    } else {
-      this._filePickerState.next({ isOpen: false });
-      this._isNautilusOverlayOpen.next(true);
-      this.createNautilusOverlay();
-    }
-  }
-
-  // === File Picker Management ===
-  openFilePicker(options: FilePickerOptions): void {
-    if (this.overlayRef) return;
-    this._filePickerState.next({ isOpen: true, options });
-    this._isNautilusOverlayOpen.next(true);
-    this.createNautilusOverlay();
-  }
-
-  closeFilePicker(result: string[] | null): void {
-    this._filePickerResult.next(result);
-    this._filePickerState.next({ isOpen: false });
-    this._isNautilusOverlayOpen.next(false);
-    if (this.overlayRef) {
-      this.overlayRef.dispose();
-      this.overlayRef = null;
-    }
-  }
-
-  private createNautilusOverlay(): void {
-    this.overlayRef = this.overlay.create({
-      hasBackdrop: true,
-      positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
-      scrollStrategy: this.overlay.scrollStrategies.block(),
-    });
-
-    const portal = new ComponentPortal(NautilusComponent);
-    const componentRef: import('@angular/core').ComponentRef<NautilusComponent> =
-      this.overlayRef.attach(portal);
-
-    componentRef.instance.closeOverlay.pipe(take(1)).subscribe(() => {
-      this.closeFilePicker(null);
-    });
-
-    this.overlayRef
-      .backdropClick()
-      .pipe(take(1))
-      .subscribe(() => {
-        this.closeFilePicker(null);
-      });
   }
 
   // === Tab Management ===

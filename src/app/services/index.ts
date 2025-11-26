@@ -7,6 +7,8 @@ export * from './system/scheduler.service';
 export * from './ui/ui-state.service';
 export * from './ui/onboarding-state.service';
 export * from './ui/window.service';
+export * from './ui/global-loading.service';
+export * from './ui/nautilus.service';
 export * from './remote/remote-management.service';
 export * from './remote/flag-config.service';
 export * from './remote/path-selection.service';

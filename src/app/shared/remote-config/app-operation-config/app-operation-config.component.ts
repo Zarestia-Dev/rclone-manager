@@ -284,6 +284,7 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
       selectFolders: true,
       selectFiles: false,
       multiSelection: false,
+      restrictSingle: this.isMount ? this.currentRemoteName : undefined,
     });
 
     if (result && result.length > 0) {

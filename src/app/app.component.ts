@@ -27,6 +27,7 @@ import {
   RcloneUpdateService,
   AppUpdaterService,
 } from '@app/services';
+import { GlobalLoadingService } from './services/ui/global-loading.service';
 
 @Component({
   selector: 'app-root',
@@ -59,6 +60,7 @@ export class AppComponent implements OnDestroy {
   readonly onboardingStateService = inject(OnboardingStateService);
   private readonly appUpdaterService = inject(AppUpdaterService);
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
+  private readonly loadingService = inject(GlobalLoadingService);
 
   // --- DERIVED STATE & OBSERVABLE CONVERSIONS ---
   readonly currentTab = toSignal(this.uiStateService.currentTab$, {
@@ -100,6 +102,7 @@ export class AppComponent implements OnDestroy {
   private setupSubscriptions(): void {
     this.setupRcloneEngineListener();
     this.setupRcloneOAuthListener();
+    this.listenToAppEvents();
   }
 
   private setupRcloneEngineListener(): void {
@@ -148,6 +151,20 @@ export class AppComponent implements OnDestroy {
         },
         error: error => console.error('OAuth event subscription error:', error),
       });
+  }
+
+  private listenToAppEvents(): void {
+    this.eventListenersService.listenToAppEvents().subscribe({
+      next: event => {
+        if (typeof event === 'object' && event?.status === 'shutting_down') {
+          this.loadingService.show({
+            title: 'Shutting Down',
+            message: 'Please wait while the application shuts down safely...',
+            icon: 'refresh',
+          });
+        }
+      },
+    });
   }
 
   private async checkOnboardingStatus(): Promise<void> {

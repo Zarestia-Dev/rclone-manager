@@ -28,6 +28,7 @@ import {
   AppSettingsService,
   FileSystemService,
   ServeManagementService,
+  NautilusService,
 } from '@app/services';
 import {
   BackendConfig,
@@ -102,6 +103,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   private readonly serveManagementService = inject(ServeManagementService);
   readonly flagConfigService = inject(FlagConfigService);
   readonly iconService = inject(IconService);
+  private readonly nautilusService = inject(NautilusService);
 
   private destroy$ = new Subject<void>();
 
@@ -1489,6 +1491,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   close(): void {
+    if (this.nautilusService.isNautilusOverlayOpen) {
+      return;
+    }
     this.dialogRef.close(false);
   }
 }

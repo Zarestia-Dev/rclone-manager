@@ -1,14 +1,14 @@
 <div class="onboarding-container" data-tauri-drag-region [@onboardingEntrance]>
   <div class="floating-shape"></div>
 
-  <app-loading-overlay
-    [isVisible]="animationState === 'loading'"
-    title="Initializing RClone Manager"
-    message="Checking system configuration..."
-    icon="refresh"
-    overlayType="container"
-  >
-  </app-loading-overlay>
+  @if (animationState === 'loading') {
+    <app-loading-overlay
+      title="Initializing RClone Manager"
+      message="Checking system configuration..."
+      icon="refresh"
+    >
+    </app-loading-overlay>
+  }
 
   <div class="card-container" [@onboardingState]="animationState">
     <div class="onboarding-header">

@@ -8,7 +8,7 @@ import { PreferencesModalComponent } from '../../features/modals/settings/prefer
 import { RcloneConfigModalComponent } from '../../features/modals/settings/rclone-config-modal/rclone-config-modal.component';
 
 // Services
-import { MountManagementService, WindowService, UiStateService } from '@app/services';
+import { MountManagementService, NautilusService, WindowService } from '@app/services';
 import { RemoteManagementService } from '@app/services';
 import { OnboardingStateService } from '@app/services';
 import { NotificationService } from '../services/notification.service';
@@ -22,10 +22,10 @@ export class ShortcutHandlerDirective {
   private dialog = inject(MatDialog);
   private notificationService = inject(NotificationService);
   private windowService = inject(WindowService);
-  private uiStateService = inject(UiStateService);
   private remoteManagementService = inject(RemoteManagementService);
   private onboardingStateService = inject(OnboardingStateService);
   private mountManagementService = inject(MountManagementService);
+  private nautilusService = inject(NautilusService);
 
   @HostListener('window:keydown', ['$event'])
   onKeyDown(event: KeyboardEvent): void {
@@ -174,7 +174,7 @@ export class ShortcutHandlerDirective {
   }
 
   private openFileBrowser(): void {
-    this.uiStateService.toggleNautilusOverlay();
+    this.nautilusService.toggleNautilusOverlay();
   }
 
   private async forceRefreshMountedRemotes(): Promise<void> {

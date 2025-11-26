@@ -50,7 +50,6 @@ import { LogsModalComponent } from '../features/modals/monitoring/logs-modal/log
 import { ExportModalComponent } from '../features/modals/settings/export-modal/export-modal.component';
 import { RemoteConfigModalComponent } from '../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
 import { QuickAddRemoteComponent } from '../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
-import { LoadingOverlayComponent } from '../shared/components/loading-overlay/loading-overlay.component';
 
 // App Services
 import { IconService } from '../shared/services/icon.service';
@@ -87,7 +86,6 @@ import {
     AppOverviewComponent,
     ServeOverviewComponent,
     ServeDetailComponent,
-    LoadingOverlayComponent,
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
@@ -156,7 +154,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   isLoading = signal(false);
   restrictMode = signal(true);
   actionInProgress = signal<RemoteActionProgress>({});
-  isShuttingDown = signal(false);
 
   // ============================================================================
   // PROPERTIES - LIFECYCLE
@@ -413,27 +410,10 @@ export class HomeComponent implements OnInit, OnDestroy {
   // TAURI EVENT LISTENERS
   // ============================================================================
   private setupTauriListeners(): void {
-    this.listenToAppEvents();
     this.listenToMountCache();
     this.listenToRemoteCache();
     this.listenToRcloneEngine();
     this.listenToJobCache();
-  }
-
-  private listenToAppEvents(): void {
-    this.eventListenersService
-      .listenToAppEvents()
-      .pipe(
-        takeUntil(this.destroy$),
-        catchError(error => (console.error('Event listener error (AppEvents):', error), EMPTY))
-      )
-      .subscribe({
-        next: event => {
-          if (typeof event === 'object' && event?.status === 'shutting_down') {
-            this.isShuttingDown.set(true);
-          }
-        },
-      });
   }
 
   private listenToMountCache(): void {

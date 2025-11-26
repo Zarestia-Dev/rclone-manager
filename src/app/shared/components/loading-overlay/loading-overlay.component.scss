@@ -1,19 +1,15 @@
 .loading-overlay {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
-  justify-content: center;
+  position: absolute;
   align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
   border-radius: var(--app-border-radius);
-  z-index: 9999;
-
-  &.container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: var(--onboarding-background);
-    backdrop-filter: blur(4px);
-  }
+  background: var(--onboarding-background);
 
   .loading-content {
     display: flex;

@@ -97,6 +97,8 @@ export class IconService {
       'arrow-down': 'assets/icons/circle-chevron-down.svg',
       'arrow-up': 'assets/icons/circle-chevron-up.svg',
       'arrow-turn-up-left': 'assets/icons/arrow-turn-up-left.svg',
+      'chevron-up': 'assets/icons/chevron-up.svg',
+      'chevron-down': 'assets/icons/chevron-down.svg',
       bolt: 'assets/icons/bolt.svg',
       'caret-down': 'assets/icons/caret-down.svg',
       'caret-up': 'assets/icons/caret-up.svg',
@@ -127,6 +129,9 @@ export class IconService {
       'file-zipper': 'assets/icons/file-zipper.svg',
       tag: 'assets/icons/tag.svg',
       'note-sticky': 'assets/icons/note-sticky.svg',
+
+      list: 'assets/icons/list.svg',
+      grid: 'assets/icons/grid.svg',
     };
 
     this.icons = icons;

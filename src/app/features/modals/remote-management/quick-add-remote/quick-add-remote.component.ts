@@ -35,6 +35,7 @@ import {
   MountManagementService,
   AppSettingsService,
   FileSystemService,
+  NautilusService,
 } from '@app/services';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {
@@ -90,6 +91,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly cdRef = inject(ChangeDetectorRef);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   readonly iconService = inject(IconService);
+  private readonly nautilusService = inject(NautilusService);
 
   readonly quickAddForm: FormGroup;
   remoteTypes: RemoteType[] = [];
@@ -630,6 +632,9 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   close(): void {
+    if (this.nautilusService.isNautilusOverlayOpen) {
+      return;
+    }
     if (!this.isAuthInProgress) {
       this.dialogRef.close();
     }

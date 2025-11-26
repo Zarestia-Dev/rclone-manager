@@ -9,21 +9,23 @@ import {
   ElementRef,
   signal,
   computed,
+  HostListener,
+  effect,
 } from '@angular/core';
 import { toSignal, toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BehaviorSubject, combineLatest, from, of } from 'rxjs';
-import { catchError, debounceTime, finalize, map, switchMap, take } from 'rxjs/operators';
+import { catchError, finalize, map, switchMap, startWith, take } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatButtonModule } from '@angular/material/button';
 import { MatGridListModule } from '@angular/material/grid-list';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatMenuModule } from '@angular/material/menu';
+import { MatMenuModule, MatMenuTrigger } from '@angular/material/menu';
 import { MatDialog } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
@@ -32,7 +34,7 @@ import { FormsModule } from '@angular/forms';
 import { AnimationsService } from '../../shared/services/animations.service';
 import {
   UiStateService,
-  WindowService,
+  NautilusService,
   RemoteManagementService,
   MountManagementService,
   FilePickerOptions,
@@ -40,7 +42,7 @@ import {
 import { Entry } from '@app/types';
 import { IconService } from '../../shared/services/icon.service';
 import { LocalDrive } from '@app/types';
-import { invoke } from '@tauri-apps/api/core';
+// invoke removed (search removed)
 import { PropertiesModalComponent } from '../modals/properties/properties-modal.component';
 import { FileViewerService } from '../../services/ui/file-viewer.service';
 
@@ -71,6 +73,7 @@ import { FileViewerService } from '../../services/ui/file-viewer.service';
 export class NautilusComponent implements OnInit, OnDestroy {
   // Tab model counter
   interfaceTabCounter = 0;
+  @ViewChild('pathScrollView') pathScrollView?: ElementRef<HTMLDivElement>;
 
   // Per-tab state
   tabs: {
@@ -79,6 +82,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
     remote: { name: string; type?: string } | null;
     path: string;
     selection: Set<string>;
+    history: { remote: { name: string; type?: string } | null; path: string }[];
+    historyIndex: number;
   }[] = [];
   public activeTabIndex = signal(0);
 
@@ -94,7 +99,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public sideContextRemote: { name: string; type?: string } | null = null;
   // Services
   private uiStateService = inject(UiStateService);
-  private windowService = inject(WindowService);
+  private nautilusService = inject(NautilusService);
   private remoteManagement = inject(RemoteManagementService);
   private mountManagement = inject(MountManagementService);
   public iconService = inject(IconService);
@@ -102,14 +107,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
   private dialog = inject(MatDialog);
 
   // Signals & State
-  public isSearchEnabled = signal(false);
-  public searchScope = signal<'global' | 'local'>('global');
-  public searchQuery = signal<string>('');
-
-  // Used to trigger strict RxJS stream for debounced searching
-  private searchQuerySubject = new BehaviorSubject<string>('');
+  // Search removed temporarily (UI disabled). Per-tab history used instead.
 
   public isLoading = signal(false);
+  public canGoBack = signal(false);
+  public canGoForward = signal(false);
   public isPickerMode = signal(false);
   public pickerOptions = signal<FilePickerOptions>({});
   public title = signal('Files');
@@ -124,10 +126,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public nautilusRemote = new BehaviorSubject<{ name: string; type?: string } | null>(null);
   public currentPath = new BehaviorSubject<string>('');
 
-  // History
-  private pathHistory: string[] = [''];
-  private currentHistoryIndex = 0;
-
   // Selection
   public selectedItems = new BehaviorSubject<Set<string>>(new Set());
   public selectionSummary = signal('');
@@ -139,6 +137,26 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public remotes$ = this.remoteManagement.remotes$;
   public mountedRemotes$ = this.mountManagement.mountedRemotes$;
   private remoteConfigs$ = new BehaviorSubject<Record<string, unknown>>({});
+
+  // Access the sidenav to toggle it programmatically
+  @ViewChild('sidenav') sidenav!: MatSidenav;
+
+  // Responsive State
+  public isMobile = signal(window.innerWidth < 680);
+
+  public sidenavMode = computed(() => (this.isMobile() ? 'over' : 'side'));
+  public isSidenavOpen = signal(!this.isMobile());
+
+  @HostListener('window:resize')
+  onResize(): void {
+    const mobile = window.innerWidth < 680;
+    // Only update if state changed to prevent unnecessary cycles
+    if (this.isMobile() !== mobile) {
+      this.isMobile.set(mobile);
+      // If switching to desktop, ensure sidebar is open. If mobile, default closed.
+      this.isSidenavOpen.set(!mobile);
+    }
+  }
 
   // Combined Remotes List
   public remotesWithMeta = toSignal(
@@ -162,7 +180,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
         const localDrivesList = localDrives.map((drive: LocalDrive) => ({
           name: drive.name,
-          label: `${drive.label} (${drive.name})`,
+          label: drive.name !== 'Local' ? `${drive.label} (${drive.name})` : drive.label,
           type: 'home',
           isMounted: false,
           mountPoint: undefined,
@@ -174,10 +192,52 @@ export class NautilusComponent implements OnInit, OnDestroy {
     { initialValue: [] }
   );
 
+  // Filtered remotes based on restrictSingle
+  public filteredRemotes = computed(() => {
+    const allRemotes = this.remotesWithMeta();
+    const restrict = this.pickerOptions().restrictSingle;
+    if (restrict) {
+      return allRemotes.filter(r => r.name === restrict);
+    }
+    return allRemotes;
+  });
+
   public pathSegments = toSignal(
     this.currentPath.pipe(map(path => path.split('/').filter(p => p))),
     { initialValue: [] }
   );
+
+  // --- PATH INPUT LOGIC ---
+
+  // Signals to feed the fullPathInput computed
+  public activeRemoteSig = toSignal(this.nautilusRemote, { initialValue: null });
+  public activePathSig = toSignal(this.currentPath, { initialValue: '' });
+
+  public fullPathInput = computed(() => {
+    const remote = this.activeRemoteSig();
+    const path = this.activePathSig() || '';
+
+    if (!remote) return path;
+
+    // 1. Local Filesystem (Unix/Root)
+    // If it's "Local", users expect paths to start with / (e.g. /etc, /home)
+    if (remote.name === 'Local') {
+      return path.startsWith('/') ? path : `/${path}`;
+    }
+
+    // 2. Windows Drive or Remotes that might already be named like "C:"
+    if (remote.name.endsWith(':')) {
+      // Avoid double slashes if path is empty or starts with slash
+      const cleanPath = path.startsWith('/') ? path : `/${path}`;
+      // e.g. "C:/Users" or "C:/"
+      return `${remote.name}${cleanPath}`;
+    }
+
+    // 3. Named Remote (e.g. "gdrive")
+    // Needs colon appended for valid rclone syntax: "gdrive:/path"
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${remote.name}:${cleanPath}`;
+  });
 
   // --- MAIN FILE DATA PIPELINE ---
 
@@ -188,86 +248,40 @@ export class NautilusComponent implements OnInit, OnDestroy {
       sortKey: this.sortKey(),
       sortDirection: this.sortDirection(),
       showHidden: this.showHidden(),
-      searchScope: this.searchScope(),
-      isSearchEnabled: this.isSearchEnabled(),
     }))
   );
 
   // 1. Standard Browse Stream
   private browseFiles$ = combineLatest([this.nautilusRemote, this.currentPath]).pipe(
     switchMap(([remote, path]) => {
-      if (!remote?.name || (this.isSearchEnabled() && this.searchScope() === 'global')) {
+      if (!remote?.name) {
         return of([]);
       }
       this.isLoading.set(true);
       const remoteName = remote.name === 'Local' ? '' : remote.name;
 
       return from(this.remoteManagement.getRemotePaths(remoteName, path, {})).pipe(
-        map(res => res.list),
+        map(res => res.list || []),
         catchError(err => {
           console.error('Error fetching files:', err);
           return of([]);
         }),
+        // Emit an empty list immediately when navigation starts so the UI clears
+        // (matches Nautilus behaviour: clear view while loading new directory)
+        startWith([]),
         finalize(() => this.isLoading.set(false))
       );
     })
   );
 
   // 2. Search Stream
-  private searchFiles$ = combineLatest([
-    this.nautilusRemote,
-    this.searchQuerySubject.pipe(debounceTime(400)),
-  ]).pipe(
-    switchMap(([remote, query]) => {
-      if (!remote?.name || !this.isSearchEnabled() || this.searchScope() !== 'global' || !query) {
-        return of(null);
-      }
-      this.isLoading.set(true);
-      const remoteName = remote.name === 'Local' ? '' : remote.name;
-
-      return from(
-        invoke<{ list: Entry[] }>('search_remote_files', {
-          remote: remoteName,
-          query: query,
-        })
-      ).pipe(
-        map(res => {
-          console.log('Search results:', res);
-
-          return res.list;
-        }),
-        catchError(err => {
-          console.error('Error searching files:', err);
-          return of([]);
-        }),
-        finalize(() => this.isLoading.set(false))
-      );
-    })
-  );
+  // Search removed temporarily
 
   // 3. Merged & Filtered Output
   public files = toSignal(
-    combineLatest([
-      this.browseFiles$,
-      this.searchFiles$,
-      this.searchQuerySubject,
-      this.options$,
-    ]).pipe(
-      map(([browseFiles, searchResults, query, opts]) => {
-        let resultFiles: Entry[] = [];
-
-        if (opts.isSearchEnabled && opts.searchScope === 'global' && searchResults !== null) {
-          // Global Search Mode
-          resultFiles = searchResults;
-        } else {
-          // Browse Mode (with optional local filter)
-          resultFiles = browseFiles;
-          if (opts.isSearchEnabled && opts.searchScope === 'local' && query) {
-            resultFiles = resultFiles.filter(f =>
-              f.Name.toLowerCase().includes(query.toLowerCase())
-            );
-          }
-        }
+    combineLatest([this.browseFiles$, this.options$]).pipe(
+      map(([browseFiles, opts]) => {
+        let resultFiles: Entry[] = browseFiles || [];
 
         // Filter Hidden
         if (!opts.showHidden) {
@@ -275,9 +289,23 @@ export class NautilusComponent implements OnInit, OnDestroy {
         }
 
         // Sort
+        const getRank = (item: Entry) => {
+          const isHidden = item.Name.startsWith('.');
+          if (item.IsDir) {
+            return isHidden ? 2 : 1;
+          }
+          return isHidden ? 4 : 3;
+        };
+
         return resultFiles.sort((a, b) => {
-          if (a.IsDir && !b.IsDir) return -1;
-          if (!a.IsDir && b.IsDir) return 1;
+          const rankA = getRank(a);
+          const rankB = getRank(b);
+
+          if (rankA !== rankB) {
+            return rankA - rankB;
+          }
+
+          // If ranks are the same, fall back to user-selected sort
           const dir = opts.sortDirection === 'asc' ? 1 : -1;
 
           switch (opts.sortKey) {
@@ -299,15 +327,51 @@ export class NautilusComponent implements OnInit, OnDestroy {
   @Output() closeOverlay = new EventEmitter<void>();
   @ViewChild('pathInput') pathInput?: ElementRef<HTMLInputElement>;
 
-  windowButtons = true;
+  // Access to Material Menu Trigger to check if a menu is open
+  @ViewChild(MatMenuTrigger) viewMenuTrigger?: MatMenuTrigger;
 
   private _globalClickListener = (): void => {
     if (this.contextMenuVisible()) this.contextMenuVisible.set(false);
     if (this.sideContextVisible()) this.sideContextVisible.set(false);
   };
 
+  // Capture-phase handler for Escape key
+  private _globalEscapeHandler = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape') {
+      // 1. If a Material Menu is open on top, let Material handle it (it consumes Escape)
+      // We don't want to close Nautilus while a view menu is open.
+      if (this.viewMenuTrigger && this.viewMenuTrigger.menuOpen) {
+        return;
+      }
+
+      // 2. If Custom Context Menus are open, close them and stop propagation
+      if (this.contextMenuVisible()) {
+        this.contextMenuVisible.set(false);
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        return;
+      }
+
+      if (this.sideContextVisible()) {
+        this.sideContextVisible.set(false);
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        return;
+      }
+
+      // 3. Close Nautilus Overlay
+      // Stop propagation so underlying modals don't receive the Escape event
+      this.nautilusService.closeFilePicker(null);
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    }
+  };
+
   constructor() {
-    this.uiStateService.filePickerState$.pipe(takeUntilDestroyed()).subscribe(state => {
+    this.nautilusService.filePickerState$.pipe(takeUntilDestroyed()).subscribe(state => {
       this.isPickerMode.set(state.isOpen);
       if (state.isOpen && state.options) {
         this.pickerOptions.set(state.options);
@@ -317,9 +381,15 @@ export class NautilusComponent implements OnInit, OnDestroy {
       }
     });
 
-    if (this.uiStateService.platform === 'macos' || this.uiStateService.platform === 'web') {
-      this.windowButtons = false;
-    }
+    effect(() => {
+      this.pathSegments(); // Dependency trigger
+      setTimeout(() => {
+        if (this.pathScrollView?.nativeElement) {
+          const el = this.pathScrollView.nativeElement;
+          el.scrollTo({ left: el.scrollWidth, behavior: 'smooth' });
+        }
+      }, 50); // Small delay to allow DOM rendering
+    });
   }
 
   async ngOnInit(): Promise<void> {
@@ -353,6 +423,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
       // Hide context menu on global clicks
       window.addEventListener('click', this._globalClickListener);
+
+      // Add capture-phase listener for Escape key
+      window.addEventListener('keydown', this._globalEscapeHandler, true);
     } catch (err) {
       console.warn('Failed to init nautilus', err);
     }
@@ -360,6 +433,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     window.removeEventListener('click', this._globalClickListener);
+    window.removeEventListener('keydown', this._globalEscapeHandler, true);
   }
 
   // --- Actions ---
@@ -375,26 +449,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const prefix = remote && remote.name !== 'Local' ? `${remote.name}:` : '';
     const fullPaths = selectedPaths.map(path => `${prefix}${path}`);
 
-    this.uiStateService.closeFilePicker(fullPaths);
+    this.nautilusService.closeFilePicker(fullPaths);
   }
 
-  onSearchQueryChange(query: string): void {
-    this.searchQuery.set(query);
-    this.searchQuerySubject.next(query);
-  }
-
-  toggleSearch(scope: 'global' | 'local'): void {
-    if (this.isSearchEnabled() && this.searchScope() === scope) {
-      // Toggle off if clicking same scope
-      this.isSearchEnabled.set(false);
-      this.onSearchQueryChange('');
-    } else {
-      this.isSearchEnabled.set(true);
-      this.searchScope.set(scope);
-      // If switching scopes, trigger search immediately if query exists
-      this.searchQuerySubject.next(this.searchQuery());
-    }
-  }
+  // Search UI & handlers removed
 
   onItemClick(item: Entry, event: MouseEvent, index: number): void {
     event.stopPropagation();
@@ -402,14 +460,13 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
     const currentSelection = new Set(this.selectedItems.getValue());
     const multiSelect = !this.isPickerMode() || this.pickerOptions().multiSelection !== false;
-    const files = this.files();
 
     if (event.shiftKey && this.lastSelectedIndex !== null && multiSelect) {
       currentSelection.clear();
       const start = Math.min(this.lastSelectedIndex, index);
       const end = Math.max(this.lastSelectedIndex, index);
       for (let i = start; i <= end; i++) {
-        currentSelection.add(files[i].Path);
+        currentSelection.add(item.Path);
       }
     } else if (event.ctrlKey && multiSelect) {
       if (currentSelection.has(item.Path)) currentSelection.delete(item.Path);
@@ -436,6 +493,12 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.contextMenuX.set(event.clientX);
     this.contextMenuY.set(event.clientY);
     this.contextMenuVisible.set(true);
+  }
+
+  unmount(mountPoint: string, remoteName: string): void {
+    this.mountManagement.unmountRemote(mountPoint, remoteName).then(() => {
+      this.mountManagement.getMountedRemotes();
+    });
   }
 
   private updateSelectionSummary(): void {
@@ -475,15 +538,19 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   // Navigation
   goBack(): void {
-    if (this.currentHistoryIndex > 0) {
-      this.currentHistoryIndex--;
-      this.currentPath.next(this.pathHistory[this.currentHistoryIndex]);
+    const tab = this.tabs[this.activeTabIndex()];
+    if (tab && tab.historyIndex > 0) {
+      tab.historyIndex--;
+      const historyEntry = tab.history[tab.historyIndex];
+      this._navigate(historyEntry.remote, historyEntry.path, false);
     }
   }
   goForward(): void {
-    if (this.currentHistoryIndex < this.pathHistory.length - 1) {
-      this.currentHistoryIndex++;
-      this.currentPath.next(this.pathHistory[this.currentHistoryIndex]);
+    const tab = this.tabs[this.activeTabIndex()];
+    if (tab && tab.historyIndex < tab.history.length - 1) {
+      tab.historyIndex++;
+      const historyEntry = tab.history[tab.historyIndex];
+      this._navigate(historyEntry.remote, historyEntry.path, false);
     }
   }
 
@@ -492,42 +559,85 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   updatePath(newPath: string): void {
-    // update active tab's path and push to global subjects so file pipeline picks it up
-    const idx = this.activeTabIndex();
-    const tab = this.tabs[idx];
-    if (tab) {
-      tab.path = newPath;
-      // update title based on path
-      tab.title =
-        newPath === '' || newPath === '/'
-          ? tab.remote?.name || 'Local'
-          : `${tab.remote?.name || 'Local'}:${newPath}`;
-    }
-
-    this.currentPath.next(newPath);
-    this.pathHistory.push(newPath);
-    this.currentHistoryIndex++;
-    // clear selection for this tab
-    const newSel = new Set<string>();
-    this.selectedItems.next(newSel);
-    if (tab) tab.selection = newSel;
+    const remote = this.nautilusRemote.getValue();
+    this._navigate(remote, newPath, true);
   }
 
   selectRemote(remote: { name: string; type?: string } | null): void {
-    // set for active tab and propagate
-    const idx = this.activeTabIndex();
-    const tab = this.tabs[idx];
-    if (tab) {
-      tab.remote = remote;
-    }
-    this.nautilusRemote.next(remote);
     const remoteName = remote?.name || 'Local';
-    this.updatePath(remoteName.endsWith(':') ? '/' : '');
+    this._navigate(remote, remoteName.endsWith(':') ? '/' : '', true);
   }
 
-  navigateToPath(p: string): void {
+  // Parses the user's typed path from the input box
+  navigateToPath(rawInput: string): void {
     this.isEditingPath.set(false);
-    this.updatePath(p);
+
+    // Normalize slashes
+    const normalized = rawInput.replace(/\\/g, '/');
+
+    let remoteName = 'Local';
+    let path = normalized;
+
+    // Detect Remote Syntax (e.g. "gdrive:/folder" or "C:/folder")
+    const colonIndex = normalized.indexOf(':');
+
+    if (colonIndex > -1) {
+      // It has a colon, so it's likely a remote or drive letter
+      const prefix = normalized.substring(0, colonIndex);
+      const suffix = normalized.substring(colonIndex + 1);
+
+      // Try to find a matching remote in our known list
+      const knownRemotes = this.remotesWithMeta();
+      // Check for exact match "gdrive" or "C:"
+      const match = knownRemotes.find(r => r.name === prefix || r.name === `${prefix}:`);
+
+      if (match) {
+        remoteName = match.name;
+        path = suffix;
+      } else {
+        // Fallback: If it looks like a drive letter "C" from "C:/", treat as "C:"
+        if (prefix.length === 1 && /[a-zA-Z]/.test(prefix)) {
+          remoteName = `${prefix}:`;
+          path = suffix;
+        } else {
+          // Unknown remote, try to use it as a remote anyway (Rclone can handle it if it exists)
+          remoteName = prefix;
+          path = suffix;
+        }
+      }
+    } else {
+      // No colon
+      if (normalized.startsWith('/')) {
+        // Absolute path start -> Local
+        remoteName = 'Local';
+        // path is already correct
+      } else {
+        // Relative path -> Keep current remote
+        const current = this.nautilusRemote.getValue();
+        if (current) remoteName = current.name;
+      }
+    }
+
+    // Strip leading slash for internal path consistency (unless it's truly root, handled by empty string)
+    // Rclone generally expects paths without leading slash relative to the remote root
+    if (path.startsWith('/')) {
+      path = path.substring(1);
+    }
+
+    // Determine type for new remote object if we are switching
+    let type = 'unknown';
+    const known = this.remotesWithMeta().find(r => r.name === remoteName);
+    if (known) type = known.type;
+    else if (remoteName === 'Local') type = 'home';
+
+    const newRemote = { name: remoteName, type };
+    this._navigate(newRemote, path, true);
+  }
+
+  navigateToSegment(index: number): void {
+    const segments = this.pathSegments();
+    const newPath = segments.slice(0, index + 1).join('/');
+    this.updatePath(newPath);
   }
 
   formatBytes(b: number): string {
@@ -539,17 +649,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
     return new Date(d).toLocaleDateString();
   }
 
-  // Window controls
-  minimizeWindow(): void {
-    this.windowService.minimize();
-  }
-  maximizeWindow(): void {
-    this.windowService.maximize();
-  }
-  closeWindow(): void {
-    this.windowService.close();
-  }
-
   clearSelection(): void {
     const newSel = new Set<string>();
     this.selectedItems.next(newSel);
@@ -558,7 +657,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (tab) tab.selection = newSel;
   }
   onClose(): void {
-    this.uiStateService.closeFilePicker(null);
+    this.nautilusService.closeFilePicker(null);
   }
   cancelLoad(): void {
     this.isLoading.set(false);
@@ -567,15 +666,18 @@ export class NautilusComponent implements OnInit, OnDestroy {
   // Tab management
   createTab(remote: { name: string; type?: string } | null, path = ''): void {
     const id = ++this.interfaceTabCounter;
-    const t = { id, title: remote?.name || 'Local', remote, path, selection: new Set<string>() };
+    const t = {
+      id,
+      title: remote?.name || 'Local',
+      remote,
+      path,
+      selection: new Set<string>(),
+      history: [],
+      historyIndex: -1,
+    };
     this.tabs.push(t);
     this.activeTabIndex.set(this.tabs.length - 1);
-    // propagate to pipeline
-    this.nautilusRemote.next(remote);
-    this.currentPath.next(path);
-    // reset selection subjects to the tab's selection
-    this.selectedItems.next(new Set(t.selection));
-    this.updateSelectionSummary();
+    this._navigate(remote, path, true);
   }
 
   closeTab(index: number): void {
@@ -594,6 +696,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.currentPath.next(active.path);
     this.selectedItems.next(new Set(active.selection));
     this.updateSelectionSummary();
+    this.updateHistoryButtonsState();
   }
 
   switchTab(index: number): void {
@@ -604,6 +707,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.currentPath.next(active.path);
     this.selectedItems.next(new Set(active.selection));
     this.updateSelectionSummary();
+    this.updateHistoryButtonsState();
   }
 
   // Context menu actions
@@ -706,6 +810,48 @@ export class NautilusComponent implements OnInit, OnDestroy {
     );
   }
 
+  private _navigate(
+    remote: { name: string; type?: string } | null,
+    path: string,
+    newHistoryEntry: boolean
+  ): void {
+    const tab = this.tabs[this.activeTabIndex()];
+    if (!tab) return;
+
+    if (newHistoryEntry) {
+      if (tab.historyIndex < tab.history.length - 1) {
+        tab.history.splice(tab.historyIndex + 1);
+      }
+      tab.history.push({ remote, path });
+      tab.historyIndex++;
+    }
+
+    tab.remote = remote;
+    tab.path = path;
+    tab.title =
+      path === '' || path === '/' ? remote?.name || 'Local' : `${remote?.name || 'Local'}:${path}`;
+
+    this.nautilusRemote.next(remote);
+    this.currentPath.next(path);
+
+    tab.selection.clear();
+    this.selectedItems.next(tab.selection);
+    this.updateSelectionSummary();
+
+    this.updateHistoryButtonsState();
+  }
+
+  private updateHistoryButtonsState(): void {
+    const tab = this.tabs[this.activeTabIndex()];
+    if (tab) {
+      this.canGoBack.set(tab.historyIndex > 0);
+      this.canGoForward.set(tab.historyIndex < tab.history.length - 1);
+    } else {
+      this.canGoBack.set(false);
+      this.canGoForward.set(false);
+    }
+  }
+
   getActiveRemote(): { name: string; type?: string } | null {
     return this.nautilusRemote.getValue();
   }
@@ -721,5 +867,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
   trackByRemote(i: number, item: { name: string }): string {
     return item.name;
+  }
+
+  onPathScroll(event: WheelEvent) {
+    const element = event.currentTarget as HTMLElement;
+    element.scrollBy(event.deltaY, 0);
+    event.preventDefault();
   }
 }

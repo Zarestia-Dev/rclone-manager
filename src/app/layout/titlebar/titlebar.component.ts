@@ -22,7 +22,7 @@ import { RemoteManagementService, WindowService } from '@app/services';
 import { BackupRestoreService } from '@app/services';
 import { FileSystemService } from '@app/services';
 import { AppSettingsService } from '@app/services';
-import { UiStateService } from '@app/services';
+import { UiStateService, NautilusService } from '@app/services';
 import { NotificationService } from 'src/app/shared/services/notification.service';
 import { AppUpdaterService, RcloneUpdateService } from '@app/services';
 import { CheckResult, ConnectionStatus, ModalSize, STANDARD_MODAL_SIZE, Theme } from '@app/types';
@@ -52,6 +52,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   fileSystemService = inject(FileSystemService);
   appSettingsService = inject(AppSettingsService);
   uiStateService = inject(UiStateService);
+  nautilusService = inject(NautilusService);
   windowService = inject(WindowService);
   remoteManagementService = inject(RemoteManagementService);
   notificationService = inject(NotificationService);
@@ -293,7 +294,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   }
 
   onBrowseClick(): void {
-    this.uiStateService.toggleNautilusOverlay();
+    this.nautilusService.toggleNautilusOverlay();
   }
 
   private cleanup(): void {

@@ -1,145 +1,130 @@
 <mat-sidenav-container class="nautilus-overlay-pane" autosize [@slideOverlay]>
-  <mat-sidenav #sidenav mode="side" opened class="nautilus-sidenav">
-    <div class="sidenav-content">
-      <mat-toolbar data-tauri-drag-region>
-        <button mat-icon-button class="small-button" (click)="toggleSearch('global')">
-          <mat-icon svgIcon="search"></mat-icon>
-        </button>
-        <span>{{ title() }}</span>
-        <button mat-icon-button class="small-button">
-          <mat-icon svgIcon="menu-bar"></mat-icon>
-        </button>
-      </mat-toolbar>
-
-      <mat-nav-list>
-        @for (remote of remotesWithMeta(); track trackByRemote($index, remote)) {
-          <mat-list-item
-            (click)="selectRemote(remote)"
-            (keydown.enter)="selectRemote(remote)"
-            (keydown.space)="selectRemote(remote)"
-            (contextmenu)="onRemoteContextMenu($any($event), remote)"
-            role="button"
-            tabindex="0"
-            [class.selected]="(nautilusRemote | async)?.name === remote.name"
-            class="remote-list-item"
-          >
-            <span class="remote-info">
-              <span class="remote-icon">
-                <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
-                <p matLine>{{ remote.label }}</p>
-              </span>
-              <span class="eject">
-                @if (remote.isMounted) {
-                  <button mat-icon-button class="unmount-button">
-                    <mat-icon svgIcon="eject"></mat-icon>
-                  </button>
-                }
-              </span>
+  <mat-sidenav
+    #sidenav
+    [mode]="sidenavMode()"
+    [opened]="isSidenavOpen()"
+    (openedChange)="isSidenavOpen.set($event)"
+    class="nautilus-sidenav"
+  >
+    <mat-toolbar data-tauri-drag-region>
+      <button class="nav-button">
+        <mat-icon svgIcon="search"></mat-icon>
+      </button>
+      <span>{{ title() }}</span>
+      <button class="nav-button">
+        <mat-icon svgIcon="menu-bar"></mat-icon>
+      </button>
+    </mat-toolbar>
+    <mat-nav-list>
+      @for (remote of filteredRemotes(); track trackByRemote($index, remote)) {
+        <mat-list-item
+          (click)="selectRemote(remote); isMobile() ? sidenav.close() : null"
+          (contextmenu)="onRemoteContextMenu($any($event), remote)"
+          [class.selected]="(nautilusRemote | async)?.name === remote.name"
+          class="remote-list-item"
+        >
+          <span class="remote-info">
+            <span class="remote-icon">
+              <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+              <p matLine>{{ remote.label }}</p>
             </span>
-          </mat-list-item>
-        }
-
-        @if (remotesWithMeta().length === 0) {
-          <mat-list-item>
-            <mat-icon matListIcon svgIcon="cloud-offline"></mat-icon>
-            <h4 matLine>No remotes configured</h4>
-          </mat-list-item>
-        }
-      </mat-nav-list>
-    </div>
+            <span class="eject">
+              @if (remote.isMounted) {
+                <button
+                  class="nav-button"
+                  (click)="
+                    unmount(remote.mountPoint || '', remote.name || ''); $event.stopPropagation()
+                  "
+                >
+                  <mat-icon svgIcon="eject"></mat-icon>
+                </button>
+              }
+            </span>
+          </span>
+        </mat-list-item>
+      }
+    </mat-nav-list>
   </mat-sidenav>
 
   <mat-sidenav-content class="nautilus-main-content">
     <mat-toolbar class="nautilus-toolbar" data-tauri-drag-region>
-      @if (!isSearchEnabled()) {
-        <div class="left-section">
-          <button mat-icon-button class="secondary" (click)="goBack()">
+      <div class="left-section">
+        @if (isMobile()) {
+          <button mat-icon-button (click)="sidenav.toggle()">
+            <mat-icon svgIcon="menu-bar"></mat-icon>
+          </button>
+        }
+
+        @if (!isMobile()) {
+          <button (click)="goBack()" [disabled]="!canGoBack()" class="nav-button">
             <mat-icon svgIcon="chevron-left"></mat-icon>
           </button>
-          <button mat-icon-button class="secondary" (click)="goForward()">
+          <button (click)="goForward()" [disabled]="!canGoForward()" class="nav-button">
             <mat-icon svgIcon="chevron-right"></mat-icon>
           </button>
-        </div>
-
-        <div
-          class="path-container"
-          (click)="isEditingPath.set(true)"
-          (keydown.enter)="isEditingPath.set(true)"
-          tabindex="0"
-        >
-          @if (!isEditingPath()) {
+        }
+      </div>
+      <div
+        class="path-container"
+        (click)="isEditingPath.set(true)"
+        (keydown.enter)="isEditingPath.set(true)"
+        tabindex="0"
+      >
+        @if (!isEditingPath()) {
+          <div
+            class="path-scroll-view hide-scrollbar"
+            #pathScrollView
+            (wheel)="onPathScroll($event)"
+          >
             <button
-              mat-button
-              class="path-segment"
+              class="path-segment home-segment"
               (click)="$event.stopPropagation(); navigateToPath('')"
             >
               <mat-icon [svgIcon]="(nautilusRemote | async)?.type || 'home'"></mat-icon>
               {{ (nautilusRemote | async)?.name || 'Local' }}
             </button>
             @for (segment of pathSegments(); track $index) {
-              /
-              <button mat-button class="path-segment" (click)="$event.stopPropagation()">
+              <span class="path-separator">/</span>
+              <button
+                class="path-segment"
+                [class.active]="$index === pathSegments().length - 1"
+                (click)="$event.stopPropagation(); navigateToSegment($index)"
+              >
                 {{ segment }}
               </button>
             }
-          } @else {
-            <input
-              #pathInput
-              class="path-input"
-              [value]="currentPath | async"
-              (keydown.enter)="navigateToPath(pathInput.value)"
-              (blur)="isEditingPath.set(false)"
-            />
-          }
-        </div>
-      }
-
-      @if (isSearchEnabled()) {
-        <div class="search-input-container">
-          <mat-icon svgIcon="search"></mat-icon>
+          </div>
+          <button class="nav-button" style="border-radius: 0" (click)="$event.stopPropagation()">
+            <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+          </button>
+        } @else {
           <input
-            matInput
-            [placeholder]="searchScope() === 'global' ? 'Search everywhere' : 'Search in folder'"
-            [value]="searchQuery()"
-            (input)="onSearchQueryChange($any($event.target).value)"
+            #pathInput
+            class="path-input"
+            [value]="fullPathInput()"
+            (keydown.enter)="navigateToPath(pathInput.value)"
+            (blur)="isEditingPath.set(false)"
           />
-        </div>
-      }
+        }
+      </div>
 
       <div class="right-section">
-        <button
-          mat-icon-button
-          (click)="toggleSearch('local')"
-          [class.active]="isSearchEnabled() && searchScope() === 'local'"
-        >
-          <mat-icon svgIcon="folder-search"></mat-icon>
+        <button class="nav-button">
+          <mat-icon svgIcon="search"></mat-icon>
         </button>
 
-        @if (!isSearchEnabled()) {
-          <button mat-icon-button (click)="setLayout(layout() === 'grid' ? 'list' : 'grid')">
-            <mat-icon [svgIcon]="layout() === 'grid' ? 'view-list' : 'view-grid'"></mat-icon>
+        @if (!isMobile()) {
+          <button class="nav-button" (click)="setLayout(layout() === 'grid' ? 'list' : 'grid')">
+            <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
           </button>
 
-          <button mat-icon-button [matMenuTriggerFor]="viewMenu">
-            <mat-icon svgIcon="arrow-down"></mat-icon>
-          </button>
-        }
-
-        @if (windowButtons) {
-          <button matIconButton (click)="minimizeWindow()">
-            <mat-icon svgIcon="remove"></mat-icon>
-          </button>
-          <button matIconButton (click)="maximizeWindow()">
-            <mat-icon svgIcon="check-box"></mat-icon>
-          </button>
-          <button matIconButton (click)="closeWindow()" class="close-button">
-            <mat-icon svgIcon="close"></mat-icon>
+          <button class="nav-button" [matMenuTriggerFor]="viewMenu">
+            <mat-icon svgIcon="chevron-down"></mat-icon>
           </button>
         }
       </div>
     </mat-toolbar>
 
-    <!-- Tabs bar (hidden when only 1 tab) -->
     <div class="tabs-bar" *ngIf="tabs.length > 1">
       <div
         class="tab"
@@ -160,14 +145,6 @@
           <mat-icon svgIcon="close"></mat-icon>
         </button>
       </div>
-      <button
-        mat-icon-button
-        class="add-tab"
-        (click)="createTab(getActiveRemote(), '')"
-        aria-label="New tab"
-      >
-        <mat-icon svgIcon="plus"></mat-icon>
-      </button>
     </div>
 
     <div class="nautilus-content" [class.list-layout]="layout() === 'list'">
@@ -195,7 +172,11 @@
                 [class.selected]="(selectedItems | async)?.has(item.Path)"
                 [class.unselectable]="!isItemSelectable(item)"
               >
-                <mat-card class="folder-card" [class.file-card]="!item.IsDir">
+                <mat-card
+                  class="folder-card"
+                  [class.file-card]="!item.IsDir"
+                  [class.hidden-item]="item.Name.startsWith('.')"
+                >
                   <mat-card-content>
                     <mat-icon
                       class="folder-icon"
@@ -228,7 +209,7 @@
               Name
               <mat-icon
                 *ngIf="sortKey() === 'name'"
-                [svgIcon]="sortDirection() === 'asc' ? 'arrow-up' : 'arrow-down'"
+                [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
               ></mat-icon>
             </div>
             <div
@@ -257,6 +238,7 @@
               (contextmenu)="onItemContextMenu($any($event), item)"
               tabindex="0"
               [class.selected]="(selectedItems | async)?.has(item.Path)"
+              [class.hidden-item]="item.Name.startsWith('.')"
             >
               <div class="list-col name">
                 <mat-icon [svgIcon]="item.IsDir ? 'folder' : 'file'"></mat-icon>
@@ -272,7 +254,7 @@
       @if (files().length === 0 && !isLoading()) {
         <div class="empty-folder-container">
           <mat-icon svgIcon="folder"></mat-icon>
-          <h2>{{ isSearchEnabled() ? 'No results found' : 'Folder is Empty' }}</h2>
+          <h2>{{ 'Folder is Empty' }}</h2>
         </div>
       }
 
@@ -287,7 +269,28 @@
       }
     </div>
 
-    <!-- Custom context menu -->
+    @if (isMobile()) {
+      <div class="nautilus-bottom-bar" data-tauri-drag-region>
+        <div class="nav-controls">
+          <button class="nav-button" (click)="goBack()" [disabled]="!canGoBack()">
+            <mat-icon svgIcon="chevron-left"></mat-icon>
+          </button>
+          <button class="nav-button" (click)="goForward()" [disabled]="!canGoForward()">
+            <mat-icon svgIcon="chevron-right"></mat-icon>
+          </button>
+        </div>
+
+        <div class="view-controls">
+          <button class="nav-button" (click)="setLayout(layout() === 'grid' ? 'list' : 'grid')">
+            <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
+          </button>
+          <button class="nav-button" [matMenuTriggerFor]="viewMenu">
+            <mat-icon svgIcon="chevron-down"></mat-icon>
+          </button>
+        </div>
+      </div>
+    }
+
     <div
       class="context-menu"
       *ngIf="contextMenuVisible()"
@@ -305,7 +308,7 @@
     </div>
 
     @if (isPickerMode()) {
-      <div class="picker-actions">
+      <div class="picker-actions" [class.mobile-picker]="isMobile()">
         <span class="selection-info">{{ selectionSummary() }}</span>
         <button mat-stroked-button (click)="onClose()">Cancel</button>
         <button mat-flat-button color="primary" (click)="confirmSelection()">Open</button>
@@ -313,8 +316,6 @@
     }
   </mat-sidenav-content>
 </mat-sidenav-container>
-
-<!-- Sidebar context menu -->
 <div
   class="sidebar-context-menu"
   *ngIf="sideContextVisible()"
@@ -342,10 +343,10 @@
     <div class="icon-size-control">
       <span>Icon Size</span>
       <button mat-icon-button (click)="decreaseIconSize()">
-        <mat-icon svgIcon="minus"></mat-icon>
+        <mat-icon svgIcon="remove"></mat-icon>
       </button>
       <button mat-icon-button (click)="increaseIconSize()">
-        <mat-icon svgIcon="plus"></mat-icon>
+        <mat-icon svgIcon="add"></mat-icon>
       </button>
     </div>
     <mat-divider></mat-divider>
