@@ -46,6 +46,8 @@ export class RemoteAboutModalComponent implements OnInit {
 
   // Independent Signals for separate loading states
   aboutInfo = signal<Record<string, unknown> | null>(null);
+  remoteType = signal<string>('');
+  remoteName = signal<string>('');
   sizeInfo = signal<{ count: number; bytes: number } | null>(null);
   diskUsageInfo = signal<{ total?: number; used?: number; free?: number } | null>(null);
 
@@ -56,6 +58,8 @@ export class RemoteAboutModalComponent implements OnInit {
   errorAbout = signal<string | null>(null);
 
   ngOnInit(): void {
+    this.remoteType.set(this.data.remote.type || 'Unknown');
+    this.remoteName.set(this.data.remote.name);
     this.loadDataSeparately();
   }
 
@@ -64,12 +68,10 @@ export class RemoteAboutModalComponent implements OnInit {
    * Allows the UI to show partial data as it arrives.
    */
   loadDataSeparately(): void {
-    const remoteParam = this.data.remote.name === 'Local' ? '/' : this.data.remote.name + ':';
-
     // 1. Load FS Info (Fastest)
     this.loadingAbout.set(true);
     this.remoteManagementService
-      .getFsInfo(remoteParam)
+      .getFsInfo(this.remoteName())
       .then(info => {
         this.aboutInfo.set(info as Record<string, unknown>);
         console.log('Loaded FS Info:', info);
@@ -85,7 +87,7 @@ export class RemoteAboutModalComponent implements OnInit {
     // 2. Load Disk Usage
     this.loadingUsage.set(true);
     this.remoteManagementService
-      .getDiskUsage(remoteParam)
+      .getDiskUsage(this.remoteName())
       .then(usage => {
         this.diskUsageInfo.set(usage);
         console.log('Loaded Disk Usage:', usage);
@@ -99,7 +101,7 @@ export class RemoteAboutModalComponent implements OnInit {
     // 3. Load Size/Count (Slowest, can take time for large remotes)
     this.loadingSize.set(true);
     this.remoteManagementService
-      .getSize(remoteParam)
+      .getSize(this.remoteName())
       .then(size => {
         this.sizeInfo.set(size);
         console.log('Loaded Size Info:', size);

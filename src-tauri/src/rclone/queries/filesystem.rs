@@ -14,6 +14,7 @@ use crate::utils::{
 pub struct LocalDrive {
     name: String,
     label: String,
+    fs_type: String,
 }
 
 #[tauri::command]
@@ -148,6 +149,7 @@ pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
 
                 drives.push(LocalDrive {
                     name: format!("{}:", i as char),
+                    fs_type: "local".to_string(),
                     label: if label.is_empty() {
                         "Local Disk".to_string()
                     } else {
@@ -165,6 +167,7 @@ pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
 pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
     Ok(vec![LocalDrive {
         name: "Local".to_string(),
+        fs_type: "local".to_string(),
         label: "Local Filesystem".to_string(),
     }])
 }

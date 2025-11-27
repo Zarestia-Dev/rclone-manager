@@ -37,6 +37,7 @@ import {
   RemoteManagementService,
   MountManagementService,
   FilePickerOptions,
+  PathSelectionService,
 } from '@app/services';
 import { Entry, STANDARD_MODAL_SIZE } from '@app/types';
 import { LocalDrive } from '@app/types';
@@ -81,10 +82,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
   tabs: {
     id: number;
     title: string;
-    remote: { name: string; type?: string } | null;
+    remote: { name: string; type?: string; fs_type?: string } | null;
     path: string;
     selection: Set<string>;
-    history: { remote: { name: string; type?: string } | null; path: string }[];
+    history: { remote: { name: string; type?: string; fs_type?: string } | null; path: string }[];
     historyIndex: number;
   }[] = [];
   public activeTabIndex = signal(0);
@@ -98,12 +99,13 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public sideContextVisible = signal(false);
   public sideContextX = signal(0);
   public sideContextY = signal(0);
-  public sideContextRemote: { name: string; type?: string } | null = null;
+  public sideContextRemote: { name: string; type?: string; fs_type?: string } | null = null;
   // Services
   private uiStateService = inject(UiStateService);
   private nautilusService = inject(NautilusService);
   private remoteManagement = inject(RemoteManagementService);
   private mountManagement = inject(MountManagementService);
+  private pathSelectionService = inject(PathSelectionService);
   public iconService = inject(IconService);
   public fileViewerService = inject(FileViewerService);
   private dialog = inject(MatDialog);
@@ -134,7 +136,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
   ];
 
   // Navigation State
-  public nautilusRemote = new BehaviorSubject<{ name: string; type?: string } | null>(null);
+  public nautilusRemote = new BehaviorSubject<{
+    name: string;
+    type?: string;
+    fs_type?: string;
+  } | null>(null);
   public currentPath = new BehaviorSubject<string>('');
 
   // Selection
@@ -183,9 +189,12 @@ export class NautilusComponent implements OnInit, OnDestroy {
           return {
             name,
             label: name,
-            type: (configs?.[name] as any)?.type || (configs?.[name] as any)?.Type,
+            type:
+              (configs?.[name] as { type: string })?.type ||
+              (configs?.[name] as { Type: string })?.Type,
             isMounted: !!mountedInfo,
             mountPoint: mountedInfo?.mount_point,
+            fs_type: 'remote',
           };
         });
 
@@ -193,6 +202,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
           name: drive.name,
           label: drive.name !== 'Local' ? `${drive.label} (${drive.name})` : drive.label,
           type: 'home',
+          fs_type: drive.fs_type,
           isMounted: false,
           mountPoint: undefined,
         }));
@@ -269,7 +279,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
         return of([]);
       }
       this.isLoading.set(true);
-      const remoteName = remote.name === 'Local' ? '/' : remote.name + ':';
+      const remoteName = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
 
       return from(this.remoteManagement.getRemotePaths(remoteName, path, {})).pipe(
         map(res => res.list || []),
@@ -415,15 +425,15 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
       // Initialize selection from UiStateService (OBSERVABLE)
       this.uiStateService.selectedRemote$.pipe(take(1)).subscribe(async currentSelected => {
-        let initialRemote = null;
+        let initialRemote: { name: string; type?: string; fs_type: string } | null = null;
         if (currentSelected) {
-          initialRemote = currentSelected.remoteSpecs;
+          initialRemote = { ...currentSelected.remoteSpecs, fs_type: 'remote' };
         } else {
           const drives = await this.remoteManagement.getLocalDrives();
           if (drives.length > 0) {
-            initialRemote = { name: drives[0].name, type: 'home' };
+            initialRemote = { name: drives[0].name, type: 'home', fs_type: drives[0].fs_type };
           } else {
-            initialRemote = { name: 'Local', type: 'home' };
+            initialRemote = { name: 'Local', type: 'home', fs_type: 'local' };
           }
         }
 
@@ -456,7 +466,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
       selectedPaths = [this.currentPath.getValue()];
     }
 
-    const prefix = remote && remote.name !== 'Local' ? `${remote.name}:` : '';
+    const prefix = this.pathSelectionService.normalizeRemoteForRclone(remote?.name);
     const fullPaths = selectedPaths.map(path => `${prefix}${path}`);
 
     this.nautilusService.closeFilePicker(fullPaths);
@@ -576,7 +586,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this._navigate(remote, newPath, true);
   }
 
-  selectRemote(remote: { name: string; type?: string } | null): void {
+  selectRemote(remote: { name: string; type?: string; fs_type?: string } | null): void {
     const remoteName = remote?.name || 'Local';
     this._navigate(remote, remoteName.endsWith(':') ? '/' : '', true);
   }
@@ -639,11 +649,17 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
     // Determine type for new remote object if we are switching
     let type = 'unknown';
+    let fs_type = 'remote';
     const known = this.remotesWithMeta().find(r => r.name === remoteName);
-    if (known) type = known.type;
-    else if (remoteName === 'Local') type = 'home';
+    if (known) {
+      type = known.type;
+      fs_type = (known as { fs_type: string }).fs_type || 'remote';
+    } else if (remoteName === 'Local') {
+      type = 'home';
+      fs_type = 'local';
+    }
 
-    const newRemote = { name: remoteName, type };
+    const newRemote = { name: remoteName, type, fs_type };
     this._navigate(newRemote, path, true);
   }
 
@@ -672,7 +688,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   // Tab management
-  createTab(remote: { name: string; type?: string } | null, path = ''): void {
+  createTab(remote: { name: string; type?: string; fs_type?: string } | null, path = ''): void {
     const id = ++this.interfaceTabCounter;
     const t = {
       id,
@@ -695,7 +711,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (index <= newIndex) newIndex = Math.max(0, newIndex - 1);
     if (this.tabs.length === 0) {
       // create a fresh empty tab
-      this.createTab({ name: 'Local', type: 'home' }, '');
+      this.createTab({ name: 'Local', type: 'home', fs_type: 'local' }, '');
       return;
     }
     this.activeTabIndex.set(newIndex);
@@ -738,7 +754,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const files = this.files();
     const currentIndex = files.findIndex(f => f.Path === item.Path);
 
-    this.fileViewerService.open(files, currentIndex, remote.name);
+    const remoteName = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+
+    this.fileViewerService.open(files, currentIndex, remoteName, remote.fs_type || 'remote');
   }
 
   openContextMenuOpenInNewTab(): void {
@@ -791,7 +809,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (!item) return;
     const remote = this.nautilusRemote.getValue();
     if (!remote) return;
-    const remoteName = remote.name === 'Local' ? '' : remote.name + ':';
+    const remoteName = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
     this.dialog.open(PropertiesModalComponent, {
       data: { remoteName, path: `/${item.Path}` },
     });
@@ -799,7 +817,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   // Remote (sidebar) context menu
-  onRemoteContextMenu(event: MouseEvent, remote: { name: string; type?: string } | null): void {
+  onRemoteContextMenu(
+    event: MouseEvent,
+    remote: { name: string; type?: string; fs_type?: string } | null
+  ): void {
     event.preventDefault();
     event.stopPropagation();
     this.sideContextRemote = remote;
@@ -822,7 +843,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   private _navigate(
-    remote: { name: string; type?: string } | null,
+    remote: { name: string; type?: string; fs_type?: string } | null,
     path: string,
     newHistoryEntry: boolean
   ): void {
@@ -839,8 +860,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
     tab.remote = remote;
     tab.path = path;
-    tab.title =
-      path === '' || path === '/' ? remote?.name || 'Local' : `${remote?.name || 'Local'}:${path}`;
+    tab.title = this.pathSelectionService.normalizeRemoteForRclone(remote?.name) || 'Local';
 
     this.nautilusRemote.next(remote);
     this.currentPath.next(path);

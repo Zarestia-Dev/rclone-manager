@@ -65,9 +65,12 @@ pub struct RcloneCoreVersion {
     pub go_version: String,
     pub os: String,
     pub arch: String,
-    pub os_version: String,
-    pub os_kernel: String,
-    pub os_arch: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub os_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub os_kernel: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub os_arch: Option<String>,
     pub is_beta: bool,
     pub is_git: bool,
     pub linking: String,

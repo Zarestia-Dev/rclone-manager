@@ -139,8 +139,9 @@ export class PathSelectionService {
     state$.next({ ...state$.getValue(), isLoading: true, currentPath: path });
 
     try {
+      const normalizedRemote = this.normalizeRemoteForRclone(remoteName);
       const response = await this.remoteManagementService.getRemotePaths(
-        remoteName,
+        normalizedRemote,
         path || '',
         {}
       );
@@ -151,6 +152,18 @@ export class PathSelectionService {
       console.error(`Error fetching entries for ${fieldId}:`, error);
       state$.next({ ...state$.getValue(), options: [], isLoading: false });
     }
+  }
+
+  /**
+   * Normalize remote name for rclone backend calls.
+   * - Empty or `Local` should be treated as local filesystem (send empty string)
+   * - If the remote already ends with ':' return as-is
+   * - Otherwise append ':' so rclone receives `remote:` format
+   */
+  public normalizeRemoteForRclone(remoteName?: string): string {
+    if (!remoteName) return '';
+    if (remoteName === 'Local') return '/';
+    return remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
   }
 
   public resetPath(fieldId: string): void {

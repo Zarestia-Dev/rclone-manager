@@ -180,5 +180,6 @@ export interface Entry {
 
 export interface LocalDrive {
   name: string;
+  fs_type: string;
   label: string;
 }

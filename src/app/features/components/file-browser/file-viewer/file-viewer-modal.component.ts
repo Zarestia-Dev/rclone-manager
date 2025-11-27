@@ -102,9 +102,11 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.textContent.set('');
     this.folderSize = null;
 
+    console.log(this.data.remoteName);
     try {
       if (this.data.fileType === 'directory') {
         const item = this.data.items[this.data.currentIndex];
+
         await this.remoteManagementService
           .getSize(this.data.remoteName, item.Path)
           .then((size: { count: number; bytes: number }) => {
@@ -185,7 +187,11 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     const item = this.data.items[this.data.currentIndex];
     this.data.name = item.Name;
     this.data.fileType = this.fileViewerService.getFileType(item);
-    this.data.url = this.fileViewerService.generateUrl(item, this.data.remoteName);
+    this.data.url = this.fileViewerService.generateUrl(
+      item,
+      this.data.remoteName,
+      this.data.isLocal ? 'local' : 'remote'
+    );
     this.updateContent();
   }
 

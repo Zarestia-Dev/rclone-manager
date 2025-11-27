@@ -4,9 +4,9 @@ export interface RcloneInfo {
   goVersion: string;
   os: string;
   arch: string;
-  osVersion: string;
-  osKernel: string;
-  osArch: string;
+  osVersion?: string | null;
+  osKernel?: string | null;
+  osArch?: string | null;
   isBeta: boolean;
   isGit: boolean;
   linking: string;

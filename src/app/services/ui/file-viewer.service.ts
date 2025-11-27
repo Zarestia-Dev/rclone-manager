@@ -15,15 +15,18 @@ export class FileViewerService {
 
   // Use Angular signal for viewer open state
   private readonly _isViewerOpen: WritableSignal<boolean> = signal(false);
-  // Expose the signal so components can read it as `fileViewerService.isViewerOpen()`
   public readonly isViewerOpen = this._isViewerOpen;
 
-  async open(items: Entry[], currentIndex: number, remoteName: string): Promise<void> {
+  async open(
+    items: Entry[],
+    currentIndex: number,
+    remoteName: string,
+    fsType: string
+  ): Promise<void> {
     const item = items[currentIndex];
     const fileType = this.getFileType(item);
 
-    const isLocal = remoteName === 'Local';
-    const fileUrl = this.generateUrl(item, remoteName);
+    const fileUrl = this.generateUrl(item, remoteName, fsType);
 
     const overlayRef = this.overlay.create({
       hasBackdrop: true,
@@ -40,7 +43,7 @@ export class FileViewerService {
       url: fileUrl,
       fileType,
       name: item.Name,
-      isLocal,
+      isLocal: fsType === 'local',
       remoteName,
     };
 
@@ -80,9 +83,18 @@ export class FileViewerService {
     return 'unknown';
   }
 
-  generateUrl(item: Entry, remoteName: string): string {
+  generateUrl(item: Entry, remoteName: string, fsType: string): string {
     const baseUrl = this.configService.rcloneServeUrl();
-    const isLocal = remoteName === 'Local';
-    return isLocal ? convertFileSrc(`//${item.Path}`) : `${baseUrl}/[${remoteName}:]/${item.Path}`;
+    const isLocal = fsType === 'local';
+    if (isLocal) {
+      if (!remoteName || remoteName === '/') {
+        return convertFileSrc(`//${item.Path}`);
+      } else {
+        const nativePathForTauri = `${remoteName}${item.Path}`;
+        return convertFileSrc(nativePathForTauri);
+      }
+    }
+
+    return `${baseUrl}/[${remoteName}]/${item.Path}`;
   }
 }
