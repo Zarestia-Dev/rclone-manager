@@ -835,6 +835,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const remote = this.sideContextRemote;
     if (!remote) return;
 
+    remote.name = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+
     this.dialog.open(RemoteAboutModalComponent, {
       data: { remote },
       disableClose: false,

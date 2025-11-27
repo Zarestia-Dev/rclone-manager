@@ -289,44 +289,53 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
 
     if (result && result.length > 0) {
       const fullPath = result[0];
-      const parts = fullPath.split(':');
       const formGroup = this.getFormGroup(group);
 
       if (!formGroup) {
         return;
       }
 
-      let remoteName: string;
-      let path: string;
-
-      if (parts.length > 1 && parts[0]) {
-        // Handles "remote:path"
-        remoteName = parts[0];
-        path = parts.slice(1).join(':');
-      } else {
-        // Handles local paths or paths without remote prefix
-        remoteName = ''; // Represents a local path
-        path = fullPath;
-      }
-
       const pathControl = this.getPathControl(group);
-      pathControl?.setValue(path, { emitEvent: false });
-
       const pathTypeControl = formGroup.get('pathType');
       if (!pathTypeControl) return;
 
+      const parts = fullPath.split(':');
+      let remoteName = '';
+      let path = fullPath;
+
+      // Robustly check if this is actually a remote or a local path (like Windows C:/)
+      if (parts.length > 1 && parts[0]) {
+        const potentialRemote = parts[0];
+        const isKnownRemote =
+          potentialRemote === this.currentRemoteName ||
+          this.otherRemotes.includes(potentialRemote) ||
+          (this.isNewRemote && potentialRemote === this.currentRemoteName);
+
+        if (isKnownRemote) {
+          // It matches a known remote, so parse it as remote:path
+          remoteName = potentialRemote;
+          path = parts.slice(1).join(':');
+        } else {
+          // It has a colon but isn't a known remote -> Treat as local (e.g. C:/User)
+          remoteName = '';
+          path = fullPath;
+        }
+      } else {
+        // No colon -> Local path
+        remoteName = '';
+        path = fullPath;
+      }
+
+      pathControl?.setValue(path, { emitEvent: false });
+
       if (remoteName === '') {
         pathTypeControl.setValue('local');
-      } else if (remoteName === this.currentRemoteName && !this.isNewRemote) {
-        pathTypeControl.setValue('currentRemote');
-      } else if (this.otherRemotes.includes(remoteName)) {
-        pathTypeControl.setValue(`otherRemote:${remoteName}`);
-      } else if (this.isNewRemote && remoteName === this.currentRemoteName) {
+      } else if (remoteName === this.currentRemoteName) {
         pathTypeControl.setValue('currentRemote');
       } else {
-        // Fallback for unhandled cases: set the full path back into the input
-        pathControl?.setValue(fullPath, { emitEvent: false });
+        pathTypeControl.setValue(`otherRemote:${remoteName}`);
       }
+
       this.cdRef.markForCheck();
     }
   }

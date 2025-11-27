@@ -6,3 +6,4 @@ export * from './format-memory-usage.pipe';
 export * from './format-rate-value.pipe';
 export * from './truncate-path.pipe';
 export * from './linebreaks.pipe';
+export * from './normalize-path.pipe';

@@ -12,7 +12,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCardModule } from '@angular/material/card';
 import { RemoteManagementService } from 'src/app/services';
 import { IconService } from 'src/app/shared/services/icon.service';
-import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
+import { FormatFileSizePipe, NormalizePathPipe } from 'src/app/shared/pipes';
 
 interface RemoteAboutData {
   remote: { name: string; type?: string };
@@ -34,6 +34,7 @@ interface RemoteAboutData {
     MatProgressSpinnerModule,
     MatCardModule,
     FormatFileSizePipe,
+    NormalizePathPipe,
   ],
   templateUrl: './remote-about-modal.component.html',
   styleUrls: ['./remote-about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
