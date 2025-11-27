@@ -183,12 +183,28 @@ export class RemoteManagementService extends TauriBaseService {
     path: string,
     options: Record<string, unknown>
   ): Promise<{ list: Entry[] }> {
+    console.log(`Fetching remote paths for ${remote}${path} with options:`, options);
+
     const response = await this.invokeCommand('get_remote_paths', { remote, path, options });
     return response as { list: Entry[] };
   }
 
   async getLocalDrives(): Promise<LocalDrive[]> {
     return this.invokeCommand<LocalDrive[]>('get_local_drives');
+  }
+
+  /**
+   * Create a directory on the remote via backend `mkdir` command
+   */
+  async makeDirectory(remote: string, path: string): Promise<void> {
+    return this.invokeCommand('mkdir', { remote, path });
+  }
+
+  /**
+   * Cleanup trashed files on the remote (optional path)
+   */
+  async cleanup(remote: string, path?: string): Promise<void> {
+    return this.invokeCommand('cleanup', { remote, path });
   }
 
   /**

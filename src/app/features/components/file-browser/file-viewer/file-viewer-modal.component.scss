@@ -11,7 +11,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--space-md) var(--space-xl);
+    padding: var(--space-sm) var(--space-md);
     background: var(--app-background);
     border-radius: var(--app-border-radius) var(--app-border-radius) 0 0;
     color: var(--app-text-color);
@@ -219,7 +219,7 @@
   .file-viewer-wrapper {
     .file-viewer-header {
       gap: var(--space-sm);
-      padding: var(--space-sm);
+      padding: var(--space-xs) var(--space-sm);
 
       .header-left .file-name {
         font-size: var(--font-size-base);

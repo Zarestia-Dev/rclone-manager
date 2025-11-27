@@ -62,6 +62,7 @@ use crate::{
     },
     rclone::{
         commands::{
+            filesystem::{cleanup, mkdir},
             job::stop_job,
             mount::{mount_remote, unmount_all_remotes, unmount_remote},
             remote::{
@@ -422,6 +423,9 @@ pub fn run() {
             delete_remote,
             quit_rclone_oauth,
             get_remote_paths,
+            // Filesystem commands
+            mkdir,
+            cleanup,
             get_local_drives,
             get_bandwidth_limit,
             // Flags

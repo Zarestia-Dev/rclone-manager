@@ -1,0 +1,112 @@
+.properties-modal {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  min-width: 400px;
+  max-width: 500px;
+}
+
+.modal-content {
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  gap: var(--space-md);
+  color: var(--secondary-text-color);
+}
+
+.item-overview {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding-bottom: var(--space-xs);
+
+  .item-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: rgba(var(--primary-color-rgb), 0.1);
+    border-radius: var(--radius-md);
+    color: var(--primary-color);
+
+    mat-icon {
+      width: 32px;
+      height: 32px;
+      font-size: 32px;
+    }
+  }
+
+  .item-details {
+    flex: 1;
+    overflow: hidden;
+
+    .item-name {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--app-text-color);
+    }
+
+    .item-type {
+      font-size: 13px;
+      color: var(--secondary-text-color);
+    }
+  }
+}
+
+.properties-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+
+  .group-title {
+    margin: 0 0 var(--space-xs) 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .prop-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+
+    .label {
+      color: var(--secondary-text-color);
+      font-weight: 500;
+    }
+
+    .value {
+      color: var(--app-text-color);
+      font-weight: 500;
+      text-align: right;
+
+      &.path {
+        word-break: break-all;
+        max-width: 60%;
+        text-align: right;
+        font-family: monospace;
+        background: rgba(var(--app-text-color-rgb), 0.05);
+        padding: 2px 6px;
+        border-radius: 4px;
+      }
+    }
+  }
+}

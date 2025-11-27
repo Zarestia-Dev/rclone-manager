@@ -1,0 +1,103 @@
+<div class="properties-modal">
+  <div class="modal-header" data-tauri-drag-region>
+    <div class="header-icon-wrapper">
+      <mat-icon svgIcon="info"></mat-icon>
+    </div>
+    <p>Properties</p>
+    <button mat-icon-button (click)="close()" aria-label="Close">
+      <mat-icon svgIcon="circle-xmark"></mat-icon>
+    </button>
+  </div>
+
+  <div class="modal-content custom-scrollbar">
+    @if (loadingStat) {
+      <div class="loading-container main-loader">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Loading basic info...</p>
+      </div>
+    } @else {
+      <div class="item-overview">
+        <div class="item-icon">
+          <mat-icon [svgIcon]="getIcon(item)"></mat-icon>
+        </div>
+        <div class="item-details">
+          <h3 class="item-name" [title]="item ? item.Name : displayLocation">
+            {{ item ? item.Name : displayLocation }}
+          </h3>
+          <span class="item-type">
+            {{ item?.MimeType || ((item?.IsDir ?? true) ? 'Directory' : 'File') }}
+          </span>
+        </div>
+      </div>
+
+      <mat-divider></mat-divider>
+
+      <div class="properties-group">
+        <div class="prop-row">
+          <span class="label">Location</span>
+          <span class="value path" [title]="displayLocation">{{ displayLocation }}</span>
+        </div>
+        <div class="prop-row" *ngIf="item?.ModTime">
+          <span class="label">Modified</span>
+          <span class="value">{{ item?.ModTime | date: 'medium' }}</span>
+        </div>
+        @if (item && !item.IsDir) {
+          <div class="prop-row">
+            <span class="label">Size</span>
+            <span class="value">{{ item.Size | formatFileSize }}</span>
+          </div>
+        }
+      </div>
+
+      @if (item?.IsDir ?? true) {
+        <mat-divider></mat-divider>
+        <div class="properties-group">
+          <h4 class="group-title">Content Stats</h4>
+
+          @if (loadingSize) {
+            <div class="section-loader">
+              <mat-spinner diameter="24"></mat-spinner>
+              <span>Calculating folder size...</span>
+            </div>
+          } @else if (size) {
+            <div class="prop-row">
+              <span class="label">Contained Files</span>
+              <span class="value">{{ size.count | number }}</span>
+            </div>
+            <div class="prop-row">
+              <span class="label">Total Size</span>
+              <span class="value">{{ size.bytes | formatFileSize }}</span>
+            </div>
+          }
+        </div>
+      }
+
+      <mat-divider></mat-divider>
+      <div class="properties-group">
+        <h4 class="group-title">Storage</h4>
+
+        @if (loadingDiskUsage) {
+          <div class="section-loader">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>Checking disk usage...</span>
+          </div>
+        } @else if (diskUsage) {
+          <div class="usage-bars">
+            <div class="prop-row">
+              <span class="label">Used</span>
+              <span class="value">{{ diskUsage.used ?? 0 | formatFileSize }}</span>
+            </div>
+            <div class="prop-row">
+              <span class="label">Free</span>
+              <span class="value">{{ diskUsage.free ?? 0 | formatFileSize }}</span>
+            </div>
+            <div class="prop-row">
+              <span class="label">Total Capacity</span>
+              <span class="value">{{ diskUsage.total ?? 0 | formatFileSize }}</span>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

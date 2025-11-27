@@ -15,7 +15,7 @@ import { IconService } from 'src/app/shared/services/icon.service';
 import { FormatFileSizePipe, NormalizePathPipe } from 'src/app/shared/pipes';
 
 interface RemoteAboutData {
-  remote: { name: string; type?: string };
+  remote: { displayName: string; normalizedName: string; type?: string };
 }
 
 @Component({
@@ -60,7 +60,7 @@ export class RemoteAboutModalComponent implements OnInit {
 
   ngOnInit(): void {
     this.remoteType.set(this.data.remote.type || 'Unknown');
-    this.remoteName.set(this.data.remote.name);
+    this.remoteName.set(this.data.remote.normalizedName);
     this.loadDataSeparately();
   }
 

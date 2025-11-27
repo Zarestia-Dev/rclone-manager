@@ -645,14 +645,15 @@ pub mod operations {
     // /// - error - array of strings of all files with errors (hashing or reading)
     // pub const CHECK: &str = "operations/check";
 
-    // /// Remove trashed files in the remote or path.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - fs - a remote name string e.g. "drive:"
-    // ///
-    // /// See the [cleanup](/commands/rclone_cleanup/) command for more information on the above.
-    // pub const CLEANUP: &str = "operations/cleanup";
+    /// Remove trashed files in the remote or path.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - fs - a remote name string e.g. "drive:"
+    /// - remote - (optional) a path within that remote e.g. "dir"
+    ///
+    /// See the [cleanup](/commands/rclone_cleanup/) command for more information on the above.
+    pub const CLEANUP: &str = "operations/cleanup";
 
     // /// Copy a file from source remote to destination remote.
     // ///
@@ -879,15 +880,15 @@ pub mod operations {
     /// See the [lsjson](/commands/rclone_lsjson/) command for more information on the above and examples.
     pub const LIST: &str = "operations/list";
 
-    // /// Make a destination directory or container.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - fs - a remote name string e.g. "drive:"
-    // /// - remote - a path within that remote e.g. "dir"
-    // ///
-    // /// See the [mkdir](/commands/rclone_mkdir/) command for more information on the above.
-    // pub const MKDIR: &str = "operations/mkdir";
+    /// Make a destination directory or container.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - fs - a remote name string e.g. "drive:"
+    /// - remote - a path within that remote e.g. "dir"
+    ///
+    /// See the [mkdir](/commands/rclone_mkdir/) command for more information on the above.
+    pub const MKDIR: &str = "operations/mkdir";
 
     // /// Move a file from source remote to destination remote.
     // ///

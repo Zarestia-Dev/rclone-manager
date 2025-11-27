@@ -13,6 +13,7 @@ import {
   effect,
 } from '@angular/core';
 import { toSignal, toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { BehaviorSubject, combineLatest, from, of } from 'rxjs';
 import { catchError, finalize, map, switchMap, startWith, take } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
@@ -47,6 +48,8 @@ import { AnimationsService } from 'src/app/shared/services/animations.service';
 import { IconService } from 'src/app/shared/services/icon.service';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { PropertiesModalComponent } from '../properties/properties-modal.component';
+import { InputModalComponent } from 'src/app/shared/modals/input-modal/input-modal.component';
+import { NotificationService } from 'src/app/shared/services/notification.service';
 
 @Component({
   selector: 'app-nautilus',
@@ -95,11 +98,15 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public contextMenuX = signal(0);
   public contextMenuY = signal(0);
   public contextMenuItem: Entry | null = null;
+  private refreshTrigger = new BehaviorSubject<void>(undefined);
+  public activeRemoteSupportsCleanup = signal(false);
+
   // Sidebar (remotes) context menu state
   public sideContextVisible = signal(false);
   public sideContextX = signal(0);
   public sideContextY = signal(0);
   public sideContextRemote: { name: string; type?: string; fs_type?: string } | null = null;
+  public sideRemoteSupportsCleanup = signal(false);
   // Services
   private uiStateService = inject(UiStateService);
   private nautilusService = inject(NautilusService);
@@ -109,6 +116,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public iconService = inject(IconService);
   public fileViewerService = inject(FileViewerService);
   private dialog = inject(MatDialog);
+  private notificationService = inject(NotificationService);
 
   // Signals & State
   // Search removed temporarily (UI disabled). Per-tab history used instead.
@@ -273,7 +281,11 @@ export class NautilusComponent implements OnInit, OnDestroy {
   );
 
   // 1. Standard Browse Stream
-  private browseFiles$ = combineLatest([this.nautilusRemote, this.currentPath]).pipe(
+  private browseFiles$ = combineLatest([
+    this.nautilusRemote,
+    this.currentPath,
+    this.refreshTrigger,
+  ]).pipe(
     switchMap(([remote, path]) => {
       if (!remote?.name) {
         return of([]);
@@ -467,7 +479,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     }
 
     const prefix = this.pathSelectionService.normalizeRemoteForRclone(remote?.name);
-    const fullPaths = selectedPaths.map(path => `${prefix}${path}`);
+    const fullPaths = selectedPaths.map(path => `${prefix}/${path}`);
 
     this.nautilusService.closeFilePicker(fullPaths);
   }
@@ -510,6 +522,15 @@ export class NautilusComponent implements OnInit, OnDestroy {
     event.preventDefault();
     event.stopPropagation();
     this.contextMenuItem = item;
+    this.contextMenuX.set(event.clientX);
+    this.contextMenuY.set(event.clientY);
+    this.contextMenuVisible.set(true);
+  }
+
+  onBackgroundContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.contextMenuItem = null;
     this.contextMenuX.set(event.clientX);
     this.contextMenuY.set(event.clientY);
     this.contextMenuVisible.set(true);
@@ -754,9 +775,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const files = this.files();
     const currentIndex = files.findIndex(f => f.Path === item.Path);
 
-    const remoteName = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
-
-    this.fileViewerService.open(files, currentIndex, remoteName, remote.fs_type || 'remote');
+    this.fileViewerService.open(files, currentIndex, remote.name, remote.fs_type || 'remote');
   }
 
   openContextMenuOpenInNewTab(): void {
@@ -804,16 +823,138 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.contextMenuVisible.set(false);
   }
 
+  refresh(): void {
+    this.refreshTrigger.next();
+    this.contextMenuVisible.set(false);
+  }
+
+  private async checkCleanupSupportFor(remoteName?: string | null, forSide = false): Promise<void> {
+    try {
+      if (!remoteName) {
+        if (forSide) this.sideRemoteSupportsCleanup.set(false);
+        else this.activeRemoteSupportsCleanup.set(false);
+        return;
+      }
+
+      const normalized = this.pathSelectionService.normalizeRemoteForRclone(remoteName);
+      const info: any = await this.remoteManagement.getFsInfo(normalized);
+      const supported = !!(info && info.Features && info.Features.CleanUp);
+      if (forSide) this.sideRemoteSupportsCleanup.set(supported);
+      else this.activeRemoteSupportsCleanup.set(supported);
+    } catch (e) {
+      console.error('Failed to check cleanup support', e);
+      if (forSide) this.sideRemoteSupportsCleanup.set(false);
+      else this.activeRemoteSupportsCleanup.set(false);
+    }
+  }
+
   openContextMenuProperties(): void {
     const item = this.contextMenuItem;
-    if (!item) return;
     const remote = this.nautilusRemote.getValue();
     if (!remote) return;
-    const remoteName = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+
+    let remoteName = '';
+    let itemPath = '';
+
+    if (item) {
+      // Properties for a file or folder
+      if (remote.name !== 'Local') {
+        remoteName = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+        itemPath = item.Path;
+      } else {
+        remoteName = `/${item.Path}`;
+      }
+    } else {
+      // Properties for the current directory (background click)
+      const currentP = this.currentPath.getValue();
+      if (remote.name !== 'Local') {
+        remoteName = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+        itemPath = currentP;
+      } else {
+        remoteName = currentP ? `/${currentP}` : '/';
+      }
+    }
+
     this.dialog.open(PropertiesModalComponent, {
-      data: { remoteName, path: `/${item.Path}` },
+      data: {
+        remoteName,
+        path: itemPath,
+        fs_type: remote.fs_type || 'remote',
+        item: this.contextMenuItem,
+      },
     });
     this.contextMenuVisible.set(false);
+  }
+
+  async openContextMenuCleanup(): Promise<void> {
+    const remote = this.nautilusRemote.getValue();
+    if (!remote) return;
+
+    const normalized = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+    const current = this.currentPath.getValue();
+
+    const confirmed = await this.notificationService.confirmModal(
+      'Empty Trash',
+      `This will remove trashed files from ${remote.name}${current ? `/${current}` : ''}. Continue?`,
+      'Empty Trash',
+      'Cancel'
+    );
+
+    if (!confirmed) {
+      this.contextMenuVisible.set(false);
+      return;
+    }
+
+    try {
+      await this.remoteManagement.cleanup(normalized, current || undefined);
+      this.notificationService.showSuccess('Trash emptied successfully');
+      this.refresh();
+    } catch (err) {
+      console.error('Cleanup failed', err);
+      this.notificationService.showError('Failed to empty trash');
+    }
+
+    this.contextMenuVisible.set(false);
+  }
+
+  async openContextMenuNewFolder(): Promise<void> {
+    // Open a modal to ask for folder name (replaces window.prompt)
+    const remote = this.nautilusRemote.getValue();
+    if (!remote) {
+      console.warn('No active remote to create folder in');
+      this.contextMenuVisible.set(false);
+      return;
+    }
+
+    const normalized = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+    const current = this.currentPath.getValue();
+
+    // Collect existing names to validate uniqueness
+    const existingNames = (this.files() || []).map(f => f.Name);
+
+    const ref = this.dialog.open(InputModalComponent, {
+      data: {
+        title: 'New Folder',
+        label: 'Folder name',
+        icon: 'folder',
+        placeholder: 'Enter folder name',
+        existingNames,
+      },
+      disableClose: true,
+    });
+
+    try {
+      const folderName = await firstValueFrom(ref.afterClosed());
+      if (!folderName) {
+        this.contextMenuVisible.set(false);
+        return;
+      }
+      const newPath = current ? `${current}/${folderName}` : folderName;
+      await this.remoteManagement.makeDirectory(normalized, newPath);
+      this.refresh();
+    } catch (e) {
+      console.error('Failed to create folder', e);
+    }
   }
 
   // Remote (sidebar) context menu
@@ -827,6 +968,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.sideContextX.set(event.clientX);
     this.sideContextY.set(event.clientY);
     this.sideContextVisible.set(true);
+    // Check whether this remote supports cleanup
+    this.checkCleanupSupportFor(remote?.name, true);
     // hide file context menu if open
     if (this.contextMenuVisible()) this.contextMenuVisible.set(false);
   }
@@ -835,13 +978,49 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const remote = this.sideContextRemote;
     if (!remote) return;
 
-    remote.name = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+    const normalized = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+
+    // Pass both the display name (for UI) and the normalized name (for rclone calls)
+    const dialogRemote = {
+      displayName: remote.name,
+      normalizedName: normalized,
+      type: remote.type,
+    };
 
     this.dialog.open(RemoteAboutModalComponent, {
-      data: { remote },
+      data: { remote: dialogRemote },
       disableClose: false,
       ...STANDARD_MODAL_SIZE,
     });
+  }
+
+  async openSidebarCleanup(): Promise<void> {
+    const remote = this.sideContextRemote;
+    if (!remote) return;
+
+    const normalized = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
+
+    const confirmed = await this.notificationService.confirmModal(
+      'Empty Trash',
+      `This will remove trashed files from ${remote.name}. Continue?`,
+      'Empty Trash',
+      'Cancel'
+    );
+
+    if (!confirmed) {
+      this.sideContextVisible.set(false);
+      return;
+    }
+
+    try {
+      await this.remoteManagement.cleanup(normalized);
+      this.notificationService.showSuccess('Trash emptied successfully');
+    } catch (err) {
+      console.error('Cleanup failed', err);
+      this.notificationService.showError('Failed to empty trash');
+    }
+
+    this.sideContextVisible.set(false);
   }
 
   private _navigate(
@@ -872,6 +1051,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.updateSelectionSummary();
 
     this.updateHistoryButtonsState();
+    // Check if the newly active remote supports cleanup
+    this.checkCleanupSupportFor(remote?.name);
   }
 
   private updateHistoryButtonsState(): void {

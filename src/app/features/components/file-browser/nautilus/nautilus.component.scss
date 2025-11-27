@@ -219,6 +219,11 @@ mat-nav-list {
     width: 100%;
     justify-content: flex-start;
   }
+
+  mat-divider {
+    margin: 4px 0;
+    border-top-color: var(--theme-border);
+  }
 }
 
 /* Sidebar context menu */

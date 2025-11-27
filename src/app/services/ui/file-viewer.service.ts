@@ -87,7 +87,7 @@ export class FileViewerService {
     const baseUrl = this.configService.rcloneServeUrl();
     const isLocal = fsType === 'local';
     if (isLocal) {
-      if (!remoteName || remoteName === '/') {
+      if (!remoteName || remoteName === 'Local') {
         return convertFileSrc(`//${item.Path}`);
       } else {
         const nativePathForTauri = `${remoteName}${item.Path}`;
@@ -95,6 +95,6 @@ export class FileViewerService {
       }
     }
 
-    return `${baseUrl}/[${remoteName}]/${item.Path}`;
+    return `${baseUrl}/[${remoteName}:]/${item.Path}`;
   }
 }

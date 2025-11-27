@@ -94,11 +94,11 @@
           @case ('directory') {
             <div class="unsupported-container" role="status">
               <mat-icon svgIcon="folder" aria-hidden="true"></mat-icon>
-              @if (folderSize) {
+              @if (folderSize()) {
                 <p class="unsupported-text">{{ data.name }}</p>
-                <p class="unsupported-subtext">Contains {{ folderSize.count }} files</p>
+                <p class="unsupported-subtext">Contains {{ folderSize()?.count ?? 0 }} files</p>
                 <p class="unsupported-subtext">
-                  Total size: {{ folderSize.bytes | formatFileSize }}
+                  Total size: {{ folderSize()?.bytes ?? 0 | formatFileSize }}
                 </p>
               } @else {
                 <p class="unsupported-text">Calculating folder size...</p>

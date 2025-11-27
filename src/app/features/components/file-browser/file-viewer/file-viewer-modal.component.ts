@@ -58,7 +58,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   sanitizedUrl!: SafeResourceUrl;
 
   textContent: WritableSignal<string> = signal('');
-  folderSize: { count: number; bytes: number } | null = null;
+  folderSize: WritableSignal<{ count: number; bytes: number } | null> = signal(null);
 
   isLoading: WritableSignal<boolean> = signal(true);
 
@@ -100,17 +100,21 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     // Reset state immediately
     this.isLoading.set(true);
     this.textContent.set('');
-    this.folderSize = null;
-
-    console.log(this.data.remoteName);
+    this.folderSize.set(null);
     try {
       if (this.data.fileType === 'directory') {
         const item = this.data.items[this.data.currentIndex];
 
+        if (this.data.remoteName === 'Local') {
+          this.data.remoteName = `/${item.Path}`;
+          item.Path = '';
+        }
+
         await this.remoteManagementService
           .getSize(this.data.remoteName, item.Path)
           .then((size: { count: number; bytes: number }) => {
-            this.folderSize = size;
+            this.folderSize.set(size);
+            console.log('Folder size:', size);
           })
           .catch(err => {
             console.error('Failed to get folder size:', err);

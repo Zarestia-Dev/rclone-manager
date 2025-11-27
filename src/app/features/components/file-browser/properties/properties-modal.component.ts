@@ -1,96 +1,126 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import {
-  MatDialogRef,
-  MAT_DIALOG_DATA,
-  MatDialogActions,
-  MatDialogContent,
-} from '@angular/material/dialog';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
 import { RemoteManagementService } from '@app/services';
 import { Entry } from '@app/types';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
+import { IconService } from 'src/app/shared/services/icon.service';
 
 @Component({
   selector: 'app-properties-modal',
   standalone: true,
   imports: [
     CommonModule,
+    MatDialogModule,
     MatProgressSpinnerModule,
     MatIconModule,
+    MatButtonModule,
+    MatDividerModule,
     FormatFileSizePipe,
-    MatDialogActions,
-    MatDialogContent,
   ],
-  template: `
-    <div class="properties-container">
-      <h2 mat-dialog-title>Properties</h2>
-      <mat-dialog-content>
-        <div *ngIf="isLoading" class="spinner-container">
-          <mat-spinner></mat-spinner>
-        </div>
-        <div *ngIf="!isLoading && item">
-          <p><strong>Name:</strong> {{ item.Name }}</p>
-          <p><strong>Path:</strong> {{ item.Path }}</p>
-          <p><strong>Size:</strong> {{ item.Size | formatFileSize }}</p>
-          <p><strong>Modified:</strong> {{ item.ModTime | date: 'medium' }}</p>
-          <p><strong>Is Directory:</strong> {{ item.IsDir }}</p>
-          <p><strong>MIME Type:</strong> {{ item.MimeType }}</p>
-          <div *ngIf="item.IsDir && size">
-            <p><strong>Files in folder:</strong> {{ size.count }}</p>
-          </div>
-          <div *ngIf="diskUsage">
-            <p><strong>Total Disk Space:</strong> {{ diskUsage.total || '0' }}</p>
-            <p><strong>Used Disk Space:</strong> {{ diskUsage.used || '0' }}</p>
-            <p><strong>Free Disk Space:</strong> {{ diskUsage.free || '0' }}</p>
-          </div>
-        </div>
-      </mat-dialog-content>
-      <mat-dialog-actions>
-        <button mat-button (click)="close()">Close</button>
-      </mat-dialog-actions>
-    </div>
-  `,
-  styles: [
-    `
-      .properties-container {
-        width: 400px;
-      }
-      .spinner-container {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 200px;
-      }
-    `,
-  ],
+  templateUrl: './properties-modal.component.html',
+  styleUrls: ['./properties-modal.component.scss', '../../../../styles/_shared-modal.scss'],
 })
 export class PropertiesModalComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<PropertiesModalComponent>);
-  public data: { remoteName: string; path: string } = inject(MAT_DIALOG_DATA);
+  public data: { remoteName: string; path: string; fs_type: string; item?: Entry | null } =
+    inject(MAT_DIALOG_DATA);
   private remoteManagementService = inject(RemoteManagementService);
+  private iconService = inject(IconService);
 
-  isLoading = true;
+  // Separate loading states
+  loadingStat = true;
+  loadingSize = true;
+  loadingDiskUsage = true;
+
   item: Entry | null = null;
   size: { count: number; bytes: number } | null = null;
   diskUsage: { total?: number; used?: number; free?: number } | null = null;
+  displayLocation = '';
 
   ngOnInit(): void {
-    Promise.all([
-      this.remoteManagementService.getStat(this.data.remoteName, this.data.path),
-      this.remoteManagementService.getSize(this.data.remoteName, this.data.path),
-      this.remoteManagementService.getDiskUsage(this.data.remoteName, this.data.path),
-    ]).then(([stat, size, diskUsage]) => {
-      this.item = stat.item;
-      this.size = size;
-      this.diskUsage = diskUsage;
-      this.isLoading = false;
-      console.log('Loaded properties:', { stat, size, diskUsage });
-    });
+    const { remoteName, path, fs_type, item } = this.data;
+
+    // Set the item immediately from the data passed in (may be null for
+    // background/context-root properties). Treat a null item as the current
+    // directory (i.e., a directory context).
+    this.item = item ?? null;
+    this.loadingStat = false; // Basic stats are now pre-loaded.
+
+    // Construct the display location string
+    if (fs_type === 'local') {
+      this.displayLocation = remoteName;
+    } else {
+      // Ensure a colon separator for remote paths when applicable
+      const sep = remoteName && !remoteName.endsWith(':') ? ':' : '';
+      this.displayLocation = `${remoteName}${sep}${path}`;
+    }
+
+    // Determine whether target should be treated as a directory.
+    const targetIsDir = this.item ? !!this.item.IsDir : true;
+
+    // If it's a directory (or background directory), get its recursive size.
+    if (targetIsDir) {
+      this.remoteManagementService
+        .getSize(remoteName, path)
+        .then(size => {
+          this.size = size;
+          this.loadingSize = false;
+        })
+        .catch(err => {
+          console.error('Failed to load size', err);
+          this.loadingSize = false;
+        });
+    } else if (this.item) {
+      // If it's a file, we already have the size from the passed-in item.
+      this.size = { count: 1, bytes: this.item.Size };
+      this.loadingSize = false;
+    } else {
+      // No item and not a directory (shouldn't happen) — mark size loaded.
+      this.loadingSize = false;
+    }
+
+    // 3. Get Disk Usage (this is separate and still needed)
+    let diskUsageRemote = remoteName;
+    let diskUsagePath = path;
+
+    if (fs_type === 'local' && !(item && item.IsDir)) {
+      // For a local file, the backend needs a directory to check disk usage.
+      // We'll use the file's parent directory.
+      const lastSlashIndex = remoteName.lastIndexOf('/');
+      if (lastSlashIndex === 0) {
+        // File in root directory, e.g., /file.txt. Parent is /.
+        diskUsageRemote = '/';
+      } else if (lastSlashIndex > 0) {
+        // File in a subdirectory, e.g., /path/to/file.txt
+        diskUsageRemote = remoteName.substring(0, lastSlashIndex);
+      }
+      diskUsagePath = ''; // Path is encoded in remoteName for local.
+    }
+    this.remoteManagementService
+      .getDiskUsage(diskUsageRemote, diskUsagePath)
+      .then(diskUsage => {
+        this.diskUsage = diskUsage;
+        this.loadingDiskUsage = false;
+      })
+      .catch(err => {
+        console.error('Failed to load disk usage', err);
+        this.loadingDiskUsage = false;
+      });
   }
 
+  @HostListener('keydown.escape')
   close(): void {
     this.dialogRef.close();
+  }
+
+  getIcon(item?: Entry | null): string {
+    if (!item) return 'folder';
+    if (item.IsDir) return 'folder';
+    return this.iconService.getIconForFileType(item.Name);
   }
 }

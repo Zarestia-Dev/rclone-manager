@@ -153,6 +153,7 @@
           (click)="clearSelection()"
           (keydown.space)="clearSelection()"
           tabindex="0"
+          (contextmenu)="onBackgroundContextMenu($event)"
         >
           <div
             class="grid"
@@ -201,6 +202,7 @@
           (click)="clearSelection()"
           (keydown.space)="clearSelection()"
           tabindex="0"
+          (contextmenu)="onBackgroundContextMenu($event)"
         >
           <div class="list-header">
             <div class="list-col name">
@@ -292,11 +294,25 @@
       tabindex="0"
       (keydown.escape)="contextMenuVisible.set(false)"
     >
-      <button mat-menu-item (click)="openContextMenuOpen()">Open</button>
-      <button mat-menu-item (click)="openContextMenuOpenInNewTab()">Open in New Tab</button>
+      @if (contextMenuItem) {
+        <button mat-menu-item (click)="openContextMenuOpen()">Open</button>
+        <button mat-menu-item (click)="openContextMenuOpenInNewTab()">Open in New Tab</button>
+        <button mat-menu-item (click)="openContextMenuSelectToggle()">Toggle Select</button>
+        <button mat-menu-item (click)="openContextMenuCopyPath()">Copy Path</button>
+        <mat-divider></mat-divider>
+      }
+      @if (!contextMenuItem) {
+        <button mat-menu-item (click)="openContextMenuNewFolder()">New Folder</button>
+        <button
+          mat-menu-item
+          (click)="openContextMenuCleanup()"
+          [disabled]="!activeRemoteSupportsCleanup()"
+        >
+          Empty Trash
+        </button>
+      }
+      <button mat-menu-item (click)="refresh()">Refresh</button>
       <button mat-menu-item (click)="openContextMenuProperties()">Properties</button>
-      <button mat-menu-item (click)="openContextMenuSelectToggle()">Toggle Select</button>
-      <button mat-menu-item (click)="openContextMenuCopyPath()">Copy Path</button>
     </div>
 
     @if (isPickerMode()) {
@@ -324,6 +340,9 @@
     Open in New Tab
   </button>
   <button mat-menu-item (click)="openRemoteAboutFromSidebar()">About</button>
+  <button mat-menu-item (click)="openSidebarCleanup()" [disabled]="!sideRemoteSupportsCleanup()">
+    Empty Trash
+  </button>
 </div>
 <mat-menu #viewMenu="matMenu">
   <div

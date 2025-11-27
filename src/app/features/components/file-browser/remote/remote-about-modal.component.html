@@ -4,7 +4,7 @@
     <button>
       <mat-icon [svgIcon]="iconService.getIconName(data.remote.type)"></mat-icon>
     </button>
-    <p>{{ data.remote.name }}</p>
+    <p>{{ data.remote.displayName }}</p>
     <button mat-icon-button (click)="close()" aria-label="Close dialog">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>

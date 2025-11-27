@@ -24,17 +24,9 @@ pub async fn get_fs_info(
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::FSINFO);
+    debug!("ℹ️ Getting fs info for remote: {remote}, path: {path:?}");
 
-    let fs_path = if remote.is_empty() {
-        path.unwrap_or_default()
-    } else {
-        match path {
-            Some(p) if !p.is_empty() => format!("{remote}{p}"),
-            _ => remote,
-        }
-    };
-
-    let params = json!({ "fs": fs_path });
+    let params = json!({ "fs": remote, "remote": path });
 
     let response = state
         .client
@@ -61,21 +53,12 @@ pub async fn get_remote_paths(
 ) -> Result<serde_json::Value, String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::LIST);
     debug!("📂 Listing remote paths: remote={remote}, path={path:?}, options={options:?}");
+
     let mut params = serde_json::Map::new();
-    let (fs_name, remote_param) = if remote.is_empty() {
-        ("/".to_string(), path.unwrap_or_default())
-    } else {
-        (remote, path.unwrap_or_default())
-    };
-    params.insert("fs".to_string(), serde_json::Value::String(fs_name));
-    params.insert(
-        "remote".to_string(),
-        serde_json::Value::String(remote_param),
-    );
+    params.insert("fs".to_string(), json!(remote));
+    params.insert("remote".to_string(), json!(path));
 
     let mut opt = serde_json::Map::new();
-    opt.insert("metadata".to_string(), json!(true));
-
     if let Some(list_options) = options {
         for (key, value) in list_options.extra {
             opt.insert(key, value);
@@ -86,7 +69,7 @@ pub async fn get_remote_paths(
     let response = state
         .client
         .post(&url)
-        .json(&serde_json::Value::Object(params))
+        .json(&params)
         .send()
         .await
         .map_err(|e| format!("❌ Failed to list remote paths: {e}"))?;
@@ -209,17 +192,9 @@ pub async fn get_about_remote(
     state: State<'_, RcloneState>,
 ) -> Result<serde_json::Value, String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::ABOUT);
+    debug!("ℹ️ Getting about info for remote: {remote}, path: {path:?}");
 
-    let fs_path = if remote.is_empty() {
-        path.unwrap_or_default()
-    } else {
-        match path {
-            Some(p) if !p.is_empty() => format!("{remote}{p}"),
-            _ => remote,
-        }
-    };
-
-    let params = json!({ "fs": fs_path, });
+    let params = json!({ "fs": remote, "remote": path });
 
     let response = state
         .client
@@ -246,16 +221,7 @@ pub async fn get_size(
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::SIZE);
     debug!("📏 Getting size for remote: {remote}, path: {path:?}");
 
-    let fs_path = if remote.is_empty() {
-        path.unwrap_or_default()
-    } else {
-        match path {
-            Some(p) if !p.is_empty() => format!("{remote}{p}"),
-            _ => remote,
-        }
-    };
-
-    let params = json!({ "fs": fs_path });
+    let params = json!({ "fs": remote, "remote": path });
 
     let response = state
         .client
@@ -282,12 +248,7 @@ pub async fn get_stat(
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::STAT);
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
 
-    let fs_name = if remote.is_empty() || remote == "Local" {
-        "/".to_string()
-    } else {
-        remote
-    };
-    let params = json!({ "fs": fs_name, "remote": path });
+    let params = json!({ "fs": remote, "remote": path });
 
     let response = state
         .client

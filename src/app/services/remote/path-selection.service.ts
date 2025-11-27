@@ -19,7 +19,6 @@ export class PathSelectionService {
   private readonly remoteManagementService = inject(RemoteManagementService);
 
   private readonly pathStates = new Map<string, BehaviorSubject<PathSelectionState>>();
-  private readonly debounceTimers = new Map<string, any>();
 
   // ============================================================================
   // PUBLIC API
@@ -56,13 +55,9 @@ export class PathSelectionService {
   }
 
   /**
-   * Unregisters a field, cleaning up its state and timers.
+   * Unregisters a field, cleaning up its state.
    */
   public unregisterField(fieldId: string): void {
-    if (this.debounceTimers.has(fieldId)) {
-      clearTimeout(this.debounceTimers.get(fieldId));
-      this.debounceTimers.delete(fieldId);
-    }
     if (this.pathStates.has(fieldId)) {
       this.pathStates.get(fieldId)?.complete();
       this.pathStates.delete(fieldId);
@@ -70,22 +65,13 @@ export class PathSelectionService {
   }
 
   /**
-   * Handles user typing in the input field, with debouncing.
+   * Handles user typing in the input field.
    */
   public updateInput(fieldId: string, value: string): void {
-    if (this.debounceTimers.has(fieldId)) {
-      clearTimeout(this.debounceTimers.get(fieldId));
-    }
-
     const state = this.pathStates.get(fieldId)?.getValue();
     if (!state) return;
 
-    this.debounceTimers.set(
-      fieldId,
-      setTimeout(() => {
-        this.fetchEntries(fieldId, state.remoteName, value);
-      }, 300)
-    );
+    this.fetchEntries(fieldId, state.remoteName, value);
   }
 
   /**
