@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, HostListener, inject, OnInit, signal } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
@@ -69,33 +69,32 @@ export class RemoteAboutModalComponent implements OnInit {
    * Allows the UI to show partial data as it arrives.
    */
   loadDataSeparately(): void {
-    // 1. Load FS Info (Fastest)
+    // 1. Load FS Info & Check for 'About' feature support
     this.loadingAbout.set(true);
+    this.loadingUsage.set(true);
     this.remoteManagementService
       .getFsInfo(this.remoteName())
       .then(info => {
-        this.aboutInfo.set(info as Record<string, unknown>);
+        const typedInfo = info as Record<string, any>;
+        this.aboutInfo.set(typedInfo);
         console.log('Loaded FS Info:', info);
-
         this.loadingAbout.set(false);
+
+        // Check if 'About' feature is supported before fetching usage
+        const features = typedInfo['Features'] as Record<string, boolean>;
+        if (features && features['About']) {
+          this.fetchDiskUsage();
+        } else {
+          // Feature not supported
+          console.log('About feature not supported, skipping disk usage fetch.');
+          this.loadingUsage.set(false);
+          this.diskUsageInfo.set(null);
+        }
       })
       .catch(err => {
         console.error('Error loading fs info:', err);
         this.errorAbout.set('Failed to load remote information.');
         this.loadingAbout.set(false);
-      });
-
-    // 2. Load Disk Usage
-    this.loadingUsage.set(true);
-    this.remoteManagementService
-      .getDiskUsage(this.remoteName())
-      .then(usage => {
-        this.diskUsageInfo.set(usage);
-        console.log('Loaded Disk Usage:', usage);
-        this.loadingUsage.set(false);
-      })
-      .catch(err => {
-        console.warn('Disk usage check failed (might not be supported):', err);
         this.loadingUsage.set(false);
       });
 
@@ -111,6 +110,21 @@ export class RemoteAboutModalComponent implements OnInit {
       .catch(err => {
         console.warn('Size check failed:', err);
         this.loadingSize.set(false);
+      });
+  }
+
+  private fetchDiskUsage(): void {
+    this.remoteManagementService
+      .getDiskUsage(this.remoteName())
+      .then(usage => {
+        this.diskUsageInfo.set(usage);
+        console.log('Loaded Disk Usage:', usage);
+      })
+      .catch(err => {
+        console.warn('Disk usage check failed:', err);
+      })
+      .finally(() => {
+        this.loadingUsage.set(false);
       });
   }
 
@@ -175,6 +189,7 @@ export class RemoteAboutModalComponent implements OnInit {
     return groups;
   }
 
+  @HostListener('window:escape')
   close(): void {
     this.dialogRef.close();
   }

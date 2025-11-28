@@ -5,9 +5,10 @@ use tauri::State;
 
 use crate::RcloneState;
 use crate::rclone::state::engine::ENGINE_STATE;
+use crate::utils::async_operations::execute_async_operation;
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, operations},
-    types::all_types::{DiskUsage, ListOptions},
+    types::all_types::{DiskUsage, JobResponse, ListOptions},
 };
 
 #[derive(Serialize, Clone)]
@@ -26,22 +27,32 @@ pub async fn get_fs_info(
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::FSINFO);
     debug!("ℹ️ Getting fs info for remote: {remote}, path: {path:?}");
 
-    let params = json!({ "fs": remote, "remote": path });
+    let mut params = serde_json::Map::new();
+    params.insert("fs".to_string(), json!(remote));
+    params.insert("remote".to_string(), json!(path));
+    params.insert("_async".to_string(), json!(true));
 
-    let response = state
-        .client
-        .post(&url)
-        .json(&params)
-        .send()
-        .await
-        .map_err(|e| format!("❌ Failed to get fs info: {e}"))?;
+    let client = state.client.clone();
+    let client_for_monitor = client.clone();
+    let url_clone = url.clone();
+    let params_value = json!(params);
 
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+    execute_async_operation("Get fs info", client_for_monitor, || async move {
+        let response = client
+            .post(&url_clone)
+            .json(&params_value)
+            .send()
+            .await
+            .map_err(|e| format!("❌ Failed to get fs info: {e}"))?;
 
-    Ok(json)
+        let job: JobResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+
+        Ok(job.jobid)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -65,21 +76,29 @@ pub async fn get_remote_paths(
         }
     }
     params.insert("opt".to_string(), json!(opt));
+    params.insert("_async".to_string(), json!(true));
 
-    let response = state
-        .client
-        .post(&url)
-        .json(&params)
-        .send()
-        .await
-        .map_err(|e| format!("❌ Failed to list remote paths: {e}"))?;
+    let client = state.client.clone();
+    let client_for_monitor = client.clone();
+    let url_clone = url.clone();
+    let params_value = json!(params);
 
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+    execute_async_operation("List remote paths", client_for_monitor, || async move {
+        let response = client
+            .post(&url_clone)
+            .json(&params_value)
+            .send()
+            .await
+            .map_err(|e| format!("❌ Failed to list remote paths: {e}"))?;
 
-    Ok(json)
+        let job: JobResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+
+        Ok(job.jobid)
+    })
+    .await
 }
 
 #[cfg(windows)]
@@ -148,20 +167,36 @@ pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
 #[cfg(not(windows))]
 #[tauri::command]
 pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
-    Ok(vec![LocalDrive {
-        name: "Local".to_string(),
+    use std::env;
+    let mut drives = Vec::new();
+
+    // Add Home directory if available
+    if let Ok(home) = env::var("HOME") {
+        drives.push(LocalDrive {
+            name: home,
+            fs_type: "local".to_string(),
+            label: "Home".to_string(),
+        });
+    }
+
+    // Add root filesystem
+    drives.push(LocalDrive {
+        name: "/".to_string(),
         fs_type: "local".to_string(),
-        label: "Local Filesystem".to_string(),
-    }])
+        label: "File System".to_string(),
+    });
+
+    Ok(drives)
 }
 
+/// Get disk usage (async by default)
 #[tauri::command]
 pub async fn get_disk_usage(
     remote: String,
     path: Option<String>,
     state: State<'_, RcloneState>,
 ) -> Result<DiskUsage, String> {
-    // Delegate the HTTP request to `get_about_remote` and convert its result
+    // Delegate to get_about_remote (which is now async)
     let json = get_about_remote(remote.clone(), path.clone(), state).await?;
 
     // Extract usage information
@@ -169,7 +204,7 @@ pub async fn get_disk_usage(
     let used = json["used"].as_i64().unwrap_or(0);
     let free = json["free"].as_i64().unwrap_or(0);
 
-    // Compute fs_path string for logging (mirror logic from get_about_remote)
+    // Compute fs_path string for logging
     let fs_path = if remote.is_empty() {
         path.unwrap_or_else(|| "/".to_string())
     } else {
@@ -194,22 +229,32 @@ pub async fn get_about_remote(
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::ABOUT);
     debug!("ℹ️ Getting about info for remote: {remote}, path: {path:?}");
 
-    let params = json!({ "fs": remote, "remote": path });
+    let mut params = serde_json::Map::new();
+    params.insert("fs".to_string(), json!(remote));
+    params.insert("remote".to_string(), json!(path));
+    params.insert("_async".to_string(), json!(true));
 
-    let response = state
-        .client
-        .post(&url)
-        .json(&params)
-        .send()
-        .await
-        .map_err(|e| format!("❌ Failed to get about info: {e}"))?;
+    let client = state.client.clone();
+    let client_for_monitor = client.clone();
+    let url_clone = url.clone();
+    let params_value = json!(params);
 
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+    execute_async_operation("Get about info", client_for_monitor, || async move {
+        let response = client
+            .post(&url_clone)
+            .json(&params_value)
+            .send()
+            .await
+            .map_err(|e| format!("❌ Failed to get about info: {e}"))?;
 
-    Ok(json)
+        let job: JobResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+
+        Ok(job.jobid)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -221,22 +266,32 @@ pub async fn get_size(
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::SIZE);
     debug!("📏 Getting size for remote: {remote}, path: {path:?}");
 
-    let params = json!({ "fs": remote, "remote": path });
+    let mut params = serde_json::Map::new();
+    params.insert("fs".to_string(), json!(remote));
+    params.insert("remote".to_string(), json!(path));
+    params.insert("_async".to_string(), json!(true));
 
-    let response = state
-        .client
-        .post(&url)
-        .json(&params)
-        .send()
-        .await
-        .map_err(|e| format!("❌ Failed to get size: {e}"))?;
+    let client = state.client.clone();
+    let client_for_monitor = client.clone();
+    let url_clone = url.clone();
+    let params_value = json!(params);
 
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+    execute_async_operation("Get size", client_for_monitor, || async move {
+        let response = client
+            .post(&url_clone)
+            .json(&params_value)
+            .send()
+            .await
+            .map_err(|e| format!("❌ Failed to get size: {e}"))?;
 
-    Ok(json)
+        let job: JobResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+
+        Ok(job.jobid)
+    })
+    .await
 }
 
 #[tauri::command]
@@ -248,20 +303,30 @@ pub async fn get_stat(
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::STAT);
     debug!("📊 Getting stats for remote: {remote}, path: {path}");
 
-    let params = json!({ "fs": remote, "remote": path });
+    let mut params = serde_json::Map::new();
+    params.insert("fs".to_string(), json!(remote));
+    params.insert("remote".to_string(), json!(path));
+    params.insert("_async".to_string(), json!(true));
 
-    let response = state
-        .client
-        .post(&url)
-        .json(&params)
-        .send()
-        .await
-        .map_err(|e| format!("❌ Failed to get stat: {e}"))?;
+    let client = state.client.clone();
+    let client_for_monitor = client.clone();
+    let url_clone = url.clone();
+    let params_value = json!(params);
 
-    let json: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+    execute_async_operation("Get stat", client_for_monitor, || async move {
+        let response = client
+            .post(&url_clone)
+            .json(&params_value)
+            .send()
+            .await
+            .map_err(|e| format!("❌ Failed to get stat: {e}"))?;
 
-    Ok(json)
+        let job: JobResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+
+        Ok(job.jobid)
+    })
+    .await
 }

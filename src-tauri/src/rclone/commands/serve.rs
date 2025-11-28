@@ -1,20 +1,24 @@
-use log::{debug, error, info};
+use log::{debug, info};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
     RcloneState,
-    rclone::state::engine::ENGINE_STATE,
+    rclone::{commands::job::submit_job_and_wait, state::engine::ENGINE_STATE},
     utils::{
         json_helpers::{get_string, json_to_hashmap},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, serve},
-        types::{all_types::LogLevel, events::SERVE_STATE_CHANGED},
+        types::{
+            all_types::{JobCache, LogLevel},
+            events::SERVE_STATE_CHANGED,
+        },
     },
 };
 
 use super::system::redact_sensitive_values;
+use crate::rclone::commands::job::JobMetadata;
 
 /// Parameters for starting a serve instance
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -98,6 +102,7 @@ async fn handle_rclone_response(
 #[tauri::command]
 pub async fn start_serve(
     app: AppHandle,
+    _job_cache: State<'_, JobCache>,
     params: ServeParams,
 ) -> Result<ServeStartResponse, String> {
     // Validate remote name
@@ -195,51 +200,43 @@ pub async fn start_serve(
 
     let payload = Value::Object(payload);
 
-    // Make the request
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::START);
-    let response = state
-        .client
-        .post(&url)
-        .json(&payload)
-        .send()
-        .await
-        .map_err(|e| {
-            let error = format!("Serve start request failed: {e}");
-            let error_for_log = error.clone();
-            let remote_name_clone = params.remote_name.clone();
-            let payload_clone = payload.clone();
-            tauri::async_runtime::spawn(async move {
-                log_operation(
-                    LogLevel::Error,
-                    Some(remote_name_clone),
-                    Some("Start serve".to_string()),
-                    error_for_log,
-                    Some(json!({"payload": payload_clone})),
-                );
-            });
-            error
-        })?;
 
-    // Handle response
-    let body = handle_rclone_response(response, "Start serve", &params.remote_name).await?;
+    // Determine source string for metadata
+    let source_str = params
+        .serve_options
+        .as_ref()
+        .and_then(|o| o.get("fs"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
 
-    // Try to parse the response - handle different possible formats
-    let serve_response: ServeStartResponse = serde_json::from_str(&body).map_err(|e| {
-        let err_msg = format!("Failed to parse successful serve response: {e}. Body: {body}");
-        error!("{err_msg}");
-        // Log this unexpected (but successful status) response
-        let remote_name_clone = params.remote_name.clone();
-        tauri::async_runtime::spawn(async move {
-            log_operation(
-                LogLevel::Error,
-                Some(remote_name_clone),
-                Some("Start serve".to_string()),
-                err_msg,
-                Some(json!({"response": body})),
-            );
-        });
-        format!("Failed to parse response: {e}")
-    })?;
+    let (jobid, response_json) = submit_job_and_wait(
+        app.clone(),
+        state.client.clone(),
+        url,
+        payload,
+        JobMetadata {
+            remote_name: params.remote_name.clone(),
+            job_type: "serve".to_string(),
+            operation_name: "Start serve".to_string(),
+            source: source_str,
+            destination: "Initializing...".to_string(),
+        },
+    )
+    .await?;
+
+    // Extract address from response (Serve specific)
+    let addr = response_json
+        .get("addr")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    let serve_response = ServeStartResponse {
+        id: jobid.to_string(), // Or response_json["id"] if jobid was parsed differently
+        addr: addr.clone(),
+    };
 
     log_operation(
         LogLevel::Info,
@@ -266,7 +263,6 @@ pub async fn start_serve(
 
     Ok(serve_response)
 }
-
 /// Stop a specific serve instance by ID
 #[tauri::command]
 pub async fn stop_serve(

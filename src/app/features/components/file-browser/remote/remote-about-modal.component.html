@@ -42,8 +42,10 @@
                     <span class="value">
                       @if (loadingUsage()) {
                         <mat-spinner diameter="16"></mat-spinner>
-                      } @else {
+                      } @else if (diskUsageInfo()) {
                         {{ diskUsageInfo()?.total ?? 0 | formatFileSize }}
+                      } @else {
+                        -
                       }
                     </span>
                   </div>
@@ -52,8 +54,10 @@
                     <span class="value">
                       @if (loadingUsage()) {
                         <mat-spinner diameter="16"></mat-spinner>
-                      } @else {
+                      } @else if (diskUsageInfo()) {
                         {{ diskUsageInfo()?.used ?? 0 | formatFileSize }}
+                      } @else {
+                        -
                       }
                     </span>
                   </div>
@@ -62,8 +66,10 @@
                     <span class="value">
                       @if (loadingUsage()) {
                         <mat-spinner diameter="16"></mat-spinner>
-                      } @else {
+                      } @else if (diskUsageInfo()) {
                         {{ diskUsageInfo()?.free ?? 0 | formatFileSize }}
+                      } @else {
+                        -
                       }
                     </span>
                   </div>

@@ -17,12 +17,12 @@ import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { catchError, takeUntil } from 'rxjs/operators';
 import { Subject, of } from 'rxjs';
-import { Entry } from '@app/types';
 import { FileViewerService } from '../../../../services/ui/file-viewer.service';
 import { IconService } from 'src/app/shared/services/icon.service';
 import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
-import { FormatFileSizePipe } from '../../../../shared/pipes/format-file-size.pipe';
 import { NotificationService } from 'src/app/shared/services/notification.service';
+import { FormatFileSizePipe } from '@app/pipes';
+import { Entry } from '@app/types';
 
 @Component({
   selector: 'app-file-viewer-modal',
@@ -104,17 +104,20 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     try {
       if (this.data.fileType === 'directory') {
         const item = this.data.items[this.data.currentIndex];
+        // Logic is now robust for any path structure.
+        let fsName = this.data.remoteName;
 
-        if (this.data.remoteName === 'Local') {
-          this.data.remoteName = `/${item.Path}`;
-          item.Path = '';
+        // If remote (not local), ensure it has the colon for the API call
+        if (!this.data.isLocal && !fsName.includes(':')) {
+          fsName = `${fsName}:`;
         }
 
+        // For local: fsName is "C:" or "/", path is "path/to/dir"
+        // For remote: fsName is "gdrive:", path is "path/to/dir"
         await this.remoteManagementService
-          .getSize(this.data.remoteName, item.Path)
+          .getSize(fsName, item.Path)
           .then((size: { count: number; bytes: number }) => {
             this.folderSize.set(size);
-            console.log('Folder size:', size);
           })
           .catch(err => {
             console.error('Failed to get folder size:', err);
@@ -158,7 +161,10 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       console.error('Error updating content:', error);
       this.notificationService.showError('An unexpected error occurred');
     } finally {
-      this.isLoading.set(false);
+      // For text and folders, we are done. For media, the load event will clear this.
+      if (this.data.fileType === 'text' || this.data.fileType === 'directory') {
+        this.isLoading.set(false);
+      }
     }
   }
 
@@ -191,6 +197,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     const item = this.data.items[this.data.currentIndex];
     this.data.name = item.Name;
     this.data.fileType = this.fileViewerService.getFileType(item);
+
     this.data.url = this.fileViewerService.generateUrl(
       item,
       this.data.remoteName,

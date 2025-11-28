@@ -1,8 +1,15 @@
 <div class="properties-modal">
   <div class="modal-header" data-tauri-drag-region>
-    <div class="header-icon-wrapper">
-      <mat-icon svgIcon="info"></mat-icon>
-    </div>
+    <button
+      mat-icon-button
+      (click)="toggleStar()"
+      [attr.aria-label]="isStarred() ? 'Unstar' : 'Star'"
+    >
+      <mat-icon
+        [svgIcon]="isStarred() ? 'star' : 'star-outline'"
+        [class.starred]="isStarred()"
+      ></mat-icon>
+    </button>
     <p>Properties</p>
     <button mat-icon-button (click)="close()" aria-label="Close">
       <mat-icon svgIcon="circle-xmark"></mat-icon>

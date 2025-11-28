@@ -800,7 +800,6 @@ button {
   &:disabled {
     background: rgba(var(--secondary-text-color-rgb), 0.3) !important;
     color: rgba(var(--app-text-color-rgb), 0.5) !important;
-    cursor: not-allowed !important;
     transform: none !important;
     box-shadow: none !important;
   }

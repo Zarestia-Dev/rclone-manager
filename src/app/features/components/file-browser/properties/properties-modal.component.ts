@@ -1,11 +1,11 @@
-import { Component, HostListener, OnInit, inject } from '@angular/core';
+import { Component, HostListener, OnInit, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
-import { RemoteManagementService } from '@app/services';
+import { RemoteManagementService, NautilusService } from '@app/services'; // Switched to NautilusService
 import { Entry } from '@app/types';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { IconService } from 'src/app/shared/services/icon.service';
@@ -29,7 +29,9 @@ export class PropertiesModalComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<PropertiesModalComponent>);
   public data: { remoteName: string; path: string; fs_type: string; item?: Entry | null } =
     inject(MAT_DIALOG_DATA);
+
   private remoteManagementService = inject(RemoteManagementService);
+  private nautilusService = inject(NautilusService);
   private iconService = inject(IconService);
 
   // Separate loading states
@@ -42,28 +44,27 @@ export class PropertiesModalComponent implements OnInit {
   diskUsage: { total?: number; used?: number; free?: number } | null = null;
   displayLocation = '';
 
+  // Reactive Star State derived from Service
+  isStarred = computed(() => this.nautilusService.isStarred(this.data.remoteName, this.data.path));
+
   ngOnInit(): void {
     const { remoteName, path, fs_type, item } = this.data;
 
-    // Set the item immediately from the data passed in (may be null for
-    // background/context-root properties). Treat a null item as the current
-    // directory (i.e., a directory context).
+    // Set the item immediately
     this.item = item ?? null;
-    this.loadingStat = false; // Basic stats are now pre-loaded.
+    this.loadingStat = false;
 
     // Construct the display location string
     if (fs_type === 'local') {
       this.displayLocation = remoteName;
     } else {
-      // Ensure a colon separator for remote paths when applicable
       const sep = remoteName && !remoteName.endsWith(':') ? ':' : '';
       this.displayLocation = `${remoteName}${sep}${path}`;
     }
 
-    // Determine whether target should be treated as a directory.
     const targetIsDir = this.item ? !!this.item.IsDir : true;
 
-    // If it's a directory (or background directory), get its recursive size.
+    // 1. Get Size/Count (if directory)
     if (targetIsDir) {
       this.remoteManagementService
         .getSize(remoteName, path)
@@ -76,30 +77,24 @@ export class PropertiesModalComponent implements OnInit {
           this.loadingSize = false;
         });
     } else if (this.item) {
-      // If it's a file, we already have the size from the passed-in item.
       this.size = { count: 1, bytes: this.item.Size };
       this.loadingSize = false;
     } else {
-      // No item and not a directory (shouldn't happen) — mark size loaded.
       this.loadingSize = false;
     }
 
-    // 3. Get Disk Usage (this is separate and still needed)
+    // 2. Get Disk Usage
     let diskUsageRemote = remoteName;
     let diskUsagePath = path;
 
     if (fs_type === 'local' && !(item && item.IsDir)) {
-      // For a local file, the backend needs a directory to check disk usage.
-      // We'll use the file's parent directory.
       const lastSlashIndex = remoteName.lastIndexOf('/');
       if (lastSlashIndex === 0) {
-        // File in root directory, e.g., /file.txt. Parent is /.
         diskUsageRemote = '/';
       } else if (lastSlashIndex > 0) {
-        // File in a subdirectory, e.g., /path/to/file.txt
         diskUsageRemote = remoteName.substring(0, lastSlashIndex);
       }
-      diskUsagePath = ''; // Path is encoded in remoteName for local.
+      diskUsagePath = '';
     }
     this.remoteManagementService
       .getDiskUsage(diskUsageRemote, diskUsagePath)
@@ -111,6 +106,21 @@ export class PropertiesModalComponent implements OnInit {
         console.error('Failed to load disk usage', err);
         this.loadingDiskUsage = false;
       });
+  }
+
+  toggleStar(): void {
+    // Construct a minimal entry if we are looking at properties of a folder without the Entry object
+    const entryToSave = this.item || {
+      Name: this.data.path.split('/').pop() || this.data.remoteName,
+      Path: this.data.path,
+      IsDir: true,
+      Size: 0,
+      ModTime: new Date().toISOString(),
+      ID: '',
+      MimeType: '',
+    };
+
+    this.nautilusService.toggleStar(this.data.remoteName, entryToSave);
   }
 
   @HostListener('keydown.escape')

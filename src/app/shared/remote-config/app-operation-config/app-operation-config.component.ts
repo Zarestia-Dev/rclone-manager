@@ -27,6 +27,7 @@ import { PathSelectionService, PathSelectionState, FileSystemService } from '@ap
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CronInputComponent } from '@app/shared/components';
+import { NotificationService } from 'src/app/shared/services/notification.service'; // Added
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathGroup = 'source' | 'dest';
@@ -62,11 +63,14 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   @Input() description = '';
   @Input() isNewRemote = true;
 
+  // These outputs might be less relevant now that we handle selection internally,
+  // but keeping them for compatibility.
   @Output() sourceFolderSelected = new EventEmitter<void>();
   @Output() destFolderSelected = new EventEmitter<void>();
 
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly fileSystemService = inject(FileSystemService);
+  private readonly notificationService = inject(NotificationService); // Injected
   private readonly cdRef = inject(ChangeDetectorRef);
   private readonly destroy$ = new Subject<void>();
 
@@ -159,7 +163,6 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     const cronEnabledControl = this.opFormGroup.get('cronEnabled');
 
     if (cronControl) {
-      // Listen for external changes (e.g., from modal population)
       cronControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
         if (value) {
           this.cdRef.markForCheck();
@@ -167,7 +170,6 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
       });
     }
 
-    // Auto-expand panel when cron is enabled
     if (cronEnabledControl) {
       cronEnabledControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(enabled => {
         if (enabled) {
@@ -186,10 +188,8 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     const pathTypeControl = formGroup?.get('pathType');
     if (!pathTypeControl) return;
 
-    // Set initial state
     this.handlePathTypeChange(group, pathTypeControl.value);
 
-    // Watch for changes
     pathTypeControl.valueChanges
       .pipe(takeUntil(this.destroy$))
       .subscribe(value => this.handlePathTypeChange(group, value));
@@ -211,7 +211,6 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
       this.destPathType = pathType;
     }
 
-    // Update otherRemoteName control for display purposes
     const otherRemoteControl = this.getFormGroup(group)?.get('otherRemoteName');
     if (otherRemoteControl && pathType === 'otherRemote') {
       otherRemoteControl.patchValue(remoteName || '', { emitEvent: false });
@@ -222,12 +221,8 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     const fieldId = group === 'source' ? this.sourceFieldId : this.destFieldId;
     const remoteName = this.getRemoteNameFromValue(pathTypeValue);
 
-    // Unregister old field to clear state
     this.pathSelectionService.unregisterField(fieldId);
 
-    // Register new field for remote or local path. For local we return an empty
-    // string from getRemoteNameFromValue, so check against strict null instead
-    // of truthiness which would reject empty string.
     if (remoteName !== null && !this.isNewRemoteCurrentPath(pathTypeValue)) {
       const formGroup = this.getFormGroup(group);
       const initialPath = formGroup?.get('path')?.value || '';
@@ -239,7 +234,6 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
         this.destPathState$ = state$;
       }
     } else {
-      // Use empty state for local paths
       const emptyState$ = of({} as PathSelectionState);
       if (group === 'source') {
         this.sourcePathState$ = emptyState$;
@@ -265,7 +259,6 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     const value = (event.target as HTMLInputElement).value;
     const fieldId = group === 'source' ? this.sourceFieldId : this.destFieldId;
 
-    // Skip if it's a new remote and current remote is selected
     if (this.isNewRemote && this.getFormGroup(group)?.get('pathType')?.value === 'currentRemote') {
       return;
     }
@@ -279,61 +272,83 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     this.pathSelectionService.selectEntry(fieldId, entryName, control);
   }
 
+  /**
+   * Opens the Nautilus file picker.
+   * Unified to handle both local and remote path selection.
+   */
   async selectRemotePath(group: PathGroup): Promise<void> {
+    // Determine restriction:
+    // - If this is a MOUNT operation and we are picking SOURCE, restrict to the current remote.
+    // - If this is a MOUNT operation and we are picking DEST, restrict to nothing (user must pick local).
+    // - Otherwise, no restriction.
+    const shouldRestrict = this.isMount && group === 'source';
+
     const result = await this.fileSystemService.selectPathWithNautilus({
       selectFolders: true,
       selectFiles: false,
       multiSelection: false,
-      restrictSingle: this.isMount ? this.currentRemoteName : undefined,
+      restrictSingle: shouldRestrict ? this.currentRemoteName : undefined,
     });
 
     if (result && result.length > 0) {
       const fullPath = result[0];
-      const formGroup = this.getFormGroup(group);
 
-      if (!formGroup) {
-        return;
-      }
-
-      const pathControl = this.getPathControl(group);
-      const pathTypeControl = formGroup.get('pathType');
-      if (!pathTypeControl) return;
-
+      // Parse the result (handle Windows paths, Linux paths, and Remote paths)
       const parts = fullPath.split(':');
       let remoteName = '';
       let path = fullPath;
 
-      // Robustly check if this is actually a remote or a local path (like Windows C:/)
+      // Logic to distinguish remote vs local
       if (parts.length > 1 && parts[0]) {
         const potentialRemote = parts[0];
+
+        // Known remotes are the current one or any in the existing list
         const isKnownRemote =
           potentialRemote === this.currentRemoteName ||
           this.otherRemotes.includes(potentialRemote) ||
           (this.isNewRemote && potentialRemote === this.currentRemoteName);
 
+        // If it looks like a drive letter (1 char), treat as local (Windows C:)
+        // If it matches a known remote, treat as remote
         if (isKnownRemote) {
-          // It matches a known remote, so parse it as remote:path
           remoteName = potentialRemote;
           path = parts.slice(1).join(':');
+        } else if (potentialRemote.length === 1) {
+          // Likely Windows Drive (C:), treat as local
+          remoteName = '';
+          path = fullPath;
         } else {
-          // It has a colon but isn't a known remote -> Treat as local (e.g. C:/User)
+          // Ambiguous, but if we didn't match a known remote, treat as local or unknown
           remoteName = '';
           path = fullPath;
         }
       } else {
-        // No colon -> Local path
+        // No colon -> Local path (e.g. /home/user)
         remoteName = '';
         path = fullPath;
       }
 
-      pathControl?.setValue(path, { emitEvent: false });
+      // Special Validation for Mount Destination
+      if (this.isMount && group === 'dest' && remoteName !== '') {
+        this.notificationService.showError('Mount destination must be a local folder.');
+        return;
+      }
 
-      if (remoteName === '') {
-        pathTypeControl.setValue('local');
-      } else if (remoteName === this.currentRemoteName) {
-        pathTypeControl.setValue('currentRemote');
-      } else {
-        pathTypeControl.setValue(`otherRemote:${remoteName}`);
+      // Update form values
+      const formGroup = this.getFormGroup(group);
+      const pathControl = this.getPathControl(group);
+      const pathTypeControl = formGroup?.get('pathType');
+
+      pathControl?.setValue(path); // Allow event emission to trigger validation
+
+      if (pathTypeControl) {
+        if (remoteName === '') {
+          pathTypeControl.setValue('local');
+        } else if (remoteName === this.currentRemoteName) {
+          pathTypeControl.setValue('currentRemote');
+        } else {
+          pathTypeControl.setValue(`otherRemote:${remoteName}`);
+        }
       }
 
       this.cdRef.markForCheck();
@@ -346,6 +361,8 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
     this.pathSelectionService.navigateUp(fieldId, control);
   }
 
+  // Deprecated logic replaced by direct selectRemotePath usage,
+  // but kept for backward compat if parent listens to events.
   onSelectFolder(pathType: PathGroup): void {
     if (pathType === 'source') {
       this.sourceFolderSelected.emit();
@@ -370,7 +387,6 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   onCronValidationChange(result: CronValidationResponse): void {
-    // Store validation result in form if needed
     const validationControl = this.opFormGroup.get('cronValidation');
     if (validationControl) {
       validationControl.setValue(result, { emitEvent: false });
@@ -379,12 +395,10 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
 
   clearSchedule(event: Event): void {
     event.stopPropagation();
-
     const cronControl = this.opFormGroup.get('cronExpression');
     if (cronControl) {
       cronControl.setValue(null, { emitEvent: false });
     }
-
     this.cdRef.markForCheck();
   }
 
@@ -400,8 +414,6 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   private getRemoteNameFromValue(value: string): string | null {
-    // Return empty string for local - this signals the backend it should
-    // use the local filesystem.
     if (value === 'local') return '';
     if (value === 'currentRemote') return this.currentRemoteName;
     if (value?.startsWith('otherRemote:')) {

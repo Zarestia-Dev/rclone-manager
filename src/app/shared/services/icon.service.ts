@@ -111,7 +111,10 @@ export class IconService {
       'right-arrow': 'assets/icons/circle-arrow-right.svg',
       'right-left': 'assets/icons/right-left.svg',
       'rotate-left': 'assets/icons/rotate-left.svg',
+
       star: 'assets/icons/star.svg',
+      'star-outline': 'assets/icons/star-outline.svg',
+
       package: 'assets/icons/package.svg',
       skull: 'assets/icons/skull.svg',
       bucket: 'assets/icons/bucket.svg',

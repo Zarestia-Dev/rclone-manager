@@ -7,7 +7,6 @@ import {
   input,
   computed,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -51,7 +50,6 @@ const TYPE_INFO: Record<string, TypeInfo> = {
   selector: 'app-serve-config-step',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     FormsModule,
     MatFormFieldModule,

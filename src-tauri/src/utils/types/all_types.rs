@@ -187,6 +187,8 @@ pub struct DynamicLogger;
 #[derive(serde::Deserialize)]
 pub struct JobResponse {
     pub jobid: u64,
+    #[serde(rename = "executeId")]
+    pub execute_id: String,
 }
 
 #[derive(Clone, Serialize)]

@@ -183,10 +183,7 @@ export class RemoteManagementService extends TauriBaseService {
     path: string,
     options: Record<string, unknown>
   ): Promise<{ list: Entry[] }> {
-    console.log(`Fetching remote paths for ${remote}${path} with options:`, options);
-
-    const response = await this.invokeCommand('get_remote_paths', { remote, path, options });
-    return response as { list: Entry[] };
+    return this.invokeCommand<{ list: Entry[] }>('get_remote_paths', { remote, path, options });
   }
 
   async getLocalDrives(): Promise<LocalDrive[]> {

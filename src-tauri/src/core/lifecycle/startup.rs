@@ -158,7 +158,9 @@ async fn handle_remote_startup(
     if ServeParams::should_auto_start(&settings) {
         match ServeParams::from_settings(remote_name.to_string(), &settings) {
             Some(params) => {
-                if let Err(e) = start_serve(app_handle.clone(), params).await {
+                if let Err(e) =
+                    start_serve(app_handle.clone(), job_cache_state.clone(), params).await
+                {
                     error!("Failed to auto-start serve for {}: {}", remote_name, e);
                 } else {
                     debug!("Serve task spawned for {}", remote_name);

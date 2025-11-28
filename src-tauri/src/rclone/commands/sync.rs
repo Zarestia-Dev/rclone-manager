@@ -1,8 +1,7 @@
-use chrono::Utc;
-use log::{debug, error, warn};
+use log::debug;
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, State};
 
 use crate::{
     RcloneState,
@@ -11,106 +10,11 @@ use crate::{
         json_helpers::{get_string, json_to_hashmap},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, sync},
-        types::{
-            all_types::{JobCache, JobInfo, JobResponse, JobStatus, LogLevel},
-            events::JOB_CACHE_CHANGED,
-        },
+        types::all_types::{JobCache, LogLevel},
     },
 };
 
-use super::job::monitor_job;
-
-// --- Internal Helper Function ---
-#[allow(clippy::too_many_arguments)]
-async fn start_sync_like_job(
-    app: AppHandle,
-    job_cache: State<'_, JobCache>,
-    state: State<'_, RcloneState>,
-    remote_name: String,
-    source: String,
-    dest: String,
-    job_type: &'static str,
-    operation_name: &'static str,
-    endpoint: &'static str,
-    payload_body: Map<String, Value>,
-) -> Result<u64, String> {
-    debug!(
-        "Calling start_sync_like_job for {}: {} -> {}",
-        operation_name, source, dest
-    );
-
-    if job_cache.is_job_running(&remote_name, job_type).await {
-        let err_msg = format!(
-            "A '{}' job for remote '{}' is already in progress.",
-            job_type, remote_name
-        );
-        warn!("{}", err_msg);
-        return Err(err_msg);
-    }
-
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, endpoint);
-
-    let response = state
-        .client
-        .post(&url)
-        .json(&Value::Object(payload_body))
-        .send()
-        .await
-        .map_err(|e| format!("Request failed: {e}"))?;
-
-    let status = response.status();
-    let body_text = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        let error = format!("HTTP {status}: {body_text}");
-        log_operation(
-            LogLevel::Error,
-            Some(remote_name.clone()),
-            Some(operation_name.to_string()),
-            format!("Failed to start {job_type} job"),
-            Some(json!({"response": body_text})),
-        );
-        error!("❌ Failed to start {job_type} job: {error}");
-        return Err(error);
-    }
-
-    let job: JobResponse =
-        serde_json::from_str(&body_text).map_err(|e| format!("Failed to parse response: {e}"))?;
-
-    let jobid = job.jobid;
-    log_operation(
-        LogLevel::Info,
-        Some(remote_name.clone()),
-        Some(operation_name.to_string()),
-        format!("{operation_name} job started with ID {jobid}"),
-        Some(json!({"jobid": jobid})),
-    );
-
-    job_cache
-        .add_job(JobInfo {
-            jobid,
-            job_type: job_type.to_string(),
-            remote_name: remote_name.clone(),
-            source: source.clone(),
-            destination: dest.clone(),
-            start_time: Utc::now(),
-            status: JobStatus::Running,
-            stats: None,
-            group: format!("job/{jobid}"),
-        })
-        .await;
-
-    // Start monitoring the job in a background task
-    let app_clone = app.clone();
-    let client = state.client.clone();
-    tauri::async_runtime::spawn(async move {
-        let _ = monitor_job(remote_name, operation_name, jobid, app_clone, client).await;
-    });
-
-    app.emit(JOB_CACHE_CHANGED, jobid)
-        .map_err(|e| format!("Failed to emit event: {e}"))?;
-    Ok(jobid)
-}
+use super::job::{JobMetadata, submit_job};
 
 /// Parameters for starting a sync operation
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -302,7 +206,7 @@ fn merge_options(
 #[tauri::command]
 pub async fn start_sync(
     app: AppHandle,
-    job_cache: State<'_, JobCache>,
+    _job_cache: State<'_, JobCache>, // Maintained for signature compatibility
     rclone_state: State<'_, RcloneState>,
     params: SyncParams,
 ) -> Result<u64, String> {
@@ -351,25 +255,30 @@ pub async fn start_sync(
         );
     }
 
-    start_sync_like_job(
-        app.clone(),
-        job_cache,
-        rclone_state,
-        params.remote_name,
-        params.source,
-        params.dest,
-        "sync",
-        operation_name,
-        sync::SYNC,
-        body,
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, sync::SYNC);
+
+    let (jobid, _) = submit_job(
+        app,
+        rclone_state.client.clone(),
+        url,
+        Value::Object(body),
+        JobMetadata {
+            remote_name: params.remote_name,
+            job_type: "sync".to_string(),
+            operation_name: operation_name.to_string(),
+            source: params.source,
+            destination: params.dest,
+        },
     )
-    .await
+    .await?;
+
+    Ok(jobid)
 }
 
 #[tauri::command]
 pub async fn start_copy(
     app: AppHandle,
-    job_cache: State<'_, JobCache>,
+    _job_cache: State<'_, JobCache>,
     rclone_state: State<'_, RcloneState>,
     params: CopyParams,
 ) -> Result<u64, String> {
@@ -416,25 +325,30 @@ pub async fn start_copy(
         );
     }
 
-    start_sync_like_job(
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, sync::COPY);
+
+    let (jobid, _) = submit_job(
         app,
-        job_cache,
-        rclone_state,
-        params.remote_name,
-        params.source,
-        params.dest,
-        "copy",
-        operation_name,
-        sync::COPY,
-        body,
+        rclone_state.client.clone(),
+        url,
+        Value::Object(body),
+        JobMetadata {
+            remote_name: params.remote_name,
+            job_type: "copy".to_string(),
+            operation_name: operation_name.to_string(),
+            source: params.source,
+            destination: params.dest,
+        },
     )
-    .await
+    .await?;
+
+    Ok(jobid)
 }
 
 #[tauri::command]
 pub async fn start_bisync(
     app: AppHandle,
-    job_cache: State<'_, JobCache>,
+    _job_cache: State<'_, JobCache>,
     rclone_state: State<'_, RcloneState>,
     params: BisyncParams,
 ) -> Result<u64, String> {
@@ -507,25 +421,30 @@ pub async fn start_bisync(
         );
     }
 
-    start_sync_like_job(
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, sync::BISYNC);
+
+    let (jobid, _) = submit_job(
         app,
-        job_cache,
-        rclone_state,
-        params.remote_name,
-        params.source,
-        params.dest,
-        "bisync",
-        operation_name,
-        sync::BISYNC,
-        body,
+        rclone_state.client.clone(),
+        url,
+        Value::Object(body),
+        JobMetadata {
+            remote_name: params.remote_name,
+            job_type: "bisync".to_string(),
+            operation_name: operation_name.to_string(),
+            source: params.source,
+            destination: params.dest,
+        },
     )
-    .await
+    .await?;
+
+    Ok(jobid)
 }
 
 #[tauri::command]
 pub async fn start_move(
     app: AppHandle,
-    job_cache: State<'_, JobCache>,
+    _job_cache: State<'_, JobCache>,
     rclone_state: State<'_, RcloneState>,
     params: MoveParams,
 ) -> Result<u64, String> {
@@ -574,17 +493,22 @@ pub async fn start_move(
         );
     }
 
-    start_sync_like_job(
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, sync::MOVE);
+
+    let (jobid, _) = submit_job(
         app,
-        job_cache,
-        rclone_state,
-        params.remote_name,
-        params.source,
-        params.dest,
-        "move",
-        operation_name,
-        sync::MOVE,
-        body,
+        rclone_state.client.clone(),
+        url,
+        Value::Object(body),
+        JobMetadata {
+            remote_name: params.remote_name,
+            job_type: "move".to_string(),
+            operation_name: operation_name.to_string(),
+            source: params.source,
+            destination: params.dest,
+        },
     )
-    .await
+    .await?;
+
+    Ok(jobid)
 }

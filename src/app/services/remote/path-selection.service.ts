@@ -148,7 +148,6 @@ export class PathSelectionService {
    */
   public normalizeRemoteForRclone(remoteName?: string): string {
     if (!remoteName) return '';
-    if (remoteName === 'Local') return '/';
     return remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
   }
 

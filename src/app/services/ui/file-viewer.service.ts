@@ -2,9 +2,9 @@ import { Injectable, inject, signal, WritableSignal } from '@angular/core';
 import { Overlay } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { FileViewerModalComponent } from '../../features/components/file-browser/file-viewer/file-viewer-modal.component';
-import { Entry } from '@app/types';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { ConfigService } from '../system/config.service';
+import { Entry } from '@app/types';
 
 @Injectable({
   providedIn: 'root',
@@ -77,7 +77,9 @@ export class FileViewerService {
     if (['mp4', 'webm', 'ogg'].includes(extension)) return 'video';
     if (['mp3', 'wav', 'ogg'].includes(extension)) return 'audio';
     if (extension === 'pdf') return 'pdf';
-    if (['txt', 'log', 'md', 'json', 'xml', 'html', 'css', 'js', 'ts'].includes(extension))
+    if (
+      ['txt', 'log', 'md', 'json', 'xml', 'html', 'css', 'js', 'ts', 'rs', 'py'].includes(extension)
+    )
       return 'text';
 
     return 'unknown';
@@ -86,15 +88,13 @@ export class FileViewerService {
   generateUrl(item: Entry, remoteName: string, fsType: string): string {
     const baseUrl = this.configService.rcloneServeUrl();
     const isLocal = fsType === 'local';
-    if (isLocal) {
-      if (!remoteName || remoteName === 'Local') {
-        return convertFileSrc(`//${item.Path}`);
-      } else {
-        const nativePathForTauri = `${remoteName}${item.Path}`;
-        return convertFileSrc(nativePathForTauri);
-      }
-    }
 
-    return `${baseUrl}/[${remoteName}:]/${item.Path}`;
+    if (isLocal) {
+      const separator = remoteName.endsWith('/') || remoteName.endsWith('\\') ? '' : '/';
+      const fullPath = `${remoteName}${separator}${item.Path}`;
+      return convertFileSrc(fullPath);
+    }
+    const rName = remoteName.includes(':') ? remoteName : `${remoteName}:`;
+    return `${baseUrl}/[${rName}]/${item.Path}`;
   }
 }

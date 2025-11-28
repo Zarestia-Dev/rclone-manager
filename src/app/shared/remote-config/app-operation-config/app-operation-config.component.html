@@ -57,6 +57,7 @@
   <div class="paths-container">
     <div class="path-section" formGroupName="source">
       @if (isMount || isServe) {
+        <!-- Mount/Serve Source is Fixed to Current Remote -->
         @if (sourcePathState$ | async; as state) {
           <div class="path-input-wrapper">
             <mat-form-field appearance="fill">
@@ -123,6 +124,7 @@
           </div>
         }
       } @else {
+        <!-- Standard Source Path (Sync/Copy/Move) -->
         @if (sourcePathState$ | async; as state) {
           <div class="path-input-wrapper">
             <mat-form-field appearance="fill">
@@ -186,27 +188,20 @@
                 [matMenuTriggerFor]="sourcePathAutocompleteMenu"
               />
 
-              @if (sourcePathType === 'local') {
-                <button
-                  matIconButton
-                  matSuffix
-                  (click)="onSelectFolder('source'); $event.stopPropagation()"
-                  type="button"
-                  aria-label="Select source folder"
-                >
-                  <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                </button>
-              } @else {
-                <button
-                  matIconButton
-                  matSuffix
-                  (click)="selectRemotePath('source'); $event.stopPropagation()"
-                  type="button"
-                  aria-label="Select remote source folder"
-                >
-                  <mat-icon svgIcon="folder" class="accent"></mat-icon>
-                </button>
-              }
+              <!-- Unified Picker Button -->
+              <button
+                matIconButton
+                matSuffix
+                (click)="selectRemotePath('source'); $event.stopPropagation()"
+                type="button"
+                aria-label="Select source folder"
+              >
+                <mat-icon
+                  svgIcon="folder"
+                  [class.purple]="sourcePathType === 'local'"
+                  [class.accent]="sourcePathType !== 'local'"
+                ></mat-icon>
+              </button>
             </mat-form-field>
 
             <mat-menu
@@ -249,7 +244,7 @@
       }
     </div>
 
-    <!-- Destination Path Section - Hide for serve -->
+    <!-- Destination Path Section -->
     @if (isMount && !isServe) {
       <div class="path-section">
         @if (destPathState$ | async; as state) {
@@ -269,10 +264,11 @@
                 (click)="$event.stopPropagation()"
                 [matMenuTriggerFor]="destPathAutocompleteMenu"
               />
+              <!-- Unified Picker Button for Mount Dest (Local) -->
               <button
                 matIconButton
                 matSuffix
-                (click)="onSelectFolder('dest'); $event.stopPropagation()"
+                (click)="selectRemotePath('dest'); $event.stopPropagation()"
                 type="button"
                 aria-label="Select destination folder"
               >
@@ -386,27 +382,21 @@
                 [matMenuTriggerFor]="destPathAutocompleteMenu"
               />
 
-              @if (destPathType === 'local') {
-                <button
-                  matIconButton
-                  matSuffix
-                  (click)="onSelectFolder('dest'); $event.stopPropagation()"
-                  type="button"
-                  aria-label="Select destination folder"
-                >
-                  <mat-icon svgIcon="folder" class="purple"></mat-icon>
-                </button>
-              } @else {
-                <button
-                  matIconButton
-                  matSuffix
-                  (click)="selectRemotePath('dest'); $event.stopPropagation()"
-                  type="button"
-                  aria-label="Select remote destination folder"
-                >
-                  <mat-icon svgIcon="folder" class="accent"></mat-icon>
-                </button>
-              }
+              <!-- Unified Picker Button -->
+              <button
+                matIconButton
+                matSuffix
+                (click)="selectRemotePath('dest'); $event.stopPropagation()"
+                type="button"
+                aria-label="Select destination folder"
+              >
+                <mat-icon
+                  svgIcon="folder"
+                  [class.purple]="destPathType === 'local'"
+                  [class.accent]="destPathType !== 'local'"
+                ></mat-icon>
+              </button>
+
               @if (opFormGroup.get('dest.path')?.hasError('required')) {
                 <mat-error>Destination is required</mat-error>
               }

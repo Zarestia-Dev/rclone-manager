@@ -16,6 +16,19 @@
       </button>
     </mat-toolbar>
     <mat-nav-list>
+      <mat-list-item
+        class="remote-list-item"
+        (click)="selectStarred()"
+        [class.selected]="starredMode()"
+      >
+        <span class="remote-info">
+          <span class="remote-icon">
+            <mat-icon svgIcon="star"></mat-icon>
+            <p matLine>Starred</p>
+          </span>
+        </span>
+      </mat-list-item>
+      <mat-divider></mat-divider>
       @for (remote of filteredRemotes(); track trackByRemote($index, remote)) {
         <mat-list-item
           (click)="selectRemote(remote); isMobile() ? sidenav.close() : null"
@@ -25,7 +38,14 @@
         >
           <span class="remote-info">
             <span class="remote-icon">
-              <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+              <!-- Logic to select icon based on fs_type -->
+              <mat-icon
+                matListIcon
+                [svgIcon]="
+                  remote.fs_type === 'local' ? 'hard-drive' : iconService.getIconName(remote.type)
+                "
+              >
+              </mat-icon>
               <p matLine>{{ remote.label }}</p>
             </span>
             <span class="eject">
@@ -67,42 +87,57 @@
       <div
         class="path-container"
         (click)="isEditingPath.set(true)"
-        (keydown.enter)="isEditingPath.set(true)"
+        (keydown.escape)="isEditingPath.set(false)"
         tabindex="0"
       >
         @if (!isEditingPath()) {
-          <div
-            class="path-scroll-view hide-scrollbar"
-            #pathScrollView
-            (wheel)="onPathScroll($event)"
-          >
-            <button
-              class="path-segment home-segment"
-              (click)="$event.stopPropagation(); navigateToPath('')"
-            >
-              <mat-icon [svgIcon]="(nautilusRemote | async)?.type || 'home'"></mat-icon>
-              {{ (nautilusRemote | async)?.name || 'Local' }}
-            </button>
-            @for (segment of pathSegments(); track $index) {
-              <span class="path-separator">/</span>
-              <button
-                class="path-segment"
-                [class.active]="$index === pathSegments().length - 1"
-                (click)="$event.stopPropagation(); navigateToSegment($index)"
-              >
-                {{ segment }}
+          @if (starredMode()) {
+            <div class="path-scroll-view hide-scrollbar">
+              <button class="path-segment home-segment">
+                <mat-icon svgIcon="star"></mat-icon>
+                Starred
               </button>
-            }
-          </div>
+            </div>
+          } @else {
+            <div
+              class="path-scroll-view hide-scrollbar"
+              #pathScrollView
+              (wheel)="onPathScroll($event)"
+            >
+              <!-- Root Element (Local Disk or Remote Name) -->
+              <button
+                class="path-segment home-segment"
+                (click)="$event.stopPropagation(); updatePath('')"
+              >
+                <mat-icon
+                  [svgIcon]="(nautilusRemote | async)?.fs_type === 'local' ? 'hard-drive' : 'cloud'"
+                ></mat-icon>
+                {{ (nautilusRemote | async)?.label || 'Local' }}
+              </button>
+
+              <!-- Segments -->
+              @for (segment of pathSegments(); track $index) {
+                <span class="path-separator">/</span>
+                <button
+                  class="path-segment"
+                  [class.active]="$index === pathSegments().length - 1"
+                  (click)="$event.stopPropagation(); navigateToSegment($index)"
+                >
+                  {{ segment }}
+                </button>
+              }
+            </div>
+          }
           <button class="nav-button" style="border-radius: 0" (click)="$event.stopPropagation()">
             <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
           </button>
         } @else {
+          <!-- Editable Input -->
           <input
             #pathInput
             class="path-input"
             [value]="fullPathInput()"
-            (keydown.enter)="navigateToPath(pathInput.value)"
+            (keydown.enter)="navigateToPath(pathInput.value); pathInput.blur()"
             (blur)="isEditingPath.set(false)"
           />
         }
@@ -125,6 +160,7 @@
       </div>
     </mat-toolbar>
 
+    <!-- Tabs Bar -->
     <div class="tabs-bar" *ngIf="tabs.length > 1">
       <div
         class="tab"
@@ -133,7 +169,6 @@
         role="button"
         tabindex="0"
         (click)="switchTab(i)"
-        (keydown.enter)="switchTab(i)"
       >
         <span class="tab-title">{{ t.title }}</span>
         <button
@@ -146,11 +181,14 @@
       </div>
     </div>
 
+    <!-- Main Content Area -->
     <div class="nautilus-content" [class.list-layout]="layout() === 'list'">
+      <!-- GRID LAYOUT -->
       @if (layout() === 'grid') {
         <div
           class="nautilus-grid"
           (click)="clearSelection()"
+          (keydown.enter)="clearSelection()"
           (keydown.space)="clearSelection()"
           tabindex="0"
           (contextmenu)="onBackgroundContextMenu($event)"
@@ -165,13 +203,23 @@
               <div
                 class="grid-item"
                 (click)="onItemClick(item, $event, $index)"
-                (keydown.enter)="onItemClick(item, $any($event), $index)"
+                (keydown.enter)="onItemClick(item, $event, $index)"
+                (keydown.space)="onItemClick(item, $event, $index)"
                 (dblclick)="navigateTo(item)"
                 (contextmenu)="onItemContextMenu($any($event), item)"
                 tabindex="0"
                 [class.selected]="(selectedItems | async)?.has(item.Path)"
                 [class.unselectable]="!isItemSelectable(item)"
               >
+                @if (starredMode()) {
+                  <button
+                    mat-icon-button
+                    class="star-button"
+                    (click)="toggleStar(item); $event.stopPropagation()"
+                  >
+                    <mat-icon [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"></mat-icon>
+                  </button>
+                }
                 <mat-card
                   class="folder-card"
                   [class.file-card]="!item.IsDir"
@@ -179,8 +227,9 @@
                 >
                   <mat-card-content>
                     <mat-icon
-                      class="folder-icon"
-                      [style.fontSize.px]="iconSize() / 2"
+                      [ngClass]="{ accent: item.IsDir }"
+                      [style.width.px]="iconSize()"
+                      [style.height.px]="iconSize()"
                       [svgIcon]="
                         item.IsDir
                           ? 'folder'
@@ -196,11 +245,12 @@
         </div>
       }
 
+      <!-- LIST LAYOUT -->
       @if (layout() === 'list') {
         <div
           class="nautilus-list"
           (click)="clearSelection()"
-          (keydown.space)="clearSelection()"
+          (keydown.enter)="clearSelection()"
           tabindex="0"
           (contextmenu)="onBackgroundContextMenu($event)"
         >
@@ -212,6 +262,7 @@
                 [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
               ></mat-icon>
             </div>
+            <div class="list-col star-col"></div>
             <div class="list-col size">Size</div>
             <div class="list-col modified">Modified</div>
           </div>
@@ -219,7 +270,7 @@
             <div
               class="list-row"
               (click)="onItemClick(item, $event, $index)"
-              (keydown.enter)="onItemClick(item, $any($event), $index)"
+              (keydown.enter)="onItemClick(item, $event, $index)"
               (dblclick)="navigateTo(item)"
               (contextmenu)="onItemContextMenu($any($event), item)"
               tabindex="0"
@@ -228,6 +279,9 @@
             >
               <div class="list-col name">
                 <mat-icon
+                  [ngClass]="{ accent: item.IsDir }"
+                  [style.width.px]="iconSize()"
+                  [style.height.px]="iconSize()"
                   [svgIcon]="
                     item.IsDir
                       ? 'folder'
@@ -240,18 +294,34 @@
                 {{ item.IsDir ? '--' : (item.Size | formatFileSize) }}
               </div>
               <div class="list-col modified">{{ formatRelativeDate(item.ModTime) }}</div>
+              <div class="list-col star-col">
+                <button
+                  mat-icon-button
+                  class="star-button"
+                  (click)="toggleStar(item); $event.stopPropagation()"
+                >
+                  <mat-icon [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"> </mat-icon>
+                </button>
+              </div>
             </div>
           }
         </div>
       }
 
+      <!-- Empty State -->
       @if (files().length === 0 && !isLoading()) {
         <div class="empty-folder-container">
-          <mat-icon svgIcon="folder"></mat-icon>
-          <h2>{{ 'Folder is Empty' }}</h2>
+          @if (starredMode()) {
+            <mat-icon svgIcon="star"></mat-icon>
+            <h2>No Starred Files</h2>
+          } @else {
+            <mat-icon svgIcon="folder"></mat-icon>
+            <h2>Folder is Empty</h2>
+          }
         </div>
       }
 
+      <!-- Loading State -->
       @if (isLoading()) {
         <div class="loading-overlay">
           <mat-spinner diameter="24"></mat-spinner>
@@ -273,7 +343,6 @@
             <mat-icon svgIcon="chevron-right"></mat-icon>
           </button>
         </div>
-
         <div class="view-controls">
           <button class="nav-button" (click)="setLayout(layout() === 'grid' ? 'list' : 'grid')">
             <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
@@ -285,6 +354,7 @@
       </div>
     }
 
+    <!-- File Context Menu -->
     <div
       class="context-menu"
       *ngIf="contextMenuVisible()"
@@ -303,13 +373,6 @@
       }
       @if (!contextMenuItem) {
         <button mat-menu-item (click)="openContextMenuNewFolder()">New Folder</button>
-        <button
-          mat-menu-item
-          (click)="openContextMenuCleanup()"
-          [disabled]="!activeRemoteSupportsCleanup()"
-        >
-          Empty Trash
-        </button>
       }
       <button mat-menu-item (click)="refresh()">Refresh</button>
       <button mat-menu-item (click)="openContextMenuProperties()">Properties</button>
@@ -324,6 +387,8 @@
     }
   </mat-sidenav-content>
 </mat-sidenav-container>
+
+<!-- Sidebar Context Menu -->
 <div
   class="sidebar-context-menu"
   *ngIf="sideContextVisible()"
@@ -333,10 +398,10 @@
   tabindex="0"
   (keydown.escape)="sideContextVisible.set(false)"
 >
-  <button mat-menu-item (click)="selectRemote(sideContextRemote); sideContextVisible.set(false)">
+  <button mat-menu-item (click)="selectRemote(sideContextRemote()); sideContextVisible.set(false)">
     Open
   </button>
-  <button mat-menu-item (click)="createTab(sideContextRemote, ''); sideContextVisible.set(false)">
+  <button mat-menu-item (click)="createTab(sideContextRemote(), ''); sideContextVisible.set(false)">
     Open in New Tab
   </button>
   <button mat-menu-item (click)="openRemoteAboutFromSidebar()">About</button>
@@ -344,6 +409,8 @@
     Empty Trash
   </button>
 </div>
+
+<!-- View Menu -->
 <mat-menu #viewMenu="matMenu">
   <div
     class="view-menu-content"
@@ -354,10 +421,10 @@
     <div class="icon-size-control">
       <span>Icon Size</span>
       <div class="buttons">
-        <button (click)="decreaseIconSize()">
+        <button (click)="decreaseIconSize()" [disabled]="decreaseIconDisabled()">
           <mat-icon svgIcon="remove"></mat-icon>
         </button>
-        <button (click)="increaseIconSize()">
+        <button (click)="increaseIconSize()" [disabled]="increaseIconDisabled()">
           <mat-icon svgIcon="add"></mat-icon>
         </button>
       </div>
