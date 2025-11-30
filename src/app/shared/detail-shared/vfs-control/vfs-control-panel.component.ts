@@ -28,6 +28,7 @@ import {
   VfsService,
   VfsStats,
 } from 'src/app/services/file-operations/vfs.service';
+import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { NotificationService } from '../../services/notification.service';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { FileSystemService } from '@app/services';
@@ -70,6 +71,7 @@ export class VfsControlPanelComponent implements OnInit, OnDestroy {
   private readonly vfsService = inject(VfsService);
   private readonly notification = inject(NotificationService);
   private readonly fileSystemService = inject(FileSystemService);
+  private readonly pathSelectionService = inject(PathSelectionService);
 
   // State
   vfsInstances = signal<VfsInstance[]>([]);
@@ -442,6 +444,6 @@ export class VfsControlPanelComponent implements OnInit, OnDestroy {
 
   private getRemotePrefix(): string {
     const name = this.remoteName();
-    return name.endsWith(':') ? name.slice(0, -1) : name;
+    return this.pathSelectionService.normalizeRemoteName(name);
   }
 }

@@ -110,13 +110,16 @@ import { Entry } from './remote-config';
  * Represents a file or folder with its full context attached.
  * This is the "Source of Truth" for any file object passed around the UI.
  */
-export interface FileBrowserItem extends Entry {
-  /** * The Rclone-ready identifier string (e.g., "gdrive:" or "C:/Users").
-   * Use this for API calls and unique IDs.
-   */
-  _remote: string;
+export interface FileBrowserItem {
+  /** The actual file/folder data returned by rclone */
+  entry: Entry;
 
-  /** * Helper to distinguish behavior (e.g., handling paths).
-   */
-  _fsType: 'local' | 'remote';
+  /** UI context metadata (where the file lives and how to render it) */
+  meta: {
+    remote: string; // e.g. "gdrive:"
+    fsType: 'local' | 'remote';
+    remoteType?: string; // e.g. 's3', 'drive', etc. (used for icons)
+  };
 }
+
+export type CollectionType = 'starred' | 'bookmarks';

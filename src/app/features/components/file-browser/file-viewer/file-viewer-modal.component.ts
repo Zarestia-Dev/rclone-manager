@@ -23,7 +23,7 @@ import { RemoteManagementService } from 'src/app/services/remote/remote-manageme
 import { NotificationService } from 'src/app/shared/services/notification.service';
 import { FormatFileSizePipe } from '@app/pipes';
 import { Entry } from '@app/types';
-import { FileSystemService } from '@app/services';
+import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 
 @Component({
   selector: 'app-file-viewer-modal',
@@ -55,7 +55,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   public iconService = inject(IconService);
   private remoteManagementService = inject(RemoteManagementService);
   private readonly notificationService = inject(NotificationService);
-  private fileSystemService = inject(FileSystemService);
+  private readonly pathSelectionService = inject(PathSelectionService);
 
   sanitizedUrl!: SafeResourceUrl;
 
@@ -110,8 +110,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
         let fsName = this.data.remoteName;
 
         // If remote (not local), ensure it has the colon for the API call
-        if (!this.data.isLocal && !fsName.includes(':')) {
-          fsName = `${fsName}:`;
+        if (!this.data.isLocal) {
+          fsName = this.pathSelectionService.normalizeRemoteForRclone(fsName);
         }
 
         // For local: fsName is "C:" or "/", path is "path/to/dir"

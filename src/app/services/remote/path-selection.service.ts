@@ -151,6 +151,15 @@ export class PathSelectionService {
     return remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
   }
 
+  /**
+   * Normalize remote name for internal lookups / display keys.
+   * Removes a trailing ':' if present and returns the plain remote identifier.
+   */
+  public normalizeRemoteName(remoteName?: string): string {
+    if (!remoteName) return '';
+    return remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
+  }
+
   public resetPath(fieldId: string): void {
     const state = this.pathStates.get(fieldId)?.getValue();
     if (!state) return;

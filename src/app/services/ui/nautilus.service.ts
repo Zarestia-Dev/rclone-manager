@@ -1,12 +1,11 @@
-import { ComponentRef, inject, Injectable, signal, WritableSignal, Signal } from '@angular/core';
-import { moveItemInArray } from '@angular/cdk/drag-drop';
+import { ComponentRef, inject, Injectable, signal, WritableSignal } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
 import { NautilusComponent } from 'src/app/features/components/file-browser/nautilus/nautilus.component';
 import { AppSettingsService } from '@app/services';
-import { Entry, ExplorerRoot } from '@app/types';
+import { FileBrowserItem, CollectionType } from '@app/types';
 
 // File picker options shared with UiStateService
 export interface FilePickerOptions {
@@ -14,11 +13,6 @@ export interface FilePickerOptions {
   selectFolders?: boolean;
   selectFiles?: boolean;
   multiSelection?: boolean;
-}
-
-export interface StarredItem {
-  remote: string;
-  entry: Entry;
 }
 
 @Injectable({
@@ -45,17 +39,41 @@ export class NautilusService {
   private _filePickerResult = new Subject<string[] | null>();
   public filePickerResult$ = this._filePickerResult.asObservable();
 
-  // Starred Items State - Centralized here
-  public starredItems: WritableSignal<StarredItem[]> = signal([]);
+  // Public Signals (Read by UI)
+  public readonly starredItems = signal<FileBrowserItem[]>([]);
+  public readonly bookmarks = signal<FileBrowserItem[]>([]);
 
-  // Bookmarks State (same shape as starred items)
-  public bookmarks: WritableSignal<StarredItem[]> = signal([]);
+  // 1. Configuration Map: Centralize the differences here
+  private readonly collections: Record<
+    CollectionType,
+    {
+      category: string;
+      key: string;
+      signal: WritableSignal<FileBrowserItem[]>;
+      allowFiles: boolean;
+    }
+  > = {
+    starred: {
+      category: 'nautilus',
+      key: 'starred',
+      signal: this.starredItems,
+      allowFiles: true, // Stars allow everything
+    },
+    bookmarks: {
+      category: 'nautilus',
+      key: 'bookmarks',
+      signal: this.bookmarks,
+      allowFiles: false, // Bookmarks are folders only
+    },
+  };
 
   private overlayRef: OverlayRef | null = null;
 
   constructor() {
-    this.loadStarredItems();
-    this.loadBookmarks();
+    // Load all collections dynamically
+    (Object.keys(this.collections) as CollectionType[]).forEach(type => {
+      this.loadCollection(type);
+    });
   }
 
   toggleNautilusOverlay(): void {
@@ -85,114 +103,112 @@ export class NautilusService {
     }
   }
 
-  // --- Starred Items Logic ---
+  // --- Generic Public Methods ---
 
-  async loadStarredItems(): Promise<void> {
-    try {
-      const items =
-        (await this.appSettingsService.getSettingValue<StarredItem[]>('nautilus.starred')) ?? [];
-      console.log('Loaded starred items from settings:', items);
-
-      if (Array.isArray(items)) {
-        // Filter out any malformed items just in case
-        const validItems = items.filter(i => i.remote && i.entry?.Path);
-        this.starredItems.set(validItems);
-      }
-    } catch (e) {
-      console.warn('Failed to load starred items', e);
-    }
-  }
-
-  public isStarred(remote: string, path: string): boolean {
+  /**
+   * Checks if an item exists in a specific collection.
+   */
+  public isSaved(type: CollectionType, remote: string, path: string): boolean {
+    const list = this.collections[type].signal();
+    // Normalize remote string just in case
     const cleanRemote = remote.replace(/:$/, '');
-    return this.starredItems().some(
-      i => i.remote.replace(/:$/, '') === cleanRemote && i.entry?.Path === path
+    return list.some(
+      i => i.meta?.remote.replace(/:$/, '') === cleanRemote && i.entry.Path === path
     );
   }
 
   /**
-   * Toggles the starred status of an item.
-   * @param remoteIdentifier The rclone identifier string (e.g. "gdrive:" or "/home").
-   * @param entry The file entry to toggle.
+   * Toggles an item in a collection.
+   * Handles Add/Remove automatically.
    */
-  public toggleStar(remoteIdentifier: string, entry: Entry): void {
-    // No need to normalize here if we trust our FileBrowserItem type,
-    // but a safety check never hurts:
-    const cleanId = remoteIdentifier.trim();
+  public toggleItem(type: CollectionType, item: FileBrowserItem): void {
+    const config = this.collections[type];
 
-    const currentList = this.starredItems();
+    // 1. Validation: Check folder restriction
+    if (!config.allowFiles && !item.entry.IsDir) {
+      console.warn(`Cannot add file to ${type} collection`);
+      return;
+    }
 
-    const isPresent = currentList.some(i => i.remote === cleanId && i.entry.Path === entry.Path);
+    // 2. FUTURE-PROOFING: Normalize the remote name here (single source of truth)
+    // Ensure the incoming item's meta.remote never contains a trailing colon.
+    if (item?.meta?.remote && typeof item.meta.remote === 'string') {
+      item.meta.remote = item.meta.remote.replace(/:$/, '');
+    }
 
-    let newList: StarredItem[];
+    const list = config.signal();
+    const isPresent = this.isSaved(type, item.meta.remote, item.entry.Path);
+    let newList: FileBrowserItem[];
 
     if (isPresent) {
-      newList = currentList.filter(i => !(i.remote === cleanId && i.entry.Path === entry.Path));
+      // Remove matching items. Compare normalized remote names to account for
+      // any previously-saved entries that may contain a trailing colon.
+      newList = list.filter(
+        i =>
+          !(
+            (i.meta?.remote || '').replace(/:$/, '') ===
+              (item.meta?.remote || '').replace(/:$/, '') && i.entry.Path === item.entry.Path
+          )
+      );
     } else {
-      newList = [...currentList, { remote: cleanId, entry }];
+      // Add: store a normalized copy to guarantee consistency in persisted data.
+      const itemToSave: FileBrowserItem = {
+        ...item,
+        meta: { ...(item.meta || {}), remote: (item.meta?.remote || '').replace(/:$/, '') },
+      };
+      newList = [...list, itemToSave];
     }
 
-    this.starredItems.set(newList);
-    this.appSettingsService.saveSetting('nautilus', 'starred', newList);
+    // Update State & Persist
+    config.signal.set(newList);
+    this.saveCollection(type, newList);
   }
 
-  // --- Bookmarks Logic (moved from BookmarkService) ---
-  getBookmarks(): Signal<StarredItem[]> {
-    return this.bookmarks.asReadonly();
+  /**
+   * Reorder items (used by drag & drop in sidebar)
+   */
+  public reorderItems(type: CollectionType, prevIndex: number, currIndex: number): void {
+    const config = this.collections[type];
+    const list = [...config.signal()];
+
+    // Move item
+    if (prevIndex >= 0 && prevIndex < list.length && currIndex >= 0) {
+      const [item] = list.splice(prevIndex, 1);
+      list.splice(currIndex, 0, item);
+
+      config.signal.set(list);
+      this.saveCollection(type, list);
+    }
   }
 
-  addBookmark(item: Entry, remote: ExplorerRoot | null): void {
-    if (!remote) return;
+  // --- Internal Helpers ---
 
-    const remoteIdentifier = remote.fs_type === 'remote' ? `${remote.name}:` : remote.name;
-
-    const newBookmark: StarredItem = {
-      remote: remoteIdentifier,
-      entry: item,
-    };
-
-    const remoteNameForCheck = remote.name.replace(/:$/, '');
-    const exists = this.bookmarks().some(
-      b => b.remote.replace(/:$/, '') === remoteNameForCheck && b.entry.Path === item.Path
-    );
-
-    if (exists) return;
-
-    this.bookmarks.update(list => [...list, newBookmark]);
-    this.saveBookmarks();
-  }
-
-  removeBookmark(bookmark: StarredItem): void {
-    this.bookmarks.update(list =>
-      list.filter(b => !(b.remote === bookmark.remote && b.entry.Path === bookmark.entry.Path))
-    );
-    this.saveBookmarks();
-  }
-
-  reorderBookmarks(prevIndex: number, currIndex: number): void {
-    this.bookmarks.update(list => {
-      const newList = [...list];
-      moveItemInArray(newList, prevIndex, currIndex);
-      return newList;
-    });
-    this.saveBookmarks();
-  }
-
-  private saveBookmarks(): void {
-    this.appSettingsService.saveSetting('nautilus', 'bookmarks', this.bookmarks());
-  }
-
-  private async loadBookmarks(): Promise<void> {
+  private async loadCollection(type: CollectionType): Promise<void> {
+    const config = this.collections[type];
     try {
-      const bookmarks =
-        (await this.appSettingsService.getSettingValue<StarredItem[]>('nautilus.bookmarks')) ?? [];
-      if (Array.isArray(bookmarks)) {
-        const validItems = bookmarks.filter(i => i.remote && i.entry?.Path);
-        this.bookmarks.set(validItems);
-      }
+      const fullKey = `${config.category}.${config.key}`;
+      const rawItems = (await this.appSettingsService.getSettingValue<unknown[]>(fullKey)) ?? [];
+      const items: FileBrowserItem[] = rawItems.map((item: any) => {
+        if (item && item.remote && item.entry) {
+          return {
+            entry: item.entry,
+            meta: { remote: item.remote, fsType: 'remote' as const, remoteType: undefined },
+          };
+        }
+        // Otherwise assume item is already in the new composed FileBrowserItem format
+        return item as FileBrowserItem;
+      });
+      // Simple validation to ensure data integrity
+      const validItems = items.filter(i => i.meta?.remote && i.entry?.Path);
+      config.signal.set(validItems);
     } catch (e) {
-      console.warn('Bookmarks load error', e);
+      console.warn(`Failed to load ${type}`, e);
     }
+  }
+
+  private saveCollection(type: CollectionType, items: FileBrowserItem[]): void {
+    const config = this.collections[type];
+    this.appSettingsService.saveSetting(config.category, config.key, items);
   }
 
   private createNautilusOverlay(): void {

@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { RemoteManagementService, NautilusService } from '@app/services'; // Switched to NautilusService
-import { Entry } from '@app/types';
+import { Entry, FileBrowserItem } from '@app/types';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import { IconService } from 'src/app/shared/services/icon.service';
 
@@ -27,8 +27,13 @@ import { IconService } from 'src/app/shared/services/icon.service';
 })
 export class PropertiesModalComponent implements OnInit {
   private dialogRef = inject(MatDialogRef<PropertiesModalComponent>);
-  public data: { remoteName: string; path: string; fs_type: string; item?: Entry | null } =
-    inject(MAT_DIALOG_DATA);
+  public data: {
+    remoteName: string;
+    path: string;
+    fs_type: string;
+    item?: Entry | null;
+    remoteType?: string;
+  } = inject(MAT_DIALOG_DATA);
 
   private remoteManagementService = inject(RemoteManagementService);
   private nautilusService = inject(NautilusService);
@@ -45,7 +50,9 @@ export class PropertiesModalComponent implements OnInit {
   displayLocation = '';
 
   // Reactive Star State derived from Service
-  isStarred = computed(() => this.nautilusService.isStarred(this.data.remoteName, this.data.path));
+  isStarred = computed(() =>
+    this.nautilusService.isSaved('starred', this.data.remoteName, this.data.path)
+  );
 
   ngOnInit(): void {
     const { remoteName, path, fs_type, item } = this.data;
@@ -120,15 +127,20 @@ export class PropertiesModalComponent implements OnInit {
       MimeType: 'inode/directory',
     };
 
-    // 2. Construct the identifier string
-    // Logic: If it's a remote (not local) and missing the colon, add it.
-    let remoteIdentifier = this.data.remoteName;
-    if (this.data.fs_type === 'remote' && !remoteIdentifier.endsWith(':')) {
-      remoteIdentifier = `${remoteIdentifier}:`;
-    }
+    // 2. Construct the FileBrowserItem
+    // NOTE: Do not mutate or append a trailing ':' here — the service will
+    // normalize remote identifiers. Keep components dumb and pass raw values.
+    const item: FileBrowserItem = {
+      entry: entryToSave,
+      meta: {
+        remote: this.data.remoteName,
+        fsType: this.data.fs_type as 'local' | 'remote',
+        remoteType: this.data.remoteType,
+      },
+    };
 
     // 3. Call simplified service
-    this.nautilusService.toggleStar(remoteIdentifier, entryToSave);
+    this.nautilusService.toggleItem('starred', item);
   }
 
   @HostListener('keydown.escape')
