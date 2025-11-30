@@ -37,7 +37,7 @@ pub async fn get_fs_info(
     let url_clone = url.clone();
     let params_value = json!(params);
 
-    execute_async_operation("Get fs info", client_for_monitor, || async move {
+    let result = execute_async_operation("Get fs info", client_for_monitor, || async move {
         let response = client
             .post(&url_clone)
             .json(&params_value)
@@ -52,7 +52,26 @@ pub async fn get_fs_info(
 
         Ok(job.jobid)
     })
-    .await
+    .await;
+
+    match result {
+        Ok(data) => {
+            #[cfg(target_os = "windows")]
+            {
+                use crate::utils::json_helpers::normalize_windows_path;
+                let mut data = data;
+                if let Some(root) = data.get_mut("Root") {
+                    if let Some(root_str) = root.as_str() {
+                        *root = json!(normalize_windows_path(root_str));
+                    }
+                }
+                Ok(data)
+            }
+            #[cfg(not(target_os = "windows"))]
+            Ok(data)
+        }
+        Err(e) => Err(e),
+    }
 }
 
 #[tauri::command]

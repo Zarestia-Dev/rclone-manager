@@ -103,3 +103,20 @@ export interface DashboardPanel {
   title: string;
   visible: boolean;
 }
+
+import { Entry } from './remote-config';
+
+/**
+ * Represents a file or folder with its full context attached.
+ * This is the "Source of Truth" for any file object passed around the UI.
+ */
+export interface FileBrowserItem extends Entry {
+  /** * The Rclone-ready identifier string (e.g., "gdrive:" or "C:/Users").
+   * Use this for API calls and unique IDs.
+   */
+  _remote: string;
+
+  /** * Helper to distinguish behavior (e.g., handling paths).
+   */
+  _fsType: 'local' | 'remote';
+}

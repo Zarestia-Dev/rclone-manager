@@ -1,8 +1,9 @@
 use log::debug;
 use serde_json::json;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::RcloneState;
+use crate::rclone::commands::job::{JobMetadata, submit_job};
 use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{EndpointHelper, operations};
 
@@ -73,4 +74,47 @@ pub async fn cleanup(
     }
 
     Ok(())
+}
+
+//This command also supports to download files inside remote to. Useful for downloading URLs directly to remote storage.
+#[tauri::command]
+pub async fn copy_url(
+    app: AppHandle,
+    state: State<'_, RcloneState>,
+    remote: String,
+    path: String,
+    url_to_copy: String,
+    auto_filename: bool,
+) -> Result<u64, String> {
+    debug!(
+        "🔗 Copying URL: remote={}, path={}, url={}, auto_filename={}",
+        remote, path, url_to_copy, auto_filename
+    );
+
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::COPYURL);
+
+    let payload = json!({
+        "fs": remote.clone(),
+        "remote": path.clone(),
+        "url": url_to_copy.clone(),
+        "autoFilename": auto_filename,
+        "_async": true,
+    });
+
+    let (jobid, _) = submit_job(
+        app,
+        state.client.clone(),
+        url,
+        payload,
+        JobMetadata {
+            remote_name: remote,
+            job_type: "copy_url".to_string(),
+            operation_name: "Copy from URL".to_string(),
+            source: url_to_copy,
+            destination: path,
+        },
+    )
+    .await?;
+
+    Ok(jobid)
 }

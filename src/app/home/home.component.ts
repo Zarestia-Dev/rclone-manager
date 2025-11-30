@@ -176,7 +176,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     effect(() => {
       const remote = this.selectedRemote();
       if (remote) {
-        this.loadJobsForRemote(remote.remoteSpecs.name);
         const settings = this.selectedRemoteSettings();
         // Only set this if it differs to avoid loops, though signal set() handles equality check
         const currentOp = this.selectedSyncOperation();
@@ -386,23 +385,10 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   private async loadActiveJobs(): Promise<void> {
     try {
-      const jobs = await this.jobManagementService.getActiveJobs();
-      this.updateRemotesWithJobs(jobs);
+      await this.jobManagementService.getActiveJobs();
+      this.updateRemotesWithJobs();
     } catch (error) {
       this.handleError('Failed to load active jobs', error);
-    }
-  }
-
-  private async loadJobsForRemote(remoteName: string): Promise<void> {
-    try {
-      const jobs = await this.jobManagementService.getActiveJobs();
-      const remoteJobs = jobs.filter(j => j.remote_name === remoteName);
-      const remote = this.selectedRemote();
-      if (remoteJobs.length > 0 && remote) {
-        this.updateRemoteWithJobs(remote, remoteJobs);
-      }
-    } catch (error) {
-      this.handleError(`Failed to load jobs for ${remoteName}`, error);
     }
   }
 
@@ -952,10 +938,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     );
   }
 
-  private updateRemotesWithJobs(jobs: JobInfo[]): void {
+  private updateRemotesWithJobs(): void {
     const currentRemotes = this.remotes();
     currentRemotes.forEach(remote => {
-      const remoteJobs = jobs.filter(j => j.remote_name === remote.remoteSpecs.name);
+      const remoteJobs = this.jobManagementService.getActiveJobsForRemote(remote.remoteSpecs.name);
       this.updateRemoteWithJobs(remote, remoteJobs);
     });
   }

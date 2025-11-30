@@ -1,11 +1,12 @@
-import { ComponentRef, inject, Injectable, signal, WritableSignal } from '@angular/core';
+import { ComponentRef, inject, Injectable, signal, WritableSignal, Signal } from '@angular/core';
+import { moveItemInArray } from '@angular/cdk/drag-drop';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
 import { NautilusComponent } from 'src/app/features/components/file-browser/nautilus/nautilus.component';
 import { AppSettingsService } from '@app/services';
-import { Entry } from '@app/types';
+import { Entry, ExplorerRoot } from '@app/types';
 
 // File picker options shared with UiStateService
 export interface FilePickerOptions {
@@ -47,10 +48,14 @@ export class NautilusService {
   // Starred Items State - Centralized here
   public starredItems: WritableSignal<StarredItem[]> = signal([]);
 
+  // Bookmarks State (same shape as starred items)
+  public bookmarks: WritableSignal<StarredItem[]> = signal([]);
+
   private overlayRef: OverlayRef | null = null;
 
   constructor() {
     this.loadStarredItems();
+    this.loadBookmarks();
   }
 
   toggleNautilusOverlay(): void {
@@ -99,24 +104,95 @@ export class NautilusService {
   }
 
   public isStarred(remote: string, path: string): boolean {
-    return this.starredItems().some(i => i.remote === remote && i.entry?.Path === path);
+    const cleanRemote = remote.replace(/:$/, '');
+    return this.starredItems().some(
+      i => i.remote.replace(/:$/, '') === cleanRemote && i.entry?.Path === path
+    );
   }
 
-  public toggleStar(remote: string, entry: Entry): void {
+  /**
+   * Toggles the starred status of an item.
+   * @param remoteIdentifier The rclone identifier string (e.g. "gdrive:" or "/home").
+   * @param entry The file entry to toggle.
+   */
+  public toggleStar(remoteIdentifier: string, entry: Entry): void {
+    // No need to normalize here if we trust our FileBrowserItem type,
+    // but a safety check never hurts:
+    const cleanId = remoteIdentifier.trim();
+
     const currentList = this.starredItems();
-    const isPresent = this.isStarred(remote, entry.Path);
+
+    const isPresent = currentList.some(i => i.remote === cleanId && i.entry.Path === entry.Path);
+
     let newList: StarredItem[];
 
     if (isPresent) {
-      // Remove
-      newList = currentList.filter(i => !(i.remote === remote && i.entry.Path === entry.Path));
+      newList = currentList.filter(i => !(i.remote === cleanId && i.entry.Path === entry.Path));
     } else {
-      // Add
-      newList = [...currentList, { remote, entry }];
+      newList = [...currentList, { remote: cleanId, entry }];
     }
 
     this.starredItems.set(newList);
     this.appSettingsService.saveSetting('nautilus', 'starred', newList);
+  }
+
+  // --- Bookmarks Logic (moved from BookmarkService) ---
+  getBookmarks(): Signal<StarredItem[]> {
+    return this.bookmarks.asReadonly();
+  }
+
+  addBookmark(item: Entry, remote: ExplorerRoot | null): void {
+    if (!remote) return;
+
+    const remoteIdentifier = remote.fs_type === 'remote' ? `${remote.name}:` : remote.name;
+
+    const newBookmark: StarredItem = {
+      remote: remoteIdentifier,
+      entry: item,
+    };
+
+    const remoteNameForCheck = remote.name.replace(/:$/, '');
+    const exists = this.bookmarks().some(
+      b => b.remote.replace(/:$/, '') === remoteNameForCheck && b.entry.Path === item.Path
+    );
+
+    if (exists) return;
+
+    this.bookmarks.update(list => [...list, newBookmark]);
+    this.saveBookmarks();
+  }
+
+  removeBookmark(bookmark: StarredItem): void {
+    this.bookmarks.update(list =>
+      list.filter(b => !(b.remote === bookmark.remote && b.entry.Path === bookmark.entry.Path))
+    );
+    this.saveBookmarks();
+  }
+
+  reorderBookmarks(prevIndex: number, currIndex: number): void {
+    this.bookmarks.update(list => {
+      const newList = [...list];
+      moveItemInArray(newList, prevIndex, currIndex);
+      return newList;
+    });
+    this.saveBookmarks();
+  }
+
+  private saveBookmarks(): void {
+    this.appSettingsService.saveSetting('nautilus', 'bookmarks', this.bookmarks());
+  }
+
+  private async loadBookmarks(): Promise<void> {
+    try {
+      const bookmarks =
+        (await this.appSettingsService.getSettingValue<StarredItem[]>('nautilus.bookmarks')) ?? [];
+      if (Array.isArray(bookmarks)) {
+        const validItems = bookmarks.filter(i => i.remote && i.entry?.Path);
+        this.bookmarks.set(validItems);
+      }
+    } catch (e) {
+      console.warn('Bookmarks load error', e);
+    }
   }
 
   private createNautilusOverlay(): void {

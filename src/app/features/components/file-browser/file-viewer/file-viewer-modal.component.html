@@ -5,15 +5,16 @@
       <span class="file-counter">{{ data.currentIndex + 1 }} / {{ data.items.length }}</span>
     </div>
     <div class="header-actions">
-      <button
-        mat-icon-button
-        class="header-button"
-        (click)="download(); $event.stopPropagation()"
-        [attr.aria-label]="'Download ' + data.name"
-        [disabled]="isLoading()"
-      >
-        <mat-icon svgIcon="download"></mat-icon>
-      </button>
+      @if (!this.data.isLocal) {
+        <button
+          mat-icon-button
+          class="header-button"
+          (click)="download(); $event.stopPropagation()"
+          [attr.aria-label]="'Download ' + data.name"
+        >
+          <mat-icon svgIcon="download"></mat-icon>
+        </button>
+      }
       <button
         mat-icon-button
         class="header-button close-button"

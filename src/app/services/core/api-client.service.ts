@@ -213,7 +213,6 @@ export class ApiClientService {
       // Stats and monitoring
       get_core_stats: '/stats',
       get_core_stats_filtered: '/stats/filtered',
-      get_job_stats: '/jobs/stats',
       get_completed_transfers: '/transfers/completed',
       get_memory_stats: '/memory-stats',
       get_bandwidth_limit: '/bandwidth/limit',

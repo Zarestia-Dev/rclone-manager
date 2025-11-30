@@ -665,17 +665,17 @@ pub mod operations {
     // /// - dstRemote - a path within that remote e.g. "file2.txt" for the destination
     // pub const COPYFILE: &str = "operations/copyfile";
 
-    // /// Copy the URL to the object.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - fs - a remote name string e.g. "drive:"
-    // /// - remote - a path within that remote e.g. "dir"
-    // /// - url - string, URL to read from
-    // ///  - autoFilename - boolean, set to true to retrieve destination file name from url
-    // ///
-    // /// See the [copyurl](/commands/rclone_copyurl/) command for more information on the above.
-    // pub const COPYURL: &str = "operations/copyurl";
+    /// Copy the URL to the object.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - fs - a remote name string e.g. "drive:"
+    /// - remote - a path within that remote e.g. "dir"
+    /// - url - string, URL to read from
+    ///  - autoFilename - boolean, set to true to retrieve destination file name from url
+    ///
+    /// See the [copyurl](/commands/rclone_copyurl/) command for more information on the above.
+    pub const COPYURL: &str = "operations/copyurl";
 
     // /// Remove files in the path.
     // ///

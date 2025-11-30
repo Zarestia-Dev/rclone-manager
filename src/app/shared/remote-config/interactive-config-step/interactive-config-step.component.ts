@@ -16,8 +16,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
-import { RcConfigQuestionResponse } from '@app/services';
 import { LineBreaksPipe } from '@app/pipes';
+import { RcConfigQuestionResponse } from '@app/types';
 
 @Component({
   selector: 'app-interactive-config-step',

@@ -145,9 +145,7 @@ export class JobManagementService extends TauriBaseService {
     };
 
     console.debug('Invoking start_bisync with params', params);
-    const jobId = await this.invokeCommand<number>('start_bisync', { params });
-
-    return jobId;
+    return await this.invokeCommand<number>('start_bisync', { params });
   }
 
   async startMove(
@@ -172,8 +170,18 @@ export class JobManagementService extends TauriBaseService {
       backend_options: backendOptions || {},
     };
     console.debug('Invoking start_move with params', params);
-    const jobId = await this.invokeCommand<number>('start_move', { params });
-    return jobId;
+    return await this.invokeCommand<number>('start_move', { params });
+  }
+
+  /**
+   * Copy a file from a URL to the remote
+   * @param remote The remote to copy to
+   * @param path The path on the remote to copy to
+   * @param url The URL to copy from
+   * @param autoFilename Whether to automatically determine the filename
+   */
+  async copyUrl(remote: string, path: string, url: string, autoFilename: boolean): Promise<void> {
+    return this.invokeCommand('copy_url', { remote, path, urlToCopy: url, autoFilename });
   }
 
   /**
@@ -189,6 +197,8 @@ export class JobManagementService extends TauriBaseService {
   async getActiveJobs(): Promise<JobInfo[]> {
     const jobs = await this.invokeCommand<JobInfo[]>('get_active_jobs');
     this.activeJobsSubject.next(jobs);
+    console.log('Active jobs updated:', jobs);
+
     return jobs;
   }
 
@@ -214,30 +224,11 @@ export class JobManagementService extends TauriBaseService {
   }
 
   /**
-   * Get jobs for a specific remote
+   * Get active jobs for a specific remote from the current state
    */
-  async getJobsForRemote(remoteName: string): Promise<JobInfo[]> {
-    const allJobs = await this.getJobs();
-    return allJobs.filter(job => job.remote_name === remoteName);
-  }
-
-  /**
-   * Get active jobs for a specific remote
-   */
-  async getActiveJobsForRemote(remoteName: string): Promise<JobInfo[]> {
-    const activeJobs = await this.getActiveJobs();
+  getActiveJobsForRemote(remoteName: string): JobInfo[] {
+    const activeJobs = this.activeJobsSubject.value;
     return activeJobs.filter(job => job.remote_name === remoteName);
-  }
-
-  /**
-   * Get job stats with group filtering (for remote-specific stats)
-   */
-  async getJobStatsWithGroup(jobid: number, group?: string): Promise<any | null> {
-    const params: any = { jobid };
-    if (group) {
-      params.group = group;
-    }
-    return this.invokeCommand('get_job_stats', params);
   }
 
   /**

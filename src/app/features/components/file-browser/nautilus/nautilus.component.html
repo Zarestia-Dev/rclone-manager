@@ -1,4 +1,4 @@
-<mat-sidenav-container class="nautilus-overlay-pane" autosize [@slideOverlay]>
+<mat-sidenav-container class="nautilus-overlay-pane" autosize [@slideOverlay] cdkDropListGroup>
   <mat-sidenav
     #sidenav
     [mode]="sidenavMode()"
@@ -6,64 +6,126 @@
     (openedChange)="isSidenavOpen.set($event)"
     class="nautilus-sidenav"
   >
-    <mat-toolbar data-tauri-drag-region>
-      <button class="nav-button">
-        <mat-icon svgIcon="search"></mat-icon>
-      </button>
-      <span>{{ title() }}</span>
-      <button class="nav-button">
-        <mat-icon svgIcon="menu-bar"></mat-icon>
-      </button>
-    </mat-toolbar>
-    <mat-nav-list>
-      <mat-list-item
-        class="remote-list-item"
-        (click)="selectStarred()"
-        [class.selected]="starredMode()"
-      >
-        <span class="remote-info">
-          <span class="remote-icon">
-            <mat-icon svgIcon="star"></mat-icon>
-            <p matLine>Starred</p>
-          </span>
-        </span>
-      </mat-list-item>
-      <mat-divider></mat-divider>
-      @for (remote of filteredRemotes(); track trackByRemote($index, remote)) {
-        <mat-list-item
-          (click)="selectRemote(remote); isMobile() ? sidenav.close() : null"
-          (contextmenu)="onRemoteContextMenu($any($event), remote)"
-          [class.selected]="(nautilusRemote | async)?.name === remote.name"
-          class="remote-list-item"
-        >
-          <span class="remote-info">
-            <span class="remote-icon">
-              <!-- Logic to select icon based on fs_type -->
-              <mat-icon
-                matListIcon
-                [svgIcon]="
-                  remote.fs_type === 'local' ? 'hard-drive' : iconService.getIconName(remote.type)
-                "
+    <div class="nautilus-layout">
+      <div class="nautilus-header">
+        <mat-toolbar data-tauri-drag-region>
+          <button class="nav-button">
+            <mat-icon svgIcon="search"></mat-icon>
+          </button>
+          <span>{{ title() }}</span>
+          <button class="nav-button">
+            <mat-icon svgIcon="menu-bar"></mat-icon>
+          </button>
+        </mat-toolbar>
+      </div>
+
+      <div class="nautilus-scroll-content">
+        <mat-nav-list>
+          <!-- 1. VIRTUAL SYSTEMS (STARRED) -->
+          <mat-list-item
+            class="remote-list-item"
+            (click)="selectStarred()"
+            [class.selected]="starredMode()"
+            cdkDropList
+            [cdkDropListEnterPredicate]="canDropOnStarred"
+            (cdkDropListDropped)="onDropToStarred($event)"
+          >
+            <span class="remote-info">
+              <span class="remote-icon">
+                <mat-icon svgIcon="star"></mat-icon>
+                <p matLine>Starred</p>
+              </span>
+            </span>
+          </mat-list-item>
+
+          <mat-divider></mat-divider>
+
+          <!-- 2. LOCAL SYSTEMS & BOOKMARKS -->
+          <div
+            class="bookmarks-section"
+            cdkDropList
+            [cdkDropListData]="bookmarks()"
+            [cdkDropListEnterPredicate]="canDropOnBookmarks"
+            (cdkDropListDropped)="onDropToLocal($event)"
+          >
+            <!-- Local Drives (Static) -->
+            @for (drive of localDrives(); track trackByRemote($index, drive)) {
+              <mat-list-item
+                class="remote-list-item"
+                (click)="selectRemote(drive); isMobile() ? sidenav.close() : null"
+                [class.selected]="nautilusRemote()?.name === drive.name && !starredMode()"
+                [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
+                [cdkContextMenuTriggerData]="{ $implicit: drive }"
+                (cdkContextMenuOpened)="sideContextRemote.set(drive)"
               >
-              </mat-icon>
-              <p matLine>{{ remote.label }}</p>
-            </span>
-            <span class="eject">
-              @if (remote.isMounted) {
-                <button
-                  class="nav-button"
-                  (click)="
-                    unmount(remote.mountPoint || '', remote.name || ''); $event.stopPropagation()
-                  "
-                >
-                  <mat-icon svgIcon="eject"></mat-icon>
-                </button>
-              }
-            </span>
-          </span>
-        </mat-list-item>
-      }
-    </mat-nav-list>
+                <span class="remote-info">
+                  <span class="remote-icon">
+                    <mat-icon matListIcon svgIcon="hard-drive"></mat-icon>
+                    <p matLine>{{ drive.label }}</p>
+                  </span>
+                </span>
+              </mat-list-item>
+            }
+
+            <!-- Bookmarks (Draggable/Droppable) -->
+            @for (bm of bookmarks(); track trackByBookmark($index, bm)) {
+              <mat-list-item
+                class="remote-list-item bookmark-item"
+                cdkDrag
+                (click)="openBookmark(bm)"
+                [cdkContextMenuTriggerFor]="sidebarBookmarkMenu"
+                [cdkContextMenuTriggerData]="{ $implicit: bm }"
+                (cdkContextMenuOpened)="bookmarkContextItem = bm"
+              >
+                <!-- Standard reorder placeholder for sidebar sorting -->
+                <div class="bookmark-placeholder" *cdkDragPlaceholder></div>
+
+                <span class="remote-info">
+                  <span class="remote-icon">
+                    <mat-icon svgIcon="folder"></mat-icon>
+                    <p matLine>{{ bm.entry.Name }}</p>
+                  </span>
+                </span>
+              </mat-list-item>
+            }
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <!-- 3. REMOTES -->
+          @for (remote of cloudRemotes(); track trackByRemote($index, remote)) {
+            <mat-list-item
+              (click)="selectRemote(remote); isMobile() ? sidenav.close() : null"
+              [cdkContextMenuTriggerFor]="sidebarRemoteMenu"
+              [cdkContextMenuTriggerData]="{ $implicit: remote }"
+              (cdkContextMenuOpened)="sideContextRemote.set(remote)"
+              [class.selected]="nautilusRemote()?.name === remote.name && !starredMode()"
+              class="remote-list-item"
+            >
+              <span class="remote-info">
+                <span class="remote-icon">
+                  <mat-icon matListIcon [svgIcon]="iconService.getIconName(remote.type)"></mat-icon>
+                  <p matLine>{{ remote.label }}</p>
+                </span>
+                <span class="eject">
+                  @if (remote.isMounted) {
+                    <button
+                      class="nav-button"
+                      (click)="
+                        unmount(remote.mountPoint || '', remote.name || '');
+                        $event.stopPropagation()
+                      "
+                    >
+                      <mat-icon svgIcon="eject"></mat-icon>
+                    </button>
+                  }
+                </span>
+              </span>
+            </mat-list-item>
+          }
+        </mat-nav-list>
+      </div>
+    </div>
   </mat-sidenav>
 
   <mat-sidenav-content class="nautilus-main-content">
@@ -104,18 +166,20 @@
               #pathScrollView
               (wheel)="onPathScroll($event)"
             >
-              <!-- Root Element (Local Disk or Remote Name) -->
               <button
                 class="path-segment home-segment"
                 (click)="$event.stopPropagation(); updatePath('')"
               >
                 <mat-icon
-                  [svgIcon]="(nautilusRemote | async)?.fs_type === 'local' ? 'hard-drive' : 'cloud'"
+                  [svgIcon]="
+                    nautilusRemote()?.fs_type === 'local'
+                      ? 'hard-drive'
+                      : this.iconService.getIconName(nautilusRemote()?.type || '')
+                  "
                 ></mat-icon>
-                {{ (nautilusRemote | async)?.label || 'Local' }}
+                {{ nautilusRemote()?.label || 'Local' }}
               </button>
 
-              <!-- Segments -->
               @for (segment of pathSegments(); track $index) {
                 <span class="path-separator">/</span>
                 <button
@@ -128,11 +192,15 @@
               }
             </div>
           }
-          <button class="nav-button" style="border-radius: 0" (click)="$event.stopPropagation()">
+          <button
+            class="nav-button"
+            style="border-radius: 0"
+            (click)="$event.stopPropagation()"
+            [cdkMenuTriggerFor]="pathOptionsMenu"
+          >
             <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
           </button>
         } @else {
-          <!-- Editable Input -->
           <input
             #pathInput
             class="path-input"
@@ -153,35 +221,42 @@
             <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
           </button>
 
-          <button class="nav-button" [matMenuTriggerFor]="viewMenu">
+          <button
+            class="nav-button"
+            [cdkMenuTriggerFor]="viewMenu"
+            [cdkMenuPosition]="[
+              { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
+            ]"
+          >
             <mat-icon svgIcon="chevron-down"></mat-icon>
           </button>
         }
       </div>
     </mat-toolbar>
 
-    <!-- Tabs Bar -->
-    <div class="tabs-bar" *ngIf="tabs.length > 1">
-      <div
-        class="tab"
-        *ngFor="let t of tabs; let i = index; trackBy: trackByTab"
-        [class.active]="activeTabIndex() === i"
-        role="button"
-        tabindex="0"
-        (click)="switchTab(i)"
-      >
-        <span class="tab-title">{{ t.title }}</span>
-        <button
-          class="close-tab"
-          (click)="$event.stopPropagation(); closeTab(i)"
-          aria-label="Close tab"
-        >
-          <mat-icon svgIcon="close"></mat-icon>
-        </button>
+    @if (tabs().length > 1) {
+      <div class="tabs-bar">
+        @for (t of tabs(); track $index) {
+          <div
+            class="tab"
+            [class.active]="activeTabIndex() === $index"
+            role="button"
+            tabindex="0"
+            (click)="switchTab($index)"
+          >
+            <span class="tab-title">{{ t.title }}</span>
+            <button
+              class="close-tab"
+              (click)="$event.stopPropagation(); closeTab($index)"
+              aria-label="Close tab"
+            >
+              <mat-icon svgIcon="close"></mat-icon>
+            </button>
+          </div>
+        }
       </div>
-    </div>
+    }
 
-    <!-- Main Content Area -->
     <div class="nautilus-content" [class.list-layout]="layout() === 'list'">
       <!-- GRID LAYOUT -->
       @if (layout() === 'grid') {
@@ -191,7 +266,12 @@
           (keydown.enter)="clearSelection()"
           (keydown.space)="clearSelection()"
           tabindex="0"
-          (contextmenu)="onBackgroundContextMenu($event)"
+          [cdkContextMenuTriggerFor]="fileMenu"
+          [cdkContextMenuTriggerData]="{ $implicit: null }"
+          (cdkContextMenuOpened)="setContextItem(null)"
+          cdkDropList
+          [cdkDropListSortingDisabled]="true"
+          [cdkDropListEnterPredicate]="fileViewDropPredicate"
         >
           <div
             class="grid"
@@ -199,46 +279,81 @@
               'repeat(auto-fill, minmax(' + (iconSize() + 40) + 'px, 1fr))'
             "
           >
+            <ng-template #itemCard let-item="item" let-isPlaceholder="isPlaceholder">
+              <mat-card
+                class="folder-card"
+                [class.file-card]="!item.IsDir"
+                [class.hidden-item]="!isPlaceholder && item.Name.startsWith('.')"
+              >
+                <mat-card-content>
+                  <mat-icon
+                    [ngClass]="{ accent: item.IsDir }"
+                    [style.width.px]="iconSize()"
+                    [style.height.px]="iconSize()"
+                    [svgIcon]="
+                      item.IsDir
+                        ? 'folder'
+                        : iconService.getIconForFileType(fileViewerService.getFileType(item))
+                    "
+                  ></mat-icon>
+                  <p class="folder-title">{{ item.Name }}</p>
+                </mat-card-content>
+              </mat-card>
+            </ng-template>
             @for (item of files(); track trackByFile($index, item)) {
               <div
                 class="grid-item"
+                cdkDrag
+                [cdkDragData]="item"
                 (click)="onItemClick(item, $event, $index)"
                 (keydown.enter)="onItemClick(item, $event, $index)"
                 (keydown.space)="onItemClick(item, $event, $index)"
                 (dblclick)="navigateTo(item)"
-                (contextmenu)="onItemContextMenu($any($event), item)"
+                [cdkContextMenuTriggerFor]="fileMenu"
+                [cdkContextMenuTriggerData]="{ $implicit: item }"
+                (cdkContextMenuOpened)="setContextItem(item)"
                 tabindex="0"
-                [class.selected]="(selectedItems | async)?.has(item.Path)"
+                [class.selected]="selectedItems().has(item.Path)"
                 [class.unselectable]="!isItemSelectable(item)"
               >
+                <!-- Custom Drag Preview (Ghost) -->
+                <div class="drag-preview" *cdkDragPreview>
+                  <mat-icon [svgIcon]="item.IsDir ? 'folder' : 'file'"></mat-icon>
+                  <span>{{ item.Name }}</span>
+                </div>
+
+                <!-- DUAL STATE PLACEHOLDER (Stays in place) -->
+                <div class="dual-state-placeholder" *cdkDragPlaceholder>
+                  <!-- 1. Original Card Look (Visible in Grid) -->
+                  <div class="source-clone">
+                    <ng-container
+                      [ngTemplateOutlet]="itemCard"
+                      [ngTemplateOutletContext]="{ item: item, isPlaceholder: true }"
+                    >
+                    </ng-container>
+                  </div>
+
+                  <!-- 2. New Bookmark Look (Only Visible in Sidebar) -->
+                  <div class="new-bookmark-ui">
+                    <mat-icon svgIcon="bookmark-add"></mat-icon>
+                    <span>New Bookmark</span>
+                  </div>
+                </div>
+
                 @if (starredMode()) {
-                  <button
-                    mat-icon-button
+                  <mat-icon
                     class="star-button"
                     (click)="toggleStar(item); $event.stopPropagation()"
-                  >
-                    <mat-icon [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"></mat-icon>
-                  </button>
+                    [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"
+                  ></mat-icon>
                 }
-                <mat-card
-                  class="folder-card"
-                  [class.file-card]="!item.IsDir"
-                  [class.hidden-item]="item.Name.startsWith('.')"
+
+                <!-- Visible Content (will be hidden by CDK when dragging starts) -->
+                <ng-container
+                  [ngTemplateOutlet]="itemCard"
+                  [ngTemplateOutletContext]="{ item: item, isPlaceholder: false }"
                 >
-                  <mat-card-content>
-                    <mat-icon
-                      [ngClass]="{ accent: item.IsDir }"
-                      [style.width.px]="iconSize()"
-                      [style.height.px]="iconSize()"
-                      [svgIcon]="
-                        item.IsDir
-                          ? 'folder'
-                          : iconService.getIconForFileType(fileViewerService.getFileType(item))
-                      "
-                    ></mat-icon>
-                    <p class="folder-title">{{ item.Name }}</p>
-                  </mat-card-content>
-                </mat-card>
+                </ng-container>
               </div>
             }
           </div>
@@ -248,63 +363,155 @@
       <!-- LIST LAYOUT -->
       @if (layout() === 'list') {
         <div
-          class="nautilus-list"
+          class="nautilus-list-container"
           (click)="clearSelection()"
           (keydown.enter)="clearSelection()"
           tabindex="0"
-          (contextmenu)="onBackgroundContextMenu($event)"
+          [cdkContextMenuTriggerFor]="fileMenu"
+          (cdkContextMenuOpened)="setContextItem(null)"
+          cdkDropList
+          [cdkDropListSortingDisabled]="true"
+          [cdkDropListEnterPredicate]="fileViewDropPredicate"
         >
-          <div class="list-header">
-            <div class="list-col name">
-              Name
+          <table mat-table [dataSource]="files()" class="nautilus-table">
+            <ng-template #nameCellContent let-item="item" let-rowTitle="rowTitle">
               <mat-icon
-                *ngIf="sortKey().startsWith('name')"
-                [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                [ngClass]="{ accent: item.IsDir }"
+                [svgIcon]="
+                  item.IsDir
+                    ? 'folder'
+                    : iconService.getIconForFileType(fileViewerService.getFileType(item))
+                "
               ></mat-icon>
-            </div>
-            <div class="list-col star-col"></div>
-            <div class="list-col size">Size</div>
-            <div class="list-col modified">Modified</div>
-          </div>
-          @for (item of files(); track trackByFile($index, item)) {
-            <div
-              class="list-row"
-              (click)="onItemClick(item, $event, $index)"
-              (keydown.enter)="onItemClick(item, $event, $index)"
-              (dblclick)="navigateTo(item)"
-              (contextmenu)="onItemContextMenu($any($event), item)"
-              tabindex="0"
-              [class.selected]="(selectedItems | async)?.has(item.Path)"
-              [class.hidden-item]="item.Name.startsWith('.')"
-            >
-              <div class="list-col name">
-                <mat-icon
-                  [ngClass]="{ accent: item.IsDir }"
-                  [style.width.px]="iconSize()"
-                  [style.height.px]="iconSize()"
-                  [svgIcon]="
-                    item.IsDir
-                      ? 'folder'
-                      : iconService.getIconForFileType(fileViewerService.getFileType(item))
-                  "
-                ></mat-icon>
-                <span>{{ item.Name }}</span>
-              </div>
-              <div class="list-col size">
+              <span [class.row-title]="rowTitle">{{ item.Name }}</span>
+            </ng-template>
+            <ng-container matColumnDef="name">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                (click)="toggleSort('name')"
+                class="sortable-header"
+              >
+                <div class="header-content">
+                  Name
+                  @if (sortKey().startsWith('name')) {
+                    <mat-icon
+                      [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                    ></mat-icon>
+                  }
+                </div>
+              </th>
+              <td mat-cell *matCellDef="let item">
+                <div class="cell-content name-cell">
+                  <ng-container
+                    [ngTemplateOutlet]="nameCellContent"
+                    [ngTemplateOutletContext]="{ item: item, rowTitle: false }"
+                  ></ng-container>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="size">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                class="align-right sortable-header"
+                (click)="toggleSort('size')"
+              >
+                <div class="header-content right-aligned">
+                  @if (sortKey().startsWith('size')) {
+                    <mat-icon
+                      [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                    ></mat-icon>
+                  }
+                  Size
+                </div>
+              </th>
+              <td mat-cell *matCellDef="let item" class="align-right">
                 {{ item.IsDir ? '--' : (item.Size | formatFileSize) }}
-              </div>
-              <div class="list-col modified">{{ formatRelativeDate(item.ModTime) }}</div>
-              <div class="list-col star-col">
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="modified">
+              <th
+                mat-header-cell
+                *matHeaderCellDef
+                class="align-right sortable-header"
+                (click)="toggleSort('modified')"
+              >
+                <div class="header-content right-aligned">
+                  @if (sortKey().startsWith('modified')) {
+                    <mat-icon
+                      [svgIcon]="sortDirection() === 'asc' ? 'chevron-up' : 'chevron-down'"
+                    ></mat-icon>
+                  }
+                  Modified
+                </div>
+              </th>
+              <td mat-cell *matCellDef="let item" class="align-right">
+                {{ formatRelativeDate(item.ModTime) }}
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="star">
+              <th mat-header-cell *matHeaderCellDef class="align-center"></th>
+              <td mat-cell *matCellDef="let item" class="align-center">
                 <button
                   mat-icon-button
                   class="star-button"
                   (click)="toggleStar(item); $event.stopPropagation()"
                 >
-                  <mat-icon [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"> </mat-icon>
+                  <mat-icon [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"></mat-icon>
                 </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+
+            <tr
+              mat-row
+              *matRowDef="let item; columns: displayedColumns; let i = index"
+              cdkDrag
+              [cdkDragData]="item"
+              (click)="onItemClick(item, $event, i)"
+              (keydown.enter)="onItemClick(item, $event, i)"
+              (dblclick)="navigateTo(item)"
+              [cdkContextMenuTriggerFor]="fileMenu"
+              [cdkContextMenuTriggerData]="{ $implicit: item }"
+              (cdkContextMenuOpened)="setContextItem(item)"
+              [class.selected]="selectedItems().has(item.Path)"
+              [class.hidden-item]="item.Name.startsWith('.')"
+            >
+              <div class="drag-preview" *cdkDragPreview>
+                <mat-icon [svgIcon]="item.IsDir ? 'folder' : 'file'"></mat-icon>
+                <span>{{ item.Name }}</span>
               </div>
-            </div>
-          }
+
+              <!-- Table-friendly dual-state placeholder: when CDK replaces the row, it will
+                   insert the contents of this template as a proper table row (TR with TD).
+                   The placeholder provides a subtle source-clone and an optional
+                   "new bookmark" UI (the latter is hidden by default). -->
+              <ng-container *cdkDragPlaceholder>
+                <tr class="dual-state-row">
+                  <td [attr.colspan]="displayedColumns.length">
+                    <div class="dual-state-content">
+                      <div class="source-clone">
+                        <ng-container
+                          [ngTemplateOutlet]="nameCellContent"
+                          [ngTemplateOutletContext]="{ item: item, rowTitle: true }"
+                        ></ng-container>
+                      </div>
+
+                      <div class="new-bookmark-ui">
+                        <mat-icon svgIcon="bookmark-add"></mat-icon>
+                        <span>New Bookmark</span>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              </ng-container>
+            </tr>
+          </table>
         </div>
       }
 
@@ -321,7 +528,6 @@
         </div>
       }
 
-      <!-- Loading State -->
       @if (isLoading()) {
         <div class="loading-overlay">
           <mat-spinner diameter="24"></mat-spinner>
@@ -347,77 +553,137 @@
           <button class="nav-button" (click)="setLayout(layout() === 'grid' ? 'list' : 'grid')">
             <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
           </button>
-          <button class="nav-button" [matMenuTriggerFor]="viewMenu">
+          <button
+            class="nav-button"
+            [cdkMenuTriggerFor]="viewMenu"
+            [cdkMenuPosition]="[
+              { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
+            ]"
+          >
             <mat-icon svgIcon="chevron-down"></mat-icon>
           </button>
         </div>
       </div>
     }
 
-    <!-- File Context Menu -->
-    <div
-      class="context-menu"
-      *ngIf="contextMenuVisible()"
-      [style.left.px]="contextMenuX()"
-      [style.top.px]="contextMenuY()"
-      (click)="$event.stopPropagation()"
-      tabindex="0"
-      (keydown.escape)="contextMenuVisible.set(false)"
-    >
-      @if (contextMenuItem) {
-        <button mat-menu-item (click)="openContextMenuOpen()">Open</button>
-        <button mat-menu-item (click)="openContextMenuOpenInNewTab()">Open in New Tab</button>
-        <button mat-menu-item (click)="openContextMenuSelectToggle()">Toggle Select</button>
-        <button mat-menu-item (click)="openContextMenuCopyPath()">Copy Path</button>
-        <mat-divider></mat-divider>
-      }
-      @if (!contextMenuItem) {
-        <button mat-menu-item (click)="openContextMenuNewFolder()">New Folder</button>
-      }
-      <button mat-menu-item (click)="refresh()">Refresh</button>
-      <button mat-menu-item (click)="openContextMenuProperties()">Properties</button>
-    </div>
+    <!-- Context Menus -->
+    <ng-template #fileMenu let-item>
+      <div class="material-context-menu" cdkMenu>
+        @if (item) {
+          <button class="menu-item" cdkMenuItem (click)="openContextMenuOpen()">
+            <span>Open</span>
+          </button>
+          <button class="menu-item" cdkMenuItem (click)="openContextMenuOpenInNewTab()">
+            <span>Open in New Tab</span>
+          </button>
+          <button class="menu-item" cdkMenuItem (click)="openContextMenuSelectToggle()">
+            <span>Toggle Select</span>
+          </button>
+          <button class="menu-item" cdkMenuItem (click)="openContextMenuCopyPath()">
+            <span>Copy Path</span>
+          </button>
+        }
+        @if (!item) {
+          <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
+            <span>New Folder</span>
+          </button>
+        }
+        <div class="menu-divider"></div>
+        <button class="menu-item" cdkMenuItem (click)="refresh()">
+          <span>Refresh</span>
+        </button>
+        <button class="menu-item" cdkMenuItem (click)="openContextMenuProperties()">
+          <span>Properties</span>
+        </button>
+      </div>
+    </ng-template>
+
+    <!-- Path Options Menu -->
+    <ng-template #pathOptionsMenu>
+      <div class="material-context-menu" cdkMenu>
+        <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
+          <span>New Folder...</span>
+        </button>
+
+        <div class="menu-divider"></div>
+
+        <button class="menu-item" cdkMenuItem (click)="refresh()">
+          <span>Reload</span>
+        </button>
+
+        <button class="menu-item" cdkMenuItem (click)="copyCurrentLocation()">
+          <span>Copy Location</span>
+        </button>
+
+        <div class="menu-divider"></div>
+
+        <button class="menu-item" cdkMenuItem (click)="selectAll()">
+          <span>Select All</span>
+        </button>
+
+        <div class="menu-divider"></div>
+
+        <button
+          class="menu-item"
+          cdkMenuItem
+          (click)="setContextItem(null); openContextMenuProperties()"
+        >
+          <span>Properties</span>
+        </button>
+      </div>
+    </ng-template>
 
     @if (isPickerMode()) {
       <div class="picker-actions" [class.mobile-picker]="isMobile()">
         <span class="selection-info">{{ selectionSummary() }}</span>
         <button mat-stroked-button (click)="onClose()">Cancel</button>
-        <button mat-flat-button color="primary" (click)="confirmSelection()">Open</button>
+        <button mat-flat-button class="primary" (click)="confirmSelection()">Open</button>
       </div>
     }
   </mat-sidenav-content>
 </mat-sidenav-container>
 
 <!-- Sidebar Context Menu -->
-<div
-  class="sidebar-context-menu"
-  *ngIf="sideContextVisible()"
-  [style.left.px]="sideContextX()"
-  [style.top.px]="sideContextY()"
-  (click)="$event.stopPropagation()"
-  tabindex="0"
-  (keydown.escape)="sideContextVisible.set(false)"
->
-  <button mat-menu-item (click)="selectRemote(sideContextRemote()); sideContextVisible.set(false)">
-    Open
-  </button>
-  <button mat-menu-item (click)="createTab(sideContextRemote(), ''); sideContextVisible.set(false)">
-    Open in New Tab
-  </button>
-  <button mat-menu-item (click)="openRemoteAboutFromSidebar()">About</button>
-  <button mat-menu-item (click)="openSidebarCleanup()" [disabled]="!sideRemoteSupportsCleanup()">
-    Empty Trash
-  </button>
-</div>
+<ng-template #sidebarRemoteMenu let-remote>
+  <div class="material-context-menu" cdkMenu>
+    <button class="menu-item" cdkMenuItem (click)="selectRemote(remote)">
+      <span>Open</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="createTab(remote, '')">
+      <span>Open in New Tab</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="openRemoteAboutFromSidebar()">
+      <span>About</span>
+    </button>
+    <button
+      class="menu-item"
+      cdkMenuItem
+      (click)="openSidebarCleanup()"
+      [disabled]="!sideRemoteSupportsCleanup()"
+    >
+      <span>Empty Trash</span>
+    </button>
+  </div>
+</ng-template>
+
+<!-- Bookmark Context Menu -->
+<ng-template #sidebarBookmarkMenu let-bookmark>
+  <div class="material-context-menu" cdkMenu>
+    <button class="menu-item" cdkMenuItem (click)="openBookmark(bookmark)">
+      <span>Open</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="openBookmarkProperties()">
+      <span>Properties</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="deleteContextBookmark()">
+      <span>Remove Bookmark</span>
+    </button>
+  </div>
+</ng-template>
 
 <!-- View Menu -->
-<mat-menu #viewMenu="matMenu">
-  <div
-    class="view-menu-content"
-    tabindex="0"
-    (click)="$event.stopPropagation()"
-    (keydown.tab)="$event.stopPropagation()"
-  >
+<ng-template #viewMenu>
+  <div class="material-context-menu" cdkMenu>
     <div class="icon-size-control">
       <span>Icon Size</span>
       <div class="buttons">
@@ -429,26 +695,26 @@
         </button>
       </div>
     </div>
-    <mat-divider></mat-divider>
+
+    <div class="menu-divider"></div>
+
     <div class="sort-options">
       <span class="sort-label">Sort</span>
       <mat-radio-group
         class="sort-radio-group"
-        [ngModel]="sortKey()"
-        (ngModelChange)="setSort($event)"
+        [value]="sortKey()"
+        (change)="setSort($event.value)"
       >
         @for (opt of sortOptions; track trackBySortOption($index, opt)) {
           <mat-radio-button [value]="opt.key">{{ opt.label }}</mat-radio-button>
         }
       </mat-radio-group>
     </div>
-    <mat-divider></mat-divider>
-    <mat-checkbox
-      class="hidden-files-checkbox"
-      [checked]="showHidden()"
-      (change)="toggleShowHidden($event.checked)"
-    >
+
+    <div class="menu-divider"></div>
+
+    <mat-checkbox [checked]="showHidden()" (change)="toggleShowHidden($event.checked)">
       <span>Show Hidden Files</span>
     </mat-checkbox>
   </div>
-</mat-menu>
+</ng-template>

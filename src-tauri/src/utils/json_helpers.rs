@@ -27,3 +27,13 @@ pub fn get_bool(json: &Value, path: &[&str], default: bool) -> bool {
     }
     current.and_then(|v| v.as_bool()).unwrap_or(default)
 }
+
+/// Utility to normalize Windows extended-length paths (e.g., //?/C:/path or \\?\C:\path) to C:/path, only on Windows
+#[cfg(target_os = "windows")]
+pub fn normalize_windows_path(path: &str) -> String {
+    let mut p = path;
+    if p.starts_with("//?/") || p.starts_with(r"\\?\") {
+        p = &p[4..];
+    }
+    p.to_string()
+}

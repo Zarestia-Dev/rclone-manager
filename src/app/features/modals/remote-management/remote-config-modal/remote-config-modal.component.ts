@@ -16,7 +16,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
 import { ServeConfigStepComponent } from '../../../../shared/remote-config/serve-config-step/serve-config-step.component';
-import { RcConfigQuestionResponse } from '@app/services';
 import { AnimationsService } from '../../../../shared/services/animations.service';
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
 import { ValidatorRegistryService } from '../../../../shared/services/validator-registry.service';
@@ -47,6 +46,7 @@ import {
   InteractiveFlowState,
   FLAG_TYPES,
   INTERACTIVE_REMOTES,
+  RcConfigQuestionResponse,
 } from '@app/types';
 import { MatProgressSpinner } from '@angular/material/progress-spinner';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';

@@ -23,6 +23,7 @@ import { RemoteManagementService } from 'src/app/services/remote/remote-manageme
 import { NotificationService } from 'src/app/shared/services/notification.service';
 import { FormatFileSizePipe } from '@app/pipes';
 import { Entry } from '@app/types';
+import { FileSystemService } from '@app/services';
 
 @Component({
   selector: 'app-file-viewer-modal',
@@ -54,6 +55,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   public iconService = inject(IconService);
   private remoteManagementService = inject(RemoteManagementService);
   private readonly notificationService = inject(NotificationService);
+  private fileSystemService = inject(FileSystemService);
 
   sanitizedUrl!: SafeResourceUrl;
 
@@ -206,8 +208,8 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.updateContent();
   }
 
-  download(): void {
-    /* empty */
+  async download(): Promise<void> {
+    alert('Download functionality is not yet implemented.');
   }
 
   onBackdropClick(event: MouseEvent): void {

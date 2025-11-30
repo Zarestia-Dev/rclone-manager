@@ -109,18 +109,26 @@ export class PropertiesModalComponent implements OnInit {
   }
 
   toggleStar(): void {
-    // Construct a minimal entry if we are looking at properties of a folder without the Entry object
-    const entryToSave = this.item || {
+    // 1. Ensure we have a valid Entry object
+    const entryToSave: Entry = this.item ?? {
       Name: this.data.path.split('/').pop() || this.data.remoteName,
       Path: this.data.path,
-      IsDir: true,
+      IsDir: true, // Default assumption for root/unknown types
       Size: 0,
       ModTime: new Date().toISOString(),
       ID: '',
-      MimeType: '',
+      MimeType: 'inode/directory',
     };
 
-    this.nautilusService.toggleStar(this.data.remoteName, entryToSave);
+    // 2. Construct the identifier string
+    // Logic: If it's a remote (not local) and missing the colon, add it.
+    let remoteIdentifier = this.data.remoteName;
+    if (this.data.fs_type === 'remote' && !remoteIdentifier.endsWith(':')) {
+      remoteIdentifier = `${remoteIdentifier}:`;
+    }
+
+    // 3. Call simplified service
+    this.nautilusService.toggleStar(remoteIdentifier, entryToSave);
   }
 
   @HostListener('keydown.escape')

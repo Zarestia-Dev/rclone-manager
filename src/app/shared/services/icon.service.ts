@@ -112,6 +112,8 @@ export class IconService {
       'right-left': 'assets/icons/right-left.svg',
       'rotate-left': 'assets/icons/rotate-left.svg',
 
+      bookmark: 'assets/icons/bookmark.svg',
+
       star: 'assets/icons/star.svg',
       'star-outline': 'assets/icons/star-outline.svg',
 

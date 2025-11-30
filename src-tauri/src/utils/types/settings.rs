@@ -115,6 +115,9 @@ pub struct NautilusSettings {
     /// Starred items saved as an array of objects with remote and entry information.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub starred: Option<Vec<Value>>,
+    /// Bookmarks saved as an array of objects with remote and entry information.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bookmarks: Option<Vec<Value>>,
 }
 
 /// The complete settings model
@@ -217,6 +220,7 @@ impl Default for AppSettings {
                 show_hidden_by_default: false,
                 sort_key: "name-asc".to_string(),
                 starred: Some(vec![]),
+                bookmarks: Some(vec![]),
             },
         }
     }
@@ -600,6 +604,18 @@ static SETTINGS_METADATA: Lazy<HashMap<String, SettingMetadata>> = Lazy::new(|| 
             value_type: "object[]".into(),
             help_text: "List of starred items with remote and entry details.".into(),
             default: json!(defaults.nautilus.starred),
+            placeholder: Some("e.g., { remote: 'gdrive', entry: { ... } }".into()),
+            ..Default::default()
+        },
+    );
+
+    add(
+        "nautilus.bookmarks",
+        SettingMetadata {
+            display_name: "Bookmarks".into(),
+            value_type: "object[]".into(),
+            help_text: "List of bookmarked items with remote and entry details.".into(),
+            default: json!(defaults.nautilus.bookmarks),
             placeholder: Some("e.g., { remote: 'gdrive', entry: { ... } }".into()),
             ..Default::default()
         },

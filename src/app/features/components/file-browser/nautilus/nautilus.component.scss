@@ -1,5 +1,4 @@
-/* 1. Main Container & Layout
- * -------------------------------------------------------------------------- */
+/* 1. Main Container & Layout */
 
 .nautilus-overlay-pane {
   width: 100vw;
@@ -13,48 +12,52 @@
   background-color: var(--sidebar-background);
   border-right: 1px solid var(--theme-border);
   border-radius: 0 !important;
-  overflow: hidden;
 }
 
-/*
- * 2. Sidenav Content (Remotes List)
- * -------------------------------------------------------------------------- */
+/* 1. LAYOUT WRAPPER */
+.nautilus-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden; /* Ensures no double scrollbars */
+}
 
+/* 2. HEADER WRAPPER */
+.nautilus-header {
+  flex-shrink: 0; /* Never squish the header */
+  z-index: 10;
+  background-color: var(--sidebar-background);
+}
+
+/* Fix the toolbar inside to remove sticky positioning since flex handles it now */
 .nautilus-sidenav mat-toolbar {
   display: flex;
   justify-content: space-between;
   background-color: var(--sidebar-background) !important;
   padding: 0 var(--space-sm);
   height: 48px;
-
-  /* Keep the sidenav toolbar pinned to the top of the sidebar
-     so it doesn't scroll with the nav list. */
-  position: sticky;
-  top: 0;
-  z-index: 20;
-
-  span {
-    font-weight: 700;
-  }
 }
 
-mat-nav-list {
-  padding: var(--space-xs);
-  gap: var(--space-xxs);
-  display: flex;
-  flex-direction: column;
+/* 3. SCROLLABLE CONTENT AREA */
+.nautilus-scroll-content {
+  flex: 1; /* Take all remaining height */
+  overflow-y: auto; /* Enable scrolling */
+  overflow-x: hidden;
+  min-height: 0; /* Critical for Flexbox nesting (Prevents squish) */
+}
 
-  /* Make the navigation list take remaining space and scroll
-      independently of the toolbar. This keeps the toolbar visible
-      and places the scrollbar below it. */
-  flex: 1 1 auto;
-  overflow-y: auto;
+/* Reset the list so it acts as a simple container */
+mat-nav-list {
+  padding: var(--space-xs) !important;
+  overflow: visible; /* Let the parent div handle scrolling */
 }
 
 .remote-list-item {
   border-radius: var(--border-radius) !important;
   height: 36px !important;
   padding-inline: var(--space-xs);
+  margin-block: var(--space-xxs);
+  transition: background-color 0.2s ease;
 
   &.selected {
     background: var(--bg-hover);
@@ -85,6 +88,91 @@ mat-nav-list {
       }
     }
   }
+}
+
+/* Drop Targets in Sidebar */
+.cdk-drop-list-dragging .remote-list-item:hover {
+  background: rgba(var(--primary-color-rgb), 0.1);
+  border: 1px dashed var(--primary-color);
+}
+
+/* Hide any placeholder that gets dragged into a standard list item (like Starred) */
+.remote-list-item .dual-state-placeholder,
+.remote-list-item .cdk-drag-placeholder {
+  display: none !important;
+}
+
+/* ======================================================== */
+/* DUAL STATE PLACEHOLDER (DRY Version)                     */
+/* ======================================================== */
+
+.dual-state-placeholder {
+  width: 100%;
+  height: 100%;
+
+  /* 1. SOURCE CLONE: The "Ghost" of the item left behind */
+  .source-clone {
+    display: block;
+    width: 100%;
+    height: 100%;
+
+    /* Make it look like a ghost */
+    opacity: 0.5;
+    pointer-events: none; /* No hovers on the ghost */
+
+    /* Since .folder-card is inside here, it inherits the layout automatically.
+       We just override the interactive bits: */
+    .folder-card {
+      background: transparent !important; /* No hover bg */
+      box-shadow: none !important;
+      border: 1px dashed var(--theme-border); /* Optional: dashed border for placeholder */
+    }
+  }
+
+  /* 2. NEW BOOKMARK UI: Hidden by default, shown in sidebar */
+  .new-bookmark-ui {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 36px;
+    color: var(--accent-color);
+    font-weight: 600;
+    font-size: 14px;
+    background: rgba(var(--accent-color-rgb), 0.08);
+    border: 2px dashed var(--accent-color);
+    border-radius: var(--border-radius);
+    box-sizing: border-box;
+  }
+}
+
+/* CONTEXT: When dragging over the Sidebar (.bookmarks-section) */
+.bookmarks-section .dual-state-placeholder {
+  .source-clone {
+    display: none !important;
+  }
+  .new-bookmark-ui {
+    display: flex !important;
+  }
+}
+
+/* CONTEXT: When dragging over the Table (List View) */
+.nautilus-table .dual-state-placeholder {
+  /* The table structure handles the dimensions, we just ensure visibility */
+  .source-clone {
+    display: flex;
+    opacity: 0.5;
+  }
+}
+
+/* The Reordering Placeholder (when moving existing bookmarks up/down) */
+.bookmark-placeholder {
+  background: rgba(var(--primary-color-rgb), 0.1);
+  border: 1px dashed var(--primary-color);
+  min-height: 36px;
+  border-radius: var(--border-radius);
+  margin: 4px 0;
 }
 
 /*
@@ -152,8 +240,8 @@ mat-nav-list {
     padding: var(--space-xs) var(--space-sm);
     border-radius: var(--radius-xs);
     flex: 1 1 0;
-    position: relative; /* allow absolutely positioned close button */
-    padding-right: 44px; /* reserve space for the close icon on the right */
+    position: relative;
+    padding-right: 44px;
 
     &.active {
       background: var(--bg-selected);
@@ -171,7 +259,7 @@ mat-nav-list {
       text-overflow: ellipsis;
       white-space: nowrap;
       font-size: 13px;
-      text-align: center; /* center text within the reserved area */
+      text-align: center;
       margin: 0 auto;
     }
 
@@ -201,63 +289,17 @@ mat-nav-list {
   }
 }
 
-/* Simple custom context menu */
-.context-menu {
-  position: fixed;
-  z-index: 2000;
-  background: var(--secondary-background);
-  border: 1px solid var(--theme-border);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  padding: 6px;
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-
-  button[mat-menu-item] {
-    text-align: left;
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  mat-divider {
-    margin: 4px 0;
-    border-top-color: var(--theme-border);
-  }
-}
-
-/* Sidebar context menu */
-.sidebar-context-menu {
-  position: fixed;
-  z-index: 2000;
-  background: var(--secondary-background);
-  border: 1px solid var(--theme-border);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  padding: 6px;
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 160px;
-
-  button[mat-menu-item] {
-    text-align: left;
-    width: 100%;
-    justify-content: flex-start;
-  }
-}
-
 .path-container {
   display: flex;
   align-items: center;
   background-color: var(--input-background);
   border-radius: 8px;
   width: 100%;
-  max-width: 800px; /* Stop growing at 800px */
-  margin: 0 auto; /* Center in available space */
-  overflow: hidden; /* Contain the scroll view */
-  min-width: 0; /* Allows flexbox shrinking below content size */
-  height: 36px; /* Fixed height for alignment */
+  max-width: 800px;
+  margin: 0 auto;
+  overflow: hidden;
+  min-width: 0;
+  height: 36px;
 }
 
 /* The scrolling area with the shadow effect */
@@ -270,17 +312,11 @@ mat-nav-list {
   white-space: nowrap;
   scroll-behavior: smooth;
 
-  /* Pure CSS Scroll Shadows 
-     This uses background attachment 'local' (moves with content) vs 'scroll' (fixed).
-     When scrolled to the edge, the 'local' background covers the 'scroll' shadow.
-  */
   background-image:
-    /* Left Shadow Cover (Local) */
     linear-gradient(to right, var(--input-background), var(--input-background)),
-    /* Right Shadow Cover (Local) */
-      linear-gradient(to right, var(--input-background), var(--input-background)),
-    /* Left Shadow (Fixed) */ linear-gradient(to right, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0)),
-    /* Right Shadow (Fixed) */ linear-gradient(to left, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0));
+    linear-gradient(to right, var(--input-background), var(--input-background)),
+    linear-gradient(to right, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0)),
+    linear-gradient(to left, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0));
 
   background-position:
     0 0,
@@ -305,25 +341,18 @@ mat-nav-list {
   user-select: none;
 }
 
-/* Merged .path-segment definition (Cleaned up duplicates) */
 .path-segment {
-  /* Layout & Box Model */
   display: flex;
   align-items: center;
   flex-shrink: 0;
   min-width: 0;
   min-height: 0;
-
-  /* Dimensions & Spacing */
   height: unset;
   margin: var(--space-xxs);
   padding: var(--space-xxs) var(--space-xs);
-
-  /* Appearance */
   border-radius: var(--border-radius);
   color: var(--secondary-text-color);
 
-  /* Interactions */
   &:hover:not(.active) {
     background: var(--bg-selected);
     color: var(--app-text-color);
@@ -346,7 +375,6 @@ mat-nav-list {
   }
 }
 
-/* Merged .path-input definition (Cleaned up duplicates) */
 .path-input {
   width: 100%;
   padding: var(--space-xs) var(--space-sm);
@@ -357,62 +385,6 @@ mat-nav-list {
   color: var(--app-text-color);
   font-size: 14px;
   height: 100%;
-}
-
-.search-input-container {
-  display: flex;
-  align-items: center;
-  background-color: var(--input-background);
-  border-radius: 8px;
-  flex-grow: 1;
-  padding: 0 var(--space-sm);
-  margin: 0 var(--space-sm);
-
-  mat-icon {
-    margin-right: var(--space-sm);
-    color: var(--secondary-text-color);
-  }
-
-  input {
-    width: 100%;
-    padding: var(--space-xs) 0;
-    border: none;
-    outline: none;
-    background: transparent;
-    color: var(--app-text-color);
-    font-size: 14px;
-
-    &::placeholder {
-      color: var(--secondary-text-color);
-    }
-  }
-}
-
-.search-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  text-align: center;
-}
-
-.search-everywhere {
-  .search-icon {
-    font-size: 64px;
-    width: 64px;
-    height: 64px;
-    margin-bottom: 16px;
-  }
-
-  h2 {
-    font-size: 24px;
-    margin-bottom: 8px;
-  }
-
-  p {
-    color: var(--secondary-text-color);
-    margin-bottom: 24px;
-  }
 }
 
 /* 3.2 Main File Display Area */
@@ -438,10 +410,33 @@ mat-nav-list {
   .grid-item {
     display: block;
     width: 100%;
-    outline: none;
+    box-sizing: border-box;
+    z-index: 0;
+    outline: none; /* remove focus ring if handled by inner elements */
+
+    /* SELECTION STATE: Applies to the real item */
+    &.selected .folder-card {
+      background: var(--bg-selected);
+    }
+  }
+
+  .star-button {
+    position: absolute;
+    border-radius: 50%;
+    padding: 4px;
+    transition: var(--transition-fast);
+    width: 16px;
+    color: var(--secondary-text-color);
+    height: 16px;
+    z-index: 1;
+
+    &:hover {
+      background: var(--bg-selected);
+    }
   }
 }
 
+/* THE SHARED CARD COMPONENT */
 .folder-card {
   box-sizing: border-box;
   min-height: 140px;
@@ -457,72 +452,146 @@ mat-nav-list {
   background: none;
   box-shadow: none;
   overflow: hidden;
+  cursor: pointer;
 
+  /* Typography */
+  .folder-title {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--app-text-color);
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: break-word;
+    word-break: break-all;
+    overflow: hidden;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  /* Hover State (Only applies if NOT inside a placeholder) */
   &:hover {
     background: var(--bg-elevated);
   }
 
-  mat-card-content {
-    width: 100%;
+  /* Hidden Files (Dotfiles) style */
+  &.hidden-item {
+    opacity: 0.6;
+    mat-icon {
+      filter: grayscale(40%);
+    }
   }
 }
 
-.folder-title {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--app-text-color);
-  text-align: center;
-  white-space: normal;
-  overflow-wrap: break-word;
-  word-break: break-all;
-  overflow: hidden;
-  display: -webkit-box;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
+/* Dragging styles */
+.drag-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--secondary-background);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--primary-color);
+  opacity: 0.9;
+  z-index: 9999; /* Ensure preview stays on top */
 
-.grid-item.selected .folder-card {
-  background: var(--bg-selected);
-}
+  mat-icon {
+    color: var(--primary-color);
+  }
 
-/* 3.2.2 List View */
-.nautilus-list {
-  height: 100%;
-  box-sizing: border-box;
-  .list-header {
-    display: flex;
-    padding: 8px 16px;
+  span {
     font-weight: 500;
   }
+}
 
-  .list-row {
-    display: flex;
-    padding: 8px 16px;
+/* 3.2.2 List View (MatTable) */
+.nautilus-list-container {
+  height: 100%;
+  overflow: auto;
+}
+
+.nautilus-table {
+  width: 100%;
+  background: transparent;
+
+  /* SHARED ROW SETTINGS */
+  /* We define the height variable or fixed value here to enforce consistency */
+  --row-height: 48px;
+
+  /* Standard Rows */
+  tr.mat-mdc-row {
+    height: var(--row-height);
+    transition: background-color 0.1s;
+
     &:hover {
-      background-color: var(--bg-elevated);
+      background-color: var(--bg-hover);
     }
     &.selected {
       background-color: var(--bg-selected);
     }
+
+    /* When a row is being dragged, the original becomes the placeholder */
+    &.cdk-drag-placeholder {
+      background: transparent;
+      opacity: 1; /* Keep 1 because we manually style the inner contents */
+    }
   }
 
-  .list-col {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+  /* HEADER STYLING */
+  th.mat-mdc-header-cell {
+    background: var(--secondary-background); /* Important for sticky header */
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--secondary-text-color);
+    border-bottom: 1px solid var(--theme-border);
+    padding: 0 16px;
+    height: 48px;
 
-    &.name {
-      flex: 3;
+    .header-content {
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
-    &.size,
-    &.modified {
-      flex: 1;
-      justify-content: flex-end;
+
+    &:hover {
+      background-color: var(--bg-hover);
     }
-    &.star {
-      flex-basis: 40px;
-      justify-content: center;
+
+    &.align-right {
+      text-align: right;
+    }
+    &.align-center {
+      text-align: center;
+    }
+  }
+
+  /* CELL STYLING */
+  td.mat-mdc-cell {
+    border-bottom: 1px solid transparent; /* Remove default lines if you want clean look */
+    font-size: 14px;
+    color: var(--app-text-color);
+    padding: 0 16px;
+
+    /* Name Cell Layout */
+    .name-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      mat-icon {
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+      }
+    }
+
+    &.align-right {
+      text-align: right;
+    }
+    &.align-center {
+      text-align: center;
     }
   }
 }
@@ -531,74 +600,58 @@ mat-nav-list {
  * 4. Popups and Overlays
  * -------------------------------------------------------------------------- */
 
-.view-menu-content {
-  padding: 8px;
+.icon-size-control {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 200px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
 
-  .icon-size-control {
+  span {
+    font-weight: 500;
+  }
+
+  .buttons {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 8px;
+    border: 1px solid var(--theme-border);
+    border-radius: 6px;
+    overflow: hidden;
 
-    span {
-      font-weight: 500;
-    }
+    button {
+      border-radius: 0;
+      height: 28px;
+      width: 28px;
 
-    .buttons {
-      display: flex;
-      border: 1px solid var(--theme-border);
-      border-radius: 6px;
-      overflow: hidden;
+      mat-icon {
+        width: 16px;
+        height: 16px;
+      }
 
-      button {
-        border-radius: 0;
-        height: 28px;
-        width: 28px;
+      &:hover {
+        background: var(--bg-hover);
+      }
 
-        mat-icon {
-          width: 16px;
-          height: 16px;
-        }
-
-        &:hover {
-          background: var(--bg-hover);
-        }
-
-        &:first-child {
-          border-right: 1px solid var(--theme-border);
-        }
+      &:first-child {
+        border-right: 1px solid var(--theme-border);
       }
     }
   }
+}
 
-  .sort-options {
-    display: flex;
-    flex-direction: column;
-    padding: 4px 8px;
-  }
+.sort-options {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
 
-  .sort-label {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: var(--secondary-text-color);
-  }
+.sort-label {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--secondary-text-color);
+}
 
-  .sort-radio-group {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .hidden-files-checkbox {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-  }
+.sort-radio-group {
+  display: flex;
+  flex-direction: column;
 }
 
 .loading-overlay,
@@ -703,5 +756,69 @@ mat-nav-list {
 .picker-actions {
   &.mobile-picker {
     padding-bottom: 12px;
+  }
+}
+
+.material-context-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  max-width: 300px;
+
+  background: var(--secondary-background);
+  color: var(--app-text-color);
+
+  border: 1.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: var(--shadow-elevated);
+
+  .menu-item {
+    all: unset;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+
+    /* 2. Sizing */
+    width: 100%;
+    min-height: 34px;
+    padding: 6px 12px;
+
+    /* 3. Typography */
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 500;
+    color: var(--app-text-color);
+
+    /* 4. The "Pill" Shape */
+    border-radius: 8px;
+    margin-bottom: 2px;
+    transition: background-color 0.1s ease;
+
+    /* 7. Hover / Focus States */
+    &:hover,
+    &:focus,
+    &:focus-visible {
+      background-color: var(--bg-hover, rgba(0, 0, 0, 0.05));
+      outline: none;
+    }
+
+    /* 8. Active/Click State */
+    &:active {
+      background-color: var(--bg-selected, rgba(0, 0, 0, 0.1));
+    }
+
+    /* 9. Disabled State */
+    &:disabled {
+      opacity: 0.4;
+      background: transparent;
+    }
+  }
+
+  .menu-divider {
+    height: 1px;
+    background-color: var(--theme-border);
+    margin: 4px 0;
+    border: none;
   }
 }
