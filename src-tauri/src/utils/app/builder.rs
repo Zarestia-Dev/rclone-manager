@@ -62,6 +62,14 @@ pub fn create_app_window(app_handle: AppHandle) {
     #[cfg(target_os = "macos")]
     let main_window = main_window.title_bar_style(tauri::TitleBarStyle::Visible);
 
+    // Windows specific scroll bar style
+    // Set to FluentOverlay for better appearance and not pushing content
+    #[cfg(target_os = "windows")]
+    {
+        use tauri::window::ScrollBarStyle;
+        let main_window = main_window.scroll_bar_style(ScrollBarStyle::FluentOverlay);
+    }
+
     #[cfg(not(target_os = "macos"))]
     let main_window = main_window.decorations(false).transparent(true);
 

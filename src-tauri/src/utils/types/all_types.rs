@@ -18,6 +18,8 @@ pub struct RcloneState {
     pub rclone_path: Arc<std::sync::RwLock<PathBuf>>,
     pub restrict_mode: Arc<std::sync::RwLock<bool>>,
     pub terminal_apps: Arc<std::sync::RwLock<Vec<String>>>,
+    // New flag for memory optimization
+    pub destroy_window_on_close: Arc<std::sync::RwLock<bool>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -199,11 +201,3 @@ pub struct NetworkStatusPayload {
 
 pub const SERVICE_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONFIG_PASSWORD_KEY: &str = "rclone_config_password";
-
-/// Dashboard panel descriptor for layout storage
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct DashboardPanel {
-    pub id: String,
-    pub title: String,
-    pub visible: bool,
-}

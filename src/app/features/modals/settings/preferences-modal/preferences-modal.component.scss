@@ -348,7 +348,6 @@
     border: none;
     box-shadow: var(--shadow-light);
     transition: var(--transition-standard);
-    cursor: pointer;
     position: relative;
     overflow: hidden;
 
@@ -452,7 +451,6 @@
         border-radius: var(--radius-md);
         font-size: var(--font-size-sm);
         font-weight: 500;
-        cursor: pointer;
         transition: var(--transition-fast);
         border: 1px solid rgba(var(--primary-color-rgb), 0.2);
 

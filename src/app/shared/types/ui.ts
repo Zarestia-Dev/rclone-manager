@@ -123,3 +123,32 @@ export interface FileBrowserItem {
 }
 
 export type CollectionType = 'starred' | 'bookmarks';
+
+// --- File Picker ---
+export type FilePickerMode = 'local' | 'remote' | 'both';
+export type FilePickerSelection = 'files' | 'folders' | 'both';
+
+export interface FilePickerConfig {
+  /** What roots are visible */
+  mode: FilePickerMode; // 'local' | 'remote' | 'both'
+  /** What can be selected */
+  selection: FilePickerSelection; // 'files' | 'folders' | 'both'
+  /** Allow multi-select. Default false for new API */
+  multi?: boolean;
+  /** Optional whitelist for remote roots and starred/bookmarks */
+  allowedRemotes?: string[];
+  /** Optional file extension filter for selectable files (e.g. ['.jpg','.png']) */
+  allowedExtensions?: string[];
+  /** Initial location like '/home/user', 'gdrive:' or 'gdrive:/Photos' */
+  initialLocation?: string;
+  /** Preselected full paths */
+  preselect?: string[];
+  /** Minimum selection to enable Confirm (default 0) */
+  minSelection?: number;
+}
+
+export interface FilePickerResult {
+  /** Full normalized paths like '/home/user/...' or 'remote:/path' */
+  paths: string[];
+  cancelled: boolean;
+}

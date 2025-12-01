@@ -6,8 +6,6 @@ use tauri::Runtime;
 use tauri_plugin_store::Store;
 use tokio::sync::Mutex;
 
-use crate::utils::types::all_types::DashboardPanel;
-
 /// 🛠️ Metadata for settings
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SettingMetadata {
@@ -81,6 +79,7 @@ pub struct CoreSettings {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DeveloperSettings {
     pub debug_logging: bool,
+    pub destroy_window_on_close: bool,
 }
 
 /// Runtime settings
@@ -94,7 +93,7 @@ pub struct RuntimeSettings {
     pub rclone_skipped_updates: Vec<String>,
     pub rclone_update_channel: String,
     pub flatpak_warn: bool,
-    pub dashboard_layout: Option<Vec<DashboardPanel>>,
+    pub dashboard_layout: Option<Vec<String>>,
 }
 
 /// Nautilus (file browser) specific preferences
@@ -201,6 +200,7 @@ impl Default for AppSettings {
             },
             developer: DeveloperSettings {
                 debug_logging: false,
+                destroy_window_on_close: false,
             },
             runtime: RuntimeSettings {
                 theme: "system".to_string(),
@@ -421,6 +421,18 @@ static SETTINGS_METADATA: Lazy<HashMap<String, SettingMetadata>> = Lazy::new(|| 
         },
     );
 
+    add(
+        "developer.destroy_window_on_close",
+        SettingMetadata {
+            display_name: "Memory Optimization (Destroy Window on Close)".into(),
+            value_type: "bool".into(),
+            help_text: "Destroys the window UI when closed to free RAM (~150MB). Requires a reload when opening. (Linux: aggressively cleans up WebKit processes)".into(),
+            default: json!(defaults.developer.destroy_window_on_close),
+            required: Some(true),
+            ..Default::default()
+        },
+    );
+
     // --- Runtime Settings ---
     add(
         "runtime.theme",
@@ -530,7 +542,6 @@ static SETTINGS_METADATA: Lazy<HashMap<String, SettingMetadata>> = Lazy::new(|| 
     );
 
     // --- Nautilus (file browser) settings ---
-    // Note: These are now top-level keys to match the simplified struct structure
 
     add(
         "nautilus.default_layout",

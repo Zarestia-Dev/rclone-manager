@@ -1,6 +1,6 @@
 use std::sync::{Arc, atomic::AtomicBool};
 
-use log::{debug, error};
+use log::{debug, error, info};
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_store::StoreBuilder;
 use tokio::sync::Mutex;
@@ -115,7 +115,7 @@ use crate::{
             terminal::open_terminal_config,
         },
         logging::log::init_logging,
-        process::process_manager::kill_process_by_pid,
+        process::process_manager::{cleanup_webkit_zombies, kill_process_by_pid},
         rclone::{
             mount::{check_mount_plugin_installed, install_mount_plugin},
             provision::provision_rclone,
@@ -155,19 +155,33 @@ pub fn run() {
         .on_window_event(|window, event| match event {
             WindowEvent::CloseRequested { api, .. } => {
                 let state = window.app_handle().state::<RcloneState>();
+
                 let tray_enabled = match state.tray_enabled.read() {
                     Ok(enabled) => *enabled,
-                    Err(e) => {
-                        error!("Failed to read tray_enabled state: {e}");
-                        false // Default to false if we can't read
-                    }
+                    Err(_) => false,
                 };
+
+                // Check our new setting
+                let destroy_on_close = match state.destroy_window_on_close.read() {
+                    Ok(enabled) => *enabled,
+                    Err(_) => false,
+                };
+
                 if tray_enabled {
-                    if let Err(e) = window.hide() {
-                        error!("Failed to hide window: {e}");
+                    if destroy_on_close {
+                        // OPTION A: DESTROY (Low RAM)
+                        // Do nothing -> allows Close -> triggers ExitRequested
+                        debug!("♻️ Optimization Enabled: Destroying window to free RAM");
+                    } else {
+                        // OPTION B: HIDE (Default / Fast Open)
+                        // Prevent close -> Hide window -> Keep RAM usage
+                        if let Err(e) = window.hide() {
+                            error!("Failed to hide window: {e}");
+                        }
+                        api.prevent_close();
                     }
-                    api.prevent_close();
                 } else {
+                    // App is quitting completely
                     api.prevent_close();
                     let window_ = window.clone();
                     tauri::async_runtime::spawn(async move {
@@ -243,6 +257,9 @@ pub fn run() {
                 restrict_mode: Arc::new(std::sync::RwLock::new(settings.general.restrict)),
                 terminal_apps: Arc::new(std::sync::RwLock::new(
                     settings.core.terminal_apps.clone(),
+                )),
+                destroy_window_on_close: Arc::new(std::sync::RwLock::new(
+                    settings.developer.destroy_window_on_close,
                 )),
             });
 
@@ -523,6 +540,29 @@ pub fn run() {
             #[cfg(all(desktop, feature = "updater"))]
             install_update,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                let state = app_handle.state::<RcloneState>();
+
+                let tray_enabled = state.tray_enabled.read().map(|b| *b).unwrap_or(false);
+                let is_shutting_down = state.is_shutting_down();
+
+                // This event ONLY fires if the window was actually destroyed (Option A)
+                if tray_enabled && !is_shutting_down {
+                    // Keep Rust backend alive
+                    api.prevent_exit();
+
+                    // Run Linux Zombie Cleanup (only if we are destroying windows)
+                    #[cfg(target_os = "linux")]
+                    {
+                        std::thread::spawn(|| {
+                            std::thread::sleep(std::time::Duration::from_millis(500));
+                            cleanup_webkit_zombies();
+                        });
+                    }
+                }
+            }
+        });
 }

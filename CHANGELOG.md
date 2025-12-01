@@ -3,6 +3,7 @@
 
 ## [Unreleased]
 ### Added
+- Developer Setting: Memory Optimization (Destroy Window on Close). Added a new experimental option in Developer Settings that destroys the main window instead of hiding it when closed. This significantly reduces background RAM usage (dropping to ~15MB). On Linux, this also actively cleans up lingering WebKit "zombie" processes to prevent memory leaks over long sessions.
 - `marked` dependency added for markdown rendering in the About modal. This allows us to display formatted release notes fetched from GitHub in a user-friendly manner.
 - Support for local path navigation on the remote config. User can now navigate to local paths when configuring remotes that use local file systems.
 - Added Flatpak detection and warning banner. If the app is running as a Flatpak, a warning banner will be displayed to inform the user about permission limitations. The banner can be dismissed and will not show again once dismissed.
@@ -13,6 +14,9 @@
 - Remote Logs Modal design and functionality improvements.
 - Export Modal design and functionality improvements.
 - Dashboard General Overview panel design and functionality improvements. Now it supports layout customization.
+
+### Fixed
+- Windows bad looking scrollbars fixed. Now it uses Fluent Overlay scrollbars on Windows for a better look and feel. Also not pushes the content when they appear.
 
 
 ## [v0.1.7] - 2025-11-14

@@ -193,9 +193,12 @@ pub async fn create_tray_menu<R: Runtime>(
                 let mounted_name = mounted.fs.trim_end_matches(':');
                 mounted_name == remote_name || mounted_name.starts_with(&format!("{remote_name}:"))
             });
+            // Filter out serve and mount jobs - they have their own status indicators
             let active_jobs_for_remote: Vec<_> = active_jobs
                 .iter()
-                .filter(|job| job.remote_name == remote)
+                .filter(|job| {
+                    job.remote_name == remote && job.job_type != "serve" && job.job_type != "mount"
+                })
                 .collect();
             let remote_fs_prefix = format!("{}:", remote);
             let active_serves_for_remote: Vec<&ServeInstance> = all_serves

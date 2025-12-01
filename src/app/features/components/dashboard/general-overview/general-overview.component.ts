@@ -58,14 +58,29 @@ import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.
 import { FormatBytes } from '../../../../shared/pipes/format-bytes.pipe';
 
 const POLLING_INTERVAL = 5000;
-const ANIMATION_DELAY = 100;
 const SCROLL_DELAY = 60;
 
-interface DashboardPanel {
-  id: string;
+export type PanelId = 'remotes' | 'bandwidth' | 'system' | 'jobs' | 'tasks' | 'serves';
+
+interface PanelConfig {
+  id: PanelId;
   title: string;
-  visible: boolean;
+  defaultVisible: boolean;
 }
+
+export interface DashboardPanel extends PanelConfig {
+  visible: boolean; // This is the only dynamic part we merge in
+}
+
+// The Static Definitions (Source of Truth)
+const ALL_PANELS: PanelConfig[] = [
+  { id: 'remotes', title: 'Quick Remote Access', defaultVisible: true },
+  { id: 'bandwidth', title: 'Bandwidth Limit', defaultVisible: true },
+  { id: 'system', title: 'System Information', defaultVisible: true },
+  { id: 'jobs', title: 'Job Information', defaultVisible: true },
+  { id: 'tasks', title: 'Scheduled Tasks', defaultVisible: true },
+  { id: 'serves', title: 'Running Serves', defaultVisible: true },
+];
 
 @Component({
   selector: 'app-general-overview',
@@ -117,7 +132,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   isLoadingStats = signal(false);
   bandwidthLimit = signal<BandwidthLimitResponse | null>(null);
   isEditingLayout = signal(false);
-  dashboardPanels = signal<DashboardPanel[]>([]);
   panelOpenStates = signal<Record<string, boolean>>({
     remotes: true,
     bandwidth: false,
@@ -129,8 +143,11 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   scheduledTasks = signal<ScheduledTask[]>([]);
   isLoadingScheduledTasks = signal(false);
   isLoadingServes = signal(false);
-  isLayoutLoaded = signal(false);
   disableAnimations = signal(true);
+
+  // Layout signals
+  dashboardPanels = signal<DashboardPanel[]>([]);
+  isLayoutLoaded = signal(false);
 
   // Services
   private eventListenersService = inject(EventListenersService);
@@ -145,16 +162,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private pollingSubscription: Subscription | null = null;
   private scheduledTasksSubscription: Subscription | null = null;
-
-  // Constants
-  private readonly defaultPanels: DashboardPanel[] = [
-    { id: 'remotes', title: 'Quick Remote Access', visible: true },
-    { id: 'bandwidth', title: 'Bandwidth Limit', visible: true },
-    { id: 'system', title: 'System Information', visible: true },
-    { id: 'jobs', title: 'Job Information', visible: true },
-    { id: 'tasks', title: 'Scheduled Tasks', visible: true },
-    { id: 'serves', title: 'Running Serves', visible: true },
-  ];
 
   // Track by functions
   readonly trackByPanelId: TrackByFunction<DashboardPanel> = (_, item) => item.id;
@@ -207,31 +214,40 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   // Layout management
   toggleEditLayout(): void {
     const isEditing = this.isEditingLayout();
-    if (isEditing) {
-      this.saveLayoutSettings();
-      this.showSnackbar('Dashboard layout saved');
-    }
     this.isEditingLayout.set(!isEditing);
   }
 
   resetLayout(): void {
-    this.dashboardPanels.set(JSON.parse(JSON.stringify(this.defaultPanels)));
-    if (!this.isEditingLayout()) {
-      this.saveLayoutSettings();
-      this.showSnackbar('Layout reset to default');
-    }
+    this.appSettingsService.saveSetting('runtime', 'dashboard_layout', null);
+    this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
+    this.showSnackbar('Layout reset to default');
   }
 
   drop(event: CdkDragDrop<DashboardPanel[]>): void {
-    const currentPanels = [...this.dashboardPanels()];
-    moveItemInArray(currentPanels, event.previousIndex, event.currentIndex);
-    this.dashboardPanels.set(currentPanels);
+    // Update the panels array in place
+    this.dashboardPanels.update(panels => {
+      const updated = [...panels];
+      moveItemInArray(updated, event.previousIndex, event.currentIndex);
+      return updated;
+    });
+
+    // Persist to storage (without triggering UI update)
+    this.persistLayout();
   }
 
   togglePanelVisibility(panelId: string): void {
     this.dashboardPanels.update(panels =>
       panels.map(p => (p.id === panelId ? { ...p, visible: !p.visible } : p))
     );
+    this.persistLayout();
+  }
+
+  private persistLayout(): void {
+    // Extract only the visible IDs to save
+    const idsToSave = this.dashboardPanels()
+      .filter(p => p.visible)
+      .map(p => p.id);
+    this.appSettingsService.saveSetting('runtime', 'dashboard_layout', idsToSave);
   }
 
   setPanelOpenState(id: string, isOpen: boolean): void {
@@ -368,52 +384,28 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   // Private methods
   private async loadLayoutSettings(): Promise<void> {
     try {
-      const savedLayout = await this.appSettingsService.getSettingValue<DashboardPanel[]>(
+      const savedIds = await this.appSettingsService.getSettingValue<string[]>(
         'runtime.dashboard_layout'
       );
-      const finalLayout = this.mergeLayoutWithDefaults(savedLayout);
 
-      this.dashboardPanels.set(finalLayout);
-      this.isLayoutLoaded.set(true);
-
-      setTimeout(() => this.disableAnimations.set(false), ANIMATION_DELAY);
-    } catch (error) {
-      console.error('Failed to load dashboard layout:', error);
-      this.dashboardPanels.set([...this.defaultPanels]);
-      this.isLayoutLoaded.set(true);
-      this.disableAnimations.set(false);
-    }
-  }
-
-  private mergeLayoutWithDefaults(savedLayout: DashboardPanel[] | undefined): DashboardPanel[] {
-    if (!savedLayout || !Array.isArray(savedLayout)) {
-      return [...this.defaultPanels];
-    }
-
-    const mergedLayout = [...savedLayout];
-    const validIds = new Set(this.defaultPanels.map(p => p.id));
-
-    // Add missing panels
-    this.defaultPanels.forEach(defaultPanel => {
-      if (!mergedLayout.some(p => p.id === defaultPanel.id)) {
-        mergedLayout.push(defaultPanel);
+      if (!savedIds || savedIds.length === 0) {
+        // Use defaults
+        this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
+      } else {
+        // Rebuild from saved IDs (only visible panels)
+        const visiblePanels: DashboardPanel[] = savedIds
+          .map(id => ALL_PANELS.find(p => p.id === id))
+          .filter((p): p is PanelConfig => !!p)
+          .map(p => ({ ...p, visible: true }));
+        this.dashboardPanels.set(visiblePanels);
       }
-    });
-
-    // Filter obsolete panels
-    return mergedLayout.filter(p => validIds.has(p.id));
-  }
-
-  private async saveLayoutSettings(): Promise<void> {
-    try {
-      await this.appSettingsService.saveSetting(
-        'runtime',
-        'dashboard_layout',
-        this.dashboardPanels()
-      );
-    } catch (error) {
-      console.error('Failed to save dashboard layout:', error);
+    } catch {
+      // Error -> Use defaults
+      this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
     }
+
+    this.isLayoutLoaded.set(true);
+    this.disableAnimations.set(false);
   }
 
   private cleanup(): void {

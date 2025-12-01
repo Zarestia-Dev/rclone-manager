@@ -458,12 +458,29 @@ fn handle_settings_changed(app: &AppHandle) {
                     }
                 }
 
-                if let Some(developer) = settings.get("developer")
-                    && let Some(debug_logging) =
+                if let Some(developer) = settings.get("developer") {
+                    if let Some(debug_logging) =
                         developer.get("debug_logging").and_then(|v| v.as_bool())
-                {
-                    debug!("🐞 Debug logging changed to: {debug_logging}");
-                    update_log_level(debug_logging);
+                    {
+                        debug!("🐞 Debug logging changed to: {debug_logging}");
+                        update_log_level(debug_logging);
+                    }
+
+                    if let Some(destroy_window) = developer
+                        .get("destroy_window_on_close")
+                        .and_then(|v| v.as_bool())
+                    {
+                        debug!("♻️ Destroy window on close changed to: {destroy_window}");
+                        let rclone_state = app_handle.state::<RcloneState>();
+                        let mut guard = match rclone_state.destroy_window_on_close.write() {
+                            Ok(g) => g,
+                            Err(e) => {
+                                error!("Failed to write destroy_window_on_close: {e}");
+                                return;
+                            }
+                        };
+                        *guard = destroy_window;
+                    }
                 }
             }
             Err(e) => error!("❌ Failed to parse settings change: {e}"),

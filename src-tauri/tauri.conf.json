@@ -11,7 +11,7 @@
   },
   "app": {
     "security": {
-      "csp": "img-src 'self' asset: http://asset.localhost; media-src 'self' asset: http://asset.localhost; object-src 'self' asset: http://asset.localhost;",
+      "csp": null,
       "assetProtocol": {
         "enable": true,
         "scope": ["**"]

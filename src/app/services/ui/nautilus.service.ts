@@ -5,15 +5,9 @@ import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
 import { NautilusComponent } from 'src/app/features/components/file-browser/nautilus/nautilus.component';
 import { AppSettingsService } from '@app/services';
-import { FileBrowserItem, CollectionType } from '@app/types';
+import { FileBrowserItem, CollectionType, FilePickerConfig, FilePickerResult } from '@app/types';
 
-// File picker options shared with UiStateService
-export interface FilePickerOptions {
-  restrictSingle?: string;
-  selectFolders?: boolean;
-  selectFiles?: boolean;
-  multiSelection?: boolean;
-}
+// Legacy interface removed
 
 @Injectable({
   providedIn: 'root',
@@ -33,11 +27,11 @@ export class NautilusService {
   // File Picker state
   private _filePickerState = new BehaviorSubject<{
     isOpen: boolean;
-    options?: FilePickerOptions;
+    options?: FilePickerConfig;
   }>({ isOpen: false });
   public filePickerState$ = this._filePickerState.asObservable();
-  private _filePickerResult = new Subject<string[] | null>();
-  public filePickerResult$ = this._filePickerResult.asObservable();
+  private _filePickerResultV2 = new Subject<FilePickerResult>();
+  public filePickerResultV2$ = this._filePickerResultV2.asObservable();
 
   // Public Signals (Read by UI)
   public readonly starredItems = signal<FileBrowserItem[]>([]);
@@ -86,7 +80,8 @@ export class NautilusService {
     }
   }
 
-  openFilePicker(options: FilePickerOptions): void {
+  // Accept only V2 config
+  openFilePicker(options: FilePickerConfig): void {
     if (this.overlayRef) return;
     this._filePickerState.next({ isOpen: true, options });
     this._isNautilusOverlayOpen.next(true);
@@ -94,7 +89,11 @@ export class NautilusService {
   }
 
   closeFilePicker(result: string[] | null): void {
-    this._filePickerResult.next(result);
+    const v2: FilePickerResult = {
+      cancelled: result === null,
+      paths: result ?? [],
+    };
+    this._filePickerResultV2.next(v2);
     this._filePickerState.next({ isOpen: false });
     this._isNautilusOverlayOpen.next(false);
     if (this.overlayRef) {
@@ -188,15 +187,20 @@ export class NautilusService {
     try {
       const fullKey = `${config.category}.${config.key}`;
       const rawItems = (await this.appSettingsService.getSettingValue<unknown[]>(fullKey)) ?? [];
-      const items: FileBrowserItem[] = rawItems.map((item: any) => {
-        if (item && item.remote && item.entry) {
+      const items: FileBrowserItem[] = rawItems.map((item: unknown) => {
+        const rec = item as Record<string, unknown>;
+        if (rec && 'remote' in rec && 'entry' in rec) {
           return {
-            entry: item.entry,
-            meta: { remote: item.remote, fsType: 'remote' as const, remoteType: undefined },
+            entry: rec['entry'] as FileBrowserItem['entry'],
+            meta: {
+              remote: (rec['remote'] as string) || '',
+              fsType: 'remote' as const,
+              remoteType: undefined,
+            },
           };
         }
         // Otherwise assume item is already in the new composed FileBrowserItem format
-        return item as FileBrowserItem;
+        return rec as unknown as FileBrowserItem;
       });
       // Simple validation to ensure data integrity
       const validItems = items.filter(i => i.meta?.remote && i.entry?.Path);

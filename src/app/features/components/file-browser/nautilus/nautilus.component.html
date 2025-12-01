@@ -465,8 +465,8 @@
       }
 
       @if (errorState()) {
-        <div class="empty-folder-container error-container">
-          <mat-icon svgIcon="circle-exclamation" class="warn-color"></mat-icon>
+        <div class="empty-folder-container">
+          <mat-icon svgIcon="circle-exclamation"></mat-icon>
           <h2>Connection Failed</h2>
           <p>{{ errorState() }}</p>
           <button mat-stroked-button (click)="refresh()">Retry</button>
@@ -523,68 +523,80 @@
 
     <ng-template #fileMenu let-item>
       <div class="material-context-menu" cdkMenu>
-        @if (item) {
-          <button class="menu-item" cdkMenuItem (click)="openContextMenuOpen()">
-            <span>Open</span>
-          </button>
-          @if (item.entry.IsDir) {
-            <button class="menu-item" cdkMenuItem (click)="openContextMenuOpenInNewTab()">
-              <span>Open in New Tab</span>
+        @if (!errorState()) {
+          @if (item) {
+            <button class="menu-item" cdkMenuItem (click)="openContextMenuOpen()">
+              <span>Open</span>
+            </button>
+            @if (item.entry.IsDir) {
+              <button class="menu-item" cdkMenuItem (click)="openContextMenuOpenInNewTab()">
+                <span>Open in New Tab</span>
+              </button>
+            }
+            <button class="menu-item" cdkMenuItem (click)="openContextMenuSelectToggle()">
+              <span>Toggle Select</span>
+            </button>
+            <button class="menu-item" cdkMenuItem (click)="openContextMenuCopyPath()">
+              <span>Copy Path</span>
             </button>
           }
-          <button class="menu-item" cdkMenuItem (click)="openContextMenuSelectToggle()">
-            <span>Toggle Select</span>
-          </button>
-          <button class="menu-item" cdkMenuItem (click)="openContextMenuCopyPath()">
-            <span>Copy Path</span>
-          </button>
+          @if (!item && !starredMode()) {
+            <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
+              <span>New Folder</span>
+            </button>
+            <div class="menu-divider"></div>
+          }
         }
-        @if (!item) {
-          <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
-            <span>New Folder</span>
-          </button>
-        }
-        <div class="menu-divider"></div>
         <button class="menu-item" cdkMenuItem (click)="refresh()">
           <span>Refresh</span>
         </button>
-        <button class="menu-item" cdkMenuItem (click)="openContextMenuProperties()">
-          <span>Properties</span>
-        </button>
+        @if (!errorState() && (item || !starredMode())) {
+          <button class="menu-item" cdkMenuItem (click)="openContextMenuProperties()">
+            <span>Properties</span>
+          </button>
+        }
       </div>
     </ng-template>
 
     <ng-template #pathOptionsMenu>
       <div class="material-context-menu" cdkMenu>
-        <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
-          <span>New Folder...</span>
-        </button>
-
-        <div class="menu-divider"></div>
+        @if (!errorState()) {
+          @if (!starredMode()) {
+            <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
+              <span>New Folder...</span>
+            </button>
+            <div class="menu-divider"></div>
+          }
+        }
 
         <button class="menu-item" cdkMenuItem (click)="refresh()">
           <span>Reload</span>
         </button>
 
-        <button class="menu-item" cdkMenuItem (click)="copyCurrentLocation()">
-          <span>Copy Location</span>
-        </button>
+        @if (!errorState()) {
+          @if (!starredMode()) {
+            <button class="menu-item" cdkMenuItem (click)="copyCurrentLocation()">
+              <span>Copy Location</span>
+            </button>
+          }
+          <div class="menu-divider"></div>
 
-        <div class="menu-divider"></div>
+          <button class="menu-item" cdkMenuItem (click)="selectAll()">
+            <span>Select All</span>
+          </button>
 
-        <button class="menu-item" cdkMenuItem (click)="selectAll()">
-          <span>Select All</span>
-        </button>
+          @if (!starredMode()) {
+            <div class="menu-divider"></div>
 
-        <div class="menu-divider"></div>
-
-        <button
-          class="menu-item"
-          cdkMenuItem
-          (click)="setContextItem(null); openContextMenuProperties()"
-        >
-          <span>Properties</span>
-        </button>
+            <button
+              class="menu-item"
+              cdkMenuItem
+              (click)="setContextItem(null); openContextMenuProperties()"
+            >
+              <span>Properties</span>
+            </button>
+          }
+        }
       </div>
     </ng-template>
 

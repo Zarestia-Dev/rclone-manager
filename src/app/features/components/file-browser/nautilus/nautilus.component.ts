@@ -47,11 +47,17 @@ import {
   NautilusService,
   RemoteManagementService,
   MountManagementService,
-  FilePickerOptions,
   PathSelectionService,
   AppSettingsService,
 } from '@app/services';
-import { Entry, ExplorerRoot, LocalDrive, STANDARD_MODAL_SIZE, FileBrowserItem } from '@app/types';
+import {
+  Entry,
+  ExplorerRoot,
+  LocalDrive,
+  STANDARD_MODAL_SIZE,
+  FileBrowserItem,
+  FilePickerConfig,
+} from '@app/types';
 
 import { FormatFileSizePipe } from '@app/pipes';
 import { AnimationsService } from 'src/app/shared/services/animations.service';
@@ -137,22 +143,31 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public readonly isLoading = signal(false);
   public readonly title = computed(() => {
     const state = this.filePickerState();
-    if (state.isOpen && state.options?.selectFolders) return 'Select Folder';
-    if (state.isOpen) return 'Select Files';
+    const opts = state.options;
+    if (state.isOpen && opts?.selection === 'folders') return 'Select Folder';
+    if (state.isOpen && opts?.selection === 'files') return 'Select File';
+    if (state.isOpen) return 'Select Items';
     return 'Files';
   });
   public readonly isMobile = signal(window.innerWidth < 680);
   public readonly isSidenavOpen = signal(!this.isMobile());
   public readonly sidenavMode = computed(() => (this.isMobile() ? 'over' : 'side'));
   public readonly errorState = signal<string | null>(null);
+  private readonly initialLocationApplied = signal(false);
 
   // --- Picker State ---
   private readonly filePickerState = toSignal(this.nautilusService.filePickerState$, {
-    initialValue: { isOpen: false, options: {} },
+    initialValue: { isOpen: false, options: undefined },
   });
   public readonly isPickerMode = computed(() => this.filePickerState().isOpen);
   public readonly pickerOptions = computed(
-    (): FilePickerOptions => this.filePickerState().options || {}
+    (): FilePickerConfig =>
+      this.filePickerState().options || {
+        mode: 'both',
+        selection: 'both',
+        multi: false,
+        minSelection: 0,
+      }
   );
 
   // --- View Configuration ---
@@ -222,19 +237,21 @@ export class NautilusComponent implements OnInit, OnDestroy {
   // Computed: Local Drives
   public readonly localDrives = computed<ExplorerRoot[]>(() => {
     const [, , localDrives] = this.rawRemotesData();
-    return (localDrives || []).map((drive: LocalDrive) => ({
+    const drives = (localDrives || []).map((drive: LocalDrive) => ({
       name: drive.name,
       label: drive.label || drive.name,
       type: 'hard-drive',
-      fs_type: 'local',
+      fs_type: 'local' as const,
       isMounted: false,
     }));
+    if (this.isPickerMode() && this.pickerOptions().mode === 'remote') return [];
+    return drives;
   });
 
   // Computed: Cloud Remotes
   public readonly cloudRemotes = computed<ExplorerRoot[]>(() => {
     const [remoteNames, mountedRemotes, , configs] = this.rawRemotesData();
-    return (remoteNames || []).map(name => {
+    let list = (remoteNames || []).map(name => {
       const mountedInfo = mountedRemotes.find((mr: unknown) => {
         const fs = (mr as { fs: string }).fs;
         return this.pathSelectionService.normalizeRemoteName(fs) === name;
@@ -246,18 +263,36 @@ export class NautilusComponent implements OnInit, OnDestroy {
         name,
         label: name,
         type: config?.type || config?.Type || 'cloud',
-        fs_type: 'remote',
+        fs_type: 'remote' as const,
         isMounted: !!mountedInfo,
         mountPoint: mountedInfo?.mount_point,
       };
     });
+    if (this.isPickerMode() && this.pickerOptions().mode === 'local') return [];
+    const allowed = this.pickerOptions().allowedRemotes;
+    if (this.isPickerMode() && allowed && allowed.length) {
+      list = list.filter(r => allowed.includes(r.name));
+    }
+    return list;
   });
 
   // Computed: Sidebar Combined List
   public readonly sidebarLocalItems = computed<SidebarLocalItem[]>(() => {
     const drives = this.localDrives().map(d => ({ kind: 'drive', data: d }) as SidebarLocalItem);
-    const marks = this.bookmarks().map(b => ({ kind: 'bookmark', data: b }) as SidebarLocalItem);
-    return [...drives, ...marks];
+    let marks = this.bookmarks();
+    if (this.isPickerMode()) {
+      const cfg = this.pickerOptions();
+      marks = marks.filter(b => {
+        if (cfg.mode === 'local' && b.meta.fsType !== 'local') return false;
+        if (cfg.mode === 'remote' && b.meta.fsType !== 'remote') return false;
+        if (cfg.allowedRemotes && b.meta.fsType === 'remote') {
+          return cfg.allowedRemotes.includes((b.meta.remote || '').replace(/:$/, ''));
+        }
+        return true;
+      });
+    }
+    const bookmarkItems = marks.map(b => ({ kind: 'bookmark', data: b }) as SidebarLocalItem);
+    return [...drives, ...bookmarkItems];
   });
 
   public readonly allRemotesLookup = computed(() => [
@@ -318,7 +353,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
           }),
           catchError(err => {
             console.error('Error fetching files:', err);
-            this.errorState.set(err.message || 'Failed to load directory');
+            this.errorState.set(err || 'Failed to load directory');
             this.notificationService.showError('Failed to load directory');
             return of([]);
           }),
@@ -332,7 +367,19 @@ export class NautilusComponent implements OnInit, OnDestroy {
   // 1. Source files (raw or starred)
   private readonly sourceFiles = computed(() => {
     if (this.starredMode()) {
-      return this.nautilusService.starredItems();
+      let items = this.nautilusService.starredItems();
+      if (this.isPickerMode()) {
+        const cfg = this.pickerOptions();
+        items = items.filter(i => {
+          if (cfg.mode === 'local' && i.meta.fsType !== 'local') return false;
+          if (cfg.mode === 'remote' && i.meta.fsType !== 'remote') return false;
+          if (cfg.allowedRemotes && i.meta.fsType === 'remote') {
+            return cfg.allowedRemotes.includes((i.meta.remote || '').replace(/:$/, ''));
+          }
+          return true;
+        });
+      }
+      return items;
     }
     return this.rawFiles();
   });
@@ -425,6 +472,25 @@ export class NautilusComponent implements OnInit, OnDestroy {
         this.runBackgroundCleanupChecks(missing);
       }
     });
+
+    // Apply initialLocation when picker opens (once per open)
+    effect(() => {
+      const open = this.isPickerMode();
+      const applied = this.initialLocationApplied();
+      const cfg = this.pickerOptions();
+      if (open && !applied) {
+        // Avoid racing with async remotes/drives loading
+        if (!this.isDataReadyForConfig(cfg)) return;
+        const loc = cfg.initialLocation;
+        if (loc && this.isLocationAllowedByConfig(loc, cfg)) {
+          this.navigateToPath(loc);
+        } else {
+          this.ensureInitialRemoteForMode(cfg.mode, cfg.allowedRemotes);
+        }
+        this.initialLocationApplied.set(true);
+      }
+      if (!open && applied) this.initialLocationApplied.set(false);
+    });
   }
 
   private async initializeRemotes(): Promise<void> {
@@ -461,6 +527,77 @@ export class NautilusComponent implements OnInit, OnDestroy {
     } catch (e) {
       console.warn('Init failed', e);
     }
+  }
+
+  private isLocationAllowedByConfig(loc: string, cfg: FilePickerConfig): boolean {
+    const hasColon = loc.includes(':');
+    if (cfg.mode === 'local' && hasColon) return false;
+    if (cfg.mode === 'remote') {
+      if (!hasColon) return false;
+      const remote = loc.split(':')[0];
+      if (cfg.allowedRemotes && cfg.allowedRemotes.length) {
+        return cfg.allowedRemotes.includes(remote);
+      }
+      return true;
+    }
+    // mode === 'both'
+    if (hasColon && cfg.allowedRemotes && cfg.allowedRemotes.length) {
+      const remote = loc.split(':')[0];
+      return cfg.allowedRemotes.includes(remote);
+    }
+    return true;
+  }
+
+  private isDataReadyForConfig(cfg: FilePickerConfig): boolean {
+    const hasColon = !!cfg.initialLocation && cfg.initialLocation.includes(':');
+    const localCount = this.localDrives().length;
+    const remoteList = this.cloudRemotes();
+    const remoteCount = remoteList.length;
+
+    if (cfg.initialLocation) {
+      if (hasColon) {
+        if (remoteCount === 0) return false;
+        if (cfg.allowedRemotes && cfg.allowedRemotes.length) {
+          const r = cfg.initialLocation.split(':')[0];
+          return cfg.allowedRemotes.includes(r) && remoteList.some(x => x.name === r);
+        }
+        return true;
+      }
+      return localCount > 0;
+    }
+
+    if (cfg.mode === 'local') return localCount > 0;
+    if (cfg.mode === 'remote') {
+      if (remoteCount === 0) return false;
+      if (cfg.allowedRemotes && cfg.allowedRemotes.length) {
+        const allow = cfg.allowedRemotes;
+        return remoteList.some(x => allow?.includes(x.name));
+      }
+      return true;
+    }
+    return true;
+  }
+
+  private ensureInitialRemoteForMode(mode: FilePickerConfig['mode'], allowed?: string[]): void {
+    if (mode === 'local') {
+      const current = this.nautilusRemote();
+      if (current?.fs_type === 'local') return;
+      const first = this.localDrives()[0];
+      if (first) this.selectRemote(first);
+      return;
+    }
+    if (mode === 'remote') {
+      const current = this.nautilusRemote();
+      if (current?.fs_type === 'remote') {
+        if (!allowed || allowed.includes(current.name)) return;
+      }
+      let remotes = this.cloudRemotes();
+      if (allowed && allowed.length) remotes = remotes.filter(r => allowed.includes(r.name));
+      const first = remotes[0];
+      if (first) this.selectRemote(first);
+      return;
+    }
+    // both -> no change
   }
 
   private setupEventListeners(): void {
@@ -721,7 +858,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (this.isPickerMode() && !this.isItemSelectable(item.entry)) return;
 
     const sel = new Set(this.selectedItems());
-    const multi = !this.isPickerMode() || this.pickerOptions().multiSelection !== false;
+    const multi = !this.isPickerMode() || !!this.pickerOptions().multi;
     const e = event as MouseEvent | KeyboardEvent;
 
     if (e.shiftKey && this.lastSelectedIndex !== null && multi) {
@@ -810,11 +947,19 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const item = this.contextMenuItem;
     const path = item?.entry.Path || this.currentPath();
 
+    // Normalize remote name for API calls
+    let remoteName = item?.meta.remote || currentRemote?.name;
+    const fsType = item?.meta.fsType || currentRemote?.fs_type;
+
+    if (remoteName && fsType === 'remote') {
+      remoteName = this.pathSelectionService.normalizeRemoteForRclone(remoteName);
+    }
+
     this.dialog.open(PropertiesModalComponent, {
       data: {
-        remoteName: item?.meta.remote || currentRemote?.name,
+        remoteName: remoteName,
         path: path,
-        fs_type: item?.meta.fsType || currentRemote?.fs_type,
+        fs_type: fsType,
         item: item?.entry,
         remoteType: item?.meta.remoteType || currentRemote?.type,
       },
@@ -895,9 +1040,16 @@ export class NautilusComponent implements OnInit, OnDestroy {
   openBookmarkProperties(): void {
     const bm = this.bookmarkContextItem;
     if (!bm) return;
+
+    // Normalize remote name for API calls
+    let remoteName = bm.meta.remote;
+    if (bm.meta.fsType === 'remote') {
+      remoteName = this.pathSelectionService.normalizeRemoteForRclone(remoteName);
+    }
+
     this.dialog.open(PropertiesModalComponent, {
       data: {
-        remoteName: bm.meta.remote,
+        remoteName: remoteName,
         path: bm.entry.Path,
         fs_type: bm.meta.fsType,
         item: bm.entry,
@@ -937,9 +1089,10 @@ export class NautilusComponent implements OnInit, OnDestroy {
   confirmSelection(): void {
     let paths = Array.from(this.selectedItems());
     const remote = this.nautilusRemote();
-    if (paths.length === 0 && this.pickerOptions().selectFolders) {
+    if (paths.length === 0 && this.pickerOptions().selection === 'folders') {
       paths = [this.currentPath()];
     }
+    const minSel = this.pickerOptions().minSelection ?? 0;
     const prefix =
       remote?.fs_type === 'remote'
         ? this.pathSelectionService.normalizeRemoteForRclone(remote.name)
@@ -952,6 +1105,13 @@ export class NautilusComponent implements OnInit, OnDestroy {
       }
       return `${prefix}/${p}`;
     });
+
+    if (this.isPickerMode() && fullPaths.length < minSel) {
+      this.notificationService.showError(
+        `Please select at least ${minSel} item${minSel > 1 ? 's' : ''}.`
+      );
+      return;
+    }
     this.nautilusService.closeFilePicker(fullPaths);
   }
 
@@ -987,8 +1147,13 @@ export class NautilusComponent implements OnInit, OnDestroy {
   isItemSelectable(item: Entry): boolean {
     if (!this.isPickerMode()) return true;
     const opts = this.pickerOptions();
-    if (opts.selectFolders && !item.IsDir) return false;
-    if (opts.selectFiles && item.IsDir) return false;
+    if (opts.selection === 'folders' && !item.IsDir) return false;
+    if (opts.selection === 'files' && item.IsDir) return false;
+    if (!item.IsDir && opts.allowedExtensions && opts.allowedExtensions.length) {
+      const name = item.Name.toLowerCase();
+      const ok = opts.allowedExtensions.some((ext: string) => name.endsWith(ext.toLowerCase()));
+      if (!ok) return false;
+    }
     return true;
   }
 
@@ -1071,6 +1236,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.nautilusRemote.set(null);
     this.currentPath.set('');
     this.selectedItems.set(new Set());
+    this.errorState.set(null);
     this.updateSelectionSummary();
   }
 

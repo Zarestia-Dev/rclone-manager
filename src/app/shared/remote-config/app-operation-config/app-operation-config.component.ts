@@ -24,6 +24,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { Subject, takeUntil, Observable, of } from 'rxjs';
 import { Entry, CronValidationResponse, EditTarget } from '@app/types';
 import { PathSelectionService, PathSelectionState, FileSystemService } from '@app/services';
+import { FilePickerConfig } from '@app/types';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CronInputComponent } from '@app/shared/components';
@@ -277,21 +278,21 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
    * Unified to handle both local and remote path selection.
    */
   async selectRemotePath(group: PathGroup): Promise<void> {
-    // Determine restriction:
-    // - If this is a MOUNT operation and we are picking SOURCE, restrict to the current remote.
-    // - If this is a MOUNT operation and we are picking DEST, restrict to nothing (user must pick local).
-    // - Otherwise, no restriction.
-    const shouldRestrict = this.isMount && group === 'source';
+    // Determine config:
+    const restrictToCurrentRemote = this.isMount && group === 'source';
+    const cfg: FilePickerConfig = {
+      mode:
+        this.isMount && group === 'dest' ? 'local' : restrictToCurrentRemote ? 'remote' : 'both',
+      selection: 'folders',
+      multi: false,
+      allowedRemotes: restrictToCurrentRemote ? [this.currentRemoteName] : undefined,
+      minSelection: 1,
+    };
 
-    const result = await this.fileSystemService.selectPathWithNautilus({
-      selectFolders: true,
-      selectFiles: false,
-      multiSelection: false,
-      restrictSingle: shouldRestrict ? this.currentRemoteName : undefined,
-    });
+    const result = await this.fileSystemService.selectPathWithNautilus(cfg);
 
-    if (result && result.length > 0) {
-      const fullPath = result[0];
+    if (!result.cancelled && result.paths.length > 0) {
+      const fullPath = result.paths[0];
 
       // Parse the result (handle Windows paths, Linux paths, and Remote paths)
       const parts = fullPath.split(':');

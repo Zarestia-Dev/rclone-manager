@@ -5,7 +5,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
     RcloneState,
-    rclone::{commands::job::submit_job_and_wait, state::engine::ENGINE_STATE},
+    rclone::{commands::job::submit_job, state::engine::ENGINE_STATE},
     utils::{
         json_helpers::{get_string, json_to_hashmap},
         logging::log::log_operation,
@@ -211,7 +211,7 @@ pub async fn start_serve(
         .unwrap_or("")
         .to_string();
 
-    let (jobid, response_json) = submit_job_and_wait(
+    let (jobid, response_json) = submit_job(
         app.clone(),
         state.client.clone(),
         url,

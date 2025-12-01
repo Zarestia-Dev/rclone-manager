@@ -689,9 +689,15 @@ mat-nav-list {
   }
 
   h2 {
-    font-weight: 500;
+    font-weight: 700;
     color: var(--app-text-color);
     opacity: 0.7;
+  }
+
+  p {
+    color: var(--secondary-text-color);
+    max-width: 300px;
+    text-align: center;
   }
 }
 
