@@ -9,7 +9,7 @@
     <div class="nautilus-layout">
       <div class="nautilus-header">
         <mat-toolbar data-tauri-drag-region>
-          <button class="nav-button">
+          <button class="nav-button" (click)="toggleSearchMode()" [class.active]="isSearchMode()">
             <mat-icon svgIcon="search"></mat-icon>
           </button>
           <span>{{ title() }}</span>
@@ -28,6 +28,7 @@
             cdkDropList
             [cdkDropListEnterPredicate]="canDropOnStarred"
             (cdkDropListDropped)="onDropToStarred($event)"
+            [cdkContextMenuTriggerFor]="sidebarStarredMenu"
           >
             <span class="remote-info">
               <span class="remote-icon">
@@ -42,7 +43,7 @@
           <div
             class="bookmarks-section"
             cdkDropList
-            [cdkDropListData]="bookmarks()"
+            [cdkDropListData]="filteredBookmarks()"
             [cdkDropListEnterPredicate]="canDropOnBookmarks"
             (cdkDropListDropped)="onDropToLocal($event)"
           >
@@ -69,7 +70,7 @@
               </mat-list-item>
             }
 
-            @for (bm of bookmarks(); track trackByBookmark($index, bm)) {
+            @for (bm of filteredBookmarks(); track trackByBookmark($index, bm)) {
               <mat-list-item
                 class="remote-list-item bookmark-item"
                 (click)="openBookmark(bm)"
@@ -148,11 +149,21 @@
       </div>
       <div
         class="path-container"
-        (click)="isEditingPath.set(true)"
-        (keydown.escape)="isEditingPath.set(false)"
+        (click)="!isSearchMode() ? isEditingPath.set(true) : null"
+        (keydown.escape)="isEditingPath.set(false); isSearchMode.set(false)"
         tabindex="0"
       >
-        @if (!isEditingPath()) {
+        @if (isSearchMode()) {
+          <input
+            #searchInput
+            class="path-input"
+            placeholder="Search files..."
+            [value]="searchFilter()"
+            (input)="searchFilter.set(searchInput.value)"
+            (keydown.escape)="toggleSearchMode(); searchInput.blur()"
+            (blur)="toggleSearchMode()"
+          />
+        } @else if (!isEditingPath()) {
           @if (starredMode()) {
             <div class="path-scroll-view hide-scrollbar">
               <button class="path-segment home-segment">
@@ -212,10 +223,6 @@
       </div>
 
       <div class="right-section">
-        <button class="nav-button">
-          <mat-icon svgIcon="search"></mat-icon>
-        </button>
-
         @if (!isMobile()) {
           <button class="nav-button" (click)="setLayout(layout() === 'grid' ? 'list' : 'grid')">
             <mat-icon [svgIcon]="layout() === 'grid' ? 'list' : 'grid'"></mat-icon>
@@ -609,6 +616,17 @@
     }
   </mat-sidenav-content>
 </mat-sidenav-container>
+
+<ng-template #sidebarStarredMenu>
+  <div class="material-context-menu" cdkMenu>
+    <button class="menu-item" cdkMenuItem (click)="selectStarred()">
+      <span>Open</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="openStarredInNewTab()">
+      <span>Open in New Tab</span>
+    </button>
+  </div>
+</ng-template>
 
 <ng-template #sidebarRemoteMenu let-remote>
   <div class="material-context-menu" cdkMenu>

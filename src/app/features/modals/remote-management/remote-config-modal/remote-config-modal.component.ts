@@ -646,7 +646,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     config = config || {};
     const formGroup = this.remoteConfigForm.get(`${flagType}Config`);
     if (formGroup) {
-      // Convert legacy string paths (e.g. "remote:/path") into the
+      // Convert legacy string paths (e.g. "remote:path") into the
       // structured path objects the form expects (pathType/path/otherRemoteName).
       const patchedConfig = { ...config };
       try {
@@ -667,11 +667,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
           // For mount dest is a simple string control, but parsePathString will
           // return an object for remote paths; the form group will accept the
           // proper shape for non-mount configs.
-          patchedConfig.dest = this.parsePathString(
-            patchedConfig.dest,
-            flagType === 'mount' ? 'local' : 'currentRemote',
-            this.getRemoteName()
-          );
+          if (flagType !== 'mount') {
+            patchedConfig.dest = this.parsePathString(
+              patchedConfig.dest,
+              'currentRemote',
+              this.getRemoteName()
+            );
+          }
         }
       } catch (e) {
         console.warn('Failed to parse dest path string:', e);
@@ -706,7 +708,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     optionsGroup.patchValue(optionsToPopulate);
   }
 
-  // Helper to parse a path string (e.g., "myRemote:/path") into a form object
+  // Helper to parse a path string (e.g., "myRemote:path") into a form object
   private parsePathString(
     path: string,
     defaultType: 'local' | 'currentRemote',
@@ -716,10 +718,10 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       return { pathType: defaultType, path: '', otherRemoteName: '' };
     }
 
-    const parts = path.split(':/');
+    const parts = path.split(':');
     if (parts.length > 1) {
       const remoteName = parts[0];
-      const remotePath = parts.slice(1).join(':/') || ''; // Re-join if path had colons
+      const remotePath = parts.slice(1).join(':') || ''; // Re-join if path had colons
       if (remoteName === currentRemote) {
         return { pathType: 'currentRemote', path: remotePath, otherRemoteName: '' };
       } else if (this.existingRemotes.includes(remoteName)) {
@@ -1032,7 +1034,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     };
   }
 
-  // Helper to build a path string (e.g., "myRemote:/path") from a form object
+  // Helper to build a path string (e.g., "myRemote:path") from a form object
   private buildPathString(pathGroup: any, currentRemoteName: string): string {
     if (pathGroup === null || pathGroup === undefined) return '';
     // Handle mount's simple string path for DEST
@@ -1045,14 +1047,14 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
     if (typeof pathType === 'string' && pathType.startsWith('otherRemote:')) {
       const remote = otherRemoteName || pathType.split(':')[1];
-      return `${remote}:/${p}`;
+      return `${remote}:${p}`;
     }
 
     switch (pathType) {
       case 'local':
         return p;
       case 'currentRemote':
-        return `${currentRemoteName}:/${p}`;
+        return `${currentRemoteName}:${p}`;
       default:
         return '';
     }

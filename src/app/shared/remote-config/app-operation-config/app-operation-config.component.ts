@@ -28,7 +28,7 @@ import { FilePickerConfig } from '@app/types';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { CronInputComponent } from '@app/shared/components';
-import { NotificationService } from 'src/app/shared/services/notification.service'; // Added
+import { NotificationService } from 'src/app/shared/services/notification.service'; // Injected
 
 type PathType = 'local' | 'currentRemote' | 'otherRemote';
 type PathGroup = 'source' | 'dest';
@@ -274,15 +274,41 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
   }
 
   /**
-   * Opens the Nautilus file picker.
-   * Unified to handle both local and remote path selection.
+   * Opens either the Native file picker (for local paths) or Nautilus (for remote paths).
    */
   async selectRemotePath(group: PathGroup): Promise<void> {
-    // Determine config:
+    const formGroup = this.getFormGroup(group);
+    const pathType = formGroup?.get('pathType')?.value;
+
+    // Use native picker if:
+    // 1. It's a Mount Destination (always local)
+    // 2. The path type is explicitly set to 'local'
+    const isMountDest = this.isMount && group === 'dest';
+    const isLocalSelected = pathType === 'local';
+
+    if (isMountDest || isLocalSelected) {
+      await this.selectLocalPath(group);
+    } else {
+      await this.selectNautilusPath(group);
+    }
+  }
+
+  private async selectLocalPath(group: PathGroup): Promise<void> {
+    const requireEmpty = this.isMount && group === 'dest';
+    try {
+      const selectedPath = await this.fileSystemService.selectFolder(requireEmpty);
+      if (selectedPath) {
+        this.updatePathForm(group, selectedPath, 'local');
+      }
+    } catch (error) {
+      console.error('Error selecting local folder:', error);
+    }
+  }
+
+  private async selectNautilusPath(group: PathGroup): Promise<void> {
     const restrictToCurrentRemote = this.isMount && group === 'source';
     const cfg: FilePickerConfig = {
-      mode:
-        this.isMount && group === 'dest' ? 'local' : restrictToCurrentRemote ? 'remote' : 'both',
+      mode: restrictToCurrentRemote ? 'remote' : 'both',
       selection: 'folders',
       multi: false,
       allowedRemotes: restrictToCurrentRemote ? [this.currentRemoteName] : undefined,
@@ -335,25 +361,30 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
         return;
       }
 
-      // Update form values
-      const formGroup = this.getFormGroup(group);
-      const pathControl = this.getPathControl(group);
-      const pathTypeControl = formGroup?.get('pathType');
-
-      pathControl?.setValue(path); // Allow event emission to trigger validation
-
-      if (pathTypeControl) {
-        if (remoteName === '') {
-          pathTypeControl.setValue('local');
-        } else if (remoteName === this.currentRemoteName) {
-          pathTypeControl.setValue('currentRemote');
-        } else {
-          pathTypeControl.setValue(`otherRemote:${remoteName}`);
-        }
+      let pathTypeValue = 'local';
+      if (remoteName === this.currentRemoteName) {
+        pathTypeValue = 'currentRemote';
+      } else if (remoteName !== '') {
+        pathTypeValue = `otherRemote:${remoteName}`;
       }
 
-      this.cdRef.markForCheck();
+      this.updatePathForm(group, path, pathTypeValue);
     }
+  }
+
+  private updatePathForm(group: PathGroup, path: string, pathTypeValue: string): void {
+    const formGroup = this.getFormGroup(group);
+    const pathControl = this.getPathControl(group);
+    const pathTypeControl = formGroup?.get('pathType');
+
+    pathControl?.setValue(path);
+    pathControl?.markAsDirty();
+
+    if (pathTypeControl) {
+      pathTypeControl.setValue(pathTypeValue);
+    }
+
+    this.cdRef.markForCheck();
   }
 
   goUp(group: PathGroup): void {

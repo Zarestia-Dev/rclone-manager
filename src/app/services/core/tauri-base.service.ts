@@ -19,7 +19,7 @@ const isTauriRuntime = (): boolean =>
   providedIn: 'root',
 })
 export class TauriBaseService {
-  private readonly apiClient = inject(ApiClientService);
+  readonly apiClient = inject(ApiClientService);
   private readonly sseClient = inject(SseClientService);
   protected readonly isTauriEnvironment = isTauriRuntime();
 

@@ -24,6 +24,21 @@ export class FileSystemService extends TauriBaseService {
    * Select a folder with optional empty requirement
    */
   async selectFolder(requireEmpty?: boolean): Promise<string> {
+    // In headless mode, use Nautilus file browser
+    if (this.apiClient.isHeadless()) {
+      const config: FilePickerConfig = {
+        mode: 'local',
+        selection: 'folders',
+        multi: false,
+      };
+      const result = await this.selectPathWithNautilus(config);
+      if (result.cancelled || result.paths.length === 0) {
+        throw new Error('Folder selection cancelled');
+      }
+      return result.paths[0];
+    }
+
+    // In Tauri mode, use native dialog
     try {
       return await this.invokeCommand<string>('get_folder_location', {
         requireEmpty: requireEmpty || false,
@@ -49,6 +64,21 @@ export class FileSystemService extends TauriBaseService {
    * Select a file
    */
   async selectFile(): Promise<string> {
+    // In headless mode, use Nautilus file browser
+    if (this.apiClient.isHeadless()) {
+      const config: FilePickerConfig = {
+        mode: 'local',
+        selection: 'files',
+        multi: false,
+      };
+      const result = await this.selectPathWithNautilus(config);
+      if (result.cancelled || result.paths.length === 0) {
+        throw new Error('File selection cancelled');
+      }
+      return result.paths[0];
+    }
+
+    // In Tauri mode, use native dialog
     try {
       return await this.invokeCommand<string>('get_file_location');
     } catch (error) {

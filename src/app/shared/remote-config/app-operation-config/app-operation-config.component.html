@@ -64,7 +64,7 @@
               <mat-label>{{ isServe ? 'Remote Path to Serve' : 'Source Path' }}</mat-label>
               <span matPrefix class="path-prefix mount-remote locked">
                 <mat-icon svgIcon="hard-drive"></mat-icon>
-                <span>{{ currentRemoteName }}:/</span>
+                <span>{{ currentRemoteName }}:</span>
               </span>
               <input
                 matInput
@@ -148,11 +148,11 @@
                     }
                     @case ('currentRemote') {
                       <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                      <span>{{ currentRemoteName }}:/</span>
+                      <span>{{ currentRemoteName }}:</span>
                     }
                     @case ('otherRemote') {
                       <mat-icon svgIcon="cloud" class="accent"></mat-icon>
-                      <span>{{ opFormGroup.get('source.otherRemoteName')?.value }}:/</span>
+                      <span>{{ opFormGroup.get('source.otherRemoteName')?.value }}:</span>
                     }
                   }
                 </mat-select-trigger>
@@ -163,7 +163,7 @@
                 </mat-option>
                 <mat-option value="currentRemote">
                   <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                  {{ currentRemoteName }}:/
+                  {{ currentRemoteName }}:
                 </mat-option>
 
                 @if (otherRemotes.length) {
@@ -171,7 +171,7 @@
                     @for (remote of otherRemotes; track remote) {
                       <mat-option [value]="'otherRemote:' + remote">
                         <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                        {{ remote }}:/
+                        {{ remote }}:
                       </mat-option>
                     }
                   </mat-optgroup>
@@ -342,11 +342,11 @@
                     }
                     @case ('currentRemote') {
                       <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                      <span>{{ currentRemoteName }}:/</span>
+                      <span>{{ currentRemoteName }}:</span>
                     }
                     @case ('otherRemote') {
                       <mat-icon svgIcon="cloud" class="accent"></mat-icon>
-                      <span>{{ opFormGroup.get('dest.otherRemoteName')?.value }}:/</span>
+                      <span>{{ opFormGroup.get('dest.otherRemoteName')?.value }}:</span>
                     }
                   }
                 </mat-select-trigger>
@@ -357,7 +357,7 @@
                 </mat-option>
                 <mat-option value="currentRemote">
                   <mat-icon svgIcon="hard-drive" class="primary"></mat-icon>
-                  {{ currentRemoteName }}:/
+                  {{ currentRemoteName }}:
                 </mat-option>
 
                 @if (otherRemotes.length) {
@@ -365,7 +365,7 @@
                     @for (remote of otherRemotes; track remote) {
                       <mat-option [value]="'otherRemote:' + remote">
                         <mat-icon class="accent" svgIcon="cloud"></mat-icon>
-                        {{ remote }}:/
+                        {{ remote }}:
                       </mat-option>
                     }
                   </mat-optgroup>

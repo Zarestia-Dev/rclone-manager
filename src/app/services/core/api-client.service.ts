@@ -60,7 +60,6 @@ export class ApiClientService {
     'set_config_password_env',
     'clear_config_password_env',
     'change_config_password',
-    'backup_settings',
     'restore_settings',
     // VFS Commands
     'vfs_forget',
@@ -68,6 +67,10 @@ export class ApiClientService {
     'vfs_poll_interval',
     'vfs_queue_set_expiry',
     'vfs_poll_interval',
+    // Filesystem Commands
+    'mkdir',
+    'cleanup',
+    'copy_url',
   ]);
 
   constructor() {
@@ -262,6 +265,7 @@ export class ApiClientService {
       // System info
       get_rclone_info: '/rclone-info',
       get_rclone_pid: '/rclone-pid',
+      get_rclone_rc_url: '/get-rclone-rc-url',
       get_disk_usage: '/disk-usage',
       kill_process_by_pid: '/kill-process-by-pid',
       check_rclone_available: '/check-rclone-available',
@@ -287,6 +291,11 @@ export class ApiClientService {
 
       // Filesystem
       get_fs_info: '/fs/info',
+      get_local_drives: '/get-local-drives',
+      get_size: '/get-size',
+      mkdir: '/mkdir',
+      cleanup: '/cleanup',
+      copy_url: '/copy-url',
       get_remote_paths: '/remote/paths',
       get_folder_location: '/get-folder-location', // Note: Will fail in headless
       get_file_location: '/get-file-location', // Note: Will fail in headless

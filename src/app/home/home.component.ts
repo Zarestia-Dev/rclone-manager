@@ -63,6 +63,7 @@ import {
   SystemInfoService,
   AppSettingsService,
   ServeManagementService,
+  PathSelectionService,
 } from '@app/services';
 
 @Component({
@@ -103,6 +104,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly notificationService = inject(NotificationService);
   private readonly eventListenersService = inject(EventListenersService);
+  private readonly pathSelectionService = inject(PathSelectionService);
   readonly systemInfoService = inject(SystemInfoService);
   readonly iconService = inject(IconService);
 
@@ -339,7 +341,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     updateDiskUsage({ loading: true });
 
     try {
-      const fsInfo = await this.remoteManagementService.getFsInfo(remote.remoteSpecs.name);
+      const fsName = this.pathSelectionService.normalizeRemoteForRclone(remote.remoteSpecs.name);
+      const fsInfo = await this.remoteManagementService.getFsInfo(fsName);
       if ((fsInfo as any).Features?.About === false) {
         updateDiskUsage({
           total_space: 0,
@@ -352,7 +355,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         return;
       }
 
-      const usage = await this.remoteManagementService.getDiskUsage(remote.remoteSpecs.name);
+      const usage = await this.remoteManagementService.getDiskUsage(fsName);
       updateDiskUsage({
         total_space: usage.total || -1,
         used_space: usage.used || -1,
@@ -912,6 +915,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     return this.jobs().filter(j => j.remote_name === remoteName);
   }
 
+  // Need to remove this function later. Because we need the use the real remote setting to determine local or not.
   isLocalPath(path: string): boolean {
     if (!path) return false;
     return (
@@ -919,7 +923,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         path.startsWith('/') ||
         path.startsWith('~/') ||
         path.startsWith('./')) &&
-      !path.includes(':/')
+      !path.includes(':')
     );
   }
 

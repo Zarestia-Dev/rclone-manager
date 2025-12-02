@@ -391,13 +391,13 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     const p = path || '';
     if (typeof pathType === 'string' && pathType.startsWith('otherRemote:')) {
       const remote = otherRemoteName || pathType.split(':')[1];
-      return `${remote}:/${p}`;
+      return `${remote}:${p}`;
     }
     switch (pathType) {
       case 'local':
         return p;
       case 'currentRemote':
-        return `${currentRemoteName}:/${p}`;
+        return `${currentRemoteName}:${p}`;
       default:
         return '';
     }
@@ -635,8 +635,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     if (this.nautilusService.isNautilusOverlayOpen) {
       return;
     }
-    if (!this.isAuthInProgress) {
-      this.dialogRef.close();
-    }
+    this.dialogRef.close();
   }
 }

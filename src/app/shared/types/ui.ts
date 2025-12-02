@@ -139,7 +139,7 @@ export interface FilePickerConfig {
   allowedRemotes?: string[];
   /** Optional file extension filter for selectable files (e.g. ['.jpg','.png']) */
   allowedExtensions?: string[];
-  /** Initial location like '/home/user', 'gdrive:' or 'gdrive:/Photos' */
+  /** Initial location like '/home/user', 'gdrive:' or 'gdrive:Photos' */
   initialLocation?: string;
   /** Preselected full paths */
   preselect?: string[];
@@ -148,7 +148,7 @@ export interface FilePickerConfig {
 }
 
 export interface FilePickerResult {
-  /** Full normalized paths like '/home/user/...' or 'remote:/path' */
+  /** Full normalized paths like '/home/user/...' or 'remote:path' */
   paths: string[];
   cancelled: boolean;
 }

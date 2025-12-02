@@ -16,7 +16,7 @@ import {
 } from '@angular/core';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { combineLatest, firstValueFrom, from, of } from 'rxjs';
-import { catchError, finalize, map, switchMap, take } from 'rxjs/operators';
+import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 
 // Material Modules
@@ -205,6 +205,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
   });
 
   public readonly isEditingPath = signal(false);
+  public readonly isSearchMode = signal(false);
+  public readonly searchFilter = signal('');
 
   // --- Tabs System ---
   private interfaceTabCounter = 0;
@@ -222,6 +224,23 @@ export class NautilusComponent implements OnInit, OnDestroy {
   // --- Data ---
   public readonly bookmarks = this.nautilusService.bookmarks; // Direct signal
   public readonly cleanupSupportCache = signal<Record<string, boolean>>({});
+
+  // Filtered bookmarks based on picker mode
+  public readonly filteredBookmarks = computed(() => {
+    let marks = this.bookmarks();
+    if (this.isPickerMode()) {
+      const cfg = this.pickerOptions();
+      marks = marks.filter(b => {
+        if (cfg.mode === 'local' && b.meta.fsType !== 'local') return false;
+        if (cfg.mode === 'remote' && b.meta.fsType !== 'remote') return false;
+        if (cfg.allowedRemotes && b.meta.fsType === 'remote') {
+          return cfg.allowedRemotes.includes((b.meta.remote || '').replace(/:$/, ''));
+        }
+        return true;
+      });
+    }
+    return marks;
+  });
 
   // Raw Data Source (Combined)
   private readonly rawRemotesData = toSignal(
@@ -384,11 +403,22 @@ export class NautilusComponent implements OnInit, OnDestroy {
     return this.rawFiles();
   });
 
-  // 2. Filtered files (hidden files)
+  // 2. Filtered files (hidden files + search)
   private readonly filteredFiles = computed(() => {
-    const files = this.sourceFiles();
-    if (this.showHidden() || this.starredMode()) return files;
-    return files.filter(f => !f.entry.Name.startsWith('.'));
+    let files = this.sourceFiles();
+
+    // Apply hidden files filter
+    if (!this.showHidden() && !this.starredMode()) {
+      files = files.filter(f => !f.entry.Name.startsWith('.'));
+    }
+
+    // Apply search filter
+    const search = this.searchFilter().toLowerCase().trim();
+    if (search) {
+      files = files.filter(f => f.entry.Name.toLowerCase().includes(search));
+    }
+
+    return files;
   });
 
   // 3. Final sorted files
@@ -465,6 +495,20 @@ export class NautilusComponent implements OnInit, OnDestroy {
     });
 
     effect(() => {
+      if (this.isSearchMode()) {
+        setTimeout(() => {
+          const searchInput = document.querySelector(
+            'input[placeholder="Search files..."]'
+          ) as HTMLInputElement;
+          if (searchInput) {
+            searchInput.focus();
+            searchInput.select();
+          }
+        }, 10);
+      }
+    });
+
+    effect(() => {
       const remotes = this.allRemotesLookup();
       const cache = untracked(this.cleanupSupportCache);
       const missing = remotes.filter(r => cache[r.name] === undefined && r.fs_type === 'remote');
@@ -500,30 +544,19 @@ export class NautilusComponent implements OnInit, OnDestroy {
         this.mountManagement.getMountedRemotes(),
       ]);
 
-      this.uiStateService.selectedRemote$.pipe(take(1)).subscribe(async currentSelected => {
-        let initial: ExplorerRoot | null = null;
-        if (currentSelected) {
-          initial = {
-            name: currentSelected.remoteSpecs.name,
-            label: currentSelected.remoteSpecs.name,
-            type: currentSelected.remoteSpecs.type,
-            fs_type: 'remote',
-            isMounted: false,
-          };
-        } else {
-          const drives = await this.remoteManagement.getLocalDrives();
-          if (drives.length > 0) {
-            initial = {
-              name: drives[0].name,
-              label: drives[0].label,
-              type: 'hard-drive',
-              fs_type: 'local',
-              isMounted: false,
-            };
-          }
-        }
-        this.createTab(initial, '');
-      });
+      // Always start with the first local drive
+      const drives = await this.remoteManagement.getLocalDrives();
+      let initial: ExplorerRoot | null = null;
+      if (drives.length > 0) {
+        initial = {
+          name: drives[0].name,
+          label: drives[0].label,
+          type: 'hard-drive',
+          fs_type: 'local',
+          isMounted: false,
+        };
+      }
+      this.createTab(initial, '');
     } catch (e) {
       console.warn('Init failed', e);
     }
@@ -769,11 +802,13 @@ export class NautilusComponent implements OnInit, OnDestroy {
       updatedHistoryIndex = updatedHistory.length - 1;
     }
 
+    const computedTitle =
+      this.starredMode() && !remote ? 'Starred' : path.split('/').pop() || remote?.label || 'Files';
     const updatedTab: Tab = {
       ...tab,
       remote,
       path,
-      title: path.split('/').pop() || remote?.label || 'Files',
+      title: computedTitle,
       selection: new Set<string>(),
       history: updatedHistory,
       historyIndex: updatedHistoryIndex,
@@ -789,9 +824,14 @@ export class NautilusComponent implements OnInit, OnDestroy {
   // --- Tabs ---
   createTab(remote: ExplorerRoot | null, path = ''): void {
     const id = ++this.interfaceTabCounter;
+    // Compute initial title: use path segment, remote label, 'Starred' if in starred mode, or 'Files'
+    const initialTitle =
+      path.split('/').pop() ||
+      remote?.label ||
+      (this.starredMode() && !remote ? 'Starred' : 'Files');
     const t = {
       id,
-      title: remote?.label || 'New Tab',
+      title: initialTitle,
       remote,
       path,
       selection: new Set<string>(),
@@ -1103,7 +1143,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
         const sep = prefix?.endsWith('/') ? '' : '/';
         return `${prefix}${sep}${p}`;
       }
-      return `${prefix}/${p}`;
+      return `${prefix}${p}`;
     });
 
     if (this.isPickerMode() && fullPaths.length < minSel) {
@@ -1238,6 +1278,15 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.selectedItems.set(new Set());
     this.errorState.set(null);
     this.updateSelectionSummary();
+    // Update the active tab to reflect that we're in Starred view
+    this._navigate(null, '', true);
+  }
+
+  openStarredInNewTab(): void {
+    // Ensure the app is in starred mode before creating the new tab so the title and
+    // navigation reflect Starred properly.
+    if (!this.starredMode()) this.starredMode.set(true);
+    this.createTab(null, '');
   }
 
   onPathScroll(e: WheelEvent): void {
@@ -1262,6 +1311,14 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (path) {
       navigator.clipboard?.writeText(path);
       this.notificationService.openSnackBar('Location copied to clipboard', 'Close');
+    }
+  }
+
+  toggleSearchMode(): void {
+    const newMode = !this.isSearchMode();
+    this.isSearchMode.set(newMode);
+    if (!newMode) {
+      this.searchFilter.set('');
     }
   }
 

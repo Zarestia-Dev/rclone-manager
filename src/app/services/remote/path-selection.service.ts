@@ -125,7 +125,9 @@ export class PathSelectionService {
     state$.next({ ...state$.getValue(), isLoading: true, currentPath: path });
 
     try {
-      const normalizedRemote = this.normalizeRemoteForRclone(remoteName);
+      // For local paths (empty remoteName), use '/' as the filesystem root
+      // For remote paths, normalize with colon suffix
+      const normalizedRemote = remoteName === '' ? '/' : this.normalizeRemoteForRclone(remoteName);
       const response = await this.remoteManagementService.getRemotePaths(
         normalizedRemote,
         path || '',
@@ -170,13 +172,18 @@ export class PathSelectionService {
 
   private getParentPath(path: string): string {
     if (!path || path === '/') return '';
+
+    const preserveLeadingSlash = path.startsWith('/');
     const parts = path.split('/').filter(p => p);
     parts.pop();
-    return parts.join('/');
+
+    const joined = parts.join('/');
+    return preserveLeadingSlash ? '/' + joined : joined;
   }
 
   private joinPath(base: string, part: string): string {
-    if (!base || base === '/') return part;
+    if (!base) return part;
+    if (base === '/') return '/' + part;
     return `${base}/${part}`;
   }
 }

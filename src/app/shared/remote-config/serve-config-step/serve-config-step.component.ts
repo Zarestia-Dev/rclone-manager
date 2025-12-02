@@ -109,7 +109,7 @@ export class ServeConfigStepComponent {
 
   getRemotePathFromForm(): string {
     const path = this.form()?.get('source.path')?.value || '';
-    return `${this.remoteName()}:/${path}`;
+    return `${this.remoteName()}:${path}`;
   }
 
   getTypeIcon(type: string): string {

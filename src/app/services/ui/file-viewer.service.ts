@@ -2,9 +2,21 @@ import { Injectable, inject, signal, WritableSignal } from '@angular/core';
 import { Overlay } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { FileViewerModalComponent } from '../../features/components/file-browser/file-viewer/file-viewer-modal.component';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { ConfigService } from '../system/config.service';
+import { ApiClientService } from '../core/api-client.service';
 import { Entry } from '@app/types';
+
+// Conditional import for Tauri
+let convertFileSrc: ((filePath: string, protocol?: string) => string) | undefined;
+if (!(window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) {
+  // Headless mode - no convertFileSrc needed
+  convertFileSrc = undefined;
+} else {
+  // Tauri mode - import convertFileSrc
+  import('@tauri-apps/api/core').then(module => {
+    convertFileSrc = module.convertFileSrc;
+  });
+}
 
 @Injectable({
   providedIn: 'root',
@@ -12,6 +24,7 @@ import { Entry } from '@app/types';
 export class FileViewerService {
   private overlay = inject(Overlay);
   private configService = inject(ConfigService);
+  private apiClient = inject(ApiClientService);
 
   // Use Angular signal for viewer open state
   private readonly _isViewerOpen: WritableSignal<boolean> = signal(false);
@@ -92,7 +105,20 @@ export class FileViewerService {
     if (isLocal) {
       const separator = remoteName.endsWith('/') || remoteName.endsWith('\\') ? '' : '/';
       const fullPath = `${remoteName}${separator}${item.Path}`;
-      return convertFileSrc(fullPath);
+
+      // In headless mode, use the rclone serve URL for local files too
+      if (this.apiClient.isHeadless()) {
+        // For local files in headless mode
+        return `file://${fullPath}`;
+      }
+
+      // In Tauri mode, use convertFileSrc
+      if (convertFileSrc) {
+        return convertFileSrc(fullPath);
+      }
+
+      // Fallback if convertFileSrc not yet loaded
+      return `file://${fullPath}`;
     }
     const rName = remoteName.includes(':') ? remoteName : `${remoteName}:`;
     return `${baseUrl}/[${rName}]/${item.Path}`;
