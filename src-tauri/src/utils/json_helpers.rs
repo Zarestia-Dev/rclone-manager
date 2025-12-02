@@ -8,6 +8,17 @@ pub fn json_to_hashmap(json: Option<&Value>) -> Option<HashMap<String, Value>> {
         .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
 }
 
+/// Unwraps nested "options" key if it exists in a HashMap.
+/// This handles the case where frontend sends { "options": { "key": "value" } }
+/// and we need just { "key": "value" }.
+pub fn unwrap_nested_options(opts: HashMap<String, Value>) -> HashMap<String, Value> {
+    if let Some(Value::Object(nested)) = opts.get("options") {
+        nested.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
+    } else {
+        opts
+    }
+}
+
 /// Safely extracts a string value from a nested JSON path.
 /// Returns an empty string if any key is not found or the final value is not a string.
 pub fn get_string(json: &Value, path: &[&str]) -> String {

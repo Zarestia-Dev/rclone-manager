@@ -26,97 +26,115 @@
   </div>
 
   <div class="detail-content">
-    <div class="serves-section">
-      <h3 class="section-title">
-        <mat-icon svgIcon="satellite-dish"></mat-icon>
-        <span>Active Serves</span>
-        @if (remoteServes().length > 0) {
-          <span class="serves-count">{{ remoteServes().length }}</span>
-        }
-      </h3>
+    <mat-tab-group class="operation-tabs" animationDuration="300ms">
+      <!-- Monitoring Tab -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span>Monitoring</span>
+        </ng-template>
 
-      @if (remoteServes().length === 0) {
-        <mat-card class="empty-state-card">
-          <mat-card-content>
-            <div class="empty-state">
-              <mat-icon svgIcon="satellite-dish" class="empty-icon"></mat-icon>
-              <h4>No Active Serves</h4>
-              <p>
-                This remote is not currently being served via any network protocol. Click "Start
-                Serve" to make it accessible over HTTP, WebDAV, FTP, SFTP, or other protocols.
-              </p>
+        <div class="serves-section">
+          <h3 class="section-title">
+            <mat-icon svgIcon="satellite-dish"></mat-icon>
+            <span>Active Serves</span>
+            @if (remoteServes().length > 0) {
+              <span class="serves-count">{{ remoteServes().length }}</span>
+            }
+          </h3>
+
+          @if (remoteServes().length === 0) {
+            <mat-card class="empty-state-card">
+              <mat-card-content>
+                <div class="empty-state">
+                  <mat-icon svgIcon="satellite-dish" class="empty-icon"></mat-icon>
+                  <h4>No Active Serves</h4>
+                  <p>
+                    This remote is not currently being served via any network protocol. Click "Start
+                    Serve" to make it accessible over HTTP, WebDAV, FTP, SFTP, or other protocols.
+                  </p>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          } @else {
+            <div class="serves-grid">
+              @for (serve of remoteServes(); track serve.id) {
+                <app-serve-card
+                  [serve]="serve"
+                  (stopServe)="
+                    stopJob.emit({
+                      type: 'serve',
+                      remoteName: $event.params.fs.split(':')[0],
+                      serveId: $event.id,
+                    })
+                  "
+                  (copyToClipboard)="handleCopyToClipboard($event)"
+                ></app-serve-card>
+              }
             </div>
-          </mat-card-content>
-        </mat-card>
-      } @else {
-        <div class="serves-grid">
-          @for (serve of remoteServes(); track serve.id) {
-            <app-serve-card
-              [serve]="serve"
-              (stopServe)="
-                stopJob.emit({
-                  type: 'serve',
-                  remoteName: $event.params.fs.split(':')[0],
-                  serveId: $event.id,
-                })
-              "
-              (copyToClipboard)="handleCopyToClipboard($event)"
-            ></app-serve-card>
           }
+          <button
+            matButton="filled"
+            class="primary"
+            (click)="onStartServeClick()"
+            class="start-serve-btn"
+            [disabled]="actionInProgress() === 'serve'"
+          >
+            @if (actionInProgress() === 'serve') {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              <mat-icon svgIcon="play"></mat-icon>
+            }
+            <span>Start Serve</span>
+          </button>
+          <mat-divider></mat-divider>
+          <app-vfs-control-panel
+            [remoteName]="selectedRemote().remoteSpecs.name"
+          ></app-vfs-control-panel>
         </div>
-      }
-      <button
-        matButton="filled"
-        class="primary"
-        (click)="onStartServeClick()"
-        class="start-serve-btn"
-        [disabled]="actionInProgress() === 'serve'"
-      >
-        @if (actionInProgress() === 'serve') {
-          <mat-spinner diameter="20"></mat-spinner>
-        } @else {
-          <mat-icon svgIcon="play"></mat-icon>
-        }
-        <span>Start Serve</span>
-      </button>
-    </div>
+      </mat-tab>
 
-    <mat-divider></mat-divider>
+      <!-- Configuration Tab -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <span>Configuration</span>
+        </ng-template>
 
-    <div class="settings-layout">
-      <section class="settings-group">
-        <header class="group-header">
-          <h3 class="group-title">Serve Configuration</h3>
-          <p class="group-description">
-            Configure how files are served from this remote over network protocols.
-          </p>
-        </header>
-        <div class="group-panels">
-          @for (section of SERVE_SECTIONS; track section.key) {
-            <app-settings-panel
-              [config]="getSettingsPanelConfig(section)"
-              (editSettings)="onEditSettings($event)"
-            ></app-settings-panel>
-          }
+        <div class="settings-layout">
+          <section class="settings-group">
+            <header class="group-header">
+              <h3 class="group-title">Serve Configuration</h3>
+              <p class="group-description">
+                Configure how files are served from this remote over network protocols.
+              </p>
+            </header>
+            <div class="group-panels">
+              @for (section of SERVE_SECTIONS; track section.key) {
+                <app-settings-panel
+                  [config]="getSettingsPanelConfig(section)"
+                  (editSettings)="onEditSettings($event)"
+                ></app-settings-panel>
+              }
+            </div>
+          </section>
+
+          <section class="settings-group">
+            <header class="group-header">
+              <h3 class="group-title">Advanced Settings</h3>
+              <p class="group-description">
+                Additional filtering, VFS, and backend options for serve operations.
+              </p>
+            </header>
+            <div class="group-panels">
+              @for (section of ADVANCED_SECTIONS; track section.key) {
+                <app-settings-panel
+                  [config]="getSettingsPanelConfig(section)"
+                  (editSettings)="onEditSettings($event)"
+                ></app-settings-panel>
+              }
+            </div>
+          </section>
         </div>
-      </section>
-
-      <section class="settings-group">
-        <header class="group-header">
-          <h3 class="group-title">Advanced Settings</h3>
-          <p class="group-description">
-            Additional filtering, VFS, and backend options for serve operations.
-          </p>
-        </header>
-        <div class="group-panels">
-          @for (section of ADVANCED_SECTIONS; track section.key) {
-            <app-settings-panel
-              [config]="getSettingsPanelConfig(section)"
-              (editSettings)="onEditSettings($event)"
-            ></app-settings-panel>
-          }
-        </div>
-      </section>
-    </div>
+      </mat-tab>
+    </mat-tab-group>
   </div>
 </div>

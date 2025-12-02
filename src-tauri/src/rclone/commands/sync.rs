@@ -7,7 +7,7 @@ use crate::{
     RcloneState,
     rclone::state::engine::ENGINE_STATE,
     utils::{
-        json_helpers::{get_string, json_to_hashmap},
+        json_helpers::{get_string, json_to_hashmap, unwrap_nested_options},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, sync},
         types::all_types::{JobCache, LogLevel},
@@ -45,8 +45,12 @@ impl SyncParams {
             source,
             dest,
             sync_options: json_to_hashmap(sync_cfg.get("options")),
-            filter_options: json_to_hashmap(settings.get("filterConfig")),
-            backend_options: json_to_hashmap(settings.get("backendConfig")),
+            filter_options: json_to_hashmap(
+                settings.get("filterConfig").and_then(|v| v.get("options")),
+            ),
+            backend_options: json_to_hashmap(
+                settings.get("backendConfig").and_then(|v| v.get("options")),
+            ),
         })
     }
 
@@ -87,8 +91,12 @@ impl CopyParams {
             source,
             dest,
             copy_options: json_to_hashmap(copy_cfg.get("options")),
-            filter_options: json_to_hashmap(settings.get("filterConfig")),
-            backend_options: json_to_hashmap(settings.get("backendConfig")),
+            filter_options: json_to_hashmap(
+                settings.get("filterConfig").and_then(|v| v.get("options")),
+            ),
+            backend_options: json_to_hashmap(
+                settings.get("backendConfig").and_then(|v| v.get("options")),
+            ),
         })
     }
 
@@ -128,8 +136,12 @@ impl BisyncParams {
             source,
             dest,
             bisync_options: json_to_hashmap(bisync_cfg.get("options")),
-            filter_options: json_to_hashmap(settings.get("filterConfig")),
-            backend_options: json_to_hashmap(settings.get("backendConfig")),
+            filter_options: json_to_hashmap(
+                settings.get("filterConfig").and_then(|v| v.get("options")),
+            ),
+            backend_options: json_to_hashmap(
+                settings.get("backendConfig").and_then(|v| v.get("options")),
+            ),
         })
     }
 
@@ -169,8 +181,12 @@ impl MoveParams {
             source,
             dest,
             move_options: json_to_hashmap(move_cfg.get("options")),
-            filter_options: json_to_hashmap(settings.get("filterConfig")),
-            backend_options: json_to_hashmap(settings.get("backendConfig")),
+            filter_options: json_to_hashmap(
+                settings.get("filterConfig").and_then(|v| v.get("options")),
+            ),
+            backend_options: json_to_hashmap(
+                settings.get("backendConfig").and_then(|v| v.get("options")),
+            ),
         })
     }
 
@@ -185,17 +201,21 @@ impl MoveParams {
 
 // --- Helper for merging options ---
 /// Merges main options and backend options into a single HashMap
+/// Also unwraps any nested "options" keys from the frontend
 fn merge_options(
     main_opts: Option<HashMap<String, Value>>,
     backend_opts: Option<HashMap<String, Value>>,
 ) -> HashMap<String, Value> {
-    match (main_opts, backend_opts) {
-        (Some(mut opts), Some(backend)) => {
-            opts.extend(backend);
+    let main = main_opts.map(unwrap_nested_options);
+    let backend = backend_opts.map(unwrap_nested_options);
+
+    match (main, backend) {
+        (Some(mut opts), Some(backend_unwrapped)) => {
+            opts.extend(backend_unwrapped);
             opts
         }
         (Some(opts), None) => opts,
-        (None, Some(backend)) => backend,
+        (None, Some(backend_unwrapped)) => backend_unwrapped,
         (None, None) => HashMap::new(),
     }
 }
@@ -249,9 +269,10 @@ pub async fn start_sync(
     }
 
     if let Some(filters) = params.filter_options {
+        let unwrapped_filters = unwrap_nested_options(filters);
         body.insert(
             "_filter".to_string(),
-            Value::Object(filters.into_iter().collect()),
+            Value::Object(unwrapped_filters.into_iter().collect()),
         );
     }
 
@@ -319,9 +340,10 @@ pub async fn start_copy(
     }
 
     if let Some(filters) = params.filter_options {
+        let unwrapped_filters = unwrap_nested_options(filters);
         body.insert(
             "_filter".to_string(),
-            Value::Object(filters.into_iter().collect()),
+            Value::Object(unwrapped_filters.into_iter().collect()),
         );
     }
 
@@ -415,9 +437,10 @@ pub async fn start_bisync(
     }
 
     if let Some(filters) = params.filter_options {
+        let unwrapped_filters = unwrap_nested_options(filters);
         body.insert(
             "_filter".to_string(),
-            Value::Object(filters.into_iter().collect()),
+            Value::Object(unwrapped_filters.into_iter().collect()),
         );
     }
 
@@ -487,9 +510,10 @@ pub async fn start_move(
     }
 
     if let Some(filters) = params.filter_options {
+        let unwrapped_filters = unwrap_nested_options(filters);
         body.insert(
             "_filter".to_string(),
-            Value::Object(filters.into_iter().collect()),
+            Value::Object(unwrapped_filters.into_iter().collect()),
         );
     }
 

@@ -7,7 +7,7 @@ use crate::{
     RcloneState,
     rclone::{commands::job::submit_job, state::engine::ENGINE_STATE},
     utils::{
-        json_helpers::{get_string, json_to_hashmap},
+        json_helpers::{get_string, json_to_hashmap, unwrap_nested_options},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, serve},
         types::{
@@ -52,9 +52,13 @@ impl ServeParams {
         Some(Self {
             remote_name,
             serve_options: json_to_hashmap(serve_cfg.get("options")),
-            backend_options: json_to_hashmap(settings.get("backendConfig")),
-            filter_options: json_to_hashmap(settings.get("filterConfig")),
-            vfs_options: json_to_hashmap(settings.get("vfsConfig")),
+            backend_options: json_to_hashmap(
+                settings.get("backendConfig").and_then(|v| v.get("options")),
+            ),
+            filter_options: json_to_hashmap(
+                settings.get("filterConfig").and_then(|v| v.get("options")),
+            ),
+            vfs_options: json_to_hashmap(settings.get("vfsConfig").and_then(|v| v.get("options"))),
         })
     }
 
@@ -185,17 +189,20 @@ pub async fn start_serve(
 
     // Add VFS options
     if let Some(opts) = params.vfs_options.clone() {
-        payload.insert("vfsOpt".to_string(), json!(opts));
+        let vfs_opts = unwrap_nested_options(opts);
+        payload.insert("vfsOpt".to_string(), json!(vfs_opts));
     }
 
     // Add backend options
     if let Some(opts) = params.backend_options.clone() {
-        payload.insert("_config".to_string(), json!(opts));
+        let backend_opts = unwrap_nested_options(opts);
+        payload.insert("_config".to_string(), json!(backend_opts));
     }
 
     // Add filter options
     if let Some(opts) = params.filter_options.clone() {
-        payload.insert("_filter".to_string(), json!(opts));
+        let filter_opts = unwrap_nested_options(opts);
+        payload.insert("_filter".to_string(), json!(filter_opts));
     }
 
     let payload = Value::Object(payload);

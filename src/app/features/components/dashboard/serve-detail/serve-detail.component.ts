@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -16,6 +17,7 @@ import {
 } from '@app/types';
 import { IconService } from '../../../../shared/services/icon.service';
 import { SettingsPanelComponent } from '../../../../shared/detail-shared';
+import { VfsControlPanelComponent } from 'src/app/shared/detail-shared/vfs-control/vfs-control-panel.component';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
@@ -38,7 +40,9 @@ interface SettingsSection {
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
+    MatTabsModule,
     SettingsPanelComponent,
+    VfsControlPanelComponent,
     ServeCardComponent,
   ],
   templateUrl: './serve-detail.component.html',

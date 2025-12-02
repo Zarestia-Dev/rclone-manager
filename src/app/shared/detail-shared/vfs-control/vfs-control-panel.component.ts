@@ -2,13 +2,14 @@ import {
   Component,
   inject,
   OnInit,
-  OnDestroy,
   input,
   signal,
   computed,
   effect,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,10 +19,14 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { FormsModule } from '@angular/forms';
-import { MatListModule } from '@angular/material/list';
+import { MatTableModule, MatTable } from '@angular/material/table';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
+import { switchMap, filter, retry } from 'rxjs/operators';
+import { timer, from } from 'rxjs';
+
+// Services
 import {
   VfsList,
   VfsQueueItem,
@@ -31,7 +36,7 @@ import {
 import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 import { NotificationService } from '../../services/notification.service';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
-import { FileSystemService } from '@app/services';
+import { FileSystemService, MountManagementService } from '@app/services';
 
 interface VfsInstance {
   name: string;
@@ -39,6 +44,15 @@ interface VfsInstance {
   queue: VfsQueueItem[];
   pollInterval: string;
 }
+
+// Constants
+const POLL_INTERVAL_MS = 5000;
+const PRIORITY_EXPIRY = -999_999_999;
+const DELAY_EXPIRY = 999_999_999;
+const DELAY_SLIDER_MIN = 10;
+const DELAY_SLIDER_MAX = 86400;
+const DELAY_SLIDER_STEP = 10;
+const DELAY_SLIDER_DEFAULT = 60;
 
 @Component({
   selector: 'app-vfs-control-panel',
@@ -53,7 +67,7 @@ interface VfsInstance {
     MatTooltipModule,
     MatProgressBarModule,
     MatExpansionModule,
-    MatListModule,
+    MatTableModule,
     MatBadgeModule,
     MatSelectModule,
     FormsModule,
@@ -63,15 +77,17 @@ interface VfsInstance {
   templateUrl: './vfs-control-panel.component.html',
   styleUrl: './vfs-control-panel.component.scss',
 })
-export class VfsControlPanelComponent implements OnInit, OnDestroy {
-  // Inputs
+export class VfsControlPanelComponent implements OnInit {
+  // Inputs & Services
   remoteName = input.required<string>();
-
-  // Services
   private readonly vfsService = inject(VfsService);
   private readonly notification = inject(NotificationService);
   private readonly fileSystemService = inject(FileSystemService);
   private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly mountService = inject(MountManagementService);
+
+  // ViewChild for table rendering
+  @ViewChild(MatTable) table?: MatTable<VfsQueueItem>;
 
   // State
   vfsInstances = signal<VfsInstance[]>([]);
@@ -81,149 +97,108 @@ export class VfsControlPanelComponent implements OnInit, OnDestroy {
   pollIntervalInput = signal('');
 
   // Delay slider state
-  delaySliderValue = signal(60);
-  showDelaySlider = signal<VfsQueueItem | null>(null);
+  delaySliderValue = signal(DELAY_SLIDER_DEFAULT);
+  showDelaySlider = signal<number | null>(null);
 
-  // Computed values
-  totalQueueSize = computed(() => {
-    const selected = this.selectedVfs();
-    return selected?.queue.reduce((sum, item) => sum + item.size, 0) ?? 0;
-  });
+  // Slider configuration
+  readonly delaySliderMin = DELAY_SLIDER_MIN;
+  readonly delaySliderMax = DELAY_SLIDER_MAX;
+  readonly delaySliderStep = DELAY_SLIDER_STEP;
 
-  uploadingCount = computed(() => {
-    const selected = this.selectedVfs();
-    return selected?.queue.filter(item => item.uploading).length ?? 0;
-  });
+  // Computed
+  totalQueueSize = computed(
+    () => this.selectedVfs()?.queue.reduce((sum, i) => sum + i.size, 0) ?? 0
+  );
+  uploadingCount = computed(() => this.selectedVfs()?.queue.filter(i => i.uploading).length ?? 0);
 
-  // Private
-  private refreshInterval: ReturnType<typeof setInterval> | null = null;
-  private isDestroyed = false;
-  private readonly AUTO_REFRESH_INTERVAL = 5000;
-  private readonly DEFAULT_DELAY_SECONDS = 60;
-  private readonly MAX_DELAY_SECONDS = 999999999;
+  displayedColumns: string[] = ['name', 'size', 'status'];
+  isDetailRow = (_: number, row: VfsQueueItem): boolean => this.showDelaySlider() === row.id;
 
   constructor() {
     // Sync poll interval input when selected VFS changes
     effect(() => {
-      const selected = this.selectedVfs();
-      if (selected) {
-        this.pollIntervalInput.set(selected.pollInterval);
-      }
+      const vfs = this.selectedVfs();
+      if (vfs) this.pollIntervalInput.set(vfs.pollInterval);
     });
+
+    // Force table re-render when showDelaySlider changes
+    effect(() => {
+      this.showDelaySlider(); // Register dependency
+      this.table?.renderRows(); // Force update
+    });
+
+    // Auto-refresh logic using RxJS timer
+    timer(0, POLL_INTERVAL_MS)
+      .pipe(
+        filter(() => !this.vfsNotFound() && !!this.selectedVfs()),
+        switchMap(() => from(this.refreshStatsAndQueue())),
+        retry({ delay: POLL_INTERVAL_MS }), // Keep polling even if one request fails
+        takeUntilDestroyed()
+      )
+      .subscribe();
+
+    // Listen for mount changes
+    this.mountService.mountedRemotes$.pipe(takeUntilDestroyed()).subscribe(() => this.loadAll());
   }
 
   ngOnInit(): void {
-    this.initialize();
-  }
-
-  ngOnDestroy(): void {
-    this.cleanup();
-  }
-
-  // ============ Initialization & Cleanup ============
-
-  private async initialize(): Promise<void> {
-    await this.loadAll();
-    this.startAutoRefresh();
-  }
-
-  private cleanup(): void {
-    this.isDestroyed = true;
-    this.stopAutoRefresh();
-  }
-
-  private startAutoRefresh(): void {
-    this.refreshInterval = setInterval(() => {
-      if (!this.isDestroyed && !this.vfsNotFound()) {
-        this.loadStatsAndQueue();
-      }
-    }, this.AUTO_REFRESH_INTERVAL);
-  }
-
-  private stopAutoRefresh(): void {
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval);
-      this.refreshInterval = null;
-    }
+    this.loadAll();
   }
 
   // ============ Data Loading ============
 
   async loadAll(): Promise<void> {
     this.loading.set(true);
-
     try {
-      const vfsList = await this.fetchVfsList();
+      const vfsList: VfsList = await this.vfsService.listVfs();
+      const filteredNames = this.filterVfsNames(vfsList?.vfses || []);
 
-      if (vfsList.length === 0) {
-        this.handleNoVfsFound();
+      if (filteredNames.length === 0) {
+        this.vfsNotFound.set(true);
+        this.vfsInstances.set([]);
+        this.selectedVfs.set(null);
         return;
       }
 
-      await this.initializeVfsInstances(vfsList);
+      // Merge new names with existing instances to prevent UI flicker
+      const currentMap = new Map(this.vfsInstances().map(i => [i.name, i]));
+      const newInstances: VfsInstance[] = filteredNames.map(
+        name => currentMap.get(name) || { name, stats: null, queue: [], pollInterval: '' }
+      );
+
+      this.vfsInstances.set(newInstances);
       this.vfsNotFound.set(false);
+
+      // Ensure selection
+      const selected = this.selectedVfs();
+      if (!selected || !filteredNames.includes(selected.name)) {
+        this.selectedVfs.set(newInstances[0] || null);
+      }
+
+      if (this.selectedVfs()) {
+        await Promise.all([this.loadPollIntervals(), this.refreshStatsAndQueue()]);
+      }
     } catch (error) {
-      this.handleLoadError(error);
+      console.error('Error loading VFS:', error);
+      this.vfsNotFound.set(true);
     } finally {
       this.loading.set(false);
     }
   }
 
-  private async fetchVfsList(): Promise<string[]> {
-    try {
-      const vfsList: VfsList = await this.vfsService.listVfs();
-      if (!vfsList.vfses || vfsList.vfses.length === 0) {
-        return [];
-      }
-      const remotePrefix = this.getRemotePrefix();
-      return vfsList.vfses.filter(vfs => vfs.startsWith(remotePrefix));
-    } catch (error) {
-      console.warn(
-        'Could not check VFS list. Your rclone version might not support `vfs/list`.',
-        error
-      );
-      return [];
-    }
+  private filterVfsNames(allVfs: string[]): string[] {
+    const prefix = this.pathSelectionService.normalizeRemoteName(this.remoteName());
+    return allVfs.filter(name => {
+      if (name === prefix) return true;
+      // Check if name starts with prefix + separator
+      return name.startsWith(prefix) && [':', '/', '\\'].includes(name[prefix.length]);
+    });
   }
 
-  private async initializeVfsInstances(vfsList: string[]): Promise<void> {
-    const instances: VfsInstance[] = vfsList.map(name => ({
-      name,
-      stats: null,
-      queue: [],
-      pollInterval: '',
-    }));
-
-    this.vfsInstances.set(instances);
-    this.selectedVfs.set(instances[0]);
-
-    await Promise.all([this.loadPollIntervals(), this.loadStatsAndQueue()]);
-  }
-
-  private async loadPollIntervals(): Promise<void> {
-    const instances = this.vfsInstances();
-
-    await Promise.allSettled(
-      instances.map(async instance => {
-        try {
-          const pollData = await this.vfsService.getPollInterval(instance.name);
-          if (pollData?.interval?.string) {
-            instance.pollInterval = pollData.interval.string;
-          }
-        } catch (error) {
-          console.debug(`Failed to load poll interval for ${instance.name}:`, error);
-        }
-      })
-    );
-
-    this.vfsInstances.set([...instances]);
-  }
-
-  async loadStatsAndQueue(): Promise<void> {
+  // Separate function for the frequent polling operation
+  private async refreshStatsAndQueue(): Promise<void> {
     const selected = this.selectedVfs();
-    if (!selected || this.isDestroyed) {
-      return;
-    }
+    if (!selected) return;
 
     try {
       const [stats, queueData] = await Promise.all([
@@ -231,219 +206,146 @@ export class VfsControlPanelComponent implements OnInit, OnDestroy {
         this.vfsService.getQueue(selected.name),
       ]);
 
-      selected.stats = stats;
-      selected.queue = queueData.queue || [];
+      const updated = { ...selected, stats, queue: queueData.queue || [] };
 
-      this.selectedVfs.set({ ...selected });
-      this.vfsNotFound.set(false);
-    } catch (error) {
-      console.error('Failed to load VFS stats or queue:', error);
-      this.vfsNotFound.set(true);
-      this.stopAutoRefresh();
+      this.selectedVfs.set(updated);
+      this.vfsInstances.update(list => list.map(i => (i.name === selected.name ? updated : i)));
+    } catch (err) {
+      console.error('Poll failed', err);
     }
   }
 
-  // ============ Queue Management ============
+  private async loadPollIntervals(): Promise<void> {
+    const instances = this.vfsInstances();
+    // Run side-effect to fetch intervals, then update signal once
+    await Promise.all(
+      instances.map(async inst => {
+        try {
+          const res = await this.vfsService.getPollInterval(inst.name);
+          if (res?.interval?.string) inst.pollInterval = res.interval.string;
+        } catch {
+          console.warn(`Failed to load poll interval for ${inst.name}`);
+        }
+      })
+    );
+    this.vfsInstances.set([...instances]);
+  }
+
+  compareVfs(o1: VfsInstance, o2: VfsInstance): boolean {
+    return o1?.name === o2?.name;
+  }
 
   async prioritizeUpload(item: VfsQueueItem): Promise<void> {
-    await this.setQueueItemExpiry(
-      item,
-      -this.MAX_DELAY_SECONDS,
-      `'${item.name}' prioritized for upload`
-    );
+    await this.updateExpiry(item, PRIORITY_EXPIRY, `'${item.name}' prioritized`);
   }
 
   async delayUpload(item: VfsQueueItem): Promise<void> {
-    await this.setQueueItemExpiry(
-      item,
-      this.MAX_DELAY_SECONDS,
-      `Upload delayed for '${item.name}'`
-    );
+    await this.updateExpiry(item, DELAY_EXPIRY, `Delayed '${item.name}'`);
   }
 
   async setCustomDelay(item: VfsQueueItem): Promise<void> {
-    await this.setQueueItemExpiry(
-      item,
-      this.delaySliderValue(),
-      `Upload delayed by ${this.delaySliderValue()}s for '${item.name}'`
-    );
+    await this.updateExpiry(item, this.delaySliderValue(), `Delayed ${this.delaySliderValue()}s`);
     this.showDelaySlider.set(null);
   }
 
-  private async setQueueItemExpiry(
-    item: VfsQueueItem,
-    expiry: number,
-    successMessage: string
-  ): Promise<void> {
-    const selected = this.selectedVfs();
-    if (!selected) return;
-
+  private async updateExpiry(item: VfsQueueItem, expiry: number, msg: string): Promise<void> {
+    const fs = this.selectedVfs()?.name;
+    if (!fs) return;
     try {
-      await this.vfsService.setQueueExpiry(selected.name, item.id, expiry, false);
-      this.notification.openSnackBar(successMessage, 'Close', 3000);
-      await this.loadStatsAndQueue();
-    } catch (error) {
-      this.notification.showError(`Failed to update queue item: ${String(error)}`, 'Close');
-      console.error('Error updating queue item:', error);
+      await this.vfsService.setQueueExpiry(fs, item.id, expiry, false);
+      this.notification.openSnackBar(msg, 'Close', 3000);
+      this.refreshStatsAndQueue();
+    } catch (e) {
+      this.notification.showError(`Action failed: ${e}`, 'Close');
     }
   }
-
-  toggleDelaySlider(item: VfsQueueItem): void {
-    const current = this.showDelaySlider();
-    this.showDelaySlider.set(current?.id === item.id ? null : item);
-    this.delaySliderValue.set(this.DEFAULT_DELAY_SECONDS);
-  }
-
-  // ============ Cache Management ============
 
   async forgetFile(path: string): Promise<void> {
-    const selected = this.selectedVfs();
-    if (!selected) return;
-
-    try {
-      const response = await this.vfsService.forget(selected.name, path);
-
-      if (response.forgotten?.length > 0) {
-        this.notification.openSnackBar(`Removed '${path}' from cache`, 'Close', 3000);
-      } else {
-        this.notification.openSnackBar(
-          'File cannot be removed (may be uploading or already uploaded)',
-          'Close',
-          4000
-        );
-      }
-
-      await this.loadStatsAndQueue();
-    } catch (error) {
-      this.notification.showError(`Failed to forget item: ${String(error)}`, 'Close');
-      console.error('Error forgetting item:', error);
-    }
+    this.performAction(async fs => {
+      const res = await this.vfsService.forget(fs, path);
+      return res.forgotten?.length ? `Removed '${path}'` : 'File cannot be removed';
+    });
   }
 
   async clearMetadataCache(): Promise<void> {
-    const selected = this.selectedVfs();
-    if (!selected) return;
-
-    try {
-      const response = await this.vfsService.forget(selected.name);
-      const count = response.forgotten?.length ?? 0;
-      this.notification.openSnackBar(
-        `Metadata cache cleared: ${count} items forgotten`,
-        'Close',
-        3000
-      );
-      await this.loadStatsAndQueue();
-    } catch (error) {
-      this.notification.showError(`Failed to clear metadata cache: ${String(error)}`, 'Close');
-      console.error('Error clearing metadata cache:', error);
-    }
+    this.performAction(async fs => {
+      const res = await this.vfsService.forget(fs);
+      return `Cleared ${res.forgotten?.length ?? 0} items`;
+    });
   }
 
   async refreshDirectory(): Promise<void> {
-    const selected = this.selectedVfs();
-    if (!selected) return;
-
-    try {
-      this.loading.set(true);
-      await this.vfsService.refresh(selected.name, '', true);
-      this.notification.openSnackBar('Directory cache refreshed', 'Close', 3000);
-      await this.loadStatsAndQueue();
-    } catch (error) {
-      this.notification.showError(`Failed to refresh directory: ${String(error)}`, 'Close');
-      console.error('Error refreshing directory:', error);
-    } finally {
-      this.loading.set(false);
-    }
+    this.loading.set(true);
+    await this.performAction(async fs => {
+      await this.vfsService.refresh(fs, '', true);
+      return 'Directory refreshed';
+    });
+    this.loading.set(false);
   }
-
-  // ============ Settings ============
 
   async updatePollInterval(): Promise<void> {
-    const selected = this.selectedVfs();
-    const interval = this.pollIntervalInput().trim();
+    const val = this.pollIntervalInput().trim();
+    if (!val) return;
 
-    if (!selected || !interval) {
-      return;
-    }
-
-    try {
-      const response = await this.vfsService.setPollInterval(selected.name, interval);
-
-      if (response?.interval?.string) {
-        selected.pollInterval = response.interval.string;
-        this.pollIntervalInput.set(response.interval.string);
-        this.selectedVfs.set({ ...selected });
+    await this.performAction(async fs => {
+      const res = await this.vfsService.setPollInterval(fs, val);
+      if (res?.interval?.string) {
+        this.selectedVfs.update(v => (v ? { ...v, pollInterval: res.interval.string } : null));
       }
-
-      this.notification.openSnackBar(`Poll interval updated to ${interval}`, 'Close', 3000);
-    } catch (error) {
-      this.notification.showError(`Failed to update poll interval: ${error}`, 'Close');
-      console.error('Error updating poll interval:', error);
-    }
+      return `Interval set to ${val}`;
+    });
   }
 
-  onVfsSelectionChange(vfs: VfsInstance | null): void {
-    this.selectedVfs.set(vfs);
-    if (vfs) {
-      this.loadStatsAndQueue();
+  // Helper to wrap generic actions that need a VFS name and refresh afterwards
+  private async performAction(action: (fsName: string) => Promise<string>): Promise<void> {
+    const fs = this.selectedVfs()?.name;
+    if (!fs) return;
+    try {
+      const msg = await action(fs);
+      this.notification.openSnackBar(msg, 'Close', 3000);
+      await this.refreshStatsAndQueue();
+    } catch (e) {
+      this.notification.showError(`Error: ${e}`, 'Close');
     }
   }
 
   // ============ UI Helpers ============
 
-  async openFolder(path: string): Promise<void> {
-    try {
-      this.fileSystemService.openInFiles(path);
-    } catch (error) {
-      this.notification.showError(`Failed to open folder: ${String(error)}`, 'Close');
-    }
+  openFolder(path: string): void {
+    this.fileSystemService.openInFiles(path);
   }
 
-  formatSliderLabel(value: number): string {
-    if (value < 60) return `${value}s`;
-    if (value < 3600) return `${Math.floor(value / 60)}m`;
-    return `${Math.floor(value / 3600)}h`;
+  formatSliderLabel(val: number): string {
+    return val < 60
+      ? `${val}s`
+      : val < 3600
+        ? `${Math.floor(val / 60)}m`
+        : `${Math.floor(val / 3600)}h`;
   }
 
   getQueueItemStatus(item: VfsQueueItem): string {
     if (item.uploading) return 'Uploading now';
-    if (item.expiry < 0) return `Ready (${Math.abs(item.expiry).toFixed(1)}s overdue)`;
-    return `Waiting (${item.expiry.toFixed(1)}s)`;
+    return item.expiry < 0
+      ? `Ready (${Math.abs(item.expiry).toFixed(1)}s overdue)`
+      : `Waiting (${item.expiry.toFixed(1)}s)`;
+  }
+
+  toggleDelaySlider(item: VfsQueueItem): void {
+    this.showDelaySlider.update(curr => (curr === item.id ? null : item.id));
+    this.delaySliderValue.set(DELAY_SLIDER_DEFAULT);
   }
 
   canDelayUpload(item: VfsQueueItem): boolean {
     return !item.uploading;
   }
-
-  canForgetFile(item: VfsQueueItem): boolean {
-    return !item.uploading && item.tries === 0;
+  trackByFn(_: number, item: VfsQueueItem): number {
+    return item.id;
   }
-
-  trackByFn(_index: number, item: VfsQueueItem): number | string {
-    return item.id ?? _index;
-  }
-
-  trackByVfsName(_index: number, vfs: VfsInstance): string {
+  trackByVfsName(_: number, vfs: VfsInstance): string {
     return vfs.name;
   }
-
-  // ============ Error Handling ============
-
-  private handleNoVfsFound(): void {
-    this.vfsNotFound.set(true);
-    this.vfsInstances.set([]);
-    this.selectedVfs.set(null);
-  }
-
-  private handleLoadError(error: unknown): void {
-    console.error('Failed to load VFS data:', error);
-    this.vfsNotFound.set(true);
-    this.vfsInstances.set([]);
-    this.selectedVfs.set(null);
-  }
-
-  private getRemotePrefix(): string {
-    const name = this.remoteName();
-    return this.pathSelectionService.normalizeRemoteName(name);
+  onVfsSelectionChange(vfs: VfsInstance | null): void {
+    this.selectedVfs.set(vfs);
+    this.refreshStatsAndQueue();
   }
 }

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, HostListener, OnInit } from '@angular/core';
 
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -35,7 +35,7 @@ import { PathDisplayConfig } from '../../types';
       </div>
 
       <div class="path-arrow">
-        <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+        <mat-icon [svgIcon]="isMobile ? 'arrow-down' : 'right-arrow'" class="arrow-icon"></mat-icon>
       </div>
       <div class="path-item destination-path">
         <div class="path-icon-container">
@@ -67,9 +67,10 @@ import { PathDisplayConfig } from '../../types';
     </div>
   `,
 })
-export class PathDisplayComponent {
+export class PathDisplayComponent implements OnInit {
   @Input() config!: PathDisplayConfig;
   @Output() openPath = new EventEmitter<string>();
+  isMobile = false;
 
   isLocalPath(path: string): boolean {
     return !!(path && (path.startsWith('/') || path.match(/^[A-Za-z]:\\/)));
@@ -77,5 +78,15 @@ export class PathDisplayComponent {
 
   onOpenPath(path: string): void {
     this.openPath.emit(path);
+  }
+
+  ngOnInit(): void {
+    // Initial mobile detection
+    this.isMobile = window.innerWidth <= 768;
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.isMobile = window.innerWidth <= 768;
   }
 }

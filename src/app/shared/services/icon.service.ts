@@ -94,8 +94,8 @@ export class IconService {
       'circle-xmark': 'assets/icons/circle-xmark.svg',
 
       // ------------------- Navigation Icons -------------------
-      'arrow-down': 'assets/icons/circle-chevron-down.svg',
-      'arrow-up': 'assets/icons/circle-chevron-up.svg',
+      'chewron-down': 'assets/icons/circle-chevron-down.svg',
+      'chewron-up': 'assets/icons/circle-chevron-up.svg',
       'arrow-turn-up-left': 'assets/icons/arrow-turn-up-left.svg',
       'chevron-up': 'assets/icons/chevron-up.svg',
       'chevron-down': 'assets/icons/chevron-down.svg',
@@ -109,6 +109,7 @@ export class IconService {
       'no-internet': 'assets/icons/no-internet.svg',
       'open-link': 'assets/icons/arrow-up-right-from-square.svg',
       'right-arrow': 'assets/icons/circle-arrow-right.svg',
+      'arrow-down': 'assets/icons/circle-arrow-down.svg',
       'right-left': 'assets/icons/right-left.svg',
       'rotate-left': 'assets/icons/rotate-left.svg',
 

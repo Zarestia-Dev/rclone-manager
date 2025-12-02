@@ -426,7 +426,8 @@ static SETTINGS_METADATA: Lazy<HashMap<String, SettingMetadata>> = Lazy::new(|| 
         SettingMetadata {
             display_name: "Memory Optimization (Destroy Window on Close)".into(),
             value_type: "bool".into(),
-            help_text: "Destroys the window UI when closed to free RAM (~150MB). Requires a reload when opening. (Linux: aggressively cleans up WebKit processes)".into(),
+            help_text: "Destroys the window UI when closed to free RAM. Experimental feature."
+                .into(),
             default: json!(defaults.developer.destroy_window_on_close),
             required: Some(true),
             ..Default::default()

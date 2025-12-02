@@ -3,11 +3,11 @@
 
 ## [Unreleased]
 ### Added
-- Developer Setting: Memory Optimization (Destroy Window on Close). Added a new experimental option in Developer Settings that destroys the main window instead of hiding it when closed. This significantly reduces background RAM usage (dropping to ~15MB). On Linux, this also actively cleans up lingering WebKit "zombie" processes to prevent memory leaks over long sessions.
+- Developer Setting: Memory Optimization (Destroy Window on Close). Added a new experimental option in Developer Settings that destroys the main window instead of hiding it when closed. This significantly reduces background RAM usage. On Linux, this also actively cleans up lingering WebKit "zombie" processes to prevent memory leaks over long sessions. On MacOS, this not so effective because MacOS version dont use a lot of memory for background processes. But its useful linux and windows.
 - `marked` dependency added for markdown rendering in the About modal. This allows us to display formatted release notes fetched from GitHub in a user-friendly manner.
 - Support for local path navigation on the remote config. User can now navigate to local paths when configuring remotes that use local file systems.
 - Added Flatpak detection and warning banner. If the app is running as a Flatpak, a warning banner will be displayed to inform the user about permission limitations. The banner can be dismissed and will not show again once dismissed.
-- Note to Myself: Some things on nautilus not working on Local File System Because of the rclone API limitations.
+- VFS Control Panel added to mount and serve pages. Now you can manage VFS instances directly from the app. You can view the status of VFS instances, control their behavior and monitor their queues.
 
 ### Changed
 - Charts removed from sync, copy, move and bisync activity panels. Also chartjs dependency removed from the project to reduce the bundle size.

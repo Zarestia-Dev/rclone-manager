@@ -10,7 +10,7 @@ use crate::{
         state::{engine::ENGINE_STATE, watcher::force_check_mounted_remotes},
     },
     utils::{
-        json_helpers::{get_string, json_to_hashmap},
+        json_helpers::{get_string, json_to_hashmap, unwrap_nested_options},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, mount},
         types::{
@@ -56,9 +56,13 @@ impl MountParams {
                 .unwrap_or("mount")
                 .to_string(),
             mount_options: json_to_hashmap(mount_cfg.get("options")),
-            vfs_options: json_to_hashmap(settings.get("vfsConfig")),
-            filter_options: json_to_hashmap(settings.get("filterConfig")),
-            backend_options: json_to_hashmap(settings.get("backendConfig")),
+            vfs_options: json_to_hashmap(settings.get("vfsConfig").and_then(|v| v.get("options"))),
+            filter_options: json_to_hashmap(
+                settings.get("filterConfig").and_then(|v| v.get("options")),
+            ),
+            backend_options: json_to_hashmap(
+                settings.get("backendConfig").and_then(|v| v.get("options")),
+            ),
         })
     }
 
@@ -152,11 +156,13 @@ pub async fn mount_remote(
     }
 
     if let Some(opts) = params.vfs_options.clone() {
-        payload["vfsOpt"] = json!(opts);
+        let vfs_opts = unwrap_nested_options(opts);
+        payload["vfsOpt"] = json!(vfs_opts);
     }
 
     if let Some(opts) = params.backend_options.clone() {
-        let filtered_opts: HashMap<String, Value> = opts
+        let backend_opts = unwrap_nested_options(opts);
+        let filtered_opts: HashMap<String, Value> = backend_opts
             .into_iter()
             .filter(|(_, v)| {
                 !matches!(v, Value::Null) && !matches!(v, Value::String(s) if s.is_empty())
@@ -168,8 +174,10 @@ pub async fn mount_remote(
     }
 
     if let Some(opts) = params.filter_options.clone() {
-        payload["_filter"] = json!(opts);
+        let filter_opts = unwrap_nested_options(opts);
+        payload["_filter"] = json!(filter_opts);
     }
+    debug!("Final mount request payload: {payload:#?}");
 
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::MOUNT);
 
