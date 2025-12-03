@@ -43,10 +43,8 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
 
 // Services & Types
 import {
-  UiStateService,
   NautilusService,
   RemoteManagementService,
-  MountManagementService,
   PathSelectionService,
   AppSettingsService,
 } from '@app/services';
@@ -120,10 +118,8 @@ type SidebarLocalItem =
 })
 export class NautilusComponent implements OnInit, OnDestroy {
   // --- Services ---
-  private readonly uiStateService = inject(UiStateService);
   private readonly nautilusService = inject(NautilusService);
   private readonly remoteManagement = inject(RemoteManagementService);
-  private readonly mountManagement = inject(MountManagementService);
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly dialog = inject(MatDialog);
   private readonly notificationService = inject(NotificationService);
@@ -169,6 +165,20 @@ export class NautilusComponent implements OnInit, OnDestroy {
         minSelection: 0,
       }
   );
+  public readonly isConfirmDisabled = computed(() => {
+    if (!this.isPickerMode()) return false;
+    const opts = this.pickerOptions();
+    const selectedCount = this.selectedItems().size;
+
+    // If selecting files specifically, require at least one file to be selected
+    if (opts.selection === 'files' && selectedCount === 0) return true;
+
+    // Check minimum selection requirement
+    const minSel = opts.minSelection ?? 0;
+    if (selectedCount < minSel) return true;
+
+    return false;
+  });
 
   // --- View Configuration ---
   public readonly layout = signal<'grid' | 'list'>('grid');
@@ -246,22 +256,20 @@ export class NautilusComponent implements OnInit, OnDestroy {
   private readonly rawRemotesData = toSignal(
     combineLatest([
       this.remoteManagement.remotes$,
-      this.mountManagement.mountedRemotes$,
       from(this.remoteManagement.getLocalDrives()),
       from(this.remoteManagement.getAllRemoteConfigs().catch(() => ({}))),
     ]),
-    { initialValue: [[], [], [], {}] }
+    { initialValue: [[], [], {}] }
   );
 
   // Computed: Local Drives
   public readonly localDrives = computed<ExplorerRoot[]>(() => {
-    const [, , localDrives] = this.rawRemotesData();
+    const [, localDrives] = this.rawRemotesData();
     const drives = (localDrives || []).map((drive: LocalDrive) => ({
       name: drive.name,
       label: drive.label || drive.name,
       type: 'hard-drive',
       fs_type: 'local' as const,
-      isMounted: false,
     }));
     if (this.isPickerMode() && this.pickerOptions().mode === 'remote') return [];
     return drives;
@@ -269,12 +277,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   // Computed: Cloud Remotes
   public readonly cloudRemotes = computed<ExplorerRoot[]>(() => {
-    const [remoteNames, mountedRemotes, , configs] = this.rawRemotesData();
+    const [remoteNames, , configs] = this.rawRemotesData();
     let list = (remoteNames || []).map(name => {
-      const mountedInfo = mountedRemotes.find((mr: unknown) => {
-        const fs = (mr as { fs: string }).fs;
-        return this.pathSelectionService.normalizeRemoteName(fs) === name;
-      });
       const config = (configs as Record<string, { type?: string; Type?: string } | undefined>)[
         name
       ];
@@ -283,8 +287,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
         label: name,
         type: config?.type || config?.Type || 'cloud',
         fs_type: 'remote' as const,
-        isMounted: !!mountedInfo,
-        mountPoint: mountedInfo?.mount_point,
       };
     });
     if (this.isPickerMode() && this.pickerOptions().mode === 'local') return [];
@@ -539,10 +541,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   private async initializeRemotes(): Promise<void> {
     try {
-      await Promise.all([
-        this.remoteManagement.getRemotes(),
-        this.mountManagement.getMountedRemotes(),
-      ]);
+      await Promise.all([this.remoteManagement.getRemotes()]);
 
       // Always start with the first local drive
       const drives = await this.remoteManagement.getLocalDrives();
@@ -553,7 +552,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
           label: drives[0].label,
           type: 'hard-drive',
           fs_type: 'local',
-          isMounted: false,
         };
       }
       this.createTab(initial, '');
@@ -744,7 +742,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
         label: rName,
         type: 'cloud',
         fs_type: 'remote',
-        isMounted: false,
       };
       const cleanPath = rPath.startsWith('/') ? rPath.substring(1) : rPath;
       this._navigate(targetRemote, cleanPath, true);
@@ -1170,8 +1167,50 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   updateSelectionSummary(): void {
-    const c = this.selectedItems().size;
-    this.selectionSummary.set(c > 0 ? `${c} selected` : '');
+    const selectedPaths = this.selectedItems();
+    const count = selectedPaths.size;
+
+    if (count === 0) {
+      this.selectionSummary.set('');
+      return;
+    }
+
+    const allFiles = this.files();
+    const selectedItems = allFiles.filter(item => selectedPaths.has(item.entry.Path));
+
+    if (count === 1) {
+      const item = selectedItems[0];
+      if (item) {
+        if (item.entry.IsDir) {
+          this.selectionSummary.set(`"${item.entry.Name}" selected`);
+        } else {
+          const fileSize = new FormatFileSizePipe().transform(item.entry.Size);
+          this.selectionSummary.set(`"${item.entry.Name}" selected (${fileSize})`);
+        }
+      }
+      return;
+    }
+
+    const folders = selectedItems.filter(item => item.entry.IsDir);
+    const files = selectedItems.filter(item => !item.entry.IsDir);
+
+    const folderCount = folders.length;
+    const fileCount = files.length;
+
+    const summaryParts: string[] = [];
+
+    if (folderCount > 0) {
+      summaryParts.push(`${folderCount} folder${folderCount > 1 ? 's' : ''} selected`);
+    }
+
+    if (fileCount > 0) {
+      const totalFileSize = files.reduce((sum, f) => sum + f.entry.Size, 0);
+      const formattedSize = new FormatFileSizePipe().transform(totalFileSize);
+      const itemLabel = folderCount > 0 ? 'other items' : `item${fileCount > 1 ? 's' : ''}`;
+      summaryParts.push(`${fileCount} ${itemLabel} selected (${formattedSize})`);
+    }
+
+    this.selectionSummary.set(summaryParts.join(', '));
   }
 
   private syncSelection(newSelection: Set<string>): void {
@@ -1195,12 +1234,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
       if (!ok) return false;
     }
     return true;
-  }
-
-  unmount(mp: string, name: string): void {
-    this.mountManagement
-      .unmountRemote(mp, name)
-      .then(() => this.mountManagement.getMountedRemotes());
   }
 
   increaseIconSize(): void {

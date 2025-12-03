@@ -29,13 +29,6 @@ export class MountManagementService extends TauriBaseService {
   }
 
   /**
-   * List all mounted remotes
-   */
-  async listMounts(): Promise<string[]> {
-    return this.invokeCommand<string[]>('list_mounts');
-  }
-
-  /**
    * Get mounted remotes with details
    */
   async getMountedRemotes(): Promise<MountedRemote[]> {

@@ -190,6 +190,4 @@ export interface ExplorerRoot {
   label: string;
   type: string; // Icon name
   fs_type: 'local' | 'remote';
-  isMounted: boolean;
-  mountPoint?: string;
 }

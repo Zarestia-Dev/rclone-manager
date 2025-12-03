@@ -389,6 +389,7 @@ async fn start_web_server(
         .route("/copy-url", post(copy_url_handler))
         .route("/provision-rclone", get(provision_rclone_handler))
         .route("/remote/paths", post(get_remote_paths_handler))
+        .route("/convert-asset-src", get(convert_file_src_handler))
         .route(
             "/get-cached-mounted-remotes",
             get(get_cached_mounted_remotes_handler),
@@ -542,6 +543,7 @@ async fn start_web_server(
     info!("   GET  /api/stats/filtered - Get filtered core stats");
     info!("   GET  /api/transfers/completed - Get completed transfers");
     info!("   POST /api/remote/paths - List remote paths (body: {{ remote, path, options }})");
+    info!("   GET  /api/convert-asset-src - Convert a local path to a webview asset URL");
     info!("   GET  /api/jobs - Get active jobs");
     info!("   GET  /api/jobs/:id/status - Get job status");
     info!("   POST /api/jobs/start-sync - Start a sync job");
@@ -583,10 +585,16 @@ async fn start_web_server(
     info!("   POST /api/vfs/forget - Forget VFS paths (body: {{ fs?, file? }})");
     info!("   POST /api/vfs/refresh - Refresh VFS cache (body: {{ fs?, dir?, recursive? }})");
     info!("   GET  /api/vfs/stats - Get VFS stats (query param: fs?)");
-    info!("   POST /api/vfs/poll-interval - Get/set VFS poll interval (body: {{ fs?, interval?, timeout? }})");
+    info!(
+        "   POST /api/vfs/poll-interval - Get/set VFS poll interval (body: {{ fs?, interval?, timeout? }})"
+    );
     info!("   GET  /api/vfs/queue - Get VFS queue (query param: fs?)");
-    info!("   POST /api/vfs/queue/set-expiry - Set VFS queue expiry (body: {{ fs?, id, expiry, relative? }})");
-    info!("   GET  /api/backup-settings - Backup settings (query params: backupDir, exportType, password?, remoteName?, userNote?)");
+    info!(
+        "   POST /api/vfs/queue/set-expiry - Set VFS queue expiry (body: {{ fs?, id, expiry, relative? }})"
+    );
+    info!(
+        "   GET  /api/backup-settings - Backup settings (query params: backupDir, exportType, password?, remoteName?, userNote?)"
+    );
     info!("   GET  /api/analyze-backup-file - Analyze backup file (query param: path)");
     info!("   POST /api/restore-settings - Restore settings (body: {{ backupPath, password? }})");
 
@@ -1243,8 +1251,7 @@ async fn get_rclone_pid_handler(
 
 async fn get_rclone_rc_url_handler(
     State(_state): State<WebServerState>,
-) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)>
-{
+) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)> {
     use rclone_manager_lib::rclone::state::engine::get_rclone_rc_url;
 
     let url = get_rclone_rc_url();
@@ -1378,8 +1385,13 @@ async fn get_disk_usage_handler(
 
 async fn get_local_drives_handler(
     State(_state): State<WebServerState>,
-) -> Result<Json<ApiResponse<Vec<rclone_manager_lib::rclone::queries::filesystem::LocalDrive>>>, (StatusCode, Json<ApiResponse<Vec<rclone_manager_lib::rclone::queries::filesystem::LocalDrive>>>)>
-{
+) -> Result<
+    Json<ApiResponse<Vec<rclone_manager_lib::rclone::queries::filesystem::LocalDrive>>>,
+    (
+        StatusCode,
+        Json<ApiResponse<Vec<rclone_manager_lib::rclone::queries::filesystem::LocalDrive>>>,
+    ),
+> {
     use rclone_manager_lib::rclone::queries::filesystem::get_local_drives;
 
     match get_local_drives().await {
@@ -1433,8 +1445,7 @@ struct MkdirBody {
 async fn mkdir_handler(
     State(state): State<WebServerState>,
     Json(body): Json<MkdirBody>,
-) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiResponse<()>>)>
-{
+) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiResponse<()>>)> {
     use rclone_manager_lib::rclone::commands::filesystem::mkdir;
 
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
@@ -1445,7 +1456,10 @@ async fn mkdir_handler(
             error!("Failed to create directory: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error(format!("Failed to create directory: {}", e))),
+                Json(ApiResponse::error(format!(
+                    "Failed to create directory: {}",
+                    e
+                ))),
             ))
         }
     }
@@ -1460,8 +1474,7 @@ struct CleanupBody {
 async fn cleanup_handler(
     State(state): State<WebServerState>,
     Json(body): Json<CleanupBody>,
-) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiResponse<()>>)>
-{
+) -> Result<Json<ApiResponse<()>>, (StatusCode, Json<ApiResponse<()>>)> {
     use rclone_manager_lib::rclone::commands::filesystem::cleanup;
 
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
@@ -1472,7 +1485,10 @@ async fn cleanup_handler(
             error!("Failed to cleanup remote: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error(format!("Failed to cleanup remote: {}", e))),
+                Json(ApiResponse::error(format!(
+                    "Failed to cleanup remote: {}",
+                    e
+                ))),
             ))
         }
     }
@@ -1491,8 +1507,7 @@ struct CopyUrlBody {
 async fn copy_url_handler(
     State(state): State<WebServerState>,
     Json(body): Json<CopyUrlBody>,
-) -> Result<Json<ApiResponse<u64>>, (StatusCode, Json<ApiResponse<u64>>)>
-{
+) -> Result<Json<ApiResponse<u64>>, (StatusCode, Json<ApiResponse<u64>>)> {
     use rclone_manager_lib::rclone::commands::filesystem::copy_url;
 
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
@@ -1551,6 +1566,32 @@ async fn get_remote_paths_handler(
                 StatusCode::BAD_REQUEST,
                 Json(ApiResponse::error(format!(
                     "Failed to list remote paths: {}",
+                    e
+                ))),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct ConvertFileSrcQuery {
+    path: String,
+}
+
+async fn convert_file_src_handler(
+    State(state): State<WebServerState>,
+    Query(query): Query<ConvertFileSrcQuery>,
+) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)> {
+    use rclone_manager_lib::rclone::queries::filesystem::convert_file_src;
+
+    match convert_file_src(state.app_handle.clone(), query.path) {
+        Ok(url) => Ok(Json(ApiResponse::success(url))),
+        Err(e) => {
+            error!("Failed to convert file src: {}", e);
+            Err((
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::error(format!(
+                    "Failed to convert file src: {}",
                     e
                 ))),
             ))
@@ -3412,7 +3453,10 @@ async fn vfs_forget_handler(
             error!("Failed to forget VFS paths: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error(format!("Failed to forget VFS paths: {}", e))),
+                Json(ApiResponse::error(format!(
+                    "Failed to forget VFS paths: {}",
+                    e
+                ))),
             ))
         }
     }
@@ -3441,7 +3485,10 @@ async fn vfs_refresh_handler(
             error!("Failed to refresh VFS cache: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error(format!("Failed to refresh VFS cache: {}", e))),
+                Json(ApiResponse::error(format!(
+                    "Failed to refresh VFS cache: {}",
+                    e
+                ))),
             ))
         }
     }
@@ -3467,7 +3514,10 @@ async fn vfs_stats_handler(
             error!("Failed to get VFS stats: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error(format!("Failed to get VFS stats: {}", e))),
+                Json(ApiResponse::error(format!(
+                    "Failed to get VFS stats: {}",
+                    e
+                ))),
             ))
         }
     }
@@ -3495,7 +3545,10 @@ async fn vfs_poll_interval_handler(
             error!("Failed to get/set VFS poll interval: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error(format!("Failed to get/set VFS poll interval: {}", e))),
+                Json(ApiResponse::error(format!(
+                    "Failed to get/set VFS poll interval: {}",
+                    e
+                ))),
             ))
         }
     }
@@ -3521,7 +3574,10 @@ async fn vfs_queue_handler(
             error!("Failed to get VFS queue: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error(format!("Failed to get VFS queue: {}", e))),
+                Json(ApiResponse::error(format!(
+                    "Failed to get VFS queue: {}",
+                    e
+                ))),
             ))
         }
     }
@@ -3551,7 +3607,10 @@ async fn vfs_queue_set_expiry_handler(
             error!("Failed to set VFS queue expiry: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error(format!("Failed to set VFS queue expiry: {}", e))),
+                Json(ApiResponse::error(format!(
+                    "Failed to set VFS queue expiry: {}",
+                    e
+                ))),
             ))
         }
     }
@@ -3577,8 +3636,7 @@ struct BackupSettingsQuery {
 async fn backup_settings_handler(
     State(state): State<WebServerState>,
     Query(query): Query<BackupSettingsQuery>,
-) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)>
-{
+) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)> {
     use rclone_manager_lib::core::settings::backup::backup_manager::backup_settings;
 
     let settings_state: tauri::State<SettingsState<tauri::Wry>> = state.app_handle.state();
@@ -3599,7 +3657,10 @@ async fn backup_settings_handler(
             error!("Failed to backup settings: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error(format!("Failed to backup settings: {}", e))),
+                Json(ApiResponse::error(format!(
+                    "Failed to backup settings: {}",
+                    e
+                ))),
             ))
         }
     }
@@ -3613,20 +3674,28 @@ struct AnalyzeBackupFileQuery {
 async fn analyze_backup_file_handler(
     State(_state): State<WebServerState>,
     Query(query): Query<AnalyzeBackupFileQuery>,
-) -> Result<Json<ApiResponse<rclone_manager_lib::utils::types::backup_types::BackupAnalysis>>, (StatusCode, Json<ApiResponse<rclone_manager_lib::utils::types::backup_types::BackupAnalysis>>)>
-{
+) -> Result<
+    Json<ApiResponse<rclone_manager_lib::utils::types::backup_types::BackupAnalysis>>,
+    (
+        StatusCode,
+        Json<ApiResponse<rclone_manager_lib::utils::types::backup_types::BackupAnalysis>>,
+    ),
+> {
     use rclone_manager_lib::core::settings::backup::backup_manager::analyze_backup_file;
     use std::path::PathBuf;
 
     let path = PathBuf::from(query.path);
-    
+
     match analyze_backup_file(path).await {
         Ok(analysis) => Ok(Json(ApiResponse::success(analysis))),
         Err(e) => {
             error!("Failed to analyze backup file: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error(format!("Failed to analyze backup file: {}", e))),
+                Json(ApiResponse::error(format!(
+                    "Failed to analyze backup file: {}",
+                    e
+                ))),
             ))
         }
     }
@@ -3642,8 +3711,7 @@ struct RestoreSettingsBody {
 async fn restore_settings_handler(
     State(state): State<WebServerState>,
     Json(body): Json<RestoreSettingsBody>,
-) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)>
-{
+) -> Result<Json<ApiResponse<String>>, (StatusCode, Json<ApiResponse<String>>)> {
     use rclone_manager_lib::core::settings::backup::restore_manager::restore_settings;
     use std::path::PathBuf;
 
@@ -3663,7 +3731,10 @@ async fn restore_settings_handler(
             error!("Failed to restore settings: {}", e);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::error(format!("Failed to restore settings: {}", e))),
+                Json(ApiResponse::error(format!(
+                    "Failed to restore settings: {}",
+                    e
+                ))),
             ))
         }
     }

@@ -3,20 +3,8 @@ import { Overlay } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { FileViewerModalComponent } from '../../features/components/file-browser/file-viewer/file-viewer-modal.component';
 import { ConfigService } from '../system/config.service';
-import { ApiClientService } from '../core/api-client.service';
 import { Entry } from '@app/types';
-
-// Conditional import for Tauri
-let convertFileSrc: ((filePath: string, protocol?: string) => string) | undefined;
-if (!(window as Window & { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__) {
-  // Headless mode - no convertFileSrc needed
-  convertFileSrc = undefined;
-} else {
-  // Tauri mode - import convertFileSrc
-  import('@tauri-apps/api/core').then(module => {
-    convertFileSrc = module.convertFileSrc;
-  });
-}
+import { ApiClientService } from '../core/api-client.service';
 
 @Injectable({
   providedIn: 'root',
@@ -39,7 +27,7 @@ export class FileViewerService {
     const item = items[currentIndex];
     const fileType = this.getFileType(item);
 
-    const fileUrl = this.generateUrl(item, remoteName, fsType);
+    const fileUrl = await this.generateUrl(item, remoteName, fsType);
 
     const overlayRef = this.overlay.create({
       hasBackdrop: true,
@@ -98,7 +86,7 @@ export class FileViewerService {
     return 'unknown';
   }
 
-  generateUrl(item: Entry, remoteName: string, fsType: string): string {
+  async generateUrl(item: Entry, remoteName: string, fsType: string): Promise<string> {
     const baseUrl = this.configService.rcloneServeUrl();
     const isLocal = fsType === 'local';
 
@@ -106,19 +94,13 @@ export class FileViewerService {
       const separator = remoteName.endsWith('/') || remoteName.endsWith('\\') ? '' : '/';
       const fullPath = `${remoteName}${separator}${item.Path}`;
 
-      // In headless mode, use the rclone serve URL for local files too
+      // In headless/web-server mode, use file:// protocol for local files
       if (this.apiClient.isHeadless()) {
-        // For local files in headless mode
         return `file://${fullPath}`;
       }
 
-      // In Tauri mode, use convertFileSrc
-      if (convertFileSrc) {
-        return convertFileSrc(fullPath);
-      }
-
-      // Fallback if convertFileSrc not yet loaded
-      return `file://${fullPath}`;
+      // In desktop mode, use Tauri's asset protocol
+      return this.apiClient.invoke('convert_file_src', { path: fullPath });
     }
     const rName = remoteName.includes(':') ? remoteName : `${remoteName}:`;
     return `${baseUrl}/[${rName}]/${item.Path}`;

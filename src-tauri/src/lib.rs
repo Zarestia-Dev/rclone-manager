@@ -74,6 +74,7 @@ use crate::{
             system::{quit_rclone_oauth, set_bandwidth_limit},
         },
         queries::{
+            convert_file_src,
             flags::{
                 get_backend_flags, get_bisync_flags, get_copy_flags, get_filter_flags,
                 get_flags_by_category, get_grouped_options_with_values, get_mount_flags,
@@ -443,6 +444,7 @@ pub fn run() {
             mkdir,
             cleanup,
             copy_url,
+            convert_file_src,
             get_local_drives,
             get_bandwidth_limit,
             // Flags

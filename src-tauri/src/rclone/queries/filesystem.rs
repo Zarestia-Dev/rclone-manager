@@ -349,3 +349,33 @@ pub async fn get_stat(
     })
     .await
 }
+
+#[tauri::command]
+pub fn convert_file_src(_app_handle: tauri::AppHandle, path: String) -> Result<String, String> {
+    // Convert the file path to an asset protocol URL
+    // This uses Tauri's built-in asset protocol to serve local files to the webview
+    // The asset protocol must be enabled in tauri.conf.json under app.security.assetProtocol
+    //
+    // Implementation based on: https://github.com/tauri-apps/tauri/issues/12022
+    // Until Tauri provides a built-in Rust API, this manual implementation is required
+
+    // Different platforms use different base URLs for the asset protocol
+    #[cfg(any(windows, target_os = "android"))]
+    let base = "http://asset.localhost/";
+    #[cfg(not(any(windows, target_os = "android")))]
+    let base = "asset://localhost/";
+
+    // Canonicalize the path to resolve symlinks and relative paths
+    let canonical_path = dunce::canonicalize(&path)
+        .map_err(|e| format!("Failed to canonicalize path '{}': {}", path, e))?;
+
+    // URL encode the path to handle special characters
+    let lossy_path = canonical_path.to_string_lossy();
+    let encoded = urlencoding::encode(&lossy_path);
+
+    // Build the final asset protocol URL
+    let url = format!("{}{}", base, encoded);
+
+    debug!("🔗 Converted file path to asset URL: {} -> {}", path, url);
+    Ok(url)
+}

@@ -598,7 +598,7 @@ $dark-theme: (
   --legend-gap-mobile: var(--space-sm); // 12px
 
   /* Layout Constants */
-  --titlebar-height: 40px;
+  --titlebar-height: 40px; // Also has padding of 4px (total 48px)
   --sidebar-width: 250px;
   --status-bar-height: 48px;
   // --app-height: calc(100vh - (var(--titlebar-height) + var(--title-bar-padding)));

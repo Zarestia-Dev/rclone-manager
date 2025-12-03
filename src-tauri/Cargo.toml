@@ -16,10 +16,10 @@ name = "rclone_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 # Uncomment the following lines to build the headless server binary
-#[[bin]]
-#name = "rclone-manager-headless"
-#path = "src/headless.rs"
-#required-features = ["web-server"]
+[[bin]]
+name = "rclone-manager-headless"
+path = "src/headless.rs"
+required-features = ["web-server"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
@@ -57,6 +57,12 @@ sysinfo = "0.33.1"
 tauri-plugin-shell = "2"
 tokio-cron-scheduler = "0.13.0"
 croner = "3.0.1"
+base64 = "0.22"
+
+# Implementation based on: https://github.com/tauri-apps/tauri/issues/12022
+# Until Tauri provides a built-in Rust API, this manual implementation is required
+urlencoding = "2.1"
+dunce = "1.0"
 
 # Web server dependencies (optional)
 axum = { version = "0.7", optional = true }
@@ -95,6 +101,7 @@ url = { version = "2.5", optional = true }
 default = ["updater"]
 updater = ["tauri-plugin-updater", "url"]
 web-server = ["axum", "tower", "tower-http", "clap", "tokio-stream", "futures", "async-stream"]
+portable = []
 flatpak = []
 deb = []
 rpm = []

@@ -145,6 +145,10 @@ export class ApiClientService {
       return Promise.resolve('web' as T);
     }
 
+    if (command === 'open_in_files' || command === 'open_terminal_config') {
+      throw new Error('Native file manager integration not available in headless mode.');
+    }
+
     // Map Tauri command names to HTTP endpoints
     const endpoint = this.mapCommandToEndpoint(command);
     const isPostCommand = this.postCommands.has(command);
@@ -297,6 +301,7 @@ export class ApiClientService {
       cleanup: '/cleanup',
       copy_url: '/copy-url',
       get_remote_paths: '/remote/paths',
+      convert_file_src: '/convert-asset-src',
       get_folder_location: '/get-folder-location', // Note: Will fail in headless
       get_file_location: '/get-file-location', // Note: Will fail in headless
       open_in_files: '/open-in-files', // Note: Will fail in headless

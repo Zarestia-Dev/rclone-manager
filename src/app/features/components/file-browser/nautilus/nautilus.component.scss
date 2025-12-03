@@ -19,31 +19,35 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden; /* Ensures no double scrollbars */
+  overflow: hidden;
 }
 
 /* 2. HEADER WRAPPER */
 .nautilus-header {
-  flex-shrink: 0; /* Never squish the header */
+  flex-shrink: 0;
   z-index: 10;
   background-color: var(--sidebar-background);
+
+  span {
+    font-weight: 600;
+    color: var(--app-text-color);
+  }
 }
 
-/* Fix the toolbar inside to remove sticky positioning since flex handles it now */
 .nautilus-sidenav mat-toolbar {
   display: flex;
   justify-content: space-between;
   background-color: var(--sidebar-background) !important;
-  padding: 0 var(--space-sm);
-  height: 48px;
+  padding: 4px var(--space-sm);
+  height: var(--titlebar-height);
 }
 
 /* 3. SCROLLABLE CONTENT AREA */
 .nautilus-scroll-content {
-  flex: 1; /* Take all remaining height */
-  overflow-y: auto; /* Enable scrolling */
+  flex: 1;
+  overflow-y: auto;
   overflow-x: hidden;
-  min-height: 0; /* Critical for Flexbox nesting (Prevents squish) */
+  min-height: 0;
 }
 
 /* Reset the list so it acts as a simple container */
@@ -319,13 +323,13 @@ mat-nav-list {
   opacity: 0.6;
   margin: 0 2px;
   flex-shrink: 0;
-  font-size: 14px;
-  user-select: none;
+  font-size: var(--font-size-base);
 }
 
 .path-segment {
   display: flex;
   align-items: center;
+  gap: 4px;
   flex-shrink: 0;
   min-width: 0;
   min-height: 0;
@@ -344,14 +348,8 @@ mat-nav-list {
     color: var(--app-text-color);
     font-weight: 500;
   }
-}
-
-.home-segment {
-  padding-left: 4px;
 
   mat-icon {
-    margin-right: 4px;
-    font-size: 18px;
     width: 18px;
     height: 18px;
   }
@@ -365,8 +363,7 @@ mat-nav-list {
   outline: 2px solid transparent;
   background: transparent;
   color: var(--app-text-color);
-  font-size: 14px;
-  height: 100%;
+  font-size: var(--font-size-base);
 }
 
 /* 3.2 Main File Display Area */
@@ -386,7 +383,8 @@ mat-nav-list {
     display: grid;
     gap: 16px;
     align-items: start;
-    grid-auto-rows: 1fr;
+    grid-auto-rows: auto;
+    margin: var(--space-sm) var(--space-xl);
   }
 
   .grid-item {
@@ -394,9 +392,7 @@ mat-nav-list {
     width: 100%;
     box-sizing: border-box;
     z-index: 0;
-    outline: none; /* remove focus ring if handled by inner elements */
-    content-visibility: auto; /* <--- Add this! */
-    contain-intrinsic-size: 160px; /* Approximate height of your card */
+    outline: none;
 
     /* SELECTION STATE: Applies to the real item */
     &.selected .folder-card {
@@ -423,45 +419,38 @@ mat-nav-list {
 /* THE SHARED CARD COMPONENT */
 .folder-card {
   box-sizing: border-box;
-  min-height: 140px;
-  max-height: 160px;
-  padding: 12px;
+  padding: 16px 12px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   text-align: center;
   border-radius: var(--card-border-radius);
   transition: var(--transition-fast);
   background: none;
   box-shadow: none;
-  overflow: hidden;
 
   /* Typography */
   .folder-title {
-    margin-top: 8px;
-    font-size: 13px;
+    font-size: var(--font-size-md);
     color: var(--app-text-color);
     text-align: center;
     white-space: normal;
     overflow-wrap: break-word;
     word-break: break-all;
-    overflow: hidden;
     display: -webkit-box;
-    line-clamp: 2;
-    -webkit-line-clamp: 2;
+    line-clamp: 3;
+    -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
-  /* Hover State (Only applies if NOT inside a placeholder) */
   &:hover {
     background: var(--bg-elevated);
   }
 
-  /* Hidden Files (Dotfiles) style */
   &.hidden-item {
-    opacity: 0.6;
     mat-icon {
+      opacity: 0.6;
       filter: grayscale(40%);
     }
   }
@@ -554,23 +543,14 @@ mat-nav-list {
     &:hover {
       background-color: var(--bg-hover);
     }
-
-    &.align-right {
-      text-align: right;
-    }
-    &.align-center {
-      text-align: center;
-    }
   }
 
-  /* CELL STYLING */
   td.mat-mdc-cell {
     border-bottom: 1px solid transparent;
     font-size: 14px;
     color: var(--app-text-color);
     padding: 0 var(--space-xs);
 
-    /* Name Cell Layout */
     .name-cell {
       display: flex;
       align-items: center;
@@ -584,7 +564,6 @@ mat-nav-list {
         flex-shrink: 0;
       }
 
-      // The text span
       span {
         flex: 1;
         min-width: 0;
@@ -593,12 +572,12 @@ mat-nav-list {
         white-space: nowrap;
       }
     }
+  }
 
-    &.align-right {
-      text-align: right;
-    }
-    &.align-center {
-      text-align: center;
+  .hidden-item {
+    mat-icon {
+      opacity: 0.6;
+      filter: grayscale(40%);
     }
   }
 }
@@ -644,36 +623,61 @@ mat-nav-list {
   }
 }
 
-.sort-options {
-  display: flex;
-  align-items: center;
-  flex-direction: column;
-}
-
-.sort-label {
-  font-size: var(--font-size-md);
-  font-weight: 700;
-  color: var(--secondary-text-color);
-}
-
 .sort-radio-group {
   display: flex;
   flex-direction: column;
+  .sort-options {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    .sort-label {
+      font-size: var(--font-size-md);
+      font-weight: 700;
+      color: var(--secondary-text-color);
+    }
+  }
 }
 
-.loading-overlay,
-.selection-summary {
+.loading-overlay {
   position: absolute;
   bottom: 16px;
   right: 16px;
   background-color: var(--secondary-background);
-  padding: 8px 16px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  padding: var(--space-xxs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-elevated);
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: var(--font-size-base);
+}
+
+.selection-info-container {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 10;
+  background-color: var(--secondary-background);
+  box-shadow: var(--shadow-elevated);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xxs) var(--space-sm);
+  max-width: calc(100vw - var(--sidenav-width) - 64px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selection-info {
+  font-size: var(--font-size-md);
+  color: var(--app-text-color);
+}
+
+.picker-actions + .selection-info-container {
+  bottom: 72px;
+}
+
+.picker-actions.mobile-picker + .selection-info-container {
+  bottom: 84px;
 }
 
 .empty-folder-container {
@@ -717,26 +721,12 @@ mat-nav-list {
   padding: 8px 16px;
 }
 
-.file-card,
-.list-row.unselectable,
-.grid-item.unselectable .folder-card {
-  cursor: default;
-}
-
 .unselectable {
   opacity: 0.6;
 
   &:hover {
     background: transparent;
     background-color: initial;
-  }
-}
-
-.folder-card.hidden-item mat-card-content,
-.list-row.hidden-item .list-col {
-  mat-icon {
-    opacity: 0.6;
-    filter: grayscale(40%);
   }
 }
 

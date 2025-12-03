@@ -1,0 +1,108 @@
+name: "Release Windows Portable"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-portable:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: "windows-latest"
+            args: "--target x86_64-pc-windows-msvc --features portable"
+            arch: "x64"
+            type: "x86_64"
+          - platform: "windows-latest"
+            args: "--target aarch64-pc-windows-msvc --features portable"
+            arch: "arm64"
+            type: "aarch64"
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: "npm"
+
+      - name: install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.type == 'aarch64' && 'aarch64-pc-windows-msvc' || 'x86_64-pc-windows-msvc' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+
+      - name: install frontend dependencies
+        run: npm install
+
+      - name: Build Tauri (no bundle)
+        run: |
+          npm run tauri build --features portable
+
+      - name: Get version
+        id: get_version
+        shell: pwsh
+        run: |
+          $version = (Get-Content src-tauri/Cargo.toml | Select-String -Pattern '^version = "(.+)"' | ForEach-Object { $_.Matches.Groups[1].Value })
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Prepare portable package
+        shell: pwsh
+        run: |
+          $target = "${{ matrix.type }}-pc-windows-msvc"
+          $archName = "${{ matrix.arch }}"
+          $version = "${{ steps.get_version.outputs.VERSION }}"
+
+          # Create portable directory
+          $portableDir = "RClone.Manager_${version}_${archName}_portable"
+          New-Item -ItemType Directory -Force -Path $portableDir
+
+          # Copy executable
+          Copy-Item "src-tauri/target/$target/release/rclone-manager.exe" "$portableDir/RClone Manager.exe"
+
+          # Create empty config directory (enables portable mode)
+          New-Item -ItemType Directory -Force -Path "$portableDir/config"
+
+          # Create README for portable version
+          @"
+          RClone Manager - Portable Edition v$version
+          ==========================================
+
+          This is the portable version of RClone Manager.
+          All settings and data are stored in the 'config' folder next to this executable.
+
+          To use:
+          1. Extract this folder to your desired location (e.g., USB drive)
+          2. Run 'RClone Manager.exe'
+          3. All your settings will be saved in the 'config' folder
+
+          Note: You may need to install rclone separately or let the app download it on first run.
+          "@ | Out-File -FilePath "$portableDir/README.txt" -Encoding UTF8
+
+          # Create zip archive
+          Compress-Archive -Path $portableDir -DestinationPath "RClone.Manager_${version}_${archName}_portable.zip"
+
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RClone.Manager_${{ steps.get_version.outputs.VERSION }}_${{ matrix.arch }}_portable
+          path: RClone.Manager_${{ steps.get_version.outputs.VERSION }}_${{ matrix.arch }}_portable.zip
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: "RClone Manager v${{ steps.get_version.outputs.VERSION }}"
+          draft: true
+          prerelease: false
+          files: RClone.Manager_${{ steps.get_version.outputs.VERSION }}_${{ matrix.arch }}_portable.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.TAURI_TOKEN }}

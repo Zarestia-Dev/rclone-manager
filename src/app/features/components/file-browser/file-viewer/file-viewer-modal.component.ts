@@ -181,31 +181,31 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     console.error('Failed to load file:', this.data.name);
   }
 
-  next(): void {
+  async next(): Promise<void> {
     if (this.data.currentIndex < this.data.items.length - 1) {
       this.data.currentIndex++;
-      this.updateData();
+      await this.updateData();
     }
   }
 
-  back(): void {
+  async back(): Promise<void> {
     if (this.data.currentIndex > 0) {
       this.data.currentIndex--;
-      this.updateData();
+      await this.updateData();
     }
   }
 
-  updateData(): void {
+  async updateData(): Promise<void> {
     const item = this.data.items[this.data.currentIndex];
     this.data.name = item.Name;
     this.data.fileType = this.fileViewerService.getFileType(item);
 
-    this.data.url = this.fileViewerService.generateUrl(
+    this.data.url = await this.fileViewerService.generateUrl(
       item,
       this.data.remoteName,
       this.data.isLocal ? 'local' : 'remote'
     );
-    this.updateContent();
+    await this.updateContent();
   }
 
   async download(): Promise<void> {

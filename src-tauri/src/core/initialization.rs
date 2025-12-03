@@ -17,10 +17,24 @@ use crate::{
         app::builder::setup_tray,
         types::{
             all_types::{RcApiEngine, RcloneState, RemoteCache},
-            settings::AppSettings,
+            settings::{AppSettings, SettingsState},
         },
     },
 };
+
+/// Get the directory containing the executable (for portable mode)
+#[cfg(feature = "portable")]
+fn get_executable_directory() -> Result<PathBuf, String> {
+    std::env::current_exe()
+        .map_err(|e| format!("Failed to get executable path: {e}"))?
+        .parent()
+        .map(|p| p.to_path_buf())
+        .ok_or_else(|| "Failed to get executable directory".to_string())
+}
+
+// ============================================================================
+// Rclone State Initialization
+// ============================================================================
 
 /// Initializes Rclone API and OAuth state, and launches the Rclone engine.
 pub fn init_rclone_state(
@@ -45,7 +59,30 @@ pub fn init_rclone_state(
     Ok(())
 }
 
-/// Sets up the configuration directory for the application
+// ============================================================================
+// Config Directory Management
+// ============================================================================
+
+/// Sets up the configuration directory for the application.
+///
+/// In portable mode (`--features portable`), uses a `config` directory
+/// next to the executable. Otherwise, uses the system's app data directory.
+#[cfg(feature = "portable")]
+pub fn setup_config_dir(_app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let exe_dir = get_executable_directory()?;
+    let config_dir = exe_dir.join("config");
+
+    info!("📦 Running in PORTABLE mode");
+    info!("📁 Config directory: {}", config_dir.display());
+
+    std::fs::create_dir_all(&config_dir)
+        .map_err(|e| format!("Failed to create portable config directory: {e}"))?;
+
+    Ok(config_dir)
+}
+
+/// Sets up the configuration directory for the application (standard mode).
+#[cfg(not(feature = "portable"))]
 pub fn setup_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
     let config_dir = app_handle
         .path()
@@ -56,6 +93,13 @@ pub fn setup_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String
         .map_err(|e| format!("Failed to create config directory: {e}"))?;
 
     Ok(config_dir)
+}
+
+/// Get the app's config directory from managed state.
+/// This is the central place to retrieve the config directory after initialization.
+pub fn get_config_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let settings_state = app_handle.state::<SettingsState<tauri::Wry>>();
+    Ok(settings_state.config_dir.clone())
 }
 
 /// Handles async startup tasks
