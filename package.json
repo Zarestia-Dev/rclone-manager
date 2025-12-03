@@ -63,7 +63,7 @@
   },
   "devDependencies": {
     "@angular/build": "^20.3.1",
-    "@angular/cli": "^20.3.1",
+    "@angular/cli": "^20.3.13",
     "@angular/compiler-cli": "^20.3.0",
     "@tauri-apps/cli": "^2.3.1",
     "@types/canvas-confetti": "^1.9.0",
