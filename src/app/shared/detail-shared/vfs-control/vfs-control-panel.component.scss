@@ -216,15 +216,6 @@ mat-form-field {
       gap: var(--space-xxs);
       margin-bottom: 12px;
 
-      &:last-child {
-        margin-bottom: 0;
-      }
-
-      mat-icon {
-        margin-top: 2px;
-        opacity: 0.7;
-      }
-
       .info-text {
         flex: 1;
         font-size: 0.9rem;
@@ -243,14 +234,13 @@ mat-form-field {
           background: rgba(0, 0, 0, 0.05);
           padding: 4px 8px;
           border-radius: 4px;
-          font-size: 0.85rem;
+          font-size: var(--font-size-md);
           margin-top: 4px;
           word-break: break-all;
         }
 
         .info-note {
           color: var(--mat-text-secondary);
-          line-height: 1.5;
         }
       }
     }

@@ -19,7 +19,6 @@ import {
   InstallationService,
   AppSettingsService,
 } from '@app/services';
-import { AnimationsService } from '../../../shared/services/animations.service';
 
 type RepairMode = 'standard' | 'install' | 'config';
 
@@ -41,7 +40,6 @@ type RepairMode = 'standard' | 'install' | 'config';
     InstallationOptionsComponent,
     PasswordManagerComponent,
   ],
-  animations: [AnimationsService.slideInOut()],
   templateUrl: './repair-sheet.component.html',
   styleUrl: './repair-sheet.component.scss',
 })

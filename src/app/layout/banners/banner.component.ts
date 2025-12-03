@@ -2,7 +2,6 @@ import { Component, inject, signal, isDevMode } from '@angular/core';
 import { MatToolbarModule } from '@angular/material/toolbar';
 
 // Services
-import { AnimationsService } from '../../shared/services/animations.service';
 import {
   EventListenersService,
   AppSettingsService,
@@ -19,7 +18,6 @@ import { MatTooltip } from '@angular/material/tooltip';
   standalone: true,
   imports: [MatToolbarModule, MatButtonModule, MatIconModule, MatTooltip],
   styleUrls: ['./banner.component.scss'],
-  animations: [AnimationsService.slideToggle()],
 })
 export class BannerComponent {
   // --- STATE SIGNALS ---
@@ -52,8 +50,6 @@ export class BannerComponent {
       const buildType = await this.appUpdaterService.getBuildType();
       const warningShown =
         await this.appSettingsService.getSettingValue<boolean>('runtime.flatpak_warn');
-
-      console.log('Build type:', buildType, 'Warning shown:', warningShown);
 
       if (buildType === 'flatpak' && warningShown) {
         this.showFlatpakWarning.set(true);

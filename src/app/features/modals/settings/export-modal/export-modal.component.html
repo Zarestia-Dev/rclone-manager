@@ -46,7 +46,7 @@
 
       <div class="section-group config-section">
         @if (showSpecificRemoteSection()) {
-          <div class="form-row" @slideInOut>
+          <div class="form-row">
             <mat-form-field class="full-width">
               <mat-label>Select Remote to Export</mat-label>
               <mat-icon matPrefix svgIcon="hard-drive" class="field-icon"></mat-icon>
@@ -124,7 +124,7 @@
         </div>
 
         @if (showPasswordField()) {
-          <div class="password-field-wrapper" @slideInOut>
+          <div class="password-field-wrapper">
             <mat-form-field class="full-width">
               <mat-label>Encryption Password</mat-label>
               <mat-icon matPrefix svgIcon="lock" class="field-icon"></mat-icon>

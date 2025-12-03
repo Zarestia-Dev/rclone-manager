@@ -49,9 +49,6 @@ interface VfsInstance {
 const POLL_INTERVAL_MS = 5000;
 const PRIORITY_EXPIRY = -999_999_999;
 const DELAY_EXPIRY = 999_999_999;
-const DELAY_SLIDER_MIN = 10;
-const DELAY_SLIDER_MAX = 86400;
-const DELAY_SLIDER_STEP = 10;
 const DELAY_SLIDER_DEFAULT = 60;
 
 @Component({
@@ -99,11 +96,6 @@ export class VfsControlPanelComponent implements OnInit {
   // Delay slider state
   delaySliderValue = signal(DELAY_SLIDER_DEFAULT);
   showDelaySlider = signal<number | null>(null);
-
-  // Slider configuration
-  readonly delaySliderMin = DELAY_SLIDER_MIN;
-  readonly delaySliderMax = DELAY_SLIDER_MAX;
-  readonly delaySliderStep = DELAY_SLIDER_STEP;
 
   // Computed
   totalQueueSize = computed(

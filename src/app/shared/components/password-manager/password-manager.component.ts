@@ -17,7 +17,6 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { FormatTimePipe } from '../../pipes/format-time.pipe';
-import { AnimationsService } from '../../services/animations.service';
 
 @Component({
   selector: 'app-password-manager',
@@ -31,7 +30,6 @@ import { AnimationsService } from '../../services/animations.service';
     MatTooltipModule,
     MatButtonModule,
   ],
-  animations: [AnimationsService.slideInOut()],
   templateUrl: './password-manager.component.html',
   styleUrls: ['./password-manager.component.scss'],
 })

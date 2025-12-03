@@ -12,7 +12,6 @@ import {
   HostListener,
   effect,
   untracked,
-  ChangeDetectionStrategy,
 } from '@angular/core';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { combineLatest, firstValueFrom, from, of } from 'rxjs';
@@ -58,7 +57,6 @@ import {
 } from '@app/types';
 
 import { FormatFileSizePipe } from '@app/pipes';
-import { AnimationsService } from 'src/app/shared/services/animations.service';
 import { IconService } from 'src/app/shared/services/icon.service';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 
@@ -113,8 +111,6 @@ type SidebarLocalItem =
   ],
   templateUrl: './nautilus.component.html',
   styleUrl: './nautilus.component.scss',
-  animations: [AnimationsService.slideOverlay()],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NautilusComponent implements OnInit, OnDestroy {
   // --- Services ---
@@ -146,7 +142,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     return 'Files';
   });
   public readonly isMobile = signal(window.innerWidth < 680);
-  public readonly isSidenavOpen = signal(!this.isMobile());
+  public readonly isSidenavOpen = signal(true);
   public readonly sidenavMode = computed(() => (this.isMobile() ? 'over' : 'side'));
   public readonly errorState = signal<string | null>(null);
   private readonly initialLocationApplied = signal(false);
@@ -1419,5 +1415,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   @HostListener('window:resize') onResize(): void {
     this.isMobile.set(window.innerWidth < 680);
+    // Ensure sidebar opens when switching to desktop mode
+    if (!this.isMobile()) {
+      this.isSidenavOpen.set(true);
+    }
   }
 }

@@ -13,7 +13,6 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 
 // Services
 import { IconService } from '../../../../shared/services/icon.service';
-import { AnimationsService } from '../../../../shared/services/animations.service';
 
 @Component({
   selector: 'app-app-overview',
@@ -29,7 +28,6 @@ import { AnimationsService } from '../../../../shared/services/animations.servic
     StatusOverviewPanelComponent,
     RemotesPanelComponent,
   ],
-  animations: [AnimationsService.fadeInOut()],
   templateUrl: './app-overview.component.html',
   styleUrl: './app-overview.component.scss',
 })

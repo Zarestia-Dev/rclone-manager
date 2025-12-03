@@ -77,7 +77,7 @@
   </div>
 
   @if (currentPage !== 'main') {
-    <div class="overlay" [@slideOverlay]>
+    <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
       <div class="overlay-header" data-tauri-drag-region>
         <button mat-icon-button (click)="navigateTo('main')">
           <mat-icon svgIcon="chevron-left"></mat-icon>
@@ -547,7 +547,11 @@
   }
 
   @if (showingWhatsNew) {
-    <div class="whats-new-overlay" [@slideOverlay]>
+    <div
+      class="whats-new-overlay"
+      animate.enter="slide-overlay-enter"
+      animate.leave="slide-overlay-leave"
+    >
       <div class="overlay-header" data-tauri-drag-region>
         <button mat-icon-button (click)="closeWhatsNew()">
           <mat-icon svgIcon="chevron-left"></mat-icon>

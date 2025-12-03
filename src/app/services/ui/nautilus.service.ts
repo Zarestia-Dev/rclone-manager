@@ -30,8 +30,8 @@ export class NautilusService {
     options?: FilePickerConfig;
   }>({ isOpen: false });
   public filePickerState$ = this._filePickerState.asObservable();
-  private _filePickerResultV2 = new Subject<FilePickerResult>();
-  public filePickerResultV2$ = this._filePickerResultV2.asObservable();
+  private _filePickerResult = new Subject<FilePickerResult>();
+  public filePickerResult$ = this._filePickerResult.asObservable();
 
   // Public Signals (Read by UI)
   public readonly starredItems = signal<FileBrowserItem[]>([]);
@@ -93,7 +93,7 @@ export class NautilusService {
       cancelled: result === null,
       paths: result ?? [],
     };
-    this._filePickerResultV2.next(v2);
+    this._filePickerResult.next(v2);
     this._filePickerState.next({ isOpen: false });
     this._isNautilusOverlayOpen.next(false);
     if (this.overlayRef) {

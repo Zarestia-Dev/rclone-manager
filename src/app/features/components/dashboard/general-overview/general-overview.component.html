@@ -1,4 +1,4 @@
-<div class="general-overview" @fadeInOut>
+<div class="general-overview" animate.enter="fade-in-out-enter" animate.leave="fade-in-out-leave">
   <div class="overview-header" role="banner">
     <div class="header-content">
       <div class="title-section" aria-label="Application title">
@@ -24,12 +24,11 @@
                 [cdkDragDisabled]="!isEditingLayout()"
                 class="draggable-panel-wrapper"
                 [class.editing]="isEditingLayout()"
-                [@slideInOut]
               >
                 <div class="custom-placeholder" *cdkDragPlaceholder></div>
 
                 @if (isEditingLayout()) {
-                  <div class="panel-edit-controls" cdkDragHandle [@slideInOut]>
+                  <div class="panel-edit-controls" cdkDragHandle>
                     <div>
                       <mat-icon svgIcon="menu-bar"></mat-icon>
                     </div>
@@ -664,7 +663,8 @@
           matTooltipPosition="left"
           matTooltipShowDelay="500"
           matTooltip="Reset Layout"
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
         >
           <mat-icon class="warn" svgIcon="rotate-left"></mat-icon>
         </button>

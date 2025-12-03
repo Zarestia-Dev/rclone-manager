@@ -27,7 +27,6 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 // Services
-import { AnimationsService } from '../../../../shared/services/animations.service';
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
 import {
   RemoteManagementService,
@@ -77,7 +76,6 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
-  animations: AnimationsService.getAnimations(['slideAnimation', 'slideInFromBottom', 'fadeInOut']),
 })
 export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);

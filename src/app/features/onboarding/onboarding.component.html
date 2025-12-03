@@ -1,8 +1,15 @@
-<div class="onboarding-container" data-tauri-drag-region [@onboardingEntrance]>
+<div
+  class="onboarding-container"
+  data-tauri-drag-region
+  animate.enter="onboarding-entrance-enter"
+  animate.leave="onboarding-entrance-leave"
+>
   <div class="floating-shape"></div>
 
   @if (animationState === 'loading') {
     <app-loading-overlay
+      animate.enter="fade-in-out-enter"
+      animate.leave="fade-in-out-leave"
       title="Initializing RClone Manager"
       message="Checking system configuration..."
       icon="refresh"
@@ -10,7 +17,7 @@
     </app-loading-overlay>
   }
 
-  <div class="card-container" [@onboardingState]="animationState">
+  <div class="card-container" [class.onboarding-state-enter]="animationState === 'visible'">
     <div class="onboarding-header">
       <div class="page-indicators">
         @for (card of cards; track trackByIndex(i); let i = $index) {
@@ -35,7 +42,7 @@
           <p class="card-description">{{ cards[currentCardIndex].content }}</p>
         </div>
         @if (cards[currentCardIndex].title === 'Select RClone Config') {
-          <div class="form-section" @slideInOut>
+          <div class="form-section">
             <app-installation-options
               [mode]="'config'"
               [disabled]="installing"
@@ -49,7 +56,7 @@
           </div>
         }
         @if (cards[currentCardIndex].title === 'Configuration Password Required') {
-          <div class="form-section" @slideInOut>
+          <div class="form-section">
             <app-password-manager
               [password]="configPassword"
               [hasError]="!!passwordValidationError"
@@ -64,7 +71,7 @@
           </div>
         }
         @if (cards[currentCardIndex].title === 'Install RClone' && !rcloneInstalled) {
-          <div class="form-section" @slideInOut>
+          <div class="form-section">
             <app-installation-options
               [mode]="'install'"
               [disabled]="installing"

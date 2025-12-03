@@ -16,7 +16,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { RemoteConfigStepComponent } from '../../../../shared/remote-config/remote-config-step/remote-config-step.component';
 import { FlagConfigStepComponent } from '../../../../shared/remote-config/flag-config-step/flag-config-step.component';
 import { ServeConfigStepComponent } from '../../../../shared/remote-config/serve-config-step/serve-config-step.component';
-import { AnimationsService } from '../../../../shared/services/animations.service';
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
 import { ValidatorRegistryService } from '../../../../shared/services/validator-registry.service';
 import {
@@ -83,7 +82,6 @@ interface PendingRemoteData {
   templateUrl: './remote-config-modal.component.html',
   styleUrls: ['./remote-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [AnimationsService.getAnimations(['slideAnimation', 'fadeInOut', 'labelSlideIn'])],
 })
 export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // ============================================================================

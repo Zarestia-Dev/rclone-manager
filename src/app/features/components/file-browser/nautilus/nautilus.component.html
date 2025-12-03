@@ -1,4 +1,10 @@
-<mat-sidenav-container class="nautilus-overlay-pane" autosize [@slideOverlay] cdkDropListGroup>
+<mat-sidenav-container
+  class="nautilus-overlay-pane"
+  autosize
+  animate.enter="slide-overlay-enter"
+  animate.leave="slide-overlay-leave"
+  cdkDropListGroup
+>
   <mat-sidenav
     #sidenav
     [mode]="sidenavMode()"

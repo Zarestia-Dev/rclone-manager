@@ -169,7 +169,7 @@
 
   <!-- SETTINGS PAGE: Category Settings Display -->
   @if (currentPage !== 'home' && !isLoading) {
-    <div class="overlay" [@slideOverlay]>
+    <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
       <div class="overlay-header" data-tauri-drag-region>
         <button mat-icon-button (click)="navigateTo('home')">
           <mat-icon svgIcon="chevron-left"></mat-icon>

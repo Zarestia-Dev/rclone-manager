@@ -9,8 +9,8 @@
 }
 
 <mat-toolbar
-  class="flatpak-warning-banner"
-  [@slideToggle]="showFlatpakWarning() ? 'visible' : 'hidden'"
+  class="flatpak-warning-banner slide-toggle-banner"
+  [class.visible]="showFlatpakWarning()"
 >
   <mat-icon
     matTooltipShowDelay="500"
@@ -33,8 +33,8 @@
 </mat-toolbar>
 
 <mat-toolbar
-  [@slideToggle]="isMeteredConnection() ? 'visible' : 'hidden'"
-  class="metered-banner"
+  class="metered-banner slide-toggle-banner"
+  [class.visible]="isMeteredConnection()"
   role="alert"
 >
   You are on a metered connection. Some features may use extra data.

@@ -8,7 +8,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { SearchContainerComponent } from '../../shared/components/search-container/search-container.component';
 
 // Services
-import { AnimationsService } from '../../shared/services/animations.service';
 import { Remote } from '@app/types';
 import { IconService } from 'src/app/shared/services/icon.service';
 import { UiStateService } from '@app/services';
@@ -24,7 +23,6 @@ import { UiStateService } from '@app/services';
     MatTooltipModule,
     SearchContainerComponent,
   ],
-  animations: [AnimationsService.slideToggle()],
   templateUrl: './sidebar.component.html',
   styleUrl: './sidebar.component.scss',
 })

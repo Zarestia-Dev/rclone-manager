@@ -1,5 +1,10 @@
 <!-- app-overview.component.html -->
-<div class="app-overview" [ngClass]="mode()" @fadeInOut>
+<div
+  class="app-overview"
+  [ngClass]="mode()"
+  animate.enter="fade-in-out-enter"
+  animate.leave="fade-in-out-leave"
+>
   <!-- Header Section -->
   <app-overview-header [mode]="mode()"></app-overview-header>
 

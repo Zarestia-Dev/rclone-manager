@@ -27,7 +27,6 @@ import {
 } from '@angular/forms';
 import { ScrollingModule, CdkVirtualScrollViewport } from '@angular/cdk/scrolling';
 
-import { AnimationsService } from '../../../../shared/services/animations.service';
 import { FlagConfigService, RcloneBackendOptionsService } from '@app/services';
 import { NotificationService } from '../../../../shared/services/notification.service';
 import { RcConfigOption } from '@app/types';
@@ -78,7 +77,6 @@ interface SearchResult {
   ],
   templateUrl: './rclone-config-modal.component.html',
   styleUrls: ['./rclone-config-modal.component.scss', '../../../../styles/_shared-modal.scss'],
-  animations: [AnimationsService.slideOverlay()],
 })
 export class RcloneConfigModalComponent implements OnInit, OnDestroy {
   // --- Injected Services & DialogRef ---

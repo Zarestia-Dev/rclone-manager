@@ -57,7 +57,7 @@ export class FileSystemService extends TauriBaseService {
    */
   async selectPathWithNautilus(config: FilePickerConfig): Promise<FilePickerResult> {
     this.nautilusService.openFilePicker(config);
-    return firstValueFrom(this.nautilusService.filePickerResultV2$);
+    return firstValueFrom(this.nautilusService.filePickerResult$);
   }
 
   /**

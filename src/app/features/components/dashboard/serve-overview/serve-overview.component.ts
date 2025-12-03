@@ -14,7 +14,6 @@ import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remot
 
 // Services
 import { IconService } from '../../../../shared/services/icon.service';
-import { AnimationsService } from '../../../../shared/services/animations.service';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
 @Component({
@@ -35,7 +34,6 @@ import { ServeCardComponent } from '../../../../shared/components/serve-card/ser
     ServeCardComponent,
     MatSnackBarModule,
   ],
-  animations: [AnimationsService.fadeInOut()],
   templateUrl: './serve-overview.component.html',
   styleUrl: './serve-overview.component.scss',
 })

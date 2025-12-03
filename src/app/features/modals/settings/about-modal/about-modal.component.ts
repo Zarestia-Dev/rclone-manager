@@ -18,7 +18,6 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked } from 'marked';
 
 // Services
-import { AnimationsService } from '../../../../shared/services/animations.service';
 import {
   EventListenersService,
   SystemInfoService,
@@ -45,7 +44,6 @@ import { NotificationService } from 'src/app/shared/services/notification.servic
   ],
   templateUrl: './about-modal.component.html',
   styleUrls: ['./about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
-  animations: [AnimationsService.slideOverlay()],
 })
 export class AboutModalComponent implements OnInit {
   readonly rCloneManagerVersion = appVersion;

@@ -53,7 +53,6 @@ import {
   AppSettingsService,
 } from '@app/services';
 import { IconService } from 'src/app/shared/services/icon.service';
-import { AnimationsService } from 'src/app/shared/services/animations.service';
 import { FormatRateValuePipe } from '../../../../shared/pipes/format-rate-value.pipe';
 import { FormatBytes } from '../../../../shared/pipes/format-bytes.pipe';
 
@@ -107,7 +106,6 @@ const ALL_PANELS: PanelConfig[] = [
   ],
   templateUrl: './general-overview.component.html',
   styleUrls: ['./general-overview.component.scss'],
-  animations: [AnimationsService.fadeInOut(), AnimationsService.slideInOut()],
 })
 export class GeneralOverviewComponent implements OnInit, OnDestroy {
   // Inputs

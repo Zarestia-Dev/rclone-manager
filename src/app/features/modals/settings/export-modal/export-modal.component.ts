@@ -14,7 +14,6 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { CommonModule } from '@angular/common';
 
 import { ExportModalData, ExportOption, ExportType } from '@app/types';
-import { AnimationsService } from '../../../../shared/services/animations.service';
 import { BackupRestoreService } from '@app/services';
 import { RemoteManagementService } from '@app/services';
 import { FileSystemService } from '@app/services';
@@ -37,7 +36,6 @@ import { FileSystemService } from '@app/services';
     MatRadioModule,
     MatSlideToggleModule,
   ],
-  animations: [AnimationsService.slideInOut()],
   templateUrl: './export-modal.component.html',
   styleUrls: ['./export-modal.component.scss', '../../../../styles/_shared-modal.scss'],
 })

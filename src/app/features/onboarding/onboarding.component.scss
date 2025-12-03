@@ -22,6 +22,8 @@
     border-radius: var(--border-radius);
     box-shadow: var(--box-shadow);
     overflow: hidden;
+    opacity: 0;
+    transform: translateY(20px);
   }
 }
 

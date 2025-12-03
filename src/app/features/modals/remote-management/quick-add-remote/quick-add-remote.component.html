@@ -17,7 +17,7 @@
   </div>
 
   <form class="form-container" [formGroup]="quickAddForm" (ngSubmit)="onSubmit()" novalidate>
-    <div class="wizard-content" [@slideAnimation]="currentStep">
+    <div class="wizard-content">
       @switch (currentStep) {
         @case ('setup') {
           <div class="step-content" formGroupName="setup">
@@ -207,7 +207,8 @@
     <footer class="button-group">
       @if (currentStep === 'setup') {
         <button
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           matButton="filled"
           class="accent"
           (click)="nextStep()"
@@ -222,7 +223,8 @@
 
       @if (currentStep === 'operations') {
         <button
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           matButton="filled"
           class="accent"
           (click)="prevStep()"
@@ -236,7 +238,8 @@
 
         @if (isAuthInProgress && !isAuthCancelled) {
           <button
-            [@fadeInOut]
+            animate.enter="fade-in-out-enter"
+            animate.leave="fade-in-out-leave"
             matButton="filled"
             class="warn"
             (click)="cancelAuth()"
@@ -249,7 +252,8 @@
         }
 
         <button
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           matButton="filled"
           class="primary"
           (click)="onSubmit()"
@@ -269,7 +273,8 @@
 
       @if (currentStep === 'interactive') {
         <button
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           matButton="filled"
           class="warn"
           (click)="cancelAuth()"
@@ -282,7 +287,8 @@
         </button>
 
         <button
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           matButton="filled"
           class="primary"
           (click)="onInteractiveContinue(interactiveFlowState.answer)"
