@@ -42,10 +42,3 @@ export const SCHEDULED_TASK_STOPPED = 'scheduled_task_stopped';
 
 // Application events
 export const APP_EVENT = 'app_event';
-
-// UI-specific job events (frontend only)
-export const UI_JOB_UPDATE = 'ui_job_update';
-export const UI_JOB_COMPLETED = 'ui_job_completed';
-
-// OAuth events
-export const RCLONE_OAUTH = 'rclone_oauth';

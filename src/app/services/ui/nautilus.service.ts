@@ -62,6 +62,7 @@ export class NautilusService {
   };
 
   private overlayRef: OverlayRef | null = null;
+  private componentRef: ComponentRef<NautilusComponent> | null = null;
 
   constructor() {
     // Load all collections dynamically
@@ -96,9 +97,15 @@ export class NautilusService {
     this._filePickerResult.next(v2);
     this._filePickerState.next({ isOpen: false });
     this._isNautilusOverlayOpen.next(false);
+    if (this.componentRef) {
+      this.componentRef.location.nativeElement.classList.add('slide-overlay-leave');
+    }
     if (this.overlayRef) {
-      this.overlayRef.dispose();
-      this.overlayRef = null;
+      setTimeout(() => {
+        this.overlayRef?.dispose();
+        this.overlayRef = null;
+        this.componentRef = null;
+      }, 250);
     }
   }
 
@@ -163,23 +170,6 @@ export class NautilusService {
     this.saveCollection(type, newList);
   }
 
-  /**
-   * Reorder items (used by drag & drop in sidebar)
-   */
-  public reorderItems(type: CollectionType, prevIndex: number, currIndex: number): void {
-    const config = this.collections[type];
-    const list = [...config.signal()];
-
-    // Move item
-    if (prevIndex >= 0 && prevIndex < list.length && currIndex >= 0) {
-      const [item] = list.splice(prevIndex, 1);
-      list.splice(currIndex, 0, item);
-
-      config.signal.set(list);
-      this.saveCollection(type, list);
-    }
-  }
-
   // --- Internal Helpers ---
 
   private async loadCollection(type: CollectionType): Promise<void> {
@@ -217,13 +207,13 @@ export class NautilusService {
 
   private createNautilusOverlay(): void {
     this.overlayRef = this.overlay.create({
-      hasBackdrop: true,
       positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
       scrollStrategy: this.overlay.scrollStrategies.block(),
     });
 
     const portal = new ComponentPortal(NautilusComponent);
     const componentRef: ComponentRef<NautilusComponent> = this.overlayRef.attach(portal);
+    this.componentRef = componentRef;
 
     componentRef.instance.closeOverlay.pipe(take(1)).subscribe(() => {
       this.closeFilePicker(null);

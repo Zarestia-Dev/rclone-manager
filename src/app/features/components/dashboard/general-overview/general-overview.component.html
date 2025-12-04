@@ -15,7 +15,7 @@
         <mat-spinner diameter="40"></mat-spinner>
       </div>
     } @else {
-      <div class="layout-grid" [@.disabled]="disableAnimations()">
+      <div class="layout-grid">
         <mat-accordion multi cdkDropList (cdkDropListDropped)="drop($event)">
           @for (panel of dashboardPanels(); track trackByPanelId($index, panel)) {
             @if (panel.visible || isEditingLayout()) {
@@ -28,7 +28,12 @@
                 <div class="custom-placeholder" *cdkDragPlaceholder></div>
 
                 @if (isEditingLayout()) {
-                  <div class="panel-edit-controls" cdkDragHandle>
+                  <div
+                    class="panel-edit-controls"
+                    cdkDragHandle
+                    animate.enter="slide-down-enter"
+                    animate.leave="slide-down-leave"
+                  >
                     <div>
                       <mat-icon svgIcon="menu-bar"></mat-icon>
                     </div>

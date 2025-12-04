@@ -1,11 +1,14 @@
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, interval, Subscription } from 'rxjs';
-import { debounceTime, takeWhile } from 'rxjs/operators';
+import { BehaviorSubject, interval, Subscription, firstValueFrom } from 'rxjs';
+import { takeWhile } from 'rxjs/operators';
 import { NotificationService } from '../../shared/services/notification.service';
 import { AppSettingsService } from '../settings/app-settings.service';
 import { UpdateStateService } from './update-state.service';
 import { UpdateMetadata } from '@app/types';
 import { TauriBaseService } from '../core/tauri-base.service';
+import { UiStateService } from '../ui/ui-state.service';
+import { MatDialog } from '@angular/material/dialog';
+import { ConfirmModalComponent } from '../../shared/modals/confirm-modal/confirm-modal.component';
 
 export interface DownloadStatus {
   downloadedBytes: number;
@@ -23,6 +26,8 @@ export class AppUpdaterService extends TauriBaseService {
   private notificationService = inject(NotificationService);
   private appSettingsService = inject(AppSettingsService);
   private updateStateService = inject(UpdateStateService);
+  private uiStateService = inject(UiStateService);
+  private dialog = inject(MatDialog);
 
   private updateAvailableSubject = new BehaviorSubject<UpdateMetadata | null>(null);
   private downloadStatusSubject = new BehaviorSubject<DownloadStatus>({
@@ -34,7 +39,10 @@ export class AppUpdaterService extends TauriBaseService {
   private skippedVersionsSubject = new BehaviorSubject<string[]>([]);
   private updateChannelSubject = new BehaviorSubject<string>('stable');
 
-  private statusPollingInterval = 500; // Poll every 500ms instead of real-time events
+  // New subject for restart state
+  private restartRequiredSubject = new BehaviorSubject<boolean>(false);
+
+  private statusPollingInterval = 500;
   private pollingSubscription: Subscription | null = null;
   private initialized = false;
 
@@ -47,9 +55,10 @@ export class AppUpdaterService extends TauriBaseService {
   public buildType$ = this.updateStateService.buildType$;
   public updateState$ = this.updateStateService.updateState$;
 
+  public restartRequired$ = this.restartRequiredSubject.asObservable();
+
   async checkForUpdates(): Promise<UpdateMetadata | null> {
     try {
-      // Ensure initialization
       await this.ensureInitialized();
 
       console.log('Checking for updates on channel:', this.updateChannelSubject.value);
@@ -69,6 +78,23 @@ export class AppUpdaterService extends TauriBaseService {
 
       if (result) {
         console.log('Update available:', result.version, 'Release tag:', result.releaseTag);
+
+        // If restart is required, set flag and return
+        if (result.restartRequired) {
+          console.log('Restart is required');
+          this.restartRequiredSubject.next(true);
+          return null;
+        }
+
+        // If update is already in progress, restore the UI state
+        if (result.updateInProgress) {
+          console.log('Update is already in progress, restoring UI state');
+          this.updateAvailableSubject.next(result);
+          this.updateStateService.setUpdateInProgress(true);
+          this.updateStateService.setHasUpdates(true);
+          this.startStatusPolling();
+          return result;
+        }
 
         // Check if version is skipped before setting as available
         if (this.isVersionSkipped(result.version)) {
@@ -104,6 +130,25 @@ export class AppUpdaterService extends TauriBaseService {
     }
 
     try {
+      if (this.uiStateService.platform === 'windows') {
+        const dialogRef = this.dialog.open(ConfirmModalComponent, {
+          data: {
+            title: 'Install Update',
+            message:
+              'Installing this update will restart the application automatically. Do you want to continue?',
+            confirmText: 'Install',
+            cancelText: 'Cancel',
+            hideCancel: false,
+          },
+          disableClose: true,
+        });
+
+        const confirmed = await firstValueFrom(dialogRef.afterClosed());
+        if (!confirmed) {
+          return;
+        }
+      }
+
       this.updateStateService.setUpdateInProgress(true);
       this.resetDownloadStatus();
 
@@ -127,10 +172,7 @@ export class AppUpdaterService extends TauriBaseService {
     this.stopStatusPolling();
 
     this.pollingSubscription = interval(this.statusPollingInterval)
-      .pipe(
-        takeWhile(() => this.updateStateService.isUpdateInProgress()),
-        debounceTime(100)
-      )
+      .pipe(takeWhile(() => this.updateStateService.isUpdateInProgress()))
       .subscribe(async () => {
         try {
           const status = await this.invokeCommand<DownloadStatus>('get_download_status');
@@ -148,11 +190,7 @@ export class AppUpdaterService extends TauriBaseService {
           }
 
           if (status.isComplete) {
-            this.notificationService.showSuccess('Update downloaded successfully. Restarting...');
-            this.updateStateService.setUpdateInProgress(false);
-            this.updateAvailableSubject.next(null);
-            this.updateStateService.setHasUpdates(false);
-            this.stopStatusPolling();
+            this.handleUpdateComplete();
           }
         } catch (error) {
           console.error('Error polling download status:', error);
@@ -164,6 +202,31 @@ export class AppUpdaterService extends TauriBaseService {
     if (this.pollingSubscription) {
       this.pollingSubscription.unsubscribe();
       this.pollingSubscription = null;
+    }
+  }
+
+  private handleUpdateComplete(): void {
+    this.updateStateService.setUpdateInProgress(false);
+    this.updateAvailableSubject.next(null);
+    this.updateStateService.setHasUpdates(false);
+    this.stopStatusPolling();
+
+    if (this.uiStateService.platform !== 'windows') {
+      // Linux/MacOS: Set flag and show notification
+      this.restartRequiredSubject.next(true);
+      this.notificationService.showSuccess('Update installed. Please restart the app.');
+    } else {
+      // Windows: the updater will auto-restart the application; no need for a modal here
+      // Optionally, we could show a brief toast if required but we don't display a dialog now.
+    }
+  }
+
+  async relaunchApp(): Promise<void> {
+    try {
+      await this.invokeCommand('relaunch_app');
+    } catch (error) {
+      console.error('Failed to relaunch:', error);
+      this.notificationService.showError('Failed to restart application');
     }
   }
 

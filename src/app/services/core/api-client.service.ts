@@ -15,6 +15,7 @@ export class ApiClientService {
   private http = inject(HttpClient);
   private isHeadlessMode: boolean;
   private apiBaseUrl = 'http://localhost:8080/api'; // Default for headless
+  private basicAuthHeader: string | null = null;
 
   /**
    * Set of commands that must be sent as HTTP POST requests.
@@ -78,8 +79,18 @@ export class ApiClientService {
     this.isHeadlessMode = !(window as Window & { __TAURI_INTERNALS__?: unknown })
       .__TAURI_INTERNALS__;
 
+    // Set API base URL dynamically based on current page protocol and host
+    const protocol = window.location.protocol; // http: or https:
+    const host = window.location.hostname; // localhost, 127.0.0.1, or actual hostname
+    const port = window.location.port; // 8080, 3000, etc.
+    const portSuffix = port ? `:${port}` : ''; // Only add port if it's not default (80 for http, 443 for https)
+
+    this.apiBaseUrl = `${protocol}//${host}${portSuffix}/api`;
+
     if (this.isHeadlessMode) {
       console.log('🌐 Running in headless web mode - using HTTP API');
+      console.log(`📝 API Base URL: ${this.apiBaseUrl}`);
+      console.log('🔐 Browser will handle Basic Authentication via login dialog');
     } else {
       console.log('🖥️  Running in Tauri desktop mode - using Tauri commands');
     }
@@ -158,21 +169,25 @@ export class ApiClientService {
     }
 
     try {
-      const httpOptions: { params?: Record<string, string> } = {};
+      const httpOptions: { params?: Record<string, string>; headers?: Record<string, string> } = {};
 
       if (!isPostCommand && args) {
         httpOptions.params = this.toHttpParams(args);
       }
 
+      // Add Basic Auth if available (browser will handle login dialog on 401)
+      httpOptions.headers = { ...httpOptions.headers };
+
       const response = await firstValueFrom(
         isPostCommand
           ? this.http.post<{ success: boolean; data: T; error?: string }>(
               `${this.apiBaseUrl}${endpoint}`,
-              args || {} // Body remains as JSON object
+              args || {}, // Body remains as JSON object
+              { ...httpOptions, withCredentials: true } // Enable credentials for Basic Auth
             )
           : this.http.get<{ success: boolean; data: T; error?: string }>(
               `${this.apiBaseUrl}${endpoint}`,
-              httpOptions
+              { ...httpOptions, withCredentials: true } // Enable credentials for Basic Auth
             )
       );
 
@@ -189,6 +204,10 @@ export class ApiClientService {
         }
         if (error.status === 0) {
           throw new Error('API server is unreachable. Is the headless server running?');
+        }
+        if (error.status === 401) {
+          // Browser handles 401 by showing login dialog
+          throw new Error('Authentication required. Please enter your credentials.');
         }
         throw new Error(error.message);
       }

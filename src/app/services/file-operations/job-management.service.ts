@@ -13,8 +13,6 @@ import {
   MoveParams,
   SyncOptions,
   SyncParams,
-  UI_JOB_UPDATE,
-  UI_JOB_COMPLETED,
 } from '@app/types';
 
 /**
@@ -30,7 +28,6 @@ export class JobManagementService extends TauriBaseService {
 
   constructor() {
     super();
-    this.setupJobListeners();
   }
 
   /**
@@ -252,33 +249,6 @@ export class JobManagementService extends TauriBaseService {
       params.group = `job/${jobid}`;
     }
     return this.invokeCommand('get_core_stats_filtered', params);
-  }
-
-  /**
-   * Setup job event listeners
-   */
-  private setupJobListeners(): void {
-    // Listen for job updates
-    this.listenToEvent<any>(UI_JOB_UPDATE).subscribe(payload => {
-      const jobs = this.activeJobsSubject.value;
-      const jobIndex = jobs.findIndex(j => j.jobid === payload.jobid);
-
-      if (jobIndex >= 0) {
-        jobs[jobIndex].stats = payload.stats;
-        this.activeJobsSubject.next([...jobs]);
-      }
-    });
-
-    // Listen for job completion
-    this.listenToEvent<any>(UI_JOB_COMPLETED).subscribe(payload => {
-      const jobs = this.activeJobsSubject.value;
-      const jobIndex = jobs.findIndex(j => j.jobid === payload.jobid);
-
-      if (jobIndex >= 0) {
-        jobs[jobIndex].status = payload.success ? 'Completed' : 'Failed';
-        this.activeJobsSubject.next([...jobs]);
-      }
-    });
   }
 
   /**

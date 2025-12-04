@@ -43,7 +43,7 @@
           matButton
           class="about-item"
           (click)="navigateTo('updates')"
-          [matBadge]="updateAvailable ? '!' : null"
+          [matBadge]="updateAvailable || restartRequired ? '!' : null"
           matBadgeColor="warn"
         >
           <span>Updates</span>
@@ -140,7 +140,25 @@
             </div>
           </div>
 
-          @if (updateAvailable) {
+          @if (restartRequired) {
+            <div class="update-card restart-required">
+              <div class="update-header">
+                <mat-icon svgIcon="rotate-group"></mat-icon>
+                <div class="update-title">
+                  <h4>Restart Required</h4>
+                  <p class="restart-description">
+                    An update has been installed. Please restart the application to apply the
+                    changes.
+                  </p>
+                </div>
+              </div>
+              <div class="update-buttons">
+                <button mat-flat-button class="accent" (click)="relaunchApp()">
+                  <span>Restart Now</span>
+                </button>
+              </div>
+            </div>
+          } @else if (updateAvailable) {
             <div class="update-card available">
               <div class="update-header">
                 <mat-icon svgIcon="circle-up"></mat-icon>
@@ -212,7 +230,7 @@
             <button
               mat-stroked-button
               (click)="checkForUpdates()"
-              [disabled]="checkingForUpdates || downloadInProgress"
+              [disabled]="checkingForUpdates || downloadInProgress || restartRequired"
               class="check-button"
             >
               @if (checkingForUpdates) {

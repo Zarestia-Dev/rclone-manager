@@ -141,7 +141,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   scheduledTasks = signal<ScheduledTask[]>([]);
   isLoadingScheduledTasks = signal(false);
   isLoadingServes = signal(false);
-  disableAnimations = signal(true);
 
   // Layout signals
   dashboardPanels = signal<DashboardPanel[]>([]);
@@ -403,7 +402,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     }
 
     this.isLayoutLoaded.set(true);
-    this.disableAnimations.set(false);
   }
 
   private cleanup(): void {

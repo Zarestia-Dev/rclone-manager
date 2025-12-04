@@ -4,7 +4,6 @@ import { Subject, Subscription } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { RestorePreviewModalComponent } from '../../features/modals/settings/restore-preview-modal/restore-preview-modal.component';
 
-import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -29,13 +28,14 @@ import { CheckResult, ConnectionStatus, ModalSize, STANDARD_MODAL_SIZE, Theme } 
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { AsyncPipe } from '@angular/common';
+import { CdkMenuModule } from '@angular/cdk/menu';
 
 @Component({
   selector: 'app-titlebar',
   standalone: true,
   imports: [
     AsyncPipe,
-    MatMenuModule,
+    CdkMenuModule,
     MatDividerModule,
     MatIconModule,
     MatButtonModule,
@@ -65,6 +65,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   result?: CheckResult;
   updateAvailable = false;
   rcloneUpdateAvailable = false;
+  restartRequired = false; // New property
 
   private destroy$ = new Subject<void>();
   private internetCheckSub?: Subscription;
@@ -88,6 +89,10 @@ export class TitlebarComponent implements OnInit, OnDestroy {
 
       this.rcloneUpdateService.updateStatus$.subscribe(status => {
         this.rcloneUpdateAvailable = status.available;
+      });
+
+      this.appUpdaterService.restartRequired$.subscribe(required => {
+        this.restartRequired = required;
       });
     } catch (error) {
       console.error('Initialization error:', error);
@@ -180,6 +185,8 @@ export class TitlebarComponent implements OnInit, OnDestroy {
       return 'Application update available';
     } else if (this.rcloneUpdateAvailable) {
       return 'Rclone update available';
+    } else if (this.restartRequired) {
+      return 'Restart required to complete update';
     }
     return '';
   }
@@ -189,6 +196,7 @@ export class TitlebarComponent implements OnInit, OnDestroy {
   }
 
   getAboutMenuBadge(): string {
+    if (this.restartRequired) return '!'; // Prioritize restart badge
     if (this.updateAvailable && this.rcloneUpdateAvailable) {
       return '2'; // Show number of available updates
     } else if (this.updateAvailable || this.rcloneUpdateAvailable) {

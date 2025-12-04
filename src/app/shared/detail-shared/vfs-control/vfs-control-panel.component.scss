@@ -23,6 +23,26 @@
   opacity: 0.7;
 }
 
+.loading-shade {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  gap: 16px;
+  background: var(--secondary-background);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  margin-bottom: 20px;
+  color: rgba(0, 0, 0, 0.54);
+
+  p {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+}
+
 mat-form-field {
   ::ng-deep .mat-mdc-form-field-subscript-wrapper {
     display: none;
@@ -38,7 +58,7 @@ mat-form-field {
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 12px;
   padding: 16px;
-  background: var(--mat-card-background-color);
+  background: var(--secondary-background);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   margin-bottom: 20px;
@@ -75,7 +95,7 @@ mat-form-field {
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 20px;
-  background: var(--mat-card-background-color);
+  background: var(--secondary-background);
 
   .section-header {
     background: rgba(0, 0, 0, 0.03);

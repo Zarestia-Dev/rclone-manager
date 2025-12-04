@@ -14,6 +14,7 @@
 - Remote Logs Modal design and functionality improvements.
 - Export Modal design and functionality improvements.
 - Dashboard General Overview panel design and functionality improvements. Now it supports layout customization.
+- App update now support the restart app. Also ask windows users to before updating the app because windows need to close the app to update it.
 
 ### Fixed
 - Windows bad looking scrollbars fixed. Now it uses Fluent Overlay scrollbars on Windows for a better look and feel. Also not pushes the content when they appear.

@@ -107,7 +107,7 @@ use crate::{
     utils::{
         app::{
             builder::create_app_window,
-            platform::{are_updates_disabled, get_build_type},
+            platform::{are_updates_disabled, get_build_type, relaunch_app},
             ui::{get_system_theme, set_theme},
         },
         io::{
@@ -262,6 +262,9 @@ pub fn run() {
                 destroy_window_on_close: Arc::new(std::sync::RwLock::new(
                     settings.developer.destroy_window_on_close,
                 )),
+                is_restart_required: AtomicBool::new(false),
+                is_update_in_progress: AtomicBool::new(false),
+                oauth_process: tokio::sync::Mutex::new(None),
             });
 
             app.manage(JobCache::new());
@@ -383,6 +386,7 @@ pub fn run() {
             // Platform
             get_build_type,
             are_updates_disabled,
+            relaunch_app,
             // Rclone operations
             provision_rclone,
             get_rclone_info,

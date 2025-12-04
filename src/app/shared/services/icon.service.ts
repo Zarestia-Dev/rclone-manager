@@ -57,6 +57,7 @@ export class IconService {
       'puzzle-piece': 'assets/icons/puzzle-piece.svg',
       question: 'assets/icons/question.svg',
       refresh: 'assets/icons/rotate.svg',
+      'rotate-group': 'assets/icons/rotate-group.svg',
       server: 'assets/icons/server.svg',
       'rclone-symbolic': 'assets/rclone-symbolic.svg',
       stop: 'assets/icons/stop.svg',

@@ -656,14 +656,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   onDropToLocal(event: CdkDragDrop<FileBrowserItem[]>): void {
-    if (event.previousContainer === event.container) {
-      const drivesCount = this.localDrives().length;
-      const prevIndex = event.previousIndex - drivesCount;
-      const currIndex = event.currentIndex - drivesCount;
-      if (prevIndex >= 0 && currIndex >= 0 && prevIndex < this.bookmarks().length) {
-        this.nautilusService.reorderItems('bookmarks', prevIndex, currIndex);
-      }
-    } else {
+    if (event.previousContainer !== event.container) {
       const item = event.item.data as FileBrowserItem;
       if (!item || !item.entry.IsDir) return;
       this.addBookmark(item);

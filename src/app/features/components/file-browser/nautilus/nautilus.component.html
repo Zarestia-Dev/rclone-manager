@@ -2,7 +2,6 @@
   class="nautilus-overlay-pane"
   autosize
   animate.enter="slide-overlay-enter"
-  animate.leave="slide-overlay-leave"
   cdkDropListGroup
 >
   <mat-sidenav
@@ -28,7 +27,7 @@
       <div class="nautilus-scroll-content">
         <mat-nav-list>
           <mat-list-item
-            class="remote-list-item"
+            class="remote-list-item starred-item"
             (click)="selectStarred()"
             [class.selected]="starredMode()"
             cdkDropList
@@ -228,6 +227,10 @@
             <mat-icon svgIcon="chevron-down"></mat-icon>
           </button>
         }
+
+        <button class="nav-button" (click)="closeOverlay.emit()">
+          <mat-icon svgIcon="circle-xmark"></mat-icon>
+        </button>
       </div>
     </mat-toolbar>
 
@@ -320,7 +323,10 @@
                     [svgIcon]="isStarred(item) ? 'star' : 'star-outline'"
                   ></mat-icon>
                 }
-
+                <div class="drag-preview" *cdkDragPreview>
+                  <mat-icon [svgIcon]="item.entry.IsDir ? 'folder' : 'file'"></mat-icon>
+                  <span>{{ item.entry.Name }}</span>
+                </div>
                 <ng-container
                   [ngTemplateOutlet]="itemCard"
                   [ngTemplateOutletContext]="{ item: item, isPlaceholder: false }"
@@ -546,7 +552,7 @@
             <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
               <span>New Folder</span>
             </button>
-            <div class="menu-divider"></div>
+            <mat-divider></mat-divider>
           }
         }
         <button class="menu-item" cdkMenuItem (click)="refresh()">
@@ -567,7 +573,7 @@
             <button class="menu-item" cdkMenuItem (click)="openContextMenuNewFolder()">
               <span>New Folder...</span>
             </button>
-            <div class="menu-divider"></div>
+            <mat-divider></mat-divider>
           }
         }
 
@@ -581,7 +587,7 @@
               <span>Copy Location</span>
             </button>
           }
-          <div class="menu-divider"></div>
+          <mat-divider></mat-divider>
 
           <button
             class="menu-item"
@@ -593,7 +599,7 @@
           </button>
 
           @if (!starredMode()) {
-            <div class="menu-divider"></div>
+            <mat-divider></mat-divider>
 
             <button
               class="menu-item"
@@ -689,7 +695,7 @@
       </div>
     </div>
 
-    <div class="menu-divider"></div>
+    <mat-divider></mat-divider>
 
     <div class="sort-options">
       <span class="sort-label">Sort</span>
@@ -704,7 +710,7 @@
       </mat-radio-group>
     </div>
 
-    <div class="menu-divider"></div>
+    <mat-divider></mat-divider>
 
     <mat-checkbox [checked]="showHidden()" (change)="toggleShowHidden($event.checked)">
       <span>Show Hidden Files</span>

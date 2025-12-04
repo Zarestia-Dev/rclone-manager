@@ -96,6 +96,11 @@
               <span class="value">{{ vfs.stats.inUse }}</span>
             </div>
           </div>
+        } @else {
+          <div class="loading-shade">
+            <mat-spinner diameter="40" mode="indeterminate"></mat-spinner>
+            <p>Loading VFS statistics...</p>
+          </div>
         }
 
         <div class="queue-section">
@@ -113,11 +118,18 @@
 
           <div class="queue-container">
             @if (vfs.queue.length === 0) {
-              <div class="empty-state">
-                <mat-icon svgIcon="circle-check"></mat-icon>
-                <p>No files queued for upload</p>
-                <p class="hint">Files are uploaded automatically based on VFS cache mode</p>
-              </div>
+              @if (!vfs.stats) {
+                <div class="empty-state">
+                  <mat-spinner diameter="32"></mat-spinner>
+                  <p>Fetching upload queue...</p>
+                </div>
+              } @else {
+                <div class="empty-state">
+                  <mat-icon svgIcon="circle-check"></mat-icon>
+                  <p>No files queued for upload</p>
+                  <p class="hint">Files are uploaded automatically based on VFS cache mode</p>
+                </div>
+              }
             } @else {
               <table mat-table [dataSource]="vfs.queue" multiTemplateDataRows>
                 <!-- icon moved into status column to reduce columns -->

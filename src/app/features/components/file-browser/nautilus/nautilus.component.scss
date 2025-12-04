@@ -27,6 +27,8 @@
   flex-shrink: 0;
   z-index: 10;
   background-color: var(--sidebar-background);
+  height: var(--titlebar-height);
+  padding-block: var(--space-xxs);
 
   span {
     font-weight: 600;
@@ -38,7 +40,7 @@
   display: flex;
   justify-content: space-between;
   background-color: var(--sidebar-background) !important;
-  padding: 4px var(--space-sm);
+  padding-inline: var(--space-sm);
   height: var(--titlebar-height);
 }
 
@@ -56,6 +58,15 @@ mat-nav-list {
   overflow: visible;
 }
 
+.starred-item {
+  &.cdk-drop-list-dragging {
+    background: var(--bg-selected) !important;
+    .grid-item,
+    tr {
+      display: none !important;
+    }
+  }
+}
 .bookmarks-section {
   .new-bookmark-placeholder {
     display: none;
@@ -90,7 +101,7 @@ mat-nav-list {
   height: 36px !important;
   padding-inline: var(--space-xs);
   margin-block: var(--space-xxs);
-  transition: background-color 0.2s ease;
+  transition: var(--transition-fast);
 
   &.selected {
     background: var(--bg-hover);
@@ -100,7 +111,7 @@ mat-nav-list {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: #67676b;
+    color: var(--app-text-color);
 
     &.remote-info {
       justify-content: space-between !important;
@@ -140,7 +151,7 @@ mat-nav-list {
   height: 36px;
   color: var(--accent-color);
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--font-size-md);
   margin-block: var(--space-xxs);
   background: rgba(var(--accent-color-rgb), 0.08);
   border: 2px dashed var(--accent-color);
@@ -244,7 +255,7 @@ mat-nav-list {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-size: 13px;
+      font-size: var(--font-size-md);
       text-align: center;
       margin: 0 auto;
     }
@@ -279,7 +290,7 @@ mat-nav-list {
   display: flex;
   align-items: center;
   background-color: var(--input-background);
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   width: 100%;
   max-width: 800px;
   margin: 0 auto;
@@ -350,8 +361,8 @@ mat-nav-list {
   }
 
   mat-icon {
-    width: 18px;
-    height: 18px;
+    width: var(--icon-size-sm);
+    height: var(--icon-size-sm);
   }
 }
 
@@ -375,13 +386,13 @@ mat-nav-list {
 
 /* 3.2.1 Grid View */
 .nautilus-grid {
-  padding: 16px 8px;
+  padding: var(--space-md) var(--space-xs);
   height: 100%;
   box-sizing: border-box;
 
   .grid {
     display: grid;
-    gap: 16px;
+    gap: var(--space-md);
     align-items: start;
     grid-auto-rows: auto;
     margin: var(--space-sm) var(--space-xl);
@@ -403,7 +414,7 @@ mat-nav-list {
   .star-button {
     position: absolute;
     border-radius: 50%;
-    padding: 4px;
+    padding: var(--space-xxs);
     transition: var(--transition-fast);
     width: 16px;
     color: var(--secondary-text-color);
@@ -419,7 +430,7 @@ mat-nav-list {
 /* THE SHARED CARD COMPONENT */
 .folder-card {
   box-sizing: border-box;
-  padding: 16px 12px;
+  padding: var(--space-md) var(--space-sm);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -461,9 +472,9 @@ mat-nav-list {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 16px;
+  padding: var(--space-sm) var(--space-md);
   background: var(--secondary-background);
-  border-radius: 8px;
+  border-radius: var(--border-radius);
   box-shadow: var(--shadow-elevated);
   border: 1px solid var(--primary-color);
   opacity: 0.8;
@@ -547,14 +558,14 @@ mat-nav-list {
 
   td.mat-mdc-cell {
     border-bottom: 1px solid transparent;
-    font-size: 14px;
+    font-size: var(--font-size-md);
     color: var(--app-text-color);
     padding: 0 var(--space-xs);
 
     .name-cell {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: var(--space-sm);
       width: 100%;
       overflow: hidden;
 
@@ -590,7 +601,7 @@ mat-nav-list {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 8px;
+  padding: var(--space-xxs) var(--space-xs);
 
   span {
     font-weight: 500;
@@ -599,7 +610,7 @@ mat-nav-list {
   .buttons {
     display: flex;
     border: 1px solid var(--theme-border);
-    border-radius: 6px;
+    border-radius: var(--radius-xs);
     overflow: hidden;
 
     button {
@@ -642,7 +653,7 @@ mat-nav-list {
   position: absolute;
   bottom: 16px;
   right: 16px;
-  background-color: var(--secondary-background);
+  background-color: var(--app-background);
   padding: var(--space-xxs) var(--space-sm);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-elevated);
@@ -657,7 +668,7 @@ mat-nav-list {
   bottom: 16px;
   right: 16px;
   z-index: 10;
-  background-color: var(--secondary-background);
+  background-color: var(--app-background);
   box-shadow: var(--shadow-elevated);
   border-radius: var(--radius-sm);
   padding: var(--space-xxs) var(--space-sm);
@@ -688,7 +699,7 @@ mat-nav-list {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: var(--space-md);
 
   mat-icon {
     width: 128px;
@@ -718,7 +729,7 @@ mat-nav-list {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding: 8px 16px;
+  padding: var(--space-xs) var(--space-md);
 }
 
 .unselectable {
@@ -758,70 +769,6 @@ mat-nav-list {
 /* Picker actions adjustment for mobile */
 .picker-actions {
   &.mobile-picker {
-    padding-bottom: 12px;
-  }
-}
-
-.material-context-menu {
-  display: flex;
-  flex-direction: column;
-  min-width: 200px;
-  max-width: 300px;
-
-  background: var(--secondary-background);
-  color: var(--app-text-color);
-
-  border: 1.5px solid rgba(0, 0, 0, 0.15);
-  border-radius: 12px;
-  padding: 6px;
-  box-shadow: var(--shadow-elevated);
-
-  .menu-item {
-    all: unset;
-    display: flex;
-    align-items: center;
-    box-sizing: border-box;
-
-    /* 2. Sizing */
-    width: 100%;
-    min-height: 34px;
-    padding: 6px 12px;
-
-    /* 3. Typography */
-    font-size: 14px;
-    font-family: inherit;
-    font-weight: 500;
-    color: var(--app-text-color);
-
-    /* 4. The "Pill" Shape */
-    border-radius: 8px;
-    margin-bottom: 2px;
-    transition: background-color 0.1s ease;
-
-    /* 7. Hover / Focus States */
-    &:hover,
-    &:focus,
-    &:focus-visible {
-      background-color: var(--bg-hover, rgba(0, 0, 0, 0.05));
-      outline: none;
-    }
-
-    /* 8. Active/Click State */
-    &:active {
-      background-color: var(--bg-selected, rgba(0, 0, 0, 0.1));
-    }
-
-    /* 9. Disabled State */
-    &:disabled {
-      opacity: 0.4;
-      background: transparent;
-    }
-  }
-
-  .menu-divider {
-    height: 1px;
-    background-color: var(--theme-border);
-    margin: 4px 0;
-    border: none;
+    padding-bottom: var(--space-sm);
   }
 }

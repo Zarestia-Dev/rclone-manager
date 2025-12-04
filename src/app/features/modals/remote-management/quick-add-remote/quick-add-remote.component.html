@@ -183,19 +183,19 @@
 
     <section class="message-bar" aria-live="polite" aria-atomic="true">
       @if (currentStep === 'interactive' && !isAuthCancelled) {
-        <div class="message info" @slideInFromBottom>
+        <div class="message info">
           <mat-icon svgIcon="info" class="accent"></mat-icon>
           <span>Please follow the steps to configure your remote.</span>
         </div>
       }
       @if (isAuthCancelled) {
-        <div class="message cleanup" role="status" @slideInFromBottom>
+        <div class="message cleanup" role="status">
           <mat-spinner diameter="20"></mat-spinner>
           <span>Cancelling... Please wait...</span>
         </div>
       }
       @if (isAuthInProgress && !isAuthCancelled && currentStep !== 'interactive') {
-        <div class="message loading" role="status" @slideInFromBottom>
+        <div class="message loading" role="status">
           <mat-icon svgIcon="info" class="accent"></mat-icon>
           <span
             >A browser window may open for authentication. Please complete the process there.</span

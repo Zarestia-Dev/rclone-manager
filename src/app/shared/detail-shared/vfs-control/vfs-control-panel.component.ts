@@ -22,6 +22,7 @@ import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTable } from '@angular/material/table';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatSelectModule } from '@angular/material/select';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSliderModule } from '@angular/material/slider';
 import { switchMap, filter, retry } from 'rxjs/operators';
 import { timer, from } from 'rxjs';
@@ -70,6 +71,7 @@ const DELAY_SLIDER_DEFAULT = 60;
     FormsModule,
     FormatFileSizePipe,
     MatSliderModule,
+    MatProgressSpinnerModule,
   ],
   templateUrl: './vfs-control-panel.component.html',
   styleUrl: './vfs-control-panel.component.scss',

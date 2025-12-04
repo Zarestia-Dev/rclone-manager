@@ -10,7 +10,6 @@ import {
   // NOTIFY_UI,
   JOB_CACHE_CHANGED,
   MOUNT_PLUGIN_INSTALLED,
-  RCLONE_OAUTH,
   APP_EVENT,
   NETWORK_STATUS_CHANGED,
   BANDWIDTH_LIMIT_CHANGED,
@@ -131,13 +130,6 @@ export class EventListenersService extends TauriBaseService {
    */
   listenToRclonePasswordStored(): Observable<void> {
     return this.listenToEvent<void>(RCLONE_PASSWORD_STORED);
-  }
-
-  /**
-   * Listen to rclone OAuth events
-   */
-  listenToRcloneOAuth(): Observable<unknown> {
-    return this.listenToEvent<unknown>(RCLONE_OAUTH);
   }
 
   /**

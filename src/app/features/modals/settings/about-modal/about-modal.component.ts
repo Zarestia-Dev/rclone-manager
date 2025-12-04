@@ -99,6 +99,9 @@ export class AboutModalComponent implements OnInit {
   rcloneUpdateChannel = 'stable';
   rcloneSkippedVersions: string[] = [];
 
+  // Restart state (set by backend after update install)
+  restartRequired = false;
+
   readonly channels = [
     { value: 'stable', label: 'Stable', description: 'Recommended for most users' },
     { value: 'beta', label: 'Beta', description: 'Latest features with some testing' },
@@ -271,6 +274,15 @@ export class AboutModalComponent implements OnInit {
     await this.appUpdaterService.installUpdate();
   }
 
+  async relaunchApp(): Promise<void> {
+    try {
+      await this.appUpdaterService.relaunchApp();
+    } catch (error) {
+      console.error('Failed to relaunch app:', error);
+      this.notificationService.showError('Failed to restart application');
+    }
+  }
+
   closeUpdateError(): void {
     this.updateErrorDismissed = true;
   }
@@ -386,6 +398,11 @@ export class AboutModalComponent implements OnInit {
       if (this.downloadInProgress || this.installingUpdate) {
         this.updateErrorDismissed = true;
       }
+    });
+
+    // Listen for backend restart-required flag
+    this.appUpdaterService.restartRequired$.subscribe(required => {
+      this.restartRequired = required;
     });
   }
 

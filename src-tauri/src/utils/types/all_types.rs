@@ -7,6 +7,7 @@ use std::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tauri_plugin_shell::process::CommandChild;
 use tokio::sync::RwLock;
 
 pub struct RcloneState {
@@ -20,6 +21,10 @@ pub struct RcloneState {
     pub terminal_apps: Arc<std::sync::RwLock<Vec<String>>>,
     // New flag for memory optimization
     pub destroy_window_on_close: Arc<std::sync::RwLock<bool>>,
+    pub is_restart_required: AtomicBool,
+    pub is_update_in_progress: AtomicBool,
+    // OAuth process state
+    pub oauth_process: tokio::sync::Mutex<Option<CommandChild>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

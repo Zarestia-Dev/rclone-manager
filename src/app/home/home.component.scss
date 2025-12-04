@@ -13,6 +13,8 @@
 
     mat-sidenav {
       width: var(--sidebar-width);
+      border-right: 1px solid var(--theme-border);
+      border-radius: 0 !important;
     }
 
     mat-sidenav-content {

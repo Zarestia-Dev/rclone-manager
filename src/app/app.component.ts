@@ -1,6 +1,6 @@
 import { Component, inject, OnDestroy, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Subject, takeUntil, firstValueFrom, filter } from 'rxjs';
+import { Subject, takeUntil, firstValueFrom } from 'rxjs';
 import { TitlebarComponent } from './layout/titlebar/titlebar.component';
 import { OnboardingComponent } from './features/onboarding/onboarding.component';
 import { HomeComponent } from './home/home.component';
@@ -101,7 +101,6 @@ export class AppComponent implements OnDestroy {
 
   private setupSubscriptions(): void {
     this.setupRcloneEngineListener();
-    this.setupRcloneOAuthListener();
     this.listenToAppEvents();
   }
 
@@ -135,21 +134,6 @@ export class AppComponent implements OnDestroy {
           if (this.completedOnboarding()) await this.handlePasswordRequired();
         },
         error: error => console.error('Rclone engine password error subscription error:', error),
-      });
-  }
-
-  private setupRcloneOAuthListener(): void {
-    this.eventListenersService
-      .listenToRcloneOAuth()
-      .pipe(
-        takeUntil(this.destroy$),
-        filter((event): event is object => typeof event === 'object' && event !== null)
-      )
-      .subscribe({
-        next: async event => {
-          await this.handleRcloneOAuthEvent(event);
-        },
-        error: error => console.error('OAuth event subscription error:', error),
       });
   }
 

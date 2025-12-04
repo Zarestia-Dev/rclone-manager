@@ -53,15 +53,15 @@
   }
 }
 .light {
-  background: var(--light-theme-color);
+  background: #ffffff;
 }
 
 .dark {
-  background: var(--dark-theme-color);
+  background: #000000;
 }
 
 .system {
-  background: linear-gradient(45deg, black 50%, white 50%);
+  background: linear-gradient(45deg, #000000 50%, #ffffff 50%);
 }
 
 .selected {
