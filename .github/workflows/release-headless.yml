@@ -55,7 +55,7 @@ jobs:
         with:
           tagName: headless-v__VERSION__
           releaseName: "RClone Manager Headless v__VERSION__"
-          releaseBody: "RClone Manager Headless v__VERSION__ - Draft release"
+          releaseBody: "RClone Manager Headless v__VERSION__"
           releaseDraft: true
           prerelease: false
           args: >-

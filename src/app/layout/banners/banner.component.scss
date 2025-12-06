@@ -38,20 +38,16 @@ mat-toolbar {
 
   // CSS-based slide toggle animation
   &.slide-toggle-banner {
-    display: grid;
-    grid-template-rows: 0fr;
     max-height: 0;
     padding: 0;
     overflow: hidden;
     opacity: 0;
     transition:
-      grid-template-rows 0.3s ease-in-out,
       max-height 0.3s ease-in-out,
       padding 0.3s ease-in-out,
       opacity 0.3s ease-in-out;
 
     &.visible {
-      grid-template-rows: 1fr;
       max-height: 44px;
       padding: var(--banner-padding);
       opacity: 1;
