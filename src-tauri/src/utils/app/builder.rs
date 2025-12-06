@@ -47,7 +47,7 @@ pub async fn setup_tray(app: AppHandle, max_tray_items: usize) -> tauri::Result<
 }
 
 pub fn create_app_window(app_handle: AppHandle) {
-    let main_window =
+    let mut main_window =
         tauri::WebviewWindowBuilder::new(&app_handle, "main", tauri::WebviewUrl::default())
             .title("RClone Manager")
             .inner_size(800.0, 630.0)
@@ -60,18 +60,22 @@ pub fn create_app_window(app_handle: AppHandle) {
     // and remove the decorations.
     // On other platforms, we set the decorations to false and make the window transparent.
     #[cfg(target_os = "macos")]
-    let main_window = main_window.title_bar_style(tauri::TitleBarStyle::Visible);
+    {
+        main_window = main_window.title_bar_style(tauri::TitleBarStyle::Visible);
+    }
 
     // Windows specific scroll bar style
     // Set to FluentOverlay for better appearance and not pushing content
     #[cfg(target_os = "windows")]
     {
-        use tauri::window::ScrollBarStyle;
-        let main_window = main_window.scroll_bar_style(ScrollBarStyle::FluentOverlay);
+        use tauri::webview::ScrollBarStyle;
+        main_window = main_window.scroll_bar_style(ScrollBarStyle::FluentOverlay);
     }
 
     #[cfg(not(target_os = "macos"))]
-    let main_window = main_window.decorations(false).transparent(true);
+    {
+        main_window = main_window.decorations(false).transparent(true);
+    }
 
     let main_window = main_window.build().expect("Failed to build main window");
 

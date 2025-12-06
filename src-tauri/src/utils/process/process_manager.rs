@@ -312,7 +312,3 @@ pub fn cleanup_webkit_zombies() {
         debug!("🧹 No WebKit zombies found.");
     }
 }
-
-// Dummy function for non-linux OS to prevent compiler errors
-#[cfg(not(target_os = "linux"))]
-pub fn cleanup_webkit_zombies() {}

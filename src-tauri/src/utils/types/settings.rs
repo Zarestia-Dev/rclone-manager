@@ -102,20 +102,16 @@ pub struct NautilusSettings {
     /// Default view for the file browser: "grid" or "list"
     pub default_layout: String,
     /// Preferred grid icon size in pixels (e.g. 60)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub grid_icon_size: Option<i32>,
     /// Preferred list icon size in pixels (e.g. 40)
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub list_icon_size: Option<i32>,
     /// Show hidden files by default in the file browser
     pub show_hidden_items: bool,
     /// Default sort key (e.g. "name-asc")
     pub sort_key: String,
     /// Starred items saved as an array of objects with remote and entry information.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub starred: Option<Vec<Value>>,
     /// Bookmarks saved as an array of objects with remote and entry information.
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub bookmarks: Option<Vec<Value>>,
 }
 
@@ -126,7 +122,7 @@ pub struct AppSettings {
     pub core: CoreSettings,
     pub developer: DeveloperSettings,
     pub runtime: RuntimeSettings,
-    pub nautilus: NautilusSettings, // Moved to top level
+    pub nautilus: NautilusSettings,
 }
 
 /// **Global settings state**

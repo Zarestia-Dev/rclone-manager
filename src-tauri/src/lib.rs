@@ -158,7 +158,7 @@ use crate::{
             terminal::open_terminal_config,
         },
         logging::log::init_logging,
-        process::process_manager::{cleanup_webkit_zombies, kill_process_by_pid},
+        process::process_manager::kill_process_by_pid,
         rclone::{
             mount::{check_mount_plugin_installed, install_mount_plugin},
             provision::provision_rclone,
@@ -685,7 +685,7 @@ pub fn run() {
                     {
                         std::thread::spawn(|| {
                             std::thread::sleep(std::time::Duration::from_millis(500));
-                            cleanup_webkit_zombies();
+                            utils::process::process_manager::cleanup_webkit_zombies();
                         });
                     }
                 }
