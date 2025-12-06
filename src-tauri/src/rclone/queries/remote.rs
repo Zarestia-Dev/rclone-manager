@@ -3,9 +3,9 @@ use serde_json::Value;
 use std::collections::HashMap;
 use tauri::{State, command};
 
-use crate::RcloneState;
 use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{EndpointHelper, config};
+use crate::utils::types::all_types::RcloneState;
 
 #[command]
 pub async fn get_all_remote_configs(

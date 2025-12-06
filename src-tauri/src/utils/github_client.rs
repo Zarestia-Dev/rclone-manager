@@ -30,8 +30,6 @@ static GITHUB_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
 pub enum Error {
     #[error("HTTP request error: {0}")]
     Http(#[from] reqwest::Error),
-    #[error("Failed to parse JSON response: {0}")]
-    Parse(String), // Using String to wrap json errors
 }
 
 // --- Public Data Structures ---

@@ -142,9 +142,9 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   isLoadingScheduledTasks = signal(false);
   isLoadingServes = signal(false);
 
-  // Layout signals
-  dashboardPanels = signal<DashboardPanel[]>([]);
-  isLayoutLoaded = signal(false);
+  dashboardPanels = signal<DashboardPanel[]>(
+    ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible }))
+  );
 
   // Services
   private eventListenersService = inject(EventListenersService);
@@ -196,12 +196,15 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
 
   totalScheduledTasksCount = computed(() => this.scheduledTasks().length);
 
+  constructor() {
+    this.loadLayoutSettings();
+  }
+
   ngOnInit(): void {
     this.setupTauriListeners();
     this.setupPolling();
     this.loadInitialData();
     this.setupScheduledTasksListener();
-    this.loadLayoutSettings();
   }
 
   ngOnDestroy(): void {
@@ -385,23 +388,25 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
         'runtime.dashboard_layout'
       );
 
-      if (!savedIds || savedIds.length === 0) {
-        // Use defaults
-        this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
-      } else {
-        // Rebuild from saved IDs (only visible panels)
-        const visiblePanels: DashboardPanel[] = savedIds
+      if (savedIds && savedIds.length > 0) {
+        // 1. Map visible items in order
+        const orderedPanels: DashboardPanel[] = savedIds
           .map(id => ALL_PANELS.find(p => p.id === id))
           .filter((p): p is PanelConfig => !!p)
           .map(p => ({ ...p, visible: true }));
-        this.dashboardPanels.set(visiblePanels);
+
+        const visibleIds = new Set(savedIds);
+        const hiddenPanels: DashboardPanel[] = ALL_PANELS.filter(p => !visibleIds.has(p.id)).map(
+          p => ({ ...p, visible: false })
+        );
+
+        this.dashboardPanels.set([...orderedPanels, ...hiddenPanels]);
+      } else {
+        this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
       }
     } catch {
-      // Error -> Use defaults
-      this.dashboardPanels.set(ALL_PANELS.map(p => ({ ...p, visible: p.defaultVisible })));
+      console.debug('Failed to load layout settings, using defaults');
     }
-
-    this.isLayoutLoaded.set(true);
   }
 
   private cleanup(): void {

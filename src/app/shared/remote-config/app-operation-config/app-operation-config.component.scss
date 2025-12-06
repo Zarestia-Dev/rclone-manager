@@ -117,11 +117,6 @@
 // AUTOCOMPLETE MENU
 // ============================================================================
 
-::ng-deep .mat-mdc-menu-content {
-  max-height: 260px;
-  overflow-y: auto;
-}
-
 .loading-spinner,
 .no-results {
   display: flex;

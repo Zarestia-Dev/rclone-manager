@@ -4,9 +4,11 @@ use tauri::{State, command};
 use tokio::try_join;
 
 use crate::{
-    RcloneState,
     rclone::state::engine::ENGINE_STATE,
-    utils::rclone::endpoints::{EndpointHelper, options},
+    utils::{
+        rclone::endpoints::{EndpointHelper, options},
+        types::all_types::RcloneState,
+    },
 };
 
 // --- PRIVATE HELPERS ---

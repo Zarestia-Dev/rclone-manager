@@ -7,7 +7,6 @@ import {
   ENGINE_RESTARTED,
   MOUNT_STATE_CHANGED,
   REMOTE_CACHE_UPDATED,
-  // NOTIFY_UI,
   JOB_CACHE_CHANGED,
   MOUNT_PLUGIN_INSTALLED,
   APP_EVENT,
@@ -69,13 +68,6 @@ export class EventListenersService extends TauriBaseService {
   listenToServeStateChanged(): Observable<unknown> {
     return this.listenToEvent<unknown>(SERVE_STATE_CHANGED);
   }
-
-  // /**
-  //  * Listen to notify UI events
-  //  */
-  // listenToNotifyUi(): Observable<string> {
-  //   return this.listenToEvent<string>(NOTIFY_UI);
-  // }
 
   /**
    * Listen to job cache changed events

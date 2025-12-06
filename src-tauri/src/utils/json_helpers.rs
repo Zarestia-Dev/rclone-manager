@@ -29,15 +29,15 @@ pub fn get_string(json: &Value, path: &[&str]) -> String {
     current.and_then(|v| v.as_str()).unwrap_or("").to_string()
 }
 
-/// Safely extracts a boolean value from a nested JSON path.
-/// Returns the provided default value if any key is not found or the final value is not a boolean.
-pub fn get_bool(json: &Value, path: &[&str], default: bool) -> bool {
-    let mut current = Some(json);
-    for key in path {
-        current = current.and_then(|c| c.get(key));
-    }
-    current.and_then(|v| v.as_bool()).unwrap_or(default)
-}
+// /// Safely extracts a boolean value from a nested JSON path.
+// /// Returns the provided default value if any key is not found or the final value is not a boolean.
+// pub fn get_bool(json: &Value, path: &[&str], default: bool) -> bool {
+//     let mut current = Some(json);
+//     for key in path {
+//         current = current.and_then(|c| c.get(key));
+//     }
+//     current.and_then(|v| v.as_bool()).unwrap_or(default)
+// }
 
 /// Utility to normalize Windows extended-length paths (e.g., //?/C:/path or \\?\C:\path) to C:/path, only on Windows
 #[cfg(target_os = "windows")]

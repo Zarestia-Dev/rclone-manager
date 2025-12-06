@@ -4,7 +4,6 @@ use tauri::{AppHandle, Emitter, Listener, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
-    RcloneState,
     core::{
         lifecycle::shutdown::handle_shutdown, scheduler::engine::CronScheduler,
         tray::core::update_tray_menu,
@@ -21,7 +20,7 @@ use crate::{
         app::builder::setup_tray,
         logging::log::update_log_level,
         types::{
-            all_types::RemoteCache,
+            all_types::{RcloneState, RemoteCache},
             events::{
                 JOB_CACHE_CHANGED, MOUNT_STATE_CHANGED, RCLONE_API_URL_UPDATED,
                 RCLONE_PASSWORD_STORED, REMOTE_CACHE_UPDATED, REMOTE_PRESENCE_CHANGED,

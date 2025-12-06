@@ -247,9 +247,10 @@ export class TitlebarComponent implements OnInit, OnDestroy {
     this.openModal(AboutModalComponent, {
       width: '362px',
       maxWidth: '362px',
-      minWidth: '360px',
+      minWidth: '362px',
       height: '80vh',
       maxHeight: '600px',
+      minHeight: '240px',
     });
   }
 

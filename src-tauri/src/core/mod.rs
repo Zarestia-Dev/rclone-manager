@@ -7,3 +7,6 @@ pub mod scheduler;
 pub mod security;
 pub mod settings;
 pub mod tray;
+
+#[cfg(feature = "web-server")]
+pub mod server;

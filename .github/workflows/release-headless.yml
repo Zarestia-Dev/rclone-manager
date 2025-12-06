@@ -1,0 +1,146 @@
+name: "Release Headless"
+
+on:
+    workflow_dispatch:
+        inputs:
+            version:
+                description: "Version to release (e.g., 0.1.8)"
+                required: true
+                type: string
+
+jobs:
+    build-headless:
+        permissions:
+            contents: write
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - platform: "ubuntu-22.04"
+                      args: ""
+                      arch: "x86_64"
+                    - platform: "ubuntu-22.04-arm"
+                      args: ""
+                      arch: "aarch64"
+
+        runs-on: ${{ matrix.platform }}
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: lts/*
+                  cache: "npm"
+
+            - name: Install Rust stable
+              uses: dtolnay/rust-toolchain@stable
+
+            - name: Rust cache
+              uses: swatinem/rust-cache@v2
+              with:
+                  workspaces: "./src-tauri -> target"
+                  key: headless-${{ runner.os }}-${{ matrix.arch }}
+
+            - name: Install dependencies (ubuntu only)
+              run: |
+                  sudo apt-get update
+                  sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils xvfb dbus-x11
+
+            - name: Install frontend dependencies
+              run: npm install
+
+            - name: Create empty directory for Tauri
+              run: mkdir -p src-tauri/empty
+
+            - name: Build Headless with web-server features
+              working-directory: src-tauri
+              run: |
+                  npm run tauri build \
+                    --config tauri.conf.headless.json \
+                    --features web-server,updater \
+                    --bundles deb,appimage \
+                    ${{ matrix.args }}
+
+            - name: List built artifacts
+              run: |
+                  echo "Built artifacts:"
+                  ls -lh src-tauri/target/release/bundle/deb/
+                  ls -lh src-tauri/target/release/bundle/appimage/
+
+            - name: Rename artifacts for GitHub release
+              run: |
+                  cd src-tauri/target/release/bundle/deb
+                  for file in *.deb; do
+                    if [ -f "$file" ]; then
+                      new_name=$(echo "$file" | sed 's/ /_/g')
+                      if [ "$file" != "$new_name" ]; then
+                        mv "$file" "$new_name"
+                        echo "Renamed: $file -> $new_name"
+                      fi
+                    fi
+                  done
+
+                  cd ../appimage
+                  for file in *.AppImage; do
+                    if [ -f "$file" ]; then
+                      new_name=$(echo "$file" | sed 's/ /_/g')
+                      if [ "$file" != "$new_name" ]; then
+                        mv "$file" "$new_name"
+                        echo "Renamed: $file -> $new_name"
+                      fi
+                    fi
+                  done
+
+            - name: Create Release
+              uses: softprops/action-gh-release@v1
+              with:
+                  tag_name: headless-v${{ inputs.version }}
+                  name: "RClone Manager Headless v${{ inputs.version }}"
+                  body: |
+                      ## RClone Manager Headless v${{ inputs.version }}
+
+                      Headless server build with web API support.
+
+                      ### Installation
+
+                      **Debian/Ubuntu (.deb):**
+                      ```bash
+                      sudo dpkg -i RClone_Manager_Headless_${{ inputs.version }}_amd64.deb
+                      sudo apt-get install -f  # Install dependencies
+                      ```
+
+                      **AppImage:**
+                      ```bash
+                      chmod +x RClone_Manager_Headless_${{ inputs.version }}_amd64.AppImage
+                      ./RClone_Manager_Headless_${{ inputs.version }}_amd64.AppImage
+                      ```
+
+                      ### Usage
+
+                      Start the headless server:
+                      ```bash
+                      rclone-manager-headless --host 0.0.0.0 --port 8080
+                      ```
+
+                      The wrapper script automatically handles:
+                      - Virtual display (Xvfb) setup for headless environments
+                      - D-Bus session management
+                      - Proper cleanup on exit
+
+                      Access the web interface at: `https://localhost:8080`
+
+                      ### Features
+                      - Full API access via HTTP endpoints
+                      - Automatic Xvfb setup for servers without GUI
+                      - TLS/SSL support
+                      - All RClone operations available via REST API
+
+                      See the assets below to download this version.
+                  draft: true
+                  prerelease: false
+                  files: |
+                      src-tauri/target/release/bundle/deb/*.deb
+                      src-tauri/target/release/bundle/appimage/*.AppImage
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

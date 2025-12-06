@@ -8,7 +8,10 @@ use crate::{
         engine::core::ENGINE,
         state::watcher::stop_mounted_remote_watcher,
     },
-    utils::{process::process_manager::kill_all_rclone_processes, types::events::APP_EVENT},
+    utils::{
+        process::process_manager::kill_all_rclone_processes,
+        types::{all_types::RcloneState, events::APP_EVENT},
+    },
 };
 
 use crate::core::scheduler::engine::CronScheduler;
@@ -19,7 +22,7 @@ use crate::utils::types::all_types::{JobCache, RemoteCache};
 #[tauri::command]
 pub async fn handle_shutdown(app_handle: AppHandle) {
     info!("🔴 Beginning shutdown sequence...");
-    app_handle.state::<crate::RcloneState>().set_shutting_down();
+    app_handle.state::<RcloneState>().set_shutting_down();
 
     app_handle
         .emit(

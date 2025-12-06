@@ -1,0 +1,86 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "RClone Manager Headless",
+  "mainBinaryName": "rclone-manager-headless",
+  "version": "0.1.8",
+  "identifier": "com.rclone.manager.headless",
+  "build": {
+    "beforeDevCommand": "npm run start",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build && node -e \"require('fs').mkdirSync('src-tauri/empty', {recursive: true})\"",
+    "frontendDist": "empty"
+  },
+  "bundle": {
+    "resources": {
+      "../dist/rclone-manager/browser": "browser"
+    },
+    "active": true,
+    "createUpdaterArtifacts": false,
+    "targets": ["nsis", "msi", "dmg", "app", "deb", "rpm", "appimage"],
+    "category": "Utility",
+    "shortDescription": "User-friendly GUI for RClone (Headless)",
+    "homepage": "https://github.com/Zarestia-Dev/rclone-manager",
+    "publisher": "Zarestia Dev",
+    "longDescription": "RClone Manager (Headless) is a user-friendly WebUI for RClone, designed to simplify the process of managing and transferring files across various cloud storage services. With its intuitive interface, users can easily configure and execute Rclone commands without needing extensive technical knowledge.",
+    "copyright": "Copyright © 2025 Zarestia Dev",
+    "license": "GNU GPLv3",
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/template-headless.desktop",
+        "depends": [
+          "rclone",
+          "libayatana-appindicator3-1 | libappindicator3-1",
+          "xvfb",
+          "dbus-x11"
+        ],
+        "recommends": ["7z"],
+        "postInstallScript": "linux/postinstall.sh",
+        "preRemoveScript": "linux/preremove.sh"
+      },
+      "rpm": {
+        "desktopTemplate": "linux/template-headless.desktop",
+        "depends": [
+          "rclone",
+          "(libappindicator-gtk3 or libayatana-appindicator-gtk3)",
+          "xorg-x11-server-Xvfb",
+          "dbus-x11"
+        ],
+        "recommends": ["7z"],
+        "postInstallScript": "linux/postinstall.sh",
+        "preRemoveScript": "linux/preremove.sh"
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "windows": {
+      "wix": {
+        "bannerPath": "icons/wix-banner.bmp",
+        "dialogImagePath": "icons/wix-dialog.bmp"
+      },
+      "nsis": {
+        "headerImage": "icons/nsis-header.bmp",
+        "sidebarImage": "icons/nsis-sidebar.bmp",
+        "installerIcon": "icons/icon.ico",
+        "startMenuFolder": "RClone Manager Headless",
+        "compression": "lzma"
+      }
+    },
+    "macOS": {
+      "entitlements": "entitlements.plist",
+      "exceptionDomain": "localhost"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": ""
+    }
+  }
+}

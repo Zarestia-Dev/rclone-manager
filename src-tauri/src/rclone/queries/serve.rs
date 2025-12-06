@@ -3,9 +3,11 @@ use serde_json::Value;
 use tauri::State;
 
 use crate::{
-    RcloneState,
     rclone::state::engine::ENGINE_STATE,
-    utils::rclone::endpoints::{EndpointHelper, options, serve},
+    utils::{
+        rclone::endpoints::{EndpointHelper, options, serve},
+        types::all_types::RcloneState,
+    },
 };
 
 /// Get all supported serve types from rclone

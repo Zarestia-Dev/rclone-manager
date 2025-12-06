@@ -901,8 +901,11 @@ mat-accordion {
 .material-context-menu {
   display: flex;
   flex-direction: column;
+  gap: var(--space-xxs);
   min-width: 200px;
   max-width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
 
   background: var(--app-background);
   color: var(--app-text-color);
@@ -914,7 +917,10 @@ mat-accordion {
     all: unset;
     display: flex;
     align-items: center;
+    gap: var(--space-xxs);
     box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
 
     /* 2. Sizing */
     width: 100%;
@@ -929,20 +935,19 @@ mat-accordion {
 
     /* 4. The "Pill" Shape */
     border-radius: var(--border-radius);
-    margin-bottom: 2px;
     transition: var(--transition-instant);
 
     /* 7. Hover / Focus States */
     &:hover,
     &:focus,
     &:focus-visible {
-      background-color: var(--bg-hover, rgba(0, 0, 0, 0.05));
+      background-color: var(--bg-hover);
       outline: none;
     }
 
     /* 8. Active/Click State */
     &:active {
-      background-color: var(--bg-selected, rgba(0, 0, 0, 0.1));
+      background-color: var(--bg-selected);
     }
 
     /* 9. Disabled State */

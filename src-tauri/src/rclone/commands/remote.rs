@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
-    RcloneState,
     core::scheduler::engine::CronScheduler,
     rclone::{
         commands::system::{ensure_oauth_process, redact_sensitive_values},
@@ -14,7 +13,7 @@ use crate::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, config},
         types::{
-            all_types::{LogCache, LogLevel},
+            all_types::{LogCache, LogLevel, RcloneState},
             events::REMOTE_PRESENCE_CHANGED,
         },
     },

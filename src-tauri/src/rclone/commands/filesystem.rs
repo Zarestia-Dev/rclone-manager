@@ -2,10 +2,10 @@ use log::debug;
 use serde_json::json;
 use tauri::{AppHandle, State};
 
-use crate::RcloneState;
 use crate::rclone::commands::job::{JobMetadata, submit_job};
 use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{EndpointHelper, operations};
+use crate::utils::types::all_types::RcloneState;
 
 #[tauri::command]
 pub async fn mkdir(

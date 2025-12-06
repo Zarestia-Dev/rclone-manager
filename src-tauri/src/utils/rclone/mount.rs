@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use tauri::{Emitter, State};
 
-use crate::{RcloneState, utils::types::events::MOUNT_PLUGIN_INSTALLED};
+use crate::utils::types::{all_types::RcloneState, events::MOUNT_PLUGIN_INSTALLED};
 
 #[cfg(target_os = "macos")]
 /// Checks for the presence of any compatible FUSE implementation on macOS.

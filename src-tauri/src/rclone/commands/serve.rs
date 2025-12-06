@@ -4,14 +4,13 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
-    RcloneState,
     rclone::{commands::job::submit_job, state::engine::ENGINE_STATE},
     utils::{
         json_helpers::{get_string, json_to_hashmap, unwrap_nested_options},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, serve},
         types::{
-            all_types::{JobCache, LogLevel},
+            all_types::{JobCache, LogLevel, RcloneState},
             events::SERVE_STATE_CHANGED,
         },
     },

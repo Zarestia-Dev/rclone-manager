@@ -8,14 +8,13 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::time::sleep;
 
 use crate::{
-    RcloneState,
     core::scheduler::engine::get_next_run,
     rclone::state::{engine::ENGINE_STATE, scheduled_tasks::ScheduledTasksCache},
     utils::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, core, job},
         types::{
-            all_types::{JobCache, JobInfo, JobStatus, LogLevel},
+            all_types::{JobCache, JobInfo, JobStatus, LogLevel, RcloneState},
             events::{JOB_CACHE_CHANGED, SCHEDULED_TASK_STOPPED},
         },
     },

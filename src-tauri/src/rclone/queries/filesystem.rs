@@ -3,9 +3,9 @@ use serde::Serialize;
 use serde_json::json;
 use tauri::State;
 
-use crate::RcloneState;
 use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::async_operations::execute_async_operation;
+use crate::utils::types::all_types::RcloneState;
 use crate::utils::{
     rclone::endpoints::{EndpointHelper, operations},
     types::all_types::{DiskUsage, JobResponse, ListOptions},

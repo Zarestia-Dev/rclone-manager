@@ -34,7 +34,18 @@ export class SseClientService implements OnDestroy {
       const protocol = window.location.protocol; // http: or https:
       const host = window.location.hostname; // localhost, 127.0.0.1, or actual hostname
       const port = window.location.port; // 8080, 3000, etc.
-      const portSuffix = port ? `:${port}` : ''; // Only add port if it's not default
+
+      // In development mode (Angular dev server on port 1420), use the API server on port 8080
+      const devApiPort = (window as Window & { RCLONE_MANAGER_API_PORT?: string })
+        .RCLONE_MANAGER_API_PORT;
+      let portSuffix: string;
+      if (port === '1420' || devApiPort) {
+        const apiPort = devApiPort || '8080';
+        portSuffix = `:${apiPort}`;
+        console.log('🔧 Development mode - SSE connecting to API server on port', apiPort);
+      } else {
+        portSuffix = port ? `:${port}` : ''; // Only add port if it's not default
+      }
       url = `${protocol}//${host}${portSuffix}/api/events`;
     }
 

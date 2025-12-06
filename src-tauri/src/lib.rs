@@ -1,19 +1,22 @@
 use std::sync::{Arc, atomic::AtomicBool};
 
-use log::{debug, error, info};
-use tauri::{Manager, WindowEvent};
+#[cfg(not(feature = "web-server"))]
+use log::debug;
+use log::{error, info};
+use tauri::Manager;
+#[cfg(not(feature = "web-server"))]
+use tauri::WindowEvent;
 use tauri_plugin_store::StoreBuilder;
 use tokio::sync::Mutex;
 
-// Make modules public for headless binary
-pub mod core;
-pub mod rclone;
-pub mod utils;
+mod core;
+mod rclone;
+mod utils;
 
-#[cfg(all(desktop, feature = "updater"))]
-use crate::utils::app::updater::app_updates::{
-    DownloadState, PendingUpdate, fetch_update, get_download_status, install_update,
-};
+#[cfg(feature = "updater")]
+use crate::utils::app::updater::app_updates::{DownloadState, PendingUpdate};
+#[cfg(feature = "updater")]
+use crate::utils::app::updater::app_updates::{fetch_update, get_download_status, install_update};
 
 use crate::{
     core::{
@@ -139,21 +142,11 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
     }
 
-    builder
-        .plugin(tauri_plugin_single_instance::init(|app, _, _| {
-            show_main_window(app.clone());
-        }))
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--tray"]),
-        ))
-        .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_store::Builder::new().build())
-        .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_http::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init())
-        .on_window_event(|window, event| match event {
+    // 1. CONDITIONAL WINDOW EVENTS (Desktop Only)
+    // We modify the builder variable directly here before the final chain
+    #[cfg(not(feature = "web-server"))]
+    {
+        builder = builder.on_window_event(|window, event| match event {
             WindowEvent::CloseRequested { api, .. } => {
                 let state = window.app_handle().state::<RcloneState>();
 
@@ -162,7 +155,6 @@ pub fn run() {
                     Err(_) => false,
                 };
 
-                // Check our new setting
                 let destroy_on_close = match state.destroy_window_on_close.read() {
                     Ok(enabled) => *enabled,
                     Err(_) => false,
@@ -170,19 +162,14 @@ pub fn run() {
 
                 if tray_enabled {
                     if destroy_on_close {
-                        // OPTION A: DESTROY (Low RAM)
-                        // Do nothing -> allows Close -> triggers ExitRequested
                         debug!("♻️ Optimization Enabled: Destroying window to free RAM");
                     } else {
-                        // OPTION B: HIDE (Default / Fast Open)
-                        // Prevent close -> Hide window -> Keep RAM usage
                         if let Err(e) = window.hide() {
                             error!("Failed to hide window: {e}");
                         }
                         api.prevent_close();
                     }
                 } else {
-                    // App is quitting completely
                     api.prevent_close();
                     let window_ = window.clone();
                     tauri::async_runtime::spawn(async move {
@@ -202,7 +189,28 @@ pub fn run() {
                 }
             }
             _ => {}
-        })
+        });
+    }
+
+    // 2. SETUP PLUGINS & HANDLERS
+    builder = builder
+        .plugin(tauri_plugin_single_instance::init(|_app, _, _| {
+            #[cfg(feature = "web-server")]
+            info!("Another instance attempted to run.");
+
+            #[cfg(not(feature = "web-server"))]
+            show_main_window(_app.clone());
+        }))
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--tray"]),
+        ))
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let app_handle = app.handle();
             let config_dir = setup_config_dir(app_handle)?;
@@ -224,7 +232,6 @@ pub fn run() {
                 .map_err(|e| format!("Failed to initialize RClone backend store: {e}"))?;
             app.manage(rclone_backend_store);
 
-            // Initialize SafeEnvironmentManager for secure password handling
             use crate::core::security::{CredentialStore, SafeEnvironmentManager};
             let env_manager = SafeEnvironmentManager::new();
             let credential_store = CredentialStore::new();
@@ -273,12 +280,13 @@ pub fn run() {
             app.manage(CronScheduler::new());
             app.manage(RemoteCache::new());
 
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(feature = "updater")]
             app.manage(PendingUpdate(std::sync::Mutex::new(None)));
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(feature = "updater")]
             app.manage(DownloadState::default());
 
-            #[cfg(desktop)]
+            // CONDITIONAL SHORTCUTS: Only if NOT running web server
+            #[cfg(all(desktop, not(feature = "web-server")))]
             {
                 use crate::utils::shortcuts::handle_global_shortcut_event;
                 use log::info;
@@ -319,6 +327,67 @@ pub fn run() {
                 monitor_network_changes(app_handle_clone).await;
             });
 
+            // --- WEB SERVER STARTUP ---
+            // Configuration via environment variables:
+            //   RCLONE_MANAGER_HOST=0.0.0.0  (default: 0.0.0.0 - bind to all interfaces)
+            //   RCLONE_MANAGER_PORT=8080     (default: 8080)
+            //   RCLONE_MANAGER_USER=admin    (optional - enables basic auth)
+            //   RCLONE_MANAGER_PASS=secret   (optional - required if USER is set)
+            //
+            // Example usage:
+            //   rclone-manager-headless
+            //   RCLONE_MANAGER_PORT=3000 rclone-manager-headless
+            //   RCLONE_MANAGER_USER=admin RCLONE_MANAGER_PASS=secret rclone-manager-headless
+            #[cfg(feature = "web-server")]
+            {
+                use crate::core::server::{ServerConfig, start_web_server};
+
+                let web_handle = app.handle().clone();
+                let host =
+                    std::env::var("RCLONE_MANAGER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
+                let port = std::env::var("RCLONE_MANAGER_PORT")
+                    .ok()
+                    .and_then(|p| p.parse().ok())
+                    .unwrap_or(8080);
+
+                let username = std::env::var("RCLONE_MANAGER_USER").ok();
+                let password = std::env::var("RCLONE_MANAGER_PASS").ok();
+
+                let config = ServerConfig {
+                    host,
+                    port,
+                    username,
+                    password,
+                    tls_cert: None,
+                    tls_key: None,
+                };
+
+                info!(
+                    "🚀 Initializing Web Server on {}:{}...",
+                    config.host, config.port
+                );
+                if config.username.is_some() {
+                    info!("🔐 Basic authentication enabled");
+                }
+
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = start_web_server(
+                        web_handle,
+                        config.host,
+                        config.port,
+                        config.username.zip(config.password),
+                        config.tls_cert,
+                        config.tls_key,
+                    )
+                    .await
+                    {
+                        error!("❌ Web server failed to start: {e}");
+                    }
+                });
+            }
+
+            // --- WINDOW CREATION (Desktop Only) ---
+            #[cfg(not(feature = "web-server"))]
             if !std::env::args().any(|arg| arg == "--tray") {
                 debug!("Creating main window");
                 create_app_window(app.handle().clone());
@@ -373,8 +442,13 @@ pub fn run() {
                 }
                 _ => {}
             }
-        })
-        .invoke_handler(tauri::generate_handler![
+        });
+
+    // 3. CONDITIONAL INVOKE HANDLER (Desktop Only)
+    // Only register IPC handlers when running in desktop mode with UI
+    #[cfg(not(feature = "web-server"))]
+    {
+        builder = builder.invoke_handler(tauri::generate_handler![
             // File operations
             open_in_files,
             get_folder_location,
@@ -539,28 +613,37 @@ pub fn run() {
             set_config_password_env,
             clear_config_password_env,
             has_config_password_env,
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(feature = "updater")]
             fetch_update,
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(feature = "updater")]
             get_download_status,
-            #[cfg(all(desktop, feature = "updater"))]
+            #[cfg(feature = "updater")]
             install_update,
-        ])
+        ]);
+    }
+
+    // 4. BUILD AND RUN
+    let app = builder
         .build(tauri::generate_context!())
-        .expect("error while building tauri application")
-        .run(|app_handle, event| {
+        .expect("error while building tauri application");
+
+    #[cfg(feature = "web-server")]
+    {
+        // Headless Loop: Keeps running until Ctrl+C or kill signal, ignoring window logic
+        info!("🎯 Tauri event loop starting (Web Server Mode)");
+        app.run(|_app_handle, _event| {});
+    }
+
+    #[cfg(not(feature = "web-server"))]
+    {
+        // Desktop Loop: Handles exit requests triggered by window events
+        app.run(|app_handle, event| {
             if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                // If tray is enabled, we generally prevent exit unless explicitly shutting down
                 let state = app_handle.state::<RcloneState>();
-
-                let tray_enabled = state.tray_enabled.read().map(|b| *b).unwrap_or(false);
-                let is_shutting_down = state.is_shutting_down();
-
-                // This event ONLY fires if the window was actually destroyed (Option A)
-                if tray_enabled && !is_shutting_down {
-                    // Keep Rust backend alive
+                if !state.is_shutting_down() {
                     api.prevent_exit();
 
-                    // Run Linux Zombie Cleanup (only if we are destroying windows)
                     #[cfg(target_os = "linux")]
                     {
                         std::thread::spawn(|| {
@@ -571,4 +654,5 @@ pub fn run() {
                 }
             }
         });
+    }
 }

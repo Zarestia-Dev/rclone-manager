@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
-    RcloneState,
     rclone::{
         commands::job::submit_job_and_wait,
         state::{engine::ENGINE_STATE, watcher::force_check_mounted_remotes},
@@ -14,7 +13,7 @@ use crate::{
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, mount},
         types::{
-            all_types::{JobCache, LogLevel, RemoteCache},
+            all_types::{JobCache, LogLevel, RcloneState, RemoteCache},
             events::REMOTE_STATE_CHANGED,
         },
     },

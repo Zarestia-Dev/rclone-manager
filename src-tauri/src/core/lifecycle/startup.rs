@@ -2,7 +2,6 @@ use log::{debug, error, info};
 use tauri::{AppHandle, Manager};
 
 use crate::{
-    RcloneState,
     rclone::commands::{
         mount::{MountParams, mount_remote},
         serve::{ServeParams, start_serve},
@@ -11,7 +10,7 @@ use crate::{
             start_sync,
         },
     },
-    utils::types::all_types::{JobCache, RemoteCache},
+    utils::types::all_types::{JobCache, RcloneState, RemoteCache},
 };
 
 /// Main entry point for handling startup tasks.

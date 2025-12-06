@@ -15,12 +15,6 @@ default-run = "rclone-manager"
 name = "rclone_manager_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-# Uncomment the following lines to build the headless server binary
-[[bin]]
-name = "rclone-manager-headless"
-path = "src/headless.rs"
-required-features = ["web-server"]
-
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -60,7 +54,6 @@ dunce = "1.0"
 # Web server dependencies (optional)
 axum = { version = "0.7", optional = true }
 tower-http = { version = "0.5", features = ["cors", "fs", "trace"], optional = true }
-clap = { version = "4.5", features = ["derive"], optional = true }
 futures = { version = "0.3", optional = true }
 async-stream = { version = "0.3", optional = true }
 base64 = { version = "0.22", optional = true }
@@ -95,7 +88,7 @@ url = { version = "2.5", optional = true }
 [features]
 default = ["updater"]
 updater = ["tauri-plugin-updater", "url"]
-web-server = ["axum", "tower-http", "clap",  "futures", "async-stream", "axum-server", "rustls", "base64", "anyhow"]
+web-server = ["axum", "tower-http", "futures", "async-stream", "axum-server", "rustls", "base64", "anyhow"]
 portable = []
 flatpak = []
 deb = []

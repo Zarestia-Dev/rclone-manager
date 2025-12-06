@@ -3,13 +3,12 @@ use std::thread;
 use tauri::{AppHandle, Emitter, Manager};
 
 use crate::{
-    RcloneState,
     core::{
         initialization::apply_core_settings, settings::operations::core::load_startup_settings,
         tray::core::update_tray_menu,
     },
     utils::types::{
-        all_types::{RcApiEngine, RemoteCache},
+        all_types::{RcApiEngine, RcloneState, RemoteCache},
         events::{
             ENGINE_RESTARTED, RCLONE_ENGINE_ERROR, RCLONE_ENGINE_PASSWORD_ERROR,
             RCLONE_ENGINE_PATH_ERROR, RCLONE_ENGINE_READY,

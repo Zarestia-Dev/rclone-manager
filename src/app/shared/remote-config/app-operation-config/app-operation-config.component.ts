@@ -19,8 +19,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
+import { CdkMenuModule } from '@angular/cdk/menu';
 import { Subject, takeUntil, Observable, of } from 'rxjs';
 import { Entry, CronValidationResponse, EditTarget } from '@app/types';
 import { PathSelectionService, PathSelectionState, FileSystemService } from '@app/services';
@@ -45,7 +45,7 @@ type PathGroup = 'source' | 'dest';
     MatButtonModule,
     MatIconModule,
     MatSelectModule,
-    MatMenuModule,
+    CdkMenuModule,
     MatExpansionModule,
     MatDividerModule,
     TitleCasePipe,

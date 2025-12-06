@@ -9,7 +9,6 @@ use tokio::net::TcpStream;
 use tokio::time::sleep;
 
 use crate::{
-    RcloneState,
     rclone::state::engine::ENGINE_STATE,
     utils::{
         rclone::{
@@ -17,7 +16,7 @@ use crate::{
             process_common::create_rclone_command,
         },
         types::{
-            all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
+            all_types::{BandwidthLimitResponse, RcloneState, SENSITIVE_KEYS},
             events::{BANDWIDTH_LIMIT_CHANGED, RCLONE_CONFIG_UNLOCKED},
         },
     },

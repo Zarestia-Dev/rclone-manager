@@ -2,9 +2,9 @@ use log::debug;
 use serde_json::{Value, json};
 use tauri::{State, command};
 
-use crate::RcloneState;
 use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{EndpointHelper, vfs};
+use crate::utils::types::all_types::RcloneState;
 
 /// List active VFSes.
 #[command]

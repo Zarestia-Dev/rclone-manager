@@ -15,7 +15,6 @@ export class ApiClientService {
   private http = inject(HttpClient);
   private isHeadlessMode: boolean;
   private apiBaseUrl = 'http://localhost:8080/api'; // Default for headless
-  private basicAuthHeader: string | null = null;
 
   /**
    * Set of commands that must be sent as HTTP POST requests.
@@ -62,6 +61,8 @@ export class ApiClientService {
     'clear_config_password_env',
     'change_config_password',
     'restore_settings',
+    'install_update',
+    'relaunch_app',
     // VFS Commands
     'vfs_forget',
     'vfs_refresh',
@@ -85,7 +86,17 @@ export class ApiClientService {
     const port = window.location.port; // 8080, 3000, etc.
     const portSuffix = port ? `:${port}` : ''; // Only add port if it's not default (80 for http, 443 for https)
 
-    this.apiBaseUrl = `${protocol}//${host}${portSuffix}/api`;
+    // In development mode (Angular dev server on port 1420), use the API server on port 8080
+    // This allows hot reload development while still communicating with the Rust backend
+    const devApiPort = (window as Window & { RCLONE_MANAGER_API_PORT?: string })
+      .RCLONE_MANAGER_API_PORT;
+    if (this.isHeadlessMode && (port === '1420' || devApiPort)) {
+      const apiPort = devApiPort || '8080';
+      this.apiBaseUrl = `${protocol}//${host}:${apiPort}/api`;
+      console.log('🔧 Development mode detected - Angular dev server pointing to API server');
+    } else {
+      this.apiBaseUrl = `${protocol}//${host}${portSuffix}/api`;
+    }
 
     if (this.isHeadlessMode) {
       console.log('🌐 Running in headless web mode - using HTTP API');
@@ -146,6 +157,7 @@ export class ApiClientService {
       return Promise.resolve(theme as T);
     }
 
+    // App update disabled in web mode for now
     if (command === 'are_updates_disabled') {
       console.log('🔄 Updates disabled for web mode (no Tauri updater)');
       return Promise.resolve(true as T);
@@ -348,6 +360,9 @@ export class ApiClientService {
       fetch_update: '/fetch-update', // Note: Mapped, but are_updates_disabled handles it
       get_download_status: '/get-download-status',
       install_update: '/install-update',
+      relaunch_app: '/relaunch-app',
+      are_updates_disabled: '/are-updates-disabled',
+      get_build_type: '/get-build-type',
 
       // Rclone Updates
       check_rclone_update: '/check-rclone-update',

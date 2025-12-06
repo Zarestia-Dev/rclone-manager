@@ -15,11 +15,11 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { CdkMenuModule } from '@angular/cdk/menu';
 import { catchError, EMPTY, Subject, takeUntil } from 'rxjs';
 
 // App Types
@@ -76,10 +76,10 @@ import {
     MatCardModule,
     MatTooltipModule,
     MatCheckboxModule,
-    MatMenuModule,
     MatIconModule,
     MatButtonModule,
     MatToolbarModule,
+    CdkMenuModule,
     SidebarComponent,
     GeneralDetailComponent,
     GeneralOverviewComponent,

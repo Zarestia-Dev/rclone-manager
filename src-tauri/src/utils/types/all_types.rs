@@ -49,8 +49,6 @@ pub struct DiskUsage {
 
 #[derive(Debug, Deserialize)]
 pub struct ListOptions {
-    #[serde(default)]
-    pub metadata: bool,
     #[serde(flatten)]
     pub extra: std::collections::HashMap<String, serde_json::Value>,
 }
@@ -194,8 +192,8 @@ pub struct DynamicLogger;
 #[derive(serde::Deserialize)]
 pub struct JobResponse {
     pub jobid: u64,
-    #[serde(rename = "executeId")]
-    pub execute_id: String,
+    // #[serde(rename = "executeId")]
+    // pub execute_id: String,
 }
 
 #[derive(Clone, Serialize)]

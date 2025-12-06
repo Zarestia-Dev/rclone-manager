@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=RClone Manager Headless
+Comment=User-friendly WebUI for Rclone (Headless Server)
+Exec=rclone-manager-headless --host 127.0.0.1 --port 8080
+Icon=rclone-manager-headless
+Terminal=false
+Type=Application
+Categories=Utility;FileTools;Network;
+Keywords=rclone;cloud;backup;sync;server;headless;
+StartupWMClass=rclone-manager-headless
+MimeType=application/x-rclone-config;
+X-GNOME-UsesNotifications=true

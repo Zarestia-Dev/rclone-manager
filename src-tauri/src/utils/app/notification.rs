@@ -1,7 +1,7 @@
 use tauri::Manager;
 use tauri_plugin_notification::NotificationExt;
 
-use crate::RcloneState;
+use crate::utils::types::all_types::RcloneState;
 
 pub fn send_notification(app: &tauri::AppHandle, title: &str, body: &str) {
     let enabled = match app.state::<RcloneState>().notifications_enabled.read() {

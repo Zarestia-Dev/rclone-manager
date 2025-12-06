@@ -21,50 +21,14 @@
 
       <!-- Remote Options Menu -->
       @if (selectedRemote(); as remote) {
-        <div class="ellipsis-button-container">
-          <button matIconButton class="ellipsis-button" [matMenuTriggerFor]="remoteOptionsMenu">
-            <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
-          </button>
-          <mat-menu #remoteOptionsMenu="matMenu">
-            <!-- Show in Tray Menu (Toggle) -->
-            <button mat-menu-item (click)="$event.stopPropagation()">
-              <mat-checkbox
-                labelPosition="before"
-                [checked]="getRemoteSettingValue(remote.remoteSpecs.name, 'showOnTray')"
-                (change)="
-                  saveRemoteSettings(remote.remoteSpecs.name, { showOnTray: $event.checked })
-                "
-                class="menu-checkbox"
-              >
-                <span class="menu-item-label">Show in Tray Menu</span>
-              </mat-checkbox>
-            </button>
-            <mat-divider></mat-divider>
-            <!-- Remote Actions -->
-            <button mat-menu-item (click)="openLogsModal(remote.remoteSpecs.name)">
-              <span>View Logs</span>
-            </button>
-            <button mat-menu-item (click)="cloneRemote(remote.remoteSpecs.name)">
-              <span>Clone Remote</span>
-            </button>
-            <mat-divider></mat-divider>
-            <button mat-menu-item (click)="openExportModal(remote.remoteSpecs.name)">
-              <span>Export Configuration</span>
-            </button>
-            <button mat-menu-item (click)="resetRemoteSettings()">
-              <span>Reset Settings</span>
-            </button>
-            <mat-divider></mat-divider>
-            <!-- Delete Remote -->
-            <button
-              mat-menu-item
-              class="delete-option"
-              (click)="deleteRemote(remote.remoteSpecs.name)"
-            >
-              <span>Delete Remote</span>
-            </button>
-          </mat-menu>
-        </div>
+        <button
+          matIconButton
+          class="ellipsis-button"
+          [cdkMenuTriggerFor]="remoteOptionsMenu"
+          [cdkMenuTriggerData]="{ remote: remote }"
+        >
+          <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+        </button>
       }
 
       <!-- Empty State -->
@@ -192,3 +156,38 @@
     </mat-sidenav-content>
   </mat-sidenav-container>
 </div>
+
+<ng-template #remoteOptionsMenu let-remote="remote">
+  <div class="material-context-menu" cdkMenu>
+    <!-- Show in Tray Menu (Toggle) -->
+    <button class="menu-item" cdkMenuItem (click)="$event.stopPropagation()">
+      <mat-checkbox
+        labelPosition="before"
+        [checked]="getRemoteSettingValue(remote.remoteSpecs.name, 'showOnTray')"
+        (change)="saveRemoteSettings(remote.remoteSpecs.name, { showOnTray: $event.checked })"
+      >
+        <span>Show in Tray Menu</span>
+      </mat-checkbox>
+    </button>
+    <mat-divider></mat-divider>
+    <!-- Remote Actions -->
+    <button class="menu-item" cdkMenuItem (click)="openLogsModal(remote.remoteSpecs.name)">
+      <span>View Logs</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="cloneRemote(remote.remoteSpecs.name)">
+      <span>Clone Remote</span>
+    </button>
+    <mat-divider></mat-divider>
+    <button class="menu-item" cdkMenuItem (click)="openExportModal(remote.remoteSpecs.name)">
+      <span>Export Configuration</span>
+    </button>
+    <button class="menu-item" cdkMenuItem (click)="resetRemoteSettings()">
+      <span>Reset Settings</span>
+    </button>
+    <mat-divider></mat-divider>
+    <!-- Delete Remote -->
+    <button class="menu-item" cdkMenuItem (click)="deleteRemote(remote.remoteSpecs.name)">
+      <span>Delete Remote</span>
+    </button>
+  </div>
+</ng-template>

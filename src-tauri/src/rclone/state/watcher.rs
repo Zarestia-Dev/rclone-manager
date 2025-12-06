@@ -5,9 +5,8 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::time;
 
-use crate::RcloneState;
 use crate::rclone::queries::{list_serves, mount::get_mounted_remotes};
-use crate::utils::types::all_types::RemoteCache;
+use crate::utils::types::all_types::{RcloneState, RemoteCache};
 use crate::utils::types::{
     all_types::{MountedRemote, ServeInstance},
     events::{REMOTE_STATE_CHANGED, SERVE_STATE_CHANGED},

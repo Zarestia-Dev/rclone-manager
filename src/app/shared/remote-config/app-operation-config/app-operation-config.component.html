@@ -73,7 +73,7 @@
                 [attr.aria-label]="isServe ? 'Remote path to serve' : 'Source path on remote'"
                 (input)="onInputChanged($event, 'source')"
                 (click)="$event.stopPropagation()"
-                [matMenuTriggerFor]="!isNewRemote ? sourcePathAutocompleteMenu : null"
+                [cdkMenuTriggerFor]="!isNewRemote ? sourcePathAutocompleteMenuMount : null"
               />
               <button
                 matIconButton
@@ -85,42 +85,6 @@
                 <mat-icon svgIcon="folder" class="accent"></mat-icon>
               </button>
             </mat-form-field>
-
-            <mat-menu
-              #sourcePathAutocompleteMenu="matMenu"
-              panelClass="path-autocomplete-menu"
-              [overlapTrigger]="false"
-            >
-              @if (state.isLoading) {
-                <div class="loading-spinner">
-                  <mat-spinner diameter="24"></mat-spinner>
-                  <span>Loading...</span>
-                </div>
-              } @else {
-                @if (state.currentPath) {
-                  <button mat-menu-item (click)="goUp('source')">
-                    <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
-                    <span>.. (Up a folder)</span>
-                  </button>
-                }
-                @for (entry of state.options; track trackByEntry($index, entry)) {
-                  <button
-                    mat-menu-item
-                    (click)="onPathSelected('source', entry.Name)"
-                    [disabled]="!entry.IsDir"
-                  >
-                    <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
-                    <span>{{ entry.Name }}</span>
-                  </button>
-                } @empty {
-                  @if (!state.isLoading && (!state.options || state.options.length === 0)) {
-                    <div class="no-results">
-                      <span>No items found in this directory.</span>
-                    </div>
-                  }
-                }
-              }
-            </mat-menu>
           </div>
         }
       } @else {
@@ -185,7 +149,7 @@
                 aria-label="Source path"
                 (input)="onInputChanged($event, 'source')"
                 (click)="$event.stopPropagation()"
-                [matMenuTriggerFor]="sourcePathAutocompleteMenu"
+                [cdkMenuTriggerFor]="sourcePathAutocompleteMenuStandard"
               />
 
               <!-- Unified Picker Button -->
@@ -203,42 +167,6 @@
                 ></mat-icon>
               </button>
             </mat-form-field>
-
-            <mat-menu
-              #sourcePathAutocompleteMenu="matMenu"
-              panelClass="path-autocomplete-menu"
-              [overlapTrigger]="false"
-            >
-              @if (state.isLoading) {
-                <div class="loading-spinner">
-                  <mat-spinner diameter="24"></mat-spinner>
-                  <span>Loading...</span>
-                </div>
-              } @else {
-                @if (state.currentPath) {
-                  <button mat-menu-item (click)="goUp('source')">
-                    <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
-                    <span>.. (Up a folder)</span>
-                  </button>
-                }
-                @for (entry of state.options; track trackByEntry($index, entry)) {
-                  <button
-                    mat-menu-item
-                    (click)="onPathSelected('source', entry.Name)"
-                    [disabled]="!entry.IsDir"
-                  >
-                    <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
-                    <span>{{ entry.Name }}</span>
-                  </button>
-                } @empty {
-                  @if (!state.isLoading && (!state.options || state.options.length === 0)) {
-                    <div class="no-results">
-                      <span>No items found in this directory.</span>
-                    </div>
-                  }
-                }
-              }
-            </mat-menu>
           </div>
         }
       }
@@ -262,7 +190,7 @@
                 aria-label="Destination mount path"
                 (input)="onInputChanged($event, 'dest')"
                 (click)="$event.stopPropagation()"
-                [matMenuTriggerFor]="destPathAutocompleteMenu"
+                [cdkMenuTriggerFor]="destPathAutocompleteMenuMount"
               />
               <!-- Unified Picker Button for Mount Dest (Local) -->
               <button
@@ -278,42 +206,6 @@
                 <mat-error>Destination is required</mat-error>
               }
             </mat-form-field>
-
-            <mat-menu
-              #destPathAutocompleteMenu="matMenu"
-              panelClass="path-autocomplete-menu"
-              [overlapTrigger]="false"
-            >
-              @if (state.isLoading) {
-                <div class="loading-spinner">
-                  <mat-spinner diameter="24"></mat-spinner>
-                  <span>Loading...</span>
-                </div>
-              } @else {
-                @if (state.currentPath) {
-                  <button mat-menu-item (click)="goUp('dest')">
-                    <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
-                    <span>.. (Up a folder)</span>
-                  </button>
-                }
-                @for (entry of state.options; track trackByEntry($index, entry)) {
-                  <button
-                    mat-menu-item
-                    (click)="onPathSelected('dest', entry.Name)"
-                    [disabled]="!entry.IsDir"
-                  >
-                    <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
-                    <span>{{ entry.Name }}</span>
-                  </button>
-                } @empty {
-                  @if (!state.isLoading && (!state.options || state.options.length === 0)) {
-                    <div class="no-results">
-                      <span>No items found in this directory.</span>
-                    </div>
-                  }
-                }
-              }
-            </mat-menu>
           </div>
         }
       </div>
@@ -379,7 +271,7 @@
                 aria-label="Destination path"
                 (input)="onInputChanged($event, 'dest')"
                 (click)="$event.stopPropagation()"
-                [matMenuTriggerFor]="destPathAutocompleteMenu"
+                [cdkMenuTriggerFor]="destPathAutocompleteMenuStandard"
               />
 
               <!-- Unified Picker Button -->
@@ -401,42 +293,6 @@
                 <mat-error>Destination is required</mat-error>
               }
             </mat-form-field>
-
-            <mat-menu
-              #destPathAutocompleteMenu="matMenu"
-              panelClass="path-autocomplete-menu"
-              [overlapTrigger]="false"
-            >
-              @if (state.isLoading) {
-                <div class="loading-spinner">
-                  <mat-spinner diameter="24"></mat-spinner>
-                  <span>Loading...</span>
-                </div>
-              } @else {
-                @if (state.currentPath) {
-                  <button mat-menu-item (click)="goUp('dest')">
-                    <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
-                    <span>.. (Up a folder)</span>
-                  </button>
-                }
-                @for (entry of state.options; track trackByEntry($index, entry)) {
-                  <button
-                    mat-menu-item
-                    (click)="onPathSelected('dest', entry.Name)"
-                    [disabled]="!entry.IsDir"
-                  >
-                    <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
-                    <span>{{ entry.Name }}</span>
-                  </button>
-                } @empty {
-                  @if (!state.isLoading && (!state.options || state.options.length === 0)) {
-                    <div class="no-results">
-                      <span>No items found in this directory.</span>
-                    </div>
-                  }
-                }
-              }
-            </mat-menu>
           </div>
         }
       </div>
@@ -449,4 +305,153 @@
       </div>
     }
   </div>
+
+  <!-- Menu Templates -->
+  <ng-template #sourcePathAutocompleteMenuMount>
+    <div cdkMenu class="material-context-menu">
+      @if (sourcePathState$ | async; as state) {
+        @if (state.isLoading) {
+          <div class="loading-spinner">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>Loading...</span>
+          </div>
+        } @else {
+          @if (state.currentPath) {
+            <button cdkMenuItem class="menu-item" (click)="goUp('source')">
+              <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+              <span>.. (Up a folder)</span>
+            </button>
+          }
+          @for (entry of state.options; track trackByEntry($index, entry)) {
+            <button
+              cdkMenuItem
+              class="menu-item"
+              (click)="onPathSelected('source', entry.Name)"
+              [disabled]="!entry.IsDir"
+            >
+              <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
+              <span>{{ entry.Name }}</span>
+            </button>
+          } @empty {
+            @if (!state.isLoading && (!state.options || state.options.length === 0)) {
+              <div class="no-results">
+                <span>No items found in this directory.</span>
+              </div>
+            }
+          }
+        }
+      }
+    </div>
+  </ng-template>
+
+  <ng-template #sourcePathAutocompleteMenuStandard>
+    <div cdkMenu class="material-context-menu">
+      @if (sourcePathState$ | async; as state) {
+        @if (state.isLoading) {
+          <div class="loading-spinner">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>Loading...</span>
+          </div>
+        } @else {
+          @if (state.currentPath) {
+            <button cdkMenuItem class="menu-item" (click)="goUp('source')">
+              <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+              <span>.. (Up a folder)</span>
+            </button>
+          }
+          @for (entry of state.options; track trackByEntry($index, entry)) {
+            <button
+              cdkMenuItem
+              class="menu-item"
+              (click)="onPathSelected('source', entry.Name)"
+              [disabled]="!entry.IsDir"
+            >
+              <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
+              <span>{{ entry.Name }}</span>
+            </button>
+          } @empty {
+            @if (!state.isLoading && (!state.options || state.options.length === 0)) {
+              <div class="no-results">
+                <span>No items found in this directory.</span>
+              </div>
+            }
+          }
+        }
+      }
+    </div>
+  </ng-template>
+
+  <ng-template #destPathAutocompleteMenuMount>
+    <div cdkMenu class="material-context-menu">
+      @if (destPathState$ | async; as state) {
+        @if (state.isLoading) {
+          <div class="loading-spinner">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>Loading...</span>
+          </div>
+        } @else {
+          @if (state.currentPath) {
+            <button cdkMenuItem class="menu-item" (click)="goUp('dest')">
+              <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+              <span>.. (Up a folder)</span>
+            </button>
+          }
+          @for (entry of state.options; track trackByEntry($index, entry)) {
+            <button
+              cdkMenuItem
+              class="menu-item"
+              (click)="onPathSelected('dest', entry.Name)"
+              [disabled]="!entry.IsDir"
+            >
+              <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
+              <span>{{ entry.Name }}</span>
+            </button>
+          } @empty {
+            @if (!state.isLoading && (!state.options || state.options.length === 0)) {
+              <div class="no-results">
+                <span>No items found in this directory.</span>
+              </div>
+            }
+          }
+        }
+      }
+    </div>
+  </ng-template>
+
+  <ng-template #destPathAutocompleteMenuStandard>
+    <div cdkMenu class="material-context-menu">
+      @if (destPathState$ | async; as state) {
+        @if (state.isLoading) {
+          <div class="loading-spinner">
+            <mat-spinner diameter="24"></mat-spinner>
+            <span>Loading...</span>
+          </div>
+        } @else {
+          @if (state.currentPath) {
+            <button cdkMenuItem class="menu-item" (click)="goUp('dest')">
+              <mat-icon svgIcon="arrow-turn-up-left"></mat-icon>
+              <span>.. (Up a folder)</span>
+            </button>
+          }
+          @for (entry of state.options; track trackByEntry($index, entry)) {
+            <button
+              cdkMenuItem
+              class="menu-item"
+              (click)="onPathSelected('dest', entry.Name)"
+              [disabled]="!entry.IsDir"
+            >
+              <mat-icon [svgIcon]="entry.IsDir ? 'folder' : 'file'"></mat-icon>
+              <span>{{ entry.Name }}</span>
+            </button>
+          } @empty {
+            @if (!state.isLoading && (!state.options || state.options.length === 0)) {
+              <div class="no-results">
+                <span>No items found in this directory.</span>
+              </div>
+            }
+          }
+        }
+      }
+    </div>
+  </ng-template>
 </div>
