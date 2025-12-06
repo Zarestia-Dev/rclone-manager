@@ -56,7 +56,7 @@ jobs:
       - name: Build Headless with web-server features
         working-directory: src-tauri
         run: |
-          npm run tauri dev -- --config src-tauri/tauri.conf.headless.json --features web-server,updater --target ${{ matrix.arch }}-unknown-linux-gnu
+          npm run tauri build -- --config src-tauri/tauri.conf.headless.json --features web-server,updater --target ${{ matrix.arch }}-unknown-linux-gnu
 
       - name: List built artifacts
         run: |
