@@ -35,14 +35,7 @@ export class WindowService extends TauriBaseService {
     applyViewportSettings: (isMax: boolean) => void,
     platform: string
   ): Promise<void> {
-    // If running in headless/web mode there is no Tauri AppWindow — fallback to false
-    if (!this.isTauriEnvironment) {
-      maximizedSubject.next(false);
-      applyViewportSettings(false);
-      return;
-    }
-
-    if (platform === 'macos') {
+    if (platform === 'macos' || platform === 'web') {
       maximizedSubject.next(true);
       applyViewportSettings(true);
       return;

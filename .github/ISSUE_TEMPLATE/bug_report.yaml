@@ -44,10 +44,22 @@ body:
       description: The specific version of your operating system
       placeholder: e.g., Windows 11 23H2, macOS 14.4, Ubuntu 22.04
 
+  - type: dropdown
+    id: app-version-type
+    attributes:
+      label: App Version Type
+      description: Which version of RClone Manager are you using?
+      options:
+        - Desktop (GUI application with window)
+        - Headless (Web server accessed via browser)
+        - Portable (Standalone executable)
+    validations:
+      required: true
+
   - type: input
     id: app-version
     attributes:
-      label: App Version
+      label: App Version Number
       description: The version of RClone Manager you're using
       placeholder: e.g., 1.2.0 or commit hash if using development build
     validations:

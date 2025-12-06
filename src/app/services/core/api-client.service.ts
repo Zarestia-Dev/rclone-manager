@@ -59,6 +59,7 @@ export class ApiClientService {
     'open_terminal_config',
     'set_config_password_env',
     'clear_config_password_env',
+    'clear_encryption_cache',
     'change_config_password',
     'restore_settings',
     'install_update',

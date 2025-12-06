@@ -55,15 +55,26 @@ body:
     attributes:
       label: Feature Category
       options:
-        - "UI/UX Improvement"
-        - "New Remote Configuration"
-        - "File Management"
-        - "Sync/Copy Operations"
-        - "Performance"
-        - "Security"
-        - "Other"
+        - 'UI/UX Improvement'
+        - 'New Remote Configuration'
+        - 'File Management'
+        - 'Sync/Copy Operations'
+        - 'Performance'
+        - 'Security'
+        - 'Other'
     validations:
       required: true
+
+  - type: checkboxes
+    id: applicable-versions
+    attributes:
+      label: Applicable Versions
+      description: Which version(s) of the app would this feature apply to?
+      options:
+        - label: Desktop (GUI application with window)
+        - label: Headless (Web server accessed via browser)
+        - label: Portable (Standalone executable)
+        - label: All versions
 
   - type: textarea
     id: mockups
