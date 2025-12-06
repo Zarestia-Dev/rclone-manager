@@ -61,12 +61,12 @@ jobs:
       - name: List built artifacts
         run: |
           echo "Built artifacts:"
-          ls -lh src-tauri/target/release/bundle/deb/
-          ls -lh src-tauri/target/release/bundle/appimage/
+          ls -lh src-tauri/target/${{ matrix.arch }}-unknown-linux-gnu/release/bundle/deb/
+          ls -lh src-tauri/target/${{ matrix.arch }}-unknown-linux-gnu/release/bundle/appimage/
 
       - name: Rename artifacts for GitHub release
         run: |
-          cd src-tauri/target/release/bundle/deb
+          cd src-tauri/target/${{ matrix.arch }}-unknown-linux-gnu/release/bundle/deb
           for file in *.deb; do
             if [ -f "$file" ]; then
               new_name=$(echo "$file" | sed 's/ /_/g')
@@ -93,50 +93,11 @@ jobs:
         with:
           tag_name: headless-v${{ inputs.version }}
           name: "RClone Manager Headless v${{ inputs.version }}"
-          body: |
-            ## RClone Manager Headless v${{ inputs.version }}
-
-            Headless server build with web API support.
-
-            ### Installation
-
-            **Debian/Ubuntu (.deb):**
-            ```bash
-            sudo dpkg -i RClone_Manager_Headless_${{ inputs.version }}_amd64.deb
-            sudo apt-get install -f  # Install dependencies
-            ```
-
-            **AppImage:**
-            ```bash
-            chmod +x RClone_Manager_Headless_${{ inputs.version }}_amd64.AppImage
-            ./RClone_Manager_Headless_${{ inputs.version }}_amd64.AppImage
-            ```
-
-            ### Usage
-
-            Start the headless server:
-            ```bash
-            rclone-manager-headless --host 0.0.0.0 --port 8080
-            ```
-
-            The wrapper script automatically handles:
-            - Virtual display (Xvfb) setup for headless environments
-            - D-Bus session management
-            - Proper cleanup on exit
-
-            Access the web interface at: `https://localhost:8080`
-
-            ### Features
-            - Full API access via HTTP endpoints
-            - Automatic Xvfb setup for servers without GUI
-            - TLS/SSL support
-            - All RClone operations available via REST API
-
-            See the assets below to download this version.
+          body: "RClone Manager Headless v${{ inputs.version }} - Draft release"
           draft: true
           prerelease: false
           files: |
-            src-tauri/target/release/bundle/deb/*.deb
-            src-tauri/target/release/bundle/appimage/*.AppImage
+            src-tauri/target/${{ matrix.arch }}-unknown-linux-gnu/release/bundle/deb/*.deb
+            src-tauri/target/${{ matrix.arch }}-unknown-linux-gnu/release/bundle/appimage/*.AppImage
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
