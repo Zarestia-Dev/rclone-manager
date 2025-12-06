@@ -183,9 +183,13 @@ export class NautilusComponent implements OnInit, OnDestroy {
   public readonly showHidden = signal(false);
   public readonly starredMode = signal(false);
 
+  private readonly savedGridIconSize = signal<number | null>(null);
+  private readonly savedListIconSize = signal<number | null>(null);
+
   private readonly LIST_ICON_SIZES = [24, 40, 64];
   private readonly GRID_ICON_SIZES = [40, 50, 72, 120, 240];
-  public readonly iconSize = signal(this.GRID_ICON_SIZES[1]);
+  // Initial value will be set properly in loadSettings based on the loaded layout
+  public readonly iconSize = signal(72);
 
   // Computed: Current icon sizes based on layout
   private readonly currentIconSizes = computed(() =>
@@ -1254,18 +1258,28 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   saveIconSize(): void {
     const key = this.layout() === 'list' ? 'list_icon_size' : 'grid_icon_size';
-    this.appSettingsService.saveSetting('nautilus', key, this.iconSize());
+    const newSize = this.iconSize();
+    if (this.layout() === 'list') this.savedListIconSize.set(newSize);
+    else this.savedGridIconSize.set(newSize);
+    this.appSettingsService.saveSetting('nautilus', key, newSize);
   }
 
   setLayout(l: 'grid' | 'list'): void {
+    // Save current icon size before switching
+    this.saveIconSize();
+
     this.layout.set(l);
-    const sizes = l === 'list' ? this.LIST_ICON_SIZES : this.GRID_ICON_SIZES;
-    const cur = this.iconSize();
-    const nearest = sizes.reduce((prev, curr) =>
-      Math.abs(curr - cur) < Math.abs(prev - cur) ? curr : prev
-    );
-    this.iconSize.set(nearest);
     this.appSettingsService.saveSetting('nautilus', 'default_layout', l);
+
+    // Restore saved size for the new layout, or use center value
+    const savedSize = l === 'grid' ? this.savedGridIconSize() : this.savedListIconSize();
+    if (savedSize) {
+      this.iconSize.set(savedSize);
+    } else {
+      const sizes = l === 'grid' ? this.GRID_ICON_SIZES : this.LIST_ICON_SIZES;
+      const centerIndex = Math.floor(sizes.length / 2);
+      this.iconSize.set(sizes[centerIndex]);
+    }
   }
 
   setSort(k: string): void {
@@ -1289,7 +1303,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   toggleShowHidden(v: boolean): void {
     this.showHidden.set(v);
-    this.appSettingsService.saveSetting('nautilus', 'show_hidden_by_default', v);
+    this.appSettingsService.saveSetting('nautilus', 'show_hidden_items', v);
   }
 
   selectStarred(): void {
@@ -1369,14 +1383,32 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
   private async loadSettings(): Promise<void> {
     try {
-      const [layout, sortKey, showHidden] = await Promise.all([
+      const [layout, sortKey, showHidden, gridIconSize, listIconSize] = await Promise.all([
         this.appSettingsService.getSettingValue<'grid' | 'list'>('nautilus.default_layout'),
         this.appSettingsService.getSettingValue<string>('nautilus.sort_key'),
-        this.appSettingsService.getSettingValue<boolean>('nautilus.show_hidden_by_default'),
+        this.appSettingsService.getSettingValue<boolean>('nautilus.show_hidden_items'),
+        this.appSettingsService.getSettingValue<number>('nautilus.grid_icon_size'),
+        this.appSettingsService.getSettingValue<number>('nautilus.list_icon_size'),
       ]);
+
       if (layout) this.layout.set(layout);
       if (sortKey) this.sortKey.set(sortKey);
       if (showHidden !== undefined) this.showHidden.set(showHidden);
+
+      if (gridIconSize) this.savedGridIconSize.set(gridIconSize);
+      if (listIconSize) this.savedListIconSize.set(listIconSize);
+
+      // Apply an initial icon size based on loaded settings (saved per-layout) or fall back to center
+      const currentLayout = this.layout();
+      const savedSize =
+        currentLayout === 'grid' ? this.savedGridIconSize() : this.savedListIconSize();
+      if (savedSize) {
+        this.iconSize.set(savedSize);
+      } else {
+        const sizes = currentLayout === 'grid' ? this.GRID_ICON_SIZES : this.LIST_ICON_SIZES;
+        const centerIndex = Math.floor(sizes.length / 2);
+        this.iconSize.set(sizes[centerIndex]);
+      }
     } catch (e) {
       console.warn('Settings load error', e);
     }

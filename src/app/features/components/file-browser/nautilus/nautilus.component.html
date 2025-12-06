@@ -18,7 +18,7 @@
             <mat-icon svgIcon="search"></mat-icon>
           </button>
           <span>{{ title() }}</span>
-          <button class="nav-button">
+          <button class="nav-button" disabled>
             <mat-icon svgIcon="menu-bar"></mat-icon>
           </button>
         </mat-toolbar>
@@ -33,6 +33,7 @@
             cdkDropList
             [cdkDropListEnterPredicate]="canDropOnStarred"
             (cdkDropListDropped)="onDropToStarred($event)"
+            [cdkDropListAutoScrollDisabled]="true"
             [cdkContextMenuTriggerFor]="sidebarStarredMenu"
           >
             <span class="remote-info">
@@ -515,7 +516,13 @@
             class="nav-button"
             [cdkMenuTriggerFor]="viewMenu"
             [cdkMenuPosition]="[
-              { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: 8 },
+              {
+                originX: 'end',
+                originY: 'top',
+                overlayX: 'start',
+                overlayY: 'bottom',
+                offsetY: -8,
+              },
             ]"
           >
             <mat-icon svgIcon="chevron-down"></mat-icon>

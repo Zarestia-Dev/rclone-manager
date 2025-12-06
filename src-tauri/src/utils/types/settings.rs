@@ -108,7 +108,7 @@ pub struct NautilusSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub list_icon_size: Option<i32>,
     /// Show hidden files by default in the file browser
-    pub show_hidden_by_default: bool,
+    pub show_hidden_items: bool,
     /// Default sort key (e.g. "name-asc")
     pub sort_key: String,
     /// Starred items saved as an array of objects with remote and entry information.
@@ -215,9 +215,9 @@ impl Default for AppSettings {
             },
             nautilus: NautilusSettings {
                 default_layout: "grid".to_string(),
-                grid_icon_size: Some(60),
+                grid_icon_size: Some(72),
                 list_icon_size: Some(40),
-                show_hidden_by_default: false,
+                show_hidden_items: false,
                 sort_key: "name-asc".to_string(),
                 starred: Some(vec![]),
                 bookmarks: Some(vec![]),
@@ -566,7 +566,7 @@ static SETTINGS_METADATA: Lazy<HashMap<String, SettingMetadata>> = Lazy::new(|| 
             min_value: Some(16),
             max_value: Some(512),
             step: Some(1),
-            placeholder: Some("e.g., 60".into()),
+            placeholder: Some("e.g., 72".into()),
             ..Default::default()
         },
     );
@@ -587,12 +587,12 @@ static SETTINGS_METADATA: Lazy<HashMap<String, SettingMetadata>> = Lazy::new(|| 
     );
 
     add(
-        "nautilus.show_hidden_by_default",
+        "nautilus.show_hidden_items",
         SettingMetadata {
             display_name: "Show Hidden Files By Default".into(),
             value_type: "bool".into(),
             help_text: "Show files starting with a dot by default in the file browser.".into(),
-            default: json!(defaults.nautilus.show_hidden_by_default),
+            default: json!(defaults.nautilus.show_hidden_items),
             required: Some(true),
             ..Default::default()
         },

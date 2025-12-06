@@ -274,7 +274,7 @@
           background: rgba(var(--primary-color-rgb), 0.15);
           flex-shrink: 0;
 
-          @each $type, $color in ("sync", primary), ("copy", yellow), ("move", orange),
+          @each $type, $color in ("sync", primary-color), ("copy", yellow), ("move", orange),
             ("bisync", purple)
           {
             &.#{$type}-color {

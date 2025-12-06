@@ -9,6 +9,7 @@
         <button
           mat-icon-button
           class="header-button"
+          disabled
           (click)="download(); $event.stopPropagation()"
           [attr.aria-label]="'Download ' + data.name"
         >

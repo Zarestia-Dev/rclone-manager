@@ -21,7 +21,7 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '../../types';
       </mat-card-header>
 
       <mat-card-content>
-        @if (config().hasSettings) {
+        @if (hasMeaningfulSettings()) {
           <div class="settings-grid">
             @for (setting of getSettingsEntries(); track setting.key) {
               @if (isObjectButNotArray(setting.value)) {
@@ -31,7 +31,7 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '../../types';
                     <div
                       class="setting-value"
                       [matTooltip]="getTooltip(subSetting.key, subSetting.value)"
-                      [matTooltipHideDelay]="500"
+                      [matTooltipShowDelay]="500"
                     >
                       {{ getDisplayValue(subSetting.key, subSetting.value) }}
                     </div>
@@ -43,7 +43,7 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '../../types';
                   <div
                     class="setting-value"
                     [matTooltip]="getTooltip(setting.key, setting.value)"
-                    [matTooltipHideDelay]="500"
+                    [matTooltipShowDelay]="500"
                   >
                     {{ getDisplayValue(setting.key, setting.value) }}
                   </div>
@@ -75,6 +75,24 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '../../types';
 export class SettingsPanelComponent {
   config = input.required<SettingsPanelConfig>();
   editSettings = output<{ section: string; settings: Record<string, unknown> }>();
+
+  hasMeaningfulSettings(): boolean {
+    const settings = this.config().settings;
+    if (!settings || Object.keys(settings).length === 0) {
+      return false;
+    }
+
+    // Check if all values are empty objects or null/undefined
+    return Object.values(settings).some(value => {
+      if (value === null || value === undefined) {
+        return false;
+      }
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        return Object.keys(value as Record<string, unknown>).length > 0;
+      }
+      return true;
+    });
+  }
 
   getSettingsEntries(): { key: string; value: unknown }[] {
     return Object.entries(this.config().settings || {}).map(([key, value]) => ({

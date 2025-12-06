@@ -1,9 +1,10 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [v0.1.8] - 2025-11-06
 ### Added
 - Developer Setting: Memory Optimization (Destroy Window on Close). Added a new experimental option in Developer Settings that destroys the main window instead of hiding it when closed. This significantly reduces background RAM usage. On Linux, this also actively cleans up lingering WebKit "zombie" processes to prevent memory leaks over long sessions. On MacOS, this not so effective because MacOS version dont use a lot of memory for background processes. But its useful linux and windows.
+- Nautius file manager component added for file browsing. This new file manager component provides a more native and integrated file browsing experience within the app, leveraging Nautilus' capabilities. Currently, it is not supports all features like copy, move, delete, etc. They will be added in future updates. Also support the preview for images, text files and pdf files.
 - `marked` dependency added for markdown rendering in the About modal. This allows us to display formatted release notes fetched from GitHub in a user-friendly manner.
 - Support for local path navigation on the remote config. User can now navigate to local paths when configuring remotes that use local file systems.
 - Added Flatpak detection and warning banner. If the app is running as a Flatpak, a warning banner will be displayed to inform the user about permission limitations. The banner can be dismissed and will not show again once dismissed.

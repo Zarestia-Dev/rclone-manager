@@ -47,7 +47,7 @@ export class KeyboardShortcutsModalComponent {
     { keys: 'Ctrl + R', description: 'Create New Remote (Quick)', category: 'Remote Management' },
     { keys: 'Ctrl + I', description: 'Load Configuration', category: 'File Operations' },
     { keys: 'Ctrl + E', description: 'Export Configuration', category: 'File Operations' },
-    { keys: 'Ctrl + F', description: 'Toggle Search Field', category: 'Navigation' },
+    { keys: 'Ctrl + B', description: 'Toggle File Browser', category: 'File Browser' },
     { keys: 'Escape', description: 'Close Dialog/Cancel Action', category: 'Navigation' },
   ];
 

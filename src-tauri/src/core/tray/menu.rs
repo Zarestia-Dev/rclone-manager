@@ -114,13 +114,6 @@ pub async fn create_tray_menu<R: Runtime>(
     let handle = app.clone();
     let separator = PredefinedMenuItem::separator(&handle)?;
     let show_app_item = MenuItem::with_id(&handle, "show_app", "Show App", true, None::<&str>)?;
-    let show_nautilus_item = MenuItem::with_id(
-        &handle,
-        "show_nautilus",
-        "Show Nautilus",
-        true,
-        None::<&str>,
-    )?;
 
     let unmount_all_item =
         MenuItem::with_id(&handle, "unmount_all", "Unmount All", true, None::<&str>)?;
@@ -378,8 +371,7 @@ pub async fn create_tray_menu<R: Runtime>(
     }
 
     // -- Assemble the final tray menu --
-    let mut menu_items: Vec<&dyn tauri::menu::IsMenuItem<R>> =
-        vec![&show_app_item, &show_nautilus_item, &separator];
+    let mut menu_items: Vec<&dyn tauri::menu::IsMenuItem<R>> = vec![&show_app_item, &separator];
 
     if !remote_menus.is_empty() {
         for submenu in &remote_menus {

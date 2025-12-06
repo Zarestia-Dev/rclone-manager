@@ -55,7 +55,7 @@ export class ShortcutHandlerDirective {
       return true;
     }
 
-    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'f') {
+    if (ctrlKey && !shiftKey && !altKey && key.toLowerCase() === 'b') {
       this.openFileBrowser();
       return true;
     }
