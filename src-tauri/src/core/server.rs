@@ -1238,7 +1238,6 @@ async fn get_remote_paths_handler(
     let options = body.options.map(|v| {
         // Try to deserialize into ListOptions
         serde_json::from_value::<ListOptions>(v).unwrap_or(ListOptions {
-            metadata: false,
             extra: std::collections::HashMap::new(),
         })
     });
