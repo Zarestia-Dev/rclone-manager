@@ -57,7 +57,7 @@ jobs:
               working-directory: src-tauri
               run: |
                   npm run tauri build \
-                    --config tauri.conf.headless.json \
+                    --config src-tauri/tauri.conf.headless.json \
                     --features web-server,updater \
                     --bundles deb,appimage \
                     ${{ matrix.args }}
