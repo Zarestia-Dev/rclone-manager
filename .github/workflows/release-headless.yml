@@ -2,11 +2,6 @@ name: "Release Headless"
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to release (e.g., 0.1.8)"
-        required: true
-        type: string
 
 jobs:
   build-headless:
@@ -17,10 +12,8 @@ jobs:
       matrix:
         include:
           - platform: "ubuntu-22.04"
-            args: ""
             arch: "x86_64"
           - platform: "ubuntu-22.04-arm"
-            args: ""
             arch: "aarch64"
 
     runs-on: ${{ matrix.platform }}
@@ -53,51 +46,19 @@ jobs:
       - name: Create empty directory for Tauri
         run: mkdir -p src-tauri/empty
 
-      - name: Build Headless with web-server features
-        working-directory: src-tauri
-        run: |
-          npm run tauri build -- --config src-tauri/tauri.conf.headless.json --features web-server,updater --target ${{ matrix.arch }}-unknown-linux-gnu
-
-      - name: List built artifacts
-        run: |
-          echo "Built artifacts:"
-          ls -lh src-tauri/target/${{ matrix.arch }}-unknown-linux-gnu/release/bundle/deb/
-          ls -lh src-tauri/target/${{ matrix.arch }}-unknown-linux-gnu/release/bundle/appimage/
-
-      - name: Rename artifacts for GitHub release
-        run: |
-          cd src-tauri/target/${{ matrix.arch }}-unknown-linux-gnu/release/bundle/deb
-          for file in *.deb; do
-            if [ -f "$file" ]; then
-              new_name=$(echo "$file" | sed 's/ /_/g')
-              if [ "$file" != "$new_name" ]; then
-                mv "$file" "$new_name"
-                echo "Renamed: $file -> $new_name"
-              fi
-            fi
-          done
-
-          cd ../appimage
-          for file in *.AppImage; do
-            if [ -f "$file" ]; then
-              new_name=$(echo "$file" | sed 's/ /_/g')
-              if [ "$file" != "$new_name" ]; then
-                mv "$file" "$new_name"
-                echo "Renamed: $file -> $new_name"
-              fi
-            fi
-          done
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: headless-v${{ inputs.version }}
-          name: "RClone Manager Headless v${{ inputs.version }}"
-          body: "RClone Manager Headless v${{ inputs.version }} - Draft release"
-          draft: true
-          prerelease: false
-          files: |
-            src-tauri/target/${{ matrix.arch }}-unknown-linux-gnu/release/bundle/deb/*.deb
-            src-tauri/target/${{ matrix.arch }}-unknown-linux-gnu/release/bundle/appimage/*.AppImage
+      - name: Build and Release Headless
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: headless-v__VERSION__
+          releaseName: "RClone Manager Headless v__VERSION__"
+          releaseBody: "RClone Manager Headless v__VERSION__ - Draft release"
+          releaseDraft: true
+          prerelease: false
+          args: >-
+            --config src-tauri/tauri.conf.headless.json
+            --features web-server,updater
+            --target ${{ matrix.arch }}-unknown-linux-gnu

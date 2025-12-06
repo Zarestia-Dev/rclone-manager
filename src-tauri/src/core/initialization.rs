@@ -13,14 +13,14 @@ use crate::{
             watcher::{start_mounted_remote_watcher, start_serve_watcher},
         },
     },
-    utils::{
-        app::builder::setup_tray,
-        types::{
-            all_types::{RcApiEngine, RcloneState, RemoteCache},
-            settings::{AppSettings, SettingsState},
-        },
+    utils::types::{
+        all_types::{RcApiEngine, RcloneState, RemoteCache},
+        settings::{AppSettings, SettingsState},
     },
 };
+
+#[cfg(not(feature = "web-server"))]
+use crate::utils::app::builder::setup_tray;
 
 /// Get the directory containing the executable (for portable mode)
 #[cfg(feature = "portable")]
@@ -139,18 +139,24 @@ pub async fn initialization(app_handle: tauri::AppHandle, settings: AppSettings)
     info!("📡 Starting serve watcher...");
     start_serve_watcher(app_handle.clone());
 
-    // Step 4: Setup tray if needed
-    let force_tray = std::env::args().any(|arg| arg == "--tray");
-    if settings.general.tray_enabled || force_tray {
-        if force_tray {
-            debug!("🧊 Setting up tray (forced by --tray argument)");
-        } else {
-            debug!("🧊 Setting up tray (enabled in settings)");
-        }
-        if let Err(e) = setup_tray(app_handle.clone(), settings.core.max_tray_items).await {
-            error!("Failed to setup tray: {e}");
+    // Step 4: Setup tray if needed (desktop only)
+    #[cfg(not(feature = "web-server"))]
+    {
+        let force_tray = std::env::args().any(|arg| arg == "--tray");
+        if settings.general.tray_enabled || force_tray {
+            if force_tray {
+                debug!("🧊 Setting up tray (forced by --tray argument)");
+            } else {
+                debug!("🧊 Setting up tray (enabled in settings)");
+            }
+            if let Err(e) = setup_tray(app_handle.clone(), settings.core.max_tray_items).await {
+                error!("Failed to setup tray: {e}");
+            }
         }
     }
+
+    #[cfg(feature = "web-server")]
+    info!("ℹ️  Tray disabled (web-server mode)");
 
     info!("🎉 Initialization complete");
 }

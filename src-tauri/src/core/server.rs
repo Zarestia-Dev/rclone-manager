@@ -324,6 +324,8 @@ fn flags_routes() -> Router<WebServerState> {
         .route("/flags/mount", get(get_mount_flags_handler))
         .route("/flags/copy", get(get_copy_flags_handler))
         .route("/flags/sync", get(get_sync_flags_handler))
+        .route("/flags/bisync", get(get_bisync_flags_handler))
+        .route("/flags/move", get(get_move_flags_handler))
         .route("/flags/filter", get(get_filter_flags_handler))
         .route("/flags/vfs", get(get_vfs_flags_handler))
         .route("/flags/backend", get(get_backend_flags_handler))

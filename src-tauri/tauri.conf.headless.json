@@ -15,8 +15,8 @@
       "../dist/rclone-manager/browser": "browser"
     },
     "active": true,
-    "createUpdaterArtifacts": false,
-    "targets": ["nsis", "msi", "dmg", "app", "deb", "rpm", "appimage"],
+    "createUpdaterArtifacts": true,
+    "targets": ["nsis", "msi", "dmg", "app", "deb", "rpm"],
     "category": "Utility",
     "shortDescription": "User-friendly GUI for RClone (Headless)",
     "homepage": "https://github.com/Zarestia-Dev/rclone-manager",
@@ -26,31 +26,18 @@
     "license": "GNU GPLv3",
     "linux": {
       "deb": {
-        "desktopTemplate": "linux/template-headless.desktop",
-        "depends": [
-          "rclone",
-          "libayatana-appindicator3-1 | libappindicator3-1",
-          "xvfb",
-          "dbus-x11"
-        ],
+        "desktopTemplate": "linux/headless/template-headless.desktop",
+        "depends": ["rclone", "xvfb", "dbus-x11"],
         "recommends": ["7z"],
-        "postInstallScript": "linux/postinstall.sh",
-        "preRemoveScript": "linux/preremove.sh"
+        "postInstallScript": "linux/headless/postinstall.sh",
+        "preRemoveScript": "linux/headless/preremove.sh"
       },
       "rpm": {
-        "desktopTemplate": "linux/template-headless.desktop",
-        "depends": [
-          "rclone",
-          "(libappindicator-gtk3 or libayatana-appindicator-gtk3)",
-          "xorg-x11-server-Xvfb",
-          "dbus-x11"
-        ],
+        "desktopTemplate": "linux/headless/template-headless.desktop",
+        "depends": ["rclone", "xorg-x11-server-Xvfb", "dbus-x11"],
         "recommends": ["7z"],
-        "postInstallScript": "linux/postinstall.sh",
-        "preRemoveScript": "linux/preremove.sh"
-      },
-      "appimage": {
-        "bundleMediaFramework": false
+        "postInstallScript": "linux/headless/postinstall.sh",
+        "preRemoveScript": "linux/headless/preremove.sh"
       }
     },
     "windows": {
@@ -80,7 +67,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": ""
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEzQkE2OTczRUM3RDkzNkYKUldSdmszM3NjMm02bzBTOXhXU0JBZS9TMGdtN1RoanUrZUpiVndsMHJhM0pHRXpiWWpQNkRiYlQK"
     }
   }
 }

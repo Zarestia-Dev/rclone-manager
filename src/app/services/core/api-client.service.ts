@@ -157,17 +157,6 @@ export class ApiClientService {
       return Promise.resolve(theme as T);
     }
 
-    // App update disabled in web mode for now
-    if (command === 'are_updates_disabled') {
-      console.log('🔄 Updates disabled for web mode (no Tauri updater)');
-      return Promise.resolve(true as T);
-    }
-
-    if (command === 'get_build_type') {
-      console.log('📦 Build type: web');
-      return Promise.resolve('web' as T);
-    }
-
     if (command === 'open_in_files' || command === 'open_terminal_config') {
       throw new Error('Native file manager integration not available in headless mode.');
     }
@@ -346,6 +335,8 @@ export class ApiClientService {
       get_flags_by_category: '/flags/category',
       get_copy_flags: '/flags/copy',
       get_sync_flags: '/flags/sync',
+      get_bisync_flags: '/flags/bisync',
+      get_move_flags: '/flags/move',
       get_mount_flags: '/flags/mount',
       get_vfs_flags: '/flags/vfs',
       get_filter_flags: '/flags/filter',

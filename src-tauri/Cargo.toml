@@ -60,6 +60,7 @@ base64 = { version = "0.22", optional = true }
 axum-server = { version = "0.7", features = ["tls-rustls"], optional = true }
 rustls = { version = "0.23", features = ["ring"], optional = true }
 anyhow = {version = "1.0.98", optional = true}
+clap = { version = "4.5", features = ["derive", "env"], optional = true }
 
 [target.'cfg(unix)'.dependencies]
 nix = "0.30.1"
@@ -88,7 +89,7 @@ url = { version = "2.5", optional = true }
 [features]
 default = ["updater"]
 updater = ["tauri-plugin-updater", "url"]
-web-server = ["axum", "tower-http", "futures", "async-stream", "axum-server", "rustls", "base64", "anyhow"]
+web-server = ["axum", "tower-http", "futures", "async-stream", "axum-server", "rustls", "base64", "anyhow", "clap"]
 portable = []
 flatpak = []
 deb = []

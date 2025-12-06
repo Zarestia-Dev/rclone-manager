@@ -3,6 +3,9 @@ use std::sync::{Arc, atomic::AtomicBool};
 #[cfg(not(feature = "web-server"))]
 use log::debug;
 use log::{error, info};
+
+#[cfg(feature = "web-server")]
+use clap::Parser;
 use tauri::Manager;
 #[cfg(not(feature = "web-server"))]
 use tauri::WindowEvent;
@@ -12,6 +15,42 @@ use tokio::sync::Mutex;
 mod core;
 mod rclone;
 mod utils;
+
+/// RClone Manager - Headless Web Server Mode
+#[cfg(feature = "web-server")]
+#[derive(Parser, Debug)]
+#[command(name = "rclone-manager")]
+#[command(about = "RClone Manager headless web server", long_about = None)]
+struct CliArgs {
+    /// Host address to bind to
+    #[arg(
+        short = 'H',
+        long,
+        env = "RCLONE_MANAGER_HOST",
+        default_value = "0.0.0.0"
+    )]
+    host: String,
+
+    /// Port to listen on
+    #[arg(short, long, env = "RCLONE_MANAGER_PORT", default_value = "8080")]
+    port: u16,
+
+    /// Username for Basic Authentication (optional)
+    #[arg(short, long, env = "RCLONE_MANAGER_USER")]
+    user: Option<String>,
+
+    /// Password for Basic Authentication (required if user is set)
+    #[arg(long, env = "RCLONE_MANAGER_PASS")]
+    pass: Option<String>,
+
+    /// Path to TLS certificate file (optional)
+    #[arg(long, env = "RCLONE_MANAGER_TLS_CERT")]
+    tls_cert: Option<std::path::PathBuf>,
+
+    /// Path to TLS key file (optional)
+    #[arg(long, env = "RCLONE_MANAGER_TLS_KEY")]
+    tls_key: Option<std::path::PathBuf>,
+}
 
 #[cfg(feature = "updater")]
 use crate::utils::app::updater::app_updates::{DownloadState, PendingUpdate};
@@ -134,6 +173,11 @@ use crate::{
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Parse CLI args early when running in web-server mode so `--help`/`--version`
+    // are handled before performing heavy initialization (rclone, stores, etc.).
+    #[cfg(feature = "web-server")]
+    let cli_args = CliArgs::parse();
+
     #[allow(unused_mut)]
     let mut builder = tauri::Builder::default().plugin(tauri_plugin_shell::init());
 
@@ -211,7 +255,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .setup(|app| {
+        .setup(move |app| {
             let app_handle = app.handle();
             let config_dir = setup_config_dir(app_handle)?;
             let store_path = config_dir.join("settings.json");
@@ -328,56 +372,49 @@ pub fn run() {
             });
 
             // --- WEB SERVER STARTUP ---
-            // Configuration via environment variables:
-            //   RCLONE_MANAGER_HOST=0.0.0.0  (default: 0.0.0.0 - bind to all interfaces)
-            //   RCLONE_MANAGER_PORT=8080     (default: 8080)
-            //   RCLONE_MANAGER_USER=admin    (optional - enables basic auth)
-            //   RCLONE_MANAGER_PASS=secret   (optional - required if USER is set)
+            // Configuration via CLI arguments or environment variables:
+            //   Command line options:
+            //     -H, --host <HOST>           Host address to bind to [default: 0.0.0.0]
+            //     -p, --port <PORT>           Port to listen on [default: 8080]
+            //     -u, --user <USER>           Username for Basic Authentication
+            //         --pass <PASS>           Password for Basic Authentication
+            //         --tls-cert <PATH>       Path to TLS certificate file
+            //         --tls-key <PATH>        Path to TLS key file
+            //
+            //   Environment variables (same names):
+            //     RCLONE_MANAGER_HOST, RCLONE_MANAGER_PORT, RCLONE_MANAGER_USER,
+            //     RCLONE_MANAGER_PASS, RCLONE_MANAGER_TLS_CERT, RCLONE_MANAGER_TLS_KEY
             //
             // Example usage:
-            //   rclone-manager-headless
-            //   RCLONE_MANAGER_PORT=3000 rclone-manager-headless
-            //   RCLONE_MANAGER_USER=admin RCLONE_MANAGER_PASS=secret rclone-manager-headless
+            //   rclone-manager --port 3000
+            //   rclone-manager -u admin --pass secret
+            //   RCLONE_MANAGER_PORT=3000 rclone-manager
             #[cfg(feature = "web-server")]
             {
-                use crate::core::server::{ServerConfig, start_web_server};
+                use crate::core::server::start_web_server;
 
                 let web_handle = app.handle().clone();
-                let host =
-                    std::env::var("RCLONE_MANAGER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string());
-                let port = std::env::var("RCLONE_MANAGER_PORT")
-                    .ok()
-                    .and_then(|p| p.parse().ok())
-                    .unwrap_or(8080);
-
-                let username = std::env::var("RCLONE_MANAGER_USER").ok();
-                let password = std::env::var("RCLONE_MANAGER_PASS").ok();
-
-                let config = ServerConfig {
-                    host,
-                    port,
-                    username,
-                    password,
-                    tls_cert: None,
-                    tls_key: None,
-                };
+                let args = cli_args;
 
                 info!(
                     "🚀 Initializing Web Server on {}:{}...",
-                    config.host, config.port
+                    args.host, args.port
                 );
-                if config.username.is_some() {
+                if args.user.is_some() {
                     info!("🔐 Basic authentication enabled");
+                }
+                if args.tls_cert.is_some() && args.tls_key.is_some() {
+                    info!("🔒 TLS/HTTPS enabled");
                 }
 
                 tauri::async_runtime::spawn(async move {
                     if let Err(e) = start_web_server(
                         web_handle,
-                        config.host,
-                        config.port,
-                        config.username.zip(config.password),
-                        config.tls_cert,
-                        config.tls_key,
+                        args.host,
+                        args.port,
+                        args.user.zip(args.pass),
+                        args.tls_cert,
+                        args.tls_key,
                     )
                     .await
                     {

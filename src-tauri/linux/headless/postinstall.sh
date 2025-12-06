@@ -20,6 +20,9 @@ set -e
 BINARY_NAME="rclone-manager-headless-bin"
 BINARY_PATH="/usr/bin/$BINARY_NAME"
 
+# --- Disable Hardware Acceleration for Headless WebKit ---
+export WEBKIT_DISABLE_COMPOSITING_MODE=1
+
 needs_xvfb() {
     if [ -z "$DISPLAY" ] || ! xset q &>/dev/null 2>&1; then
         return 0
@@ -36,6 +39,7 @@ find_available_display() {
 }
 
 cleanup() {
+    # Kill Xvfb and DBus if we started them
     if [ ! -z "$XVFB_PID" ] && ps -p $XVFB_PID > /dev/null 2>&1; then
         kill $XVFB_PID 2>/dev/null || true
     fi
@@ -51,13 +55,18 @@ if needs_xvfb; then
         DISPLAY_NUM=$(find_available_display)
         export DISPLAY=":$DISPLAY_NUM"
         rm -f "/tmp/.X${DISPLAY_NUM}-lock" "/tmp/.X11-unix/X${DISPLAY_NUM}" 2>/dev/null || true
-        Xvfb $DISPLAY -screen 0 1024x768x24 -nolisten tcp &
+        
+        # Start Xvfb
+        # Redirect stderr to /dev/null to hide the noisy xkbcomp warnings if you prefer
+        Xvfb $DISPLAY -screen 0 1024x768x24 -nolisten tcp >/dev/null 2>&1 &
         XVFB_PID=$!
         sleep 2
+        
         if ! ps -p $XVFB_PID > /dev/null 2>&1; then
             echo "Error: Failed to start Xvfb" >&2
             exit 1
         fi
+        echo "Xvfb started on $DISPLAY"
     fi
 fi
 
@@ -66,9 +75,11 @@ if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
         eval $(dbus-launch --sh-syntax)
         export DBUS_SESSION_BUS_ADDRESS
         export DBUS_SESSION_BUS_PID
+        echo "DBus session started"
     fi
 fi
 
+echo "Launching $BINARY_NAME..."
 exec "$BINARY_PATH" "$@"
 WRAPPER_EOF
 

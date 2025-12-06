@@ -231,10 +231,27 @@ pub mod app_updates {
     }
 
     fn is_release_for_channel(release: &github_client::Release, channel: &str) -> bool {
+        let tag = release.tag_name.to_lowercase();
+
+        // 1. HEADLESS BUILD: Must have "headless-" prefix
+        // This block only exists when compiling with "web-server"
+        #[cfg(feature = "web-server")]
+        if !tag.starts_with("headless-") {
+            return false;
+        }
+
+        // 2. DESKTOP BUILD: Must NOT have "headless-" prefix
+        // This block only exists when compiling WITHOUT "web-server"
+        #[cfg(not(feature = "web-server"))]
+        if tag.starts_with("headless-") {
+            return false;
+        }
+
+        // 3. Filter by Channel (Stable vs Beta)
         match channel {
-            "stable" => !release.prerelease && !release.tag_name.to_lowercase().contains("beta"),
-            "beta" => release.prerelease || release.tag_name.to_lowercase().contains("beta"),
-            _ => !release.prerelease && !release.tag_name.to_lowercase().contains("beta"),
+            "stable" => !release.prerelease && !tag.contains("beta"),
+            "beta" => release.prerelease || tag.contains("beta"),
+            _ => !release.prerelease && !tag.contains("beta"),
         }
     }
 

@@ -109,6 +109,12 @@ export class VfsControlPanelComponent implements OnInit {
   isDetailRow = (_: number, row: VfsQueueItem): boolean => this.showDelaySlider() === row.id;
 
   constructor() {
+    // React to remote name changes
+    effect(() => {
+      this.remoteName();
+      this.loadAll();
+    });
+
     // Sync poll interval input when selected VFS changes
     effect(() => {
       const vfs = this.selectedVfs();
