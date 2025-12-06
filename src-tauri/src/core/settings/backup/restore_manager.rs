@@ -5,6 +5,7 @@ use crate::{
     },
     rclone::{commands::remote::create_remote, queries::get_rclone_config_file},
     utils::types::{
+        all_types::RcloneState,
         backup_types::BackupManifest,
         events::{REMOTE_PRESENCE_CHANGED, SYSTEM_SETTINGS_CHANGED},
         settings::SettingsState,
@@ -287,7 +288,7 @@ async fn restore_remote_from_file(path: &Path, app_handle: &AppHandle) -> Result
         app_handle.clone(),
         remote_name.clone(),
         config,
-        app_handle.state::<crate::RcloneState>(),
+        app_handle.state::<RcloneState>(),
     )
     .await
     .map_err(|e| format!("Failed to create remote '{}': {}", remote_name, e))?;

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { FLAG_TYPES, FlagType, RcConfigOption } from '@app/types';
 import { TauriBaseService } from '../core/tauri-base.service';
+import { staticFlagDefinitions } from './flag-definitions';
 
 // Define the shape of the grouped data returned by our new Rust command
 type GroupedRCloneOptions = Record<string, Record<string, RcConfigOption[]>>;
@@ -60,8 +61,6 @@ export class FlagConfigService extends TauriBaseService {
   async loadAllFlagFields(): Promise<Record<FlagType, RcConfigOption[]>> {
     const result: Partial<Record<FlagType, RcConfigOption[]>> = {};
 
-    // Some flag types (bisync, move) don't have dedicated backend commands.
-    // Reuse the 'copy' flags for those since their options largely overlap.
     const commandTypeMap: Record<FlagType, FlagType> = {
       mount: 'mount',
       copy: 'copy',
@@ -69,14 +68,16 @@ export class FlagConfigService extends TauriBaseService {
       filter: 'filter',
       vfs: 'vfs',
       backend: 'backend',
-      bisync: 'copy',
-      move: 'copy',
+      bisync: 'bisync',
+      move: 'move',
     };
 
     await Promise.all(
       FLAG_TYPES.map(async type => {
         const cmdType = commandTypeMap[type] || type;
-        result[type] = await this.loadFlagFields(cmdType);
+        const dynamicFlags = await this.loadFlagFields(cmdType);
+        const staticFlags = staticFlagDefinitions[type] || [];
+        result[type] = [...staticFlags, ...dynamicFlags];
       })
     );
     return result as Record<FlagType, RcConfigOption[]>;

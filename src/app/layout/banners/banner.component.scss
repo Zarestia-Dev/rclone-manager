@@ -8,24 +8,53 @@ mat-toolbar {
   padding: var(--banner-padding);
   font-weight: 600;
   font-size: 16px;
+  gap: 8px;
+
+  .banner-message {
+    font-size: 14px;
+  }
+
+  .banner-subtitle {
+    font-size: 0.8rem;
+    opacity: 0.8;
+  }
 
   &.development-banner {
     background: linear-gradient(135deg, var(--warn-color), var(--orange));
-    gap: 8px;
+  }
 
-    .banner-message {
-      font-size: 14px;
-    }
+  &.flatpak-warning-banner {
+    background-color: var(--banner-background);
 
-    .banner-subtitle {
-      font-size: 11px;
-      opacity: 0.9;
-      margin-left: 8px;
-      font-weight: 400;
+    mat-icon {
+      height: 20px;
+      width: 20px;
     }
   }
 
   &.metered-banner {
     background-color: var(--banner-background);
+  }
+
+  // CSS-based slide toggle animation
+  &.slide-toggle-banner {
+    display: grid;
+    grid-template-rows: 0fr;
+    max-height: 0;
+    padding: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition:
+      grid-template-rows 0.3s ease-in-out,
+      max-height 0.3s ease-in-out,
+      padding 0.3s ease-in-out,
+      opacity 0.3s ease-in-out;
+
+    &.visible {
+      grid-template-rows: 1fr;
+      max-height: 44px;
+      padding: var(--banner-padding);
+      opacity: 1;
+    }
   }
 }

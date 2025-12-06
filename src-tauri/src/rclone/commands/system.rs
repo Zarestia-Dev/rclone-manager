@@ -4,13 +4,11 @@ use std::{
     sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
-use tauri::{AppHandle, Emitter, State};
-use tauri_plugin_shell::process::CommandChild;
+use tauri::{AppHandle, Emitter, Manager, State};
 use tokio::net::TcpStream;
-use tokio::{sync::Mutex, time::sleep};
+use tokio::time::sleep;
 
 use crate::{
-    RcloneState,
     rclone::state::engine::ENGINE_STATE,
     utils::{
         rclone::{
@@ -18,15 +16,11 @@ use crate::{
             process_common::create_rclone_command,
         },
         types::{
-            all_types::{BandwidthLimitResponse, SENSITIVE_KEYS},
+            all_types::{BandwidthLimitResponse, RcloneState, SENSITIVE_KEYS},
             events::{BANDWIDTH_LIMIT_CHANGED, RCLONE_CONFIG_UNLOCKED},
         },
     },
 };
-
-lazy_static::lazy_static! {
-    static ref OAUTH_PROCESS: Arc<Mutex<Option<CommandChild>>> = Arc::new(Mutex::new(None));
-}
 
 #[derive(Debug)]
 pub enum RcloneError {
@@ -88,7 +82,8 @@ pub fn redact_sensitive_values(
         .collect()
 }
 pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
-    let mut guard = OAUTH_PROCESS.lock().await;
+    let state = app.state::<RcloneState>();
+    let mut guard = state.oauth_process.lock().await;
     let port = ENGINE_STATE.get_oauth().1;
 
     // Check if process is already running (in memory or port open)
@@ -153,7 +148,7 @@ pub async fn ensure_oauth_process(app: &AppHandle) -> Result<(), RcloneError> {
 pub async fn quit_rclone_oauth(state: State<'_, RcloneState>) -> Result<(), String> {
     info!("🛑 Quitting Rclone OAuth process");
 
-    let mut guard = OAUTH_PROCESS.lock().await;
+    let mut guard = state.oauth_process.lock().await;
     let port = ENGINE_STATE.get_oauth().1;
 
     let mut found_process = false;
@@ -244,7 +239,7 @@ pub async fn unlock_rclone_config(
 ) -> Result<(), String> {
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, config::UNLOCK);
 
-    let payload = json!({ "config_password": password });
+    let payload = json!({ "configPassword": password });
 
     let response = state
         .client

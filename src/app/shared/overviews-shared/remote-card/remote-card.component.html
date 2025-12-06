@@ -1,43 +1,43 @@
-<mat-card class="remote-card" [ngClass]="remoteCardClasses" (click)="onRemoteClick()">
+<mat-card class="remote-card" [ngClass]="remoteCardClasses()" (click)="onRemoteClick()">
   <mat-card-header class="remote-header">
     <div class="remote-info">
       <div class="icon-container">
         <mat-icon
-          [svgIcon]="iconService.getIconName(remote.remoteSpecs.type)"
+          [svgIcon]="iconService.getIconName(remote().remoteSpecs.type)"
           class="remote-type-icon"
         ></mat-icon>
       </div>
       <div class="remote-details">
-        <h4 class="remote-name" [matTooltip]="remote.remoteSpecs.name" matTooltipShowDelay="500">
-          {{ remote.remoteSpecs.name }}
+        <h4 class="remote-name" [matTooltip]="remote().remoteSpecs.name" matTooltipShowDelay="500">
+          {{ remote().remoteSpecs.name }}
         </h4>
-        <span class="remote-type">{{ remote.remoteSpecs.type | titlecase }}</span>
+        <span class="remote-type">{{ remote().remoteSpecs.type | titlecase }}</span>
       </div>
     </div>
 
     <!-- Status indicators showing actual remote states -->
     <div class="remote-status-indicators" aria-hidden="true">
-      @if (remote.mountState?.mounted) {
+      @if (remote().mountState?.mounted) {
         <div class="status-badge mounted">
           <mat-icon svgIcon="mount" class="status-icon" aria-label="Mounted"></mat-icon>
         </div>
       }
-      @if (remote.syncState?.isOnSync) {
+      @if (remote().syncState?.isOnSync) {
         <div class="status-badge syncing">
           <mat-icon svgIcon="refresh" class="status-icon" aria-label="Syncing"></mat-icon>
         </div>
       }
-      @if (remote.copyState?.isOnCopy) {
+      @if (remote().copyState?.isOnCopy) {
         <div class="status-badge copying">
           <mat-icon svgIcon="copy" class="status-icon" aria-label="Copying"></mat-icon>
         </div>
       }
-      @if (remote.moveState?.isOnMove) {
+      @if (remote().moveState?.isOnMove) {
         <div class="status-badge moving">
           <mat-icon svgIcon="move" class="status-icon" aria-label="Moving"></mat-icon>
         </div>
       }
-      @if (remote.bisyncState?.isOnBisync) {
+      @if (remote().bisyncState?.isOnBisync) {
         <div class="status-badge bisyncing">
           <mat-icon svgIcon="right-left" class="status-icon" aria-label="BiSyncing"></mat-icon>
         </div>
@@ -47,7 +47,7 @@
 
   <mat-card-content class="remote-content">
     <app-quick-action-buttons
-      [buttons]="getActionButtons()"
+      [buttons]="actionButtons()"
       (buttonClick)="onActionButtonClick($event)"
     >
     </app-quick-action-buttons>

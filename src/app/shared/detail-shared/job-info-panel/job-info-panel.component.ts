@@ -10,15 +10,15 @@ import { JobInfoConfig } from '../../types';
   imports: [CommonModule, MatCardModule, MatIconModule],
   styleUrls: ['./job-info-panel.component.scss'],
   template: `
-    <mat-card class="detail-panel job-info-panel">
-      <mat-card-header class="panel-header">
-        <mat-card-title class="panel-title-content">
-          <mat-icon svgIcon="info" class="panel-icon"></mat-icon>
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon svgIcon="info"></mat-icon>
           <span>Job Information</span>
         </mat-card-title>
       </mat-card-header>
 
-      <mat-card-content class="panel-content">
+      <mat-card-content>
         <div class="job-details-grid">
           <div class="job-detail-item">
             <div class="detail-label">Job Type</div>

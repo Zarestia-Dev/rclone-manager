@@ -1,7 +1,6 @@
-use crate::RcloneState;
 use crate::rclone::commands::sync::{BisyncParams, CopyParams, MoveParams, SyncParams};
 use crate::rclone::state::scheduled_tasks::ScheduledTasksCache;
-use crate::utils::types::all_types::JobCache;
+use crate::utils::types::all_types::{JobCache, RcloneState};
 use crate::utils::types::events::{SCHEDULED_TASK_COMPLETED, SCHEDULED_TASK_ERROR};
 use crate::utils::types::scheduled_task::{ScheduledTask, TaskStatus, TaskType};
 use chrono::{Local, Utc};

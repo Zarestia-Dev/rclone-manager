@@ -1,41 +1,50 @@
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin status-container($bg-color, $border-color) {
+  background-color: $bg-color;
+  border: 1px solid $border-color;
+}
+
+// =============================================
+// MAIN LAYOUT
+// =============================================
+
 .general-overview {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--section-gap);
   margin: 0 auto;
   padding: var(--panel-padding);
 
-  // 1.1 OVERVIEW HEADER
   .overview-header {
     text-align: center;
     margin-bottom: var(--panel-padding);
 
-    .header-content {
-      .title-section {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 16px;
-        margin-bottom: 16px;
+    .title-section {
+      @include flex-center;
+      gap: 16px;
+      margin-bottom: 16px;
 
-        .app-icon {
-          width: var(--icon-size-xl);
-          height: var(--icon-size-xl);
-        }
+      .app-icon {
+        width: var(--icon-size-xl);
+        height: var(--icon-size-xl);
+      }
 
-        h2 {
-          font-size: clamp(20px, 4vw, 32px);
-          font-weight: 300;
-          margin: 0;
-          color: var(--app-text-color);
-          letter-spacing: -0.5px;
-          text-align: center;
-        }
+      h2 {
+        font-size: clamp(20px, 4vw, 32px);
+        font-weight: 300;
+        margin: 0;
+        color: var(--app-text-color);
+        letter-spacing: -0.5px;
       }
     }
   }
 
-  // 1.2 OVERVIEW CONTENT
   .overview-content {
     gap: var(--panel-padding);
     max-width: 1200px;
@@ -46,28 +55,23 @@
 }
 
 // =============================================
-// 3. EXPANSION PANELS
+// EXPANSION PANELS
 // =============================================
 
-// 3.1 Bandwidth Limit Panel (.bandwidth-panel)
+// Bandwidth Panel
 .bandwidth-panel {
-  // 3.1.2 Bandwidth Error State
   .bandwidth-error {
-    display: flex;
-    align-items: center;
+    @include flex-center;
     gap: 12px;
     padding: 16px;
     border-radius: 8px;
     margin-top: 16px;
-    background-color: rgba(var(--warn-color-rgb), 0.1);
-    border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+    @include status-container(rgba(var(--warn-color-rgb), 0.1), rgba(var(--warn-color-rgb), 0.2));
   }
 
-  // 3.1.3 Bandwidth Content
   .bandwidth-content {
     margin-top: 16px;
 
-    // 3.1.3.1 Bandwidth Status
     .bandwidth-status {
       display: flex;
       align-items: center;
@@ -90,8 +94,7 @@
       }
 
       &.limited {
-        background-color: rgba(var(--yellow-rgb), 0.05);
-        border: 1px solid rgba(var(--yellow-rgb), 0.3);
+        @include status-container(rgba(var(--yellow-rgb), 0.05), rgba(var(--yellow-rgb), 0.3));
 
         .status-indicator {
           background: var(--yellow);
@@ -100,8 +103,10 @@
       }
 
       &.unlimited {
-        background-color: rgba(var(--primary-color-rgb), 0.05);
-        border: 1px solid rgba(var(--primary-color-rgb), 0.3);
+        @include status-container(
+          rgba(var(--primary-color-rgb), 0.05),
+          rgba(var(--primary-color-rgb), 0.3)
+        );
 
         .status-indicator {
           background: var(--primary-color);
@@ -110,7 +115,6 @@
       }
     }
 
-    // 3.1.3.2 Bandwidth Details
     .bandwidth-details {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -119,9 +123,8 @@
   }
 }
 
-// 3.2 System Information Panel (.system-info-panel)
+// System Info Panel
 .system-info-panel {
-  // 3.2.2 System Info Grid
   .info-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -130,30 +133,20 @@
   }
 }
 
-.loading {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 8px;
-  background-color: var(--surface-overlay);
-}
-
-// 3.3 Global Job Information Panel (.job-info-panel)
+// Job Info Panel
 .job-info-panel {
-  // 3.3.1 Job Grid Container
   .job-grid {
     display: flex;
     flex-direction: column;
     gap: 16px;
     margin-top: 16px;
 
-    // 3.3.1.1 Job Progress Section
     .job-progress-section {
       background-color: rgba(var(--secondary-background), 0.02);
       border-radius: 8px;
       padding: 16px;
       border: 1px solid rgba(var(--app-text-color), 0.05);
+
       .progress-header {
         display: flex;
         justify-content: space-between;
@@ -175,24 +168,17 @@
       }
     }
 
-    // 3.3.1.2 Job Stats Grid
     .job-stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 16px;
     }
 
-    // 3.3.1.3 Error Section
     .error-section {
       margin-top: 8px;
       padding: 12px;
-      background-color: rgba(var(--warn-color-rgb), 0.1);
-      border: 1px solid rgba(var(--warn-color-rgb), 0.2);
+      @include status-container(rgba(var(--warn-color-rgb), 0.1), rgba(var(--warn-color-rgb), 0.2));
       border-radius: 8px;
-      overflow: hidden;
-      display: flex;
-      align-items: flex-start;
-      flex-direction: column;
 
       .error-message {
         display: flex;
@@ -216,10 +202,8 @@
       }
     }
 
-    // 3.3.1.4 No Jobs Message
     .no-jobs-message {
-      display: flex;
-      align-items: center;
+      @include flex-center;
       gap: 12px;
       padding: 16px;
       background-color: var(--surface-overlay);
@@ -229,165 +213,16 @@
 }
 
 // =============================================
-// 4. SHARED/UTILITY STYLES
-// =============================================
-
-// 4.1 Panel Title Content (used across expansion panels)
-.panel-title-content {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-weight: 500;
-}
-
-// 4.2 Info Items (used in system info and job stats)
-.info-item,
-.detail-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  background-color: var(--surface-overlay);
-  padding: 12px;
-  border-radius: 8px;
-
-  .label {
-    font-size: clamp(10px, 2vw, 12px);
-    color: var(--app-text-color);
-    opacity: 0.7;
-  }
-
-  .value {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 500;
-    font-size: clamp(14px, 2.5vw, 16px);
-    min-width: 0;
-
-    // Status-based coloring
-    &.success {
-      color: var(--primary-color);
-    }
-
-    &.error {
-      color: var(--warn-color);
-    }
-
-    &.inactive {
-      color: var(--secondary-text-color);
-    }
-  }
-}
-
-// 4.3 Status Indicators
-.status-dot,
-.status-indicator-small {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: var(--secondary-text-color);
-
-  &.active {
-    background-color: var(--primary-color);
-  }
-
-  &.error {
-    background-color: var(--warn-color);
-  }
-
-  &.inactive {
-    background-color: var(--secondary-text-color);
-  }
-}
-
-.status-indicator-small {
-  display: inline-block;
-  animation: breathing 3s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-// 4.4 Active Jobs Indicator
-.active-jobs-indicator {
-  display: flex;
-  align-items: center;
-  border: 1px solid rgba(var(--primary-color-rgb), 0.25);
-  color: var(--primary-color);
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: clamp(10px, 2vw, 12px);
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(var(--primary-color-rgb), 0.2);
-}
-
-// 4.5 Error Text
-.error-text {
-  color: var(--warn-color);
-  font-weight: 500;
-}
-
-// =============================================
-// 5. RESPONSIVE STYLES
-// =============================================
-
-// 5.1 Tablet Styles (max-width: 768px)
-@media (max-width: 768px) {
-  // General overview adjustments
-  .general-overview {
-    padding: var(--panel-padding-mobile, 16px);
-    gap: var(--section-gap-mobile, 12px);
-
-    .overview-header {
-      margin-bottom: var(--panel-padding-mobile, 16px);
-
-      .title-section {
-        gap: 12px;
-
-        mat-icon {
-          width: 28px;
-          height: 28px;
-        }
-
-        h2 {
-          font-size: clamp(18px, 5vw, 24px);
-        }
-      }
-    }
-  }
-}
-
-// 5.2 Mobile Styles (max-width: 480px)
-@media (max-width: 480px) {
-  .general-overview {
-    padding: 12px;
-
-    .overview-header .title-section {
-      flex-direction: column;
-      gap: 8px;
-
-      h2 {
-        font-size: clamp(16px, 6vw, 20px);
-      }
-    }
-  }
-}
-
-// =============================================
-// 6. SCHEDULED TASKS PANEL
+// SCHEDULED TASKS PANEL
 // =============================================
 
 .scheduled-tasks-panel {
   .no-tasks-message {
-    display: flex;
-    align-items: center;
+    @include flex-center;
     gap: 12px;
     padding: 24px;
     color: var(--secondary-text-color);
-    justify-content: center;
     text-align: center;
-
-    mat-icon {
-      color: var(--secondary-text-color);
-    }
   }
 
   .tasks-grid {
@@ -404,7 +239,6 @@
     box-shadow: var(--shadow-light);
     border: 1px solid var(--theme-border);
     animation: fadeIn 0.6s ease-out;
-    animation-fill-mode: both;
     will-change: transform, box-shadow;
 
     &:hover {
@@ -433,44 +267,22 @@
         min-width: 0;
 
         .task-icon-wrapper {
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          @include flex-center;
           width: 40px;
           height: 40px;
           border-radius: 10px;
           background: rgba(var(--primary-color-rgb), 0.15);
           flex-shrink: 0;
 
-          &.sync-color {
-            background: rgba(var(--primary-color-rgb), 0.1);
+          @each $type, $color in ("sync", primary-color), ("copy", yellow), ("move", orange),
+            ("bisync", purple)
+          {
+            &.#{$type}-color {
+              background: rgba(var(--#{$color}-rgb), 0.1);
 
-            .task-type-icon {
-              color: var(--primary-color);
-            }
-          }
-
-          &.copy-color {
-            background: rgba(var(--yellow-rgb), 0.1);
-
-            .task-type-icon {
-              color: var(--yellow);
-            }
-          }
-
-          &.move-color {
-            background: rgba(var(--orange-rgb), 0.1);
-
-            .task-type-icon {
-              color: var(--orange);
-            }
-          }
-
-          &.bisync-color {
-            background: rgba(var(--purple-rgb), 0.1);
-
-            .task-type-icon {
-              color: var(--purple);
+              .task-type-icon {
+                color: var(--#{$color});
+              }
             }
           }
 
@@ -518,29 +330,13 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
 
-            &.enabled {
-              background: rgba(var(--primary-color-rgb), 0.2);
-              color: var(--primary-color);
-            }
-
-            &.disabled {
-              background: rgba(var(--secondary-text-color-rgb), 0.2);
-              color: var(--secondary-text-color);
-            }
-
-            &.running {
-              background: rgba(var(--accent-color-rgb), 0.2);
-              color: var(--accent-color);
-            }
-
-            &.failed {
-              background: rgba(var(--warn-color-rgb), 0.2);
-              color: var(--warn-color);
-            }
-
-            &.stopping {
-              background-color: rgba(var(--orange-rgb), 0.1);
-              color: var(--orange);
+            @each $status, $color in ("enabled", primary-color), ("disabled", secondary-text-color),
+              ("running", accent-color), ("failed", warn-color), ("stopping", orange)
+            {
+              &.#{$status} {
+                background: rgba(var(--#{$color}-rgb), 0.2);
+                color: var(--#{$color});
+              }
             }
           }
         }
@@ -643,13 +439,13 @@
       }
     }
   }
+
   .task-error {
     display: flex;
     align-items: flex-start;
     gap: 8px;
     padding: 8px 12px;
-    background: rgba(var(--warn-color-rgb), 0.1);
-    border: 1px solid rgba(var(--warn-color-rgb), 0.3);
+    @include status-container(rgba(var(--warn-color-rgb), 0.1), rgba(var(--warn-color-rgb), 0.3));
     border-radius: 6px;
 
     .error-icon {
@@ -671,13 +467,16 @@
       -webkit-box-orient: vertical;
     }
   }
+
   .task-running-badge {
     display: flex;
     align-items: center;
     gap: 4px;
     padding: 4px 8px;
-    background: rgba(var(--accent-color-rgb), 0.2);
-    border: 1px solid rgba(var(--accent-color-rgb), 0.3);
+    @include status-container(
+      rgba(var(--accent-color-rgb), 0.2),
+      rgba(var(--accent-color-rgb), 0.3)
+    );
     border-radius: 12px;
     font-size: 10px;
     font-weight: 600;
@@ -688,16 +487,234 @@
       height: 12px;
     }
   }
+}
 
-  // Responsive adjustments
-  @media (max-width: 768px) {
-    .tasks-grid {
-      grid-template-columns: 1fr;
+// =============================================
+// RUNNING SERVES PANEL
+// =============================================
+
+.serves-panel {
+  .green {
+    color: var(--primary-color);
+  }
+
+  .no-serves-message {
+    @include flex-center;
+    gap: 12px;
+    padding: 24px;
+    color: var(--secondary-text-color);
+    text-align: center;
+  }
+
+  .serves-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+}
+
+// =============================================
+// DRAG & DROP LAYOUT EDITOR
+// =============================================
+
+.draggable-panel-wrapper {
+  border-radius: var(--card-border-radius);
+  border: 2px dashed transparent;
+  padding: 0;
+  transition:
+    border-color 0.3s ease,
+    background-color 0.3s ease,
+    padding 0.3s ease,
+    margin 0.3s ease;
+
+  &.editing {
+    border-color: rgba(var(--primary-color-rgb), 0.4);
+    background-color: rgba(var(--primary-color-rgb), 0.03);
+    padding: 16px;
+    margin-bottom: 24px;
+
+    &:hover {
+      border-color: var(--primary-color);
+      background-color: rgba(var(--primary-color-rgb), 0.06);
+    }
+  }
+
+  .panel-content-wrapper {
+    transition:
+      opacity 0.3s ease,
+      filter 0.3s ease,
+      transform 0.3s ease;
+
+    &.panel-hidden-visual {
+      opacity: 0.4;
+      filter: grayscale(100%);
+      transform: scale(0.98);
     }
   }
 }
 
-.active-tasks-indicator {
+.panel-edit-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--secondary-background);
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  box-shadow: var(--shadow-light);
+  overflow: hidden;
+
+  .panel-label {
+    font-weight: 600;
+    font-size: 14px;
+    flex: 1;
+    color: var(--app-text-color);
+  }
+
+  .visibility-toggle {
+    display: flex;
+    align-items: center;
+
+    mat-slide-toggle {
+      transform: scale(0.8);
+    }
+  }
+}
+
+.custom-placeholder {
+  background: rgba(var(--primary-color-rgb), 0.05);
+  border: 2px dashed var(--primary-color);
+  border-radius: 16px;
+  min-height: 80px;
+  margin-bottom: 16px;
+  transition: transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.cdk-drag-preview {
+  box-sizing: border-box;
+  border-radius: 16px;
+  box-shadow: var(--shadow-elevated);
+  background-color: var(--app-background);
+  padding: 0;
+
+  .panel-edit-controls {
+    display: flex !important;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+    border-bottom: 1px solid var(--theme-border);
+  }
+
+  .panel-content-wrapper {
+    display: none;
+  }
+
+  .draggable-panel-wrapper {
+    padding: 0 !important;
+    border: 2px solid var(--primary-color) !important;
+    background: var(--secondary-background);
+  }
+}
+
+.cdk-drag-animating {
+  transition: transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.cdk-drop-list-dragging .draggable-panel-wrapper:not(.cdk-drag-placeholder) {
+  transition: transform 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+// =============================================
+// SHARED/UTILITY STYLES
+// =============================================
+
+.panel-title-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 500;
+}
+
+.info-item,
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background-color: var(--surface-overlay);
+  padding: 12px;
+  border-radius: 8px;
+
+  .label {
+    font-size: clamp(10px, 2vw, 12px);
+    color: var(--app-text-color);
+    opacity: 0.7;
+  }
+
+  .value {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    font-size: clamp(14px, 2.5vw, 16px);
+    min-width: 0;
+
+    &.success {
+      color: var(--primary-color);
+    }
+
+    &.error {
+      color: var(--warn-color);
+    }
+
+    &.inactive {
+      color: var(--secondary-text-color);
+    }
+  }
+}
+
+.status-dot,
+.status-indicator-small {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--secondary-text-color);
+
+  &.active {
+    background-color: var(--primary-color);
+  }
+
+  &.error {
+    background-color: var(--warn-color);
+  }
+
+  &.inactive {
+    background-color: var(--secondary-text-color);
+  }
+}
+
+.status-indicator-small {
+  display: inline-block;
+  animation: breathing 3s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.loading {
+  @include flex-center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  background-color: var(--surface-overlay);
+}
+
+.error-text {
+  color: var(--warn-color);
+  font-weight: 500;
+}
+
+.active-jobs-indicator,
+.active-tasks-indicator,
+.active-serves-indicator {
   display: flex;
   align-items: center;
   border: 1px solid rgba(var(--primary-color-rgb), 0.25);
@@ -709,50 +726,64 @@
   box-shadow: 0 2px 4px rgba(var(--primary-color-rgb), 0.2);
 }
 
-// ============================================================================
-// RUNNING SERVES PANEL
-// ============================================================================
-.serves-panel {
-  .green {
-    color: var(--primary-color);
-  }
+.active-serves-indicator {
+  border-color: rgba(var(--primary-color-rgb), 0.35);
+  box-shadow: 0 2px 4px rgba(var(--primary-color-rgb), 0.25);
+}
 
-  .no-serves-message {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 24px;
-    color: var(--secondary-text-color);
-    justify-content: center;
-    text-align: center;
+.layout-actions {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 12px;
+  flex-direction: column;
+}
 
-    mat-icon {
-      color: var(--secondary-text-color);
+// =============================================
+// RESPONSIVE STYLES
+// =============================================
+
+@media (max-width: 768px) {
+  .general-overview {
+    padding: var(--panel-padding-mobile, 16px);
+    gap: var(--section-gap-mobile, 12px);
+
+    .overview-header {
+      margin-bottom: var(--panel-padding-mobile, 16px);
+
+      .title-section {
+        gap: 12px;
+
+        mat-icon {
+          width: 28px;
+          height: 28px;
+        }
+
+        h2 {
+          font-size: clamp(18px, 5vw, 24px);
+        }
+      }
     }
   }
 
-  .serves-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 16px;
-  }
-
-  // Responsive adjustments
-  @media (max-width: 768px) {
-    .serves-grid {
-      grid-template-columns: 1fr;
-    }
+  .scheduled-tasks-panel .tasks-grid,
+  .serves-panel .serves-grid {
+    grid-template-columns: 1fr;
   }
 }
 
-.active-serves-indicator {
-  display: flex;
-  align-items: center;
-  border: 1px solid rgba(var(--primary-color-rgb), 0.35);
-  color: var(--primary-color);
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: clamp(10px, 2vw, 12px);
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(var(--primary-color-rgb), 0.25);
+@media (max-width: 480px) {
+  .general-overview {
+    padding: 12px;
+
+    .overview-header .title-section {
+      flex-direction: column;
+      gap: 8px;
+
+      h2 {
+        font-size: clamp(16px, 6vw, 20px);
+      }
+    }
+  }
 }

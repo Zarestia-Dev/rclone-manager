@@ -1,21 +1,22 @@
-<mat-card class="remotes-panel" [ngClass]="panelClass">
+<mat-card class="remotes-panel" [ngClass]="panelClass()">
   <mat-card-header class="remotes-header">
     <mat-card-title class="panel-title-content">
-      <mat-icon [svgIcon]="icon" [ngClass]="iconClass"></mat-icon>
-      <span>{{ title }}</span>
-      <span class="remote-count">{{ count }}</span>
+      <mat-icon [svgIcon]="icon()" [ngClass]="iconClass()"></mat-icon>
+      <span>{{ title() }}</span>
+      <span class="remote-count">{{ count() }}</span>
     </mat-card-title>
   </mat-card-header>
 
   <mat-card-content class="remotes-content">
     <div class="remotes-grid">
-      @for (remote of remotes; track remote.remoteSpecs.name) {
+      @for (remote of remotes(); track remote.remoteSpecs.name) {
         <app-remote-card
           [remote]="remote"
-          [mode]="mode"
+          [mode]="mode()"
           [actionState]="getActionState(remote.remoteSpecs.name)"
-          [primaryActionLabel]="primaryActionLabel"
-          [activeIcon]="activeIcon"
+          [primaryActionLabel]="primaryActionLabel()"
+          [activeIcon]="activeIcon()"
+          [primaryActions]="primaryActions()"
           (remoteClick)="onRemoteSelected($event)"
           (openInFiles)="onOpenInFiles($event)"
           (startJob)="startJob.emit($event)"

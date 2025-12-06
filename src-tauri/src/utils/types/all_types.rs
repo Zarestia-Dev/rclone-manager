@@ -7,6 +7,7 @@ use std::{
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tauri_plugin_shell::process::CommandChild;
 use tokio::sync::RwLock;
 
 pub struct RcloneState {
@@ -18,6 +19,12 @@ pub struct RcloneState {
     pub rclone_path: Arc<std::sync::RwLock<PathBuf>>,
     pub restrict_mode: Arc<std::sync::RwLock<bool>>,
     pub terminal_apps: Arc<std::sync::RwLock<Vec<String>>>,
+    // New flag for memory optimization
+    pub destroy_window_on_close: Arc<std::sync::RwLock<bool>>,
+    pub is_restart_required: AtomicBool,
+    pub is_update_in_progress: AtomicBool,
+    // OAuth process state
+    pub oauth_process: tokio::sync::Mutex<Option<CommandChild>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -35,9 +42,9 @@ pub struct ServeInstance {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DiskUsage {
-    pub free: String,
-    pub used: String,
-    pub total: String,
+    pub free: i64,
+    pub used: i64,
+    pub total: i64,
 }
 
 #[derive(Debug, Deserialize)]
@@ -63,6 +70,12 @@ pub struct RcloneCoreVersion {
     pub go_version: String,
     pub os: String,
     pub arch: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub os_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub os_kernel: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub os_arch: Option<String>,
     pub is_beta: bool,
     pub is_git: bool,
     pub linking: String,
@@ -179,6 +192,8 @@ pub struct DynamicLogger;
 #[derive(serde::Deserialize)]
 pub struct JobResponse {
     pub jobid: u64,
+    // #[serde(rename = "executeId")]
+    // pub execute_id: String,
 }
 
 #[derive(Clone, Serialize)]

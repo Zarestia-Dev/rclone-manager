@@ -21,7 +21,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 var(--space-md);
-    background-color: var(--about-dialog-button-color);
+    background-color: var(--secondary-background);
     flex-direction: row-reverse !important;
     height: 54px;
     border-radius: var(--radius-md);
@@ -38,6 +38,10 @@
 
     .about-item {
       border-radius: 0;
+    }
+
+    mat-divider {
+      margin: 0 !important;
     }
   }
 
@@ -360,7 +364,23 @@
 
     .update-buttons {
       display: flex;
+      justify-content: center;
       gap: var(--space-sm);
+    }
+
+    &.restart-required {
+      border-color: var(--warn-color);
+      background: rgba(var(--warn-color-rgb), 0.05);
+
+      .update-header {
+        mat-icon {
+          color: var(--warn-color);
+        }
+
+        h4 {
+          color: var(--warn-color) !important;
+        }
+      }
     }
   }
 
@@ -389,10 +409,6 @@
 
       &:hover {
         box-shadow: var(--shadow-elevated);
-      }
-
-      mat-divider {
-        margin: var(--space-lg) 0;
       }
     }
 

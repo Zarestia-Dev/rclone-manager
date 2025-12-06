@@ -1,0 +1,316 @@
+.transfer-table-container {
+  background: var(--app-background);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  .transfer-table {
+    // STICKY HEADER CONFIGURATION
+    .mat-mdc-header-row {
+      background-color: var(--secondary-background); // Crucial for sticky header opacity
+    }
+
+    .mat-mdc-header-cell {
+      color: var(--app-text-color);
+      font-weight: 600;
+      font-size: var(--font-size-sm);
+      padding: var(--space-sm) var(--space-md);
+      background-color: inherit; // Inherit from row to ensure opacity covers scrolling content
+      white-space: nowrap;
+      border-bottom: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+
+      // Fix for sticky header z-index issues
+      z-index: 10 !important;
+    }
+
+    .transfer-row {
+      transition: background-color 0.2s ease;
+      border-bottom: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+      height: 50px; // Fixed height for consistency
+
+      &:hover {
+        background: rgba(var(--app-text-color-rgb), var(--hover-opacity));
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      // --- STATUS INDICATORS (Left Border) ---
+
+      // Active
+      &.active {
+        border-left: 3px solid var(--primary-color);
+        background: rgba(var(--primary-color-rgb), 0.02);
+      }
+
+      // Completed / Success
+      &.completed,
+      &.success {
+        border-left: 3px solid var(--accent-color);
+        background: rgba(var(--accent-color-rgb), 0.02);
+      }
+
+      // Checked (Skipped)
+      &.checked {
+        border-left: 3px solid var(--secondary-text-color);
+        background: rgba(var(--app-text-color-rgb), 0.02);
+      }
+
+      // Error
+      &.error {
+        border-left: 3px solid var(--warn-color);
+        background: rgba(var(--warn-color-rgb), 0.05);
+
+        .mat-mdc-cell {
+          color: var(--warn-color);
+        }
+      }
+
+      .mat-mdc-cell {
+        padding: var(--space-sm) var(--space-md);
+        color: var(--app-text-color);
+        font-size: var(--font-size-sm);
+        white-space: nowrap;
+      }
+    }
+
+    // --- COLUMN SPECIFIC STYLES ---
+
+    // 1. Name Column
+    .name-cell .file-info {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      max-width: 300px; // Prevent file names from taking over
+
+      .file-icon {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        color: var(--secondary-text-color);
+      }
+
+      .file-name {
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+      }
+
+      .error-icon {
+        width: 16px;
+        height: 16px;
+        color: var(--warn-color);
+      }
+      .success-icon {
+        width: 16px;
+        height: 16px;
+        color: var(--accent-color);
+      }
+    }
+
+    // 2. Progress Column (Active)
+    .progress-cell .progress-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 140px;
+
+      .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: var(--secondary-text-color);
+
+        .progress-text {
+          font-weight: 600;
+          color: var(--app-text-color);
+        }
+      }
+    }
+
+    // 3. Speed Column
+    .speed-cell .speed-info {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+
+      .speed-value {
+        font-family: var(--mono-font-family);
+        font-weight: 500;
+      }
+
+      .speed-indicator {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+
+        &.speed-fast {
+          background-color: var(--accent-color);
+          box-shadow: 0 0 4px var(--accent-color);
+        }
+        &.speed-medium {
+          background-color: var(--primary-color);
+        }
+        &.speed-slow {
+          background-color: var(--warn-color);
+        }
+      }
+
+      .speed-idle {
+        color: var(--secondary-text-color);
+        opacity: 0.5;
+      }
+    }
+
+    // 4. ETA & Time Columns
+    .time-cell .time-info {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 2px;
+
+      .time-value {
+        font-weight: 600;
+        font-size: 12px;
+      }
+
+      .time-relative {
+        font-size: 11px;
+        color: var(--secondary-text-color);
+      }
+
+      .duration {
+        display: inline-block;
+        margin-top: 2px;
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 4px;
+        background: rgba(var(--primary-color-rgb), 0.1);
+        color: var(--primary-color);
+        width: fit-content;
+        font-weight: 600;
+      }
+    }
+
+    // 5. Status Chips (Completed)
+    .status-chip {
+      height: 22px;
+      padding: 0 8px;
+      border-radius: var(--radius-xs);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+
+      .chip-icon {
+        width: 12px;
+        height: 12px;
+      }
+
+      span {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--space-xxs);
+      }
+
+      &.success {
+        background: rgba(var(--accent-color-rgb), 0.15);
+        color: var(--accent-color);
+      }
+      &.error {
+        background: rgba(var(--warn-color-rgb), 0.15);
+        color: var(--warn-color);
+      }
+      &.checked {
+        background: rgba(var(--secondary-text-color-rgb), 0.15);
+        color: var(--secondary-text-color);
+      }
+      &.partial {
+        background: rgba(var(--orange-rgb), 0.15);
+        color: var(--orange);
+      }
+    }
+
+    // 6. Path Column
+    .path-cell .path-info {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      color: var(--secondary-text-color);
+
+      .src,
+      .dst {
+        background: rgba(var(--app-text-color-rgb), 0.05);
+        padding: 2px 6px;
+        border-radius: 4px;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-family: var(--mono-font-family);
+      }
+
+      .arrow-icon {
+        width: 14px;
+        height: 14px;
+        opacity: 0.5;
+      }
+    }
+  }
+
+  // Empty State
+  .no-items-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 200px;
+    color: var(--secondary-text-color);
+    opacity: 0.6;
+
+    .placeholder-icon {
+      width: 48px;
+      height: 48px;
+      margin-bottom: var(--space-md);
+    }
+
+    span {
+      font-size: var(--font-size-md);
+      font-weight: 500;
+    }
+    .placeholder-description {
+      font-size: var(--font-size-sm);
+      margin-top: 4px;
+    }
+  }
+}
+
+// Responsive Adjustments
+@media (max-width: 768px) {
+  .transfer-table-container .transfer-table {
+    .mat-mdc-header-cell,
+    .mat-mdc-cell {
+      padding: 8px 12px;
+    }
+
+    // Hide non-essential columns on mobile
+    .eta-cell,
+    .size-cell {
+      display: none;
+    }
+    .mat-column-eta,
+    .mat-column-size {
+      display: none;
+    }
+
+    .name-cell .file-info {
+      max-width: 150px;
+    }
+  }
+}

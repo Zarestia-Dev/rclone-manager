@@ -575,6 +575,7 @@ pub fn handle_start_serve(app: AppHandle, remote_name: &str) {
     let remote_name_clone = remote_name.to_string();
 
     tauri::async_runtime::spawn(async move {
+        let job_cache_state = app_clone.state::<JobCache>();
         let cache = app_clone.state::<RemoteCache>();
         let settings_val = cache.get_settings().await;
         let settings = match settings_val.get(&remote_name_clone).cloned() {
@@ -598,7 +599,7 @@ pub fn handle_start_serve(app: AppHandle, remote_name: &str) {
             }
         };
 
-        match start_serve(app_clone.clone(), params).await {
+        match start_serve(app_clone.clone(), job_cache_state.clone(), params).await {
             Ok(response) => {
                 info!(
                     "✅ Started serve for {remote_name_clone} at {}",

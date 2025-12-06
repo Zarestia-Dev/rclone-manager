@@ -1,10 +1,9 @@
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { Component, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule } from '@angular/material/table';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import { TruncatePathPipe } from '../../pipes/truncate-path.pipe';
 import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
 import { CompletedTransfer } from '@app/types';
@@ -18,15 +17,13 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
     MatIconModule,
     MatTooltipModule,
     MatChipsModule,
-    ScrollingModule,
     TruncatePathPipe,
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="completed-transfers-container">
-      @if (transfers.length > 0) {
-        <cdk-virtual-scroll-viewport itemSize="50" class="transfers-viewport">
-          <table mat-table [dataSource]="transfers" class="completed-table">
+    <div class="transfer-table-container">
+      @if (transfers().length > 0) {
+        <div class="transfer-viewport">
+          <table mat-table [dataSource]="transfers()" class="transfer-table">
             <!-- Name Column -->
             <ng-container matColumnDef="name">
               <th mat-header-cell *matHeaderCellDef>File</th>
@@ -89,7 +86,7 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
                     >
                   }
                   @if (transfer.status === 'checked' && transfer.size > 0) {
-                    <span class="size-note">(already existed)</span>
+                    <span class="size-note"> (already existed)</span>
                   }
                 </div>
               </td>
@@ -101,15 +98,13 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
               <td mat-cell *matCellDef="let transfer" class="path-cell">
                 <div class="path-info">
                   @if (transfer.srcFs && transfer.dstFs) {
-                    <div class="src-dst">
-                      <span class="src" matTooltip="Source: {{ transfer.srcFs }}">{{
-                        transfer.srcFs | truncatePath
-                      }}</span>
-                      <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
-                      <span class="dst" matTooltip="Destination: {{ transfer.dstFs }}">{{
-                        transfer.dstFs | truncatePath
-                      }}</span>
-                    </div>
+                    <span class="src" matTooltip="Source: {{ transfer.srcFs }}">{{
+                      transfer.srcFs | truncatePath
+                    }}</span>
+                    <mat-icon svgIcon="right-arrow" class="arrow-icon"></mat-icon>
+                    <span class="dst" matTooltip="Destination: {{ transfer.dstFs }}">{{
+                      transfer.dstFs | truncatePath
+                    }}</span>
                   } @else {
                     <span class="no-path">-</span>
                   }
@@ -123,9 +118,6 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
               <td mat-cell *matCellDef="let transfer" class="time-cell">
                 <div class="time-info">
                   @if (transfer.completedAt) {
-                    <span class="time-value">{{
-                      FormatTimePipe.transform(transfer.completedAt)
-                    }}</span>
                     <span class="time-relative">{{ getRelativeTime(transfer.completedAt) }}</span>
                   } @else {
                     <span class="time-value">-</span>
@@ -155,7 +147,7 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
             <tr
               mat-row
               *matRowDef="let row; columns: displayedColumns"
-              class="completed-row"
+              class="transfer-row"
               [ngClass]="{
                 error: row.status === 'failed',
                 checked: row.status === 'checked',
@@ -164,24 +156,24 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
               }"
             ></tr>
           </table>
-        </cdk-virtual-scroll-viewport>
+        </div>
       } @else {
-        <div class="no-completed">
-          <mat-icon svgIcon="circle-check" class="no-completed-icon"></mat-icon>
+        <div class="no-items-placeholder">
+          <mat-icon svgIcon="circle-check" class="placeholder-icon"></mat-icon>
           <span>No recent completed transfers</span>
-          <p class="no-completed-description">
+          <p class="placeholder-description">
             Completed transfers will appear here once operations finish
           </p>
         </div>
       }
     </div>
   `,
-  styleUrls: ['./completed-transfers-table.component.scss'],
+  styleUrls: ['./transfer-tables.scss'],
 })
 export class CompletedTransfersTableComponent {
-  @Input() transfers: CompletedTransfer[] = [];
-  @Input() operationClass = '';
-  @Input() trackBy?: (index: number, transfer: CompletedTransfer) => string;
+  transfers = input.required<CompletedTransfer[]>();
+  operationClass = input('');
+  trackBy = input<(index: number, transfer: CompletedTransfer) => string>();
 
   FormatFileSizePipe = new FormatFileSizePipe();
   FormatTimePipe = new FormatTimePipe();

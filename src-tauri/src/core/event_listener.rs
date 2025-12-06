@@ -4,7 +4,6 @@ use tauri::{AppHandle, Emitter, Listener, Manager};
 use tauri_plugin_autostart::ManagerExt;
 
 use crate::{
-    RcloneState,
     core::{
         lifecycle::shutdown::handle_shutdown, scheduler::engine::CronScheduler,
         tray::core::update_tray_menu,
@@ -21,7 +20,7 @@ use crate::{
         app::builder::setup_tray,
         logging::log::update_log_level,
         types::{
-            all_types::RemoteCache,
+            all_types::{RcloneState, RemoteCache},
             events::{
                 JOB_CACHE_CHANGED, MOUNT_STATE_CHANGED, RCLONE_API_URL_UPDATED,
                 RCLONE_PASSWORD_STORED, REMOTE_CACHE_UPDATED, REMOTE_PRESENCE_CHANGED,
@@ -458,12 +457,29 @@ fn handle_settings_changed(app: &AppHandle) {
                     }
                 }
 
-                if let Some(developer) = settings.get("developer")
-                    && let Some(debug_logging) =
+                if let Some(developer) = settings.get("developer") {
+                    if let Some(debug_logging) =
                         developer.get("debug_logging").and_then(|v| v.as_bool())
-                {
-                    debug!("🐞 Debug logging changed to: {debug_logging}");
-                    update_log_level(debug_logging);
+                    {
+                        debug!("🐞 Debug logging changed to: {debug_logging}");
+                        update_log_level(debug_logging);
+                    }
+
+                    if let Some(destroy_window) = developer
+                        .get("destroy_window_on_close")
+                        .and_then(|v| v.as_bool())
+                    {
+                        debug!("♻️ Destroy window on close changed to: {destroy_window}");
+                        let rclone_state = app_handle.state::<RcloneState>();
+                        let mut guard = match rclone_state.destroy_window_on_close.write() {
+                            Ok(g) => g,
+                            Err(e) => {
+                                error!("Failed to write destroy_window_on_close: {e}");
+                                return;
+                            }
+                        };
+                        *guard = destroy_window;
+                    }
                 }
             }
             Err(e) => error!("❌ Failed to parse settings change: {e}"),

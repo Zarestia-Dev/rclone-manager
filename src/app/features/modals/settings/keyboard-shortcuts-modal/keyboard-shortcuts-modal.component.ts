@@ -8,8 +8,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTableModule } from '@angular/material/table';
 import { SearchContainerComponent } from '../../../../shared/components/search-container/search-container.component';
 
-import { AnimationsService } from '../../../../shared/services/animations.service';
-
 @Component({
   selector: 'app-keyboard-shortcuts-modal',
   imports: [
@@ -23,7 +21,6 @@ import { AnimationsService } from '../../../../shared/services/animations.servic
   ],
   templateUrl: './keyboard-shortcuts-modal.component.html',
   styleUrls: ['./keyboard-shortcuts-modal.component.scss', '../../../../styles/_shared-modal.scss'],
-  animations: [AnimationsService.slideToggle()],
 })
 export class KeyboardShortcutsModalComponent {
   searchText = '';
@@ -50,7 +47,7 @@ export class KeyboardShortcutsModalComponent {
     { keys: 'Ctrl + R', description: 'Create New Remote (Quick)', category: 'Remote Management' },
     { keys: 'Ctrl + I', description: 'Load Configuration', category: 'File Operations' },
     { keys: 'Ctrl + E', description: 'Export Configuration', category: 'File Operations' },
-    { keys: 'Ctrl + F', description: 'Toggle Search Field', category: 'Navigation' },
+    { keys: 'Ctrl + B', description: 'Toggle File Browser', category: 'File Browser' },
     { keys: 'Escape', description: 'Close Dialog/Cancel Action', category: 'Navigation' },
   ];
 
@@ -58,14 +55,13 @@ export class KeyboardShortcutsModalComponent {
 
   private dialogRef = inject(MatDialogRef<KeyboardShortcutsModalComponent>);
 
-  @HostListener('document:keydown.escape', ['$event'])
+  @HostListener('document:keydown.escape')
   close(): void {
     this.dialogRef.close();
   }
 
-  @HostListener('document:keydown.control.f', ['$event'])
-  onF3(event: KeyboardEvent): void {
-    event.preventDefault();
+  @HostListener('document:keydown.control.f')
+  onF3(): void {
     this.toggleSearch();
     if (this.searchVisible && this.searchContainer) {
       this.searchContainer.focus();

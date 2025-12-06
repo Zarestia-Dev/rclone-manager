@@ -25,7 +25,6 @@ export const RCLONE_CONFIG_UNLOCKED = 'rclone_config_unlocked';
 // UI and cache events
 export const UPDATE_TRAY_MENU = 'tray_menu_updated';
 export const JOB_CACHE_CHANGED = 'job_cache_changed';
-export const NOTIFY_UI = 'notify_ui';
 export const MOUNT_STATE_CHANGED = 'mount_state_changed';
 export const SERVE_STATE_CHANGED = 'serve_state_changed';
 
@@ -42,10 +41,3 @@ export const SCHEDULED_TASK_STOPPED = 'scheduled_task_stopped';
 
 // Application events
 export const APP_EVENT = 'app_event';
-
-// UI-specific job events (frontend only)
-export const UI_JOB_UPDATE = 'ui_job_update';
-export const UI_JOB_COMPLETED = 'ui_job_completed';
-
-// OAuth events
-export const RCLONE_OAUTH = 'rclone_oauth';

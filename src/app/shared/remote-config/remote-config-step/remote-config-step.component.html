@@ -49,7 +49,12 @@
               (optionSelected)="onTypeSelected($event.option.value)"
             >
               @for (remote of filteredRemotes$ | async; track remote.value) {
-                <mat-option [value]="remote.value">{{ remote.label }}</mat-option>
+                <mat-option [value]="remote.value">
+                  <div class="option-content">
+                    <span class="option-label">{{ remote.label }}</span>
+                    <small class="option-description">{{ remote.value }}</small>
+                  </div>
+                </mat-option>
               }
               @if ((filteredRemotes$ | async)?.length === 0) {
                 <mat-option disabled>No matching remote types</mat-option>

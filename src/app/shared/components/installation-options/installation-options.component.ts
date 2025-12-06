@@ -12,7 +12,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 // Services
 import { FileSystemService } from '@app/services';
 import { SystemInfoService } from '@app/services';
-import { AnimationsService } from '../../services/animations.service';
 import { ValidatorRegistryService } from '../../services/validator-registry.service';
 import { InstallationOptionsData, InstallationTabOption } from '../../types';
 
@@ -30,7 +29,6 @@ import { InstallationOptionsData, InstallationTabOption } from '../../types';
     MatIconModule,
     MatTooltipModule,
   ],
-  animations: [AnimationsService.slideInOut()],
 
   templateUrl: './installation-options.component.html',
   styleUrl: './installation-options.component.scss',

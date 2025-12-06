@@ -1,5 +1,4 @@
 # Docker Compose file for RClone Manager Headless Server (TESTING)
-version: "3.8"
 
 services:
   rclone-manager:

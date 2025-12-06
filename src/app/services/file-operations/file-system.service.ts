@@ -1,6 +1,9 @@
 import { inject, Injectable } from '@angular/core';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../../shared/services/notification.service';
+import { NautilusService } from '../ui/nautilus.service';
+import { FilePickerConfig, FilePickerResult } from '@app/types';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * Service for file system operations
@@ -11,6 +14,7 @@ import { NotificationService } from '../../shared/services/notification.service'
 })
 export class FileSystemService extends TauriBaseService {
   private notificationService = inject(NotificationService);
+  private nautilusService = inject(NautilusService);
 
   constructor() {
     super();
@@ -20,6 +24,21 @@ export class FileSystemService extends TauriBaseService {
    * Select a folder with optional empty requirement
    */
   async selectFolder(requireEmpty?: boolean): Promise<string> {
+    // In headless mode, use Nautilus file browser
+    if (this.apiClient.isHeadless()) {
+      const config: FilePickerConfig = {
+        mode: 'local',
+        selection: 'folders',
+        multi: false,
+      };
+      const result = await this.selectPathWithNautilus(config);
+      if (result.cancelled || result.paths.length === 0) {
+        throw new Error('Folder selection cancelled');
+      }
+      return result.paths[0];
+    }
+
+    // In Tauri mode, use native dialog
     try {
       return await this.invokeCommand<string>('get_folder_location', {
         requireEmpty: requireEmpty || false,
@@ -31,9 +50,35 @@ export class FileSystemService extends TauriBaseService {
   }
 
   /**
+   * Select a path using the integrated Nautilus file browser
+   */
+  /**
+   * Select a path using the V2 config and result shape
+   */
+  async selectPathWithNautilus(config: FilePickerConfig): Promise<FilePickerResult> {
+    this.nautilusService.openFilePicker(config);
+    return firstValueFrom(this.nautilusService.filePickerResult$);
+  }
+
+  /**
    * Select a file
    */
   async selectFile(): Promise<string> {
+    // In headless mode, use Nautilus file browser
+    if (this.apiClient.isHeadless()) {
+      const config: FilePickerConfig = {
+        mode: 'local',
+        selection: 'files',
+        multi: false,
+      };
+      const result = await this.selectPathWithNautilus(config);
+      if (result.cancelled || result.paths.length === 0) {
+        throw new Error('File selection cancelled');
+      }
+      return result.paths[0];
+    }
+
+    // In Tauri mode, use native dialog
     try {
       return await this.invokeCommand<string>('get_file_location');
     } catch (error) {

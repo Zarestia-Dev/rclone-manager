@@ -7,6 +7,8 @@ export * from './system/scheduler.service';
 export * from './ui/ui-state.service';
 export * from './ui/onboarding-state.service';
 export * from './ui/window.service';
+export * from './ui/global-loading.service';
+export * from './ui/nautilus.service';
 export * from './remote/remote-management.service';
 export * from './remote/flag-config.service';
 export * from './remote/path-selection.service';
@@ -21,6 +23,3 @@ export * from './file-operations/file-system.service';
 export * from './file-operations/mount-management.service';
 export * from './file-operations/serve-management.service';
 export * from './security/rclone-password.service';
-
-// Backward-compatible re-exports of shared types for consumers importing from '@app/services'
-export type { RcConfigQuestionResponse, RcloneUpdateInfo, UpdateStatus } from '@app/types';

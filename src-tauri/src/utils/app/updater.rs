@@ -1,4 +1,4 @@
-#[cfg(all(desktop, feature = "updater"))]
+#[cfg(feature = "updater")]
 pub mod app_updates {
     use crate::{
         core::lifecycle::shutdown::handle_shutdown,
@@ -53,6 +53,8 @@ pub mod app_updates {
         release_notes: Option<String>,
         release_date: Option<String>,
         release_url: Option<String>,
+        update_in_progress: bool,
+        restart_required: bool,
     }
 
     #[derive(serde::Serialize)]
@@ -73,6 +75,42 @@ pub mod app_updates {
         download_state: State<'_, DownloadState>,
         channel: String,
     ) -> Result<Option<UpdateMetadata>> {
+        let state = app.state::<RcloneState>();
+
+        // Check if restart is required first
+        let restart_needed = state.is_restart_required.load(Ordering::Relaxed);
+        if restart_needed {
+            info!("Restart is required");
+            return Ok(Some(UpdateMetadata {
+                version: String::from("restart"),
+                current_version: app.package_info().version.to_string(),
+                release_tag: String::from("restart"),
+                release_notes: None,
+                release_date: None,
+                release_url: None,
+                update_in_progress: false,
+                restart_required: true,
+            }));
+        }
+
+        // Check if update is already in progress
+        let is_updating = state.is_update_in_progress.load(Ordering::Relaxed);
+        if is_updating {
+            info!("Update is already in progress");
+            // Return a minimal metadata indicating update in progress
+            // We can reconstruct basic info from download state
+            return Ok(Some(UpdateMetadata {
+                version: String::from("updating"),
+                current_version: app.package_info().version.to_string(),
+                release_tag: String::from("updating"),
+                release_notes: None,
+                release_date: None,
+                release_url: None,
+                update_in_progress: true,
+                restart_required: false,
+            }));
+        }
+
         // Reset download state
         download_state.total_bytes.store(0, Ordering::Relaxed);
         download_state.downloaded_bytes.store(0, Ordering::Relaxed);
@@ -180,6 +218,8 @@ pub mod app_updates {
             release_notes: release.body.clone(),
             release_date: release.published_at.clone(),
             release_url: Some(release.html_url.clone()),
+            update_in_progress: false,
+            restart_required: false,
         });
 
         *pending_update
@@ -230,6 +270,7 @@ pub mod app_updates {
 
     #[tauri::command]
     pub async fn install_update(
+        app: AppHandle,
         pending_update: State<'_, PendingUpdate>,
         download_state: State<'_, DownloadState>,
     ) -> Result<()> {
@@ -245,6 +286,11 @@ pub mod app_updates {
         info!("Starting update installation...");
         info!("Preparing to download update from: {}", update.download_url);
         debug!("Update signature: {}", update.signature);
+
+        // Set update in progress flag
+        app.state::<RcloneState>()
+            .is_update_in_progress
+            .store(true, Ordering::Relaxed);
 
         let client = reqwest::Client::new();
         match client.head(update.download_url.as_str()).send().await {
@@ -285,6 +331,12 @@ pub mod app_updates {
             Ok(_) => {
                 info!("Update installation process completed");
                 download_state.is_failed.store(false, Ordering::Relaxed);
+
+                // Clear update in progress and set restart required flag
+                let state = app.state::<RcloneState>();
+                state.is_update_in_progress.store(false, Ordering::Relaxed);
+                state.is_restart_required.store(true, Ordering::Relaxed);
+
                 *download_state
                     .failure_message
                     .lock()
@@ -295,6 +347,12 @@ pub mod app_updates {
             Err(e) => {
                 warn!("Update installation failed: {}", e);
                 download_state.is_failed.store(true, Ordering::Relaxed);
+
+                // Clear update in progress flag on failure
+                app.state::<RcloneState>()
+                    .is_update_in_progress
+                    .store(false, Ordering::Relaxed);
+
                 *download_state
                     .failure_message
                     .lock()

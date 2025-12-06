@@ -1,11 +1,10 @@
 <div class="modal-container">
   <!-- Modal Header -->
   <header class="modal-header" data-tauri-drag-region>
-    <button matIconButton aria-label="Help" title="Help">
-      <mat-icon svgIcon="question"></mat-icon>
+    <button>
+      <mat-icon [svgIcon]="iconService.getIconName(remoteForm.get('type')?.value)"></mat-icon>
     </button>
     <p data-tauri-drag-region>
-      <mat-icon svgIcon="hard-drive" aria-hidden="true"></mat-icon>
       <span>
         {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
       </span>
@@ -39,7 +38,12 @@
               }
             </div>
             @if (getStepState(i + 1) === 'current') {
-              <span class="step-label-animated" [@labelSlideIn]>{{ step }}</span>
+              <span
+                class="step-label-animated"
+                animate.enter="label-slide-in-enter"
+                animate.leave="label-slide-in-leave"
+                >{{ step }}</span
+              >
             }
           </button>
         }
@@ -48,7 +52,7 @@
   }
 
   <!-- Modal Content -->
-  <main class="modal-content" [@slideAnimation]="currentStep">
+  <main class="modal-content">
     <!-- Interactive Configuration Flow -->
     @if (interactiveFlowState.isActive && interactiveFlowState.question) {
       <section class="step-container interactive" aria-live="polite" aria-busy="true">
@@ -198,7 +202,8 @@
           class="accent"
           [disabled]="isAuthInProgress"
           (click)="prevStep()"
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           title="Go to previous step"
           aria-label="Previous step"
         >
@@ -215,7 +220,8 @@
         <button
           matButton="filled"
           class="warn"
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           (click)="cancelAuth()"
           [disabled]="(!isAuthInProgress && !interactiveFlowState.isActive) || isAuthCancelled"
           title="Cancel the current operation"
@@ -239,7 +245,8 @@
           matButton="filled"
           (click)="onSubmit()"
           [disabled]="isSaveDisabled"
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           aria-live="polite"
           [attr.aria-label]="editTarget ? 'Save changes' : 'Save configuration and create remote'"
           [title]="editTarget ? 'Save changes' : 'Save configuration and create remote'"
@@ -263,7 +270,8 @@
           [disabled]="isInteractiveContinueDisabled()"
           class="continue-button"
           [class.loading]="interactiveFlowState.isProcessing || isAuthCancelled"
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           aria-live="polite"
           [attr.aria-label]="
             interactiveFlowState.isProcessing ? 'Processing...' : 'Continue to next step'
@@ -286,7 +294,8 @@
           class="accent"
           (click)="nextStep()"
           [disabled]="!remoteForm.valid || isAuthInProgress"
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           title="Go to next step"
           aria-label="Next step"
         >

@@ -5,20 +5,19 @@
   aria-describedby="quick-add-modal-description"
 >
   <div class="modal-header" data-tauri-drag-region>
-    <button matIconButton aria-label="Help information">
-      <mat-icon svgIcon="question"></mat-icon>
+    <button>
+      <mat-icon
+        [svgIcon]="iconService.getIconName(quickAddForm.get('setup.remoteType')?.value)"
+      ></mat-icon>
     </button>
-    <p id="quick-add-modal-title">
-      <mat-icon svgIcon="hard-drive"></mat-icon>
-      Quick Add Remote
-    </p>
+    <p id="quick-add-modal-title">Quick Add Remote</p>
     <button matIconButton (click)="close()" aria-label="Close dialog">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </div>
 
   <form class="form-container" [formGroup]="quickAddForm" (ngSubmit)="onSubmit()" novalidate>
-    <div class="wizard-content" [@slideAnimation]="currentStep">
+    <div class="wizard-content">
       @switch (currentStep) {
         @case ('setup') {
           <div class="step-content" formGroupName="setup">
@@ -184,19 +183,19 @@
 
     <section class="message-bar" aria-live="polite" aria-atomic="true">
       @if (currentStep === 'interactive' && !isAuthCancelled) {
-        <div class="message info" @slideInFromBottom>
+        <div class="message info">
           <mat-icon svgIcon="info" class="accent"></mat-icon>
           <span>Please follow the steps to configure your remote.</span>
         </div>
       }
       @if (isAuthCancelled) {
-        <div class="message cleanup" role="status" @slideInFromBottom>
+        <div class="message cleanup" role="status">
           <mat-spinner diameter="20"></mat-spinner>
           <span>Cancelling... Please wait...</span>
         </div>
       }
       @if (isAuthInProgress && !isAuthCancelled && currentStep !== 'interactive') {
-        <div class="message loading" role="status" @slideInFromBottom>
+        <div class="message loading" role="status">
           <mat-icon svgIcon="info" class="accent"></mat-icon>
           <span
             >A browser window may open for authentication. Please complete the process there.</span
@@ -208,7 +207,8 @@
     <footer class="button-group">
       @if (currentStep === 'setup') {
         <button
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           matButton="filled"
           class="accent"
           (click)="nextStep()"
@@ -223,7 +223,8 @@
 
       @if (currentStep === 'operations') {
         <button
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           matButton="filled"
           class="accent"
           (click)="prevStep()"
@@ -237,7 +238,8 @@
 
         @if (isAuthInProgress && !isAuthCancelled) {
           <button
-            [@fadeInOut]
+            animate.enter="fade-in-out-enter"
+            animate.leave="fade-in-out-leave"
             matButton="filled"
             class="warn"
             (click)="cancelAuth()"
@@ -250,7 +252,8 @@
         }
 
         <button
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           matButton="filled"
           class="primary"
           (click)="onSubmit()"
@@ -270,7 +273,8 @@
 
       @if (currentStep === 'interactive') {
         <button
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           matButton="filled"
           class="warn"
           (click)="cancelAuth()"
@@ -283,7 +287,8 @@
         </button>
 
         <button
-          [@fadeInOut]
+          animate.enter="fade-in-out-enter"
+          animate.leave="fade-in-out-leave"
           matButton="filled"
           class="primary"
           (click)="onInteractiveContinue(interactiveFlowState.answer)"

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, input, output, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -22,20 +22,21 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
     MatProgressBarModule,
     MatTooltipModule,
     MatSortModule,
+    FormatFileSizePipe,
   ],
   styleUrls: ['./jobs-panel.component.scss'],
   template: `
-    <mat-card class="detail-panel jobs-panel">
-      <mat-card-header class="panel-header">
-        <mat-card-title class="panel-title-content">
-          <mat-icon svgIcon="jobs" class="panel-icon"></mat-icon>
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon svgIcon="jobs"></mat-icon>
           <span>Active Jobs</span>
-          <span class="count">{{ config.jobs.length }}</span>
+          <span class="count">{{ filteredJobs().length }}</span>
         </mat-card-title>
       </mat-card-header>
-      <mat-card-content class="panel-content">
+      <mat-card-content>
         <div class="jobs-table-container">
-          <table mat-table [dataSource]="config.jobs" matSort class="jobs-table">
+          <table mat-table [dataSource]="filteredJobs()" matSort class="jobs-table">
             <!-- Type Column -->
             <ng-container matColumnDef="type">
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Type</th>
@@ -69,8 +70,8 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
                       class="job-progress"
                     ></mat-progress-bar>
                     <span class="progress-text">
-                      {{ FormatFileSizePipe.transform(job.stats.bytes) }} /
-                      {{ FormatFileSizePipe.transform(job.stats.totalBytes) }}
+                      {{ job.stats.bytes | formatFileSize }} /
+                      {{ job.stats.totalBytes | formatFileSize }}
                     </span>
                   </div>
                 } @else {
@@ -115,10 +116,14 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
               </td>
             </ng-container>
 
-            <tr mat-header-row *matHeaderRowDef="config.displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: config.displayedColumns" class="job-row"></tr>
+            <tr mat-header-row *matHeaderRowDef="config().displayedColumns"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: config().displayedColumns"
+              class="job-row"
+            ></tr>
             <tr class="no-data-row" *matNoDataRow>
-              <td class="no-data-cell" [attr.colspan]="config.displayedColumns.length">
+              <td class="no-data-cell" [attr.colspan]="config().displayedColumns.length">
                 <div class="no-data-content">
                   <mat-icon svgIcon="jobs" class="no-data-icon"></mat-icon>
                   <span>No active jobs</span>
@@ -132,15 +137,18 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
   `,
 })
 export class JobsPanelComponent {
-  @Input() config!: JobsPanelConfig;
+  config = input.required<JobsPanelConfig>();
 
-  @Output() stopJob = new EventEmitter<{
+  // For now app not support the multiple jobs at same time. This will be come v0.1.9 or v0.2.0
+  filteredJobs = computed(() => {
+    return this.config().jobs.filter(job => job.job_type !== 'serve');
+  });
+
+  stopJob = output<{
     type: PrimaryActionType;
     remoteName: string;
   }>();
-  @Output() deleteJob = new EventEmitter<number>();
-
-  FormatFileSizePipe = new FormatFileSizePipe();
+  deleteJob = output<number>();
 
   getJobProgress(job: JobInfo): number {
     if (!job.stats) return 0;

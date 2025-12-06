@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, EventEmitter, input, Output } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -11,7 +11,7 @@ import { QuickActionButton } from '@app/types';
   imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, MatTooltipModule],
   template: `
     <div class="quick-actions">
-      @for (button of buttons; track button.id) {
+      @for (button of buttons(); track button.id) {
         <button
           matMiniFab
           [matTooltip]="button.tooltip"
@@ -30,10 +30,9 @@ import { QuickActionButton } from '@app/types';
     </div>
   `,
   styleUrls: ['./quick-action-buttons.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class QuickActionButtonsComponent {
-  @Input() buttons: QuickActionButton[] = [];
+  buttons = input.required<QuickActionButton[]>();
 
   @Output() buttonClick = new EventEmitter<{ id: string; event: Event }>();
 

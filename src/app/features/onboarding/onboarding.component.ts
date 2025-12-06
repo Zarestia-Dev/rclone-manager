@@ -23,7 +23,6 @@ import { InstallationOptionsComponent } from '../../shared/components/installati
 import { PasswordManagerComponent } from '../../shared/components/password-manager/password-manager.component';
 
 // Services
-import { AnimationsService } from '../../shared/services/animations.service';
 import { SystemInfoService } from '@app/services';
 import { InstallationService } from '@app/services';
 import { EventListenersService } from '@app/services';
@@ -48,14 +47,6 @@ import { InstallationOptionsData, InstallationTabOption } from '@app/types';
     MatProgressSpinnerModule,
     FormsModule,
     PasswordManagerComponent,
-  ],
-  animations: [
-    AnimationsService.getAnimations([
-      'onboardingEntrance',
-      'onboardingState',
-      'loadingSpinner',
-      'slideInOut',
-    ]),
   ],
   templateUrl: './onboarding.component.html',
   styleUrls: ['./onboarding.component.scss'],

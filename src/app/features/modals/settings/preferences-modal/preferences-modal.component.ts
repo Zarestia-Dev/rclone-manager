@@ -395,13 +395,13 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
     return obj ? Object.keys(obj) : [];
   }
 
-  @HostListener('document:keydown.escape', ['$event'])
+  @HostListener('document:keydown.escape')
   close(): void {
     this.dialogRef.close();
   }
 
   @HostListener('document:keydown.control.f', ['$event'])
-  handleCtrlF(event: KeyboardEvent): void {
+  handleCtrlF(event: Event): void {
     event.preventDefault();
     this.toggleSearch();
   }

@@ -1,31 +1,7 @@
 <div class="title-bar" data-tauri-drag-region>
   <div class="left-section">
-    <!-- Add Remote Menu -->
-    <mat-menu #addRemoteMenu="matMenu" xPosition="before">
-      <button mat-menu-item (click)="openQuickAddRemoteModal()" aria-label="Quick add remote">
-        <span>Quick Remote</span>
-        <span class="shortcut" aria-hidden="true">Ctrl + R</span>
-      </button>
-      <button
-        mat-menu-item
-        (click)="openRemoteConfigModal()"
-        aria-label="Detailed remote configuration"
-      >
-        <span>Detailed Remote</span>
-        <span class="shortcut" aria-hidden="true">Ctrl + N</span>
-      </button>
-      <button
-        mat-menu-item
-        (click)="openRemoteConfigTerminal()"
-        aria-label="Open remote configuration in terminal"
-      >
-        <span>Terminal Remote</span>
-        <span class="shortcut" aria-hidden="true">Ctrl + T</span>
-      </button>
-    </mat-menu>
-
     <!-- Main Buttons -->
-    <button matIconButton [matMenuTriggerFor]="addRemoteMenu" aria-label="Add remote menu">
+    <button matIconButton [cdkMenuTriggerFor]="addRemoteMenu" aria-label="Add remote menu">
       <mat-icon svgIcon="add" aria-hidden="true"></mat-icon>
     </button>
 
@@ -63,10 +39,11 @@
     <!-- App Menu -->
     <button
       matIconButton
-      [matMenuTriggerFor]="menu"
+      [cdkMenuTriggerFor]="menu"
       aria-label="Application menu"
       class="menu-button"
-      [matBadge]="updateAvailable || rcloneUpdateAvailable ? '!' : null"
+      [matBadge]="restartRequired || updateAvailable || rcloneUpdateAvailable ? '!' : null"
+      [matBadgeColor]="restartRequired ? 'warn' : 'primary'"
       matBadgePosition="below before"
       matBadgeSize="small"
       [matTooltip]="getUpdateTooltip()"
@@ -87,9 +64,11 @@
       </button>
     }
   </div>
+</div>
 
-  <!-- App Menu Content -->
-  <mat-menu #menu="matMenu">
+<!-- App Menu Content -->
+<ng-template #menu>
+  <div cdkMenu class="material-context-menu">
     <!-- Theme Selector -->
     <div class="theme-selector" aria-label="Theme selection">
       <button
@@ -129,12 +108,12 @@
     <mat-divider></mat-divider>
 
     <!-- Settings Actions -->
-    <button mat-menu-item (click)="restoreSettings()" aria-label="Import settings">
+    <button cdkMenuItem class="menu-item" (click)="restoreSettings()" aria-label="Import settings">
       <span>Import</span>
       <span class="shortcut" aria-hidden="true">Ctrl + I</span>
     </button>
 
-    <button mat-menu-item (click)="openExportModal()" aria-label="Export settings">
+    <button cdkMenuItem class="menu-item" (click)="openExportModal()" aria-label="Export settings">
       <span>Export</span>
       <span class="shortcut" aria-hidden="true">Ctrl + E</span>
     </button>
@@ -142,20 +121,36 @@
     <mat-divider></mat-divider>
 
     <!-- Preferences -->
-    <button mat-menu-item (click)="openPreferencesModal()" aria-label="Open preferences">
+    <button
+      cdkMenuItem
+      class="menu-item"
+      (click)="openPreferencesModal()"
+      aria-label="Open preferences"
+    >
       <span>Preferences</span>
       <span class="shortcut" aria-hidden="true">Ctrl + ,</span>
     </button>
 
-    <button mat-menu-item (click)="openRcloneConfigModal()" aria-label="Open RClone configuration">
-      <span>RClone Configuration</span>
+    <button
+      cdkMenuItem
+      class="menu-item"
+      (click)="openRcloneConfigModal()"
+      aria-label="Open RClone configuration"
+    >
+      <span>Configuration</span>
       <span class="shortcut" aria-hidden="true">Ctrl + .</span>
     </button>
 
     <mat-divider></mat-divider>
+    <button cdkMenuItem class="menu-item" (click)="onBrowseClick()">
+      <span>File Browser</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + B</span>
+    </button>
+    <mat-divider></mat-divider>
 
     <button
-      mat-menu-item
+      cdkMenuItem
+      class="menu-item"
       (click)="openKeyboardShortcutsModal()"
       aria-label="View keyboard shortcuts"
     >
@@ -166,19 +161,53 @@
     <mat-divider></mat-divider>
 
     <button
-      mat-menu-item
+      cdkMenuItem
+      class="menu-item"
       [matTooltip]="getAboutMenuTooltip()"
       (click)="openAboutModal()"
       aria-label="About application"
     >
-      @if (updateAvailable || rcloneUpdateAvailable) {
+      <span>About RClone Manager</span>
+      @if (restartRequired || updateAvailable || rcloneUpdateAvailable) {
         <span
           [matBadge]="getAboutMenuBadge()"
           matBadgePosition="below before"
           matBadgeSize="small"
         ></span>
       }
-      <span>About RClone Manager</span>
     </button>
-  </mat-menu>
-</div>
+  </div>
+</ng-template>
+
+<!-- Add Remote Menu -->
+<ng-template #addRemoteMenu>
+  <div cdkMenu class="material-context-menu" xPosition="before">
+    <button
+      cdkMenuItem
+      class="menu-item"
+      (click)="openQuickAddRemoteModal()"
+      aria-label="Quick add remote"
+    >
+      <span>Quick Remote</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + R</span>
+    </button>
+    <button
+      cdkMenuItem
+      class="menu-item"
+      (click)="openRemoteConfigModal()"
+      aria-label="Detailed remote configuration"
+    >
+      <span>Detailed Remote</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + N</span>
+    </button>
+    <button
+      cdkMenuItem
+      class="menu-item"
+      (click)="openRemoteConfigTerminal()"
+      aria-label="Open remote configuration in terminal"
+    >
+      <span>Terminal Remote</span>
+      <span class="shortcut" aria-hidden="true">Ctrl + T</span>
+    </button>
+  </div>
+</ng-template>

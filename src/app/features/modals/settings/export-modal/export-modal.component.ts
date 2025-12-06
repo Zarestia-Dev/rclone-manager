@@ -1,12 +1,4 @@
-import {
-  Component,
-  HostListener,
-  OnInit,
-  inject,
-  signal,
-  computed,
-  ChangeDetectionStrategy,
-} from '@angular/core';
+import { Component, HostListener, OnInit, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -17,16 +9,20 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { CommonModule } from '@angular/common';
 
 import { ExportModalData, ExportOption, ExportType } from '@app/types';
-import { AnimationsService } from '../../../../shared/services/animations.service';
 import { BackupRestoreService } from '@app/services';
 import { RemoteManagementService } from '@app/services';
 import { FileSystemService } from '@app/services';
 
 @Component({
   selector: 'app-export-modal',
+  standalone: true,
   imports: [
+    CommonModule,
     MatIconModule,
     MatDialogModule,
     MatFormFieldModule,
@@ -37,99 +33,81 @@ import { FileSystemService } from '@app/services';
     MatCheckboxModule,
     MatButtonModule,
     MatProgressSpinnerModule,
+    MatRadioModule,
+    MatSlideToggleModule,
   ],
-  animations: [AnimationsService.slideInOut()],
   templateUrl: './export-modal.component.html',
   styleUrls: ['./export-modal.component.scss', '../../../../styles/_shared-modal.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ExportModalComponent implements OnInit {
-  // Injected services - make them readonly for better performance
   private readonly dialogRef = inject(MatDialogRef<ExportModalComponent>);
   private readonly backupRestoreService = inject(BackupRestoreService);
   private readonly remoteManagementService = inject(RemoteManagementService);
   private readonly fileSystemService = inject(FileSystemService);
   public readonly data = inject<ExportModalData>(MAT_DIALOG_DATA);
 
-  // Reactive state using Angular 17+ signals for better performance
-  readonly exportPath = signal<string>('');
+  // Signals
+  readonly exportPath = signal('');
   readonly selectedOption = signal<ExportType>(ExportType.All);
-  readonly selectedRemoteName = signal<string>('');
-  readonly withPassword = signal<boolean>(false);
-  readonly password = signal<string>('');
-  readonly showPassword = signal<boolean>(false);
-  readonly sevenZipSupported = signal<boolean>(false);
+  readonly selectedRemoteName = signal('');
+  readonly withPassword = signal(false);
+  readonly password = signal('');
+  readonly showPassword = signal(false);
+  readonly sevenZipSupported = signal(false);
   readonly remotes = signal<readonly string[]>([]);
-  readonly isLoading = signal<boolean>(false);
-  readonly isExporting = signal<boolean>(false);
-  readonly userNote = signal<string>('');
-  readonly folderSelectionInProgress = signal<boolean>(false);
+  readonly isLoading = signal(false); // Start false, set true in ngOnInit
+  readonly isExporting = signal(false);
+  readonly userNote = signal('');
 
-  // Expose ExportType enum for template
   readonly ExportType = ExportType;
 
-  // Immutable export options - better for performance and memory
   readonly exportOptions: readonly ExportOption[] = [
     {
       value: ExportType.All,
-      label: '📦 Export All',
-      description: 'Settings + Remotes + rclone.conf + Backend',
+      label: 'Export All',
+      description: 'Settings + Remotes + rclone.conf',
+      icon: 'box-archive',
     },
     {
       value: ExportType.Settings,
-      label: '⚙️ Only App Settings',
-      description: 'Application configuration only',
+      label: 'App Settings',
+      description: 'Application preferences only',
+      icon: 'gear',
     },
     {
       value: ExportType.Remotes,
-      label: '🗂 Only Remotes',
-      description: 'Remotes with rclone.conf',
+      label: 'Remotes',
+      description: 'Remotes list with rclone.conf',
+      icon: 'server',
     },
     {
       value: ExportType.RemoteConfigs,
-      label: '🔧 Only Remote Configurations',
-      description: 'Remote settings without rclone.conf',
+      label: 'Remote Configs',
+      description: 'Settings for specific remotes',
+      icon: 'wrench',
     },
     {
       value: ExportType.SpecificRemote,
-      label: '🔍 Specific Remote',
-      description: 'Single remote configuration',
+      label: 'Single Remote',
+      description: 'Export one specific remote',
+      icon: 'hard-drive',
     },
     {
       value: ExportType.RCloneBackend,
-      label: '⚡ RClone Backend Settings',
-      description: 'RClone backend options',
+      label: 'Backend Options',
+      description: 'Global RClone backend flags',
+      icon: 'terminal',
     },
   ] as const;
 
-  // Computed properties for reactive UI updates and better performance
   readonly canExport = computed(() => {
     if (this.isLoading() || this.isExporting()) return false;
-
-    const hasPath = this.exportPath().trim().length > 0;
-    const hasValidPassword = !this.withPassword() || this.password().trim().length > 0;
+    const hasPath = !!this.exportPath().trim();
+    const hasValidPassword = !this.withPassword() || !!this.password().trim();
     const hasRemoteSelected =
-      this.selectedOption() !== ExportType.SpecificRemote ||
-      this.selectedRemoteName().trim().length > 0;
+      this.selectedOption() !== ExportType.SpecificRemote || !!this.selectedRemoteName().trim();
 
     return hasPath && hasValidPassword && hasRemoteSelected;
-  });
-
-  readonly exportTooltip = computed(() => {
-    if (this.isExporting()) return 'Export in progress...';
-    if (this.isLoading()) return 'Loading...';
-    if (!this.exportPath().trim()) return 'Please select a folder to save the export';
-    if (this.withPassword() && !this.password().trim())
-      return 'Please enter a password for encryption';
-    if (this.selectedOption() === ExportType.SpecificRemote && !this.selectedRemoteName().trim()) {
-      return 'Please select a remote to export';
-    }
-    return 'Export your settings to the selected folder';
-  });
-
-  readonly selectedOptionLabel = computed(() => {
-    const option = this.exportOptions.find(opt => opt.value === this.selectedOption());
-    return option?.label ?? 'Settings';
   });
 
   readonly showSpecificRemoteSection = computed(
@@ -141,23 +119,19 @@ export class ExportModalComponent implements OnInit {
   readonly showSecurityWarning = computed(() => !this.sevenZipSupported());
 
   async ngOnInit(): Promise<void> {
+    this.isLoading.set(true);
     try {
-      this.isLoading.set(true);
-
-      // Initialize data concurrently for better performance
       const [is7zSupported, remotesList] = await Promise.allSettled([
         this.backupRestoreService.check7zSupport(),
         this.remoteManagementService.getRemotes(),
       ]);
 
-      // Handle results with proper error handling
       this.sevenZipSupported.set(
         is7zSupported.status === 'fulfilled' ? is7zSupported.value : false
       );
 
       this.remotes.set(remotesList.status === 'fulfilled' ? Object.freeze(remotesList.value) : []);
 
-      // Initialize from input data
       this.initializeFromData();
     } catch (error) {
       console.error('Failed to initialize export modal:', error);
@@ -171,7 +145,6 @@ export class ExportModalComponent implements OnInit {
       this.selectedOption.set(ExportType.SpecificRemote);
       this.selectedRemoteName.set(this.data.remoteName);
     }
-
     if (this.data?.defaultExportType) {
       this.selectedOption.set(this.data.defaultExportType);
     }
@@ -185,48 +158,32 @@ export class ExportModalComponent implements OnInit {
   }
 
   async selectFolder(): Promise<void> {
-    if (this.folderSelectionInProgress() || this.isExporting()) return;
+    if (this.isExporting()) return;
 
-    try {
-      this.folderSelectionInProgress.set(true);
-      const selected = await this.fileSystemService.selectFolder(false);
-
-      if (typeof selected === 'string' && selected.trim()) {
-        this.exportPath.set(selected.trim());
-      }
-    } catch (error) {
-      console.error('Folder selection cancelled or failed:', error);
-    } finally {
-      this.folderSelectionInProgress.set(false);
+    // Native dialog is modal, no need for loading state
+    const selected = await this.fileSystemService.selectFolder(false);
+    if (selected?.trim()) {
+      this.exportPath.set(selected.trim());
     }
   }
 
   async onExport(): Promise<void> {
     if (!this.canExport()) return;
 
+    this.isExporting.set(true);
     try {
-      this.isExporting.set(true);
-
-      // Prepare export parameters with proper validation
       const exportParams = {
         path: this.exportPath().trim(),
         type: this.selectedOption(),
-        password: this.withPassword() && this.password().trim() ? this.password().trim() : null,
+        password: this.withPassword() ? this.password().trim() : null,
         remoteName:
           this.selectedOption() === ExportType.SpecificRemote
             ? this.selectedRemoteName().trim()
             : '',
-        userNote: this.userNote().trim() ? this.userNote().trim() : null,
+        userNote: this.userNote().trim() || null,
       };
 
-      // Validate parameters before sending to backend
-      if (!exportParams.path) {
-        throw new Error('Export path is required');
-      }
-
-      if (exportParams.type === ExportType.SpecificRemote && !exportParams.remoteName) {
-        throw new Error('Remote name is required for specific remote export');
-      }
+      if (!exportParams.path) throw new Error('Export path is required');
 
       await this.backupRestoreService.backupSettings(
         exportParams.path,
@@ -237,36 +194,30 @@ export class ExportModalComponent implements OnInit {
       );
     } catch (error) {
       console.error('Export failed:', error);
-      // Error is already handled by the service via notifications
     } finally {
       this.isExporting.set(false);
     }
   }
 
-  // Use proper signal setter instead of custom input handler
+  // Simple setters
   onNoteChange(value: string): void {
     this.userNote.set(value);
   }
-
   togglePasswordVisibility(): void {
-    this.showPassword.update(show => !show);
+    this.showPassword.update(s => !s);
   }
-
-  // Use proper signal setter
   onPasswordChange(value: string): void {
     this.password.set(value);
+  }
+  onRemoteSelectionChange(name: string): void {
+    this.selectedRemoteName.set(name?.trim() ?? '');
   }
 
   onExportOptionChange(option: ExportType): void {
     this.selectedOption.set(option);
-    // Clear remote selection when not needed to prevent stale data
     if (option !== ExportType.SpecificRemote) {
       this.selectedRemoteName.set('');
     }
-  }
-
-  onRemoteSelectionChange(remoteName: string): void {
-    this.selectedRemoteName.set(remoteName?.trim() ?? '');
   }
 
   onPasswordProtectionChange(enabled: boolean): void {
@@ -275,14 +226,5 @@ export class ExportModalComponent implements OnInit {
       this.password.set('');
       this.showPassword.set(false);
     }
-  }
-
-  // TrackBy functions for better *ngFor performance
-  trackByExportOption(_index: number, option: ExportOption): ExportType {
-    return option.value;
-  }
-
-  trackByRemote(_index: number, remote: string): string {
-    return remote;
   }
 }

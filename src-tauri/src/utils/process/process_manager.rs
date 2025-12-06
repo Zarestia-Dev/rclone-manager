@@ -273,3 +273,46 @@ pub fn kill_all_rclone_processes() -> Result<(), String> {
 // // pub fn get_child_pid(child: &tauri_plugin_shell::process::CommandChild) -> Option<u32> {
 // //     Some(child.pid())
 // // }
+
+/// Aggressively clean up WebKitGTK zombie processes on Linux
+/// This finds any "WebKitNetworkProcess" that belongs to THIS application
+/// and kills it.
+#[cfg(target_os = "linux")]
+pub fn cleanup_webkit_zombies() {
+    use log::{debug, info};
+    use sysinfo::{ProcessesToUpdate, System};
+
+    // Refresh process list
+    let mut system = System::new();
+    system.refresh_processes(ProcessesToUpdate::All, true);
+
+    let my_pid = std::process::id();
+    let mut killed_count = 0;
+
+    for (pid, process) in system.processes() {
+        let name = process.name().to_string_lossy();
+
+        // Target WebKit processes
+        if name.contains("WebKitNetwork") || name.contains("WebKitWeb") {
+            // CRITICAL: Only kill if it is a CHILD of our main app
+            if let Some(parent_pid) = process.parent()
+                && parent_pid.as_u32() == my_pid
+            {
+                debug!("🧟 Found zombie WebKit process: {} (PID: {})", name, pid);
+                if process.kill() {
+                    killed_count += 1;
+                }
+            }
+        }
+    }
+
+    if killed_count > 0 {
+        info!("✅ Cleaned up {} WebKit zombie processes", killed_count);
+    } else {
+        debug!("🧹 No WebKit zombies found.");
+    }
+}
+
+// Dummy function for non-linux OS to prevent compiler errors
+#[cfg(not(target_os = "linux"))]
+pub fn cleanup_webkit_zombies() {}

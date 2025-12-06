@@ -18,7 +18,6 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked } from 'marked';
 
 // Services
-import { AnimationsService } from '../../../../shared/services/animations.service';
 import {
   EventListenersService,
   SystemInfoService,
@@ -45,7 +44,6 @@ import { NotificationService } from 'src/app/shared/services/notification.servic
   ],
   templateUrl: './about-modal.component.html',
   styleUrls: ['./about-modal.component.scss', '../../../../styles/_shared-modal.scss'],
-  animations: [AnimationsService.slideOverlay()],
 })
 export class AboutModalComponent implements OnInit {
   readonly rCloneManagerVersion = appVersion;
@@ -100,6 +98,9 @@ export class AboutModalComponent implements OnInit {
   rcloneAutoCheck = true;
   rcloneUpdateChannel = 'stable';
   rcloneSkippedVersions: string[] = [];
+
+  // Restart state (set by backend after update install)
+  restartRequired = false;
 
   readonly channels = [
     { value: 'stable', label: 'Stable', description: 'Recommended for most users' },
@@ -273,6 +274,15 @@ export class AboutModalComponent implements OnInit {
     await this.appUpdaterService.installUpdate();
   }
 
+  async relaunchApp(): Promise<void> {
+    try {
+      await this.appUpdaterService.relaunchApp();
+    } catch (error) {
+      console.error('Failed to relaunch app:', error);
+      this.notificationService.showError('Failed to restart application');
+    }
+  }
+
   closeUpdateError(): void {
     this.updateErrorDismissed = true;
   }
@@ -388,6 +398,11 @@ export class AboutModalComponent implements OnInit {
       if (this.downloadInProgress || this.installingUpdate) {
         this.updateErrorDismissed = true;
       }
+    });
+
+    // Listen for backend restart-required flag
+    this.appUpdaterService.restartRequired$.subscribe(required => {
+      this.restartRequired = required;
     });
   }
 

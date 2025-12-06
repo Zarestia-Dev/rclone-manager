@@ -1,7 +1,13 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import { RemoteProvider, RemoteConfig, RcConfigQuestionResponse, Entry } from '@app/types';
+import {
+  RemoteProvider,
+  RemoteConfig,
+  RcConfigQuestionResponse,
+  Entry,
+  LocalDrive,
+} from '@app/types';
 
 /**
  * Service for managing rclone remotes
@@ -130,18 +136,43 @@ export class RemoteManagementService extends TauriBaseService {
    * Get filesystem info for a remote
    */
   async getFsInfo(remote: string): Promise<unknown> {
-    return this.invokeCommand('get_fs_info', { remote });
+    try {
+      return this.invokeCommand('get_fs_info', { remote });
+    } catch (error) {
+      console.error('Error getting filesystem info:', error);
+      throw error;
+    }
   }
 
   /**
    * Get disk usage for a remote
    */
-  async getDiskUsage(remote: string): Promise<{
-    total: string;
-    used: string;
-    free: string;
+  async getDiskUsage(
+    remote: string,
+    path?: string
+  ): Promise<{
+    total: number;
+    used: number;
+    free: number;
   }> {
-    return this.invokeCommand('get_disk_usage', { remote });
+    return this.invokeCommand('get_disk_usage', { remote, path });
+  }
+
+  /**
+   * Get size for a remote
+   */
+  async getSize(
+    remote: string,
+    path?: string
+  ): Promise<{
+    count: number;
+    bytes: number;
+  }> {
+    return this.invokeCommand('get_size', { remote, path });
+  }
+
+  async getStat(remote: string, path: string): Promise<{ item: Entry }> {
+    return this.invokeCommand('get_stat', { remote, path });
   }
 
   /**
@@ -152,8 +183,25 @@ export class RemoteManagementService extends TauriBaseService {
     path: string,
     options: Record<string, unknown>
   ): Promise<{ list: Entry[] }> {
-    const response = await this.invokeCommand('get_remote_paths', { remote, path, options });
-    return response as { list: Entry[] };
+    return this.invokeCommand<{ list: Entry[] }>('get_remote_paths', { remote, path, options });
+  }
+
+  async getLocalDrives(): Promise<LocalDrive[]> {
+    return this.invokeCommand<LocalDrive[]>('get_local_drives');
+  }
+
+  /**
+   * Create a directory on the remote via backend `mkdir` command
+   */
+  async makeDirectory(remote: string, path: string): Promise<void> {
+    return this.invokeCommand('mkdir', { remote, path });
+  }
+
+  /**
+   * Cleanup trashed files on the remote (optional path)
+   */
+  async cleanup(remote: string, path?: string): Promise<void> {
+    return this.invokeCommand('cleanup', { remote, path });
   }
 
   /**

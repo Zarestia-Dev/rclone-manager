@@ -1,3 +1,4 @@
+pub mod filesystem;
 pub mod job;
 pub mod mount;
 pub mod remote;

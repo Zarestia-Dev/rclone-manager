@@ -1,20 +1,10 @@
 import { CommonModule } from '@angular/common';
-import {
-  Component,
-  EventEmitter,
-  Input,
-  Output,
-  ChangeDetectionStrategy,
-  inject,
-  OnDestroy,
-  OnChanges,
-  SimpleChanges,
-  ChangeDetectorRef,
-} from '@angular/core';
+import { Component, inject, input, output, computed } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -26,8 +16,8 @@ import {
   RemoteAction,
 } from '@app/types';
 import { IconService } from '../../../../shared/services/icon.service';
-import { Subject } from 'rxjs';
 import { SettingsPanelComponent } from '../../../../shared/detail-shared';
+import { VfsControlPanelComponent } from 'src/app/shared/detail-shared/vfs-control/vfs-control-panel.component';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
@@ -50,32 +40,42 @@ interface SettingsSection {
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
+    MatTabsModule,
     SettingsPanelComponent,
+    VfsControlPanelComponent,
     ServeCardComponent,
   ],
   templateUrl: './serve-detail.component.html',
   styleUrl: './serve-detail.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ServeDetailComponent implements OnDestroy, OnChanges {
+export class ServeDetailComponent {
   readonly iconService = inject(IconService);
-  private readonly cdr = inject(ChangeDetectorRef);
   private readonly clipboard = inject(Clipboard);
-  private destroy$ = new Subject<void>();
 
-  @Input() selectedRemote!: Remote;
-  @Input() remoteSettings: RemoteSettings = {};
-  @Input() actionInProgress: RemoteAction = null;
-  @Input() runningServes: ServeListItem[] = [];
-  @Output() startJob = new EventEmitter<{ type: 'serve'; remoteName: string }>();
-  @Output() stopJob = new EventEmitter<{ type: 'serve'; remoteName: string; serveId: string }>();
-  @Output() openRemoteConfigModal = new EventEmitter<{
+  selectedRemote = input.required<Remote>();
+  remoteSettings = input<RemoteSettings>({});
+  actionInProgress = input<RemoteAction | null>(null);
+  runningServes = input.required<ServeListItem[]>();
+
+  startJob = output<{ type: 'serve'; remoteName: string }>();
+  stopJob = output<{ type: 'serve'; remoteName: string; serveId: string }>();
+  openRemoteConfigModal = output<{
     editTarget?: string;
     existingConfig?: RemoteSettings;
     initialSection?: string;
   }>();
 
-  remoteServes: ServeListItem[] = [];
+  readonly remoteServes = computed(() => {
+    const serves = this.runningServes();
+    const remote = this.selectedRemote();
+    if (remote) {
+      return serves.filter(serve => {
+        const remoteName = serve.params.fs.split(':')[0];
+        return remoteName === remote.remoteSpecs.name;
+      });
+    }
+    return [];
+  });
 
   readonly SERVE_SECTIONS: SettingsSection[] = [
     { key: 'serve', title: 'Protocol Options', icon: 'satellite-dish' },
@@ -87,32 +87,8 @@ export class ServeDetailComponent implements OnDestroy, OnChanges {
     { key: 'backend', title: 'Backend Config', icon: 'server', configKey: 'backendConfig' },
   ];
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['runningServes'] || changes['selectedRemote']) {
-      const serves = this.runningServes || [];
-      if (this.selectedRemote) {
-        this.remoteServes = this.filterRemoteServes(serves);
-      } else {
-        this.remoteServes = [];
-      }
-      this.cdr.markForCheck();
-    }
-  }
-
-  private filterRemoteServes(serves: ServeListItem[]): ServeListItem[] {
-    return serves.filter(serve => {
-      const remoteName = serve.params.fs.split(':')[0];
-      return remoteName === this.selectedRemote.remoteSpecs.name;
-    });
-  }
-
   private getSettingsForSection(section: SettingsSection): Record<string, unknown> {
-    const serveConfig = this.remoteSettings?.['serveConfig'];
+    const serveConfig = this.remoteSettings()?.['serveConfig'];
     if (!serveConfig) return {};
     if (section.key === 'serve') {
       return (serveConfig.options as Record<string, unknown>) || {};
@@ -142,7 +118,7 @@ export class ServeDetailComponent implements OnDestroy, OnChanges {
       editTarget: 'serve',
       initialSection: event.section,
       existingConfig: {
-        serveConfig: this.remoteSettings?.['serveConfig'],
+        serveConfig: this.remoteSettings()?.['serveConfig'],
       },
     });
   }
@@ -157,6 +133,6 @@ export class ServeDetailComponent implements OnDestroy, OnChanges {
   }
 
   onStartServeClick(): void {
-    this.startJob.emit({ type: 'serve', remoteName: this.selectedRemote.remoteSpecs.name });
+    this.startJob.emit({ type: 'serve', remoteName: this.selectedRemote().remoteSpecs.name });
   }
 }

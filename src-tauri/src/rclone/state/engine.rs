@@ -40,3 +40,8 @@ impl EngineState {
         )
     }
 }
+
+#[tauri::command]
+pub fn get_rclone_rc_url() -> String {
+    ENGINE_STATE.get_api().0
+}

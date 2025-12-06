@@ -1,8 +1,8 @@
 @use "../../../styles/_shared_components";
 
-.operation-control-panel {
+mat-card {
   &.active {
-    .panel-header {
+    mat-card-header {
       &.sync {
         background-color: rgba(var(--primary-color-rgb), var(--background-opacity));
       }
@@ -25,27 +25,9 @@
   }
 }
 
-.panel-actions {
-  display: flex;
-  justify-content: space-between;
-  padding: var(--panel-actions-padding);
-  background: rgba(var(--app-text-color-rgb), var(--inactive-opacity));
-  border-top: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
-}
-
-.operation-controls {
-  display: flex;
-  gap: var(--space-sm);
-}
-
 @media (max-width: 768px) {
-  .operation-toggle-button {
-    height: 44px;
-    font-size: 0.875rem;
-    padding: 0 var(--space-sm);
-  }
-
-  .operation-controls {
-    justify-content: flex-end;
+  mat-card-actions {
+    gap: var(--space-sm);
+    flex-direction: column;
   }
 }

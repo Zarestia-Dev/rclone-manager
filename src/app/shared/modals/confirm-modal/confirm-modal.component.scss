@@ -1,56 +1,43 @@
-:host {
-  // Spacing
-  --icon-size: 64px;
-  --icon-size-md: 56px;
-}
-
 .confirm-modal {
   display: flex;
   flex-direction: column;
-  position: relative;
   gap: var(--space-md);
   padding: var(--modal-padding);
 
-  // Title styling
   .modal-title {
-    font-size: 24px;
+    font-size: var(--font-size-2xl);
     font-weight: 600;
     color: var(--app-text-color);
     text-align: center;
-    margin: 0 0 var(--space-md) 0;
+    margin-bottom: var(--space-md);
     letter-spacing: -0.3px;
     line-height: 1.3;
-    position: relative;
   }
 
-  // Content area
   .modal-content {
     text-align: center;
-    position: relative;
 
     .modal-icon {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: var(--icon-size);
-      height: var(--icon-size);
-      margin: 0 auto 20px;
+      width: var(--icon-container-size);
+      height: var(--icon-container-size);
+      margin: 0 auto var(--space-lg);
       border-radius: 50%;
       transition: var(--transition-standard);
 
       mat-icon {
-        width: 32px;
-        height: 32px;
+        width: var(--icon-size-lg);
+        height: var(--icon-size-lg);
       }
 
-      // Destructive/warning actions (red pulse)
       &.destructive {
         background: rgba(var(--warn-color-rgb), 0.15);
         border: 2px solid rgba(var(--warn-color-rgb), 0.3);
         animation: iconPulseRed 2s ease-in-out infinite;
       }
 
-      // Info/non-destructive actions (green pulse)
       &.info {
         background: rgba(var(--primary-color-rgb), 0.15);
         border: 2px solid rgba(var(--primary-color-rgb), 0.3);
@@ -66,36 +53,32 @@
     }
   }
 
-  // Actions area
   .modal-actions {
     display: flex;
     justify-content: center;
     gap: var(--button-gap);
-    position: relative;
 
     button {
       transition: var(--transition-standard);
       min-width: 120px;
 
-      // Cancel button styling
       &.cancel-btn {
         background: rgba(var(--secondary-text-color-rgb), 0.08);
         color: var(--app-text-color);
 
         &:hover {
-          background: rgba(var(--secondary-text-color-rgb), 0.12);
+          background: rgba(var(--secondary-text-color-rgb), 0.5);
         }
       }
     }
   }
 }
 
-// Responsive Design
 @media (max-width: 768px) {
   .confirm-modal {
     .modal-content {
       .modal-icon {
-        margin-bottom: 16px;
+        margin-bottom: var(--space-md);
 
         mat-icon {
           width: 28px;
@@ -106,12 +89,12 @@
 
     .modal-actions {
       flex-direction: column;
-      gap: 12px;
+      gap: var(--space-sm);
 
       button {
         width: 100%;
         min-width: auto;
-        padding: 14px 24px;
+        padding: 14px var(--space-xl);
       }
     }
   }

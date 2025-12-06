@@ -1,4 +1,4 @@
-<div class="advanced-options" [ngClass]="mode" @slideInOut>
+<div class="advanced-options" [ngClass]="mode">
   <div
     class="options-tabs"
     [style.gridTemplateColumns]="'repeat(' + (tabOptions.length || 1) + ', 1fr)'"
@@ -38,7 +38,7 @@
       }
 
       @case ('custom') {
-        <div class="option-info" @slideInOut>
+        <div class="option-info">
           <p>
             {{
               mode === 'config'
@@ -76,7 +76,7 @@
       }
 
       @case ('existing') {
-        <div class="option-info" @slideInOut>
+        <div class="option-info">
           <p>
             {{
               mode === 'config'

@@ -2,7 +2,6 @@ use log::{debug, error, info};
 use tauri::{AppHandle, Manager};
 
 use crate::{
-    RcloneState,
     rclone::commands::{
         mount::{MountParams, mount_remote},
         serve::{ServeParams, start_serve},
@@ -11,7 +10,7 @@ use crate::{
             start_sync,
         },
     },
-    utils::types::all_types::{JobCache, RemoteCache},
+    utils::types::all_types::{JobCache, RcloneState, RemoteCache},
 };
 
 /// Main entry point for handling startup tasks.
@@ -158,7 +157,9 @@ async fn handle_remote_startup(
     if ServeParams::should_auto_start(&settings) {
         match ServeParams::from_settings(remote_name.to_string(), &settings) {
             Some(params) => {
-                if let Err(e) = start_serve(app_handle.clone(), params).await {
+                if let Err(e) =
+                    start_serve(app_handle.clone(), job_cache_state.clone(), params).await
+                {
                     error!("Failed to auto-start serve for {}: {}", remote_name, e);
                 } else {
                     debug!("Serve task spawned for {}", remote_name);

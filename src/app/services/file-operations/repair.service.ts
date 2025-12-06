@@ -115,7 +115,7 @@ export class RepairService extends TauriBaseService {
       case 'mount_plugin':
         return 'puzzle-piece';
       case 'config_corrupt':
-        return 'arrow-rotate-left';
+        return 'rotate-left';
       case 'backend_unreachable':
         return 'refresh';
       case 'rclone_password':
@@ -144,7 +144,7 @@ export class RepairService extends TauriBaseService {
       case 'config_corrupt':
         return [
           { icon: 'circle-info', label: 'Issue', value: 'Configuration file corrupted' },
-          { icon: 'arrow-rotate-left', label: 'Action', value: 'Restore from backup' },
+          { icon: 'rotate-left', label: 'Action', value: 'Restore from backup' },
         ];
       case 'backend_unreachable':
         return [

@@ -57,6 +57,7 @@ export class IconService {
       'puzzle-piece': 'assets/icons/puzzle-piece.svg',
       question: 'assets/icons/question.svg',
       refresh: 'assets/icons/rotate.svg',
+      'rotate-group': 'assets/icons/rotate-group.svg',
       server: 'assets/icons/server.svg',
       'rclone-symbolic': 'assets/rclone-symbolic.svg',
       stop: 'assets/icons/stop.svg',
@@ -78,6 +79,13 @@ export class IconService {
       memory: 'assets/icons/remotes/memory.svg',
       onedrive: 'assets/icons/remotes/onedrive.svg',
       s3: 'assets/icons/remotes/s3.svg',
+      mega: 'assets/icons/remotes/mega.svg',
+      protondrive: 'assets/icons/remotes/protondrive.svg',
+      iclouddrive: 'assets/icons/remotes/iclouddrive.svg',
+      http: 'assets/icons/remotes/http.svg',
+      webdav: 'assets/icons/remotes/webdav.svg',
+      sftp: 'assets/icons/remotes/sftp.svg',
+      hdfs: 'assets/icons/remotes/hdfs.svg',
 
       // ------------------- Theme Icons -------------------
       'circle-check': 'assets/icons/circle-check.svg',
@@ -87,10 +95,11 @@ export class IconService {
       'circle-xmark': 'assets/icons/circle-xmark.svg',
 
       // ------------------- Navigation Icons -------------------
-      'arrow-down': 'assets/icons/circle-chevron-down.svg',
-      'arrow-rotate-left': 'assets/icons/arrow-rotate-left.svg',
-      'arrow-up': 'assets/icons/circle-chevron-up.svg',
+      'chewron-down': 'assets/icons/circle-chevron-down.svg',
+      'chewron-up': 'assets/icons/circle-chevron-up.svg',
       'arrow-turn-up-left': 'assets/icons/arrow-turn-up-left.svg',
+      'chevron-up': 'assets/icons/chevron-up.svg',
+      'chevron-down': 'assets/icons/chevron-down.svg',
       bolt: 'assets/icons/bolt.svg',
       'caret-down': 'assets/icons/caret-down.svg',
       'caret-up': 'assets/icons/caret-up.svg',
@@ -101,12 +110,17 @@ export class IconService {
       'no-internet': 'assets/icons/no-internet.svg',
       'open-link': 'assets/icons/arrow-up-right-from-square.svg',
       'right-arrow': 'assets/icons/circle-arrow-right.svg',
+      'arrow-down': 'assets/icons/circle-arrow-down.svg',
       'right-left': 'assets/icons/right-left.svg',
       'rotate-left': 'assets/icons/rotate-left.svg',
+
+      bookmark: 'assets/icons/bookmark.svg',
+
       star: 'assets/icons/star.svg',
+      'star-outline': 'assets/icons/star-outline.svg',
+
       package: 'assets/icons/package.svg',
       skull: 'assets/icons/skull.svg',
-      'file-lines': 'assets/icons/file-lines.svg',
       bucket: 'assets/icons/bucket.svg',
       'shield-halved': 'assets/icons/shield-halved.svg',
       tv: 'assets/icons/tv.svg',
@@ -118,9 +132,19 @@ export class IconService {
       serve: 'assets/icons/satellite-dish.svg',
       fingerprint: 'assets/icons/fingerprint.svg',
       comment: 'assets/icons/comment.svg',
-      'file-zipper': 'assets/icons/file-zipper.svg',
       tag: 'assets/icons/tag.svg',
       'note-sticky': 'assets/icons/note-sticky.svg',
+
+      'file-zipper': 'assets/icons/file-zipper.svg',
+      'file-lines': 'assets/icons/file-lines.svg',
+      'file-audio': 'assets/icons/file-audio.svg',
+      'file-video': 'assets/icons/video.svg',
+      'file-image': 'assets/icons/image.svg',
+      'file-pdf': 'assets/icons/file-pdf.svg',
+      music: 'assets/icons/music.svg',
+
+      list: 'assets/icons/list.svg',
+      grid: 'assets/icons/grid.svg',
     };
 
     this.icons = icons;
@@ -134,5 +158,22 @@ export class IconService {
       return name;
     }
     return this.fallbackIcon;
+  }
+
+  getIconForFileType(fileType: string): string {
+    switch (fileType) {
+      case 'image':
+        return 'file-image';
+      case 'video':
+        return 'file-video';
+      case 'audio':
+        return 'file-audio';
+      case 'pdf':
+        return 'file-pdf';
+      case 'text':
+        return 'file-lines';
+      default:
+        return 'file';
+    }
   }
 }

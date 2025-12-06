@@ -4,7 +4,10 @@ use log::{debug, error, info};
 use tauri::Manager;
 
 use crate::{
-    core::{check_binaries::check_rclone_available, settings::operations::core::save_setting},
+    core::{
+        check_binaries::check_rclone_available, initialization::get_config_dir,
+        settings::operations::core::save_setting,
+    },
     utils::github_client,
 };
 
@@ -24,10 +27,7 @@ pub async fn provision_rclone(
 
     let install_path = match path {
         Some(p) => PathBuf::from(p),
-        _none => app_handle
-            .path()
-            .app_data_dir()
-            .expect("Failed to get app data directory"),
+        _none => get_config_dir(&app_handle)?,
     };
 
     // check_rclone_available is now async, so we need to await it

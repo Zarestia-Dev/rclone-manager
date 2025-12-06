@@ -1,11 +1,13 @@
-@if (isVisible) {
-  <div class="loading-overlay container" [@fadeInOut]>
-    <div class="loading-content" [@loadingSpinner]>
-      <div class="loading-spinner">
-        <mat-icon [svgIcon]="icon" class="animate-spin"></mat-icon>
-      </div>
-      <h2>{{ title }}</h2>
-      <p>{{ message }}</p>
+<div class="loading-overlay" animate.enter="fade-in-out-enter" animate.leave="fade-in-out-leave">
+  <div
+    class="loading-content"
+    animate.enter="loading-spinner-enter"
+    animate.leave="loading-spinner-leave"
+  >
+    <div class="loading-spinner">
+      <mat-icon [svgIcon]="icon()" class="animate-spin"></mat-icon>
     </div>
+    <h2>{{ title() }}</h2>
+    <p>{{ message() }}</p>
   </div>
-}
+</div>

@@ -38,11 +38,6 @@
         background: var(--primary-color);
         color: white;
       }
-
-      &:disabled {
-        opacity: var(--disabled-fade);
-        cursor: not-allowed;
-      }
     }
   }
 

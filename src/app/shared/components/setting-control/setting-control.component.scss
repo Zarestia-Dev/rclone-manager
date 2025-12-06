@@ -13,14 +13,14 @@
 
     .setting-info {
       h3 {
-        font-size: 18px;
+        font-size: var(--font-size-xl);
         font-weight: 600;
         margin-bottom: var(--space-xs);
         color: var(--app-text-color);
       }
 
       .settings-description {
-        font-size: 13px;
+        font-size: var(--font-size-sm);
         color: var(--secondary-text-color);
         margin: 0;
       }
@@ -88,13 +88,13 @@
     strong {
       display: block;
       font-weight: 600;
-      font-size: 15px;
+      font-size: var(--font-size-base);
       margin-bottom: var(--space-xs);
       color: var(--app-text-color);
     }
 
     p {
-      font-size: 13px;
+      font-size: var(--font-size-sm);
       color: var(--secondary-text-color);
       line-height: 1.4;
       margin: 0 0 var(--space-xs);
@@ -103,7 +103,7 @@
     .default-value,
     .type-info {
       display: block;
-      font-size: 12px;
+      font-size: var(--font-size-xs);
       margin-top: var(--space-xs);
       font-style: italic;
     }
@@ -142,12 +142,12 @@
         min-width: 48px;
         text-align: center;
         font-weight: 600;
-        font-size: 16px;
+        font-size: var(--font-size-base);
         padding: 0 var(--space-sm);
       }
 
       mat-icon {
-        font-size: 20px;
+        font-size: var(--font-size-xl);
         width: 20px;
         height: 20px;
       }
@@ -207,52 +207,32 @@
 // =============================================
 // RESPONSIVE ADJUSTMENTS
 // =============================================
-@media (max-width: 840px) {
+@media (max-width: 540px) {
   .setting-item {
     padding: var(--space-md) !important;
     flex-direction: column;
-    align-items: stretch !important;
+    text-align: center;
 
     .setting-info {
       flex: 1 !important;
+
+      p,
+      strong {
+        font-size: var(--font-size-sm);
+      }
     }
 
     .setting-control {
       width: 100%;
       flex-shrink: 1 !important;
+
+      .stepper-container {
+        justify-content: center;
+      }
     }
 
     .setting-full-width {
       width: 100% !important;
-    }
-  }
-}
-
-@media (max-width: 540px) {
-  .setting-item {
-    padding: var(--space-md) !important;
-
-    .setting-info {
-      strong {
-        font-size: 13px;
-      }
-
-      p {
-        font-size: 12px;
-      }
-    }
-
-    .setting-control {
-      width: 100%;
-    }
-
-    mat-form-field {
-      width: 100%;
-    }
-
-    mat-slide-toggle {
-      transform: scale(0.9);
-      transform-origin: right center;
     }
   }
 }
@@ -264,13 +244,13 @@
   strong {
     display: block;
     font-weight: 600;
-    font-size: 15px;
+    font-size: var(--font-size-base);
     margin-bottom: var(--space-xs);
     color: var(--app-text-color);
   }
 
   .help-text {
-    font-size: 13px;
+    font-size: var(--font-size-sm);
     color: var(--secondary-text-color);
     line-height: 1.6;
     margin: 0 0 var(--space-xs);
@@ -296,7 +276,7 @@
       border-radius: 3px;
       padding: 2px 6px;
       font-family: monospace;
-      font-size: 12px;
+      font-size: var(--font-size-xs);
       color: var(--warn-color);
       word-break: break-word;
     }
@@ -336,7 +316,7 @@
   .default-value,
   .type-info {
     display: block;
-    font-size: 12px;
+    font-size: var(--font-size-xs);
     margin-top: var(--space-xs);
     font-style: italic;
   }
@@ -353,11 +333,11 @@
 // Mobile responsiveness
 @media (max-width: 540px) {
   .setting-info .help-text {
-    font-size: 12px;
+    font-size: var(--font-size-xs);
     line-height: 1.5;
 
     code {
-      font-size: 11px;
+      font-size: var(--font-size-xs);
       padding: 2px 4px;
     }
 

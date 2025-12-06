@@ -146,6 +146,8 @@ pub async fn create_rclone_command(
         "--rc-no-auth",
         "--rc-serve",
         &format!("--rc-addr=127.0.0.1:{}", port),
+        "--rc-allow-origin",
+        "*",
     ]);
 
     // Set up environment variables

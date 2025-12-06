@@ -111,9 +111,6 @@ export class ServeManagementService extends TauriBaseService {
     vfsOptions?: Record<string, unknown>
   ): Promise<ServeStartResponse> {
     try {
-      // Get serve type from options for notification
-      console.log('Starting serve with options:', serveOptions);
-
       const serveType = (serveOptions['type'] as string) || 'serve';
 
       const params = {
@@ -123,9 +120,6 @@ export class ServeManagementService extends TauriBaseService {
         backend_options: backendOptions || null,
         vfs_options: vfsOptions || null,
       };
-
-      console.log('Invoking start_serve with params:', params);
-
       const response = await this.invokeCommand<ServeStartResponse>('start_serve', { params });
 
       this.notificationService.showSuccess(

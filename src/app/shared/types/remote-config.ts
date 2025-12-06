@@ -169,6 +169,7 @@ export interface InteractiveFlowState {
 }
 
 export interface Entry {
+  IsBucket?: boolean;
   ID: string;
   IsDir: boolean;
   MimeType: string;
@@ -176,4 +177,17 @@ export interface Entry {
   Name: string;
   Path: string;
   Size: number;
+}
+
+export interface LocalDrive {
+  name: string; // "C:" or "/" or "/home/user"
+  label: string; // "Local Disk" or "File System"
+  fs_type: string; // "local"
+}
+
+export interface ExplorerRoot {
+  name: string;
+  label: string;
+  type: string; // Icon name
+  fs_type: 'local' | 'remote';
 }

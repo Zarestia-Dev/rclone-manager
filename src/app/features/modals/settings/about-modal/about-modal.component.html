@@ -9,7 +9,7 @@
     </button>
   </div>
 
-  <div class="modal-content hide-scrollbar" #content (scroll)="onScroll(content)">
+  <div class="modal-content" #content (scroll)="onScroll(content)">
     <img src="assets/rclone.svg" alt="Rclone Logo" class="app-icon" />
     <h2 class="app-name">RClone Manager</h2>
     <p class="app-team">
@@ -43,7 +43,7 @@
           matButton
           class="about-item"
           (click)="navigateTo('updates')"
-          [matBadge]="updateAvailable ? '!' : null"
+          [matBadge]="updateAvailable || restartRequired ? '!' : null"
           matBadgeColor="warn"
         >
           <span>Updates</span>
@@ -77,7 +77,7 @@
   </div>
 
   @if (currentPage !== 'main') {
-    <div class="overlay" [@slideOverlay]>
+    <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
       <div class="overlay-header" data-tauri-drag-region>
         <button mat-icon-button (click)="navigateTo('main')">
           <mat-icon svgIcon="chevron-left"></mat-icon>
@@ -140,7 +140,25 @@
             </div>
           </div>
 
-          @if (updateAvailable) {
+          @if (restartRequired) {
+            <div class="update-card restart-required">
+              <div class="update-header">
+                <mat-icon svgIcon="rotate-group"></mat-icon>
+                <div class="update-title">
+                  <h4>Restart Required</h4>
+                  <p class="restart-description">
+                    An update has been installed. Please restart the application to apply the
+                    changes.
+                  </p>
+                </div>
+              </div>
+              <div class="update-buttons">
+                <button mat-flat-button class="accent" (click)="relaunchApp()">
+                  <span>Restart Now</span>
+                </button>
+              </div>
+            </div>
+          } @else if (updateAvailable) {
             <div class="update-card available">
               <div class="update-header">
                 <mat-icon svgIcon="circle-up"></mat-icon>
@@ -212,7 +230,7 @@
             <button
               mat-stroked-button
               (click)="checkForUpdates()"
-              [disabled]="checkingForUpdates || downloadInProgress"
+              [disabled]="checkingForUpdates || downloadInProgress || restartRequired"
               class="check-button"
             >
               @if (checkingForUpdates) {
@@ -547,7 +565,11 @@
   }
 
   @if (showingWhatsNew) {
-    <div class="whats-new-overlay" [@slideOverlay]>
+    <div
+      class="whats-new-overlay"
+      animate.enter="slide-overlay-enter"
+      animate.leave="slide-overlay-leave"
+    >
       <div class="overlay-header" data-tauri-drag-region>
         <button mat-icon-button (click)="closeWhatsNew()">
           <mat-icon svgIcon="chevron-left"></mat-icon>

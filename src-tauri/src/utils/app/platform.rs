@@ -32,3 +32,8 @@ pub fn get_build_type() -> Option<&'static str> {
 pub fn are_updates_disabled() -> bool {
     get_build_type().is_some()
 }
+
+#[tauri::command]
+pub fn relaunch_app(app: tauri::AppHandle) {
+    app.restart();
+}

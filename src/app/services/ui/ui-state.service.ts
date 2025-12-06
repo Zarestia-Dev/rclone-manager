@@ -6,8 +6,6 @@ import { platform } from '@tauri-apps/plugin-os';
 import { AppTab, ToastMessage, Remote } from '@app/types';
 import { ApiClientService } from '../core/api-client.service';
 
-// ToastMessage moved to shared types
-
 /**
  * Service for managing UI state with focus on viewport settings
  */

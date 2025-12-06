@@ -14,7 +14,7 @@ import {
   AbstractControl,
   ValidationErrors,
 } from '@angular/forms';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { NotificationService } from '../../../../shared/services/notification.service';
 import { Subject } from 'rxjs';
 import { RclonePasswordService } from '@app/services';
 
@@ -54,7 +54,7 @@ interface LoadingStates {
 export class SecuritySettingsComponent implements OnInit, OnDestroy {
   private readonly passwordService = inject(RclonePasswordService);
   private readonly fb = inject(FormBuilder);
-  private readonly snackBar = inject(MatSnackBar);
+  private readonly notificationService = inject(NotificationService);
   private readonly destroy$ = new Subject<void>();
 
   // UI State
@@ -218,7 +218,7 @@ export class SecuritySettingsComponent implements OnInit, OnDestroy {
       async () => {
         const password = this.getFormValue(this.overviewForm, 'password');
         await this.passwordService.validatePassword(password);
-        this.showSuccess('Password is valid!');
+        this.notificationService.showSuccess('Password is valid!');
       },
       this.overviewForm.get('password')
     );
@@ -230,7 +230,7 @@ export class SecuritySettingsComponent implements OnInit, OnDestroy {
       await this.passwordService.validatePassword(password);
       await this.passwordService.storePassword(password);
       this.resetPasswordForms();
-      this.showSuccess('Password stored securely in system keychain');
+      this.notificationService.showSuccess('Password stored securely in system keychain');
       await this.refreshPasswordStatus();
     });
   }
@@ -238,7 +238,7 @@ export class SecuritySettingsComponent implements OnInit, OnDestroy {
   async removePassword(): Promise<void> {
     await this.executePasswordOperation('isRemovingPassword', async () => {
       await this.passwordService.removeStoredPassword();
-      this.showSuccess('Stored password removed from system keychain');
+      this.notificationService.showSuccess('Stored password removed from system keychain');
       await this.refreshPasswordStatus();
     });
   }
@@ -248,7 +248,7 @@ export class SecuritySettingsComponent implements OnInit, OnDestroy {
       const password = this.getFormValue(this.encryptionForm, 'password');
       await this.passwordService.encryptConfig(password);
       await this.passwordService.clearEncryptionCache();
-      this.showSuccess('Configuration encrypted successfully');
+      this.notificationService.showSuccess('Configuration encrypted successfully');
       this.resetPasswordForms();
       await this.refreshPasswordStatus();
     });
@@ -259,7 +259,7 @@ export class SecuritySettingsComponent implements OnInit, OnDestroy {
       const password = this.getFormValue(this.encryptionForm, 'password');
       await this.passwordService.unencryptConfig(password);
       await this.passwordService.clearEncryptionCache();
-      this.showSuccess('Configuration unencrypted successfully');
+      this.notificationService.showSuccess('Configuration unencrypted successfully');
       this.resetPasswordForms();
       await this.refreshPasswordStatus();
     });
@@ -272,7 +272,7 @@ export class SecuritySettingsComponent implements OnInit, OnDestroy {
 
       await this.passwordService.changeConfigPassword(currentPassword, newPassword);
       await this.passwordService.clearEncryptionCache();
-      this.showSuccess('Password changed successfully');
+      this.notificationService.showSuccess('Password changed successfully');
       this.resetPasswordForms();
       await this.refreshPasswordStatus();
     });
@@ -285,7 +285,7 @@ export class SecuritySettingsComponent implements OnInit, OnDestroy {
         throw new Error('No stored password found');
       }
       await this.passwordService.setConfigPasswordEnv(storedPassword);
-      this.showSuccess('Environment variable set');
+      this.notificationService.showSuccess('Environment variable set');
       await this.refreshPasswordStatus();
     });
   }
@@ -293,7 +293,7 @@ export class SecuritySettingsComponent implements OnInit, OnDestroy {
   async clearEnvPassword(): Promise<void> {
     await this.executePasswordOperation('isClearingEnv', async () => {
       await this.passwordService.clearPasswordEnvironment();
-      this.showSuccess('Environment variable cleared');
+      this.notificationService.showSuccess('Environment variable cleared');
       await this.refreshPasswordStatus();
     });
   }
@@ -358,7 +358,7 @@ export class SecuritySettingsComponent implements OnInit, OnDestroy {
   private handleStatusError(error: unknown): void {
     console.error('Failed to refresh password status:', error);
     if (this.isConfigEncrypted === null) {
-      this.showError('Failed to load configuration status');
+      this.notificationService.showError('Failed to load configuration status');
       this.isConfigEncrypted = false;
     }
     this.hasStoredPassword = false;
@@ -375,13 +375,11 @@ export class SecuritySettingsComponent implements OnInit, OnDestroy {
     try {
       await operation();
     } catch (error) {
-      const errorMessage = this.getErrorMessage(error);
-
       if (errorControl) {
-        errorControl.setErrors({ apiError: { message: errorMessage } });
+        errorControl.setErrors({ apiError: { message: error } });
       }
 
-      this.showError(errorMessage);
+      this.notificationService.showError(String(error));
     } finally {
       this.passwordLoading[loadingKey] = false;
     }
@@ -400,26 +398,5 @@ export class SecuritySettingsComponent implements OnInit, OnDestroy {
     this.overviewForm.reset();
     this.encryptionForm.reset();
     this.changePasswordForm.reset();
-  }
-
-  private showSuccess(message: string): void {
-    this.snackBar.open(`✅ ${message}`, 'Close', {
-      duration: 3000,
-      panelClass: ['success-snackbar'],
-    });
-  }
-
-  private showError(message: string): void {
-    this.snackBar.open(`❌ ${message}`, 'Close', {
-      duration: 5000,
-      panelClass: ['error-snackbar'],
-    });
-  }
-
-  private getErrorMessage(error: unknown): string {
-    if (error instanceof Error) {
-      return error.message;
-    }
-    return String(error);
   }
 }

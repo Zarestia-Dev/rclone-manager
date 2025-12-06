@@ -1,13 +1,12 @@
 import {
   Component,
-  Input,
   Output,
   EventEmitter,
   OnInit,
-  OnChanges,
-  SimpleChanges,
-  ChangeDetectorRef,
-  inject,
+  input,
+  computed,
+  signal,
+  effect,
 } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
@@ -18,7 +17,6 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonModule } from '@angular/material/button';
 import { FormatTimePipe } from '../../pipes/format-time.pipe';
-import { AnimationsService } from '../../services/animations.service';
 
 @Component({
   selector: 'app-password-manager',
@@ -32,59 +30,58 @@ import { AnimationsService } from '../../services/animations.service';
     MatTooltipModule,
     MatButtonModule,
   ],
-  animations: [AnimationsService.slideInOut()],
   templateUrl: './password-manager.component.html',
   styleUrls: ['./password-manager.component.scss'],
 })
-export class PasswordManagerComponent implements OnInit, OnChanges {
-  @Input() password = '';
-  @Input() storePassword = true;
-  @Input() isSubmitting = false;
-  @Input() hasError = false;
-  @Input() errorMessage = '';
-  @Input() showStoreOption = true;
-  @Input() showSubmitButton = false;
-  @Input() showPasswordStrength = false;
-  @Input() disabled = false;
-  @Input() placeholder = 'Enter your rclone config password';
-  @Input() label = 'Configuration Password';
-  @Input() shakeTrigger = 0;
+export class PasswordManagerComponent implements OnInit {
+  password = input('');
+  storePassword = input(true);
+  isSubmitting = input(false);
+  hasError = input(false);
+  errorMessage = input('');
+  showStoreOption = input(true);
+  showSubmitButton = input(false);
+  showPasswordStrength = input(false);
+  disabled = input(false);
+  placeholder = input('Enter your rclone config password');
+  label = input('Configuration Password');
+  shakeTrigger = input(0);
 
   @Output() passwordChange = new EventEmitter<string>();
   @Output() storePasswordChange = new EventEmitter<boolean>();
   @Output() unlock = new EventEmitter<void>();
 
   // Animation state
-  isEntering = false;
+  isEntering = signal(false);
 
   // Shake state for wrong password feedback
-  shouldShake = false;
-  private isShaking = false;
+  shouldShake = signal(false);
+  private isShaking = signal(false);
 
   FormatTimePipe = new FormatTimePipe();
 
-  private cdr = inject(ChangeDetectorRef);
+  canSubmit = computed(() => !!(this.password() && !this.isSubmitting() && !this.disabled()));
+
+  constructor() {
+    effect(() => {
+      // Trigger shake on hasError input change
+      if (this.hasError() && !this.isShaking()) {
+        this.triggerShake();
+      }
+    });
+    effect(() => {
+      // Trigger shake on shakeTrigger input change
+      if (this.shakeTrigger() > 0 && !this.isShaking()) {
+        this.triggerShake();
+      }
+    });
+  }
 
   ngOnInit(): void {
     // Trigger entrance animation
     setTimeout(() => {
-      this.isEntering = true;
-      this.cdr.detectChanges();
+      this.isEntering.set(true);
     }, 50);
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['hasError']) {
-      const prev = changes['hasError'].previousValue;
-      const curr = changes['hasError'].currentValue;
-      // If it changed from falsy -> truthy, trigger the shake
-      if (!prev && curr && !this.isShaking) {
-        this.triggerShake();
-      }
-    }
-    if (changes['shakeTrigger'] && !this.isShaking) {
-      this.triggerShake();
-    }
   }
 
   onPasswordInput(value: string): void {
@@ -101,14 +98,10 @@ export class PasswordManagerComponent implements OnInit, OnChanges {
     }
   }
 
-  canSubmit(): boolean {
-    return !!(this.password && !this.isSubmitting && !this.disabled);
-  }
-
   // Utility method for focus management
   focusPasswordInput(): void {
     const input = document.querySelector('.password-field input') as HTMLInputElement;
-    if (input && !this.disabled) {
+    if (input && !this.disabled()) {
       input.focus();
     }
   }
@@ -123,14 +116,11 @@ export class PasswordManagerComponent implements OnInit, OnChanges {
    * Keeps state in a property so Angular templates and tests can interact predictably.
    */
   triggerShake(duration = 600): void {
-    this.shouldShake = true;
-    this.isShaking = true;
-    // Ensure change detection runs so template classes update immediately
-    this.cdr.detectChanges();
+    this.shouldShake.set(true);
+    this.isShaking.set(true);
     setTimeout(() => {
-      this.shouldShake = false;
-      this.isShaking = false;
-      this.cdr.detectChanges();
+      this.shouldShake.set(false);
+      this.isShaking.set(false);
     }, duration);
   }
 

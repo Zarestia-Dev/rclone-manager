@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>io.github.zarestia_dev.rclone-manager</id>
   <name>RClone Manager</name>
-  <summary>User Friendly UI for rclone</summary>
+  <summary>Manage cloud storage remotes easily</summary>
   <metadata_license>MIT</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
   <developer id="io.github.zarestia_dev.rclone-manager">
@@ -18,28 +18,24 @@
   </requires>
   <description>
     <p>
-      RClone Manager is a cross-platform GUI application to help users manage Rclone remotes with a modern interface. A unique mix of GTK styling, Angular Material, and FontAwesome, creating a minimalist yet modern look.
-    </p>
-    <p>
-      Built with Angular + Tauri (Rust), this free and open-source application provides an intuitive interface for managing your cloud storage remotes with ease.
+      RClone Manager is a cross-platform application that provides a modern, intuitive interface for managing your cloud storage remotes. It combines a minimalist design with powerful features to help you organize your files.
     </p>
     <p>
       Key Features:
     </p>
     <ul>
-      <li>🎨 User-Friendly Theme – Clean, intuitive interface designed for ease of use, making remote management accessible for everyone</li>
-      <li>🛠 Remote Management – Add, edit, and delete remotes easily with support for nearly all Rclone remotes (Google Drive, Dropbox, OneDrive, S3, and many more)</li>
-      <li>🔐 OAuth Support – Authenticate with popular providers effortlessly</li>
-      <li>⏰ Scheduled Tasks – Automate syncs with a built-in scheduler. Create, edit, enable/disable, and monitor scheduled jobs</li>
-      <li>🔑 Encrypted Configuration File Support – Keep your remotes safe with optional encryption</li>
-      <li>⚙️ Advanced VFS Options – Tune caching, read sizes, and other performance options</li>
-      <li>🖥 Tray Icon Support – Quick access to your remotes from the system tray</li>
-      <li>🌗 Light &amp; Dark Modes – GTK-inspired themes with a modern, responsive layout</li>
-      <li>📁 File Browser – Browse and manage files across your remotes</li>
-      <li>🔄 Sync, Copy, Mount – Full support for rclone operations including mounting remotes (Needs flatpak spawn access)</li>
-      <li>📡 Serve Remotes – Expose remotes over HTTP, WebDAV, FTP, SFTP and more.</li>
-      <li>📊 Job Management – Track and manage your rclone operations</li>
-      <li>🚀 Cross-Platform – Works seamlessly on Windows, Linux, and macOS</li>
+      <li>User-Friendly UI: Clean interface designed for ease of use, making remote management accessible for everyone.</li>
+      <li>Remote Management: Add, edit, and delete remotes easily with support for Google Drive, Dropbox, OneDrive, S3, and many more.</li>
+      <li>OAuth Support: Authenticate with popular providers effortlessly.</li>
+      <li>Scheduled Tasks: Automate syncs with a built-in scheduler. Create, edit, and monitor scheduled jobs.</li>
+      <li>Encrypted Configuration: Keep your remotes safe with optional encryption.</li>
+      <li>Advanced VFS Options: Tune caching, read sizes, and other performance options.</li>
+      <li>Tray Icon Support: Quick access to your remotes from the system tray.</li>
+      <li>Light and Dark Modes: Themes with a modern, responsive layout.</li>
+      <li>File Browser: Browse and manage files across your remotes.</li>
+      <li>Sync, Copy, Mount: Full support for operations including mounting remotes.</li>
+      <li>Serve Remotes: Expose remotes over HTTP, WebDAV, FTP, SFTP, and more.</li>
+      <li>Job Management: Track and manage your active operations.</li>
     </ul>
   </description>
   <categories>
@@ -47,10 +43,14 @@
     <category>Utility</category>
   </categories>
   <keywords>
-    <keyword>Rclone</keyword>
-    <keyword>S3</keyword>
-    <keyword>Cloud Storage</keyword>
-    <keyword>File Manager</keyword>
+    <keyword>rclone</keyword>
+    <keyword>s3</keyword>
+    <keyword>onedrive</keyword>
+    <keyword>dropbox</keyword>
+    <keyword>sync</keyword>
+    <keyword>cloud</keyword>
+    <keyword>backup</keyword>
+    <keyword>storage</keyword>
   </keywords>
   <branding>
     <color type="primary" scheme_preference="light">#016fee</color>
@@ -62,36 +62,57 @@
   <url type="vcs-browser">https://github.com/Zarestia-Dev/rclone-manager</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/desktop-ui.png</image>
-      <caption>Desktop UI - Light and Dark modes</caption>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.8/assets/desktop-ui.png</image>
+      <caption>Desktop UI</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/general-home.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.8/assets/general-home.png</image>
       <caption>General Home View</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/general-remote.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.8/assets/general-remote.png</image>
       <caption>Remote Management Interface</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/serve-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.8/assets/serve-control.png</image>
       <caption>Serve Management Interface</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/job-watcher.png</image>
-      <caption>Job Watcher - Monitor your rclone operations</caption>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.8/assets/job-watcher.png</image>
+      <caption>Job Watcher - Monitor your operations</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/mount-control.png</image>
+      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.8/assets/mount-control.png</image>
       <caption>Mount Control Panel</caption>
     </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/Zarestia-Dev/rclone-manager/refs/tags/v0.1.7/assets/mobile-ui.png</image>
-      <caption>Mobile UI - Responsive design</caption>
-    </screenshot>
-  </screenshots>
+    </screenshots>
   <releases>
-    <release version="0.1.7" date="2025-11-14">
+    <release version="0.1.8" date="2025-11-6">
+      <description>
+        <p>Added</p>
+        <ul>
+          <li>Developer Setting: Memory Optimization (Destroy Window on Close). Added a new experimental option in Developer Settings that destroys the main window instead of hiding it when closed. This significantly reduces background RAM usage. On Linux, this also actively cleans up lingering WebKit "zombie" processes to prevent memory leaks over long sessions.</li>
+          <li>Nautilus file manager component added for file browsing. This new file manager component provides a more native and integrated file browsing experience within the app, leveraging Nautilus' capabilities. Currently, it does not support all features like copy, move, delete, etc. They will be added in future updates.</li>
+          <li>marked dependency added for markdown rendering in the About modal. This allows us to display formatted release notes fetched from GitHub in a user-friendly manner.</li>
+          <li>Support for local path navigation on the remote config. User can now navigate to local paths when configuring remotes that use local file systems.</li>
+          <li>Added Flatpak detection and warning banner. If the app is running as a Flatpak, a warning banner will be displayed to inform the user about permission limitations. The banner can be dismissed and will not show again once dismissed.</li>
+          <li>VFS Control Panel added to mount and serve pages. Now you can manage VFS instances directly from the app. You can view the status of VFS instances, control their behavior and monitor their queues.</li>
+        </ul>
+        <p>Changed</p>
+        <ul>
+          <li>Charts removed from sync, copy, move and bisync activity panels. Also chartjs dependency removed from the project to reduce the bundle size.</li>
+          <li>Remote Logs Modal design and functionality improvements.</li>
+          <li>Export Modal design and functionality improvements.</li>
+          <li>Dashboard General Overview panel design and functionality improvements. Now it supports layout customization.</li>
+          <li>App update now support the restart app. Also ask windows users to before updating the app because windows need to close the app to update it.</li>
+        </ul>
+        <p>Fixed</p>
+        <ul>
+          <li>Windows bad looking scrollbars fixed. Now it uses Fluent Overlay scrollbars on Windows for a better look and feel. Also not pushes the content when they appear.</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.1.7" date="2025-10-14">
       <description>
         <p>Added</p>
         <ul>
@@ -106,11 +127,11 @@
         </ul>
         <p>Fixed</p>
         <ul>
-          <li>Critical fix for process management. Now the app correctly find own rclone processes via ports.</li>
+          <li>Critical fix for process management.</li>
         </ul>
       </description>
     </release>
-    <release version="0.1.6" date="2025-10-13">
+    <release version="0.1.6" date="2025-9-13">
       <url type="details">https://github.com/Zarestia-Dev/rclone-manager/releases/tag/v0.1.6</url>
       <description>
         <p>Initial release of RClone Manager for FlatHub.</p>

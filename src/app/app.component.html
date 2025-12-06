@@ -1,26 +1,14 @@
-<!-- Custom Right-Click Menu -->
-<!-- <div id="custom-menu" class="menu" (mouseleave)="hideMenu()">
-<ul>
-  <li (click)="onOptionClick('Option 1')">Option 1</li>
-  <li (click)="onOptionClick('Option 2')">Option 2</li>
-  <li (click)="onOptionClick('Option 3')">Option 3</li>
-</ul>
-</div> -->
-
-<!-- Main Layout -->
 <div class="app-wrapper" appShortcutHandler>
-  <!-- <router-outlet></router-outlet> -->
-
-  @if (!completedOnboarding) {
+  @if (!completedOnboarding()) {
     <app-onboarding class="onboarding" (completed)="finishOnboarding()"></app-onboarding>
   }
-  <app-titlebar class="title-bar"></app-titlebar>
+  <app-titlebar class="title-bar"> </app-titlebar>
   <app-banner class="banner"></app-banner>
   <app-home class="home-content"></app-home>
   <app-tabs-buttons
     data-tauri-drag-region
     class="tabs"
-    [currentTab]="currentTab"
+    [currentTab]="currentTab()"
     (tabSelected)="setTab($event)"
   ></app-tabs-buttons>
 </div>

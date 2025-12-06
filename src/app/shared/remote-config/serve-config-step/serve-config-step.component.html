@@ -1,15 +1,15 @@
-<form [formGroup]="configGroup" class="serve-form">
+<form [formGroup]="form()" class="serve-form">
   <cdk-virtual-scroll-viewport
     [itemSize]="20"
     [style.height.px]="700"
     class="virtual-scroll-viewport"
   >
-    <div *cdkVirtualFor="let field of formFields; trackBy: trackByField" class="form-field-item">
+    <div *cdkVirtualFor="let field of formFields(); trackBy: trackByField" class="form-field-item">
       @if (field.type === 'path-config') {
         <app-operation-config
-          [opFormGroup]="configGroup"
+          [opFormGroup]="form()"
           [operationType]="'serve'"
-          [currentRemoteName]="remoteName"
+          [currentRemoteName]="remoteName()"
           [existingRemotes]="[]"
           [description]="
             'Select the remote path you want to serve. You can serve the entire remote or a specific folder.'
@@ -23,7 +23,7 @@
           <mat-form-field appearance="fill">
             <mat-label>Type</mat-label>
             <mat-select formControlName="type" (selectionChange)="onTypeChange($event.value)">
-              @for (type of availableServeTypes; track type) {
+              @for (type of availableServeTypes(); track type) {
                 <mat-option [value]="type">
                   <div class="type-option">
                     <mat-icon [svgIcon]="iconService.getIconName(getTypeIcon(type))"></mat-icon>
@@ -37,9 +37,9 @@
               <mat-select-trigger>
                 <div class="type-option">
                   <mat-icon
-                    [svgIcon]="iconService.getIconName(getTypeIcon(selectedType))"
+                    [svgIcon]="iconService.getIconName(getTypeIcon(selectedType()))"
                   ></mat-icon>
-                  <span class="type-name">{{ selectedType.toUpperCase() }}</span>
+                  <span class="type-name">{{ selectedType().toUpperCase() }}</span>
                 </div>
               </mat-select-trigger>
             </mat-select>
@@ -50,16 +50,16 @@
       @if (field.type === 'loading') {
         <div class="loading-container">
           <mat-spinner diameter="30"></mat-spinner>
-          <span>Loading {{ selectedType }} options...</span>
+          <span>Loading {{ selectedType() }} options...</span>
         </div>
       }
 
       @if (field.type === 'dynamic-fields') {
         <div class="dynamic-fields" formGroupName="options">
-          @for (field of dynamicServeFields; track field.Name) {
+          @for (field of dynamicServeFields(); track field.Name) {
             <app-setting-control
               [option]="field"
-              [formControlName]="getControlKey(field)"
+              [formControlName]="getControlKey()(field)"
             ></app-setting-control>
           }
         </div>

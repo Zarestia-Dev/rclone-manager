@@ -2,19 +2,9 @@ use log::{debug, error};
 use serde_json::json;
 use tauri::State;
 
-use crate::RcloneState;
 use crate::rclone::state::engine::ENGINE_STATE;
 use crate::utils::rclone::endpoints::{EndpointHelper, core};
-
-/// Utility to normalize Windows extended-length paths (e.g., //?/C:/path or \\?\C:\path) to C:/path, only on Windows
-#[cfg(target_os = "windows")]
-fn normalize_windows_path(path: &str) -> String {
-    let mut p = path;
-    if p.starts_with("//?/") || p.starts_with(r"\\?\") {
-        p = &p[4..];
-    }
-    p.to_string()
-}
+use crate::utils::types::all_types::RcloneState;
 
 /// Get RClone core statistics  
 #[tauri::command]
@@ -136,6 +126,7 @@ pub async fn get_completed_transfers(
     // Only normalize on Windows
     #[cfg(target_os = "windows")]
     {
+        use crate::utils::json_helpers::normalize_windows_path;
         debug!("📊 Normalizing paths in completed transfers response: {value}");
         if let Some(transferred) = value.get_mut("transferred").and_then(|v| v.as_array_mut()) {
             for transfer in transferred.iter_mut() {
@@ -151,36 +142,4 @@ pub async fn get_completed_transfers(
     }
 
     Ok(value)
-}
-
-/// Get job stats with optional group filtering
-#[tauri::command]
-pub async fn get_job_stats(
-    state: State<'_, RcloneState>,
-    jobid: u64,
-    group: Option<String>,
-) -> Result<serde_json::Value, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, core::STATS);
-
-    let mut payload = json!({ "jobid": jobid });
-    if let Some(group) = group {
-        payload["group"] = json!(group);
-    }
-
-    let response = state
-        .client
-        .post(&url)
-        .json(&payload)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to get job stats: {e}"))?;
-
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        return Err(format!("HTTP {status}: {body}"));
-    }
-
-    serde_json::from_str(&body).map_err(|e| format!("Failed to parse job stats: {e}"))
 }

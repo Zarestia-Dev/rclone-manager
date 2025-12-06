@@ -33,9 +33,9 @@ export interface MountedRemote {
 // REMOTE STATE & OPERATIONS
 // ============================================================================
 export interface DiskUsage {
-  total_space?: string;
-  used_space?: string;
-  free_space?: string;
+  total_space?: number;
+  used_space?: number;
+  free_space?: number;
   loading?: boolean;
   error?: boolean;
   notSupported?: boolean;
@@ -46,7 +46,7 @@ export interface Remote {
   showOnTray?: boolean;
   type?: string;
   remoteSpecs: RemoteSpecs;
-  diskUsage?: DiskUsage;
+  diskUsage: DiskUsage;
   mountState?: {
     mounted?: boolean;
   };

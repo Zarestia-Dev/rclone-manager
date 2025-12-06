@@ -5,23 +5,23 @@
         <div
           [ngClass]="{
             'icon-container': true,
-            sync: isSyncType() && getOperationActiveState(),
-            copy: selectedSyncOperation === 'copy' && getOperationActiveState(),
-            move: selectedSyncOperation === 'move' && getOperationActiveState(),
-            bisync: selectedSyncOperation === 'bisync' && getOperationActiveState(),
-            mount: selectedRemote.mountState?.mounted,
+            sync: isSyncType() && operationActiveState(),
+            copy: selectedSyncOperation() === 'copy' && operationActiveState(),
+            move: selectedSyncOperation() === 'move' && operationActiveState(),
+            bisync: selectedSyncOperation() === 'bisync' && operationActiveState(),
+            mount: selectedRemote().mountState?.mounted,
           }"
         >
           <mat-icon
-            [svgIcon]="iconService.getIconName(selectedRemote.remoteSpecs.type)"
+            [svgIcon]="iconService.getIconName(selectedRemote().remoteSpecs.type)"
             class="remote-type-icon"
           ></mat-icon>
         </div>
         <div class="remote-text-info">
-          <h2 class="remote-name" matTooltip="{{ selectedRemote.remoteSpecs.name }}">
-            {{ selectedRemote.remoteSpecs.name }}
+          <h2 class="remote-name" matTooltip="{{ selectedRemote().remoteSpecs.name }}">
+            {{ selectedRemote().remoteSpecs.name }}
           </h2>
-          <span class="remote-type">{{ selectedRemote.remoteSpecs.type | titlecase }}</span>
+          <span class="remote-type">{{ selectedRemote().remoteSpecs.type | titlecase }}</span>
         </div>
       </div>
     </div>
@@ -30,7 +30,7 @@
 
   <!-- Main Content Area -->
   <div class="detail-content">
-    @if (mainOperationType === 'sync') {
+    @if (mainOperationType() === 'sync') {
       <div class="sync-operation-wrapper">
         <!-- Operation Selection Buttons -->
         <div class="operation-buttons">
@@ -40,7 +40,7 @@
               [class]="
                 'operation-button operation-' +
                 operation.type +
-                (selectedSyncOperation === operation.type ? ' active' : '') +
+                (selectedSyncOperation() === operation.type ? ' active' : '') +
                 ' ' +
                 operation.cssClass
               "
@@ -66,12 +66,12 @@
               <div class="operation-monitor">
                 <!-- Operation Control Panel -->
                 <app-operation-control
-                  [config]="getOperationControlConfig()"
+                  [config]="operationControlConfig()"
                   (startJob)="
-                    startJob.emit({ type: $event, remoteName: selectedRemote.remoteSpecs.name })
+                    startJob.emit({ type: $event, remoteName: selectedRemote().remoteSpecs.name })
                   "
                   (stopJob)="
-                    stopJob.emit({ type: $event, remoteName: selectedRemote.remoteSpecs.name })
+                    stopJob.emit({ type: $event, remoteName: selectedRemote().remoteSpecs.name })
                   "
                   (openPath)="triggerOpenInFiles($event)"
                   class="control-panel"
@@ -82,57 +82,24 @@
                 @if (isCronEnabled()) {
                   <div class="cron-human-readable">
                     <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
-                    <span>{{ getHumanReadableCron() }}</span>
+                    <span>{{ humanReadableCron() }}</span>
                   </div>
                 }
 
                 <!-- Job Information Panel -->
                 <app-job-info-panel
-                  [config]="getJobInfoConfig()"
+                  [config]="jobInfoConfig()"
                   class="info-panel"
                 ></app-job-info-panel>
 
                 <!-- Statistics Panel -->
-                <app-stats-panel [config]="getStatsConfig()" class="stats-panel"></app-stats-panel>
+                <app-stats-panel [config]="statsConfig()" class="stats-panel"></app-stats-panel>
 
                 <!-- Transfer Activity Panel -->
                 <app-transfer-activity-panel
-                  [config]="getTransferActivityConfig()"
+                  [config]="transferActivityConfig()"
                   class="activity-panel"
                 ></app-transfer-activity-panel>
-
-                <!-- Performance Charts Panel -->
-                @if (shouldShowCharts()) {
-                  <div class="performance-graphs">
-                    <mat-card class="graph-card speed-chart">
-                      <mat-card-header>
-                        <div mat-card-avatar>
-                          <mat-icon svgIcon="chart" class="chart-icon"></mat-icon>
-                        </div>
-                        <mat-card-title>Transfer Speed</mat-card-title>
-                      </mat-card-header>
-                      <mat-card-content>
-                        <div class="chart-container">
-                          <canvas #speedChart></canvas>
-                        </div>
-                      </mat-card-content>
-                    </mat-card>
-
-                    <mat-card class="graph-card progress-chart">
-                      <mat-card-header>
-                        <div mat-card-avatar>
-                          <mat-icon svgIcon="chart" class="chart-icon"></mat-icon>
-                        </div>
-                        <mat-card-title>Transfer Progress</mat-card-title>
-                      </mat-card-header>
-                      <mat-card-content>
-                        <div class="chart-container">
-                          <canvas #progressChart></canvas>
-                        </div>
-                      </mat-card-content>
-                    </mat-card>
-                  </div>
-                }
               </div>
             </mat-tab>
 
@@ -144,7 +111,7 @@
 
               <div class="configuration-content">
                 <!-- Operation-Specific Warnings -->
-                @switch (selectedSyncOperation) {
+                @switch (selectedSyncOperation()) {
                   @case ('move') {
                     <mat-card class="detail-panel">
                       <mat-card-header class="panel-header">
@@ -177,14 +144,14 @@
                   }
                 }
                 <div class="settings-layout">
-                  @if (operationSettingsSections.length) {
+                  @if (operationSettingsSections().length) {
                     <section class="settings-group operation-settings">
                       <header class="group-header">
-                        <h3 class="group-title">{{ operationSettingsHeading }}</h3>
-                        <p class="group-description">{{ operationSettingsDescription }}</p>
+                        <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
+                        <p class="group-description">{{ operationSettingsDescription() }}</p>
                       </header>
                       <div class="group-panels">
-                        @for (section of operationSettingsSections; track section.key) {
+                        @for (section of operationSettingsSections(); track section.key) {
                           <app-settings-panel
                             [config]="getSettingsPanelConfig(section)"
                             (editSettings)="onEditSettings($event)"
@@ -195,14 +162,14 @@
                     </section>
                   }
 
-                  @if (sharedSettingsSections.length) {
+                  @if (sharedSettingsSections().length) {
                     <section class="settings-group shared-settings">
                       <header class="group-header">
                         <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
                         <p class="group-description">{{ sharedSettingsDescription }}</p>
                       </header>
                       <div class="group-panels">
-                        @for (section of sharedSettingsSections; track section.key) {
+                        @for (section of sharedSettingsSections(); track section.key) {
                           <app-settings-panel
                             [config]="getSettingsPanelConfig(section)"
                             (editSettings)="onEditSettings($event)"
@@ -223,66 +190,88 @@
     <!-- MOUNT Operations -->
     @else {
       <div class="mount-operation-wrapper">
-        <div class="configuration-content">
-          <!-- Mount Control Panel -->
-          <app-operation-control
-            [config]="getMountControlConfig()"
-            (startJob)="
-              startJob.emit({
-                type: 'mount',
-                remoteName: selectedRemote.remoteSpecs.name,
-              })
-            "
-            (stopJob)="
-              stopJob.emit({
-                type: 'mount',
-                remoteName: selectedRemote.remoteSpecs.name,
-              })
-            "
-            (openPath)="triggerOpenInFiles($event)"
-            class="mount-control-panel"
-          ></app-operation-control>
+        <mat-tab-group class="operation-tabs" animationDuration="300ms">
+          <!-- Monitoring Tab -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span>Monitoring</span>
+            </ng-template>
 
-          <mat-divider></mat-divider>
+            <div class="operation-monitor">
+              <!-- Mount Control Panel -->
+              <app-operation-control
+                [config]="mountControlConfig()"
+                (startJob)="
+                  startJob.emit({
+                    type: 'mount',
+                    remoteName: selectedRemote().remoteSpecs.name,
+                  })
+                "
+                (stopJob)="
+                  stopJob.emit({
+                    type: 'mount',
+                    remoteName: selectedRemote().remoteSpecs.name,
+                  })
+                "
+                (openPath)="triggerOpenInFiles($event)"
+                class="mount-control-panel"
+              ></app-operation-control>
 
-          <div class="settings-layout">
-            @if (operationSettingsSections.length) {
-              <section class="settings-group operation-settings">
-                <header class="group-header">
-                  <h3 class="group-title">{{ operationSettingsHeading }}</h3>
-                  <p class="group-description">{{ operationSettingsDescription }}</p>
-                </header>
-                <div class="group-panels">
-                  @for (section of operationSettingsSections; track section.key) {
-                    <app-settings-panel
-                      [config]="getSettingsPanelConfig(section)"
-                      (editSettings)="onEditSettings($event)"
-                      class="mount-settings-section"
-                    ></app-settings-panel>
-                  }
-                </div>
-              </section>
-            }
+              <mat-divider></mat-divider>
 
-            @if (sharedSettingsSections.length) {
-              <section class="settings-group shared-settings">
-                <header class="group-header">
-                  <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
-                  <p class="group-description">{{ sharedSettingsDescription }}</p>
-                </header>
-                <div class="group-panels">
-                  @for (section of sharedSettingsSections; track section.key) {
-                    <app-settings-panel
-                      [config]="getSettingsPanelConfig(section)"
-                      (editSettings)="onEditSettings($event)"
-                      class="mount-settings-section"
-                    ></app-settings-panel>
-                  }
-                </div>
-              </section>
-            }
-          </div>
-        </div>
+              <app-vfs-control-panel
+                [remoteName]="selectedRemote().remoteSpecs.name"
+              ></app-vfs-control-panel>
+            </div>
+          </mat-tab>
+
+          <!-- Configuration Tab -->
+          <mat-tab>
+            <ng-template mat-tab-label>
+              <span>Configuration</span>
+            </ng-template>
+
+            <div class="configuration-content">
+              <div class="settings-layout">
+                @if (operationSettingsSections().length) {
+                  <section class="settings-group operation-settings">
+                    <header class="group-header">
+                      <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
+                      <p class="group-description">{{ operationSettingsDescription() }}</p>
+                    </header>
+                    <div class="group-panels">
+                      @for (section of operationSettingsSections(); track section.key) {
+                        <app-settings-panel
+                          [config]="getSettingsPanelConfig(section)"
+                          (editSettings)="onEditSettings($event)"
+                          class="mount-settings-section"
+                        ></app-settings-panel>
+                      }
+                    </div>
+                  </section>
+                }
+
+                @if (sharedSettingsSections().length) {
+                  <section class="settings-group shared-settings">
+                    <header class="group-header">
+                      <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
+                      <p class="group-description">{{ sharedSettingsDescription }}</p>
+                    </header>
+                    <div class="group-panels">
+                      @for (section of sharedSettingsSections(); track section.key) {
+                        <app-settings-panel
+                          [config]="getSettingsPanelConfig(section)"
+                          (editSettings)="onEditSettings($event)"
+                          class="mount-settings-section"
+                        ></app-settings-panel>
+                      }
+                    </div>
+                  </section>
+                }
+              </div>
+            </div>
+          </mat-tab>
+        </mat-tab-group>
       </div>
     }
   </div>

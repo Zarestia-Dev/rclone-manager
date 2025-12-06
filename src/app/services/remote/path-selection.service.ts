@@ -19,7 +19,6 @@ export class PathSelectionService {
   private readonly remoteManagementService = inject(RemoteManagementService);
 
   private readonly pathStates = new Map<string, BehaviorSubject<PathSelectionState>>();
-  private readonly debounceTimers = new Map<string, any>();
 
   // ============================================================================
   // PUBLIC API
@@ -56,13 +55,9 @@ export class PathSelectionService {
   }
 
   /**
-   * Unregisters a field, cleaning up its state and timers.
+   * Unregisters a field, cleaning up its state.
    */
   public unregisterField(fieldId: string): void {
-    if (this.debounceTimers.has(fieldId)) {
-      clearTimeout(this.debounceTimers.get(fieldId));
-      this.debounceTimers.delete(fieldId);
-    }
     if (this.pathStates.has(fieldId)) {
       this.pathStates.get(fieldId)?.complete();
       this.pathStates.delete(fieldId);
@@ -70,22 +65,13 @@ export class PathSelectionService {
   }
 
   /**
-   * Handles user typing in the input field, with debouncing.
+   * Handles user typing in the input field.
    */
   public updateInput(fieldId: string, value: string): void {
-    if (this.debounceTimers.has(fieldId)) {
-      clearTimeout(this.debounceTimers.get(fieldId));
-    }
-
     const state = this.pathStates.get(fieldId)?.getValue();
     if (!state) return;
 
-    this.debounceTimers.set(
-      fieldId,
-      setTimeout(() => {
-        this.fetchEntries(fieldId, state.remoteName, value);
-      }, 300)
-    );
+    this.fetchEntries(fieldId, state.remoteName, value);
   }
 
   /**
@@ -139,8 +125,11 @@ export class PathSelectionService {
     state$.next({ ...state$.getValue(), isLoading: true, currentPath: path });
 
     try {
+      // For local paths (empty remoteName), use '/' as the filesystem root
+      // For remote paths, normalize with colon suffix
+      const normalizedRemote = remoteName === '' ? '/' : this.normalizeRemoteForRclone(remoteName);
       const response = await this.remoteManagementService.getRemotePaths(
-        remoteName,
+        normalizedRemote,
         path || '',
         {}
       );
@@ -153,6 +142,26 @@ export class PathSelectionService {
     }
   }
 
+  /**
+   * Normalize remote name for rclone backend calls.
+   * - Empty or `Local` should be treated as local filesystem (send empty string)
+   * - If the remote already ends with ':' return as-is
+   * - Otherwise append ':' so rclone receives `remote:` format
+   */
+  public normalizeRemoteForRclone(remoteName?: string): string {
+    if (!remoteName) return '';
+    return remoteName.endsWith(':') ? remoteName : `${remoteName}:`;
+  }
+
+  /**
+   * Normalize remote name for internal lookups / display keys.
+   * Removes a trailing ':' if present and returns the plain remote identifier.
+   */
+  public normalizeRemoteName(remoteName?: string): string {
+    if (!remoteName) return '';
+    return remoteName.endsWith(':') ? remoteName.slice(0, -1) : remoteName;
+  }
+
   public resetPath(fieldId: string): void {
     const state = this.pathStates.get(fieldId)?.getValue();
     if (!state) return;
@@ -163,13 +172,18 @@ export class PathSelectionService {
 
   private getParentPath(path: string): string {
     if (!path || path === '/') return '';
+
+    const preserveLeadingSlash = path.startsWith('/');
     const parts = path.split('/').filter(p => p);
     parts.pop();
-    return parts.join('/');
+
+    const joined = parts.join('/');
+    return preserveLeadingSlash ? '/' + joined : joined;
   }
 
   private joinPath(base: string, part: string): string {
-    if (!base || base === '/') return part;
+    if (!base) return part;
+    if (base === '/') return '/' + part;
     return `${base}/${part}`;
   }
 }

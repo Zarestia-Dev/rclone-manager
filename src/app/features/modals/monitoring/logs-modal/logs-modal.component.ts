@@ -4,12 +4,12 @@ import {
   OnInit,
   ViewChild,
   HostListener,
-  ChangeDetectorRef,
   inject,
+  signal,
+  computed,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -19,16 +19,15 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { LogContext, RemoteLogEntry } from '@app/types';
-
+import { LogContext, RemoteLogEntry, LOG_LEVELS, LogLevel } from '@app/types';
 import { LoggingService } from '@app/services';
+import { AnsiToHtmlPipe } from 'src/app/shared/pipes/ansi-to-html.pipe';
 
 @Component({
   selector: 'app-logs-modal',
   standalone: true,
   imports: [
     CommonModule,
-    MatListModule,
     MatProgressSpinnerModule,
     MatIconModule,
     MatFormFieldModule,
@@ -38,132 +37,177 @@ import { LoggingService } from '@app/services';
     MatSnackBarModule,
     MatButtonModule,
     MatTooltipModule,
+    AnsiToHtmlPipe,
   ],
   templateUrl: './logs-modal.component.html',
   styleUrls: ['./logs-modal.component.scss', '../../../../styles/_shared-modal.scss'],
 })
 export class LogsModalComponent implements OnInit {
-  logs: RemoteLogEntry[] = [];
-  loading = false;
-  selectedLevel = '';
-  searchText = '';
-  selectedRemote = '';
-  autoScroll = true;
-  expandedLogs = new Set<string>();
-  @ViewChild('terminalLogArea') terminalLogArea?: ElementRef<HTMLDivElement>;
-
+  // --- Dependencies ---
   private dialogRef = inject(MatDialogRef<LogsModalComponent>);
   public data = inject(MAT_DIALOG_DATA) as { remoteName: string };
   private snackBar = inject(MatSnackBar);
-  private cdRef = inject(ChangeDetectorRef);
   private loggingService = inject(LoggingService);
+
+  // Expose log levels to the template
+  public readonly logLevels = LOG_LEVELS;
+
+  // --- State Signals ---
+  logs = signal<RemoteLogEntry[]>([]);
+  loading = signal(false);
+  selectedLevel = signal<LogLevel | ''>('');
+  searchText = signal<string>('');
+  expandedLogs = signal<Set<string>>(new Set());
+
+  // --- Computed Logic ---
+  filteredLogs = computed(() => {
+    const allLogs = this.logs();
+    const level = this.selectedLevel();
+    const search = this.searchText().toLowerCase();
+
+    return allLogs.filter(log => {
+      const matchesLevel = level ? log.level === level : true;
+      const matchesSearch = search
+        ? log.message.toLowerCase().includes(search) ||
+          (log.context && JSON.stringify(log.context).toLowerCase().includes(search))
+        : true;
+      return matchesLevel && matchesSearch;
+    });
+  });
+
+  @ViewChild('terminalLogArea') terminalLogArea?: ElementRef<HTMLDivElement>;
 
   ngOnInit(): void {
     this.loadLogs();
   }
-  get uniqueRemotes(): string[] {
-    return [...new Set(this.logs.map(log => log.remote_name).filter(Boolean))] as string[];
-  }
-
-  get filteredLogs(): RemoteLogEntry[] {
-    let logs = this.logs;
-    if (this.selectedLevel) {
-      logs = logs.filter(log => log.level === this.selectedLevel);
-    }
-    if (this.selectedRemote) {
-      logs = logs.filter(log => log.remote_name === this.selectedRemote);
-    }
-    if (this.searchText) {
-      const searchLower = this.searchText.toLowerCase();
-      logs = logs.filter(
-        log =>
-          log.message.toLowerCase().includes(searchLower) ||
-          (log.context && JSON.stringify(log.context).toLowerCase().includes(searchLower))
-      );
-    }
-    return logs;
-  }
 
   async loadLogs(): Promise<void> {
-    this.loading = true;
+    this.loading.set(true);
     try {
-      this.logs = (await this.loggingService.getRemoteLogs(
+      const fetchedLogs = (await this.loggingService.getRemoteLogs(
         this.data.remoteName
       )) as unknown as RemoteLogEntry[];
+      this.logs.set(fetchedLogs);
+      // Auto-scroll to newest logs
+      setTimeout(() => this.scrollToBottom(), 100);
     } finally {
-      this.loading = false;
+      this.loading.set(false);
     }
   }
 
   async clearLogs(): Promise<void> {
-    this.loading = true;
+    this.loading.set(true);
     try {
       await this.loggingService.clearRemoteLogs(this.data.remoteName);
-      this.logs = [];
+      this.logs.set([]);
     } finally {
-      this.loading = false;
+      this.loading.set(false);
     }
   }
 
+  // --- Log Parsing Helpers ---
+
   getLogId(log: RemoteLogEntry): string {
-    return `${log.timestamp}-${log.message.substring(0, 20)}`.replace(/\s+/g, '-');
+    // Create unique ID for tracking UI state
+    return `${log.timestamp}-${log.message.substring(0, 15)}`;
   }
 
   isExpanded(log: RemoteLogEntry): boolean {
-    return this.expandedLogs.has(this.getLogId(log));
+    return this.expandedLogs().has(this.getLogId(log));
   }
 
   toggleDetails(log: RemoteLogEntry): void {
-    const logId = this.getLogId(log);
-    if (this.expandedLogs.has(logId)) {
-      this.expandedLogs.delete(logId);
-    } else {
-      this.expandedLogs.add(logId);
+    const id = this.getLogId(log);
+    this.expandedLogs.update(current => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  /**
+   * Smart extractor for Rclone's nested error outputs.
+   * Handles the specific bisync error structure: status -> output -> output
+   */
+  getCommandOutput(log: RemoteLogEntry): string | null {
+    if (!log.context) return null;
+
+    // 1. Check for Rclone Job Status structure (Bisync/Sync errors)
+    // The context often comes as a parsed JSON object where 'status' is a key
+    const contextAny = log.context as any;
+    if (contextAny?.status?.output?.output) {
+      return contextAny.status.output.output;
     }
-    this.cdRef.detectChanges();
+
+    // 2. Check for direct output (common in simpler commands)
+    if (typeof contextAny?.output === 'string') {
+      return contextAny.output;
+    }
+
+    // 3. Fallback: If output is an object, try stringifying it
+    if (contextAny?.output && typeof contextAny.output === 'object') {
+      return JSON.stringify(contextAny.output, null, 2);
+    }
+
+    return null;
   }
 
   formatContext(context: LogContext): string {
     try {
-      if (context.response) {
-        const parsed = JSON.parse(context.response);
-        return JSON.stringify(parsed, null, 2);
+      // Shallow clone to avoid mutating the actual log data
+      const displayContext = { ...context } as any;
+
+      // If we are already showing the 'output' in the visual terminal,
+      // we can optionally hide it from the raw JSON to reduce noise,
+      // OR keep it. Let's keep it for completeness but parse strings.
+
+      // If 'response' is a stringified JSON (common in HTTP logs), parse it
+      if (displayContext.response && typeof displayContext.response === 'string') {
+        try {
+          displayContext.response = JSON.parse(displayContext.response);
+        } catch {
+          /* ignore */
+        }
       }
-      return JSON.stringify(context, null, 2);
+
+      return JSON.stringify(displayContext, null, 2);
     } catch (e) {
-      console.error('Failed to parse context:', e);
+      console.error('Error formatting log context:', e);
       return JSON.stringify(context, null, 2);
     }
   }
 
   copyLog(log: RemoteLogEntry): void {
-    const text = log.context
-      ? `${log.timestamp} [${log.level.toUpperCase()}] ${log.message}\n${this.formatContext(log.context)}`
-      : `${log.timestamp} [${log.level.toUpperCase()}] ${log.message}`;
+    const output = this.getCommandOutput(log);
+    let text = `[${log.timestamp}] [${log.level.toUpperCase()}] ${log.message}`;
+
+    if (output) {
+      // Strip ANSI codes for clipboard text
+      // eslint-disable-next-line no-control-regex
+      const cleanOutput = output.replace(/\u001b\[\d+;?\d*m/g, '');
+      text += `\n\nOutput:\n${cleanOutput}`;
+    }
+
+    if (log.context) {
+      text += `\n\nDetails:\n${this.formatContext(log.context)}`;
+    }
 
     navigator.clipboard.writeText(text);
-    this.snackBar.open('Log copied to clipboard', 'Dismiss', {
-      duration: 2000,
-    });
+    this.snackBar.open('Log copied to clipboard', undefined, { duration: 2000 });
   }
-
-  // ngAfterViewChecked() {
-  //   if (this.autoScroll && this.terminalLogArea) {
-  //     this.scrollToBottom();
-  //   }
-  // }
 
   scrollToBottom(): void {
     if (this.terminalLogArea) {
       const el = this.terminalLogArea.nativeElement;
-      el.scrollTop = el.scrollHeight;
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     }
   }
 
   scrollToTop(): void {
     if (this.terminalLogArea) {
       const el = this.terminalLogArea.nativeElement;
-      el.scrollTop = 0;
+      el.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
 

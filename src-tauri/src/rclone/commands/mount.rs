@@ -1,24 +1,25 @@
-use chrono::Utc;
 use log::{debug, error, info, warn};
 use serde_json::{Value, json};
 use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
-    RcloneState,
-    rclone::state::{engine::ENGINE_STATE, watcher::force_check_mounted_remotes},
+    rclone::{
+        commands::job::submit_job_and_wait,
+        state::{engine::ENGINE_STATE, watcher::force_check_mounted_remotes},
+    },
     utils::{
-        json_helpers::{get_string, json_to_hashmap},
+        json_helpers::{get_string, json_to_hashmap, unwrap_nested_options},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, mount},
         types::{
-            all_types::{JobCache, JobInfo, JobResponse, JobStatus, LogLevel, RemoteCache},
+            all_types::{JobCache, LogLevel, RcloneState, RemoteCache},
             events::REMOTE_STATE_CHANGED,
         },
     },
 };
 
-use super::{job::monitor_job, system::redact_sensitive_values};
+use super::{job::JobMetadata, system::redact_sensitive_values};
 
 /// Parameters for mounting a remote filesystem
 #[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
@@ -54,9 +55,13 @@ impl MountParams {
                 .unwrap_or("mount")
                 .to_string(),
             mount_options: json_to_hashmap(mount_cfg.get("options")),
-            vfs_options: json_to_hashmap(settings.get("vfsConfig")),
-            filter_options: json_to_hashmap(settings.get("filterConfig")),
-            backend_options: json_to_hashmap(settings.get("backendConfig")),
+            vfs_options: json_to_hashmap(settings.get("vfsConfig").and_then(|v| v.get("options"))),
+            filter_options: json_to_hashmap(
+                settings.get("filterConfig").and_then(|v| v.get("options")),
+            ),
+            backend_options: json_to_hashmap(
+                settings.get("backendConfig").and_then(|v| v.get("options")),
+            ),
         })
     }
 
@@ -73,7 +78,7 @@ impl MountParams {
 #[tauri::command]
 pub async fn mount_remote(
     app: AppHandle,
-    job_cache: State<'_, JobCache>,
+    _job_cache: State<'_, JobCache>,
     cache: State<'_, RemoteCache>,
     params: MountParams,
 ) -> Result<(), String> {
@@ -150,11 +155,13 @@ pub async fn mount_remote(
     }
 
     if let Some(opts) = params.vfs_options.clone() {
-        payload["vfsOpt"] = json!(opts);
+        let vfs_opts = unwrap_nested_options(opts);
+        payload["vfsOpt"] = json!(vfs_opts);
     }
 
     if let Some(opts) = params.backend_options.clone() {
-        let filtered_opts: HashMap<String, Value> = opts
+        let backend_opts = unwrap_nested_options(opts);
+        let filtered_opts: HashMap<String, Value> = backend_opts
             .into_iter()
             .filter(|(_, v)| {
                 !matches!(v, Value::Null) && !matches!(v, Value::String(s) if s.is_empty())
@@ -166,89 +173,27 @@ pub async fn mount_remote(
     }
 
     if let Some(opts) = params.filter_options.clone() {
-        payload["_filter"] = json!(opts);
+        let filter_opts = unwrap_nested_options(opts);
+        payload["_filter"] = json!(filter_opts);
     }
+    debug!("Final mount request payload: {payload:#?}");
 
-    // Make the request
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, mount::MOUNT);
-    let response = state
-        .client
-        .post(&url)
-        .json(&payload)
-        .send()
-        .await
-        .map_err(|e| {
-            let error = format!("Mount request failed: {e}");
-            // Clone error for use in both places
-            let error_for_log = error.clone();
-            // Spawn an async task to log the error since we can't await here
-            let remote_name_clone = params.remote_name.clone();
-            let payload_clone = payload.clone();
-            tauri::async_runtime::spawn(async move {
-                log_operation(
-                    LogLevel::Error,
-                    Some(remote_name_clone),
-                    Some("Mount remote".to_string()),
-                    error_for_log,
-                    Some(json!({"payload": payload_clone})),
-                );
-            });
-            error
-        })?;
 
-    // Handle response
-    let status = response.status();
-    let body = response.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        let error = format!("HTTP {status}: {body}");
-        log_operation(
-            LogLevel::Error,
-            Some(params.remote_name.clone()),
-            Some("Mount remote".to_string()),
-            format!("Failed to mount remote: {error}"),
-            Some(json!({"response": body})),
-        );
-        return Err(error);
-    }
-
-    let job_response: JobResponse =
-        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
-
-    log_operation(
-        LogLevel::Info,
-        Some(params.remote_name.clone()),
-        Some("Mount remote".to_string()),
-        format!("Mount job started with ID {}", job_response.jobid),
-        Some(json!({"jobid": job_response.jobid})),
-    );
-
-    // Extract job ID and monitor the job
-    let jobid = job_response.jobid;
-    // Add to job cache
-    job_cache
-        .add_job(JobInfo {
-            jobid,
-            job_type: "mount".to_string(),
+    let (_, _) = submit_job_and_wait(
+        app.clone(),
+        state.client.clone(),
+        url,
+        payload,
+        JobMetadata {
             remote_name: params.remote_name.clone(),
+            job_type: "mount".to_string(),
+            operation_name: "Mount remote".to_string(),
             source: params.source.clone(),
             destination: params.mount_point.clone(),
-            start_time: Utc::now(),
-            status: JobStatus::Running,
-            stats: None,
-            group: format!("job/{jobid}"),
-        })
-        .await;
-
-    // Start monitoring
-    let app_clone = app.clone();
-    let remote_name_clone = params.remote_name.clone();
-    let client = state.client.clone();
-    // monitor_job will get the JobCache from the app_clone handle
-    if let Err(e) = monitor_job(remote_name_clone, "Mount remote", jobid, app_clone, client).await {
-        error!("Job {jobid} returned an error: {e}");
-        return Err(e.to_string());
-    }
+        },
+    )
+    .await?;
 
     app.emit(REMOTE_STATE_CHANGED, &params.remote_name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;

@@ -8,11 +8,6 @@
 // Import centralized animations
 @use "animations";
 
-// Include the common styles for Angular Material. We include this here so that you only
-// have to load a single css file for Angular Material in your app.
-// Be sure that you only ever include this mixin once!
-@include mat.elevation-classes();
-
 // Adwaita Green Primary Palette (M3 format)
 $adwaita-green-palette: (
   0: #167345,
@@ -318,68 +313,6 @@ $adwaita-purple-palette: (
   100: #faf0fa, // lightest
 );
 
-// Brown Palette (M3 format)
-$adwaita-brown-palette: (
-  0: #3f2b16,
-  // darkest
-  10: #3f2b16,
-  // very dark
-  20: #513821,
-  // dark
-  30: #63452c,
-  // dark
-  40: #865e3c,
-  // medium-dark
-  50: #986a44,
-  // medium
-  60: #b5835a,
-  // primary
-  70: #cdab8f,
-  // light-primary
-  80: #e0c8b8,
-  // light
-  90: #ede0d8,
-  // lighter
-  95: #f7f2ed,
-  // very light
-  98: #f7f2ed,
-  // almost white
-  99: #f7f2ed,
-  // very light
-  100: #f7f2ed, // lightest
-);
-
-// Light (Gray) Palette (M3 format)
-$adwaita-light-palette: (
-  0: #000000,
-  // darkest
-  10: #241f31,
-  // very dark
-  20: #3d3846,
-  // dark
-  30: #5e5c64,
-  // dark
-  40: #77767b,
-  // medium-dark
-  50: #9a9996,
-  // medium
-  60: #c0bfbc,
-  // primary
-  70: #deddda,
-  // light-primary
-  80: #f6f5f4,
-  // light
-  90: #ffffff,
-  // lighter
-  95: #ffffff,
-  // very light
-  98: #ffffff,
-  // almost white
-  99: #ffffff,
-  // very light
-  100: #ffffff, // lightest
-);
-
 $light-theme: (
   color: (
     theme-type: light,
@@ -416,7 +349,6 @@ $dark-theme: (
     --button-hover: #dddddd;
     --theme-border: #dbdbdb;
     --input-background: #ebebeb;
-    --about-dialog-button-color: #ffffff;
 
     /* Define rgb variables for colors */
     --app-background-rgb: 250, 250, 250;
@@ -437,8 +369,8 @@ $dark-theme: (
     --app-background: #222226;
     --secondary-background: #000000;
     --banner-background: #3d3d42;
-    --sidebar-background: #050505;
-    --box-shadow: 0 0 0 1px rgba(32, 32, 36, 1), 0 0 4px 1px rgba(0, 0, 0, 0.06);
+    --sidebar-background: #2e2e32;
+    --box-shadow: 0 0 0 1px rgba(32, 32, 36, 1), 0 0 4px 1px rgba(var(--app-text-color-rgb), 0.06);
     --selected-tab-color: #2f2f30;
     --hover-color: rgb(55, 55, 55);
     --app-text-color: #ffffff;
@@ -446,7 +378,6 @@ $dark-theme: (
     --button-hover: #333;
     --theme-border: #555;
     --input-background: #47474b;
-    --about-dialog-button-color: #333337;
 
     /* Define rgb variables for colors */
     --app-background-rgb: 34, 34, 38;
@@ -497,14 +428,6 @@ $dark-theme: (
     #{color.channel(map.get($adwaita-red-palette, 50), "red", $space: rgb)},
     #{color.channel(map.get($adwaita-red-palette, 50), "green", $space: rgb)},
     #{color.channel(map.get($adwaita-red-palette, 50), "blue", $space: rgb)};
-  --light-theme-color-rgb:
-    #{color.channel(map.get($adwaita-light-palette, 0), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-light-palette, 0), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-light-palette, 0), "blue", $space: rgb)};
-  --dark-theme-color-rgb:
-    #{color.channel(map.get($adwaita-light-palette, 100), "red", $space: rgb)},
-    #{color.channel(map.get($adwaita-light-palette, 100), "green", $space: rgb)},
-    #{color.channel(map.get($adwaita-light-palette, 100), "blue", $space: rgb)};
 
   --accent-color: #{map.get($adwaita-blue-palette, 50)};
   --warn-color: #{map.get($adwaita-red-palette, 50)};
@@ -518,8 +441,6 @@ $dark-theme: (
   --light-purple: #{map.get($adwaita-purple-palette, 80)};
   --light-yellow: #{map.get($adwaita-yellow-palette, 80)};
   --red: #{map.get($adwaita-red-palette, 50)};
-  --light-theme-color: #{map.get($adwaita-light-palette, 100)};
-  --dark-theme-color: #{map.get($adwaita-light-palette, 0)};
 
   -webkit-font-smoothing: antialiased;
 
@@ -601,23 +522,16 @@ $dark-theme: (
   --titlebar-height: 40px;
   --sidebar-width: 250px;
   --status-bar-height: 48px;
-  // --app-height: calc(100vh - (var(--titlebar-height) + var(--title-bar-padding)));
 
   /* Global UI Variables */
   --border-color: rgba(var(--app-text-color-rgb), 0.08);
   --text-muted: rgba(var(--app-text-color-rgb), 0.7);
   --bg-elevated: rgba(var(--app-text-color-rgb), 0.03);
   --button-background: rgba(var(--app-text-color-rgb), 0.04);
-  --bg-hover: rgba(var(--app-text-color-rgb), 0.05);
+  --bg-hover: rgba(var(--app-text-color-rgb), 0.1);
+  --bg-selected: rgba(var(--app-text-color-rgb), 0.2);
   --selected-border: var(--accent-color);
-  --disabled-fade: rgba(255, 255, 255, 0.5);
   --surface-overlay: rgba(var(--app-text-color-rgb), 0.03);
-}
-
-html,
-body {
-  height: 100%;
-  --mat-menu-container-shape: 16px;
 }
 
 body {
@@ -702,6 +616,8 @@ body {
   -webkit-scrollbar-width: thin;
 }
 
+pre,
+code,
 input,
 textarea,
 [contenteditable="true"] {
@@ -709,15 +625,9 @@ textarea,
   cursor: text;
 }
 
-p,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  margin-bottom: 0;
-  margin-top: 0;
+mat-divider {
+  margin: var(--space-xxs) 0 !important;
+  border-color: var(--theme-border) !important;
 }
 
 // Fix for mat-icon overflow issues in Windows
@@ -799,21 +709,8 @@ button {
   &:disabled {
     background: rgba(var(--secondary-text-color-rgb), 0.3) !important;
     color: rgba(var(--app-text-color-rgb), 0.5) !important;
-    cursor: not-allowed !important;
     transform: none !important;
     box-shadow: none !important;
-  }
-}
-
-.mat-mdc-menu-item {
-  min-height: 30px !important;
-  width: calc(100% - 12px) !important;
-  margin: var(--space-xxs) !important;
-  border-radius: var(--radius-xs) !important;
-  padding-inline: 10px !important;
-
-  &:hover {
-    background-color: var(--button-hover) !important;
   }
 }
 
@@ -836,13 +733,7 @@ button {
   width: 100%;
 }
 
-.cdk-virtual-scroll-content-wrapper {
-  max-width: 100% !important;
-}
-
 .mat-mdc-dialog-container .mdc-dialog__surface {
-  background: var(--app-background) !important;
-  color: var(--app-text-color) !important;
   border-radius: var(--modal-radius) !important;
 }
 
@@ -864,7 +755,7 @@ button {
   --font-size-base: 1rem; // 16px
   --font-size-md: 0.875rem; // 14px
   --font-size-sm: 0.75rem; // 12px
-  --caption-font-size: 0.75rem; // 12px - for captions and labels
+  --font-size-xs: 0.625rem; // 10px
 
   /* ===== OPACITY SCALE ===== */
   --panel-hover-opacity: 0.1;
@@ -884,8 +775,12 @@ button {
   --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
   /* ===== SHADOW SCALE ===== */
-  --shadow-light: 0 4px 24px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-light:
+    0 4px 24px rgba(var(--app-text-color-rgb), 0.08),
+    0 2px 8px rgba(var(--app-text-color-rgb), 0.04);
+  --shadow-elevated:
+    0 8px 32px rgba(var(--app-text-color-rgb), 0.12),
+    0 4px 16px rgba(var(--app-text-color-rgb), 0.08);
 
   /* ===== COMPONENT-SPECIFIC VARIABLES ===== */
   --action-btn-scale-hover: 0.9;
@@ -981,6 +876,7 @@ mat-accordion {
   }
 }
 
+// Dropdown option content styling
 .option-content {
   display: flex;
   flex-direction: column;
@@ -996,5 +892,68 @@ mat-accordion {
   .option-description {
     color: var(--text-muted);
     font-size: var(--font-size-sm);
+  }
+}
+
+// =============================================
+// 3. CUSTOM CONTEXT MENU STYLES
+// =============================================
+.material-context-menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xxs);
+  min-width: 200px;
+  max-width: 300px;
+  max-height: 400px;
+  overflow-y: auto;
+
+  background: var(--app-background);
+  color: var(--app-text-color);
+  border-radius: var(--radius-md);
+  padding: 6px;
+  box-shadow: var(--shadow-elevated);
+
+  .menu-item {
+    all: unset;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xxs);
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    /* 2. Sizing */
+    width: 100%;
+    min-height: 34px;
+    padding: var(--space-xxs) var(--space-sm);
+
+    /* 3. Typography */
+    font-size: var(--font-size-md);
+    font-family: inherit;
+    font-weight: 500;
+    color: var(--app-text-color);
+
+    /* 4. The "Pill" Shape */
+    border-radius: var(--border-radius);
+    transition: var(--transition-instant);
+
+    /* 7. Hover / Focus States */
+    &:hover,
+    &:focus,
+    &:focus-visible {
+      background-color: var(--bg-hover);
+      outline: none;
+    }
+
+    /* 8. Active/Click State */
+    &:active {
+      background-color: var(--bg-selected);
+    }
+
+    /* 9. Disabled State */
+    &:disabled {
+      opacity: 0.4;
+      background: transparent;
+    }
   }
 }

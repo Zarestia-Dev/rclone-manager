@@ -6,8 +6,15 @@ import { Pipe, PipeTransform } from '@angular/core';
   pure: true,
 })
 export class FormatRateValuePipe implements PipeTransform {
-  transform(rate: string): string {
-    if (!rate || rate === 'off' || rate === '') return 'Unlimited';
+  transform(rate: number | string | null | undefined): string {
+    if (!rate || rate === 'off' || rate === '') {
+      return 'Unlimited';
+    }
+
+    if (typeof rate === 'number') {
+      return this.formatBytesPerSecond(rate);
+    }
+
     if (rate.includes(':')) {
       // Handle combined rates like "10Ki:100Ki" (upload:download)
       const [upload, download] = rate.split(':');

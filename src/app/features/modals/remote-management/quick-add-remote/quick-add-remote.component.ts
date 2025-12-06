@@ -27,7 +27,6 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
 // Services
-import { AnimationsService } from '../../../../shared/services/animations.service';
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
 import {
   RemoteManagementService,
@@ -35,7 +34,7 @@ import {
   MountManagementService,
   AppSettingsService,
   FileSystemService,
-  SchedulerService,
+  NautilusService,
 } from '@app/services';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {
@@ -52,6 +51,7 @@ import {
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { ValidatorRegistryService } from 'src/app/shared/services/validator-registry.service';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
+import { IconService } from 'src/app/shared/services/icon.service';
 
 type WizardStep = 'setup' | 'operations' | 'interactive';
 
@@ -76,7 +76,6 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
-  animations: AnimationsService.getAnimations(['slideAnimation', 'slideInFromBottom', 'fadeInOut']),
 })
 export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
@@ -87,9 +86,10 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly mountManagementService = inject(MountManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly schedulerService = inject(SchedulerService);
   private readonly cdRef = inject(ChangeDetectorRef);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
+  readonly iconService = inject(IconService);
+  private readonly nautilusService = inject(NautilusService);
 
   readonly quickAddForm: FormGroup;
   remoteTypes: RemoteType[] = [];
@@ -389,13 +389,13 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     const p = path || '';
     if (typeof pathType === 'string' && pathType.startsWith('otherRemote:')) {
       const remote = otherRemoteName || pathType.split(':')[1];
-      return `${remote}:/${p}`;
+      return `${remote}:${p}`;
     }
     switch (pathType) {
       case 'local':
         return p;
       case 'currentRemote':
-        return `${currentRemoteName}:/${p}`;
+        return `${currentRemoteName}:${p}`;
       default:
         return '';
     }
@@ -630,8 +630,9 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   @HostListener('document:keydown.escape')
   close(): void {
-    if (!this.isAuthInProgress) {
-      this.dialogRef.close();
+    if (this.nautilusService.isNautilusOverlayOpen) {
+      return;
     }
+    this.dialogRef.close();
   }
 }

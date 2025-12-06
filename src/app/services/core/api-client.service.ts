@@ -60,8 +60,19 @@ export class ApiClientService {
     'set_config_password_env',
     'clear_config_password_env',
     'change_config_password',
-    'backup_settings',
     'restore_settings',
+    'install_update',
+    'relaunch_app',
+    // VFS Commands
+    'vfs_forget',
+    'vfs_refresh',
+    'vfs_poll_interval',
+    'vfs_queue_set_expiry',
+    'vfs_poll_interval',
+    // Filesystem Commands
+    'mkdir',
+    'cleanup',
+    'copy_url',
   ]);
 
   constructor() {
@@ -69,8 +80,28 @@ export class ApiClientService {
     this.isHeadlessMode = !(window as Window & { __TAURI_INTERNALS__?: unknown })
       .__TAURI_INTERNALS__;
 
+    // Set API base URL dynamically based on current page protocol and host
+    const protocol = window.location.protocol; // http: or https:
+    const host = window.location.hostname; // localhost, 127.0.0.1, or actual hostname
+    const port = window.location.port; // 8080, 3000, etc.
+    const portSuffix = port ? `:${port}` : ''; // Only add port if it's not default (80 for http, 443 for https)
+
+    // In development mode (Angular dev server on port 1420), use the API server on port 8080
+    // This allows hot reload development while still communicating with the Rust backend
+    const devApiPort = (window as Window & { RCLONE_MANAGER_API_PORT?: string })
+      .RCLONE_MANAGER_API_PORT;
+    if (this.isHeadlessMode && (port === '1420' || devApiPort)) {
+      const apiPort = devApiPort || '8080';
+      this.apiBaseUrl = `${protocol}//${host}:${apiPort}/api`;
+      console.log('🔧 Development mode detected - Angular dev server pointing to API server');
+    } else {
+      this.apiBaseUrl = `${protocol}//${host}${portSuffix}/api`;
+    }
+
     if (this.isHeadlessMode) {
       console.log('🌐 Running in headless web mode - using HTTP API');
+      console.log(`📝 API Base URL: ${this.apiBaseUrl}`);
+      console.log('🔐 Browser will handle Basic Authentication via login dialog');
     } else {
       console.log('🖥️  Running in Tauri desktop mode - using Tauri commands');
     }
@@ -126,6 +157,7 @@ export class ApiClientService {
       return Promise.resolve(theme as T);
     }
 
+    // App update disabled in web mode for now
     if (command === 'are_updates_disabled') {
       console.log('🔄 Updates disabled for web mode (no Tauri updater)');
       return Promise.resolve(true as T);
@@ -134,6 +166,10 @@ export class ApiClientService {
     if (command === 'get_build_type') {
       console.log('📦 Build type: web');
       return Promise.resolve('web' as T);
+    }
+
+    if (command === 'open_in_files' || command === 'open_terminal_config') {
+      throw new Error('Native file manager integration not available in headless mode.');
     }
 
     // Map Tauri command names to HTTP endpoints
@@ -145,21 +181,25 @@ export class ApiClientService {
     }
 
     try {
-      const httpOptions: { params?: Record<string, string> } = {};
+      const httpOptions: { params?: Record<string, string>; headers?: Record<string, string> } = {};
 
       if (!isPostCommand && args) {
         httpOptions.params = this.toHttpParams(args);
       }
 
+      // Add Basic Auth if available (browser will handle login dialog on 401)
+      httpOptions.headers = { ...httpOptions.headers };
+
       const response = await firstValueFrom(
         isPostCommand
           ? this.http.post<{ success: boolean; data: T; error?: string }>(
               `${this.apiBaseUrl}${endpoint}`,
-              args || {} // Body remains as JSON object
+              args || {}, // Body remains as JSON object
+              { ...httpOptions, withCredentials: true } // Enable credentials for Basic Auth
             )
           : this.http.get<{ success: boolean; data: T; error?: string }>(
               `${this.apiBaseUrl}${endpoint}`,
-              httpOptions
+              { ...httpOptions, withCredentials: true } // Enable credentials for Basic Auth
             )
       );
 
@@ -176,6 +216,10 @@ export class ApiClientService {
         }
         if (error.status === 0) {
           throw new Error('API server is unreachable. Is the headless server running?');
+        }
+        if (error.status === 401) {
+          // Browser handles 401 by showing login dialog
+          throw new Error('Authentication required. Please enter your credentials.');
         }
         throw new Error(error.message);
       }
@@ -207,7 +251,6 @@ export class ApiClientService {
       // Stats and monitoring
       get_core_stats: '/stats',
       get_core_stats_filtered: '/stats/filtered',
-      get_job_stats: '/jobs/stats',
       get_completed_transfers: '/transfers/completed',
       get_memory_stats: '/memory-stats',
       get_bandwidth_limit: '/bandwidth/limit',
@@ -235,6 +278,15 @@ export class ApiClientService {
       install_mount_plugin: '/install-mount-plugin',
       force_check_mounted_remotes: '/force-check-mounted-remotes',
 
+      // VFS Operations
+      vfs_list: '/vfs/list',
+      vfs_forget: '/vfs/forget',
+      vfs_refresh: '/vfs/refresh',
+      vfs_poll_interval: '/vfs/poll-interval',
+      vfs_stats: '/vfs/stats',
+      vfs_queue: '/vfs/queue',
+      vfs_queue_set_expiry: '/vfs/queue/set-expiry',
+
       // Serve operations
       list_serves: '/serve/list',
       get_cached_serves: '/get-cached-serves',
@@ -248,6 +300,7 @@ export class ApiClientService {
       // System info
       get_rclone_info: '/rclone-info',
       get_rclone_pid: '/rclone-pid',
+      get_rclone_rc_url: '/get-rclone-rc-url',
       get_disk_usage: '/disk-usage',
       kill_process_by_pid: '/kill-process-by-pid',
       check_rclone_available: '/check-rclone-available',
@@ -273,7 +326,13 @@ export class ApiClientService {
 
       // Filesystem
       get_fs_info: '/fs/info',
+      get_local_drives: '/get-local-drives',
+      get_size: '/get-size',
+      mkdir: '/mkdir',
+      cleanup: '/cleanup',
+      copy_url: '/copy-url',
       get_remote_paths: '/remote/paths',
+      convert_file_src: '/convert-asset-src',
       get_folder_location: '/get-folder-location', // Note: Will fail in headless
       get_file_location: '/get-file-location', // Note: Will fail in headless
       open_in_files: '/open-in-files', // Note: Will fail in headless
@@ -301,6 +360,9 @@ export class ApiClientService {
       fetch_update: '/fetch-update', // Note: Mapped, but are_updates_disabled handles it
       get_download_status: '/get-download-status',
       install_update: '/install-update',
+      relaunch_app: '/relaunch-app',
+      are_updates_disabled: '/are-updates-disabled',
+      get_build_type: '/get-build-type',
 
       // Rclone Updates
       check_rclone_update: '/check-rclone-update',
