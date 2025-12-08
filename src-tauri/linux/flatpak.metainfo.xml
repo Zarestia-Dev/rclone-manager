@@ -87,7 +87,7 @@
     </screenshot>
     </screenshots>
   <releases>
-    <release version="0.1.8" date="2025-11-6">
+    <release version="0.1.8" date="2025-12-6">
       <description>
         <p>Added</p>
         <ul>
@@ -112,7 +112,7 @@
         </ul>
       </description>
     </release>
-    <release version="0.1.7" date="2025-10-14">
+    <release version="0.1.7" date="2025-11-14">
       <description>
         <p>Added</p>
         <ul>
@@ -131,7 +131,7 @@
         </ul>
       </description>
     </release>
-    <release version="0.1.6" date="2025-9-13">
+    <release version="0.1.6" date="2025-10-13">
       <url type="details">https://github.com/Zarestia-Dev/rclone-manager/releases/tag/v0.1.6</url>
       <description>
         <p>Initial release of RClone Manager for FlatHub.</p>

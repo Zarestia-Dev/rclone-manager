@@ -27,7 +27,16 @@
 
 **RClone Manager** is a **modern, cross-platform GUI** that makes managing [Rclone](https://rclone.org/) remotes effortless. Whether you're syncing files across cloud storage providers, mounting remote drives, or performing complex file operations, RClone Manager provides an intuitive interface that simplifies even the most advanced Rclone features.
 
-> ⚠️ **Actively developed** – Regular updates with new features and improvements. Check out our [roadmap](https://github.com/users/Zarestia-Dev/projects/2) to see what's coming next!
+<div align="center">
+  
+> ### 🌐 **Looking for Headless Mode?**
+> 
+> Check out **[RClone Manager Headless](headless/README.md)** – Run as a web server on Linux servers without a GUI!  
+> Perfect for NAS, VPS, and remote systems. Access from any browser. 🚀
+
+</div>
+
+> Regular updates with new features and improvements. Check out our [roadmap](https://github.com/users/Zarestia-Dev/projects/2) to see what's coming next!
 
 ---
 
@@ -105,7 +114,7 @@
 
 ---
 
-## 📦 Installation & Downloads
+## 📦 Downloads
 
 ### 📦 Package Manager Availability
 

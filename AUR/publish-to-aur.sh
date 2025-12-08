@@ -24,6 +24,7 @@ AUR_DIR="$HOME/.aur-repos"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STABLE_PKGBUILD="$SCRIPT_DIR/PKGBUILD"
 GIT_PKGBUILD="$SCRIPT_DIR/PKGBUILD-git"
+HEADLESS_PKGBUILD="$SCRIPT_DIR/../headless/PKGBUILD"
 
 # Print colored output
 print_info() { echo -e "${BLUE}ℹ${NC} $1"; }
@@ -40,23 +41,24 @@ show_help() {
     echo "    ./publish-to-aur.sh [command] [package]"
     echo ""
     echo -e "${YELLOW}Commands:${NC}"
-    echo "    init [stable|git|all]     Initialize AUR repositories (first time)"
-    echo "    update [stable|git|all]   Update existing AUR packages"
-    echo "    status [stable|git|all]   Check status of AUR repositories"
-    echo "    diff [stable|git|all]     Show differences before committing"
-    echo "    push [stable|git|all]     Push changes to AUR"
-    echo "    help                      Show this help message"
+    echo "    init [stable|git|headless|all]     Initialize AUR repositories (first time)"
+    echo "    update [stable|git|headless|all]   Update existing AUR packages"
+    echo "    status [stable|git|headless|all]   Check status of AUR repositories"
+    echo "    diff [stable|git|headless|all]     Show differences before committing"
+    echo "    push [stable|git|headless|all]     Push changes to AUR"
+    echo "    help                                Show this help message"
     echo ""
     echo -e "${YELLOW}Packages:${NC}"
     echo "    stable                    rclone-manager (stable releases)"
     echo "    git                       rclone-manager-git (development version)"
-    echo "    all                       Both packages (default)"
+    echo "    headless                  rclone-manager-headless (web server version)"
+    echo "    all                       All packages (default)"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
-    echo "    ./publish-to-aur.sh init all          # Initialize both repositories"
-    echo "    ./publish-to-aur.sh update git        # Update only git version"
-    echo "    ./publish-to-aur.sh status stable     # Check status of stable package"
-    echo "    ./publish-to-aur.sh push all          # Push both packages to AUR"
+    echo "    ./publish-to-aur.sh init all              # Initialize all repositories"
+    echo "    ./publish-to-aur.sh update headless       # Update only headless version"
+    echo "    ./publish-to-aur.sh status stable         # Check status of stable package"
+    echo "    ./publish-to-aur.sh push all              # Push all packages to AUR"
     echo ""
 }
 
@@ -198,10 +200,19 @@ push_package() {
     
     cd "$AUR_DIR/$pkg_name"
     
-    # Check if there are changes
-    if git diff --quiet && git diff --cached --quiet; then
+    # Check if there are untracked files (initial commit scenario)
+    local untracked=$(git ls-files --others --exclude-standard)
+    local has_commits=$(git rev-parse --verify HEAD 2>/dev/null)
+    
+    # Check if there are changes (modified files or untracked files)
+    if git diff --quiet && git diff --cached --quiet && [ -z "$untracked" ]; then
         print_warning "No changes to commit"
         return 0
+    fi
+    
+    # If this is the first commit and we have untracked files
+    if [ -z "$has_commits" ] && [ -n "$untracked" ]; then
+        print_info "This appears to be the initial commit"
     fi
     
     # Show what will be committed
@@ -223,16 +234,24 @@ push_package() {
     # so add PKGBUILD and .SRCINFO when that's the case.
     if git diff --cached --quiet; then
         print_info "Staging changes..."
-        git add PKGBUILD .SRCINFO
+        git add PKGBUILD .SRCINFO 2>/dev/null || git add -A
     fi
     
     # Get commit message
     local version=$(grep -m1 '^pkgver=' PKGBUILD | cut -d'=' -f2)
     local pkgrel=$(grep -m1 '^pkgrel=' PKGBUILD | cut -d'=' -f2)
     
+    # Default message depends on whether this is initial commit
+    local default_msg
+    if [ -z "$has_commits" ]; then
+        default_msg="Initial commit: $version-$pkgrel"
+    else
+        default_msg="Update to $version-$pkgrel"
+    fi
+    
     echo ""
-    read -p "$(echo -e ${YELLOW}Commit message [Update to $version-$pkgrel]:${NC} )" commit_msg
-    commit_msg=${commit_msg:-"Update to $version-$pkgrel"}
+    read -p "$(echo -e ${YELLOW}Commit message [$default_msg]:${NC} )" commit_msg
+    commit_msg=${commit_msg:-"$default_msg"}
     
     # Commit
     print_info "Committing..."
@@ -258,14 +277,19 @@ process_command() {
         git)
             "${command}_package" "rclone-manager-git" "$GIT_PKGBUILD"
             ;;
+        headless)
+            "${command}_package" "rclone-manager-headless" "$HEADLESS_PKGBUILD"
+            ;;
         all|"")
             "${command}_package" "rclone-manager" "$STABLE_PKGBUILD"
             echo ""
             "${command}_package" "rclone-manager-git" "$GIT_PKGBUILD"
+            echo ""
+            "${command}_package" "rclone-manager-headless" "$HEADLESS_PKGBUILD"
             ;;
         *)
             print_error "Unknown package: $package"
-            print_info "Valid packages: stable, git, all"
+            print_info "Valid packages: stable, git, headless, all"
             exit 1
             ;;
     esac

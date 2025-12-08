@@ -1,0 +1,41 @@
+[Unit]
+Description=RClone Manager Headless Web Server
+Documentation=https://github.com/Zarestia-Dev/rclone-manager
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rclone-manager
+Group=rclone-manager
+
+# Security: Run with minimal privileges
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Main command
+ExecStart=/usr/bin/rclone-manager-headless \
+    --host 0.0.0.0 \
+    --port 8080 \
+    --user admin \
+    --pass changeme
+
+# Restart policy
+Restart=on-failure
+RestartSec=10s
+StartLimitInterval=60s
+StartLimitBurst=3
+
+# Resource limits (optional, adjust as needed)
+MemoryMax=512M
+CPUQuota=50%
+
+# Environment
+Environment="DISPLAY=:99"
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rclone-manager-headless
+
+[Install]
+WantedBy=multi-user.target

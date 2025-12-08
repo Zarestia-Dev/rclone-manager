@@ -1,8 +1,8 @@
 # Maintainer: Hakan İSMAİL <hakanismail53@gmail.com>
 pkgname=rclone-manager
 appname='Rclone.Manager'
-releasetag=0.1.7
-pkgver=0.1.7
+releasetag=0.1.8
+pkgver=0.1.8
 pkgrel=1
 pkgdesc="User-friendly GUI for Rclone"
 arch=('x86_64' 'aarch64')
