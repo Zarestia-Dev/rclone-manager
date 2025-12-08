@@ -32,16 +32,16 @@
     "linux": {
       "deb": {
         "desktopTemplate": "linux/template.desktop",
-        "depends": ["rclone", "libayatana-appindicator3-1 | libappindicator3-1"],
-        "recommends": ["7z"],
+        "depends": ["libayatana-appindicator3-1 | libappindicator3-1"],
+        "recommends": ["rclone", "7z"],
         "files": {
           "/usr/share/flatpak.metainfo.xml": "linux/flatpak.metainfo.xml"
         }
       },
       "rpm": {
         "desktopTemplate": "linux/template.desktop",
-        "depends": ["rclone", "(libappindicator-gtk3 or libayatana-appindicator-gtk3)"],
-        "recommends": ["7z"]
+        "depends": ["libappindicator-gtk3 or libayatana-appindicator-gtk3"],
+        "recommends": ["rclone", "7z"]
       }
     },
     "windows": {

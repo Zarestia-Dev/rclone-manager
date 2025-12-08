@@ -1,4 +1,4 @@
-name: 'Release Linux'
+name: "Release Linux"
 
 on:
   workflow_dispatch:
@@ -11,10 +11,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'ubuntu-22.04'
-            args: ''
-          - platform: 'ubuntu-22.04-arm'
-            args: ''
+          - platform: "ubuntu-22.04"
+            args: ""
+          - platform: "ubuntu-22.04-arm"
+            args: ""
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -24,7 +24,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: 'npm'
+          cache: "npm"
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -32,7 +32,7 @@ jobs:
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
-          workspaces: './src-tauri -> target'
+          workspaces: "./src-tauri -> target"
 
       - name: install dependencies (ubuntu only)
         run: |
@@ -50,8 +50,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version.
-          releaseName: 'RClone Manager v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          releaseName: "RClone Manager v__VERSION__"
+          releaseBody: "See the assets to download this version and install."
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}

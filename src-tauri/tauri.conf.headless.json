@@ -27,15 +27,15 @@
     "linux": {
       "deb": {
         "desktopTemplate": "linux/headless/template-headless.desktop",
-        "depends": ["rclone", "xvfb", "dbus-x11"],
-        "recommends": ["7z"],
+        "depends": ["xvfb", "dbus-x11"],
+        "recommends": ["rclone", "7z"],
         "postInstallScript": "linux/headless/postinstall.sh",
         "preRemoveScript": "linux/headless/preremove.sh"
       },
       "rpm": {
         "desktopTemplate": "linux/headless/template-headless.desktop",
-        "depends": ["rclone", "xorg-x11-server-Xvfb", "dbus-x11"],
-        "recommends": ["7z"],
+        "depends": ["xorg-x11-server-Xvfb", "dbus-x11"],
+        "recommends": ["rclone", "7z"],
         "postInstallScript": "linux/headless/postinstall.sh",
         "preRemoveScript": "linux/headless/preremove.sh"
       }

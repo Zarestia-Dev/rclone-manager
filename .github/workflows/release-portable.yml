@@ -1,0 +1,165 @@
+name: "Release Portable"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-portable:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- Windows ---
+          - platform: "windows-latest"
+            os: "windows"
+            arch: "x86_64"
+            rust_target: "x86_64-pc-windows-msvc"
+          - platform: "windows-latest"
+            os: "windows"
+            arch: "aarch64"
+            rust_target: "aarch64-pc-windows-msvc"
+          # --- Linux ---
+          - platform: "ubuntu-22.04"
+            os: "linux"
+            arch: "x86_64"
+            rust_target: "x86_64-unknown-linux-gnu"
+          - platform: "ubuntu-22.04-arm"
+            os: "linux"
+            arch: "aarch64"
+            rust_target: "aarch64-unknown-linux-gnu"
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: "npm"
+
+      - name: Install dependencies (Ubuntu only)
+        if: matrix.os == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          key: portable-${{ matrix.os }}-${{ matrix.arch }}
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Build Tauri (Portable)
+        run: |
+          npm run tauri build -- --features portable --target ${{ matrix.rust_target }} --no-bundle
+
+      - name: Get Version
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+      # --- Packaging for Windows ---
+      - name: Prepare Package (Windows)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          $version = "${{ steps.get_version.outputs.VERSION }}"
+          $arch = "${{ matrix.arch }}"
+          $os = "${{ matrix.os }}"
+          $dirName = "RClone.Manager_${version}_${arch}_${os}_portable"
+
+          # Create structure
+          New-Item -ItemType Directory -Force -Path $dirName
+          New-Item -ItemType Directory -Force -Path "$dirName/config"
+
+          # 1. Create settings.json with pre-filled onboarding status
+          $settingsJson = @'
+          {
+            "app_settings": {
+              "core": {
+                "completed_onboarding": true
+              }
+            }
+          }
+          '@
+          Set-Content -Path "$dirName/config/settings.json" -Value $settingsJson
+
+          # 2. Copy Binary
+          Copy-Item "src-tauri/target/${{ matrix.rust_target }}/release/rclone-manager.exe" "$dirName/RCloneManager.exe"
+
+          # 3. Create README with Dependencies
+          $readme = @"
+          RClone Manager - Portable Edition v$version
+          ==========================================
+          This is the portable version.
+          All settings are stored in the 'config' folder.
+          You can also import/export settings via the application.
+
+          System Requirements:
+          -------------------
+          - Microsoft Edge WebView2 Runtime (Required)
+            (Usually pre-installed on Windows 10/11)
+          "@
+          Set-Content -Path "$dirName/README.txt" -Value $readme
+
+          # Zip it
+          Compress-Archive -Path $dirName -DestinationPath "${dirName}.zip"
+
+      # --- Packaging for Linux ---
+      - name: Prepare Package (Linux)
+        if: matrix.os == 'linux'
+        shell: bash
+        run: |
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          ARCH="${{ matrix.arch }}"
+          OS="${{ matrix.os }}"
+          DIR_NAME="RClone.Manager_${VERSION}_${ARCH}_${OS}_portable"
+
+          # Create structure
+          mkdir -p "$DIR_NAME/config"
+
+          # 1. Create settings.json
+          echo '{
+            "app_settings": {
+              "core": {
+                "completed_onboarding": true
+              }
+            }
+          }' > "$DIR_NAME/config/settings.json"
+
+          # 2. Copy Binary & Make Executable
+          cp src-tauri/target/${{ matrix.rust_target }}/release/rclone-manager "$DIR_NAME/RCloneManager"
+          chmod +x "$DIR_NAME/RCloneManager"
+
+          # 3. Create README with Dependencies
+          echo -e "RClone Manager - Portable Edition v$VERSION\n==========================================\nPortable version with local config.\nYou can also import/export settings via the application.\n\nSystem Requirements:\n-------------------\nDependencies (Install via your package manager):\n- libayatana-appindicator3-1 OR libappindicator3-1\n- libwebkit2gtk-4.1-0\n- libgtk-3-0\n\nRecommended:\n- rclone\n- 7z" > "$DIR_NAME/README.txt"
+
+          # Compress
+          tar -czvf "${DIR_NAME}.tar.gz" "$DIR_NAME"
+
+      # --- Upload ---
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.get_version.outputs.VERSION }}
+          name: "RClone Manager v${{ steps.get_version.outputs.VERSION }}"
+          draft: false
+          prerelease: false
+          files: |
+            *.zip
+            *.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.TAURI_TOKEN }}
