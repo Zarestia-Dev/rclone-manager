@@ -514,9 +514,9 @@ pub async fn start_web_server(
     };
 
     // Determine the path to serve static files from
-    // Try multiple locations
+    // Try multiple locations in priority order
     let static_dir = {
-        // 1. Try finding it in the official Resources directory (Best for Installed App)
+        // 1. Try Tauri Resources directory first (for installed app)
         let resource_path = app_handle
             .path()
             .resolve("browser", BaseDirectory::Resource);
@@ -527,24 +527,43 @@ pub async fn start_web_server(
                 info!("✅ Found static files in resources: {}", path.display());
                 Some(path)
             } else {
-                // 2. Fallback: Development / Relative paths (Existing logic)
-                let local_dist = std::path::PathBuf::from("dist/rclone-manager/browser");
-                if local_dist.exists() {
-                    info!("Found static files in current directory");
-                    Some(local_dist)
+                // 2. Try Docker installation path (for containerized deployments)
+                let docker_path =
+                    std::path::PathBuf::from("/usr/lib/rclone-manager-headless/browser");
+                if docker_path.exists() {
+                    info!(
+                        "✅ Found static files in Docker path: {}",
+                        docker_path.display()
+                    );
+                    Some(docker_path)
                 } else {
-                    // ... (keep your existing relative path checks here as backup) ...
-                    std::env::current_exe()
-                        .ok()
-                        .and_then(|path| path.parent().map(|p| p.to_path_buf()))
-                        .and_then(|path| {
-                            let dist_path = path.join("../../../dist/rclone-manager/browser");
-                            if dist_path.exists() {
-                                Some(dist_path)
-                            } else {
-                                None
-                            }
-                        })
+                    // 3. Try local development directory
+                    let local_dist = std::path::PathBuf::from("dist/rclone-manager/browser");
+                    if local_dist.exists() {
+                        info!(
+                            "✅ Found static files in current directory: {}",
+                            local_dist.display()
+                        );
+                        Some(local_dist)
+                    } else {
+                        // 4. Try relative path from executable (development fallback)
+                        std::env::current_exe()
+                            .ok()
+                            .and_then(|exe_path| exe_path.parent().map(|p| p.to_path_buf()))
+                            .and_then(|exe_dir| {
+                                let dist_path =
+                                    exe_dir.join("../../../dist/rclone-manager/browser");
+                                if dist_path.exists() {
+                                    info!(
+                                        "✅ Found static files relative to executable: {}",
+                                        dist_path.display()
+                                    );
+                                    Some(dist_path)
+                                } else {
+                                    None
+                                }
+                            })
+                    }
                 }
             }
         } else {

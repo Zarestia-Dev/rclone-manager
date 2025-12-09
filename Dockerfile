@@ -1,40 +1,27 @@
-# Multi-stage Dockerfile for RClone Manager Headless Server
-# Stage 1: Build Angular frontend
-FROM node:alpine AS frontend-builder
+# Build stage - Build everything via Tauri
+FROM node:20-bookworm AS builder
 
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
-
-# Stage 2: Build Rust backend
-FROM debian:bookworm-slim AS backend-builder
-
+# Install Rust and build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl build-essential pkg-config libssl-dev libdbus-1-dev \
     libsoup-3.0-dev libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev \
+    libgtk-3-dev libayatana-appindicator3-dev fuse3  \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /app
-COPY src-tauri/Cargo.toml src-tauri/Cargo.lock ./src-tauri/
-COPY src-tauri/src ./src-tauri/src
-COPY src-tauri/icons ./src-tauri/icons
-COPY src-tauri/build.rs ./src-tauri/build.rs
-# Copy headless configuration and capabilities
-COPY src-tauri/tauri.conf.headless.json ./src-tauri/tauri.conf.json
-# We don't need the capabilities for the headless build
-# COPY src-tauri/capabilities ./src-tauri/capabilities
-COPY --from=frontend-builder /app/dist ./dist
 
-# Create empty directory for headless build
-RUN mkdir -p /app/src-tauri/empty
+# Copy all project files
+COPY package*.json ./
+COPY . .
 
-WORKDIR /app/src-tauri
-RUN cargo build --release --bin rclone-manager-headless --features web-server
+# Install npm dependencies
+RUN npm install
+
+# Build via Tauri (builds both frontend and backend)
+RUN npm run tauri build -- --config src-tauri/tauri.conf.headless.json --config '{"bundle":{"createUpdaterArtifacts":false}}' --features web-server,updater 
 
 # Stage 3: Runtime
 FROM debian:bookworm-slim
@@ -61,9 +48,10 @@ RUN useradd -m -u 1000 rclone-manager && \
 
 WORKDIR /app
 
-# Copy built binaries and frontend
-COPY --from=backend-builder /app/src-tauri/target/release/rclone-manager-headless /usr/local/bin/
-COPY --from=frontend-builder /app/dist/rclone-manager/browser ./dist/rclone-manager/browser
+# Copy built binary from builder stage
+COPY --from=builder /app/src-tauri/target/release/rclone-manager-headless /usr/local/bin/
+# Copy built browser files
+COPY --from=builder /app/src-tauri/target/release/browser /usr/lib/rclone-manager-headless/browser/
 
 # Create directory for optional TLS certificates (mount your own certs here)
 RUN mkdir -p /app/certs && \
