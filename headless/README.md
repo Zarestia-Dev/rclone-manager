@@ -175,7 +175,7 @@ docker run -d \
   --name rclone-manager \
   -p 8080:8080 \
   -v rclone-config:/home/rclone-manager/.config/rclone \
-  -v rclone-manager-config:/home/rclone-manager/.config/rclone-manager \
+  -v rclone-manager-config:/home/rclone-manager/.local/share/com.rclone.manager.headless \
   ghcr.io/zarestia-dev/rclone-manager:latest
 
 # Access at: http://YOUR-SERVER-IP:8080
@@ -190,7 +190,7 @@ docker run -d \
   -e RCLONE_MANAGER_USER=admin \
   -e RCLONE_MANAGER_PASS=your-secure-password \
   -v rclone-config:/home/rclone-manager/.config/rclone \
-  -v rclone-manager-config:/home/rclone-manager/.config/rclone-manager \
+  -v rclone-manager-config:/home/rclone-manager/.local/share/com.rclone.manager.headless \
   ghcr.io/zarestia-dev/rclone-manager:latest
 ```
 
@@ -214,7 +214,7 @@ docker run -d \
   -e RCLONE_MANAGER_TLS_KEY=/app/certs/key.pem \
   -v ./certs:/app/certs:ro \
   -v rclone-config:/home/rclone-manager/.config/rclone \
-  -v rclone-manager-config:/home/rclone-manager/.config/rclone-manager \
+  -v rclone-manager-config:/home/rclone-manager/.local/share/com.rclone.manager.headless \
   ghcr.io/zarestia-dev/rclone-manager:latest
 
 # Access at: https://YOUR-SERVER-IP:8443
@@ -261,11 +261,11 @@ All configuration options can be set via environment variables:
 
 ### Volume Mounts
 
-| Path                                          | Description                          |
-| --------------------------------------------- | ------------------------------------ |
-| `/home/rclone-manager/.config/rclone`         | Rclone configuration (remotes, etc.) |
-| `/home/rclone-manager/.config/rclone-manager` | App data and settings                |
-| `/app/certs`                                  | Optional: Your TLS certificates      |
+| Path                                                            | Description                          |
+| --------------------------------------------------------------- | ------------------------------------ |
+| `/home/rclone-manager/.config/rclone`                           | Rclone configuration (remotes, etc.) |
+| `/home/rclone-manager/.local/share/com.rclone.manager.headless` | App data and settings                |
+| `/app/certs`                                                    | Optional: Your TLS certificates      |
 
 ### Available Tags
 

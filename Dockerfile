@@ -21,7 +21,7 @@ COPY . .
 RUN npm install
 
 # Build via Tauri (builds both frontend and backend)
-RUN npm run tauri build -- --config src-tauri/tauri.conf.headless.json --config '{"bundle":{"createUpdaterArtifacts":false}}' --features web-server,updater 
+RUN npm run tauri build -- --config src-tauri/tauri.conf.headless.json --config '{"bundle":{"createUpdaterArtifacts":false}}' --features web-server,updater --no-bundle
 
 # Stage 3: Runtime
 FROM debian:bookworm-slim
@@ -42,7 +42,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
 
 # Create non-root user
 RUN useradd -m -u 1000 rclone-manager && \
-    mkdir -p /home/rclone-manager/.config/rclone-manager && \
+    mkdir -p /home/rclone-manager/.local/share/com.rclone.manager.headless && \
     mkdir -p /app && \
     chown -R rclone-manager:rclone-manager /home/rclone-manager /app
 

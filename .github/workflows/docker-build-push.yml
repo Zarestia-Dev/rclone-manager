@@ -2,16 +2,6 @@ name: Build and Push Docker Image (Headless)
 
 on:
     workflow_dispatch:
-    release:
-        types: [published]
-    push:
-        branches:
-            - master
-            - main
-        paths-ignore:
-            - "**.md"
-            - "docs/**"
-            - "LICENSE"
 
 env:
     REGISTRY: ghcr.io
