@@ -96,9 +96,14 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Create and push multi-arch manifest
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          for tag in ${{ steps.meta.outputs.tags }}; do
-              docker buildx imagetools create -t ${tag} \
-                  ${tag}-amd64 \
-                  ${tag}-arm64
+          echo "$TAGS" | while IFS= read -r tag; do
+            if [ -n "$tag" ]; then
+              echo "Creating manifest for: $tag"
+              docker buildx imagetools create -t "${tag}" \
+                "${tag}-amd64" \
+                "${tag}-arm64"
+            fi
           done
