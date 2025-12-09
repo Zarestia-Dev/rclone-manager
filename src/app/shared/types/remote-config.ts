@@ -131,6 +131,7 @@ export const REMOTE_NAME_REGEX = /^[A-Za-z0-9_\-.+@ ]+$/;
 export interface RcConfigExample {
   Value: string;
   Help: string;
+  Provider?: string;
 }
 
 export interface RcConfigOption {

@@ -1,6 +1,14 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- On linux remove the rclone to required dependencies when installing via deb or rpm packages. Because app handle the rclone binary installation and update itself correctly.  
+
+### Fixed
+- Remote configuration step provider selection fixed. Now it correctly filters the provider-specific fields when Provider selected. (issue #59 and #1)
+
 ## [v0.1.8] - 2025-11-06
 ### Added
 - Developer Setting: Memory Optimization (Destroy Window on Close). Added a new experimental option in Developer Settings that destroys the main window instead of hiding it when closed. This significantly reduces background RAM usage. On Linux, this also actively cleans up lingering WebKit "zombie" processes to prevent memory leaks over long sessions. On MacOS, this not so effective because MacOS version dont use a lot of memory for background processes. But its useful linux and windows.

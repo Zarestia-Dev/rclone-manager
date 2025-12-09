@@ -1,5 +1,5 @@
 <div class="settings-list">
-  @if (control) {
+  @if (control()) {
     <ng-template #settingInfo let-opt>
       <div class="setting">
         <div class="setting-info">
@@ -36,7 +36,7 @@
               matInput
               [type]="inputType || 'text'"
               [step]="inputStep || null"
-              [formControl]="$any(control)"
+              [formControl]="$any(control())"
               [attr.aria-label]="opt.Name"
               [placeholder]="opt.DefaultStr || ''"
               (blur)="commitValue()"
@@ -44,13 +44,14 @@
             @if (inputHint) {
               <mat-hint>{{ inputHint }}</mat-hint>
             }
-            @if (control.invalid && control.touched) {
+            @if (control()?.invalid && control()?.touched) {
               <mat-error>{{ getControlError() }}</mat-error>
             }
           </mat-form-field>
         </div>
       </div>
     </ng-template>
+
     <ng-template #stepperInput let-opt let-inputType="inputType" let-inputStep="inputStep">
       <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
       <div class="setting-control">
@@ -72,7 +73,7 @@
               matInput
               [type]="inputType"
               [step]="inputStep"
-              [formControl]="$any(control)"
+              [formControl]="$any(control())"
               [attr.aria-label]="opt.Name"
               [placeholder]="opt.DefaultStr || ''"
               (keydown)="onIntegerInput($event)"
@@ -94,27 +95,37 @@
         </div>
       </div>
     </ng-template>
+
     <ng-template #standardSelect let-opt>
       <div class="setting-full-width">
         <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
         <div class="setting-control">
           <mat-form-field class="input-field" appearance="fill">
             <mat-select
-              [formControl]="$any(control)"
+              [formControl]="$any(control())"
               [attr.aria-label]="opt.Name"
               (selectionChange)="commitValue()"
+              panelClass="settings-select-panel"
             >
               @for (example of opt.Examples; track example.Value) {
-                <mat-option [value]="example.Value">{{ example.Help || example.Value }}</mat-option>
+                <mat-option [value]="example.Value" class="multi-line-option">
+                  <div class="option-content">
+                    <span class="option-label">{{ example.Help || example.Value }}</span>
+                    @if (example.Help && example.Help !== example.Value) {
+                      <small class="option-value-badge">{{ example.Value }}</small>
+                    }
+                  </div>
+                </mat-option>
               }
             </mat-select>
-            @if (control.invalid && control.touched) {
+            @if (control()?.invalid && control()?.touched) {
               <mat-error>{{ getControlError() }}</mat-error>
             }
           </mat-form-field>
         </div>
       </div>
     </ng-template>
+
     <ng-template #multiSelect let-opt let-optionsList="optionsList" let-inputHint="inputHint">
       <div class="setting-full-width">
         <ng-container *ngTemplateOutlet="settingInfo; context: { $implicit: opt }"></ng-container>
@@ -122,24 +133,31 @@
           <mat-form-field class="input-field" appearance="fill">
             <mat-select
               multiple
-              [formControl]="$any(control)"
+              [formControl]="$any(control())"
               [attr.aria-label]="opt.Name"
               (selectionChange)="commitValue()"
+              panelClass="settings-select-panel"
             >
               @for (item of optionsList; track item.Value || item) {
-                <mat-option [value]="item.Value || item">{{
-                  item.Help || item.Value || item
-                }}</mat-option>
+                <mat-option [value]="item.Value || item" class="multi-line-option">
+                  <div class="option-content">
+                    <span class="option-label">{{ item.Help || item.Value || item }}</span>
+                    @if (item.Help && item.Help !== (item.Value || item)) {
+                      <small class="option-value-badge">{{ item.Value || item }}</small>
+                    }
+                  </div>
+                </mat-option>
               }
             </mat-select>
             <mat-hint>{{ inputHint || 'Select one or more items' }}</mat-hint>
-            @if (control.invalid && control.touched) {
+            @if (control()?.invalid && control()?.touched) {
               <mat-error>{{ getControlError() }}</mat-error>
             }
           </mat-form-field>
         </div>
       </div>
     </ng-template>
+
     <div class="setting-item" id="{{ 'setting-' + option.Name }}">
       @switch (option.Type) {
         @case ('bool') {
@@ -148,11 +166,11 @@
           ></ng-container>
           <div class="setting-control">
             <mat-slide-toggle
-              [formControl]="$any(control)"
+              [formControl]="$any(control())"
               [attr.aria-label]="option.Name"
               (change)="commitValue()"
             >
-              {{ control.value ? 'Enabled' : 'Disabled' }}
+              {{ control()?.value ? 'Enabled' : 'Disabled' }}
             </mat-slide-toggle>
           </div>
         }
@@ -167,7 +185,6 @@
             ></ng-container>
           }
         }
-
         @case ('Duration') {
           <ng-container
             *ngTemplateOutlet="
@@ -220,7 +237,7 @@
                 <input
                   matInput
                   [matDatepicker]="picker"
-                  [formControl]="dateControl"
+                  [formControl]="dateControl()"
                   [attr.aria-label]="option.Name + ' date'"
                   (dateChange)="commitValue()"
                 />
@@ -233,7 +250,7 @@
                 <input
                   matInput
                   [ngxMatTimepicker]="timePicker"
-                  [formControl]="timeControl"
+                  [formControl]="timeControl()"
                   [attr.aria-label]="option.Name + ' time'"
                   readonly
                 />
@@ -346,7 +363,6 @@
             "
           ></ng-container>
         }
-
         @case ('Tristate') {
           <div class="setting-full-width">
             <ng-container
@@ -355,7 +371,7 @@
             <div class="setting-control">
               <mat-form-field class="input-field" appearance="fill">
                 <mat-select
-                  [formControl]="$any(control)"
+                  [formControl]="$any(control())"
                   [attr.aria-label]="option.Name"
                   (selectionChange)="commitValue()"
                 >

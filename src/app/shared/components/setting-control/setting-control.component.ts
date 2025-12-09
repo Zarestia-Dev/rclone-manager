@@ -7,6 +7,8 @@ import {
   EventEmitter,
   ChangeDetectionStrategy,
   inject,
+  signal,
+  WritableSignal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -84,26 +86,32 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     max_age: { DefaultStr: '0s', Default: 0 },
   };
 
-  private _option!: RcConfigOption;
-  public uiDefaultValue: any;
+  // option stored as a signal for better reactivity
+  private optionSignal: WritableSignal<RcConfigOption | null> = signal<RcConfigOption | null>(null);
+  // Derived default shown in the UI as a signal
+  public uiDefaultValue = signal<unknown>('');
 
   @Input()
   get option(): RcConfigOption {
-    return this._option;
+    return this.optionSignal() as RcConfigOption;
   }
-  set option(val: RcConfigOption) {
+  set option(val: RcConfigOption | null) {
+    if (!val) return;
     // Merge built-in and caller-provided overrides for this option
     const builtIn = this.defaultOptionOverrides[val.Name] || {};
     const caller = this.optionOverrides[val.Name] || {};
-    this._option = { ...val, ...builtIn, ...caller } as RcConfigOption;
-    this.uiDefaultValue = this.calculateDefaultValue(this._option);
+    const merged = { ...val, ...builtIn, ...caller } as RcConfigOption;
+    this.optionSignal.set(merged);
+    // Update derived UI default value
+    this.uiDefaultValue.set(this.calculateDefaultValue(merged));
     this.createControl();
   }
 
   @Output() valueCommit = new EventEmitter<void>();
   @Output() valueChanged = new EventEmitter<boolean>();
 
-  public control!: AbstractControl;
+  // control as a signal so the template and computed values can react to changes
+  public control = signal<AbstractControl | null>(null);
   public encodingFlags = [
     'Slash',
     'BackSlash',
@@ -134,9 +142,9 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     'Exclamation',
   ].sort();
   public bitsFlags = ['date', 'time', 'microseconds', 'longfile', 'shortfile', 'pid'].sort();
-  // For Time type UI (split date + time inputs)
-  public dateControl: FormControl = new FormControl('');
-  public timeControl: FormControl = new FormControl('');
+  // For Time type UI (split date + time inputs) — converted to signals
+  public dateControl = signal<FormControl>(new FormControl(''));
+  public timeControl = signal<FormControl>(new FormControl(''));
 
   private onChange: (value: any) => void = () => {
     /* empty */
@@ -190,8 +198,9 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   }
 
   isValueChanged(): boolean {
-    if (!this.control) return false;
-    return !this.valuesEqual(this.control.value, this.uiDefaultValue);
+    const ctrl = this.control();
+    if (!ctrl) return false;
+    return !this.valuesEqual(ctrl.value, this.uiDefaultValue());
   }
 
   private valuesEqual(current: any, defaultVal: any): boolean {
@@ -222,38 +231,42 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   }
 
   resetToDefault(): void {
-    if (!this.control) return;
+    const ctrl = this.control();
+    if (!ctrl) return;
 
     // If we have an array control, ensure the FormArray contents match the default array
-    if (this.control instanceof FormArray) {
-      const defaultArr = Array.isArray(this.uiDefaultValue) ? this.uiDefaultValue : [];
-      const formArray = this.control as FormArray;
+    if (ctrl instanceof FormArray) {
+      const defaultArr = Array.isArray(this.uiDefaultValue())
+        ? (this.uiDefaultValue() as unknown[])
+        : [];
+      const formArray = ctrl as FormArray;
 
       // If lengths differ, rebuild the FormArray to match defaults
       if (formArray.length !== defaultArr.length) {
         formArray.clear({ emitEvent: false });
-        defaultArr.forEach(val => formArray.push(new FormControl(val), { emitEvent: false }));
+        defaultArr.forEach((val: unknown) =>
+          formArray.push(new FormControl(val), { emitEvent: false })
+        );
       } else {
         // Same length just set values
-        defaultArr.forEach((val, i) => formArray.at(i).setValue(val, { emitEvent: false }));
+        defaultArr.forEach((val: unknown, i: number) =>
+          formArray.at(i).setValue(val, { emitEvent: false })
+        );
       }
     }
-    this.control.setValue(this.uiDefaultValue);
+    ctrl.setValue(this.uiDefaultValue());
     this.commitValue();
   }
 
   getDisplayDefault(): string {
-    if (
-      this.uiDefaultValue === null ||
-      this.uiDefaultValue === undefined ||
-      this.uiDefaultValue === ''
-    ) {
+    const _val = this.uiDefaultValue();
+    if (_val === null || _val === undefined || _val === '') {
       return 'none';
     }
-    if (Array.isArray(this.uiDefaultValue)) {
-      return this.uiDefaultValue.join(', ') || '[]';
+    if (Array.isArray(_val)) {
+      return _val.join(', ') || '[]';
     }
-    return this.uiDefaultValue.toString();
+    return _val.toString();
   }
 
   isAtDefault(): boolean {
@@ -265,14 +278,15 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   //
 
   writeValue(value: any): void {
-    if (!this.control) return;
+    const ctrl = this.control();
+    if (!ctrl) return;
 
     const internalValue = this.prepareValueForControl(value);
 
-    if (this.control instanceof FormArray) {
-      this.setFormArrayValue(this.control, internalValue);
+    if (ctrl instanceof FormArray) {
+      this.setFormArrayValue(ctrl as FormArray, internalValue);
     } else {
-      this.control.setValue(internalValue, { emitEvent: false });
+      ctrl.setValue(internalValue, { emitEvent: false });
       // If this is a Time type, update the split date/time controls
       if (this.option && this.option.Type === 'Time') {
         this.updateSplitFromControl(internalValue);
@@ -347,7 +361,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
 
   private createControl(): void {
     this.destroyed$.next();
-    if (!this.option) return;
+    if (!this.optionSignal()) return;
 
     const validators = this.getValidators();
     const isArrayType = this.isArrayType();
@@ -355,10 +369,10 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     if (isArrayType) {
       const initialArray = this.getInitialArrayValue();
       const controls = initialArray.map(val => new FormControl(val));
-      this.control = new FormArray(controls, validators);
+      this.control.set(new FormArray(controls, validators));
     } else {
       const initialValue = this.getInitialValue();
-      this.control = new FormControl(initialValue, validators);
+      this.control.set(new FormControl(initialValue, validators));
     }
 
     this.subscribeToChanges();
@@ -406,7 +420,10 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   }
 
   private subscribeToChanges(): void {
-    this.control.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(value => {
+    const ctrl = this.control();
+    if (!ctrl) return;
+
+    (ctrl as AbstractControl).valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(value => {
       const outputValue = this.prepareValueForBackend(value);
       this.onChange(outputValue);
       this.onTouched();
@@ -420,17 +437,19 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
     // If option is Time, keep the date/time split controls in sync with the main control
     if (this.option && this.option.Type === 'Time') {
       // initialize split controls
-      this.updateSplitFromControl(this.control.value);
+      this.updateSplitFromControl((this.control() as AbstractControl).value);
 
-      this.dateControl.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(() => {
+      const dateCtrl = this.dateControl();
+      dateCtrl.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(() => {
         const combined = this.combineDateTime();
         // update main control which will trigger prepareValueForBackend and onChange
-        this.control.setValue(combined);
+        (this.control() as AbstractControl).setValue(combined);
       });
 
-      this.timeControl.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(() => {
+      const timeCtrl = this.timeControl();
+      timeCtrl.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(() => {
         const combined = this.combineDateTime();
-        this.control.setValue(combined);
+        (this.control() as AbstractControl).setValue(combined);
       });
     }
   }
@@ -438,8 +457,8 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   private updateSplitFromControl(value: any): void {
     // value expected to be ISO-like string (YYYY-MM-DDTHH:mm:ssZ) or empty
     if (!value || typeof value !== 'string') {
-      this.dateControl.setValue('', { emitEvent: false });
-      this.timeControl.setValue('', { emitEvent: false });
+      this.dateControl().setValue('', { emitEvent: false });
+      this.timeControl().setValue('', { emitEvent: false });
       return;
     }
 
@@ -452,18 +471,18 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
       // Trim seconds for time input (HH:mm)
       const tmatch = timePart.match(/^(\d{2}:\d{2})/);
       if (tmatch) timePart = tmatch[1];
-      this.dateControl.setValue(datePart, { emitEvent: false });
-      this.timeControl.setValue(timePart, { emitEvent: false });
+      this.dateControl().setValue(datePart, { emitEvent: false });
+      this.timeControl().setValue(timePart, { emitEvent: false });
     } else {
       // Fallback: clear
-      this.dateControl.setValue('', { emitEvent: false });
-      this.timeControl.setValue('', { emitEvent: false });
+      this.dateControl().setValue('', { emitEvent: false });
+      this.timeControl().setValue('', { emitEvent: false });
     }
   }
 
   private combineDateTime(): string {
-    const date = this.dateControl.value;
-    let time = this.timeControl.value || '00:00';
+    const date = this.dateControl().value;
+    let time = this.timeControl().value || '00:00';
     if (!date) return '';
 
     // Handle time string - extract HH:mm and handle potential AM/PM format
@@ -532,11 +551,10 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
    */
   increment(step: number | 'any' = 1, commit = true): void {
     // Add commit parameter
-    if (!this.control) return;
+    const ctrl = this.control();
+    if (!ctrl) return;
     const isFloat = this.option.Type === 'float64';
-    const currentValue = isFloat
-      ? parseFloat(this.control.value)
-      : parseInt(this.control.value, 10);
+    const currentValue = isFloat ? parseFloat(ctrl.value) : parseInt(ctrl.value, 10);
     const numValue = isNaN(currentValue) ? 0 : currentValue;
 
     const effectiveStep = step === 'any' ? 1.0 : step;
@@ -544,7 +562,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
 
     const finalValue = isFloat ? parseFloat(newValue.toPrecision(15)) : newValue;
 
-    this.control.setValue(finalValue);
+    ctrl.setValue(finalValue);
     if (commit) {
       // Only commit if requested
       this.commitValue();
@@ -558,11 +576,10 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
    */
   decrement(step: number | 'any' = 1, commit = true): void {
     // Add commit parameter
-    if (!this.control) return;
+    const ctrl = this.control();
+    if (!ctrl) return;
     const isFloat = this.option.Type === 'float64';
-    const currentValue = isFloat
-      ? parseFloat(this.control.value)
-      : parseInt(this.control.value, 10);
+    const currentValue = isFloat ? parseFloat(ctrl.value) : parseInt(ctrl.value, 10);
     const numValue = isNaN(currentValue) ? 0 : currentValue;
 
     const effectiveStep = step === 'any' ? 1.0 : step;
@@ -570,7 +587,7 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
 
     const finalValue = isFloat ? parseFloat(newValue.toPrecision(15)) : newValue;
 
-    this.control.setValue(finalValue);
+    ctrl.setValue(finalValue);
     if (commit) {
       // Only commit if requested
       this.commitValue();
@@ -713,25 +730,29 @@ export class SettingControlComponent implements ControlValueAccessor, OnDestroy 
   //
 
   get formArrayControls(): AbstractControl[] {
-    return this.control instanceof FormArray ? this.control.controls : [];
+    const ctrl = this.control();
+    return ctrl instanceof FormArray ? ctrl.controls : [];
   }
 
   addArrayItem(): void {
-    if (this.control instanceof FormArray) {
-      this.control.push(new FormControl(''));
+    const ctrl = this.control();
+    if (ctrl instanceof FormArray) {
+      (ctrl as FormArray).push(new FormControl(''));
     }
   }
 
   removeArrayItem(index: number): void {
-    if (this.control instanceof FormArray) {
-      this.control.removeAt(index);
+    const ctrl = this.control();
+    if (ctrl instanceof FormArray) {
+      (ctrl as FormArray).removeAt(index);
       this.commitValue();
     }
   }
 
   getControlError(): string | null {
-    if (!this.control || !this.control.errors) return null;
-    const errors = this.control.errors;
+    const ctrl = this.control();
+    if (!ctrl || !ctrl.errors) return null;
+    const errors = ctrl.errors as Record<string, { message?: string }>;
     return (
       errors['required']?.message ||
       errors['integer']?.message ||
