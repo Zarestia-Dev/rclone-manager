@@ -163,6 +163,121 @@ journalctl -u rclone-manager-headless -b
 
 ---
 
+## 🐳 Docker
+
+The easiest way to run RClone Manager Headless is with Docker! Pre-built multi-architecture images (amd64, arm64) are available.
+
+### Quick Start
+
+```bash
+# Basic - HTTP without authentication
+docker run -d \
+  --name rclone-manager \
+  -p 8080:8080 \
+  -v rclone-config:/home/rclone-manager/.config/rclone \
+  -v rclone-manager-config:/home/rclone-manager/.config/rclone-manager \
+  ghcr.io/zarestia-dev/rclone-manager:latest
+
+# Access at: http://YOUR-SERVER-IP:8080
+```
+
+### With Authentication
+
+```bash
+docker run -d \
+  --name rclone-manager \
+  -p 8080:8080 \
+  -e RCLONE_MANAGER_USER=admin \
+  -e RCLONE_MANAGER_PASS=your-secure-password \
+  -v rclone-config:/home/rclone-manager/.config/rclone \
+  -v rclone-manager-config:/home/rclone-manager/.config/rclone-manager \
+  ghcr.io/zarestia-dev/rclone-manager:latest
+```
+
+### With HTTPS/TLS
+
+```bash
+# First, create your certificates directory
+mkdir -p ./certs
+
+# Generate self-signed certificate (for testing)
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout ./certs/key.pem -out ./certs/cert.pem \
+  -subj "/CN=localhost"
+
+# Run with HTTPS
+docker run -d \
+  --name rclone-manager \
+  -p 8443:8443 \
+  -e RCLONE_MANAGER_PORT=8443 \
+  -e RCLONE_MANAGER_TLS_CERT=/app/certs/cert.pem \
+  -e RCLONE_MANAGER_TLS_KEY=/app/certs/key.pem \
+  -v ./certs:/app/certs:ro \
+  -v rclone-config:/home/rclone-manager/.config/rclone \
+  -v rclone-manager-config:/home/rclone-manager/.config/rclone-manager \
+  ghcr.io/zarestia-dev/rclone-manager:latest
+
+# Access at: https://YOUR-SERVER-IP:8443
+```
+
+### Docker Compose
+
+Use the included `docker-compose.yml` for easier management:
+
+```bash
+# Clone the repository
+git clone https://github.com/Zarestia-Dev/rclone-manager.git
+cd rclone-manager
+
+# Basic setup (HTTP, no auth)
+docker-compose up -d
+
+# With authentication
+docker-compose --profile auth up -d
+
+# With HTTPS/TLS (provide your own certs in ./certs/)
+docker-compose --profile tls up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+```
+
+### Environment Variables
+
+All configuration options can be set via environment variables:
+
+| Variable                  | Description                 | Default   |
+| ------------------------- | --------------------------- | --------- |
+| `RCLONE_MANAGER_HOST`     | Host address to bind        | `0.0.0.0` |
+| `RCLONE_MANAGER_PORT`     | Port to listen on           | `8080`    |
+| `RCLONE_MANAGER_USER`     | Username for authentication | _(none)_  |
+| `RCLONE_MANAGER_PASS`     | Password for authentication | _(none)_  |
+| `RCLONE_MANAGER_TLS_CERT` | Path to TLS certificate     | _(none)_  |
+| `RCLONE_MANAGER_TLS_KEY`  | Path to TLS private key     | _(none)_  |
+| `RUST_LOG`                | Logging level               | `info`    |
+
+### Volume Mounts
+
+| Path                                          | Description                          |
+| --------------------------------------------- | ------------------------------------ |
+| `/home/rclone-manager/.config/rclone`         | Rclone configuration (remotes, etc.) |
+| `/home/rclone-manager/.config/rclone-manager` | App data and settings                |
+| `/app/certs`                                  | Optional: Your TLS certificates      |
+
+### Available Tags
+
+- `latest` - Latest stable release (recommended)
+- `master` - Latest development build
+- `vX.Y.Z` - Specific version tags
+- `sha-XXXXXXX` - Specific commit builds
+
+All images support both `linux/amd64` and `linux/arm64` architectures.
+
+---
+
 ## 🆚 Desktop vs Headless
 
 | Feature               | Desktop       | Headless    |

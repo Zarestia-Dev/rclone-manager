@@ -162,4 +162,4 @@ jobs:
             *.zip
             *.tar.gz
         env:
-          GITHUB_TOKEN: ${{ secrets.TAURI_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

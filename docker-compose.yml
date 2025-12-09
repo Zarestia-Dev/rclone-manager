@@ -1,19 +1,54 @@
-# Docker Compose file for RClone Manager Headless Server (TESTING)
+# Docker Compose file for RClone Manager Headless Server
+#
+# Quick start (HTTP, no authentication):
+#   docker-compose up -d
+#
+# With authentication (see "With Authentication" profile below):
+#   docker-compose --profile auth up -d
+#
+# With HTTPS/TLS (see "With TLS" profile below):
+#   docker-compose --profile tls up -d
+#
+# To build locally instead of using pre-built image:
+#   Uncomment the 'build' section and comment out the 'image' line
 
 services:
+  # Basic setup - HTTP without authentication
   rclone-manager:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Use pre-built image from GitHub Container Registry
+    image: ghcr.io/zarestia-dev/rclone-manager:latest
+
+    # To build locally, uncomment these lines and comment out the 'image' line above:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+
     container_name: rclone-manager-headless
     restart: unless-stopped
     ports:
       - "8080:8080"
     volumes:
+      # Rclone configuration directory
       - rclone-config:/home/rclone-manager/.config/rclone
-      - rclone-manager-config:/home/rclone-manager/.config/rclone-manager
+      # RClone Manager configuration and data
+      - rclone-manager-config:/home/rclone-manager/.local/share/com.rclone.manager.headless
+      # Optional: Mount your own TLS certificates (for HTTPS)
+      # - ./certs:/app/certs:ro
     environment:
+      # Logging level (trace, debug, info, warn, error)
       - RUST_LOG=info
+
+      # Server configuration (defaults shown, uncomment to customize)
+      # - RCLONE_MANAGER_HOST=0.0.0.0
+      # - RCLONE_MANAGER_PORT=8080
+
+      # Authentication (uncomment to enable)
+      # - RCLONE_MANAGER_USER=admin
+      # - RCLONE_MANAGER_PASS=your-secure-password
+
+      # TLS/HTTPS (uncomment and provide cert paths to enable)
+      # - RCLONE_MANAGER_TLS_CERT=/app/certs/cert.pem
+      # - RCLONE_MANAGER_TLS_KEY=/app/certs/key.pem
     networks:
       - rclone-network
     healthcheck:
@@ -22,6 +57,79 @@ services:
       timeout: 3s
       retries: 3
       start_period: 10s
+    profiles:
+      - "" # Default profile (always runs)
+
+  # Profile: With Authentication
+  # Usage: docker-compose --profile auth up -d
+  rclone-manager-auth:
+    image: ghcr.io/zarestia-dev/rclone-manager:latest
+    container_name: rclone-manager-headless-auth
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - rclone-config:/home/rclone-manager/.config/rclone
+      - rclone-manager-config:/home/rclone-manager/.local/share/com.rclone.manager.headless
+    environment:
+      - RUST_LOG=info
+      - RCLONE_MANAGER_HOST=0.0.0.0
+      - RCLONE_MANAGER_PORT=8080
+      # Change these credentials!
+      - RCLONE_MANAGER_USER=admin
+      - RCLONE_MANAGER_PASS=changeme123
+    networks:
+      - rclone-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "-u",
+          "admin:changeme123",
+          "http://localhost:8080/api/health",
+        ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    profiles:
+      - auth
+
+  # Profile: With TLS/HTTPS
+  # Usage: docker-compose --profile tls up -d
+  # Note: You need to provide your own certificates in ./certs/
+  rclone-manager-tls:
+    image: ghcr.io/zarestia-dev/rclone-manager:latest
+    container_name: rclone-manager-headless-tls
+    restart: unless-stopped
+    ports:
+      - "8443:8443"
+    volumes:
+      - rclone-config:/home/rclone-manager/.config/rclone
+      - rclone-manager-config:/home/rclone-manager/.local/share/com.rclone.manager.headless
+      # Mount your TLS certificates here
+      - ./certs:/app/certs:ro
+    environment:
+      - RUST_LOG=info
+      - RCLONE_MANAGER_HOST=0.0.0.0
+      - RCLONE_MANAGER_PORT=8443
+      - RCLONE_MANAGER_TLS_CERT=/app/certs/cert.pem
+      - RCLONE_MANAGER_TLS_KEY=/app/certs/key.pem
+      # Optional: Add authentication
+      # - RCLONE_MANAGER_USER=admin
+      # - RCLONE_MANAGER_PASS=your-secure-password
+    networks:
+      - rclone-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-k", "https://localhost:8443/api/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    profiles:
+      - tls
 
 volumes:
   rclone-config:

@@ -24,9 +24,14 @@ COPY src-tauri/Cargo.toml src-tauri/Cargo.lock ./src-tauri/
 COPY src-tauri/src ./src-tauri/src
 COPY src-tauri/icons ./src-tauri/icons
 COPY src-tauri/build.rs ./src-tauri/build.rs
-COPY src-tauri/tauri.conf.json ./src-tauri/tauri.conf.json
-COPY src-tauri/capabilities ./src-tauri/capabilities
+# Copy headless configuration and capabilities
+COPY src-tauri/tauri.conf.headless.json ./src-tauri/tauri.conf.json
+# We don't need the capabilities for the headless build
+# COPY src-tauri/capabilities ./src-tauri/capabilities
 COPY --from=frontend-builder /app/dist ./dist
+
+# Create empty directory for headless build
+RUN mkdir -p /app/src-tauri/empty
 
 WORKDIR /app/src-tauri
 RUN cargo build --release --bin rclone-manager-headless --features web-server
@@ -39,10 +44,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libayatana-appindicator3-1 xvfb dbus-x11 openssl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install rclone
-RUN curl -O https://downloads.rclone.org/rclone-current-linux-amd64.zip && \
-    unzip -q rclone-current-linux-amd64.zip && \
-    cp rclone-*-linux-amd64/rclone /usr/bin/ && \
+# Install rclone (multi-arch support)
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "arm64" ]; then RCLONE_ARCH="arm64"; else RCLONE_ARCH="amd64"; fi && \
+    curl -O https://downloads.rclone.org/rclone-current-linux-${RCLONE_ARCH}.zip && \
+    unzip -q rclone-current-linux-${RCLONE_ARCH}.zip && \
+    cp rclone-*-linux-${RCLONE_ARCH}/rclone /usr/bin/ && \
     chmod 755 /usr/bin/rclone && \
     rm -rf rclone-*
 
@@ -58,16 +65,15 @@ WORKDIR /app
 COPY --from=backend-builder /app/src-tauri/target/release/rclone-manager-headless /usr/local/bin/
 COPY --from=frontend-builder /app/dist/rclone-manager/browser ./dist/rclone-manager/browser
 
-# Generate TLS certificate
-RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout ./cert.pem -out ./cert.pem \
-    -subj "/C=TR/ST=Denial/L=Springfield/O=Dis/CN=localhost" && \
-    chmod 644 ./cert.pem && \
-    chown rclone-manager:rclone-manager ./cert.pem
+# Create directory for optional TLS certificates (mount your own certs here)
+RUN mkdir -p /app/certs && \
+    chown rclone-manager:rclone-manager /app/certs
 
-# Create entrypoint script
+# Create entrypoint script with environment variable support
 RUN echo '#!/bin/bash\n\
 set -e\n\
+\n\
+# Setup virtual display\n\
 mkdir -p /tmp/.X11-unix && chmod 1777 /tmp/.X11-unix\n\
 rm -f /tmp/.X99-lock /tmp/.X11-unix/X99 2>/dev/null || true\n\
 Xvfb :99 -screen 0 1024x768x24 -nolisten tcp &\n\
@@ -76,7 +82,38 @@ sleep 2\n\
 if ! ps -p $XVFB_PID > /dev/null; then echo "Failed to start Xvfb"; exit 1; fi\n\
 export $(dbus-launch)\n\
 trap "kill $XVFB_PID 2>/dev/null || true" EXIT\n\
-exec /usr/local/bin/rclone-manager-headless "$@"\n\
+\n\
+# Build command line arguments from environment variables\n\
+ARGS=()\n\
+\n\
+# Add host if set\n\
+if [ -n "$RCLONE_MANAGER_HOST" ]; then\n\
+    ARGS+=("--host" "$RCLONE_MANAGER_HOST")\n\
+fi\n\
+\n\
+# Add port if set\n\
+if [ -n "$RCLONE_MANAGER_PORT" ]; then\n\
+    ARGS+=("--port" "$RCLONE_MANAGER_PORT")\n\
+fi\n\
+\n\
+# Add authentication if set\n\
+if [ -n "$RCLONE_MANAGER_USER" ]; then\n\
+    ARGS+=("--user" "$RCLONE_MANAGER_USER")\n\
+fi\n\
+if [ -n "$RCLONE_MANAGER_PASS" ]; then\n\
+    ARGS+=("--pass" "$RCLONE_MANAGER_PASS")\n\
+fi\n\
+\n\
+# Add TLS if certificates are provided\n\
+if [ -n "$RCLONE_MANAGER_TLS_CERT" ]; then\n\
+    ARGS+=("--tls-cert" "$RCLONE_MANAGER_TLS_CERT")\n\
+fi\n\
+if [ -n "$RCLONE_MANAGER_TLS_KEY" ]; then\n\
+    ARGS+=("--tls-key" "$RCLONE_MANAGER_TLS_KEY")\n\
+fi\n\
+\n\
+# Execute with environment args first, then command line args\n\
+exec /usr/local/bin/rclone-manager-headless "${ARGS[@]}" "$@"\n\
 ' > /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh
 
 USER rclone-manager
@@ -90,5 +127,5 @@ ENV DISPLAY=:99 \
     RCLONE_CONFIG=/home/rclone-manager/.config/rclone/rclone.conf
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-CMD ["--host", "0.0.0.0", "--port", "8080", "--tls-cert", "cert.pem", "--tls-key", "cert.pem"]
+CMD []
 
