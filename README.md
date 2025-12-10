@@ -23,7 +23,7 @@
 
 ---
 
-## 🌐 Overview
+## Overview
 
 **RClone Manager** is a **modern, cross-platform GUI** that makes managing [Rclone](https://rclone.org/) remotes effortless. Whether you're syncing files across cloud storage providers, mounting remote drives, or performing complex file operations, RClone Manager provides an intuitive interface that simplifies even the most advanced Rclone features.
 
@@ -42,7 +42,7 @@
 
 ## 🎨 Design Philosophy
 
-💡 **Beautiful by design.** A unique blend of **GTK styling**, **Angular Material**, and **FontAwesome icons** creates a clean, minimalist interface that feels at home on any platform while maintaining a modern, responsive experience.
+**Beautiful by design.** A unique blend of **GTK styling**, **Angular Material**, and **FontAwesome icons** creates a clean, minimalist interface that feels at home on any platform while maintaining a modern, responsive experience.
 
 ---
 
@@ -71,56 +71,37 @@
 
 ## 🚀 Features
 
-### 🎯 Core Functionality
+### 🎯 Core
 
-- 🛠 **Complete Remote Management** – Add, edit, delete, and clone remotes with an intuitive wizard
-- 🔐 **OAuth & Interactive Configuration** – Seamless authentication with providers like OneDrive, Google Drive, and iCloud
-- 🔑 **Encrypted Configuration Support** – Secure password storage using system keyring/credential store
-- ⏰ **Scheduled Tasks** – Automate syncs with a built-in scheduler. Create, edit, enable/disable, and monitor scheduled jobs.
-- 💾 **Import/Export** – Backup and restore your settings, with optional 7z encryption.
+- 🛠 Manage remotes end-to-end (add/edit/delete/clone) with OAuth or interactive config
+- 🔑 Secure by default (keyring storage, encrypted exports) plus scheduled jobs and quick import/export
+- 📡 Works with all major clouds (Drive, OneDrive, Dropbox, S3, iCloud, Wasabi, B2, …)
 
-### ⚡ File Operations
+### ⚡ Operations
 
-- 📁 **Mount Remotes** – Access cloud storage as local drives with multiple mount types (mount, mount2, NFS)
-- 🔄 **Sync & Copy** – One-way synchronization and file copying between remotes or local folders
-- ↔️ **Bidirectional Sync (Bisync)** – Keep two locations perfectly synchronized in both directions
-- 🚚 **Move Operations** – Transfer files between locations without leaving duplicates
-- 🎯 **Primary Actions** – Set up to 3 quick-access actions per remote for instant operations
-- 📡 **Serve Remotes** – Expose remotes over HTTP, WebDAV, FTP, SFTP and more.
+- 📁 Mount and serve remotes; sync, copy, move and bisync between any two locations
+- 🎯 One-tap primary actions per remote; monitor jobs live with speeds and progress
 
-### 🎨 User Experience
+### 🎨 Experience
 
-- 🌗 **Adaptive Themes** – Beautiful light and dark modes with GTK-inspired design
-- 🖥 **System Tray Integration** – Quick access to mounts and operations from your taskbar
-- 📊 **Real-time Monitoring** – Live job status, transfer speeds, and progress tracking
-- 🔔 **Smart Notifications** – Stay informed with non-intrusive alerts
-- ⚙️ **Advanced Options** – Full access to VFS settings, bandwidth limits, and flag configurations
+- 🌗 Adaptive light/dark theming with GTK-inspired Material UI
+- 🖥 Tray controls, smart notifications, and full VFS/flag tuning when you need it
 
-### 🌍 Platform Support
+### 🌍 Platforms
 
-- 🐧 **Linux** – Full support including ARM architecture
-- 🪟 **Windows** – Native support with WinFsp integration, including ARM
-- 🍎 **macOS** – Complete functionality with automatic mount plugin installation
-- 📱 **Responsive Design** – Optimized interface for desktop and mobile viewports
+- Linux, Windows, macOS; responsive layout for desktop and mobile
 
-### 🔧 Advanced Features
+### 🔧 Power Tools
 
-- 🔄 **Auto-Update** – Built-in updater keeps you on the latest version
-- 🖥️ **Native Terminal Support** – Open remote config in your preferred terminal
-- 📡 **Metered Connection Detection** – Smart warnings when on limited networks
-- 🎮 **Global Shortcuts** – Keyboard shortcuts for power users (e.g., Ctrl+Shift+M to force-check mounts)
-- 🔍 **Mount Watcher** – Automatic detection and updates of mount status
-- ☁️ **Supported Cloud Providers** – Google Drive, OneDrive, Dropbox, Amazon S3, iCloud, Wasabi, Backblaze B2, and many more
+- Auto-update, terminal-friendly flows, metered-connection warnings, global shortcuts, mount watcher
 
 ---
 
 ## 📦 Downloads
 
-### 📦 Package Manager Availability
-
 Install RClone Manager from your favorite package manager.
 
-#### 🐧 Linux
+#### Linux
 
 | Repository          | Version                                                                                                                                                                                 | Install Command                                                                                                                                                             |
 | :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -137,7 +118,7 @@ Install RClone Manager from your favorite package manager.
 
 > **Note:** For Linux installation instructions and troubleshooting, check the installation guide: [Installation - Linux](https://github.com/Zarestia-Dev/rclone-manager/wiki/Installation-Linux)
 
-#### 🍎 macOS
+#### macOS
 
 | Repository          | Version                                                                                                                                                                                 | Install Command                                                                                                                                                             |
 | :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -146,7 +127,7 @@ Install RClone Manager from your favorite package manager.
 
 > **Note:** For macOS app launch instructions and troubleshooting, check the installation guide: [Installation - macOS](https://github.com/Zarestia-Dev/rclone-manager/wiki/Installation-macOS)
 
-#### 🪟 Windows
+#### Windows
 
 | Repository          | Version                                                                                                                                                                                 | Install Command                                                                                                                                                             |
 | :------------------ | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
