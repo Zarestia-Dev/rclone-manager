@@ -23,6 +23,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { FormatTimePipe } from 'src/app/shared/pipes/format-time.pipe';
 import { FormatFileSizePipe } from 'src/app/shared/pipes/format-file-size.pipe';
 import {
+  ActionState,
   CompletedTransfer,
   DEFAULT_JOB_STATS,
   GlobalStats,
@@ -31,10 +32,10 @@ import {
   PathDisplayConfig,
   PrimaryActionType,
   Remote,
-  RemoteAction,
   RemoteSettings,
   RemoteSettingsSection,
   SENSITIVE_KEYS,
+  ServeListItem,
   SettingsPanelConfig,
   StatItem,
   StatsPanelConfig,
@@ -50,10 +51,11 @@ import {
   StatsPanelComponent,
   TransferActivityPanelComponent,
 } from '../../../../shared/detail-shared';
+import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 import { IconService } from '../../../../shared/services/icon.service';
 import { JobManagementService } from '@app/services';
 import { toString as cronstrue } from 'cronstrue';
-import { VfsControlPanelComponent } from 'src/app/shared/detail-shared/vfs-control/vfs-control-panel.component';
+import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-control/vfs-control-panel.component';
 
 @Component({
   selector: 'app-app-detail',
@@ -75,6 +77,7 @@ import { VfsControlPanelComponent } from 'src/app/shared/detail-shared/vfs-contr
     SettingsPanelComponent,
     TransferActivityPanelComponent,
     VfsControlPanelComponent,
+    ServeCardComponent,
   ],
   templateUrl: './app-detail.component.html',
   styleUrls: ['./app-detail.component.scss'],
@@ -86,17 +89,29 @@ export class AppDetailComponent {
   selectedRemote = input.required<Remote>();
   remoteSettings = input<RemoteSettings>({});
   restrictMode = input<boolean>(false);
-  actionInProgress = input<RemoteAction | null | undefined>(null);
+  actionInProgress = input<ActionState[] | null | undefined>(null);
+  runningServes = input<ServeListItem[]>([]);
 
   // --- Outputs ---
   @Output() syncOperationChange = new EventEmitter<SyncOperationType>();
   @Output() openRemoteConfigModal = new EventEmitter<{
     editTarget?: string;
     existingConfig?: RemoteSettings;
+    initialSection?: string;
+    targetProfile?: string;
   }>();
   @Output() openInFiles = new EventEmitter<{ remoteName: string; path: string }>();
-  @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
-  @Output() stopJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
+  @Output() startJob = new EventEmitter<{
+    type: PrimaryActionType;
+    remoteName: string;
+    profileName?: string;
+  }>();
+  @Output() stopJob = new EventEmitter<{
+    type: PrimaryActionType;
+    remoteName: string;
+    profileName?: string;
+    serveId?: string;
+  }>();
 
   // --- Services ---
   private readonly jobService = inject(JobManagementService);
@@ -150,6 +165,30 @@ export class AppDetailComponent {
     },
   ];
 
+  selectedProfile = signal<string | null>(null);
+
+  profiles = computed<{ name: string; label: string }[]>(() => {
+    if (!this.isSyncType()) return [];
+
+    const type = this.selectedSyncOperation();
+    const settings = this.remoteSettings();
+    const configProfiles = (settings as any)[`${type}Configs`] || [];
+
+    const list = [];
+
+    // Add configured profiles
+    if (Array.isArray(configProfiles)) {
+      list.push(...configProfiles.map((p: any) => ({ name: p.name, label: p.name })));
+    }
+
+    // Always add 'Default' if list is empty or to support legacy
+    if (list.length === 0) {
+      list.push({ name: 'default', label: 'Default' });
+    }
+
+    return list;
+  });
+
   constructor() {
     // 1. Polling Effect
     effect(onCleanup => {
@@ -178,9 +217,21 @@ export class AppDetailComponent {
     effect(() => {
       const id = this.jobId();
       untracked(() => {
-        if (id && id !== this.lastJobId) {
+        if (id !== this.lastJobId) {
           this.lastJobId = id;
           this.resetTransfers();
+        }
+      });
+    });
+
+    // 3. Auto-select profile effect
+    effect(() => {
+      const profiles = this.profiles();
+      const current = this.selectedProfile();
+
+      untracked(() => {
+        if (profiles.length > 0 && (!current || !profiles.some(p => p.name === current))) {
+          this.selectedProfile.set(profiles[0].name);
         }
       });
     });
@@ -206,6 +257,10 @@ export class AppDetailComponent {
         copy: remote?.copyState?.isOnCopy,
       };
       return !!states[op];
+    } else if (this.mainOperationType() === 'serve') {
+      // Check if any serves exist for this remote
+      const serves = this.runningServes();
+      return serves.some(s => s.params.fs.startsWith(remote.remoteSpecs.name + ':'));
     }
     return !!remote?.mountState?.mounted;
   });
@@ -214,97 +269,375 @@ export class AppDetailComponent {
     if (!this.isSyncType()) return undefined;
     const remote = this.selectedRemote();
     const op = this.selectedSyncOperation();
+    const profile = this.selectedProfile();
 
-    const stateMap = {
-      sync: remote.syncState?.syncJobID,
-      bisync: remote.bisyncState?.bisyncJobID,
-      move: remote.moveState?.moveJobID,
-      copy: remote.copyState?.copyJobID,
+    const stateMap: any = {
+      sync: remote.syncState,
+      bisync: remote.bisyncState,
+      move: remote.moveState,
+      copy: remote.copyState,
     };
-    return stateMap[op];
-  });
 
-  // --- Config Computeds ---
+    const state = stateMap[op];
+
+    // If a specific profile is selected (and it's not the placeholder 'default')
+    if (profile && profile !== 'default') {
+      return state?.activeProfiles?.[profile]; // Returns undefined if not found, preventing wrong job stats
+    }
+
+    // Fallback to main job ID (legacy or default) only if no specific profile selected
+    const legacyKeyMap: any = {
+      sync: 'syncJobID',
+      bisync: 'bisyncJobID',
+      move: 'moveJobID',
+      copy: 'copyJobID',
+    };
+    return state?.[legacyKeyMap[op]];
+  });
 
   operationSettingsSections = computed<RemoteSettingsSection[]>(() => {
+    const sections: RemoteSettingsSection[] = [];
+    const settings = this.remoteSettings();
+
     if (this.isSyncType()) {
+      const type = this.selectedSyncOperation();
       const op = this.currentOperation();
-      return [
-        {
-          key: this.selectedSyncOperation(),
-          title: `${op?.label || 'Sync'} Options`,
-          icon: op?.icon || 'gear',
+      // Get profiles array (e.g., 'copyConfigs') or fallback to legacy single config if array missing
+      const profiles = (settings as any)[`${type}Configs`];
+
+      if (Array.isArray(profiles) && profiles.length > 0) {
+        profiles.forEach((p: any) => {
+          sections.push({
+            key: `${type}:${p.name}`, // Composite key
+            title: `${op?.label || 'Sync'} Options (${p.name})`,
+            icon: op?.icon || 'gear',
+            group: 'operation',
+          } as any);
+        });
+      } else {
+        // Fallback or default
+        const single = (settings as any)[`${type}Config`];
+        if (single) {
+          sections.push({
+            key: type, // Legacy key
+            title: `${op?.label || 'Sync'} Options`,
+            icon: op?.icon || 'gear',
+            group: 'operation',
+          });
+        }
+      }
+      // VFS is now handled in sharedSettingsSections with profiles
+    } else if (this.mainOperationType() === 'serve') {
+      const type = 'serve';
+      const profiles = (settings as any)[`${type}Configs`];
+
+      if (Array.isArray(profiles) && profiles.length > 0) {
+        profiles.forEach((p: any) => {
+          sections.push({
+            key: `${type}:${p.name}`,
+            title: `Protocol Options (${p.name})`,
+            icon: 'satellite-dish',
+            group: 'operation',
+          } as any);
+        });
+      } else {
+        sections.push({
+          key: 'serve',
+          title: 'Protocol Options',
+          icon: 'satellite-dish',
           group: 'operation',
-        },
-      ];
+        });
+      }
     } else {
-      return [
-        { key: 'mount', title: 'Mount Options', icon: 'gear', group: 'operation' },
-        { key: 'vfs', title: 'VFS Options', icon: 'vfs', group: 'operation' },
-      ];
+      // Mount profiles
+      const type = 'mount';
+      const profiles = (settings as any)[`${type}Configs`];
+
+      if (Array.isArray(profiles) && profiles.length > 0) {
+        profiles.forEach((p: any) => {
+          sections.push({
+            key: `${type}:${p.name}`,
+            title: `Mount Options (${p.name})`,
+            icon: 'gear',
+            group: 'operation',
+          } as any);
+        });
+      } else {
+        sections.push({ key: 'mount', title: 'Mount Options', icon: 'gear', group: 'operation' });
+      }
+
+      // VFS is now handled in sharedSettingsSections with profiles
     }
+    return sections;
   });
 
-  sharedSettingsSections = computed<RemoteSettingsSection[]>(() => [
-    { key: 'filter', title: 'Filter Options', icon: 'filter', group: 'shared' },
-    { key: 'backend', title: 'Backend Config', icon: 'server', group: 'shared' },
-  ]);
+  sharedSettingsSections = computed<RemoteSettingsSection[]>(() => {
+    const sections: RemoteSettingsSection[] = [];
+    const settings = this.remoteSettings() || {};
+
+    // Helper to add sections for a type
+    const addSections = (type: string, titlePrefix: string, icon: string) => {
+      const profiles = (settings as any)[`${type}Configs`];
+      if (Array.isArray(profiles) && profiles.length > 0) {
+        profiles.forEach((p: any) => {
+          sections.push({
+            key: `${type}:${p.name}`,
+            title: `${titlePrefix} (${p.name})`,
+            icon: icon,
+            group: 'shared',
+          } as any);
+        });
+      } else {
+        sections.push({
+          key: type,
+          title: titlePrefix,
+          icon: icon,
+          group: 'shared',
+        });
+      }
+    };
+
+    addSections('vfs', 'VFS Options', 'vfs');
+    addSections('filter', 'Filter Options', 'filter');
+    addSections('backend', 'Backend Config', 'server');
+
+    return sections;
+  });
 
   operationSettingsHeading = computed(() => {
     if (this.isSyncType()) {
       const op = this.currentOperation();
-      return `${op?.label || 'Sync'} Settings`;
+      const count = this.operationSettingsSections().length;
+      return count > 1 ? `${op?.label || 'Sync'} Profiles` : `${op?.label || 'Sync'} Settings`;
+    } else if (this.mainOperationType() === 'serve') {
+      return this.operationSettingsSections().filter(s => s.group === 'operation').length > 1
+        ? 'Serve Profiles'
+        : 'Serve Settings';
     }
-    return this.operationSettingsSections().length > 1 ? 'Mount & VFS Settings' : 'Mount Settings';
+    return this.operationSettingsSections().length > 2 ? 'Mount Profiles & VFS' : 'Mount Settings';
   });
 
   operationSettingsDescription = computed(() => {
     if (this.isSyncType()) {
       const op = this.currentOperation();
-      return `Adjust how the ${op?.label?.toLowerCase() || 'sync'} process behaves for this remote.`;
+      return `Adjust how the ${op?.label?.toLowerCase() || 'sync'} process behaves. Multi-profile supported.`;
+    } else if (this.mainOperationType() === 'serve') {
+      return 'Configure serving protocols (HTTP, FTP, etc). Multi-profile supported.';
     }
-    return 'Configure mount behavior and virtual file system tuning for this remote.';
+    return 'Configure mount behavior and virtual file system tuning.';
   });
 
   // --- Configuration Generators (Computed) ---
 
-  operationControlConfig = computed<OperationControlConfig>(() => {
+  operationControlConfigs = computed<OperationControlConfig[]>(() => {
     const op = this.currentOperation();
+    const type = this.isSyncType()
+      ? (this.selectedSyncOperation() as PrimaryActionType)
+      : this.mainOperationType();
+    const settings = this.remoteSettings() || {};
+    const profiles = (settings as any)[`${type}Configs`];
+
+    // If we have multiple profiles, create a config for each
+    if (Array.isArray(profiles) && profiles.length > 0) {
+      return profiles.map((profile: any) =>
+        this.createOperationControlConfig(
+          type,
+          op,
+          this.getPathConfigForProfile(profile),
+          profile.name
+        )
+      );
+    }
+
+    // Fallback for single/legacy config
+    return [
+      this.createOperationControlConfig(type, op, this.pathConfig(), undefined), // undefined profileName for legacy
+    ];
+  });
+
+  private createOperationControlConfig(
+    type: PrimaryActionType,
+    op: SyncOperation | null,
+    pathConfig: PathDisplayConfig,
+    profileName?: string
+  ): OperationControlConfig {
+    const remote = this.selectedRemote();
+    let isActive = false;
+
+    if (this.isSyncType()) {
+      const stateMap: any = {
+        sync: remote?.syncState,
+        bisync: remote?.bisyncState,
+        move: remote?.moveState,
+        copy: remote?.copyState,
+      };
+
+      const state = stateMap[type];
+
+      if (profileName && state?.activeProfiles) {
+        isActive = !!state.activeProfiles[profileName];
+      } else {
+        const keyMap: any = {
+          sync: 'isOnSync',
+          bisync: 'isOnBisync',
+          move: 'isOnMove',
+          copy: 'isOnCopy',
+        };
+        isActive = !!state?.[keyMap[type]];
+      }
+    } else {
+      isActive = !!remote?.mountState?.mounted;
+    }
+
+    const inProgressActions = this.actionInProgress();
+    const actionMatch = inProgressActions?.find(
+      a => a.type === type && (a.profileName === profileName || (!a.profileName && !profileName))
+    );
+    const inProgressType = actionMatch ? actionMatch.type : undefined;
+
     return {
-      operationType: this.isSyncType()
-        ? (this.selectedSyncOperation() as PrimaryActionType)
-        : this.mainOperationType(),
-      isActive: this.operationActiveState(),
-      isLoading: this.isLoading(),
+      operationType: type,
+      isActive,
+      isLoading: this.isLoading() || !!actionMatch,
       cssClass: op?.cssClass || 'primary',
-      pathConfig: this.pathConfig(),
+      pathConfig: pathConfig,
       primaryButtonLabel: this.isLoading() ? `Starting ${op?.label}...` : `Start ${op?.label}`,
       secondaryButtonLabel: this.isLoading() ? `Stopping ${op?.label}...` : `Stop ${op?.label}`,
       primaryIcon: op?.icon || 'play_arrow',
       secondaryIcon: 'stop',
-      actionInProgress: this.actionInProgress()?.toString(),
+      actionInProgress: inProgressType || undefined,
       operationDescription: op?.description,
+      profileName: profileName,
     };
+  }
+
+  private getPathConfigForProfile(profile: any): PathDisplayConfig {
+    return {
+      source: (profile['source'] as string) || 'Not configured',
+      destination: (profile['dest'] as string) || 'Not configured',
+      showOpenButtons: true,
+      isDestinationActive: true,
+    };
+  }
+
+  mountControlConfigs = computed<OperationControlConfig[]>(() => {
+    const settings = this.remoteSettings() || {};
+    const profiles = (settings as any)['mountConfigs'];
+
+    if (Array.isArray(profiles) && profiles.length > 0) {
+      return profiles.map((p: any) => this.createMountControlConfig(p, p.name));
+    }
+
+    const legacyConfig = (settings as any)['mountConfig'] || {};
+    return [this.createMountControlConfig(legacyConfig, undefined)];
   });
 
-  mountControlConfig = computed<OperationControlConfig>(() => {
-    const isActive = !!this.selectedRemote()?.mountState?.mounted;
-    const inProgress = this.actionInProgress();
-    const isLoading = inProgress === 'mount' || inProgress === 'unmount';
+  private createMountControlConfig(config: any, profileName?: string): OperationControlConfig {
+    const mountState = this.selectedRemote()?.mountState;
+    const inProgressActions = this.actionInProgress();
+
+    let isActive = false;
+    if (profileName && mountState?.activeProfiles) {
+      isActive = !!mountState.activeProfiles[profileName];
+    } else {
+      isActive = !!mountState?.mounted;
+    }
+
+    // Check specific mount action
+    const actionMatch = inProgressActions?.find(
+      a =>
+        (a.type === 'mount' || a.type === 'unmount') &&
+        (a.profileName === profileName || (!a.profileName && !profileName))
+    );
+    const actionType = actionMatch?.type;
+    const isLoading = !!actionType;
 
     return {
       operationType: 'mount',
       isActive,
       isLoading,
       cssClass: 'accent',
-      pathConfig: this.mountPathConfig(),
-      primaryButtonLabel: inProgress === 'mount' ? 'Mounting...' : 'Mount',
+      pathConfig: {
+        source: config['source'] || 'Not configured',
+        destination: config['dest'] || 'Not configured',
+        showOpenButtons: true,
+        operationColor: 'accent',
+        isDestinationActive: isActive,
+        actionInProgress: actionType || undefined,
+      },
+      primaryButtonLabel: actionType === 'mount' ? 'Mounting...' : 'Mount',
       primaryIcon: 'mount',
-      secondaryButtonLabel: inProgress === 'unmount' ? 'Unmounting...' : 'Unmount',
+      secondaryButtonLabel: actionType === 'unmount' ? 'Unmounting...' : 'Unmount',
       secondaryIcon: 'eject',
-      actionInProgress: inProgress?.toString(),
+      actionInProgress: actionType || undefined,
+      profileName: profileName,
     };
+  }
+
+  serveControlConfigs = computed<OperationControlConfig[]>(() => {
+    const settings = this.remoteSettings() || {};
+    const profiles = (settings as any)['serveConfigs'];
+
+    if (Array.isArray(profiles) && profiles.length > 0) {
+      return profiles.map((p: any) => this.createServeControlConfig(p, p.name));
+    }
+
+    const legacyConfig = (settings as any)['serveConfig'] || {};
+    // Ensure we have at least one config to show controls
+    return [this.createServeControlConfig(legacyConfig, undefined)];
   });
+
+  private createServeControlConfig(config: any, profileName?: string): OperationControlConfig {
+    const serves = this.runningServes();
+    const remote = this.selectedRemote();
+
+    let isActive = false;
+    // Check if ANY serve matches this profile?
+    // Serve params include profile name if passed.
+    // But ServeListItem params structure might need inspection.
+    // Current backend ServeParams includes `profile` field.
+    // Let's assume ServeListItem.params has it.
+
+    if (profileName) {
+      isActive = serves.some(
+        s =>
+          s.params.fs.startsWith(remote.remoteSpecs.name + ':') &&
+          (s.params as any).profile === profileName
+      );
+    } else {
+      // Legacy check: any serve for this remote without profile? Or just any serve?
+      isActive = serves.some(s => s.params.fs.startsWith(remote.remoteSpecs.name + ':'));
+    }
+
+    const inProgressActions = this.actionInProgress();
+    const actionMatch = inProgressActions?.find(
+      a => a.type === 'serve' && (a.profileName === profileName || (!a.profileName && !profileName))
+    );
+
+    return {
+      operationType: 'serve',
+      isActive,
+      isLoading: !!actionMatch,
+      cssClass: 'primary', // Or distinct color?
+      pathConfig: {
+        source: 'Serving ' + remote.remoteSpecs.name, // Abstract source representation
+        destination: (config?.options?.addr as string) || 'Default Address',
+        showOpenButtons: false,
+        operationColor: 'primary',
+        isDestinationActive: isActive,
+      },
+      primaryButtonLabel: isActive ? 'Serving' : 'Start Serve', // Status indicator? Or just Start?
+      // Typically Start / Stop.
+      // If Active -> Show Stop? No, OperationControl usually handles toggle style differently?
+      // Wait, OperationControl has primary/secondary buttons.
+      // If isActive is true, secondary button (Stop) is usually shown if configured.
+      primaryIcon: 'satellite-dish',
+      secondaryButtonLabel: 'Stop Serve',
+      secondaryIcon: 'stop',
+      actionInProgress: actionMatch?.type || undefined,
+      profileName: profileName,
+    };
+  }
 
   jobInfoConfig = computed<JobInfoConfig>(() => ({
     operationType: this.isSyncType()
@@ -378,9 +711,16 @@ export class AppDetailComponent {
   // --- Helper Computeds ---
 
   private pathConfig = computed<PathDisplayConfig>(() => {
-    const key = `${this.selectedSyncOperation()}Config`;
+    const opType = this.selectedSyncOperation();
     const settings = this.remoteSettings() || {};
-    const configObj = (settings as any)[key] || {};
+
+    // Try to get config from array first (profile 0), then legacy singular
+    const profiles = (settings as any)[`${opType}Configs`];
+    let configObj = (settings as any)[`${opType}Config`] || {};
+
+    if (Array.isArray(profiles) && profiles.length > 0) {
+      configObj = profiles[0];
+    }
 
     return {
       source: (configObj['source'] as string) || 'Not configured',
@@ -392,7 +732,13 @@ export class AppDetailComponent {
 
   private mountPathConfig = computed<PathDisplayConfig>(() => {
     const settings = this.remoteSettings() || {};
-    const mountConfig = settings['mountConfig'] || {};
+
+    const profiles = (settings as any)['mountConfigs'];
+    let mountConfig = settings['mountConfig'] || {};
+
+    if (Array.isArray(profiles) && profiles.length > 0) {
+      mountConfig = profiles[0];
+    }
 
     return {
       source: mountConfig['source'] || 'Not configured',
@@ -455,15 +801,34 @@ export class AppDetailComponent {
   }
 
   onEditSettings(event: { section: string; settings: RemoteSettings }): void {
-    this.openRemoteConfigModal.emit({ editTarget: event.section, existingConfig: event.settings });
+    const [type, profileName] = event.section.split(':');
+    this.openRemoteConfigModal.emit({
+      editTarget: type,
+      existingConfig: this.remoteSettings(), // Pass FULL config
+      targetProfile: profileName, // Optional, undefined if not present
+    } as any);
   }
 
   getSettingsPanelConfig(section: RemoteSettingsSection): SettingsPanelConfig {
-    const settings = (this.remoteSettings() as any)?.[`${section.key}Config`] || {};
+    const [key, profileName] = section.key.split(':');
+    const settings = this.remoteSettings() as any;
+
+    let specificSettings = {};
+
+    if (profileName) {
+      const profiles = settings[`${key}Configs`];
+      if (Array.isArray(profiles)) {
+        specificSettings = profiles.find((p: any) => p.name === profileName) || {};
+      }
+    } else {
+      // Legacy or direct access (vfs, filter, etc)
+      specificSettings = settings[`${key}Config`] || {};
+    }
+
     return {
       section,
-      settings,
-      hasSettings: Object.keys(settings).length > 0,
+      settings: specificSettings,
+      hasSettings: Object.keys(specificSettings).length > 0,
       restrictMode: this.restrictMode(),
       buttonColor: this.operationColor(),
       buttonLabel: 'Edit Settings',

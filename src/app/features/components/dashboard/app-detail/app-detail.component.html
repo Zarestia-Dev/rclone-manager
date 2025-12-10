@@ -64,19 +64,54 @@
               </ng-template>
 
               <div class="operation-monitor">
+                <!-- Profile Selector -->
+                @if (profiles().length > 1) {
+                  <div class="profile-selector">
+                    <span class="selector-label">Monitoring Profile:</span>
+                    <mat-chip-listbox
+                      [value]="selectedProfile()"
+                      (change)="selectedProfile.set($event.value)"
+                      aria-label="Job Profile Selection"
+                    >
+                      @for (profile of profiles(); track profile.name) {
+                        <mat-chip-option
+                          [value]="profile.name"
+                          [selected]="selectedProfile() === profile.name"
+                          selectable
+                        >
+                          {{ profile.label }}
+                        </mat-chip-option>
+                      }
+                    </mat-chip-listbox>
+                  </div>
+                }
+
                 <!-- Operation Control Panel -->
-                <app-operation-control
-                  [config]="operationControlConfig()"
-                  (startJob)="
-                    startJob.emit({ type: $event, remoteName: selectedRemote().remoteSpecs.name })
-                  "
-                  (stopJob)="
-                    stopJob.emit({ type: $event, remoteName: selectedRemote().remoteSpecs.name })
-                  "
-                  (openPath)="triggerOpenInFiles($event)"
-                  class="control-panel"
-                >
-                </app-operation-control>
+                @for (
+                  opConfig of operationControlConfigs();
+                  track opConfig.profileName || opConfig.operationType
+                ) {
+                  <app-operation-control
+                    [config]="opConfig"
+                    (startJob)="
+                      startJob.emit({
+                        type: $event,
+                        remoteName: selectedRemote().remoteSpecs.name,
+                        profileName: opConfig.profileName,
+                      })
+                    "
+                    (stopJob)="
+                      stopJob.emit({
+                        type: $event,
+                        remoteName: selectedRemote().remoteSpecs.name,
+                        profileName: opConfig.profileName,
+                      })
+                    "
+                    (openPath)="triggerOpenInFiles($event)"
+                    class="control-panel"
+                  >
+                  </app-operation-control>
+                }
 
                 <!-- Human Readable Cron Expression -->
                 @if (isCronEnabled()) {
@@ -198,30 +233,111 @@
             </ng-template>
 
             <div class="operation-monitor">
-              <!-- Mount Control Panel -->
-              <app-operation-control
-                [config]="mountControlConfig()"
-                (startJob)="
-                  startJob.emit({
-                    type: 'mount',
-                    remoteName: selectedRemote().remoteSpecs.name,
-                  })
-                "
-                (stopJob)="
-                  stopJob.emit({
-                    type: 'mount',
-                    remoteName: selectedRemote().remoteSpecs.name,
-                  })
-                "
-                (openPath)="triggerOpenInFiles($event)"
-                class="mount-control-panel"
-              ></app-operation-control>
+              @if (mainOperationType() === 'serve') {
+                <!-- Profile Selector -->
+                @if (profiles().length > 1) {
+                  <div class="profile-selector">
+                    <span class="selector-label">Serve Profile:</span>
+                    <mat-chip-listbox
+                      [value]="selectedProfile()"
+                      (change)="selectedProfile.set($event.value)"
+                      aria-label="Serve Profile Selection"
+                    >
+                      @for (profile of profiles(); track profile.name) {
+                        <mat-chip-option
+                          [value]="profile.name"
+                          [selected]="selectedProfile() === profile.name"
+                          selectable
+                        >
+                          {{ profile.label }}
+                        </mat-chip-option>
+                      }
+                    </mat-chip-listbox>
+                  </div>
+                }
 
-              <mat-divider></mat-divider>
+                <!-- Serve Controls -->
+                @for (
+                  opConfig of serveControlConfigs();
+                  track opConfig.profileName || opConfig.operationType
+                ) {
+                  <app-operation-control
+                    [config]="opConfig"
+                    (startJob)="
+                      startJob.emit({
+                        type: 'serve',
+                        remoteName: selectedRemote().remoteSpecs.name,
+                        profileName: opConfig.profileName,
+                      })
+                    "
+                    (stopJob)="
+                      stopJob.emit({
+                        type: 'serve',
+                        remoteName: selectedRemote().remoteSpecs.name,
+                        profileName: opConfig.profileName,
+                      })
+                    "
+                    class="control-panel"
+                  ></app-operation-control>
+                }
 
-              <app-vfs-control-panel
-                [remoteName]="selectedRemote().remoteSpecs.name"
-              ></app-vfs-control-panel>
+                <!-- Active Serves List -->
+                @if (runningServes().length > 0) {
+                  <div class="active-serves-list">
+                    <h3>Active Serves</h3>
+                    @for (serve of runningServes(); track serve.id) {
+                      <app-serve-card
+                        [serve]="serve"
+                        (stop)="
+                          stopJob.emit({
+                            type: 'serve',
+                            remoteName: selectedRemote().remoteSpecs.name,
+                            serveId: serve.id,
+                          })
+                        "
+                        (copyUrl)="(null)"
+                      ></app-serve-card>
+                    }
+                  </div>
+                }
+                <mat-divider></mat-divider>
+
+                <app-vfs-control-panel
+                  [remoteName]="selectedRemote().remoteSpecs.name"
+                ></app-vfs-control-panel>
+              } @else {
+                <!-- Mount Control Panel -->
+                @for (
+                  opConfig of mountControlConfigs();
+                  track opConfig.profileName || opConfig.operationType
+                ) {
+                  <app-operation-control
+                    [config]="opConfig"
+                    (startJob)="
+                      startJob.emit({
+                        type: 'mount',
+                        remoteName: selectedRemote().remoteSpecs.name,
+                        profileName: opConfig.profileName,
+                      })
+                    "
+                    (stopJob)="
+                      stopJob.emit({
+                        type: 'mount',
+                        remoteName: selectedRemote().remoteSpecs.name,
+                        profileName: opConfig.profileName,
+                      })
+                    "
+                    (openPath)="triggerOpenInFiles($event)"
+                    class="mount-control-panel"
+                  ></app-operation-control>
+                }
+
+                <mat-divider></mat-divider>
+
+                <app-vfs-control-panel
+                  [remoteName]="selectedRemote().remoteSpecs.name"
+                ></app-vfs-control-panel>
+              }
             </div>
           </mat-tab>
 

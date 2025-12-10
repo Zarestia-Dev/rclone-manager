@@ -115,24 +115,6 @@
             >
             </app-general-detail>
           }
-          @case ('serve') {
-            <app-serve-detail
-              [selectedRemote]="remote"
-              [runningServes]="runningServes()"
-              [remoteSettings]="selectedRemoteSettings()"
-              [actionInProgress]="actionInProgress()[remote.remoteSpecs.name]"
-              (startJob)="startJob($event.type, $event.remoteName)"
-              (stopJob)="stopJob($event.type, $event.remoteName, $event.serveId)"
-              (openRemoteConfigModal)="
-                openRemoteConfigModal(
-                  $event.editTarget,
-                  $event.existingConfig,
-                  $event.initialSection
-                )
-              "
-            >
-            </app-serve-detail>
-          }
           @default {
             <app-app-detail
               [mainOperationType]="currentTab()"
@@ -141,13 +123,21 @@
               [remoteSettings]="selectedRemoteSettings()"
               [restrictMode]="restrictMode()"
               [actionInProgress]="actionInProgress()[remote.remoteSpecs.name]"
+              [runningServes]="runningServes()"
               (syncOperationChange)="onSyncOperationChange($event)"
               (openRemoteConfigModal)="
-                openRemoteConfigModal($event.editTarget, $event.existingConfig)
+                openRemoteConfigModal(
+                  $event.editTarget,
+                  $event.existingConfig,
+                  $event.initialSection,
+                  $event.targetProfile
+                )
               "
               (openInFiles)="openRemoteInFilesWithPath($event.remoteName, $event.path)"
-              (startJob)="startJob($event.type, $event.remoteName)"
-              (stopJob)="stopJob($event.type, $event.remoteName)"
+              (startJob)="startJob($event.type, $event.remoteName, $event.profileName)"
+              (stopJob)="
+                stopJob($event.type, $event.remoteName, $event.serveId, $event.profileName)
+              "
             >
             </app-app-detail>
           }

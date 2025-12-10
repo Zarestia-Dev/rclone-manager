@@ -34,6 +34,10 @@ export interface MountConfig {
   source: string;
   type: string;
   options?: any;
+  name?: string;
+  vfsProfile?: string;
+  filterProfile?: string;
+  backendProfile?: string;
   [key: string]: any;
 }
 
@@ -45,6 +49,9 @@ export interface CopyConfig {
   createEmptySrcDirs?: boolean;
   cronExpression?: string | null;
   options?: any;
+  name?: string;
+  filterProfile?: string;
+  backendProfile?: string;
   [key: string]: any;
 }
 
@@ -56,21 +63,27 @@ export interface SyncConfig {
   createEmptySrcDirs?: boolean;
   cronExpression?: string | null;
   options?: any;
+  name?: string;
+  filterProfile?: string;
+  backendProfile?: string;
   [key: string]: any;
 }
 
 export interface FilterConfig {
   options?: any;
+  name?: string;
   [key: string]: any;
 }
 
 export interface VfsConfig {
   options?: any;
+  name?: string;
   [key: string]: any;
 }
 
 export interface BackendConfig {
   options?: any;
+  name?: string;
   [key: string]: any;
 }
 
@@ -83,6 +96,9 @@ export interface MoveConfig {
   deleteEmptySrcDirs?: boolean;
   cronExpression?: string | null;
   options?: any;
+  name?: string;
+  filterProfile?: string;
+  backendProfile?: string;
   [key: string]: any;
 }
 
@@ -109,17 +125,51 @@ export interface BisyncConfig {
   noCleanup?: boolean;
   cronExpression?: string | null;
   options?: any;
+  name?: string;
+  filterProfile?: string;
+  backendProfile?: string;
+  [key: string]: any;
+}
+
+export interface ServeConfig {
+  autoStart: boolean;
+  type: string;
+  source: string; // or object, but usually string in the config object
+  options?: any;
+  filterConfig?: FilterConfig;
+  vfsConfig?: VfsConfig;
+  backendConfig?: BackendConfig;
+  name?: string;
+  vfsProfile?: string;
+  filterProfile?: string;
+  backendProfile?: string;
   [key: string]: any;
 }
 
 // A single remote's settings broken into sections used by the UI
 export interface RemoteConfigSections {
   [remoteName: string]: any; // keep permissive for now; UI accesses dynamic keys
-  mountConfig: MountConfig;
-  copyConfig: CopyConfig;
-  syncConfig: SyncConfig;
-  moveConfig: MoveConfig;
-  bisyncConfig: BisyncConfig;
+  // Deprecated: Single config per type (kept for migration)
+  mountConfig?: MountConfig;
+  copyConfig?: CopyConfig;
+  syncConfig?: SyncConfig;
+  moveConfig?: MoveConfig;
+  bisyncConfig?: BisyncConfig;
+  serveConfig?: ServeConfig;
+
+  // New: Multiple configs per type
+  mountConfigs?: MountConfig[];
+  copyConfigs?: CopyConfig[];
+  syncConfigs?: SyncConfig[];
+  moveConfigs?: MoveConfig[];
+  bisyncConfigs?: BisyncConfig[];
+  serveConfigs?: ServeConfig[];
+
+  // New: Multiple configs for shared types
+  filterConfigs?: FilterConfig[];
+  backendConfigs?: BackendConfig[];
+  vfsConfigs?: VfsConfig[];
+
   filterConfig: FilterConfig;
   backendConfig: BackendConfig;
   vfsConfig: VfsConfig;

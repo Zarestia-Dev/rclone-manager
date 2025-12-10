@@ -40,7 +40,8 @@ export class JobManagementService extends TauriBaseService {
     createEmptySrcDirs?: boolean,
     syncOptions?: SyncOptions,
     filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions
+    backendOptions?: BackendOptions,
+    profile?: string
   ): Promise<number> {
     this.validatePaths(source, dest);
 
@@ -52,6 +53,7 @@ export class JobManagementService extends TauriBaseService {
       sync_options: syncOptions || {},
       filter_options: filterOptions || {},
       backend_options: backendOptions || {},
+      profile,
     };
 
     console.debug('Invoking start_sync with params', params);
@@ -70,7 +72,8 @@ export class JobManagementService extends TauriBaseService {
     createEmptySrcDirs?: boolean,
     copyOptions?: CopyOptions,
     filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions
+    backendOptions?: BackendOptions,
+    profile?: string
   ): Promise<number> {
     this.validatePaths(source, dest);
 
@@ -82,6 +85,7 @@ export class JobManagementService extends TauriBaseService {
       copy_options: copyOptions || {},
       filter_options: filterOptions || {},
       backend_options: backendOptions || {},
+      profile,
     };
 
     console.debug('Invoking start_copy with params', params);
@@ -112,7 +116,8 @@ export class JobManagementService extends TauriBaseService {
     workdir?: string,
     backupdir1?: string,
     backupdir2?: string,
-    noCleanup?: boolean
+    noCleanup?: boolean,
+    profile?: string
   ): Promise<number> {
     this.validatePaths(source, dest);
 
@@ -139,6 +144,7 @@ export class JobManagementService extends TauriBaseService {
       backupdir1: backupdir1 || '',
       backupdir2: backupdir2 || '',
       noCleanup: noCleanup || false,
+      profile,
     };
 
     console.debug('Invoking start_bisync with params', params);
@@ -153,7 +159,8 @@ export class JobManagementService extends TauriBaseService {
     deleteEmptySrcDirs?: boolean,
     moveOptions?: MoveOptions,
     filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions
+    backendOptions?: BackendOptions,
+    profile?: string
   ): Promise<number> {
     this.validatePaths(source, dest);
     const params: MoveParams = {
@@ -165,6 +172,7 @@ export class JobManagementService extends TauriBaseService {
       move_options: moveOptions || {},
       filter_options: filterOptions || {},
       backend_options: backendOptions || {},
+      profile,
     };
     console.debug('Invoking start_move with params', params);
     return await this.invokeCommand<number>('start_move', { params });
@@ -223,9 +231,15 @@ export class JobManagementService extends TauriBaseService {
   /**
    * Get active jobs for a specific remote from the current state
    */
-  getActiveJobsForRemote(remoteName: string): JobInfo[] {
+  getActiveJobsForRemote(remoteName: string, profile?: string): JobInfo[] {
     const activeJobs = this.activeJobsSubject.value;
-    return activeJobs.filter(job => job.remote_name === remoteName);
+    return activeJobs.filter(job => {
+      const matchRemote = job.remote_name === remoteName;
+      if (profile) {
+        return matchRemote && job.profile === profile;
+      }
+      return matchRemote;
+    });
   }
 
   /**

@@ -78,4 +78,5 @@ export interface JobInfo {
   remote_name: string;
   stats: GlobalStats;
   group?: string;
+  profile?: string;
 }

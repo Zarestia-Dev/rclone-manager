@@ -28,7 +28,11 @@ import { OperationControlConfig, PrimaryActionType, StatusBadgeConfig } from '@a
       <mat-card-header [ngClass]="config().operationType">
         <mat-card-title>
           <mat-icon [svgIcon]="operationIcon()"></mat-icon>
-          <span>{{ config().operationType | titlecase }} Control</span>
+          <span
+            >{{ config().operationType | titlecase }} Control{{
+              config().profileName ? ' (' + config().profileName + ')' : ''
+            }}</span
+          >
         </mat-card-title>
       </mat-card-header>
 

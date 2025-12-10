@@ -153,6 +153,7 @@ pub struct JobInfo {
     pub status: JobStatus, // "running", "completed", "failed", "stopped"
     pub stats: Option<Value>,
     pub group: String, // Add this field to track the job group
+    pub profile: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

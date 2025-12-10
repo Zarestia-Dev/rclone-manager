@@ -27,6 +27,7 @@ pub struct ServeParams {
     pub backend_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub vfs_options: Option<HashMap<String, Value>>,
+    pub profile: Option<String>,
 }
 
 impl ServeParams {
@@ -58,6 +59,7 @@ impl ServeParams {
                 settings.get("filterConfig").and_then(|v| v.get("options")),
             ),
             vfs_options: json_to_hashmap(settings.get("vfsConfig").and_then(|v| v.get("options"))),
+            profile: Some(get_string(serve_cfg, &["name"])).filter(|s| !s.is_empty()),
         })
     }
 
@@ -228,6 +230,7 @@ pub async fn start_serve(
             operation_name: "Start serve".to_string(),
             source: source_str,
             destination: "Initializing...".to_string(),
+            profile: params.profile.clone(),
         },
     )
     .await?;

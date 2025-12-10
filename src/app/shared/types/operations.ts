@@ -15,7 +15,12 @@ export type RemoteAction =
 export type SyncOperationType = 'sync' | 'copy' | 'move' | 'bisync';
 export type PrimaryActionType = SyncOperationType | 'mount' | 'serve';
 
-export type RemoteActionProgress = Record<string, RemoteAction>;
+export interface ActionState {
+  type: RemoteAction;
+  profileName?: string;
+}
+
+export type RemoteActionProgress = Record<string, ActionState[]>;
 
 export interface SyncOperation {
   type: SyncOperationType;

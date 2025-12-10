@@ -96,6 +96,28 @@
       flex-direction: column;
       overflow: hidden;
 
+      .profile-header {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+        padding: var(--space-md) var(--space-lg);
+        background: var(--surface-card);
+        border-bottom: 1px solid var(--border-color);
+        flex-shrink: 0;
+
+        .profile-select,
+        .profile-input {
+          width: 300px;
+          margin-bottom: -22px; // Offset material form field padding
+        }
+
+        .profile-actions {
+          display: flex;
+          align-items: center;
+          gap: var(--space-sm);
+        }
+      }
+
       .step {
         flex: 1;
         display: flex;

@@ -112,6 +112,7 @@ pub async fn copy_url(
             operation_name: "Copy from URL".to_string(),
             source: url_to_copy,
             destination: path,
+            profile: None,
         },
     )
     .await?;

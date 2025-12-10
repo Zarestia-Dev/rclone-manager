@@ -49,26 +49,31 @@ export interface Remote {
   diskUsage: DiskUsage;
   mountState?: {
     mounted?: boolean;
+    activeProfiles?: Record<string, string>;
   };
   syncState?: {
     isOnSync?: boolean;
     syncJobID?: number;
     isLocal?: boolean;
+    activeProfiles?: Record<string, number>;
   };
   copyState?: {
     isOnCopy?: boolean;
     copyJobID?: number;
     isLocal?: boolean;
+    activeProfiles?: Record<string, number>;
   };
   bisyncState?: {
     isOnBisync?: boolean;
     bisyncJobID?: number;
     isLocal?: boolean;
+    activeProfiles?: Record<string, number>;
   };
   moveState?: {
     isOnMove?: boolean;
     moveJobID?: number;
     isLocal?: boolean;
+    activeProfiles?: Record<string, number>;
   };
   serveState?: {
     hasActiveServes?: boolean;

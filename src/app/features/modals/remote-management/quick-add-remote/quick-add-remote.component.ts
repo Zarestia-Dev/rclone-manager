@@ -417,12 +417,15 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       cronEnabled: op.cronEnabled || false,
       cronExpression: op.cronExpression || null,
     });
+
+    const wrapProfile = (config: any) => (config ? [{ ...config, name: 'default' }] : []);
+
     return {
-      mountConfig: { ...createConfig(operations.mount), type: 'mount' },
-      copyConfig: createConfig(operations.copy),
-      syncConfig: createConfig(operations.sync),
-      bisyncConfig: createConfig(operations.bisync),
-      moveConfig: createConfig(operations.move),
+      mountConfigs: [{ ...createConfig(operations.mount), type: 'mount', name: 'default' }],
+      copyConfigs: wrapProfile(createConfig(operations.copy)),
+      syncConfigs: wrapProfile(createConfig(operations.sync)),
+      bisyncConfigs: wrapProfile(createConfig(operations.bisync)),
+      moveConfigs: wrapProfile(createConfig(operations.move)),
       filterConfig: {},
       vfsConfig: { CacheMode: 'full', ChunkSize: '32M' },
       backendConfig: {},
@@ -449,7 +452,8 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         question: startResp,
         answer: this.getDefaultAnswerFromQuestion(startResp),
         isProcessing: false,
-      };
+        isInteractive: true,
+      } as InteractiveFlowState; // Cast to fix type if needed or just use object
       this.cdRef.markForCheck();
     } catch (error) {
       console.error('Error starting interactive config:', error);
@@ -556,10 +560,17 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     remoteName: string,
     finalConfig: RemoteConfigSections
   ): Promise<void> {
-    const { mountConfig, copyConfig, syncConfig, bisyncConfig, moveConfig } = finalConfig;
+    const { mountConfigs, copyConfigs, syncConfigs, bisyncConfigs, moveConfigs } = finalConfig;
+
+    // Get default profiles (first index)
+    const mountConfig = mountConfigs?.[0];
+    const copyConfig = copyConfigs?.[0];
+    const syncConfig = syncConfigs?.[0];
+    const bisyncConfig = bisyncConfigs?.[0];
+    const moveConfig = moveConfigs?.[0];
 
     // Mount operations (always run immediately if autoStart is enabled)
-    if (mountConfig.autoStart && mountConfig.dest) {
+    if (mountConfig?.autoStart && mountConfig?.dest) {
       await this.mountManagementService.mountRemote(
         remoteName,
         mountConfig.source,
@@ -571,9 +582,9 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     // Helper to handle operation with cron or immediate execution
     const handleOperation = async (
       opType: 'copy' | 'sync' | 'bisync' | 'move',
-      config: CopyConfig | SyncConfig | BisyncConfig | MoveConfig
+      config: CopyConfig | SyncConfig | BisyncConfig | MoveConfig | undefined
     ): Promise<void> => {
-      if (!config.autoStart || !config.source || !config.dest) return;
+      if (!config?.autoStart || !config?.source || !config?.dest) return;
 
       switch (opType) {
         case 'copy':

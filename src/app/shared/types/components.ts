@@ -88,6 +88,7 @@ export interface OperationControlConfig {
   secondaryIcon: string;
   actionInProgress?: string;
   operationDescription?: string;
+  profileName?: string;
 }
 
 // Transfer Activity Panel

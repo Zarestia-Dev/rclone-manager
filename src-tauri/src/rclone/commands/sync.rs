@@ -24,6 +24,7 @@ pub struct SyncParams {
     pub sync_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
+    pub profile: Option<String>,
 }
 
 impl SyncParams {
@@ -50,6 +51,7 @@ impl SyncParams {
             backend_options: json_to_hashmap(
                 settings.get("backendConfig").and_then(|v| v.get("options")),
             ),
+            profile: Some(get_string(sync_cfg, &["name"])).filter(|s| !s.is_empty()),
         })
     }
 
@@ -72,6 +74,7 @@ pub struct CopyParams {
     pub copy_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
+    pub profile: Option<String>,
 }
 
 impl CopyParams {
@@ -96,6 +99,7 @@ impl CopyParams {
             backend_options: json_to_hashmap(
                 settings.get("backendConfig").and_then(|v| v.get("options")),
             ),
+            profile: Some(get_string(copy_cfg, &["name"])).filter(|s| !s.is_empty()),
         })
     }
 
@@ -117,6 +121,7 @@ pub struct BisyncParams {
     pub bisync_options: Option<HashMap<String, Value>>,
     pub filter_options: Option<HashMap<String, Value>>,
     pub backend_options: Option<HashMap<String, Value>>,
+    pub profile: Option<String>,
 }
 
 impl BisyncParams {
@@ -141,6 +146,7 @@ impl BisyncParams {
             backend_options: json_to_hashmap(
                 settings.get("backendConfig").and_then(|v| v.get("options")),
             ),
+            profile: Some(get_string(bisync_cfg, &["name"])).filter(|s| !s.is_empty()),
         })
     }
 
@@ -162,6 +168,7 @@ pub struct MoveParams {
     pub move_options: Option<HashMap<String, Value>>, // rclone move-specific options
     pub filter_options: Option<HashMap<String, Value>>, // filter options
     pub backend_options: Option<HashMap<String, Value>>, // backend options
+    pub profile: Option<String>,
 }
 
 impl MoveParams {
@@ -186,6 +193,7 @@ impl MoveParams {
             backend_options: json_to_hashmap(
                 settings.get("backendConfig").and_then(|v| v.get("options")),
             ),
+            profile: Some(get_string(move_cfg, &["name"])).filter(|s| !s.is_empty()),
         })
     }
 
@@ -288,6 +296,7 @@ pub async fn start_sync(
             operation_name: operation_name.to_string(),
             source: params.source,
             destination: params.dest,
+            profile: params.profile.clone(),
         },
     )
     .await?;
@@ -359,6 +368,7 @@ pub async fn start_copy(
             operation_name: operation_name.to_string(),
             source: params.source,
             destination: params.dest,
+            profile: params.profile.clone(),
         },
     )
     .await?;
@@ -456,6 +466,7 @@ pub async fn start_bisync(
             operation_name: operation_name.to_string(),
             source: params.source,
             destination: params.dest,
+            profile: params.profile.clone(),
         },
     )
     .await?;
@@ -529,6 +540,7 @@ pub async fn start_move(
             operation_name: operation_name.to_string(),
             source: params.source,
             destination: params.dest,
+            profile: params.profile.clone(),
         },
     )
     .await?;

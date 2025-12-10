@@ -30,6 +30,7 @@ pub struct JobMetadata {
     pub operation_name: String, // e.g., "Sync operation", "Start serve"
     pub source: String,
     pub destination: String,
+    pub profile: Option<String>,
 }
 
 /// Submit a LONG-RUNNING job (sync, copy, move, bisync)
@@ -165,6 +166,7 @@ async fn add_job_to_cache(job_cache: State<'_, JobCache>, jobid: u64, metadata: 
             status: JobStatus::Running,
             stats: None,
             group: format!("{}/{}", metadata.job_type, jobid),
+            profile: metadata.profile.clone(),
         })
         .await;
 }

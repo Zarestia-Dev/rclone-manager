@@ -91,12 +91,18 @@ impl JobCache {
     }
 
     /// Checks if a job of a specific type is already running for a specific remote.
-    pub async fn is_job_running(&self, remote_name: &str, job_type: &str) -> bool {
+    pub async fn is_job_running(
+        &self,
+        remote_name: &str,
+        job_type: &str,
+        profile: Option<&str>,
+    ) -> bool {
         let jobs = self.jobs.read().await;
         jobs.iter().any(|job| {
             job.remote_name == remote_name
                 && job.job_type == job_type
                 && job.status == JobStatus::Running
+                && job.profile.as_deref() == profile
         })
     }
 }

@@ -54,6 +54,10 @@ export class RemotesPanelComponent {
   }
 
   getActionState(remoteName: string): RemoteAction | null {
-    return this.actionInProgress()[remoteName] || null;
+    const actions = this.actionInProgress()[remoteName];
+    if (Array.isArray(actions) && actions.length > 0) {
+      return actions[0].type;
+    }
+    return null;
   }
 }

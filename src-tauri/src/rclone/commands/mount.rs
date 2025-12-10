@@ -32,6 +32,7 @@ pub struct MountParams {
     pub vfs_options: Option<HashMap<String, Value>>,   // vfs options
     pub filter_options: Option<HashMap<String, Value>>, // filter options
     pub backend_options: Option<HashMap<String, Value>>, // backend options
+    pub profile: Option<String>,
 }
 
 impl MountParams {
@@ -62,6 +63,7 @@ impl MountParams {
             backend_options: json_to_hashmap(
                 settings.get("backendConfig").and_then(|v| v.get("options")),
             ),
+            profile: Some(get_string(mount_cfg, &["name"])).filter(|s| !s.is_empty()),
         })
     }
 
@@ -191,6 +193,7 @@ pub async fn mount_remote(
             operation_name: "Mount remote".to_string(),
             source: params.source.clone(),
             destination: params.mount_point.clone(),
+            profile: params.profile.clone(),
         },
     )
     .await?;

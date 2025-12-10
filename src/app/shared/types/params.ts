@@ -20,6 +20,7 @@ export interface SyncParams {
   sync_options: SyncOptions | null;
   filter_options: FilterOptions | null;
   backend_options: BackendOptions | null;
+  profile?: string;
 }
 
 export interface CopyParams {
@@ -30,6 +31,7 @@ export interface CopyParams {
   copy_options: CopyOptions | null;
   filter_options: FilterOptions | null;
   backend_options: BackendOptions | null;
+  profile?: string;
 }
 
 export interface BisyncParams {
@@ -55,6 +57,7 @@ export interface BisyncParams {
   backupdir2?: string;
   noCleanup?: boolean;
   backend_options: BackendOptions | null;
+  profile?: string;
 }
 
 export interface MoveParams {
@@ -66,6 +69,7 @@ export interface MoveParams {
   move_options: MoveOptions | null;
   filter_options: FilterOptions | null;
   backend_options: BackendOptions | null;
+  profile?: string;
 }
 
 export interface MountParams {
@@ -77,4 +81,5 @@ export interface MountParams {
   vfs_options: VfsOptions | null;
   filter_options: FilterOptions | null;
   backend_options: BackendOptions | null;
+  profile?: string;
 }
