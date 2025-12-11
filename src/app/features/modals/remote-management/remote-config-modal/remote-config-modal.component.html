@@ -24,7 +24,6 @@
             [ngClass]="getStepState(i + 1)"
             [class.clickable]="editTarget"
             (click)="goToStep(i + 1)"
-            (keydown)="handleStepKeydown($event, i + 1)"
             [attr.tabindex]="editTarget ? '0' : '-1'"
             role="tab"
             [disabled]="isAuthInProgress || (isServeMode ? false : !remoteForm.valid)"

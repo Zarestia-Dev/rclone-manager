@@ -8,6 +8,7 @@
 
 ### Fixed
 - Remote configuration step provider selection fixed. Now it correctly filters the provider-specific fields when Provider selected. (issue #59 and #1)
+- Broken reduce animations fixed. (issue #60)
 
 ## [v0.1.8] - 2025-11-06
 ### Added

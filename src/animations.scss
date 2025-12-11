@@ -541,7 +541,7 @@
 }
 
 .slide-overlay-leave {
-  animation: slideOverlayOut 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  animation: slideOverlayOut 200ms cubic-bezier(0.25, 0.46, 0.45, 0.94) backwards;
 }
 
 .fade-in-out-enter {
@@ -629,34 +629,5 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-
-  .animate-spin,
-  .animate-pulse-blue,
-  .animate-pulse-green,
-  .animate-pulse-yellow,
-  .animate-pulse-orange,
-  .animate-pulse-red,
-  .animate-pulse-mode,
-  .animate-icon-pulse-red,
-  .animate-icon-pulse-green,
-  .animate-icon-pulse-blue,
-  .animate-icon-pulse-yellow,
-  .animate-icon-pulse-orange,
-  .animate-breathing,
-  .animate-shimmer,
-  .slide-overlay-enter,
-  .slide-overlay-leave,
-  .fade-in-out-enter,
-  .fade-in-out-leave,
-  .loading-spinner-enter,
-  .loading-spinner-leave,
-  .onboarding-entrance-enter,
-  .onboarding-entrance-leave,
-  .onboarding-state-enter,
-  .onboarding-state-leave,
-  .label-slide-in-enter,
-  .label-slide-in-leave {
-    animation: none !important;
   }
 }
