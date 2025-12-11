@@ -49,26 +49,39 @@ impl ServeParams {
             return None;
         }
 
+        // Helper to resolve profile references
+        let resolve_profile_options =
+            |profile_name: Option<&str>, configs_key: &str| -> Option<HashMap<String, Value>> {
+                if let Some(name) = profile_name {
+                    if let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array()) {
+                        for config in configs {
+                            if let Some(config_name) = config.get("name").and_then(|v| v.as_str()) {
+                                if config_name == name {
+                                    return json_to_hashmap(config.get("options"));
+                                }
+                            }
+                        }
+                    }
+                }
+                None
+            };
+
+        let vfs_profile = serve_cfg.get("vfsProfile").and_then(|v| v.as_str());
+        let filter_profile = serve_cfg.get("filterProfile").and_then(|v| v.as_str());
+        let backend_profile = serve_cfg.get("backendProfile").and_then(|v| v.as_str());
+
+        let vfs_options = resolve_profile_options(vfs_profile, "vfsConfigs");
+        let filter_options = resolve_profile_options(filter_profile, "filterConfigs");
+        let backend_options = resolve_profile_options(backend_profile, "backendConfigs");
+
         Some(Self {
             remote_name,
             serve_options: json_to_hashmap(serve_cfg.get("options")),
-            backend_options: json_to_hashmap(
-                settings.get("backendConfig").and_then(|v| v.get("options")),
-            ),
-            filter_options: json_to_hashmap(
-                settings.get("filterConfig").and_then(|v| v.get("options")),
-            ),
-            vfs_options: json_to_hashmap(settings.get("vfsConfig").and_then(|v| v.get("options"))),
+            backend_options,
+            filter_options,
+            vfs_options,
             profile: Some(get_string(serve_cfg, &["name"])).filter(|s| !s.is_empty()),
         })
-    }
-
-    pub fn should_auto_start(settings: &Value) -> bool {
-        settings
-            .get("serveConfig")
-            .and_then(|v| v.get("autoStart"))
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
     }
 }
 

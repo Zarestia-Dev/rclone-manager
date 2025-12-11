@@ -18,7 +18,7 @@ export class IconService {
   private registerIcons(): void {
     const icons: Record<string, string> = {
       // ------------------- Titlebar Icons -------------------
-      add: 'assets/icons/titlebar/add.svg',
+      plus: 'assets/icons/titlebar/add.svg',
       'check-box': 'assets/icons/titlebar/check-box.svg',
       close: 'assets/icons/titlebar/close.svg',
       'ellipsis-vertical': 'assets/icons/titlebar/ellipsis-vertical.svg',

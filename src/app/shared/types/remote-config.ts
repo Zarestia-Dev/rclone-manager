@@ -13,10 +13,6 @@ export type EditTarget = FlagType | 'remote' | 'serve' | null;
 export const INTERACTIVE_REMOTES = ['iclouddrive', 'onedrive'];
 
 export interface LoadingState {
-  remoteConfig?: boolean;
-  mountConfig?: boolean;
-  copyConfig?: boolean;
-  syncConfig?: boolean;
   saving: boolean;
   authDisabled: boolean;
   cancelled: boolean;
@@ -136,9 +132,7 @@ export interface ServeConfig {
   type: string;
   source: string; // or object, but usually string in the config object
   options?: any;
-  filterConfig?: FilterConfig;
-  vfsConfig?: VfsConfig;
-  backendConfig?: BackendConfig;
+
   name?: string;
   vfsProfile?: string;
   filterProfile?: string;
@@ -149,15 +143,8 @@ export interface ServeConfig {
 // A single remote's settings broken into sections used by the UI
 export interface RemoteConfigSections {
   [remoteName: string]: any; // keep permissive for now; UI accesses dynamic keys
-  // Deprecated: Single config per type (kept for migration)
-  mountConfig?: MountConfig;
-  copyConfig?: CopyConfig;
-  syncConfig?: SyncConfig;
-  moveConfig?: MoveConfig;
-  bisyncConfig?: BisyncConfig;
-  serveConfig?: ServeConfig;
 
-  // New: Multiple configs per type
+  // Multiple configs per type (profiles)
   mountConfigs?: MountConfig[];
   copyConfigs?: CopyConfig[];
   syncConfigs?: SyncConfig[];
@@ -165,14 +152,11 @@ export interface RemoteConfigSections {
   bisyncConfigs?: BisyncConfig[];
   serveConfigs?: ServeConfig[];
 
-  // New: Multiple configs for shared types
+  // Multiple configs for shared types
   filterConfigs?: FilterConfig[];
   backendConfigs?: BackendConfig[];
   vfsConfigs?: VfsConfig[];
 
-  filterConfig: FilterConfig;
-  backendConfig: BackendConfig;
-  vfsConfig: VfsConfig;
   showOnTray: boolean;
 }
 

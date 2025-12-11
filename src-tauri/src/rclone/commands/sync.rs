@@ -40,28 +40,38 @@ impl SyncParams {
             return None;
         }
 
+        // Helper to resolve profile references
+        let resolve_profile_options =
+            |profile_name: Option<&str>, configs_key: &str| -> Option<HashMap<String, Value>> {
+                if let Some(name) = profile_name {
+                    if let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array()) {
+                        for config in configs {
+                            if let Some(config_name) = config.get("name").and_then(|v| v.as_str()) {
+                                if config_name == name {
+                                    return json_to_hashmap(config.get("options"));
+                                }
+                            }
+                        }
+                    }
+                }
+                None
+            };
+
+        let filter_profile = sync_cfg.get("filterProfile").and_then(|v| v.as_str());
+        let backend_profile = sync_cfg.get("backendProfile").and_then(|v| v.as_str());
+
+        let filter_options = resolve_profile_options(filter_profile, "filterConfigs");
+        let backend_options = resolve_profile_options(backend_profile, "backendConfigs");
+
         Some(Self {
             remote_name,
             source,
             dest,
             sync_options: json_to_hashmap(sync_cfg.get("options")),
-            filter_options: json_to_hashmap(
-                settings.get("filterConfig").and_then(|v| v.get("options")),
-            ),
-            backend_options: json_to_hashmap(
-                settings.get("backendConfig").and_then(|v| v.get("options")),
-            ),
+            filter_options,
+            backend_options,
             profile: Some(get_string(sync_cfg, &["name"])).filter(|s| !s.is_empty()),
         })
-    }
-
-    /// Check if the auto-start flag is enabled
-    pub fn should_auto_start(settings: &Value) -> bool {
-        settings
-            .get("syncConfig")
-            .and_then(|v| v.get("autoStart"))
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
     }
 }
 
@@ -88,27 +98,37 @@ impl CopyParams {
             return None;
         }
 
+        let resolve_profile_options =
+            |profile_name: Option<&str>, configs_key: &str| -> Option<HashMap<String, Value>> {
+                if let Some(name) = profile_name {
+                    if let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array()) {
+                        for config in configs {
+                            if let Some(config_name) = config.get("name").and_then(|v| v.as_str()) {
+                                if config_name == name {
+                                    return json_to_hashmap(config.get("options"));
+                                }
+                            }
+                        }
+                    }
+                }
+                None
+            };
+
+        let filter_profile = copy_cfg.get("filterProfile").and_then(|v| v.as_str());
+        let backend_profile = copy_cfg.get("backendProfile").and_then(|v| v.as_str());
+
+        let filter_options = resolve_profile_options(filter_profile, "filterConfigs");
+        let backend_options = resolve_profile_options(backend_profile, "backendConfigs");
+
         Some(Self {
             remote_name,
             source,
             dest,
             copy_options: json_to_hashmap(copy_cfg.get("options")),
-            filter_options: json_to_hashmap(
-                settings.get("filterConfig").and_then(|v| v.get("options")),
-            ),
-            backend_options: json_to_hashmap(
-                settings.get("backendConfig").and_then(|v| v.get("options")),
-            ),
+            filter_options,
+            backend_options,
             profile: Some(get_string(copy_cfg, &["name"])).filter(|s| !s.is_empty()),
         })
-    }
-
-    pub fn should_auto_start(settings: &Value) -> bool {
-        settings
-            .get("copyConfig")
-            .and_then(|v| v.get("autoStart"))
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
     }
 }
 
@@ -135,27 +155,37 @@ impl BisyncParams {
             return None;
         }
 
+        let resolve_profile_options =
+            |profile_name: Option<&str>, configs_key: &str| -> Option<HashMap<String, Value>> {
+                if let Some(name) = profile_name {
+                    if let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array()) {
+                        for config in configs {
+                            if let Some(config_name) = config.get("name").and_then(|v| v.as_str()) {
+                                if config_name == name {
+                                    return json_to_hashmap(config.get("options"));
+                                }
+                            }
+                        }
+                    }
+                }
+                None
+            };
+
+        let filter_profile = bisync_cfg.get("filterProfile").and_then(|v| v.as_str());
+        let backend_profile = bisync_cfg.get("backendProfile").and_then(|v| v.as_str());
+
+        let filter_options = resolve_profile_options(filter_profile, "filterConfigs");
+        let backend_options = resolve_profile_options(backend_profile, "backendConfigs");
+
         Some(Self {
             remote_name,
             source,
             dest,
             bisync_options: json_to_hashmap(bisync_cfg.get("options")),
-            filter_options: json_to_hashmap(
-                settings.get("filterConfig").and_then(|v| v.get("options")),
-            ),
-            backend_options: json_to_hashmap(
-                settings.get("backendConfig").and_then(|v| v.get("options")),
-            ),
+            filter_options,
+            backend_options,
             profile: Some(get_string(bisync_cfg, &["name"])).filter(|s| !s.is_empty()),
         })
-    }
-
-    pub fn should_auto_start(settings: &Value) -> bool {
-        settings
-            .get("bisyncConfig")
-            .and_then(|v| v.get("autoStart"))
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
     }
 }
 
@@ -182,27 +212,37 @@ impl MoveParams {
             return None;
         }
 
+        let resolve_profile_options =
+            |profile_name: Option<&str>, configs_key: &str| -> Option<HashMap<String, Value>> {
+                if let Some(name) = profile_name {
+                    if let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array()) {
+                        for config in configs {
+                            if let Some(config_name) = config.get("name").and_then(|v| v.as_str()) {
+                                if config_name == name {
+                                    return json_to_hashmap(config.get("options"));
+                                }
+                            }
+                        }
+                    }
+                }
+                None
+            };
+
+        let filter_profile = move_cfg.get("filterProfile").and_then(|v| v.as_str());
+        let backend_profile = move_cfg.get("backendProfile").and_then(|v| v.as_str());
+
+        let filter_options = resolve_profile_options(filter_profile, "filterConfigs");
+        let backend_options = resolve_profile_options(backend_profile, "backendConfigs");
+
         Some(Self {
             remote_name,
             source,
             dest,
             move_options: json_to_hashmap(move_cfg.get("options")),
-            filter_options: json_to_hashmap(
-                settings.get("filterConfig").and_then(|v| v.get("options")),
-            ),
-            backend_options: json_to_hashmap(
-                settings.get("backendConfig").and_then(|v| v.get("options")),
-            ),
+            filter_options,
+            backend_options,
             profile: Some(get_string(move_cfg, &["name"])).filter(|s| !s.is_empty()),
         })
-    }
-
-    pub fn should_auto_start(settings: &Value) -> bool {
-        settings
-            .get("moveConfig")
-            .and_then(|v| v.get("autoStart"))
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
     }
 }
 

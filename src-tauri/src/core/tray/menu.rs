@@ -15,89 +15,334 @@ use crate::{
 use super::tray_action::TrayAction;
 
 static OLD_MAX_TRAY_ITEMS: AtomicUsize = AtomicUsize::new(0);
-const MAX_PRIMARY_ACTIONS: usize = 3;
 
-#[derive(Debug, Clone, PartialEq)]
-enum PrimaryActionType {
-    Mount,
-    Sync,
-    Copy,
-    Move,
-    Bisync,
-}
-impl PrimaryActionType {
-    fn from_string(s: &str) -> Option<Self> {
-        match s {
-            "mount" => Some(Self::Mount),
-            "sync" => Some(Self::Sync),
-            "copy" => Some(Self::Copy),
-            "move" => Some(Self::Move),
-            "bisync" => Some(Self::Bisync),
-            _ => None,
-        }
-    }
-    fn action_label(&self) -> &'static str {
-        match self {
-            Self::Mount => "Mount",
-            Self::Sync => "Start Sync",
-            Self::Copy => "Start Copy",
-            Self::Move => "Start Move",
-            Self::Bisync => "Start BiSync",
-        }
-    }
-    fn stop_label(&self) -> &'static str {
-        match self {
-            Self::Mount => "Unmount",
-            Self::Sync => "Stop Sync",
-            Self::Copy => "Stop Copy",
-            Self::Move => "Stop Move",
-            Self::Bisync => "Stop BiSync",
-        }
-    }
-    fn to_action(&self, remote: &str) -> TrayAction {
-        match self {
-            Self::Mount => TrayAction::Mount(remote.to_string()),
-            Self::Sync => TrayAction::Sync(remote.to_string()),
-            Self::Copy => TrayAction::Copy(remote.to_string()),
-            Self::Move => TrayAction::Move(remote.to_string()),
-            Self::Bisync => TrayAction::Bisync(remote.to_string()),
-        }
-    }
-    fn to_stop_action(&self, remote: &str) -> TrayAction {
-        match self {
-            Self::Mount => TrayAction::Unmount(remote.to_string()),
-            Self::Sync => TrayAction::StopSync(remote.to_string()),
-            Self::Copy => TrayAction::StopCopy(remote.to_string()),
-            Self::Move => TrayAction::StopMove(remote.to_string()),
-            Self::Bisync => TrayAction::StopBisync(remote.to_string()),
-        }
-    }
-    fn job_type_str(&self) -> Option<&'static str> {
-        match self {
-            Self::Sync => Some("sync"),
-            Self::Copy => Some("copy"),
-            Self::Move => Some("move"),
-            Self::Bisync => Some("bisync"),
-            Self::Mount => None,
-        }
-    }
-}
-fn get_primary_actions_for_remote(settings: &serde_json::Value) -> Vec<PrimaryActionType> {
-    if let Some(actions_array) = settings.get("primaryActions").and_then(|v| v.as_array()) {
-        let actions: Vec<PrimaryActionType> = actions_array
+/// Helper to create a submenu for mount profiles
+fn create_mount_submenu<R: Runtime>(
+    handle: &AppHandle<R>,
+    remote: &str,
+    settings: &serde_json::Value,
+    mounted_remotes: &[crate::utils::types::all_types::MountedRemote],
+) -> tauri::Result<Option<Submenu<R>>> {
+    let mount_configs = match settings.get("mountConfigs").and_then(|v| v.as_array()) {
+        Some(configs) if !configs.is_empty() => configs,
+        _ => return Ok(None),
+    };
+
+    let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
+
+    for config in mount_configs {
+        let profile_name = config
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("default")
+            .to_string();
+
+        let mount_point = config.get("dest").and_then(|v| v.as_str()).unwrap_or("");
+
+        // Check if this specific mount profile is mounted
+        let is_mounted = mounted_remotes
             .iter()
-            .filter_map(|v| v.as_str())
-            .filter_map(PrimaryActionType::from_string)
-            .collect();
-        if !actions.is_empty() {
-            return actions;
-        }
+            .any(|mounted| mounted.mount_point == mount_point);
+
+        let (action_id, label) = if is_mounted {
+            (
+                TrayAction::UnmountProfile(remote.to_string(), profile_name.clone()).to_id(),
+                format!("🗃️ {} → Unmount", profile_name),
+            )
+        } else {
+            (
+                TrayAction::MountProfile(remote.to_string(), profile_name.clone()).to_id(),
+                format!("   {} → Mount", profile_name),
+            )
+        };
+
+        let item = MenuItem::with_id(handle, action_id, label, true, None::<&str>)?;
+        items.push(Box::new(item));
     }
-    vec![
-        PrimaryActionType::Mount,
-        PrimaryActionType::Sync,
-        PrimaryActionType::Bisync,
-    ]
+
+    let submenu = Submenu::with_items(
+        handle,
+        "📦 Mount",
+        true,
+        &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
+    )?;
+
+    Ok(Some(submenu))
+}
+
+/// Helper to create a submenu for sync profiles
+fn create_sync_submenu<R: Runtime>(
+    handle: &AppHandle<R>,
+    remote: &str,
+    settings: &serde_json::Value,
+    active_jobs: &[crate::utils::types::all_types::JobInfo],
+) -> tauri::Result<Option<Submenu<R>>> {
+    let sync_configs = match settings.get("syncConfigs").and_then(|v| v.as_array()) {
+        Some(configs) if !configs.is_empty() => configs,
+        _ => return Ok(None),
+    };
+
+    let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
+
+    for config in sync_configs {
+        let profile_name = config
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("default")
+            .to_string();
+
+        // Check if this profile has an active job
+        let is_running = active_jobs.iter().any(|job| {
+            job.remote_name == remote
+                && job.job_type == "sync"
+                && job.profile.as_ref() == Some(&profile_name)
+        });
+
+        let (action_id, label) = if is_running {
+            (
+                TrayAction::StopSyncProfile(remote.to_string(), profile_name.clone()).to_id(),
+                format!("🔄 {} → Stop", profile_name),
+            )
+        } else {
+            (
+                TrayAction::SyncProfile(remote.to_string(), profile_name.clone()).to_id(),
+                format!("   {} → Start", profile_name),
+            )
+        };
+
+        let item = MenuItem::with_id(handle, action_id, label, true, None::<&str>)?;
+        items.push(Box::new(item));
+    }
+
+    let submenu = Submenu::with_items(
+        handle,
+        "🔄 Sync",
+        true,
+        &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
+    )?;
+
+    Ok(Some(submenu))
+}
+
+/// Helper to create a submenu for copy profiles
+fn create_copy_submenu<R: Runtime>(
+    handle: &AppHandle<R>,
+    remote: &str,
+    settings: &serde_json::Value,
+    active_jobs: &[crate::utils::types::all_types::JobInfo],
+) -> tauri::Result<Option<Submenu<R>>> {
+    let copy_configs = match settings.get("copyConfigs").and_then(|v| v.as_array()) {
+        Some(configs) if !configs.is_empty() => configs,
+        _ => return Ok(None),
+    };
+
+    let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
+
+    for config in copy_configs {
+        let profile_name = config
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("default")
+            .to_string();
+
+        let is_running = active_jobs.iter().any(|job| {
+            job.remote_name == remote
+                && job.job_type == "copy"
+                && job.profile.as_ref() == Some(&profile_name)
+        });
+
+        let (action_id, label) = if is_running {
+            (
+                TrayAction::StopCopyProfile(remote.to_string(), profile_name.clone()).to_id(),
+                format!("📋 {} → Stop", profile_name),
+            )
+        } else {
+            (
+                TrayAction::CopyProfile(remote.to_string(), profile_name.clone()).to_id(),
+                format!("   {} → Start", profile_name),
+            )
+        };
+
+        let item = MenuItem::with_id(handle, action_id, label, true, None::<&str>)?;
+        items.push(Box::new(item));
+    }
+
+    let submenu = Submenu::with_items(
+        handle,
+        "📋 Copy",
+        true,
+        &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
+    )?;
+
+    Ok(Some(submenu))
+}
+
+/// Helper to create a submenu for move profiles
+fn create_move_submenu<R: Runtime>(
+    handle: &AppHandle<R>,
+    remote: &str,
+    settings: &serde_json::Value,
+    active_jobs: &[crate::utils::types::all_types::JobInfo],
+) -> tauri::Result<Option<Submenu<R>>> {
+    let move_configs = match settings.get("moveConfigs").and_then(|v| v.as_array()) {
+        Some(configs) if !configs.is_empty() => configs,
+        _ => return Ok(None),
+    };
+
+    let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
+
+    for config in move_configs {
+        let profile_name = config
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("default")
+            .to_string();
+
+        let is_running = active_jobs.iter().any(|job| {
+            job.remote_name == remote
+                && job.job_type == "move"
+                && job.profile.as_ref() == Some(&profile_name)
+        });
+
+        let (action_id, label) = if is_running {
+            (
+                TrayAction::StopMoveProfile(remote.to_string(), profile_name.clone()).to_id(),
+                format!("🚚 {} → Stop", profile_name),
+            )
+        } else {
+            (
+                TrayAction::MoveProfile(remote.to_string(), profile_name.clone()).to_id(),
+                format!("   {} → Start", profile_name),
+            )
+        };
+
+        let item = MenuItem::with_id(handle, action_id, label, true, None::<&str>)?;
+        items.push(Box::new(item));
+    }
+
+    let submenu = Submenu::with_items(
+        handle,
+        "🚚 Move",
+        true,
+        &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
+    )?;
+
+    Ok(Some(submenu))
+}
+
+/// Helper to create a submenu for bisync profiles
+fn create_bisync_submenu<R: Runtime>(
+    handle: &AppHandle<R>,
+    remote: &str,
+    settings: &serde_json::Value,
+    active_jobs: &[crate::utils::types::all_types::JobInfo],
+) -> tauri::Result<Option<Submenu<R>>> {
+    let bisync_configs = match settings.get("bisyncConfigs").and_then(|v| v.as_array()) {
+        Some(configs) if !configs.is_empty() => configs,
+        _ => return Ok(None),
+    };
+
+    let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
+
+    for config in bisync_configs {
+        let profile_name = config
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("default")
+            .to_string();
+
+        let is_running = active_jobs.iter().any(|job| {
+            job.remote_name == remote
+                && job.job_type == "bisync"
+                && job.profile.as_ref() == Some(&profile_name)
+        });
+
+        let (action_id, label) = if is_running {
+            (
+                TrayAction::StopBisyncProfile(remote.to_string(), profile_name.clone()).to_id(),
+                format!("🔄 {} → Stop", profile_name),
+            )
+        } else {
+            (
+                TrayAction::BisyncProfile(remote.to_string(), profile_name.clone()).to_id(),
+                format!("   {} → Start", profile_name),
+            )
+        };
+
+        let item = MenuItem::with_id(handle, action_id, label, true, None::<&str>)?;
+        items.push(Box::new(item));
+    }
+
+    let submenu = Submenu::with_items(
+        handle,
+        "🔄 BiSync",
+        true,
+        &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
+    )?;
+
+    Ok(Some(submenu))
+}
+
+/// Helper to create a submenu for serve profiles
+fn create_serve_submenu<R: Runtime>(
+    handle: &AppHandle<R>,
+    remote: &str,
+    settings: &serde_json::Value,
+    all_serves: &[ServeInstance],
+) -> tauri::Result<Option<Submenu<R>>> {
+    let serve_configs = match settings.get("serveConfigs").and_then(|v| v.as_array()) {
+        Some(configs) if !configs.is_empty() => configs,
+        _ => return Ok(None),
+    };
+
+    let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
+    let remote_fs_prefix = format!("{}:", remote);
+
+    for config in serve_configs {
+        let profile_name = config
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or("default")
+            .to_string();
+
+        // Check if this profile has an active serve
+        // Match by profile name in the serve's metadata
+        let active_serve = all_serves.iter().find(|serve| {
+            let fs = serve.params["fs"].as_str().unwrap_or("");
+            let serve_profile = serve
+                .params
+                .get("profile")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+
+            (fs.starts_with(&remote_fs_prefix) || fs == remote) && serve_profile == profile_name
+        });
+
+        let (action_id, label) = if let Some(serve) = active_serve {
+            let serve_type = serve.params["type"].as_str().unwrap_or("serve");
+            (
+                TrayAction::StopServeProfile(remote.to_string(), serve.id.clone()).to_id(),
+                format!("📡 {} ({}) → Stop", profile_name, serve_type),
+            )
+        } else {
+            (
+                TrayAction::ServeProfile(remote.to_string(), profile_name.clone()).to_id(),
+                format!("   {} → Start", profile_name),
+            )
+        };
+
+        let item = MenuItem::with_id(handle, action_id, label, true, None::<&str>)?;
+        items.push(Box::new(item));
+    }
+
+    let submenu = Submenu::with_items(
+        handle,
+        "📡 Serve",
+        true,
+        &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
+    )?;
+
+    Ok(Some(submenu))
 }
 
 pub async fn create_tray_menu<R: Runtime>(
@@ -156,7 +401,7 @@ pub async fn create_tray_menu<R: Runtime>(
             error!("Failed to fetch cached serves: {err}");
             vec![]
         });
-    // --- Use injected job_cache state ---
+
     let active_jobs = job_cache.get_active_jobs().await;
 
     let cached_settings = get_settings(app.state::<crate::utils::types::all_types::RemoteCache>())
@@ -181,18 +426,59 @@ pub async fn create_tray_menu<R: Runtime>(
     for remote_str in remotes_to_show {
         let remote = remote_str.to_string();
         if let Some(settings) = cached_settings.get(&remote).cloned() {
-            let is_mounted = mounted_remotes.iter().any(|mounted| {
-                let remote_name = remote.trim_end_matches(':');
-                let mounted_name = mounted.fs.trim_end_matches(':');
-                mounted_name == remote_name || mounted_name.starts_with(&format!("{remote_name}:"))
-            });
-            // Filter out serve and mount jobs - they have their own status indicators
+            // Count profiles for this remote
+            let mount_count = settings
+                .get("mountConfigs")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            let sync_count = settings
+                .get("syncConfigs")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            let copy_count = settings
+                .get("copyConfigs")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            let move_count = settings
+                .get("moveConfigs")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            let bisync_count = settings
+                .get("bisyncConfigs")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+            let serve_count = settings
+                .get("serveConfigs")
+                .and_then(|v| v.as_array())
+                .map(|a| a.len())
+                .unwrap_or(0);
+
+            // Count active mounts for this remote
+            let active_mount_count = mounted_remotes
+                .iter()
+                .filter(|mounted| {
+                    let remote_name = remote.trim_end_matches(':');
+                    let mounted_name = mounted.fs.trim_end_matches(':');
+                    mounted_name == remote_name
+                        || mounted_name.starts_with(&format!("{remote_name}:"))
+                })
+                .count();
+
+            // Filter active jobs for this remote (exclude mount and serve)
             let active_jobs_for_remote: Vec<_> = active_jobs
                 .iter()
                 .filter(|job| {
                     job.remote_name == remote && job.job_type != "serve" && job.job_type != "mount"
                 })
                 .collect();
+
+            let total_job_profiles = sync_count + copy_count + move_count + bisync_count;
+
             let remote_fs_prefix = format!("{}:", remote);
             let active_serves_for_remote: Vec<&ServeInstance> = all_serves
                 .iter()
@@ -205,24 +491,30 @@ pub async fn create_tray_menu<R: Runtime>(
             // -- Build the submenu items for this remote --
             let mut submenu_items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
 
-            // Add status indicators
+            // Add status indicators with counts
+            let mount_status_text = if mount_count > 0 {
+                format!("Mounted: {}/{}", active_mount_count, mount_count)
+            } else {
+                "No mount profiles".to_string()
+            };
             let mount_status = CheckMenuItem::with_id(
                 &handle,
                 format!("mount_status-{}", remote),
-                if is_mounted { "Mounted" } else { "Not Mounted" },
+                mount_status_text,
                 false,
-                is_mounted,
+                active_mount_count > 0,
                 None::<&str>,
             )?;
             submenu_items.push(Box::new(mount_status));
-            let job_status_text = if active_jobs_for_remote.is_empty() {
-                "No active jobs".to_string()
+
+            let job_status_text = if total_job_profiles > 0 {
+                format!(
+                    "Jobs: {}/{}",
+                    active_jobs_for_remote.len(),
+                    total_job_profiles
+                )
             } else {
-                let job_types: Vec<String> = active_jobs_for_remote
-                    .iter()
-                    .map(|job| job.job_type.clone())
-                    .collect();
-                format!("{} in progress", job_types.join(" & "))
+                "No job profiles".to_string()
             };
             let job_status = CheckMenuItem::with_id(
                 &handle,
@@ -233,10 +525,16 @@ pub async fn create_tray_menu<R: Runtime>(
                 None::<&str>,
             )?;
             submenu_items.push(Box::new(job_status));
+
+            let serve_status_text = if serve_count > 0 {
+                format!("Serves: {}/{}", active_serves_for_remote.len(), serve_count)
+            } else {
+                "No serve profiles".to_string()
+            };
             let serve_status = CheckMenuItem::with_id(
                 &handle,
                 format!("serve_status-{}", remote),
-                format!("{} active serves", active_serves_for_remote.len()),
+                serve_status_text,
                 false,
                 !active_serves_for_remote.is_empty(),
                 None::<&str>,
@@ -244,94 +542,53 @@ pub async fn create_tray_menu<R: Runtime>(
             submenu_items.push(Box::new(serve_status));
             submenu_items.push(Box::new(PredefinedMenuItem::separator(&handle)?));
 
-            // Add primary action menu items
-            let primary_actions = get_primary_actions_for_remote(&settings);
-            for action in primary_actions.iter().take(MAX_PRIMARY_ACTIONS) {
-                if let Some(job_type_str) = action.job_type_str() {
-                    let has_active_job = active_jobs_for_remote
-                        .iter()
-                        .any(|j| j.job_type == job_type_str);
-                    let item = if has_active_job {
-                        let action_id = action.to_stop_action(&remote).to_id();
-                        MenuItem::with_id(
-                            &handle,
-                            action_id,
-                            action.stop_label(),
-                            true,
-                            None::<&str>,
-                        )?
-                    } else {
-                        let action_id = action.to_action(&remote).to_id();
-                        MenuItem::with_id(
-                            &handle,
-                            action_id,
-                            action.action_label(),
-                            true,
-                            None::<&str>,
-                        )?
-                    };
-                    submenu_items.push(Box::new(item));
-                } else if *action == PrimaryActionType::Mount {
-                    let item = if is_mounted {
-                        let action_id = action.to_stop_action(&remote).to_id();
-                        MenuItem::with_id(
-                            &handle,
-                            action_id,
-                            action.stop_label(),
-                            true,
-                            None::<&str>,
-                        )?
-                    } else {
-                        let action_id = action.to_action(&remote).to_id();
-                        MenuItem::with_id(
-                            &handle,
-                            action_id,
-                            action.action_label(),
-                            true,
-                            None::<&str>,
-                        )?
-                    };
-                    submenu_items.push(Box::new(item));
-                }
+            // Add operation-specific submenus
+            if let Some(mount_submenu) =
+                create_mount_submenu(&handle, &remote, &settings, &mounted_remotes)?
+            {
+                submenu_items.push(Box::new(mount_submenu));
+            }
+
+            if let Some(sync_submenu) =
+                create_sync_submenu(&handle, &remote, &settings, &active_jobs)?
+            {
+                submenu_items.push(Box::new(sync_submenu));
+            }
+
+            if let Some(copy_submenu) =
+                create_copy_submenu(&handle, &remote, &settings, &active_jobs)?
+            {
+                submenu_items.push(Box::new(copy_submenu));
+            }
+
+            if let Some(move_submenu) =
+                create_move_submenu(&handle, &remote, &settings, &active_jobs)?
+            {
+                submenu_items.push(Box::new(move_submenu));
+            }
+
+            if let Some(bisync_submenu) =
+                create_bisync_submenu(&handle, &remote, &settings, &active_jobs)?
+            {
+                submenu_items.push(Box::new(bisync_submenu));
+            }
+
+            if let Some(serve_submenu) =
+                create_serve_submenu(&handle, &remote, &settings, &all_serves)?
+            {
+                submenu_items.push(Box::new(serve_submenu));
             }
 
             submenu_items.push(Box::new(PredefinedMenuItem::separator(&handle)?));
 
-            let mut serve_submenu_items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
-            let start_serve_id = TrayAction::Serve(remote.clone()).to_id();
-            let start_serve_item =
-                MenuItem::with_id(&handle, start_serve_id, "Start Serve", true, None::<&str>)?;
-            serve_submenu_items.push(Box::new(start_serve_item));
-
-            if !active_serves_for_remote.is_empty() {
-                serve_submenu_items.push(Box::new(PredefinedMenuItem::separator(&handle)?));
-                for serve in active_serves_for_remote.clone() {
-                    let serve_type = serve.params["type"].as_str().unwrap_or("serve");
-                    let stop_serve_id = TrayAction::StopServe(serve.id.clone()).to_id();
-                    let item = MenuItem::with_id(
-                        &handle,
-                        stop_serve_id,
-                        format!("Stop {} ({})", serve_type, serve.addr),
-                        true,
-                        None::<&str>,
-                    )?;
-                    serve_submenu_items.push(Box::new(item));
-                }
-            }
-            let serve_submenu = Submenu::with_items(
-                &handle,
-                "Serves",
-                true,
-                &serve_submenu_items
-                    .iter()
-                    .map(|item| item.as_ref())
-                    .collect::<Vec<_>>(),
-            )?;
-            submenu_items.push(Box::new(serve_submenu));
-
             let browse_id = TrayAction::Browse(remote.clone()).to_id();
-            let browse_item =
-                MenuItem::with_id(&handle, browse_id, "Browse", is_mounted, None::<&str>)?;
+            let browse_item = MenuItem::with_id(
+                &handle,
+                browse_id,
+                "🔍 Browse",
+                active_mount_count > 0,
+                None::<&str>,
+            )?;
             submenu_items.push(Box::new(browse_item));
 
             let name = if remote.len() > 20 {
@@ -342,7 +599,11 @@ pub async fn create_tray_menu<R: Runtime>(
 
             let indicators = format!(
                 "{}{}{}",
-                if is_mounted { "🗃️ " } else { "" },
+                if active_mount_count > 0 {
+                    "🗃️ "
+                } else {
+                    ""
+                },
                 if !active_jobs_for_remote.is_empty() {
                     "🔄 "
                 } else {

@@ -93,10 +93,11 @@ use crate::{
         },
         tray::{
             actions::{
-                handle_bisync_remote, handle_browse_remote, handle_copy_remote,
-                handle_mount_remote, handle_move_remote, handle_start_serve, handle_stop_all_jobs,
-                handle_stop_all_serves, handle_stop_bisync, handle_stop_copy, handle_stop_move,
-                handle_stop_serve, handle_stop_sync, handle_sync_remote, handle_unmount_remote,
+                handle_bisync_profile, handle_browse_remote, handle_copy_profile,
+                handle_mount_profile, handle_move_profile, handle_serve_profile,
+                handle_stop_all_jobs, handle_stop_all_serves, handle_stop_bisync_profile,
+                handle_stop_copy_profile, handle_stop_move_profile, handle_stop_serve_profile,
+                handle_stop_sync_profile, handle_sync_profile, handle_unmount_profile,
                 show_main_window,
             },
             tray_action::TrayAction,
@@ -435,19 +436,43 @@ pub fn run() {
         .on_menu_event(|app, event| {
             if let Some(action) = TrayAction::from_id(event.id.as_ref()) {
                 match action {
-                    TrayAction::Mount(remote) => handle_mount_remote(app.clone(), &remote),
-                    TrayAction::Unmount(remote) => handle_unmount_remote(app.clone(), &remote),
-                    TrayAction::Sync(remote) => handle_sync_remote(app.clone(), &remote),
-                    TrayAction::StopSync(remote) => handle_stop_sync(app.clone(), &remote),
-                    TrayAction::Copy(remote) => handle_copy_remote(app.clone(), &remote),
-                    TrayAction::StopCopy(remote) => handle_stop_copy(app.clone(), &remote),
-                    TrayAction::Move(remote) => handle_move_remote(app.clone(), &remote),
-                    TrayAction::StopMove(remote) => handle_stop_move(app.clone(), &remote),
-                    TrayAction::Bisync(remote) => handle_bisync_remote(app.clone(), &remote),
-                    TrayAction::StopBisync(remote) => handle_stop_bisync(app.clone(), &remote),
+                    TrayAction::MountProfile(remote, profile) => {
+                        handle_mount_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::UnmountProfile(remote, profile) => {
+                        handle_unmount_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::SyncProfile(remote, profile) => {
+                        handle_sync_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::StopSyncProfile(remote, profile) => {
+                        handle_stop_sync_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::CopyProfile(remote, profile) => {
+                        handle_copy_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::StopCopyProfile(remote, profile) => {
+                        handle_stop_copy_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::MoveProfile(remote, profile) => {
+                        handle_move_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::StopMoveProfile(remote, profile) => {
+                        handle_stop_move_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::BisyncProfile(remote, profile) => {
+                        handle_bisync_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::StopBisyncProfile(remote, profile) => {
+                        handle_stop_bisync_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::ServeProfile(remote, profile) => {
+                        handle_serve_profile(app.clone(), &remote, &profile)
+                    }
+                    TrayAction::StopServeProfile(remote, serve_id) => {
+                        handle_stop_serve_profile(app.clone(), &remote, &serve_id)
+                    }
                     TrayAction::Browse(remote) => handle_browse_remote(app, &remote),
-                    TrayAction::Serve(remote) => handle_start_serve(app.clone(), &remote),
-                    TrayAction::StopServe(serve_id) => handle_stop_serve(app.clone(), &serve_id),
                 }
                 return;
             }

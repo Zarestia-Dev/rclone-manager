@@ -1,4 +1,4 @@
-use log::{debug, error, info};
+use log::{error, info};
 use tauri::{AppHandle, Manager};
 
 use crate::{
@@ -53,119 +53,209 @@ async fn handle_remote_startup(
     let job_cache_state = app_handle.state::<JobCache>();
     let rclone_state = app_handle.state::<RcloneState>();
 
-    // --- Handle mount operation ---
-    if MountParams::should_auto_start(&settings) {
-        match MountParams::from_settings(remote_name.to_string(), &settings) {
-            Some(params) => {
-                if let Err(e) =
-                    mount_remote(app_handle.clone(), job_cache_state.clone(), cache, params).await
-                {
-                    error!("Failed to auto-start mount for {}: {}", remote_name, e);
-                } else {
-                    debug!("Mount task spawned for {}", remote_name);
+    // --- Handle mount operations (multi-config support) ---
+    if let Some(mount_configs) = settings.get("mountConfigs").and_then(|v| v.as_array()) {
+        for mount_config in mount_configs {
+            if mount_config
+                .get("autoStart")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                // Create a temporary settings object with the selected profile as the active config
+                let mut temp_settings = settings.clone();
+                temp_settings["mountConfig"] = mount_config.clone();
+
+                match MountParams::from_settings(remote_name.to_string(), &temp_settings) {
+                    Some(params) => {
+                        info!(
+                            "🚀 Auto-starting mount profile '{}' for {}",
+                            params.profile.as_ref().unwrap_or(&"default".to_string()),
+                            remote_name
+                        );
+                        if let Err(e) = mount_remote(
+                            app_handle.clone(),
+                            job_cache_state.clone(),
+                            cache.clone(),
+                            params,
+                        )
+                        .await
+                        {
+                            error!("Failed to auto-start mount for {}: {}", remote_name, e);
+                        }
+                    }
+                    None => error!("❌ Mount configuration incomplete for {}", remote_name),
                 }
             }
-            None => error!("❌ Mount configuration incomplete for {}", remote_name),
         }
     }
 
-    // --- Handle sync operation ---
-    if SyncParams::should_auto_start(&settings) {
-        match SyncParams::from_settings(remote_name.to_string(), &settings) {
-            Some(params) => {
-                if let Err(e) = start_sync(
-                    app_handle.clone(),
-                    job_cache_state.clone(),
-                    rclone_state.clone(),
-                    params,
-                )
-                .await
-                {
-                    error!("Failed to auto-start sync for {}: {}", remote_name, e);
-                } else {
-                    debug!("Sync task spawned for {}", remote_name);
+    // --- Handle sync operations (multi-config support) ---
+    if let Some(sync_configs) = settings.get("syncConfigs").and_then(|v| v.as_array()) {
+        for sync_config in sync_configs {
+            if sync_config
+                .get("autoStart")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                let mut temp_settings = settings.clone();
+                temp_settings["syncConfig"] = sync_config.clone();
+
+                match SyncParams::from_settings(remote_name.to_string(), &temp_settings) {
+                    Some(params) => {
+                        info!(
+                            "🚀 Auto-starting sync profile '{}' for {}",
+                            params.profile.as_ref().unwrap_or(&"default".to_string()),
+                            remote_name
+                        );
+                        if let Err(e) = start_sync(
+                            app_handle.clone(),
+                            job_cache_state.clone(),
+                            rclone_state.clone(),
+                            params,
+                        )
+                        .await
+                        {
+                            error!("Failed to auto-start sync for {}: {}", remote_name, e);
+                        }
+                    }
+                    None => error!("❌ Sync configuration incomplete for {}", remote_name),
                 }
             }
-            None => error!("❌ Sync configuration incomplete for {}", remote_name),
         }
     }
 
-    // --- Handle copy operation ---
-    if CopyParams::should_auto_start(&settings) {
-        match CopyParams::from_settings(remote_name.to_string(), &settings) {
-            Some(params) => {
-                if let Err(e) = start_copy(
-                    app_handle.clone(),
-                    job_cache_state.clone(),
-                    rclone_state.clone(),
-                    params,
-                )
-                .await
-                {
-                    error!("Failed to auto-start copy for {}: {}", remote_name, e);
-                } else {
-                    debug!("Copy task spawned for {}", remote_name);
+    // --- Handle copy operations (multi-config support) ---
+    if let Some(copy_configs) = settings.get("copyConfigs").and_then(|v| v.as_array()) {
+        for copy_config in copy_configs {
+            if copy_config
+                .get("autoStart")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                let mut temp_settings = settings.clone();
+                temp_settings["copyConfig"] = copy_config.clone();
+
+                match CopyParams::from_settings(remote_name.to_string(), &temp_settings) {
+                    Some(params) => {
+                        info!(
+                            "🚀 Auto-starting copy profile '{}' for {}",
+                            params.profile.as_ref().unwrap_or(&"default".to_string()),
+                            remote_name
+                        );
+                        if let Err(e) = start_copy(
+                            app_handle.clone(),
+                            job_cache_state.clone(),
+                            rclone_state.clone(),
+                            params,
+                        )
+                        .await
+                        {
+                            error!("Failed to auto-start copy for {}: {}", remote_name, e);
+                        }
+                    }
+                    None => error!("❌ Copy configuration incomplete for {}", remote_name),
                 }
             }
-            None => error!("❌ Copy configuration incomplete for {}", remote_name),
         }
     }
 
-    // --- Handle move operation ---
-    if MoveParams::should_auto_start(&settings) {
-        match MoveParams::from_settings(remote_name.to_string(), &settings) {
-            Some(params) => {
-                if let Err(e) = start_move(
-                    app_handle.clone(),
-                    job_cache_state.clone(),
-                    rclone_state.clone(),
-                    params,
-                )
-                .await
-                {
-                    error!("Failed to auto-start move for {}: {}", remote_name, e);
-                } else {
-                    debug!("Move task spawned for {}", remote_name);
+    // --- Handle move operations (multi-config support) ---
+    if let Some(move_configs) = settings.get("moveConfigs").and_then(|v| v.as_array()) {
+        for move_config in move_configs {
+            if move_config
+                .get("autoStart")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                let mut temp_settings = settings.clone();
+                temp_settings["moveConfig"] = move_config.clone();
+
+                match MoveParams::from_settings(remote_name.to_string(), &temp_settings) {
+                    Some(params) => {
+                        info!(
+                            "🚀 Auto-starting move profile '{}' for {}",
+                            params.profile.as_ref().unwrap_or(&"default".to_string()),
+                            remote_name
+                        );
+                        if let Err(e) = start_move(
+                            app_handle.clone(),
+                            job_cache_state.clone(),
+                            rclone_state.clone(),
+                            params,
+                        )
+                        .await
+                        {
+                            error!("Failed to auto-start move for {}: {}", remote_name, e);
+                        }
+                    }
+                    None => error!("❌ Move configuration incomplete for {}", remote_name),
                 }
             }
-            None => error!("❌ Move configuration incomplete for {}", remote_name),
         }
     }
 
-    // --- Handle bisync operation ---
-    if BisyncParams::should_auto_start(&settings) {
-        match BisyncParams::from_settings(remote_name.to_string(), &settings) {
-            Some(params) => {
-                if let Err(e) = start_bisync(
-                    app_handle.clone(),
-                    job_cache_state.clone(),
-                    rclone_state.clone(),
-                    params,
-                )
-                .await
-                {
-                    error!("Failed to auto-start bisync for {}: {}", remote_name, e);
-                } else {
-                    debug!("Bisync task spawned for {}", remote_name);
+    // --- Handle bisync operations (multi-config support) ---
+    if let Some(bisync_configs) = settings.get("bisyncConfigs").and_then(|v| v.as_array()) {
+        for bisync_config in bisync_configs {
+            if bisync_config
+                .get("autoStart")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                let mut temp_settings = settings.clone();
+                temp_settings["bisyncConfig"] = bisync_config.clone();
+
+                match BisyncParams::from_settings(remote_name.to_string(), &temp_settings) {
+                    Some(params) => {
+                        info!(
+                            "🚀 Auto-starting bisync profile '{}' for {}",
+                            params.profile.as_ref().unwrap_or(&"default".to_string()),
+                            remote_name
+                        );
+                        if let Err(e) = start_bisync(
+                            app_handle.clone(),
+                            job_cache_state.clone(),
+                            rclone_state.clone(),
+                            params,
+                        )
+                        .await
+                        {
+                            error!("Failed to auto-start bisync for {}: {}", remote_name, e);
+                        }
+                    }
+                    None => error!("❌ Bisync configuration incomplete for {}", remote_name),
                 }
             }
-            None => error!("❌ Bisync configuration incomplete for {}", remote_name),
         }
     }
 
-    // --- Handle serve operation ---
-    if ServeParams::should_auto_start(&settings) {
-        match ServeParams::from_settings(remote_name.to_string(), &settings) {
-            Some(params) => {
-                if let Err(e) =
-                    start_serve(app_handle.clone(), job_cache_state.clone(), params).await
-                {
-                    error!("Failed to auto-start serve for {}: {}", remote_name, e);
-                } else {
-                    debug!("Serve task spawned for {}", remote_name);
+    // --- Handle serve operations (multi-config support) ---
+    if let Some(serve_configs) = settings.get("serveConfigs").and_then(|v| v.as_array()) {
+        for serve_config in serve_configs {
+            if serve_config
+                .get("autoStart")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+            {
+                let mut temp_settings = settings.clone();
+                temp_settings["serveConfig"] = serve_config.clone();
+
+                match ServeParams::from_settings(remote_name.to_string(), &temp_settings) {
+                    Some(params) => {
+                        info!(
+                            "🚀 Auto-starting serve profile '{}' for {}",
+                            params.profile.as_ref().unwrap_or(&"default".to_string()),
+                            remote_name
+                        );
+                        if let Err(e) =
+                            start_serve(app_handle.clone(), job_cache_state.clone(), params).await
+                        {
+                            error!("Failed to auto-start serve for {}: {}", remote_name, e);
+                        }
+                    }
+                    None => error!("❌ Serve configuration incomplete for {}", remote_name),
                 }
             }
-            None => error!("❌ Serve configuration incomplete for {}", remote_name),
         }
     }
 }

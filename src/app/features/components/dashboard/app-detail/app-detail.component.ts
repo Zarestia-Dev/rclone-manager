@@ -174,19 +174,12 @@ export class AppDetailComponent {
     const settings = this.remoteSettings();
     const configProfiles = (settings as any)[`${type}Configs`] || [];
 
-    const list = [];
-
-    // Add configured profiles
-    if (Array.isArray(configProfiles)) {
-      list.push(...configProfiles.map((p: any) => ({ name: p.name, label: p.name })));
+    if (Array.isArray(configProfiles) && configProfiles.length > 0) {
+      return configProfiles.map((p: any) => ({ name: p.name, label: p.name }));
     }
 
-    // Always add 'Default' if list is empty or to support legacy
-    if (list.length === 0) {
-      list.push({ name: 'default', label: 'Default' });
-    }
-
-    return list;
+    // No profiles exist, return default
+    return [{ name: 'default', label: 'Default' }];
   });
 
   constructor() {
@@ -314,17 +307,6 @@ export class AppDetailComponent {
             group: 'operation',
           } as any);
         });
-      } else {
-        // Fallback or default
-        const single = (settings as any)[`${type}Config`];
-        if (single) {
-          sections.push({
-            key: type, // Legacy key
-            title: `${op?.label || 'Sync'} Options`,
-            icon: op?.icon || 'gear',
-            group: 'operation',
-          });
-        }
       }
       // VFS is now handled in sharedSettingsSections with profiles
     } else if (this.mainOperationType() === 'serve') {
@@ -339,13 +321,6 @@ export class AppDetailComponent {
             icon: 'satellite-dish',
             group: 'operation',
           } as any);
-        });
-      } else {
-        sections.push({
-          key: 'serve',
-          title: 'Protocol Options',
-          icon: 'satellite-dish',
-          group: 'operation',
         });
       }
     } else {
@@ -362,8 +337,6 @@ export class AppDetailComponent {
             group: 'operation',
           } as any);
         });
-      } else {
-        sections.push({ key: 'mount', title: 'Mount Options', icon: 'gear', group: 'operation' });
       }
 
       // VFS is now handled in sharedSettingsSections with profiles
@@ -449,10 +422,8 @@ export class AppDetailComponent {
       );
     }
 
-    // Fallback for single/legacy config
-    return [
-      this.createOperationControlConfig(type, op, this.pathConfig(), undefined), // undefined profileName for legacy
-    ];
+    // No fallback for legacy config, return empty
+    return [];
   });
 
   private createOperationControlConfig(
@@ -528,8 +499,8 @@ export class AppDetailComponent {
       return profiles.map((p: any) => this.createMountControlConfig(p, p.name));
     }
 
-    const legacyConfig = (settings as any)['mountConfig'] || {};
-    return [this.createMountControlConfig(legacyConfig, undefined)];
+    // No fallback
+    return [];
   });
 
   private createMountControlConfig(config: any, profileName?: string): OperationControlConfig {
@@ -582,9 +553,8 @@ export class AppDetailComponent {
       return profiles.map((p: any) => this.createServeControlConfig(p, p.name));
     }
 
-    const legacyConfig = (settings as any)['serveConfig'] || {};
-    // Ensure we have at least one config to show controls
-    return [this.createServeControlConfig(legacyConfig, undefined)];
+    // No fallback
+    return [];
   });
 
   private createServeControlConfig(config: any, profileName?: string): OperationControlConfig {
@@ -714,12 +684,11 @@ export class AppDetailComponent {
     const opType = this.selectedSyncOperation();
     const settings = this.remoteSettings() || {};
 
-    // Try to get config from array first (profile 0), then legacy singular
     const profiles = (settings as any)[`${opType}Configs`];
-    let configObj = (settings as any)[`${opType}Config`] || {};
+    let configObj: any = {};
 
     if (Array.isArray(profiles) && profiles.length > 0) {
-      configObj = profiles[0];
+      configObj = profiles.find((p: any) => p.name === 'default') || {};
     }
 
     return {
@@ -727,26 +696,6 @@ export class AppDetailComponent {
       destination: (configObj['dest'] as string) || 'Not configured',
       showOpenButtons: true,
       isDestinationActive: true,
-    };
-  });
-
-  private mountPathConfig = computed<PathDisplayConfig>(() => {
-    const settings = this.remoteSettings() || {};
-
-    const profiles = (settings as any)['mountConfigs'];
-    let mountConfig = settings['mountConfig'] || {};
-
-    if (Array.isArray(profiles) && profiles.length > 0) {
-      mountConfig = profiles[0];
-    }
-
-    return {
-      source: mountConfig['source'] || 'Not configured',
-      destination: mountConfig['dest'] || 'Not configured',
-      showOpenButtons: true,
-      operationColor: 'accent',
-      isDestinationActive: !!this.selectedRemote()?.mountState?.mounted,
-      actionInProgress: this.actionInProgress()?.toString(),
     };
   });
 

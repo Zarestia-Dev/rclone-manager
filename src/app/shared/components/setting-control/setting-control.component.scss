@@ -1,9 +1,4 @@
-.settings-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  padding: var(--space-md);
-
+  
   .setting {
     display: flex;
     flex-direction: row;
@@ -15,7 +10,6 @@
       h3 {
         font-size: var(--font-size-xl);
         font-weight: 600;
-        margin-bottom: var(--space-xs);
         color: var(--app-text-color);
       }
 
@@ -34,7 +28,6 @@
       }
     }
   }
-}
 
 .setting-item {
   background: var(--surface-background);

@@ -14,8 +14,8 @@
     </button>
   </header>
 
-  <!-- Step Progress Indicator (Only shown during multi-step create flow) -->
-  @if (!interactiveFlowState.isActive && (!editTarget || isServeMode)) {
+  <!-- Step Progress Indicator (Only shown during multi-step create flow or when editing specific flag type) -->
+  @if (!interactiveFlowState.isActive && !editTarget) {
     <div class="step-indicator-container">
       <div class="step-indicator hide-scrollbar" role="tablist" aria-label="Configuration Steps">
         @for (step of currentStepLabels; track step; let i = $index) {
@@ -26,7 +26,7 @@
             (click)="goToStep(i + 1)"
             [attr.tabindex]="editTarget ? '0' : '-1'"
             role="tab"
-            [disabled]="isAuthInProgress || (isServeMode ? false : !remoteForm.valid)"
+            [disabled]="isAuthInProgress || !remoteForm.valid"
             [attr.aria-selected]="currentStep === i + 1"
           >
             <div class="step-number">
@@ -85,6 +85,125 @@
         </section>
       }
 
+      <!-- Shared Profile Template -->
+      <ng-template #profileHeader let-flagType="type">
+        <div class="profile-header">
+          @if (getProfileState(flagType).mode === 'view') {
+            <mat-form-field   subscriptSizing="dynamic" class="profile-select">
+              <mat-label>Profile</mat-label>
+              <mat-select
+                [value]="getSelectedProfile($any(flagType))"
+                (selectionChange)="selectProfile($any(flagType), $event.value)"
+              >
+                @for (profile of getProfiles($any(flagType)); track profile.name) {
+                  <mat-option [value]="profile.name">{{ profile.name }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <div class="profile-actions">
+              <button
+                mat-icon-button
+                (click)="startAddProfile($any(flagType))"
+                title="Add Profile"
+                matTooltip="Add Profile"
+              >
+                <mat-icon svgIcon="plus"></mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                (click)="startEditProfile($any(flagType))"
+                title="Rename Profile"
+                matTooltip="Rename Profile"
+                [disabled]="getSelectedProfile($any(flagType)).toLowerCase() === 'default'"
+              >
+                <mat-icon svgIcon="pen"></mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                color="warn"
+                (click)="deleteProfile($any(flagType), getSelectedProfile($any(flagType)))"
+                title="Delete Profile"
+                matTooltip="Delete Profile"
+                [disabled]="getProfiles($any(flagType)).length <= 1 || getSelectedProfile($any(flagType)).toLowerCase() === 'default'"
+              >
+                <mat-icon svgIcon="trash"></mat-icon>
+              </button>
+            </div>
+          } @else {
+            <!-- Edit/Add Mode -->
+            <mat-form-field   subscriptSizing="dynamic" class="profile-input">
+              <mat-label>{{
+                getProfileState(flagType).mode === 'add' ? 'New Profile Name' : 'Rename Profile'
+              }}</mat-label>
+              <input
+                matInput
+                [(ngModel)]="getProfileState(flagType).tempName"
+                [ngModelOptions]="{ standalone: true }"
+                (keyup.enter)="saveProfile($any(flagType))"
+                (keyup.escape)="cancelProfileEdit($any(flagType))"
+                autoFocus
+              />
+            </mat-form-field>
+
+            <div class="profile-actions">
+              <button
+                mat-icon-button
+                color="primary"
+                (click)="saveProfile($any(flagType))"
+                title="Save"
+                matTooltip="Save"
+              >
+                <mat-icon svgIcon="check"></mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                color="warn"
+                (click)="cancelProfileEdit($any(flagType))"
+                title="Cancel"
+                matTooltip="Cancel"
+              >
+                <mat-icon svgIcon="x"></mat-icon>
+              </button>
+            </div>
+          }
+        </div>
+      </ng-template>
+
+    <!-- Linked Profiles Template -->
+    <ng-template #linkedProfiles let-configPath="configPath" let-showVfs="showVfs">
+      <div class="linked-profiles-row">
+        @if (showVfs) {
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>VFS Profile</mat-label>
+            <mat-select [formControl]="$any(remoteConfigForm.get(configPath)?.get('vfsProfile'))">
+              @for (opt of getProfileOptions('vfs'); track opt) {
+                <mat-option [value]="opt">{{ opt }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>Filter Profile</mat-label>
+          <mat-select [formControl]="$any(remoteConfigForm.get(configPath)?.get('filterProfile'))">
+            @for (opt of getProfileOptions('filter'); track opt) {
+              <mat-option [value]="opt">{{ opt }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field subscriptSizing="dynamic">
+          <mat-label>Backend Profile</mat-label>
+          <mat-select [formControl]="$any(remoteConfigForm.get(configPath)?.get('backendProfile'))">
+            @for (opt of getProfileOptions('backend'); track opt) {
+              <mat-option [value]="opt">{{ opt }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </ng-template>
+
       <!-- Flags and Serve Steps -->
       <!-- We iterate manually or use a smarter loop.
            Order: Remote(1), Mount(2), Serve(3), Copy(4), Sync(5), Bisync(6), Move(7), Filter(8), VFS(9), Backend(10)
@@ -101,140 +220,12 @@
           <section class="step-container">
             <!-- Profile Management Header -->
             @if (PROFILE_SUPPORTED_TYPES.includes(flagType)) {
-              <div class="profile-header">
-                @if (profileState[flagType].mode === 'view') {
-                  <mat-form-field
-                    appearance="outline"
-                    subscriptSizing="dynamic"
-                    class="profile-select"
-                  >
-                    <mat-label>Profile</mat-label>
-                    <mat-select
-                      [value]="getSelectedProfile(flagType)"
-                      (selectionChange)="selectProfile(flagType, $event.value)"
-                    >
-                      @for (profile of getProfiles(flagType); track profile.name) {
-                        <mat-option [value]="profile.name">{{ profile.name }}</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-
-                  <div class="profile-actions">
-                    <button
-                      mat-icon-button
-                      (click)="startAddProfile(flagType)"
-                      title="Add Profile"
-                      matTooltip="Add Profile"
-                    >
-                      <mat-icon svgIcon="plus"></mat-icon>
-                    </button>
-                    <button
-                      mat-icon-button
-                      (click)="startEditProfile(flagType)"
-                      title="Rename Profile"
-                      matTooltip="Rename Profile"
-                    >
-                      <mat-icon svgIcon="pencil"></mat-icon>
-                    </button>
-                    <button
-                      mat-icon-button
-                      color="warn"
-                      (click)="deleteProfile(flagType, getSelectedProfile(flagType))"
-                      title="Delete Profile"
-                      matTooltip="Delete Profile"
-                    >
-                      <mat-icon svgIcon="trash"></mat-icon>
-                    </button>
-                  </div>
-                } @else {
-                  <!-- Edit/Add Mode -->
-                  <mat-form-field
-                    appearance="outline"
-                    subscriptSizing="dynamic"
-                    class="profile-input"
-                  >
-                    <mat-label>{{
-                      profileState[flagType].mode === 'add' ? 'New Profile Name' : 'Rename Profile'
-                    }}</mat-label>
-                    <input
-                      matInput
-                      [(ngModel)]="profileState[flagType].tempName"
-                      [ngModelOptions]="{ standalone: true }"
-                      (keyup.enter)="saveProfile(flagType)"
-                      (keyup.escape)="cancelProfileEdit(flagType)"
-                      autoFocus
-                    />
-                  </mat-form-field>
-
-                  <div class="profile-actions">
-                    <button
-                      mat-icon-button
-                      color="primary"
-                      (click)="saveProfile(flagType)"
-                      title="Save"
-                      matTooltip="Save"
-                    >
-                      <mat-icon svgIcon="check"></mat-icon>
-                    </button>
-                    <button
-                      mat-icon-button
-                      color="warn"
-                      (click)="cancelProfileEdit(flagType)"
-                      title="Cancel"
-                      matTooltip="Cancel"
-                    >
-                      <mat-icon svgIcon="x"></mat-icon>
-                    </button>
-                  </div>
-                }
-              </div>
+              <ng-container *ngTemplateOutlet="profileHeader; context: { type: flagType }"></ng-container>
             }
 
             <!-- Linked Profiles for Operations (Mount, Sync, Copy, Move, Bisync) -->
             @if (['mount', 'sync', 'copy', 'move', 'bisync'].includes(flagType)) {
-              <div class="linked-profiles-row">
-                <!-- VFS Profile (Mount only) -->
-                @if (flagType === 'mount') {
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                    <mat-label>VFS Profile</mat-label>
-                    <mat-select
-                      [formControl]="
-                        $any(remoteConfigForm.get(flagType + 'Config')?.get('vfsProfile'))
-                      "
-                    >
-                      @for (opt of getProfileOptions('vfs'); track opt) {
-                        <mat-option [value]="opt">{{ opt }}</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
-                }
-
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>Filter Profile</mat-label>
-                  <mat-select
-                    [formControl]="
-                      $any(remoteConfigForm.get(flagType + 'Config')?.get('filterProfile'))
-                    "
-                  >
-                    @for (opt of getProfileOptions('filter'); track opt) {
-                      <mat-option [value]="opt">{{ opt }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" subscriptSizing="dynamic">
-                  <mat-label>Backend Profile</mat-label>
-                  <mat-select
-                    [formControl]="
-                      $any(remoteConfigForm.get(flagType + 'Config')?.get('backendProfile'))
-                    "
-                  >
-                    @for (opt of getProfileOptions('backend'); track opt) {
-                      <mat-option [value]="opt">{{ opt }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              </div>
+              <ng-container *ngTemplateOutlet="linkedProfiles; context: { configPath: flagType + 'Config', showVfs: flagType === 'mount' }"></ng-container>
             }
 
             <app-flag-config-step
@@ -258,126 +249,14 @@
       <!-- Serve Step (Step 3) -->
       @if (currentStep === 3) {
         <section class="step-container">
-          <div class="profile-header">
-            @if (profileState['serve'].mode === 'view') {
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="profile-select">
-                <mat-label>Profile</mat-label>
-                <mat-select
-                  [value]="getSelectedProfile('serve')"
-                  (selectionChange)="selectProfile('serve', $event.value)"
-                >
-                  @for (profile of getProfiles('serve'); track profile.name) {
-                    <mat-option [value]="profile.name">{{ profile.name }}</mat-option>
-                  }
-                </mat-select>
-              </mat-form-field>
-
-              <div class="profile-actions">
-                <button
-                  mat-icon-button
-                  (click)="startAddProfile('serve')"
-                  title="Add Profile"
-                  matTooltip="Add Profile"
-                >
-                  <mat-icon svgIcon="plus"></mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  (click)="startEditProfile('serve')"
-                  title="Rename Profile"
-                  matTooltip="Rename Profile"
-                >
-                  <mat-icon svgIcon="pencil"></mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  color="warn"
-                  (click)="deleteProfile('serve', getSelectedProfile('serve'))"
-                  title="Delete Profile"
-                  matTooltip="Delete Profile"
-                  [disabled]="getProfiles('serve').length <= 1"
-                >
-                  <mat-icon svgIcon="trash"></mat-icon>
-                </button>
-              </div>
-            } @else {
-              <!-- Edit/Add Mode -->
-              <mat-form-field appearance="outline" subscriptSizing="dynamic" class="profile-input">
-                <mat-label>{{
-                  profileState['serve'].mode === 'add' ? 'New Profile Name' : 'Rename Profile'
-                }}</mat-label>
-                <input
-                  matInput
-                  [(ngModel)]="profileState['serve'].tempName"
-                  [ngModelOptions]="{ standalone: true }"
-                  (keyup.enter)="saveProfile('serve')"
-                  (keyup.escape)="cancelProfileEdit('serve')"
-                  autoFocus
-                />
-              </mat-form-field>
-
-              <div class="profile-actions">
-                <button
-                  mat-icon-button
-                  color="primary"
-                  (click)="saveProfile('serve')"
-                  title="Save"
-                  matTooltip="Save"
-                >
-                  <mat-icon svgIcon="check"></mat-icon>
-                </button>
-                <button
-                  mat-icon-button
-                  color="warn"
-                  (click)="cancelProfileEdit('serve')"
-                  title="Cancel"
-                  matTooltip="Cancel"
-                >
-                  <mat-icon svgIcon="x"></mat-icon>
-                </button>
-              </div>
-            }
-          </div>
+          <ng-container *ngTemplateOutlet="profileHeader; context: { type: 'serve' }"></ng-container>
 
           <!-- Linked Profiles for Serve -->
-          <div class="linked-profiles-row">
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>VFS Profile</mat-label>
-              <mat-select
-                [formControl]="$any(remoteConfigForm.get('serveConfig')?.get('vfsProfile'))"
-              >
-                @for (opt of getProfileOptions('vfs'); track opt) {
-                  <mat-option [value]="opt">{{ opt }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>Filter Profile</mat-label>
-              <mat-select
-                [formControl]="$any(remoteConfigForm.get('serveConfig')?.get('filterProfile'))"
-              >
-                @for (opt of getProfileOptions('filter'); track opt) {
-                  <mat-option [value]="opt">{{ opt }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" subscriptSizing="dynamic">
-              <mat-label>Backend Profile</mat-label>
-              <mat-select
-                [formControl]="$any(remoteConfigForm.get('serveConfig')?.get('backendProfile'))"
-              >
-                @for (opt of getProfileOptions('backend'); track opt) {
-                  <mat-option [value]="opt">{{ opt }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-          </div>
+          <ng-container *ngTemplateOutlet="linkedProfiles; context: { configPath: 'serveConfig', showVfs: true }"></ng-container>
 
           <app-serve-config-step
             class="step"
-            [form]="getServeConfigForm()"
+            [form]="$any(remoteConfigForm.get('serveConfig'))"
             [remoteName]="getRemoteName()"
             [hasSavedServeConfig]="hasSavedServeConfig"
             [savedType]="savedType"
@@ -399,7 +278,7 @@
     <div class="button-container-inner">
       @if (
         currentStep > 1 &&
-        (!editTarget || (isServeMode && !isEditingSpecificServeSection)) &&
+        !editTarget &&
         !interactiveFlowState.isActive
       ) {
         <button

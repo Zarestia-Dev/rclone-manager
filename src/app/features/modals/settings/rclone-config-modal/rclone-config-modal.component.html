@@ -10,44 +10,38 @@
   </div>
 
   <app-search-container
-    [visible]="isSearchVisible"
-    [searchText]="searchQuery"
+    [visible]="isSearchVisible()"
+    [searchText]="searchQuery()"
     (searchTextChange)="onSearchInput($event)"
     [placeholder]="getSearchPlaceholder()"
     ariaLabel="Search RClone settings"
   ></app-search-container>
 
-  @if (isLoading) {
+  @if (isLoading()) {
     <div class="loading-overlay">
       <mat-spinner diameter="50"></mat-spinner>
     </div>
   }
 
-  @if (!isLoading && currentPage === 'home') {
-    <div class="modal-content" #content>
-      @if (searchQuery) {
-        <div class="global-search-results" style="flex: 1; overflow: hidden">
-          @if (globalSearchResults.length > 0) {
+  @if (!isLoading() && currentPage() === 'home') {
+    <div class="modal-content">
+      @if (searchQuery()) {
+          @if (globalSearchResults().length > 0) {
             <cdk-virtual-scroll-viewport
-              #searchViewport
               itemSize="25"
               class="virtual-scroll-viewport"
             >
+            <div class="virtual-scroll-content">
               @for (
-                result of globalSearchResults;
-                track result.service +
-                  '-' +
-                  result.category +
-                  '-' +
-                  result.option.Name +
-                  '-' +
-                  $index
+                result of globalSearchResults();
+                track trackBySearchResult($index, result)
               ) {
-                <div class="virtual-scroll-item">
-                  <button
-                    mat-button
+                  <div
                     class="config-item search-result-item"
                     (click)="navigateTo(result.service, result.category, result.option.Name)"
+                    (keydown)="handleKeyboardNavigation($event, result.service, result.category, result.option.Name)"
+                    [tabindex]="0"
+                    [attr.aria-label]="'Navigate to ' + result.option.FieldName + ' in ' + result.service"
                   >
                     <div class="config-item-content">
                       <mat-icon [svgIcon]="getServiceIcon(result.service)"></mat-icon>
@@ -59,30 +53,28 @@
                           {{ result.service | titlecase }} > {{ result.category }}
                         </small>
                         <small class="config-item-description result-help">
-                          {{ result.option.Help | slice: 0 : 50 }}...
+                          {{ result.option.Help }}
                         </small>
                       </div>
                     </div>
                     <mat-icon svgIcon="chevron-right"></mat-icon>
-                  </button>
-                </div>
+                  </div>
               }
+            </div>
             </cdk-virtual-scroll-viewport>
           } @else {
-            <div class="no-results-home">
+            <div class="no-results">
               <mat-icon svgIcon="search"></mat-icon>
-              <h4>No settings found</h4>
-              <p>Try adjusting your search terms for services or settings.</p>
+              <h4>No Rclone settings found</h4>
             </div>
           }
-        </div>
       } @else {
         <mat-accordion>
           @for (
             mainCategory of ['General Settings', 'File System & Storage', 'Network & Servers'];
             track mainCategory
           ) {
-            @if (getServicesByMainCategory()[mainCategory].length > 0) {
+            @if (servicesByMainCategory()[mainCategory].length > 0) {
               <mat-expansion-panel [expanded]="false" class="main-category-panel">
                 <mat-expansion-panel-header>
                   <mat-panel-title class="main-category-title-text">
@@ -96,7 +88,7 @@
                 </mat-expansion-panel-header>
 
                 <div class="main-category-services">
-                  @for (service of getServicesByMainCategory()[mainCategory]; track service.name) {
+                  @for (service of servicesByMainCategory()[mainCategory]; track service.name) {
                     <mat-expansion-panel
                       [expanded]="service.expanded"
                       (opened)="service.expanded = true"
@@ -120,10 +112,12 @@
                           categoryName of getServiceCategories(service.name);
                           track categoryName
                         ) {
-                          <button
-                            mat-button
+                          <div
                             class="config-item"
                             (click)="navigateTo(service.name, categoryName)"
+                            (keydown)="handleKeyboardNavigation($event, service.name, categoryName)"
+                            [tabindex]="0"
+                            [attr.aria-label]="'Navigate to ' + categoryName + ' in ' + service.name"
                           >
                             <div class="config-item-content">
                               <mat-icon [svgIcon]="getCategoryIcon(categoryName)"></mat-icon>
@@ -137,7 +131,7 @@
                               </div>
                             </div>
                             <mat-icon svgIcon="chevron-right"></mat-icon>
-                          </button>
+                          </div>
                         }
                       </div>
                     </mat-expansion-panel>
@@ -149,7 +143,13 @@
 
           <!-- Security Section -->
           <div class="security-section">
-            <button mat-button class="config-item security-item" (click)="navigateTo('security')">
+            <div 
+              class="config-item" 
+              (click)="navigateTo('security')"
+              (keydown)="handleKeyboardNavigation($event, 'security')"
+              [tabindex]="0"
+              aria-label="Navigate to Security Settings"
+            >
               <div class="config-item-content">
                 <mat-icon svgIcon="shield"></mat-icon>
                 <div class="config-item-text">
@@ -160,7 +160,7 @@
                 </div>
               </div>
               <mat-icon svgIcon="chevron-right"></mat-icon>
-            </button>
+            </div>
           </div>
         </mat-accordion>
       }
@@ -168,29 +168,29 @@
   }
 
   <!-- SETTINGS PAGE: Category Settings Display -->
-  @if (currentPage !== 'home' && !isLoading) {
+  @if (currentPage() !== 'home' && !isLoading()) {
     <div class="overlay" animate.enter="slide-overlay-enter" animate.leave="slide-overlay-leave">
-      <div class="overlay-header" data-tauri-drag-region>
-        <button mat-icon-button (click)="navigateTo('home')">
+      <div class="modal-header" data-tauri-drag-region>
+        <button mat-icon-button (click)="navigateTo('home')" aria-label="Back to home">
           <mat-icon svgIcon="chevron-left"></mat-icon>
         </button>
         <p>{{ getPageTitle() }}</p>
-        <button mat-icon-button (click)="close()">
+        <button mat-icon-button (click)="close()" aria-label="Close">
           <mat-icon svgIcon="circle-xmark"></mat-icon>
         </button>
       </div>
 
-      <div class="overlay-content">
-        @if (isSecurityPage) {
-          <app-security-settings style="height: 100%"></app-security-settings>
+      <div class="modal-content">
+        @if (isSecurityPage()) {
+          <app-security-settings></app-security-settings>
         } @else {
-          @if (hasSearchQuery) {
+          @if (hasSearchQuery()) {
             <div class="search-results-info">
-              <small>Showing {{ filteredOptionsCount }} of {{ totalOptionsCount }} settings</small>
+              <small>Showing {{ filteredOptionsCount() }} of {{ totalOptionsCount() }} settings</small>
             </div>
           }
 
-          @if (filteredOptionsCount === 0 && hasSearchQuery) {
+          @if (filteredOptionsCount() === 0 && hasSearchQuery()) {
             <div class="no-results">
               <mat-icon svgIcon="search"></mat-icon>
               <h4>No settings found</h4>
@@ -201,11 +201,9 @@
             <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
               <form [formGroup]="rcloneOptionsForm">
                 @for (
-                  option of getVirtualScrollData();
-                  track trackByOptionIndex($index, option);
-                  let i = $index
+                  option of virtualScrollData();
+                  track trackByOptionIndex($index, option)
                 ) {
-                  <div class="virtual-scroll-item" [attr.data-index]="i">
                     <app-setting-control
                       [id]="'setting-' + option.Name"
                       [option]="option"
@@ -218,7 +216,6 @@
                       "
                       (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
                     ></app-setting-control>
-                  </div>
                 }
               </form>
             </cdk-virtual-scroll-viewport>

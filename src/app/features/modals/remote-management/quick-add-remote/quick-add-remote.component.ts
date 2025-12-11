@@ -562,12 +562,12 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   ): Promise<void> {
     const { mountConfigs, copyConfigs, syncConfigs, bisyncConfigs, moveConfigs } = finalConfig;
 
-    // Get default profiles (first index)
-    const mountConfig = mountConfigs?.[0];
-    const copyConfig = copyConfigs?.[0];
-    const syncConfig = syncConfigs?.[0];
-    const bisyncConfig = bisyncConfigs?.[0];
-    const moveConfig = moveConfigs?.[0];
+    // Get default named profiles
+    const mountConfig = mountConfigs?.find(c => c.name === 'default');
+    const copyConfig = copyConfigs?.find(c => c.name === 'default');
+    const syncConfig = syncConfigs?.find(c => c.name === 'default');
+    const bisyncConfig = bisyncConfigs?.find(c => c.name === 'default');
+    const moveConfig = moveConfigs?.find(c => c.name === 'default');
 
     // Mount operations (always run immediately if autoStart is enabled)
     if (mountConfig?.autoStart && mountConfig?.dest) {

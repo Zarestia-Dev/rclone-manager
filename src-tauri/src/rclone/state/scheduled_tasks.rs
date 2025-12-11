@@ -37,35 +37,54 @@ impl ScheduledTasksCache {
 
         // Phase 1: Collect all tasks from configs
         for (remote_name, remote_settings) in settings_obj {
-            let operation_types = [
-                ("copyConfig", TaskType::Copy),
-                ("syncConfig", TaskType::Sync),
-                ("moveConfig", TaskType::Move),
-                ("bisyncConfig", TaskType::Bisync),
+            let operation_configs = [
+                ("copyConfigs", TaskType::Copy),
+                ("syncConfigs", TaskType::Sync),
+                ("moveConfigs", TaskType::Move),
+                ("bisyncConfigs", TaskType::Bisync),
             ];
 
-            for (config_key, task_type) in operation_types {
-                match self
-                    .parse_task_from_config(remote_name, &task_type, remote_settings)
-                    .await
+            for (configs_key, task_type) in operation_configs {
+                // Get the array of profile configs
+                if let Some(configs_array) =
+                    remote_settings.get(configs_key).and_then(|v| v.as_array())
                 {
-                    Ok(Some(task_from_config)) => {
-                        let task_id = task_from_config.id.clone();
-                        new_task_ids.insert(task_id.clone());
-                        tasks_to_update.push((task_id, task_from_config));
-                    }
-                    Ok(None) => {
-                        // Task is disabled or invalid - no action needed
-                        debug!(
-                            "Skipping {} task for {}: not enabled or invalid",
-                            config_key, remote_name
-                        );
-                    }
-                    Err(e) => {
-                        warn!(
-                            "Failed to parse {} task for {}: {}",
-                            config_key, remote_name, e
-                        );
+                    // Iterate through each profile config
+                    for profile_config in configs_array {
+                        // Get profile name from the config
+                        if let Some(profile_name) =
+                            profile_config.get("name").and_then(|v| v.as_str())
+                        {
+                            match self
+                                .parse_task_from_config(
+                                    remote_name,
+                                    profile_name,
+                                    &task_type,
+                                    profile_config,
+                                    remote_settings,
+                                )
+                                .await
+                            {
+                                Ok(Some(task_from_config)) => {
+                                    let task_id = task_from_config.id.clone();
+                                    new_task_ids.insert(task_id.clone());
+                                    tasks_to_update.push((task_id, task_from_config));
+                                }
+                                Ok(None) => {
+                                    // Task is disabled or invalid - no action needed
+                                    debug!(
+                                        "Skipping {} profile '{}' for {}: not enabled or invalid",
+                                        configs_key, profile_name, remote_name
+                                    );
+                                }
+                                Err(e) => {
+                                    warn!(
+                                        "Failed to parse {} profile '{}' for {}: {}",
+                                        configs_key, profile_name, remote_name, e
+                                    );
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -182,71 +201,98 @@ impl ScheduledTasksCache {
         remote_settings: &Value,
         scheduler: State<'_, CronScheduler>, // Pass in scheduler
     ) -> Result<(), String> {
-        let operation_types = [
-            TaskType::Copy,
-            TaskType::Sync,
-            TaskType::Move,
-            TaskType::Bisync,
+        let operation_configs = [
+            ("copyConfigs", TaskType::Copy),
+            ("syncConfigs", TaskType::Sync),
+            ("moveConfigs", TaskType::Move),
+            ("bisyncConfigs", TaskType::Bisync),
         ];
 
-        for task_type in operation_types {
-            match self
-                .parse_task_from_config(remote_name, &task_type, remote_settings)
-                .await
+        for (configs_key, task_type) in operation_configs {
+            // Get the array of profile configs
+            if let Some(configs_array) = remote_settings.get(configs_key).and_then(|v| v.as_array())
             {
-                Ok(Some(task_from_config)) => {
-                    let task_id = task_from_config.id.clone();
+                // Iterate through each profile config
+                for profile_config in configs_array {
+                    // Get profile name from the config
+                    if let Some(profile_name) = profile_config.get("name").and_then(|v| v.as_str())
+                    {
+                        match self
+                            .parse_task_from_config(
+                                remote_name,
+                                profile_name,
+                                &task_type,
+                                profile_config,
+                                remote_settings,
+                            )
+                            .await
+                        {
+                            Ok(Some(task_from_config)) => {
+                                let task_id = task_from_config.id.clone();
 
-                    // Check if we already have this task
-                    if let Some(existing_task) = self.get_task(&task_id).await {
-                        // Task exists - check if configuration changed
-                        let config_changed = existing_task.cron_expression
-                            != task_from_config.cron_expression
-                            || existing_task.args != task_from_config.args
-                            || existing_task.name != task_from_config.name
-                            || existing_task.task_type != task_from_config.task_type;
+                                // Check if we already have this task
+                                if let Some(existing_task) = self.get_task(&task_id).await {
+                                    // Task exists - check if configuration changed
+                                    let config_changed = existing_task.cron_expression
+                                        != task_from_config.cron_expression
+                                        || existing_task.args != task_from_config.args
+                                        || existing_task.name != task_from_config.name
+                                        || existing_task.task_type != task_from_config.task_type;
 
-                        if config_changed {
-                            // Update task but preserve status, scheduler_job_id, and stats
-                            self.update_task(&task_id, |t| {
-                                t.name = task_from_config.name.clone();
-                                t.cron_expression = task_from_config.cron_expression.clone();
-                                t.args = task_from_config.args.clone();
-                                t.task_type = task_from_config.task_type.clone();
-                                t.next_run = task_from_config.next_run;
-                                // PRESERVE: status, scheduler_job_id, created_at, last_run,
-                                // last_error, current_job_id, run_count, success_count, failure_count
-                            })
-                            .await?;
+                                    if config_changed {
+                                        // Update task but preserve status, scheduler_job_id, and stats
+                                        self.update_task(&task_id, |t| {
+                                            t.name = task_from_config.name.clone();
+                                            t.cron_expression =
+                                                task_from_config.cron_expression.clone();
+                                            t.args = task_from_config.args.clone();
+                                            t.task_type = task_from_config.task_type.clone();
+                                            t.next_run = task_from_config.next_run;
+                                            // PRESERVE: status, scheduler_job_id, created_at, last_run,
+                                            // last_error, current_job_id, run_count, success_count, failure_count
+                                        })
+                                        .await?;
 
-                            info!(
-                                "✏️ Updated existing task config: {} ({})",
-                                existing_task.name, task_id
-                            );
-                        } else {
-                            debug!("Task {} unchanged, skipping", task_id);
+                                        info!(
+                                            "✏️ Updated existing task config: {} ({})",
+                                            existing_task.name, task_id
+                                        );
+                                    } else {
+                                        debug!("Task {} unchanged, skipping", task_id);
+                                    }
+                                } else {
+                                    // New task - add it
+                                    self.add_task(task_from_config.clone()).await?;
+                                    info!(
+                                        "➕ Added new task: {} ({})",
+                                        task_from_config.name, task_id
+                                    );
+                                }
+                            }
+                            Ok(None) => {
+                                // Task is disabled or invalid, check if we need to remove it
+                                let task_id = format!(
+                                    "{}-{}-{}",
+                                    remote_name,
+                                    task_type.as_str(),
+                                    profile_name
+                                );
+                                if self.get_task(&task_id).await.is_some() {
+                                    info!("🗑️ Removing disabled/invalid task: {}", task_id);
+                                    self.remove_task(&task_id, scheduler.clone()).await?;
+                                }
+                            }
+                            Err(e) => {
+                                warn!(
+                                    "Failed to parse {} profile '{}' for {}: {}",
+                                    task_type.as_str(),
+                                    profile_name,
+                                    remote_name,
+                                    e
+                                );
+                            }
                         }
-                    } else {
-                        // New task - add it
-                        self.add_task(task_from_config.clone()).await?;
-                        info!("➕ Added new task: {} ({})", task_from_config.name, task_id);
                     }
-                }
-                Ok(None) => {
-                    // Task is disabled or invalid, check if we need to remove it
-                    let task_id = format!("{}-{}", remote_name, task_type.as_str());
-                    if self.get_task(&task_id).await.is_some() {
-                        info!("🗑️ Removing disabled/invalid task: {}", task_id);
-                        self.remove_task(&task_id, scheduler.clone()).await?;
-                    }
-                }
-                Err(e) => {
-                    warn!(
-                        "Failed to parse {} task for {}: {}",
-                        task_type.as_str(),
-                        remote_name,
-                        e
-                    );
                 }
             }
         }
@@ -254,34 +300,25 @@ impl ScheduledTasksCache {
         Ok(())
     }
 
-    /// Parse a task from config using the unified Params from_settings method
+    /// Parse a task from a specific profile config
     async fn parse_task_from_config(
         &self,
         remote_name: &str,
+        profile_name: &str,
         task_type: &TaskType,
+        profile_config: &Value,
         remote_settings: &Value,
     ) -> Result<Option<ScheduledTask>, String> {
-        let task_id = format!("{}-{}", remote_name, task_type.as_str());
+        // Task ID now includes profile name: "remote-operation-profile"
+        let task_id = format!("{}-{}-{}", remote_name, task_type.as_str(), profile_name);
 
-        // Get the config key for this task type
-        let config_key = match task_type {
-            TaskType::Copy => "copyConfig",
-            TaskType::Sync => "syncConfig",
-            TaskType::Move => "moveConfig",
-            TaskType::Bisync => "bisyncConfig",
-        };
-
-        // Check if cron is enabled
-        let config = remote_settings
-            .get(config_key)
-            .ok_or_else(|| format!("No {} found in settings", config_key))?;
-
-        let cron_enabled = config
+        // Check if cron is enabled for this profile
+        let cron_enabled = profile_config
             .get("cronEnabled")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
-        let cron_expression = config
+        let cron_expression = profile_config
             .get("cronExpression")
             .and_then(|v| v.as_str())
             .filter(|s| !s.is_empty());
@@ -293,33 +330,66 @@ impl ScheduledTasksCache {
 
         let cron = cron_expression.unwrap().to_string();
 
+        // Get the singular config key for this task type
+        let config_singular_key = match task_type {
+            TaskType::Copy => "copyConfig",
+            TaskType::Sync => "syncConfig",
+            TaskType::Move => "moveConfig",
+            TaskType::Bisync => "bisyncConfig",
+        };
+
+        // Create temporary settings with this profile as the active config
+        // (Similar to what we do in tray actions)
+        let mut temp_settings = remote_settings.clone();
+        temp_settings[config_singular_key] = profile_config.clone();
+
         // Use the Params from_settings method to parse and validate
         let args = match task_type {
             TaskType::Sync => {
-                let params = SyncParams::from_settings(remote_name.to_string(), remote_settings)
-                    .ok_or_else(|| format!("Invalid sync config for {}", remote_name))?;
+                let params = SyncParams::from_settings(remote_name.to_string(), &temp_settings)
+                    .ok_or_else(|| {
+                        format!(
+                            "Invalid sync config for {} profile '{}'",
+                            remote_name, profile_name
+                        )
+                    })?;
 
                 // Convert params to JSON args
                 serde_json::to_value(params)
                     .map_err(|e| format!("Failed to serialize sync params: {}", e))?
             }
             TaskType::Copy => {
-                let params = CopyParams::from_settings(remote_name.to_string(), remote_settings)
-                    .ok_or_else(|| format!("Invalid copy config for {}", remote_name))?;
+                let params = CopyParams::from_settings(remote_name.to_string(), &temp_settings)
+                    .ok_or_else(|| {
+                        format!(
+                            "Invalid copy config for {} profile '{}'",
+                            remote_name, profile_name
+                        )
+                    })?;
 
                 serde_json::to_value(params)
                     .map_err(|e| format!("Failed to serialize copy params: {}", e))?
             }
             TaskType::Move => {
-                let params = MoveParams::from_settings(remote_name.to_string(), remote_settings)
-                    .ok_or_else(|| format!("Invalid move config for {}", remote_name))?;
+                let params = MoveParams::from_settings(remote_name.to_string(), &temp_settings)
+                    .ok_or_else(|| {
+                        format!(
+                            "Invalid move config for {} profile '{}'",
+                            remote_name, profile_name
+                        )
+                    })?;
 
                 serde_json::to_value(params)
                     .map_err(|e| format!("Failed to serialize move params: {}", e))?
             }
             TaskType::Bisync => {
-                let params = BisyncParams::from_settings(remote_name.to_string(), remote_settings)
-                    .ok_or_else(|| format!("Invalid bisync config for {}", remote_name))?;
+                let params = BisyncParams::from_settings(remote_name.to_string(), &temp_settings)
+                    .ok_or_else(|| {
+                    format!(
+                        "Invalid bisync config for {} profile '{}'",
+                        remote_name, profile_name
+                    )
+                })?;
 
                 serde_json::to_value(params)
                     .map_err(|e| format!("Failed to serialize bisync params: {}", e))?
@@ -329,10 +399,15 @@ impl ScheduledTasksCache {
         // Calculate next run
         let next_run = get_next_run(&cron).ok();
 
-        // Create the task struct
+        // Create the task struct with profile name in the display name
         let task = ScheduledTask {
             id: task_id,
-            name: format!("{} - {}", remote_name, task_type.as_str()),
+            name: format!(
+                "{} - {} - {}",
+                remote_name,
+                task_type.as_str(),
+                profile_name
+            ),
             task_type: task_type.clone(),
             cron_expression: cron,
             status: TaskStatus::Enabled,
