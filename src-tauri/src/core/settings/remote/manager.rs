@@ -182,33 +182,31 @@ fn migrate_to_multi_profile(settings: &mut Value) -> bool {
 
         for (old_key, new_key) in migration_map {
             // Check if we need to migrate (if old key exists)
-            if obj.contains_key(old_key) {
-                if let Some(mut old_config) = obj.remove(old_key) {
-                    changed = true;
-                    // Only create new array if it doesn't exist
-                    if !obj.contains_key(new_key) {
-                        if let Some(config_obj) = old_config.as_object_mut() {
-                            // Ensure it has a name
-                            if !config_obj.contains_key("name") {
-                                config_obj.insert(
-                                    "name".to_string(),
-                                    Value::String("Default".to_string()),
-                                );
-                            }
+            if obj.contains_key(old_key)
+                && let Some(mut old_config) = obj.remove(old_key)
+            {
+                changed = true;
+                // Only create new array if it doesn't exist
+                if !obj.contains_key(new_key) {
+                    if let Some(config_obj) = old_config.as_object_mut() {
+                        // Ensure it has a name
+                        if !config_obj.contains_key("name") {
+                            config_obj
+                                .insert("name".to_string(), Value::String("Default".to_string()));
                         }
-                        obj.insert(new_key.to_string(), Value::Array(vec![old_config]));
-                        info!(
-                            "✨ Migrated legacy {} to {} (Default profile)",
-                            old_key, new_key
-                        );
-                    } else {
-                        // If new key already exists, simply dropping the old one is the safest clean-up
-                        // as the new array structure takes precedence.
-                        warn!(
-                            "🗑️ Removed legacy {} as {} already exists",
-                            old_key, new_key
-                        );
                     }
+                    obj.insert(new_key.to_string(), Value::Array(vec![old_config]));
+                    info!(
+                        "✨ Migrated legacy {} to {} (Default profile)",
+                        old_key, new_key
+                    );
+                } else {
+                    // If new key already exists, simply dropping the old one is the safest clean-up
+                    // as the new array structure takes precedence.
+                    warn!(
+                        "🗑️ Removed legacy {} as {} already exists",
+                        old_key, new_key
+                    );
                 }
             }
         }

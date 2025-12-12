@@ -294,7 +294,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         },
         mountState: { mounted: mountedSet.has(name) },
         serveState: {
-          hasActiveServes: remoteServes.length > 0,
+          isOnServe: remoteServes.length > 0,
           serveCount: remoteServes.length,
           serves: remoteServes,
         },
@@ -720,7 +720,8 @@ export class HomeComponent implements OnInit, OnDestroy {
             throw new Error(`Unsupported operation type: ${operationType}`);
         }
       },
-      `Failed to start ${operationType} for ${remoteName}`
+      `Failed to start ${operationType} for ${remoteName}`,
+      profileName
     );
   }
 
@@ -1193,7 +1194,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         return {
           ...remote,
           serveState: {
-            hasActiveServes: remoteServes.length > 0,
+            isOnServe: remoteServes.length > 0,
             serveCount: remoteServes.length,
             serves: remoteServes,
           },

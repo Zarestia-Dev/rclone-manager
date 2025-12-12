@@ -44,7 +44,6 @@
           class="about-item"
           (click)="navigateTo('updates')"
           [matBadge]="updateAvailable || restartRequired ? '!' : null"
-          matBadgeColor="warn"
         >
           <span>Updates</span>
           <mat-icon svgIcon="chevron-right"></mat-icon>
@@ -56,7 +55,6 @@
         class="about-item"
         (click)="navigateTo('About Rclone')"
         [matBadge]="rcloneUpdateStatus.available ? '!' : null"
-        matBadgeColor="warn"
       >
         <span>About Rclone</span>
         <mat-icon svgIcon="chevron-right"></mat-icon>

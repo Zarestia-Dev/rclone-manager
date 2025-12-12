@@ -1,5 +1,33 @@
 @use "../../../styles/_shared_components";
 
+// Expansion Panel styles
+.settings-expansion-panel {
+  .settings-count {
+    font-size: 12px;
+    color: var(--secondary-text-color);
+    background: rgba(var(--primary-color-rgb), 0.1);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+
+  .no-settings-hint {
+    font-size: 12px;
+    color: var(--secondary-text-color);
+    font-style: italic;
+  }
+
+  .panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: var(--space-md);
+
+    button {
+      width: 100%;
+    }
+  }
+}
+
+// Settings Grid (existing styles - preserved)
 .settings-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -9,14 +37,14 @@
 .setting-item {
   display: flex;
   flex-direction: column;
-  padding: var(--item-padding);
-  background: rgba(var(--app-text-color-rgb), var(--background-opacity));
+  padding: var(--space-md);
+  background: var(--app-background);
   border-radius: var(--item-radius);
-  border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
+  border: 1px solid var(--border-color);
   transition: var(--transition-standard);
 
   &:hover {
-    background: rgba(var(--app-text-color-rgb), var(--hover-opacity));
+    box-shadow: var(--shadow-light);
   }
 
   .setting-key {
@@ -53,8 +81,5 @@
 @media (max-width: 480px) {
   .settings-grid {
     grid-template-columns: 1fr;
-  }
-  .edit-settings-button {
-    width: 100%;
   }
 }

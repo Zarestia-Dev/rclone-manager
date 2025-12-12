@@ -21,7 +21,6 @@ export class RemotesPanelComponent {
   actionInProgress = input<RemoteActionProgress>({});
   primaryActionLabel = input('Start');
   activeIcon = input('circle-check');
-  primaryActions = input<PrimaryActionType[]>([]);
 
   @Output() remoteSelected = new EventEmitter<Remote>();
   @Output() openInFiles = new EventEmitter<string>();

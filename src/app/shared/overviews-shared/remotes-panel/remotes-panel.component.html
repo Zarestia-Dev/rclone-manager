@@ -16,7 +16,7 @@
           [actionState]="getActionState(remote.remoteSpecs.name)"
           [primaryActionLabel]="primaryActionLabel()"
           [activeIcon]="activeIcon()"
-          [primaryActions]="primaryActions()"
+          [primaryActions]="remote.primaryActions || []"
           (remoteClick)="onRemoteSelected($event)"
           (openInFiles)="onOpenInFiles($event)"
           (startJob)="startJob.emit($event)"

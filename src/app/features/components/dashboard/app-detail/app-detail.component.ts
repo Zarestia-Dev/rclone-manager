@@ -307,6 +307,14 @@ export class AppDetailComponent {
             group: 'operation',
           } as any);
         });
+      } else {
+        // Always show at least one default section even if no profiles exist
+        sections.push({
+          key: type,
+          title: `${op?.label || 'Sync'} Options`,
+          icon: op?.icon || 'gear',
+          group: 'operation',
+        } as any);
       }
       // VFS is now handled in sharedSettingsSections with profiles
     } else if (this.mainOperationType() === 'serve') {
@@ -322,6 +330,14 @@ export class AppDetailComponent {
             group: 'operation',
           } as any);
         });
+      } else {
+        // Always show at least one default section even if no profiles exist
+        sections.push({
+          key: type,
+          title: 'Protocol Options',
+          icon: 'satellite-dish',
+          group: 'operation',
+        } as any);
       }
     } else {
       // Mount profiles
@@ -337,6 +353,14 @@ export class AppDetailComponent {
             group: 'operation',
           } as any);
         });
+      } else {
+        // Always show at least one default section even if no profiles exist
+        sections.push({
+          key: type,
+          title: 'Mount Options',
+          icon: 'gear',
+          group: 'operation',
+        } as any);
       }
 
       // VFS is now handled in sharedSettingsSections with profiles
@@ -347,6 +371,7 @@ export class AppDetailComponent {
   sharedSettingsSections = computed<RemoteSettingsSection[]>(() => {
     const sections: RemoteSettingsSection[] = [];
     const settings = this.remoteSettings() || {};
+    const operationType = this.mainOperationType();
 
     // Helper to add sections for a type
     const addSections = (type: string, titlePrefix: string, icon: string) => {
@@ -370,7 +395,11 @@ export class AppDetailComponent {
       }
     };
 
-    addSections('vfs', 'VFS Options', 'vfs');
+    // VFS is only relevant for mount and serve operations (not for sync/copy/move/bisync)
+    if (operationType === 'mount' || operationType === 'serve') {
+      addSections('vfs', 'VFS Options', 'vfs');
+    }
+
     addSections('filter', 'Filter Options', 'filter');
     addSections('backend', 'Backend Config', 'server');
 
@@ -422,8 +451,20 @@ export class AppDetailComponent {
       );
     }
 
-    // No fallback for legacy config, return empty
-    return [];
+    // Always show at least one default config even if no profiles exist
+    return [
+      this.createOperationControlConfig(
+        type,
+        op,
+        {
+          source: 'Not configured',
+          destination: 'Not configured',
+          showOpenButtons: true,
+          isDestinationActive: true,
+        },
+        undefined
+      ),
+    ];
   });
 
   private createOperationControlConfig(
@@ -499,8 +540,8 @@ export class AppDetailComponent {
       return profiles.map((p: any) => this.createMountControlConfig(p, p.name));
     }
 
-    // No fallback
-    return [];
+    // Always show at least one default config
+    return [this.createMountControlConfig({}, undefined)];
   });
 
   private createMountControlConfig(config: any, profileName?: string): OperationControlConfig {
@@ -553,8 +594,8 @@ export class AppDetailComponent {
       return profiles.map((p: any) => this.createServeControlConfig(p, p.name));
     }
 
-    // No fallback
-    return [];
+    // Always show at least one default config
+    return [this.createServeControlConfig({}, undefined)];
   });
 
   private createServeControlConfig(config: any, profileName?: string): OperationControlConfig {

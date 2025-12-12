@@ -173,9 +173,6 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
   allRunningServes = computed(() =>
     this.remotes().flatMap(remote => remote.serveState?.serves || [])
   );
-  primaryActions = computed<PrimaryActionType[]>(() =>
-    this.remotes().flatMap(remote => remote.primaryActions || [])
-  );
 
   jobCompletionPercentage = computed(() => {
     const totalBytes = this.jobStats().totalBytes || 0;

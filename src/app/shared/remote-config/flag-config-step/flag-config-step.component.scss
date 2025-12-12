@@ -8,10 +8,6 @@ form {
   .virtual-scroll-viewport {
     width: 100%;
     flex: 1;
-
-    .form-field-item {
-      padding-inline: var(--space-lg);
-    }
   }
 
   .slide-toggle {
@@ -46,7 +42,6 @@ form {
     flex-direction: column;
     gap: var(--space-md);
     padding: var(--space-md);
-    margin-inline: var(--space-lg);
     border-radius: var(--radius-lg);
     background-color: var(--secondary-background);
     box-shadow: var(--shadow-light);

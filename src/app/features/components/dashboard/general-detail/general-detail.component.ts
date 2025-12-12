@@ -82,6 +82,14 @@ const ACTION_CONFIGS: ActionConfig[] = [
       remote.bisyncState?.isOnBisync ? 'Bisync Active' : 'Toggle BiSync as Quick Action',
     getActiveState: remote => remote.bisyncState?.isOnBisync || false,
   },
+  {
+    key: 'serve',
+    label: 'Serve',
+    icon: 'serve',
+    getTooltip: remote =>
+      remote.serveState?.isOnServe ? 'Serving' : 'Toggle Serve as Quick Action',
+    getActiveState: remote => remote.serveState?.isOnServe || false,
+  },
 ];
 
 @Component({
@@ -131,7 +139,14 @@ export class GeneralDetailComponent {
   remoteScheduledTasks = signal<ScheduledTask[]>([]);
   currentTaskCardIndex = signal(0);
 
-  readonly displayedColumns: string[] = ['type', 'status', 'progress', 'startTime', 'actions'];
+  readonly displayedColumns: string[] = [
+    'type',
+    'profile',
+    'status',
+    'progress',
+    'startTime',
+    'actions',
+  ];
   readonly maxPrimaryActions = 3;
   readonly actionConfigs = ACTION_CONFIGS;
 

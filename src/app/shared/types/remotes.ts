@@ -76,7 +76,7 @@ export interface Remote {
     activeProfiles?: Record<string, number>;
   };
   serveState?: {
-    hasActiveServes?: boolean;
+    isOnServe?: boolean;
     serveCount?: number;
     serves?: ServeListItem[];
   };

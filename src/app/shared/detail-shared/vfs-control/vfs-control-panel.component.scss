@@ -30,7 +30,7 @@
   justify-content: center;
   padding: 32px;
   gap: 16px;
-  background: var(--secondary-background);
+  background: var(--app-background);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   margin-bottom: 20px;
@@ -53,12 +53,62 @@ mat-form-field {
   margin-bottom: 16px;
 }
 
+// Warning banner for indexed VFS instances
+.indexed-vfs-warning {
+  display: flex;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: rgba(var(--orange-rgb), 0.1);
+  border: 1px solid rgba(var(--orange-rgb), 0.3);
+  border-radius: var(--card-border-radius);
+  margin-bottom: var(--space-md);
+
+  mat-icon {
+    flex-shrink: 0;
+    color: var(--orange);
+  }
+
+  .warning-content {
+    flex: 1;
+
+    strong {
+      display: block;
+      color: var(--orange);
+      margin-bottom: var(--space-xs);
+    }
+
+    p {
+      margin: 0 0 var(--space-sm) 0;
+      font-size: var(--font-size-md);
+      color: var(--app-text-color);
+      opacity: 0.9;
+
+      code {
+        background: rgba(var(--app-text-color-rgb), 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+      }
+    }
+
+    a {
+      color: var(--accent-color);
+      font-size: var(--font-size-md);
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 12px;
   padding: 16px;
-  background: var(--secondary-background);
+  background: var(--app-background);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   margin-bottom: 20px;
@@ -80,11 +130,11 @@ mat-form-field {
     .value {
       font-size: 1.2rem;
       font-weight: 600;
-      color: var(--mat-primary-color);
+      color: var(--primary-color);
     }
 
     &.error .value {
-      color: var(--mat-warn-color);
+      color: var(--matwarn-color);
     }
   }
 }
@@ -95,7 +145,7 @@ mat-form-field {
   border-radius: 8px;
   overflow: hidden;
   margin-bottom: 20px;
-  background: var(--secondary-background);
+  background: var(--app-background);
 
   .section-header {
     background: rgba(0, 0, 0, 0.03);
@@ -260,7 +310,7 @@ mat-form-field {
         }
 
         .info-note {
-          color: var(--mat-text-secondary);
+          color: var(--secondary-text-color);
         }
       }
     }
@@ -288,7 +338,7 @@ mat-card-actions {
 }
 
 .uploading-icon {
-  color: var(--mat-primary-color);
+  color: var(--primary-color);
   animation: pulseGreen 1.5s ease-in-out infinite;
 }
 

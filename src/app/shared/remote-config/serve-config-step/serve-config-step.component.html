@@ -4,7 +4,7 @@
     [style.height.px]="700"
     class="virtual-scroll-viewport"
   >
-    <div *cdkVirtualFor="let field of formFields(); trackBy: trackByField" class="form-field-item">
+    <div *cdkVirtualFor="let field of formFields(); trackBy: trackByField">
       @if (field.type === 'path-config') {
         <app-operation-config
           [opFormGroup]="form()"

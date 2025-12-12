@@ -4,23 +4,31 @@ import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { SENSITIVE_KEYS, SettingsPanelConfig } from '../../types';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { SENSITIVE_KEYS, SettingsPanelConfig } from '@app/types';
 
 @Component({
   selector: 'app-settings-panel',
   standalone: true,
-  imports: [MatCardModule, MatIconModule, MatButtonModule, MatTooltipModule],
+  imports: [MatCardModule, MatIconModule, MatButtonModule, MatTooltipModule, MatExpansionModule],
   styleUrls: ['./settings-panel.component.scss'],
   template: `
-    <mat-card>
-      <mat-card-header>
-        <mat-card-title>
+    <mat-expansion-panel class="settings-expansion-panel">
+      <mat-expansion-panel-header>
+        <mat-panel-title>
           <mat-icon [svgIcon]="config().section.icon" class="panel-icon"></mat-icon>
           <span>{{ config().section.title }}</span>
-        </mat-card-title>
-      </mat-card-header>
+        </mat-panel-title>
+        <mat-panel-description>
+          @if (hasMeaningfulSettings()) {
+            <span class="settings-count">{{ getSettingsCount() }} settings</span>
+          } @else {
+            <span class="no-settings-hint">Not configured</span>
+          }
+        </mat-panel-description>
+      </mat-expansion-panel-header>
 
-      <mat-card-content>
+      <div class="panel-body">
         @if (hasMeaningfulSettings()) {
           <div class="settings-grid">
             @for (setting of getSettingsEntries(); track setting.key) {
@@ -57,19 +65,19 @@ import { SENSITIVE_KEYS, SettingsPanelConfig } from '../../types';
             <span>No configuration data available</span>
           </div>
         }
-      </mat-card-content>
 
-      <mat-card-actions>
-        <button
-          matButton="filled"
-          [class]="'edit-settings-button ' + config().buttonColor"
-          (click)="onEditSettings()"
-        >
-          <mat-icon svgIcon="pen"></mat-icon>
-          <span>{{ config().buttonLabel || 'Edit Settings' }}</span>
-        </button>
-      </mat-card-actions>
-    </mat-card>
+        <div class="panel-actions">
+          <button
+            matButton="filled"
+            [class]="'edit-settings-button ' + config().buttonColor"
+            (click)="onEditSettings()"
+          >
+            <mat-icon svgIcon="pen"></mat-icon>
+            <span>{{ config().buttonLabel || 'Edit Settings' }}</span>
+          </button>
+        </div>
+      </div>
+    </mat-expansion-panel>
   `,
 })
 export class SettingsPanelComponent {
@@ -92,6 +100,19 @@ export class SettingsPanelComponent {
       }
       return true;
     });
+  }
+
+  getSettingsCount(): number {
+    const entries = this.getSettingsEntries();
+    let count = 0;
+    for (const entry of entries) {
+      if (this.isObjectButNotArray(entry.value)) {
+        count += Object.keys(entry.value as Record<string, unknown>).length;
+      } else {
+        count++;
+      }
+    }
+    return count;
   }
 
   getSettingsEntries(): { key: string; value: unknown }[] {

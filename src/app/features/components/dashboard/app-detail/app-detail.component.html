@@ -179,41 +179,37 @@
                   }
                 }
                 <div class="settings-layout">
-                  @if (operationSettingsSections().length) {
-                    <section class="settings-group operation-settings">
-                      <header class="group-header">
-                        <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
-                        <p class="group-description">{{ operationSettingsDescription() }}</p>
-                      </header>
-                      <div class="group-panels">
-                        @for (section of operationSettingsSections(); track section.key) {
-                          <app-settings-panel
-                            [config]="getSettingsPanelConfig(section)"
-                            (editSettings)="onEditSettings($event)"
-                            class="settings-section"
-                          ></app-settings-panel>
-                        }
-                      </div>
-                    </section>
-                  }
+                  <section class="settings-group operation-settings">
+                    <header class="group-header">
+                      <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
+                      <p class="group-description">{{ operationSettingsDescription() }}</p>
+                    </header>
+                    <div class="group-panels">
+                      @for (section of operationSettingsSections(); track section.key) {
+                        <app-settings-panel
+                          [config]="getSettingsPanelConfig(section)"
+                          (editSettings)="onEditSettings($event)"
+                          class="settings-section"
+                        ></app-settings-panel>
+                      }
+                    </div>
+                  </section>
 
-                  @if (sharedSettingsSections().length) {
-                    <section class="settings-group shared-settings">
-                      <header class="group-header">
-                        <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
-                        <p class="group-description">{{ sharedSettingsDescription }}</p>
-                      </header>
-                      <div class="group-panels">
-                        @for (section of sharedSettingsSections(); track section.key) {
-                          <app-settings-panel
-                            [config]="getSettingsPanelConfig(section)"
-                            (editSettings)="onEditSettings($event)"
-                            class="settings-section"
-                          ></app-settings-panel>
-                        }
-                      </div>
-                    </section>
-                  }
+                  <section class="settings-group shared-settings">
+                    <header class="group-header">
+                      <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
+                      <p class="group-description">{{ sharedSettingsDescription }}</p>
+                    </header>
+                    <div class="group-panels">
+                      @for (section of sharedSettingsSections(); track section.key) {
+                        <app-settings-panel
+                          [config]="getSettingsPanelConfig(section)"
+                          (editSettings)="onEditSettings($event)"
+                          class="settings-section"
+                        ></app-settings-panel>
+                      }
+                    </div>
+                  </section>
                 </div>
               </div>
             </mat-tab>
@@ -349,41 +345,37 @@
 
             <div class="configuration-content">
               <div class="settings-layout">
-                @if (operationSettingsSections().length) {
-                  <section class="settings-group operation-settings">
-                    <header class="group-header">
-                      <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
-                      <p class="group-description">{{ operationSettingsDescription() }}</p>
-                    </header>
-                    <div class="group-panels">
-                      @for (section of operationSettingsSections(); track section.key) {
-                        <app-settings-panel
-                          [config]="getSettingsPanelConfig(section)"
-                          (editSettings)="onEditSettings($event)"
-                          class="mount-settings-section"
-                        ></app-settings-panel>
-                      }
-                    </div>
-                  </section>
-                }
+                <section class="settings-group operation-settings">
+                  <header class="group-header">
+                    <h3 class="group-title">{{ operationSettingsHeading() }}</h3>
+                    <p class="group-description">{{ operationSettingsDescription() }}</p>
+                  </header>
+                  <div class="group-panels">
+                    @for (section of operationSettingsSections(); track section.key) {
+                      <app-settings-panel
+                        [config]="getSettingsPanelConfig(section)"
+                        (editSettings)="onEditSettings($event)"
+                        class="mount-settings-section"
+                      ></app-settings-panel>
+                    }
+                  </div>
+                </section>
 
-                @if (sharedSettingsSections().length) {
-                  <section class="settings-group shared-settings">
-                    <header class="group-header">
-                      <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
-                      <p class="group-description">{{ sharedSettingsDescription }}</p>
-                    </header>
-                    <div class="group-panels">
-                      @for (section of sharedSettingsSections(); track section.key) {
-                        <app-settings-panel
-                          [config]="getSettingsPanelConfig(section)"
-                          (editSettings)="onEditSettings($event)"
-                          class="mount-settings-section"
-                        ></app-settings-panel>
-                      }
-                    </div>
-                  </section>
-                }
+                <section class="settings-group shared-settings">
+                  <header class="group-header">
+                    <h3 class="group-title">{{ sharedSettingsHeading }}</h3>
+                    <p class="group-description">{{ sharedSettingsDescription }}</p>
+                  </header>
+                  <div class="group-panels">
+                    @for (section of sharedSettingsSections(); track section.key) {
+                      <app-settings-panel
+                        [config]="getSettingsPanelConfig(section)"
+                        (editSettings)="onEditSettings($event)"
+                        class="mount-settings-section"
+                      ></app-settings-panel>
+                    }
+                  </div>
+                </section>
               </div>
             </div>
           </mat-tab>

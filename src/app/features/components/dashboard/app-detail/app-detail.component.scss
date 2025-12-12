@@ -166,6 +166,7 @@
 .settings-layout {
   display: grid;
   gap: var(--panel-gap);
+  align-items: start;
 }
 
 .settings-group {

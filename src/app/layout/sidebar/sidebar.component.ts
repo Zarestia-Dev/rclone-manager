@@ -131,7 +131,7 @@ export class SidebarComponent {
   }
 
   getServeTooltip(remote: Remote): string {
-    if (!remote.serveState || !remote.serveState.hasActiveServes) {
+    if (!remote.serveState || !remote.serveState.isOnServe) {
       return 'No active serves';
     }
 

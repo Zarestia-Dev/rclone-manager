@@ -1,6 +1,5 @@
-use log::{debug, error, info, warn};
+use log::{error, info};
 use tauri::{AppHandle, Manager};
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::{
@@ -18,7 +17,6 @@ use crate::{
     },
     utils::{
         app::{builder::create_app_window, notification::send_notification},
-        io::file_helper::get_folder_location,
         types::all_types::{JobCache, JobStatus, RcloneState, RemoteCache},
     },
 };
@@ -27,53 +25,14 @@ fn notify(app: &AppHandle, title: &str, body: &str) {
     send_notification(app, title, body);
 }
 
-async fn prompt_mount_point(app: &AppHandle, remote_name: &str) -> Option<String> {
-    let response = app
-        .dialog()
-        .message(format!(
-            "No mount point specified for '{remote_name}'. Would you like to select one now?"
-        ))
-        .title("Mount Point Required")
-        .buttons(MessageDialogButtons::OkCancelCustom(
-            "Yes, Select".to_owned(),
-            "Cancel".to_owned(),
-        ))
-        .kind(MessageDialogKind::Warning)
-        .blocking_show();
-
-    if !response {
-        info!("❌ User cancelled mount point selection for {remote_name}");
-        return None;
-    }
-
-    match get_folder_location(app.clone(), false).await {
-        Ok(Some(path)) if !path.is_empty() => {
-            info!("📁 Selected mount point for {remote_name}: {path}");
-            Some(path)
-        }
-        Ok(Some(_)) => {
-            info!("⚠️ User selected an empty folder path for {remote_name}");
-            None
-        }
-        Ok(none) => {
-            info!("❌ User didn't select a folder for {remote_name}");
-            none
-        }
-        Err(err) => {
-            error!("🚨 Error selecting folder for {remote_name}: {err}");
-            None
-        }
-    }
-}
-
 pub fn show_main_window(app: AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        debug!("🪟 Showing main window");
+        info!("🪟 Showing main window");
         window.show().unwrap_or_else(|_| {
             error!("🚨 Failed to show main window");
         });
     } else {
-        warn!("⚠️ Main window not found. Building...");
+        info!("⚠️ Main window not found. Building...");
         create_app_window(app);
     }
 }
@@ -122,8 +81,7 @@ pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &st
         let mut temp_settings = settings.clone();
         temp_settings["mountConfig"] = mount_config;
 
-        let mut params = match MountParams::from_settings(remote_name_clone.clone(), &temp_settings)
-        {
+        let params = match MountParams::from_settings(remote_name_clone.clone(), &temp_settings) {
             Some(p) => p,
             None => {
                 error!(
@@ -134,7 +92,7 @@ pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &st
                     &app_clone,
                     "Mount Failed",
                     &format!(
-                        "Mount configuration incomplete for profile '{}'",
+                        "Mount configuration incomplete for profile '{}'. Please configure the mount point in settings.",
                         profile_name_clone
                     ),
                 );
@@ -142,18 +100,22 @@ pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &st
             }
         };
 
-        let mount_point = if !params.mount_point.is_empty() {
-            params.mount_point.clone()
-        } else {
-            match prompt_mount_point(&app_clone, &remote_name_clone).await {
-                Some(path) => path,
-                _ => {
-                    info!("❌ Mounting cancelled - no mount point selected");
-                    return;
-                }
-            }
-        };
-        params.mount_point = mount_point.clone();
+        // Check if mount point is configured
+        if params.mount_point.is_empty() {
+            error!(
+                "🚨 No mount point configured for profile '{}'",
+                profile_name_clone
+            );
+            notify(
+                &app_clone,
+                "Mount Failed",
+                &format!(
+                    "No mount point configured for profile '{}'. Please configure it in settings.",
+                    profile_name_clone
+                ),
+            );
+            return;
+        }
 
         let job_cache_state = app_clone.state::<JobCache>();
 
@@ -175,7 +137,7 @@ pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &st
                     "Mount Successful",
                     &format!(
                         "Successfully mounted {} profile '{}' at {}",
-                        remote_name_clone, profile_name_clone, mount_point
+                        remote_name_clone, profile_name_clone, params.mount_point
                     ),
                 );
             }

@@ -181,7 +181,6 @@ export class RemoteCardComponent {
 
   private getDefaultPrimaryActions(): PrimaryActionType[] {
     const mode = this.mode();
-    console.log(this.primaryActions());
 
     if (this.primaryActions() && this.primaryActions().length > 0 && mode === 'general') {
       return this.primaryActions();
@@ -321,11 +320,11 @@ export class RemoteCardComponent {
       case 'serve':
         return {
           id: 'serve',
-          icon: remote.serveState?.hasActiveServes ? 'stop' : 'satellite-dish',
-          tooltip: remote.serveState?.hasActiveServes ? 'Stop Serve' : 'Start Serve',
+          icon: remote.serveState?.isOnServe ? 'stop' : 'satellite-dish',
+          tooltip: remote.serveState?.isOnServe ? 'Stop Serve' : 'Start Serve',
           isLoading: isActionInProgress,
           isDisabled: isActionInProgress,
-          cssClass: remote.serveState?.hasActiveServes ? 'warn' : 'primary',
+          cssClass: remote.serveState?.isOnServe ? 'warn' : 'primary',
         };
 
       default:
@@ -409,7 +408,7 @@ export class RemoteCardComponent {
         else this.startJob.emit({ type: 'bisync', remoteName });
         break;
       case 'serve':
-        if (!remote.serveState?.hasActiveServes) this.startJob.emit({ type: 'serve', remoteName });
+        if (!remote.serveState?.isOnServe) this.startJob.emit({ type: 'serve', remoteName });
         break;
     }
   }

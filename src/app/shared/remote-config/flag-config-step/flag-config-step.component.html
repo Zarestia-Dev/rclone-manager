@@ -6,7 +6,7 @@
     class="virtual-scroll-viewport"
   >
     <!-- Virtual scrolling content -->
-    <div *cdkVirtualFor="let field of formFields; trackBy: trackByField" class="form-field-item">
+    <div *cdkVirtualFor="let field of formFields; trackBy: trackByField">
       @if (field.type === 'operation-config' && !isType(['vfs', 'filter', 'backend'])) {
         <app-operation-config
           [opFormGroup]="configGroup"

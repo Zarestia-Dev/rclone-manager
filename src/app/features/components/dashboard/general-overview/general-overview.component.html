@@ -39,7 +39,7 @@
                     <mat-slide-toggle
                       [checked]="panel.visible"
                       (change)="togglePanelVisibility(panel.id)"
-                      color="primary"
+                      class="primary"
                     >
                     </mat-slide-toggle>
                   </div>
@@ -60,7 +60,6 @@
                       [mode]="'general'"
                       [actionInProgress]="actionInProgress()"
                       [primaryActionLabel]="'Mount'"
-                      [primaryActions]="primaryActions()"
                       [activeIcon]="'mount'"
                       (remoteSelected)="onRemoteSelectedFromPanel($event)"
                       (openInFiles)="onOpenInFilesFromPanel($event)"

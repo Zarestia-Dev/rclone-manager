@@ -49,7 +49,7 @@ export class ServeOverviewComponent {
   stopJob = output<{ type: 'serve'; remoteName: string; serveId: string }>();
 
   private isRemoteActive(remote: Remote): boolean {
-    return remote.serveState?.hasActiveServes === true;
+    return remote.serveState?.isOnServe === true;
   }
 
   readonly activeRemotes = computed(() =>

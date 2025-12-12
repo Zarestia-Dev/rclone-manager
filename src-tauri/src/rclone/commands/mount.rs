@@ -49,14 +49,14 @@ impl MountParams {
         // Helper to resolve profile references
         let resolve_profile_options =
             |profile_name: Option<&str>, configs_key: &str| -> Option<HashMap<String, Value>> {
-                if let Some(name) = profile_name {
-                    if let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array()) {
-                        for config in configs {
-                            if let Some(config_name) = config.get("name").and_then(|v| v.as_str()) {
-                                if config_name == name {
-                                    return json_to_hashmap(config.get("options"));
-                                }
-                            }
+                if let Some(name) = profile_name
+                    && let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array())
+                {
+                    for config in configs {
+                        if let Some(config_name) = config.get("name").and_then(|v| v.as_str())
+                            && config_name == name
+                        {
+                            return json_to_hashmap(config.get("options"));
                         }
                     }
                 }

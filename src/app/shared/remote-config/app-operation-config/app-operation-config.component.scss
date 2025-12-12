@@ -2,7 +2,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
-  padding: var(--space-md);
 }
 
 // ============================================================================
@@ -58,8 +57,6 @@
 }
 
 .path-prefix {
-  cursor: pointer;
-
   &.mount-local,
   &.mount-remote,
   ::ng-deep .mat-mdc-select-trigger {

@@ -63,10 +63,10 @@
                     </div>
                   }
 
-                  @if (remote.serveState && remote.serveState.hasActiveServes) {
+                  @if (remote.serveState && remote.serveState.isOnServe) {
                     <div
                       class="status-dot serve"
-                      [class.active]="remote.serveState.hasActiveServes"
+                      [class.active]="remote.serveState.isOnServe"
                       [matTooltip]="getServeTooltip(remote)"
                       aria-label="Serve status"
                     >
