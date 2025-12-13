@@ -231,7 +231,7 @@
         @if (currentStep === stepNum) {
           <section class="step-container">
             <!-- Profile Management Header -->
-            @if (PROFILE_SUPPORTED_TYPES.includes(flagType)) {
+            @if (FLAG_TYPES.includes(flagType)) {
               <ng-container
                 *ngTemplateOutlet="profileHeader; context: { type: flagType }"
               ></ng-container>

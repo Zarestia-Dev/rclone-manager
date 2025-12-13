@@ -1,26 +1,13 @@
 @use "../../../styles/_shared_components";
 
-.empty-state,
 .loading-state {
   padding: 32px 16px;
   text-align: center;
 
-  mat-icon {
-    font-size: 48px;
-    width: 48px;
-    height: 48px;
-    opacity: 0.5;
-  }
-
-  .hint {
+  p {
+    margin-top: 16px;
     opacity: 0.7;
-    font-size: 0.9rem;
   }
-}
-
-.loading-state p {
-  margin-top: 16px;
-  opacity: 0.7;
 }
 
 .loading-shade {
@@ -241,26 +228,6 @@ mat-form-field {
           gap: 6px;
         }
       }
-    }
-  }
-
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 32px;
-    opacity: 0.5;
-    gap: 8px;
-
-    mat-icon {
-      font-size: 32px;
-      width: 32px;
-      height: 32px;
-    }
-
-    p {
-      margin: 0;
     }
   }
 

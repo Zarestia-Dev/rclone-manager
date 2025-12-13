@@ -311,7 +311,7 @@
     <div cdkMenu class="material-context-menu">
       @if (sourcePathState$ | async; as state) {
         @if (state.isLoading) {
-          <div class="loading-spinner">
+          <div class="empty-state">
             <mat-spinner diameter="24"></mat-spinner>
             <span>Loading...</span>
           </div>
@@ -334,7 +334,7 @@
             </button>
           } @empty {
             @if (!state.isLoading && (!state.options || state.options.length === 0)) {
-              <div class="no-results">
+              <div class="empty-state">
                 <span>No items found in this directory.</span>
               </div>
             }
@@ -348,7 +348,7 @@
     <div cdkMenu class="material-context-menu">
       @if (sourcePathState$ | async; as state) {
         @if (state.isLoading) {
-          <div class="loading-spinner">
+          <div class="empty-state">
             <mat-spinner diameter="24"></mat-spinner>
             <span>Loading...</span>
           </div>
@@ -371,7 +371,7 @@
             </button>
           } @empty {
             @if (!state.isLoading && (!state.options || state.options.length === 0)) {
-              <div class="no-results">
+              <div class="empty-state">
                 <span>No items found in this directory.</span>
               </div>
             }
@@ -385,7 +385,7 @@
     <div cdkMenu class="material-context-menu">
       @if (destPathState$ | async; as state) {
         @if (state.isLoading) {
-          <div class="loading-spinner">
+          <div class="empty-state">
             <mat-spinner diameter="24"></mat-spinner>
             <span>Loading...</span>
           </div>
@@ -408,7 +408,7 @@
             </button>
           } @empty {
             @if (!state.isLoading && (!state.options || state.options.length === 0)) {
-              <div class="no-results">
+              <div class="empty-state">
                 <span>No items found in this directory.</span>
               </div>
             }
@@ -422,7 +422,7 @@
     <div cdkMenu class="material-context-menu">
       @if (destPathState$ | async; as state) {
         @if (state.isLoading) {
-          <div class="loading-spinner">
+          <div class="empty-state">
             <mat-spinner diameter="24"></mat-spinner>
             <span>Loading...</span>
           </div>
@@ -445,7 +445,7 @@
             </button>
           } @empty {
             @if (!state.isLoading && (!state.options || state.options.length === 0)) {
-              <div class="no-results">
+              <div class="empty-state">
                 <span>No items found in this directory.</span>
               </div>
             }

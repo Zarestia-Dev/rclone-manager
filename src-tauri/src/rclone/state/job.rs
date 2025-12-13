@@ -105,6 +105,21 @@ impl JobCache {
                 && job.profile.as_deref() == profile
         })
     }
+    /// Rename a profile in all matching running jobs
+    /// Returns the number of jobs updated
+    pub async fn rename_profile(&self, remote_name: &str, old_name: &str, new_name: &str) -> usize {
+        let mut jobs = self.jobs.write().await;
+        let mut updated_count = 0;
+
+        for job in jobs.iter_mut() {
+            if job.remote_name == remote_name && job.profile.as_deref() == Some(old_name) {
+                job.profile = Some(new_name.to_string());
+                updated_count += 1;
+            }
+        }
+
+        updated_count
+    }
 }
 
 #[tauri::command]
@@ -128,6 +143,19 @@ pub async fn get_job_status(
 #[tauri::command]
 pub async fn get_active_jobs(job_cache: State<'_, JobCache>) -> Result<Vec<JobInfo>, String> {
     Ok(job_cache.get_active_jobs().await)
+}
+
+/// Rename a profile in all cached running jobs
+#[tauri::command]
+pub async fn rename_profile_in_cache(
+    job_cache: State<'_, JobCache>,
+    remote_name: String,
+    old_name: String,
+    new_name: String,
+) -> Result<usize, String> {
+    Ok(job_cache
+        .rename_profile(&remote_name, &old_name, &new_name)
+        .await)
 }
 
 impl Default for JobCache {

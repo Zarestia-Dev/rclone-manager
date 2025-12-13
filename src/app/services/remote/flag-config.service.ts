@@ -61,21 +61,9 @@ export class FlagConfigService extends TauriBaseService {
   async loadAllFlagFields(): Promise<Record<FlagType, RcConfigOption[]>> {
     const result: Partial<Record<FlagType, RcConfigOption[]>> = {};
 
-    const commandTypeMap: Record<FlagType, FlagType> = {
-      mount: 'mount',
-      copy: 'copy',
-      sync: 'sync',
-      filter: 'filter',
-      vfs: 'vfs',
-      backend: 'backend',
-      bisync: 'bisync',
-      move: 'move',
-    };
-
     await Promise.all(
       FLAG_TYPES.map(async type => {
-        const cmdType = commandTypeMap[type] || type;
-        const dynamicFlags = await this.loadFlagFields(cmdType);
+        const dynamicFlags = await this.loadFlagFields(type);
         const staticFlags = staticFlagDefinitions[type] || [];
         result[type] = [...staticFlags, ...dynamicFlags];
       })
@@ -83,13 +71,27 @@ export class FlagConfigService extends TauriBaseService {
     return result as Record<FlagType, RcConfigOption[]>;
   }
 
-  private async loadFlagFields(type: FlagType): Promise<RcConfigOption[]> {
+  async loadFlagFields(type: FlagType): Promise<RcConfigOption[]> {
     try {
       const command = `get_${type}_flags`;
       const flags = await this.invokeCommand<RcConfigOption[]>(command);
       return flags ?? [];
     } catch (error) {
       console.error(`Error loading ${type} flags:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Loads serve flags for a specific serve type (http, webdav, sftp, etc.)
+   * Serve is unique because each serve type has different flags.
+   */
+  async loadServeFlagFields(serveType: string): Promise<RcConfigOption[]> {
+    try {
+      const flags = await this.invokeCommand<RcConfigOption[]>('get_serve_flags', { serveType });
+      return flags ?? [];
+    } catch (error) {
+      console.error(`Error loading serve flags for ${serveType}:`, error);
       return [];
     }
   }

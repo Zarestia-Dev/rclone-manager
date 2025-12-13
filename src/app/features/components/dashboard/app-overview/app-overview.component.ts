@@ -6,10 +6,11 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { AppTab, PrimaryActionType, Remote, RemoteActionProgress } from '@app/types';
+import { AppTab, PrimaryActionType, Remote, RemoteActionProgress, ServeListItem } from '@app/types';
 import { OverviewHeaderComponent } from '../../../../shared/overviews-shared/overview-header/overview-header.component';
 import { StatusOverviewPanelComponent } from '../../../../shared/overviews-shared/status-overview-panel/status-overview-panel.component';
 import { RemotesPanelComponent } from '../../../../shared/overviews-shared/remotes-panel/remotes-panel.component';
+import { ServeCardComponent } from '../../../../shared/components/serve-card/serve-card.component';
 
 // Services
 import { IconService } from '../../../../shared/services/icon.service';
@@ -27,6 +28,7 @@ import { IconService } from '../../../../shared/services/icon.service';
     OverviewHeaderComponent,
     StatusOverviewPanelComponent,
     RemotesPanelComponent,
+    ServeCardComponent,
   ],
   templateUrl: './app-overview.component.html',
   styleUrl: './app-overview.component.scss',
@@ -38,11 +40,12 @@ export class AppOverviewComponent {
   remotes = input<Remote[]>([]);
   selectedRemote = input<Remote | null>(null);
   actionInProgress = input<RemoteActionProgress>({});
+  runningServes = input<ServeListItem[]>([]);
 
   remoteSelected = output<Remote>();
   openInFiles = output<string>();
   startJob = output<{ type: PrimaryActionType; remoteName: string }>();
-  stopJob = output<{ type: PrimaryActionType; remoteName: string }>();
+  stopJob = output<{ type: PrimaryActionType; remoteName: string; serveId?: string }>();
 
   private isRemoteActive = (remote: Remote): boolean => {
     const mode = this.mode();
@@ -55,6 +58,8 @@ export class AppOverviewComponent {
         remote.moveState?.isOnMove === true ||
         remote.bisyncState?.isOnBisync === true
       );
+    } else if (mode === 'serve') {
+      return remote.serveState?.isOnServe === true;
     }
     return false;
   };
@@ -70,6 +75,8 @@ export class AppOverviewComponent {
       return 'Mount Overview';
     } else if (mode === 'sync') {
       return 'Sync Operations Overview';
+    } else if (mode === 'serve') {
+      return 'Serve Overview';
     }
     return 'Remotes Overview';
   });
@@ -80,6 +87,8 @@ export class AppOverviewComponent {
         return 'Mount';
       case 'sync':
         return 'Start Sync';
+      case 'serve':
+        return 'Start Serve';
       default:
         return 'Start';
     }
@@ -91,6 +100,8 @@ export class AppOverviewComponent {
         return 'mount';
       case 'sync':
         return 'sync';
+      case 'serve':
+        return 'satellite-dish';
       default:
         return 'circle-check';
     }
@@ -104,6 +115,8 @@ export class AppOverviewComponent {
         return 'Mounted Remotes';
       case 'sync':
         return 'Active Sync Operations';
+      case 'serve':
+        return 'Active Serves';
       default:
         return 'Active Remotes';
     }
@@ -115,6 +128,8 @@ export class AppOverviewComponent {
         return 'Unmounted Remotes';
       case 'sync':
         return 'Inactive Remotes';
+      case 'serve':
+        return 'Available Remotes';
       default:
         return 'Inactive Remotes';
     }
@@ -127,6 +142,22 @@ export class AppOverviewComponent {
   triggerOpenInFiles(remoteName: string): void {
     if (remoteName) {
       this.openInFiles.emit(remoteName);
+    }
+  }
+
+  handleCopyToClipboard(data: { text: string; message: string }): void {
+    try {
+      navigator.clipboard.writeText(data.text);
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+    }
+  }
+
+  handleServeCardClick(serve: ServeListItem): void {
+    const remoteName = serve.params.fs.split(':')[0];
+    const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
+    if (remote) {
+      this.selectRemote(remote);
     }
   }
 }

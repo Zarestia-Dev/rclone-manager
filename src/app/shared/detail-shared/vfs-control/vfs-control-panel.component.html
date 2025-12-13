@@ -10,9 +10,8 @@
     @if (vfsNotFound()) {
       <div class="empty-state">
         <mat-icon svgIcon="vfs"></mat-icon>
-        <h3>No VFS Found</h3>
+        <span>No VFS Found</span>
         <p>No VFS instances are running for this remote.</p>
-        <p class="hint">Make sure the remote is mounted with VFS enabled.</p>
       </div>
     } @else if (loading() && vfsInstances().length === 0) {
       <div class="loading-state">
@@ -146,13 +145,13 @@
                 @if (!vfs.stats) {
                   <div class="empty-state">
                     <mat-spinner diameter="32"></mat-spinner>
-                    <p>Fetching upload queue...</p>
+                    <span>Fetching upload queue..s</span>
                   </div>
                 } @else {
                   <div class="empty-state">
                     <mat-icon svgIcon="circle-check"></mat-icon>
-                    <p>No files queued for upload</p>
-                    <p class="hint">Files are uploaded automatically based on VFS cache mode</p>
+                    <span>No files queued for upload</span>
+                    <p>Files are uploaded automatically based on VFS cache mode</p>
                   </div>
                 }
               } @else {

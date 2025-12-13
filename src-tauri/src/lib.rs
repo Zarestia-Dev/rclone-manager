@@ -121,24 +121,23 @@ use crate::{
             flags::{
                 get_backend_flags, get_bisync_flags, get_copy_flags, get_filter_flags,
                 get_flags_by_category, get_grouped_options_with_values, get_mount_flags,
-                get_move_flags, get_option_blocks, get_sync_flags, get_vfs_flags,
+                get_move_flags, get_option_blocks, get_serve_flags, get_sync_flags, get_vfs_flags,
                 set_rclone_option,
             },
             get_about_remote, get_all_remote_configs, get_bandwidth_limit, get_completed_transfers,
             get_core_stats, get_core_stats_filtered, get_disk_usage, get_fs_info, get_local_drives,
             get_memory_stats, get_mount_types, get_mounted_remotes, get_oauth_supported_remotes,
             get_rclone_info, get_rclone_pid, get_remote_config, get_remote_paths, get_remote_types,
-            get_remotes, get_serve_flags, get_serve_types, get_size, get_stat, list_serves,
-            vfs_forget, vfs_list, vfs_poll_interval, vfs_queue, vfs_queue_set_expiry, vfs_refresh,
-            vfs_stats,
+            get_remotes, get_serve_types, get_size, get_stat, list_serves, vfs_forget, vfs_list,
+            vfs_poll_interval, vfs_queue, vfs_queue_set_expiry, vfs_refresh, vfs_stats,
         },
         state::{
             cache::{
                 get_cached_mounted_remotes, get_cached_remotes, get_cached_serves, get_configs,
-                get_settings,
+                get_settings, rename_mount_profile_in_cache, rename_serve_profile_in_cache,
             },
             engine::get_rclone_rc_url,
-            job::{delete_job, get_active_jobs, get_job_status, get_jobs},
+            job::{delete_job, get_active_jobs, get_job_status, get_jobs, rename_profile_in_cache},
             log::{clear_remote_logs, get_remote_logs},
             scheduled_tasks::{
                 ScheduledTasksCache, get_scheduled_task, get_scheduled_tasks,
@@ -631,6 +630,8 @@ pub fn run() {
             get_settings,
             get_cached_mounted_remotes,
             get_cached_serves,
+            rename_mount_profile_in_cache,
+            rename_serve_profile_in_cache,
             // Binaries
             check_rclone_available,
             is_7z_available,
@@ -643,6 +644,7 @@ pub fn run() {
             get_job_status,
             stop_job,
             delete_job,
+            rename_profile_in_cache,
             // Scheduled Tasks (Now require state)
             get_scheduled_tasks,
             get_scheduled_task,

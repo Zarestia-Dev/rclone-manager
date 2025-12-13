@@ -19,32 +19,30 @@
       }
 
       @if (field.type === 'type-selection') {
-        <div class="type-form">
-          <mat-form-field appearance="fill">
-            <mat-label>Type</mat-label>
-            <mat-select formControlName="type" (selectionChange)="onTypeChange($event.value)">
-              @for (type of availableServeTypes(); track type) {
-                <mat-option [value]="type">
-                  <div class="type-option">
-                    <mat-icon [svgIcon]="iconService.getIconName(getTypeIcon(type))"></mat-icon>
-                    <div class="type-info">
-                      <span class="type-name">{{ type.toUpperCase() }}</span>
-                      <span class="type-desc">{{ getTypeDescription(type) }}</span>
-                    </div>
-                  </div>
-                </mat-option>
-              }
-              <mat-select-trigger>
+        <mat-form-field appearance="fill">
+          <mat-label>Type</mat-label>
+          <mat-select formControlName="type" (selectionChange)="onTypeChange($event.value)">
+            @for (type of availableServeTypes(); track type) {
+              <mat-option [value]="type">
                 <div class="type-option">
-                  <mat-icon
-                    [svgIcon]="iconService.getIconName(getTypeIcon(selectedType()))"
-                  ></mat-icon>
-                  <span class="type-name">{{ selectedType().toUpperCase() }}</span>
+                  <mat-icon [svgIcon]="iconService.getIconName(getTypeIcon(type))"></mat-icon>
+                  <div class="type-info">
+                    <span class="type-name">{{ type.toUpperCase() }}</span>
+                    <span class="type-desc">{{ getTypeDescription(type) }}</span>
+                  </div>
                 </div>
-              </mat-select-trigger>
-            </mat-select>
-          </mat-form-field>
-        </div>
+              </mat-option>
+            }
+            <mat-select-trigger>
+              <div class="type-option">
+                <mat-icon
+                  [svgIcon]="iconService.getIconName(getTypeIcon(selectedType()))"
+                ></mat-icon>
+                <span class="type-name">{{ selectedType().toUpperCase() }}</span>
+              </div>
+            </mat-select-trigger>
+          </mat-select>
+        </mat-form-field>
       }
 
       @if (field.type === 'loading') {

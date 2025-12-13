@@ -1,7 +1,7 @@
 .rclone-config-modal {
   // Layout variables
   --item-gap: var(--space-xs);
-  
+
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -121,7 +121,6 @@
       box-shadow: var(--shadow-light);
     }
 
-
     .config-item-content {
       display: flex;
       align-items: center;
@@ -176,37 +175,6 @@
 
     .config-item {
       min-height: 56px;
-    }
-  }
-
-  // Shared no-results styles
-  .no-results {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-xxl);
-    text-align: center;
-    margin-top: var(--space-lg);
-    color: var(--secondary-text-color);
-
-    mat-icon {
-      width: 64px;
-      height: 64px;
-      opacity: 0.3;
-      margin-bottom: var(--space-md);
-    }
-
-    h4 {
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--app-text-color);
-      margin: 0 0 var(--space-sm);
-    }
-
-    p {
-      margin: 0;
-      font-size: 14px;
     }
   }
 

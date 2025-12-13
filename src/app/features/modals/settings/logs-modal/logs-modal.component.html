@@ -60,18 +60,18 @@
   <div class="terminal-viewport">
     <!-- Loading Overlay -->
     @if (loading() && logs().length === 0) {
-      <div class="status-overlay">
+      <div class="empty-state">
         <mat-spinner diameter="40"></mat-spinner>
-        <p>Fetching logs...</p>
+        <span>Fetching logs...</span>
       </div>
     }
 
     <!-- Empty State -->
     @else if (filteredLogs().length === 0) {
-      <div class="status-overlay empty">
+      <div class="empty-state">
         <mat-icon svgIcon="search"></mat-icon>
-        <p>No logs found</p>
-        <span>Try adjusting your filters</span>
+        <span>No logs found</span>
+        <p>Try adjusting your filters</p>
       </div>
     }
 

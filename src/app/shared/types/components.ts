@@ -66,12 +66,22 @@ export interface JobsPanelConfig {
   displayedColumns: string[];
 }
 
+// Profile option for selectors
+export interface ProfileOption {
+  name: string;
+  label: string;
+}
+
 // Job Info Panel
 export interface JobInfoConfig {
   operationType: string;
   jobId?: number;
   startTime?: Date;
   lastOperationTime?: string;
+  // Profile selection support
+  profiles?: ProfileOption[];
+  selectedProfile?: string;
+  showProfileSelector?: boolean;
 }
 
 // Operation Control

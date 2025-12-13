@@ -39,7 +39,6 @@ import {
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import {
   RemoteType,
-  RcConfigQuestionResponse,
   RemoteConfigSections,
   InteractiveFlowState,
   INTERACTIVE_REMOTES,
@@ -52,6 +51,14 @@ import { OperationConfigComponent } from '../../../../shared/remote-config/app-o
 import { ValidatorRegistryService } from 'src/app/shared/services/validator-registry.service';
 import { InteractiveConfigStepComponent } from 'src/app/shared/remote-config/interactive-config-step/interactive-config-step.component';
 import { IconService } from 'src/app/shared/services/icon.service';
+import {
+  buildPathString,
+  getDefaultAnswerFromQuestion,
+  createInitialInteractiveFlowState,
+  isInteractiveContinueDisabled,
+  convertBoolAnswerToString,
+  updateInteractiveAnswer,
+} from '../../../../shared/utils/remote-config.utils';
 
 type WizardStep = 'setup' | 'operations' | 'interactive';
 
@@ -97,12 +104,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   isAuthInProgress = false;
   isAuthCancelled = false;
   currentStep: WizardStep = 'setup';
-  interactiveFlowState: InteractiveFlowState = {
-    isActive: false,
-    question: null,
-    answer: null,
-    isProcessing: false,
-  };
+  interactiveFlowState: InteractiveFlowState = createInitialInteractiveFlowState();
 
   private readonly destroy$ = new Subject<void>();
   private pendingConfig: {
@@ -381,26 +383,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     await this.startInteractiveRemoteConfig();
   }
 
-  private buildPathString(pathGroup: any, currentRemoteName: string): string {
-    if (typeof pathGroup === 'string' || !pathGroup) {
-      return pathGroup || '';
-    }
-    const { pathType, path, otherRemoteName } = pathGroup;
-    const p = path || '';
-    if (typeof pathType === 'string' && pathType.startsWith('otherRemote:')) {
-      const remote = otherRemoteName || pathType.split(':')[1];
-      return `${remote}:${p}`;
-    }
-    switch (pathType) {
-      case 'local':
-        return p;
-      case 'currentRemote':
-        return `${currentRemoteName}:${p}`;
-      default:
-        return '';
-    }
-  }
-
   private buildFinalConfig(remoteName: string, operations: any): RemoteConfigSections {
     const createConfig = (
       op: any
@@ -411,8 +393,8 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       cronEnabled?: boolean;
       cronExpression?: string | null;
     } => ({
-      source: this.buildPathString(op.source, remoteName),
-      dest: this.buildPathString(op.dest, remoteName),
+      source: buildPathString(op.source, remoteName),
+      dest: buildPathString(op.dest, remoteName),
       autoStart: op.autoStart || false,
       cronEnabled: op.cronEnabled || false,
       cronExpression: op.cronExpression || null,
@@ -450,7 +432,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       this.interactiveFlowState = {
         isActive: true,
         question: startResp,
-        answer: this.getDefaultAnswerFromQuestion(startResp),
+        answer: getDefaultAnswerFromQuestion(startResp),
         isProcessing: false,
         isInteractive: true,
       } as InteractiveFlowState; // Cast to fix type if needed or just use object
@@ -485,7 +467,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     try {
       let answer: unknown = this.interactiveFlowState.answer;
       if (this.interactiveFlowState.question?.Option?.Type === 'bool') {
-        answer = typeof answer === 'boolean' ? (answer ? 'true' : 'false') : String(answer);
+        answer = convertBoolAnswerToString(answer);
       }
       const resp = await this.remoteManagementService.continueRemoteConfigNonInteractive(
         this.pendingConfig.remoteData.name,
@@ -500,7 +482,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         await this.finalizeRemoteCreation();
       } else {
         this.interactiveFlowState.question = resp;
-        this.interactiveFlowState.answer = this.getDefaultAnswerFromQuestion(resp);
+        this.interactiveFlowState.answer = getDefaultAnswerFromQuestion(resp);
       }
     } catch (error) {
       console.error('Interactive config error:', error);
@@ -508,34 +490,13 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  private getDefaultAnswerFromQuestion(q: RcConfigQuestionResponse): string | boolean | number {
-    const opt = q.Option;
-    if (!opt) return '';
-    if (opt.Type === 'bool') {
-      if (typeof opt.Value === 'boolean') return opt.Value;
-      if (opt.ValueStr !== undefined) return opt.ValueStr.toLowerCase() === 'true';
-      if (opt.DefaultStr !== undefined) return opt.DefaultStr.toLowerCase() === 'true';
-      return typeof opt.Default === 'boolean' ? opt.Default : true;
-    }
-    return (
-      opt.ValueStr || opt.DefaultStr || String(opt.Default || '') || opt.Examples?.[0]?.Value || ''
-    );
-  }
-
   isInteractiveContinueDisabled(): boolean {
-    if (this.isAuthCancelled || this.interactiveFlowState.isProcessing) return true;
-    if (!this.interactiveFlowState.question?.Option?.Required) return false;
-    const answer = this.interactiveFlowState.answer;
-    return (
-      answer === null ||
-      answer === undefined ||
-      (typeof answer === 'string' && answer.trim() === '')
-    );
+    return isInteractiveContinueDisabled(this.interactiveFlowState, this.isAuthCancelled);
   }
 
   handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {
     if (this.interactiveFlowState.isActive) {
-      this.interactiveFlowState.answer = newAnswer;
+      this.interactiveFlowState = updateInteractiveAnswer(this.interactiveFlowState, newAnswer);
       this.cdRef.markForCheck();
     }
   }
@@ -594,7 +555,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
           await this.jobManagementService.startSync(remoteName, config.source, config.dest);
           break;
         case 'bisync':
-          await this.jobManagementService.startBisync(remoteName, config.source, config.dest);
+          await this.jobManagementService.startBisync(remoteName, config as BisyncConfig);
           break;
         case 'move':
           await this.jobManagementService.startMove(remoteName, config.source, config.dest);
@@ -612,12 +573,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   async cancelAuth(): Promise<void> {
     await this.authStateService.cancelAuth();
     this.currentStep = 'operations';
-    this.interactiveFlowState = {
-      isActive: false,
-      question: null,
-      answer: null,
-      isProcessing: false,
-    };
+    this.interactiveFlowState = createInitialInteractiveFlowState();
     this.cdRef.markForCheck();
   }
 

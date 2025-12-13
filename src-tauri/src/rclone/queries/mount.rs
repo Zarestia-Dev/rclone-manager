@@ -39,6 +39,7 @@ pub async fn get_mounted_remotes(
             Some(MountedRemote {
                 fs: mp["Fs"].as_str()?.to_string(),
                 mount_point: mp["MountPoint"].as_str()?.to_string(),
+                profile: None, // Profile not stored in rclone API - tracked separately
             })
         })
         .collect();

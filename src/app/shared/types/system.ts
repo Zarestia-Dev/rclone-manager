@@ -52,12 +52,6 @@ export interface MemoryStats {
   TotalAlloc: number;
 }
 
-export interface PanelState {
-  bandwidth: boolean;
-  system: boolean;
-  jobs: boolean;
-}
-
 export interface SystemStats {
   memoryUsage: MemoryStats | null;
   uptime: number;
@@ -169,12 +163,6 @@ export interface SettingMetadata {
 export interface SearchResult {
   category: string;
   key: string;
-}
-
-export interface PasswordTab {
-  label: string;
-  icon: string;
-  key: 'overview' | 'security' | 'advanced';
 }
 
 export enum RepairSheetType {

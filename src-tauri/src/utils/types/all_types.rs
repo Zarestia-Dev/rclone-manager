@@ -31,6 +31,8 @@ pub struct RcloneState {
 pub struct MountedRemote {
     pub fs: String,
     pub mount_point: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -38,6 +40,8 @@ pub struct ServeInstance {
     pub id: String,
     pub addr: String,
     pub params: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -115,6 +119,10 @@ pub struct RemoteCache {
     pub settings: RwLock<serde_json::Value>,
     pub mounted: RwLock<Vec<MountedRemote>>,
     pub serves: RwLock<Vec<ServeInstance>>,
+    /// Tracks mount_point → profile mapping (since rclone API doesn't return profile)
+    pub mount_profiles: RwLock<HashMap<String, String>>,
+    /// Tracks serve_id → profile mapping (since rclone API doesn't return profile)
+    pub serve_profiles: RwLock<HashMap<String, String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

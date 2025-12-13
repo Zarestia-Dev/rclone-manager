@@ -1,20 +1,5 @@
 @use "../../../../styles/_shared_components";
 
-// Main container
-.profile-selector {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
-  padding: 0 16px;
-
-  .selector-label {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--text-secondary);
-  }
-}
-
 .remote-details {
   display: flex;
   flex-direction: column;
@@ -122,17 +107,60 @@
   gap: var(--panel-gap);
 }
 
-// Operation buttons
-.operation-buttons {
+// Operation mode selector
+.operation-mode-selector {
   display: flex;
-  justify-content: center;
-  gap: var(--button-gap);
-  padding: var(--space-sm);
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
   background: rgba(var(--app-text-color-rgb), var(--background-opacity));
   border: 1px solid rgba(var(--app-text-color-rgb), var(--border-opacity));
 
-  .operation-button.active {
-    box-shadow: 0 0 0 2px var(--operation-color);
+  .selector-label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--secondary-text-color);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+}
+
+.operation-toggle-group {
+  border-color: var(--border-color);
+
+  .mat-button-toggle {
+    border-color: var(--border-color);
+
+    .mat-button-toggle-button {
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+      padding: var(--space-sm) var(--space-md);
+      font-weight: 500;
+    }
+
+    // Selected states by operation type
+    &.mat-button-toggle-checked {
+      color: white;
+      --mat-sys-on-secondary-container: white;
+
+      &.operation-sync {
+        background: var(--primary-color);
+      }
+
+      &.operation-copy {
+        background: var(--yellow);
+      }
+
+      &.operation-move {
+        background: var(--orange);
+      }
+
+      &.operation-bisync {
+        background: var(--purple);
+      }
+    }
   }
 }
 
@@ -234,13 +262,6 @@
       height: 200px !important;
     }
   }
-}
-
-.empty-state {
-  color: var(--secondary-text-color);
-  font-size: 13px;
-  text-align: center;
-  padding: 16px 0;
 }
 
 // Responsive design

@@ -94,56 +94,66 @@ export class JobManagementService extends TauriBaseService {
     return jobId;
   }
 
+  /**
+   * Start a bisync job
+   * @param remoteName The remote name
+   * @param config The bisync configuration object
+   * @param filterOptions Filter options (can override profile settings)
+   * @param backendOptions Backend options (can override profile settings)
+   * @param profile Profile name for job tracking
+   */
   async startBisync(
     remoteName: string,
-    source: string,
-    dest: string,
-    bisyncOptions?: BisyncOptions,
+    config: {
+      source: string;
+      dest: string;
+      options?: BisyncOptions;
+      dryRun?: boolean;
+      resync?: boolean;
+      checkAccess?: boolean;
+      checkFilename?: string;
+      maxDelete?: number;
+      force?: boolean;
+      checkSync?: boolean | 'only';
+      createEmptySrcDirs?: boolean;
+      removeEmptyDirs?: boolean;
+      filtersFile?: string;
+      ignoreListingChecksum?: boolean;
+      resilient?: boolean;
+      workdir?: string;
+      backupdir1?: string;
+      backupdir2?: string;
+      noCleanup?: boolean;
+    },
     filterOptions?: FilterOptions,
     backendOptions?: BackendOptions,
-    dryRun?: boolean,
-    resync?: boolean,
-    checkAccess?: boolean,
-    checkFilename?: string,
-    maxDelete?: number,
-    force?: boolean,
-    checkSync?: boolean | 'only',
-    createEmptySrcDirs?: boolean,
-    removeEmptyDirs?: boolean,
-    filtersFile?: string,
-    ignoreListingChecksum?: boolean,
-    resilient?: boolean,
-    workdir?: string,
-    backupdir1?: string,
-    backupdir2?: string,
-    noCleanup?: boolean,
     profile?: string
   ): Promise<number> {
-    this.validatePaths(source, dest);
+    this.validatePaths(config.source, config.dest);
 
     const params: BisyncParams = {
       remote_name: remoteName,
-      source,
-      dest,
-      bisync_options: bisyncOptions || null,
+      source: config.source,
+      dest: config.dest,
+      bisync_options: config.options || null,
       filter_options: filterOptions || null,
       backend_options: backendOptions || {},
-      resync: resync || false,
-      dryRun: dryRun || false,
-      checkAccess: checkAccess || false,
-      checkFilename: checkFilename || '',
-      maxDelete: maxDelete || 0,
-      force: force || false,
-      checkSync: checkSync || false,
-      createEmptySrcDirs: createEmptySrcDirs || false,
-      removeEmptyDirs: removeEmptyDirs || false,
-      filtersFile: filtersFile || '',
-      ignoreListingChecksum: ignoreListingChecksum || false,
-      resilient: resilient || false,
-      workdir: workdir || '',
-      backupdir1: backupdir1 || '',
-      backupdir2: backupdir2 || '',
-      noCleanup: noCleanup || false,
+      resync: config.resync || false,
+      dryRun: config.dryRun || false,
+      checkAccess: config.checkAccess || false,
+      checkFilename: config.checkFilename || '',
+      maxDelete: config.maxDelete || 0,
+      force: config.force || false,
+      checkSync: config.checkSync || false,
+      createEmptySrcDirs: config.createEmptySrcDirs || false,
+      removeEmptyDirs: config.removeEmptyDirs || false,
+      filtersFile: config.filtersFile || '',
+      ignoreListingChecksum: config.ignoreListingChecksum || false,
+      resilient: config.resilient || false,
+      workdir: config.workdir || '',
+      backupdir1: config.backupdir1 || '',
+      backupdir2: config.backupdir2 || '',
+      noCleanup: config.noCleanup || false,
       profile,
     };
 
@@ -275,5 +285,21 @@ export class JobManagementService extends TauriBaseService {
     if (!dest) {
       throw new Error('Destination is required');
     }
+  }
+
+  /**
+   * Rename a profile in all cached running jobs
+   * Returns the number of jobs updated
+   */
+  async renameProfileInCache(
+    remoteName: string,
+    oldName: string,
+    newName: string
+  ): Promise<number> {
+    return this.invokeCommand<number>('rename_profile_in_cache', {
+      remoteName,
+      oldName,
+      newName,
+    });
   }
 }

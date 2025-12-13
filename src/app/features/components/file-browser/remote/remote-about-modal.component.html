@@ -147,8 +147,8 @@
           }
           @if (aboutInfo() === null && !loadingAbout()) {
             <div class="empty-state">
-              <mat-icon svgIcon="circle-info" class="empty-icon"></mat-icon>
-              <p>No feature information available.</p>
+              <mat-icon svgIcon="circle-info"></mat-icon>
+              <span>No feature information available.</span>
             </div>
           }
 
@@ -199,8 +199,8 @@
 
               @if (getMetadataGroups(about).length === 0) {
                 <div class="empty-state">
-                  <mat-icon svgIcon="circle-info" class="empty-icon"></mat-icon>
-                  <p>No metadata specifications available.</p>
+                  <mat-icon svgIcon="circle-info"></mat-icon>
+                  <span>No metadata specifications available.</span>
                 </div>
               }
             </mat-accordion>

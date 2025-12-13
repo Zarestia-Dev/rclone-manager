@@ -247,9 +247,7 @@ async fn handle_remote_startup(
                             params.profile.as_ref().unwrap_or(&"default".to_string()),
                             remote_name
                         );
-                        if let Err(e) =
-                            start_serve(app_handle.clone(), job_cache_state.clone(), params).await
-                        {
+                        if let Err(e) = start_serve(app_handle.clone(), params).await {
                             error!("Failed to auto-start serve for {}: {}", remote_name, e);
                         }
                     }

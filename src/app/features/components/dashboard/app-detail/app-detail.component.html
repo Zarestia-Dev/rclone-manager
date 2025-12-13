@@ -32,27 +32,26 @@
   <div class="detail-content">
     @if (mainOperationType() === 'sync') {
       <div class="sync-operation-wrapper">
-        <!-- Operation Selection Buttons -->
-        <div class="operation-buttons">
-          @for (operation of syncOperations; track operation.type) {
-            <button
-              mat-flat-button
-              [class]="
-                'operation-button operation-' +
-                operation.type +
-                (selectedSyncOperation() === operation.type ? ' active' : '') +
-                ' ' +
-                operation.cssClass
-              "
-              [style.--operation-color]="operation.cssClass"
-              (click)="onSyncOperationChange(operation.type)"
-              [matTooltip]="operation.description"
-              matTooltipPosition="below"
-            >
-              <mat-icon [svgIcon]="operation.icon" class="operation-icon"></mat-icon>
-              <span class="operation-label">{{ operation.label }}</span>
-            </button>
-          }
+        <!-- Operation Mode Selector -->
+        <div class="operation-mode-selector">
+          <span class="selector-label">Operation Mode</span>
+          <mat-button-toggle-group
+            [value]="selectedSyncOperation()"
+            (change)="onSyncOperationChange($event.value)"
+            class="operation-toggle-group"
+            aria-label="Select operation mode"
+          >
+            @for (operation of syncOperations; track operation.type) {
+              <mat-button-toggle
+                [value]="operation.type"
+                [matTooltip]="operation.description"
+                matTooltipPosition="below"
+                [class]="'operation-toggle operation-' + operation.type"
+              >
+                <span class="toggle-label">{{ operation.label }}</span>
+              </mat-button-toggle>
+            }
+          </mat-button-toggle-group>
         </div>
 
         <div class="sync-operation-content">
@@ -64,28 +63,6 @@
               </ng-template>
 
               <div class="operation-monitor">
-                <!-- Profile Selector -->
-                @if (profiles().length > 1) {
-                  <div class="profile-selector">
-                    <span class="selector-label">Monitoring Profile:</span>
-                    <mat-chip-listbox
-                      [value]="selectedProfile()"
-                      (change)="selectedProfile.set($event.value)"
-                      aria-label="Job Profile Selection"
-                    >
-                      @for (profile of profiles(); track profile.name) {
-                        <mat-chip-option
-                          [value]="profile.name"
-                          [selected]="selectedProfile() === profile.name"
-                          selectable
-                        >
-                          {{ profile.label }}
-                        </mat-chip-option>
-                      }
-                    </mat-chip-listbox>
-                  </div>
-                }
-
                 <!-- Operation Control Panel -->
                 @for (
                   opConfig of operationControlConfigs();
@@ -121,9 +98,10 @@
                   </div>
                 }
 
-                <!-- Job Information Panel -->
+                <!-- Job Information Panel (with integrated profile selector) -->
                 <app-job-info-panel
                   [config]="jobInfoConfig()"
+                  (profileChange)="selectedProfile.set($event)"
                   class="info-panel"
                 ></app-job-info-panel>
 
@@ -230,28 +208,6 @@
 
             <div class="operation-monitor">
               @if (mainOperationType() === 'serve') {
-                <!-- Profile Selector -->
-                @if (profiles().length > 1) {
-                  <div class="profile-selector">
-                    <span class="selector-label">Serve Profile:</span>
-                    <mat-chip-listbox
-                      [value]="selectedProfile()"
-                      (change)="selectedProfile.set($event.value)"
-                      aria-label="Serve Profile Selection"
-                    >
-                      @for (profile of profiles(); track profile.name) {
-                        <mat-chip-option
-                          [value]="profile.name"
-                          [selected]="selectedProfile() === profile.name"
-                          selectable
-                        >
-                          {{ profile.label }}
-                        </mat-chip-option>
-                      }
-                    </mat-chip-listbox>
-                  </div>
-                }
-
                 <!-- Serve Controls -->
                 @for (
                   opConfig of serveControlConfigs();

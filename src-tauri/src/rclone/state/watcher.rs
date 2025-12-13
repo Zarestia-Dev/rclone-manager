@@ -146,7 +146,12 @@ async fn get_serves_from_api(app_handle: &AppHandle) -> Result<Vec<ServeInstance
                     let addr = item.get("addr")?.as_str()?.to_string();
                     let params = item.get("params")?.clone();
 
-                    Some(ServeInstance { id, addr, params })
+                    Some(ServeInstance {
+                        id,
+                        addr,
+                        params,
+                        profile: None,
+                    })
                 })
                 .collect()
         })

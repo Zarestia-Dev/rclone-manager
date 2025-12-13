@@ -20,11 +20,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { CdkMenuModule } from '@angular/cdk/menu';
-import { catchError, EMPTY, Subject, takeUntil } from 'rxjs';
+import { catchError, EMPTY, Observable, Subject, takeUntil } from 'rxjs';
 
 // App Types
 import {
-  // AppTab,
   ActionState,
   DiskUsage,
   JobInfo,
@@ -44,8 +43,7 @@ import { GeneralDetailComponent } from '../features/components/dashboard/general
 import { GeneralOverviewComponent } from '../features/components/dashboard/general-overview/general-overview.component';
 import { AppDetailComponent } from '../features/components/dashboard/app-detail/app-detail.component';
 import { AppOverviewComponent } from '../features/components/dashboard/app-overview/app-overview.component';
-import { ServeOverviewComponent } from '../features/components/dashboard/serve-overview/serve-overview.component';
-import { LogsModalComponent } from '../features/modals/monitoring/logs-modal/logs-modal.component';
+import { LogsModalComponent } from '../features/modals/settings/logs-modal/logs-modal.component';
 import { ExportModalComponent } from '../features/modals/settings/export-modal/export-modal.component';
 import { RemoteConfigModalComponent } from '../features/modals/remote-management/remote-config-modal/remote-config-modal.component';
 import { QuickAddRemoteComponent } from '../features/modals/remote-management/quick-add-remote/quick-add-remote.component';
@@ -84,7 +82,6 @@ import {
     GeneralOverviewComponent,
     AppDetailComponent,
     AppOverviewComponent,
-    ServeOverviewComponent,
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.scss'],
@@ -258,6 +255,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     try {
       const remoteConfigs = await this.remoteManagementService.getAllRemoteConfigs();
       this.remotes.set(this.createRemotesFromConfigs(remoteConfigs));
+      // Explicitly update mount states after remotes are created
+      this.updateRemoteMountStates();
       await this.loadActiveJobs();
       this.loadDiskUsageInBackground();
     } catch (error) {
@@ -292,7 +291,10 @@ export class HomeComponent implements OnInit, OnDestroy {
           free_space: 0,
           loading: true,
         },
-        mountState: { mounted: mountedSet.has(name) },
+        mountState: existingRemote?.mountState || {
+          mounted: mountedSet.has(name),
+          activeProfiles: {},
+        },
         serveState: {
           isOnServe: remoteServes.length > 0,
           serveCount: remoteServes.length,
@@ -397,85 +399,54 @@ export class HomeComponent implements OnInit, OnDestroy {
   // TAURI EVENT LISTENERS
   // ============================================================================
   private setupTauriListeners(): void {
-    this.listenToMountCache();
-    this.listenToRemoteCache();
-    this.listenToRcloneEngine();
-    this.listenToJobCache();
+    this.setupEventListener(
+      () => this.eventListenersService.listenToMountCacheUpdated(),
+      async () => this.mountManagementService.getMountedRemotes(),
+      'MountCache'
+    );
+    this.setupEventListener(
+      () => this.eventListenersService.listenToRemoteCacheUpdated(),
+      async () => {
+        await this.getRemoteSettings();
+        await this.loadRemotes();
+        await this.loadRestrictMode();
+      },
+      'RemoteCache'
+    );
+    this.setupEventListener(
+      () => this.eventListenersService.listenToRcloneEngineReady(),
+      async () => {
+        await this.refreshData();
+        await this.loadRestrictMode();
+      },
+      'RcloneEngine'
+    );
+    this.setupEventListener(
+      () => this.eventListenersService.listenToJobCacheChanged(),
+      async () => {
+        await this.loadJobs();
+        await this.loadActiveJobs();
+      },
+      'JobCache'
+    );
   }
 
-  private listenToMountCache(): void {
-    this.eventListenersService
-      .listenToMountCacheUpdated()
+  private setupEventListener(
+    eventFn: () => Observable<unknown>,
+    handler: () => Promise<unknown>,
+    context: string
+  ): void {
+    eventFn()
       .pipe(
         takeUntil(this.destroy$),
-        catchError(error => (console.error('Event listener error (MountCache):', error), EMPTY))
+        catchError(error => (console.error(`Event listener error (${context}):`, error), EMPTY))
       )
       .subscribe({
         next: async () => {
           try {
-            await this.mountManagementService.getMountedRemotes();
+            await handler();
           } catch (error) {
-            this.handleError('Error handling mount_state_changed', error);
-          }
-        },
-      });
-  }
-
-  private listenToRemoteCache(): void {
-    this.eventListenersService
-      .listenToRemoteCacheUpdated()
-      .pipe(
-        takeUntil(this.destroy$),
-        catchError(error => (console.error('Event listener error (RemoteCache):', error), EMPTY))
-      )
-      .subscribe({
-        next: async () => {
-          try {
-            await this.getRemoteSettings();
-            await this.loadRemotes();
-            await this.loadRestrictMode();
-          } catch (error) {
-            this.handleError('Error handling remote_cache_updated', error);
-          }
-        },
-      });
-  }
-
-  private listenToRcloneEngine(): void {
-    this.eventListenersService
-      .listenToRcloneEngineReady()
-      .pipe(
-        takeUntil(this.destroy$),
-        catchError(
-          error => (console.error('Event listener error (RcloneEngineReady):', error), EMPTY)
-        )
-      )
-      .subscribe({
-        next: async () => {
-          try {
-            await this.refreshData();
-            await this.loadRestrictMode();
-          } catch (error) {
-            this.handleError('Error handling rclone_engine_ready', error);
-          }
-        },
-      });
-  }
-
-  private listenToJobCache(): void {
-    this.eventListenersService
-      .listenToJobCacheChanged()
-      .pipe(
-        takeUntil(this.destroy$),
-        catchError(error => (console.error('Event listener error (JobCache):', error), EMPTY))
-      )
-      .subscribe({
-        next: async () => {
-          try {
-            await this.loadJobs();
-            await this.loadActiveJobs();
-          } catch (error) {
-            this.handleError('Error handling job_cache_changed', error);
+            this.handleError(`Error handling ${context} event`, error);
           }
         },
       });
@@ -535,7 +506,8 @@ export class HomeComponent implements OnInit, OnDestroy {
           config.options,
           config.vfsConfig || settings.vfsConfig || {},
           config.filterConfig || settings.filterConfig || {},
-          config.backendConfig || settings.backendConfig || {}
+          config.backendConfig || settings.backendConfig || {},
+          config.name // Pass profile name
         ),
       `Failed to mount ${remoteName}`
     );
@@ -670,27 +642,9 @@ export class HomeComponent implements OnInit, OnDestroy {
           case 'bisync':
             await this.jobManagementService.startBisync(
               remoteName,
-              config.source,
-              config.dest,
-              config.options,
+              config,
               config.filterConfig || settings['filterConfig'],
               config.backendConfig || settings['backendConfig'],
-              config.dryRun,
-              config.resync,
-              config.checkAccess,
-              config.checkFilename,
-              config.maxDelete,
-              config.force,
-              config.checkSync,
-              config.createEmptySrcDirs,
-              config.removeEmptyDirs,
-              config.filtersFile,
-              config.ignoreListingChecksum,
-              config.resilient,
-              config.workdir,
-              config.backupdir1,
-              config.backupdir2,
-              config.noCleanup,
               profileName
             );
             break;
@@ -713,7 +667,8 @@ export class HomeComponent implements OnInit, OnDestroy {
               config.options || {},
               config.backendConfig || settings['backendConfig'],
               config.filterConfig || settings['filterConfig'],
-              config.vfsConfig || settings['vfsConfig']
+              config.vfsConfig || settings['vfsConfig'],
+              profileName
             );
             break;
           default:
@@ -743,9 +698,7 @@ export class HomeComponent implements OnInit, OnDestroy {
             // Find active serve with this profile
             const serves = this.runningServes();
             const serve = serves.find(
-              s =>
-                s.params.fs.startsWith(remoteName + ':') &&
-                (s.params as any).profile === profileName
+              s => s.params.fs.startsWith(remoteName + ':') && s.profile === profileName
             );
             idToStop = serve?.id;
           } else if (!idToStop) {
@@ -1152,7 +1105,6 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     this.remotes.update(remotes =>
       remotes.map(remote => {
-        const settings = this.loadRemoteSettings(remote.remoteSpecs.name);
         const remoteMounts = mountedRemotes.filter(m =>
           m.fs.startsWith(`${remote.remoteSpecs.name}:`)
         );
@@ -1160,16 +1112,22 @@ export class HomeComponent implements OnInit, OnDestroy {
         const activeProfiles: Record<string, string> = {};
 
         if (isMounted) {
-          const profiles = (settings as any)['mountConfigs'];
-          if (Array.isArray(profiles)) {
-            profiles.forEach((p: any) => {
-              // Match primarily by mount point (destination)
-              const match = remoteMounts.find(m => m.mount_point === p.dest);
-              if (match) {
-                activeProfiles[p.name] = match.mount_point;
+          // Use the profile field from mount data (populated by backend)
+          remoteMounts.forEach(mount => {
+            if (mount.profile) {
+              activeProfiles[mount.profile] = mount.mount_point;
+            } else {
+              // Fallback: if no profile, use 'default' or match by mount_point
+              const settings = this.loadRemoteSettings(remote.remoteSpecs.name);
+              const profiles = (settings as any)['mountConfigs'];
+              if (Array.isArray(profiles)) {
+                const match = profiles.find((p: any) => p.dest === mount.mount_point);
+                if (match) {
+                  activeProfiles[match.name] = mount.mount_point;
+                }
               }
-            });
-          }
+            }
+          });
         }
 
         return {

@@ -361,6 +361,33 @@ pub async fn get_bisync_flags(state: State<'_, RcloneState>) -> Result<Vec<Value
     ))
 }
 
+/// Get flags/options for a specific serve type
+/// If no serve_type is provided, defaults to "http"
+#[command]
+pub async fn get_serve_flags(
+    serve_type: Option<String>,
+    state: State<'_, RcloneState>,
+) -> Result<Vec<Value>, String> {
+    let serve_type = serve_type.unwrap_or_else(|| "http".to_string());
+    let merged_json = get_all_options_with_values(state).await?;
+    let flags = get_flags_by_category_internal(&merged_json, &serve_type, None, None);
+
+    // Simplify FieldName to only the part after the last dot
+    let modified_flags: Vec<Value> = flags
+        .into_iter()
+        .map(|mut flag| {
+            if let Some(field_name) = flag["FieldName"].as_str()
+                && let Some(last_part) = field_name.split('.').next_back()
+            {
+                flag["FieldName"] = Value::String(last_part.to_string());
+            }
+            flag
+        })
+        .collect();
+
+    Ok(modified_flags)
+}
+
 // --- DATA MUTATION COMMAND ---
 
 /// Saves a single RClone option value by building a nested JSON payload.

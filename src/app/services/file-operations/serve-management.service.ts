@@ -3,7 +3,7 @@ import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../../shared/services/notification.service';
 
-import { ServeStartResponse, ServeListResponse, ServeListItem, RcConfigOption } from '@app/types';
+import { ServeStartResponse, ServeListResponse, ServeListItem } from '@app/types';
 import { EventListenersService } from '../system/event-listeners.service';
 
 /**
@@ -41,13 +41,6 @@ export class ServeManagementService extends TauriBaseService {
    */
   async getServeTypes(): Promise<string[]> {
     return this.invokeCommand<string[]>('get_serve_types');
-  }
-
-  /**
-   * Get flags/options for a specific serve type
-   */
-  async getServeFlags(serveType: string): Promise<RcConfigOption[]> {
-    return this.invokeCommand<RcConfigOption[]>('get_serve_flags', { serveType });
   }
 
   /**
@@ -108,7 +101,8 @@ export class ServeManagementService extends TauriBaseService {
     serveOptions: Record<string, unknown>,
     backendOptions?: Record<string, unknown>,
     filterOptions?: Record<string, unknown>,
-    vfsOptions?: Record<string, unknown>
+    vfsOptions?: Record<string, unknown>,
+    profile?: string
   ): Promise<ServeStartResponse> {
     try {
       const serveType = (serveOptions['type'] as string) || 'serve';
@@ -119,6 +113,7 @@ export class ServeManagementService extends TauriBaseService {
         filter_options: filterOptions || null,
         backend_options: backendOptions || null,
         vfs_options: vfsOptions || null,
+        profile: profile || null,
       };
       const response = await this.invokeCommand<ServeStartResponse>('start_serve', { params });
 
@@ -209,5 +204,34 @@ export class ServeManagementService extends TauriBaseService {
    */
   getServesByType(serveType: string): ServeListItem[] {
     return this.runningServesSubject.value.filter(serve => serve.params.type === serveType);
+  }
+
+  /**
+   * Rename a profile in all cached serves for a given remote
+   * Returns the number of serves updated
+   */
+  async renameProfileInServeCache(
+    remoteName: string,
+    oldName: string,
+    newName: string
+  ): Promise<number> {
+    return this.invokeCommand<number>('rename_serve_profile_in_cache', {
+      remoteName,
+      oldName,
+      newName,
+    });
+  }
+
+  /**
+   * Get serves for a specific remote and profile
+   */
+  getServesForRemoteProfile(remoteName: string, profile?: string): ServeListItem[] {
+    return this.runningServesSubject.value.filter(serve => {
+      const matchesRemote = serve.params.fs.startsWith(remoteName);
+      if (profile) {
+        return matchesRemote && serve.profile === profile;
+      }
+      return matchesRemote;
+    });
   }
 }

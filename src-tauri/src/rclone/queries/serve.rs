@@ -5,7 +5,7 @@ use tauri::State;
 use crate::{
     rclone::state::engine::ENGINE_STATE,
     utils::{
-        rclone::endpoints::{EndpointHelper, options, serve},
+        rclone::endpoints::{EndpointHelper, serve},
         types::all_types::RcloneState,
     },
 };
@@ -77,61 +77,4 @@ pub async fn list_serves(state: State<'_, RcloneState>) -> Result<Value, String>
     debug!("✅ Running serves: {json}");
 
     Ok(json)
-}
-
-/// Get flags/options for a specific serve type
-/// Similar to mount/vfs flags, this returns the configuration options available for a serve type
-#[tauri::command]
-pub async fn get_serve_flags(
-    serve_type: String,
-    state: State<'_, RcloneState>,
-) -> Result<Vec<Value>, String> {
-    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, options::INFO);
-
-    debug!("🔍 Fetching serve flags for type '{serve_type}' from {url}");
-
-    let response = state
-        .client
-        .post(&url)
-        .json(&serde_json::json!({}))
-        .send()
-        .await
-        .map_err(|e| format!("Failed to send request: {e}"))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Failed to fetch serve flags: {:?}",
-            response.text().await
-        ));
-    }
-
-    let json: Value = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse response: {e}"))?;
-
-    // Get the flags for the specific serve type as a Vec<Value>
-    let serve_flags_array = json
-        .get(&serve_type)
-        .and_then(|v| v.as_array())
-        .cloned()
-        .unwrap_or_else(Vec::new); // Get it as a Vec<Value>
-
-    // Iterate and modify the FieldName
-    let modified_flags: Vec<Value> = serve_flags_array
-        .into_iter()
-        .map(|mut flag| {
-            if let Some(field_name) = flag["FieldName"].as_str()
-                && let Some(last_part) = field_name.split('.').next_back()
-            {
-                // Set FieldName to only the part after the dot
-                flag["FieldName"] = Value::String(last_part.to_string());
-            }
-            flag
-        })
-        .collect();
-
-    debug!("✅ Modified serve flags for '{serve_type}': {modified_flags:?}");
-
-    Ok(modified_flags)
 }

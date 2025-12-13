@@ -730,7 +730,6 @@ pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &st
     let profile_name_clone = profile_name.to_string();
 
     tauri::async_runtime::spawn(async move {
-        let job_cache_state = app_clone.state::<JobCache>();
         let cache = app_clone.state::<RemoteCache>();
         let settings_val = cache.get_settings().await;
         let settings = match settings_val.get(&remote_name_clone).cloned() {
@@ -786,7 +785,8 @@ pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &st
             }
         };
 
-        match start_serve(app_clone.clone(), job_cache_state.clone(), params).await {
+        // Serves don't use job_cache - they are tracked via serve/list
+        match start_serve(app_clone.clone(), params).await {
             Ok(response) => {
                 info!(
                     "✅ Started serve for {} profile '{}' at {}",

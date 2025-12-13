@@ -158,12 +158,10 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
           </table>
         </div>
       } @else {
-        <div class="no-items-placeholder">
+        <div class="empty-state">
           <mat-icon svgIcon="circle-check" class="placeholder-icon"></mat-icon>
           <span>No recent completed transfers</span>
-          <p class="placeholder-description">
-            Completed transfers will appear here once operations finish
-          </p>
+          <p>Completed transfers will appear here once operations finish</p>
         </div>
       }
     </div>

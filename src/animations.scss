@@ -600,25 +600,6 @@
   animation: slideDownOut 200ms cubic-bezier(0.55, 0.06, 0.68, 0.19) forwards;
 }
 
-// ===== HOVER ANIMATIONS =====
-// Animations triggered on hover
-
-.hover-pulse-blue:hover {
-  animation: iconPulseBlue 0.6s ease-out;
-}
-
-.hover-pulse-green:hover {
-  animation: iconPulseGreen 0.6s ease-out;
-}
-
-.hover-pulse-red:hover {
-  animation: iconPulseRed 0.6s ease-out;
-}
-
-.hover-breathing:hover {
-  animation: breathing 1s ease-in-out;
-}
-
 // ===== RESPONSIVE ANIMATIONS =====
 // Disable animations on devices that prefer reduced motion
 

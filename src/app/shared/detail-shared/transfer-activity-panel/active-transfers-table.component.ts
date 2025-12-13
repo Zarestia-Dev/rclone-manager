@@ -104,9 +104,10 @@ import { FormatTimePipe } from '../../pipes/format-time.pipe';
           ></tr>
         </table>
       } @else {
-        <div class="no-items-placeholder">
+        <div class="empty-state">
           <mat-icon svgIcon="download" class="placeholder-icon"></mat-icon>
           <span>No active transfers</span>
+          <p>Transfers will appear here when an operation starts</p>
         </div>
       }
     </div>

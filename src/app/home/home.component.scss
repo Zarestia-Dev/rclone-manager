@@ -32,7 +32,7 @@
         top: 10px;
       }
 
-      .empty-state {
+      .no-remotes {
         height: 100%;
         display: flex;
         align-items: center;
@@ -82,7 +82,7 @@
           }
         }
 
-        .empty-state-content {
+        .no-remotes-content {
           text-align: center;
           display: flex;
           padding: 24px;
@@ -91,7 +91,7 @@
           align-items: center;
           gap: 16px;
 
-          .empty-state-actions {
+          .no-remotes-actions {
             width: 100%;
             display: flex;
             gap: 16px;
@@ -109,10 +109,10 @@
     font-size: 14px;
   }
 
-  .empty-state {
+  .no-remotes {
     align-items: flex-start !important;
 
-    .empty-state-actions {
+    .no-remotes-actions {
       flex-direction: column;
       gap: 12px;
     }
@@ -120,7 +120,7 @@
 }
 
 @media (max-height: 500px) {
-  .empty-state {
+  .no-remotes {
     align-items: flex-start !important;
   }
 }

@@ -3,7 +3,7 @@ import { WindowService } from './window.service';
 import { BehaviorSubject } from 'rxjs';
 import { EventListenersService } from '../system/event-listeners.service';
 import { platform } from '@tauri-apps/plugin-os';
-import { AppTab, ToastMessage, Remote } from '@app/types';
+import { AppTab, Remote } from '@app/types';
 import { ApiClientService } from '../core/api-client.service';
 
 /**
@@ -24,10 +24,6 @@ export class UiStateService {
   // Viewport state
   private _isMaximized = new BehaviorSubject<boolean>(false);
   public isMaximized$ = this._isMaximized.asObservable();
-
-  // Toast notifications
-  private _showToast$ = new BehaviorSubject<ToastMessage | null>(null);
-  public showToast$ = this._showToast$.asObservable();
 
   // Window and platform
   public platform: string;
@@ -84,19 +80,9 @@ export class UiStateService {
     this.selectedRemoteSource.next(null);
   }
 
-  // === Toast Notifications ===
-  showToast(message: string, type: ToastMessage['type']): void {
-    this._showToast$.next({ message, type });
-  }
-
-  clearToast(): void {
-    this._showToast$.next(null);
-  }
-
   // === State Reset ===
   resetAppState(): void {
     this.resetSelectedRemote();
-    this.clearToast();
     this.setTab('mount');
   }
 

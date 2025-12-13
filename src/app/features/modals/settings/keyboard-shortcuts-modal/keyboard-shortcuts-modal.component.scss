@@ -132,38 +132,6 @@
       }
     }
 
-    // Empty state styling
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 64px var(--modal-padding);
-      text-align: center;
-      color: var(--secondary-text-color);
-
-      .empty-icon {
-        width: 48px;
-        height: 48px;
-        margin-bottom: 16px;
-        opacity: 0.5;
-      }
-
-      h3 {
-        font-size: var(--font-size-md);
-        font-weight: 600;
-        color: var(--app-text-color);
-        margin: 0 0 8px 0;
-      }
-
-      p {
-        font-size: var(--font-size-sm);
-        margin: 0 0 24px 0;
-        max-width: 300px;
-        line-height: 1.5;
-      }
-    }
-
     // Key separator styling
     .key-separator {
       display: inline-flex;

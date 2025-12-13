@@ -18,8 +18,8 @@
     >
     </app-status-overview-panel>
 
-    <!-- Active Remotes Panel -->
-    @if (activeCount() > 0) {
+    <!-- Active Remotes Panel (Standard: mount/sync) -->
+    @if (activeCount() > 0 && mode() !== 'serve') {
       <app-remotes-panel
         [title]="getActiveTitle()"
         [icon]="activeIcon()"
@@ -34,6 +34,40 @@
         (stopJob)="stopJob.emit({ type: $event.type, remoteName: $event.remoteName })"
       >
       </app-remotes-panel>
+    }
+
+    <!-- Active Serves Panel (Serve mode: show individual serve cards) -->
+    @if (activeCount() > 0 && mode() === 'serve') {
+      <mat-card class="remotes-panel active-remotes-panel">
+        <mat-card-header class="remotes-header">
+          <mat-card-title class="panel-title-content">
+            <mat-icon [svgIcon]="activeIcon()" class="active-icon"></mat-icon>
+            <span>{{ getActiveTitle() }}</span>
+            <span class="remote-count">{{ runningServes().length }}</span>
+          </mat-card-title>
+        </mat-card-header>
+
+        <mat-card-content class="remotes-content">
+          <div class="remotes-grid">
+            @for (serve of runningServes(); track serve.id) {
+              <app-serve-card
+                [serve]="serve"
+                [showRemoteName]="true"
+                (stopServe)="
+                  stopJob.emit({
+                    type: 'serve',
+                    serveId: $event.id,
+                    remoteName: $event.params.fs.split(':')[0],
+                  })
+                "
+                (copyToClipboard)="handleCopyToClipboard($event)"
+                (cardClick)="handleServeCardClick($event)"
+              >
+              </app-serve-card>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
     }
 
     <!-- Inactive Remotes Panel -->

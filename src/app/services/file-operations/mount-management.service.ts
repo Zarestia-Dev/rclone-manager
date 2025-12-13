@@ -33,6 +33,7 @@ export class MountManagementService extends TauriBaseService {
    */
   async getMountedRemotes(): Promise<MountedRemote[]> {
     const mountedRemotes = await this.invokeCommand<MountedRemote[]>('get_cached_mounted_remotes');
+    console.log('Mounted Remotes:', mountedRemotes);
     this.mountedRemotesCache.next(mountedRemotes);
     return mountedRemotes;
   }
@@ -55,7 +56,8 @@ export class MountManagementService extends TauriBaseService {
     mountOptions?: MountOptions,
     vfsOptions?: VfsOptions,
     filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions
+    backendOptions?: BackendOptions,
+    profile?: string
   ): Promise<void> {
     try {
       const params: MountParams = {
@@ -67,6 +69,7 @@ export class MountManagementService extends TauriBaseService {
         vfs_options: vfsOptions || {},
         filter_options: filterOptions || {},
         backend_options: backendOptions || {},
+        profile: profile,
       };
       await this.invokeCommand('mount_remote', { params });
       await this.refreshMountedRemotes();
@@ -160,5 +163,34 @@ export class MountManagementService extends TauriBaseService {
   private async refreshMountedRemotes(): Promise<void> {
     const mountedRemotes = await this.getMountedRemotes();
     this.mountedRemotesCache.next(mountedRemotes);
+  }
+
+  /**
+   * Rename a profile in all cached mounts for a given remote
+   * Returns the number of mounts updated
+   */
+  async renameProfileInMountCache(
+    remoteName: string,
+    oldName: string,
+    newName: string
+  ): Promise<number> {
+    return this.invokeCommand<number>('rename_mount_profile_in_cache', {
+      remoteName,
+      oldName,
+      newName,
+    });
+  }
+
+  /**
+   * Get mounts for a specific remote and profile
+   */
+  getMountsForRemoteProfile(remoteName: string, profile?: string): MountedRemote[] {
+    return this.mountedRemotesCache.value.filter(mount => {
+      const matchesRemote = mount.fs.startsWith(remoteName);
+      if (profile) {
+        return matchesRemote && mount.profile === profile;
+      }
+      return matchesRemote;
+    });
   }
 }

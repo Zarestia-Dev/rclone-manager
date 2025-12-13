@@ -74,25 +74,13 @@ mat-nav-list {
   &.cdk-drop-list-dragging {
     .new-bookmark-placeholder {
       display: flex !important;
-      animation: slideDown 0.2s ease forwards;
+      animation: slideDownIn 0.2s ease forwards;
     }
 
     .grid-item,
     tr {
       display: none !important;
     }
-  }
-}
-
-/* Animation */
-@keyframes slideDown {
-  from {
-    height: 0;
-    opacity: 0;
-  }
-  to {
-    height: 36px;
-    opacity: 1;
   }
 }
 

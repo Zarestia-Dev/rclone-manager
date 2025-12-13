@@ -1,15 +1,19 @@
-// Operation option bags
-export type SyncOptions = Record<string, object>;
-export type CopyOptions = Record<string, object>;
-export type BisyncOptions = Record<string, object>;
-export type MoveOptions = Record<string, object>;
-export type FilterOptions = Record<string, object>;
+// Base option types
+export type OperationOptions = Record<string, object>;
+export type FlagOptions = Record<string, string | number | boolean>;
 
-// Mount option bags
-export type MountOptions = Record<string, string | number | boolean>;
-export type VfsOptions = Record<string, string | number | boolean>;
-export type BackendOptions = Record<string, string | number | boolean>;
-export type ServeOptions = Record<string, string | number | boolean>;
+// Operation option aliases (backwards compatible)
+export type SyncOptions = OperationOptions;
+export type CopyOptions = OperationOptions;
+export type BisyncOptions = OperationOptions;
+export type MoveOptions = OperationOptions;
+export type FilterOptions = OperationOptions;
+
+// Flag option aliases (backwards compatible)
+export type MountOptions = FlagOptions;
+export type VfsOptions = FlagOptions;
+export type BackendOptions = FlagOptions;
+export type ServeOptions = FlagOptions;
 
 // Tauri command parameter payloads
 export interface SyncParams {

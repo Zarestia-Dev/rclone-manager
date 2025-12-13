@@ -17,6 +17,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -68,6 +69,7 @@ import { VfsControlPanelComponent } from '../../../../shared/detail-shared/vfs-c
     MatCardModule,
     MatChipsModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatTabsModule,
     MatProgressSpinnerModule,
     MatProgressBarModule,
@@ -603,20 +605,13 @@ export class AppDetailComponent {
     const remote = this.selectedRemote();
 
     let isActive = false;
-    // Check if ANY serve matches this profile?
-    // Serve params include profile name if passed.
-    // But ServeListItem params structure might need inspection.
-    // Current backend ServeParams includes `profile` field.
-    // Let's assume ServeListItem.params has it.
-
+    // Check if ANY serve matches this profile
     if (profileName) {
       isActive = serves.some(
-        s =>
-          s.params.fs.startsWith(remote.remoteSpecs.name + ':') &&
-          (s.params as any).profile === profileName
+        s => s.params.fs.startsWith(remote.remoteSpecs.name + ':') && s.profile === profileName
       );
     } else {
-      // Legacy check: any serve for this remote without profile? Or just any serve?
+      // Legacy check: any serve for this remote
       isActive = serves.some(s => s.params.fs.startsWith(remote.remoteSpecs.name + ':'));
     }
 
@@ -625,23 +620,29 @@ export class AppDetailComponent {
       a => a.type === 'serve' && (a.profileName === profileName || (!a.profileName && !profileName))
     );
 
+    // Extract source from config, fallback to remote name
+    const source = (config?.source as string) || `${remote.remoteSpecs.name}:/`;
+
+    // Extract protocol type and address for destination display
+    const serveType = (config?.type as string) || 'http';
+    const serveAddr = (config?.options?.addr as string) || ':8080';
+    const destination = `${serveType.toUpperCase()} @ ${serveAddr}`;
+
     return {
       operationType: 'serve',
       isActive,
       isLoading: !!actionMatch,
-      cssClass: 'primary', // Or distinct color?
+      cssClass: 'primary',
       pathConfig: {
-        source: 'Serving ' + remote.remoteSpecs.name, // Abstract source representation
-        destination: (config?.options?.addr as string) || 'Default Address',
+        source: source,
+        destination: destination,
+        sourceLabel: 'Serving',
+        destinationLabel: 'Accessible via',
         showOpenButtons: false,
         operationColor: 'primary',
         isDestinationActive: isActive,
       },
-      primaryButtonLabel: isActive ? 'Serving' : 'Start Serve', // Status indicator? Or just Start?
-      // Typically Start / Stop.
-      // If Active -> Show Stop? No, OperationControl usually handles toggle style differently?
-      // Wait, OperationControl has primary/secondary buttons.
-      // If isActive is true, secondary button (Stop) is usually shown if configured.
+      primaryButtonLabel: 'Start Serve',
       primaryIcon: 'satellite-dish',
       secondaryButtonLabel: 'Stop Serve',
       secondaryIcon: 'stop',
@@ -656,6 +657,10 @@ export class AppDetailComponent {
       : (this.mainOperationType() ?? 'mount'),
     jobId: this.jobId(),
     startTime: this.jobStats().startTime ? new Date(this.jobStats().startTime!) : undefined,
+    // Profile selection support
+    profiles: this.profiles(),
+    selectedProfile: this.selectedProfile() ?? undefined,
+    showProfileSelector: this.profiles().length > 1,
   }));
 
   statsConfig = computed<StatsPanelConfig>(() => {

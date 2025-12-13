@@ -4,20 +4,19 @@ use std::collections::HashMap;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::{
-    rclone::{commands::job::submit_job, state::engine::ENGINE_STATE},
+    rclone::state::engine::ENGINE_STATE,
     utils::{
         json_helpers::{get_string, json_to_hashmap, unwrap_nested_options},
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, serve},
         types::{
-            all_types::{JobCache, LogLevel, RcloneState},
+            all_types::{LogLevel, RcloneState, RemoteCache},
             events::SERVE_STATE_CHANGED,
         },
     },
 };
 
 use super::system::redact_sensitive_values;
-use crate::rclone::commands::job::JobMetadata;
 
 /// Parameters for starting a serve instance
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -120,7 +119,6 @@ async fn handle_rclone_response(
 #[tauri::command]
 pub async fn start_serve(
     app: AppHandle,
-    _job_cache: State<'_, JobCache>,
     params: ServeParams,
 ) -> Result<ServeStartResponse, String> {
     // Validate remote name
@@ -171,11 +169,11 @@ pub async fn start_serve(
                 .and_then(|opts| opts.get("type"))
                 .unwrap_or(&Value::from("unknown")),
             params
-                .backend_options
+                .serve_options
                 .as_ref()
-                .and_then(|opts| opts.get("ListenAddr"))
+                .and_then(|opts| opts.get("addr"))
                 .and_then(|v| v.as_str())
-                .unwrap_or("unknown"),
+                .unwrap_or(":8080"),
         ),
         Some(log_context),
     );
@@ -220,35 +218,31 @@ pub async fn start_serve(
     }
 
     let payload = Value::Object(payload);
-
     let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, serve::START);
 
-    // Determine source string for metadata
-    let source_str = params
-        .serve_options
-        .as_ref()
-        .and_then(|o| o.get("fs"))
+    // Call serve/start directly - serves are NOT jobs, they are long-running services
+    let response = state
+        .client
+        .post(&url)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Request failed: {e}"))?;
+
+    let body = handle_rclone_response(response, "Start serve", &params.remote_name).await?;
+
+    // Parse response - serve/start returns { "id": "http-abc123", "addr": "[::]:8080" }
+    let response_json: Value =
+        serde_json::from_str(&body).map_err(|e| format!("Failed to parse response: {e}"))?;
+
+    // Extract serve ID (string, e.g., "http-abc123")
+    let serve_id = response_json
+        .get("id")
         .and_then(|v| v.as_str())
-        .unwrap_or("")
+        .unwrap_or("unknown")
         .to_string();
 
-    let (jobid, response_json) = submit_job(
-        app.clone(),
-        state.client.clone(),
-        url,
-        payload,
-        JobMetadata {
-            remote_name: params.remote_name.clone(),
-            job_type: "serve".to_string(),
-            operation_name: "Start serve".to_string(),
-            source: source_str,
-            destination: "Initializing...".to_string(),
-            profile: params.profile.clone(),
-        },
-    )
-    .await?;
-
-    // Extract address from response (Serve specific)
+    // Extract address
     let addr = response_json
         .get("addr")
         .and_then(|v| v.as_str())
@@ -256,7 +250,7 @@ pub async fn start_serve(
         .to_string();
 
     let serve_response = ServeStartResponse {
-        id: jobid.to_string(), // Or response_json["id"] if jobid was parsed differently
+        id: serve_id.clone(),
         addr: addr.clone(),
     };
 
@@ -273,6 +267,12 @@ pub async fn start_serve(
             "addr": serve_response.addr
         })),
     );
+
+    // Store the profile mapping for this serve ID
+    let cache = app.state::<RemoteCache>();
+    cache
+        .store_serve_profile(&serve_id, params.profile.clone())
+        .await;
 
     // Emit event for UI update
     app.emit(SERVE_STATE_CHANGED, &params.remote_name)

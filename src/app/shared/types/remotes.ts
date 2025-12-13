@@ -27,6 +27,7 @@ export interface RemoteSettingsSection {
 export interface MountedRemote {
   fs: string;
   mount_point: string;
+  profile?: string;
 }
 
 // ============================================================================

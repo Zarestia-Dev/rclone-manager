@@ -213,6 +213,11 @@ pub async fn mount_remote(
     )
     .await?;
 
+    // Store the profile mapping for this mount point
+    cache
+        .store_mount_profile(&params.mount_point, params.profile.clone())
+        .await;
+
     app.emit(REMOTE_STATE_CHANGED, &params.remote_name)
         .map_err(|e| format!("Failed to emit event: {e}"))?;
 

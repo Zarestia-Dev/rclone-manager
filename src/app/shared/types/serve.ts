@@ -31,6 +31,7 @@ export interface ServeStartResponse {
 export interface ServeListItem {
   id: string;
   addr: string;
+  profile?: string;
   params: {
     fs: string;
     type: string;

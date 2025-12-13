@@ -26,48 +26,51 @@
   @if (!isLoading() && currentPage() === 'home') {
     <div class="modal-content">
       @if (searchQuery()) {
-          @if (globalSearchResults().length > 0) {
-            <cdk-virtual-scroll-viewport
-              itemSize="25"
-              class="virtual-scroll-viewport"
-            >
+        @if (globalSearchResults().length > 0) {
+          <cdk-virtual-scroll-viewport itemSize="25" class="virtual-scroll-viewport">
             <div class="virtual-scroll-content">
-              @for (
-                result of globalSearchResults();
-                track trackBySearchResult($index, result)
-              ) {
-                  <div
-                    class="config-item search-result-item"
-                    (click)="navigateTo(result.service, result.category, result.option.Name)"
-                    (keydown)="handleKeyboardNavigation($event, result.service, result.category, result.option.Name)"
-                    [tabindex]="0"
-                    [attr.aria-label]="'Navigate to ' + result.option.FieldName + ' in ' + result.service"
-                  >
-                    <div class="config-item-content">
-                      <mat-icon [svgIcon]="getServiceIcon(result.service)"></mat-icon>
-                      <div class="config-item-text">
-                        <span class="config-item-title">
-                          {{ result.option.FieldName }}
-                        </span>
-                        <small class="config-item-description">
-                          {{ result.service | titlecase }} > {{ result.category }}
-                        </small>
-                        <small class="config-item-description result-help">
-                          {{ result.option.Help }}
-                        </small>
-                      </div>
+              @for (result of globalSearchResults(); track trackBySearchResult($index, result)) {
+                <div
+                  class="config-item search-result-item"
+                  (click)="navigateTo(result.service, result.category, result.option.Name)"
+                  (keydown)="
+                    handleKeyboardNavigation(
+                      $event,
+                      result.service,
+                      result.category,
+                      result.option.Name
+                    )
+                  "
+                  [tabindex]="0"
+                  [attr.aria-label]="
+                    'Navigate to ' + result.option.FieldName + ' in ' + result.service
+                  "
+                >
+                  <div class="config-item-content">
+                    <mat-icon [svgIcon]="getServiceIcon(result.service)"></mat-icon>
+                    <div class="config-item-text">
+                      <span class="config-item-title">
+                        {{ result.option.FieldName }}
+                      </span>
+                      <small class="config-item-description">
+                        {{ result.service | titlecase }} > {{ result.category }}
+                      </small>
+                      <small class="config-item-description result-help">
+                        {{ result.option.Help }}
+                      </small>
                     </div>
-                    <mat-icon svgIcon="chevron-right"></mat-icon>
                   </div>
+                  <mat-icon svgIcon="chevron-right"></mat-icon>
+                </div>
               }
             </div>
-            </cdk-virtual-scroll-viewport>
-          } @else {
-            <div class="no-results">
-              <mat-icon svgIcon="search"></mat-icon>
-              <h4>No Rclone settings found</h4>
-            </div>
-          }
+          </cdk-virtual-scroll-viewport>
+        } @else {
+          <div class="empty-state">
+            <mat-icon svgIcon="search"></mat-icon>
+            <span>No Rclone settings found</span>
+          </div>
+        }
       } @else {
         <mat-accordion>
           @for (
@@ -117,7 +120,9 @@
                             (click)="navigateTo(service.name, categoryName)"
                             (keydown)="handleKeyboardNavigation($event, service.name, categoryName)"
                             [tabindex]="0"
-                            [attr.aria-label]="'Navigate to ' + categoryName + ' in ' + service.name"
+                            [attr.aria-label]="
+                              'Navigate to ' + categoryName + ' in ' + service.name
+                            "
                           >
                             <div class="config-item-content">
                               <mat-icon [svgIcon]="getCategoryIcon(categoryName)"></mat-icon>
@@ -143,8 +148,8 @@
 
           <!-- Security Section -->
           <div class="security-section">
-            <div 
-              class="config-item" 
+            <div
+              class="config-item"
               (click)="navigateTo('security')"
               (keydown)="handleKeyboardNavigation($event, 'security')"
               [tabindex]="0"
@@ -186,36 +191,35 @@
         } @else {
           @if (hasSearchQuery()) {
             <div class="search-results-info">
-              <small>Showing {{ filteredOptionsCount() }} of {{ totalOptionsCount() }} settings</small>
+              <small
+                >Showing {{ filteredOptionsCount() }} of {{ totalOptionsCount() }} settings</small
+              >
             </div>
           }
 
           @if (filteredOptionsCount() === 0 && hasSearchQuery()) {
-            <div class="no-results">
+            <div class="empty-state">
               <mat-icon svgIcon="search"></mat-icon>
-              <h4>No settings found</h4>
+              <span>No settings found</span>
               <p>Try adjusting your search terms</p>
             </div>
           } @else {
             <!-- VIRTUAL SCROLL IMPLEMENTATION -->
             <cdk-virtual-scroll-viewport [itemSize]="20" class="virtual-scroll-viewport">
               <form [formGroup]="rcloneOptionsForm">
-                @for (
-                  option of virtualScrollData();
-                  track trackByOptionIndex($index, option)
-                ) {
-                    <app-setting-control
-                      [id]="'setting-' + option.Name"
-                      [option]="option"
-                      [formControlName]="getUniqueControlKey(option)"
-                      (valueCommit)="
-                        saveRCloneOption(
-                          getUniqueControlKey(option),
-                          isOptionAtDefault(getUniqueControlKey(option))
-                        )
-                      "
-                      (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
-                    ></app-setting-control>
+                @for (option of virtualScrollData(); track trackByOptionIndex($index, option)) {
+                  <app-setting-control
+                    [id]="'setting-' + option.Name"
+                    [option]="option"
+                    [formControlName]="getUniqueControlKey(option)"
+                    (valueCommit)="
+                      saveRCloneOption(
+                        getUniqueControlKey(option),
+                        isOptionAtDefault(getUniqueControlKey(option))
+                      )
+                    "
+                    (valueChanged)="onOptionValueChanged(getUniqueControlKey(option), $event)"
+                  ></app-setting-control>
                 }
               </form>
             </cdk-virtual-scroll-viewport>

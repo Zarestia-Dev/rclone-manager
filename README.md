@@ -6,7 +6,7 @@
 
 <p align="center">
   <b>A powerful, cross-platform GUI for managing Rclone remotes with style and ease.</b><br>
-  <i>Built with Angular 20 + Tauri 2 · Linux • Windows • macOS • ARM Support</i>
+  <i>Built with Angular 20 + Tauri · Linux • Windows • macOS • ARM Support</i>
 </p>
 
 <p align="center">
@@ -42,7 +42,7 @@
 
 ## 🎨 Design Philosophy
 
-**Beautiful by design.** A unique blend of **GTK styling**, **Angular Material**, and **FontAwesome icons** creates a clean, minimalist interface that feels at home on any platform while maintaining a modern, responsive experience.
+A unique blend of **GTK styling**, **Angular Material**, and **FontAwesome icons** creates a clean, minimalist interface that feels at home on any platform while maintaining a modern, responsive experience.
 
 ---
 
@@ -90,10 +90,6 @@
 ### 🌍 Platforms
 
 - Linux, Windows, macOS; responsive layout for desktop and mobile
-
-### 🔧 Power Tools
-
-- Auto-update, terminal-friendly flows, metered-connection warnings, global shortcuts, mount watcher
 
 ---
 
@@ -224,50 +220,27 @@ We organize development on our [**GitHub Project Board**](https://github.com/use
 
 ## 🤝 Contributing
 
-We welcome contributions from developers of all skill levels! Here's how you can help:
+We welcome contributions! Here's how you can help:
 
-### Ways to Contribute
-
-- 🐛 **Report Bugs** – Found an issue? [Open a bug report](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=bug_report.md)
-- 💡 **Suggest Features** – Have an idea? [Share it with us](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=feature_request.md)
-- 📖 **Improve Documentation** – Help make our docs clearer and more comprehensive
-- 🔧 **Submit Pull Requests** – Fix bugs or implement features (see development setup above)
-- 🌍 **Translate** – Help make RClone Manager available in your language (coming soon)
-- ⭐ **Spread the Word** – Star the repo, share with friends, write blog posts
-
-### Contribution Guidelines
-
-1. Fork the repository and create a feature branch
-2. Follow the existing code style and linting rules
-3. Test your changes thoroughly on your target platform
-4. Write clear commit messages
-5. Submit a pull request with a detailed description
-
-> 📝 See our [CONTRIBUTING.md](CONTRIBUTING.md) guide (coming soon) for detailed guidelines
+- 🐛 **Report Bugs** – [Open a bug report](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=bug_report.md)
+- 💡 **Suggest Features** – [Share your ideas](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=feature_request.md)
+- 📖 **Improve Docs** – Help make our [documentation](https://github.com/Zarestia-Dev/rclone-manager/wiki) clearer
+- 🔧 **Submit PRs** – Fix bugs or implement features (see development setup above)
+- 🌍 **Translate** – Help localize RClone Manager (coming soon)
+- 💬 **Discuss** – Join [GitHub Discussions](https://github.com/Zarestia-Dev/rclone-manager/discussions)
 
 ---
 
 ## 📜 License
 
-Licensed under the **[GNU GPLv3](LICENSE)**.
-
-You are free to use, modify, and distribute this software under the terms of the GPL v3 license. See the [LICENSE](LICENSE) file for full details.
+Licensed under **[GNU GPLv3](LICENSE)** – free to use, modify, and distribute.
 
 ---
 
-## 📬 Support & Contact
+## ⭐ Support the Project
 
-### Get Help
-
-- 💬 [GitHub Discussions](https://github.com/Zarestia-Dev/rclone-manager/discussions) – Ask questions and chat with the community
-- 🐛 [Issue Tracker](https://github.com/Zarestia-Dev/rclone-manager/issues) – Report bugs or request features
-- 📖 [Documentation](https://github.com/Zarestia-Dev/rclone-manager/wiki) – Guides and tutorials
-
-### Stay Updated
-
-- ⭐ Star the repository to get notifications about new releases
-- 👀 Watch the repo for all updates and discussions
-- 🔔 Enable release notifications to be the first to know about new versions
+- **Star** and **Watch** the repo to stay updated on releases
+- Share with friends and spread the world!
 
 ---
 
