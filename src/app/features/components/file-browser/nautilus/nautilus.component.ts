@@ -50,7 +50,6 @@ import {
 import {
   Entry,
   ExplorerRoot,
-  LocalDrive,
   STANDARD_MODAL_SIZE,
   FileBrowserItem,
   FilePickerConfig,
@@ -80,10 +79,6 @@ interface Tab {
   history: { remote: ExplorerRoot | null; path: string }[];
   historyIndex: number;
 }
-
-type SidebarLocalItem =
-  | { kind: 'drive'; data: ExplorerRoot }
-  | { kind: 'bookmark'; data: FileBrowserItem };
 
 @Component({
   selector: 'app-nautilus',
@@ -252,68 +247,22 @@ export class NautilusComponent implements OnInit, OnDestroy {
     return marks;
   });
 
-  // Raw Data Source (Combined)
-  private readonly rawRemotesData = toSignal(
-    combineLatest([
-      this.remoteManagement.remotes$,
-      from(this.remoteManagement.getLocalDrives()),
-      from(this.remoteManagement.getAllRemoteConfigs().catch(() => ({}))),
-    ]),
-    { initialValue: [[], [], {}] }
-  );
-
-  // Computed: Local Drives
+  // Computed: Local Drives (filtered for picker mode)
   public readonly localDrives = computed<ExplorerRoot[]>(() => {
-    const [, localDrives] = this.rawRemotesData();
-    const drives = (localDrives || []).map((drive: LocalDrive) => ({
-      name: drive.name,
-      label: drive.label || drive.name,
-      type: 'hard-drive',
-      fs_type: 'local' as const,
-    }));
+    const drives = this.nautilusService.localDrives();
     if (this.isPickerMode() && this.pickerOptions().mode === 'remote') return [];
     return drives;
   });
 
-  // Computed: Cloud Remotes
+  // Computed: Cloud Remotes (filtered for picker mode)
   public readonly cloudRemotes = computed<ExplorerRoot[]>(() => {
-    const [remoteNames, , configs] = this.rawRemotesData();
-    let list = (remoteNames || []).map(name => {
-      const config = (configs as Record<string, { type?: string; Type?: string } | undefined>)[
-        name
-      ];
-      return {
-        name,
-        label: name,
-        type: config?.type || config?.Type || 'cloud',
-        fs_type: 'remote' as const,
-      };
-    });
+    let list = this.nautilusService.cloudRemotes();
     if (this.isPickerMode() && this.pickerOptions().mode === 'local') return [];
     const allowed = this.pickerOptions().allowedRemotes;
     if (this.isPickerMode() && allowed && allowed.length) {
       list = list.filter(r => allowed.includes(r.name));
     }
     return list;
-  });
-
-  // Computed: Sidebar Combined List
-  public readonly sidebarLocalItems = computed<SidebarLocalItem[]>(() => {
-    const drives = this.localDrives().map(d => ({ kind: 'drive', data: d }) as SidebarLocalItem);
-    let marks = this.bookmarks();
-    if (this.isPickerMode()) {
-      const cfg = this.pickerOptions();
-      marks = marks.filter(b => {
-        if (cfg.mode === 'local' && b.meta.fsType !== 'local') return false;
-        if (cfg.mode === 'remote' && b.meta.fsType !== 'remote') return false;
-        if (cfg.allowedRemotes && b.meta.fsType === 'remote') {
-          return cfg.allowedRemotes.includes((b.meta.remote || '').replace(/:$/, ''));
-        }
-        return true;
-      });
-    }
-    const bookmarkItems = marks.map(b => ({ kind: 'bookmark', data: b }) as SidebarLocalItem);
-    return [...drives, ...bookmarkItems];
   });
 
   public readonly allRemotesLookup = computed(() => [
@@ -471,7 +420,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
-    await this.initializeRemotes();
+    await this.setupInitialTab();
     this.setupEventListeners();
   }
 
@@ -537,27 +486,47 @@ export class NautilusComponent implements OnInit, OnDestroy {
       }
       if (!open && applied) this.initialLocationApplied.set(false);
     });
+
+    // Handle dynamic remote selection (e.g. from Tray or external actions)
+    effect(() => {
+      const selectedMap = this.nautilusService.selectedNautilusRemote();
+      if (selectedMap) {
+        untracked(() => {
+          const remote = this.allRemotesLookup().find(r => r.name === selectedMap);
+          if (remote) {
+            // If we have tabs (already initialized), select it directly
+            if (this.tabs().length > 0) {
+              this.selectRemote(remote);
+              // Only clear signal if we successfully handled it here (found the remote)
+              this.nautilusService.selectedNautilusRemote.set(null);
+            }
+          }
+        });
+      }
+    });
   }
 
-  private async initializeRemotes(): Promise<void> {
-    try {
-      await Promise.all([this.remoteManagement.getRemotes()]);
+  private async setupInitialTab(): Promise<void> {
+    // 1. Ensure data is loaded from the service
+    await this.nautilusService.loadRemoteData();
 
-      // Always start with the first local drive
-      const drives = await this.remoteManagement.getLocalDrives();
-      let initial: ExplorerRoot | null = null;
-      if (drives.length > 0) {
-        initial = {
-          name: drives[0].name,
-          label: drives[0].label,
-          type: 'hard-drive',
-          fs_type: 'local',
-        };
-      }
-      this.createTab(initial, '');
-    } catch (e) {
-      console.warn('Init failed', e);
+    // 2. Check if a specific remote was requested (e.g. from Tray / selectedNautilusRemote)
+    const requestedName = this.nautilusService.selectedNautilusRemote();
+    let initialRemote: ExplorerRoot | null = null;
+
+    if (requestedName) {
+      initialRemote = this.allRemotesLookup().find(r => r.name === requestedName) || null;
+      // Consume the signal so it doesn't trigger effects later
+      this.nautilusService.selectedNautilusRemote.set(null);
     }
+
+    // 3. Fallback: Open first local drive if no specific remote requested
+    if (!initialRemote) {
+      initialRemote = this.nautilusService.localDrives()[0] || null;
+    }
+
+    // 4. Create the tab
+    this.createTab(initialRemote, '');
   }
 
   private isLocationAllowedByConfig(loc: string, cfg: FilePickerConfig): boolean {

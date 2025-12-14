@@ -290,7 +290,6 @@ fn mount_serve_routes() -> Router<WebServerState> {
         .route("/mount-remote", post(mount_remote_handler))
         .route("/unmount-remote", post(unmount_remote_handler))
         .route("/mount-types", get(get_mount_types_handler))
-        .route("/is-7z-available", get(is_7z_available_handler))
 }
 
 fn scheduled_tasks_routes() -> Router<WebServerState> {
@@ -477,6 +476,8 @@ pub async fn start_web_server(
         SCHEDULED_TASK_STOPPED,
         // App wide events
         APP_EVENT,
+        // Open Internal Route
+        OPEN_INTERNAL_ROUTE,
     ];
 
     for event_name in events_to_forward {
@@ -1354,15 +1355,6 @@ async fn check_mount_plugin_installed_handler(
 
     let installed = check_mount_plugin_installed();
     Ok(Json(ApiResponse::success(installed)))
-}
-
-async fn is_7z_available_handler(
-    State(_state): State<WebServerState>,
-) -> Result<Json<ApiResponse<Option<String>>>, AppError> {
-    use crate::core::check_binaries::is_7z_available;
-
-    let result = is_7z_available();
-    Ok(Json(ApiResponse::success(result)))
 }
 
 #[derive(Deserialize)]

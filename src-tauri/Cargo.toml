@@ -45,6 +45,7 @@ sysinfo = "0.33.1"
 tauri-plugin-shell = "2"
 tokio-cron-scheduler = "0.13.0"
 croner = "3.0.1"
+sevenz-rust2 = "0.20.0"
 
 # Implementation based on: https://github.com/tauri-apps/tauri/issues/12022
 # Until Tauri provides a built-in Rust API, this manual implementation is required

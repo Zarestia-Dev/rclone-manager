@@ -19,6 +19,7 @@ pub enum TrayAction {
 
     // Remote-level actions
     Browse(String),
+    BrowseInApp(String),
 }
 
 impl TrayAction {
@@ -57,6 +58,7 @@ impl TrayAction {
                 format!("stop_serve_profile__{}__{}", remote, profile)
             }
             Self::Browse(remote) => format!("browse-__{}", remote),
+            Self::BrowseInApp(remote) => format!("browse_in_app__{}", remote),
         }
     }
 
@@ -70,6 +72,7 @@ impl TrayAction {
             let (prefix, remote) = (parts[0], parts[1]);
             match prefix {
                 "browse-" => return Some(Self::Browse(remote.to_string())),
+                "browse_in_app" => return Some(Self::BrowseInApp(remote.to_string())),
                 _ => return None,
             }
         }

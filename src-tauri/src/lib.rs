@@ -59,7 +59,7 @@ use crate::utils::app::updater::app_updates::{fetch_update, get_download_status,
 
 use crate::{
     core::{
-        check_binaries::{check_rclone_available, is_7z_available},
+        check_binaries::check_rclone_available,
         initialization::{init_rclone_state, initialization, setup_config_dir},
         lifecycle::{shutdown::handle_shutdown, startup::handle_startup},
         scheduler::{
@@ -93,12 +93,12 @@ use crate::{
         },
         tray::{
             actions::{
-                handle_bisync_profile, handle_browse_remote, handle_copy_profile,
-                handle_mount_profile, handle_move_profile, handle_serve_profile,
-                handle_stop_all_jobs, handle_stop_all_serves, handle_stop_bisync_profile,
-                handle_stop_copy_profile, handle_stop_move_profile, handle_stop_serve_profile,
-                handle_stop_sync_profile, handle_sync_profile, handle_unmount_profile,
-                show_main_window,
+                handle_bisync_profile, handle_browse_in_app, handle_browse_remote,
+                handle_copy_profile, handle_mount_profile, handle_move_profile,
+                handle_serve_profile, handle_stop_all_jobs, handle_stop_all_serves,
+                handle_stop_bisync_profile, handle_stop_copy_profile, handle_stop_move_profile,
+                handle_stop_serve_profile, handle_stop_sync_profile, handle_sync_profile,
+                handle_unmount_profile, show_main_window,
             },
             tray_action::TrayAction,
         },
@@ -427,7 +427,7 @@ pub fn run() {
             #[cfg(not(feature = "web-server"))]
             if !std::env::args().any(|arg| arg == "--tray") {
                 debug!("Creating main window");
-                create_app_window(app.handle().clone());
+                create_app_window(app.handle().clone(), None);
             }
 
             Ok(())
@@ -472,6 +472,7 @@ pub fn run() {
                         handle_stop_serve_profile(app.clone(), &remote, &serve_id)
                     }
                     TrayAction::Browse(remote) => handle_browse_remote(app, &remote),
+                    TrayAction::BrowseInApp(remote) => handle_browse_in_app(app, &remote),
                 }
                 return;
             }
@@ -634,7 +635,6 @@ pub fn run() {
             rename_serve_profile_in_cache,
             // Binaries
             check_rclone_available,
-            is_7z_available,
             // Logs
             get_remote_logs,
             clear_remote_logs,

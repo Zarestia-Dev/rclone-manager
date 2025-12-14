@@ -9,7 +9,6 @@ url="https://github.com/Zarestia-Dev/rclone-manager"
 license=('GPL-3.0-or-later')
 depends=('cairo' 'desktop-file-utils' 'gdk-pixbuf2' 'glib2' 'gtk3' 'hicolor-icon-theme' 'libsoup' 'pango' 'webkit2gtk-4.1' 'rclone')
 makedepends=('git' 'openssl' 'appmenu-gtk-module' 'libappindicator-gtk3' 'librsvg' 'cargo' 'npm' 'nodejs' 'pkg-config' 'zstd' 'xz' 'clang' 'lld' 'nss' 'nspr')
-optdepends=('7zip: Encrypt/decrypt backup data')
 options=('!strip' '!debug')
 provides=('rclone-manager')
 conflicts=('rclone-manager')

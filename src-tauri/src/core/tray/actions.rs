@@ -33,7 +33,7 @@ pub fn show_main_window(app: AppHandle) {
         });
     } else {
         info!("⚠️ Main window not found. Building...");
-        create_app_window(app);
+        create_app_window(app, None);
     }
 }
 
@@ -928,6 +928,24 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
             }
         }
     });
+}
+
+pub fn handle_browse_in_app(app: &AppHandle, remote_name: &str) {
+    info!("📂 Opening in-app browser for {}", remote_name);
+    if let Some(window) = app.get_webview_window("main") {
+        window.show().unwrap_or_else(|e| {
+            error!("🚨 Failed to show main window: {e}");
+        });
+        if let Err(e) = tauri::Emitter::emit(
+            app,
+            crate::utils::types::events::OPEN_INTERNAL_ROUTE,
+            remote_name,
+        ) {
+            error!("🚨 Failed to emit browse event: {e}");
+        }
+    } else {
+        create_app_window(app.clone(), Some(remote_name));
+    }
 }
 
 pub fn handle_stop_all_serves(app: AppHandle) {

@@ -307,12 +307,30 @@ export class OperationConfigComponent implements OnInit, OnDestroy, OnChanges {
 
   private async selectNautilusPath(group: PathGroup): Promise<void> {
     const restrictToCurrentRemote = this.isMount && group === 'source';
+    const formGroup = this.getFormGroup(group);
+    const currentPathType = formGroup?.get('pathType')?.value;
+
+    // Determine the initial location for the picker
+    let initialLocation: string | undefined;
+    if (currentPathType === 'currentRemote') {
+      initialLocation = `${this.currentRemoteName}:`;
+    } else if (currentPathType?.startsWith('otherRemote:')) {
+      const remoteName = currentPathType.substring('otherRemote:'.length);
+      if (remoteName) {
+        initialLocation = `${remoteName}:`;
+      }
+    } else if (restrictToCurrentRemote) {
+      // For mount source, always start at current remote
+      initialLocation = `${this.currentRemoteName}:`;
+    }
+
     const cfg: FilePickerConfig = {
       mode: restrictToCurrentRemote ? 'remote' : 'both',
       selection: 'folders',
       multi: false,
       allowedRemotes: restrictToCurrentRemote ? [this.currentRemoteName] : undefined,
       minSelection: 1,
+      initialLocation,
     };
 
     const result = await this.fileSystemService.selectPathWithNautilus(cfg);

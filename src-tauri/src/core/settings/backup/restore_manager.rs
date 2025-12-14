@@ -1,8 +1,5 @@
 use crate::{
-    core::{
-        check_binaries::find_7z_executable,
-        settings::backup::backup_manager::{INNER_DATA_ARCHIVE_NAME, calculate_file_hash},
-    },
+    core::settings::backup::backup_manager::{INNER_DATA_ARCHIVE_NAME, calculate_file_hash},
     rclone::{commands::remote::create_remote, queries::get_rclone_config_file},
     utils::types::{
         all_types::RcloneState,
@@ -17,7 +14,6 @@ use std::{
     fs::{self, File},
     io::BufReader,
     path::{Path, PathBuf},
-    process::{Command, Stdio},
 };
 use tauri::{AppHandle, Emitter, Manager, State};
 use zip::ZipArchive;
@@ -134,37 +130,13 @@ fn extract_7z_archive(
     extract_to: &Path,
     password: Option<&str>,
 ) -> Result<(), String> {
-    let seven_zip = find_7z_executable().map_err(|e| format!("7z not found: {e}"))?;
-
-    let mut cmd = Command::new(seven_zip);
-    cmd.arg("x") // Extract with paths
-        .arg(archive_path)
-        .arg(format!("-o{}", extract_to.display()))
-        .arg("-y") // Yes to all prompts
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped());
-
     if let Some(pw) = password {
-        // Pass password directly with -p flag (no space between -p and password)
-        cmd.arg(format!("-p{}", pw));
+        sevenz_rust2::decompress_file_with_password(archive_path, extract_to, pw.into())
+            .map_err(|e| format!("Failed to extract 7z archive: {e}"))
     } else {
-        // Explicitly no password
-        cmd.arg("-p-");
+        sevenz_rust2::decompress_file(archive_path, extract_to)
+            .map_err(|e| format!("Failed to extract 7z archive: {e}"))
     }
-
-    let output = cmd
-        .output()
-        .map_err(|e| format!("Failed to execute 7z: {e}"))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        if stderr.contains("Wrong password") || stderr.contains("Cannot open encrypted") {
-            return Err("Wrong password".into());
-        }
-        return Err(format!("7z extraction failed: {}", stderr));
-    }
-
-    Ok(())
 }
 
 /// Extracts a zip archive

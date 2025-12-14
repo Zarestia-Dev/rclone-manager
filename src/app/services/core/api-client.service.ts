@@ -294,7 +294,6 @@ export class ApiClientService {
       get_disk_usage: '/disk-usage',
       kill_process_by_pid: '/kill-process-by-pid',
       check_rclone_available: '/check-rclone-available',
-      is_7z_available: '/is-7z-available',
       provision_rclone: '/provision-rclone',
 
       // Settings

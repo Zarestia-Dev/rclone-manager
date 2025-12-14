@@ -5,52 +5,91 @@
     [style.height.px]="700"
     class="virtual-scroll-viewport"
   >
-    <!-- Virtual scrolling content -->
-    <div *cdkVirtualFor="let field of formFields; trackBy: trackByField">
-      @if (field.type === 'operation-config' && !isType(['vfs', 'filter', 'backend'])) {
-        <app-operation-config
-          [opFormGroup]="configGroup"
-          [operationType]="flagType"
-          [currentRemoteName]="currentRemoteName"
-          [existingRemotes]="existingRemotes"
-          [isNewRemote]="isNewRemote"
-          [description]="
-            'Configure source, destination, and auto-start options for this operation.'
-          "
-          (sourceFolderSelected)="onSourceFolderSelect()"
-          (destFolderSelected)="onDestFolderSelect()"
-        >
-        </app-operation-config>
-      }
+    <div class="form-container">
+      <!-- Virtual scrolling content -->
+      <div *cdkVirtualFor="let field of formFields; trackBy: trackByField">
+        <!-- Operation Config (shown for all except vfs/filter/backend) -->
+        @if (field.type === 'operation-config') {
+          <app-operation-config
+            [opFormGroup]="configGroup"
+            [operationType]="flagType"
+            [currentRemoteName]="currentRemoteName"
+            [existingRemotes]="isType('serve') ? [] : existingRemotes"
+            [isNewRemote]="isType('serve') ? false : isNewRemote"
+            [description]="
+              isType('serve')
+                ? 'Select the remote path you want to serve. You can serve the entire remote or a specific folder.'
+                : 'Configure source, destination, and auto-start options for this operation.'
+            "
+            (sourceFolderSelected)="onSourceFolderSelect()"
+            (destFolderSelected)="onDestFolderSelect()"
+          >
+          </app-operation-config>
+        }
 
-      <!-- Mount Type Selector -->
-      @if (field.type === 'mount-type' && isType('mount')) {
-        <div class="options">
+        <!-- Mount Type Selector -->
+        @if (field.type === 'mount-type') {
+          <div class="options">
+            <mat-form-field appearance="fill">
+              <mat-label>Mount Type</mat-label>
+              <mat-select formControlName="type" placeholder="Select mount type">
+                @for (mountType of mountTypes; track mountType) {
+                  <mat-option [value]="mountType">
+                    {{ mountType | titlecase }}
+                  </mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </div>
+        }
+
+        <!-- Serve Type Selector -->
+        @if (field.type === 'serve-type') {
           <mat-form-field appearance="fill">
-            <mat-label>Mount Type</mat-label>
-            <mat-select formControlName="type" placeholder="Select mount type">
-              @for (mountType of mountTypes; track mountType) {
-                <mat-option [value]="mountType">
-                  {{ mountType | titlecase }}
+            <mat-label>Type</mat-label>
+            <mat-select formControlName="type" (selectionChange)="onServeTypeChange($event.value)">
+              @for (type of availableServeTypes; track type) {
+                <mat-option [value]="type">
+                  <div class="type-option">
+                    <mat-icon [svgIcon]="iconService.getIconName(type)"></mat-icon>
+                    <div class="type-info">
+                      <span class="type-name">{{ type.toUpperCase() }}</span>
+                      <span class="type-desc">{{ getServeTypeDescription(type) }}</span>
+                    </div>
+                  </div>
                 </mat-option>
               }
+              <mat-select-trigger>
+                <div class="type-option">
+                  <mat-icon [svgIcon]="iconService.getIconName(selectedServeType)"></mat-icon>
+                  <span class="type-name">{{ selectedServeType.toUpperCase() }}</span>
+                </div>
+              </mat-select-trigger>
             </mat-select>
           </mat-form-field>
-        </div>
-      }
+        }
 
-      <!-- Dynamic Flag Fields -->
-      @if (field.type === 'dynamic-fields') {
-        <ng-container formGroupName="options">
-          @for (field of this.dynamicFlagFields; track field.Name) {
-            <app-setting-control
-              [option]="field"
-              [formControlName]="getControlKey(flagType, field)"
-            >
-            </app-setting-control>
-          }
-        </ng-container>
-      }
+        <!-- Loading state for serve fields -->
+        @if (field.type === 'loading') {
+          <div class="loading-container">
+            <mat-spinner diameter="30"></mat-spinner>
+            <span>Loading {{ selectedServeType }} options...</span>
+          </div>
+        }
+
+        <!-- Dynamic Flag Fields -->
+        @if (field.type === 'dynamic-fields') {
+          <ng-container class="form-container" formGroupName="options">
+            @for (field of this.dynamicFlagFields; track field.Name) {
+              <app-setting-control
+                [option]="field"
+                [formControlName]="getControlKey(flagType, field)"
+              >
+              </app-setting-control>
+            }
+          </ng-container>
+        }
+      </div>
     </div>
   </cdk-virtual-scroll-viewport>
 </form>

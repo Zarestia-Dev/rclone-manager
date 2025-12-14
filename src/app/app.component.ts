@@ -26,6 +26,7 @@ import {
   OnboardingStateService,
   RcloneUpdateService,
   AppUpdaterService,
+  NautilusService,
 } from '@app/services';
 import { GlobalLoadingService } from './services/ui/global-loading.service';
 
@@ -61,6 +62,7 @@ export class AppComponent implements OnDestroy {
   private readonly appUpdaterService = inject(AppUpdaterService);
   private readonly rcloneUpdateService = inject(RcloneUpdateService);
   private readonly loadingService = inject(GlobalLoadingService);
+  private readonly nautilusService = inject(NautilusService);
 
   // --- DERIVED STATE & OBSERVABLE CONVERSIONS ---
   readonly currentTab = toSignal(this.uiStateService.currentTab$, {
@@ -88,9 +90,26 @@ export class AppComponent implements OnDestroy {
     try {
       await this.appSettingsService.loadSettings();
       await this.checkOnboardingStatus();
+      this.checkBrowseUrlParameter();
     } catch (error) {
       console.error('App initialization failed:', error);
       this.completedOnboarding.set(false);
+    }
+  }
+
+  /**
+   * Check for ?browse=remoteName URL parameter and open in-app browser
+   * This is triggered from the tray menu when "Browse (In App)" is clicked
+   */
+  private checkBrowseUrlParameter(): void {
+    const urlParams = new URLSearchParams(window.location.search);
+    const browseRemote = urlParams.get('browse');
+
+    if (browseRemote) {
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+      // Skip entrance animation when opening via deep link
+      this.nautilusService.openForRemote(browseRemote, false);
     }
   }
 
@@ -102,6 +121,7 @@ export class AppComponent implements OnDestroy {
   private setupSubscriptions(): void {
     this.setupRcloneEngineListener();
     this.listenToAppEvents();
+    this.listenToBrowseInAppEvent();
   }
 
   private setupRcloneEngineListener(): void {
@@ -149,6 +169,23 @@ export class AppComponent implements OnDestroy {
         }
       },
     });
+  }
+
+  /**
+   * Listen for browse-in-app events from tray menu
+   * This is used when the window is already open to avoid page reload
+   */
+  private listenToBrowseInAppEvent(): void {
+    this.eventListenersService
+      .listenToOpenInternalRoute()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (remoteName: string) => {
+          console.log(`📂 Browse event received for remote: ${remoteName}`);
+          this.nautilusService.openForRemote(remoteName);
+        },
+        error: error => console.error('Browse in app event error:', error),
+      });
   }
 
   private async checkOnboardingStatus(): Promise<void> {

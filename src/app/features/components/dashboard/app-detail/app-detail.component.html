@@ -126,13 +126,13 @@
                 <!-- Operation-Specific Warnings -->
                 @switch (selectedSyncOperation()) {
                   @case ('move') {
-                    <mat-card class="detail-panel">
-                      <mat-card-header class="panel-header">
-                        <mat-card-title class="panel-title-content">
+                    <mat-card>
+                      <mat-card-header>
+                        <mat-card-title>
                           <mat-icon svgIcon="warning" class="warn"></mat-icon>Move Operation Warning
                         </mat-card-title>
                       </mat-card-header>
-                      <mat-card-content class="panel-content">
+                      <mat-card-content>
                         <p>
                           Files will be <strong>deleted</strong> from the source after successful
                           transfer to destination.
@@ -142,13 +142,13 @@
                     </mat-card>
                   }
                   @case ('bisync') {
-                    <mat-card class="detail-panel">
-                      <mat-card-header class="panel-header">
-                        <mat-card-title class="panel-title-content">
-                          <mat-icon svgIcon="info" class="panel-icon"></mat-icon>BiSync Information
+                    <mat-card>
+                      <mat-card-header>
+                        <mat-card-title>
+                          <mat-icon svgIcon="info"></mat-icon>BiSync Information
                         </mat-card-title>
                       </mat-card-header>
-                      <mat-card-content class="panel-content">
+                      <mat-card-content>
                         <p>Bidirectional synchronization keeps both locations synchronized.</p>
                         <p>Changes made to either location will be reflected in the other.</p>
                         <p>First run may take longer as it establishes the sync baseline.</p>

@@ -93,22 +93,4 @@ export class BackupRestoreService extends TauriBaseService {
       throw error;
     }
   }
-
-  /**
-   * Check if 7z compression is available
-   */
-  async check7zSupport(): Promise<boolean> {
-    // Backend now returns the path to the 7z executable when available, or null
-    // when not. Keep the public API boolean for existing callers but provide
-    // a helper to obtain the actual path if needed.
-    const path = await this.invokeCommand<string | null>('is_7z_available');
-    return !!path;
-  }
-
-  /**
-   * Return the 7z executable path or null if not available.
-   */
-  async get7zPath(): Promise<string | null> {
-    return this.invokeCommand<string | null>('is_7z_available');
-  }
 }

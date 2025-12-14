@@ -28,14 +28,14 @@
       "deb": {
         "desktopTemplate": "linux/headless/template-headless.desktop",
         "depends": ["xvfb", "dbus-x11"],
-        "recommends": ["rclone", "7z"],
+        "recommends": ["rclone"],
         "postInstallScript": "linux/headless/postinstall.sh",
         "preRemoveScript": "linux/headless/preremove.sh"
       },
       "rpm": {
         "desktopTemplate": "linux/headless/template-headless.desktop",
         "depends": ["xorg-x11-server-Xvfb", "dbus-x11"],
-        "recommends": ["rclone", "7z"],
+        "recommends": ["rclone"],
         "postInstallScript": "linux/headless/postinstall.sh",
         "preRemoveScript": "linux/headless/preremove.sh"
       }

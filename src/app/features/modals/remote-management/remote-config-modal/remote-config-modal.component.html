@@ -5,20 +5,18 @@
       <mat-icon [svgIcon]="iconService.getIconName(remoteForm.get('type')?.value)"></mat-icon>
     </button>
     <p data-tauri-drag-region>
-      <span>
-        {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
-      </span>
+      {{ editTarget ? 'Edit ' + (editTarget | titlecase) + ' Settings' : 'Add New Remote' }}
     </p>
     <button matIconButton (click)="close()" aria-label="Close dialog" title="Close">
       <mat-icon svgIcon="circle-xmark"></mat-icon>
     </button>
   </header>
 
-  <!-- Step Progress Indicator (Only shown during multi-step create flow or when editing specific flag type) -->
+  <!-- Step Progress Indicator (Only shown during multi-step create flow) -->
   @if (!interactiveFlowState.isActive && !editTarget) {
     <div class="step-indicator-container">
       <div class="step-indicator hide-scrollbar" role="tablist" aria-label="Configuration Steps">
-        @for (step of currentStepLabels; track step; let i = $index) {
+        @for (step of stepLabels; track step; let i = $index) {
           <button
             class="step"
             [ngClass]="getStepState(i + 1)"
@@ -33,7 +31,7 @@
               @if (getStepState(i + 1) === 'completed') {
                 <mat-icon svgIcon="circle-check"></mat-icon>
               } @else {
-                <mat-icon [svgIcon]="getStepIcon(i)"></mat-icon>
+                <mat-icon [svgIcon]="stepIcons[i]"></mat-icon>
               }
             </div>
             @if (getStepState(i + 1) === 'current') {
@@ -217,32 +215,24 @@
       </ng-template>
 
       <!-- Flags and Serve Steps -->
-      <!-- We iterate manually or use a smarter loop.
-           Order: Remote(1), Mount(2), Serve(3), Copy(4), Sync(5), Bisync(6), Move(7), Filter(8), VFS(9), Backend(10)
-           FlagTypes: mount(0), copy(1), sync(2), bisync(3), move(4), filter(5), vfs(6), backend(7)
-      -->
+      <!-- Step mapping: index + 2 (Remote is step 1, then FLAG_TYPES start at step 2) -->
       @for (flagType of FLAG_TYPES; track flagType; let i = $index) {
-        <!-- Logic to determine step number for this flag type -->
-        <!-- Mount is i=0 -> Step 2 -->
-        <!-- Serve is Step 3 (Inserted manual) -->
-        <!-- Others are i>=1 -> Step i+3 -->
-        @let stepNum = i === 0 ? 2 : i + 3;
-
-        @if (currentStep === stepNum) {
+        @if (currentStep === i + 2) {
           <section class="step-container">
             <!-- Profile Management Header -->
-            @if (FLAG_TYPES.includes(flagType)) {
-              <ng-container
-                *ngTemplateOutlet="profileHeader; context: { type: flagType }"
-              ></ng-container>
-            }
+            <ng-container
+              *ngTemplateOutlet="profileHeader; context: { type: flagType }"
+            ></ng-container>
 
-            <!-- Linked Profiles for Operations (Mount, Sync, Copy, Move, Bisync) -->
-            @if (['mount', 'sync', 'copy', 'move', 'bisync'].includes(flagType)) {
+            <!-- Linked Profiles for Operations (Mount, Serve, Sync, Copy, Move, Bisync) -->
+            @if (['mount', 'serve', 'sync', 'copy', 'move', 'bisync'].includes(flagType)) {
               <ng-container
                 *ngTemplateOutlet="
                   linkedProfiles;
-                  context: { configPath: flagType + 'Config', showVfs: flagType === 'mount' }
+                  context: {
+                    configPath: flagType + 'Config',
+                    showVfs: flagType === 'mount' || flagType === 'serve',
+                  }
                 "
               ></ng-container>
             }
@@ -253,47 +243,22 @@
               [flagType]="flagType"
               [isEditMode]="!!editTarget"
               [existingRemotes]="existingRemotes"
-              [dynamicFlagFields]="dynamicFlagFields[flagType]"
+              [dynamicFlagFields]="
+                flagType === 'serve' ? dynamicServeFields : dynamicFlagFields[flagType]
+              "
               [mountTypes]="mountTypes"
               [currentRemoteName]="getRemoteName()"
               [isNewRemote]="!editTarget"
               [getControlKey]="getUniqueControlKey.bind(this)"
+              [availableServeTypes]="availableServeTypes"
+              [selectedServeType]="selectedServeType"
+              [isLoadingServeFields]="isLoadingServeFields"
               (sourceFolderSelected)="handleSourceFolderSelect(flagType)"
               (destFolderSelected)="handleDestFolderSelect(flagType)"
+              (serveTypeChange)="onServeTypeChange($event)"
             />
           </section>
         }
-      }
-
-      <!-- Serve Step (Step 3) -->
-      @if (currentStep === 3) {
-        <section class="step-container">
-          <ng-container
-            *ngTemplateOutlet="profileHeader; context: { type: 'serve' }"
-          ></ng-container>
-
-          <!-- Linked Profiles for Serve -->
-          <ng-container
-            *ngTemplateOutlet="
-              linkedProfiles;
-              context: { configPath: 'serveConfig', showVfs: true }
-            "
-          ></ng-container>
-
-          <app-serve-config-step
-            class="step"
-            [form]="$any(remoteConfigForm.get('serveConfig'))"
-            [remoteName]="getRemoteName()"
-            [hasSavedServeConfig]="hasSavedServeConfig"
-            [savedType]="savedType"
-            [availableServeTypes]="availableServeTypes"
-            [selectedType]="selectedServeType"
-            [dynamicServeFields]="dynamicServeFields"
-            [isLoadingFields]="isLoadingServeFields"
-            [getControlKey]="getServeControlKey.bind(this)"
-            (typeChange)="onServeTypeChange($event)"
-          />
-        </section>
       }
     }
   </main>

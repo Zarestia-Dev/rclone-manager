@@ -110,19 +110,13 @@
           <mat-slide-toggle
             [ngModel]="withPassword()"
             (ngModelChange)="onPasswordProtectionChange($event)"
-            [disabled]="!sevenZipSupported() || isExporting()"
+            [disabled]="isExporting()"
           >
             Encrypt Export
           </mat-slide-toggle>
-          @if (!sevenZipSupported()) {
-            <span class="security-warning">
-              <mat-icon svgIcon="warning" class="warn-icon"></mat-icon>
-              7-Zip required
-            </span>
-          }
         </div>
 
-        @if (showPasswordField()) {
+        @if (withPassword()) {
           <div class="password-field-wrapper">
             <mat-form-field class="full-width">
               <mat-label>Encryption Password</mat-label>

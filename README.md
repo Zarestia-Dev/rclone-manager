@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/0c2051b3-17f1-4e54-aba1-aed13266d238" alt="RClone Manager" style="align-self: center" height="180">
+  <img src="assets/App Banner.png" alt="RClone Manager">
 </p>
 
   <h1 align="center">
@@ -147,54 +147,13 @@ Install RClone Manager from your favorite package manager.
 
 - **Linux/macOS:** [FUSE](https://github.com/libfuse/libfuse) – Usually pre-installed on most distributions
 - **Windows:** [WinFsp](https://github.com/billziss-gh/winfsp) – Automatically prompted for installation if missing
-- **macOS:** Mount plugin – Automatically installed by the app when needed
-
-#### Optional (for encrypted exports)
-
-- **[7-Zip](https://www.7-zip.org/)** – For password-protected configuration backups
+- **macOS:** FUSE ([macFUSE](https://osxfuse.github.io/) or [FUSE-T](https://github.com/macos-fuse-t/fuse-t)) – Automatically installed by the app when needed
 
 ---
 
 ## 🛠️ Development
 
-### 🔧 Tech Stack
-
-- **Frontend**: Angular 20 + Angular Material + FontAwesome
-- **Backend**: Tauri 2 (Rust)
-- **Styling**: Custom GTK-inspired theming with responsive design
-- **Architecture**: Modern component-based with reactive state management
-
-### Prerequisites for Building
-
-- **[Node.js](https://nodejs.org/)** (v18 or later)
-- **[Rust](https://www.rust-lang.org/tools/install)** (latest stable)
-- **[Cargo](https://doc.rust-lang.org/cargo/)** (comes with Rust)
-- Platform-specific build tools (see [Tauri prerequisites](https://tauri.app/start/prerequisites/))
-
-### Development Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/Zarestia-Dev/rclone-manager.git
-cd rclone-manager
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run tauri dev
-```
-
-⚠️ **Important:** Always use `npm run tauri dev` instead of `ng serve`, as the app requires Tauri APIs.
-
-### Building for Production
-
-```bash
-# Build for your current platform
-npm run tauri build
-
-# The built application will be in src-tauri/target/release/
-```
+For detailed building instructions, please refer to our [Wiki](https://github.com/Zarestia-Dev/rclone-manager/wiki/Building).
 
 ### Linting & Formatting
 

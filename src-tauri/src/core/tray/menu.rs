@@ -22,6 +22,7 @@ fn create_mount_submenu<R: Runtime>(
     remote: &str,
     settings: &serde_json::Value,
     mounted_remotes: &[crate::utils::types::all_types::MountedRemote],
+    active_count: usize,
 ) -> tauri::Result<Submenu<R>> {
     let mount_configs = settings
         .get("mountConfigs")
@@ -49,12 +50,12 @@ fn create_mount_submenu<R: Runtime>(
             let (action_id, label) = if is_mounted {
                 (
                     TrayAction::UnmountProfile(remote.to_string(), profile_name.clone()).to_id(),
-                    format!("🗃️ {} → Unmount", profile_name),
+                    format!("● {} ▸ Unmount", profile_name),
                 )
             } else {
                 (
                     TrayAction::MountProfile(remote.to_string(), profile_name.clone()).to_id(),
-                    format!("   {} → Mount", profile_name),
+                    format!("  {} ▸ Mount", profile_name),
                 )
             };
 
@@ -64,13 +65,15 @@ fn create_mount_submenu<R: Runtime>(
     } else {
         // No profiles configured - show default option
         let action_id = TrayAction::MountProfile(remote.to_string(), "default".to_string()).to_id();
-        let item = MenuItem::with_id(handle, action_id, "   default → Mount", true, None::<&str>)?;
+        let item = MenuItem::with_id(handle, action_id, "  default ▸ Mount", true, None::<&str>)?;
         items.push(Box::new(item));
     }
 
+    let profile_count = mount_configs.map(|c| c.len()).unwrap_or(1);
+
     let submenu = Submenu::with_items(
         handle,
-        "📦 Mount",
+        format!("Mount [{}/{}]", active_count, profile_count),
         true,
         &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
     )?;
@@ -109,12 +112,12 @@ fn create_sync_submenu<R: Runtime>(
             let (action_id, label) = if is_running {
                 (
                     TrayAction::StopSyncProfile(remote.to_string(), profile_name.clone()).to_id(),
-                    format!("🔄 {} → Stop", profile_name),
+                    format!("● {} ▸ Stop", profile_name),
                 )
             } else {
                 (
                     TrayAction::SyncProfile(remote.to_string(), profile_name.clone()).to_id(),
-                    format!("   {} → Start", profile_name),
+                    format!("  {} ▸ Start", profile_name),
                 )
             };
 
@@ -123,13 +126,19 @@ fn create_sync_submenu<R: Runtime>(
         }
     } else {
         let action_id = TrayAction::SyncProfile(remote.to_string(), "default".to_string()).to_id();
-        let item = MenuItem::with_id(handle, action_id, "   default → Start", true, None::<&str>)?;
+        let item = MenuItem::with_id(handle, action_id, "  default ▸ Start", true, None::<&str>)?;
         items.push(Box::new(item));
     }
 
+    let profile_count = sync_configs.map(|c| c.len()).unwrap_or(1);
+    let active_count = active_jobs
+        .iter()
+        .filter(|job| job.remote_name == remote && job.job_type == "sync")
+        .count();
+
     let submenu = Submenu::with_items(
         handle,
-        "🔄 Sync",
+        format!("Sync [{}/{}]", active_count, profile_count),
         true,
         &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
     )?;
@@ -168,12 +177,12 @@ fn create_copy_submenu<R: Runtime>(
             let (action_id, label) = if is_running {
                 (
                     TrayAction::StopCopyProfile(remote.to_string(), profile_name.clone()).to_id(),
-                    format!("📋 {} → Stop", profile_name),
+                    format!("● {} ▸ Stop", profile_name),
                 )
             } else {
                 (
                     TrayAction::CopyProfile(remote.to_string(), profile_name.clone()).to_id(),
-                    format!("   {} → Start", profile_name),
+                    format!("  {} ▸ Start", profile_name),
                 )
             };
 
@@ -182,13 +191,19 @@ fn create_copy_submenu<R: Runtime>(
         }
     } else {
         let action_id = TrayAction::CopyProfile(remote.to_string(), "default".to_string()).to_id();
-        let item = MenuItem::with_id(handle, action_id, "   default → Start", true, None::<&str>)?;
+        let item = MenuItem::with_id(handle, action_id, "  default ▸ Start", true, None::<&str>)?;
         items.push(Box::new(item));
     }
 
+    let profile_count = copy_configs.map(|c| c.len()).unwrap_or(1);
+    let active_count = active_jobs
+        .iter()
+        .filter(|job| job.remote_name == remote && job.job_type == "copy")
+        .count();
+
     let submenu = Submenu::with_items(
         handle,
-        "📋 Copy",
+        format!("Copy [{}/{}]", active_count, profile_count),
         true,
         &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
     )?;
@@ -227,12 +242,12 @@ fn create_move_submenu<R: Runtime>(
             let (action_id, label) = if is_running {
                 (
                     TrayAction::StopMoveProfile(remote.to_string(), profile_name.clone()).to_id(),
-                    format!("🚚 {} → Stop", profile_name),
+                    format!("● {} ▸ Stop", profile_name),
                 )
             } else {
                 (
                     TrayAction::MoveProfile(remote.to_string(), profile_name.clone()).to_id(),
-                    format!("   {} → Start", profile_name),
+                    format!("  {} ▸ Start", profile_name),
                 )
             };
 
@@ -241,13 +256,19 @@ fn create_move_submenu<R: Runtime>(
         }
     } else {
         let action_id = TrayAction::MoveProfile(remote.to_string(), "default".to_string()).to_id();
-        let item = MenuItem::with_id(handle, action_id, "   default → Start", true, None::<&str>)?;
+        let item = MenuItem::with_id(handle, action_id, "  default ▸ Start", true, None::<&str>)?;
         items.push(Box::new(item));
     }
 
+    let profile_count = move_configs.map(|c| c.len()).unwrap_or(1);
+    let active_count = active_jobs
+        .iter()
+        .filter(|job| job.remote_name == remote && job.job_type == "move")
+        .count();
+
     let submenu = Submenu::with_items(
         handle,
-        "🚚 Move",
+        format!("Move [{}/{}]", active_count, profile_count),
         true,
         &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
     )?;
@@ -286,12 +307,12 @@ fn create_bisync_submenu<R: Runtime>(
             let (action_id, label) = if is_running {
                 (
                     TrayAction::StopBisyncProfile(remote.to_string(), profile_name.clone()).to_id(),
-                    format!("🔄 {} → Stop", profile_name),
+                    format!("● {} ▸ Stop", profile_name),
                 )
             } else {
                 (
                     TrayAction::BisyncProfile(remote.to_string(), profile_name.clone()).to_id(),
-                    format!("   {} → Start", profile_name),
+                    format!("  {} ▸ Start", profile_name),
                 )
             };
 
@@ -301,13 +322,19 @@ fn create_bisync_submenu<R: Runtime>(
     } else {
         let action_id =
             TrayAction::BisyncProfile(remote.to_string(), "default".to_string()).to_id();
-        let item = MenuItem::with_id(handle, action_id, "   default → Start", true, None::<&str>)?;
+        let item = MenuItem::with_id(handle, action_id, "  default ▸ Start", true, None::<&str>)?;
         items.push(Box::new(item));
     }
 
+    let profile_count = bisync_configs.map(|c| c.len()).unwrap_or(1);
+    let active_count = active_jobs
+        .iter()
+        .filter(|job| job.remote_name == remote && job.job_type == "bisync")
+        .count();
+
     let submenu = Submenu::with_items(
         handle,
-        "🔄 BiSync",
+        format!("BiSync [{}/{}]", active_count, profile_count),
         true,
         &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
     )?;
@@ -321,6 +348,7 @@ fn create_serve_submenu<R: Runtime>(
     remote: &str,
     settings: &serde_json::Value,
     all_serves: &[ServeInstance],
+    active_count: usize,
 ) -> tauri::Result<Submenu<R>> {
     let serve_configs = settings
         .get("serveConfigs")
@@ -355,12 +383,12 @@ fn create_serve_submenu<R: Runtime>(
                 let serve_type = serve.params["type"].as_str().unwrap_or("serve");
                 (
                     TrayAction::StopServeProfile(remote.to_string(), serve.id.clone()).to_id(),
-                    format!("📡 {} ({}) → Stop", profile_name, serve_type),
+                    format!("● {} ({}) ▸ Stop", profile_name, serve_type),
                 )
             } else {
                 (
                     TrayAction::ServeProfile(remote.to_string(), profile_name.clone()).to_id(),
-                    format!("   {} → Start", profile_name),
+                    format!("  {} ▸ Start", profile_name),
                 )
             };
 
@@ -369,13 +397,15 @@ fn create_serve_submenu<R: Runtime>(
         }
     } else {
         let action_id = TrayAction::ServeProfile(remote.to_string(), "default".to_string()).to_id();
-        let item = MenuItem::with_id(handle, action_id, "   default → Start", true, None::<&str>)?;
+        let item = MenuItem::with_id(handle, action_id, "  default ▸ Start", true, None::<&str>)?;
         items.push(Box::new(item));
     }
 
+    let profile_count = serve_configs.map(|c| c.len()).unwrap_or(1);
+
     let submenu = Submenu::with_items(
         handle,
-        "📡 Serve",
+        format!("Serve [{}/{}]", active_count, profile_count),
         true,
         &items.iter().map(|item| item.as_ref()).collect::<Vec<_>>(),
     )?;
@@ -464,12 +494,7 @@ pub async fn create_tray_menu<R: Runtime>(
     for remote_str in remotes_to_show {
         let remote = remote_str.to_string();
         if let Some(settings) = cached_settings.get(&remote).cloned() {
-            // Count profiles for this remote
-            let mount_count = settings
-                .get("mountConfigs")
-                .and_then(|v| v.as_array())
-                .map(|a| a.len())
-                .unwrap_or(0);
+            // Count profiles for this remote (for job aggregation)
             let sync_count = settings
                 .get("syncConfigs")
                 .and_then(|v| v.as_array())
@@ -487,11 +512,6 @@ pub async fn create_tray_menu<R: Runtime>(
                 .unwrap_or(0);
             let bisync_count = settings
                 .get("bisyncConfigs")
-                .and_then(|v| v.as_array())
-                .map(|a| a.len())
-                .unwrap_or(0);
-            let serve_count = settings
-                .get("serveConfigs")
                 .and_then(|v| v.as_array())
                 .map(|a| a.len())
                 .unwrap_or(0);
@@ -529,30 +549,15 @@ pub async fn create_tray_menu<R: Runtime>(
             // -- Build the submenu items for this remote --
             let mut submenu_items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
 
-            // Add status indicators with counts
-            let mount_status_text = if mount_count > 0 {
-                format!("Mounted: {}/{}", active_mount_count, mount_count)
-            } else {
-                "No mount profiles".to_string()
-            };
-            let mount_status = CheckMenuItem::with_id(
-                &handle,
-                format!("mount_status-{}", remote),
-                mount_status_text,
-                false,
-                active_mount_count > 0,
-                None::<&str>,
-            )?;
-            submenu_items.push(Box::new(mount_status));
-
+            // Add job status indicator (aggregates sync, copy, move, bisync)
             let job_status_text = if total_job_profiles > 0 {
                 format!(
-                    "Jobs: {}/{}",
+                    "Jobs [{}/{}]",
                     active_jobs_for_remote.len(),
                     total_job_profiles
                 )
             } else {
-                "No job profiles".to_string()
+                "Jobs [—]".to_string()
             };
             let job_status = CheckMenuItem::with_id(
                 &handle,
@@ -563,21 +568,6 @@ pub async fn create_tray_menu<R: Runtime>(
                 None::<&str>,
             )?;
             submenu_items.push(Box::new(job_status));
-
-            let serve_status_text = if serve_count > 0 {
-                format!("Serves: {}/{}", active_serves_for_remote.len(), serve_count)
-            } else {
-                "No serve profiles".to_string()
-            };
-            let serve_status = CheckMenuItem::with_id(
-                &handle,
-                format!("serve_status-{}", remote),
-                serve_status_text,
-                false,
-                !active_serves_for_remote.is_empty(),
-                None::<&str>,
-            )?;
-            submenu_items.push(Box::new(serve_status));
             submenu_items.push(Box::new(PredefinedMenuItem::separator(&handle)?));
 
             // Get primary actions for this remote (default to all if not set)
@@ -602,8 +592,13 @@ pub async fn create_tray_menu<R: Runtime>(
             for action in &primary_actions {
                 match action.as_str() {
                     "mount" => {
-                        let mount_submenu =
-                            create_mount_submenu(&handle, &remote, &settings, &mounted_remotes)?;
+                        let mount_submenu = create_mount_submenu(
+                            &handle,
+                            &remote,
+                            &settings,
+                            &mounted_remotes,
+                            active_mount_count,
+                        )?;
                         submenu_items.push(Box::new(mount_submenu));
                     }
                     "sync" => {
@@ -627,8 +622,13 @@ pub async fn create_tray_menu<R: Runtime>(
                         submenu_items.push(Box::new(bisync_submenu));
                     }
                     "serve" => {
-                        let serve_submenu =
-                            create_serve_submenu(&handle, &remote, &settings, &all_serves)?;
+                        let serve_submenu = create_serve_submenu(
+                            &handle,
+                            &remote,
+                            &settings,
+                            &all_serves,
+                            active_serves_for_remote.len(),
+                        )?;
                         submenu_items.push(Box::new(serve_submenu));
                     }
                     _ => {} // Ignore unknown action types
@@ -637,15 +637,25 @@ pub async fn create_tray_menu<R: Runtime>(
 
             submenu_items.push(Box::new(PredefinedMenuItem::separator(&handle)?));
 
-            let browse_id = TrayAction::Browse(remote.clone()).to_id();
-            let browse_item = MenuItem::with_id(
-                &handle,
-                browse_id,
-                "🔍 Browse",
-                active_mount_count > 0,
-                None::<&str>,
-            )?;
-            submenu_items.push(Box::new(browse_item));
+            // Show appropriate browse option based on mount status
+            if active_mount_count > 0 {
+                // Mounted: show "Browse" to open in native file manager
+                let browse_id = TrayAction::Browse(remote.clone()).to_id();
+                let browse_item =
+                    MenuItem::with_id(&handle, browse_id, "Browse", true, None::<&str>)?;
+                submenu_items.push(Box::new(browse_item));
+            } else {
+                // Not mounted: show "Browse (In App)" to open in-app file browser
+                let browse_in_app_id = TrayAction::BrowseInApp(remote.clone()).to_id();
+                let browse_in_app_item = MenuItem::with_id(
+                    &handle,
+                    browse_in_app_id,
+                    "Browse (In App)",
+                    true,
+                    None::<&str>,
+                )?;
+                submenu_items.push(Box::new(browse_in_app_item));
+            }
 
             let name = if remote.len() > 20 {
                 format!("{}...", &remote[..17])

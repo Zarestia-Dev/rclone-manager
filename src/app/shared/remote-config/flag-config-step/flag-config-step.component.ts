@@ -19,10 +19,25 @@ import { MatSelectModule } from '@angular/material/select';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { ScrollingModule } from '@angular/cdk/scrolling';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 import { FlagType, RcConfigOption } from '@app/types';
 import { SettingControlComponent } from 'src/app/shared/components';
 import { OperationConfigComponent } from 'src/app/shared/remote-config/app-operation-config/app-operation-config.component';
+import { IconService } from '../../services/icon.service';
+
+// Serve type information for icons and descriptions
+const SERVE_TYPE_INFO: Record<string, { icon: string; description: string }> = {
+  http: { icon: 'globe', description: 'Serve files via HTTP' },
+  webdav: { icon: 'cloud', description: 'WebDAV for file access' },
+  ftp: { icon: 'ftp', description: 'FTP file transfer' },
+  sftp: { icon: 'sftp', description: 'Secure FTP over SSH' },
+  nfs: { icon: 'server', description: 'Network File System' },
+  dlna: { icon: 'play-circle', description: 'DLNA media server' },
+  docker: { icon: 'box', description: 'Docker volume plugin' },
+  restic: { icon: 'shield', description: 'Restic REST server' },
+  s3: { icon: 'database', description: 'Amazon S3 compatible server' },
+};
 
 @Component({
   selector: 'app-flag-config-step',
@@ -36,7 +51,7 @@ import { OperationConfigComponent } from 'src/app/shared/remote-config/app-opera
     MatIconModule,
     MatTooltipModule,
     MatButtonModule,
-    MatInputModule,
+    MatProgressSpinnerModule,
     SettingControlComponent,
     ScrollingModule,
     OperationConfigComponent,
@@ -46,6 +61,9 @@ import { OperationConfigComponent } from 'src/app/shared/remote-config/app-opera
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FlagConfigStepComponent implements OnChanges {
+  readonly iconService = inject(IconService);
+  private cdRef = inject(ChangeDetectorRef);
+
   @Input() form!: FormGroup;
   @Input() flagType!: FlagType;
   @Input() isEditMode = false;
@@ -58,23 +76,27 @@ export class FlagConfigStepComponent implements OnChanges {
 
   @Input() getControlKey!: (flagType: FlagType, field: RcConfigOption) => string;
 
+  // Serve-specific inputs
+  @Input() availableServeTypes: string[] = [];
+  @Input() selectedServeType = 'http';
+  @Input() isLoadingServeFields = false;
+
   @Output() sourceFolderSelected = new EventEmitter<void>();
   @Output() destFolderSelected = new EventEmitter<void>();
+  @Output() serveTypeChange = new EventEmitter<string>();
 
   public showAdvancedOptions = false;
-  private cdRef = inject(ChangeDetectorRef);
 
   ngOnChanges(changes: SimpleChanges): void {
-    // Mark for check when dynamic fields or mount types change
-    if (changes['dynamicFlagFields'] || changes['mountTypes']) {
+    if (changes['dynamicFlagFields'] || changes['mountTypes'] || changes['isLoadingServeFields']) {
       this.cdRef.markForCheck();
     }
   }
 
-  // Get all form fields as an array for virtual scrolling
   get formFields(): any[] {
     const fields = [];
 
+    // Operation config for all ops except vfs/filter/backend (serve gets it too)
     if (!this.isType(['vfs', 'filter', 'backend'])) {
       fields.push({ type: 'operation-config' });
     }
@@ -84,30 +106,27 @@ export class FlagConfigStepComponent implements OnChanges {
       fields.push({ type: 'mount-type' });
     }
 
-    // Bisync options
-    if (this.isType('bisync')) {
-      fields.push({ type: 'bisync-options' });
+    // Serve type selector
+    if (this.isType('serve')) {
+      fields.push({ type: 'serve-type' });
     }
 
-    // Move options
-    if (this.isType('move')) {
-      fields.push({ type: 'move-options' });
+    // Loading state for serve fields
+    if (this.isType('serve') && this.isLoadingServeFields) {
+      fields.push({ type: 'loading' });
     }
 
-    // Copy/Sync options
-    if (this.isType(['copy', 'sync'])) {
-      fields.push({ type: 'copy-sync-options' });
-    }
-
-    // Dynamic flag fields
-    if (this.dynamicFlagFields && this.dynamicFlagFields.length > 0) {
+    // Dynamic flag fields (skip if loading for serve)
+    if (
+      this.dynamicFlagFields?.length > 0 &&
+      !(this.isType('serve') && this.isLoadingServeFields)
+    ) {
       fields.push({ type: 'dynamic-fields' });
     }
 
     return fields;
   }
 
-  // Track by function for virtual scrolling
   trackByField(index: number, field: any): string {
     return `${field.type}-${index}`;
   }
@@ -120,14 +139,14 @@ export class FlagConfigStepComponent implements OnChanges {
     this.destFolderSelected.emit();
   }
 
+  onServeTypeChange(type: string): void {
+    this.serveTypeChange.emit(type);
+  }
+
   get configGroup(): FormGroup {
     return this.form.get(`${this.flagType}Config`) as FormGroup;
   }
 
-  /**
-   * Returns true if the current flagType matches the given type(s).
-   * Usage: this.isType('mount') or this.isType(['sync', 'copy'])
-   */
   isType(type: FlagType | FlagType[]): boolean {
     if (Array.isArray(type)) {
       return type.includes(this.flagType);
@@ -135,16 +154,15 @@ export class FlagConfigStepComponent implements OnChanges {
     return this.flagType === type;
   }
 
-  /**
-   * Determines if folder selection should require empty folder
-   * For mount operations, checks if AllowNonEmpty is set to true
-   */
   get shouldRequireEmptyFolder(): boolean {
     if (this.isType('mount')) {
       const allowNonEmpty = this.configGroup?.get('options.AllowNonEmpty')?.value;
-      const requireEmpty = !allowNonEmpty;
-      return requireEmpty;
+      return !allowNonEmpty;
     }
     return false;
+  }
+
+  getServeTypeDescription(type: string): string {
+    return SERVE_TYPE_INFO[type]?.description || 'Network serve type';
   }
 }

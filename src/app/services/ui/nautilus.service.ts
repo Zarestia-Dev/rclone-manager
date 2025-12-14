@@ -1,13 +1,17 @@
-import { ComponentRef, inject, Injectable, signal, WritableSignal } from '@angular/core';
+import { ComponentRef, inject, Injectable, signal, computed, WritableSignal } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { Overlay, OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { take } from 'rxjs/operators';
 import { NautilusComponent } from 'src/app/features/components/file-browser/nautilus/nautilus.component';
-import { AppSettingsService } from '@app/services';
-import { FileBrowserItem, CollectionType, FilePickerConfig, FilePickerResult } from '@app/types';
-
-// Legacy interface removed
+import { AppSettingsService, RemoteManagementService } from '@app/services';
+import {
+  FileBrowserItem,
+  CollectionType,
+  FilePickerConfig,
+  FilePickerResult,
+  ExplorerRoot,
+} from '@app/types';
 
 @Injectable({
   providedIn: 'root',
@@ -15,6 +19,7 @@ import { FileBrowserItem, CollectionType, FilePickerConfig, FilePickerResult } f
 export class NautilusService {
   private overlay = inject(Overlay);
   private appSettingsService = inject(AppSettingsService);
+  private remoteManagement = inject(RemoteManagementService);
 
   // Nautilus / Browser overlay
   private _isNautilusOverlayOpen = new BehaviorSubject<boolean>(false);
@@ -37,7 +42,57 @@ export class NautilusService {
   public readonly starredItems = signal<FileBrowserItem[]>([]);
   public readonly bookmarks = signal<FileBrowserItem[]>([]);
 
-  // 1. Configuration Map: Centralize the differences here
+  // Selected remote signal (for initial navigation or direct selection)
+  public readonly selectedNautilusRemote = signal<string | null>(null);
+
+  // ========== REMOTE/DRIVE STATE ==========
+
+  // Simple writable signals for drives and remotes
+  public readonly localDrives = signal<ExplorerRoot[]>([]);
+  public readonly cloudRemotes = signal<ExplorerRoot[]>([]);
+
+  // Combined lookup
+  public readonly allRemotesLookup = computed(() => [
+    ...this.localDrives(),
+    ...this.cloudRemotes(),
+  ]);
+
+  // Load data when Nautilus opens
+  public async loadRemoteData(): Promise<void> {
+    const [remoteNames, drives, configs] = await Promise.all([
+      this.remoteManagement.getRemotes(),
+      this.remoteManagement.getLocalDrives(),
+      this.remoteManagement.getAllRemoteConfigs().catch(() => ({})),
+    ]);
+
+    // Set local drives
+    this.localDrives.set(
+      drives.map(drive => ({
+        name: drive.name,
+        label: drive.label || drive.name,
+        type: 'hard-drive',
+        fs_type: 'local' as const,
+      }))
+    );
+
+    // Set cloud remotes
+    this.cloudRemotes.set(
+      remoteNames.map(name => {
+        const config = (configs as Record<string, { type?: string; Type?: string } | undefined>)[
+          name
+        ];
+        return {
+          name,
+          label: name,
+          type: config?.type || config?.Type || 'cloud',
+          fs_type: 'remote' as const,
+        };
+      })
+    );
+  }
+
+  // ========== COLLECTIONS CONFIG ==========
+
   private readonly collections: Record<
     CollectionType,
     {
@@ -51,13 +106,13 @@ export class NautilusService {
       category: 'nautilus',
       key: 'starred',
       signal: this.starredItems,
-      allowFiles: true, // Stars allow everything
+      allowFiles: true,
     },
     bookmarks: {
       category: 'nautilus',
       key: 'bookmarks',
       signal: this.bookmarks,
-      allowFiles: false, // Bookmarks are folders only
+      allowFiles: false,
     },
   };
 
@@ -81,7 +136,24 @@ export class NautilusService {
     }
   }
 
-  // Accept only V2 config
+  /**
+   * Opens the file browser and navigates to a specific remote.
+   * If already open, just navigates without reinitializing.
+   * @param showAnimation - If true, shows the entrance animation (useful for deep links)
+   */
+  openForRemote(remoteName: string, showAnimation = true): void {
+    this.selectedNautilusRemote.set(remoteName);
+
+    if (this.overlayRef) {
+      return;
+    }
+
+    // Not open - create the overlay
+    this._filePickerState.next({ isOpen: false });
+    this._isNautilusOverlayOpen.next(true);
+    this.createNautilusOverlay(showAnimation);
+  }
+
   openFilePicker(options: FilePickerConfig): void {
     if (this.overlayRef) return;
     this._filePickerState.next({ isOpen: true, options });
@@ -90,11 +162,11 @@ export class NautilusService {
   }
 
   closeFilePicker(result: string[] | null): void {
-    const v2: FilePickerResult = {
+    const config: FilePickerResult = {
       cancelled: result === null,
       paths: result ?? [],
     };
-    this._filePickerResult.next(v2);
+    this._filePickerResult.next(config);
     this._filePickerState.next({ isOpen: false });
     this._isNautilusOverlayOpen.next(false);
     if (this.componentRef) {
@@ -105,7 +177,7 @@ export class NautilusService {
         this.overlayRef?.dispose();
         this.overlayRef = null;
         this.componentRef = null;
-      }, 250);
+      }, 200);
     }
   }
 
@@ -205,7 +277,7 @@ export class NautilusService {
     this.appSettingsService.saveSetting(config.category, config.key, items);
   }
 
-  private createNautilusOverlay(): void {
+  private createNautilusOverlay(showAnimation = true): void {
     this.overlayRef = this.overlay.create({
       positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
       scrollStrategy: this.overlay.scrollStrategies.block(),
@@ -214,6 +286,11 @@ export class NautilusService {
     const portal = new ComponentPortal(NautilusComponent);
     const componentRef: ComponentRef<NautilusComponent> = this.overlayRef.attach(portal);
     this.componentRef = componentRef;
+
+    // Skip entrance animation for deep links / URL parameters
+    if (showAnimation) {
+      componentRef.location.nativeElement.classList.add('slide-overlay-enter');
+    }
 
     componentRef.instance.closeOverlay.pipe(take(1)).subscribe(() => {
       this.closeFilePicker(null);

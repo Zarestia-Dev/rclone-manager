@@ -53,9 +53,8 @@ export class ExportModalComponent implements OnInit {
   readonly withPassword = signal(false);
   readonly password = signal('');
   readonly showPassword = signal(false);
-  readonly sevenZipSupported = signal(false);
   readonly remotes = signal<readonly string[]>([]);
-  readonly isLoading = signal(false); // Start false, set true in ngOnInit
+  readonly isLoading = signal(false);
   readonly isExporting = signal(false);
   readonly userNote = signal('');
 
@@ -114,21 +113,10 @@ export class ExportModalComponent implements OnInit {
     () => this.selectedOption() === ExportType.SpecificRemote
   );
 
-  readonly showPasswordField = computed(() => this.withPassword() && this.sevenZipSupported());
-
-  readonly showSecurityWarning = computed(() => !this.sevenZipSupported());
-
   async ngOnInit(): Promise<void> {
     this.isLoading.set(true);
     try {
-      const [is7zSupported, remotesList] = await Promise.allSettled([
-        this.backupRestoreService.check7zSupport(),
-        this.remoteManagementService.getRemotes(),
-      ]);
-
-      this.sevenZipSupported.set(
-        is7zSupported.status === 'fulfilled' ? is7zSupported.value : false
-      );
+      const [remotesList] = await Promise.allSettled([this.remoteManagementService.getRemotes()]);
 
       this.remotes.set(remotesList.status === 'fulfilled' ? Object.freeze(remotesList.value) : []);
 

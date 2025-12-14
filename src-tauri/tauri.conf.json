@@ -33,7 +33,7 @@
       "deb": {
         "desktopTemplate": "linux/template.desktop",
         "depends": ["libayatana-appindicator3-1 | libappindicator3-1"],
-        "recommends": ["rclone", "7z"],
+        "recommends": ["rclone"],
         "files": {
           "/usr/share/flatpak.metainfo.xml": "linux/flatpak.metainfo.xml"
         }
@@ -41,7 +41,7 @@
       "rpm": {
         "desktopTemplate": "linux/template.desktop",
         "depends": ["libappindicator-gtk3 or libayatana-appindicator-gtk3"],
-        "recommends": ["rclone", "7z"]
+        "recommends": ["rclone"]
       }
     },
     "windows": {

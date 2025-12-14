@@ -41,3 +41,4 @@ pub const SCHEDULED_TASK_STOPPED: &str = "scheduled_task_stopped";
 
 // Application events
 pub const APP_EVENT: &str = "app_event";
+pub const OPEN_INTERNAL_ROUTE: &str = "open_internal_route";

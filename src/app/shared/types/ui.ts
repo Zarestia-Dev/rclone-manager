@@ -12,10 +12,10 @@ export interface ModalSize {
 
 export const STANDARD_MODAL_SIZE: ModalSize = {
   width: '90vw',
-  maxWidth: '642px',
+  maxWidth: '680px',
   minWidth: '362px',
   height: '80vh',
-  maxHeight: '700px',
+  maxHeight: '800px',
   minHeight: '240px',
   disableClose: true,
 };

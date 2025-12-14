@@ -4,6 +4,20 @@ form {
   height: 100%;
   overflow: hidden;
 
+  .advanced-section,
+  .form-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    padding: var(--space-md);
+  }
+
+  .advanced-section {
+    border: 2px solid rgba(var(--accent-color-rgb), 0.5);
+    background: rgba(var(--accent-color-rgb), 0.06);
+    border-radius: var(--border-radius);
+  }
+
   // Virtual Scroll Viewport
   .virtual-scroll-viewport {
     width: 100%;
@@ -15,36 +29,7 @@ form {
   // =============================================
   mat-slide-toggle {
     display: block;
-    margin: var(--space-xs) 0;
     font-size: 14px;
-  }
-
-  // =============================================
-  // FIELD SECTIONS
-  // =============================================
-  .basic-section {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xs);
-    padding-top: var(--space-lg);
-  }
-
-  .config-toggles {
-    padding-inline: var(--space-lg);
-  }
-
-  .advanced-section {
-    display: flex;
-    flex-direction: column;
-    background: linear-gradient(
-      135deg,
-      rgba(var(--accent-color-rgb), 0.04) 0%,
-      rgba(var(--accent-color-rgb), 0.03) 100%
-    );
-    border-left: 4px solid var(--primary-color);
-    border-radius: 4px;
-    margin-bottom: var(--space-lg);
-    transition: all 0.3s ease;
   }
 
   // =============================================
@@ -54,11 +39,9 @@ form {
     font-size: 16px;
     font-weight: 600;
     color: var(--app-text-color);
-    padding: var(--space-sm) var(--space-md);
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-    letter-spacing: 0.3px;
 
     span {
       font-size: var(--font-size-md);
