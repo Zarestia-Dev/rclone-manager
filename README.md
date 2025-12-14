@@ -1,9 +1,10 @@
-<h1 align="center">
-  <img src="src/assets/rclone.svg" alt="RClone Manager" height="180">
-  <br>
-  RClone Manager
-</h1>
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/0c2051b3-17f1-4e54-aba1-aed13266d238" alt="RClone Manager" style="align-self: center" height="180">
+</p>
 
+  <h1 align="center">
+  RClone Manager
+  </h1>
 <p align="center">
   <b>A powerful, cross-platform GUI for managing Rclone remotes with style and ease.</b><br>
   <i>Built with Angular 20 + Tauri · Linux • Windows • macOS • ARM Support</i>
