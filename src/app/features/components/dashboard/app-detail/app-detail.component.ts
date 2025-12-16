@@ -174,10 +174,13 @@ export class AppDetailComponent {
 
     const type = this.selectedSyncOperation();
     const settings = this.remoteSettings();
-    const configProfiles = (settings as any)[`${type}Configs`] || [];
+    const configProfiles = settings[`${type}Configs` as keyof RemoteSettings] as
+      | Record<string, unknown>
+      | undefined;
+    const profileNames = configProfiles ? Object.keys(configProfiles) : [];
 
-    if (Array.isArray(configProfiles) && configProfiles.length > 0) {
-      return configProfiles.map((p: any) => ({ name: p.name, label: p.name }));
+    if (profileNames.length > 0) {
+      return profileNames.map(name => ({ name, label: name }));
     }
 
     // No profiles exist, return default
@@ -266,7 +269,7 @@ export class AppDetailComponent {
     const op = this.selectedSyncOperation();
     const profile = this.selectedProfile();
 
-    const stateMap: any = {
+    const stateMap = {
       sync: remote.syncState,
       bisync: remote.bisyncState,
       move: remote.moveState,
@@ -274,130 +277,86 @@ export class AppDetailComponent {
     };
 
     const state = stateMap[op];
-
-    // If a specific profile is selected (and it's not the placeholder 'default')
-    if (profile && profile !== 'default') {
-      return state?.activeProfiles?.[profile]; // Returns undefined if not found, preventing wrong job stats
-    }
-
-    // Fallback to main job ID (legacy or default) only if no specific profile selected
-    const legacyKeyMap: any = {
-      sync: 'syncJobID',
-      bisync: 'bisyncJobID',
-      move: 'moveJobID',
-      copy: 'copyJobID',
-    };
-    return state?.[legacyKeyMap[op]];
+    const profileName = profile || 'default';
+    return state?.activeProfiles?.[profileName];
   });
 
   operationSettingsSections = computed<RemoteSettingsSection[]>(() => {
     const sections: RemoteSettingsSection[] = [];
     const settings = this.remoteSettings();
 
+    // Helper to add operation profile sections
+    const addProfileSections = (type: string, titlePrefix: string, icon: string): void => {
+      const profiles = settings[`${type}Configs` as keyof RemoteSettings] as
+        | Record<string, unknown>
+        | undefined;
+      const profileNames = profiles ? Object.keys(profiles) : [];
+
+      if (profileNames.length > 0) {
+        profileNames.forEach(profileName => {
+          sections.push({
+            key: `${type}:${profileName}`,
+            title: `${titlePrefix} (${profileName})`,
+            icon,
+            group: 'operation',
+          });
+        });
+      } else {
+        // Always show at least one default section
+        sections.push({
+          key: type,
+          title: titlePrefix,
+          icon,
+          group: 'operation',
+        });
+      }
+    };
+
     if (this.isSyncType()) {
       const type = this.selectedSyncOperation();
       const op = this.currentOperation();
-      // Get profiles array (e.g., 'copyConfigs') or fallback to legacy single config if array missing
-      const profiles = (settings as any)[`${type}Configs`];
-
-      if (Array.isArray(profiles) && profiles.length > 0) {
-        profiles.forEach((p: any) => {
-          sections.push({
-            key: `${type}:${p.name}`, // Composite key
-            title: `${op?.label || 'Sync'} Options (${p.name})`,
-            icon: op?.icon || 'gear',
-            group: 'operation',
-          } as any);
-        });
-      } else {
-        // Always show at least one default section even if no profiles exist
-        sections.push({
-          key: type,
-          title: `${op?.label || 'Sync'} Options`,
-          icon: op?.icon || 'gear',
-          group: 'operation',
-        } as any);
-      }
-      // VFS is now handled in sharedSettingsSections with profiles
+      addProfileSections(type, `${op?.label || 'Sync'} Options`, op?.icon || 'gear');
     } else if (this.mainOperationType() === 'serve') {
-      const type = 'serve';
-      const profiles = (settings as any)[`${type}Configs`];
-
-      if (Array.isArray(profiles) && profiles.length > 0) {
-        profiles.forEach((p: any) => {
-          sections.push({
-            key: `${type}:${p.name}`,
-            title: `Protocol Options (${p.name})`,
-            icon: 'satellite-dish',
-            group: 'operation',
-          } as any);
-        });
-      } else {
-        // Always show at least one default section even if no profiles exist
-        sections.push({
-          key: type,
-          title: 'Protocol Options',
-          icon: 'satellite-dish',
-          group: 'operation',
-        } as any);
-      }
+      addProfileSections('serve', 'Protocol Options', 'satellite-dish');
     } else {
-      // Mount profiles
-      const type = 'mount';
-      const profiles = (settings as any)[`${type}Configs`];
-
-      if (Array.isArray(profiles) && profiles.length > 0) {
-        profiles.forEach((p: any) => {
-          sections.push({
-            key: `${type}:${p.name}`,
-            title: `Mount Options (${p.name})`,
-            icon: 'gear',
-            group: 'operation',
-          } as any);
-        });
-      } else {
-        // Always show at least one default section even if no profiles exist
-        sections.push({
-          key: type,
-          title: 'Mount Options',
-          icon: 'gear',
-          group: 'operation',
-        } as any);
-      }
-
-      // VFS is now handled in sharedSettingsSections with profiles
+      addProfileSections('mount', 'Mount Options', 'gear');
     }
+
     return sections;
   });
 
   sharedSettingsSections = computed<RemoteSettingsSection[]>(() => {
     const sections: RemoteSettingsSection[] = [];
-    const settings = this.remoteSettings() || {};
+    const settings = this.remoteSettings();
     const operationType = this.mainOperationType();
 
     // Helper to add sections for a type
-    const addSections = (type: string, titlePrefix: string, icon: string) => {
-      const profiles = (settings as any)[`${type}Configs`];
-      if (Array.isArray(profiles) && profiles.length > 0) {
-        profiles.forEach((p: any) => {
+    const addSections = (type: string, titlePrefix: string, icon: string): void => {
+      const profiles = settings[`${type}Configs` as keyof RemoteSettings] as
+        | Record<string, unknown>
+        | undefined;
+      const profileNames = profiles ? Object.keys(profiles) : [];
+
+      if (profileNames.length > 0) {
+        profileNames.forEach(profileName => {
           sections.push({
-            key: `${type}:${p.name}`,
-            title: `${titlePrefix} (${p.name})`,
-            icon: icon,
+            key: `${type}:${profileName}`,
+            title: `${titlePrefix} (${profileName})`,
+            icon,
             group: 'shared',
-          } as any);
+          });
         });
       } else {
         sections.push({
           key: type,
           title: titlePrefix,
-          icon: icon,
+          icon,
           group: 'shared',
         });
       }
     };
 
-    // VFS is only relevant for mount and serve operations (not for sync/copy/move/bisync)
+    // VFS is only relevant for mount and serve operations
     if (operationType === 'mount' || operationType === 'serve') {
       addSections('vfs', 'VFS Options', 'vfs');
     }
@@ -438,17 +397,20 @@ export class AppDetailComponent {
     const type = this.isSyncType()
       ? (this.selectedSyncOperation() as PrimaryActionType)
       : this.mainOperationType();
-    const settings = this.remoteSettings() || {};
-    const profiles = (settings as any)[`${type}Configs`];
+    const settings = this.remoteSettings();
+    const profiles = settings[`${type}Configs` as keyof RemoteSettings] as
+      | Record<string, unknown>
+      | undefined;
+    const profileEntries = profiles ? Object.entries(profiles) : [];
 
-    // If we have multiple profiles, create a config for each
-    if (Array.isArray(profiles) && profiles.length > 0) {
-      return profiles.map((profile: any) =>
+    // If we have profiles, create a config for each
+    if (profileEntries.length > 0) {
+      return profileEntries.map(([profileName, profile]) =>
         this.createOperationControlConfig(
           type,
           op,
           this.getPathConfigForProfile(profile),
-          profile.name
+          profileName
         )
       );
     }
@@ -535,11 +497,14 @@ export class AppDetailComponent {
   }
 
   mountControlConfigs = computed<OperationControlConfig[]>(() => {
-    const settings = this.remoteSettings() || {};
-    const profiles = (settings as any)['mountConfigs'];
+    const settings = this.remoteSettings();
+    const profiles = settings['mountConfigs'] as Record<string, unknown> | undefined;
+    const profileEntries = profiles ? Object.entries(profiles) : [];
 
-    if (Array.isArray(profiles) && profiles.length > 0) {
-      return profiles.map((p: any) => this.createMountControlConfig(p, p.name));
+    if (profileEntries.length > 0) {
+      return profileEntries.map(([profileName, p]) =>
+        this.createMountControlConfig(p, profileName)
+      );
     }
 
     // Always show at least one default config
@@ -589,11 +554,14 @@ export class AppDetailComponent {
   }
 
   serveControlConfigs = computed<OperationControlConfig[]>(() => {
-    const settings = this.remoteSettings() || {};
-    const profiles = (settings as any)['serveConfigs'];
+    const settings = this.remoteSettings();
+    const profiles = settings['serveConfigs'] as Record<string, unknown> | undefined;
+    const profileEntries = profiles ? Object.entries(profiles) : [];
 
-    if (Array.isArray(profiles) && profiles.length > 0) {
-      return profiles.map((p: any) => this.createServeControlConfig(p, p.name));
+    if (profileEntries.length > 0) {
+      return profileEntries.map(([profileName, p]) =>
+        this.createServeControlConfig(p, profileName)
+      );
     }
 
     // Always show at least one default config
@@ -725,26 +693,6 @@ export class AppDetailComponent {
   }));
 
   // --- Helper Computeds ---
-
-  private pathConfig = computed<PathDisplayConfig>(() => {
-    const opType = this.selectedSyncOperation();
-    const settings = this.remoteSettings() || {};
-
-    const profiles = (settings as any)[`${opType}Configs`];
-    let configObj: any = {};
-
-    if (Array.isArray(profiles) && profiles.length > 0) {
-      configObj = profiles.find((p: any) => p.name === 'default') || {};
-    }
-
-    return {
-      source: (configObj['source'] as string) || 'Not configured',
-      destination: (configObj['dest'] as string) || 'Not configured',
-      showOpenButtons: true,
-      isDestinationActive: true,
-    };
-  });
-
   private operationClass = computed(() =>
     this.isSyncType()
       ? `sync-${this.selectedSyncOperation()}-operation`
@@ -811,9 +759,9 @@ export class AppDetailComponent {
     let specificSettings = {};
 
     if (profileName) {
-      const profiles = settings[`${key}Configs`];
-      if (Array.isArray(profiles)) {
-        specificSettings = profiles.find((p: any) => p.name === profileName) || {};
+      const profiles = settings[`${key}Configs`] as Record<string, any> | undefined;
+      if (profiles && typeof profiles === 'object') {
+        specificSettings = profiles[profileName] || {};
       }
     } else {
       // Legacy or direct access (vfs, filter, etc)

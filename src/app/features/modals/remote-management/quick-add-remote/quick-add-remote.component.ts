@@ -42,10 +42,6 @@ import {
   RemoteConfigSections,
   InteractiveFlowState,
   INTERACTIVE_REMOTES,
-  CopyConfig,
-  SyncConfig,
-  BisyncConfig,
-  MoveConfig,
 } from '@app/types';
 import { OperationConfigComponent } from '../../../../shared/remote-config/app-operation-config/app-operation-config.component';
 import { ValidatorRegistryService } from 'src/app/shared/services/validator-registry.service';
@@ -400,17 +396,15 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
       cronExpression: op.cronExpression || null,
     });
 
-    const wrapProfile = (config: any) => (config ? [{ ...config, name: 'default' }] : []);
-
     return {
-      mountConfigs: [{ ...createConfig(operations.mount), type: 'mount', name: 'default' }],
-      copyConfigs: wrapProfile(createConfig(operations.copy)),
-      syncConfigs: wrapProfile(createConfig(operations.sync)),
-      bisyncConfigs: wrapProfile(createConfig(operations.bisync)),
-      moveConfigs: wrapProfile(createConfig(operations.move)),
-      filterConfig: {},
-      vfsConfig: { CacheMode: 'full', ChunkSize: '32M' },
-      backendConfig: {},
+      mountConfigs: { default: { ...createConfig(operations.mount), type: 'mount' } },
+      copyConfigs: { default: createConfig(operations.copy) },
+      syncConfigs: { default: createConfig(operations.sync) },
+      bisyncConfigs: { default: createConfig(operations.bisync) },
+      moveConfigs: { default: createConfig(operations.move) },
+      filterConfigs: { default: {} },
+      vfsConfigs: { default: { options: { CacheMode: 'full', ChunkSize: '32M' } } },
+      backendConfigs: { default: {} },
       showOnTray: true,
     };
   }
@@ -523,51 +517,35 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   ): Promise<void> {
     const { mountConfigs, copyConfigs, syncConfigs, bisyncConfigs, moveConfigs } = finalConfig;
 
-    // Get default named profiles
-    const mountConfig = mountConfigs?.find(c => c.name === 'default');
-    const copyConfig = copyConfigs?.find(c => c.name === 'default');
-    const syncConfig = syncConfigs?.find(c => c.name === 'default');
-    const bisyncConfig = bisyncConfigs?.find(c => c.name === 'default');
-    const moveConfig = moveConfigs?.find(c => c.name === 'default');
+    // Get default profiles
+    const mountConfig = mountConfigs?.['default'];
+    const copyConfig = copyConfigs?.['default'];
+    const syncConfig = syncConfigs?.['default'];
+    const bisyncConfig = bisyncConfigs?.['default'];
+    const moveConfig = moveConfigs?.['default'];
 
-    // Mount operations (always run immediately if autoStart is enabled)
+    // Use profile-based methods - backend resolves options from saved config
+    // This is simpler and ensures consistency with tray actions
+
     if (mountConfig?.autoStart && mountConfig?.dest) {
-      await this.mountManagementService.mountRemote(
-        remoteName,
-        mountConfig.source,
-        mountConfig.dest,
-        mountConfig.type
-      );
+      await this.mountManagementService.mountRemoteProfile(remoteName, 'default');
     }
 
-    // Helper to handle operation with cron or immediate execution
-    const handleOperation = async (
-      opType: 'copy' | 'sync' | 'bisync' | 'move',
-      config: CopyConfig | SyncConfig | BisyncConfig | MoveConfig | undefined
-    ): Promise<void> => {
-      if (!config?.autoStart || !config?.source || !config?.dest) return;
+    if (copyConfig?.autoStart && copyConfig?.source && copyConfig?.dest) {
+      await this.jobManagementService.startCopyProfile(remoteName, 'default');
+    }
 
-      switch (opType) {
-        case 'copy':
-          await this.jobManagementService.startCopy(remoteName, config.source, config.dest);
-          break;
-        case 'sync':
-          await this.jobManagementService.startSync(remoteName, config.source, config.dest);
-          break;
-        case 'bisync':
-          await this.jobManagementService.startBisync(remoteName, config as BisyncConfig);
-          break;
-        case 'move':
-          await this.jobManagementService.startMove(remoteName, config.source, config.dest);
-          break;
-      }
-    };
+    if (syncConfig?.autoStart && syncConfig?.source && syncConfig?.dest) {
+      await this.jobManagementService.startSyncProfile(remoteName, 'default');
+    }
 
-    // Handle each operation type
-    await handleOperation('copy', copyConfig);
-    await handleOperation('sync', syncConfig);
-    await handleOperation('bisync', bisyncConfig);
-    await handleOperation('move', moveConfig);
+    if (bisyncConfig?.autoStart && bisyncConfig?.source && bisyncConfig?.dest) {
+      await this.jobManagementService.startBisyncProfile(remoteName, 'default');
+    }
+
+    if (moveConfig?.autoStart && moveConfig?.source && moveConfig?.dest) {
+      await this.jobManagementService.startMoveProfile(remoteName, 'default');
+    }
   }
 
   async cancelAuth(): Promise<void> {

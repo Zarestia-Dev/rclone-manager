@@ -8,7 +8,7 @@ use crate::{
         check_binaries::check_rclone_available, initialization::get_config_dir,
         settings::operations::core::save_setting,
     },
-    utils::github_client,
+    utils::{github_client, types::all_types::RcloneState},
 };
 
 use super::{
@@ -117,7 +117,17 @@ pub async fn provision_rclone(
         "Rclone installed successfully at {}",
         install_path.display()
     );
-    // 🔥 Emit the event so frontend updates
+    // 🔥 Save setting AND update in-memory state immediately
+    // The event listener would update this too, but it's async and may not complete before we return
+    let rclone_state = app_handle.state::<RcloneState>();
+    if let Ok(mut path_guard) = rclone_state.rclone_path.write() {
+        *path_guard = install_path.clone();
+        info!(
+            "✅ Updated in-memory rclone_path to: {}",
+            install_path.display()
+        );
+    }
+
     if let Err(e) = save_setting(
         "core".to_string(),
         "rclone_path".to_string(),

@@ -163,8 +163,11 @@ pub async fn get_remote_settings(
     Ok(settings)
 }
 
-/// Helper to migrate legacy singular configs (e.g. mountConfig) to profile arrays (e.g. mountConfigs)
+/// Helper to migrate legacy singular configs (e.g. mountConfig) to object-based configs (e.g. mountConfigs)
 /// Returns true if any changes were made.
+///
+/// Migration: mountConfig: { source: "...", dest: "..." }
+///         → mountConfigs: { "Default": { source: "...", dest: "..." } }
 fn migrate_to_multi_profile(settings: &mut Value) -> bool {
     let mut changed = false;
     if let Some(obj) = settings.as_object_mut() {
@@ -186,23 +189,33 @@ fn migrate_to_multi_profile(settings: &mut Value) -> bool {
                 && let Some(mut old_config) = obj.remove(old_key)
             {
                 changed = true;
-                // Only create new array if it doesn't exist
+                // Only create new object if it doesn't exist
                 if !obj.contains_key(new_key) {
+                    // Get profile name from config, or use "Default"
+                    let profile_name = old_config
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty())
+                        .unwrap_or("Default")
+                        .to_string();
+
+                    // Remove 'name' property since it's now the object key
                     if let Some(config_obj) = old_config.as_object_mut() {
-                        // Ensure it has a name
-                        if !config_obj.contains_key("name") {
-                            config_obj
-                                .insert("name".to_string(), Value::String("Default".to_string()));
-                        }
+                        config_obj.remove("name");
                     }
-                    obj.insert(new_key.to_string(), Value::Array(vec![old_config]));
+
+                    // Create object-based structure: { "ProfileName": config }
+                    let mut profiles_obj = serde_json::Map::new();
+                    profiles_obj.insert(profile_name.clone(), old_config);
+                    obj.insert(new_key.to_string(), Value::Object(profiles_obj));
+
                     info!(
-                        "✨ Migrated legacy {} to {} (Default profile)",
-                        old_key, new_key
+                        "✨ Migrated legacy {} to {} (profile: '{}')",
+                        old_key, new_key, profile_name
                     );
                 } else {
                     // If new key already exists, simply dropping the old one is the safest clean-up
-                    // as the new array structure takes precedence.
+                    // as the new object structure takes precedence.
                     warn!(
                         "🗑️ Removed legacy {} as {} already exists",
                         old_key, new_key

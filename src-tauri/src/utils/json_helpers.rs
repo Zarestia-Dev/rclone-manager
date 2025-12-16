@@ -8,6 +8,21 @@ pub fn json_to_hashmap(json: Option<&Value>) -> Option<HashMap<String, Value>> {
         .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
 }
 
+/// Resolve profile options from a settings object.
+/// Looks up `settings[configs_key][profile_name]["options"]` and returns it as a HashMap.
+///
+/// This is used by `from_config` methods to resolve filter, backend, and VFS profiles.
+pub fn resolve_profile_options(
+    settings: &Value,
+    profile_name: Option<&str>,
+    configs_key: &str,
+) -> Option<HashMap<String, Value>> {
+    let name = profile_name?;
+    let configs = settings.get(configs_key)?.as_object()?;
+    let profile_cfg = configs.get(name)?;
+    json_to_hashmap(profile_cfg.get("options"))
+}
+
 /// Unwraps nested "options" key if it exists in a HashMap.
 /// This handles the case where frontend sends { "options": { "key": "value" } }
 /// and we need just { "key": "value" }.

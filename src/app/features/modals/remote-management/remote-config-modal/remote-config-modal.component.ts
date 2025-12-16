@@ -167,9 +167,9 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     FLAG_TYPES.map(t => [t, { mode: 'view' as const, tempName: '' }])
   ) as Record<FlagType, { mode: 'view' | 'edit' | 'add'; tempName: string }>;
 
-  profiles = Object.fromEntries(FLAG_TYPES.map(t => [t, [] as any[]])) as unknown as Record<
+  profiles = Object.fromEntries(FLAG_TYPES.map(t => [t, {} as Record<string, any>])) as Record<
     FlagType,
-    any[]
+    Record<string, any>
   >;
 
   selectedProfileName = Object.fromEntries(
@@ -252,32 +252,30 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   private initProfiles(): void {
-    // Load profiles from multi-config arrays, or initialize with default profile
+    // Load profiles from multi-config objects, or initialize with default profile
     // This must run for both create and edit modes to ensure profiles are always available
     this.FLAG_TYPES.forEach(type => {
-      const multiKey = `${type}Configs`;
+      const multiKey = `${type}Configs` as keyof RemoteConfigSections;
       const config = this.dialogData?.existingConfig;
 
-      // Use type assertion to access dynamic keys
-      const multiVal = config ? (config as any)[multiKey] : undefined;
+      // Access dynamic key using keyof
+      const multiVal = config?.[multiKey] as Record<string, unknown> | undefined;
 
-      if (Array.isArray(multiVal) && multiVal.length > 0) {
-        // Load existing profiles from saved config
-        this.profiles[type] = [...multiVal];
+      if (multiVal && Object.keys(multiVal).length > 0) {
+        // Load existing profiles from saved config (already keyed by name)
+        this.profiles[type] = { ...multiVal };
       } else {
         // Init with default profile (important for both create and edit modes)
-        this.profiles[type] = [{ name: DEFAULT_PROFILE_NAME }];
+        this.profiles[type] = { [DEFAULT_PROFILE_NAME]: {} };
       }
 
       // Select default (first one or DEFAULT_PROFILE_NAME)
       // If a targetProfile is specified in dialog data AND matches the current type, use it
-      if (
-        this.dialogData?.targetProfile &&
-        this.profiles[type].some(p => p.name === this.dialogData.targetProfile)
-      ) {
+      const profileNames = Object.keys(this.profiles[type]);
+      if (this.dialogData?.targetProfile && profileNames.includes(this.dialogData.targetProfile)) {
         this.selectedProfileName[type] = this.dialogData.targetProfile;
       } else {
-        this.selectedProfileName[type] = this.profiles[type][0]?.name || DEFAULT_PROFILE_NAME;
+        this.selectedProfileName[type] = profileNames[0] || DEFAULT_PROFILE_NAME;
       }
     });
   }
@@ -322,9 +320,12 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       this.availableServeTypes = types;
 
       // Set selected type from existing config if available
-      const serveConfigs = this.dialogData?.existingConfig?.['serveConfigs'] as any[];
-      if (serveConfigs?.length > 0) {
-        const firstConfig = serveConfigs[0];
+      const serveConfigs = this.dialogData?.existingConfig?.['serveConfigs'] as
+        | Record<string, ServeConfig>
+        | undefined;
+      if (serveConfigs && Object.keys(serveConfigs).length > 0) {
+        const firstKey = Object.keys(serveConfigs)[0];
+        const firstConfig = serveConfigs[firstKey];
         const options = firstConfig?.options as Record<string, unknown>;
         this.selectedServeType = (options?.['type'] as string) || types[0];
       } else if (types.length > 0) {
@@ -623,15 +624,19 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       if (this.cloneTarget) {
         // Populate all supported types (flags + serve)
         this.FLAG_TYPES.forEach(type => {
-          const configKey = `${type}Configs`;
-          const configs = (this.dialogData.existingConfig as any)?.[configKey];
+          const configKey = `${type}Configs` as keyof RemoteConfigSections;
+          const configs = this.dialogData.existingConfig?.[configKey] as
+            | Record<string, unknown>
+            | undefined;
 
-          if (Array.isArray(configs) && configs.length > 0) {
+          if (configs && Object.keys(configs).length > 0) {
             // Cloning: Take the first available config/profile
+            const firstKey = Object.keys(configs)[0];
+            const firstConfig = configs[firstKey];
             if (type === 'serve') {
-              this.populateServeForm({ serveConfig: configs[0] });
+              this.populateServeForm({ serveConfig: firstConfig });
             } else {
-              this.populateFlagForm(type as FlagType, configs[0]);
+              this.populateFlagForm(type as FlagType, firstConfig);
             }
           }
         });
@@ -640,7 +645,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       // Editing a specific flag type or serve - populate form with selected profile data
       if (this.editTarget === 'serve') {
         const selectedProfileName = this.selectedProfileName['serve'];
-        const profile = this.profiles['serve']?.find(p => p.name === selectedProfileName);
+        const profile = this.profiles['serve']?.[selectedProfileName];
         if (profile) {
           this.populateServeForm({ serveConfig: profile });
         }
@@ -648,7 +653,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
         // It's a flag type
         const flagType = this.editTarget as FlagType;
         const selectedProfileName = this.selectedProfileName[flagType];
-        const profile = this.profiles[flagType]?.find(p => p.name === selectedProfileName);
+        const profile = this.profiles[flagType]?.[selectedProfileName];
         if (profile) {
           this.populateFlagForm(flagType, profile);
         }
@@ -821,13 +826,19 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // ============================================================================
 
   get hasSavedServeConfig(): boolean {
-    const serveConfigs = this.dialogData?.existingConfig?.['serveConfigs'] as any[];
-    return serveConfigs !== undefined && serveConfigs.length > 0;
+    const serveConfigs = this.dialogData?.existingConfig?.['serveConfigs'] as
+      | Record<string, ServeConfig>
+      | undefined;
+    return serveConfigs !== undefined && Object.keys(serveConfigs).length > 0;
   }
 
   get savedType(): string {
-    const serveConfigs = this.dialogData?.existingConfig?.['serveConfigs'] as any[];
-    const firstConfig = serveConfigs?.[0];
+    const serveConfigs = this.dialogData?.existingConfig?.['serveConfigs'] as
+      | Record<string, ServeConfig>
+      | undefined;
+    if (!serveConfigs) return 'http';
+    const firstKey = Object.keys(serveConfigs)[0];
+    const firstConfig = firstKey ? serveConfigs[firstKey] : undefined;
     return (firstConfig?.options?.type as string) || 'http';
   }
 
@@ -1147,7 +1158,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   // State Management Methods
   startAddProfile(type: FlagType): void {
     // Generate next default name (e.g., profile-2)
-    const existingNames = this.getProfiles(type).map(p => p.name);
+    const existingNames = Object.keys(this.profiles[type] || {});
     let counter = 1;
     while (existingNames.includes(`profile-${counter}`)) {
       counter++;
@@ -1179,8 +1190,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
     if (state.mode === 'add') {
       // Logic for adding new profile
-      const newProfile = { name: newName };
-      this.profiles[type] = [...this.profiles[type], newProfile];
+      this.profiles[type] = { ...this.profiles[type], [newName]: {} };
 
       // Select the new profile
       this.selectProfile(type, newName);
@@ -1193,16 +1203,18 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       }
 
       // Check if name exists
-      if (this.profiles[type].some(p => p.name === newName)) {
+      if (this.profiles[type][newName] !== undefined) {
         // Name collision - maybe show toaster? For now just return
         return;
       }
 
-      // Update name in profiles array
-      const profileIndex = this.profiles[type].findIndex(p => p.name === oldName);
-      if (profileIndex !== -1) {
-        this.profiles[type][profileIndex].name = newName;
-      }
+      // Rename: copy data to new key, delete old key
+      const profileData = this.profiles[type][oldName];
+      this.profiles[type] = {
+        ...this.profiles[type],
+        [newName]: profileData,
+      };
+      delete this.profiles[type][oldName];
 
       // Update selection
       this.selectedProfileName[type] = newName;
@@ -1216,9 +1228,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   deleteProfile(type: FlagType, name: string): void {
-    const profiles = this.profiles[type] || [];
-    const index = profiles.findIndex(p => p.name === name);
-    if (index === -1) return;
+    const profiles = this.profiles[type] || {};
+    if (profiles[name] === undefined) return;
 
     // Prevent deleting default profile
     if (name.toLowerCase() === DEFAULT_PROFILE_NAME) return;
@@ -1235,23 +1246,27 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
       }
     }
 
-    this.profiles[type].splice(index, 1);
+    // Delete the profile
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { [name]: _removed, ...rest } = this.profiles[type];
+    this.profiles[type] = rest;
 
     // If we deleted the selected profile, select another
     if (this.selectedProfileName[type] === name) {
-      if (this.profiles[type].length > 0) {
-        this.selectProfile(type, this.profiles[type][0].name);
+      const remainingNames = Object.keys(this.profiles[type]);
+      if (remainingNames.length > 0) {
+        this.selectProfile(type, remainingNames[0]);
       } else {
         // Create default if all deleted
-        this.startAddProfile(type);
-        this.selectProfile(type, this.profiles[type][0].name);
+        this.profiles[type] = { [DEFAULT_PROFILE_NAME]: {} };
+        this.selectProfile(type, DEFAULT_PROFILE_NAME);
       }
     }
   }
 
   selectProfile(type: FlagType, name: string): void {
-    const profiles = this.profiles[type] || [];
-    const newProfile = profiles.find(p => p.name === name);
+    const profiles = this.profiles[type] || {};
+    const newProfile = profiles[name];
     if (!newProfile) return;
 
     // Save current profile data first
@@ -1270,9 +1285,8 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   saveCurrentProfile(type: FlagType): void {
     const currentName = this.selectedProfileName[type];
-    const profiles = this.profiles[type] || [];
-    const profile = profiles.find(p => p.name === currentName);
-    if (!profile) return;
+    const profiles = this.profiles[type] || {};
+    if (profiles[currentName] === undefined) return;
 
     // Get current form data
     const formValue = this.remoteConfigForm.get(`${type}Config`)?.getRawValue();
@@ -1282,12 +1296,13 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     const remoteData = { name: this.getRemoteName() };
     const builtConfig = this.buildConfig(type, remoteData, formValue);
 
-    // Merge into profile (preserving name)
-    Object.assign(profile, { ...builtConfig, name: currentName });
+    // Update profile in object (no need to preserve name as it's the key now)
+    this.profiles[type][currentName] = builtConfig;
   }
 
-  getProfiles(type: FlagType): any[] {
-    return this.profiles[type] || [];
+  getProfiles(type: FlagType): { name: string; [key: string]: any }[] {
+    const profiles = this.profiles[type] || {};
+    return Object.entries(profiles).map(([name, data]) => ({ name, ...data }));
   }
 
   getSelectedProfile(type: FlagType): string {
@@ -1295,7 +1310,7 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
   }
 
   getProfileOptions(type: 'vfs' | 'filter' | 'backend'): string[] {
-    return (this.profiles[type] || []).map((p: any) => p.name || DEFAULT_PROFILE_NAME);
+    return Object.keys(this.profiles[type] || {});
   }
 
   private buildConfig(flagType: FlagType, remoteData: any, configData: any): any {
@@ -1317,15 +1332,15 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
 
   private createEmptyFinalConfig(): RemoteConfigSections {
     return {
-      mountConfigs: [] as MountConfig[],
-      copyConfigs: [] as CopyConfig[],
-      syncConfigs: [] as SyncConfig[],
-      bisyncConfigs: [] as BisyncConfig[],
-      moveConfigs: [] as MoveConfig[],
-      serveConfigs: [] as ServeConfig[],
-      filterConfigs: [] as FilterConfig[],
-      vfsConfigs: [] as VfsConfig[],
-      backendConfigs: [] as BackendConfig[],
+      mountConfigs: {} as Record<string, MountConfig>,
+      copyConfigs: {} as Record<string, CopyConfig>,
+      syncConfigs: {} as Record<string, SyncConfig>,
+      bisyncConfigs: {} as Record<string, BisyncConfig>,
+      moveConfigs: {} as Record<string, MoveConfig>,
+      serveConfigs: {} as Record<string, ServeConfig>,
+      filterConfigs: {} as Record<string, FilterConfig>,
+      vfsConfigs: {} as Record<string, VfsConfig>,
+      backendConfigs: {} as Record<string, BackendConfig>,
       showOnTray: true,
     };
   }
@@ -1549,115 +1564,62 @@ export class RemoteConfigModalComponent implements OnInit, OnDestroy {
     remoteName: string,
     finalConfig: RemoteConfigSections
   ): Promise<void> {
-    const { mountConfigs, serveConfigs, vfsConfigs, filterConfigs, backendConfigs } = finalConfig;
+    const { mountConfigs, copyConfigs, syncConfigs, bisyncConfigs, moveConfigs, serveConfigs } =
+      finalConfig;
 
-    const getSharedOptions = (configs: any[] | undefined, profileName?: string): any => {
-      // If no profile name, assume DEFAULT_PROFILE_NAME? Or undefined?
-      // Legacy behavior passed global config. Now we check profile.
-      const name = profileName || DEFAULT_PROFILE_NAME;
-      return configs?.find(p => p.name === name)?.options;
-    };
+    // Use profile-based methods - backend resolves all options from saved config
+    // This is simpler and ensures consistency with tray actions
 
-    // Mount operations (always run immediately if autoStart is enabled)
+    // Mount operations
     if (mountConfigs) {
-      for (const config of mountConfigs) {
+      for (const [profileName, config] of Object.entries(mountConfigs)) {
         if (config.autoStart && config.dest) {
-          await this.mountManagementService.mountRemote(
-            remoteName,
-            config.source,
-            config.dest,
-            config.type,
-            config.options,
-            getSharedOptions(vfsConfigs, config.vfsProfile),
-            getSharedOptions(filterConfigs, config.filterProfile),
-            getSharedOptions(backendConfigs, config.backendProfile)
-          );
+          await this.mountManagementService.mountRemoteProfile(remoteName, profileName);
         }
       }
     }
 
-    // Helper to handle operation with cron or immediate execution
-    const handleOperation = async (
-      opType: 'copy' | 'sync' | 'bisync' | 'move',
-      config: CopyConfig | SyncConfig | BisyncConfig | MoveConfig
-    ): Promise<void> => {
-      if (!config.autoStart || !config.source || !config.dest) return;
-
-      const filterOpts = getSharedOptions(filterConfigs, config.filterProfile);
-      const backendOpts = getSharedOptions(backendConfigs, config.backendProfile);
-
-      // If cron expression is set, create scheduled task
-      switch (opType) {
-        case 'copy':
-          await this.jobManagementService.startCopy(
-            remoteName,
-            config.source,
-            config.dest,
-            (config as CopyConfig).createEmptySrcDirs,
-            config.options,
-            filterOpts,
-            backendOpts
-          );
-          break;
-        case 'sync':
-          await this.jobManagementService.startSync(
-            remoteName,
-            config.source,
-            config.dest,
-            (config as SyncConfig).createEmptySrcDirs,
-            config.options,
-            filterOpts,
-            backendOpts
-          );
-          break;
-        case 'bisync':
-          await this.jobManagementService.startBisync(
-            remoteName,
-            config as BisyncConfig,
-            filterOpts,
-            backendOpts
-          );
-          break;
-        case 'move':
-          await this.jobManagementService.startMove(
-            remoteName,
-            config.source,
-            config.dest,
-            (config as MoveConfig).createEmptySrcDirs,
-            (config as MoveConfig).deleteEmptySrcDirs,
-            config.options,
-            filterOpts,
-            backendOpts
-          );
-          break;
-      }
-    };
-
-    // Handle standard job operations (copy, sync, bisync, move)
-    const jobTypes = FLAG_TYPES.filter(t => t !== 'mount' && t !== 'serve');
-    for (const type of jobTypes) {
-      const configKey = `${type}Configs`;
-      // interactive access to dynamic key
-      const configs = (finalConfig as any)[configKey];
-      if (Array.isArray(configs)) {
-        for (const config of configs) {
-          // Cast to specific config type if needed, or use 'any' as we are identifying by structure
-          await handleOperation(type as any, config);
+    // Copy operations
+    if (copyConfigs) {
+      for (const [profileName, config] of Object.entries(copyConfigs)) {
+        if (config.autoStart && config.source && config.dest) {
+          await this.jobManagementService.startCopyProfile(remoteName, profileName);
         }
       }
     }
 
-    // Serve is handled separately
+    // Sync operations
+    if (syncConfigs) {
+      for (const [profileName, config] of Object.entries(syncConfigs)) {
+        if (config.autoStart && config.source && config.dest) {
+          await this.jobManagementService.startSyncProfile(remoteName, profileName);
+        }
+      }
+    }
+
+    // Bisync operations
+    if (bisyncConfigs) {
+      for (const [profileName, config] of Object.entries(bisyncConfigs)) {
+        if (config.autoStart && config.source && config.dest) {
+          await this.jobManagementService.startBisyncProfile(remoteName, profileName);
+        }
+      }
+    }
+
+    // Move operations
+    if (moveConfigs) {
+      for (const [profileName, config] of Object.entries(moveConfigs)) {
+        if (config.autoStart && config.source && config.dest) {
+          await this.jobManagementService.startMoveProfile(remoteName, profileName);
+        }
+      }
+    }
+
+    // Serve operations
     if (serveConfigs) {
-      for (const config of serveConfigs) {
+      for (const [profileName, config] of Object.entries(serveConfigs)) {
         if (config.autoStart && config.options) {
-          await this.serveManagementService.startServe(
-            remoteName,
-            config.options, // Options contains type and fs
-            getSharedOptions(backendConfigs, config.backendProfile),
-            getSharedOptions(filterConfigs, config.filterProfile),
-            getSharedOptions(vfsConfigs, config.vfsProfile)
-          );
+          await this.serveManagementService.startServeProfile(remoteName, profileName);
         }
       }
     }

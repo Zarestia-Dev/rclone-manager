@@ -213,3 +213,9 @@ pub struct NetworkStatusPayload {
 
 pub const SERVICE_NAME: &str = env!("CARGO_PKG_NAME");
 pub const CONFIG_PASSWORD_KEY: &str = "rclone_config_password";
+
+#[derive(Debug, serde::Deserialize, serde::Serialize, Clone)]
+pub struct ProfileParams {
+    pub remote_name: String,
+    pub profile_name: String,
+}

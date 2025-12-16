@@ -57,7 +57,6 @@ export interface MountConfig {
   source: string;
   type: string;
   options?: any;
-  name?: string;
   vfsProfile?: string;
   filterProfile?: string;
   backendProfile?: string;
@@ -74,19 +73,16 @@ export interface SyncConfig extends BaseOperationConfig {
 
 export interface FilterConfig {
   options?: any;
-  name?: string;
   [key: string]: any;
 }
 
 export interface VfsConfig {
   options?: any;
-  name?: string;
   [key: string]: any;
 }
 
 export interface BackendConfig {
   options?: any;
-  name?: string;
   [key: string]: any;
 }
 
@@ -141,18 +137,18 @@ export interface ServeConfig {
 export interface RemoteConfigSections {
   [remoteName: string]: any; // keep permissive for now; UI accesses dynamic keys
 
-  // Multiple configs per type (profiles)
-  mountConfigs?: MountConfig[];
-  copyConfigs?: CopyConfig[];
-  syncConfigs?: SyncConfig[];
-  moveConfigs?: MoveConfig[];
-  bisyncConfigs?: BisyncConfig[];
-  serveConfigs?: ServeConfig[];
+  // Multiple configs per type (profiles) - keyed by profile name
+  mountConfigs?: Record<string, MountConfig>;
+  copyConfigs?: Record<string, CopyConfig>;
+  syncConfigs?: Record<string, SyncConfig>;
+  moveConfigs?: Record<string, MoveConfig>;
+  bisyncConfigs?: Record<string, BisyncConfig>;
+  serveConfigs?: Record<string, ServeConfig>;
 
-  // Multiple configs for shared types
-  filterConfigs?: FilterConfig[];
-  backendConfigs?: BackendConfig[];
-  vfsConfigs?: VfsConfig[];
+  // Multiple configs for shared types - keyed by profile name
+  filterConfigs?: Record<string, FilterConfig>;
+  backendConfigs?: Record<string, BackendConfig>;
+  vfsConfigs?: Record<string, VfsConfig>;
 
   showOnTray: boolean;
 }

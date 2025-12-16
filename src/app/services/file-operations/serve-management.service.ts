@@ -94,40 +94,22 @@ export class ServeManagementService extends TauriBaseService {
     }
   }
   /**
-   * Start a new serve instance
+   * Start a serve using a named profile
+   * Backend resolves all options (serve, vfs, filter, backend) from cached settings
    */
-  async startServe(
-    remoteName: string,
-    serveOptions: Record<string, unknown>,
-    backendOptions?: Record<string, unknown>,
-    filterOptions?: Record<string, unknown>,
-    vfsOptions?: Record<string, unknown>,
-    profile?: string
-  ): Promise<ServeStartResponse> {
+  async startServeProfile(remoteName: string, profileName: string): Promise<ServeStartResponse> {
     try {
-      const serveType = (serveOptions['type'] as string) || 'serve';
+      const params = { remote_name: remoteName, profile_name: profileName };
+      const response = await this.invokeCommand<ServeStartResponse>('start_serve_profile', {
+        params,
+      });
 
-      const params = {
-        remote_name: remoteName,
-        serve_options: serveOptions,
-        filter_options: filterOptions || null,
-        backend_options: backendOptions || null,
-        vfs_options: vfsOptions || null,
-        profile: profile || null,
-      };
-      const response = await this.invokeCommand<ServeStartResponse>('start_serve', { params });
-
-      this.notificationService.showSuccess(
-        `Successfully started ${serveType} serve at ${response.addr}`
-      );
-
-      // Refresh the list of running serves
+      this.notificationService.showSuccess(`Successfully started serve at ${response.addr}`);
       await this.refreshServes();
 
       return response;
     } catch (error) {
-      const serveType = (serveOptions['type'] as string) || 'serve';
-      this.notificationService.showError(`Failed to start ${serveType}: ${error}`);
+      this.notificationService.showError(`Failed to start serve for ${remoteName}: ${error}`);
       throw error;
     }
   }

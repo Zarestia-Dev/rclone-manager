@@ -6,11 +6,13 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use crate::{
     rclone::state::engine::ENGINE_STATE,
     utils::{
-        json_helpers::{get_string, json_to_hashmap, unwrap_nested_options},
+        json_helpers::{
+            get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
+        },
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, serve},
         types::{
-            all_types::{LogLevel, RcloneState, RemoteCache},
+            all_types::{LogLevel, ProfileParams, RcloneState, RemoteCache},
             events::SERVE_STATE_CHANGED,
         },
     },
@@ -30,14 +32,13 @@ pub struct ServeParams {
 }
 
 impl ServeParams {
-    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
-        let serve_cfg = settings.get("serveConfig")?;
-
-        let source = get_string(serve_cfg, &["source"]);
+    /// Create ServeParams from a profile config and settings
+    pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
+        let source = get_string(config, &["source"]);
 
         // Valid if either source is set or fs is in options
         let has_source = !source.is_empty();
-        let has_fs = serve_cfg
+        let has_fs = config
             .get("options")
             .and_then(|opts| opts.get("fs"))
             .and_then(|v| v.as_str())
@@ -48,38 +49,21 @@ impl ServeParams {
             return None;
         }
 
-        // Helper to resolve profile references
-        let resolve_profile_options =
-            |profile_name: Option<&str>, configs_key: &str| -> Option<HashMap<String, Value>> {
-                if let Some(name) = profile_name
-                    && let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array())
-                {
-                    for config in configs {
-                        if let Some(config_name) = config.get("name").and_then(|v| v.as_str())
-                            && config_name == name
-                        {
-                            return json_to_hashmap(config.get("options"));
-                        }
-                    }
-                }
-                None
-            };
+        let vfs_profile = config.get("vfsProfile").and_then(|v| v.as_str());
+        let filter_profile = config.get("filterProfile").and_then(|v| v.as_str());
+        let backend_profile = config.get("backendProfile").and_then(|v| v.as_str());
 
-        let vfs_profile = serve_cfg.get("vfsProfile").and_then(|v| v.as_str());
-        let filter_profile = serve_cfg.get("filterProfile").and_then(|v| v.as_str());
-        let backend_profile = serve_cfg.get("backendProfile").and_then(|v| v.as_str());
-
-        let vfs_options = resolve_profile_options(vfs_profile, "vfsConfigs");
-        let filter_options = resolve_profile_options(filter_profile, "filterConfigs");
-        let backend_options = resolve_profile_options(backend_profile, "backendConfigs");
+        let vfs_options = resolve_profile_options(settings, vfs_profile, "vfsConfigs");
+        let filter_options = resolve_profile_options(settings, filter_profile, "filterConfigs");
+        let backend_options = resolve_profile_options(settings, backend_profile, "backendConfigs");
 
         Some(Self {
             remote_name,
-            serve_options: json_to_hashmap(serve_cfg.get("options")),
+            serve_options: json_to_hashmap(config.get("options")),
             backend_options,
             filter_options,
             vfs_options,
-            profile: Some(get_string(serve_cfg, &["name"])).filter(|s| !s.is_empty()),
+            profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
         })
     }
 }
@@ -115,8 +99,7 @@ async fn handle_rclone_response(
     Ok(body)
 }
 
-/// Start a serve instance
-#[tauri::command]
+/// Start a serve instance (not exposed as Tauri command - use start_serve_profile)
 pub async fn start_serve(
     app: AppHandle,
     params: ServeParams,
@@ -358,4 +341,45 @@ pub async fn stop_all_serves(
     info!("✅ All serves stopped successfully");
 
     Ok("✅ All serves stopped successfully".to_string())
+}
+
+// ============================================================================
+// PROFILE-BASED COMMAND
+// ============================================================================
+
+/// Start a serve using a named profile
+/// Resolves all options (serve, vfs, filter, backend) from cached settings
+#[tauri::command]
+pub async fn start_serve_profile(
+    app: AppHandle,
+    params: ProfileParams,
+) -> Result<ServeStartResponse, String> {
+    let cache = app.state::<RemoteCache>();
+    let settings_map = cache.get_settings().await;
+
+    let settings = settings_map
+        .get(&params.remote_name)
+        .ok_or_else(|| format!("Remote '{}' not found in settings", params.remote_name))?;
+
+    let serve_configs = settings
+        .get("serveConfigs")
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| format!("No serveConfigs found for '{}'", params.remote_name))?;
+
+    let config = serve_configs
+        .get(&params.profile_name)
+        .ok_or_else(|| format!("Serve profile '{}' not found", params.profile_name))?;
+
+    let mut serve_params = ServeParams::from_config(params.remote_name.clone(), config, settings)
+        .ok_or_else(|| {
+        format!(
+            "Serve configuration incomplete for profile '{}'",
+            params.profile_name
+        )
+    })?;
+
+    // Ensure profile is set from the function parameter, not the config object
+    serve_params.profile = Some(params.profile_name.clone());
+
+    start_serve(app, serve_params).await
 }

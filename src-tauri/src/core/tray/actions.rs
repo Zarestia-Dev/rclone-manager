@@ -6,18 +6,17 @@ use crate::{
     rclone::{
         commands::{
             job::stop_job,
-            mount::{MountParams, mount_remote, unmount_remote},
-            serve::{ServeParams, start_serve, stop_all_serves, stop_serve},
+            mount::{mount_remote_profile, unmount_remote},
+            serve::{start_serve_profile, stop_all_serves, stop_serve},
             sync::{
-                BisyncParams, CopyParams, MoveParams, SyncParams, start_bisync, start_copy,
-                start_move, start_sync,
+                start_bisync_profile, start_copy_profile, start_move_profile, start_sync_profile,
             },
         },
         state::scheduled_tasks::ScheduledTasksCache,
     },
     utils::{
         app::{builder::create_app_window, notification::send_notification},
-        types::all_types::{JobCache, JobStatus, RcloneState, RemoteCache},
+        types::all_types::{JobCache, JobStatus, ProfileParams, RcloneState, RemoteCache},
     },
 };
 
@@ -39,121 +38,93 @@ pub fn show_main_window(app: AppHandle) {
 
 // ========== PROFILE-SPECIFIC HANDLERS ==========
 
-pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    let app_clone = app.clone();
-    let remote_name_clone = remote_name.to_string();
-    let profile_name_clone = profile_name.to_string();
+/// Generic handler for starting job profiles (sync, copy, move, bisync)
+/// Uses the profile-based functions that resolve options internally
+async fn handle_start_job_profile(
+    app: AppHandle,
+    remote_name: String,
+    profile_name: String,
+    op_type: &str,
+    op_name: &str,
+) {
+    let params = ProfileParams {
+        remote_name: remote_name.clone(),
+        profile_name: profile_name.clone(),
+    };
 
-    tauri::async_runtime::spawn(async move {
-        let cache = app_clone.state::<RemoteCache>();
-        let settings_val = cache.get_settings().await;
-        let settings = match settings_val.get(&remote_name_clone).cloned() {
-            Some(s) => s,
-            _ => {
-                error!("🚨 Remote {remote_name_clone} not found in settings");
-                return;
-            }
-        };
+    let job_cache = app.state::<JobCache>();
+    let rclone_state = app.state::<RcloneState>();
 
-        // Find the specific mount profile
-        let mount_configs = match settings.get("mountConfigs").and_then(|v| v.as_array()) {
-            Some(configs) => configs,
-            None => {
-                error!("❌ No mountConfigs found for {}", remote_name_clone);
-                return;
-            }
-        };
+    let result = match op_type {
+        "sync" => start_sync_profile(app.clone(), job_cache, rclone_state, params)
+            .await
+            .map(|_| ()),
+        "copy" => start_copy_profile(app.clone(), job_cache, rclone_state, params)
+            .await
+            .map(|_| ()),
+        "move" => start_move_profile(app.clone(), job_cache, rclone_state, params)
+            .await
+            .map(|_| ()),
+        "bisync" => start_bisync_profile(app.clone(), job_cache, rclone_state, params)
+            .await
+            .map(|_| ()),
+        _ => Err(format!("Unknown operation type: {}", op_type)),
+    };
 
-        let mount_config = match mount_configs.iter().find(|c| {
-            c.get("name")
-                .and_then(|v| v.as_str())
-                .map(|n| n == profile_name_clone)
-                .unwrap_or(false)
-        }) {
-            Some(config) => config.clone(),
-            None => {
-                error!("❌ Mount profile '{}' not found", profile_name_clone);
-                return;
-            }
-        };
-
-        // Create temporary settings with this profile as the active mountConfig
-        let mut temp_settings = settings.clone();
-        temp_settings["mountConfig"] = mount_config;
-
-        let params = match MountParams::from_settings(remote_name_clone.clone(), &temp_settings) {
-            Some(p) => p,
-            None => {
-                error!(
-                    "🚨 Mount configuration incomplete for profile '{}'",
-                    profile_name_clone
-                );
-                notify(
-                    &app_clone,
-                    "Mount Failed",
-                    &format!(
-                        "Mount configuration incomplete for profile '{}'. Please configure the mount point in settings.",
-                        profile_name_clone
-                    ),
-                );
-                return;
-            }
-        };
-
-        // Check if mount point is configured
-        if params.mount_point.is_empty() {
-            error!(
-                "🚨 No mount point configured for profile '{}'",
-                profile_name_clone
+    match result {
+        Ok(_) => {
+            info!(
+                "✅ Started {} for {} profile '{}'",
+                op_name, remote_name, profile_name
             );
             notify(
-                &app_clone,
-                "Mount Failed",
+                &app,
+                &format!("{} Started", op_name),
                 &format!(
-                    "No mount point configured for profile '{}'. Please configure it in settings.",
-                    profile_name_clone
+                    "Started {} for {} profile '{}'",
+                    op_name, remote_name, profile_name
                 ),
             );
-            return;
         }
+        Err(e) => {
+            error!(
+                "🚨 Failed to start {} for {} profile '{}': {}",
+                op_name, remote_name, profile_name, e
+            );
+            notify(
+                &app,
+                &format!("{} Failed", op_name),
+                &format!("Failed: {}", e),
+            );
+        }
+    }
+}
 
-        let job_cache_state = app_clone.state::<JobCache>();
+pub fn handle_mount_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
+    let app_clone = app.clone();
+    let remote = remote_name.to_string();
+    let profile = profile_name.to_string();
 
-        match mount_remote(
-            app_clone.clone(),
-            job_cache_state,
-            cache.clone(),
-            params.clone(),
-        )
-        .await
-        {
+    tauri::async_runtime::spawn(async move {
+        let params = ProfileParams {
+            remote_name: remote.clone(),
+            profile_name: profile.clone(),
+        };
+
+        let cache = app_clone.state::<RemoteCache>();
+
+        match mount_remote_profile(app_clone.clone(), cache, params).await {
             Ok(_) => {
-                info!(
-                    "✅ Successfully mounted {} profile '{}'",
-                    remote_name_clone, profile_name_clone
-                );
+                info!("✅ Mounted {} profile '{}'", remote, profile);
                 notify(
                     &app_clone,
                     "Mount Successful",
-                    &format!(
-                        "Successfully mounted {} profile '{}' at {}",
-                        remote_name_clone, profile_name_clone, params.mount_point
-                    ),
+                    &format!("Mounted {} profile '{}'", remote, profile),
                 );
             }
             Err(e) => {
-                error!(
-                    "🚨 Failed to mount {} profile '{}': {}",
-                    remote_name_clone, profile_name_clone, e
-                );
-                notify(
-                    &app_clone,
-                    "Mount Failed",
-                    &format!(
-                        "Failed to mount {} profile '{}': {}",
-                        remote_name_clone, profile_name_clone, e
-                    ),
-                );
+                error!("🚨 Failed to mount {} profile '{}': {}", remote, profile, e);
+                notify(&app_clone, "Mount Failed", &format!("Failed: {}", e));
             }
         }
     });
@@ -167,43 +138,35 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
     tauri::async_runtime::spawn(async move {
         let cache = app_clone.state::<RemoteCache>();
         let settings_val = cache.get_settings().await;
-        let settings = settings_val.get(&remote).cloned().unwrap_or_else(|| {
-            error!("🚨 Remote {remote} not found in cached settings");
-            serde_json::Value::Null
-        });
+        let settings = settings_val
+            .get(&remote)
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
 
-        // Find the specific mount profile to get its mount point
-        let mount_configs = match settings.get("mountConfigs").and_then(|v| v.as_array()) {
-            Some(configs) => configs,
-            None => {
-                error!("❌ No mountConfigs found for {}", remote);
-                return;
-            }
-        };
+        let mount_point = settings
+            .get("mountConfigs")
+            .and_then(|v| v.as_object())
+            .and_then(|configs| configs.get(&profile))
+            .and_then(|config| config.get("dest"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
 
-        let mount_point = match mount_configs.iter().find(|c| {
-            c.get("name")
-                .and_then(|v| v.as_str())
-                .map(|n| n == profile)
-                .unwrap_or(false)
-        }) {
-            Some(config) => config
-                .get("dest")
-                .and_then(|v| v.as_str())
-                .unwrap_or("")
-                .to_string(),
-            None => {
-                error!("❌ Mount profile '{}' not found", profile);
-                return;
-            }
-        };
+        if mount_point.is_empty() {
+            error!("❌ Mount point not found for profile '{}'", profile);
+            notify(
+                &app_clone,
+                "Unmount Failed",
+                &format!("Profile '{}' not found", profile),
+            );
+            return;
+        }
 
-        let state = app_clone.state();
         match unmount_remote(
             app_clone.clone(),
             mount_point.clone(),
             remote.clone(),
-            state,
+            app_clone.state(),
         )
         .await
         {
@@ -212,407 +175,43 @@ pub fn handle_unmount_profile(app: AppHandle, remote_name: &str, profile_name: &
                 notify(
                     &app_clone,
                     "Unmount Successful",
-                    &format!("Successfully unmounted {} profile '{}'", remote, profile),
+                    &format!("Unmounted {} profile '{}'", remote, profile),
                 );
             }
-            Err(err) => {
+            Err(e) => {
                 error!(
                     "🚨 Failed to unmount {} profile '{}': {}",
-                    remote, profile, err
+                    remote, profile, e
                 );
-                notify(
-                    &app_clone,
-                    "Unmount Failed",
-                    &format!(
-                        "Failed to unmount {} profile '{}': {}",
-                        remote, profile, err
-                    ),
-                );
+                notify(&app_clone, "Unmount Failed", &format!("Failed: {}", e));
             }
         }
     });
 }
 
+// Job profile handlers using generic function
 pub fn handle_sync_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    let app_clone = app.clone();
-    let remote_name_clone = remote_name.to_string();
-    let profile_name_clone = profile_name.to_string();
-
-    tauri::async_runtime::spawn(async move {
-        let cache = app_clone.state::<RemoteCache>();
-        let settings_val = cache.get_settings().await;
-        let settings = match settings_val.get(&remote_name_clone).cloned() {
-            Some(s) => s,
-            _ => {
-                error!("🚨 Remote {} not found in settings", remote_name_clone);
-                return;
-            }
-        };
-
-        // Find the specific profile
-        let configs = match settings.get("syncConfigs").and_then(|v| v.as_array()) {
-            Some(configs) => configs,
-            None => {
-                error!("❌ No syncConfigs found for {}", remote_name_clone);
-                return;
-            }
-        };
-
-        let config = match configs.iter().find(|c| {
-            c.get("name")
-                .and_then(|v| v.as_str())
-                .map(|n| n == profile_name_clone)
-                .unwrap_or(false)
-        }) {
-            Some(config) => config.clone(),
-            None => {
-                error!("❌ Sync profile '{}' not found", profile_name_clone);
-                return;
-            }
-        };
-
-        // Create temporary settings with this profile as the active config
-        let mut temp_settings = settings.clone();
-        temp_settings["syncConfig"] = config;
-
-        let params = match SyncParams::from_settings(remote_name_clone.clone(), &temp_settings) {
-            Some(p) => p,
-            None => {
-                error!(
-                    "🚨 Sync configuration incomplete for profile '{}'",
-                    profile_name_clone
-                );
-                notify(
-                    &app_clone,
-                    "Sync Failed",
-                    &format!(
-                        "Sync configuration incomplete for profile '{}'",
-                        profile_name_clone
-                    ),
-                );
-                return;
-            }
-        };
-
-        let job_cache = app_clone.state::<JobCache>();
-        let rclone_state = app_clone.state::<RcloneState>();
-
-        match start_sync(app_clone.clone(), job_cache, rclone_state, params).await {
-            Ok(_) => {
-                info!(
-                    "✅ Started Sync for {} profile '{}'",
-                    remote_name_clone, profile_name_clone
-                );
-                notify(
-                    &app_clone,
-                    "Sync Started",
-                    &format!(
-                        "Started Sync for {} profile '{}'",
-                        remote_name_clone, profile_name_clone
-                    ),
-                );
-            }
-            Err(e) => {
-                error!(
-                    "🚨 Failed to start Sync for {} profile '{}': {}",
-                    remote_name_clone, profile_name_clone, e
-                );
-                notify(
-                    &app_clone,
-                    "Sync Failed",
-                    &format!(
-                        "Failed to start Sync for {} profile '{}': {}",
-                        remote_name_clone, profile_name_clone, e
-                    ),
-                );
-            }
-        }
-    });
+    let r = remote_name.to_string();
+    let p = profile_name.to_string();
+    tauri::async_runtime::spawn(handle_start_job_profile(app, r, p, "sync", "Sync"));
 }
 
 pub fn handle_copy_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    let app_clone = app.clone();
-    let remote_name_clone = remote_name.to_string();
-    let profile_name_clone = profile_name.to_string();
-
-    tauri::async_runtime::spawn(async move {
-        let cache = app_clone.state::<RemoteCache>();
-        let settings_val = cache.get_settings().await;
-        let settings = match settings_val.get(&remote_name_clone).cloned() {
-            Some(s) => s,
-            _ => {
-                error!("🚨 Remote {} not found in settings", remote_name_clone);
-                return;
-            }
-        };
-
-        let configs = match settings.get("copyConfigs").and_then(|v| v.as_array()) {
-            Some(configs) => configs,
-            None => {
-                error!("❌ No copyConfigs found for {}", remote_name_clone);
-                return;
-            }
-        };
-
-        let config = match configs.iter().find(|c| {
-            c.get("name")
-                .and_then(|v| v.as_str())
-                .map(|n| n == profile_name_clone)
-                .unwrap_or(false)
-        }) {
-            Some(config) => config.clone(),
-            None => {
-                error!("❌ Copy profile '{}' not found", profile_name_clone);
-                return;
-            }
-        };
-
-        let mut temp_settings = settings.clone();
-        temp_settings["copyConfig"] = config;
-
-        let params = match CopyParams::from_settings(remote_name_clone.clone(), &temp_settings) {
-            Some(p) => p,
-            None => {
-                error!(
-                    "🚨 Copy configuration incomplete for profile '{}'",
-                    profile_name_clone
-                );
-                notify(
-                    &app_clone,
-                    "Copy Failed",
-                    &format!(
-                        "Copy configuration incomplete for profile '{}'",
-                        profile_name_clone
-                    ),
-                );
-                return;
-            }
-        };
-
-        let job_cache = app_clone.state::<JobCache>();
-        let rclone_state = app_clone.state::<RcloneState>();
-
-        match start_copy(app_clone.clone(), job_cache, rclone_state, params).await {
-            Ok(_) => {
-                info!(
-                    "✅ Started Copy for {} profile '{}'",
-                    remote_name_clone, profile_name_clone
-                );
-                notify(
-                    &app_clone,
-                    "Copy Started",
-                    &format!(
-                        "Started Copy for {} profile '{}'",
-                        remote_name_clone, profile_name_clone
-                    ),
-                );
-            }
-            Err(e) => {
-                error!(
-                    "🚨 Failed to start Copy for {} profile '{}': {}",
-                    remote_name_clone, profile_name_clone, e
-                );
-                notify(
-                    &app_clone,
-                    "Copy Failed",
-                    &format!(
-                        "Failed to start Copy for {} profile '{}': {}",
-                        remote_name_clone, profile_name_clone, e
-                    ),
-                );
-            }
-        }
-    });
+    let r = remote_name.to_string();
+    let p = profile_name.to_string();
+    tauri::async_runtime::spawn(handle_start_job_profile(app, r, p, "copy", "Copy"));
 }
 
 pub fn handle_move_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    let app_clone = app.clone();
-    let remote_name_clone = remote_name.to_string();
-    let profile_name_clone = profile_name.to_string();
-
-    tauri::async_runtime::spawn(async move {
-        let cache = app_clone.state::<RemoteCache>();
-        let settings_val = cache.get_settings().await;
-        let settings = match settings_val.get(&remote_name_clone).cloned() {
-            Some(s) => s,
-            _ => {
-                error!("🚨 Remote {} not found in settings", remote_name_clone);
-                return;
-            }
-        };
-
-        let configs = match settings.get("moveConfigs").and_then(|v| v.as_array()) {
-            Some(configs) => configs,
-            None => {
-                error!("❌ No moveConfigs found for {}", remote_name_clone);
-                return;
-            }
-        };
-
-        let config = match configs.iter().find(|c| {
-            c.get("name")
-                .and_then(|v| v.as_str())
-                .map(|n| n == profile_name_clone)
-                .unwrap_or(false)
-        }) {
-            Some(config) => config.clone(),
-            None => {
-                error!("❌ Move profile '{}' not found", profile_name_clone);
-                return;
-            }
-        };
-
-        let mut temp_settings = settings.clone();
-        temp_settings["moveConfig"] = config;
-
-        let params = match MoveParams::from_settings(remote_name_clone.clone(), &temp_settings) {
-            Some(p) => p,
-            None => {
-                error!(
-                    "🚨 Move configuration incomplete for profile '{}'",
-                    profile_name_clone
-                );
-                notify(
-                    &app_clone,
-                    "Move Failed",
-                    &format!(
-                        "Move configuration incomplete for profile '{}'",
-                        profile_name_clone
-                    ),
-                );
-                return;
-            }
-        };
-
-        let job_cache = app_clone.state::<JobCache>();
-        let rclone_state = app_clone.state::<RcloneState>();
-
-        match start_move(app_clone.clone(), job_cache, rclone_state, params).await {
-            Ok(_) => {
-                info!(
-                    "✅ Started Move for {} profile '{}'",
-                    remote_name_clone, profile_name_clone
-                );
-                notify(
-                    &app_clone,
-                    "Move Started",
-                    &format!(
-                        "Started Move for {} profile '{}'",
-                        remote_name_clone, profile_name_clone
-                    ),
-                );
-            }
-            Err(e) => {
-                error!(
-                    "🚨 Failed to start Move for {} profile '{}': {}",
-                    remote_name_clone, profile_name_clone, e
-                );
-                notify(
-                    &app_clone,
-                    "Move Failed",
-                    &format!(
-                        "Failed to start Move for {} profile '{}': {}",
-                        remote_name_clone, profile_name_clone, e
-                    ),
-                );
-            }
-        }
-    });
+    let r = remote_name.to_string();
+    let p = profile_name.to_string();
+    tauri::async_runtime::spawn(handle_start_job_profile(app, r, p, "move", "Move"));
 }
 
 pub fn handle_bisync_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
-    let app_clone = app.clone();
-    let remote_name_clone = remote_name.to_string();
-    let profile_name_clone = profile_name.to_string();
-
-    tauri::async_runtime::spawn(async move {
-        let cache = app_clone.state::<RemoteCache>();
-        let settings_val = cache.get_settings().await;
-        let settings = match settings_val.get(&remote_name_clone).cloned() {
-            Some(s) => s,
-            _ => {
-                error!("🚨 Remote {} not found in settings", remote_name_clone);
-                return;
-            }
-        };
-
-        let configs = match settings.get("bisyncConfigs").and_then(|v| v.as_array()) {
-            Some(configs) => configs,
-            None => {
-                error!("❌ No bisyncConfigs found for {}", remote_name_clone);
-                return;
-            }
-        };
-
-        let config = match configs.iter().find(|c| {
-            c.get("name")
-                .and_then(|v| v.as_str())
-                .map(|n| n == profile_name_clone)
-                .unwrap_or(false)
-        }) {
-            Some(config) => config.clone(),
-            None => {
-                error!("❌ Bisync profile '{}' not found", profile_name_clone);
-                return;
-            }
-        };
-
-        let mut temp_settings = settings.clone();
-        temp_settings["bisyncConfig"] = config;
-
-        let params = match BisyncParams::from_settings(remote_name_clone.clone(), &temp_settings) {
-            Some(p) => p,
-            None => {
-                error!(
-                    "🚨 BiSync configuration incomplete for profile '{}'",
-                    profile_name_clone
-                );
-                notify(
-                    &app_clone,
-                    "BiSync Failed",
-                    &format!(
-                        "BiSync configuration incomplete for profile '{}'",
-                        profile_name_clone
-                    ),
-                );
-                return;
-            }
-        };
-
-        let job_cache = app_clone.state::<JobCache>();
-        let rclone_state = app_clone.state::<RcloneState>();
-
-        match start_bisync(app_clone.clone(), job_cache, rclone_state, params).await {
-            Ok(_) => {
-                info!(
-                    "✅ Started BiSync for {} profile '{}'",
-                    remote_name_clone, profile_name_clone
-                );
-                notify(
-                    &app_clone,
-                    "BiSync Started",
-                    &format!(
-                        "Started BiSync for {} profile '{}'",
-                        remote_name_clone, profile_name_clone
-                    ),
-                );
-            }
-            Err(e) => {
-                error!(
-                    "🚨 Failed to start BiSync for {} profile '{}': {}",
-                    remote_name_clone, profile_name_clone, e
-                );
-                notify(
-                    &app_clone,
-                    "BiSync Failed",
-                    &format!(
-                        "Failed to start BiSync for {} profile '{}': {}",
-                        remote_name_clone, profile_name_clone, e
-                    ),
-                );
-            }
-        }
-    });
+    let r = remote_name.to_string();
+    let p = profile_name.to_string();
+    tauri::async_runtime::spawn(handle_start_job_profile(app, r, p, "bisync", "BiSync"));
 }
 
 /// Generic handler for stopping job profiles
@@ -726,92 +325,41 @@ pub fn handle_stop_bisync_profile(app: AppHandle, remote_name: &str, profile_nam
 
 pub fn handle_serve_profile(app: AppHandle, remote_name: &str, profile_name: &str) {
     let app_clone = app.clone();
-    let remote_name_clone = remote_name.to_string();
-    let profile_name_clone = profile_name.to_string();
+    let remote = remote_name.to_string();
+    let profile = profile_name.to_string();
 
     tauri::async_runtime::spawn(async move {
-        let cache = app_clone.state::<RemoteCache>();
-        let settings_val = cache.get_settings().await;
-        let settings = match settings_val.get(&remote_name_clone).cloned() {
-            Some(s) => s,
-            _ => {
-                error!("🚨 Remote {} not found in settings", remote_name_clone);
-                return;
-            }
+        let params = ProfileParams {
+            remote_name: remote.clone(),
+            profile_name: profile.clone(),
         };
 
-        // Find the specific serve profile
-        let serve_configs = match settings.get("serveConfigs").and_then(|v| v.as_array()) {
-            Some(configs) => configs,
-            None => {
-                error!("❌ No serveConfigs found for {}", remote_name_clone);
-                return;
-            }
-        };
-
-        let serve_config = match serve_configs.iter().find(|c| {
-            c.get("name")
-                .and_then(|v| v.as_str())
-                .map(|n| n == profile_name_clone)
-                .unwrap_or(false)
-        }) {
-            Some(config) => config.clone(),
-            None => {
-                error!("❌ Serve profile '{}' not found", profile_name_clone);
-                return;
-            }
-        };
-
-        // Create temporary settings with this profile as the active serveConfig
-        let mut temp_settings = settings.clone();
-        temp_settings["serveConfig"] = serve_config;
-
-        let params = match ServeParams::from_settings(remote_name_clone.clone(), &temp_settings) {
-            Some(p) => p,
-            None => {
-                error!(
-                    "🚨 Serve configuration incomplete for profile '{}'",
-                    profile_name_clone
-                );
-                notify(
-                    &app_clone,
-                    "Serve Failed",
-                    &format!(
-                        "Serve configuration incomplete for profile '{}'",
-                        profile_name_clone
-                    ),
-                );
-                return;
-            }
-        };
-
-        // Serves don't use job_cache - they are tracked via serve/list
-        match start_serve(app_clone.clone(), params).await {
+        match start_serve_profile(app_clone.clone(), params).await {
             Ok(response) => {
                 info!(
                     "✅ Started serve for {} profile '{}' at {}",
-                    remote_name_clone, profile_name_clone, response.addr
+                    remote, profile, response.addr
                 );
                 notify(
                     &app_clone,
                     "Serve Started",
                     &format!(
                         "Started serve for {} profile '{}' at {}",
-                        remote_name_clone, profile_name_clone, response.addr
+                        remote, profile, response.addr
                     ),
                 );
             }
             Err(e) => {
                 error!(
                     "🚨 Failed to start serve for {} profile '{}': {}",
-                    remote_name_clone, profile_name_clone, e
+                    remote, profile, e
                 );
                 notify(
                     &app_clone,
                     "Serve Failed",
                     &format!(
                         "Failed to start serve for {} profile '{}': {}",
-                        remote_name_clone, profile_name_clone, e
+                        remote, profile, e
                     ),
                 );
             }
@@ -909,11 +457,11 @@ pub fn handle_browse_remote(app: &AppHandle, remote_name: &str) {
             serde_json::Value::Null
         });
 
-        // Try to get first mount point from mountConfigs
+        // Try to get first mount point from mountConfigs (object-based)
         let mount_point = settings
             .get("mountConfigs")
-            .and_then(|v| v.as_array())
-            .and_then(|configs| configs.first())
+            .and_then(|v| v.as_object())
+            .and_then(|configs| configs.values().next())
             .and_then(|config| config.get("dest"))
             .and_then(|v| v.as_str())
             .unwrap_or("")

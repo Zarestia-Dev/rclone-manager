@@ -493,26 +493,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   // ============================================================================
   // REMOTE & JOB OPERATIONS
   // ============================================================================
-  async mountRemote(remoteName: string, config: any, settings: any): Promise<void> {
-    await this.executeRemoteAction(
-      remoteName,
-      'mount',
-      () =>
-        this.mountManagementService.mountRemote(
-          remoteName,
-          config.source,
-          config.dest,
-          config.type,
-          config.options,
-          config.vfsConfig || settings.vfsConfig || {},
-          config.filterConfig || settings.filterConfig || {},
-          config.backendConfig || settings.backendConfig || {},
-          config.name // Pass profile name
-        ),
-      `Failed to mount ${remoteName}`
-    );
-  }
-
   async unmountRemote(remoteName: string): Promise<void> {
     await this.executeRemoteAction(
       remoteName,
@@ -583,93 +563,35 @@ export class HomeComponent implements OnInit, OnDestroy {
       operationType as RemoteAction,
       async () => {
         const settings = this.loadRemoteSettings(remoteName);
-        let config: any;
+        const configKey = `${operationType}Configs` as keyof RemoteSettings;
+        const profiles = settings[configKey] as Record<string, unknown> | undefined;
 
-        if (profileName) {
-          const profiles = (settings as any)[`${operationType}Configs`];
-          if (Array.isArray(profiles)) {
-            config = profiles.find((p: any) => p.name === profileName);
-          }
-          if (!config) {
-            throw new Error(
-              `Profile '${profileName}' for ${operationType} not found on ${remoteName}.`
-            );
-          }
-        } else {
-          config = settings[`${operationType}Config`];
-          if (!config) {
-            // Fallback: if no single config, try taking the first from array (optional, or just error)
-            // For backward compatibility, usually it means we rely on single config.
-            // We can check if array exists and use first one if single is missing.
-            const profiles = (settings as any)[`${operationType}Configs`];
-            if (Array.isArray(profiles) && profiles.length > 0) {
-              config = profiles[0];
-            }
-          }
+        // Get profile name - use specified profile or first available
+        const targetProfile = profileName || (profiles ? Object.keys(profiles)[0] : undefined);
+
+        if (!targetProfile || !profiles?.[targetProfile]) {
+          throw new Error(`Configuration for ${operationType} not found on ${remoteName}.`);
         }
 
-        if (!config)
-          throw new Error(`Configuration for ${operationType} not found on ${remoteName}.`);
-
+        // Use new profile-based APIs - backend resolves all options from settings
         switch (operationType) {
           case 'mount':
-            await this.mountRemote(remoteName, config, settings);
+            await this.mountManagementService.mountRemoteProfile(remoteName, targetProfile);
             break;
           case 'sync':
-            await this.jobManagementService.startSync(
-              remoteName,
-              config.source,
-              config.dest,
-              config.createEmptySrcDirs,
-              config.options,
-              config.filterConfig || settings['filterConfig'],
-              config.backendConfig || settings['backendConfig'],
-              profileName
-            );
+            await this.jobManagementService.startSyncProfile(remoteName, targetProfile);
             break;
           case 'copy':
-            await this.jobManagementService.startCopy(
-              remoteName,
-              config.source,
-              config.dest,
-              config.createEmptySrcDirs,
-              config.options,
-              config.filterConfig || settings['filterConfig'],
-              config.backendConfig || settings['backendConfig'],
-              profileName
-            );
+            await this.jobManagementService.startCopyProfile(remoteName, targetProfile);
             break;
           case 'bisync':
-            await this.jobManagementService.startBisync(
-              remoteName,
-              config,
-              config.filterConfig || settings['filterConfig'],
-              config.backendConfig || settings['backendConfig'],
-              profileName
-            );
+            await this.jobManagementService.startBisyncProfile(remoteName, targetProfile);
             break;
           case 'move':
-            await this.jobManagementService.startMove(
-              remoteName,
-              config.source,
-              config.dest,
-              config.createEmptySrcDirs,
-              config.deleteEmptySrcDirs,
-              config.options,
-              config.filterConfig || settings['filterConfig'],
-              config.backendConfig || settings['backendConfig'],
-              profileName
-            );
+            await this.jobManagementService.startMoveProfile(remoteName, targetProfile);
             break;
           case 'serve':
-            await this.serveManagementService.startServe(
-              remoteName,
-              config.options || {},
-              config.backendConfig || settings['backendConfig'],
-              config.filterConfig || settings['filterConfig'],
-              config.vfsConfig || settings['vfsConfig'],
-              profileName
-            );
+            await this.serveManagementService.startServeProfile(remoteName, targetProfile);
             break;
           default:
             throw new Error(`Unsupported operation type: ${operationType}`);
@@ -1024,54 +946,45 @@ export class HomeComponent implements OnInit, OnDestroy {
     type: SyncOperationType,
     jobs: JobInfo[],
     settings: RemoteSettings
-  ): any {
+  ): Record<string, unknown> {
     const runningJobs = jobs.filter(j => j.status === 'Running' && j.job_type === type);
-    const mainJob = runningJobs[0]; // Primary job for legacy support
-
-    // Map profiles
-    const profiles = (settings as any)[`${type}Configs`] || [];
+    const configKey = `${type}Configs` as keyof RemoteSettings;
+    const profiles = settings[configKey] as Record<string, unknown> | undefined;
     const activeProfiles: Record<string, number> = {};
 
-    if (runningJobs.length > 0) {
-      console.log(`[HomeComponent] CalcOpState for ${type}:`, { runningJobs, profiles });
-    }
-
-    if (Array.isArray(profiles)) {
-      profiles.forEach((p: any) => {
-        // Find job matching this profile's name
-        const match = runningJobs.find(j => j.profile === p.name);
+    // Map running jobs to their profiles
+    if (profiles) {
+      Object.keys(profiles).forEach(profileName => {
+        const match = runningJobs.find(j => j.profile === profileName);
         if (match) {
-          activeProfiles[p.name] = match.jobid;
+          activeProfiles[profileName] = match.jobid;
         }
       });
     }
 
+    // Get first profile for isLocal check
+    const firstProfileKey = profiles ? Object.keys(profiles)[0] : undefined;
+    const firstProfile = firstProfileKey ? (profiles as any)[firstProfileKey] : undefined;
+
     return {
-      isOnSync: type === 'sync' ? !!mainJob : undefined,
-      isOnCopy: type === 'copy' ? !!mainJob : undefined,
-      isOnBisync: type === 'bisync' ? !!mainJob : undefined,
-      isOnMove: type === 'move' ? !!mainJob : undefined,
-      [`${type}JobID`]: mainJob?.jobid,
-      isLocal: this.isLocalPath(settings[`${type}Config`]?.dest || ''),
+      isOnSync: type === 'sync' ? runningJobs.length > 0 : undefined,
+      isOnCopy: type === 'copy' ? runningJobs.length > 0 : undefined,
+      isOnBisync: type === 'bisync' ? runningJobs.length > 0 : undefined,
+      isOnMove: type === 'move' ? runningJobs.length > 0 : undefined,
+      isLocal: this.isLocalPath(firstProfile?.dest || ''),
       activeProfiles,
     };
   }
 
   private getPathForOperation(remoteName: string, usePath: PrimaryActionType): string | undefined {
     const settings = this.loadRemoteSettings(remoteName);
-    const configMap: Record<PrimaryActionType, () => string | undefined> = {
-      mount: () => settings['mountConfig']?.dest,
-      sync: () => settings['syncConfig']?.dest,
-      copy: () => settings['copyConfig']?.dest,
-      bisync: () => settings['bisyncConfig']?.dest,
-      move: () => settings['moveConfig']?.dest,
-      serve: () => undefined, // Serve does not have a single path
-    };
-    const getPath = configMap[usePath];
-    if (!getPath) {
-      throw new Error(`Invalid usePath: ${usePath}`);
-    }
-    return getPath();
+    const configKey = `${usePath}Configs` as keyof RemoteSettings;
+    const profiles = settings[configKey] as Record<string, unknown> | undefined;
+    if (!profiles) return undefined;
+
+    const firstProfileKey = Object.keys(profiles)[0];
+    const firstProfile = firstProfileKey ? (profiles as any)[firstProfileKey] : undefined;
+    return firstProfile?.dest;
   }
 
   private getJobIdForOperation(
@@ -1117,13 +1030,17 @@ export class HomeComponent implements OnInit, OnDestroy {
             if (mount.profile) {
               activeProfiles[mount.profile] = mount.mount_point;
             } else {
-              // Fallback: if no profile, use 'default' or match by mount_point
+              // Fallback: if no profile, match by mount_point
               const settings = this.loadRemoteSettings(remote.remoteSpecs.name);
-              const profiles = (settings as any)['mountConfigs'];
-              if (Array.isArray(profiles)) {
-                const match = profiles.find((p: any) => p.dest === mount.mount_point);
-                if (match) {
-                  activeProfiles[match.name] = mount.mount_point;
+              const profiles = settings['mountConfigs'] as
+                | Record<string, Record<string, unknown>>
+                | undefined;
+              if (profiles) {
+                const matchEntry = Object.entries(profiles).find(
+                  ([_, p]) => (p as any).dest === mount.mount_point
+                );
+                if (matchEntry) {
+                  activeProfiles[matchEntry[0]] = mount.mount_point;
                 }
               }
             }

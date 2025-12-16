@@ -1,15 +1,17 @@
 use log::debug;
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 use crate::{
     rclone::state::engine::ENGINE_STATE,
     utils::{
-        json_helpers::{get_string, json_to_hashmap, unwrap_nested_options},
+        json_helpers::{
+            get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
+        },
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, sync},
-        types::all_types::{JobCache, LogLevel, RcloneState},
+        types::all_types::{JobCache, LogLevel, ProfileParams, RcloneState},
     },
 };
 
@@ -28,49 +30,29 @@ pub struct SyncParams {
 }
 
 impl SyncParams {
-    /// Create SyncParams from settings JSON, returns None if invalid
-    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
-        let sync_cfg = settings.get("syncConfig")?;
+    /// Create SyncParams from a profile config and settings
+    pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
+        let source = get_string(config, &["source"]);
+        let dest = get_string(config, &["dest"]);
 
-        let source = get_string(sync_cfg, &["source"]);
-        let dest = get_string(sync_cfg, &["dest"]);
-
-        // Validate required fields
         if source.is_empty() || dest.is_empty() {
             return None;
         }
 
-        // Helper to resolve profile references
-        let resolve_profile_options =
-            |profile_name: Option<&str>, configs_key: &str| -> Option<HashMap<String, Value>> {
-                if let Some(name) = profile_name
-                    && let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array())
-                {
-                    for config in configs {
-                        if let Some(config_name) = config.get("name").and_then(|v| v.as_str())
-                            && config_name == name
-                        {
-                            return json_to_hashmap(config.get("options"));
-                        }
-                    }
-                }
-                None
-            };
+        let filter_profile = config.get("filterProfile").and_then(|v| v.as_str());
+        let backend_profile = config.get("backendProfile").and_then(|v| v.as_str());
 
-        let filter_profile = sync_cfg.get("filterProfile").and_then(|v| v.as_str());
-        let backend_profile = sync_cfg.get("backendProfile").and_then(|v| v.as_str());
-
-        let filter_options = resolve_profile_options(filter_profile, "filterConfigs");
-        let backend_options = resolve_profile_options(backend_profile, "backendConfigs");
+        let filter_options = resolve_profile_options(settings, filter_profile, "filterConfigs");
+        let backend_options = resolve_profile_options(settings, backend_profile, "backendConfigs");
 
         Some(Self {
             remote_name,
             source,
             dest,
-            sync_options: json_to_hashmap(sync_cfg.get("options")),
+            sync_options: json_to_hashmap(config.get("options")),
             filter_options,
             backend_options,
-            profile: Some(get_string(sync_cfg, &["name"])).filter(|s| !s.is_empty()),
+            profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
         })
     }
 }
@@ -88,46 +70,29 @@ pub struct CopyParams {
 }
 
 impl CopyParams {
-    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
-        let copy_cfg = settings.get("copyConfig")?;
-
-        let source = get_string(copy_cfg, &["source"]);
-        let dest = get_string(copy_cfg, &["dest"]);
+    /// Create CopyParams from a profile config and settings
+    pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
+        let source = get_string(config, &["source"]);
+        let dest = get_string(config, &["dest"]);
 
         if source.is_empty() || dest.is_empty() {
             return None;
         }
 
-        let resolve_profile_options =
-            |profile_name: Option<&str>, configs_key: &str| -> Option<HashMap<String, Value>> {
-                if let Some(name) = profile_name
-                    && let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array())
-                {
-                    for config in configs {
-                        if let Some(config_name) = config.get("name").and_then(|v| v.as_str())
-                            && config_name == name
-                        {
-                            return json_to_hashmap(config.get("options"));
-                        }
-                    }
-                }
-                None
-            };
+        let filter_profile = config.get("filterProfile").and_then(|v| v.as_str());
+        let backend_profile = config.get("backendProfile").and_then(|v| v.as_str());
 
-        let filter_profile = copy_cfg.get("filterProfile").and_then(|v| v.as_str());
-        let backend_profile = copy_cfg.get("backendProfile").and_then(|v| v.as_str());
-
-        let filter_options = resolve_profile_options(filter_profile, "filterConfigs");
-        let backend_options = resolve_profile_options(backend_profile, "backendConfigs");
+        let filter_options = resolve_profile_options(settings, filter_profile, "filterConfigs");
+        let backend_options = resolve_profile_options(settings, backend_profile, "backendConfigs");
 
         Some(Self {
             remote_name,
             source,
             dest,
-            copy_options: json_to_hashmap(copy_cfg.get("options")),
+            copy_options: json_to_hashmap(config.get("options")),
             filter_options,
             backend_options,
-            profile: Some(get_string(copy_cfg, &["name"])).filter(|s| !s.is_empty()),
+            profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
         })
     }
 }
@@ -145,46 +110,29 @@ pub struct BisyncParams {
 }
 
 impl BisyncParams {
-    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
-        let bisync_cfg = settings.get("bisyncConfig")?;
-
-        let source = get_string(bisync_cfg, &["source"]);
-        let dest = get_string(bisync_cfg, &["dest"]);
+    /// Create BisyncParams from a profile config and settings
+    pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
+        let source = get_string(config, &["source"]);
+        let dest = get_string(config, &["dest"]);
 
         if source.is_empty() || dest.is_empty() {
             return None;
         }
 
-        let resolve_profile_options =
-            |profile_name: Option<&str>, configs_key: &str| -> Option<HashMap<String, Value>> {
-                if let Some(name) = profile_name
-                    && let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array())
-                {
-                    for config in configs {
-                        if let Some(config_name) = config.get("name").and_then(|v| v.as_str())
-                            && config_name == name
-                        {
-                            return json_to_hashmap(config.get("options"));
-                        }
-                    }
-                }
-                None
-            };
+        let filter_profile = config.get("filterProfile").and_then(|v| v.as_str());
+        let backend_profile = config.get("backendProfile").and_then(|v| v.as_str());
 
-        let filter_profile = bisync_cfg.get("filterProfile").and_then(|v| v.as_str());
-        let backend_profile = bisync_cfg.get("backendProfile").and_then(|v| v.as_str());
-
-        let filter_options = resolve_profile_options(filter_profile, "filterConfigs");
-        let backend_options = resolve_profile_options(backend_profile, "backendConfigs");
+        let filter_options = resolve_profile_options(settings, filter_profile, "filterConfigs");
+        let backend_options = resolve_profile_options(settings, backend_profile, "backendConfigs");
 
         Some(Self {
             remote_name,
             source,
             dest,
-            bisync_options: json_to_hashmap(bisync_cfg.get("options")),
+            bisync_options: json_to_hashmap(config.get("options")),
             filter_options,
             backend_options,
-            profile: Some(get_string(bisync_cfg, &["name"])).filter(|s| !s.is_empty()),
+            profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
         })
     }
 }
@@ -202,46 +150,29 @@ pub struct MoveParams {
 }
 
 impl MoveParams {
-    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
-        let move_cfg = settings.get("moveConfig")?;
-
-        let source = get_string(move_cfg, &["source"]);
-        let dest = get_string(move_cfg, &["dest"]);
+    /// Create MoveParams from a profile config and settings
+    pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
+        let source = get_string(config, &["source"]);
+        let dest = get_string(config, &["dest"]);
 
         if source.is_empty() || dest.is_empty() {
             return None;
         }
 
-        let resolve_profile_options =
-            |profile_name: Option<&str>, configs_key: &str| -> Option<HashMap<String, Value>> {
-                if let Some(name) = profile_name
-                    && let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array())
-                {
-                    for config in configs {
-                        if let Some(config_name) = config.get("name").and_then(|v| v.as_str())
-                            && config_name == name
-                        {
-                            return json_to_hashmap(config.get("options"));
-                        }
-                    }
-                }
-                None
-            };
+        let filter_profile = config.get("filterProfile").and_then(|v| v.as_str());
+        let backend_profile = config.get("backendProfile").and_then(|v| v.as_str());
 
-        let filter_profile = move_cfg.get("filterProfile").and_then(|v| v.as_str());
-        let backend_profile = move_cfg.get("backendProfile").and_then(|v| v.as_str());
-
-        let filter_options = resolve_profile_options(filter_profile, "filterConfigs");
-        let backend_options = resolve_profile_options(backend_profile, "backendConfigs");
+        let filter_options = resolve_profile_options(settings, filter_profile, "filterConfigs");
+        let backend_options = resolve_profile_options(settings, backend_profile, "backendConfigs");
 
         Some(Self {
             remote_name,
             source,
             dest,
-            move_options: json_to_hashmap(move_cfg.get("options")),
+            move_options: json_to_hashmap(config.get("options")),
             filter_options,
             backend_options,
-            profile: Some(get_string(move_cfg, &["name"])).filter(|s| !s.is_empty()),
+            profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
         })
     }
 }
@@ -267,10 +198,9 @@ fn merge_options(
     }
 }
 
-// --- Tauri Commands ---
+// --- Core Functions ---
 
 /// Start a sync operation
-#[tauri::command]
 pub async fn start_sync(
     app: AppHandle,
     _job_cache: State<'_, JobCache>, // Maintained for signature compatibility
@@ -344,7 +274,7 @@ pub async fn start_sync(
     Ok(jobid)
 }
 
-#[tauri::command]
+/// Start a copy operation
 pub async fn start_copy(
     app: AppHandle,
     _job_cache: State<'_, JobCache>,
@@ -416,7 +346,7 @@ pub async fn start_copy(
     Ok(jobid)
 }
 
-#[tauri::command]
+/// Start a bisync operation
 pub async fn start_bisync(
     app: AppHandle,
     _job_cache: State<'_, JobCache>,
@@ -514,7 +444,7 @@ pub async fn start_bisync(
     Ok(jobid)
 }
 
-#[tauri::command]
+/// Start a move operation
 pub async fn start_move(
     app: AppHandle,
     _job_cache: State<'_, JobCache>,
@@ -586,4 +516,166 @@ pub async fn start_move(
     .await?;
 
     Ok(jobid)
+}
+
+// ============================================================================
+// PROFILE-BASED COMMANDS
+// These commands accept only (remote_name, profile_name) and resolve all
+// options internally from cached settings. This is the preferred API for
+// frontend usage as it ensures consistency with tray actions.
+// ============================================================================
+
+use crate::utils::types::all_types::RemoteCache;
+
+/// Start a sync operation using a named profile
+/// Resolves all options (sync, filter, backend) from cached settings
+#[tauri::command]
+pub async fn start_sync_profile(
+    app: AppHandle,
+    job_cache: State<'_, JobCache>,
+    rclone_state: State<'_, RcloneState>,
+    params: ProfileParams,
+) -> Result<u64, String> {
+    let cache = app.state::<RemoteCache>();
+    let settings_map = cache.get_settings().await;
+
+    let settings = settings_map
+        .get(&params.remote_name)
+        .ok_or_else(|| format!("Remote '{}' not found in settings", params.remote_name))?;
+
+    let sync_configs = settings
+        .get("syncConfigs")
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| format!("No syncConfigs found for '{}'", params.remote_name))?;
+
+    let config = sync_configs
+        .get(&params.profile_name)
+        .ok_or_else(|| format!("Sync profile '{}' not found", params.profile_name))?;
+
+    let mut sync_params = SyncParams::from_config(params.remote_name.clone(), config, settings)
+        .ok_or_else(|| {
+            format!(
+                "Sync configuration incomplete for profile '{}'",
+                params.profile_name
+            )
+        })?;
+
+    // Ensure profile is set from the function parameter, not the config object
+    sync_params.profile = Some(params.profile_name.clone());
+
+    start_sync(app, job_cache, rclone_state, sync_params).await
+}
+
+/// Start a copy operation using a named profile
+#[tauri::command]
+pub async fn start_copy_profile(
+    app: AppHandle,
+    job_cache: State<'_, JobCache>,
+    rclone_state: State<'_, RcloneState>,
+    params: ProfileParams,
+) -> Result<u64, String> {
+    let cache = app.state::<RemoteCache>();
+    let settings_map = cache.get_settings().await;
+
+    let settings = settings_map
+        .get(&params.remote_name)
+        .ok_or_else(|| format!("Remote '{}' not found in settings", params.remote_name))?;
+
+    let copy_configs = settings
+        .get("copyConfigs")
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| format!("No copyConfigs found for '{}'", params.remote_name))?;
+
+    let config = copy_configs
+        .get(&params.profile_name)
+        .ok_or_else(|| format!("Copy profile '{}' not found", params.profile_name))?;
+
+    let mut copy_params = CopyParams::from_config(params.remote_name.clone(), config, settings)
+        .ok_or_else(|| {
+            format!(
+                "Copy configuration incomplete for profile '{}'",
+                params.profile_name
+            )
+        })?;
+
+    // Ensure profile is set from the function parameter, not the config object
+    copy_params.profile = Some(params.profile_name.clone());
+
+    start_copy(app, job_cache, rclone_state, copy_params).await
+}
+
+/// Start a bisync operation using a named profile
+#[tauri::command]
+pub async fn start_bisync_profile(
+    app: AppHandle,
+    job_cache: State<'_, JobCache>,
+    rclone_state: State<'_, RcloneState>,
+    params: ProfileParams,
+) -> Result<u64, String> {
+    let cache = app.state::<RemoteCache>();
+    let settings_map = cache.get_settings().await;
+
+    let settings = settings_map
+        .get(&params.remote_name)
+        .ok_or_else(|| format!("Remote '{}' not found in settings", params.remote_name))?;
+
+    let bisync_configs = settings
+        .get("bisyncConfigs")
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| format!("No bisyncConfigs found for '{}'", params.remote_name))?;
+
+    let config = bisync_configs
+        .get(&params.profile_name)
+        .ok_or_else(|| format!("Bisync profile '{}' not found", params.profile_name))?;
+
+    let mut bisync_params = BisyncParams::from_config(params.remote_name.clone(), config, settings)
+        .ok_or_else(|| {
+            format!(
+                "Bisync configuration incomplete for profile '{}'",
+                params.profile_name
+            )
+        })?;
+
+    // Ensure profile is set from the function parameter, not the config object
+    bisync_params.profile = Some(params.profile_name.clone());
+
+    start_bisync(app, job_cache, rclone_state, bisync_params).await
+}
+
+/// Start a move operation using a named profile
+#[tauri::command]
+pub async fn start_move_profile(
+    app: AppHandle,
+    job_cache: State<'_, JobCache>,
+    rclone_state: State<'_, RcloneState>,
+    params: ProfileParams,
+) -> Result<u64, String> {
+    let cache = app.state::<RemoteCache>();
+    let settings_map = cache.get_settings().await;
+
+    let settings = settings_map
+        .get(&params.remote_name)
+        .ok_or_else(|| format!("Remote '{}' not found in settings", params.remote_name))?;
+
+    let move_configs = settings
+        .get("moveConfigs")
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| format!("No moveConfigs found for '{}'", params.remote_name))?;
+
+    let config = move_configs
+        .get(&params.profile_name)
+        .ok_or_else(|| format!("Move profile '{}' not found", params.profile_name))?;
+
+    let mut move_params = MoveParams::from_config(params.remote_name.clone(), config, settings)
+        .ok_or_else(|| {
+            format!(
+                "Move configuration incomplete for profile '{}'",
+                params.profile_name
+            )
+        })?;
+
+    // Ensure profile is set from the function parameter, not the config object
+    move_params.profile = Some(params.profile_name.clone());
+
+    start_move(app, job_cache, rclone_state, move_params).await
 }

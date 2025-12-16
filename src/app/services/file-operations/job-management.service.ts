@@ -1,19 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
-import {
-  BackendOptions,
-  BisyncOptions,
-  BisyncParams,
-  CopyOptions,
-  CopyParams,
-  FilterOptions,
-  JobInfo,
-  MoveOptions,
-  MoveParams,
-  SyncOptions,
-  SyncParams,
-} from '@app/types';
+import { JobInfo } from '@app/types';
 
 /**
  * Service for managing rclone jobs (sync, copy, etc.)
@@ -30,162 +18,47 @@ export class JobManagementService extends TauriBaseService {
     super();
   }
 
+  // ============================================================================
+  // PROFILE-BASED METHODS
+  // These methods only require remote and profile names - the backend resolves
+  // all options (sync, filter, backend, vfs) from cached settings.
+  // ============================================================================
+
   /**
-   * Start a sync job
+   * Start a sync job using a named profile
+   * Backend resolves all options from cached settings
    */
-  async startSync(
-    remoteName: string,
-    source: string,
-    dest: string,
-    createEmptySrcDirs?: boolean,
-    syncOptions?: SyncOptions,
-    filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions,
-    profile?: string
-  ): Promise<number> {
-    this.validatePaths(source, dest);
-
-    const params: SyncParams = {
-      remote_name: remoteName,
-      source,
-      dest,
-      create_empty_src_dirs: createEmptySrcDirs || false,
-      sync_options: syncOptions || {},
-      filter_options: filterOptions || {},
-      backend_options: backendOptions || {},
-      profile,
-    };
-
-    console.debug('Invoking start_sync with params', params);
-    const jobId = await this.invokeCommand<number>('start_sync', { params });
-
-    return jobId;
+  async startSyncProfile(remoteName: string, profileName: string): Promise<number> {
+    const params = { remote_name: remoteName, profile_name: profileName };
+    console.debug('Invoking start_sync_profile with params', params);
+    return this.invokeCommand<number>('start_sync_profile', { params });
   }
 
   /**
-   * Start a copy job
+   * Start a copy job using a named profile
    */
-  async startCopy(
-    remoteName: string,
-    source: string,
-    dest: string,
-    createEmptySrcDirs?: boolean,
-    copyOptions?: CopyOptions,
-    filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions,
-    profile?: string
-  ): Promise<number> {
-    this.validatePaths(source, dest);
-
-    const params: CopyParams = {
-      remote_name: remoteName,
-      source,
-      dest,
-      create_empty_src_dirs: createEmptySrcDirs || false,
-      copy_options: copyOptions || {},
-      filter_options: filterOptions || {},
-      backend_options: backendOptions || {},
-      profile,
-    };
-
-    console.debug('Invoking start_copy with params', params);
-    const jobId = await this.invokeCommand<number>('start_copy', { params });
-
-    return jobId;
+  async startCopyProfile(remoteName: string, profileName: string): Promise<number> {
+    const params = { remote_name: remoteName, profile_name: profileName };
+    console.debug('Invoking start_copy_profile with params', params);
+    return this.invokeCommand<number>('start_copy_profile', { params });
   }
 
   /**
-   * Start a bisync job
-   * @param remoteName The remote name
-   * @param config The bisync configuration object
-   * @param filterOptions Filter options (can override profile settings)
-   * @param backendOptions Backend options (can override profile settings)
-   * @param profile Profile name for job tracking
+   * Start a bisync job using a named profile
    */
-  async startBisync(
-    remoteName: string,
-    config: {
-      source: string;
-      dest: string;
-      options?: BisyncOptions;
-      dryRun?: boolean;
-      resync?: boolean;
-      checkAccess?: boolean;
-      checkFilename?: string;
-      maxDelete?: number;
-      force?: boolean;
-      checkSync?: boolean | 'only';
-      createEmptySrcDirs?: boolean;
-      removeEmptyDirs?: boolean;
-      filtersFile?: string;
-      ignoreListingChecksum?: boolean;
-      resilient?: boolean;
-      workdir?: string;
-      backupdir1?: string;
-      backupdir2?: string;
-      noCleanup?: boolean;
-    },
-    filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions,
-    profile?: string
-  ): Promise<number> {
-    this.validatePaths(config.source, config.dest);
-
-    const params: BisyncParams = {
-      remote_name: remoteName,
-      source: config.source,
-      dest: config.dest,
-      bisync_options: config.options || null,
-      filter_options: filterOptions || null,
-      backend_options: backendOptions || {},
-      resync: config.resync || false,
-      dryRun: config.dryRun || false,
-      checkAccess: config.checkAccess || false,
-      checkFilename: config.checkFilename || '',
-      maxDelete: config.maxDelete || 0,
-      force: config.force || false,
-      checkSync: config.checkSync || false,
-      createEmptySrcDirs: config.createEmptySrcDirs || false,
-      removeEmptyDirs: config.removeEmptyDirs || false,
-      filtersFile: config.filtersFile || '',
-      ignoreListingChecksum: config.ignoreListingChecksum || false,
-      resilient: config.resilient || false,
-      workdir: config.workdir || '',
-      backupdir1: config.backupdir1 || '',
-      backupdir2: config.backupdir2 || '',
-      noCleanup: config.noCleanup || false,
-      profile,
-    };
-
-    console.debug('Invoking start_bisync with params', params);
-    return await this.invokeCommand<number>('start_bisync', { params });
+  async startBisyncProfile(remoteName: string, profileName: string): Promise<number> {
+    const params = { remote_name: remoteName, profile_name: profileName };
+    console.debug('Invoking start_bisync_profile with params', params);
+    return this.invokeCommand<number>('start_bisync_profile', { params });
   }
 
-  async startMove(
-    remoteName: string,
-    source: string,
-    dest: string,
-    createEmptySrcDirs?: boolean,
-    deleteEmptySrcDirs?: boolean,
-    moveOptions?: MoveOptions,
-    filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions,
-    profile?: string
-  ): Promise<number> {
-    this.validatePaths(source, dest);
-    const params: MoveParams = {
-      remote_name: remoteName,
-      source,
-      dest,
-      create_empty_src_dirs: createEmptySrcDirs || false,
-      delete_empty_src_dirs: deleteEmptySrcDirs || false,
-      move_options: moveOptions || {},
-      filter_options: filterOptions || {},
-      backend_options: backendOptions || {},
-      profile,
-    };
-    console.debug('Invoking start_move with params', params);
-    return await this.invokeCommand<number>('start_move', { params });
+  /**
+   * Start a move job using a named profile
+   */
+  async startMoveProfile(remoteName: string, profileName: string): Promise<number> {
+    const params = { remote_name: remoteName, profile_name: profileName };
+    console.debug('Invoking start_move_profile with params', params);
+    return this.invokeCommand<number>('start_move_profile', { params });
   }
 
   /**

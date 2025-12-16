@@ -26,20 +26,14 @@ fn create_mount_submenu<R: Runtime>(
 ) -> tauri::Result<Submenu<R>> {
     let mount_configs = settings
         .get("mountConfigs")
-        .and_then(|v| v.as_array())
+        .and_then(|v| v.as_object())
         .filter(|configs| !configs.is_empty());
 
     let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
 
     if let Some(configs) = mount_configs {
         // Show configured profiles
-        for config in configs {
-            let profile_name = config
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("default")
-                .to_string();
-
+        for (profile_name, config) in configs {
             let mount_point = config.get("dest").and_then(|v| v.as_str()).unwrap_or("");
 
             // Check if this specific mount profile is mounted
@@ -90,23 +84,17 @@ fn create_sync_submenu<R: Runtime>(
 ) -> tauri::Result<Submenu<R>> {
     let sync_configs = settings
         .get("syncConfigs")
-        .and_then(|v| v.as_array())
+        .and_then(|v| v.as_object())
         .filter(|configs| !configs.is_empty());
 
     let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
 
     if let Some(configs) = sync_configs {
-        for config in configs {
-            let profile_name = config
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("default")
-                .to_string();
-
+        for (profile_name, _config) in configs {
             let is_running = active_jobs.iter().any(|job| {
                 job.remote_name == remote
                     && job.job_type == "sync"
-                    && job.profile.as_ref() == Some(&profile_name)
+                    && job.profile.as_ref() == Some(profile_name)
             });
 
             let (action_id, label) = if is_running {
@@ -155,23 +143,17 @@ fn create_copy_submenu<R: Runtime>(
 ) -> tauri::Result<Submenu<R>> {
     let copy_configs = settings
         .get("copyConfigs")
-        .and_then(|v| v.as_array())
+        .and_then(|v| v.as_object())
         .filter(|configs| !configs.is_empty());
 
     let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
 
     if let Some(configs) = copy_configs {
-        for config in configs {
-            let profile_name = config
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("default")
-                .to_string();
-
+        for (profile_name, _config) in configs {
             let is_running = active_jobs.iter().any(|job| {
                 job.remote_name == remote
                     && job.job_type == "copy"
-                    && job.profile.as_ref() == Some(&profile_name)
+                    && job.profile.as_ref() == Some(profile_name)
             });
 
             let (action_id, label) = if is_running {
@@ -220,23 +202,17 @@ fn create_move_submenu<R: Runtime>(
 ) -> tauri::Result<Submenu<R>> {
     let move_configs = settings
         .get("moveConfigs")
-        .and_then(|v| v.as_array())
+        .and_then(|v| v.as_object())
         .filter(|configs| !configs.is_empty());
 
     let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
 
     if let Some(configs) = move_configs {
-        for config in configs {
-            let profile_name = config
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("default")
-                .to_string();
-
+        for (profile_name, _config) in configs {
             let is_running = active_jobs.iter().any(|job| {
                 job.remote_name == remote
                     && job.job_type == "move"
-                    && job.profile.as_ref() == Some(&profile_name)
+                    && job.profile.as_ref() == Some(profile_name)
             });
 
             let (action_id, label) = if is_running {
@@ -285,23 +261,17 @@ fn create_bisync_submenu<R: Runtime>(
 ) -> tauri::Result<Submenu<R>> {
     let bisync_configs = settings
         .get("bisyncConfigs")
-        .and_then(|v| v.as_array())
+        .and_then(|v| v.as_object())
         .filter(|configs| !configs.is_empty());
 
     let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
 
     if let Some(configs) = bisync_configs {
-        for config in configs {
-            let profile_name = config
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("default")
-                .to_string();
-
+        for (profile_name, _config) in configs {
             let is_running = active_jobs.iter().any(|job| {
                 job.remote_name == remote
                     && job.job_type == "bisync"
-                    && job.profile.as_ref() == Some(&profile_name)
+                    && job.profile.as_ref() == Some(profile_name)
             });
 
             let (action_id, label) = if is_running {
@@ -352,20 +322,14 @@ fn create_serve_submenu<R: Runtime>(
 ) -> tauri::Result<Submenu<R>> {
     let serve_configs = settings
         .get("serveConfigs")
-        .and_then(|v| v.as_array())
+        .and_then(|v| v.as_object())
         .filter(|configs| !configs.is_empty());
 
     let mut items: Vec<Box<dyn tauri::menu::IsMenuItem<R>>> = vec![];
     let remote_fs_prefix = format!("{}:", remote);
 
     if let Some(configs) = serve_configs {
-        for config in configs {
-            let profile_name = config
-                .get("name")
-                .and_then(|v| v.as_str())
-                .unwrap_or("default")
-                .to_string();
-
+        for (profile_name, _config) in configs {
             // Check if this profile has an active serve
             // Match by profile name in the serve's metadata
             let active_serve = all_serves.iter().find(|serve| {
@@ -497,22 +461,22 @@ pub async fn create_tray_menu<R: Runtime>(
             // Count profiles for this remote (for job aggregation)
             let sync_count = settings
                 .get("syncConfigs")
-                .and_then(|v| v.as_array())
+                .and_then(|v| v.as_object())
                 .map(|a| a.len())
                 .unwrap_or(0);
             let copy_count = settings
                 .get("copyConfigs")
-                .and_then(|v| v.as_array())
+                .and_then(|v| v.as_object())
                 .map(|a| a.len())
                 .unwrap_or(0);
             let move_count = settings
                 .get("moveConfigs")
-                .and_then(|v| v.as_array())
+                .and_then(|v| v.as_object())
                 .map(|a| a.len())
                 .unwrap_or(0);
             let bisync_count = settings
                 .get("bisyncConfigs")
-                .and_then(|v| v.as_array())
+                .and_then(|v| v.as_object())
                 .map(|a| a.len())
                 .unwrap_or(0);
 

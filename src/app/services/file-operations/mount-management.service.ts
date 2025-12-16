@@ -2,15 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { TauriBaseService } from '../core/tauri-base.service';
 import { NotificationService } from '../../shared/services/notification.service';
-
-import {
-  MountOptions,
-  VfsOptions,
-  MountParams,
-  BackendOptions,
-  FilterOptions,
-  MountedRemote,
-} from '@app/types';
+import { MountedRemote } from '@app/types';
 
 /**
  * Service for managing rclone mounts
@@ -46,32 +38,13 @@ export class MountManagementService extends TauriBaseService {
   }
 
   /**
-   * Mount a remote
+   * Mount a remote using a named profile
+   * Backend resolves all options (mount, vfs, filter, backend) from cached settings
    */
-  async mountRemote(
-    remoteName: string,
-    source: string,
-    mountPoint: string,
-    mountType: string,
-    mountOptions?: MountOptions,
-    vfsOptions?: VfsOptions,
-    filterOptions?: FilterOptions,
-    backendOptions?: BackendOptions,
-    profile?: string
-  ): Promise<void> {
+  async mountRemoteProfile(remoteName: string, profileName: string): Promise<void> {
     try {
-      const params: MountParams = {
-        remote_name: remoteName,
-        source: source || '',
-        mount_point: mountPoint || '',
-        mount_type: mountType || '',
-        mount_options: mountOptions || {},
-        vfs_options: vfsOptions || {},
-        filter_options: filterOptions || {},
-        backend_options: backendOptions || {},
-        profile: profile,
-      };
-      await this.invokeCommand('mount_remote', { params });
+      const params = { remote_name: remoteName, profile_name: profileName };
+      await this.invokeCommand('mount_remote_profile', { params });
       await this.refreshMountedRemotes();
       this.notificationService.showSuccess(`Successfully mounted ${remoteName}`);
     } catch (error) {
@@ -106,55 +79,6 @@ export class MountManagementService extends TauriBaseService {
    */
   async openInFiles(mountPoint: string): Promise<void> {
     return this.invokeCommand('open_in_files', { path: mountPoint });
-  }
-
-  /**
-   * Get mount flags
-   */
-  async getMountFlags(): Promise<any> {
-    return this.invokeCommand('get_mount_flags');
-  }
-
-  /**
-   * Get VFS flags
-   */
-  async getVfsFlags(): Promise<any> {
-    return this.invokeCommand('get_vfs_flags');
-  }
-
-  /**
-   * Get sync flags
-   */
-  async getSyncFlags(): Promise<any> {
-    return this.invokeCommand('get_sync_flags');
-  }
-
-  /**
-   * Get copy flags
-   */
-  async getCopyFlags(): Promise<any> {
-    return this.invokeCommand('get_copy_flags');
-  }
-
-  /**
-   * Get filter flags
-   */
-  async getFilterFlags(): Promise<any> {
-    return this.invokeCommand('get_filter_flags');
-  }
-
-  /**
-   * Get backend flags
-   */
-  async getBackendFlags(): Promise<any> {
-    return this.invokeCommand('get_backend_flags');
-  }
-
-  /**
-   * Get global flags
-   */
-  async getGlobalFlags(): Promise<any> {
-    return this.invokeCommand('get_global_flags');
   }
 
   /**

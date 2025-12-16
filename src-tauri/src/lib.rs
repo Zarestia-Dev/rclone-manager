@@ -107,13 +107,15 @@ use crate::{
         commands::{
             filesystem::{cleanup, copy_url, mkdir},
             job::stop_job,
-            mount::{mount_remote, unmount_all_remotes, unmount_remote},
+            mount::{mount_remote_profile, unmount_all_remotes, unmount_remote},
             remote::{
                 continue_create_remote_interactive, create_remote, create_remote_interactive,
                 delete_remote, update_remote,
             },
-            serve::{start_serve, stop_all_serves, stop_serve},
-            sync::{start_bisync, start_copy, start_move, start_sync},
+            serve::{start_serve_profile, stop_all_serves, stop_serve},
+            sync::{
+                start_bisync_profile, start_copy_profile, start_move_profile, start_sync_profile,
+            },
             system::{quit_rclone_oauth, set_bandwidth_limit},
         },
         queries::{
@@ -548,12 +550,12 @@ pub fn run() {
             get_mounted_remotes,
             set_bandwidth_limit,
             // Rclone Sync API
-            start_sync,
-            start_copy,
-            start_bisync,
-            start_move,
-            // Rclone Query API
-            mount_remote,
+            start_sync_profile,
+            start_copy_profile,
+            start_bisync_profile,
+            start_move_profile,
+            // Rclone Mount API
+            mount_remote_profile,
             unmount_remote,
             unmount_all_remotes,
             get_mount_types,
@@ -566,7 +568,7 @@ pub fn run() {
             vfs_queue,
             vfs_queue_set_expiry,
             // Serve API
-            start_serve,
+            start_serve_profile,
             stop_serve,
             stop_all_serves,
             get_serve_types,

@@ -361,6 +361,14 @@ fn get_local_rclone_path(app_handle: &AppHandle) -> Result<PathBuf, String> {
 
 /// Update the rclone path in application settings
 async fn update_rclone_path_in_settings(app_handle: &AppHandle, new_path: &Path) {
+    // Update in-memory state immediately (event listener is async and may not complete before engine restart)
+    let rclone_state = app_handle.state::<RcloneState>();
+    if let Ok(mut path_guard) = rclone_state.rclone_path.write() {
+        *path_guard = new_path.to_path_buf();
+        info!("✅ Updated in-memory rclone_path to: {:?}", new_path);
+    }
+
+    // Also persist to settings store
     match save_setting(
         "core".to_string(),
         "rclone_path".to_string(),

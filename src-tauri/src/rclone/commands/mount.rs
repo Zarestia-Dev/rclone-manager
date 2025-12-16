@@ -9,11 +9,13 @@ use crate::{
         state::{engine::ENGINE_STATE, watcher::force_check_mounted_remotes},
     },
     utils::{
-        json_helpers::{get_string, json_to_hashmap, unwrap_nested_options},
+        json_helpers::{
+            get_string, json_to_hashmap, resolve_profile_options, unwrap_nested_options,
+        },
         logging::log::log_operation,
         rclone::endpoints::{EndpointHelper, mount},
         types::{
-            all_types::{JobCache, LogLevel, RcloneState, RemoteCache},
+            all_types::{LogLevel, ProfileParams, RcloneState, RemoteCache},
             events::REMOTE_STATE_CHANGED,
         },
     },
@@ -36,66 +38,48 @@ pub struct MountParams {
 }
 
 impl MountParams {
-    pub fn from_settings(remote_name: String, settings: &Value) -> Option<Self> {
-        let mount_cfg = settings.get("mountConfig")?;
-
-        let source = get_string(mount_cfg, &["source"]);
-        let dest = get_string(mount_cfg, &["dest"]);
+    /// Create MountParams from a profile config and settings
+    /// `config` - the specific mount profile configuration
+    /// `settings` - the full remote settings (for resolving profile references)
+    pub fn from_config(remote_name: String, config: &Value, settings: &Value) -> Option<Self> {
+        let source = get_string(config, &["source"]);
+        let dest = get_string(config, &["dest"]);
 
         if source.is_empty() || dest.is_empty() {
             return None;
         }
 
-        // Helper to resolve profile references
-        let resolve_profile_options =
-            |profile_name: Option<&str>, configs_key: &str| -> Option<HashMap<String, Value>> {
-                if let Some(name) = profile_name
-                    && let Some(configs) = settings.get(configs_key).and_then(|v| v.as_array())
-                {
-                    for config in configs {
-                        if let Some(config_name) = config.get("name").and_then(|v| v.as_str())
-                            && config_name == name
-                        {
-                            return json_to_hashmap(config.get("options"));
-                        }
-                    }
-                }
-                None
-            };
+        // Get profile references from config
+        let vfs_profile = config.get("vfsProfile").and_then(|v| v.as_str());
+        let filter_profile = config.get("filterProfile").and_then(|v| v.as_str());
+        let backend_profile = config.get("backendProfile").and_then(|v| v.as_str());
 
-        // Get profile references from mount config
-        let vfs_profile = mount_cfg.get("vfsProfile").and_then(|v| v.as_str());
-        let filter_profile = mount_cfg.get("filterProfile").and_then(|v| v.as_str());
-        let backend_profile = mount_cfg.get("backendProfile").and_then(|v| v.as_str());
-
-        // Resolve profile references from multi-config arrays
-        let vfs_options = resolve_profile_options(vfs_profile, "vfsConfigs");
-        let filter_options = resolve_profile_options(filter_profile, "filterConfigs");
-        let backend_options = resolve_profile_options(backend_profile, "backendConfigs");
+        // Resolve profile references
+        let vfs_options = resolve_profile_options(settings, vfs_profile, "vfsConfigs");
+        let filter_options = resolve_profile_options(settings, filter_profile, "filterConfigs");
+        let backend_options = resolve_profile_options(settings, backend_profile, "backendConfigs");
 
         Some(Self {
             remote_name,
             source,
             mount_point: dest,
-            mount_type: mount_cfg
+            mount_type: config
                 .get("type")
                 .and_then(|v| v.as_str())
                 .unwrap_or("mount")
                 .to_string(),
-            mount_options: json_to_hashmap(mount_cfg.get("options")),
+            mount_options: json_to_hashmap(config.get("options")),
             vfs_options,
             filter_options,
             backend_options,
-            profile: Some(get_string(mount_cfg, &["name"])).filter(|s| !s.is_empty()),
+            profile: Some(get_string(config, &["name"])).filter(|s| !s.is_empty()),
         })
     }
 }
 
-/// Mount a remote filesystem
-#[tauri::command]
+/// Mount a remote filesystem (not exposed as Tauri command - use mount_remote_profile)
 pub async fn mount_remote(
     app: AppHandle,
-    _job_cache: State<'_, JobCache>,
     cache: State<'_, RemoteCache>,
     params: MountParams,
 ) -> Result<(), String> {
@@ -342,4 +326,45 @@ pub async fn unmount_all_remotes(
     info!("✅ All remotes unmounted successfully");
 
     Ok("✅ All remotes unmounted successfully".to_string())
+}
+
+// ============================================================================
+// PROFILE-BASED COMMAND
+// ============================================================================
+
+/// Mount a remote using a named profile
+/// Resolves all options (mount, vfs, filter, backend) from cached settings
+#[tauri::command]
+pub async fn mount_remote_profile(
+    app: AppHandle,
+    cache: State<'_, RemoteCache>,
+    params: ProfileParams,
+) -> Result<(), String> {
+    let settings_map = cache.get_settings().await;
+
+    let settings = settings_map
+        .get(&params.remote_name)
+        .ok_or_else(|| format!("Remote '{}' not found in settings", params.remote_name))?;
+
+    let mount_configs = settings
+        .get("mountConfigs")
+        .and_then(|v| v.as_object())
+        .ok_or_else(|| format!("No mountConfigs found for '{}'", params.remote_name))?;
+
+    let config = mount_configs
+        .get(&params.profile_name)
+        .ok_or_else(|| format!("Mount profile '{}' not found", params.profile_name))?;
+
+    let mut mount_params = MountParams::from_config(params.remote_name.clone(), config, settings)
+        .ok_or_else(|| {
+        format!(
+            "Mount configuration incomplete for profile '{}'",
+            params.profile_name
+        )
+    })?;
+
+    // Ensure profile is set from the function parameter, not the config object
+    mount_params.profile = Some(params.profile_name.clone());
+
+    mount_remote(app, cache, mount_params).await
 }

@@ -19,9 +19,8 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 use crate::core::lifecycle::shutdown::handle_shutdown;
 use crate::core::scheduler::commands::validate_cron;
 use crate::core::scheduler::engine::CronScheduler;
-use crate::rclone::commands::mount::{MountParams, mount_remote};
 use crate::rclone::commands::remote::create_remote;
-use crate::utils::types::all_types::{JobCache, LogCache, RcloneState, RemoteCache};
+use crate::utils::types::all_types::{JobCache, LogCache, ProfileParams, RcloneState, RemoteCache};
 use crate::utils::types::scheduled_task::{CronValidationResponse, ScheduledTask};
 use crate::utils::types::settings::SettingsState;
 use crate::{rclone::state::scheduled_tasks::ScheduledTasksCache, utils::types::events::*};
@@ -285,9 +284,9 @@ fn mount_serve_routes() -> Router<WebServerState> {
             get(get_cached_mounted_remotes_handler),
         )
         .route("/get-cached-serves", get(get_cached_serves_handler))
-        .route("/serve/start", post(start_serve_handler))
+        .route("/serve/start-profile", post(start_serve_profile_handler))
         .route("/serve/stop", post(stop_serve_handler))
-        .route("/mount-remote", post(mount_remote_handler))
+        .route("/mount-remote-profile", post(mount_remote_profile_handler))
         .route("/unmount-remote", post(unmount_remote_handler))
         .route("/mount-types", get(get_mount_types_handler))
 }
@@ -577,10 +576,10 @@ pub async fn start_web_server(
         .route("/active", get(get_active_jobs_handler))
         .route("/stop", post(stop_job_handler))
         .route("/delete", post(delete_job_handler))
-        .route("/start-sync", post(start_sync_handler))
-        .route("/start-copy", post(start_copy_handler))
-        .route("/start-move", post(start_move_handler))
-        .route("/start-bisync", post(start_bisync_handler))
+        .route("/start-sync-profile", post(start_sync_profile_handler))
+        .route("/start-copy-profile", post(start_copy_profile_handler))
+        .route("/start-move-profile", post(start_move_profile_handler))
+        .route("/start-bisync-profile", post(start_bisync_profile_handler))
         .route("/:id/status", get(get_job_status_handler))
         .with_state(state.clone());
 
@@ -903,96 +902,97 @@ async fn delete_job_handler(
     )))
 }
 
+/// Body for profile-based commands from frontend
+/// Frontend sends: { "params": { "remote_name": "...", "profile_name": "..." } }
 #[derive(Deserialize)]
-struct StartSyncBody {
-    params: serde_json::Value,
+struct ProfileParamsBody {
+    params: ProfileParamsInner,
 }
 
-async fn start_sync_handler(
-    State(state): State<WebServerState>,
-    Json(body): Json<StartSyncBody>,
-) -> Result<Json<ApiResponse<u64>>, AppError> {
-    use crate::rclone::commands::sync::{SyncParams, start_sync};
+#[derive(Deserialize)]
+struct ProfileParamsInner {
+    remote_name: String,
+    profile_name: String,
+}
 
-    let params: SyncParams = serde_json::from_value(body.params)
-        .map_err(|e| AppError::BadRequest(anyhow::Error::msg(e)))?;
+async fn start_sync_profile_handler(
+    State(state): State<WebServerState>,
+    Json(body): Json<ProfileParamsBody>,
+) -> Result<Json<ApiResponse<u64>>, AppError> {
+    use crate::rclone::commands::sync::start_sync_profile;
+
+    let params = ProfileParams {
+        remote_name: body.params.remote_name,
+        profile_name: body.params.profile_name,
+    };
 
     let job_cache = state.app_handle.state::<JobCache>();
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
 
-    let jobid = start_sync(state.app_handle.clone(), job_cache, rclone_state, params)
+    let jobid = start_sync_profile(state.app_handle.clone(), job_cache, rclone_state, params)
         .await
         .map_err(anyhow::Error::msg)?;
 
     Ok(Json(ApiResponse::success(jobid)))
 }
 
-#[derive(Deserialize)]
-struct StartCopyBody {
-    params: serde_json::Value,
-}
-
-async fn start_copy_handler(
+async fn start_copy_profile_handler(
     State(state): State<WebServerState>,
-    Json(body): Json<StartCopyBody>,
+    Json(body): Json<ProfileParamsBody>,
 ) -> Result<Json<ApiResponse<u64>>, AppError> {
-    use crate::rclone::commands::sync::{CopyParams, start_copy};
+    use crate::rclone::commands::sync::start_copy_profile;
 
-    let params: CopyParams = serde_json::from_value(body.params)
-        .map_err(|e| AppError::BadRequest(anyhow::Error::msg(e)))?;
+    let params = ProfileParams {
+        remote_name: body.params.remote_name,
+        profile_name: body.params.profile_name,
+    };
 
     let job_cache = state.app_handle.state::<JobCache>();
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
 
-    let jobid = start_copy(state.app_handle.clone(), job_cache, rclone_state, params)
+    let jobid = start_copy_profile(state.app_handle.clone(), job_cache, rclone_state, params)
         .await
         .map_err(anyhow::Error::msg)?;
 
     Ok(Json(ApiResponse::success(jobid)))
 }
 
-#[derive(Deserialize)]
-struct StartMoveBody {
-    params: serde_json::Value,
-}
-
-async fn start_move_handler(
+async fn start_move_profile_handler(
     State(state): State<WebServerState>,
-    Json(body): Json<StartMoveBody>,
+    Json(body): Json<ProfileParamsBody>,
 ) -> Result<Json<ApiResponse<u64>>, AppError> {
-    use crate::rclone::commands::sync::{MoveParams, start_move};
+    use crate::rclone::commands::sync::start_move_profile;
 
-    let params: MoveParams = serde_json::from_value(body.params)
-        .map_err(|e| AppError::BadRequest(anyhow::Error::msg(e)))?;
+    let params = ProfileParams {
+        remote_name: body.params.remote_name,
+        profile_name: body.params.profile_name,
+    };
 
     let job_cache = state.app_handle.state::<JobCache>();
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
 
-    let jobid = start_move(state.app_handle.clone(), job_cache, rclone_state, params)
+    let jobid = start_move_profile(state.app_handle.clone(), job_cache, rclone_state, params)
         .await
         .map_err(anyhow::Error::msg)?;
 
     Ok(Json(ApiResponse::success(jobid)))
 }
 
-#[derive(Deserialize)]
-struct StartBisyncBody {
-    params: serde_json::Value,
-}
-
-async fn start_bisync_handler(
+async fn start_bisync_profile_handler(
     State(state): State<WebServerState>,
-    Json(body): Json<StartBisyncBody>,
+    Json(body): Json<ProfileParamsBody>,
 ) -> Result<Json<ApiResponse<u64>>, AppError> {
-    use crate::rclone::commands::sync::{BisyncParams, start_bisync};
+    use crate::rclone::commands::sync::start_bisync_profile;
 
-    let params: BisyncParams = serde_json::from_value(body.params)
-        .map_err(|e| AppError::BadRequest(anyhow::Error::msg(e)))?;
+    let params = ProfileParams {
+        remote_name: body.params.remote_name,
+        profile_name: body.params.profile_name,
+    };
 
     let job_cache = state.app_handle.state::<JobCache>();
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
 
-    let jobid = start_bisync(state.app_handle.clone(), job_cache, rclone_state, params)
+    let jobid = start_bisync_profile(state.app_handle.clone(), job_cache, rclone_state, params)
         .await
         .map_err(anyhow::Error::msg)?;
 
@@ -1567,22 +1567,18 @@ async fn get_cached_serves_handler(
     Ok(Json(ApiResponse::success(json_serves)))
 }
 
-#[derive(Deserialize)]
-struct StartServeBody {
-    params: serde_json::Value,
-}
-
-async fn start_serve_handler(
+async fn start_serve_profile_handler(
     State(state): State<WebServerState>,
-    Json(body): Json<StartServeBody>,
+    Json(body): Json<ProfileParamsBody>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::commands::serve::{ServeParams, start_serve};
+    use crate::rclone::commands::serve::start_serve_profile;
 
-    let params: ServeParams = serde_json::from_value(body.params)
-        .map_err(|e| AppError::BadRequest(anyhow::Error::msg(e)))?;
+    let params = ProfileParams {
+        remote_name: body.params.remote_name,
+        profile_name: body.params.profile_name,
+    };
 
-    let job_cache = state.app_handle.state::<JobCache>();
-    let resp = start_serve(state.app_handle.clone(), job_cache, params)
+    let resp = start_serve_profile(state.app_handle.clone(), params)
         .await
         .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(
@@ -1752,29 +1748,25 @@ async fn sse_handler(
     )
 }
 
-async fn mount_remote_handler(
+async fn mount_remote_profile_handler(
     State(state): State<WebServerState>,
-    Json(body): Json<MountRemoteBody>,
+    Json(body): Json<ProfileParamsBody>,
 ) -> Result<Json<ApiResponse<String>>, AppError> {
-    let job_cache = state.app_handle.state::<JobCache>();
+    use crate::rclone::commands::mount::mount_remote_profile;
+
+    let params = ProfileParams {
+        remote_name: body.params.remote_name,
+        profile_name: body.params.profile_name,
+    };
+
     let remote_cache = state.app_handle.state::<RemoteCache>();
 
-    mount_remote(
-        state.app_handle.clone(),
-        job_cache,
-        remote_cache,
-        body.params,
-    )
-    .await
-    .map_err(anyhow::Error::msg)?;
+    mount_remote_profile(state.app_handle.clone(), remote_cache, params)
+        .await
+        .map_err(anyhow::Error::msg)?;
     Ok(Json(ApiResponse::success(
         "Remote mounted successfully".to_string(),
     )))
-}
-
-#[derive(Deserialize)]
-struct MountRemoteBody {
-    params: MountParams,
 }
 
 async fn unmount_remote_handler(
@@ -2351,7 +2343,7 @@ async fn get_serve_flags_handler(
     State(state): State<WebServerState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<ApiResponse<serde_json::Value>>, AppError> {
-    use crate::rclone::queries::serve::get_serve_flags;
+    use crate::rclone::queries::flags::get_serve_flags;
 
     let rclone_state: tauri::State<RcloneState> = state.app_handle.state();
 
@@ -2362,7 +2354,7 @@ async fn get_serve_flags_handler(
         .or_else(|| params.get("serve_type").cloned())
         .unwrap_or_else(|| "".to_string());
 
-    let flags = get_serve_flags(serve_type, rclone_state)
+    let flags = get_serve_flags(Some(serve_type), rclone_state)
         .await
         .map_err(anyhow::Error::msg)?;
     let value = serde_json::to_value(flags).map_err(anyhow::Error::msg)?;
