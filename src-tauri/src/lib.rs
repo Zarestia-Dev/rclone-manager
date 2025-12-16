@@ -239,6 +239,14 @@ pub fn run() {
     }
 
     // 2. SETUP PLUGINS & HANDLERS
+    #[cfg(not(feature = "flatpak"))]
+    {
+        builder = builder.plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--tray"]),
+        ));
+    }
+
     builder = builder
         .plugin(tauri_plugin_single_instance::init(|_app, _, _| {
             #[cfg(feature = "web-server")]
@@ -247,10 +255,6 @@ pub fn run() {
             #[cfg(not(feature = "web-server"))]
             show_main_window(_app.clone());
         }))
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            Some(vec!["--tray"]),
-        ))
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_os::init())
@@ -713,7 +717,7 @@ pub fn run() {
                     #[cfg(target_os = "linux")]
                     {
                         std::thread::spawn(|| {
-                            std::thread::sleep(std::time::Duration::from_millis(500));
+                            std::thread::sleep(std::time::Duration::from_millis(1000));
                             utils::process::process_manager::cleanup_webkit_zombies();
                         });
                     }

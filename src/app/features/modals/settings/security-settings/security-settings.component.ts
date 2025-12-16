@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, OnDestroy } from '@angular/core';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatIconModule } from '@angular/material/icon';
@@ -39,7 +38,6 @@ interface LoadingStates {
   selector: 'app-security-settings',
   standalone: true,
   imports: [
-    CommonModule,
     MatTabsModule,
     MatIconModule,
     MatButtonModule,

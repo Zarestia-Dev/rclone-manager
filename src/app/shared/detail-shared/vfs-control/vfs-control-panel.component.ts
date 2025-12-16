@@ -8,7 +8,7 @@ import {
   effect,
   ViewChild,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -56,7 +56,6 @@ const DELAY_SLIDER_DEFAULT = 60;
   selector: 'app-vfs-control-panel',
   standalone: true,
   imports: [
-    CommonModule,
     MatCardModule,
     MatButtonModule,
     MatIconModule,

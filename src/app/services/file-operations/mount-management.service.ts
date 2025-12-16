@@ -46,9 +46,11 @@ export class MountManagementService extends TauriBaseService {
       const params = { remote_name: remoteName, profile_name: profileName };
       await this.invokeCommand('mount_remote_profile', { params });
       await this.refreshMountedRemotes();
-      this.notificationService.showSuccess(`Successfully mounted ${remoteName}`);
+      this.notificationService.showSuccess(`Successfully mounted ${remoteName} (${profileName})`);
     } catch (error) {
-      this.notificationService.showError(`Failed to mount ${remoteName}: ${error}`);
+      this.notificationService.showError(
+        `Failed to mount ${remoteName} (${profileName}): ${error}`
+      );
       throw error;
     }
   }

@@ -34,15 +34,15 @@
   },
   "private": true,
   "dependencies": {
-    "@angular/animations": "^20.3.15",
-    "@angular/cdk": "^20.2.3",
-    "@angular/common": "^20.3.15",
-    "@angular/compiler": "^20.3.15",
-    "@angular/core": "^20.3.15",
-    "@angular/forms": "^20.3.15",
-    "@angular/material": "^20.2.3",
-    "@angular/platform-browser": "^20.3.15",
-    "@angular/platform-browser-dynamic": "^20.3.15",
+    "@angular/animations": "^21.0.5",
+    "@angular/cdk": "^21.0.3",
+    "@angular/common": "^21.0.5",
+    "@angular/compiler": "^21.0.5",
+    "@angular/core": "^21.0.5",
+    "@angular/forms": "^21.0.5",
+    "@angular/material": "^21.0.3",
+    "@angular/platform-browser": "^21.0.5",
+    "@angular/platform-browser-dynamic": "^21.0.5",
     "@tauri-apps/api": "^2.3.0",
     "@tauri-apps/plugin-autostart": "^2.2.0",
     "@tauri-apps/plugin-dialog": "^2.2.0",
@@ -61,9 +61,9 @@
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
-    "@angular/build": "^20.3.1",
-    "@angular/cli": "^20.3.1",
-    "@angular/compiler-cli": "^20.3.15",
+    "@angular/build": "^21.0.3",
+    "@angular/cli": "^21.0.3",
+    "@angular/compiler-cli": "^21.0.5",
     "@tauri-apps/cli": "^2.3.1",
     "@types/canvas-confetti": "^1.9.0",
     "@types/jasmine": "~5.1.0",
@@ -81,7 +81,7 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "lint-staged": "^16.1.2",
     "prettier": "^3.6.2",
-    "typescript": "~5.8.2",
+    "typescript": "~5.9.3",
     "typescript-eslint": "8.34.1"
   }
 }

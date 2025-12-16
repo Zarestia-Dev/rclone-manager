@@ -104,12 +104,16 @@ export class ServeManagementService extends TauriBaseService {
         params,
       });
 
-      this.notificationService.showSuccess(`Successfully started serve at ${response.addr}`);
+      this.notificationService.showSuccess(
+        `Started serve for ${remoteName} (${profileName}) at ${response.addr}`
+      );
       await this.refreshServes();
 
       return response;
     } catch (error) {
-      this.notificationService.showError(`Failed to start serve for ${remoteName}: ${error}`);
+      this.notificationService.showError(
+        `Failed to start serve for ${remoteName} (${profileName}): ${error}`
+      );
       throw error;
     }
   }

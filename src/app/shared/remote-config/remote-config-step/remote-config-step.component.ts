@@ -8,7 +8,7 @@ import {
   untracked,
   OnDestroy,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
@@ -26,7 +26,6 @@ import { Subscription } from 'rxjs';
   selector: 'app-remote-config-step',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,

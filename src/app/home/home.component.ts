@@ -597,7 +597,7 @@ export class HomeComponent implements OnInit, OnDestroy {
             throw new Error(`Unsupported operation type: ${operationType}`);
         }
       },
-      `Failed to start ${operationType} for ${remoteName}`,
+      `Failed to start ${operationType} for ${remoteName}${profileName ? ` (${profileName})` : ''}`,
       profileName
     );
   }

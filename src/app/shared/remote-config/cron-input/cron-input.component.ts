@@ -9,7 +9,7 @@ import {
   SimpleChanges,
   inject,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -36,7 +36,6 @@ type PresetKey =
   selector: 'app-cron-input',
   standalone: true,
   imports: [
-    CommonModule,
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,

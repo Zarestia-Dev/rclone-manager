@@ -44,10 +44,12 @@
           <span class="label">Location</span>
           <span class="value path" [title]="displayLocation">{{ displayLocation }}</span>
         </div>
-        <div class="prop-row" *ngIf="item?.ModTime">
-          <span class="label">Modified</span>
-          <span class="value">{{ item?.ModTime | date: 'medium' }}</span>
-        </div>
+        @if (item?.ModTime) {
+          <div class="prop-row">
+            <span class="label">Modified</span>
+            <span class="value">{{ item?.ModTime | date: 'medium' }}</span>
+          </div>
+        }
         @if (item && !item.IsDir) {
           <div class="prop-row">
             <span class="label">Size</span>

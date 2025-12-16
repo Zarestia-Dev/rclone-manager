@@ -11,7 +11,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { CommonModule } from '@angular/common';
 
 import { ExportModalData, ExportOption, ExportType } from '@app/types';
 import { BackupRestoreService } from '@app/services';
@@ -22,7 +21,6 @@ import { FileSystemService } from '@app/services';
   selector: 'app-export-modal',
   standalone: true,
   imports: [
-    CommonModule,
     MatIconModule,
     MatDialogModule,
     MatFormFieldModule,

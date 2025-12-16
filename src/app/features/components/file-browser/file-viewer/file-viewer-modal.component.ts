@@ -9,7 +9,7 @@ import {
   signal,
   WritableSignal,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -28,13 +28,7 @@ import { PathSelectionService } from 'src/app/services/remote/path-selection.ser
 @Component({
   selector: 'app-file-viewer-modal',
   standalone: true,
-  imports: [
-    CommonModule,
-    MatButtonModule,
-    MatProgressSpinnerModule,
-    MatIconModule,
-    FormatFileSizePipe,
-  ],
+  imports: [MatButtonModule, MatProgressSpinnerModule, MatIconModule, FormatFileSizePipe],
   templateUrl: './file-viewer-modal.component.html',
   styleUrls: ['./file-viewer-modal.component.scss'],
 })

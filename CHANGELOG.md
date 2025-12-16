@@ -3,14 +3,19 @@
 
 ## [Unreleased]
 
+### Added
+- Added special Flatpak autostart entry for Flatpak version. Now it creates a desktop entry for Flatpak version of the app. This entry is not handled by Tauri. (Fixed #63)
+
 ### Changed
 - On linux remove the rclone to required dependencies when installing via deb or rpm packages. Because app handle the rclone binary installation and update itself correctly.  
 - Encrypted export not required standalone 7zip binary anymore. Changed to sevenz-rust crate. Not break the old encrypted exports.
 - On tray icon when remote not mounted, it shows the Browse (In App). Basically it opens the RClone Manager's `Nautilus` with that remote.
+- Angular and Angular Material updated to v21
 
 ### Fixed
 - Remote configuration step provider selection fixed. Now it correctly filters the provider-specific fields when Provider selected. (issue #59 and #1)
 - Broken reduce animations fixed. (issue #60)
+- Links openning in the about modal fixed. Now it opens the links in the default browser.
 
 ## [v0.1.8] - 2025-11-06
 ### Added
