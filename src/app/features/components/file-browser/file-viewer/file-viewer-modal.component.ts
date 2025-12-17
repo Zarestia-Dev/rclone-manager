@@ -7,7 +7,6 @@ import {
   EventEmitter,
   Output,
   signal,
-  WritableSignal,
 } from '@angular/core';
 
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -17,13 +16,17 @@ import { HttpClient } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { catchError, takeUntil } from 'rxjs/operators';
 import { Subject, of } from 'rxjs';
-import { FileViewerService } from '../../../../services/ui/file-viewer.service';
+import {
+  RemoteManagementService,
+  PathSelectionService,
+  JobManagementService,
+  FileSystemService,
+} from '@app/services';
+import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { IconService } from 'src/app/shared/services/icon.service';
-import { RemoteManagementService } from 'src/app/services/remote/remote-management.service';
 import { NotificationService } from 'src/app/shared/services/notification.service';
 import { FormatFileSizePipe } from '@app/pipes';
 import { Entry } from '@app/types';
-import { PathSelectionService } from 'src/app/services/remote/path-selection.service';
 
 @Component({
   selector: 'app-file-viewer-modal',
@@ -50,13 +53,16 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private remoteManagementService = inject(RemoteManagementService);
   private readonly notificationService = inject(NotificationService);
   private readonly pathSelectionService = inject(PathSelectionService);
+  private readonly jobManagementService = inject(JobManagementService);
+  private readonly fileSystemService = inject(FileSystemService);
 
   sanitizedUrl!: SafeResourceUrl;
 
-  textContent: WritableSignal<string> = signal('');
-  folderSize: WritableSignal<{ count: number; bytes: number } | null> = signal(null);
+  textContent = signal('');
+  folderSize = signal<{ count: number; bytes: number } | null>(null);
 
-  isLoading: WritableSignal<boolean> = signal(true);
+  isLoading = signal(true);
+  isDownloading = signal(false);
 
   // Cancel pending requests when component updates or destroys
   private destroy$ = new Subject<void>();
@@ -153,14 +159,15 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       }
 
       // For other file types (image, video, audio, pdf), loading will be handled by onLoadComplete/onLoadError
+      // For non-previewable files (default case), set loading to false immediately
+      const previewableTypes = ['image', 'video', 'audio', 'pdf', 'text', 'directory'];
+      if (!previewableTypes.includes(this.data.fileType)) {
+        this.isLoading.set(false);
+      }
     } catch (error) {
       console.error('Error updating content:', error);
       this.notificationService.showError('An unexpected error occurred');
-    } finally {
-      // For text and folders, we are done. For media, the load event will clear this.
-      if (this.data.fileType === 'text' || this.data.fileType === 'directory') {
-        this.isLoading.set(false);
-      }
+      this.isLoading.set(false);
     }
   }
 
@@ -197,13 +204,44 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
     this.data.url = await this.fileViewerService.generateUrl(
       item,
       this.data.remoteName,
-      this.data.isLocal ? 'local' : 'remote'
+      this.data.isLocal
     );
     await this.updateContent();
   }
 
+  /**
+   * Download the current file to a selected destination using copyUrl
+   * Opens a folder picker to let user choose where to save
+   */
   async download(): Promise<void> {
-    alert('Download functionality is not yet implemented.');
+    if (this.isDownloading()) return;
+
+    this.isDownloading.set(true);
+
+    try {
+      // Let user select a local folder for download destination
+      const selectedPath = await this.fileSystemService.selectFolder();
+
+      // Remove leading slash for rclone path format (rclone expects relative path after the remote)
+      const destPath = selectedPath.startsWith('/') ? selectedPath.substring(1) : selectedPath;
+
+      // Build destination path with filename
+      const fullDestPath = destPath ? `${destPath}/${this.data.name}` : this.data.name;
+
+      // Start the copy job
+      await this.jobManagementService.copyUrl(
+        '',
+        fullDestPath,
+        this.data.url,
+        false // Don't auto-filename, we already have the name
+      );
+
+      this.notificationService.openSnackBar(`Downloading ${this.data.name}`, 'OK');
+    } catch (err) {
+      console.error('Failed to start download:', err);
+    } finally {
+      this.isDownloading.set(false);
+    }
   }
 
   onBackdropClick(event: MouseEvent): void {

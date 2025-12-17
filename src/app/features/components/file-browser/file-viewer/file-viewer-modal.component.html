@@ -9,11 +9,15 @@
         <button
           mat-icon-button
           class="header-button"
-          disabled
+          [disabled]="isDownloading()"
           (click)="download(); $event.stopPropagation()"
           [attr.aria-label]="'Download ' + data.name"
         >
-          <mat-icon svgIcon="download"></mat-icon>
+          @if (isDownloading()) {
+            <mat-spinner diameter="20"></mat-spinner>
+          } @else {
+            <mat-icon svgIcon="download"></mat-icon>
+          }
         </button>
       }
       <button

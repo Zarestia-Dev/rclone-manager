@@ -76,7 +76,7 @@ export interface FileBrowserItem {
   /** UI context metadata (where the file lives and how to render it) */
   meta: {
     remote: string; // e.g. "gdrive:"
-    fsType: 'local' | 'remote';
+    isLocal: boolean;
     remoteType?: string; // e.g. 's3', 'drive', etc. (used for icons)
   };
 }

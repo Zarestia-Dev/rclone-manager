@@ -25,7 +25,11 @@ export class RemotesPanelComponent {
   @Output() remoteSelected = new EventEmitter<Remote>();
   @Output() openInFiles = new EventEmitter<string>();
   @Output() startJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
-  @Output() stopJob = new EventEmitter<{ type: PrimaryActionType; remoteName: string }>();
+  @Output() stopJob = new EventEmitter<{
+    type: PrimaryActionType;
+    remoteName: string;
+    profileName?: string;
+  }>();
 
   readonly iconService = inject(IconService);
 

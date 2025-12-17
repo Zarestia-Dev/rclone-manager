@@ -137,7 +137,7 @@ export class PreferencesModalComponent implements OnInit, OnDestroy {
       if (options) {
         this.optionsMap = options;
         this.buildForm(options);
-        this.subscribeToFormChanges(); // ✨ ADDED: Subscribe to changes after the form is built
+        this.subscribeToFormChanges();
         this.isLoading = false;
       } else {
         this.isLoading = true;

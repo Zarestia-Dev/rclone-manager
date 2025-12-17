@@ -22,12 +22,12 @@ export class FileViewerService {
     items: Entry[],
     currentIndex: number,
     remoteName: string,
-    fsType: string
+    isLocal: boolean
   ): Promise<void> {
     const item = items[currentIndex];
     const fileType = this.getFileType(item);
 
-    const fileUrl = await this.generateUrl(item, remoteName, fsType);
+    const fileUrl = await this.generateUrl(item, remoteName, isLocal);
 
     const overlayRef = this.overlay.create({
       hasBackdrop: true,
@@ -44,7 +44,7 @@ export class FileViewerService {
       url: fileUrl,
       fileType,
       name: item.Name,
-      isLocal: fsType === 'local',
+      isLocal,
       remoteName,
     };
 
@@ -86,9 +86,8 @@ export class FileViewerService {
     return 'unknown';
   }
 
-  async generateUrl(item: Entry, remoteName: string, fsType: string): Promise<string> {
+  async generateUrl(item: Entry, remoteName: string, isLocal: boolean): Promise<string> {
     const baseUrl = this.configService.rcloneServeUrl();
-    const isLocal = fsType === 'local';
 
     if (isLocal) {
       const separator = remoteName.endsWith('/') || remoteName.endsWith('\\') ? '' : '/';

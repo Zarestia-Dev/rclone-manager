@@ -7,6 +7,7 @@ import {
   RcConfigQuestionResponse,
   Entry,
   LocalDrive,
+  FsInfo,
 } from '@app/types';
 
 /**
@@ -135,9 +136,9 @@ export class RemoteManagementService extends TauriBaseService {
   /**
    * Get filesystem info for a remote
    */
-  async getFsInfo(remote: string): Promise<unknown> {
+  async getFsInfo(remote: string): Promise<FsInfo> {
     try {
-      return this.invokeCommand('get_fs_info', { remote });
+      return this.invokeCommand<FsInfo>('get_fs_info', { remote });
     } catch (error) {
       console.error('Error getting filesystem info:', error);
       throw error;
@@ -173,6 +174,37 @@ export class RemoteManagementService extends TauriBaseService {
 
   async getStat(remote: string, path: string): Promise<{ item: Entry }> {
     return this.invokeCommand('get_stat', { remote, path });
+  }
+
+  /**
+   * Get hashsum for a file
+   * @param remote - Remote name (e.g., "drive:")
+   * @param path - Path to the file
+   * @param hashType - Hash algorithm (e.g., "md5", "sha1")
+   * @returns Hash result with hashsum array and hashType
+   */
+  async getHashsum(
+    remote: string,
+    path: string,
+    hashType: string
+  ): Promise<{ hashsum: string[]; hashType: string }> {
+    return this.invokeCommand('get_hashsum', { remote, path, hashType });
+  }
+
+  /**
+   * Get or create a public link for a file or folder
+   * @param remote - Remote name (e.g., "drive:")
+   * @param path - Path to the file or folder
+   * @param unlink - If true, removes the link instead of creating it
+   * @returns Public URL for sharing
+   */
+  async getPublicLink(
+    remote: string,
+    path: string,
+    unlink?: boolean,
+    expire?: string
+  ): Promise<{ url: string }> {
+    return this.invokeCommand('get_public_link', { remote, path, unlink, expire });
   }
 
   /**

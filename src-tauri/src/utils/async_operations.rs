@@ -97,7 +97,7 @@ async fn monitor_async_operation(
             }
         }
 
-        sleep(Duration::from_millis(500)).await;
+        sleep(Duration::from_millis(200)).await;
     }
 }
 

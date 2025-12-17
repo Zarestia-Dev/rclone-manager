@@ -811,48 +811,48 @@ pub mod operations {
     ///     rclone rc --loopback operations/fsinfo fs=remote:
     pub const FSINFO: &str = "operations/fsinfo";
 
-    // /// Produces a hashsum file for all the objects in the path.
-    // ///
-    // /// Produces a hash file for all the objects in the path using the hash
-    // /// named. The output is in the same format as the standard
-    // /// md5sum/sha1sum tool.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - fs - a remote name string e.g. "drive:" for the source, "/" for local filesystem
-    // ///     - this can point to a file and just that file will be returned in the listing.
-    // /// - hashType - type of hash to be used
-    // /// - download - check by downloading rather than with hash (boolean)
-    // /// - base64 - output the hashes in base64 rather than hex (boolean)
-    // ///
-    // /// If you supply the download flag, it will download the data from the
-    // /// remote and create the hash on the fly. This can be useful for remotes
-    // /// that don't support the given hash or if you really want to check all
-    // /// the data.
-    // ///
-    // /// Note that if you wish to supply a checkfile to check hashes against
-    // /// the current files then you should use operations/check instead of
-    // /// operations/hashsum.
-    // ///
-    // /// Returns:
-    // ///
-    // /// - hashsum - array of strings of the hashes
-    // /// - hashType - type of hash used
-    // ///
-    // /// Example:
-    // ///
-    // ///     $ rclone rc --loopback operations/hashsum fs=bin hashType=MD5 download=true base64=true
-    // ///     {
-    // ///         "hashType": "md5",
-    // ///         "hashsum": [
-    // ///             "WTSVLpuiXyJO_kGzJerRLg==  backend-versions.sh",
-    // ///             "v1b_OlWCJO9LtNq3EIKkNQ==  bisect-go-rclone.sh",
-    // ///             "VHbmHzHh4taXzgag8BAIKQ==  bisect-rclone.sh",
-    // ///         ]
-    // ///     }
-    // ///
-    // /// See the [hashsum](/commands/rclone_hashsum/) command for more information on the above.
-    // pub const HASHSUM: &str = "operations/hashsum";
+    /// Produces a hashsum file for all the objects in the path.
+    ///
+    /// Produces a hash file for all the objects in the path using the hash
+    /// named. The output is in the same format as the standard
+    /// md5sum/sha1sum tool.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - fs - a remote name string e.g. "drive:" for the source, "/" for local filesystem
+    ///     - this can point to a file and just that file will be returned in the listing.
+    /// - hashType - type of hash to be used
+    /// - download - check by downloading rather than with hash (boolean)
+    /// - base64 - output the hashes in base64 rather than hex (boolean)
+    ///
+    /// If you supply the download flag, it will download the data from the
+    /// remote and create the hash on the fly. This can be useful for remotes
+    /// that don't support the given hash or if you really want to check all
+    /// the data.
+    ///
+    /// Note that if you wish to supply a checkfile to check hashes against
+    /// the current files then you should use operations/check instead of
+    /// operations/hashsum.
+    ///
+    /// Returns:
+    ///
+    /// - hashsum - array of strings of the hashes
+    /// - hashType - type of hash used
+    ///
+    /// Example:
+    ///
+    ///     $ rclone rc --loopback operations/hashsum fs=bin hashType=MD5 download=true base64=true
+    ///     {
+    ///         "hashType": "md5",
+    ///         "hashsum": [
+    ///             "WTSVLpuiXyJO_kGzJerRLg==  backend-versions.sh",
+    ///             "v1b_OlWCJO9LtNq3EIKkNQ==  bisect-go-rclone.sh",
+    ///             "VHbmHzHh4taXzgag8BAIKQ==  bisect-rclone.sh",
+    ///         ]
+    ///     }
+    ///
+    /// See the [hashsum](/commands/rclone_hashsum/) command for more information on the above.
+    pub const HASHSUM: &str = "operations/hashsum";
 
     /// List the given remote and path in JSON format.
     ///
@@ -900,21 +900,21 @@ pub mod operations {
     // /// - dstRemote - a path within that remote e.g. "file2.txt" for the destination
     // pub const MOVEFILE: &str = "operations/movefile";
 
-    // /// Create or retrieve a public link to the given file or folder.
-    // ///
-    // /// This takes the following parameters:
-    // ///
-    // /// - fs - a remote name string e.g. "drive:"
-    // /// - remote - a path within that remote e.g. "dir"
-    // /// - unlink - boolean - if set removes the link rather than adding it (optional)
-    // /// - expire - string - the expiry time of the link e.g. "1d" (optional)
-    // ///
-    // /// Returns:
-    // ///
-    // /// - url - URL of the resource
-    // ///
-    // /// See the [link](/commands/rclone_link/) command for more information on the above.
-    // pub const PUBLICLINK: &str = "operations/publiclink";
+    /// Create or retrieve a public link to the given file or folder.
+    ///
+    /// This takes the following parameters:
+    ///
+    /// - fs - a remote name string e.g. "drive:"
+    /// - remote - a path within that remote e.g. "dir"
+    /// - unlink - boolean - if set removes the link rather than adding it (optional)
+    /// - expire - string - the expiry time of the link e.g. "1d" (optional)
+    ///
+    /// Returns:
+    ///
+    /// - url - URL of the resource
+    ///
+    /// See the [link](/commands/rclone_link/) command for more information on the above.
+    pub const PUBLICLINK: &str = "operations/publiclink";
 
     // /// Remove a directory or container and all of its contents.
     // ///

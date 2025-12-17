@@ -323,8 +323,24 @@ impl ScheduledTasksCache {
             profile_name: profile_name.to_string(),
         };
 
-        let args = serde_json::to_value(params)
+        let mut args = serde_json::to_value(params)
             .map_err(|e| format!("Failed to serialize profile params: {}", e))?;
+
+        // Add source and dest from profile config for display purposes
+        if let Some(args_obj) = args.as_object_mut() {
+            if let Some(source) = profile_config.get("source").and_then(|v| v.as_str()) {
+                args_obj.insert(
+                    "source".to_string(),
+                    serde_json::Value::String(source.to_string()),
+                );
+            }
+            if let Some(dest) = profile_config.get("dest").and_then(|v| v.as_str()) {
+                args_obj.insert(
+                    "dest".to_string(),
+                    serde_json::Value::String(dest.to_string()),
+                );
+            }
+        }
 
         // Calculate next run
         let next_run = get_next_run(&cron).ok();

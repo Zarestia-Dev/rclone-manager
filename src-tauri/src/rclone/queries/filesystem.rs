@@ -15,7 +15,6 @@ use crate::utils::{
 pub struct LocalDrive {
     name: String,
     label: String,
-    fs_type: String,
 }
 
 #[tauri::command]
@@ -170,7 +169,6 @@ pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
 
                 drives.push(LocalDrive {
                     name: format!("{}:", i as char),
-                    fs_type: "local".to_string(),
                     label: if label.is_empty() {
                         "Local Disk".to_string()
                     } else {
@@ -193,7 +191,6 @@ pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
     if let Ok(home) = env::var("HOME") {
         drives.push(LocalDrive {
             name: home,
-            fs_type: "local".to_string(),
             label: "Home".to_string(),
         });
     }
@@ -201,7 +198,6 @@ pub async fn get_local_drives() -> Result<Vec<LocalDrive>, String> {
     // Add root filesystem
     drives.push(LocalDrive {
         name: "/".to_string(),
-        fs_type: "local".to_string(),
         label: "File System".to_string(),
     });
 
@@ -348,6 +344,100 @@ pub async fn get_stat(
         Ok(job.jobid)
     })
     .await
+}
+
+/// Get hashsum for a file
+/// Returns the hash of the file using the specified hash type
+#[tauri::command]
+pub async fn get_hashsum(
+    remote: String,
+    path: String,
+    hash_type: String,
+    state: State<'_, RcloneState>,
+) -> Result<serde_json::Value, String> {
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::HASHSUM);
+    debug!("🔐 Getting hashsum for remote: {remote}, path: {path}, hash_type: {hash_type}");
+
+    let mut params = serde_json::Map::new();
+    // For single file hash, we need to include the filename in fs path
+    // e.g., fs="remote:path/to/file.txt"
+    let fs_with_path = if path.is_empty() {
+        remote.clone()
+    } else {
+        format!("{}{}", remote, path)
+    };
+    params.insert("fs".to_string(), json!(fs_with_path));
+    params.insert("hashType".to_string(), json!(hash_type));
+    params.insert("_async".to_string(), json!(true));
+
+    let client = state.client.clone();
+    let client_for_monitor = client.clone();
+    let url_clone = url.clone();
+    let params_value = json!(params);
+
+    execute_async_operation("Get hashsum", client_for_monitor, || async move {
+        let response = client
+            .post(&url_clone)
+            .json(&params_value)
+            .send()
+            .await
+            .map_err(|e| format!("❌ Failed to get hashsum: {e}"))?;
+
+        let job: JobResponse = response
+            .json()
+            .await
+            .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+
+        Ok(job.jobid)
+    })
+    .await
+}
+
+/// Get or create a public link for a file or folder
+/// Returns the public URL for sharing
+#[tauri::command]
+pub async fn get_public_link(
+    remote: String,
+    path: String,
+    unlink: Option<bool>,
+    expire: Option<String>,
+    state: State<'_, RcloneState>,
+) -> Result<serde_json::Value, String> {
+    let url = EndpointHelper::build_url(&ENGINE_STATE.get_api().0, operations::PUBLICLINK);
+    debug!(
+        "🔗 Getting public link for remote: {remote}, path: {path}, expire: {expire:?}, unlink: {unlink:?}"
+    );
+
+    let mut params = serde_json::Map::new();
+    params.insert("fs".to_string(), json!(remote));
+    params.insert("remote".to_string(), json!(path));
+
+    if let Some(should_unlink) = unlink {
+        params.insert("unlink".to_string(), json!(should_unlink));
+    }
+
+    if let Some(expire) = expire {
+        params.insert("expire".to_string(), json!(expire));
+    }
+
+    let client = state.client.clone();
+    let url_clone = url.clone();
+    let params_value = json!(params);
+
+    // This is NOT an async operation - it returns the URL directly
+    let response = client
+        .post(&url_clone)
+        .json(&params_value)
+        .send()
+        .await
+        .map_err(|e| format!("❌ Failed to get public link: {e}"))?;
+
+    let result: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("❌ Failed to parse response: {e}"))?;
+
+    Ok(result)
 }
 
 #[tauri::command]

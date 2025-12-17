@@ -267,6 +267,7 @@ pub async fn start_sync(
             source: params.source,
             destination: params.dest,
             profile: params.profile.clone(),
+            source_ui: None,
         },
     )
     .await?;
@@ -339,6 +340,7 @@ pub async fn start_copy(
             source: params.source,
             destination: params.dest,
             profile: params.profile.clone(),
+            source_ui: None,
         },
     )
     .await?;
@@ -437,6 +439,7 @@ pub async fn start_bisync(
             source: params.source,
             destination: params.dest,
             profile: params.profile.clone(),
+            source_ui: None,
         },
     )
     .await?;
@@ -511,6 +514,7 @@ pub async fn start_move(
             source: params.source,
             destination: params.dest,
             profile: params.profile.clone(),
+            source_ui: None,
         },
     )
     .await?;

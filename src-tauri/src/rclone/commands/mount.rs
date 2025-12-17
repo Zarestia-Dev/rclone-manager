@@ -193,6 +193,7 @@ pub async fn mount_remote(
             source: params.source.clone(),
             destination: params.mount_point.clone(),
             profile: params.profile.clone(),
+            source_ui: None,
         },
     )
     .await?;

@@ -210,12 +210,11 @@ export interface Entry {
 export interface LocalDrive {
   name: string; // "C:" or "/" or "/home/user"
   label: string; // "Local Disk" or "File System"
-  fs_type: string; // "local"
 }
 
 export interface ExplorerRoot {
   name: string;
   label: string;
   type: string; // Icon name
-  fs_type: 'local' | 'remote';
+  isLocal: boolean;
 }

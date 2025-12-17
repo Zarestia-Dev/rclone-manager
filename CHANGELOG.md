@@ -5,6 +5,9 @@
 
 ### Added
 - Added special Flatpak autostart entry for Flatpak version. Now it creates a desktop entry for Flatpak version of the app. This entry is not handled by Tauri. (Fixed #63)
+- Nautilus Component: Added hash calculation support for files. Now you can calculate the hash of a file and copy it to clipboard on the properties dialog.
+- Nautilus Component: Added public link generation support for files and directories. If remote supports public link generation, it will be available in the properties dialog.
+- Nautilus Component: Enabled download button for remote files. Now you can download remote files to your local machine.
 
 ### Changed
 - On linux remove the rclone to required dependencies when installing via deb or rpm packages. Because app handle the rclone binary installation and update itself correctly.  

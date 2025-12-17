@@ -114,6 +114,9 @@
           }
         </mat-nav-list>
       </div>
+
+      <!-- Operations Panel at bottom of sidebar -->
+      <app-operations-panel></app-operations-panel>
     </div>
   </mat-sidenav>
 
@@ -168,7 +171,7 @@
               <button class="path-segment" (click)="$event.stopPropagation(); updatePath('')">
                 <mat-icon
                   [svgIcon]="
-                    nautilusRemote()?.fs_type === 'local'
+                    nautilusRemote()?.isLocal
                       ? 'hard-drive'
                       : this.iconService.getIconName(nautilusRemote()?.type || '')
                   "
@@ -561,7 +564,7 @@
           <span>Refresh</span>
         </button>
         @if (!errorState() && (item || !starredMode())) {
-          <button class="menu-item" cdkMenuItem (click)="openContextMenuProperties()">
+          <button class="menu-item" cdkMenuItem (click)="openPropertiesDialog('contextMenu')">
             <span>Properties</span>
           </button>
         }
@@ -606,7 +609,7 @@
             <button
               class="menu-item"
               cdkMenuItem
-              (click)="setContextItem(null); openContextMenuProperties()"
+              (click)="setContextItem(null); openPropertiesDialog('contextMenu')"
             >
               <span>Properties</span>
             </button>
@@ -674,7 +677,7 @@
     <button class="menu-item" cdkMenuItem (click)="openBookmark(bookmark)">
       <span>Open</span>
     </button>
-    <button class="menu-item" cdkMenuItem (click)="openBookmarkProperties()">
+    <button class="menu-item" cdkMenuItem (click)="openPropertiesDialog('bookmark')">
       <span>Properties</span>
     </button>
     <button class="menu-item" cdkMenuItem (click)="deleteContextBookmark()">

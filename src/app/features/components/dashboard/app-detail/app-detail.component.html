@@ -240,14 +240,14 @@
                     @for (serve of runningServes(); track serve.id) {
                       <app-serve-card
                         [serve]="serve"
-                        (stop)="
+                        (stopServe)="
                           stopJob.emit({
                             type: 'serve',
                             remoteName: selectedRemote().remoteSpecs.name,
                             serveId: serve.id,
                           })
                         "
-                        (copyUrl)="(null)"
+                        (copyToClipboard)="onCopyToClipboard($event)"
                       ></app-serve-card>
                     }
                   </div>

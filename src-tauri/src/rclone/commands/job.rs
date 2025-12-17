@@ -31,6 +31,8 @@ pub struct JobMetadata {
     pub source: String,
     pub destination: String,
     pub profile: Option<String>,
+    /// Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled")
+    pub source_ui: Option<String>,
 }
 
 /// Submit a LONG-RUNNING job (sync, copy, move, bisync)
@@ -167,6 +169,7 @@ async fn add_job_to_cache(job_cache: State<'_, JobCache>, jobid: u64, metadata: 
             stats: None,
             group: format!("{}/{}", metadata.job_type, jobid),
             profile: metadata.profile.clone(),
+            source_ui: metadata.source_ui.clone(),
         })
         .await;
 }

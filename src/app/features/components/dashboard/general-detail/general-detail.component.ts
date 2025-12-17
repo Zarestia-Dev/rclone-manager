@@ -130,6 +130,7 @@ export class GeneralDetailComponent {
   @Output() stopJob = new EventEmitter<{
     type: PrimaryActionType;
     remoteName: string;
+    profileName?: string;
   }>();
   @Output() deleteJob = new EventEmitter<number>();
   @Output() togglePrimaryAction = new EventEmitter<PrimaryActionType>();

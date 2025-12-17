@@ -53,6 +53,7 @@ import {
   STANDARD_MODAL_SIZE,
   FileBrowserItem,
   FilePickerConfig,
+  FsInfo,
 } from '@app/types';
 
 import { FormatFileSizePipe } from '@app/pipes';
@@ -63,13 +64,9 @@ import { InputModalComponent } from 'src/app/shared/modals/input-modal/input-mod
 import { NotificationService } from 'src/app/shared/services/notification.service';
 import { RemoteAboutModalComponent } from '../remote/remote-about-modal.component';
 import { PropertiesModalComponent } from '../properties/properties-modal.component';
+import { OperationsPanelComponent } from '../operations-panel/operations-panel.component';
 
 // --- Interfaces ---
-interface FsInfo {
-  Features?: {
-    CleanUp?: boolean;
-  };
-}
 interface Tab {
   id: number;
   title: string;
@@ -103,6 +100,7 @@ interface Tab {
     MatCheckboxModule,
     MatTableModule,
     FormatFileSizePipe,
+    OperationsPanelComponent,
   ],
   templateUrl: './nautilus.component.html',
   styleUrl: './nautilus.component.scss',
@@ -229,6 +227,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
   // --- Data ---
   public readonly bookmarks = this.nautilusService.bookmarks; // Direct signal
   public readonly cleanupSupportCache = signal<Record<string, boolean>>({});
+  public readonly publicLinkSupportCache = signal<Record<string, boolean>>({});
+  /** Cache of full FsInfo per remote (for hashes, features, etc.) */
+  public readonly fsInfoCache = signal<Record<string, FsInfo | null>>({});
 
   // Filtered bookmarks based on picker mode
   public readonly filteredBookmarks = computed(() => {
@@ -236,9 +237,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (this.isPickerMode()) {
       const cfg = this.pickerOptions();
       marks = marks.filter(b => {
-        if (cfg.mode === 'local' && b.meta.fsType !== 'local') return false;
-        if (cfg.mode === 'remote' && b.meta.fsType !== 'remote') return false;
-        if (cfg.allowedRemotes && b.meta.fsType === 'remote') {
+        if (cfg.mode === 'local' && !b.meta.isLocal) return false;
+        if (cfg.mode === 'remote' && b.meta.isLocal) return false;
+        if (cfg.allowedRemotes && !b.meta.isLocal) {
           return cfg.allowedRemotes.includes((b.meta.remote || '').replace(/:$/, ''));
         }
         return true;
@@ -276,7 +277,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const remote = this.nautilusRemote();
     const path = this.currentPath();
     if (!remote) return path;
-    if (remote.fs_type === 'local') {
+    if (remote.isLocal) {
       const separator = remote.name.endsWith('/') ? '' : '/';
       return path ? `${remote.name}${separator}${path}` : remote.name;
     }
@@ -301,7 +302,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
         if (!remote) return of([]);
         this.isLoading.set(true);
         let fsName = remote.name;
-        if (remote.fs_type === 'remote') {
+        if (!remote.isLocal) {
           fsName = this.pathSelectionService.normalizeRemoteForRclone(remote.name);
         }
         this.errorState.set(null);
@@ -315,7 +316,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
                   entry: f,
                   meta: {
                     remote: fsName,
-                    fsType: remote.fs_type,
+                    isLocal: remote.isLocal,
                     remoteType: remote.type,
                   },
                 }) as FileBrowserItem
@@ -341,9 +342,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
       if (this.isPickerMode()) {
         const cfg = this.pickerOptions();
         items = items.filter(i => {
-          if (cfg.mode === 'local' && i.meta.fsType !== 'local') return false;
-          if (cfg.mode === 'remote' && i.meta.fsType !== 'remote') return false;
-          if (cfg.allowedRemotes && i.meta.fsType === 'remote') {
+          if (cfg.mode === 'local' && !i.meta.isLocal) return false;
+          if (cfg.mode === 'remote' && i.meta.isLocal) return false;
+          if (cfg.allowedRemotes && !i.meta.isLocal) {
             return cfg.allowedRemotes.includes((i.meta.remote || '').replace(/:$/, ''));
           }
           return true;
@@ -462,9 +463,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
     effect(() => {
       const remotes = this.allRemotesLookup();
       const cache = untracked(this.cleanupSupportCache);
-      const missing = remotes.filter(r => cache[r.name] === undefined && r.fs_type === 'remote');
+      const missing = remotes.filter(r => cache[r.name] === undefined && !r.isLocal);
       if (missing.length > 0) {
-        this.runBackgroundCleanupChecks(missing);
+        this.runBackgroundFsInfoChecks(missing);
       }
     });
 
@@ -581,15 +582,15 @@ export class NautilusComponent implements OnInit, OnDestroy {
   private ensureInitialRemoteForMode(mode: FilePickerConfig['mode'], allowed?: string[]): void {
     if (mode === 'local') {
       const current = this.nautilusRemote();
-      if (current?.fs_type === 'local') return;
+      if (current?.isLocal) return;
       const first = this.localDrives()[0];
       if (first) this.selectRemote(first);
       return;
     }
     if (mode === 'remote') {
       const current = this.nautilusRemote();
-      if (current?.fs_type === 'remote') {
-        if (!allowed || allowed.includes(current.name)) return;
+      if (!current?.isLocal) {
+        if (!allowed || allowed.includes(current?.name ?? '')) return;
       }
       let remotes = this.cloudRemotes();
       if (allowed && allowed.length) remotes = remotes.filter(r => allowed.includes(r.name));
@@ -684,7 +685,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
 
     // Local Drive Match
     const driveMatch = known.find(
-      r => r.fs_type === 'local' && normalized.toLowerCase().startsWith(r.name.toLowerCase())
+      r => r.isLocal && normalized.toLowerCase().startsWith(r.name.toLowerCase())
     );
     if (driveMatch) {
       const remaining = normalized.substring(driveMatch.name.length);
@@ -703,7 +704,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
         name: rName,
         label: rName,
         type: 'cloud',
-        fs_type: 'remote',
+        isLocal: false,
       };
       const cleanPath = rPath.startsWith('/') ? rPath.substring(1) : rPath;
       this._navigate(targetRemote, cleanPath, true);
@@ -920,8 +921,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const prefix = remote?.name;
     // Use meta.remote if available (for starred items)
     const remoteName = this.contextMenuItem.meta.remote || prefix;
-    const sep =
-      this.contextMenuItem.meta.fsType === 'remote' || remote?.fs_type === 'remote' ? ':' : '/';
+    const sep = !this.contextMenuItem.meta.isLocal || !remote?.isLocal ? ':' : '/';
 
     // Ensure clean path construction
     const cleanRemote = remoteName?.endsWith(':') ? remoteName : `${remoteName}${sep}`;
@@ -941,27 +941,38 @@ export class NautilusComponent implements OnInit, OnDestroy {
     }
   }
 
-  openContextMenuProperties(): void {
+  openPropertiesDialog(source: 'contextMenu' | 'bookmark'): void {
     const currentRemote = this.nautilusRemote();
-    const item = this.contextMenuItem;
+    const item = source === 'bookmark' ? this.bookmarkContextItem : this.contextMenuItem;
+
+    // For bookmark, require item; for context menu, fallback to current path
+    if (source === 'bookmark' && !item) return;
+
     const path = item?.entry.Path || this.currentPath();
+    const isLocal = item?.meta.isLocal ?? currentRemote?.isLocal ?? true;
 
     // Normalize remote name for API calls
     let remoteName = item?.meta.remote || currentRemote?.name;
-    const fsType = item?.meta.fsType || currentRemote?.fs_type;
-
-    if (remoteName && fsType === 'remote') {
+    if (remoteName && !isLocal) {
       remoteName = this.pathSelectionService.normalizeRemoteForRclone(remoteName);
     }
+
+    // Get cached fsInfo for this remote
+    const baseName = (item?.meta.remote || currentRemote?.name || '').replace(/:$/, '');
+    const cachedFsInfo = this.fsInfoCache()[baseName] || null;
 
     this.dialog.open(PropertiesModalComponent, {
       data: {
         remoteName: remoteName,
         path: path,
-        fs_type: fsType,
+        isLocal: isLocal,
         item: item?.entry,
         remoteType: item?.meta.remoteType || currentRemote?.type,
+        fsInfo: cachedFsInfo,
       },
+      height: '60vh',
+      maxHeight: '800px',
+      minWidth: '362px',
     });
   }
 
@@ -969,10 +980,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
     const remote = this.nautilusRemote();
     if (!remote) return;
 
-    const normalized =
-      remote.fs_type === 'remote'
-        ? this.pathSelectionService.normalizeRemoteForRclone(remote.name)
-        : remote.name;
+    const normalized = !remote.isLocal
+      ? this.pathSelectionService.normalizeRemoteForRclone(remote.name)
+      : remote.name;
 
     const ref = this.dialog.open(InputModalComponent, {
       data: {
@@ -989,8 +999,7 @@ export class NautilusComponent implements OnInit, OnDestroy {
       const folderName = await firstValueFrom(ref.afterClosed());
       if (!folderName) return;
       const current = this.currentPath();
-      const sep =
-        remote.fs_type === 'local' && (current === '' || current.endsWith('/')) ? '' : '/';
+      const sep = remote.isLocal && (current === '' || current.endsWith('/')) ? '' : '/';
       const newPath = current ? `${current}${sep}${folderName}` : folderName;
       await this.remoteManagement.makeDirectory(normalized, newPath);
       this.refresh();
@@ -1002,8 +1011,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
   async openRemoteAboutFromSidebar(): Promise<void> {
     const r = this.sideContextRemote();
     if (!r) return;
-    const normalized =
-      r.fs_type === 'remote' ? this.pathSelectionService.normalizeRemoteForRclone(r.name) : r.name;
+    const normalized = !r.isLocal
+      ? this.pathSelectionService.normalizeRemoteForRclone(r.name)
+      : r.name;
     this.dialog.open(RemoteAboutModalComponent, {
       data: { remote: { displayName: r.name, normalizedName: normalized, type: r.type } },
       ...STANDARD_MODAL_SIZE,
@@ -1019,10 +1029,9 @@ export class NautilusComponent implements OnInit, OnDestroy {
     );
     if (!confirmed) return;
     try {
-      const normalized =
-        r.fs_type === 'remote'
-          ? this.pathSelectionService.normalizeRemoteForRclone(r.name)
-          : r.name;
+      const normalized = !r.isLocal
+        ? this.pathSelectionService.normalizeRemoteForRclone(r.name)
+        : r.name;
       await this.remoteManagement.cleanup(normalized);
       this.notificationService.showSuccess('Trash emptied');
     } catch (e) {
@@ -1034,27 +1043,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
     if (this.bookmarkContextItem) {
       this.removeBookmark(this.bookmarkContextItem);
     }
-  }
-
-  openBookmarkProperties(): void {
-    const bm = this.bookmarkContextItem;
-    if (!bm) return;
-
-    // Normalize remote name for API calls
-    let remoteName = bm.meta.remote;
-    if (bm.meta.fsType === 'remote') {
-      remoteName = this.pathSelectionService.normalizeRemoteForRclone(remoteName);
-    }
-
-    this.dialog.open(PropertiesModalComponent, {
-      data: {
-        remoteName: remoteName,
-        path: bm.entry.Path,
-        fs_type: bm.meta.fsType,
-        item: bm.entry,
-        remoteType: bm.meta.remoteType,
-      },
-    });
   }
 
   // --- Utilities ---
@@ -1072,17 +1060,21 @@ export class NautilusComponent implements OnInit, OnDestroy {
   async openFilePreview(item: FileBrowserItem): Promise<void> {
     const currentRemote = this.nautilusRemote();
     const actualRemoteName = item.meta.remote || currentRemote?.name;
-    const fsType = item.meta.fsType || currentRemote?.fs_type || 'remote';
 
     if (!actualRemoteName) {
       this.notificationService.showError('Unable to open file: missing remote context');
       return;
     }
 
+    // Get isLocal from fsInfoCache (rclone's fsinfo.Features.IsLocal) with fallback
+    const baseName = actualRemoteName.replace(/:$/, '');
+    const cachedFsInfo = this.fsInfoCache()[baseName];
+    const isLocal = cachedFsInfo?.Features?.IsLocal ?? currentRemote?.isLocal ?? false;
+
     // Pass Entry[] to the viewer
     const entries = this.files().map(f => f.entry);
     const idx = this.files().findIndex(f => f.entry.Path === item.entry.Path);
-    this.fileViewerService.open(entries, idx, actualRemoteName, fsType);
+    this.fileViewerService.open(entries, idx, actualRemoteName, isLocal);
   }
 
   confirmSelection(): void {
@@ -1092,13 +1084,12 @@ export class NautilusComponent implements OnInit, OnDestroy {
       paths = [this.currentPath()];
     }
     const minSel = this.pickerOptions().minSelection ?? 0;
-    const prefix =
-      remote?.fs_type === 'remote'
-        ? this.pathSelectionService.normalizeRemoteForRclone(remote.name)
-        : remote?.name;
+    const prefix = !remote?.isLocal
+      ? this.pathSelectionService.normalizeRemoteForRclone(remote?.name ?? '')
+      : remote?.name;
 
     const fullPaths = paths.map(p => {
-      if (remote?.fs_type === 'local') {
+      if (remote?.isLocal) {
         const sep = prefix?.endsWith('/') ? '' : '/';
         return `${prefix}${sep}${p}`;
       }
@@ -1327,7 +1318,8 @@ export class NautilusComponent implements OnInit, OnDestroy {
     }
   }
 
-  async runBackgroundCleanupChecks(remotes: ExplorerRoot[]): Promise<void> {
+  async runBackgroundFsInfoChecks(remotes: ExplorerRoot[]): Promise<void> {
+    // Initialize caches for new remotes
     this.cleanupSupportCache.update(c => {
       const u: Record<string, boolean> = {};
       remotes.forEach(r => (u[r.name] = false));
@@ -1335,17 +1327,25 @@ export class NautilusComponent implements OnInit, OnDestroy {
     });
 
     for (const r of remotes) {
-      if (r.fs_type !== 'remote') continue;
+      if (r.isLocal) continue;
       try {
         const normalized = this.pathSelectionService.normalizeRemoteForRclone(r.name);
         const info = (await this.remoteManagement
           .getFsInfo(normalized)
           .catch(() => null)) as FsInfo | null;
-        if (info?.Features?.CleanUp) {
+
+        // Cache the full FsInfo
+        this.fsInfoCache.update(c => ({ ...c, [r.name]: info }));
+
+        // Also update feature-specific caches for convenience
+        if (info?.Features?.['CleanUp']) {
           this.cleanupSupportCache.update(c => ({ ...c, [r.name]: true }));
         }
+        if (info?.Features?.['PublicLink']) {
+          this.publicLinkSupportCache.update(c => ({ ...c, [r.name]: true }));
+        }
       } catch {
-        console.error('Failed to check cleanup support');
+        console.error('Failed to check remote features');
       }
     }
   }

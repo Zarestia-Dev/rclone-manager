@@ -162,6 +162,9 @@ pub struct JobInfo {
     pub stats: Option<Value>,
     pub group: String, // Add this field to track the job group
     pub profile: Option<String>,
+    /// Source UI that started this job (e.g., "nautilus", "dashboard", "scheduled")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_ui: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

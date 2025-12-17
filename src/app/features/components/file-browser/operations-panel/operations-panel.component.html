@@ -1,0 +1,67 @@
+@if (hasJobs) {
+  <mat-accordion class="operations-accordion">
+    <mat-expansion-panel
+      [expanded]="isExpanded()"
+      (opened)="isExpanded.set(true)"
+      (closed)="isExpanded.set(false)"
+    >
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon svgIcon="download"></mat-icon>
+          <span>Operations</span>
+          @if (activeJobs.length > 0) {
+            <span class="job-count">{{ activeJobs.length }}</span>
+          }
+        </mat-panel-title>
+      </mat-expansion-panel-header>
+
+      <div class="panel-content">
+        @for (job of jobs(); track job.jobid) {
+          <div class="job-item" [class.completed]="job.status !== 'Running'">
+            <!-- Row 1: Name and action -->
+            <div class="job-row">
+              <span class="job-name" matTooltipShowDelay="500" [matTooltip]="job.destination">{{
+                getFileName(job)
+              }}</span>
+              <mat-icon
+                class="action-btn"
+                (click)="
+                  job.status === 'Running' ? stopJob(job) : deleteJob(job); $event.stopPropagation()
+                "
+                [matTooltip]="job.status === 'Running' ? 'Cancel' : 'Remove'"
+                matTooltipShowDelay="500"
+                svgIcon="circle-xmark"
+              >
+              </mat-icon>
+            </div>
+
+            <!-- Row 2: Progress bar (only for running) -->
+            @if (job.status === 'Running') {
+              <mat-progress-bar
+                mode="determinate"
+                [value]="getProgress(job)"
+                class="job-progress"
+              ></mat-progress-bar>
+            }
+
+            <!-- Row 3: Stats -->
+            <div class="job-stats">
+              @if (job.status === 'Running' && job.stats) {
+                <span class="stats-text"
+                  >{{ job.stats.bytes | formatFileSize }} /
+                  {{ job.stats.totalBytes | formatFileSize }}</span
+                >
+              } @else if (job.status === 'Completed') {
+                <span class="stats-text success">Completed</span>
+              } @else if (job.status === 'Failed') {
+                <span class="stats-text error">Failed</span>
+              } @else if (job.status === 'Stopped') {
+                <span class="stats-text">Cancelled</span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </mat-expansion-panel>
+  </mat-accordion>
+}

@@ -71,7 +71,7 @@ export class NautilusService {
         name: drive.name,
         label: drive.label || drive.name,
         type: 'hard-drive',
-        fs_type: 'local' as const,
+        isLocal: true,
       }))
     );
 
@@ -85,7 +85,7 @@ export class NautilusService {
           name,
           label: name,
           type: config?.type || config?.Type || 'cloud',
-          fs_type: 'remote' as const,
+          isLocal: false, // Will be updated from fsInfo cache later if needed
         };
       })
     );
@@ -116,8 +116,13 @@ export class NautilusService {
     },
   };
 
-  private overlayRef: OverlayRef | null = null;
-  private componentRef: ComponentRef<NautilusComponent> | null = null;
+  // Browser overlay (full-screen file browser)
+  private browserOverlayRef: OverlayRef | null = null;
+  private browserComponentRef: ComponentRef<NautilusComponent> | null = null;
+
+  // Picker overlay (modal dialog for file/folder selection)
+  private pickerOverlayRef: OverlayRef | null = null;
+  private pickerComponentRef: ComponentRef<NautilusComponent> | null = null;
 
   constructor() {
     // Load all collections dynamically
@@ -127,12 +132,11 @@ export class NautilusService {
   }
 
   toggleNautilusOverlay(): void {
-    if (this.overlayRef) {
-      this.closeFilePicker(null);
+    if (this.browserOverlayRef) {
+      this.closeBrowser();
     } else {
-      this._filePickerState.next({ isOpen: false });
       this._isNautilusOverlayOpen.next(true);
-      this.createNautilusOverlay();
+      this.createBrowserOverlay();
     }
   }
 
@@ -144,23 +148,30 @@ export class NautilusService {
   openForRemote(remoteName: string, showAnimation = true): void {
     this.selectedNautilusRemote.set(remoteName);
 
-    if (this.overlayRef) {
+    if (this.browserOverlayRef) {
       return;
     }
 
     // Not open - create the overlay
-    this._filePickerState.next({ isOpen: false });
     this._isNautilusOverlayOpen.next(true);
-    this.createNautilusOverlay(showAnimation);
+    this.createBrowserOverlay(showAnimation);
   }
 
+  /**
+   * Opens the file picker as a modal dialog.
+   * Can be opened even when Nautilus browser is already open.
+   */
   openFilePicker(options: FilePickerConfig): void {
-    if (this.overlayRef) return;
+    // Already has a picker open
+    if (this.pickerOverlayRef) return;
+
     this._filePickerState.next({ isOpen: true, options });
-    this._isNautilusOverlayOpen.next(true);
-    this.createNautilusOverlay();
+    this.createPickerOverlay();
   }
 
+  /**
+   * Closes the file picker and returns the result.
+   */
   closeFilePicker(result: string[] | null): void {
     const config: FilePickerResult = {
       cancelled: result === null,
@@ -168,15 +179,33 @@ export class NautilusService {
     };
     this._filePickerResult.next(config);
     this._filePickerState.next({ isOpen: false });
-    this._isNautilusOverlayOpen.next(false);
-    if (this.componentRef) {
-      this.componentRef.location.nativeElement.classList.add('slide-overlay-leave');
+
+    if (this.pickerComponentRef) {
+      this.pickerComponentRef.location.nativeElement.classList.add('slide-overlay-leave');
     }
-    if (this.overlayRef) {
+    if (this.pickerOverlayRef) {
       setTimeout(() => {
-        this.overlayRef?.dispose();
-        this.overlayRef = null;
-        this.componentRef = null;
+        this.pickerOverlayRef?.dispose();
+        this.pickerOverlayRef = null;
+        this.pickerComponentRef = null;
+      }, 200);
+    }
+  }
+
+  /**
+   * Closes the Nautilus browser overlay.
+   */
+  closeBrowser(): void {
+    this._isNautilusOverlayOpen.next(false);
+
+    if (this.browserComponentRef) {
+      this.browserComponentRef.location.nativeElement.classList.add('slide-overlay-leave');
+    }
+    if (this.browserOverlayRef) {
+      setTimeout(() => {
+        this.browserOverlayRef?.dispose();
+        this.browserOverlayRef = null;
+        this.browserComponentRef = null;
       }, 200);
     }
   }
@@ -256,7 +285,7 @@ export class NautilusService {
             entry: rec['entry'] as FileBrowserItem['entry'],
             meta: {
               remote: (rec['remote'] as string) || '',
-              fsType: 'remote' as const,
+              isLocal: false,
               remoteType: undefined,
             },
           };
@@ -277,15 +306,18 @@ export class NautilusService {
     this.appSettingsService.saveSetting(config.category, config.key, items);
   }
 
-  private createNautilusOverlay(showAnimation = true): void {
-    this.overlayRef = this.overlay.create({
+  /**
+   * Creates the full-screen Nautilus browser overlay.
+   */
+  private createBrowserOverlay(showAnimation = true): void {
+    this.browserOverlayRef = this.overlay.create({
       positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
       scrollStrategy: this.overlay.scrollStrategies.block(),
     });
 
     const portal = new ComponentPortal(NautilusComponent);
-    const componentRef: ComponentRef<NautilusComponent> = this.overlayRef.attach(portal);
-    this.componentRef = componentRef;
+    const componentRef: ComponentRef<NautilusComponent> = this.browserOverlayRef.attach(portal);
+    this.browserComponentRef = componentRef;
 
     // Skip entrance animation for deep links / URL parameters
     if (showAnimation) {
@@ -293,10 +325,37 @@ export class NautilusService {
     }
 
     componentRef.instance.closeOverlay.pipe(take(1)).subscribe(() => {
+      this.closeBrowser();
+    });
+
+    this.browserOverlayRef
+      .backdropClick()
+      .pipe(take(1))
+      .subscribe(() => {
+        this.closeBrowser();
+      });
+  }
+
+  /**
+   * Creates the file picker modal overlay (can be opened over the browser).
+   */
+  private createPickerOverlay(): void {
+    this.pickerOverlayRef = this.overlay.create({
+      positionStrategy: this.overlay.position().global().centerHorizontally().centerVertically(),
+      scrollStrategy: this.overlay.scrollStrategies.block(),
+    });
+
+    const portal = new ComponentPortal(NautilusComponent);
+    const componentRef: ComponentRef<NautilusComponent> = this.pickerOverlayRef.attach(portal);
+    this.pickerComponentRef = componentRef;
+
+    componentRef.location.nativeElement.classList.add('slide-overlay-enter');
+
+    componentRef.instance.closeOverlay.pipe(take(1)).subscribe(() => {
       this.closeFilePicker(null);
     });
 
-    this.overlayRef
+    this.pickerOverlayRef
       .backdropClick()
       .pipe(take(1))
       .subscribe(() => {

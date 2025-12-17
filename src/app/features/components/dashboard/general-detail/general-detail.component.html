@@ -62,7 +62,13 @@
 
     <app-jobs-panel
       [config]="jobsPanelConfig()"
-      (stopJob)="stopJob.emit({ type: $event.type, remoteName: $event.remoteName })"
+      (stopJob)="
+        stopJob.emit({
+          type: $event.type,
+          remoteName: $event.remoteName,
+          profileName: $event.profileName,
+        })
+      "
       (deleteJob)="deleteJob.emit($event)"
     >
     </app-jobs-panel>
@@ -204,7 +210,9 @@
                       <div class="path-grid">
                         <div class="path-item">
                           <span class="path-label">Source:</span>
-                          <code class="path-value">{{ task.args['source'] }}</code>
+                          <code class="path-value">{{
+                            task.args['source'] || task.args['remote_name'] + ':'
+                          }}</code>
                         </div>
                         <div class="path-item">
                           <span class="path-label">Destination:</span>

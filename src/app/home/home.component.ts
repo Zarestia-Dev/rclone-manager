@@ -566,8 +566,12 @@ export class HomeComponent implements OnInit, OnDestroy {
         const configKey = `${operationType}Configs` as keyof RemoteSettings;
         const profiles = settings[configKey] as Record<string, unknown> | undefined;
 
-        // Get profile name - use specified profile or first available
-        const targetProfile = profileName || (profiles ? Object.keys(profiles)[0] : undefined);
+        // Get profile name - prefer provided profile, then "default", then first available
+        let targetProfile = profileName;
+        if (!targetProfile && profiles) {
+          // Prefer "default" profile if it exists
+          targetProfile = profiles['default'] ? 'default' : Object.keys(profiles)[0];
+        }
 
         if (!targetProfile || !profiles?.[targetProfile]) {
           throw new Error(`Configuration for ${operationType} not found on ${remoteName}.`);
@@ -651,19 +655,30 @@ export class HomeComponent implements OnInit, OnDestroy {
           this.updateRemoteMountStates();
         } else {
           const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
-          const jobId = this.getJobIdForOperation(remote, type as SyncOperationType); // This gets the MAIN job ID. Multi-profile stop might need specific ID passed in?
-          // Ideally stopJob takes a jobId. But home.component stopJob takes type/remoteName.
-          // If we have profileName, we should lookup the ID.
+          const stateMap: any = {
+            sync: remote?.syncState,
+            copy: remote?.copyState,
+            bisync: remote?.bisyncState,
+            move: remote?.moveState,
+          };
+          const state = stateMap[type];
 
-          let idToStop = jobId;
-          if (profileName && remote) {
-            const stateMap: any = {
-              sync: remote.syncState,
-              copy: remote.copyState,
-              bisync: remote.bisyncState,
-              move: remote.moveState,
-            };
-            idToStop = stateMap[type]?.activeProfiles?.[profileName];
+          let idToStop: number | undefined;
+
+          if (profileName) {
+            // Specific profile requested
+            idToStop = state?.activeProfiles?.[profileName];
+          } else if (state?.activeProfiles) {
+            // No profile specified - find first active profile job
+            const activeProfileEntries = Object.entries(state.activeProfiles);
+            if (activeProfileEntries.length > 0) {
+              idToStop = activeProfileEntries[0][1] as number;
+            }
+          }
+
+          // Fallback to legacy job lookup
+          if (idToStop === undefined) {
+            idToStop = this.getJobIdForOperation(remote, type as SyncOperationType);
           }
 
           if (idToStop === undefined)

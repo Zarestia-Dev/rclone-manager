@@ -106,7 +106,13 @@ import { FormatFileSizePipe } from '../../pipes/format-file-size.pipe';
                       matIconButton
                       class="action-button stop-button"
                       matTooltip="Stop Job"
-                      (click)="stopJob.emit({ type: job.job_type, remoteName: job.remote_name })"
+                      (click)="
+                        stopJob.emit({
+                          type: job.job_type,
+                          remoteName: job.remote_name,
+                          profileName: job.profile,
+                        })
+                      "
                     >
                       <mat-icon svgIcon="stop"></mat-icon>
                     </button>
@@ -150,6 +156,7 @@ export class JobsPanelComponent {
   stopJob = output<{
     type: PrimaryActionType;
     remoteName: string;
+    profileName?: string;
   }>();
   deleteJob = output<number>();
 

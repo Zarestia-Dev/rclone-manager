@@ -120,6 +120,7 @@ export class GeneralOverviewComponent implements OnInit, OnDestroy {
     type: PrimaryActionType;
     remoteName: string;
     serveId?: string;
+    profileName?: string;
   }>();
   @Output() browseRemote = new EventEmitter<string>();
 

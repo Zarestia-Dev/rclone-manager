@@ -589,12 +589,12 @@ export class AppDetailComponent {
     );
 
     // Extract source from config, fallback to remote name
-    const source = (config?.source as string) || `${remote.remoteSpecs.name}:/`;
+    const source = (config?.source as string) || `${remote.remoteSpecs.name}:`;
 
     // Extract protocol type and address for destination display
-    const serveType = (config?.type as string) || 'http';
-    const serveAddr = (config?.options?.addr as string) || ':8080';
-    const destination = `${serveType.toUpperCase()} @ ${serveAddr}`;
+    const serveType = (config.options.type as string) || 'http';
+    const serveAddr = (config.options.addr as string) || 'Default';
+    const destination = `${serveType.toUpperCase()} at ${serveAddr}`;
 
     return {
       operationType: 'serve',
@@ -741,6 +741,12 @@ export class AppDetailComponent {
     if (name) {
       this.openInFiles.emit({ remoteName: name, path });
     }
+  }
+
+  onCopyToClipboard(event: { text: string; message: string }): void {
+    navigator.clipboard.writeText(event.text).catch(err => {
+      console.error('Failed to copy to clipboard:', err);
+    });
   }
 
   onEditSettings(event: { section: string; settings: RemoteSettings }): void {
