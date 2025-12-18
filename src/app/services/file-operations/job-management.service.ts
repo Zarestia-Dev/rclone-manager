@@ -91,6 +91,14 @@ export class JobManagementService extends TauriBaseService {
   }
 
   /**
+   * Get jobs filtered by source UI
+   * @param source The source UI identifier (e.g., 'nautilus', 'dashboard', 'scheduled')
+   */
+  async getJobsBySource(source: string): Promise<JobInfo[]> {
+    return this.invokeCommand<JobInfo[]>('get_jobs_by_source', { source });
+  }
+
+  /**
    * Get job status
    */
   async getJobStatus(jobid: number): Promise<JobInfo | null> {

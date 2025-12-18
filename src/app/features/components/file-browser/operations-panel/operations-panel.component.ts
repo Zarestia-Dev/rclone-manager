@@ -5,7 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatExpansionModule } from '@angular/material/expansion';
-import { JobManagementService } from '@app/services';
+import { JobManagementService, UiStateService } from '@app/services';
 import { JobInfo } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { Subject, interval } from 'rxjs';
@@ -28,6 +28,7 @@ import { takeUntil } from 'rxjs/operators';
 })
 export class OperationsPanelComponent implements OnInit, OnDestroy {
   private jobManagementService = inject(JobManagementService);
+  private uiStateService = inject(UiStateService);
   private destroy$ = new Subject<void>();
 
   // State
@@ -52,8 +53,8 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
     // Initial load
     this.loadJobs();
 
-    // Poll every 2 seconds for updates
-    interval(2000)
+    // Poll every 1 seconds for updates
+    interval(1000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         this.loadJobs();
@@ -67,9 +68,8 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
 
   async loadJobs(): Promise<void> {
     try {
-      const allJobs = await this.jobManagementService.getJobs();
-      // Filter only nautilus jobs
-      const nautilusJobs = allJobs.filter(job => job.source_ui === 'nautilus');
+      // Use dedicated API that filters on the backend
+      const nautilusJobs = await this.jobManagementService.getJobsBySource('nautilus');
       this.jobs.set(nautilusJobs);
     } catch (err) {
       console.error('Failed to load jobs:', err);
@@ -86,10 +86,7 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   }
 
   getFileName(job: JobInfo): string {
-    // Extract filename from destination path
-    const destination = job.destination || '';
-    const parts = destination.split('/');
-    return parts[parts.length - 1] || destination;
+    return this.uiStateService.extractFilename(job.destination || '');
   }
 
   getStatusIcon(job: JobInfo): string {

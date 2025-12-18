@@ -140,7 +140,10 @@ use crate::{
                 get_settings, rename_mount_profile_in_cache, rename_serve_profile_in_cache,
             },
             engine::get_rclone_rc_url,
-            job::{delete_job, get_active_jobs, get_job_status, get_jobs, rename_profile_in_cache},
+            job::{
+                delete_job, get_active_jobs, get_job_status, get_jobs, get_jobs_by_source,
+                rename_profile_in_cache,
+            },
             log::{clear_remote_logs, get_remote_logs},
             scheduled_tasks::{
                 ScheduledTasksCache, get_scheduled_task, get_scheduled_tasks,
@@ -650,6 +653,7 @@ pub fn run() {
             // Jobs
             get_jobs,
             get_active_jobs,
+            get_jobs_by_source,
             get_job_status,
             stop_job,
             delete_job,

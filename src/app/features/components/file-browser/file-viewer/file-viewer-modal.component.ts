@@ -21,6 +21,7 @@ import {
   PathSelectionService,
   JobManagementService,
   FileSystemService,
+  UiStateService,
 } from '@app/services';
 import { FileViewerService } from 'src/app/services/ui/file-viewer.service';
 import { IconService } from 'src/app/shared/services/icon.service';
@@ -55,6 +56,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
   private readonly pathSelectionService = inject(PathSelectionService);
   private readonly jobManagementService = inject(JobManagementService);
   private readonly fileSystemService = inject(FileSystemService);
+  private readonly uiStateService = inject(UiStateService);
 
   sanitizedUrl!: SafeResourceUrl;
 
@@ -222,15 +224,12 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       // Let user select a local folder for download destination
       const selectedPath = await this.fileSystemService.selectFolder();
 
-      // Remove leading slash for rclone path format (rclone expects relative path after the remote)
-      const destPath = selectedPath.startsWith('/') ? selectedPath.substring(1) : selectedPath;
-
-      // Build destination path with filename
-      const fullDestPath = destPath ? `${destPath}/${this.data.name}` : this.data.name;
+      // Build destination path with filename using OS-aware separator
+      const fullDestPath = this.uiStateService.joinPath(selectedPath, this.data.name);
 
       // Start the copy job
       await this.jobManagementService.copyUrl(
-        '',
+        selectedPath,
         fullDestPath,
         this.data.url,
         false // Don't auto-filename, we already have the name

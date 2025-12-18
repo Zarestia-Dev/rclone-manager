@@ -86,6 +86,29 @@ export class UiStateService {
     this.setTab('mount');
   }
 
+  // === Path Utilities ===
+  /**
+   * Extract filename from a path using OS-aware separators.
+   * - On Windows: splits by both \ and /
+   * - On Unix: splits by / only (\ can be valid in filenames)
+   */
+  extractFilename(path: string): string {
+    if (!path) return '';
+    const isWindows = this.platform === 'windows';
+    const parts = isWindows ? path.split(/[/\\]/) : path.split('/');
+    return parts[parts.length - 1] || path;
+  }
+
+  /**
+   * Join path segments using OS-appropriate separator.
+   * - On Windows: uses \
+   * - On Unix: uses /
+   */
+  joinPath(...segments: string[]): string {
+    const separator = this.platform === 'windows' ? '\\' : '/';
+    return segments.filter(s => s).join(separator);
+  }
+
   // === Viewport Management ===
   private async initializeMaximizeListener(): Promise<void> {
     try {

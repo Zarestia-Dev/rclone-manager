@@ -105,6 +105,17 @@ impl JobCache {
                 && job.profile.as_deref() == profile
         })
     }
+    /// Get jobs filtered by source_ui
+    pub async fn get_jobs_by_source(&self, source: &str) -> Vec<JobInfo> {
+        self.jobs
+            .read()
+            .await
+            .iter()
+            .filter(|job| job.source_ui.as_deref() == Some(source))
+            .cloned()
+            .collect()
+    }
+
     /// Rename a profile in all matching running jobs
     /// Returns the number of jobs updated
     pub async fn rename_profile(&self, remote_name: &str, old_name: &str, new_name: &str) -> usize {
@@ -143,6 +154,14 @@ pub async fn get_job_status(
 #[tauri::command]
 pub async fn get_active_jobs(job_cache: State<'_, JobCache>) -> Result<Vec<JobInfo>, String> {
     Ok(job_cache.get_active_jobs().await)
+}
+
+#[tauri::command]
+pub async fn get_jobs_by_source(
+    job_cache: State<'_, JobCache>,
+    source: String,
+) -> Result<Vec<JobInfo>, String> {
+    Ok(job_cache.get_jobs_by_source(&source).await)
 }
 
 /// Rename a profile in all cached running jobs
