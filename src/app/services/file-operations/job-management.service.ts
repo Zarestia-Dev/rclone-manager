@@ -33,7 +33,7 @@ export class JobManagementService extends TauriBaseService {
    * Backend resolves all options from cached settings
    */
   async startSyncProfile(remoteName: string, profileName: string): Promise<number> {
-    const params = { remoteName, profileName };
+    const params = { remote_name: remoteName, profile_name: profileName };
     console.debug('Invoking start_sync_profile with params', params);
     return this.invokeCommand<number>('start_sync_profile', { params });
   }
@@ -42,7 +42,7 @@ export class JobManagementService extends TauriBaseService {
    * Start a copy job using a named profile
    */
   async startCopyProfile(remoteName: string, profileName: string): Promise<number> {
-    const params = { remoteName, profileName };
+    const params = { remote_name: remoteName, profile_name: profileName };
     console.debug('Invoking start_copy_profile with params', params);
     return this.invokeCommand<number>('start_copy_profile', { params });
   }
@@ -51,7 +51,7 @@ export class JobManagementService extends TauriBaseService {
    * Start a bisync job using a named profile
    */
   async startBisyncProfile(remoteName: string, profileName: string): Promise<number> {
-    const params = { remoteName, profileName };
+    const params = { remote_name: remoteName, profile_name: profileName };
     console.debug('Invoking start_bisync_profile with params', params);
     return this.invokeCommand<number>('start_bisync_profile', { params });
   }
@@ -60,7 +60,7 @@ export class JobManagementService extends TauriBaseService {
    * Start a move job using a named profile
    */
   async startMoveProfile(remoteName: string, profileName: string): Promise<number> {
-    const params = { remoteName, profileName };
+    const params = { remote_name: remoteName, profile_name: profileName };
     console.debug('Invoking start_move_profile with params', params);
     return this.invokeCommand<number>('start_move_profile', { params });
   }

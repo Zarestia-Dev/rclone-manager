@@ -170,11 +170,21 @@ export class AppDetailComponent {
   selectedProfile = signal<string | null>(null);
 
   profiles = computed<{ name: string; label: string }[]>(() => {
-    if (!this.isSyncType()) return [];
-
-    const type = this.selectedSyncOperation();
     const settings = this.remoteSettings();
-    const configProfiles = settings[`${type}Configs` as keyof RemoteSettings] as
+    let configKey: string;
+
+    // Determine which config to use based on operation type
+    if (this.isSyncType()) {
+      configKey = `${this.selectedSyncOperation()}Configs`;
+    } else if (this.mainOperationType() === 'mount') {
+      configKey = 'mountConfigs';
+    } else if (this.mainOperationType() === 'serve') {
+      configKey = 'serveConfigs';
+    } else {
+      return [{ name: 'default', label: 'Default' }];
+    }
+
+    const configProfiles = settings[configKey as keyof RemoteSettings] as
       | Record<string, unknown>
       | undefined;
     const profileNames = configProfiles ? Object.keys(configProfiles) : [];
@@ -190,24 +200,15 @@ export class AppDetailComponent {
   // Enriched profiles with status information
   enrichedProfiles = computed(() => {
     const profiles = this.profiles();
-    const remote = this.selectedRemote();
-    const opType = this.selectedSyncOperation();
-    const settings = this.remoteSettings();
-    const configs = settings[`${opType}Configs` as keyof RemoteSettings] as
+    const opType = this.isSyncType() ? this.selectedSyncOperation() : this.mainOperationType();
+
+    const configs = this.getProfileConfigs(opType) as
       | Record<string, { cronEnabled?: boolean; cronExpression?: string | null }>
       | undefined;
 
-    const stateMap: Record<string, { activeProfiles?: Record<string, number> }> = {
-      sync: remote?.syncState || {},
-      bisync: remote?.bisyncState || {},
-      move: remote?.moveState || {},
-      copy: remote?.copyState || {},
-    };
-    const state = stateMap[opType];
-
     return profiles.map(p => {
       const config = configs?.[p.name];
-      const isActive = !!state?.activeProfiles?.[p.name];
+      const isActive = this.isProfileActive(opType, p.name);
       const hasSchedule = !!(config?.cronEnabled && config?.cronExpression);
 
       return {
@@ -269,6 +270,53 @@ export class AppDetailComponent {
       });
     });
   }
+
+  // --- Helper Methods for State Access ---
+
+  /** Get operation state from remote */
+  private getOperationState(type: SyncOperationType | 'mount' | 'serve'): any {
+    const remote = this.selectedRemote();
+    const stateMap: Record<string, any> = {
+      sync: remote?.syncState,
+      bisync: remote?.bisyncState,
+      move: remote?.moveState,
+      copy: remote?.copyState,
+      mount: remote?.mountState,
+      serve: remote?.serveState,
+    };
+    return stateMap[type];
+  }
+
+  /** Check if a profile is active for an operation type */
+  private isProfileActive(type: string, profileName?: string): boolean {
+    if (type === 'serve') {
+      const remote = this.selectedRemote();
+      const serves = this.runningServes();
+      return profileName
+        ? serves.some(
+            s => s.params.fs.startsWith(remote.remoteSpecs.name + ':') && s.profile === profileName
+          )
+        : serves.some(s => s.params.fs.startsWith(remote.remoteSpecs.name + ':'));
+    }
+
+    const state = this.getOperationState(type as SyncOperationType | 'mount');
+    if (!state) return false;
+
+    if (type === 'mount') {
+      return profileName ? !!state.activeProfiles?.[profileName] : !!state.mounted;
+    }
+
+    // Sync types
+    const isActiveKey = `isOn${type.charAt(0).toUpperCase() + type.slice(1)}`;
+    return profileName ? !!state.activeProfiles?.[profileName] : !!state[isActiveKey];
+  }
+
+  /** Get profile configs for an operation type */
+  private getProfileConfigs(type: string): Record<string, any> | undefined {
+    const settings = this.remoteSettings();
+    return settings[`${type}Configs` as keyof RemoteSettings] as Record<string, any> | undefined;
+  }
+
   // --- Computed Signals ---
 
   remoteName = computed(() => this.selectedRemote().remoteSpecs.name);
@@ -280,40 +328,15 @@ export class AppDetailComponent {
   );
 
   operationActiveState = computed(() => {
-    const remote = this.selectedRemote();
-    if (this.isSyncType()) {
-      const op = this.selectedSyncOperation();
-      const states = {
-        sync: remote?.syncState?.isOnSync,
-        bisync: remote?.bisyncState?.isOnBisync,
-        move: remote?.moveState?.isOnMove,
-        copy: remote?.copyState?.isOnCopy,
-      };
-      return !!states[op];
-    } else if (this.mainOperationType() === 'serve') {
-      // Check if any serves exist for this remote
-      const serves = this.runningServes();
-      return serves.some(s => s.params.fs.startsWith(remote.remoteSpecs.name + ':'));
-    }
-    return !!remote?.mountState?.mounted;
+    const type = this.isSyncType() ? this.selectedSyncOperation() : this.mainOperationType();
+    return this.isProfileActive(type);
   });
 
   jobId = computed(() => {
     if (!this.isSyncType()) return undefined;
-    const remote = this.selectedRemote();
     const op = this.selectedSyncOperation();
-    const profile = this.selectedProfile();
-
-    const stateMap = {
-      sync: remote.syncState,
-      bisync: remote.bisyncState,
-      move: remote.moveState,
-      copy: remote.copyState,
-    };
-
-    const state = stateMap[op];
-    const profileName = profile || 'default';
-    return state?.activeProfiles?.[profileName];
+    const profileName = this.selectedProfile() || 'default';
+    return this.getOperationState(op)?.activeProfiles?.[profileName];
   });
 
   operationSettingsSections = computed<RemoteSettingsSection[]>(() => {
@@ -635,14 +658,14 @@ export class AppDetailComponent {
       operationType: 'serve',
       isActive,
       isLoading: !!actionMatch,
-      cssClass: 'primary',
+      cssClass: 'accent',
       pathConfig: {
         source: source,
         destination: destination,
         sourceLabel: 'Serving',
         destinationLabel: 'Accessible via',
         showOpenButtons: false,
-        operationColor: 'primary',
+        operationColor: 'accent',
         isDestinationActive: isActive,
       },
       primaryButtonLabel: 'Start Serve',
@@ -738,9 +761,9 @@ export class AppDetailComponent {
     if (!this.isSyncType()) return 'accent';
     const colorMap: Record<string, string> = {
       sync: 'primary',
-      copy: 'accent',
-      move: 'warn',
-      bisync: 'primary',
+      copy: 'yellow',
+      move: 'orange',
+      bisync: 'purple',
     };
     return colorMap[this.selectedSyncOperation()] || 'primary';
   });
@@ -791,9 +814,24 @@ export class AppDetailComponent {
 
   hasCronSchedule = computed(() => this.selectedCronSchedule() !== null);
 
-  // Filtered operation control configs by selected profile
+  // Filtered control configs by selected profile (works for all operation types)
   filteredOperationControlConfigs = computed(() => {
     const configs = this.operationControlConfigs();
+    return this.filterConfigsByProfile(configs);
+  });
+
+  filteredMountControlConfigs = computed(() => {
+    const configs = this.mountControlConfigs();
+    return this.filterConfigsByProfile(configs);
+  });
+
+  filteredServeControlConfigs = computed(() => {
+    const configs = this.serveControlConfigs();
+    return this.filterConfigsByProfile(configs);
+  });
+
+  // Helper to filter configs by selected profile
+  private filterConfigsByProfile(configs: OperationControlConfig[]): OperationControlConfig[] {
     const selected = this.selectedProfile();
 
     // If no profile selector or only one config, show all
@@ -803,7 +841,7 @@ export class AppDetailComponent {
 
     // Filter by selected profile
     return configs.filter(c => c.profileName === selected);
-  });
+  }
 
   // --- Public Methods ---
 

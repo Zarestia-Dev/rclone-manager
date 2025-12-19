@@ -65,27 +65,32 @@
               <div class="operation-monitor">
                 <!-- Profile Selector (when multiple profiles exist) -->
                 @if (showProfileSelector()) {
-                  <div class="profile-selector-container">
-                    <span class="profile-selector-label">Profile</span>
-                    <div class="profile-tabs">
+                  <div class="profile-selector-container" [class.operation-sync]="isSyncType()">
+                    <div class="profile-selector-header">
+                      <span class="profile-selector-label">Active Profile</span>
+                      <span class="profile-count">{{ enrichedProfiles().length }} profiles</span>
+                    </div>
+                    <mat-chip-set aria-label="Profile selection" class="profile-chips">
                       @for (profile of enrichedProfiles(); track profile.name) {
-                        <button
-                          type="button"
-                          class="profile-tab"
-                          [class.active]="selectedProfile() === profile.name"
-                          [class.running]="profile.status === 'running'"
-                          [class.scheduled]="profile.status === 'scheduled'"
+                        <mat-chip-option
+                          [selected]="selectedProfile() === profile.name"
                           (click)="selectedProfile.set(profile.name)"
+                          [class.chip-running]="profile.status === 'running'"
+                          [class.chip-scheduled]="profile.status === 'scheduled'"
                         >
                           @if (profile.status === 'running') {
-                            <mat-icon svgIcon="refresh" class="tab-icon spinning"></mat-icon>
+                            <mat-icon
+                              svgIcon="refresh"
+                              class="chip-icon animate-spin"
+                              matChipAvatar
+                            ></mat-icon>
                           } @else if (profile.status === 'scheduled') {
-                            <mat-icon svgIcon="clock" class="tab-icon"></mat-icon>
+                            <mat-icon svgIcon="clock" class="chip-icon" matChipAvatar></mat-icon>
                           }
-                          <span class="tab-label">{{ profile.label }}</span>
-                        </button>
+                          {{ profile.label }}
+                        </mat-chip-option>
                       }
-                    </div>
+                    </mat-chip-set>
                   </div>
                 }
 
@@ -239,8 +244,34 @@
             <div class="operation-monitor">
               @if (mainOperationType() === 'serve') {
                 <!-- Serve Controls -->
+
+                <!-- Profile Selector (when multiple profiles exist) -->
+                @if (showProfileSelector()) {
+                  <div class="profile-selector-container operation-serve">
+                    <div class="profile-selector-header">
+                      <span class="profile-selector-label">Active Profile</span>
+                      <span class="profile-count">{{ enrichedProfiles().length }} profiles</span>
+                    </div>
+                    <mat-chip-set aria-label="Profile selection" class="profile-chips">
+                      @for (profile of enrichedProfiles(); track profile.name) {
+                        <mat-chip-option
+                          [selected]="selectedProfile() === profile.name"
+                          (click)="selectedProfile.set(profile.name)"
+                          [class.chip-running]="profile.status === 'running'"
+                          [class.chip-scheduled]="profile.status === 'scheduled'"
+                        >
+                          @if (profile.status === 'running') {
+                            <mat-icon svgIcon="serve" class="chip-icon" matChipAvatar></mat-icon>
+                          }
+                          {{ profile.label }}
+                        </mat-chip-option>
+                      }
+                    </mat-chip-set>
+                  </div>
+                }
+
                 @for (
-                  opConfig of serveControlConfigs();
+                  opConfig of filteredServeControlConfigs();
                   track opConfig.profileName || opConfig.operationType
                 ) {
                   <app-operation-control
@@ -291,8 +322,34 @@
                 ></app-vfs-control-panel>
               } @else {
                 <!-- Mount Control Panel -->
+
+                <!-- Profile Selector (when multiple profiles exist) -->
+                @if (showProfileSelector()) {
+                  <div class="profile-selector-container operation-mount">
+                    <div class="profile-selector-header">
+                      <span class="profile-selector-label">Active Profile</span>
+                      <span class="profile-count">{{ enrichedProfiles().length }} profiles</span>
+                    </div>
+                    <mat-chip-set aria-label="Profile selection" class="profile-chips">
+                      @for (profile of enrichedProfiles(); track profile.name) {
+                        <mat-chip-option
+                          [selected]="selectedProfile() === profile.name"
+                          (click)="selectedProfile.set(profile.name)"
+                          [class.chip-running]="profile.status === 'running'"
+                          [class.chip-scheduled]="profile.status === 'scheduled'"
+                        >
+                          @if (profile.status === 'running') {
+                            <mat-icon svgIcon="mount" class="chip-icon" matChipAvatar></mat-icon>
+                          }
+                          {{ profile.label }}
+                        </mat-chip-option>
+                      }
+                    </mat-chip-set>
+                  </div>
+                }
+
                 @for (
-                  opConfig of mountControlConfigs();
+                  opConfig of filteredMountControlConfigs();
                   track opConfig.profileName || opConfig.operationType
                 ) {
                   <app-operation-control

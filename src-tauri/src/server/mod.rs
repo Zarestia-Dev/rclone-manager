@@ -16,17 +16,6 @@ use tower_http::cors::{AllowOrigin, CorsLayer};
 
 use crate::utils::types::events::*;
 
-/// Config struct to pass parameters from lib.rs
-#[derive(Clone, Debug)]
-pub struct ServerConfig {
-    pub host: String,
-    pub port: u16,
-    pub username: Option<String>,
-    pub password: Option<String>,
-    pub tls_cert: Option<std::path::PathBuf>,
-    pub tls_key: Option<std::path::PathBuf>,
-}
-
 pub async fn start_web_server(
     app_handle: AppHandle,
     host: String,
@@ -143,6 +132,9 @@ pub async fn start_web_server(
         info!("📜 Certificate: {:?}", cert);
         info!("🔑 Key: {:?}", key);
         info!("🌍 Secure Server listening on https://{}", addr);
+
+        // Install the ring crypto provider for rustls
+        let _ = rustls::crypto::ring::default_provider().install_default();
 
         let config = RustlsConfig::from_pem_file(cert, key)
             .await

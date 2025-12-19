@@ -126,6 +126,7 @@
     }
 
     // Type-specific active states
+    &.serve,
     &.mount {
       background: rgba(var(--accent-color-rgb), 0.08);
       border-color: rgba(var(--accent-color-rgb), 0.25);

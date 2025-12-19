@@ -1,9 +1,13 @@
 # Changelog
 # All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [v0.1.9] - 2025-12-20
+
+### Warning
+- Since multiple profiles support, the old profiles are automatically migrated to the new profile system. But before the update, please backup your old profiles. If there is a any problem with the new profile system, you can restore your old profiles from the backup and app try the re-migration to the new profile system.
 
 ### Added
+- Multiple profiles support added for all operations (Sync, Copy, Move, Bisync, Mount, Serve). Now you can create multiple profiles for each operation and run them separately. Also operation UI has been changed to show profiles. User can configure it from the detailed remote setup modal. User also can select the shared settings and also add a multiple profiles for shared settings to. Quick Remote Access only works with default profile (When you start a action, it uses the default profile).
 - Added special Flatpak autostart entry for Flatpak version. Now it creates a desktop entry for Flatpak version of the app. This entry is not handled by Tauri. (Fixed #63)
 - Nautilus Component: Added hash calculation support for files. Now you can calculate the hash of a file and copy it to clipboard on the properties dialog.
 - Nautilus Component: Added public link generation support for files and directories. If remote supports public link generation, it will be available in the properties dialog.

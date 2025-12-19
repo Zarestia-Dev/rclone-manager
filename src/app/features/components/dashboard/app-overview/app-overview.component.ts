@@ -81,59 +81,44 @@ export class AppOverviewComponent {
     return 'Remotes Overview';
   });
 
-  primaryActionLabel = computed(() => {
-    switch (this.mode()) {
-      case 'mount':
-        return 'Mount';
-      case 'sync':
-        return 'Start Sync';
-      case 'serve':
-        return 'Start Serve';
-      default:
-        return 'Start';
-    }
-  });
+  // Mode configuration map for labels and icons
+  private readonly MODE_CONFIG: Record<
+    AppTab,
+    { label: string; icon: string; activeTitle: string; inactiveTitle: string }
+  > = {
+    mount: {
+      label: 'Mount',
+      icon: 'mount',
+      activeTitle: 'Mounted Remotes',
+      inactiveTitle: 'Unmounted Remotes',
+    },
+    sync: {
+      label: 'Start Sync',
+      icon: 'sync',
+      activeTitle: 'Active Sync Operations',
+      inactiveTitle: 'Inactive Remotes',
+    },
+    serve: {
+      label: 'Start Serve',
+      icon: 'satellite-dish',
+      activeTitle: 'Active Serves',
+      inactiveTitle: 'Available Remotes',
+    },
+    general: {
+      label: 'Start',
+      icon: 'circle-check',
+      activeTitle: 'Active Remotes',
+      inactiveTitle: 'Inactive Remotes',
+    },
+  };
 
-  activeIcon = computed(() => {
-    switch (this.mode()) {
-      case 'mount':
-        return 'mount';
-      case 'sync':
-        return 'sync';
-      case 'serve':
-        return 'satellite-dish';
-      default:
-        return 'circle-check';
-    }
-  });
-
+  primaryActionLabel = computed(() => this.MODE_CONFIG[this.mode()]?.label || 'Start');
+  activeIcon = computed(() => this.MODE_CONFIG[this.mode()]?.icon || 'circle-check');
   primaryActionIcon = computed(() => (this.mode() === 'mount' ? 'mount' : 'play'));
-
-  getActiveTitle = computed(() => {
-    switch (this.mode()) {
-      case 'mount':
-        return 'Mounted Remotes';
-      case 'sync':
-        return 'Active Sync Operations';
-      case 'serve':
-        return 'Active Serves';
-      default:
-        return 'Active Remotes';
-    }
-  });
-
-  getInactiveTitle = computed(() => {
-    switch (this.mode()) {
-      case 'mount':
-        return 'Unmounted Remotes';
-      case 'sync':
-        return 'Inactive Remotes';
-      case 'serve':
-        return 'Available Remotes';
-      default:
-        return 'Inactive Remotes';
-    }
-  });
+  getActiveTitle = computed(() => this.MODE_CONFIG[this.mode()]?.activeTitle || 'Active Remotes');
+  getInactiveTitle = computed(
+    () => this.MODE_CONFIG[this.mode()]?.inactiveTitle || 'Inactive Remotes'
+  );
 
   selectRemote(remote: Remote): void {
     this.remoteSelected.emit(remote);

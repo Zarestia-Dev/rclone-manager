@@ -140,25 +140,19 @@ export class OperationControlComponent {
     }
   }
 
-  readonly operationIcon = computed(() => {
-    // Use subOperationType for sync operations
-    switch (this.config().operationType) {
-      case 'mount':
-        return 'mount';
-      case 'sync':
-        return 'refresh';
-      case 'bisync':
-        return 'right-left';
-      case 'move':
-        return 'move';
-      case 'copy':
-        return 'copy';
-      case 'serve':
-        return 'serve';
-      default:
-        return 'refresh'; // Default icon
-    }
-  });
+  // Operation icon configuration
+  private readonly OPERATION_ICONS: Record<PrimaryActionType, string> = {
+    mount: 'mount',
+    sync: 'refresh',
+    bisync: 'right-left',
+    move: 'move',
+    copy: 'copy',
+    serve: 'serve',
+  };
+
+  readonly operationIcon = computed(
+    () => this.OPERATION_ICONS[this.config().operationType] || 'refresh'
+  );
 
   readonly statusBadgeConfig = computed((): StatusBadgeConfig => {
     const config = this.config();

@@ -203,8 +203,21 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   // ============================================================================
-  // UI & LAYOUT
+  // HELPER METHODS
   // ============================================================================
+
+  /** Get operation state from a remote */
+  private getOperationState(remote: Remote | undefined, type: SyncOperationType): any {
+    if (!remote) return undefined;
+    const stateMap: Record<SyncOperationType, any> = {
+      sync: remote.syncState,
+      copy: remote.copyState,
+      bisync: remote.bisyncState,
+      move: remote.moveState,
+    };
+    return stateMap[type];
+  }
+
   @HostListener('window:resize')
   onResize(): void {
     this.updateSidebarMode();
@@ -655,13 +668,7 @@ export class HomeComponent implements OnInit, OnDestroy {
           this.updateRemoteMountStates();
         } else {
           const remote = this.remotes().find(r => r.remoteSpecs.name === remoteName);
-          const stateMap: any = {
-            sync: remote?.syncState,
-            copy: remote?.copyState,
-            bisync: remote?.bisyncState,
-            move: remote?.moveState,
-          };
-          const state = stateMap[type];
+          const state = this.getOperationState(remote, type as SyncOperationType);
 
           let idToStop: number | undefined;
 
@@ -1006,14 +1013,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   ): number | undefined {
     if (!remote) return undefined;
 
-    const stateMap: Record<SyncOperationType, any | undefined> = {
-      sync: remote.syncState,
-      copy: remote.copyState,
-      bisync: remote.bisyncState,
-      move: remote.moveState,
-    };
-
-    const jobState = stateMap[type];
+    const jobState = this.getOperationState(remote, type);
     const jobId = jobState?.[`${type}JobID` as keyof typeof jobState];
     return typeof jobId === 'number' ? jobId : undefined;
   }

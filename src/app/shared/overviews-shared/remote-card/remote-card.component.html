@@ -18,27 +18,47 @@
     <!-- Status indicators showing actual remote states -->
     <div class="remote-status-indicators" aria-hidden="true">
       @if (remote().mountState?.mounted) {
-        <div class="status-badge mounted">
+        <div
+          class="status-badge mounted"
+          [matTooltip]="getProfileTooltip('mount')"
+          matTooltipShowDelay="500"
+        >
           <mat-icon svgIcon="mount" class="status-icon" aria-label="Mounted"></mat-icon>
         </div>
       }
       @if (remote().syncState?.isOnSync) {
-        <div class="status-badge syncing">
+        <div
+          class="status-badge syncing"
+          [matTooltip]="getProfileTooltip('sync')"
+          matTooltipShowDelay="500"
+        >
           <mat-icon svgIcon="refresh" class="status-icon" aria-label="Syncing"></mat-icon>
         </div>
       }
       @if (remote().copyState?.isOnCopy) {
-        <div class="status-badge copying">
+        <div
+          class="status-badge copying"
+          [matTooltip]="getProfileTooltip('copy')"
+          matTooltipShowDelay="500"
+        >
           <mat-icon svgIcon="copy" class="status-icon" aria-label="Copying"></mat-icon>
         </div>
       }
       @if (remote().moveState?.isOnMove) {
-        <div class="status-badge moving">
+        <div
+          class="status-badge moving"
+          [matTooltip]="getProfileTooltip('move')"
+          matTooltipShowDelay="500"
+        >
           <mat-icon svgIcon="move" class="status-icon" aria-label="Moving"></mat-icon>
         </div>
       }
       @if (remote().bisyncState?.isOnBisync) {
-        <div class="status-badge bisyncing">
+        <div
+          class="status-badge bisyncing"
+          [matTooltip]="getProfileTooltip('bisync')"
+          matTooltipShowDelay="500"
+        >
           <mat-icon svgIcon="right-left" class="status-icon" aria-label="BiSyncing"></mat-icon>
         </div>
       }

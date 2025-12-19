@@ -127,7 +127,6 @@ pub struct ProfileParamsBody {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct ProfileParamsInner {
     pub remote_name: String,
     pub profile_name: String,

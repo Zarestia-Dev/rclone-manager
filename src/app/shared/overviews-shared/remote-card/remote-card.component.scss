@@ -181,6 +181,7 @@
     .status-badge {
       display: flex;
       align-items: center;
+      gap: var(--space-xxs);
       padding: var(--space-xxs) var(--space-xs);
       border-radius: var(--radius-md);
 
@@ -188,6 +189,14 @@
         font-size: var(--icon-size-xs);
         width: var(--icon-size-xs);
         height: var(--icon-size-xs);
+      }
+
+      .profile-name {
+        font-size: 0.65rem;
+        font-weight: 500;
+        opacity: 0.9;
+        white-space: nowrap;
+        line-height: 1;
       }
 
       &.mounted {

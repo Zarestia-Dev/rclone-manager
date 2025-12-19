@@ -182,92 +182,110 @@
 // Profile Selector
 .profile-selector-container {
   display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  border: 1px solid var(--border-color);
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 1px solid rgba(var(--primary-color-rgb), 0.15);
   border-radius: var(--icon-radius);
+  transition: var(--transition-standard);
+
+  // Operation-specific colors
+  &.operation-sync {
+    background: rgba(var(--primary-color-rgb), 0.03);
+    border-color: rgba(var(--primary-color-rgb), 0.15);
+
+    &:hover {
+      background: rgba(var(--primary-color-rgb), 0.05);
+      border-color: rgba(var(--primary-color-rgb), 0.2);
+    }
+  }
+
+  &.operation-mount,
+  &.operation-serve {
+    background: rgba(var(--accent-color-rgb), 0.03);
+    border-color: rgba(var(--accent-color-rgb), 0.15);
+
+    &:hover {
+      background: rgba(var(--accent-color-rgb), 0.05);
+      border-color: rgba(var(--accent-color-rgb), 0.2);
+    }
+  }
+}
+
+.profile-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
 }
 
 .profile-selector-label {
   font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: var(--secondary-text-color);
+  font-weight: 600;
+  color: var(--app-text-color);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  white-space: nowrap;
 }
 
-.profile-tabs {
+.profile-count {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  color: var(--secondary-text-color);
+  padding: 2px 8px;
+  background: rgba(var(--app-text-color-rgb), 0.08);
+  border-radius: 10px;
+}
+
+.profile-chips {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-xs);
-}
 
-.profile-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-xxs);
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--secondary-text-color);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--transition-standard);
+  mat-chip-option {
+    // Running state (not selected)
+    &.chip-running:not(.mat-mdc-chip-selected) {
+      --mdc-chip-label-text-color: var(--primary-color);
+      border: 1.5px solid rgba(var(--primary-color-rgb), 0.4);
 
-  &:hover {
-    background: rgba(var(--app-text-color-rgb), 0.05);
-    color: var(--app-text-color);
-  }
+      .chip-icon {
+        color: var(--primary-color);
+      }
+    }
 
-  &.active {
-    background: rgba(var(--primary-color-rgb), 0.1);
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-  }
+    // Running state (selected)
+    &.chip-running.mat-mdc-chip-selected {
+      --mdc-chip-elevated-selected-container-color: var(--primary-color);
+      --mdc-chip-label-text-color: white;
 
-  &.running {
-    color: var(--success);
+      .chip-icon {
+        color: white;
+      }
+    }
 
-    &.active {
-      background: rgba(var(--success-rgb), 0.1);
-      border-color: var(--success);
+    // Scheduled state (not selected)
+    &.chip-scheduled:not(.mat-mdc-chip-selected) {
+      --mdc-chip-label-text-color: var(--orange);
+      border: 1.5px solid rgba(var(--orange-rgb), 0.4);
+
+      .chip-icon {
+        color: var(--orange);
+      }
+    }
+
+    // Scheduled state (selected)
+    &.chip-scheduled.mat-mdc-chip-selected {
+      --mdc-chip-elevated-selected-container-color: var(--orange);
+      --mdc-chip-label-text-color: white;
+
+      .chip-icon {
+        color: white;
+      }
     }
   }
 
-  &.scheduled {
-    color: var(--orange);
-
-    &.active {
-      background: rgba(var(--orange-rgb), 0.1);
-      border-color: var(--orange);
-    }
-  }
-
-  .tab-icon {
-    width: 14px;
-    height: 14px;
-  }
-
-  .tab-label {
-    white-space: nowrap;
-  }
-}
-
-// Spinning animation for running profiles
-.spinning {
-  animation: spin 1.5s linear infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
+  .chip-icon {
+    width: 18px;
+    height: 18px;
   }
 }
 
@@ -397,6 +415,10 @@
   }
   .serves-grid {
     grid-template-columns: 1fr;
+  }
+
+  .profile-selector-container {
+    padding: var(--space-sm);
   }
 }
 
