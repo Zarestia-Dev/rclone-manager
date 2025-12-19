@@ -187,6 +187,41 @@ export class AppDetailComponent {
     return [{ name: 'default', label: 'Default' }];
   });
 
+  // Enriched profiles with status information
+  enrichedProfiles = computed(() => {
+    const profiles = this.profiles();
+    const remote = this.selectedRemote();
+    const opType = this.selectedSyncOperation();
+    const settings = this.remoteSettings();
+    const configs = settings[`${opType}Configs` as keyof RemoteSettings] as
+      | Record<string, { cronEnabled?: boolean; cronExpression?: string | null }>
+      | undefined;
+
+    const stateMap: Record<string, { activeProfiles?: Record<string, number> }> = {
+      sync: remote?.syncState || {},
+      bisync: remote?.bisyncState || {},
+      move: remote?.moveState || {},
+      copy: remote?.copyState || {},
+    };
+    const state = stateMap[opType];
+
+    return profiles.map(p => {
+      const config = configs?.[p.name];
+      const isActive = !!state?.activeProfiles?.[p.name];
+      const hasSchedule = !!(config?.cronEnabled && config?.cronExpression);
+
+      return {
+        ...p,
+        isActive,
+        hasSchedule,
+        status: isActive ? 'running' : hasSchedule ? 'scheduled' : 'idle',
+      };
+    });
+  });
+
+  // Show profile selector only when there are 2+ profiles
+  showProfileSelector = computed(() => this.profiles().length > 1);
+
   constructor() {
     // 1. Polling Effect
     effect(onCleanup => {
@@ -592,8 +627,8 @@ export class AppDetailComponent {
     const source = (config?.source as string) || `${remote.remoteSpecs.name}:`;
 
     // Extract protocol type and address for destination display
-    const serveType = (config.options.type as string) || 'http';
-    const serveAddr = (config.options.addr as string) || 'Default';
+    const serveType = (config?.options?.type as string) || 'http';
+    const serveAddr = (config?.options?.addr as string) || 'Default';
     const destination = `${serveType.toUpperCase()} at ${serveAddr}`;
 
     return {
@@ -710,23 +745,64 @@ export class AppDetailComponent {
     return colorMap[this.selectedSyncOperation()] || 'primary';
   });
 
-  isCronEnabled = computed(() => {
+  // Cron schedules for all profiles of the current sync operation
+  cronSchedules = computed<
+    { profileName: string; cronExpression: string; humanReadable: string }[]
+  >(() => {
     const settings = this.remoteSettings();
-    const config = (settings as any)?.[`${this.selectedSyncOperation()}Config`];
-    return !!config?.['cronEnabled'];
+    const opType = this.selectedSyncOperation();
+    const configs = settings[`${opType}Configs` as keyof RemoteSettings] as
+      | Record<string, { cronEnabled?: boolean; cronExpression?: string | null }>
+      | undefined;
+
+    if (!configs) return [];
+
+    const schedules: { profileName: string; cronExpression: string; humanReadable: string }[] = [];
+
+    for (const [profileName, config] of Object.entries(configs)) {
+      if (config?.cronEnabled && config?.cronExpression) {
+        let humanReadable = 'Invalid schedule';
+        try {
+          humanReadable = cronstrue(config.cronExpression);
+        } catch {
+          // Keep default value
+        }
+        schedules.push({
+          profileName,
+          cronExpression: config.cronExpression,
+          humanReadable,
+        });
+      }
+    }
+
+    return schedules;
   });
 
-  humanReadableCron = computed(() => {
-    const settings = this.remoteSettings();
-    const config = (settings as any)?.[`${this.selectedSyncOperation()}Config`];
-    const cronExpression = config?.['cronExpression'] as string;
+  // Cron schedule for the selected profile only
+  selectedCronSchedule = computed(() => {
+    const schedules = this.cronSchedules();
+    const selected = this.selectedProfile();
 
-    if (!cronExpression) return 'No schedule set.';
-    try {
-      return cronstrue(cronExpression);
-    } catch {
-      return 'Invalid cron expression.';
+    // If no profile is selected, return first schedule
+    if (!selected) return schedules[0] || null;
+
+    return schedules.find(s => s.profileName === selected) || null;
+  });
+
+  hasCronSchedule = computed(() => this.selectedCronSchedule() !== null);
+
+  // Filtered operation control configs by selected profile
+  filteredOperationControlConfigs = computed(() => {
+    const configs = this.operationControlConfigs();
+    const selected = this.selectedProfile();
+
+    // If no profile selector or only one config, show all
+    if (!this.showProfileSelector() || configs.length <= 1) {
+      return configs;
     }
+
+    // Filter by selected profile
+    return configs.filter(c => c.profileName === selected);
   });
 
   // --- Public Methods ---

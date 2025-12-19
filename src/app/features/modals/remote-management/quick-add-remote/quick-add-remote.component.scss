@@ -1,3 +1,4 @@
+// ===== MODAL CONTAINER =====
 .quick-add-modal {
   display: flex;
   flex-direction: column;
@@ -12,107 +13,198 @@
     flex: 1;
     overflow: hidden;
   }
+}
 
-  .wizard-content {
-    flex: 1;
-    overflow-y: auto;
+// ===== CONTENT AREA =====
+.modal-content {
+  flex: 1;
+  padding: var(--space-md);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+}
 
-    .step-content {
-      padding: var(--space-lg);
-    }
+// ===== SECTIONS =====
+.section-group {
+  display: flex;
+  flex-direction: column;
 
-    .operations-header {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--space-sm);
-      margin-bottom: var(--space-md);
-    }
+  .section-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--app-text-color);
+    margin-bottom: var(--space-sm);
+    opacity: 0.9;
   }
 
-  // ===== FORM SECTIONS =====
-  .form-section {
+  // Error message for radio group
+  .grid-error {
+    margin-top: 8px;
+    font-size: 0.75rem;
+  }
+}
+
+// ===== REMOTE TYPE AUTOCOMPLETE =====
+.remote-type-field {
+  .field-icon {
+    color: var(--secondary-text-color);
+  }
+}
+
+.remote-option-content {
+  display: flex;
+  align-items: center;
+
+  .remote-icon {
+    color: var(--primary-color);
+  }
+
+  .remote-text {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: 2px;
+    overflow: hidden;
 
-    .section-title {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
+    .remote-label {
+      font-weight: 500;
+      font-size: 0.9rem;
+      color: var(--app-text-color);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .remote-value {
+      font-size: 0.75rem;
+      color: var(--secondary-text-color);
+    }
+  }
+}
+
+// ===== CONFIG SECTION =====
+.config-section {
+  background: var(--secondary-background);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  gap: 16px;
+
+  .field-icon {
+    color: var(--secondary-text-color);
+  }
+}
+
+// ===== INTERACTIVE OPTION =====
+.interactive-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-color);
+
+  .option-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .option-title {
+      font-size: 0.9rem;
+      font-weight: 500;
       color: var(--app-text-color);
     }
-  }
 
-  // ===== INTERACTIVE MODE SECTION =====
-  .interactive-mode-section {
-    background-color: rgba(var(--accent-color-rgb), 0.1);
-    border-radius: var(--panel-radius);
-    padding: var(--space-md);
-    border: 2px solid var(--accent-color);
-
-    .interactive-toggle {
-      margin-bottom: var(--space-sm);
-    }
-
-    .section-description {
-      display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      font-size: var(--font-size-sm);
-      color: var(--app-text-color-secondary);
-
-      .info-icon {
-        font-size: 1.1rem;
-        height: 1.1rem;
-        width: 1.1rem;
-        color: var(--accent-color);
-      }
+    .option-desc {
+      font-size: 0.75rem;
+      color: var(--secondary-text-color);
+      max-width: 300px;
     }
   }
+}
 
-  .message-bar {
+// ===== OPERATIONS STEP =====
+.operations-header {
+  display: flex;
+  flex-direction: column;
+
+  .section-label {
+    margin-bottom: 0;
+  }
+
+  .section-description {
+    font-size: 0.85rem;
+    color: var(--secondary-text-color);
+  }
+}
+
+.tabs-container {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--secondary-background);
+
+  .operation-config {
+    padding: var(--space-sm);
+  }
+}
+
+// ===== INTERACTIVE STEP =====
+.interactive-section {
+  padding: var(--space-sm);
+}
+
+// ===== MESSAGE BAR =====
+.message-area {
+  padding: 0 var(--space-md);
+  margin-bottom: var(--space-sm);
+
+  .message {
     display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+
+    mat-icon {
+      width: 20px;
+      height: 20px;
+    }
+
+    &.info {
+      color: var(--accent-color);
+      background: rgba(var(--accent-color-rgb), 0.1);
+      border: 1px solid rgba(var(--accent-color-rgb), 0.2);
+    }
+
+    &.warning {
+      color: var(--orange);
+      background: rgba(var(--orange-rgb), 0.1);
+      border: 1px solid rgba(var(--orange-rgb), 0.2);
+    }
+  }
+}
+
+// ===== FOOTER =====
+.modal-actions {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: var(--secondary-background);
+}
+
+// ===== RESPONSIVE =====
+@media (max-width: 600px) {
+  .interactive-option {
     flex-direction: column;
-    gap: var(--space-sm);
-    border-top: 1px solid var(--border-color);
+    gap: 12px;
 
-    .message {
-      margin: var(--space-md);
+    mat-slide-toggle {
+      width: 100%;
       display: flex;
-      align-items: center;
-      gap: var(--space-sm);
-      padding: var(--space-xs);
-      border-radius: var(--panel-radius);
-      font-size: var(--font-size-sm);
-
-      &.info {
-        color: var(--accent-color);
-        background: rgba(var(--accent-color-rgb), 0.1);
-        border: 1px solid rgba(var(--accent-color-rgb), 0.2);
-      }
-
-      &.loading {
-        color: var(--accent-color);
-        animation: pulseBlue 2s infinite;
-        background: rgba(var(--accent-color-rgb), 0.1);
-        border: 1px solid rgba(var(--accent-color-rgb), 0.2);
-      }
-
-      &.cleanup {
-        color: var(--orange);
-        animation: pulseOrange 2s infinite;
-        background: rgba(var(--orange-rgb), 0.1);
-        border: 1px solid rgba(var(--orange-rgb), 0.2);
-      }
+      justify-content: center;
     }
-  }
-
-  .button-group {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    gap: var(--button-gap);
-    padding: var(--space-md);
   }
 }

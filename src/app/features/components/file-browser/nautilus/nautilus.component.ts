@@ -44,8 +44,8 @@ import { ScrollingModule } from '@angular/cdk/scrolling';
 import {
   NautilusService,
   RemoteManagementService,
-  PathSelectionService,
   AppSettingsService,
+  PathSelectionService,
 } from '@app/services';
 import {
   Entry,
@@ -469,22 +469,22 @@ export class NautilusComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Apply initialLocation when picker opens (once per open)
+    // Fallback: Apply initialLocation if data wasn't ready during setupInitialTab
     effect(() => {
       const open = this.isPickerMode();
       const applied = this.initialLocationApplied();
       const cfg = this.pickerOptions();
-      if (open && !applied) {
-        // Avoid racing with async remotes/drives loading
+
+      // Only apply if picker is open, not yet applied, and has an initial location
+      if (open && !applied && cfg.initialLocation) {
         if (!this.isDataReadyForConfig(cfg)) return;
-        const loc = cfg.initialLocation;
-        if (loc && this.isLocationAllowedByConfig(loc, cfg)) {
-          this.navigateToPath(loc);
-        } else {
-          this.ensureInitialRemoteForMode(cfg.mode, cfg.allowedRemotes);
+        if (this.isLocationAllowedByConfig(cfg.initialLocation, cfg)) {
+          this.navigateToPath(cfg.initialLocation);
+          this.initialLocationApplied.set(true);
         }
-        this.initialLocationApplied.set(true);
       }
+
+      // Reset flag when picker closes
       if (!open && applied) this.initialLocationApplied.set(false);
     });
 
@@ -511,23 +511,108 @@ export class NautilusComponent implements OnInit, OnDestroy {
     // 1. Ensure data is loaded from the service
     await this.nautilusService.loadRemoteData();
 
-    // 2. Check if a specific remote was requested (e.g. from Tray / selectedNautilusRemote)
-    const requestedName = this.nautilusService.selectedNautilusRemote();
+    const pickerState = this.filePickerState();
     let initialRemote: ExplorerRoot | null = null;
+    let initialPath = '';
 
-    if (requestedName) {
-      initialRemote = this.allRemotesLookup().find(r => r.name === requestedName) || null;
-      // Consume the signal so it doesn't trigger effects later
-      this.nautilusService.selectedNautilusRemote.set(null);
+    // 2. Check if we're in picker mode with an initial location
+    if (pickerState.isOpen && pickerState.options?.initialLocation) {
+      const loc = pickerState.options.initialLocation;
+      const cfg = pickerState.options;
+
+      if (this.isDataReadyForConfig(cfg) && this.isLocationAllowedByConfig(loc, cfg)) {
+        const parsed = this.parseLocationToRemoteAndPath(loc);
+        if (parsed) {
+          initialRemote = parsed.remote;
+          initialPath = parsed.path;
+          this.initialLocationApplied.set(true);
+        }
+      }
     }
 
-    // 3. Fallback: Open first local drive if no specific remote requested
+    // 3. If no initialLocation handled, check for requested remote (e.g. from Tray)
+    if (!initialRemote) {
+      const requestedName = this.nautilusService.selectedNautilusRemote();
+      if (requestedName) {
+        initialRemote = this.allRemotesLookup().find(r => r.name === requestedName) || null;
+        this.nautilusService.selectedNautilusRemote.set(null);
+      }
+    }
+
+    // 4. For picker mode without initial location, use appropriate default
+    if (!initialRemote && pickerState.isOpen && pickerState.options) {
+      const cfg = pickerState.options;
+      if (cfg.mode === 'remote') {
+        let remotes = this.cloudRemotes();
+        if (cfg.allowedRemotes && cfg.allowedRemotes.length) {
+          remotes = remotes.filter(r => cfg.allowedRemotes?.includes(r.name));
+        }
+        initialRemote = remotes[0] || null;
+      } else if (cfg.mode === 'local') {
+        initialRemote = this.nautilusService.localDrives()[0] || null;
+      } else {
+        initialRemote = this.nautilusService.localDrives()[0] || null;
+      }
+    }
+
+    // 5. Fallback: Open first local drive
     if (!initialRemote) {
       initialRemote = this.nautilusService.localDrives()[0] || null;
     }
 
-    // 4. Create the tab
-    this.createTab(initialRemote, '');
+    // 6. Create the tab with the correct remote and path directly
+    this.createTab(initialRemote, initialPath);
+  }
+
+  /**
+   * Parses a location string (like "gdrive:Photos/2024" or "/home/user") into remote and path.
+   * Returns null if parsing fails.
+   */
+  private parseLocationToRemoteAndPath(
+    rawInput: string
+  ): { remote: ExplorerRoot; path: string } | null {
+    let normalized = rawInput.replace(/\\/g, '/');
+    if (normalized.endsWith('/') && normalized.length > 1) {
+      normalized = normalized.slice(0, -1);
+    }
+
+    const known = this.allRemotesLookup();
+
+    // Local Drive Match (Windows C:\ or mounted drives)
+    const driveMatch = known.find(
+      r => r.isLocal && normalized.toLowerCase().startsWith(r.name.toLowerCase())
+    );
+    if (driveMatch) {
+      const remaining = normalized.substring(driveMatch.name.length);
+      const cleanPath = remaining.startsWith('/') ? remaining.substring(1) : remaining;
+      return { remote: driveMatch, path: cleanPath };
+    }
+
+    // Rclone Syntax Match (remote:path)
+    const colonIdx = normalized.indexOf(':');
+    if (colonIdx > -1) {
+      const rName = normalized.substring(0, colonIdx);
+      const rPath = normalized.substring(colonIdx + 1);
+      const remoteMatch = known.find(r => r.name === rName);
+      const targetRemote: ExplorerRoot = remoteMatch || {
+        name: rName,
+        label: rName,
+        type: 'cloud',
+        isLocal: false,
+      };
+      const cleanPath = rPath.startsWith('/') ? rPath.substring(1) : rPath;
+      return { remote: targetRemote, path: cleanPath };
+    }
+
+    // Unix Root
+    if (normalized.startsWith('/')) {
+      const root = known.find(r => r.name === '/');
+      if (root) {
+        return { remote: root, path: normalized.substring(1) };
+      }
+    }
+
+    return null;
   }
 
   private isLocationAllowedByConfig(loc: string, cfg: FilePickerConfig): boolean {
@@ -577,28 +662,6 @@ export class NautilusComponent implements OnInit, OnDestroy {
       return true;
     }
     return true;
-  }
-
-  private ensureInitialRemoteForMode(mode: FilePickerConfig['mode'], allowed?: string[]): void {
-    if (mode === 'local') {
-      const current = this.nautilusRemote();
-      if (current?.isLocal) return;
-      const first = this.localDrives()[0];
-      if (first) this.selectRemote(first);
-      return;
-    }
-    if (mode === 'remote') {
-      const current = this.nautilusRemote();
-      if (!current?.isLocal) {
-        if (!allowed || allowed.includes(current?.name ?? '')) return;
-      }
-      let remotes = this.cloudRemotes();
-      if (allowed && allowed.length) remotes = remotes.filter(r => allowed.includes(r.name));
-      const first = remotes[0];
-      if (first) this.selectRemote(first);
-      return;
-    }
-    // both -> no change
   }
 
   private setupEventListeners(): void {
@@ -678,49 +741,16 @@ export class NautilusComponent implements OnInit, OnDestroy {
     this.isEditingPath.set(false);
     if (this.starredMode()) this.starredMode.set(false);
 
-    let normalized = rawInput.replace(/\\/g, '/');
-    if (normalized.endsWith('/') && normalized.length > 1) normalized = normalized.slice(0, -1);
-
-    const known = this.allRemotesLookup();
-
-    // Local Drive Match
-    const driveMatch = known.find(
-      r => r.isLocal && normalized.toLowerCase().startsWith(r.name.toLowerCase())
-    );
-    if (driveMatch) {
-      const remaining = normalized.substring(driveMatch.name.length);
-      const cleanPath = remaining.startsWith('/') ? remaining.substring(1) : remaining;
-      this._navigate(driveMatch, cleanPath, true);
+    // Try to parse as absolute path (remote or local)
+    const parsed = this.parseLocationToRemoteAndPath(rawInput);
+    if (parsed) {
+      this._navigate(parsed.remote, parsed.path, true);
       return;
     }
 
-    // Rclone Syntax Match
-    const colonIdx = normalized.indexOf(':');
-    if (colonIdx > -1) {
-      const rName = normalized.substring(0, colonIdx);
-      const rPath = normalized.substring(colonIdx + 1);
-      const remoteMatch = known.find(r => r.name === rName);
-      const targetRemote = remoteMatch || {
-        name: rName,
-        label: rName,
-        type: 'cloud',
-        isLocal: false,
-      };
-      const cleanPath = rPath.startsWith('/') ? rPath.substring(1) : rPath;
-      this._navigate(targetRemote, cleanPath, true);
-      return;
-    }
-
-    // Unix Root
-    if (normalized.startsWith('/')) {
-      const root = known.find(r => r.name === '/');
-      if (root) {
-        this._navigate(root, normalized.substring(1), true);
-        return;
-      }
-    }
-
+    // Fallback: treat as relative path from current location
     const currentPath = this.currentPath();
+    const normalized = rawInput.replace(/\\/g, '/');
     const newPath = currentPath ? `${currentPath}/${normalized}` : normalized;
     this.updatePath(newPath);
   }

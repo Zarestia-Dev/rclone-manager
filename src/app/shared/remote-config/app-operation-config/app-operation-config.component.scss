@@ -59,7 +59,7 @@
 .path-prefix {
   &.mount-local,
   &.mount-remote,
-  ::ng-deep .mat-mdc-select-trigger {
+  mat-select-trigger {
     display: flex;
     align-items: center;
     gap: var(--space-xxs);
@@ -67,44 +67,32 @@
 
   // Mount variants (locked, no dropdown)
   &.mount-local,
-  &.mount-remote {
-    padding: 19.4px;
-  }
-
-  ::ng-deep .ng-star-inserted {
-    display: flex;
-    align-items: center;
-    gap: var(--space-xxs);
-  }
-
-  ::ng-deep .mat-mdc-select-value {
+  &.mount-remote,
+  mat-select-trigger {
     padding: 19.4px;
   }
 
   ::ng-deep .mat-mdc-select-arrow-wrapper {
     display: none;
   }
+
   &.mount-local,
-  &.local ::ng-deep .mat-mdc-select-trigger {
+  &.local mat-select-trigger {
     background: rgba(var(--purple-rgb), 0.1);
     color: var(--purple);
   }
   &.mount-remote,
-  &.remote ::ng-deep .mat-mdc-select-trigger {
+  &.remote mat-select-trigger {
     background: rgba(var(--primary-color-rgb), 0.1);
     color: var(--primary-color);
   }
 
-  &.other ::ng-deep .mat-mdc-select-trigger {
+  &.other mat-select-trigger {
     background: rgba(var(--accent-color-rgb), 0.1);
     color: var(--accent-color);
   }
 
-  &.locked {
-    cursor: default;
-  }
   mat-icon {
-    font-size: 1.1rem;
     height: 1.1rem;
     width: 1.1rem;
   }

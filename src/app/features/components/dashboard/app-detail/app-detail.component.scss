@@ -171,6 +171,110 @@
   flex-direction: column;
   gap: var(--panel-gap);
   padding: var(--container-padding);
+
+  .serves-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+}
+
+// Profile Selector
+.profile-selector-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--icon-radius);
+}
+
+.profile-selector-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--secondary-text-color);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.profile-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.profile-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xxs);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--secondary-text-color);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition-standard);
+
+  &:hover {
+    background: rgba(var(--app-text-color-rgb), 0.05);
+    color: var(--app-text-color);
+  }
+
+  &.active {
+    background: rgba(var(--primary-color-rgb), 0.1);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+  }
+
+  &.running {
+    color: var(--success);
+
+    &.active {
+      background: rgba(var(--success-rgb), 0.1);
+      border-color: var(--success);
+    }
+  }
+
+  &.scheduled {
+    color: var(--orange);
+
+    &.active {
+      background: rgba(var(--orange-rgb), 0.1);
+      border-color: var(--orange);
+    }
+  }
+
+  .tab-icon {
+    width: 14px;
+    height: 14px;
+  }
+
+  .tab-label {
+    white-space: nowrap;
+  }
+}
+
+// Spinning animation for running profiles
+.spinning {
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.cron-schedules-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
 }
 
 .cron-human-readable {
@@ -187,6 +291,19 @@
 
   .cron-icon {
     color: var(--primary-color);
+    flex-shrink: 0;
+  }
+
+  .cron-profile-name {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .cron-schedule {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 
@@ -277,6 +394,9 @@
 
   .settings-group {
     padding: var(--space-sm);
+  }
+  .serves-grid {
+    grid-template-columns: 1fr;
   }
 }
 

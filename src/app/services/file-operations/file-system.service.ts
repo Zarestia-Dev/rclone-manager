@@ -22,14 +22,17 @@ export class FileSystemService extends TauriBaseService {
 
   /**
    * Select a folder with optional empty requirement
+   * @param requireEmpty - If true, require the folder to be empty (for mount destinations)
+   * @param initialPath - Optional initial path to open the picker to
    */
-  async selectFolder(requireEmpty?: boolean): Promise<string> {
+  async selectFolder(requireEmpty?: boolean, initialPath?: string): Promise<string> {
     // In headless mode, use Nautilus file browser
     if (this.apiClient.isHeadless()) {
       const config: FilePickerConfig = {
         mode: 'local',
         selection: 'folders',
         multi: false,
+        initialLocation: initialPath,
       };
       const result = await this.selectPathWithNautilus(config);
       if (result.cancelled || result.paths.length === 0) {

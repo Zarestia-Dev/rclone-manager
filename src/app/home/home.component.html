@@ -20,15 +20,17 @@
       </div>
 
       <!-- Remote Options Menu -->
-      @if (selectedRemote(); as remote) {
-        <button
-          matIconButton
-          class="ellipsis-button"
-          [cdkMenuTriggerFor]="remoteOptionsMenu"
-          [cdkMenuTriggerData]="{ remote: remote }"
-        >
-          <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
-        </button>
+      @for (remote of [selectedRemote()]; track remote?.remoteSpecs?.name) {
+        @if (remote) {
+          <button
+            matIconButton
+            class="ellipsis-button"
+            [cdkMenuTriggerFor]="remoteOptionsMenu"
+            [cdkMenuTriggerData]="{ remote: remote }"
+          >
+            <mat-icon svgIcon="ellipsis-vertical"></mat-icon>
+          </button>
+        }
       }
 
       <!-- Empty State -->
@@ -161,7 +163,7 @@
     <button class="menu-item" cdkMenuItem (click)="openExportModal(remote.remoteSpecs.name)">
       <span>Export Configuration</span>
     </button>
-    <button class="menu-item" cdkMenuItem (click)="resetRemoteSettings()">
+    <button class="menu-item" cdkMenuItem (click)="resetRemoteSettings(remote.remoteSpecs.name)">
       <span>Reset Settings</span>
     </button>
     <mat-divider></mat-divider>

@@ -1,15 +1,13 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { JobInfoConfig } from '../../types';
 
 @Component({
   selector: 'app-job-info-panel',
   standalone: true,
-  imports: [CommonModule, MatCardModule, MatIconModule, MatSelectModule, MatFormFieldModule],
+  imports: [CommonModule, MatCardModule, MatIconModule],
   styleUrls: ['./job-info-panel.component.scss'],
   template: `
     <mat-card>
@@ -18,23 +16,6 @@ import { JobInfoConfig } from '../../types';
           <mat-icon svgIcon="info"></mat-icon>
           <span>Job Information</span>
         </mat-card-title>
-
-        @if (config.showProfileSelector && config.profiles && config.profiles.length > 1) {
-          <div class="profile-selector-header">
-            <mat-form-field class="profile-select">
-              <mat-select
-                [value]="config.selectedProfile"
-                (selectionChange)="profileChange.emit($event.value)"
-              >
-                @for (profile of config.profiles; track profile.name) {
-                  <mat-option [value]="profile.name">
-                    {{ profile.label }}
-                  </mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-          </div>
-        }
       </mat-card-header>
 
       <mat-card-content>
@@ -75,5 +56,4 @@ import { JobInfoConfig } from '../../types';
 })
 export class JobInfoPanelComponent {
   @Input() config!: JobInfoConfig;
-  @Output() profileChange = new EventEmitter<string>();
 }

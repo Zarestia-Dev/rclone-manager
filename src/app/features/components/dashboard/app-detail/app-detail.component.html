@@ -63,9 +63,35 @@
               </ng-template>
 
               <div class="operation-monitor">
-                <!-- Operation Control Panel -->
+                <!-- Profile Selector (when multiple profiles exist) -->
+                @if (showProfileSelector()) {
+                  <div class="profile-selector-container">
+                    <span class="profile-selector-label">Profile</span>
+                    <div class="profile-tabs">
+                      @for (profile of enrichedProfiles(); track profile.name) {
+                        <button
+                          type="button"
+                          class="profile-tab"
+                          [class.active]="selectedProfile() === profile.name"
+                          [class.running]="profile.status === 'running'"
+                          [class.scheduled]="profile.status === 'scheduled'"
+                          (click)="selectedProfile.set(profile.name)"
+                        >
+                          @if (profile.status === 'running') {
+                            <mat-icon svgIcon="refresh" class="tab-icon spinning"></mat-icon>
+                          } @else if (profile.status === 'scheduled') {
+                            <mat-icon svgIcon="clock" class="tab-icon"></mat-icon>
+                          }
+                          <span class="tab-label">{{ profile.label }}</span>
+                        </button>
+                      }
+                    </div>
+                  </div>
+                }
+
+                <!-- Operation Control Panel (filtered by selected profile) -->
                 @for (
-                  opConfig of operationControlConfigs();
+                  opConfig of filteredOperationControlConfigs();
                   track opConfig.profileName || opConfig.operationType
                 ) {
                   <app-operation-control
@@ -90,18 +116,22 @@
                   </app-operation-control>
                 }
 
-                <!-- Human Readable Cron Expression -->
-                @if (isCronEnabled()) {
-                  <div class="cron-human-readable">
-                    <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
-                    <span>{{ humanReadableCron() }}</span>
-                  </div>
+                <!-- Human Readable Cron Schedule (for selected profile) -->
+                @if (hasCronSchedule()) {
+                  @let schedule = selectedCronSchedule();
+                  @if (schedule) {
+                    <div class="cron-human-readable">
+                      <mat-icon svgIcon="clock" class="cron-icon"></mat-icon>
+                      <span class="cron-schedule" [matTooltip]="schedule.cronExpression">{{
+                        schedule.humanReadable
+                      }}</span>
+                    </div>
+                  }
                 }
 
-                <!-- Job Information Panel (with integrated profile selector) -->
+                <!-- Job Information Panel -->
                 <app-job-info-panel
                   [config]="jobInfoConfig()"
-                  (profileChange)="selectedProfile.set($event)"
                   class="info-panel"
                 ></app-job-info-panel>
 
@@ -237,19 +267,21 @@
                 @if (runningServes().length > 0) {
                   <div class="active-serves-list">
                     <h3>Active Serves</h3>
-                    @for (serve of runningServes(); track serve.id) {
-                      <app-serve-card
-                        [serve]="serve"
-                        (stopServe)="
-                          stopJob.emit({
-                            type: 'serve',
-                            remoteName: selectedRemote().remoteSpecs.name,
-                            serveId: serve.id,
-                          })
-                        "
-                        (copyToClipboard)="onCopyToClipboard($event)"
-                      ></app-serve-card>
-                    }
+                    <div class="serves-grid">
+                      @for (serve of runningServes(); track serve.id) {
+                        <app-serve-card
+                          [serve]="serve"
+                          (stopServe)="
+                            stopJob.emit({
+                              type: 'serve',
+                              remoteName: selectedRemote().remoteSpecs.name,
+                              serveId: serve.id,
+                            })
+                          "
+                          (copyToClipboard)="onCopyToClipboard($event)"
+                        ></app-serve-card>
+                      }
+                    </div>
                   </div>
                 }
                 <mat-divider></mat-divider>

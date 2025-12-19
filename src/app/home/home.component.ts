@@ -805,16 +805,14 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.remoteSettings.update(allSettings => ({ ...allSettings, [remoteName]: mergedSettings }));
   }
 
-  async resetRemoteSettings(): Promise<void> {
-    const remote = this.selectedRemote();
-    if (!remote?.remoteSpecs.name) return;
+  async resetRemoteSettings(remoteName: string): Promise<void> {
+    if (!remoteName) return;
     try {
       const confirmed = await this.notificationService.confirmModal(
         'Reset Remote Settings',
-        `Are you sure you want to reset ALL settings for ${remote.remoteSpecs.name}?`
+        `Are you sure you want to reset ALL settings for ${remoteName}?`
       );
       if (confirmed) {
-        const remoteName = remote.remoteSpecs.name;
         await this.appSettingsService.resetRemoteSettings(remoteName);
         this.remoteSettings.update(allSettings => {
           const newSettings = { ...allSettings };

@@ -101,11 +101,9 @@ export class RemoteCardComponent {
     }
 
     if (mode === 'serve') {
-      // For serve mode, show serve start button
-      if (cardVariant === 'inactive') {
-        const serveButton = this.createOperationButton('serve');
-        if (serveButton) buttons.push(serveButton);
-      }
+      // For serve mode, show serve start/stop button
+      const serveButton = this.createOperationButton('serve');
+      if (serveButton) buttons.push(serveButton);
     }
 
     return buttons;
@@ -412,7 +410,8 @@ export class RemoteCardComponent {
         else this.startJob.emit({ type: 'bisync', remoteName });
         break;
       case 'serve':
-        if (!remote.serveState?.isOnServe) this.startJob.emit({ type: 'serve', remoteName });
+        if (remote.serveState?.isOnServe) this.stopJob.emit({ type: 'serve', remoteName });
+        else this.startJob.emit({ type: 'serve', remoteName });
         break;
     }
   }
@@ -480,6 +479,9 @@ export class RemoteCardComponent {
         remote.bisyncState?.isOnBisync
         ? 'active'
         : 'inactive';
+    }
+    if (mode === 'serve') {
+      return remote.serveState?.isOnServe ? 'active' : 'inactive';
     }
     return 'inactive';
   });

@@ -228,12 +228,7 @@ export class FileViewerModalComponent implements OnInit, OnDestroy {
       const fullDestPath = this.uiStateService.joinPath(selectedPath, this.data.name);
 
       // Start the copy job
-      await this.jobManagementService.copyUrl(
-        selectedPath,
-        fullDestPath,
-        this.data.url,
-        false // Don't auto-filename, we already have the name
-      );
+      await this.jobManagementService.copyUrl(selectedPath, fullDestPath, this.data.url, true);
 
       this.notificationService.openSnackBar(`Downloading ${this.data.name}`, 'OK');
     } catch (err) {

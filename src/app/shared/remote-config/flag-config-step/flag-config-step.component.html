@@ -29,18 +29,16 @@
 
         <!-- Mount Type Selector -->
         @if (field.type === 'mount-type') {
-          <div class="options">
-            <mat-form-field appearance="fill">
-              <mat-label>Mount Type</mat-label>
-              <mat-select formControlName="type" placeholder="Select mount type">
-                @for (mountType of mountTypes; track mountType) {
-                  <mat-option [value]="mountType">
-                    {{ mountType | titlecase }}
-                  </mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-          </div>
+          <mat-form-field appearance="fill">
+            <mat-label>Mount Type</mat-label>
+            <mat-select formControlName="type" placeholder="Select mount type">
+              @for (mountType of mountTypes; track mountType) {
+                <mat-option [value]="mountType">
+                  {{ mountType | titlecase }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
         }
 
         <!-- Serve Type Selector -->
@@ -79,14 +77,16 @@
 
         <!-- Dynamic Flag Fields -->
         @if (field.type === 'dynamic-fields') {
-          <ng-container class="form-container" formGroupName="options">
-            @for (field of this.dynamicFlagFields; track field.Name) {
-              <app-setting-control
-                [option]="field"
-                [formControlName]="getControlKey(flagType, field)"
-              >
-              </app-setting-control>
-            }
+          <ng-container formGroupName="options">
+            <div class="dynamic-fields">
+              @for (field of this.dynamicFlagFields; track field.Name) {
+                <app-setting-control
+                  [option]="field"
+                  [formControlName]="getControlKey(flagType, field)"
+                >
+                </app-setting-control>
+              }
+            </div>
           </ng-container>
         }
       </div>

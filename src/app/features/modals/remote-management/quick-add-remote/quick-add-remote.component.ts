@@ -4,8 +4,10 @@ import {
   OnInit,
   OnDestroy,
   inject,
-  ChangeDetectorRef,
+  computed,
+  signal,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   FormBuilder,
   FormGroup,
@@ -25,6 +27,10 @@ import { takeUntil, Subject } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import {
+  MatAutocompleteModule,
+  MatAutocompleteSelectedEvent,
+} from '@angular/material/autocomplete';
 
 // Services
 import { AuthStateService } from '../../../../shared/services/auth-state.service';
@@ -76,6 +82,7 @@ type WizardStep = 'setup' | 'operations' | 'interactive';
     InteractiveConfigStepComponent,
     MatTooltipModule,
     OperationConfigComponent,
+    MatAutocompleteModule,
   ],
   templateUrl: './quick-add-remote.component.html',
   styleUrls: ['./quick-add-remote.component.scss', '../../../../styles/_shared-modal.scss'],
@@ -89,7 +96,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   private readonly mountManagementService = inject(MountManagementService);
   private readonly appSettingsService = inject(AppSettingsService);
   private readonly fileSystemService = inject(FileSystemService);
-  private readonly cdRef = inject(ChangeDetectorRef);
   private readonly validatorRegistry = inject(ValidatorRegistryService);
   readonly iconService = inject(IconService);
   private readonly nautilusService = inject(NautilusService);
@@ -97,10 +103,50 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   readonly quickAddForm: FormGroup;
   remoteTypes: RemoteType[] = [];
   existingRemotes: string[] = [];
-  isAuthInProgress = false;
-  isAuthCancelled = false;
-  currentStep: WizardStep = 'setup';
-  interactiveFlowState: InteractiveFlowState = createInitialInteractiveFlowState();
+
+  // Auth state signals (from service observables)
+  readonly isAuthInProgress = toSignal(this.authStateService.isAuthInProgress$, {
+    initialValue: false,
+  });
+  readonly isAuthCancelled = toSignal(this.authStateService.isAuthCancelled$, {
+    initialValue: false,
+  });
+
+  // Component state signals
+  readonly currentStep = signal<WizardStep>('setup');
+  readonly interactiveFlowState = signal<InteractiveFlowState>(createInitialInteractiveFlowState());
+
+  // Computed signals
+  readonly submitButtonText = computed(() =>
+    this.isAuthInProgress() && !this.isAuthCancelled() ? 'Adding Remote...' : 'Create Remote'
+  );
+
+  readonly isInteractiveContinueDisabled = computed(() =>
+    isInteractiveContinueDisabled(this.interactiveFlowState(), this.isAuthCancelled())
+  );
+
+  // Operation tabs configuration for DRY template
+  readonly operationTabs = [
+    { type: 'mount', label: 'Mount', description: 'Automatically mount this remote as a drive.' },
+    { type: 'sync', label: 'Sync', description: 'Sync this remote to a local folder.' },
+    { type: 'copy', label: 'Copy', description: 'Copy contents to a local folder.' },
+    { type: 'bisync', label: 'Bisync', description: 'Bidirectional sync with a local folder.' },
+    { type: 'move', label: 'Move', description: 'Move contents to a local folder.' },
+  ] as const;
+
+  // Autocomplete for remote type
+  readonly remoteTypeSearchControl = new FormControl('');
+  private readonly remoteTypesSignal = signal<RemoteType[]>([]);
+  private readonly searchTermSignal = signal('');
+
+  readonly filteredRemoteTypes = computed(() => {
+    const term = this.searchTermSignal().toLowerCase();
+    const types = this.remoteTypesSignal();
+    if (!term) return types;
+    return types.filter(
+      r => r.label.toLowerCase().includes(term) || r.value.toLowerCase().includes(term)
+    );
+  });
 
   private readonly destroy$ = new Subject<void>();
   private pendingConfig: {
@@ -119,11 +165,18 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   constructor() {
     this.quickAddForm = this.createQuickAddForm();
     this.setupFormListeners();
+    this.setupRemoteTypeSearch();
+  }
+
+  private setupRemoteTypeSearch(): void {
+    this.remoteTypeSearchControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(value => {
+      // Update search term for filtering
+      this.searchTermSignal.set(typeof value === 'string' ? value : '');
+    });
   }
 
   ngOnInit(): void {
     this.initializeComponent();
-    this.setupAuthStateListeners();
   }
 
   ngOnDestroy(): void {
@@ -139,24 +192,33 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         value: remote.name,
         label: remote.description,
       }));
+      this.remoteTypesSignal.set(this.remoteTypes);
       this.existingRemotes = await this.remoteManagementService.getRemotes();
+
+      // Update the remote name validator with the loaded remotes
+      const remoteNameControl = this.quickAddForm.get('setup.remoteName');
+      if (remoteNameControl) {
+        remoteNameControl.setValidators([
+          Validators.required,
+          this.validatorRegistry.createRemoteNameValidator(this.existingRemotes),
+        ]);
+        remoteNameControl.updateValueAndValidity();
+      }
     } catch (error) {
       console.error('Error initializing component:', error);
     }
   }
 
-  private setupAuthStateListeners(): void {
-    this.authStateService.isAuthInProgress$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(isInProgress => {
-        this.isAuthInProgress = isInProgress;
-        this.setFormState(isInProgress);
-      });
+  // Autocomplete helper methods
+  displayRemoteType(value: string): string {
+    const remote = this.remoteTypes.find(r => r.value === value);
+    return remote ? remote.label : value || '';
+  }
 
-    this.authStateService.isAuthCancelled$.pipe(takeUntil(this.destroy$)).subscribe(isCancelled => {
-      this.isAuthCancelled = isCancelled;
-      this.cdRef.markForCheck();
-    });
+  onRemoteTypeSelected(event: MatAutocompleteSelectedEvent): void {
+    const value = event.option.value;
+    this.quickAddForm.get('setup.remoteType')?.setValue(value);
+    this.onRemoteTypeChange(value);
   }
 
   private createOperationPathGroup(
@@ -296,17 +358,17 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   nextStep(): void {
-    if (this.currentStep === 'setup') {
+    if (this.currentStep() === 'setup') {
       this.quickAddForm.get('setup')?.markAllAsTouched();
       if (this.isSetupStepValid()) {
-        this.currentStep = 'operations';
+        this.currentStep.set('operations');
       }
     }
   }
 
   prevStep(): void {
-    if (this.currentStep === 'operations') {
-      this.currentStep = 'setup';
+    if (this.currentStep() === 'operations') {
+      this.currentStep.set('setup');
     }
   }
 
@@ -338,7 +400,7 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     const setup = this.quickAddForm.get('setup')?.value;
     const operations = this.quickAddForm.get('operations')?.value;
 
-    if (this.quickAddForm.invalid || this.isAuthInProgress || !setup || !operations) {
+    if (this.quickAddForm.invalid || this.isAuthInProgress() || !setup || !operations) {
       return;
     }
 
@@ -349,12 +411,12 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         await this.handleInteractiveCreation(setup, operations);
       } else {
         await this.handleStandardCreation(setup, operations);
-        if (!this.isAuthCancelled) this.dialogRef.close(true);
+        if (!this.isAuthCancelled()) this.dialogRef.close(true);
       }
     } catch (error) {
       console.error('Error in onSubmit:', error);
     } finally {
-      if (!setup.useInteractiveMode || !this.interactiveFlowState.isActive) {
+      if (!setup.useInteractiveMode || !this.interactiveFlowState().isActive) {
         this.authStateService.resetAuthState();
       }
     }
@@ -422,15 +484,13 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
         await this.finalizeRemoteCreation();
         return;
       }
-      this.currentStep = 'interactive';
-      this.interactiveFlowState = {
+      this.currentStep.set('interactive');
+      this.interactiveFlowState.set({
         isActive: true,
         question: startResp,
         answer: getDefaultAnswerFromQuestion(startResp),
         isProcessing: false,
-        isInteractive: true,
-      } as InteractiveFlowState; // Cast to fix type if needed or just use object
-      this.cdRef.markForCheck();
+      });
     } catch (error) {
       console.error('Error starting interactive config:', error);
       await this.finalizeRemoteCreation();
@@ -438,45 +498,42 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
   }
 
   async onInteractiveContinue(answer: string | number | boolean | null): Promise<void> {
-    this.interactiveFlowState.answer = answer;
-    this.interactiveFlowState.isProcessing = true;
+    this.interactiveFlowState.update(state => ({ ...state, answer, isProcessing: true }));
     try {
       await this.submitRcAnswer();
     } finally {
-      if (this.interactiveFlowState.isActive) {
-        this.interactiveFlowState.isProcessing = false;
+      if (this.interactiveFlowState().isActive) {
+        this.interactiveFlowState.update(state => ({ ...state, isProcessing: false }));
       }
-      this.cdRef.markForCheck();
     }
   }
 
   private async submitRcAnswer(): Promise<void> {
-    if (
-      !this.interactiveFlowState.isActive ||
-      !this.interactiveFlowState.question ||
-      !this.pendingConfig
-    ) {
+    const state = this.interactiveFlowState();
+    if (!state.isActive || !state.question || !this.pendingConfig) {
       return;
     }
     try {
-      let answer: unknown = this.interactiveFlowState.answer;
-      if (this.interactiveFlowState.question?.Option?.Type === 'bool') {
+      let answer: unknown = state.answer;
+      if (state.question?.Option?.Type === 'bool') {
         answer = convertBoolAnswerToString(answer);
       }
       const resp = await this.remoteManagementService.continueRemoteConfigNonInteractive(
         this.pendingConfig.remoteData.name,
-        this.interactiveFlowState.question.State,
+        state.question.State,
         answer,
         {},
         { nonInteractive: true }
       );
       if (!resp || resp.State === '') {
-        this.interactiveFlowState.isActive = false;
-        this.interactiveFlowState.question = null;
+        this.interactiveFlowState.update(s => ({ ...s, isActive: false, question: null }));
         await this.finalizeRemoteCreation();
       } else {
-        this.interactiveFlowState.question = resp;
-        this.interactiveFlowState.answer = getDefaultAnswerFromQuestion(resp);
+        this.interactiveFlowState.update(s => ({
+          ...s,
+          question: resp,
+          answer: getDefaultAnswerFromQuestion(resp),
+        }));
       }
     } catch (error) {
       console.error('Interactive config error:', error);
@@ -484,14 +541,9 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     }
   }
 
-  isInteractiveContinueDisabled(): boolean {
-    return isInteractiveContinueDisabled(this.interactiveFlowState, this.isAuthCancelled);
-  }
-
   handleInteractiveAnswerUpdate(newAnswer: string | number | boolean | null): void {
-    if (this.interactiveFlowState.isActive) {
-      this.interactiveFlowState = updateInteractiveAnswer(this.interactiveFlowState, newAnswer);
-      this.cdRef.markForCheck();
+    if (this.interactiveFlowState().isActive) {
+      this.interactiveFlowState.update(state => updateInteractiveAnswer(state, newAnswer));
     }
   }
 
@@ -550,9 +602,8 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
 
   async cancelAuth(): Promise<void> {
     await this.authStateService.cancelAuth();
-    this.currentStep = 'operations';
-    this.interactiveFlowState = createInitialInteractiveFlowState();
-    this.cdRef.markForCheck();
+    this.currentStep.set('operations');
+    this.interactiveFlowState.set(createInitialInteractiveFlowState());
   }
 
   private setFormState(disabled: boolean): void {
@@ -561,10 +612,6 @@ export class QuickAddRemoteComponent implements OnInit, OnDestroy {
     } else {
       this.quickAddForm.enable();
     }
-  }
-
-  getSubmitButtonText(): string {
-    return this.isAuthInProgress && !this.isAuthCancelled ? 'Adding Remote...' : 'Create Remote';
   }
 
   get selectedRemoteLabel(): string {

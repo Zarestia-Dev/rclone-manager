@@ -13,7 +13,8 @@
 - On linux remove the rclone to required dependencies when installing via deb or rpm packages. Because app handle the rclone binary installation and update itself correctly.  
 - Encrypted export not required standalone 7zip binary anymore. Changed to sevenz-rust crate. Not break the old encrypted exports.
 - On tray icon when remote not mounted, it shows the Browse (In App). Basically it opens the RClone Manager's `Nautilus` with that remote.
-- Angular and Angular Material updated to v21
+- Angular and Angular Material updated to v21 and other dependencies updated to latest stable versions.
+- Small design changes on `Quick Remote Modal`.
 
 ### Fixed
 - Remote configuration step provider selection fixed. Now it correctly filters the provider-specific fields when Provider selected. (issue #59 and #1)

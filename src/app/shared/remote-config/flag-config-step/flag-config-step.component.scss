@@ -5,10 +5,12 @@ form {
   height: 100%;
 
   .form-container {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-sm);
     padding: var(--space-md);
+    .dynamic-fields {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
   }
 
   // Virtual Scroll Viewport
@@ -42,26 +44,6 @@ form {
 
   .section-heading {
     margin: 16px 0 8px 0;
-  }
-
-  .options {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-md);
-    padding: var(--space-md);
-    border-radius: var(--radius-lg);
-    background-color: var(--secondary-background);
-    box-shadow: var(--shadow-light);
-    transition: box-shadow 0.2s ease-in-out;
-
-    &:hover {
-      box-shadow: var(--shadow-elevated);
-    }
-
-    h4 {
-      color: var(--mat-primary-color);
-      font-weight: 500;
-    }
   }
 }
 

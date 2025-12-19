@@ -1,14 +1,4 @@
-import {
-  ChangeDetectionStrategy,
-  ChangeDetectorRef,
-  Component,
-  EventEmitter,
-  inject,
-  Input,
-  OnChanges,
-  Output,
-  SimpleChanges,
-} from '@angular/core';
+import { Component, effect, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -34,42 +24,45 @@ import { RcConfigQuestionResponse } from '@app/types';
   ],
   templateUrl: './interactive-config-step.component.html',
   styleUrls: ['./interactive-config-step.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class InteractiveConfigStepComponent implements OnChanges {
-  cdRef = inject(ChangeDetectorRef);
+export class InteractiveConfigStepComponent {
+  // Inputs as signals
+  question = input<RcConfigQuestionResponse | null>(null);
+  canceling = input(false);
+  processing = input(false);
 
-  @Input() question: RcConfigQuestionResponse | null = null;
-  @Input() canceling = false;
-  @Input() processing = false;
-  @Output() answerChange = new EventEmitter<string | number | boolean | null>();
+  // Output
+  answerChange = output<string | number | boolean | null>();
 
-  _answer: string | boolean | number | null = null;
+  // Answer state as signal
+  private _answer = signal<string | boolean | number | null>(null);
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['question']) {
-      this._answer = this.defaultAnswer(this.question);
-    }
+  constructor() {
+    // React to question changes and set default answer
+    effect(() => {
+      const q = this.question();
+      this._answer.set(this.defaultAnswer(q));
+    });
   }
 
   get answer(): string | boolean | number | null {
-    return this._answer;
+    return this._answer();
   }
 
   set answer(val: string | boolean | number | null) {
-    if (this._answer !== val) {
-      this._answer = val;
-      this.answerChange.emit(this._answer);
-      this.cdRef.markForCheck();
+    if (this._answer() !== val) {
+      this._answer.set(val);
+      this.answerChange.emit(this._answer());
     }
   }
+
   trackByIndex = (index: number): number => index;
 
   /**
    * Check if the current field is required
    */
   isFieldRequired(): boolean {
-    return !!this.question?.Option?.Required;
+    return !!this.question()?.Option?.Required;
   }
 
   /**
@@ -81,13 +74,14 @@ export class InteractiveConfigStepComponent implements OnChanges {
     }
 
     // For required fields, check if we have a valid answer
-    if (this.answer === null || this.answer === undefined) {
+    const currentAnswer = this.answer;
+    if (currentAnswer === null || currentAnswer === undefined) {
       return false;
     }
 
     // For string answers, check if not empty
-    if (typeof this.answer === 'string') {
-      return this.answer.trim() !== '';
+    if (typeof currentAnswer === 'string') {
+      return currentAnswer.trim() !== '';
     }
 
     // For boolean and number answers, they're valid as long as they're not null
