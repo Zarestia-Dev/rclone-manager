@@ -1,0 +1,345 @@
+# Contributing to RClone Manager
+
+Thank you for your interest in contributing to RClone Manager! We appreciate contributions of all kinds — from bug reports and feature requests to code improvements and documentation updates.
+
+---
+
+## 📋 Table of Contents
+
+- [Code of Conduct](#code-of-conduct)
+- [How Can I Contribute?](#how-can-i-contribute)
+  - [Reporting Bugs](#reporting-bugs)
+  - [Suggesting Features](#suggesting-features)
+  - [Contributing Code](#contributing-code)
+  - [Improving Documentation](#improving-documentation)
+- [Development Setup](#development-setup)
+  - [Prerequisites](#prerequisites)
+  - [Setting Up the Project](#setting-up-the-project)
+- [Project Structure](#project-structure)
+- [Development Workflow](#development-workflow)
+  - [Working on Features](#working-on-features)
+  - [Code Style](#code-style)
+  - [Testing](#testing)
+- [Submitting Changes](#submitting-changes)
+  - [Pull Request Process](#pull-request-process)
+  - [PR Guidelines](#pr-guidelines)
+- [Additional Resources](#additional-resources)
+
+---
+
+## Code of Conduct
+
+We are committed to providing a welcoming and inspiring community for all. Please be respectful and constructive in your interactions with other contributors.
+
+---
+
+## How Can I Contribute?
+
+### Reporting Bugs
+
+If you find a bug, please [open a bug report](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=bug_report.md) with the following information:
+
+- **Description**: A clear and concise description of the bug
+- **Steps to Reproduce**: Detailed steps to reproduce the issue
+- **Expected Behavior**: What you expected to happen
+- **Actual Behavior**: What actually happened
+- **Environment**: OS, version, and any other relevant details
+- **Screenshots/Logs**: If applicable, add screenshots or error logs
+
+### Suggesting Features
+
+We love new ideas! To suggest a feature, please [open a feature request](https://github.com/Zarestia-Dev/rclone-manager/issues/new?template=feature_request.md) including:
+
+- **Description**: A clear description of the feature
+- **Use Case**: Why this feature would be useful
+- **Alternatives**: Any alternative solutions you've considered
+- **Additional Context**: Mockups, examples, or references
+
+### Contributing Code
+
+Before starting work on a significant change:
+
+1. **Check existing issues** — See if someone is already working on it
+2. **Open a discussion** — For major changes, open an issue to discuss your approach first
+3. **Fork the repository** — Create your own fork to work on
+4. **Create a branch** — Use a descriptive branch name (e.g., `feat/new-feature` or `fix/bug-name`)
+
+### Improving Documentation
+
+Documentation improvements are always welcome! This includes:
+
+- Fixing typos or clarifying existing docs
+- Adding examples or tutorials
+- Updating the [Wiki](https://github.com/Zarestia-Dev/rclone-manager/wiki)
+- Improving code comments
+
+---
+
+## Development Setup
+
+### Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+#### Required
+
+- **Node.js** (v18 or higher) and **npm**
+- **Rust** (latest stable version via [rustup](https://rustup.rs/))
+- **Rclone** (for runtime functionality)
+
+#### Platform-Specific Requirements
+
+- **Linux**: Standard build tools (`build-essential` on Debian/Ubuntu)
+- **macOS**: Xcode Command Line Tools
+- **Windows**: Visual Studio Build Tools or MSVC
+
+For detailed platform-specific prerequisites, see the [Building Wiki](https://github.com/Zarestia-Dev/rclone-manager/wiki/Building).
+
+### Setting Up the Project
+
+1. **Clone your fork**:
+
+   ```bash
+   git clone https://github.com/YOUR_USERNAME/rclone-manager.git
+   cd rclone-manager
+   ```
+
+2. **Install dependencies**:
+
+   ```bash
+   npm install
+   ```
+
+3. **Run in development mode**:
+
+   ```bash
+   npm run tauri dev
+   ```
+
+4. **Run headless mode (development)** (optional):
+
+   ```bash
+   npm run headless-dev
+   ```
+
+5. **Run headless mode (production)** (optional):
+
+   ```bash
+   npm run headless
+   ```
+
+---
+
+## Project Structure
+
+```
+rclone-manager/
+├── .github/           # GitHub workflows and configurations
+├── src/               # Angular frontend source code
+│   ├── app/          # Application components, services, and modules
+│   ├── assets/       # Static assets (images, icons)
+│   └── styles/       # Global styles and themes
+├── src-tauri/         # Rust backend (Tauri)
+│   ├── src/          # Rust source code
+│   │   ├── core/     # Core backend logic
+│   │   ├── server/   # Web server implementation (headless mode)
+│   │   ├── rclone/   # Rclone backend logic
+│   │   └── utils/    # Utility functions
+│   └── tauri.conf.json # Tauri configuration
+│   └── tauri.conf.headless.json # Tauri configuration (headless mode)
+│   └── Cargo.toml    # Rust dependencies and configuration
+├── headless/          # Headless/web server mode documentation
+└── package.json       # Node.js dependencies and scripts
+```
+
+### Key Directories
+
+- **`src/app/`**: Angular components, services, and application logic
+- **`src-tauri/src/core/`**: Core Rust backend logic (scheduler, settings, security)
+- **`src-tauri/src/server/`**: Web server implementation for headless mode
+- **`src-tauri/src/rclone/`**: Rclone backend logic
+- **`.github/workflows/`**: CI/CD workflows for building and releasing
+
+---
+
+## Development Workflow
+
+### Working on Features
+
+1. **Create a feature branch**:
+
+   ```bash
+   git checkout -b feat/your-feature-name
+   ```
+
+2. **Make your changes** in the appropriate directory:
+   - Frontend changes → `src/`
+   - Backend changes → `src-tauri/src/`
+   - Documentation → `README.md`, Wiki, or `*.md` files
+
+3. **Test your changes**:
+
+   ```bash
+   npm run tauri dev
+   ```
+
+4. **Commit your changes** with clear, descriptive messages:
+   ```bash
+   git commit -m "feat: add new feature description"
+   ```
+
+### Code Style
+
+We use automated linting and formatting to maintain code quality. **All code must pass linting checks before being merged.**
+
+#### Frontend (TypeScript/Angular)
+
+- **Linting**: ESLint with Angular-specific rules
+- **Formatting**: Prettier
+
+```bash
+# Run linter
+npm run lint
+
+# Fix linting issues automatically
+npm run lint:fix
+
+# Format code
+npm run format
+
+# Check formatting
+npm run format:check
+```
+
+#### Backend (Rust)
+
+- **Linting**: Clippy
+- **Formatting**: rustfmt
+
+```bash
+# Run Rust linter
+npm run lint:rust
+
+# Format Rust code
+npm run format:rust
+
+# Check Rust formatting
+npm run format:rust:check
+```
+
+#### Run All Checks
+
+```bash
+# Check everything
+npm run lint:all
+
+# Fix everything automatically
+npm run fix:all
+```
+
+**Note**: We use [Husky](https://typicode.github.io/husky/) and [lint-staged](https://github.com/okonet/lint-staged) to automatically lint and format code on commit. See [LINTING.md](LINTING.md) for detailed information.
+
+### Testing
+
+Currently, the project uses manual testing. We welcome contributions to add automated tests!
+
+**Manual Testing Checklist**:
+
+- Test on your target platform (Linux/macOS/Windows)
+- Verify the feature works as expected
+- Check for console errors or warnings
+- Test edge cases and error handling
+- Ensure UI remains responsive
+
+---
+
+## Submitting Changes
+
+### Pull Request Process
+
+1. **Ensure your code passes all checks**:
+
+   ```bash
+   npm run lint:all
+   ```
+
+2. **Push your branch to your fork**:
+
+   ```bash
+   git push origin feat/your-feature-name
+   ```
+
+3. **Open a Pull Request** against the `main` branch of the original repository
+
+4. **Fill out the PR template** with:
+   - Description of changes
+   - Related issue(s)
+   - Testing performed
+   - Screenshots (if UI changes)
+
+5. **Wait for review** — Maintainers will review your PR and may request changes
+
+6. **Address feedback** — Make requested changes and push updates
+
+7. **Merge** — Once approved, a maintainer will merge your PR
+
+### PR Guidelines
+
+#### Good PR Practices
+
+- ✅ **Keep PRs focused** — One feature or bug fix per PR
+- ✅ **Write clear commit messages** — Use [Conventional Commits](https://www.conventionalcommits.org/) format:
+  - `feat:` for new features
+  - `fix:` for bug fixes
+  - `docs:` for documentation
+  - `refactor:` for code refactoring
+  - `style:` for formatting changes
+  - `chore:` for maintenance tasks
+- ✅ **Update documentation** — If your PR changes behavior, update relevant docs
+- ✅ **Test thoroughly** — Ensure your changes work on your platform
+- ✅ **Include screenshots** — For UI changes, include before/after screenshots
+
+#### What to Avoid
+
+- ❌ Large PRs with multiple unrelated changes
+- ❌ Committing generated files (`node_modules/`, `dist/`, etc.)
+- ❌ Breaking existing functionality without discussion
+- ❌ Incomplete or untested features
+
+---
+
+## Additional Resources
+
+### Documentation
+
+- **[Wiki](https://github.com/Zarestia-Dev/rclone-manager/wiki)** — Building instructions, installation guides, and more
+- **[LINTING.md](LINTING.md)** — Detailed linting and formatting guide
+- **[ISSUES.md](ISSUES.md)** — Known issues and workarounds
+- **[CHANGELOG.md](CHANGELOG.md)** — Version history and changes
+
+### Communication
+
+- **[GitHub Issues](https://github.com/Zarestia-Dev/rclone-manager/issues)** — Bug reports and feature requests
+- **[GitHub Discussions](https://github.com/Zarestia-Dev/rclone-manager/discussions)** — General questions and ideas
+- **[Project Board](https://github.com/users/Zarestia-Dev/projects/2)** — Development roadmap and progress
+
+### Learning Resources
+
+- **[Tauri Documentation](https://tauri.app/)** — Tauri framework docs
+- **[Angular Documentation](https://angular.io/)** — Angular framework docs
+- **[Rclone Documentation](https://rclone.org/)** — Rclone tool documentation
+- **[Rust Book](https://doc.rust-lang.org/book/)** — Learning Rust
+- **[TypeScript Handbook](https://www.typescriptlang.org/docs/)** — Learning TypeScript
+
+---
+
+## 🙏 Thank You
+
+Your contributions make RClone Manager better for everyone. We appreciate your time and effort!
+
+---
+
+<p align="center">
+  Made with ❤️ by the Zarestia Dev Team and contributors<br>
+  <sub>Licensed under GNU GPLv3</sub>
+</p>

@@ -10,6 +10,7 @@ import { JobInfo } from '@app/types';
 import { FormatFileSizePipe } from '@app/pipes';
 import { Subject, interval } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-operations-panel',
@@ -31,8 +32,8 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   private uiStateService = inject(UiStateService);
   private destroy$ = new Subject<void>();
 
-  // State
-  jobs = signal<JobInfo[]>([]);
+  // Subscribe to reactive job stream
+  jobs = toSignal(this.jobManagementService.nautilusJobs$, { initialValue: [] });
   isExpanded = signal(true);
   isLoading = signal(false);
 
@@ -50,30 +51,23 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Initial load
-    this.loadJobs();
+    // Initial load from backend
+    this.jobManagementService.refreshNautilusJobs();
 
-    // Poll every 1 seconds for updates
+    // Adaptive polling: only poll when there are active jobs
     interval(1000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
-        this.loadJobs();
+        // Only poll if there are active running jobs
+        if (this.activeJobs.length > 0) {
+          this.jobManagementService.refreshNautilusJobs();
+        }
       });
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-  }
-
-  async loadJobs(): Promise<void> {
-    try {
-      // Use dedicated API that filters on the backend
-      const nautilusJobs = await this.jobManagementService.getJobsBySource('nautilus');
-      this.jobs.set(nautilusJobs);
-    } catch (err) {
-      console.error('Failed to load jobs:', err);
-    }
   }
 
   toggleExpanded(): void {
@@ -107,7 +101,8 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   async stopJob(job: JobInfo): Promise<void> {
     try {
       await this.jobManagementService.stopJob(job.jobid, job.remote_name);
-      await this.loadJobs();
+      // Refresh the stream after stopping
+      await this.jobManagementService.refreshNautilusJobs();
     } catch (err) {
       console.error('Failed to stop job:', err);
     }
@@ -116,7 +111,8 @@ export class OperationsPanelComponent implements OnInit, OnDestroy {
   async deleteJob(job: JobInfo): Promise<void> {
     try {
       await this.jobManagementService.deleteJob(job.jobid);
-      await this.loadJobs();
+      // Refresh the stream after deleting
+      await this.jobManagementService.refreshNautilusJobs();
     } catch (err) {
       console.error('Failed to delete job:', err);
     }

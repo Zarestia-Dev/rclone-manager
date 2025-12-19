@@ -99,7 +99,7 @@ export class ServeManagementService extends TauriBaseService {
    */
   async startServeProfile(remoteName: string, profileName: string): Promise<ServeStartResponse> {
     try {
-      const params = { remote_name: remoteName, profile_name: profileName };
+      const params = { remoteName, profileName };
       const response = await this.invokeCommand<ServeStartResponse>('start_serve_profile', {
         params,
       });

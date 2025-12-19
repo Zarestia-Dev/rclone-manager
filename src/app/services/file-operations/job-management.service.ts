@@ -14,6 +14,10 @@ export class JobManagementService extends TauriBaseService {
   private activeJobsSubject = new BehaviorSubject<JobInfo[]>([]);
   public activeJobs$ = this.activeJobsSubject.asObservable();
 
+  // Nautilus-specific jobs stream
+  private nautilusJobsSubject = new BehaviorSubject<JobInfo[]>([]);
+  public nautilusJobs$ = this.nautilusJobsSubject.asObservable();
+
   constructor() {
     super();
   }
@@ -29,7 +33,7 @@ export class JobManagementService extends TauriBaseService {
    * Backend resolves all options from cached settings
    */
   async startSyncProfile(remoteName: string, profileName: string): Promise<number> {
-    const params = { remote_name: remoteName, profile_name: profileName };
+    const params = { remoteName, profileName };
     console.debug('Invoking start_sync_profile with params', params);
     return this.invokeCommand<number>('start_sync_profile', { params });
   }
@@ -38,7 +42,7 @@ export class JobManagementService extends TauriBaseService {
    * Start a copy job using a named profile
    */
   async startCopyProfile(remoteName: string, profileName: string): Promise<number> {
-    const params = { remote_name: remoteName, profile_name: profileName };
+    const params = { remoteName, profileName };
     console.debug('Invoking start_copy_profile with params', params);
     return this.invokeCommand<number>('start_copy_profile', { params });
   }
@@ -47,7 +51,7 @@ export class JobManagementService extends TauriBaseService {
    * Start a bisync job using a named profile
    */
   async startBisyncProfile(remoteName: string, profileName: string): Promise<number> {
-    const params = { remote_name: remoteName, profile_name: profileName };
+    const params = { remoteName, profileName };
     console.debug('Invoking start_bisync_profile with params', params);
     return this.invokeCommand<number>('start_bisync_profile', { params });
   }
@@ -56,7 +60,7 @@ export class JobManagementService extends TauriBaseService {
    * Start a move job using a named profile
    */
   async startMoveProfile(remoteName: string, profileName: string): Promise<number> {
-    const params = { remote_name: remoteName, profile_name: profileName };
+    const params = { remoteName, profileName };
     console.debug('Invoking start_move_profile with params', params);
     return this.invokeCommand<number>('start_move_profile', { params });
   }
@@ -69,7 +73,8 @@ export class JobManagementService extends TauriBaseService {
    * @param autoFilename Whether to automatically determine the filename
    */
   async copyUrl(remote: string, path: string, url: string, autoFilename: boolean): Promise<void> {
-    return this.invokeCommand('copy_url', { remote, path, urlToCopy: url, autoFilename });
+    await this.invokeCommand('copy_url', { remote, path, urlToCopy: url, autoFilename });
+    this.refreshNautilusJobs();
   }
 
   /**
@@ -96,6 +101,26 @@ export class JobManagementService extends TauriBaseService {
    */
   async getJobsBySource(source: string): Promise<JobInfo[]> {
     return this.invokeCommand<JobInfo[]>('get_jobs_by_source', { source });
+  }
+
+  /**
+   * Refresh the nautilus jobs stream
+   * This method fetches the latest nautilus jobs and updates the BehaviorSubject
+   */
+  async refreshNautilusJobs(): Promise<void> {
+    try {
+      const jobs = await this.getJobsBySource('nautilus');
+      this.nautilusJobsSubject.next(jobs);
+    } catch (err) {
+      console.error('Failed to refresh nautilus jobs:', err);
+    }
+  }
+
+  /**
+   * Get the current nautilus jobs synchronously from the stream
+   */
+  getNautilusJobs(): JobInfo[] {
+    return this.nautilusJobsSubject.value;
   }
 
   /**

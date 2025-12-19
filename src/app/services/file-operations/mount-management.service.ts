@@ -43,7 +43,7 @@ export class MountManagementService extends TauriBaseService {
    */
   async mountRemoteProfile(remoteName: string, profileName: string): Promise<void> {
     try {
-      const params = { remote_name: remoteName, profile_name: profileName };
+      const params = { remoteName, profileName };
       await this.invokeCommand('mount_remote_profile', { params });
       await this.refreshMountedRemotes();
       this.notificationService.showSuccess(`Successfully mounted ${remoteName} (${profileName})`);

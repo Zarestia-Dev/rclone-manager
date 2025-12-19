@@ -16,6 +16,9 @@ mod core;
 mod rclone;
 mod utils;
 
+#[cfg(feature = "web-server")]
+mod server;
+
 /// RClone Manager - Headless Web Server Mode
 #[cfg(feature = "web-server")]
 #[derive(Parser, Debug)]
@@ -401,7 +404,7 @@ pub fn run() {
             //   RCLONE_MANAGER_PORT=3000 rclone-manager
             #[cfg(feature = "web-server")]
             {
-                use crate::core::server::start_web_server;
+                use crate::server::start_web_server;
 
                 let web_handle = app.handle().clone();
                 let args = cli_args;
