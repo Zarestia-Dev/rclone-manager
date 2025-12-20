@@ -13,16 +13,13 @@ import { AppTab } from '@app/types';
 export class OverviewHeaderComponent {
   @Input() mode: AppTab = 'general';
 
+  private readonly TITLE_MAP: Record<string, string> = {
+    mount: 'Mount Overview',
+    sync: 'Sync Overview',
+    serve: 'Serve Overview',
+  };
+
   get title(): string {
-    switch (this.mode) {
-      case 'mount':
-        return 'Mount Overview';
-      case 'sync':
-        return 'Sync Overview';
-      case 'serve':
-        return 'Serve Overview';
-      default:
-        return 'Remotes Overview';
-    }
+    return this.TITLE_MAP[this.mode] || 'Remotes Overview';
   }
 }

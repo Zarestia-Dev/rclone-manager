@@ -676,7 +676,7 @@ export class HomeComponent implements OnInit, OnDestroy {
             // Specific profile requested
             idToStop = state?.activeProfiles?.[profileName];
           } else if (state?.activeProfiles) {
-            // No profile specified - find first active profile job
+            // No profile specified - find first Selected Profile job
             const activeProfileEntries = Object.entries(state.activeProfiles);
             if (activeProfileEntries.length > 0) {
               idToStop = activeProfileEntries[0][1] as number;

@@ -21,27 +21,19 @@ export class StatusOverviewPanelComponent {
     return `${mode.charAt(0).toUpperCase() + mode.slice(1)} Status Overview`;
   });
 
-  activeLabel = computed(() => {
-    switch (this.mode()) {
-      case 'mount':
-        return 'Mounted';
-      case 'sync':
-        return 'Syncing';
-      default:
-        return 'Active';
-    }
-  });
+  private readonly ACTIVE_LABELS: Record<string, string> = {
+    mount: 'Mounted',
+    sync: 'Syncing',
+  };
 
-  inactiveLabel = computed(() => {
-    switch (this.mode()) {
-      case 'mount':
-        return 'Unmounted';
-      case 'sync':
-        return 'Off Sync';
-      default:
-        return 'Inactive';
-    }
-  });
+  private readonly INACTIVE_LABELS: Record<string, string> = {
+    mount: 'Unmounted',
+    sync: 'Off Sync',
+  };
+
+  activeLabel = computed(() => this.ACTIVE_LABELS[this.mode()] || 'Active');
+
+  inactiveLabel = computed(() => this.INACTIVE_LABELS[this.mode()] || 'Inactive');
 
   activePercentage = computed(() => {
     const total = this.totalCount();

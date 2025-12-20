@@ -25,7 +25,6 @@
         </div>
       </div>
     </div>
-    <div class="header-divider"></div>
   </div>
 
   <!-- Main Content Area -->
@@ -67,7 +66,7 @@
                 @if (showProfileSelector()) {
                   <div class="profile-selector-container" [class.operation-sync]="isSyncType()">
                     <div class="profile-selector-header">
-                      <span class="profile-selector-label">Active Profile</span>
+                      <span class="profile-selector-label">Selected Profile</span>
                       <span class="profile-count">{{ enrichedProfiles().length }} profiles</span>
                     </div>
                     <mat-chip-set aria-label="Profile selection" class="profile-chips">
@@ -81,11 +80,11 @@
                           @if (profile.status === 'running') {
                             <mat-icon
                               svgIcon="refresh"
-                              class="chip-icon animate-spin"
+                              class="primary animate-spin"
                               matChipAvatar
                             ></mat-icon>
                           } @else if (profile.status === 'scheduled') {
-                            <mat-icon svgIcon="clock" class="chip-icon" matChipAvatar></mat-icon>
+                            <mat-icon svgIcon="clock" class="orange" matChipAvatar></mat-icon>
                           }
                           {{ profile.label }}
                         </mat-chip-option>
@@ -249,7 +248,7 @@
                 @if (showProfileSelector()) {
                   <div class="profile-selector-container operation-serve">
                     <div class="profile-selector-header">
-                      <span class="profile-selector-label">Active Profile</span>
+                      <span class="profile-selector-label">Selected Profile</span>
                       <span class="profile-count">{{ enrichedProfiles().length }} profiles</span>
                     </div>
                     <mat-chip-set aria-label="Profile selection" class="profile-chips">
@@ -261,7 +260,7 @@
                           [class.chip-scheduled]="profile.status === 'scheduled'"
                         >
                           @if (profile.status === 'running') {
-                            <mat-icon svgIcon="serve" class="chip-icon" matChipAvatar></mat-icon>
+                            <mat-icon svgIcon="serve" class="accent" matChipAvatar></mat-icon>
                           }
                           {{ profile.label }}
                         </mat-chip-option>
@@ -295,11 +294,11 @@
                 }
 
                 <!-- Active Serves List -->
-                @if (runningServes().length > 0) {
+                @if (filteredRunningServes().length > 0) {
                   <div class="active-serves-list">
                     <h3>Active Serves</h3>
                     <div class="serves-grid">
-                      @for (serve of runningServes(); track serve.id) {
+                      @for (serve of filteredRunningServes(); track serve.id) {
                         <app-serve-card
                           [serve]="serve"
                           (stopServe)="
@@ -327,7 +326,7 @@
                 @if (showProfileSelector()) {
                   <div class="profile-selector-container operation-mount">
                     <div class="profile-selector-header">
-                      <span class="profile-selector-label">Active Profile</span>
+                      <span class="profile-selector-label">Selected Profile</span>
                       <span class="profile-count">{{ enrichedProfiles().length }} profiles</span>
                     </div>
                     <mat-chip-set aria-label="Profile selection" class="profile-chips">
@@ -339,7 +338,7 @@
                           [class.chip-scheduled]="profile.status === 'scheduled'"
                         >
                           @if (profile.status === 'running') {
-                            <mat-icon svgIcon="mount" class="chip-icon" matChipAvatar></mat-icon>
+                            <mat-icon svgIcon="mount" class="accent" matChipAvatar></mat-icon>
                           }
                           {{ profile.label }}
                         </mat-chip-option>

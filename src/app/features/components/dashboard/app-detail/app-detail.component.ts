@@ -321,6 +321,12 @@ export class AppDetailComponent {
 
   remoteName = computed(() => this.selectedRemote().remoteSpecs.name);
 
+  /** Filters running serves to only show those belonging to the selected remote */
+  filteredRunningServes = computed(() => {
+    const remoteName = this.remoteName();
+    return this.runningServes().filter(serve => serve.params.fs.startsWith(remoteName + ':'));
+  });
+
   isSyncType = computed(() => this.mainOperationType() === 'sync');
 
   currentOperation = computed(

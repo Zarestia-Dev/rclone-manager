@@ -54,7 +54,6 @@
         }
       </div>
     </div>
-    <div class="header-divider"></div>
   </div>
 
   <div class="detail-content">
@@ -119,15 +118,7 @@
                     <div class="task-info">
                       <div class="task-title-row">
                         <mat-icon
-                          [svgIcon]="
-                            task.taskType === 'sync'
-                              ? 'sync'
-                              : task.taskType === 'copy'
-                                ? 'copy'
-                                : task.taskType === 'move'
-                                  ? 'move'
-                                  : 'right-left'
-                          "
+                          [svgIcon]="getTaskTypeIcon(task.taskType)"
                           class="task-type-icon"
                           [class.sync-color]="task.taskType === 'sync'"
                           [class.copy-color]="task.taskType === 'copy'"

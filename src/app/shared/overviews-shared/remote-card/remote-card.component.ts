@@ -198,50 +198,30 @@ export class RemoteCardComponent {
         });
       }
 
-      if (remote.syncState?.isOnSync) {
-        buttons.push({
-          id: 'sync',
-          icon: 'stop',
-          tooltip: 'Stop Sync',
-          isLoading: actionState === 'stop',
-          isDisabled: actionState === 'stop',
-          cssClass: 'warn',
-        });
-      }
-      if (remote.copyState?.isOnCopy) {
-        buttons.push({
-          id: 'copy',
-          icon: 'stop',
-          tooltip: 'Stop Copy',
-          isLoading: actionState === 'stop',
-          isDisabled: actionState === 'stop',
-          cssClass: 'warn',
-        });
-      }
-      if (remote.moveState?.isOnMove) {
-        buttons.push({
-          id: 'move',
-          icon: 'stop',
-          tooltip: 'Stop Move',
-          isLoading: actionState === 'stop',
-          isDisabled: actionState === 'stop',
-          cssClass: 'warn',
-        });
-      }
-      if (remote.bisyncState?.isOnBisync) {
-        buttons.push({
-          id: 'bisync',
-          icon: 'stop',
-          tooltip: 'Stop BiSync',
-          isLoading: actionState === 'stop',
-          isDisabled: actionState === 'stop',
-          cssClass: 'warn',
-        });
-      }
+      // Create stop buttons for all active sync operations using a loop
+      const syncOps: { type: PrimaryActionType; stateKey: keyof Remote; activeKey: string }[] = [
+        { type: 'sync', stateKey: 'syncState', activeKey: 'isOnSync' },
+        { type: 'copy', stateKey: 'copyState', activeKey: 'isOnCopy' },
+        { type: 'move', stateKey: 'moveState', activeKey: 'isOnMove' },
+        { type: 'bisync', stateKey: 'bisyncState', activeKey: 'isOnBisync' },
+      ];
+
+      syncOps.forEach(({ type, stateKey, activeKey }) => {
+        const state = remote[stateKey] as Record<string, unknown> | undefined;
+        if (state?.[activeKey]) {
+          const config = OPERATION_CONFIG[type];
+          buttons.push({
+            id: type,
+            icon: 'stop',
+            tooltip: config.stopTooltip,
+            isLoading: actionState === 'stop',
+            isDisabled: actionState === 'stop',
+            cssClass: 'warn',
+          });
+        }
+      });
     } else if (cardVariant === 'inactive') {
       // For inactive remotes, show start buttons for available sync operations.
-      // Build an ordered, deduplicated list of actions (exclude 'mount' here)
-
       const actionsToShow = this.buildPrimaryActions(this.maxSyncButtons(), false);
       actionsToShow.forEach(actionType => {
         const button = this.createStartSyncOperationButton(actionType);
@@ -446,7 +426,7 @@ export class RemoteCardComponent {
   }
 
   /**
-   * Get active profiles map for an operation type (excludes 'serve' which uses array)
+   * Get Selected Profiles map for an operation type (excludes 'serve' which uses array)
    */
   private getOperationActiveProfiles(
     operationType: PrimaryActionType
@@ -460,7 +440,7 @@ export class RemoteCardComponent {
   }
 
   /**
-   * Get the first active profile name for a given operation type
+   * Get the first Selected Profile name for a given operation type
    */
   getActiveProfileName(operationType: PrimaryActionType): string {
     if (operationType === 'serve') {
@@ -472,7 +452,7 @@ export class RemoteCardComponent {
   }
 
   /**
-   * Get the count of active profiles for a given operation type
+   * Get the count of Selected Profiles for a given operation type
    */
   getActiveProfileCount(operationType: PrimaryActionType): number {
     if (operationType === 'serve') {
@@ -482,7 +462,7 @@ export class RemoteCardComponent {
   }
 
   /**
-   * Get tooltip text for status indicators showing all active profiles
+   * Get tooltip text for status indicators showing all Selected Profiles
    */
   getProfileTooltip(operationType: PrimaryActionType): string {
     const count = this.getActiveProfileCount(operationType);
@@ -498,34 +478,31 @@ export class RemoteCardComponent {
     return `${operationType} (${profiles.join(', ')})`;
   }
 
+  private isAnySyncActive(): boolean {
+    return (
+      this.isOperationActive('sync') ||
+      this.isOperationActive('copy') ||
+      this.isOperationActive('move') ||
+      this.isOperationActive('bisync')
+    );
+  }
+
   cardVariant = computed<RemoteCardVariant>(() => {
     const mode = this.mode();
-    const remote = this.remote();
 
     if (mode === 'general') {
-      if (
-        remote.mountState?.mounted ||
-        remote.syncState?.isOnSync ||
-        remote.copyState?.isOnCopy ||
-        remote.moveState?.isOnMove ||
-        remote.bisyncState?.isOnBisync
-      ) {
+      if (this.isOperationActive('mount') || this.isAnySyncActive()) {
         return 'active';
       }
     }
     if (mode === 'mount') {
-      return remote.mountState?.mounted ? 'active' : 'inactive';
+      return this.isOperationActive('mount') ? 'active' : 'inactive';
     }
     if (mode === 'sync') {
-      return remote.syncState?.isOnSync ||
-        remote.copyState?.isOnCopy ||
-        remote.moveState?.isOnMove ||
-        remote.bisyncState?.isOnBisync
-        ? 'active'
-        : 'inactive';
+      return this.isAnySyncActive() ? 'active' : 'inactive';
     }
     if (mode === 'serve') {
-      return remote.serveState?.isOnServe ? 'active' : 'inactive';
+      return this.isOperationActive('serve') ? 'active' : 'inactive';
     }
     return 'inactive';
   });

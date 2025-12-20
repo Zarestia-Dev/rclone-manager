@@ -16,7 +16,6 @@
     flex-direction: column;
     align-items: center;
     gap: var(--header-gap);
-    margin-bottom: var(--header-gap);
   }
 
   .remote-info-section {
@@ -174,8 +173,13 @@
 
   .serves-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--secondary-background);
+    border-radius: var(--card-border-radius);
+    border: 1px solid var(--theme-border);
+    box-shadow: var(--shadow-light);
   }
 }
 
@@ -239,17 +243,11 @@
 .profile-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-xs);
 
   mat-chip-option {
     // Running state (not selected)
     &.chip-running:not(.mat-mdc-chip-selected) {
       --mdc-chip-label-text-color: var(--primary-color);
-      border: 1.5px solid rgba(var(--primary-color-rgb), 0.4);
-
-      .chip-icon {
-        color: var(--primary-color);
-      }
     }
 
     // Running state (selected)
